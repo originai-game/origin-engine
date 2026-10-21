@@ -104,6 +104,22 @@ export const Move = defineSystem("Move", { reads: [Velocity], writes: [og.Transf
   `writes`. Undeclared, it throws in `og run` and `og test` (dev and
   release builds) with the system and the record; a publish build refuses
   it, logs it once per system and access, and the game runs on.
+- A resource handle is a typed view of the resource's packed record:
+  `world.resource(R)` hands back the same handle in a world every time, and
+  a field read or write is a typed-array access (about 0.02 µs, whatever
+  the resource's size; a 130-field run state costs what an 11-field one
+  does). The record is fetched again, in one engine call answering its
+  bytes (no JSON), only by the first read after another engine call
+  (`world.*`, `og.*`) or a system boundary, the only times the engine can
+  change it; writes are kept and written back in one call before the next
+  engine call and when the system or command returns. So two handles
+  always agree, a read after an engine call sees the engine's value, and
+  the world hash is what writing field by field gives. The rule: keep the
+  run in one resource and read and write its fields where they are used;
+  no plain copies, no handle passed around to save a fetch. What costs is
+  alternating an engine call with a read of a resource the system wrote
+  (one write-back and one fetch each time, a few µs): in a hot loop over
+  entities, read the fields into locals before the loop's engine calls.
 - Views belong to one system call. Never keep an `ArchetypeView` or a column
   array across ticks or in module state: a stale view throws with the tick
   and the system it belonged to.

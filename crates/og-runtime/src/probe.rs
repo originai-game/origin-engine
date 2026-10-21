@@ -321,6 +321,7 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
     };
     let meshes = {
         let mut st = eng.state.borrow_mut();
+        super::engine::bump_layout_epoch();
         st.layouts = a.layouts;
         st.names_by_id = a.names_by_id;
         st.resources = a.resources;

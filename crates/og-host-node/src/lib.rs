@@ -51,6 +51,93 @@ pub struct NodeHost;
 /// `ArchetypeView.entities`: a fresh `Uint32Array` of (index, generation).
 pub type NodeArray = napi::bindgen_prelude::Uint32Array;
 
+/// A resource's packed bytes, either way (`og_engine_read_resource`,
+/// `og_engine_write_resource_bytes`): copied out of the `Uint8Array` the
+/// runtime passes, and into a fresh one it is handed. A record is a few
+/// hundred bytes, so the copies cost less than napi's typed array, which
+/// keeps a reference to the JavaScript array until a later collection.
+pub struct NodeBytes(pub Vec<u8>);
+
+impl std::ops::Deref for NodeBytes {
+    type Target = [u8];
+    fn deref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl TypeName for NodeBytes {
+    fn type_name() -> &'static str {
+        "Uint8Array"
+    }
+    fn value_type() -> ValueType {
+        ValueType::Object
+    }
+}
+
+impl ValidateNapiValue for NodeBytes {}
+
+impl FromNapiValue for NodeBytes {
+    unsafe fn from_napi_value(env: sys::napi_env, value: sys::napi_value) -> napi::Result<Self> {
+        unsafe {
+            let mut ty = 0;
+            let mut len = 0;
+            let mut data = ptr::null_mut();
+            let mut buffer = ptr::null_mut();
+            let mut offset = 0;
+            if !ok(sys::napi_get_typedarray_info(
+                env,
+                value,
+                &mut ty,
+                &mut len,
+                &mut data,
+                &mut buffer,
+                &mut offset,
+            )) || ty != sys::TypedarrayType::uint8_array
+            {
+                return Err(napi::Error::from_reason("expected a Uint8Array"));
+            }
+            if len == 0 || data.is_null() {
+                return Ok(NodeBytes(Vec::new()));
+            }
+            Ok(NodeBytes(
+                std::slice::from_raw_parts(data.cast::<u8>(), len).to_vec(),
+            ))
+        }
+    }
+}
+
+impl ToNapiValue for NodeBytes {
+    unsafe fn to_napi_value(env: sys::napi_env, val: Self) -> napi::Result<sys::napi_value> {
+        unsafe {
+            let mut data = ptr::null_mut();
+            let mut buffer = ptr::null_mut();
+            if !ok(sys::napi_create_arraybuffer(
+                env,
+                val.0.len(),
+                &mut data,
+                &mut buffer,
+            )) {
+                return Err(napi::Error::from_reason("cannot allocate a Uint8Array"));
+            }
+            if !val.0.is_empty() {
+                ptr::copy_nonoverlapping(val.0.as_ptr(), data.cast::<u8>(), val.0.len());
+            }
+            let mut array = ptr::null_mut();
+            if !ok(sys::napi_create_typedarray(
+                env,
+                sys::TypedarrayType::uint8_array,
+                val.0.len(),
+                buffer,
+                0,
+                &mut array,
+            )) {
+                return Err(napi::Error::from_reason("cannot make a Uint8Array"));
+            }
+            Ok(array)
+        }
+    }
+}
+
 thread_local! {
     static ENV: Cell<sys::napi_env> = const { Cell::new(ptr::null_mut()) };
     static LIVE: RefCell<Vec<Kept>> = const { RefCell::new(Vec::new()) };

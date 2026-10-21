@@ -312,7 +312,7 @@ module world {
     }
 
     fn resource {
-      doc "A resource's live value. Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log."
+      doc "A resource's live value: the same handle in a world every time, its fields typed reads and writes of the resource's packed record (no JSON, whatever its size). The record is fetched again only by the first read after another engine call or a system boundary, and writes reach the engine in one call before the next engine call and when the system or command returns, so two handles agree and a read after an engine call sees the engine's value (og-core §4). Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log."
       generic R AnyResource
       param resource R "The resource token."
       returns Result.Value.R "Refused for an unregistered resource (or, in a publish build, one the running system did not declare)."

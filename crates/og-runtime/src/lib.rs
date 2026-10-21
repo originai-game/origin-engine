@@ -187,6 +187,18 @@ pub fn og_engine_write_resource(world: u32, resource: String, value: String) -> 
     write_resource(world, &resource, &value)
 }
 
+pub fn og_engine_resource_layout(world: u32, resource: String) -> String {
+    engine::resource_layout(world, &resource)
+}
+
+pub fn og_engine_read_resource(world: u32, resource: String) -> Vec<u8> {
+    engine::read_resource(world, &resource)
+}
+
+pub fn og_engine_write_resource_bytes(world: u32, resource: String, bytes: &[u8]) -> String {
+    engine::write_resource_bytes(world, &resource, bytes)
+}
+
 pub fn og_engine_call(engine: u32, frame: String) -> String {
     call_rpc(engine, &frame)
 }

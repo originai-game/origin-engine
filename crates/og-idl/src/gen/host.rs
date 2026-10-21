@@ -245,7 +245,29 @@ const LIFECYCLE: &[LifecycleMember] = &[
             ("value", "String", "string"),
         ],
         "String",
-        "Write some fields of a resource: how the runtime makes `world.resource(R).value` a live value. A Result.",
+        "Write some fields of a resource as JSON: the runtime's path for a write a publish build refuses (logged once per system). A Result.",
+    ),
+    (
+        "og_engine_resource_layout",
+        &[("world", "u32", "number"), ("resource", "String", "string")],
+        "String",
+        "A resource's packed layout, how the runtime reads and writes its fields as bytes: a Result of `{ epoch, size, fields: [{ name, kind, offset, size, readonly, capacity, variants }] }` (`kind`: f32, f64, u32, i32, bool, Vector2, Vector3, Quaternion, Color, Matrix4, handle, str, enum). Refused for og.Time, og.Rng and og.Input, whose handles are computed, and for what is not a registered resource.",
+    ),
+    (
+        "og_engine_read_resource",
+        &[("world", "u32", "number"), ("resource", "String", "string")],
+        "Self::Bytes",
+        "A resource's packed bytes, then the layout epoch as a little-endian u32 (it moves when any layout is declared again: a new engine, a reload). Empty when refused (undeclared in the running system, not a resource): the runtime then asks og_world_resource for the reason.",
+    ),
+    (
+        "og_engine_write_resource_bytes",
+        &[
+            ("world", "u32", "number"),
+            ("resource", "String", "string"),
+            ("bytes", "Self::Bytes", "Uint8Array"),
+        ],
+        "String",
+        "Overwrite a resource with packed bytes followed by the layout epoch they were made with (as og_engine_read_resource answers): how the runtime flushes a handle's field writes, once before the next engine call and at the end of every system. Read-only fields keep their value. A Result; refused for a stale epoch, a wrong size, an invalid value or a resource the running system did not declare among its writes.",
     ),
     (
         "og_platform_take",
@@ -299,6 +321,8 @@ pub fn host_rs(ix: &Index<'_>) -> String {
          \x20   type Views;\n\
          \x20   /// A JavaScript function the engine calls back.\n\
          \x20   type Function;\n\
+         \x20   /// Bytes copied across, either way (a resource's packed record).\n\
+         \x20   type Bytes;\n\
          }\n\n",
     );
     out.push_str(
@@ -459,9 +483,11 @@ fn glue_type(target: Target, w: &str) -> String {
         (Target::Web, "Self::Array") => "Vec<u32>".into(),
         (Target::Web, "Self::Views") => "Vec<u32>".into(),
         (Target::Web, "Self::Function") => "js_sys::Function".into(),
+        (Target::Web, "Self::Bytes") => "Vec<u8>".into(),
         (Target::Node, "Self::Array") => "crate::NodeArray".into(),
         (Target::Node, "Self::Views") => "crate::NodeViews".into(),
         (Target::Node, "Self::Function") => "crate::NodeFunction".into(),
+        (Target::Node, "Self::Bytes") => "crate::NodeBytes".into(),
         (_, other) => other.into(),
     }
 }
@@ -585,6 +611,7 @@ pub fn abi_ts(ix: &Index<'_>) -> String {
         let r = match *ret {
             "()" => "void",
             "bool" => "boolean",
+            "Self::Bytes" => "Uint8Array",
             _ => "string",
         };
         out.push_str(&format!("  {name}({}): {r};\n", ps.join(", ")));

@@ -27,8 +27,14 @@ export interface HostAbi<A, V> {
   og_engine_take_outputs(engine: number): string;
   /** Log lines since the last call, as JSON `[{ tick, warning, text }]`: the command channel's and the probe's warnings and the loader's, each naming the fix. */
   og_engine_take_log(engine: number): string;
-  /** Write some fields of a resource: how the runtime makes `world.resource(R).value` a live value. A Result. */
+  /** Write some fields of a resource as JSON: the runtime's path for a write a publish build refuses (logged once per system). A Result. */
   og_engine_write_resource(world: number, resource: string, value: string): string;
+  /** A resource's packed layout, how the runtime reads and writes its fields as bytes: a Result of `{ epoch, size, fields: [{ name, kind, offset, size, readonly, capacity, variants }] }` (`kind`: f32, f64, u32, i32, bool, Vector2, Vector3, Quaternion, Color, Matrix4, handle, str, enum). Refused for og.Time, og.Rng and og.Input, whose handles are computed, and for what is not a registered resource. */
+  og_engine_resource_layout(world: number, resource: string): string;
+  /** A resource's packed bytes, then the layout epoch as a little-endian u32 (it moves when any layout is declared again: a new engine, a reload). Empty when refused (undeclared in the running system, not a resource): the runtime then asks og_world_resource for the reason. */
+  og_engine_read_resource(world: number, resource: string): Uint8Array;
+  /** Overwrite a resource with packed bytes followed by the layout epoch they were made with (as og_engine_read_resource answers): how the runtime flushes a handle's field writes, once before the next engine call and at the end of every system. Read-only fields keep their value. A Result; refused for a stale epoch, a wrong size, an invalid value or a resource the running system did not declare among its writes. */
+  og_engine_write_resource_bytes(world: number, resource: string, bytes: Uint8Array): string;
   /** The platform calls (IDL `platform`) made since the last call, oldest first, as JSON `[{ request, method, args, tick }]`. The host answers each but `telemetry` (one-way) with og_platform_answer. */
   og_platform_take(engine: number): string;
   /** Answer one platform call: JSON `{ ok: true, data }` or `{ ok: false, error: { code, message, retryable } }`. It is applied at the start of the next tick (og.platform sends PlatformAnswered). False for an unknown, one-way or answered request, or a malformed answer. */
@@ -941,6 +947,9 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_take_outputs",
   "og_engine_take_log",
   "og_engine_write_resource",
+  "og_engine_resource_layout",
+  "og_engine_read_resource",
+  "og_engine_write_resource_bytes",
   "og_platform_take",
   "og_platform_answer",
   "og_platform_set_host",

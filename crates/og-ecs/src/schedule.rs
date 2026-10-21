@@ -280,6 +280,12 @@ impl<'w> SystemContext<'w> {
         self.world.id::<T>()
     }
 
+    /// The id of a registered type by name (no declaration needed: it reads
+    /// no data).
+    pub fn id_by_name(&self, name: &str) -> Result<SchemaId> {
+        self.world.id_by_name(name)
+    }
+
     fn require(&self, id: SchemaId, write: bool) -> Result<()> {
         let list = if write {
             &self.system.writes

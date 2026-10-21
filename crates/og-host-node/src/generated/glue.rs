@@ -75,6 +75,24 @@ pub fn og_engine_write_resource(env: Env, world: u32, resource: String, value: S
     <Host as Lifecycle>::og_engine_write_resource(&Host, world, resource, value)
 }
 
+#[napi(js_name = "og_engine_resource_layout")]
+pub fn og_engine_resource_layout(env: Env, world: u32, resource: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_resource_layout(&Host, world, resource)
+}
+
+#[napi(js_name = "og_engine_read_resource")]
+pub fn og_engine_read_resource(env: Env, world: u32, resource: String) -> crate::NodeBytes {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_read_resource(&Host, world, resource)
+}
+
+#[napi(js_name = "og_engine_write_resource_bytes")]
+pub fn og_engine_write_resource_bytes(env: Env, world: u32, resource: String, bytes: crate::NodeBytes) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_write_resource_bytes(&Host, world, resource, bytes)
+}
+
 #[napi(js_name = "og_platform_take")]
 pub fn og_platform_take(env: Env, engine: u32) -> String {
     let _env = crate::EnvScope::enter(&env);

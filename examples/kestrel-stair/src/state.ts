@@ -1,13 +1,10 @@
-// The run's state (the Game resource) as a system sees it: read once into a
-// plain copy at the start of the system, changed there, and written back at
-// its end field by field, only the fields that changed.
+// The run's state (the Game resource) as a system sees it.
 //
-// A resource handle's write is one engine call that costs in proportion to
-// the whole resource (about 0.11 ms for Game's 130 fields, 0.01 ms for
-// Prefs' 11), and the next read after a write fetches the whole record
-// again (world.resource(Game) about 0.23 ms), so a game that keeps its run
-// in one resource and writes it the way og-core shows spends most of a
-// tick there (FINDINGS #19). Commands and setup keep using the live handle.
+// FINDINGS #19 is fixed: a resource handle's field read and write are
+// typed-array accesses of the record (no JSON, whatever its size), so the
+// systems use the live handle directly. These two helpers were the
+// workaround (a plain copy, written back field by field); they stay as the
+// handle itself and a no-op so the systems' call sites read as before.
 
 import type { Value, World } from "@origingame/engine";
 import { Game } from "./components.ts";
@@ -15,26 +12,10 @@ import { must } from "./world.ts";
 
 type GameV = Value<typeof Game>;
 
-const open = new WeakMap<object, { handle: GameV; before: Record<string, unknown> }>();
-
-/** The Game resource as a plain copy for this system call. */
+/** The Game resource's live handle. */
 export function begin(world: World): GameV {
-  const handle = must(world.resource(Game));
-  const copy = { ...handle } as GameV;
-  open.set(copy, { handle, before: { ...copy } });
-  return copy;
+  return must(world.resource(Game)) as GameV;
 }
 
-/** Writes back what changed in `g` since `begin` (or the last flush); a live handle passes through. */
-export function flush(g: GameV): void {
-  const t = open.get(g);
-  if (!t) return;
-  const now = g as unknown as Record<string, unknown>;
-  const handle = t.handle as unknown as Record<string, unknown>;
-  for (const k of Object.keys(t.before)) {
-    if (now[k] !== t.before[k]) {
-      handle[k] = now[k];
-      t.before[k] = now[k];
-    }
-  }
-}
+/** Nothing to write back: the handle's writes reach the engine by themselves (FINDINGS #19, fixed). */
+export function flush(_g: GameV): void {}

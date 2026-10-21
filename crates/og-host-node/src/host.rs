@@ -12,6 +12,8 @@ impl Wire for NodeHost {
     type Array = NodeArray;
     type Views = NodeViews;
     type Function = NodeFunction;
+    /// A `Uint8Array` copied either way.
+    type Bytes = crate::NodeBytes;
 }
 
 impl Lifecycle for NodeHost {
@@ -35,6 +37,20 @@ impl Lifecycle for NodeHost {
     }
     fn og_engine_write_resource(&self, world: u32, resource: String, value: String) -> String {
         rt::og_engine_write_resource(world, resource, value)
+    }
+    fn og_engine_resource_layout(&self, world: u32, resource: String) -> String {
+        rt::og_engine_resource_layout(world, resource)
+    }
+    fn og_engine_read_resource(&self, world: u32, resource: String) -> Self::Bytes {
+        crate::NodeBytes(rt::og_engine_read_resource(world, resource))
+    }
+    fn og_engine_write_resource_bytes(
+        &self,
+        world: u32,
+        resource: String,
+        bytes: Self::Bytes,
+    ) -> String {
+        rt::og_engine_write_resource_bytes(world, resource, &bytes)
     }
     fn og_host_begin_bundle(&self) {
         rt::og_host_begin_bundle()

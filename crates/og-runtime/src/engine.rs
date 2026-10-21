@@ -790,6 +790,7 @@ pub(crate) fn assemble(
     project: Option<&ProjectGame>,
     previous: Option<(&og_ui::SharedUi, og_audio::AudioLink)>,
 ) -> Result<Assembled, String> {
+    bump_layout_epoch();
     let (decl, records, errors, all_systems, commands) = DECL.with(|d| {
         let d = d.borrow();
         (
@@ -1827,6 +1828,194 @@ pub(crate) fn write_resource_value(
         let bytes = layout.encode(Some(&current), Some(value))?;
         w.insert_resource_bytes(id, &bytes).map_err(err)
     })()
+}
+
+// ── resources as bytes (the runtime's typed handles) ────────────────────────
+
+thread_local! {
+    /// Moves whenever a world's layouts may have changed (an engine
+    /// assembled, a reload swapped in): what a resource's bytes were made
+    /// with travels beside them, so a handle never reads or writes them
+    /// with a layout that no longer holds.
+    static LAYOUT_EPOCH: Cell<u32> = const { Cell::new(1) };
+}
+
+pub(crate) fn bump_layout_epoch() {
+    LAYOUT_EPOCH.with(|e| e.set(e.get().wrapping_add(1).max(1)));
+}
+
+fn layout_epoch() -> u32 {
+    LAYOUT_EPOCH.with(Cell::get)
+}
+
+/// Resources whose handle is computed rather than their packed record.
+fn computed_resource(name: &str) -> bool {
+    name == Time::NAME || name == Rng::NAME || name == "og.Input"
+}
+
+fn kind_name(f: &super::codec::FieldLayout) -> &'static str {
+    use super::codec::Kind;
+    match f.kind {
+        Kind::F32 => "f32",
+        Kind::F64 => "f64",
+        Kind::U32 => "u32",
+        Kind::I32 => "i32",
+        Kind::Bool => "bool",
+        Kind::Vector2 => "Vector2",
+        Kind::Vector3 => "Vector3",
+        Kind::Quaternion => "Quaternion",
+        Kind::Color => "Color",
+        Kind::Matrix4 => "Matrix4",
+        Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset | Kind::Sound => "handle",
+        Kind::Str => "str",
+        Kind::Enum => "enum",
+    }
+}
+
+/// `og_engine_resource_layout`.
+pub fn resource_layout(world: u32, resource: &str) -> String {
+    let answer = (|| {
+        if computed_resource(resource) {
+            return Err(format!("'{resource}' is read through its JSON value"));
+        }
+        let eng = engine(world)?;
+        let st = eng.state.borrow();
+        let layout = st
+            .layouts
+            .get(resource)
+            .filter(|l| l.kind == RecordKind::Resource)
+            .ok_or_else(|| format!("'{resource}' is not a registered resource"))?;
+        let mut offset = 0;
+        let fields: Vec<Value> = layout
+            .fields
+            .iter()
+            .map(|f| {
+                let size = f.ty.size();
+                let mut v = json!({
+                    "name": f.name, "kind": kind_name(f), "offset": offset, "size": size,
+                    "readonly": f.readonly,
+                });
+                if !f.variants.is_empty() {
+                    v["variants"] = json!(f.variants);
+                }
+                offset += size;
+                v
+            })
+            .collect();
+        Ok(json!({ "epoch": layout_epoch(), "size": offset, "fields": fields }))
+    })();
+    match answer {
+        Ok(v) => ok(v),
+        Err(e) => refuse(e),
+    }
+}
+
+/// The id of resource `name` in the world `eng` runs (through the running
+/// system's context while one runs).
+fn resource_id(eng: &Engine, name: &str) -> Result<SchemaId, String> {
+    if let Some(f) = running(eng.id) {
+        // SAFETY: the frame is published while its system runs.
+        return unsafe { f.ctx() }.id_by_name(name).map_err(err);
+    }
+    eng.world()?.id_by_name(name).map_err(err)
+}
+
+/// `og_engine_read_resource`: the packed bytes and the layout epoch, or
+/// nothing when refused.
+pub fn read_resource(world: u32, resource: &str) -> Vec<u8> {
+    let read = || -> Result<Vec<u8>, String> {
+        if computed_resource(resource) {
+            return Err(String::new());
+        }
+        let eng = engine(world)?;
+        let id = resource_id(&eng, resource)?;
+        let mut bytes = match running(world) {
+            // SAFETY: the frame is published while its system runs. The
+            // context refuses a resource its system did not declare.
+            Some(f) => unsafe { f.ctx() }.resource_bytes(id).map_err(err)?,
+            None => eng.world()?.resource_bytes(id).map_err(err)?,
+        };
+        bytes.extend_from_slice(&layout_epoch().to_le_bytes());
+        Ok(bytes)
+    };
+    read().unwrap_or_default()
+}
+
+/// `og_engine_write_resource_bytes`.
+pub fn write_resource_bytes(world: u32, resource: &str, bytes: &[u8]) -> String {
+    let write = || -> Result<(), String> {
+        let Some((record, epoch)) = bytes.split_last_chunk::<4>() else {
+            return Err("the bytes carry no layout epoch".into());
+        };
+        if u32::from_le_bytes(*epoch) != layout_epoch() {
+            return Err(format!(
+                "'{resource}' was read with a layout that no longer holds (a reload or a new engine): take world.resource({resource}) again"
+            ));
+        }
+        let eng = engine(world)?;
+        let id = resource_id(&eng, resource)?;
+        // Read-only fields keep the engine's value whatever the bytes say.
+        let readonly: Vec<(usize, usize)> = {
+            let st = eng.state.borrow();
+            let layout = st
+                .layouts
+                .get(resource)
+                .filter(|l| l.kind == RecordKind::Resource && !computed_resource(resource))
+                .ok_or_else(|| format!("'{resource}' is not a registered resource"))?;
+            if layout.size() != record.len() {
+                return Err(format!(
+                    "'{resource}' is {} bytes packed, got {}",
+                    layout.size(),
+                    record.len()
+                ));
+            }
+            let mut at = 0;
+            let mut out = Vec::new();
+            for f in &layout.fields {
+                let n = f.ty.size();
+                if f.readonly {
+                    out.push((at, n));
+                }
+                at += n;
+            }
+            out
+        };
+        let patched = |current: Vec<u8>| -> Vec<u8> {
+            let mut b = record.to_vec();
+            for (at, n) in &readonly {
+                b[*at..at + n].copy_from_slice(&current[*at..at + n]);
+            }
+            b
+        };
+        if let Some(f) = running(world) {
+            let declared = eng.state.borrow().systems[f.system]
+                .writes
+                .iter()
+                .any(|w| w == resource);
+            if !declared {
+                return Err(super::api::undeclared(&eng, f.system, "write", resource));
+            }
+            // SAFETY: the frame is published while its system runs.
+            let ctx = unsafe { f.ctx() };
+            let b = if readonly.is_empty() {
+                record.to_vec()
+            } else {
+                patched(ctx.resource_bytes(id).map_err(err)?)
+            };
+            return ctx.set_resource_bytes(id, &b).map_err(err);
+        }
+        let w = eng.world()?;
+        let b = if readonly.is_empty() {
+            record.to_vec()
+        } else {
+            patched(w.resource_bytes(id).map_err(err)?)
+        };
+        w.insert_resource_bytes(id, &b).map_err(err)
+    };
+    match write() {
+        Ok(()) => super::ok_void(),
+        Err(e) => refuse(e),
+    }
 }
 
 // ── views ───────────────────────────────────────────────────────────────────

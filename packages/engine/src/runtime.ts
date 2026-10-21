@@ -80,12 +80,14 @@ export function boundHost(): HostBinding | null {
  * Counts engine calls made through `abi()` and dispatches (game code entered
  * or left): the engine changes a resource only inside one of them, so a
  * resource handle's read made while the count holds is still the store's
- * value (liveResource).
+ * value (recordHandle).
  */
 let engineCalls = 0;
 
 function abi(): HostAbi<Uint32Array, unknown> {
   if (!host) throw new Error("no engine host is loaded: start the game through @origingame/engine's web or node loader");
+  // A resource handle's writes reach the engine before anything else does.
+  if (dirtyRecords.length > 0) flushRecords();
   engineCalls++;
   return host.abi;
 }
@@ -460,8 +462,349 @@ function checkAccess(access: "read" | "write", name: string): boolean {
 }
 
 // ── resources as live values ──────────────────────────────────────────────
+//
+// A resource handle is a typed view of the resource's packed record: the
+// runtime keeps one copy of each record's bytes per world, shared by every
+// handle of it, and a field read or write is a DataView access at the
+// field's offset, no JSON. The copy is fetched again (one engine call
+// answering the bytes) only when an engine call or a dispatch happened since
+// it was read, the only times the engine can change a resource; writes mark
+// it dirty and are flushed in one call before the next engine call, at the
+// end of the system or command that made them, and at once outside game
+// code. So two handles agree, a read after an engine call sees the engine's
+// value, and the engine sees every write before it can read the resource:
+// the world (and its hash) is what writing field by field gave.
 
-function liveResource(world: WorldImpl, token: Token, value: Record<string, unknown>): object {
+/** A field of a resource's packed layout, as the engine answers it. */
+interface RecordField {
+  readonly name: string;
+  readonly kind: string;
+  readonly offset: number;
+  readonly size: number;
+  readonly readonly: boolean;
+  readonly variants?: readonly string[];
+}
+
+interface RecordLayout {
+  readonly epoch: number;
+  readonly size: number;
+  readonly fields: readonly RecordField[];
+}
+
+/** One world's copy of one resource's bytes. */
+interface RecordCopy {
+  readonly world: number;
+  readonly name: string;
+  layout: RecordLayout;
+  /** The packed record then the layout epoch (u32), as the engine answered and is written back. */
+  bytes: Uint8Array;
+  view: DataView;
+  /** `engineCalls` when the bytes were the engine's; -1: never. */
+  at: number;
+  dirty: boolean;
+  handle: object | null;
+}
+
+/** Per world, per resource: its copy, or null for one read as JSON. */
+const records = new Map<number, Map<string, RecordCopy | null>>();
+const dirtyRecords: RecordCopy[] = [];
+/** Calls into game code in progress (systems, commands, facts, start): writes wait for their end. */
+let inGame = 0;
+
+const utf8in = new TextEncoder();
+const utf8out = new TextDecoder();
+
+function forgetRecords(world: number): void {
+  records.delete(world);
+  for (let i = dirtyRecords.length - 1; i >= 0; i--) if (dirtyRecords[i]!.world === world) dirtyRecords.splice(i, 1);
+}
+
+function writeRecord(r: RecordCopy): void {
+  r.dirty = false;
+  const answer = parse<Result<void>>(host!.abi.og_engine_write_resource_bytes(r.world, r.name, r.bytes));
+  engineCalls++;
+  if (!answer.ok) {
+    r.at = -1;
+    throw new Error(`${r.name}: ${answer.reason}`);
+  }
+  r.at = engineCalls;
+}
+
+/** Writes every dirty record back, oldest first; throws the first refusal after writing the rest. */
+function flushRecords(): void {
+  let first: unknown = null;
+  for (const r of dirtyRecords.splice(0)) {
+    try {
+      writeRecord(r);
+    } catch (e) {
+      first ??= e;
+    }
+  }
+  if (first !== null) throw first;
+}
+
+function recordLayout(world: number, name: string): RecordLayout | null {
+  const answer = parse<Result<RecordLayout>>(host!.abi.og_engine_resource_layout(world, name));
+  return answer.ok ? answer.value : null;
+}
+
+/** The world's copy of a resource with a byte layout, or null for one read as JSON (og.Time, og.Rng, og.Input). */
+function recordOf(world: number, name: string): RecordCopy | null {
+  let byName = records.get(world);
+  if (!byName) records.set(world, (byName = new Map()));
+  const known = byName.get(name);
+  if (known !== undefined) return known;
+  const layout = recordLayout(world, name);
+  // An unregistered name is asked again next time (a reload may declare it).
+  if (!layout) {
+    if (name === "og.Time" || name === "og.Rng" || name === "og.Input") byName.set(name, null);
+    return null;
+  }
+  const bytes = new Uint8Array(layout.size + 4);
+  const r: RecordCopy = { world, name, layout, bytes, view: new DataView(bytes.buffer), at: -1, dirty: false, handle: null };
+  byName.set(name, r);
+  return r;
+}
+
+/** Brings the copy up to the engine's value when an engine call happened since; false when the engine refused. */
+function refresh(r: RecordCopy): boolean {
+  if (r.dirty || r.at === engineCalls) return true;
+  const fetched = host!.abi.og_engine_read_resource(r.world, r.name);
+  if (fetched.length === 0) return false;
+  const epoch = new DataView(fetched.buffer, fetched.byteOffset, fetched.byteLength).getUint32(fetched.length - 4, true);
+  if (epoch !== r.layout.epoch || fetched.length !== r.layout.size + 4) {
+    // A reload or a new engine declared the layouts again.
+    const layout = recordLayout(r.world, r.name);
+    if (!layout || fetched.length !== layout.size + 4) return false;
+    r.layout = layout;
+  }
+  // Into the copy's own buffer: no allocation from one read to the next, and
+  // what is written back is memory the runtime made (a host's external
+  // buffer crosses back slower).
+  if (r.bytes.length !== fetched.length) {
+    r.bytes = new Uint8Array(fetched.length);
+    r.view = new DataView(r.bytes.buffer);
+  }
+  r.bytes.set(fetched);
+  r.at = engineCalls;
+  return true;
+}
+
+const LANES: Readonly<Record<string, readonly string[]>> = {
+  Vector2: ["x", "y"],
+  Vector3: ["x", "y", "z"],
+  Quaternion: ["x", "y", "z", "w"],
+  Color: ["r", "g", "b"],
+};
+
+function decodeField(v: DataView, bytes: Uint8Array, f: RecordField): unknown {
+  const o = f.offset;
+  switch (f.kind) {
+    case "f32": return v.getFloat32(o, true);
+    case "f64": return v.getFloat64(o, true);
+    case "u32": return v.getUint32(o, true);
+    case "i32": return v.getInt32(o, true);
+    case "bool": return bytes[o] !== 0;
+    case "handle": return v.getUint32(o, true) + v.getUint32(o + 4, true) * 4294967296;
+    case "enum": {
+      const i = v.getUint32(o, true);
+      return f.variants?.[i] ?? i;
+    }
+    case "str": {
+      const lane = bytes.subarray(o, o + f.size);
+      const end = lane.indexOf(0);
+      return utf8out.decode(end < 0 ? lane : lane.subarray(0, end));
+    }
+    case "Matrix4": {
+      const elements: number[] = [];
+      for (let i = 0; i < 16; i++) elements.push(v.getFloat32(o + i * 4, true));
+      return { elements };
+    }
+    default: {
+      const out: Record<string, number> = {};
+      (LANES[f.kind] ?? []).forEach((k, i) => (out[k] = v.getFloat32(o + i * 4, true)));
+      return out;
+    }
+  }
+}
+
+function number(value: unknown, what: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`${what} is a number, got ${JSON.stringify(value) ?? String(value)}`);
+  return value;
+}
+
+/** Writes `value` into a field's bytes, refusing (throwing) what the engine's JSON path refuses. */
+function encodeField(v: DataView, bytes: Uint8Array, f: RecordField, value: unknown): void {
+  const o = f.offset;
+  switch (f.kind) {
+    case "f32": return v.setFloat32(o, number(value, "the value"), true);
+    case "f64": return v.setFloat64(o, number(value, "the value"), true);
+    case "u32": {
+      const n = number(value, "the value");
+      if (!Number.isInteger(n) || n < 0 || n > 4294967295) throw new Error(`${n} is not a u32`);
+      return v.setUint32(o, n, true);
+    }
+    case "i32": {
+      const n = number(value, "the value");
+      if (!Number.isInteger(n) || n < -2147483648 || n > 2147483647) throw new Error(`${n} is not an i32`);
+      return v.setInt32(o, n, true);
+    }
+    case "bool": {
+      if (value !== null && value !== undefined && typeof value !== "boolean") throw new Error(`expected true or false, got ${JSON.stringify(value)}`);
+      bytes[o] = value === true ? 1 : 0;
+      return;
+    }
+    case "handle": {
+      const n = number(value, "a handle");
+      if (!Number.isInteger(n) || n < 0 || n >= 9007199254740992) throw new Error(`${n} is not a handle`);
+      v.setUint32(o, n % 4294967296, true);
+      v.setUint32(o + 4, Math.floor(n / 4294967296), true);
+      return;
+    }
+    case "enum": {
+      const variants = f.variants ?? [];
+      let i: number;
+      if (value === null || value === undefined) i = 0;
+      else if (typeof value === "string") {
+        i = variants.indexOf(value);
+        if (i < 0) throw new Error(`'${value}' is not one of ${JSON.stringify(variants)}`);
+      } else {
+        i = number(value, "an enum index");
+        if (!Number.isInteger(i) || i < 0 || i >= variants.length) throw new Error(`enum index ${i}, but there are ${variants.length} variants`);
+      }
+      return v.setUint32(o, i, true);
+    }
+    case "str": {
+      if (value !== null && value !== undefined && typeof value !== "string") throw new Error(`expected a string, got ${JSON.stringify(value)}`);
+      const text = (value ?? "") as string;
+      const encoded = utf8in.encode(text);
+      if (encoded.length > f.size) {
+        const shown = [...text].slice(0, 24).join("");
+        const more = shown.length < text.length ? "..." : "";
+        const fix = encoded.length <= 4096
+          ? `shorten the text, or declare the field str(${encoded.length}) or larger`
+          : "shorten the text: a string field holds at most 4096 bytes";
+        throw new Error(`'${shown}${more}' is ${encoded.length} bytes of UTF-8 and the field holds ${f.size}: ${fix}`);
+      }
+      if (encoded.includes(0)) throw new Error("a string field cannot hold a NUL character (\\0)");
+      bytes.fill(0, o, o + f.size);
+      bytes.set(encoded, o);
+      return;
+    }
+    case "Matrix4": {
+      const elements = (value as { elements?: unknown } | null)?.elements;
+      if (!Array.isArray(elements) || elements.length !== 16) throw new Error(`expected { elements: [16 numbers] }, got ${JSON.stringify(value)}`);
+      const lanes = elements.map((e) => number(e, "an element"));
+      lanes.forEach((n, i) => v.setFloat32(o + i * 4, n, true));
+      return;
+    }
+    default: {
+      const keys = LANES[f.kind] ?? [];
+      if (typeof value !== "object" || value === null) throw new Error(`expected { ${keys.join(", ")} }, got ${JSON.stringify(value)}`);
+      const lanes = keys.map((k) => number((value as Record<string, unknown>)[k] ?? null, k));
+      lanes.forEach((n, i) => v.setFloat32(o + i * 4, n, true));
+    }
+  }
+}
+
+/** The handle of a resource read through its packed bytes, shared by every `world.resource` of it. */
+function recordHandle(world: WorldImpl, r: RecordCopy): object {
+  if (r.handle) return r.handle;
+  const id = world.id;
+  const name = r.name;
+  const out: Record<string, unknown> = {};
+  const fields = r.layout.fields;
+  for (let i = 0; i < fields.length; i++) {
+    const key = fields[i]!.name;
+    // The field by name in the copy's current layout (a reload may move it).
+    const field = (): RecordField => {
+      const f = r.layout.fields[i];
+      return f && f.name === key ? f : (r.layout.fields.find((x) => x.name === key) ?? fields[i]!);
+    };
+    let lastValue: unknown;
+    const get = (): unknown => {
+      if (r.at !== engineCalls && !r.dirty) {
+        // Undeclared in a publish build: the engine refuses and logs it once;
+        // the handle answers what it last read and the game keeps running.
+        if (!checkAccess("read", name)) return lastValue;
+        if (!refresh(r)) {
+          const answer = parse<Result<Record<string, unknown>>>(host!.abi.og_world_resource(id, name));
+          if (!answer.ok) throw new Error(`${name}: ${answer.reason}`);
+          return (lastValue = answer.value[key]);
+        }
+      }
+      return (lastValue = decodeField(r.view, r.bytes, field()));
+    };
+    const set = (value: unknown): void => {
+      // Undeclared in a publish build: the engine refuses and logs it once; the game keeps running.
+      if (!checkAccess("write", name)) return void abi().og_engine_write_resource(id, name, JSON.stringify({ [key]: value }));
+      if (!refresh(r)) {
+        const answer = parse<Result<void>>(abi().og_engine_write_resource(id, name, JSON.stringify({ [key]: value })));
+        if (!answer.ok) throw new Error(`${name}.${key}: ${answer.reason}`);
+        return;
+      }
+      try {
+        // Every check comes before the first byte is written: a refused value leaves the copy as it was.
+        encodeField(r.view, r.bytes, field(), value);
+      } catch (e) {
+        throw new Error(`${name}.${key}: ${(e as Error).message}`);
+      }
+      if (inGame === 0) return writeRecord(r);
+      if (!r.dirty) {
+        r.dirty = true;
+        dirtyRecords.push(r);
+      }
+    };
+    Object.defineProperty(out, key, fields[i]!.readonly ? { enumerable: true, get } : { enumerable: true, get, set });
+  }
+  methods(id, name, out);
+  return (r.handle = Object.seal(out));
+}
+
+/** The methods a built-in resource's handle carries beside its fields. */
+function methods(id: number, name: string, out: Record<string, unknown>): void {
+  if (name === "og.Input") {
+    Object.assign(out, {
+      down: (key: string) => abi().og_input_down(id, key),
+      pressed: (key: string) => abi().og_input_pressed(id, key),
+      released: (key: string) => abi().og_input_released(id, key),
+      axis: (negative: string, positive: string) => abi().og_input_axis(id, negative, positive),
+      axis2: (left: string, right: string, down: string, up: string) => parse(abi().og_input_axis2(id, left, right, down, up)),
+      buttonDown: (button: string) => abi().og_input_button_down(id, button),
+      buttonPressed: (button: string) => abi().og_input_button_pressed(id, button),
+      buttonReleased: (button: string) => abi().og_input_button_released(id, button),
+    });
+  }
+  if (name === "og.Pointers") {
+    Object.assign(out, {
+      down: (pointer: number) => abi().og_pointers_down(id, pointer),
+      pressed: (pointer: number) => abi().og_pointers_pressed(id, pointer),
+      released: (pointer: number) => abi().og_pointers_released(id, pointer),
+      position: (pointer: number) => parse(abi().og_pointers_position(id, pointer)),
+      start: (pointer: number) => parse(abi().og_pointers_start(id, pointer)),
+      count: () => abi().og_pointers_count(id),
+    });
+  }
+  if (name === "og.Gamepad") {
+    Object.assign(out, {
+      connected: (pad?: number) => abi().og_gamepad_connected(id, pad),
+      down: (button: string, pad?: number) => abi().og_gamepad_down(id, button, pad),
+      pressed: (button: string, pad?: number) => abi().og_gamepad_pressed(id, button, pad),
+      released: (button: string, pad?: number) => abi().og_gamepad_released(id, button, pad),
+      axis: (axis: string, pad?: number) => abi().og_gamepad_axis(id, axis, pad),
+    });
+  }
+  if (name === "og.Camera") {
+    Object.assign(out, {
+      lookAt: (target: unknown) => abi().og_camera_look_at(id, JSON.stringify(target)),
+      worldToScreen: (point: unknown) => parse(abi().og_camera_world_to_screen(id, JSON.stringify(point))),
+      screenToRay: (x: number, y: number) => parse(abi().og_camera_screen_to_ray(id, x, y)),
+    });
+  }
+}
+
+/** A resource read as JSON (og.Time, og.Rng, og.Input): computed by the engine, read only. */
+function jsonResource(world: WorldImpl, token: Token, value: Record<string, unknown>): object {
   const id = world.id;
   if (token.name === "og.Rng") {
     return Object.freeze({
@@ -475,19 +818,13 @@ function liveResource(world: WorldImpl, token: Token, value: Record<string, unkn
       fork: (label: string) => (checkAccess("read", "og.Rng"), rngStream(abi().og_rng_fork(id, label))),
     });
   }
-  // Every getter reads through to the store, so two handles of one resource,
-  // or a handle read after a system (or the probe, or a look) wrote the
-  // resource, agree with `get:` (hollowbell FINDINGS #6). A read is one
-  // engine call answering the whole record, kept while no other engine call
-  // or dispatch happened since (`engineCalls`): a field read in a loop over
-  // rows costs that one call.
+  // Every getter reads through to the store, kept while no other engine
+  // call or dispatch happened since (`engineCalls`).
   const name = token.name;
   let last = value;
   let at = engineCalls;
   const read = (): Record<string, unknown> => {
     if (at === engineCalls) return last;
-    // Undeclared in a publish build: the engine refuses and logs it once; the
-    // handle answers what it last read and the game keeps running.
     if (name !== "og.Time" && !checkAccess("read", name)) return last;
     const answer = parse<Result<Record<string, unknown>>>(host!.abi.og_world_resource(id, name));
     if (answer.ok) {
@@ -497,63 +834,8 @@ function liveResource(world: WorldImpl, token: Token, value: Record<string, unkn
     return last;
   };
   const out: Record<string, unknown> = {};
-  const readonly = new Set(
-    ((bindings.resources as Array<{ schema: string; fields: Array<{ name: string; readonly?: boolean }> }>).find((r) => r.schema === name)?.fields ?? [])
-      .filter((f) => f.readonly)
-      .map((f) => f.name),
-  );
-  for (const key of Object.keys(value)) {
-    const get = () => read()[key];
-    const setter = (v: unknown) => {
-      // Undeclared in a publish build: the engine refuses and logs it once; the game keeps running.
-      if (!checkAccess("write", name)) return void abi().og_engine_write_resource(id, name, JSON.stringify({ [key]: v }));
-      const answer = parse<Result<void>>(abi().og_engine_write_resource(id, name, JSON.stringify({ [key]: v })));
-      if (!answer.ok) throw new Error(`${name}.${key}: ${answer.reason}`);
-    };
-    Object.defineProperty(
-      out,
-      key,
-      name === "og.Time" || readonly.has(key) ? { enumerable: true, get } : { enumerable: true, get, set: setter },
-    );
-  }
-  if (token.name === "og.Input") {
-    Object.assign(out, {
-      down: (key: string) => abi().og_input_down(id, key),
-      pressed: (key: string) => abi().og_input_pressed(id, key),
-      released: (key: string) => abi().og_input_released(id, key),
-      axis: (negative: string, positive: string) => abi().og_input_axis(id, negative, positive),
-      axis2: (left: string, right: string, down: string, up: string) => parse(abi().og_input_axis2(id, left, right, down, up)),
-      buttonDown: (button: string) => abi().og_input_button_down(id, button),
-      buttonPressed: (button: string) => abi().og_input_button_pressed(id, button),
-      buttonReleased: (button: string) => abi().og_input_button_released(id, button),
-    });
-  }
-  if (token.name === "og.Pointers") {
-    Object.assign(out, {
-      down: (pointer: number) => abi().og_pointers_down(id, pointer),
-      pressed: (pointer: number) => abi().og_pointers_pressed(id, pointer),
-      released: (pointer: number) => abi().og_pointers_released(id, pointer),
-      position: (pointer: number) => parse(abi().og_pointers_position(id, pointer)),
-      start: (pointer: number) => parse(abi().og_pointers_start(id, pointer)),
-      count: () => abi().og_pointers_count(id),
-    });
-  }
-  if (token.name === "og.Gamepad") {
-    Object.assign(out, {
-      connected: (pad?: number) => abi().og_gamepad_connected(id, pad),
-      down: (button: string, pad?: number) => abi().og_gamepad_down(id, button, pad),
-      pressed: (button: string, pad?: number) => abi().og_gamepad_pressed(id, button, pad),
-      released: (button: string, pad?: number) => abi().og_gamepad_released(id, button, pad),
-      axis: (axis: string, pad?: number) => abi().og_gamepad_axis(id, axis, pad),
-    });
-  }
-  if (token.name === "og.Camera") {
-    Object.assign(out, {
-      lookAt: (target: unknown) => abi().og_camera_look_at(id, JSON.stringify(target)),
-      worldToScreen: (point: unknown) => parse(abi().og_camera_world_to_screen(id, JSON.stringify(point))),
-      screenToRay: (x: number, y: number) => parse(abi().og_camera_screen_to_ray(id, x, y)),
-    });
-  }
+  for (const key of Object.keys(value)) Object.defineProperty(out, key, { enumerable: true, get: () => read()[key] });
+  methods(id, name, out);
   return Object.seal(out);
 }
 
@@ -621,9 +903,13 @@ export class WorldImpl {
 
   resource(resource: Token): Result<object> {
     if (resource.name !== "og.Time") checkAccess("read", resource.name);
+    // A resource with a byte layout: its handle, made once per world. The
+    // read here is what refuses an unregistered or undeclared resource.
+    const r = host ? recordOf(this.id, resource.name) : null;
+    if (r && (r.dirty || r.at === engineCalls || refresh(r))) return { ok: true, value: recordHandle(this, r) };
     const answer = parse<Result<Record<string, unknown>>>(abi().og_world_resource(this.id, resource.name));
     if (!answer.ok) return answer;
-    return { ok: true, value: liveResource(this, resource, answer.value) };
+    return { ok: true, value: r ? recordHandle(this, r) : jsonResource(this, resource, answer.value) };
   }
 
   find(name: string): number | null {
@@ -688,6 +974,7 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
   const world = worldFor(engine);
   const outer = running;
   engineCalls++;
+  inGame++;
   try {
     if (kind === 0) {
       const system = systems.get(id);
@@ -700,18 +987,34 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
         scale: ts[0] ?? 1, hitStop: ts[1] ?? 0, scaledDt: ts[2] ?? dt, scaledElapsed: ts[3] ?? elapsed,
       });
       fn(new QueryImpl(query, system), time, world);
+      flushRecords();
       return "";
     }
     if (!fn) return `the dispatcher has no callback with id ${id}`;
     if (kind === 1) {
       fn(world, Object.freeze(JSON.parse(payload || "[]")));
+      flushRecords();
       return "";
     }
-    if (kind === 2) return "=" + JSON.stringify(fn(world) ?? null);
+    if (kind === 2) {
+      const facts = JSON.stringify(fn(world) ?? null);
+      flushRecords();
+      return "=" + facts;
+    }
     return `unknown dispatch kind ${kind}`;
   } catch (e) {
     return message(e);
   } finally {
+    // What game code wrote before it threw is written too, as a write
+    // straight through would have been.
+    if (dirtyRecords.length > 0) {
+      try {
+        flushRecords();
+      } catch {
+        // The throw already failed the call; this refusal adds nothing.
+      }
+    }
+    inGame--;
     running = outer;
     epoch++;
     engineCalls++;
@@ -907,6 +1210,7 @@ export class Engine {
   destroy(): boolean {
     epoch++;
     worlds.delete(this.id);
+    forgetRecords(this.id);
     return abi().og_engine_destroy(this.id);
   }
 }
@@ -917,6 +1221,7 @@ export function createEngine(game: GameToken, options: CreateOptions = {}): Resu
   if (handle === undefined) return refused("not a game: pass the bundle's default export, the result of og.game()");
   const answer = parse<Result<number>>(abi().og_engine_create(handle, JSON.stringify(options)));
   if (!answer.ok) return answer;
+  forgetRecords(answer.value);
   return { ok: true, value: new Engine(answer.value, game) };
 }
 

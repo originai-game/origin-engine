@@ -14,6 +14,8 @@ impl Wire for WebHost {
     /// Byte offsets of each field's column in `memory.buffer`.
     type Views = Vec<u32>;
     type Function = js_sys::Function;
+    /// Copied by wasm-bindgen: a fresh `Uint8Array` out, a copy of one in.
+    type Bytes = Vec<u8>;
 }
 
 impl Lifecycle for WebHost {
@@ -38,6 +40,20 @@ impl Lifecycle for WebHost {
     }
     fn og_engine_write_resource(&self, world: u32, resource: String, value: String) -> String {
         rt::og_engine_write_resource(world, resource, value)
+    }
+    fn og_engine_resource_layout(&self, world: u32, resource: String) -> String {
+        rt::og_engine_resource_layout(world, resource)
+    }
+    fn og_engine_read_resource(&self, world: u32, resource: String) -> Self::Bytes {
+        rt::og_engine_read_resource(world, resource)
+    }
+    fn og_engine_write_resource_bytes(
+        &self,
+        world: u32,
+        resource: String,
+        bytes: Self::Bytes,
+    ) -> String {
+        rt::og_engine_write_resource_bytes(world, resource, &bytes)
     }
     fn og_host_begin_bundle(&self) {
         rt::og_host_begin_bundle()

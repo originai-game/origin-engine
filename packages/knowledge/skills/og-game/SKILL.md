@@ -54,9 +54,11 @@ Three mistakes both games made before reading the right page:
 
 - **The resource handle.** A system reads or writes a resource only when
   it lists it among its `reads` or `writes` (og-core §4: undeclared, it
-  throws naming the system and the record). Fetch `world.resource(R)` in
-  the call that uses it and pass that handle to the helpers it calls,
-  rather than fetching it again in each one.
+  throws naming the system and the record). A field read or write is a
+  typed-array access whatever the resource's size, and `world.resource(R)`
+  answers the same handle wherever it is called: keep the run's state in
+  one resource and write its fields where they change, never through a
+  plain copy (og-core §4 has the cost model).
 - **A look replaces resources whole.** `GameDesc.look` and
   `og.render.applyLook` set every field of each resource the look names
   (the rest to their defaults), so a per-game value written before the

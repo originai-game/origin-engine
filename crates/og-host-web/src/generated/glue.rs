@@ -64,6 +64,21 @@ pub fn og_engine_write_resource(world: u32, resource: String, value: String) -> 
 }
 
 #[wasm_bindgen]
+pub fn og_engine_resource_layout(world: u32, resource: String) -> String {
+    <Host as Lifecycle>::og_engine_resource_layout(&Host, world, resource)
+}
+
+#[wasm_bindgen]
+pub fn og_engine_read_resource(world: u32, resource: String) -> Vec<u8> {
+    <Host as Lifecycle>::og_engine_read_resource(&Host, world, resource)
+}
+
+#[wasm_bindgen]
+pub fn og_engine_write_resource_bytes(world: u32, resource: String, bytes: Vec<u8>) -> String {
+    <Host as Lifecycle>::og_engine_write_resource_bytes(&Host, world, resource, bytes)
+}
+
+#[wasm_bindgen]
 pub fn og_platform_take(engine: u32) -> String {
     <Host as Lifecycle>::og_platform_take(&Host, engine)
 }
