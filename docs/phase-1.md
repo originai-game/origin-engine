@@ -36,8 +36,12 @@ The round sections below have each.
 - **`scripts/check.sh functional`**, each merge: knowledge-3 5 of 5 in
   177 s; lanes-per-profile passing at a949527a; nav-ai 5 of 5 in 160 s;
   physics-anim-2 passing in 93 s at 9bc9fc75 (after the strike frame and
-  the flash wording); runtime-ui-2 at ce93d34b: pending (the coordinator
-  fills).
+  the flash wording); runtime-ui-2 at ce93d34b 5 of 5 in 169 s
+  (every archetype, example and template suite passing after it but
+  four archetype pad playtests, idle, rhythm, roguelike and tower-defense,
+  which pressed the d-pad before A at the title and now landed on the
+  second item since the first holds the focus; they press A at once since
+  the commit after 15f4e9eb).
 - **The Kestrel Stair's findings** (dogfood-3, wave 10): all 21 fixed on
   main, #16, #17 and #18 by wave 10, the rest by this wave's streams
   (nav-ai #1, #3, #5, #7, #8, #9; physics-anim-2 #4, #10, #11, #21;
@@ -48,27 +52,51 @@ The round sections below have each.
   screen, so #15's named cards are under no reference frame (row 84).
   `examples/kestrel-stair/FINDINGS.md` §After wave 11 has one line each.
 
-**Wave-end figures: pending.** The coordinator is measuring at the merged
-tree now, in the measure worktree.
+**Wave-end figures** (the `--all` and web-reference runs at 15f4e9eb in
+the measure worktree, logs not in the repository, stated here once).
 
-- **`scripts/check.sh --all`**: pending.
-- **`scripts/check.sh web-reference`**: pending (the browser tiers owe
-  og-tests `model-flash`, the Kestrel Stair's re-recorded frames and the
-  ui-kit inventory and levels frames this wave moved on metal).
-- **Wasm** (brotli -q 11, the shipping `wasm` profile): pending; this
-  wave added three lifecycle members and a bytes wire type (runtime-ui-2),
-  a 64-byte instance record (physics-anim-2) and `og.ReverbZone`.
-- **Determinism**: pending. Hashes move by design this wave
+- **`scripts/check.sh --all`** at 15f4e9eb: 9 of 9 in 656 s (fmt 2 s,
+  clippy 17 s, wasm-build 306 s with the shipping `wasm` profile and the
+  two lanes modules, test 186 s with nextest 861 passed and 12 skipped,
+  wasm-opt 191 s, size-gate 37 s, drift 17 s, bun-test 156 s, determinism
+  230 s).
+- **`scripts/check.sh web-reference`**: passed in 377 s at 15f4e9eb,
+  every frame on both tiers (og-tests `model-flash`, the Kestrel Stair's
+  re-recorded frames and the ui-kit inventory and levels frames judged
+  against `metal` there).
+- **Wasm** (brotli -q 11, the shipping `wasm` profile) at 15f4e9eb: 3D
+  lanes 3,116,018 B (74.3 % of 4 MiB, the largest download), 2D lanes
+  2,948,772 B (70.3 %), 3D publish 3,077,098 B (73.4 %), 2D publish
+  2,912,251 B (69.4 %); against 0e77b6b6 (3D lanes 3,095,052 B) +21 kB,
+  the cost of three lifecycle members and a bytes wire type
+  (runtime-ui-2), the 64-byte instance record (physics-anim-2),
+  `og.ReverbZone`, `og.ai.restart` and the checks against fields.
+- **Determinism**: passed in the `--all` above (230 s at 15f4e9eb):
+  every build agrees at math_digest 6117185439544271997,
+  bouncing_boxes_hash 15551159556835976588, physics3d_hash
+  16705304060282334008, physics2d_hash 6277863875895225966, anim_hash
+  6030136770684287795. The physics hashes moved by design this wave
   (`world_hash` includes the registered types: physics registers
   `og.Parent`, audio `og.ReverbZone`, and `og.Model`'s layout grew);
   physics-anim-2 did not run the tool on its branch, and nav-ai's crates
   are not in it (its host debug run matched the recorded values).
 - **Perf**: not run (the perf lane).
-- **vulkan-cpu**: pending: the first real run of `scripts/wave-end.sh`
-  (its lavapipe stages, the `ui` stage recording og-ui's frames: rows 54,
-  74 and 82), with this wave's metal re-records (og-tests `model-flash`,
-  the ui-kit inventory and levels frames and the twelve `kit-skin-*`
-  sheets, the Kestrel Stair's frames).
+- **vulkan-cpu**: the first real run of `scripts/wave-end.sh` (stages
+  cross, prepare, gfx, ui, playtests, table; `--record og-ui`) at
+  15f4e9eb: cross 264 s, gfx 184 s, ui 23 s (og-ui's frames recorded:
+  sample-screen, text-edit and widget-set moved, text-bidi, text-fields-2
+  and text-mixed-runs new) and table 8 s passed; prepare failed in 2 s
+  (the examples' generated assets, gitignored, were not made in the
+  measure worktree: `music/dusk.wav` missing) and the playtests stage,
+  4,417 s, failed Hollowbell's 13 and Lantern Vale's 11 on that and
+  ui-kit's 14 frame suites on vulkan-cpu copies that predate the pixel
+  pack's label weight and this wave's grids (fx-showcase 22, match3 7,
+  runner 8, topdown 7 and ui-kit's other 19 passed). The prepare stage
+  makes a project's generated assets since the commit after 15f4e9eb,
+  and the run is repeating with `--record og-ui,ui-kit,hollowbell,
+  lantern-vale,kestrel-stair,fx-showcase`; its copies are judged by the
+  reference-frame rule and this bullet takes the result. Row 82's "never
+  run" is closed by the first run; rows 54 and 74 close with the second.
 
 ## Main gate, wave 10 (2026-10-21, 9d220790)
 

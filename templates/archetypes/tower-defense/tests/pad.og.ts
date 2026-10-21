@@ -7,7 +7,7 @@ import { game, PLAY } from "./lib.ts";
 export default playtest({
   name: "the d-pad, A, X, Y, Start and B play a round",
   commands: [
-    "0.3:gamepad:down",
+    // The title's first item holds the focus when the menu opens (og-ui §4): A plays at once.
     "0.4:gamepad:a",
     "1.2:get:Game:started.json",
     "1.3:gamepad:up",

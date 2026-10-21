@@ -148,6 +148,9 @@ stage_prepare() {
   for t in $templates; do
     dir="$(template_dir "$t")"
     entry="$(awk '$1 == "entry" { gsub(/"/, "", $2); print $2; exit }' "$dir/project.ogt")"
+    # A project that generates its assets (the examples: tools/make-assets.ts
+    # writes what is gitignored, e.g. a music track) makes them first.
+    if [ -f "$dir/tools/make-assets.ts" ]; then (cd "$dir" && run bun tools/make-assets.ts) || rc=1; fi
     if [ -d "$dir/assets" ]; then run "$og" cook "$dir" || rc=1; fi
     run bun packages/engine/src/node/build.ts --entry "$dir/${entry:-src/main.ts}" \
       --out "$OG_ROOT/$dir/.og/game.native.js" --target native || rc=1
