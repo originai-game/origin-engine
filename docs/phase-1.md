@@ -32,7 +32,14 @@ of what remains to launch (stages R, L, D, F, T, E, P) are
 `origingame/goals/origin-engine/plan.md` and `docs/platform-asks.md`
 ask 15. In this table: rows 91 to 98 (the release pipeline, stage R),
 each closed with its commit; the first published version is `0.1.0`,
-the pinned one `0.1.1`.
+the pinned one `0.1.1`. **The verification stage's machines (the owner,
+later the same day):** the InstaBox account stays at one machine (the
+free plan, no upgrade) while the features are not all working and the
+tests not fully implemented; the owner's own runners carry what a
+GPU-less orb cannot: `macrunner` (`/Volumes/app/origin-engine`) runs the
+functional lane on metal, records every reference frame and the wave's
+end, and `studio-win` (Windows x64) builds and tests the engine natively
+for F7 (`docs/release.md` §4 T, the Runners row; §6 item 6).
 
 ## Features before optimisation (2026-10-22)
 

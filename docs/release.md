@@ -272,7 +272,7 @@ optimisation rows (§P) after them.
 | F4 | Browser frames for Brasswick and Meridian Loop on both tiers; the published-page harness on the new games | `web-reference` passes with them; `og run --device chrome` plans for both |
 | F5 | wgpu and naga 31 when published (row 35), kept only if every reference frame passes unchanged | a wave end at the new version with every frame unmoved, or the row stays open with the date |
 | F6 | Each wave's end: `scripts/wave-end.sh` (`gate`, `web`, `conformance`, `release`), summary in `docs/phase-1.md` | the wave's section records the four stages |
-| F7 | **Windows x64** (`@origingame/engine-win32-x64`: `og.exe` and `origin-engine.node`), following the platform runner's Windows host: the runner is built for `x86_64-pc-windows-gnu` and "has never run on a real Windows host" (origingame `agent-runner/README.md` §Platforms), and a personal runner on Windows that hosts `engine`-class threads needs the engine installed there like any author's machine. The cloud path (E2B, Linux) is untouched. Parts, as probed on 2026-10-22 (`target/evidence/release/windows-probe*.log`): every engine crate and `og.exe` build by `cargo zigbuild --target x86_64-pc-windows-gnu` from this Mac (`og.mjs` already looks for `og.exe`); the napi addon does not: napi-build's gnu path links against a `libnode.dll` (`LIBNODE_PATH`), which Node's Windows releases do not ship (node.exe exports the symbols), so the addon needs the MSVC target, built on a Windows machine or a GitHub `windows` runner; `pack.sh` packing the third platform; the install test on a Windows host (bun, node 22) with the renderer tier `dx12`; a `windows` row in the device matrix | the install test passes on a Windows 11 x64 host from the registry; the runner's Windows host runs one engine thread. Ordered after the runner's own Windows milestone (`goals/agent-system/plan.md` §10.2: "Windows 先声明不支持"), owner's call to pull it earlier |
+| F7 | **Started 2026-10-22 on the `studio-win` runner** (the owner's Windows x64 host; the MSVC target natively, branch `windows-x64`, the coordinator merges). **Windows x64** (`@origingame/engine-win32-x64`: `og.exe` and `origin-engine.node`), following the platform runner's Windows host: the runner is built for `x86_64-pc-windows-gnu` and "has never run on a real Windows host" (origingame `agent-runner/README.md` §Platforms), and a personal runner on Windows that hosts `engine`-class threads needs the engine installed there like any author's machine. The cloud path (E2B, Linux) is untouched. Parts, as probed on 2026-10-22 (`target/evidence/release/windows-probe*.log`): every engine crate and `og.exe` build by `cargo zigbuild --target x86_64-pc-windows-gnu` from this Mac (`og.mjs` already looks for `og.exe`); the napi addon does not: napi-build's gnu path links against a `libnode.dll` (`LIBNODE_PATH`), which Node's Windows releases do not ship (node.exe exports the symbols), so the addon needs the MSVC target, built on a Windows machine or a GitHub `windows` runner; `pack.sh` packing the third platform; the install test on a Windows host (bun, node 22) with the renderer tier `dx12`; a `windows` row in the device matrix | the install test passes on a Windows 11 x64 host from the registry; the runner's Windows host runs one engine thread. Ordered after the runner's own Windows milestone (`goals/agent-system/plan.md` §10.2: "Windows 先声明不支持"), owner's call to pull it earlier |
 
 ### T. The test matrix (what runs where, when; standing)
 
@@ -287,7 +287,8 @@ optimisation rows (§P) after them.
 | Registry | the install test from npm | `release.sh verify --registry` | after every publish |
 | Platform, local | `stage-engine`, `deploy`, `engine-page.ts`, runner `tests/og.rs`, the knowledge mount `--check` | the platform's local stack | every pin move (L3) |
 | Devices | iPhone first frame and frame times (Safari, WebGPU), a mid-range Android's 10,000-entity tick (design §7; owed row 40) | `og run --device iphone`, `--device android` on the owner's devices | once before launch, then per minor version |
-| InstaBox (development) | the install test inside a machine (`release.sh verify --registry --instabox`); the platform's snapshot checker (D2) | an InstaBox machine (billed by the minute; the free plan's one machine) | the install test after every publish; the checker once per pin move, after L3 |
+| InstaBox (development) | the install test inside a machine (`release.sh verify --registry --instabox`); the platform's snapshot checker (D2) | an InstaBox machine (billed by the minute; the free plan's one machine, kept at one for the verification stage, §6 item 6) | the install test after every publish; the checker once per pin move, after L3 |
+| Runners (the owner's machines, Amp runners) | `macrunner`: the functional lane on `metal`, every reference frame's recording, the wave's end (`--all`, web-reference) in the measure lane; `studio-win`: the Windows x64 build, its tests, the install test with the `dx12` tier (F7); a coordinator orb (InstaBox stage, no GPU) merges and runs the functional lane with the GPU frames set aside | `/Volumes/app/origin-engine` on the Mac, `C:\Users\win\src\origin-engine` on the Windows host | the metal lane after every batch of merges the orb cannot frame-check; Windows per F7, then every publish |
 | E2B (production only) | `check-templates.ts` on the image that installs the version | E2B (billed) | once per pin move, after D; never for development |
 | Production | `verify-production.sh`, `state.ts` without drift, the Player telemetry of the first releases | the platform's release process | at launch and each ship |
 
@@ -351,8 +352,14 @@ this repository does.
    auto-paused after thirty idle minutes. One development thread at a
    time fits; the dogfood rounds and the M7 acceptance beside each other
    (D3, D5), and the per-class snapshots (D2: up to five snapshots, one
-   per class and version), need the Pro plan. The owner's upgrade is the
-   condition of running more than one development thread.
+   per class and version), need the Pro plan. **Decided 2026-10-22 (the
+   owner): one machine stays for the whole verification stage**, while
+   the engine's features are not all working and the tests are not fully
+   implemented; D1–D3 are designed for one machine used serially, and no
+   upgrade is planned. The owner's own runners carry the rest of the
+   verification (the T matrix's Runners row): `macrunner`
+   (`/Volumes/app/origin-engine`, the metal gate and every reference
+   frame) and `studio-win` (Windows x64, F7).
 7. Whether E2B stays production's provider once D passes, or InstaBox
    takes production too. Today's answer (§1) is E2B for production, and
    stage E is written for it; the engine is indifferent.
