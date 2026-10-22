@@ -183,6 +183,9 @@ pub struct TextureData {
 pub enum TextureSource {
     Rgba(TextureData),
     Encoded(TextureUpload),
+    /// A render target's colour or depth ([`crate::RenderScene::add_render_target`]):
+    /// drawn on the GPU by a [`crate::View`], never uploaded.
+    Target(crate::TargetTexture),
 }
 
 impl TextureSource {
@@ -191,6 +194,7 @@ impl TextureSource {
         match self {
             TextureSource::Rgba(t) => (t.width, t.height),
             TextureSource::Encoded(t) => (t.desc.width, t.desc.height),
+            TextureSource::Target(t) => (t.width, t.height),
         }
     }
 }
@@ -1313,6 +1317,23 @@ pub struct RenderScene {
     /// on the ground plane y = 0 cast along [`RenderScene::light`], drawn
     /// before every sprite of its layer.
     pub sprite_shadows: Vec<SpriteShadow>,
+    /// Three.js layer masks of single instances, by instance index (the
+    /// last entry for an index wins): an instance without one is on layer
+    /// 0 (mask 1). A camera draws the instances whose mask shares a bit
+    /// with its own ([`RenderScene::camera_layers`], [`crate::View::layers`]).
+    pub instance_layers: Vec<crate::LayerMask>,
+    /// The same for skinned instances, by index in `skinned_instances`.
+    pub skinned_layers: Vec<crate::LayerMask>,
+    /// The same for world sprites, by index in `sprites`.
+    pub sprite_layers: Vec<crate::LayerMask>,
+    /// The main camera's layer mask (three.js `Camera.layers`): it draws the
+    /// instances, skinned instances and world sprites whose masks share a
+    /// bit with it. 1 by default; 0 draws none of them (the sky, terrain,
+    /// water, particles and text are on every layer).
+    pub camera_layers: u32,
+    /// Secondary cameras drawn into render targets or viewports of the
+    /// frame, before it in [`crate::View::order`] (`views.rs`).
+    pub views: Vec<crate::View>,
     /// How each texture is sampled by sprites, tiles and text (by texture index).
     texture_filters: Vec<TextureFilter>,
     /// Live slots and generations of the removable kinds.
@@ -1374,6 +1395,11 @@ impl RenderScene {
             trail_styles: Vec::new(),
             terrain_data: Vec::new(),
             terrain_revisions: Vec::new(),
+            instance_layers: Vec::new(),
+            skinned_layers: Vec::new(),
+            sprite_layers: Vec::new(),
+            camera_layers: 1,
+            views: Vec::new(),
             tick: 0,
             tick_rate: 60.0,
             particles: Vec::new(),
@@ -2459,7 +2485,7 @@ impl RenderScene {
     pub fn texture(&self, handle: TextureHandle) -> Option<&TextureData> {
         match self.textures.get(handle.index())? {
             TextureSource::Rgba(t) => Some(t),
-            TextureSource::Encoded(_) => None,
+            TextureSource::Encoded(_) | TextureSource::Target(_) => None,
         }
     }
 
@@ -2467,7 +2493,7 @@ impl RenderScene {
     pub fn texture_upload(&self, handle: TextureHandle) -> Option<&TextureUpload> {
         match self.textures.get(handle.index())? {
             TextureSource::Encoded(t) => Some(t),
-            TextureSource::Rgba(_) => None,
+            TextureSource::Rgba(_) | TextureSource::Target(_) => None,
         }
     }
 
