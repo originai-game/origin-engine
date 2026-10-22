@@ -153,6 +153,35 @@ web-reference at the last merge), Brasswick's and Meridian Loop's
 browser frames on both tiers and the published-page harness on the
 new games, and the rounds for the three stopped streams.
 
+**F1, two of three (2026-10-22, from an InstaBox-stage orb, no GPU):**
+`kit-words` (origin/kit-words abad0059) merged at a61fd4f4 and
+`platformer-2d` (origin/platformer-2d 7e5084b5) at c9845b1e, CHANGELOG
+holding one `0.2.0 (unreleased)` section for both streams' API
+additions (the kit HUDs' label fields; `og.WorldRestored`,
+`og.PARTICLES_ARMED`, `CharacterController.pushStrength`,
+`PlatformerController.pushBodies/pushStrength`,
+`TilemapLayer.colliderLayers/colliderMask`, `PlatformAnswer.time`), the
+wiki regenerated, `og api check` clean; `release.sh bump 0.2.0` waits
+for the next publish. The functional lane on the merged tree found two
+debts of main, neither from the streams: `cargo fmt` of
+`og-cli/src/doctor.rs` (45848398), and og-cook's twelve tests that
+still read `templates/game/assets/models/trickster.glb` after R6 moved
+it out of the template (3f914f69): the fixture is now declared once in
+`og-cook/tests/support` as the template's assets plus the engine's own
+copy from `crates/og-tests/assets`, staged by `stage_template`
+(bf7db9f4; 111 of 114 og-cook tests here, the other three want a
+`vulkan-cpu` reference frame this orb has none of). What the orb could
+not do and the owner's metal run owes: Meridian Loop's `race`, `ghost`,
+`results`, `settings-de` (perhaps `pub-straight`) frames move with the
+new HUD rows (the splits in rows, no sector capsule, the delta under
+the lap time, a time as the results headline) and are to be re-recorded
+there; Brasswick's `door`, `stomp`, `gate` on lavapipe sit at RMSE
+0.0101 against 0.01 (edge dither like the passing title frame, nothing
+moved) and are the same metal check; og-tests' five lavapipe-vs-metal
+gfx frames (atmosphere-night, atmosphere-moon, sprites-array,
+tilemap-lit, water-underwater) are the CPU tier set aside above.
+`dogfood-7` (Rumpus Isle) is still in flight on its thread.
+
 **Wave-end figures (waves 12 and 13 so far, the measure worktree at
 d56f3490, after the shadow-flags merge; no lavapipe run and no Chrome
 benchmarks, both set aside on 2026-10-22):**
