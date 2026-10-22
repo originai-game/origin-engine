@@ -139,7 +139,12 @@ cmd_publish() {
     npm publish --access public ${otp:+--otp "$otp"} "$tgz" || { og_err "release: npm publish of @origingame/$name failed (a one-time password: run this in your terminal and open the URL npm prints, or pass --otp <code>); run publish again to continue, the packages already published are skipped"; return 1; }
   done
   if [ "$dry" = 1 ]; then og_say "release: dry run; nothing published"; return 0; fi
-  git tag -a "v$v" -m "Origin Engine $v" && og_say "release: tagged v$v (push it: git push origin v$v)"
+  if git rev-parse -q --verify "refs/tags/v$v" >/dev/null; then
+    if [ "$(git rev-parse "v$v^{commit}")" = "$(git rev-parse HEAD)" ]; then og_say "release: tag v$v is already at HEAD"
+    else og_err "release: tag v$v exists at $(git rev-parse --short "v$v^{commit}"), not at HEAD; move it by hand if that is wanted"; fi
+  else
+    git tag -a "v$v" -m "Origin Engine $v" && og_say "release: tagged v$v (push it: git push origin v$v)"
+  fi
   og_say "release: published $v. Install: bun add @origingame/engine@$v ; npm create @origingame/game@$v my-game"
   og_say "release: now scripts/release.sh verify --registry"
 }

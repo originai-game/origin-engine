@@ -89,8 +89,9 @@ platform, and public when the owner decides (§6).
 | `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64` | `origin-engine.node` (napi addon, `crates/og-host-node`) and `og` (`crates/og-cli`), release profile, `os`/`cpu`/`libc` so only the matching one installs, as `optionalDependencies` of the main package | the same |
 | `@origingame/create-game` | `bin/create.ts` (`npm create @origingame/game` runs it: npm and bun map `create @scope/name` to `@scope/create-name`, which is why the package is `create-game`, not `create`), `template/` (`templates/game`), `archetypes/` (the eight), `looks/` (the catalogue) | `packages/create` `prepack` |
 
-Not shipped: Windows, linux-arm64 (design §12 item 5; `og.mjs` says so
-when the platform package is missing). `@tsrs/*` are someone else's
+Not shipped yet: Windows x64 (§4 F7, with the platform runner's Windows
+host) and linux-arm64 (design §12 item 5); `og.mjs` says so when the
+platform package is missing. `@tsrs/*` are someone else's
 packages, pinned at `TSRS_VERSION` of `scripts/install-tools.sh`, not at
 the engine's version.
 
@@ -206,6 +207,7 @@ optimisation rows (§P) after them.
 | F4 | Browser frames for Brasswick and Meridian Loop on both tiers; the published-page harness on the new games | `web-reference` passes with them; `og run --device chrome` plans for both |
 | F5 | wgpu and naga 31 when published (row 35), kept only if every reference frame passes unchanged | a wave end at the new version with every frame unmoved, or the row stays open with the date |
 | F6 | Each wave's end: `scripts/wave-end.sh` (`gate`, `web`, `conformance`, `release`), summary in `docs/phase-1.md` | the wave's section records the four stages |
+| F7 | **Windows x64** (`@origingame/engine-win32-x64`: `og.exe` and `origin-engine.node`), following the platform runner's Windows host: the runner is built for `x86_64-pc-windows-gnu` and "has never run on a real Windows host" (origingame `agent-runner/README.md` §Platforms), and a personal runner on Windows that hosts `engine`-class threads needs the engine installed there like any author's machine. The cloud path (E2B, Linux) is untouched. Parts, as probed on 2026-10-22 (`target/evidence/release/windows-probe*.log`): every engine crate and `og.exe` build by `cargo zigbuild --target x86_64-pc-windows-gnu` from this Mac (`og.mjs` already looks for `og.exe`); the napi addon does not: napi-build's gnu path links against a `libnode.dll` (`LIBNODE_PATH`), which Node's Windows releases do not ship (node.exe exports the symbols), so the addon needs the MSVC target, built on a Windows machine or a GitHub `windows` runner; `pack.sh` packing the third platform; the install test on a Windows host (bun, node 22) with the renderer tier `dx12`; a `windows` row in the device matrix | the install test passes on a Windows 11 x64 host from the registry; the runner's Windows host runs one engine thread. Ordered after the runner's own Windows milestone (`goals/agent-system/plan.md` §10.2: "Windows 先声明不支持"), owner's call to pull it earlier |
 
 ### T. The test matrix (what runs where, when; standing)
 
