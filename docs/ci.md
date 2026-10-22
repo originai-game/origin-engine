@@ -23,7 +23,8 @@ node, which CI takes from `actions/setup-node`.
 | wasm-bindgen (crate and CLI), js-sys, web-sys, wasm-bindgen-futures | 0.2.129, 0.3.106, 0.3.106, 0.4.79 | `crates/og-host-web/Cargo.toml` (exact), the CLI from `Cargo.lock` |
 | binaryen (`wasm-opt`) | 133 | `BINARYEN_VERSION` in `scripts/install-tools.sh` (release archive on Linux and macOS) |
 | bun | 1.4.2 | `BUN_VERSION` in `scripts/install-tools.sh` |
-| TypeScript (type checking only; Bun bundles) | 7.0.2 | `packages/engine/package.json` `typecheck`, `crates/og-idl/tests/idl.rs`, the templates' `devDependencies` |
+| TypeScript (type checking only; Bun bundles) | 7.0.2 | `packages/engine/package.json` `typecheck`, `crates/og-idl/tests/idl.rs`, the templates' `devDependencies`; `TSGO_VERSION` in `crates/og-cli/src/check.rs` (`og check --tool tsgo`, `check-conformance`) |
+| tsrs (`og check`'s type checker; tsgo 7.0.2 stays the authority until goals/tsrs's switch) | 0.18.0-ts7.1.0-dev.20260929 (TypeScript 7.1.0-dev.20260930.4) | `TSRS_VERSION` and the SRI in `scripts/install-tools.sh`; `packages/engine/package.json` `optionalDependencies` copy it (`check-conformance` holds them equal) |
 | cargo-nextest | 0.9.148 here | not pinned |
 | ShellCheck (CI lints `scripts/*.sh` with it; Ubuntu's 0.9 reports what 0.11 does not) | 0.11.0 | `SHELLCHECK_VERSION` in `scripts/install-tools.sh` (Homebrew's on macOS) |
 | node (`determinism`'s wasm32 runs) | 24 in CI | `.github/actions/provision` |

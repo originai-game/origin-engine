@@ -10,6 +10,11 @@
 #                     older one, Ubuntu's 0.9, reports what 0.11 does not)
 #   sccache           the compiler cache .cargo/config.toml names, pinned by
 #                     SCCACHE_VERSION (first: the cargo installs below go through it)
+#   tsrs              `og check`'s type checker, pinned by TSRS_VERSION and the
+#                     SRI of its npm platform package; the package version
+#                     0.18.0-ts7.1.0-dev.20260929 is a binary that reports
+#                     `Version 7.1.0-dev.20260930.4` (TSRS_REPORTS), the
+#                     string the present check compares
 #
 # Each tool is skipped when the right version is already on PATH. Linux x86_64
 # and aarch64 download release binaries into OG_TOOLS_BIN (default
@@ -24,6 +29,8 @@ BINARYEN_VERSION="${BINARYEN_VERSION:-133}"
 BUN_VERSION="${BUN_VERSION:-1.4.2}"
 SCCACHE_VERSION="${SCCACHE_VERSION:-0.14.0}"
 SHELLCHECK_VERSION="${SHELLCHECK_VERSION:-0.11.0}"
+TSRS_VERSION="${TSRS_VERSION:-0.18.0-ts7.1.0-dev.20260929}"
+TSRS_REPORTS="7.1.0-dev.20260930.4"
 BIN="${OG_TOOLS_BIN:-$HOME/.local/bin}"
 mkdir -p "$BIN"
 export PATH="$BIN:$PATH"
@@ -144,6 +151,43 @@ else
   tar -xJf "$tmp/$sc" -C "$tmp"
   cp "$tmp/shellcheck-v$SHELLCHECK_VERSION/shellcheck" "$BIN/"
   shellcheck --version | awk '/^version:/ {print "shellcheck " $2}'
+fi
+
+# tsrs: the npm platform package @tsrs/<platform> (GitHub releases carry no
+# assets), checked against its pinned dist.integrity (`npm view
+# @tsrs/<platform>@<version> dist.integrity`; all five move with
+# TSRS_VERSION, and packages/engine/package.json's optionalDependencies
+# copy the version). The binary reads lib.*.d.ts from its own directory, so
+# the whole package goes to $BIN/../lib/tsrs-<version>/ and $BIN/tsrs is a
+# symlink. No package for Windows and Intel macOS: og check falls back to tsgo.
+if command -v tsrs >/dev/null && [ "$(tsrs --version | awk '{print $2}')" = "$TSRS_REPORTS" ]; then
+  og_say "tsrs $TSRS_VERSION: present"
+else
+  libc=gnu
+  if [ "$os" = Linux ] && ldd --version 2>&1 | grep -qi musl; then libc=musl; fi
+  case "$os-$arch-$libc" in
+    Linux-x86_64-gnu)   pkg=linux-x64-gnu;    sri='sha512-EdBwBgNICGu1r1h23ixdcKwsMo6E9ll7ZsY3mNERNYqE1Pwdtcat99d5E7zB1J+oy/Xk6YqiizaB6nolIjpDTw==' ;;
+    Linux-aarch64-gnu)  pkg=linux-arm64-gnu;  sri='sha512-zm9/z9yylig68JiZF4Aq0Cm26n09KEU8YoQRlG7tdDWTBNAIViYw8knxnWYsjMWVZ2XiU4mYq1xdrOKuOgABHg==' ;;
+    Linux-x86_64-musl)  pkg=linux-x64-musl;   sri='sha512-LHk+AOAtXuTlhJhOJ2+elriEIX17ycXljojeNxrrzckOipTG1LksoVWuCSas2nu00EnWAzrdKpt9oqPylUKZfQ==' ;;
+    Linux-aarch64-musl) pkg=linux-arm64-musl; sri='sha512-Lw7VVU/YQ9JcarODICEiwzMLdFqZprqh5RGTgbS5Uc6I95P635/g5xA1pOC8RVs4efBvAR30J54iDG3l5JEYiw==' ;;
+    Darwin-aarch64-*)   pkg=darwin-arm64;     sri='sha512-sAirMpaGA9uRQm2W+t4zC7PjnijNuFa4PCSIfLKKo0JyAUCRfnMeev0UGBQ9F3g+9Nz187tvikUs5Irh5+eajA==' ;;
+    *) pkg="" ;;
+  esac
+  if [ -z "$pkg" ]; then
+    og_say "tsrs: no package for $os-$arch; og check falls back to tsgo (bun x typescript)"
+  else
+    og_say "tsrs $TSRS_VERSION: installing (@tsrs/$pkg)"
+    fetch "https://registry.npmjs.org/@tsrs/$pkg/-/$pkg-$TSRS_VERSION.tgz" "$tmp/tsrs.tgz"
+    got="sha512-$(openssl dgst -sha512 -binary "$tmp/tsrs.tgz" | openssl base64 -A)"
+    if [ "$got" != "$sri" ]; then
+      og_err "tsrs: @tsrs/$pkg-$TSRS_VERSION.tgz is $got, pinned $sri"; exit 1
+    fi
+    tar -xzf "$tmp/tsrs.tgz" -C "$tmp"
+    rm -rf "$BIN/../lib/tsrs-$TSRS_VERSION"; mkdir -p "$BIN/../lib"
+    cp -R "$tmp/package" "$BIN/../lib/tsrs-$TSRS_VERSION"
+    ln -sf "$BIN/../lib/tsrs-$TSRS_VERSION/tsrs" "$BIN/tsrs"
+    tsrs --version
+  fi
 fi
 
 # cargo-nextest: the gate's parallel test runner (optional; check.sh falls
