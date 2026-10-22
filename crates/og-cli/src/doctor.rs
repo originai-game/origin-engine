@@ -318,6 +318,29 @@ fn engine_checks(cwd: &Path) -> usize {
         package.display()
     );
     let mut problems = 0;
+    // In a project: its pin against the installed package (docs/release.md §3).
+    if let Ok(p) = crate::project::Project::open(cwd)
+        && p.manifest
+    {
+        match (p.engine.as_deref(), report["version"].as_str()) {
+            (Some(pinned), Some(installed)) if pinned != installed => {
+                problems += 1;
+                println!("differs  {:<13} project.ogt pins engine \"{pinned}\", installed {installed}", "pin");
+                println!(
+                    "         fix: when the game is written against {installed}, set `engine \"{installed}\"` in project.ogt; otherwise bun add @origingame/engine@{pinned}"
+                );
+            }
+            (Some(pinned), _) => println!("ok       {:<13} project.ogt pins engine \"{pinned}\"", "pin"),
+            (None, _) => {
+                problems += 1;
+                println!("missing  {:<13} project.ogt has no `engine \"<version>\"` line", "pin");
+                println!(
+                    "         fix: add `engine \"{}\"` to project.ogt (the version this game is written against)",
+                    report["version"].as_str().unwrap_or("?")
+                );
+            }
+        }
+    }
     let mut line = |name: &str, ok: bool, detail: String, fix: &str| {
         if ok {
             println!("ok       {name:<13} {detail}");

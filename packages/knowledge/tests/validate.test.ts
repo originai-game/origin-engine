@@ -10,6 +10,9 @@ import { join } from "node:path";
 import { defaultRoots, payload, packs, type Roots } from "../scripts/lib.ts";
 import { bundle, validate } from "../scripts/validate.ts";
 
+/** packages/engine's version: what the scaffold pins. */
+const ENGINE_VERSION = (JSON.parse(readFileSync(join(defaultRoots().engine, "package.json"), "utf8")) as { version: string }).version;
+
 const temps: string[] = [];
 afterAll(() => {
   for (const t of temps) rmSync(t, { recursive: true, force: true });
@@ -107,8 +110,8 @@ test("an overlay named like an existing platform overlay is refused", () => {
 test("an engine version the pin and project.ogt do not name is refused", () => {
   const p = added((r) => edit(join(r.engine, "package.json"), (s) => s.replace(/"version": "[^"]+"/, '"version": "9.9.9"')));
   expect(p.sort()).toEqual([
-    'game-scaffold/origin-engine-ts/origin-engine.json: pins engine 0.0.1, packages/engine is 9.9.9',
-    'game-scaffold/origin-engine-ts/project.ogt: engine "0.0.1", packages/engine is 9.9.9',
+    `game-scaffold/origin-engine-ts/origin-engine.json: pins engine ${ENGINE_VERSION}, packages/engine is 9.9.9`,
+    `game-scaffold/origin-engine-ts/project.ogt: engine "${ENGINE_VERSION}", packages/engine is 9.9.9`,
   ]);
 });
 

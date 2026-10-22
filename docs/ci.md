@@ -336,8 +336,9 @@ the table go to `target/evidence/wave-end/`.
 requirement (a playtest's frames on Mesa lavapipe in a sandbox with no
 GPU) was set aside by the owner to put features first
 (docs/phase-1.md, "The CPU sandbox requirement set aside"; docs/design.md
-§5 and §8). The default run is the `gate`, `web` and `conformance` stages
-(`conformance`: `scripts/tsrs-diff.sh`, og check's tsrs held to tsgo); the
+§5 and §8). The default run is the `gate`, `web`, `conformance` and `release` stages
+(`conformance`: `scripts/tsrs-diff.sh`, og check's tsrs held to tsgo;
+`release`: the tarballs and the install test, docs/release.md §3); the
 lavapipe stages below (`cross`, `prepare`, `gfx`, `ui`, `playtests`,
 `table`) stay in the script and run only when `--stages` names them. No
 `references/vulkan-cpu/` directory is kept any more (the last 25 copies
@@ -349,6 +350,7 @@ describes the script as it is, for when the requirement returns.
 |---|---|
 | `gate` | `scripts/check.sh --all` |
 | `web` | `scripts/check.sh web-reference` |
+| `release` | `scripts/release.sh pack` then `verify`: the five packages as release tarballs in `dist/release/<version>/` with `manifest.json`, and the install test (`tests/install/run.ts`) from them on this machine and in the linux-x64 container (docs/release.md §3); publish never runs here |
 | `cross` | `cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31` of `-p og-tests --bin og-gfx`, of og-ui's GPU test binaries (`--test gfx --test kit_gfx --test materials_gfx --test text_gfx`) and of `-p og-host-node`, the addon copied to `packages/engine/native/origin-engine.linux-x64.node` |
 | `prepare` | each template cooked (`og cook`, the gate's dev `og`) and bundled for the native host into `<template>/.og/game.native.js`, as `og test` does, on the Mac |
 | `gfx` | `og-gfx --all --capture target/lava-gfx` in `og-lavapipe-bun:local` (`docker run --rm -v <checkout>:<checkout> -w <checkout>`, `OG_TEST_ASSETS=<checkout>/crates/og-tests/assets`, the og-gfx binary as `--entrypoint`; no `--platform`: the amd64 image runs under emulation, and the checkout sits at its own path because the bundles hold absolute paths) |

@@ -218,6 +218,9 @@ pub fn run(args: &[&str]) -> ExitCode {
         eprintln!("og run: {}", project::NO_ENGINE);
         return ExitCode::FAILURE;
     };
+    if let Some(n) = project::pin_notice(&p, &package) {
+        eprintln!("og run: {n}");
+    }
     let bundle = match prepare(&p, &package, a.check, a.json) {
         Ok(b) => b,
         Err(e) => {

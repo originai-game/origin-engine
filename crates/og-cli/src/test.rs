@@ -64,6 +64,9 @@ pub fn run(args: &[&str]) -> ExitCode {
         eprintln!("og test: {}", project::NO_ENGINE);
         return ExitCode::FAILURE;
     };
+    if let Some(n) = project::pin_notice(&p, &package) {
+        eprintln!("og test: {n}");
+    }
     let mut unit = Vec::new();
     files(&p.root, ".test.ts", &mut unit);
     let mut playtests = Vec::new();

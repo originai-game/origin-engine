@@ -3,7 +3,7 @@ version 1
 ---
 name "Path Guard"
 id "tower-defense"
-engine "0.0.1"
+engine "0.1.0"
 entry "src/main.ts"
 profile "2d"
 tick 60

@@ -369,7 +369,7 @@ the only mode:
 
 No Godot, no Chromium in the inner loop, no Rust toolchain anywhere in the
 sandbox. An image installs the published packages at the version the
-platform pins (`bun install` of `@origingame/engine`, `@origingame/create`
+platform pins (`bun install` of `@origingame/engine`, `@origingame/create-game`
 and the knowledge package, with their `optionalDependencies`: the platform
 addon and `og`, tsrs), the same install an author's machine and the
 platform's local stack make; no layout built from a git revision, no
@@ -446,7 +446,7 @@ docs/ci.md §Updating a budget).
   TypeScript root object (`og`). The platform already uses `og-` for
   credentials, `og-probe` for the wire and `OG_*` for environment, so the
   family stays consistent.
-- **Packages**: `@origingame/engine`, `@origingame/create`,
+- **Packages**: `@origingame/engine`, `@origingame/create-game`,
   `@origingame/engine-knowledge`. Repository `origingame/origin-engine`.
 - **Artifacts**: `origin-engine.wasm`, `origin-engine.node`; telemetry and
   user-agent token `OriginEngine/<version>`; `hello.engine` reports

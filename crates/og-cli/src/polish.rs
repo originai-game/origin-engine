@@ -61,6 +61,9 @@ pub fn run(args: &[&str]) -> ExitCode {
         eprintln!("og polish: {}", project::NO_ENGINE);
         return ExitCode::FAILURE;
     };
+    if let Some(n) = project::pin_notice(&p, &package) {
+        eprintln!("og polish: {n}");
+    }
     let mut warnings: Vec<String> = Vec::new();
     if p.has_assets() {
         match crate::cook::cook(&p.root, 0) {

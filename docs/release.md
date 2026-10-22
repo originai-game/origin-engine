@@ -37,7 +37,7 @@ What holds from this commit:
 
 1. **Five packages, one version.** `@origingame/engine`,
    `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64`,
-   `@origingame/create` and `@origingame/engine-knowledge` are published to
+   `@origingame/create-game` and `@origingame/engine-knowledge` are published to
    the npm registry, public, MIT, at the same version, bumped together
    (§3). The knowledge package stops being `private`.
 2. **Three ways to run the engine, and no fourth.** (a) The registry:
@@ -85,7 +85,7 @@ platform, and public when the owner decides (§6).
 |---|---|---|
 | `@origingame/engine` | the TypeScript API and runtime (`src/`, `types/*.d.ts`, `schema/api.schema.json`, `bindings.json`), the web hosts (`dist/web`, `dist/web-publish`, `dist/web-publish-2d`, each publish directory with its lanes variant), the player shell, the Basis transcoder, `bin/og.mjs` (runs the platform package's `og` with this package as `OG_ENGINE_PACKAGE`); no native code | `packages/engine/scripts/pack.sh` (`OG_RELEASE=1 build.sh --linux-x64` first) |
 | `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64` | `origin-engine.node` (napi addon, `crates/og-host-node`) and `og` (`crates/og-cli`), release profile, `os`/`cpu`/`libc` so only the matching one installs, as `optionalDependencies` of the main package | the same |
-| `@origingame/create` | `bin/create.ts` (`npm create @origingame/game`), `template/` (`templates/game`), `archetypes/` (the eight), `looks/` (the catalogue) | `packages/create` `prepack` |
+| `@origingame/create-game` | `bin/create.ts` (`npm create @origingame/game` runs it: npm and bun map `create @scope/name` to `@scope/create-name`, which is why the package is `create-game`, not `create`), `template/` (`templates/game`), `archetypes/` (the eight), `looks/` (the catalogue) | `packages/create` `prepack` |
 | `@origingame/engine-knowledge` | `skills/og-*` (ten), `wiki/` (generated from `api.ogt`), `looks/catalogue.json`, `scaffold/` (`origin-engine.json`, `distribution.json`), `knowledge.json`, `scripts/mount.ts` and `validate.ts` | `packages/knowledge` `prepack` |
 
 Not shipped: Windows, linux-arm64 (design §12 item 5; `og.mjs` says so
@@ -159,7 +159,7 @@ Everything still to develop and test before the engine is live, as the
 platform's plan §四 and `docs/phase-1.md`'s owed table count it on
 2026-10-22. Launch means: the platform's `engine` class runs threads on a
 published version in production, new Games are created on it
-(`engine_scaffold` from `@origingame/create`'s archetypes), and one
+(`engine_scaffold` from `@origingame/create-game`'s archetypes), and one
 Discover prototype has been made end to end by a thread, played through
 `og run --commands`, delivered and published. The stages run in this
 order; inside a stage the rows run in parallel where their lanes allow
@@ -171,13 +171,13 @@ evidence/` (platform).
 
 | # | Row | Passes when |
 |---|---|---|
-| R1 | One version everywhere: `release.sh bump`; `create` writes it into `project.ogt` and `package.json`; the knowledge test holds every occurrence equal (`validate.test.ts` already names `origin-engine.json` and the template's `project.ogt`); `og` compares `project.ogt`'s `engine` with the installed package's version (`doctor` line, run/test/build warning) | `bump 0.1.0` leaves `git grep 0.0.1` empty outside history; `og doctor` in a project pinned at another version prints the mismatch and its fix |
-| R2 | `@origingame/engine-knowledge` publishable: `private` dropped, `files` complete, `mount.ts --package <tgz or version>` mounts a published package instead of a checkout commit, README's install line | `bun pm pack` of the package installs in an empty directory and `bunx` its `validate.ts` passes; `mount.ts --package` on a stand-in platform tree gives the same bytes as `--commit` of the same source |
-| R3 | `scripts/release.sh` (`bump`, `pack`, `verify`, `publish`) and the wave-end `release` stage; `pack.sh` packs create and knowledge too; `manifest.json` with sizes and sha256; `CHANGELOG.md` with 0.1.0's entry (the IDL as it stands) | `wave-end.sh release` leaves `dist/release/0.1.0/` with five tarballs and a manifest; `publish` refuses a dirty tree, an unverified manifest, a wrong `main` |
-| R4 | The install test (`tests/install/`, §3) on this machine and in the linux-x64 container, from tarballs and `--registry` | both runs pass on the 0.1.0 candidate; the container run shows `renderer none` and `N frame(s) unchecked`, never a failure |
-| R5 | `og doctor` and `og --version` outside a checkout: the package's version, the addon's, the wasm files, tsrs, the renderer, bun; inside a checkout the toolchain lines as today | the doctor's output in the container and on this machine differ only in the renderer line |
-| R6 | The template's two models (`trickster.glb`, `dropship.glb`, copied from `origingame-examples`, licence "as recorded for the test assets": `templates/game/LICENSES.md`) replaced by engine-owned or CC0 models, or the owner's written leave to redistribute them; `@origingame/create` ships nothing whose licence is not named | `LICENSES.md` of every template and archetype names a licence for every binary; `distribution.json` regenerated |
-| R7 | Package metadata: `repository.url` names the repository the packages are built from (today `origingame/origin-engine`, which is not where the code is); `homepage`, `bugs`; the README's install section (`bun add`, `npm create`, the three commands) | `npm pack --dry-run` lists what §2 says and nothing else; the README's lines run as written |
+| R1 | **Done 2026-10-22** (`scripts/release-bump.ts`, `og` pin notice and doctor line). One version everywhere: `release.sh bump`; `create` writes it into `project.ogt` and `package.json`; the knowledge test holds every occurrence equal (`validate.test.ts` already names `origin-engine.json` and the template's `project.ogt`); `og` compares `project.ogt`'s `engine` with the installed package's version (`doctor` line, run/test/build warning) | `bump 0.1.0` leaves `git grep 0.0.1` empty outside history; `og doctor` in a project pinned at another version prints the mismatch and its fix |
+| R2 | **Done 2026-10-22.** `@origingame/engine-knowledge` publishable: `private` dropped, `files` complete, `mount.ts --package <tgz or version>` mounts a published package instead of a checkout commit, README's install line | `bun pm pack` of the package installs in an empty directory and `bunx` its `validate.ts` passes; `mount.ts --package` on a stand-in platform tree gives the same bytes as `--commit` of the same source |
+| R3 | **Done 2026-10-22.** `scripts/release.sh` (`bump`, `pack`, `verify`, `publish`) and the wave-end `release` stage; `pack.sh` packs create and knowledge too; `manifest.json` with sizes and sha256; `CHANGELOG.md` with 0.1.0's entry (the IDL as it stands) | `wave-end.sh release` leaves `dist/release/0.1.0/` with five tarballs and a manifest; `publish` refuses a dirty tree, an unverified manifest, a wrong `main` |
+| R4 | **Written 2026-10-22** (`tests/install/run.ts`, `tests/install/Dockerfile`); its first pass is recorded in R8's evidence. The install test (`tests/install/`, §3) on this machine and in the linux-x64 container, from tarballs and `--registry` | both runs pass on the 0.1.0 candidate; the container run shows `renderer none` and `N frame(s) unchecked`, never a failure |
+| R5 | **Done 2026-10-22** (the `pin` line; the rest was there). `og doctor` and `og --version` outside a checkout: the package's version, the addon's, the wasm files, tsrs, the renderer, bun; inside a checkout the toolchain lines as today | the doctor's output in the container and on this machine differ only in the renderer line |
+| R6 | The template's two models (`trickster.glb`, `dropship.glb`, copied from `origingame-examples`): `dropship.glb` is MIT (the `core-business` example's `LICENSE`, named in `templates/game/LICENSES.md` now); `trickster.glb` came from `edg-king-match`, which declares no licence, so the template's `trickster` entity is an instance of the CC0 `walker.glb` since 2026-10-22 and the file left the template. `@origingame/create-game` ships nothing whose licence is not named. The engine's test copy (`crates/og-tests/assets/`, `templates/fx-showcase`) is not in any package; whether it stays in a public repository is the owner's (§6) | done 2026-10-22 for the packages: `LICENSES.md` of the template names a licence for every binary; `distribution.json` regenerated; the owner's word still owed for the repository's copies |
+| R7 | **Done 2026-10-22.** Package metadata: `repository.url` names the repository the packages are built from (today `origingame/origin-engine`, which is not where the code is); `homepage`, `bugs`; the README's install section (`bun add`, `npm create`, the three commands) | `npm pack --dry-run` lists what §2 says and nothing else; the README's lines run as written |
 | R8 | **Publish 0.1.0** (owner: `npm login`, the `@origingame` scope); `release.sh verify --registry`; tag `v0.1.0` | `npm view @origingame/engine version` answers `0.1.0`; `npm create @origingame/game` in an empty directory on a machine without this checkout runs `og test`; evidence `tests/evidence/release/0.1.0.md` |
 
 ### L. The local loop on the platform (platform repository; after R8)

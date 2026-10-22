@@ -3311,7 +3311,7 @@ merge commit and no evidence directory.
   style step, its table held to the catalogue row by row; og-ui's text and
   accessibility; og-i18n, og-build §7, og-audio's chunked music, og-feel's
   stepFps, og-core's lanes. A test names each phase 4 API's skill.
-- **Every game gets a look** (3517983, c2c1370): `@origingame/create
+- **Every game gets a look** (3517983, c2c1370): `@origingame/create-game
   --look <slug>` names a catalogue preset and `--premise` picks the style
   whose premise fits best (asked on a terminal otherwise); the game's
   `assets/looks/<id>.ogt` keeps the template's blocks under it and

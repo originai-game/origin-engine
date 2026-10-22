@@ -78,6 +78,9 @@ pub fn run(args: &[&str]) -> ExitCode {
         eprintln!("og build: {}", project::NO_ENGINE);
         return ExitCode::FAILURE;
     };
+    if let Some(n) = project::pin_notice(&p, &package) {
+        eprintln!("og build: {n}");
+    }
     if p.has_assets() {
         match crate::cook::cook(&p.root, 0) {
             Ok(r) => {

@@ -75,7 +75,7 @@ test("a damage moment without hit stop is a finding, mapped to og-feel §3", () 
   const p = join(evidence, "no-hit-stop");
   rmSync(p, { recursive: true, force: true });
   for (const d of ["src", "tests"]) mkdirSync(join(p, d), { recursive: true });
-  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Hurt"\nid "hurt"\nengine "0.0.1"\nentry "src/main.ts"\n');
+  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Hurt"\nid "hurt"\nengine "0.1.0"\nentry "src/main.ts"\n');
   // A hurt command lowers hp and shakes the camera, but nothing holds the world.
   writeFileSync(
     join(p, "src", "main.ts"),
@@ -113,7 +113,7 @@ test("og polish reads a dialog as a screen, leaves out what its scrim dims, and 
   rmSync(p, { recursive: true, force: true });
   for (const d of ["src", "tests", "assets/fonts"]) mkdirSync(join(p, d), { recursive: true });
   copyFileSync(join(repo, "templates", "game", "assets", "fonts", "NotoSansSC-Regular-subset.ttf"), join(p, "assets", "fonts", "NotoSansSC-Regular-subset.ttf"));
-  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Screens"\nid "screens"\nengine "0.0.1"\nentry "src/main.ts"\n');
+  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Screens"\nid "screens"\nengine "0.1.0"\nentry "src/main.ts"\n');
   // Play: a score in a corner and the thumbs' controls (a stick and a big
   // button). Asking: a faint caption under a confirm dialog's scrim.
   writeFileSync(
@@ -182,7 +182,7 @@ test("og polish reads a toast over a dialog at rest and leaves out one sliding o
   rmSync(p, { recursive: true, force: true });
   for (const d of ["src", "tests", "assets/fonts"]) mkdirSync(join(p, d), { recursive: true });
   copyFileSync(join(repo, "templates", "game", "assets", "fonts", "NotoSansSC-Regular-subset.ttf"), join(p, "assets", "fonts", "NotoSansSC-Regular-subset.ttf"));
-  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Toasts"\nid "toasts"\nengine "0.0.1"\nentry "src/main.ts"\n');
+  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Toasts"\nid "toasts"\nengine "0.1.0"\nentry "src/main.ts"\n');
   writeFileSync(
     join(p, "src", "main.ts"),
     `import { og, defineResource, defineSystem, u32 } from "@origingame/engine";
@@ -230,7 +230,7 @@ test("og polish refuses a project without playtests", () => {
   const bare = join(evidence, "bare");
   rmSync(bare, { recursive: true, force: true });
   mkdirSync(join(bare, "src"), { recursive: true });
-  writeFileSync(join(bare, "project.ogt"), 'type project\nversion 1\n---\nname "Bare"\nid "bare"\nengine "0.0.1"\nentry "src/main.ts"\n');
+  writeFileSync(join(bare, "project.ogt"), 'type project\nversion 1\n---\nname "Bare"\nid "bare"\nengine "0.1.0"\nentry "src/main.ts"\n');
   writeFileSync(join(bare, "src", "main.ts"), 'import { og } from "@origingame/engine";\nexport default og.game({ tick: 60 });\n');
   const r = run([ogBin(), "polish", bare]);
   expect(r.code).toBe(1);
@@ -242,7 +242,7 @@ test("og polish reports the string tables' missing keys as a finding for og-i18n
   const p = join(evidence, "locales");
   rmSync(p, { recursive: true, force: true });
   for (const d of ["src", "tests", "assets/strings"]) mkdirSync(join(p, d), { recursive: true });
-  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Locales"\nid "locales"\nengine "0.0.1"\nentry "src/main.ts"\n');
+  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Locales"\nid "locales"\nengine "0.1.0"\nentry "src/main.ts"\n');
   writeFileSync(join(p, "src", "main.ts"), 'import { og } from "@origingame/engine";\nexport default og.game({ tick: 60, start: (world) => { og.i18n.load(world, "strings/en.ogt"); og.i18n.load(world, "strings/ja.ogt"); } });\n');
   writeFileSync(join(p, "assets", "strings", "en.ogt"), 'type strings\nversion 1\n---\nlocale "en"\nstring "menu.play" "Play"\nstring "menu.quit" "Quit"\n');
   writeFileSync(join(p, "assets", "strings", "ja.ogt"), 'type strings\nversion 1\n---\nlocale "ja"\nstring "menu.play" "プレイ"\n');
@@ -261,7 +261,7 @@ test("og polish reads a phone's UI at its device pixels and measures text, not d
   rmSync(p, { recursive: true, force: true });
   for (const d of ["src", "tests", "assets/fonts"]) mkdirSync(join(p, d), { recursive: true });
   copyFileSync(join(repo, "templates", "game", "assets", "fonts", "NotoSansSC-Regular-subset.ttf"), join(p, "assets", "fonts", "NotoSansSC-Regular-subset.ttf"));
-  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Phone UI"\nid "phone-ui"\nengine "0.0.1"\nentry "src/main.ts"\n');
+  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Phone UI"\nid "phone-ui"\nengine "0.1.0"\nentry "src/main.ts"\n');
   // A phone at 3x: a faint label (a real finding), a readable one, and a
   // disabled button whose dimmed text is exempt.
   writeFileSync(

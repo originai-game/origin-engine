@@ -245,6 +245,9 @@ pub fn run(args: &[&str]) -> ExitCode {
         eprintln!("og dev: {}", project::NO_ENGINE);
         return ExitCode::FAILURE;
     };
+    if let Some(n) = project::pin_notice(&p, &package) {
+        eprintln!("og dev: {n}");
+    }
     let bundle = match crate::run::prepare(&p, &package, false, json) {
         Ok(b) => b,
         Err(e) => {

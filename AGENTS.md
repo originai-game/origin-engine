@@ -15,7 +15,7 @@ what remains to launch, `docs/release.md`.
   accounts, money, publishing, threads or the agent loop: those stay in the
   platform, reached through the host ABI with game-scoped tokens.
 - The platform consumes this repository only through published packages
-  (`@origingame/engine`, `@origingame/create`, the knowledge package) pinned
+  (`@origingame/engine`, `@origingame/create-game`, the knowledge package) pinned
   by version, installed from the npm registry: never a layout built from a
   git revision, never a checkout or `cargo` on the platform's side
   (`docs/release.md` §1, the owner's decision of 2026-10-22). A version is

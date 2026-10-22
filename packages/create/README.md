@@ -1,4 +1,4 @@
-# @origingame/create
+# @origingame/create-game
 
 Scaffolds an Origin Engine game from the project template (`templates/game`
 of the engine repository): `project.ogt`, `src/`, `assets/`, `tests/`,
@@ -52,7 +52,7 @@ LFS too. `bun run test` scaffolds into a
 temporary directory and checks the result.
 
 Note on the name: npm maps `npm create @origingame/game` to the package
-`@origingame/create-game` and `npm create @origingame` to `@origingame/create`.
-This package is `@origingame/create` (design §9); publishing it also as
+`@origingame/create-game` and `npm create @origingame` to `@origingame/create-game`.
+This package is `@origingame/create-game` (design §9); publishing it also as
 `@origingame/create-game`, or documenting `npm create @origingame`, is the
 publisher's choice.

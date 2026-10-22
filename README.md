@@ -10,9 +10,25 @@ Status (2026-10-22): **features of phases 1 to 3 landed, optimisation
 deferred, release pipeline next** (`docs/design.md` §11, the record in
 `docs/phase-1.md`, the path to a published version and what remains to
 launch in `docs/release.md`). The platform-side execution package is
-`origingame/goals/origin-engine/plan.md`. The packages are not on npm yet:
-until `0.1.0` is published, a project outside this repository runs with
+`origingame/goals/origin-engine/plan.md`. Until `0.1.0` is on npm
+(`scripts/release.sh publish`), a project outside this repository runs with
 `OG_ENGINE_PACKAGE=<checkout>/packages/engine`.
+
+## Install
+
+```sh
+npm create @origingame/game my-game       # or: bun create @origingame/game my-game; --archetype runner, --premise "one line"
+cd my-game && bun install                 # @origingame/engine, this platform's og and addon, tsrs
+bunx og doctor && bunx og test . && bunx og dev .
+```
+
+`@origingame/engine` (the API, the runtime, both web hosts, the shell),
+`@origingame/engine-darwin-arm64` and `@origingame/engine-linux-x64` (the
+native addon and `og`), `@origingame/create-game` (the template and the
+archetypes) and `@origingame/engine-knowledge` (the skills and the wiki)
+are published together at one version (`docs/release.md`). Nothing else is
+needed: no Rust, no checkout. Windows and linux-arm64 have no prebuilt
+`og` yet.
 
 ## What it is, in one paragraph
 

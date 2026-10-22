@@ -4,3 +4,4 @@ tools/bench/node_modules/
 .spike-out/
 .DS_Store
 .amp/portals/*
+/dist/

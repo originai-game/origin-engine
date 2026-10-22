@@ -9,11 +9,15 @@
 #   scripts/wave-end.sh [--dry-run] [--stages LIST] [--templates LIST] [--record NAMES]
 #
 # Stages, in order (--stages takes a comma list of them; default
-# gate,web,conformance):
+# gate,web,conformance,release):
 #   gate       scripts/check.sh --all
 #   web        scripts/check.sh web-reference
 #   conformance scripts/tsrs-diff.sh: tsrs misses no diagnostic tsgo reports
 #              on the engine, the templates, the examples and the corpus
+#   release    scripts/release.sh pack, then verify: the five packages as
+#              release tarballs in dist/release/<version>/ and the install
+#              test from them on this machine and in the linux-x64 container
+#              (docs/release.md §3); what passes here is what publish ships
 #   cross      cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31:
 #              og-tests' og-gfx, og-ui's GPU test binaries and og-host-node,
 #              the addon copied to packages/engine/native/origin-engine.linux-x64.node
@@ -56,9 +60,9 @@ cd "$OG_ROOT" || exit 1
 
 IMAGE="${OG_LAVAPIPE_IMAGE:-og-lavapipe-bun:local}"
 TRIPLE=x86_64-unknown-linux-gnu
-ALL_STAGES="gate web conformance cross prepare gfx ui playtests table"
+ALL_STAGES="gate web conformance release cross prepare gfx ui playtests table"
 UI_TESTS="gfx kit_gfx materials_gfx text_gfx"
-stages="gate web conformance"
+stages="gate web conformance release"
 templates="ui-kit"
 for d in templates/*/references/metal templates/archetypes/*/references/metal examples/*/references/metal; do
   [ -d "$d" ] && templates="$templates $(basename "$(dirname "$(dirname "$d")")")"
@@ -133,6 +137,8 @@ stage_gate() { run scripts/check.sh --all; }
 stage_web() { run scripts/check.sh web-reference; }
 
 stage_conformance() { run scripts/tsrs-diff.sh; }
+
+stage_release() { run scripts/release.sh pack && run scripts/release.sh verify; }
 
 stage_cross() {
   local t tests=()

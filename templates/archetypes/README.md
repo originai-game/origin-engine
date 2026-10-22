@@ -81,7 +81,7 @@ commands its playtests use and what a Maker changes first.
 
 ## Scaffolding one
 
-`@origingame/create` scaffolds `templates/game`, or an archetype with
+`@origingame/create-game` scaffolds `templates/game`, or an archetype with
 `--archetype <directory>`:
 
 ```sh

@@ -1,7 +1,7 @@
 // Writes or checks scaffold/distribution.json: the project template's binary
 // files (models, textures, audio, fonts) with their sizes, digests and
 // licences. The platform's scaffold payload is UTF-8 text only, so binaries
-// travel from the engine distribution (the published @origingame/create
+// travel from the engine distribution (the published @origingame/create-game
 // template) and are verified against these digests, as the platform's
 // game-scaffold/origin-engine/distribution.json does for its overlay.
 //
@@ -38,12 +38,12 @@ export function distribution(template: string): string {
       bytes: f.bytes.length,
       sha256: sha256(f.bytes),
       licence: lic.get(f.rel) ?? "unrecorded: add it to the template's LICENSES.md",
-      source: `templates/game/${f.rel} of origingame/origin-engine; shipped in @origingame/create's template/`,
+      source: `templates/game/${f.rel} of origingame/origin-engine; shipped in @origingame/create-game's template/`,
     }));
   return `${JSON.stringify(
     {
       schema: 1,
-      about: "Binary files of the Origin Engine project template that a scaffolded Game needs but that are not knowledge text. The scaffolder copies them from the published template (@origingame/create) and verifies each digest.",
+      about: "Binary files of the Origin Engine project template that a scaffolded Game needs but that are not knowledge text. The scaffolder copies them from the published template (@origingame/create-game) and verifies each digest.",
       files,
     },
     null,
