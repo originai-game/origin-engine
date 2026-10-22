@@ -159,12 +159,18 @@ refuses a `native/` that is not release; `publish` refuses when `verify`
 has not passed on these tarballs (`manifest.json` records it), when the
 working tree is dirty, or when `main` is not at the commit the tarballs
 were built from. It needs the owner's `npm login` (the `@origingame`
-scope; 2FA) once per machine. Publishing is an outward action: it runs
-only by hand. **Where (the owner, 2026-10-23):** every publish runs on
-the `macrunner` runner (`/Volumes/app/origin-engine`, the owner's npm
-login), by the Mac's thread, from a `main` the metal functional lane
-has passed; the orb then runs `verify --registry` and, when the one
-InstaBox machine is free, `verify --registry --instabox` (D4).
+scope; 2FA) once per machine, or the project secret `NPM_TOKEN` (a
+granular access token with 2FA bypass, the owner's, 2026-10-23), which
+`publish` reads through a temporary `NPM_CONFIG_USERCONFIG` without
+touching `~/.npmrc`. Publishing is an outward action: it runs only by
+hand. **Where (the owner, 2026-10-23):** a publish runs on the
+`macrunner` runner (`/Volumes/app/origin-engine`) by the Mac's thread,
+or from the coordinator orb with `NPM_TOKEN` on the Mac's verified
+tarballs (0.2.0 went that way after npm's browser 2FA flow failed on the
+Mac), from a `main` the metal functional lane has passed; the orb then
+runs `verify --registry` (its host half; the orb has no docker daemon, so
+the container pass is the tarballs' one) and, when the one InstaBox
+machine is free, `verify --registry --instabox` (D4).
 
 **The install test** (`tests/install/`, bun; §4 row R4) is what `verify`
 runs, on this machine (darwin-arm64) and in a `node:22-bookworm-slim`
@@ -234,7 +240,7 @@ evidence/` (platform).
 | R5 | **Done 2026-10-22** (the `pin` line; the rest was there). `og doctor` and `og --version` outside a checkout: the package's version, the addon's, the wasm files, tsrs, the renderer, bun; inside a checkout the toolchain lines as today | the doctor's output in the container and on this machine differ only in the renderer line |
 | R6 | The template's two models (`trickster.glb`, `dropship.glb`, copied from `origingame-examples`): `dropship.glb` is MIT (the `core-business` example's `LICENSE`, named in `templates/game/LICENSES.md` now); `trickster.glb` came from `edg-king-match`, which declares no licence, so the template's `trickster` entity is an instance of the CC0 `walker.glb` since 2026-10-22 and the file left the template. `@origingame/create-game` ships nothing whose licence is not named. The engine's test copy (`crates/og-tests/assets/`, `templates/fx-showcase`) is not in any package; **the owner's word 2026-10-23: the repository's copies stay** | done: `LICENSES.md` of the template names a licence for every binary; `distribution.json` regenerated; the test copies stay in the public repository (owner, 2026-10-23) |
 | R7 | **Done 2026-10-22**, the URL moved to `originai-game/origin-engine` 2026-10-23 (where the code is since GitHub's move; the old name redirects). Package metadata: `repository.url` names the repository the packages are built from; `homepage`, `bugs`; the README's install section (`bun add`, `npm create`, the three commands) | `npm pack --dry-run` lists what §2 says and nothing else; the README's lines run as written |
-| R8 | **Done 2026-10-22**, 0.1.0 then 0.1.1 the same day (`tests/evidence/release/0.1.0.md`, `0.1.1.md`; 0.1.1: the `.gitignore` npm drops from tarballs, stored as `gitignore`) ( the four packages on npm, `verify --registry` passing on darwin-arm64 and in the linux-x64 container; npm's staged publishing held the darwin package back for ten minutes, see the evidence). Publish 0.1.0 (owner: `npm login`, the `@origingame` scope); `release.sh verify --registry`; tag `v0.1.0` | `npm view @origingame/engine version` answers `0.1.0`; `npm create @origingame/game` in an empty directory on a machine without this checkout runs `og test`; evidence `tests/evidence/release/0.1.0.md` |
+| R8 | **Done 2026-10-22**, 0.1.0 then 0.1.1 the same day (`tests/evidence/release/0.1.0.md`, `0.1.1.md`; 0.1.1: the `.gitignore` npm drops from tarballs, stored as `gitignore`) ( the four packages on npm, `verify --registry` passing on darwin-arm64 and in the linux-x64 container; npm's staged publishing held the darwin package back for ten minutes, see the evidence). **0.2.0 published 2026-10-23** from the coordinator orb with the owner's `NPM_TOKEN` after the Mac's browser 2FA flow failed (`0.2.0.md`): `verify --registry` passing on darwin-arm64 (Metal) and on the orb's linux-x64 (lavapipe); staged publishing took 4 to 8 minutes per package. Publish 0.1.0 (owner: `npm login`, the `@origingame` scope); `release.sh verify --registry`; tag `v0.1.0` | `npm view @origingame/engine version` answers `0.1.0`; `npm create @origingame/game` in an empty directory on a machine without this checkout runs `og test`; evidence `tests/evidence/release/0.1.0.md` |
 
 ### L. The local loop on the platform (platform repository; after R8)
 
@@ -259,7 +265,7 @@ which lists what the machine must carry. Nothing here waits on E2B.
 | D1 | **Done 2026-10-23** (platform main 2c2d5c06, `goals/origin-engine/evidence/instabox-0.1.1.md`). The platform's `instabox` provider beside `e2b` (`agent-server/src/sandbox/`): create from a snapshot or template, run, files, pause and resume, delete, the port URL; the same `Sandbox` interface the runner already speaks, no engine-specific member | agent-server's sandbox tests pass on the `instabox` provider against the real account (the free plan's one machine, serially); a thread on it runs `og doctor` |
 | D2 | **Done 2026-10-23** (platform main 2c2d5c06, `goals/origin-engine/evidence/instabox-0.1.1.md`). Per-class snapshots that install the pinned version (`agent-server/scripts/instabox/`: from `agent-browser`, bun 1.4.2, `bun install` of the engine and create-game with `optionalDependencies`, ffmpeg for `probe`; no renderer, no checkout, no Rust, no credential left in the image), rebuilt only when `origin-engine.json` moves; a checker that is `check-templates.ts` for InstaBox | the checker passes on the snapshot of the pinned version; its receipt in `origingame/goals/origin-engine/evidence/instabox-<version>.md` |
 | D3 | **Done 2026-10-23** (platform main 2c2d5c06, `goals/origin-engine/evidence/instabox-0.1.1.md`). The development routing: `sandbox.provider.<class>` names `instabox` for the development stage's classes and `e2b` for production's, in the runtime configuration, never in code; the runner reconnects after a machine's auto-pause (thirty idle minutes on every plan) | a development thread on `engine` lands in an InstaBox machine, a production thread in E2B, with no change to the engine package |
-| D4 | **Done for 0.1.1** (`tests/evidence/release/instabox-0.1.1.md`). The install test in an InstaBox machine at every published version (`release.sh verify --registry --instabox`) | `verified.instabox` in the manifest of every version from 0.1.1 on |
+| D4 | **Done for 0.1.1** (`tests/evidence/release/instabox-0.1.1.md`) **and 0.2.0** (`0.2.0.md`: 20 s on a fresh machine from the registry, deleted after). The install test in an InstaBox machine at every published version (`release.sh verify --registry --instabox`) | `verified.instabox` in the manifest of every version from 0.1.1 on |
 | D5 | **M7 acceptance in the sandbox**: L5's prototype, made by a thread in an InstaBox machine from D2's snapshot | the receipt in `evidence/m7-instabox-0.1.x.json`; the published page passes `engine-page.ts` |
 
 ### F. The features still owed (engine repository; beside R and L)
