@@ -76,7 +76,7 @@ else
 EOF
     configs+=("$w/tsconfig.json")
   done
-  for e in brasswick hollowbell kestrel-stair lantern-vale meridian-loop; do configs+=("examples/$e/tsconfig.json"); done
+  for e in brasswick hollowbell kestrel-stair lantern-vale meridian-loop rumpus-isle; do configs+=("examples/$e/tsconfig.json"); done
   configs+=(scripts/tsrs-corpus/tsconfig.json)
 fi
 

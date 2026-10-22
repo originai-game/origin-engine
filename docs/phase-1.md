@@ -208,6 +208,30 @@ later. `results` shows total time instead of points, with updated lap
 records and a later capture. Both affected suites then reproduced all
 eleven recorded frames at RMSE 0. No Brasswick reference changed.
 
+**F1, the third (dogfood-7, Rumpus Isle, merged 7aa1b801 the same
+day):** the stream's thread stopped on the model's usage limit with its
+commits unpushed; the coordinator recovered every file it changed from
+the thread's Changes capture onto `origin/dogfood-7` (90f8750f) and a
+second thread finished it from there (117e27a8). The sixth dogfood game
+is `examples/rumpus-isle`: a local-multiplayer party game (four seats,
+lobby, berry, bump and crumble rounds, a podium), 40 assets made by
+`tools/make-assets.ts`, nine playtests (216 checks) passing with eleven
+frames unchecked in the orb, `og polish` taste 100 and feel 93.
+`FINDINGS.md` has fourteen findings (no blocker, four annoyances, ten
+nits), each with its encounter, workaround and proposed fix: fixed in
+the stream, #14 (`og test --filter <path>`, 8dfd2416, the regression
+failing on the old CLI) and the knowledge notes for #7, #9, #10 and
+#12 (baf28bfe); left as proposed engine work, #1 profile-aware look
+ranking, #2 typed Font and Skin field factories, #3 `worldToScreen`
+name-tag guidance, #4 the reserved command names, #5 the colon syntax
+with several arguments, #6 named-output collisions, #8 `dump` of vector
+arrays, #9 a contact-time velocity or impulse on the collision event
+(both physics backends, the reflected event, host parity), #11 f32 and
+JSON precision, #13 polish advice aligned with its three-of-four rule.
+Owed to the Mac: Rumpus Isle's eleven reference frames recorded and
+inspected on metal (none exist yet; the orb's lavapipe captures were
+inspected for five frames only).
+
 **Wave-end figures (waves 12 and 13 so far, the measure worktree at
 d56f3490, after the shadow-flags merge; no lavapipe run and no Chrome
 benchmarks, both set aside on 2026-10-22):**
