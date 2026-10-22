@@ -80,6 +80,579 @@ module math {
     field origin Vector3 "Where the ray starts."
     field direction Vector3 "The unit direction the ray points in."
   }
+
+  struct Box3 {
+    doc "An axis-aligned box, as three.js Box3. A box whose min exceeds its max on an axis is empty (box3.empty() makes one: min +Infinity, max -Infinity)."
+    field min Vector3 "The lower corner."
+    field max Vector3 "The upper corner."
+  }
+
+  struct Sphere {
+    doc "A sphere, as three.js Sphere. A negative radius is empty."
+    field center Vector3 "The centre."
+    field radius f32 "The radius." {
+      unit m
+    }
+  }
+
+  struct Plane {
+    doc "A plane, as three.js Plane: the points p with dot(normal, p) + constant = 0; normal is unit length, and the positive side is where it points."
+    field normal Vector3 "The unit normal."
+    field constant f32 "The signed distance from the origin to the plane, negated along the normal (three.js Plane.constant)." {
+      unit m
+    }
+  }
+
+  struct Frustum {
+    doc "A view volume, as three.js Frustum: six planes whose normals point inwards (right, left, bottom, top, far, near, three.js's order). frustum.fromCamera and frustum.fromProjectionMatrix make one."
+    field planes List.Plane "The six planes, normals inwards."
+  }
+
+  interface Vector3Math {
+    doc "Pure functions over Vector3, as three.js Vector3's methods of the same names: each returns a new value and changes none of its arguments. The value `vec3`: `vec3.add(a, b)`."
+    doc "No member reads Math.sin, Math.pow or the clock: results are the same bits on every host, so a system may store them in world state."
+    fn add {
+      doc "a + b, as three.js Vector3.addVectors."
+      host false
+      param a Vector3 "The first vector."
+      param b Vector3 "The second vector."
+      returns Vector3
+    }
+    fn sub {
+      doc "a - b, as three.js Vector3.subVectors."
+      host false
+      param a Vector3 "The vector subtracted from."
+      param b Vector3 "The vector subtracted."
+      returns Vector3
+    }
+    fn scale {
+      doc "v * s, as three.js Vector3.multiplyScalar."
+      host false
+      param v Vector3 "The vector."
+      param s f32 "The factor."
+      returns Vector3
+    }
+    fn dot {
+      doc "The dot product, as three.js Vector3.dot."
+      host false
+      param a Vector3 "The first vector."
+      param b Vector3 "The second vector."
+      returns f32
+    }
+    fn cross {
+      doc "The cross product a x b (right-handed), as three.js Vector3.crossVectors."
+      host false
+      param a Vector3 "The first vector."
+      param b Vector3 "The second vector."
+      returns Vector3
+    }
+    fn length {
+      doc "The Euclidean length, as three.js Vector3.length."
+      host false
+      param v Vector3 "The vector."
+      returns f32
+    }
+    fn normalize {
+      doc "The unit vector along v, as three.js Vector3.normalize; the zero vector stays zero."
+      host false
+      param v Vector3 "The vector."
+      returns Vector3
+    }
+    fn lerp {
+      doc "a + (b - a) * t, as three.js Vector3.lerpVectors."
+      host false
+      param a Vector3 "The value at t = 0."
+      param b Vector3 "The value at t = 1."
+      param t f32 "The fraction (not clamped)."
+      returns Vector3
+    }
+    fn distance {
+      doc "The distance between two points, as three.js Vector3.distanceTo."
+      host false
+      param a Vector3 "The first point."
+      param b Vector3 "The second point."
+      returns f32
+    }
+    fn applyQuaternion {
+      doc "v rotated by q, as three.js Vector3.applyQuaternion."
+      host false
+      param v Vector3 "The vector."
+      param q Quaternion "The unit quaternion."
+      returns Vector3
+    }
+  }
+
+  interface Vector2Math {
+    doc "Pure functions over Vector2, as three.js Vector2's methods of the same names, each returning a new value. The value `vec2`: `vec2.add(a, b)`. The same bits on every host."
+    fn add {
+      doc "a + b, as three.js Vector2.addVectors."
+      host false
+      param a Vector2 "The first vector."
+      param b Vector2 "The second vector."
+      returns Vector2
+    }
+    fn sub {
+      doc "a - b, as three.js Vector2.subVectors."
+      host false
+      param a Vector2 "The vector subtracted from."
+      param b Vector2 "The vector subtracted."
+      returns Vector2
+    }
+    fn scale {
+      doc "v * s, as three.js Vector2.multiplyScalar."
+      host false
+      param v Vector2 "The vector."
+      param s f32 "The factor."
+      returns Vector2
+    }
+    fn dot {
+      doc "The dot product, as three.js Vector2.dot."
+      host false
+      param a Vector2 "The first vector."
+      param b Vector2 "The second vector."
+      returns f32
+    }
+    fn cross {
+      doc "The 2D cross product a.x * b.y - a.y * b.x (the z of the 3D cross product), as three.js Vector2.cross: positive when b is counter-clockwise of a."
+      host false
+      param a Vector2 "The first vector."
+      param b Vector2 "The second vector."
+      returns f32
+    }
+    fn length {
+      doc "The Euclidean length, as three.js Vector2.length."
+      host false
+      param v Vector2 "The vector."
+      returns f32
+    }
+    fn normalize {
+      doc "The unit vector along v, as three.js Vector2.normalize; the zero vector stays zero."
+      host false
+      param v Vector2 "The vector."
+      returns Vector2
+    }
+    fn lerp {
+      doc "a + (b - a) * t, as three.js Vector2.lerpVectors."
+      host false
+      param a Vector2 "The value at t = 0."
+      param b Vector2 "The value at t = 1."
+      param t f32 "The fraction (not clamped)."
+      returns Vector2
+    }
+    fn distance {
+      doc "The distance between two points, as three.js Vector2.distanceTo."
+      host false
+      param a Vector2 "The first point."
+      param b Vector2 "The second point."
+      returns f32
+    }
+    fn rotateAround {
+      doc "v rotated counter-clockwise by angle about center, as three.js Vector2.rotateAround (the 2D form of applyQuaternion)."
+      host false
+      param v Vector2 "The point."
+      param center Vector2 "The pivot."
+      param angle f32 "The angle in radians, counter-clockwise."
+      returns Vector2
+    }
+  }
+
+  interface QuaternionMath {
+    doc "Pure functions over Quaternion, as three.js Quaternion's methods, each returning a new value. The value `quat`: `quat.multiply(a, b)`. The same bits on every host (trigonometry from + - * / and sqrt)."
+    fn multiply {
+      doc "a * b: b's rotation, then a's, as three.js Quaternion.multiplyQuaternions."
+      host false
+      param a Quaternion "The rotation applied second."
+      param b Quaternion "The rotation applied first."
+      returns Quaternion
+    }
+    fn slerp {
+      doc "The spherical interpolation from a to b by t along the shorter arc, as three.js Quaternion.slerpQuaternions."
+      host false
+      param a Quaternion "The value at t = 0."
+      param b Quaternion "The value at t = 1."
+      param t f32 "The fraction, 0 to 1."
+      returns Quaternion
+    }
+    fn fromEuler {
+      doc "The rotation of Euler angles, as three.js Quaternion.setFromEuler: the x, y and z of `angles` in radians, applied in `order` (three.js Euler.order, intrinsic: \"XYZ\" turns about x, then the turned y, then the turned z)."
+      host false
+      param angles Vector3 "The angles about x, y and z, in radians."
+      param order String "\"XYZ\", \"YXZ\", \"ZXY\", \"ZYX\", \"YZX\" or \"XZY\"." {
+        default "XYZ"
+      }
+      returns Quaternion
+    }
+    fn invert {
+      doc "The inverse rotation (the conjugate of a unit quaternion), as three.js Quaternion.invert."
+      host false
+      param q Quaternion "The rotation."
+      returns Quaternion
+    }
+    fn rotate {
+      doc "The vector v turned by q: vec3.applyQuaternion(v, q), from the rotation's side."
+      host false
+      param q Quaternion "The rotation."
+      param v Vector3 "The vector."
+      returns Vector3
+    }
+  }
+
+  interface Matrix4Math {
+    doc "Pure functions over Matrix4 (column-major elements, as three.js), each returning a new value. The value `mat4`: `mat4.multiply(a, b)`."
+    fn multiply {
+      doc "a * b: b's transform, then a's, as three.js Matrix4.multiplyMatrices."
+      host false
+      param a Matrix4 "The transform applied second."
+      param b Matrix4 "The transform applied first."
+      returns Matrix4
+    }
+    fn invert {
+      doc "The inverse, as three.js Matrix4.invert; a singular matrix inverts to all zeros, as three.js."
+      host false
+      param m Matrix4 "The matrix."
+      returns Matrix4
+    }
+    fn transformPoint {
+      doc "The point p transformed by m with the perspective divide, as three.js Vector3.applyMatrix4."
+      host false
+      param m Matrix4 "The transform."
+      param p Vector3 "The point."
+      returns Vector3
+    }
+    fn transformDirection {
+      doc "The direction d turned by m's upper 3x3 and normalised, as three.js Vector3.transformDirection (translation ignored)."
+      host false
+      param m Matrix4 "The transform."
+      param d Vector3 "The direction."
+      returns Vector3
+    }
+    fn compose {
+      doc "The transform of a position, a rotation and a scale, as three.js Matrix4.compose: what og.Transform's fields make."
+      host false
+      param position Vector3 "The translation."
+      param quaternion Quaternion "The rotation."
+      param scale Vector3 "The scale."
+      returns Matrix4
+    }
+  }
+
+  interface Box3Math {
+    doc "Pure functions over Box3, as three.js Box3's methods, each returning a new value. The value `box3`."
+    fn empty {
+      doc "The empty box (min +Infinity, max -Infinity), as new three.js Box3(): expandByPoint and union grow it."
+      host false
+      returns Box3
+    }
+    fn fromPoints {
+      doc "The smallest box holding every point, as three.js Box3.setFromPoints; no points is the empty box."
+      host false
+      param points List.Vector3 "The points."
+      returns Box3
+    }
+    fn isEmpty {
+      doc "Whether the box holds no point (min above max on some axis), as three.js Box3.isEmpty."
+      host false
+      param box Box3 "The box."
+      returns bool
+    }
+    fn containsPoint {
+      doc "Whether p is inside or on the box, as three.js Box3.containsPoint."
+      host false
+      param box Box3 "The box."
+      param p Vector3 "The point."
+      returns bool
+    }
+    fn containsBox {
+      doc "Whether other lies wholly inside box, as three.js Box3.containsBox."
+      host false
+      param box Box3 "The outer box."
+      param other Box3 "The inner box."
+      returns bool
+    }
+    fn intersectsBox {
+      doc "Whether two boxes overlap or touch, as three.js Box3.intersectsBox."
+      host false
+      param a Box3 "The first box."
+      param b Box3 "The second box."
+      returns bool
+    }
+    fn intersectsSphere {
+      doc "Whether the box and the sphere overlap, as three.js Box3.intersectsSphere."
+      host false
+      param box Box3 "The box."
+      param sphere Sphere "The sphere."
+      returns bool
+    }
+    fn expandByPoint {
+      doc "The box grown to hold p, as three.js Box3.expandByPoint."
+      host false
+      param box Box3 "The box."
+      param p Vector3 "The point."
+      returns Box3
+    }
+    fn union {
+      doc "The smallest box holding both, as three.js Box3.union."
+      host false
+      param a Box3 "The first box."
+      param b Box3 "The second box."
+      returns Box3
+    }
+    fn getCenter {
+      doc "The centre, as three.js Box3.getCenter; the empty box's is the origin."
+      host false
+      param box Box3 "The box."
+      returns Vector3
+    }
+    fn getSize {
+      doc "The size along each axis, as three.js Box3.getSize; the empty box's is zero."
+      host false
+      param box Box3 "The box."
+      returns Vector3
+    }
+    fn applyMatrix4 {
+      doc "The box holding the eight corners transformed by m, as three.js Box3.applyMatrix4."
+      host false
+      param box Box3 "The box."
+      param m Matrix4 "The transform."
+      returns Box3
+    }
+  }
+
+  interface SphereMath {
+    doc "Pure functions over Sphere, as three.js Sphere's methods, each returning a new value. The value `sphere`."
+    fn fromPoints {
+      doc "A sphere around the points, as three.js Sphere.setFromPoints: centred on their bounding box's centre, with the radius of the farthest point."
+      host false
+      param points List.Vector3 "The points."
+      returns Sphere
+    }
+    fn containsPoint {
+      doc "Whether p is inside or on the sphere, as three.js Sphere.containsPoint."
+      host false
+      param sphere Sphere "The sphere."
+      param p Vector3 "The point."
+      returns bool
+    }
+    fn distanceToPoint {
+      doc "The distance from the surface to p, negative inside, as three.js Sphere.distanceToPoint."
+      host false
+      param sphere Sphere "The sphere."
+      param p Vector3 "The point."
+      returns f32
+    }
+    fn intersectsSphere {
+      doc "Whether two spheres overlap or touch, as three.js Sphere.intersectsSphere."
+      host false
+      param a Sphere "The first sphere."
+      param b Sphere "The second sphere."
+      returns bool
+    }
+    fn intersectsBox {
+      doc "Whether the sphere and the box overlap, as three.js Sphere.intersectsBox."
+      host false
+      param sphere Sphere "The sphere."
+      param box Box3 "The box."
+      returns bool
+    }
+    fn getBoundingBox {
+      doc "The box around the sphere, as three.js Sphere.getBoundingBox."
+      host false
+      param sphere Sphere "The sphere."
+      returns Box3
+    }
+    fn applyMatrix4 {
+      doc "The sphere transformed by m (its radius by m's largest axis scale), as three.js Sphere.applyMatrix4."
+      host false
+      param sphere Sphere "The sphere."
+      param m Matrix4 "The transform."
+      returns Sphere
+    }
+  }
+
+  interface PlaneMath {
+    doc "Pure functions over Plane, as three.js Plane's methods, each returning a new value. The value `plane`."
+    fn fromNormalAndCoplanarPoint {
+      doc "The plane through p with the normal n (normalised), as three.js Plane.setFromNormalAndCoplanarPoint."
+      host false
+      param n Vector3 "The normal."
+      param p Vector3 "A point on the plane."
+      returns Plane
+    }
+    fn fromCoplanarPoints {
+      doc "The plane through a, b and c, its normal (b - a) x (c - a) normalised (counter-clockwise points face you), as three.js Plane.setFromCoplanarPoints."
+      host false
+      param a Vector3 "The first point."
+      param b Vector3 "The second point."
+      param c Vector3 "The third point."
+      returns Plane
+    }
+    fn normalize {
+      doc "The same plane with a unit normal, as three.js Plane.normalize."
+      host false
+      param plane Plane "The plane."
+      returns Plane
+    }
+    fn distanceToPoint {
+      doc "The signed distance from the plane to p, positive on the normal's side, as three.js Plane.distanceToPoint."
+      host false
+      param plane Plane "The plane."
+      param p Vector3 "The point."
+      returns f32
+    }
+    fn projectPoint {
+      doc "The point of the plane nearest p, as three.js Plane.projectPoint."
+      host false
+      param plane Plane "The plane."
+      param p Vector3 "The point."
+      returns Vector3
+    }
+    fn intersectsBox {
+      doc "Whether the plane passes through the box, as three.js Plane.intersectsBox."
+      host false
+      param plane Plane "The plane."
+      param box Box3 "The box."
+      returns bool
+    }
+    fn intersectsSphere {
+      doc "Whether the plane passes through the sphere, as three.js Plane.intersectsSphere."
+      host false
+      param plane Plane "The plane."
+      param sphere Sphere "The sphere."
+      returns bool
+    }
+  }
+
+  interface FrustumMath {
+    doc "Pure functions over Frustum, as three.js Frustum's methods. The value `frustum`: `frustum.intersectsBox(frustum.fromCamera(camera, 16 / 9), box)` culls as the renderer would."
+    fn fromProjectionMatrix {
+      doc "The frustum of a view-projection matrix (projection * inverse camera world), as three.js Frustum.setFromProjectionMatrix (WebGL clip space, z from -1 to 1)."
+      host false
+      param m Matrix4 "The view-projection matrix."
+      returns Frustum
+    }
+    fn fromCamera {
+      doc "The frustum og.Camera sees at an aspect ratio (width over height): its perspective projection (fov, near, far, zoom) or orthographic one (height, zoom), from its position and quaternion; shake, punch and kick, which are visual only, are left out."
+      host false
+      param camera Camera "The og.Camera resource's value (world.resource(og.Camera))."
+      param aspect f32 "The view's width over its height."
+      returns Frustum
+    }
+    fn containsPoint {
+      doc "Whether p is inside the frustum, as three.js Frustum.containsPoint."
+      host false
+      param frustum Frustum "The frustum."
+      param p Vector3 "The point."
+      returns bool
+    }
+    fn intersectsBox {
+      doc "Whether the box is at least partly inside, as three.js Frustum.intersectsBox (conservative near the corners, as three.js)."
+      host false
+      param frustum Frustum "The frustum."
+      param box Box3 "The box."
+      returns bool
+    }
+    fn intersectsSphere {
+      doc "Whether the sphere is at least partly inside, as three.js Frustum.intersectsSphere."
+      host false
+      param frustum Frustum "The frustum."
+      param sphere Sphere "The sphere."
+      returns bool
+    }
+  }
+
+  interface RayMath {
+    doc "Pure functions over Ray, as three.js Ray's methods. The value `ray`. Each intersection answers the nearest point at or after the origin, or null."
+    fn at {
+      doc "The point t along the ray, as three.js Ray.at."
+      host false
+      param ray Ray "The ray."
+      param t f32 "The distance along the direction, in metres."
+      returns Vector3
+    }
+    fn distanceToPoint {
+      doc "The distance from p to the nearest point of the ray, as three.js Ray.distanceToPoint."
+      host false
+      param ray Ray "The ray."
+      param p Vector3 "The point."
+      returns f32
+    }
+    fn intersectBox {
+      doc "Where the ray enters the box (where it leaves, when it starts inside), as three.js Ray.intersectBox."
+      host false
+      param ray Ray "The ray."
+      param box Box3 "The box."
+      returns Option.Vector3
+    }
+    fn intersectSphere {
+      doc "Where the ray meets the sphere (where it leaves, when it starts inside), as three.js Ray.intersectSphere."
+      host false
+      param ray Ray "The ray."
+      param sphere Sphere "The sphere."
+      returns Option.Vector3
+    }
+    fn intersectPlane {
+      doc "Where the ray meets the plane (its origin when it lies in the plane), as three.js Ray.intersectPlane; null when parallel or pointing away."
+      host false
+      param ray Ray "The ray."
+      param plane Plane "The plane."
+      returns Option.Vector3
+    }
+    fn intersectTriangle {
+      doc "Where the ray meets the triangle a, b, c, as three.js Ray.intersectTriangle; with backfaceCulling a triangle facing away (clockwise from the origin) is missed."
+      host false
+      param ray Ray "The ray."
+      param a Vector3 "The first corner."
+      param b Vector3 "The second corner."
+      param c Vector3 "The third corner."
+      param backfaceCulling bool "Miss triangles facing away." {
+        default false
+      }
+      returns Option.Vector3
+    }
+  }
+
+  interface ColorMath {
+    doc "Pure functions over Color (linear RGB), as three.js Color's methods with colour management on: hex and HSL are sRGB, converted to and from linear as three.js does. The value `color`: `color.fromHex(0xff8800)`. The same bits on every host (no Math.pow)."
+    fn fromHex {
+      doc "The linear colour of an sRGB hex number, as new three.js Color(0xrrggbb)."
+      host false
+      param hex u32 "0xrrggbb, sRGB."
+      returns Color
+    }
+    fn toHex {
+      doc "The sRGB hex number of a linear colour, each channel clamped to 0..1 and rounded, as three.js Color.getHex."
+      host false
+      param c Color "The colour."
+      returns u32
+    }
+    fn lerp {
+      doc "a + (b - a) * t in linear RGB, as three.js Color.lerpColors."
+      host false
+      param a Color "The value at t = 0."
+      param b Color "The value at t = 1."
+      param t f32 "The fraction."
+      returns Color
+    }
+    fn fromHsl {
+      doc "The linear colour of sRGB hue, saturation and lightness, as three.js Color.setHSL (hue wraps, saturation and lightness clamp to 0..1)."
+      host false
+      param h f32 "The hue, 0 to 1 around the wheel (0 red, 1/3 green, 2/3 blue)."
+      param s f32 "The saturation, 0 to 1."
+      param l f32 "The lightness, 0 to 1."
+      returns Color
+    }
+  }
+
+  value vec3 Vector3Math "Vector3's pure functions: `vec3.add(a, b)`, `vec3.normalize(v)`, `vec3.applyQuaternion(v, q)`."
+  value vec2 Vector2Math "Vector2's pure functions: `vec2.add(a, b)`, `vec2.rotateAround(v, c, angle)`."
+  value quat QuaternionMath "Quaternion's pure functions: `quat.multiply(a, b)`, `quat.slerp(a, b, t)`, `quat.fromEuler({ x, y, z })`."
+  value mat4 Matrix4Math "Matrix4's pure functions: `mat4.multiply(a, b)`, `mat4.invert(m)`, `mat4.transformPoint(m, p)`."
+  value box3 Box3Math "Box3's pure functions: `box3.fromPoints(points)`, `box3.intersectsBox(a, b)`."
+  value sphere SphereMath "Sphere's pure functions: `sphere.containsPoint(s, p)`."
+  value plane PlaneMath "Plane's pure functions: `plane.distanceToPoint(pl, p)`."
+  value frustum FrustumMath "Frustum's pure functions: `frustum.fromCamera(camera, aspect)`, `frustum.intersectsBox(f, box)`."
+  value ray RayMath "Ray's pure functions: `ray.intersectBox(r, box)`, `ray.intersectTriangle(r, a, b, c)`."
+  value color ColorMath "Color's pure functions: `color.fromHex(0xff8800)`, `color.toHex(c)`, `color.fromHsl(h, s, l)`."
 }
 
 # ── reflect ───────────────────────────────────────────────────────────────

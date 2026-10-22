@@ -30,6 +30,9 @@ import { path, stream, terrain, timeline } from "./p2.ts";
 import { debug, depthRender } from "./depth.ts";
 import { uiKit } from "./ui-kit/index.ts";
 
+// The math layer (IDL `math`): three.js's methods as pure functions over the plain structs.
+export { vec3, vec2, quat, mat4, box3, sphere, plane, frustum, ray, color } from "./math.ts";
+
 const spec = (kind: string, value: unknown, options: unknown): FieldSpec =>
   Object.freeze({ kind, default: value, options: Object.freeze({ ...((options as object | undefined) ?? {}) }) });
 

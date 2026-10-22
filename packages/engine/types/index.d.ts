@@ -254,6 +254,640 @@ export interface Ray {
   readonly direction: Vector3;
 }
 
+/**
+ * An axis-aligned box, as three.js Box3. A box whose min exceeds its max on an axis is empty (box3.empty() makes one: min +Infinity, max -Infinity).
+ */
+export interface Box3 {
+  /** The lower corner. */
+  readonly min: Vector3;
+  /** The upper corner. */
+  readonly max: Vector3;
+}
+
+/** A sphere, as three.js Sphere. A negative radius is empty. */
+export interface Sphere {
+  /** The centre. */
+  readonly center: Vector3;
+  /**
+   * The radius.
+   *
+   * @unit m (metres)
+   */
+  readonly radius: number;
+}
+
+/**
+ * A plane, as three.js Plane: the points p with dot(normal, p) + constant = 0; normal is unit length, and the positive side is where it points.
+ */
+export interface Plane {
+  /** The unit normal. */
+  readonly normal: Vector3;
+  /**
+   * The signed distance from the origin to the plane, negated along the normal (three.js Plane.constant).
+   *
+   * @unit m (metres)
+   */
+  readonly constant: number;
+}
+
+/**
+ * A view volume, as three.js Frustum: six planes whose normals point inwards (right, left, bottom, top, far, near, three.js's order). frustum.fromCamera and frustum.fromProjectionMatrix make one.
+ */
+export interface Frustum {
+  /** The six planes, normals inwards. */
+  readonly planes: readonly Plane[];
+}
+
+/**
+ * Pure functions over Vector3, as three.js Vector3's methods of the same names: each returns a new value and changes none of its arguments. The value `vec3`: `vec3.add(a, b)`.
+ * No member reads Math.sin, Math.pow or the clock: results are the same bits on every host, so a system may store them in world state.
+ */
+export interface Vector3Math {
+  /**
+   * a + b, as three.js Vector3.addVectors.
+   *
+   * @param a The first vector.
+   * @param b The second vector.
+   */
+  add(a: Vector3, b: Vector3): Vector3;
+  /**
+   * a - b, as three.js Vector3.subVectors.
+   *
+   * @param a The vector subtracted from.
+   * @param b The vector subtracted.
+   */
+  sub(a: Vector3, b: Vector3): Vector3;
+  /**
+   * v * s, as three.js Vector3.multiplyScalar.
+   *
+   * @param v The vector.
+   * @param s The factor.
+   */
+  scale(v: Vector3, s: number): Vector3;
+  /**
+   * The dot product, as three.js Vector3.dot.
+   *
+   * @param a The first vector.
+   * @param b The second vector.
+   */
+  dot(a: Vector3, b: Vector3): number;
+  /**
+   * The cross product a x b (right-handed), as three.js Vector3.crossVectors.
+   *
+   * @param a The first vector.
+   * @param b The second vector.
+   */
+  cross(a: Vector3, b: Vector3): Vector3;
+  /**
+   * The Euclidean length, as three.js Vector3.length.
+   *
+   * @param v The vector.
+   */
+  length(v: Vector3): number;
+  /**
+   * The unit vector along v, as three.js Vector3.normalize; the zero vector stays zero.
+   *
+   * @param v The vector.
+   */
+  normalize(v: Vector3): Vector3;
+  /**
+   * a + (b - a) * t, as three.js Vector3.lerpVectors.
+   *
+   * @param a The value at t = 0.
+   * @param b The value at t = 1.
+   * @param t The fraction (not clamped).
+   */
+  lerp(a: Vector3, b: Vector3, t: number): Vector3;
+  /**
+   * The distance between two points, as three.js Vector3.distanceTo.
+   *
+   * @param a The first point.
+   * @param b The second point.
+   */
+  distance(a: Vector3, b: Vector3): number;
+  /**
+   * v rotated by q, as three.js Vector3.applyQuaternion.
+   *
+   * @param v The vector.
+   * @param q The unit quaternion.
+   */
+  applyQuaternion(v: Vector3, q: Quaternion): Vector3;
+}
+
+/**
+ * Pure functions over Vector2, as three.js Vector2's methods of the same names, each returning a new value. The value `vec2`: `vec2.add(a, b)`. The same bits on every host.
+ */
+export interface Vector2Math {
+  /**
+   * a + b, as three.js Vector2.addVectors.
+   *
+   * @param a The first vector.
+   * @param b The second vector.
+   */
+  add(a: Vector2, b: Vector2): Vector2;
+  /**
+   * a - b, as three.js Vector2.subVectors.
+   *
+   * @param a The vector subtracted from.
+   * @param b The vector subtracted.
+   */
+  sub(a: Vector2, b: Vector2): Vector2;
+  /**
+   * v * s, as three.js Vector2.multiplyScalar.
+   *
+   * @param v The vector.
+   * @param s The factor.
+   */
+  scale(v: Vector2, s: number): Vector2;
+  /**
+   * The dot product, as three.js Vector2.dot.
+   *
+   * @param a The first vector.
+   * @param b The second vector.
+   */
+  dot(a: Vector2, b: Vector2): number;
+  /**
+   * The 2D cross product a.x * b.y - a.y * b.x (the z of the 3D cross product), as three.js Vector2.cross: positive when b is counter-clockwise of a.
+   *
+   * @param a The first vector.
+   * @param b The second vector.
+   */
+  cross(a: Vector2, b: Vector2): number;
+  /**
+   * The Euclidean length, as three.js Vector2.length.
+   *
+   * @param v The vector.
+   */
+  length(v: Vector2): number;
+  /**
+   * The unit vector along v, as three.js Vector2.normalize; the zero vector stays zero.
+   *
+   * @param v The vector.
+   */
+  normalize(v: Vector2): Vector2;
+  /**
+   * a + (b - a) * t, as three.js Vector2.lerpVectors.
+   *
+   * @param a The value at t = 0.
+   * @param b The value at t = 1.
+   * @param t The fraction (not clamped).
+   */
+  lerp(a: Vector2, b: Vector2, t: number): Vector2;
+  /**
+   * The distance between two points, as three.js Vector2.distanceTo.
+   *
+   * @param a The first point.
+   * @param b The second point.
+   */
+  distance(a: Vector2, b: Vector2): number;
+  /**
+   * v rotated counter-clockwise by angle about center, as three.js Vector2.rotateAround (the 2D form of applyQuaternion).
+   *
+   * @param v The point.
+   * @param center The pivot.
+   * @param angle The angle in radians, counter-clockwise.
+   */
+  rotateAround(v: Vector2, center: Vector2, angle: number): Vector2;
+}
+
+/**
+ * Pure functions over Quaternion, as three.js Quaternion's methods, each returning a new value. The value `quat`: `quat.multiply(a, b)`. The same bits on every host (trigonometry from + - * / and sqrt).
+ */
+export interface QuaternionMath {
+  /**
+   * a * b: b's rotation, then a's, as three.js Quaternion.multiplyQuaternions.
+   *
+   * @param a The rotation applied second.
+   * @param b The rotation applied first.
+   */
+  multiply(a: Quaternion, b: Quaternion): Quaternion;
+  /**
+   * The spherical interpolation from a to b by t along the shorter arc, as three.js Quaternion.slerpQuaternions.
+   *
+   * @param a The value at t = 0.
+   * @param b The value at t = 1.
+   * @param t The fraction, 0 to 1.
+   */
+  slerp(a: Quaternion, b: Quaternion, t: number): Quaternion;
+  /**
+   * The rotation of Euler angles, as three.js Quaternion.setFromEuler: the x, y and z of `angles` in radians, applied in `order` (three.js Euler.order, intrinsic: "XYZ" turns about x, then the turned y, then the turned z).
+   *
+   * @param angles The angles about x, y and z, in radians.
+   * @param order "XYZ", "YXZ", "ZXY", "ZYX", "YZX" or "XZY". Default `"XYZ"`.
+   */
+  fromEuler(angles: Vector3, order?: string): Quaternion;
+  /**
+   * The inverse rotation (the conjugate of a unit quaternion), as three.js Quaternion.invert.
+   *
+   * @param q The rotation.
+   */
+  invert(q: Quaternion): Quaternion;
+  /**
+   * The vector v turned by q: vec3.applyQuaternion(v, q), from the rotation's side.
+   *
+   * @param q The rotation.
+   * @param v The vector.
+   */
+  rotate(q: Quaternion, v: Vector3): Vector3;
+}
+
+/**
+ * Pure functions over Matrix4 (column-major elements, as three.js), each returning a new value. The value `mat4`: `mat4.multiply(a, b)`.
+ */
+export interface Matrix4Math {
+  /**
+   * a * b: b's transform, then a's, as three.js Matrix4.multiplyMatrices.
+   *
+   * @param a The transform applied second.
+   * @param b The transform applied first.
+   */
+  multiply(a: Matrix4, b: Matrix4): Matrix4;
+  /**
+   * The inverse, as three.js Matrix4.invert; a singular matrix inverts to all zeros, as three.js.
+   *
+   * @param m The matrix.
+   */
+  invert(m: Matrix4): Matrix4;
+  /**
+   * The point p transformed by m with the perspective divide, as three.js Vector3.applyMatrix4.
+   *
+   * @param m The transform.
+   * @param p The point.
+   */
+  transformPoint(m: Matrix4, p: Vector3): Vector3;
+  /**
+   * The direction d turned by m's upper 3x3 and normalised, as three.js Vector3.transformDirection (translation ignored).
+   *
+   * @param m The transform.
+   * @param d The direction.
+   */
+  transformDirection(m: Matrix4, d: Vector3): Vector3;
+  /**
+   * The transform of a position, a rotation and a scale, as three.js Matrix4.compose: what og.Transform's fields make.
+   *
+   * @param position The translation.
+   * @param quaternion The rotation.
+   * @param scale The scale.
+   */
+  compose(position: Vector3, quaternion: Quaternion, scale: Vector3): Matrix4;
+}
+
+/**
+ * Pure functions over Box3, as three.js Box3's methods, each returning a new value. The value `box3`.
+ */
+export interface Box3Math {
+  /**
+   * The empty box (min +Infinity, max -Infinity), as new three.js Box3(): expandByPoint and union grow it.
+   */
+  empty(): Box3;
+  /**
+   * The smallest box holding every point, as three.js Box3.setFromPoints; no points is the empty box.
+   *
+   * @param points The points.
+   */
+  fromPoints(points: readonly Vector3[]): Box3;
+  /**
+   * Whether the box holds no point (min above max on some axis), as three.js Box3.isEmpty.
+   *
+   * @param box The box.
+   */
+  isEmpty(box: Box3): boolean;
+  /**
+   * Whether p is inside or on the box, as three.js Box3.containsPoint.
+   *
+   * @param box The box.
+   * @param p The point.
+   */
+  containsPoint(box: Box3, p: Vector3): boolean;
+  /**
+   * Whether other lies wholly inside box, as three.js Box3.containsBox.
+   *
+   * @param box The outer box.
+   * @param other The inner box.
+   */
+  containsBox(box: Box3, other: Box3): boolean;
+  /**
+   * Whether two boxes overlap or touch, as three.js Box3.intersectsBox.
+   *
+   * @param a The first box.
+   * @param b The second box.
+   */
+  intersectsBox(a: Box3, b: Box3): boolean;
+  /**
+   * Whether the box and the sphere overlap, as three.js Box3.intersectsSphere.
+   *
+   * @param box The box.
+   * @param sphere The sphere.
+   */
+  intersectsSphere(box: Box3, sphere: Sphere): boolean;
+  /**
+   * The box grown to hold p, as three.js Box3.expandByPoint.
+   *
+   * @param box The box.
+   * @param p The point.
+   */
+  expandByPoint(box: Box3, p: Vector3): Box3;
+  /**
+   * The smallest box holding both, as three.js Box3.union.
+   *
+   * @param a The first box.
+   * @param b The second box.
+   */
+  union(a: Box3, b: Box3): Box3;
+  /**
+   * The centre, as three.js Box3.getCenter; the empty box's is the origin.
+   *
+   * @param box The box.
+   */
+  getCenter(box: Box3): Vector3;
+  /**
+   * The size along each axis, as three.js Box3.getSize; the empty box's is zero.
+   *
+   * @param box The box.
+   */
+  getSize(box: Box3): Vector3;
+  /**
+   * The box holding the eight corners transformed by m, as three.js Box3.applyMatrix4.
+   *
+   * @param box The box.
+   * @param m The transform.
+   */
+  applyMatrix4(box: Box3, m: Matrix4): Box3;
+}
+
+/**
+ * Pure functions over Sphere, as three.js Sphere's methods, each returning a new value. The value `sphere`.
+ */
+export interface SphereMath {
+  /**
+   * A sphere around the points, as three.js Sphere.setFromPoints: centred on their bounding box's centre, with the radius of the farthest point.
+   *
+   * @param points The points.
+   */
+  fromPoints(points: readonly Vector3[]): Sphere;
+  /**
+   * Whether p is inside or on the sphere, as three.js Sphere.containsPoint.
+   *
+   * @param sphere The sphere.
+   * @param p The point.
+   */
+  containsPoint(sphere: Sphere, p: Vector3): boolean;
+  /**
+   * The distance from the surface to p, negative inside, as three.js Sphere.distanceToPoint.
+   *
+   * @param sphere The sphere.
+   * @param p The point.
+   */
+  distanceToPoint(sphere: Sphere, p: Vector3): number;
+  /**
+   * Whether two spheres overlap or touch, as three.js Sphere.intersectsSphere.
+   *
+   * @param a The first sphere.
+   * @param b The second sphere.
+   */
+  intersectsSphere(a: Sphere, b: Sphere): boolean;
+  /**
+   * Whether the sphere and the box overlap, as three.js Sphere.intersectsBox.
+   *
+   * @param sphere The sphere.
+   * @param box The box.
+   */
+  intersectsBox(sphere: Sphere, box: Box3): boolean;
+  /**
+   * The box around the sphere, as three.js Sphere.getBoundingBox.
+   *
+   * @param sphere The sphere.
+   */
+  getBoundingBox(sphere: Sphere): Box3;
+  /**
+   * The sphere transformed by m (its radius by m's largest axis scale), as three.js Sphere.applyMatrix4.
+   *
+   * @param sphere The sphere.
+   * @param m The transform.
+   */
+  applyMatrix4(sphere: Sphere, m: Matrix4): Sphere;
+}
+
+/**
+ * Pure functions over Plane, as three.js Plane's methods, each returning a new value. The value `plane`.
+ */
+export interface PlaneMath {
+  /**
+   * The plane through p with the normal n (normalised), as three.js Plane.setFromNormalAndCoplanarPoint.
+   *
+   * @param n The normal.
+   * @param p A point on the plane.
+   */
+  fromNormalAndCoplanarPoint(n: Vector3, p: Vector3): Plane;
+  /**
+   * The plane through a, b and c, its normal (b - a) x (c - a) normalised (counter-clockwise points face you), as three.js Plane.setFromCoplanarPoints.
+   *
+   * @param a The first point.
+   * @param b The second point.
+   * @param c The third point.
+   */
+  fromCoplanarPoints(a: Vector3, b: Vector3, c: Vector3): Plane;
+  /**
+   * The same plane with a unit normal, as three.js Plane.normalize.
+   *
+   * @param plane The plane.
+   */
+  normalize(plane: Plane): Plane;
+  /**
+   * The signed distance from the plane to p, positive on the normal's side, as three.js Plane.distanceToPoint.
+   *
+   * @param plane The plane.
+   * @param p The point.
+   */
+  distanceToPoint(plane: Plane, p: Vector3): number;
+  /**
+   * The point of the plane nearest p, as three.js Plane.projectPoint.
+   *
+   * @param plane The plane.
+   * @param p The point.
+   */
+  projectPoint(plane: Plane, p: Vector3): Vector3;
+  /**
+   * Whether the plane passes through the box, as three.js Plane.intersectsBox.
+   *
+   * @param plane The plane.
+   * @param box The box.
+   */
+  intersectsBox(plane: Plane, box: Box3): boolean;
+  /**
+   * Whether the plane passes through the sphere, as three.js Plane.intersectsSphere.
+   *
+   * @param plane The plane.
+   * @param sphere The sphere.
+   */
+  intersectsSphere(plane: Plane, sphere: Sphere): boolean;
+}
+
+/**
+ * Pure functions over Frustum, as three.js Frustum's methods. The value `frustum`: `frustum.intersectsBox(frustum.fromCamera(camera, 16 / 9), box)` culls as the renderer would.
+ */
+export interface FrustumMath {
+  /**
+   * The frustum of a view-projection matrix (projection * inverse camera world), as three.js Frustum.setFromProjectionMatrix (WebGL clip space, z from -1 to 1).
+   *
+   * @param m The view-projection matrix.
+   */
+  fromProjectionMatrix(m: Matrix4): Frustum;
+  /**
+   * The frustum og.Camera sees at an aspect ratio (width over height): its perspective projection (fov, near, far, zoom) or orthographic one (height, zoom), from its position and quaternion; shake, punch and kick, which are visual only, are left out.
+   *
+   * @param camera The og.Camera resource's value (world.resource(og.Camera)).
+   * @param aspect The view's width over its height.
+   */
+  fromCamera(camera: Camera, aspect: number): Frustum;
+  /**
+   * Whether p is inside the frustum, as three.js Frustum.containsPoint.
+   *
+   * @param frustum The frustum.
+   * @param p The point.
+   */
+  containsPoint(frustum: Frustum, p: Vector3): boolean;
+  /**
+   * Whether the box is at least partly inside, as three.js Frustum.intersectsBox (conservative near the corners, as three.js).
+   *
+   * @param frustum The frustum.
+   * @param box The box.
+   */
+  intersectsBox(frustum: Frustum, box: Box3): boolean;
+  /**
+   * Whether the sphere is at least partly inside, as three.js Frustum.intersectsSphere.
+   *
+   * @param frustum The frustum.
+   * @param sphere The sphere.
+   */
+  intersectsSphere(frustum: Frustum, sphere: Sphere): boolean;
+}
+
+/**
+ * Pure functions over Ray, as three.js Ray's methods. The value `ray`. Each intersection answers the nearest point at or after the origin, or null.
+ */
+export interface RayMath {
+  /**
+   * The point t along the ray, as three.js Ray.at.
+   *
+   * @param ray The ray.
+   * @param t The distance along the direction, in metres.
+   */
+  at(ray: Ray, t: number): Vector3;
+  /**
+   * The distance from p to the nearest point of the ray, as three.js Ray.distanceToPoint.
+   *
+   * @param ray The ray.
+   * @param p The point.
+   */
+  distanceToPoint(ray: Ray, p: Vector3): number;
+  /**
+   * Where the ray enters the box (where it leaves, when it starts inside), as three.js Ray.intersectBox.
+   *
+   * @param ray The ray.
+   * @param box The box.
+   */
+  intersectBox(ray: Ray, box: Box3): Vector3 | null;
+  /**
+   * Where the ray meets the sphere (where it leaves, when it starts inside), as three.js Ray.intersectSphere.
+   *
+   * @param ray The ray.
+   * @param sphere The sphere.
+   */
+  intersectSphere(ray: Ray, sphere: Sphere): Vector3 | null;
+  /**
+   * Where the ray meets the plane (its origin when it lies in the plane), as three.js Ray.intersectPlane; null when parallel or pointing away.
+   *
+   * @param ray The ray.
+   * @param plane The plane.
+   */
+  intersectPlane(ray: Ray, plane: Plane): Vector3 | null;
+  /**
+   * Where the ray meets the triangle a, b, c, as three.js Ray.intersectTriangle; with backfaceCulling a triangle facing away (clockwise from the origin) is missed.
+   *
+   * @param ray The ray.
+   * @param a The first corner.
+   * @param b The second corner.
+   * @param c The third corner.
+   * @param backfaceCulling Miss triangles facing away. Default `false`.
+   */
+  intersectTriangle(ray: Ray, a: Vector3, b: Vector3, c: Vector3, backfaceCulling?: boolean): Vector3 | null;
+}
+
+/**
+ * Pure functions over Color (linear RGB), as three.js Color's methods with colour management on: hex and HSL are sRGB, converted to and from linear as three.js does. The value `color`: `color.fromHex(0xff8800)`. The same bits on every host (no Math.pow).
+ */
+export interface ColorMath {
+  /**
+   * The linear colour of an sRGB hex number, as new three.js Color(0xrrggbb).
+   *
+   * @param hex 0xrrggbb, sRGB.
+   */
+  fromHex(hex: number): Color;
+  /**
+   * The sRGB hex number of a linear colour, each channel clamped to 0..1 and rounded, as three.js Color.getHex.
+   *
+   * @param c The colour.
+   */
+  toHex(c: Color): number;
+  /**
+   * a + (b - a) * t in linear RGB, as three.js Color.lerpColors.
+   *
+   * @param a The value at t = 0.
+   * @param b The value at t = 1.
+   * @param t The fraction.
+   */
+  lerp(a: Color, b: Color, t: number): Color;
+  /**
+   * The linear colour of sRGB hue, saturation and lightness, as three.js Color.setHSL (hue wraps, saturation and lightness clamp to 0..1).
+   *
+   * @param h The hue, 0 to 1 around the wheel (0 red, 1/3 green, 2/3 blue).
+   * @param s The saturation, 0 to 1.
+   * @param l The lightness, 0 to 1.
+   */
+  fromHsl(h: number, s: number, l: number): Color;
+}
+
+/**
+ * Vector3's pure functions: `vec3.add(a, b)`, `vec3.normalize(v)`, `vec3.applyQuaternion(v, q)`.
+ */
+export declare const vec3: Vector3Math;
+
+/** Vector2's pure functions: `vec2.add(a, b)`, `vec2.rotateAround(v, c, angle)`. */
+export declare const vec2: Vector2Math;
+
+/**
+ * Quaternion's pure functions: `quat.multiply(a, b)`, `quat.slerp(a, b, t)`, `quat.fromEuler({ x, y, z })`.
+ */
+export declare const quat: QuaternionMath;
+
+/**
+ * Matrix4's pure functions: `mat4.multiply(a, b)`, `mat4.invert(m)`, `mat4.transformPoint(m, p)`.
+ */
+export declare const mat4: Matrix4Math;
+
+/** Box3's pure functions: `box3.fromPoints(points)`, `box3.intersectsBox(a, b)`. */
+export declare const box3: Box3Math;
+
+/** Sphere's pure functions: `sphere.containsPoint(s, p)`. */
+export declare const sphere: SphereMath;
+
+/** Plane's pure functions: `plane.distanceToPoint(pl, p)`. */
+export declare const plane: PlaneMath;
+
+/**
+ * Frustum's pure functions: `frustum.fromCamera(camera, aspect)`, `frustum.intersectsBox(f, box)`.
+ */
+export declare const frustum: FrustumMath;
+
+/** Ray's pure functions: `ray.intersectBox(r, box)`, `ray.intersectTriangle(r, a, b, c)`. */
+export declare const ray: RayMath;
+
+/**
+ * Color's pure functions: `color.fromHex(0xff8800)`, `color.toHex(c)`, `color.fromHsl(h, s, l)`.
+ */
+export declare const color: ColorMath;
+
 // ── reflect ─────────────────────────────────────────────────────
 // Reflection: components and resources are declared once with their field layout and metadata, and registered by name.
 // The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field.

@@ -38,11 +38,1578 @@
         "Quaternion",
         "Matrix4",
         "Color",
-        "Ray"
+        "Ray",
+        "Box3",
+        "Sphere",
+        "Plane",
+        "Frustum"
       ],
       "consts": [],
+      "values": [
+        {
+          "name": "vec3",
+          "type": "Vector3Math",
+          "doc": "Vector3's pure functions: `vec3.add(a, b)`, `vec3.normalize(v)`, `vec3.applyQuaternion(v, q)`."
+        },
+        {
+          "name": "vec2",
+          "type": "Vector2Math",
+          "doc": "Vector2's pure functions: `vec2.add(a, b)`, `vec2.rotateAround(v, c, angle)`."
+        },
+        {
+          "name": "quat",
+          "type": "QuaternionMath",
+          "doc": "Quaternion's pure functions: `quat.multiply(a, b)`, `quat.slerp(a, b, t)`, `quat.fromEuler({ x, y, z })`."
+        },
+        {
+          "name": "mat4",
+          "type": "Matrix4Math",
+          "doc": "Matrix4's pure functions: `mat4.multiply(a, b)`, `mat4.invert(m)`, `mat4.transformPoint(m, p)`."
+        },
+        {
+          "name": "box3",
+          "type": "Box3Math",
+          "doc": "Box3's pure functions: `box3.fromPoints(points)`, `box3.intersectsBox(a, b)`."
+        },
+        {
+          "name": "sphere",
+          "type": "SphereMath",
+          "doc": "Sphere's pure functions: `sphere.containsPoint(s, p)`."
+        },
+        {
+          "name": "plane",
+          "type": "PlaneMath",
+          "doc": "Plane's pure functions: `plane.distanceToPoint(pl, p)`."
+        },
+        {
+          "name": "frustum",
+          "type": "FrustumMath",
+          "doc": "Frustum's pure functions: `frustum.fromCamera(camera, aspect)`, `frustum.intersectsBox(f, box)`."
+        },
+        {
+          "name": "ray",
+          "type": "RayMath",
+          "doc": "Ray's pure functions: `ray.intersectBox(r, box)`, `ray.intersectTriangle(r, a, b, c)`."
+        },
+        {
+          "name": "color",
+          "type": "ColorMath",
+          "doc": "Color's pure functions: `color.fromHex(0xff8800)`, `color.toHex(c)`, `color.fromHsl(h, s, l)`."
+        }
+      ],
       "functions": [],
-      "interfaces": [],
+      "interfaces": [
+        {
+          "name": "Vector3Math",
+          "doc": "Pure functions over Vector3, as three.js Vector3's methods of the same names: each returns a new value and changes none of its arguments. The value `vec3`: `vec3.add(a, b)`.\nNo member reads Math.sin, Math.pow or the clock: results are the same bits on every host, so a system may store them in world state.",
+          "members": [
+            {
+              "name": "add",
+              "doc": "a + b, as three.js Vector3.addVectors.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The first vector."
+                },
+                {
+                  "name": "b",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The second vector."
+                }
+              ],
+              "returns": "Vector3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "sub",
+              "doc": "a - b, as three.js Vector3.subVectors.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The vector subtracted from."
+                },
+                {
+                  "name": "b",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The vector subtracted."
+                }
+              ],
+              "returns": "Vector3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "scale",
+              "doc": "v * s, as three.js Vector3.multiplyScalar.",
+              "params": [
+                {
+                  "name": "v",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The vector."
+                },
+                {
+                  "name": "s",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The factor."
+                }
+              ],
+              "returns": "Vector3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "dot",
+              "doc": "The dot product, as three.js Vector3.dot.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The first vector."
+                },
+                {
+                  "name": "b",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The second vector."
+                }
+              ],
+              "returns": "f32",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "cross",
+              "doc": "The cross product a x b (right-handed), as three.js Vector3.crossVectors.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The first vector."
+                },
+                {
+                  "name": "b",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The second vector."
+                }
+              ],
+              "returns": "Vector3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "length",
+              "doc": "The Euclidean length, as three.js Vector3.length.",
+              "params": [
+                {
+                  "name": "v",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The vector."
+                }
+              ],
+              "returns": "f32",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "normalize",
+              "doc": "The unit vector along v, as three.js Vector3.normalize; the zero vector stays zero.",
+              "params": [
+                {
+                  "name": "v",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The vector."
+                }
+              ],
+              "returns": "Vector3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "lerp",
+              "doc": "a + (b - a) * t, as three.js Vector3.lerpVectors.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The value at t = 0."
+                },
+                {
+                  "name": "b",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The value at t = 1."
+                },
+                {
+                  "name": "t",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The fraction (not clamped)."
+                }
+              ],
+              "returns": "Vector3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "distance",
+              "doc": "The distance between two points, as three.js Vector3.distanceTo.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The first point."
+                },
+                {
+                  "name": "b",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The second point."
+                }
+              ],
+              "returns": "f32",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "applyQuaternion",
+              "doc": "v rotated by q, as three.js Vector3.applyQuaternion.",
+              "params": [
+                {
+                  "name": "v",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The vector."
+                },
+                {
+                  "name": "q",
+                  "type": "Quaternion",
+                  "optional": false,
+                  "doc": "The unit quaternion."
+                }
+              ],
+              "returns": "Vector3",
+              "publish": true,
+              "host": false
+            }
+          ]
+        },
+        {
+          "name": "Vector2Math",
+          "doc": "Pure functions over Vector2, as three.js Vector2's methods of the same names, each returning a new value. The value `vec2`: `vec2.add(a, b)`. The same bits on every host.",
+          "members": [
+            {
+              "name": "add",
+              "doc": "a + b, as three.js Vector2.addVectors.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The first vector."
+                },
+                {
+                  "name": "b",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The second vector."
+                }
+              ],
+              "returns": "Vector2",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "sub",
+              "doc": "a - b, as three.js Vector2.subVectors.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The vector subtracted from."
+                },
+                {
+                  "name": "b",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The vector subtracted."
+                }
+              ],
+              "returns": "Vector2",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "scale",
+              "doc": "v * s, as three.js Vector2.multiplyScalar.",
+              "params": [
+                {
+                  "name": "v",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The vector."
+                },
+                {
+                  "name": "s",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The factor."
+                }
+              ],
+              "returns": "Vector2",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "dot",
+              "doc": "The dot product, as three.js Vector2.dot.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The first vector."
+                },
+                {
+                  "name": "b",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The second vector."
+                }
+              ],
+              "returns": "f32",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "cross",
+              "doc": "The 2D cross product a.x * b.y - a.y * b.x (the z of the 3D cross product), as three.js Vector2.cross: positive when b is counter-clockwise of a.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The first vector."
+                },
+                {
+                  "name": "b",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The second vector."
+                }
+              ],
+              "returns": "f32",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "length",
+              "doc": "The Euclidean length, as three.js Vector2.length.",
+              "params": [
+                {
+                  "name": "v",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The vector."
+                }
+              ],
+              "returns": "f32",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "normalize",
+              "doc": "The unit vector along v, as three.js Vector2.normalize; the zero vector stays zero.",
+              "params": [
+                {
+                  "name": "v",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The vector."
+                }
+              ],
+              "returns": "Vector2",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "lerp",
+              "doc": "a + (b - a) * t, as three.js Vector2.lerpVectors.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The value at t = 0."
+                },
+                {
+                  "name": "b",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The value at t = 1."
+                },
+                {
+                  "name": "t",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The fraction (not clamped)."
+                }
+              ],
+              "returns": "Vector2",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "distance",
+              "doc": "The distance between two points, as three.js Vector2.distanceTo.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The first point."
+                },
+                {
+                  "name": "b",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The second point."
+                }
+              ],
+              "returns": "f32",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "rotateAround",
+              "doc": "v rotated counter-clockwise by angle about center, as three.js Vector2.rotateAround (the 2D form of applyQuaternion).",
+              "params": [
+                {
+                  "name": "v",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The point."
+                },
+                {
+                  "name": "center",
+                  "type": "Vector2",
+                  "optional": false,
+                  "doc": "The pivot."
+                },
+                {
+                  "name": "angle",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The angle in radians, counter-clockwise."
+                }
+              ],
+              "returns": "Vector2",
+              "publish": true,
+              "host": false
+            }
+          ]
+        },
+        {
+          "name": "QuaternionMath",
+          "doc": "Pure functions over Quaternion, as three.js Quaternion's methods, each returning a new value. The value `quat`: `quat.multiply(a, b)`. The same bits on every host (trigonometry from + - * / and sqrt).",
+          "members": [
+            {
+              "name": "multiply",
+              "doc": "a * b: b's rotation, then a's, as three.js Quaternion.multiplyQuaternions.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Quaternion",
+                  "optional": false,
+                  "doc": "The rotation applied second."
+                },
+                {
+                  "name": "b",
+                  "type": "Quaternion",
+                  "optional": false,
+                  "doc": "The rotation applied first."
+                }
+              ],
+              "returns": "Quaternion",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "slerp",
+              "doc": "The spherical interpolation from a to b by t along the shorter arc, as three.js Quaternion.slerpQuaternions.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Quaternion",
+                  "optional": false,
+                  "doc": "The value at t = 0."
+                },
+                {
+                  "name": "b",
+                  "type": "Quaternion",
+                  "optional": false,
+                  "doc": "The value at t = 1."
+                },
+                {
+                  "name": "t",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The fraction, 0 to 1."
+                }
+              ],
+              "returns": "Quaternion",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "fromEuler",
+              "doc": "The rotation of Euler angles, as three.js Quaternion.setFromEuler: the x, y and z of `angles` in radians, applied in `order` (three.js Euler.order, intrinsic: \"XYZ\" turns about x, then the turned y, then the turned z).",
+              "params": [
+                {
+                  "name": "angles",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The angles about x, y and z, in radians."
+                },
+                {
+                  "name": "order",
+                  "type": "String",
+                  "optional": true,
+                  "default": "XYZ",
+                  "doc": "\"XYZ\", \"YXZ\", \"ZXY\", \"ZYX\", \"YZX\" or \"XZY\"."
+                }
+              ],
+              "returns": "Quaternion",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "invert",
+              "doc": "The inverse rotation (the conjugate of a unit quaternion), as three.js Quaternion.invert.",
+              "params": [
+                {
+                  "name": "q",
+                  "type": "Quaternion",
+                  "optional": false,
+                  "doc": "The rotation."
+                }
+              ],
+              "returns": "Quaternion",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "rotate",
+              "doc": "The vector v turned by q: vec3.applyQuaternion(v, q), from the rotation's side.",
+              "params": [
+                {
+                  "name": "q",
+                  "type": "Quaternion",
+                  "optional": false,
+                  "doc": "The rotation."
+                },
+                {
+                  "name": "v",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The vector."
+                }
+              ],
+              "returns": "Vector3",
+              "publish": true,
+              "host": false
+            }
+          ]
+        },
+        {
+          "name": "Matrix4Math",
+          "doc": "Pure functions over Matrix4 (column-major elements, as three.js), each returning a new value. The value `mat4`: `mat4.multiply(a, b)`.",
+          "members": [
+            {
+              "name": "multiply",
+              "doc": "a * b: b's transform, then a's, as three.js Matrix4.multiplyMatrices.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Matrix4",
+                  "optional": false,
+                  "doc": "The transform applied second."
+                },
+                {
+                  "name": "b",
+                  "type": "Matrix4",
+                  "optional": false,
+                  "doc": "The transform applied first."
+                }
+              ],
+              "returns": "Matrix4",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "invert",
+              "doc": "The inverse, as three.js Matrix4.invert; a singular matrix inverts to all zeros, as three.js.",
+              "params": [
+                {
+                  "name": "m",
+                  "type": "Matrix4",
+                  "optional": false,
+                  "doc": "The matrix."
+                }
+              ],
+              "returns": "Matrix4",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "transformPoint",
+              "doc": "The point p transformed by m with the perspective divide, as three.js Vector3.applyMatrix4.",
+              "params": [
+                {
+                  "name": "m",
+                  "type": "Matrix4",
+                  "optional": false,
+                  "doc": "The transform."
+                },
+                {
+                  "name": "p",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The point."
+                }
+              ],
+              "returns": "Vector3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "transformDirection",
+              "doc": "The direction d turned by m's upper 3x3 and normalised, as three.js Vector3.transformDirection (translation ignored).",
+              "params": [
+                {
+                  "name": "m",
+                  "type": "Matrix4",
+                  "optional": false,
+                  "doc": "The transform."
+                },
+                {
+                  "name": "d",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The direction."
+                }
+              ],
+              "returns": "Vector3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "compose",
+              "doc": "The transform of a position, a rotation and a scale, as three.js Matrix4.compose: what og.Transform's fields make.",
+              "params": [
+                {
+                  "name": "position",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The translation."
+                },
+                {
+                  "name": "quaternion",
+                  "type": "Quaternion",
+                  "optional": false,
+                  "doc": "The rotation."
+                },
+                {
+                  "name": "scale",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The scale."
+                }
+              ],
+              "returns": "Matrix4",
+              "publish": true,
+              "host": false
+            }
+          ]
+        },
+        {
+          "name": "Box3Math",
+          "doc": "Pure functions over Box3, as three.js Box3's methods, each returning a new value. The value `box3`.",
+          "members": [
+            {
+              "name": "empty",
+              "doc": "The empty box (min +Infinity, max -Infinity), as new three.js Box3(): expandByPoint and union grow it.",
+              "params": [],
+              "returns": "Box3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "fromPoints",
+              "doc": "The smallest box holding every point, as three.js Box3.setFromPoints; no points is the empty box.",
+              "params": [
+                {
+                  "name": "points",
+                  "type": "List<Vector3>",
+                  "optional": false,
+                  "doc": "The points."
+                }
+              ],
+              "returns": "Box3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "isEmpty",
+              "doc": "Whether the box holds no point (min above max on some axis), as three.js Box3.isEmpty.",
+              "params": [
+                {
+                  "name": "box",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The box."
+                }
+              ],
+              "returns": "bool",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "containsPoint",
+              "doc": "Whether p is inside or on the box, as three.js Box3.containsPoint.",
+              "params": [
+                {
+                  "name": "box",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The box."
+                },
+                {
+                  "name": "p",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The point."
+                }
+              ],
+              "returns": "bool",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "containsBox",
+              "doc": "Whether other lies wholly inside box, as three.js Box3.containsBox.",
+              "params": [
+                {
+                  "name": "box",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The outer box."
+                },
+                {
+                  "name": "other",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The inner box."
+                }
+              ],
+              "returns": "bool",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "intersectsBox",
+              "doc": "Whether two boxes overlap or touch, as three.js Box3.intersectsBox.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The first box."
+                },
+                {
+                  "name": "b",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The second box."
+                }
+              ],
+              "returns": "bool",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "intersectsSphere",
+              "doc": "Whether the box and the sphere overlap, as three.js Box3.intersectsSphere.",
+              "params": [
+                {
+                  "name": "box",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The box."
+                },
+                {
+                  "name": "sphere",
+                  "type": "Sphere",
+                  "optional": false,
+                  "doc": "The sphere."
+                }
+              ],
+              "returns": "bool",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "expandByPoint",
+              "doc": "The box grown to hold p, as three.js Box3.expandByPoint.",
+              "params": [
+                {
+                  "name": "box",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The box."
+                },
+                {
+                  "name": "p",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The point."
+                }
+              ],
+              "returns": "Box3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "union",
+              "doc": "The smallest box holding both, as three.js Box3.union.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The first box."
+                },
+                {
+                  "name": "b",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The second box."
+                }
+              ],
+              "returns": "Box3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "getCenter",
+              "doc": "The centre, as three.js Box3.getCenter; the empty box's is the origin.",
+              "params": [
+                {
+                  "name": "box",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The box."
+                }
+              ],
+              "returns": "Vector3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "getSize",
+              "doc": "The size along each axis, as three.js Box3.getSize; the empty box's is zero.",
+              "params": [
+                {
+                  "name": "box",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The box."
+                }
+              ],
+              "returns": "Vector3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "applyMatrix4",
+              "doc": "The box holding the eight corners transformed by m, as three.js Box3.applyMatrix4.",
+              "params": [
+                {
+                  "name": "box",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The box."
+                },
+                {
+                  "name": "m",
+                  "type": "Matrix4",
+                  "optional": false,
+                  "doc": "The transform."
+                }
+              ],
+              "returns": "Box3",
+              "publish": true,
+              "host": false
+            }
+          ]
+        },
+        {
+          "name": "SphereMath",
+          "doc": "Pure functions over Sphere, as three.js Sphere's methods, each returning a new value. The value `sphere`.",
+          "members": [
+            {
+              "name": "fromPoints",
+              "doc": "A sphere around the points, as three.js Sphere.setFromPoints: centred on their bounding box's centre, with the radius of the farthest point.",
+              "params": [
+                {
+                  "name": "points",
+                  "type": "List<Vector3>",
+                  "optional": false,
+                  "doc": "The points."
+                }
+              ],
+              "returns": "Sphere",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "containsPoint",
+              "doc": "Whether p is inside or on the sphere, as three.js Sphere.containsPoint.",
+              "params": [
+                {
+                  "name": "sphere",
+                  "type": "Sphere",
+                  "optional": false,
+                  "doc": "The sphere."
+                },
+                {
+                  "name": "p",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The point."
+                }
+              ],
+              "returns": "bool",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "distanceToPoint",
+              "doc": "The distance from the surface to p, negative inside, as three.js Sphere.distanceToPoint.",
+              "params": [
+                {
+                  "name": "sphere",
+                  "type": "Sphere",
+                  "optional": false,
+                  "doc": "The sphere."
+                },
+                {
+                  "name": "p",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The point."
+                }
+              ],
+              "returns": "f32",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "intersectsSphere",
+              "doc": "Whether two spheres overlap or touch, as three.js Sphere.intersectsSphere.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Sphere",
+                  "optional": false,
+                  "doc": "The first sphere."
+                },
+                {
+                  "name": "b",
+                  "type": "Sphere",
+                  "optional": false,
+                  "doc": "The second sphere."
+                }
+              ],
+              "returns": "bool",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "intersectsBox",
+              "doc": "Whether the sphere and the box overlap, as three.js Sphere.intersectsBox.",
+              "params": [
+                {
+                  "name": "sphere",
+                  "type": "Sphere",
+                  "optional": false,
+                  "doc": "The sphere."
+                },
+                {
+                  "name": "box",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The box."
+                }
+              ],
+              "returns": "bool",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "getBoundingBox",
+              "doc": "The box around the sphere, as three.js Sphere.getBoundingBox.",
+              "params": [
+                {
+                  "name": "sphere",
+                  "type": "Sphere",
+                  "optional": false,
+                  "doc": "The sphere."
+                }
+              ],
+              "returns": "Box3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "applyMatrix4",
+              "doc": "The sphere transformed by m (its radius by m's largest axis scale), as three.js Sphere.applyMatrix4.",
+              "params": [
+                {
+                  "name": "sphere",
+                  "type": "Sphere",
+                  "optional": false,
+                  "doc": "The sphere."
+                },
+                {
+                  "name": "m",
+                  "type": "Matrix4",
+                  "optional": false,
+                  "doc": "The transform."
+                }
+              ],
+              "returns": "Sphere",
+              "publish": true,
+              "host": false
+            }
+          ]
+        },
+        {
+          "name": "PlaneMath",
+          "doc": "Pure functions over Plane, as three.js Plane's methods, each returning a new value. The value `plane`.",
+          "members": [
+            {
+              "name": "fromNormalAndCoplanarPoint",
+              "doc": "The plane through p with the normal n (normalised), as three.js Plane.setFromNormalAndCoplanarPoint.",
+              "params": [
+                {
+                  "name": "n",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The normal."
+                },
+                {
+                  "name": "p",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "A point on the plane."
+                }
+              ],
+              "returns": "Plane",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "fromCoplanarPoints",
+              "doc": "The plane through a, b and c, its normal (b - a) x (c - a) normalised (counter-clockwise points face you), as three.js Plane.setFromCoplanarPoints.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The first point."
+                },
+                {
+                  "name": "b",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The second point."
+                },
+                {
+                  "name": "c",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The third point."
+                }
+              ],
+              "returns": "Plane",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "normalize",
+              "doc": "The same plane with a unit normal, as three.js Plane.normalize.",
+              "params": [
+                {
+                  "name": "plane",
+                  "type": "Plane",
+                  "optional": false,
+                  "doc": "The plane."
+                }
+              ],
+              "returns": "Plane",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "distanceToPoint",
+              "doc": "The signed distance from the plane to p, positive on the normal's side, as three.js Plane.distanceToPoint.",
+              "params": [
+                {
+                  "name": "plane",
+                  "type": "Plane",
+                  "optional": false,
+                  "doc": "The plane."
+                },
+                {
+                  "name": "p",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The point."
+                }
+              ],
+              "returns": "f32",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "projectPoint",
+              "doc": "The point of the plane nearest p, as three.js Plane.projectPoint.",
+              "params": [
+                {
+                  "name": "plane",
+                  "type": "Plane",
+                  "optional": false,
+                  "doc": "The plane."
+                },
+                {
+                  "name": "p",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The point."
+                }
+              ],
+              "returns": "Vector3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "intersectsBox",
+              "doc": "Whether the plane passes through the box, as three.js Plane.intersectsBox.",
+              "params": [
+                {
+                  "name": "plane",
+                  "type": "Plane",
+                  "optional": false,
+                  "doc": "The plane."
+                },
+                {
+                  "name": "box",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The box."
+                }
+              ],
+              "returns": "bool",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "intersectsSphere",
+              "doc": "Whether the plane passes through the sphere, as three.js Plane.intersectsSphere.",
+              "params": [
+                {
+                  "name": "plane",
+                  "type": "Plane",
+                  "optional": false,
+                  "doc": "The plane."
+                },
+                {
+                  "name": "sphere",
+                  "type": "Sphere",
+                  "optional": false,
+                  "doc": "The sphere."
+                }
+              ],
+              "returns": "bool",
+              "publish": true,
+              "host": false
+            }
+          ]
+        },
+        {
+          "name": "FrustumMath",
+          "doc": "Pure functions over Frustum, as three.js Frustum's methods. The value `frustum`: `frustum.intersectsBox(frustum.fromCamera(camera, 16 / 9), box)` culls as the renderer would.",
+          "members": [
+            {
+              "name": "fromProjectionMatrix",
+              "doc": "The frustum of a view-projection matrix (projection * inverse camera world), as three.js Frustum.setFromProjectionMatrix (WebGL clip space, z from -1 to 1).",
+              "params": [
+                {
+                  "name": "m",
+                  "type": "Matrix4",
+                  "optional": false,
+                  "doc": "The view-projection matrix."
+                }
+              ],
+              "returns": "Frustum",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "fromCamera",
+              "doc": "The frustum og.Camera sees at an aspect ratio (width over height): its perspective projection (fov, near, far, zoom) or orthographic one (height, zoom), from its position and quaternion; shake, punch and kick, which are visual only, are left out.",
+              "params": [
+                {
+                  "name": "camera",
+                  "type": "Camera",
+                  "optional": false,
+                  "doc": "The og.Camera resource's value (world.resource(og.Camera))."
+                },
+                {
+                  "name": "aspect",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The view's width over its height."
+                }
+              ],
+              "returns": "Frustum",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "containsPoint",
+              "doc": "Whether p is inside the frustum, as three.js Frustum.containsPoint.",
+              "params": [
+                {
+                  "name": "frustum",
+                  "type": "Frustum",
+                  "optional": false,
+                  "doc": "The frustum."
+                },
+                {
+                  "name": "p",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The point."
+                }
+              ],
+              "returns": "bool",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "intersectsBox",
+              "doc": "Whether the box is at least partly inside, as three.js Frustum.intersectsBox (conservative near the corners, as three.js).",
+              "params": [
+                {
+                  "name": "frustum",
+                  "type": "Frustum",
+                  "optional": false,
+                  "doc": "The frustum."
+                },
+                {
+                  "name": "box",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The box."
+                }
+              ],
+              "returns": "bool",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "intersectsSphere",
+              "doc": "Whether the sphere is at least partly inside, as three.js Frustum.intersectsSphere.",
+              "params": [
+                {
+                  "name": "frustum",
+                  "type": "Frustum",
+                  "optional": false,
+                  "doc": "The frustum."
+                },
+                {
+                  "name": "sphere",
+                  "type": "Sphere",
+                  "optional": false,
+                  "doc": "The sphere."
+                }
+              ],
+              "returns": "bool",
+              "publish": true,
+              "host": false
+            }
+          ]
+        },
+        {
+          "name": "RayMath",
+          "doc": "Pure functions over Ray, as three.js Ray's methods. The value `ray`. Each intersection answers the nearest point at or after the origin, or null.",
+          "members": [
+            {
+              "name": "at",
+              "doc": "The point t along the ray, as three.js Ray.at.",
+              "params": [
+                {
+                  "name": "ray",
+                  "type": "Ray",
+                  "optional": false,
+                  "doc": "The ray."
+                },
+                {
+                  "name": "t",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The distance along the direction, in metres."
+                }
+              ],
+              "returns": "Vector3",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "distanceToPoint",
+              "doc": "The distance from p to the nearest point of the ray, as three.js Ray.distanceToPoint.",
+              "params": [
+                {
+                  "name": "ray",
+                  "type": "Ray",
+                  "optional": false,
+                  "doc": "The ray."
+                },
+                {
+                  "name": "p",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The point."
+                }
+              ],
+              "returns": "f32",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "intersectBox",
+              "doc": "Where the ray enters the box (where it leaves, when it starts inside), as three.js Ray.intersectBox.",
+              "params": [
+                {
+                  "name": "ray",
+                  "type": "Ray",
+                  "optional": false,
+                  "doc": "The ray."
+                },
+                {
+                  "name": "box",
+                  "type": "Box3",
+                  "optional": false,
+                  "doc": "The box."
+                }
+              ],
+              "returns": "Option<Vector3>",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "intersectSphere",
+              "doc": "Where the ray meets the sphere (where it leaves, when it starts inside), as three.js Ray.intersectSphere.",
+              "params": [
+                {
+                  "name": "ray",
+                  "type": "Ray",
+                  "optional": false,
+                  "doc": "The ray."
+                },
+                {
+                  "name": "sphere",
+                  "type": "Sphere",
+                  "optional": false,
+                  "doc": "The sphere."
+                }
+              ],
+              "returns": "Option<Vector3>",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "intersectPlane",
+              "doc": "Where the ray meets the plane (its origin when it lies in the plane), as three.js Ray.intersectPlane; null when parallel or pointing away.",
+              "params": [
+                {
+                  "name": "ray",
+                  "type": "Ray",
+                  "optional": false,
+                  "doc": "The ray."
+                },
+                {
+                  "name": "plane",
+                  "type": "Plane",
+                  "optional": false,
+                  "doc": "The plane."
+                }
+              ],
+              "returns": "Option<Vector3>",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "intersectTriangle",
+              "doc": "Where the ray meets the triangle a, b, c, as three.js Ray.intersectTriangle; with backfaceCulling a triangle facing away (clockwise from the origin) is missed.",
+              "params": [
+                {
+                  "name": "ray",
+                  "type": "Ray",
+                  "optional": false,
+                  "doc": "The ray."
+                },
+                {
+                  "name": "a",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The first corner."
+                },
+                {
+                  "name": "b",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The second corner."
+                },
+                {
+                  "name": "c",
+                  "type": "Vector3",
+                  "optional": false,
+                  "doc": "The third corner."
+                },
+                {
+                  "name": "backfaceCulling",
+                  "type": "bool",
+                  "optional": true,
+                  "default": false,
+                  "doc": "Miss triangles facing away."
+                }
+              ],
+              "returns": "Option<Vector3>",
+              "publish": true,
+              "host": false
+            }
+          ]
+        },
+        {
+          "name": "ColorMath",
+          "doc": "Pure functions over Color (linear RGB), as three.js Color's methods with colour management on: hex and HSL are sRGB, converted to and from linear as three.js does. The value `color`: `color.fromHex(0xff8800)`. The same bits on every host (no Math.pow).",
+          "members": [
+            {
+              "name": "fromHex",
+              "doc": "The linear colour of an sRGB hex number, as new three.js Color(0xrrggbb).",
+              "params": [
+                {
+                  "name": "hex",
+                  "type": "u32",
+                  "optional": false,
+                  "doc": "0xrrggbb, sRGB."
+                }
+              ],
+              "returns": "Color",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "toHex",
+              "doc": "The sRGB hex number of a linear colour, each channel clamped to 0..1 and rounded, as three.js Color.getHex.",
+              "params": [
+                {
+                  "name": "c",
+                  "type": "Color",
+                  "optional": false,
+                  "doc": "The colour."
+                }
+              ],
+              "returns": "u32",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "lerp",
+              "doc": "a + (b - a) * t in linear RGB, as three.js Color.lerpColors.",
+              "params": [
+                {
+                  "name": "a",
+                  "type": "Color",
+                  "optional": false,
+                  "doc": "The value at t = 0."
+                },
+                {
+                  "name": "b",
+                  "type": "Color",
+                  "optional": false,
+                  "doc": "The value at t = 1."
+                },
+                {
+                  "name": "t",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The fraction."
+                }
+              ],
+              "returns": "Color",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "fromHsl",
+              "doc": "The linear colour of sRGB hue, saturation and lightness, as three.js Color.setHSL (hue wraps, saturation and lightness clamp to 0..1).",
+              "params": [
+                {
+                  "name": "h",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The hue, 0 to 1 around the wheel (0 red, 1/3 green, 2/3 blue)."
+                },
+                {
+                  "name": "s",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The saturation, 0 to 1."
+                },
+                {
+                  "name": "l",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The lightness, 0 to 1."
+                }
+              ],
+              "returns": "Color",
+              "publish": true,
+              "host": false
+            }
+          ]
+        }
+      ],
       "callbacks": []
     },
     {
@@ -8823,6 +10390,90 @@
       "required": [
         "origin",
         "direction"
+      ],
+      "additionalProperties": false
+    },
+    "Box3": {
+      "x-og-kind": "struct",
+      "x-og-module": "math",
+      "description": "An axis-aligned box, as three.js Box3. A box whose min exceeds its max on an axis is empty (box3.empty() makes one: min +Infinity, max -Infinity).",
+      "type": "object",
+      "properties": {
+        "min": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The lower corner."
+        },
+        "max": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The upper corner."
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ],
+      "additionalProperties": false
+    },
+    "Sphere": {
+      "x-og-kind": "struct",
+      "x-og-module": "math",
+      "description": "A sphere, as three.js Sphere. A negative radius is empty.",
+      "type": "object",
+      "properties": {
+        "center": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The centre."
+        },
+        "radius": {
+          "type": "number",
+          "description": "The radius.",
+          "x-og-unit": "m"
+        }
+      },
+      "required": [
+        "center",
+        "radius"
+      ],
+      "additionalProperties": false
+    },
+    "Plane": {
+      "x-og-kind": "struct",
+      "x-og-module": "math",
+      "description": "A plane, as three.js Plane: the points p with dot(normal, p) + constant = 0; normal is unit length, and the positive side is where it points.",
+      "type": "object",
+      "properties": {
+        "normal": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The unit normal."
+        },
+        "constant": {
+          "type": "number",
+          "description": "The signed distance from the origin to the plane, negated along the normal (three.js Plane.constant).",
+          "x-og-unit": "m"
+        }
+      },
+      "required": [
+        "normal",
+        "constant"
+      ],
+      "additionalProperties": false
+    },
+    "Frustum": {
+      "x-og-kind": "struct",
+      "x-og-module": "math",
+      "description": "A view volume, as three.js Frustum: six planes whose normals point inwards (right, left, bottom, top, far, near, three.js's order). frustum.fromCamera and frustum.fromProjectionMatrix make one.",
+      "type": "object",
+      "properties": {
+        "planes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Plane"
+          },
+          "description": "The six planes, normals inwards."
+        }
+      },
+      "required": [
+        "planes"
       ],
       "additionalProperties": false
     },

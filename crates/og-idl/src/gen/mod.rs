@@ -79,6 +79,11 @@ pub fn bindings<'a>(ix: &Index<'a>) -> Vec<Binding<'a>> {
                 }),
                 Item::Interface(i) => {
                     for m in &i.members {
+                        // A `host false` method is TypeScript the runtime implements
+                        // (the math module's `vec3.add`): no symbol, no trait method.
+                        if matches!(m, Member::Fn(f) if !f.host) {
+                            continue;
+                        }
                         let publish = m.publish().or(i.publish).unwrap_or(module.publish);
                         out.push(match m {
                             Member::Fn(f) => Binding {
