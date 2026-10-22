@@ -26,14 +26,14 @@ const LOCALES = ["en", "zh-CN", "ja", "ko", "ar"] as const;
 const SCREENS = ["mainMenu", "pause", "confirm"] as const;
 
 const steps: string[] = [];
-const files: string[] = [];
+export const referenceFiles: string[] = [];
 let t = 0.3;
 for (const l of LOCALES) {
   steps.push(`${t.toFixed(2)}:locale:${l}`);
   for (const s of SCREENS) {
     steps.push(`${(t + 0.05).toFixed(2)}:show:${s}`);
     steps.push(`${(t + 0.7).toFixed(2)}:screenshot:${s}-${l}.png`);
-    files.push(`${s}-${l}.png`);
+    referenceFiles.push(`${s}-${l}.png`);
     t += 0.8;
   }
   steps.push(`${t.toFixed(2)}:dump_world:world-${l}.json`);
@@ -106,10 +106,10 @@ export default playtest({
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings (every key is in every table)");
     t.ok(run.quit, "the script reached quit");
-    t.frame(files, () => {
-      for (const f of files) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
+    t.frame(referenceFiles, () => {
+      for (const f of referenceFiles) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
     });
-    checkFrames(run, t, files, "kit-locale-");
+    checkFrames(run, t, referenceFiles, "kit-locale-");
 
     const texts = (file: string) => new Set(ui(run, file).map((e) => e.text).filter((x) => x !== ""));
     const settings = texts("settings-zh-CN.json");

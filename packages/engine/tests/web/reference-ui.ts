@@ -71,7 +71,7 @@ for (const name of only) {
   const bundled = join(out, ".playtest.js");
   const b = await bundleGame(join(kit, "tests", `${name}.og.ts`), bundled, "native");
   if (!b.ok) throw new Error(`${name}.og.ts does not bundle: ${b.reason}`);
-  const desc = ((await import(pathToFileURL(bundled).href)) as { default: PlaytestDesc }).default;
+  const { default: desc, referenceFiles }: { default: PlaytestDesc; referenceFiles?: readonly string[] } = await import(pathToFileURL(bundled).href);
   const size = desc.size ?? "1280x720";
   const skin = /^skin-([a-z]+)(-phone)?$/.exec(name);
   const script: string[] = [];
@@ -79,6 +79,7 @@ for (const name of only) {
   for (const step of desc.commands.split(";")) {
     const [at, action, ...rest] = step.split(":");
     if (action === "screenshot") {
+      if (referenceFiles && !referenceFiles.includes(rest[0]!)) continue;
       const file = rest[0]!.replace(/\.png$/, "");
       // A style pack's sheet has no gallery (skins.ts).
       if (skin && file === "gallery") continue;
