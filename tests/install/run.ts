@@ -137,7 +137,7 @@ function host(): void {
     if (!existsSync(create)) step.fail(`${create} is not installed`);
     run(step, ["bun", create, join(work, "demo"), "--name", "Demo", "--no-prompt"], consumer);
     const demo = join(work, "demo");
-    for (const f of ["project.ogt", "src/main.ts", "package.json", "tests", "assets/looks/demo.ogt"]) {
+    for (const f of ["project.ogt", "src/main.ts", "package.json", "tests", "assets/looks/demo.ogt", ".gitignore", ".gitattributes"]) {
       if (!existsSync(join(demo, f))) step.fail(`the scaffold wrote no ${f}`);
     }
     const pinned = /^engine\s+"([^"]+)"/m.exec(readFileSync(join(demo, "project.ogt"), "utf8"))?.[1];
@@ -187,6 +187,7 @@ function host(): void {
     step = new Step("5 the runner archetype");
     const runner = join(work, "demo-runner");
     run(step, ["bun", create, runner, "--name", "Demo Runner", "--archetype", "runner", "--no-prompt"], consumer);
+    for (const f of [".gitignore", ".gitattributes"]) if (!existsSync(join(runner, f))) step.fail(`the archetype scaffold wrote no ${f}`);
     pinProject(runner);
     run(step, ["bun", "install"], runner);
     og(step, runner, "test", ".");

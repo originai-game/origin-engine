@@ -1,7 +1,7 @@
 // prepack: copies the engine repository's templates/game into ./template/,
 // so the published package carries the template it scaffolds. Build output
 // (cooked/, dist/, node_modules/) is left out.
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SKIPPED } from "../bin/create.ts";
@@ -18,6 +18,11 @@ cpSync(source, target, {
   recursive: true,
   filter: (path) => !(dirname(path) === source && SKIPPED.has(basename(path))),
 });
+// npm drops .gitignore from a tarball: stored as `gitignore`, create writes it back as `.gitignore` (RENAMED).
+function undot(project: string) {
+  if (existsSync(join(project, ".gitignore"))) renameSync(join(project, ".gitignore"), join(project, "gitignore"));
+}
+undot(target);
 console.log(`pack-template: ${source} -> ${target}`);
 // The archetypes, each a complete project, under ./archetypes/<name>/.
 const archetypes = join(pkg, "..", "..", "templates", "archetypes");
@@ -28,6 +33,7 @@ if (existsSync(archetypes)) {
     recursive: true,
     filter: (path) => !SKIPPED.has(basename(path)),
   });
+  for (const a of readdirSync(archTarget)) if (existsSync(join(archTarget, a, "project.ogt"))) undot(join(archTarget, a));
   console.log(`pack-template: ${archetypes} -> ${archTarget}`);
 }
 // The style catalogue the look is chosen from, under ./looks/.

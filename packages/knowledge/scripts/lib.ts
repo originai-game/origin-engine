@@ -90,7 +90,11 @@ export const TEMPLATE_SKIP: ReadonlySet<string> = new Set(["cooked", "dist", "og
  * overlay as `.gitattributes`, which in the engine repository would route
  * the template's plain-blob media through LFS.
  */
-export const TEMPLATE_RENAMED: ReadonlyMap<string, string> = new Map([["gitattributes", ".gitattributes"]]);
+export const TEMPLATE_RENAMED: ReadonlyMap<string, string> = new Map([
+  ["gitattributes", ".gitattributes"],
+  // npm drops .gitignore from a tarball: the published scaffold/template carries it as `gitignore` (scripts/pack.ts).
+  ["gitignore", ".gitignore"],
+]);
 
 const fatal = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 

@@ -6,6 +6,15 @@ and `@origingame/create-game` (docs/release.md §3). Before 1.0.0 a minor
 bump carries API additions or changes, one line each, written at the merge
 that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
+## 0.1.1 (unreleased)
+
+- Fix: the published template, archetypes and knowledge scaffold carried no
+  `.gitignore` (npm drops the file from every tarball), so a scaffolded game
+  and the platform's overlay had none. Stored as `gitignore` in the packages
+  and written back as `.gitignore` by `create-game` and the knowledge mount,
+  as `gitattributes` already was. The install test checks both files.
+- No API change.
+
 ## 0.1.0 (2026-10-22)
 
 The first published version: the API as `crates/og-api/api.ogt` stands at
