@@ -39,6 +39,22 @@ use std::time::Instant;
 /// no package (Windows, Intel macOS).
 pub const TSGO_VERSION: &str = "7.0.2";
 
+// TypeScript normalises slashes but does not understand Win32 verbatim paths
+// returned by canonicalize (\\?\C:\... or \\?\UNC\server\share).
+fn typescript_path(path: &Path) -> String {
+    let s = path.to_string_lossy();
+    if cfg!(windows) {
+        let s = if let Some(unc) = s.strip_prefix(r"\\?\UNC\") {
+            format!(r"\\{unc}")
+        } else {
+            s.strip_prefix(r"\\?\").unwrap_or(&s).to_string()
+        };
+        s.replace('\\', "/")
+    } else {
+        s.into_owned()
+    }
+}
+
 /// The template's compiler options: the options of a project without a
 /// tsconfig.json of its own.
 const TEMPLATE_TSCONFIG: &str = include_str!("../../../templates/game/tsconfig.json");
@@ -212,6 +228,9 @@ pub struct Tsrs {
 /// when there is none; `Err` when the one found cannot be used (OG_TSRS
 /// naming no file, a binary apart from its lib files, one that is no tsrs).
 pub fn locate_tsrs(package: Option<&Path>) -> Result<Option<Tsrs>, String> {
+    if platform().is_none() && std::env::var_os("OG_TSRS").is_none() {
+        return Ok(None);
+    }
     let exe = if cfg!(windows) { "tsrs.exe" } else { "tsrs" };
     let (path, source) = if let Some(p) = std::env::var_os("OG_TSRS").filter(|p| !p.is_empty()) {
         let p = PathBuf::from(p);
@@ -292,6 +311,12 @@ impl Checker {
         };
         match tool {
             Some(Tool::Tsgo) => Ok((tsgo, None)),
+            None if platform().is_none() && std::env::var_os("OG_TSRS").is_none() => Ok((
+                tsgo,
+                Some(format!(
+                    "no tsrs package for this platform; checking with tsgo {TSGO_VERSION} through bun x (needs the network or bun's cache)"
+                )),
+            )),
             Some(Tool::Tsrs) => match locate_tsrs(package)? {
                 Some(t) => Ok((Checker::from(t), None)),
                 None => Err(NO_TSRS.into()),
@@ -337,7 +362,7 @@ impl Checker {
     pub fn command_for(&self, target: &Target, checkers: usize) -> Command {
         let mut c = self.command();
         c.arg("-p")
-            .arg(&target.config)
+            .arg(typescript_path(&target.config))
             .args([
                 "--noEmit",
                 "--incremental",
@@ -432,11 +457,7 @@ pub struct Target {
 
 impl Target {
     fn display_config(&self) -> String {
-        self.config
-            .strip_prefix(&self.root)
-            .unwrap_or(&self.config)
-            .display()
-            .to_string()
+        typescript_path(self.config.strip_prefix(&self.root).unwrap_or(&self.config))
     }
 
     /// A tsconfig file, or a directory holding `tsconfig.json`, as is.
@@ -465,8 +486,8 @@ impl Target {
         let engine_paths = package.map(|pkg| {
             let pkg = pkg.canonicalize().unwrap_or_else(|_| pkg.to_path_buf());
             serde_json::json!({
-                "@origingame/engine": [pkg.join("types/index.d.ts")],
-                "@origingame/engine/playtest": [pkg.join("src/playtest.ts")],
+                "@origingame/engine": [typescript_path(&pkg.join("types/index.d.ts"))],
+                "@origingame/engine/playtest": [typescript_path(&pkg.join("src/playtest.ts"))],
             })
         });
         let config = if own.is_file() {
@@ -489,13 +510,13 @@ impl Target {
                                 .into_iter()
                                 .flatten()
                                 .filter_map(|s| s.as_str())
-                                .map(|s| root.join(s).display().to_string())
+                                .map(|s| typescript_path(&root.join(s)))
                                 .collect();
                             paths[k] = serde_json::json!(abs);
                         }
                     }
                     serde_json::json!({
-                        "extends": own,
+                        "extends": typescript_path(&own),
                         "compilerOptions": { "paths": paths },
                     })
                 }
@@ -516,11 +537,11 @@ impl Target {
                     .into_iter()
                     .flatten()
                     .filter_map(|s| s.as_str())
-                    .map(|s| root.join(s).display().to_string())
+                    .map(|s| typescript_path(&root.join(s)))
                     .collect()
             } else {
                 let entry = p.entry.canonicalize().unwrap_or_else(|_| p.entry.clone());
-                vec![entry.display().to_string()]
+                vec![typescript_path(&entry)]
             };
             serde_json::json!({ "compilerOptions": options, "include": include })
         };

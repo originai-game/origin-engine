@@ -884,6 +884,11 @@ fn cooked_models_render_the_gltf_reference_scene() {
     let rendered = og_tests::gfx::render_built(&mut gfx).unwrap();
     let tier = rendered.info.backend_tier();
     let reference_path = og_tests::gfx::reference_path(&tier, "gltf-reference");
+    let reference_path = if reference_path.exists() {
+        reference_path
+    } else {
+        og_tests::gfx::reference_path("metal", "gltf-reference")
+    };
     let reference = og_tests::gfx::load_png(&reference_path)
         .unwrap_or_else(|e| panic!("no gltf-reference frame for tier {tier}: {e}"));
     let tolerance = og_tests::compare::Tolerance {

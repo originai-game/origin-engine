@@ -215,6 +215,7 @@ fn pins() -> (String, String) {
 }
 
 #[test]
+#[cfg(unix)]
 fn doctor_reports_the_pins_and_each_tool() {
     let (rust, _) = pins();
     let out = og().arg("doctor").current_dir(repo()).output().unwrap();
@@ -279,6 +280,10 @@ fn doctor_names_a_fix_for_every_missing_tool() {
         ("tsrs", "scripts/install-tools.sh"),
         ("node", "https://nodejs.org"),
     ] {
+        if tool == "tsrs" && cfg!(windows) {
+            assert!(t.contains("og check uses tsgo 7.0.2 through bun x"), "{t}");
+            continue;
+        }
         let at = t
             .lines()
             .position(|l| l.starts_with("missing") && l.split_whitespace().nth(1) == Some(tool))
@@ -289,13 +294,15 @@ fn doctor_names_a_fix_for_every_missing_tool() {
             "{tool}: `{next}`"
         );
     }
-    assert!(t.contains("6 problem(s)"), "{t}");
+    let problems = if cfg!(windows) { 5 } else { 6 };
+    assert!(t.contains(&format!("{problems} problem(s)")), "{t}");
 }
 
 /// When the game process dies, `og run` says so at once with its exit
 /// status (or signal) and its last stderr lines, and exits with that code,
 /// so a supervisor waiting for the probe stops waiting.
 #[test]
+#[cfg(unix)]
 fn run_reports_a_dead_game_process_at_once() {
     let dir = scratch_root();
     std::fs::remove_dir_all(dir.join("crates")).unwrap();
@@ -366,6 +373,7 @@ fn build_refuses_a_bad_publish_setting_by_line() {
 /// An executor (outside the repository, bun but no node, no Rust): the
 /// build toolchain is skipped and node is optional, so neither is a problem.
 #[test]
+#[cfg(unix)]
 fn doctor_outside_the_repository_needs_only_bun_and_the_engine() {
     let Some(bun) = std::env::var_os("PATH").and_then(|p| {
         std::env::split_paths(&p)
@@ -866,6 +874,35 @@ fn check_project() -> (PathBuf, PathBuf) {
 const TS2322: &str =
     "src/main.ts(1,7): error TS2322: Type 'string' is not assignable to type 'number'.\n";
 
+#[cfg(windows)]
+#[test]
+fn windows_checks_types_with_the_reported_tsgo_fallback() {
+    let (dir, game) = check_project();
+    std::fs::write(game.join("tsconfig.json"), r#"{"include":["src/**/*.ts"]}"#).unwrap();
+    std::fs::write(game.join("src/main.ts"), "const n: number = 'wrong';\n").unwrap();
+    let out = og()
+        .arg("check")
+        .arg(&game)
+        .arg("--json")
+        .env_remove("OG_TSRS")
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out));
+    let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(report["tool"], "tsgo");
+    assert!(text(&out).contains("2322"), "{TS2322}: {}", text(&out));
+    std::fs::write(game.join("src/main.ts"), "const n: number = 42;\n").unwrap();
+    let out = og()
+        .arg("check")
+        .arg(&game)
+        .arg("--json")
+        .env_remove("OG_TSRS")
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
 /// `og check` finds tsrs by OG_TSRS, then the engine package's
 /// node_modules/@tsrs/<platform>, then PATH, and reports its diagnostics
 /// as one `check` event; without any it falls back to tsgo through bun x.
@@ -1031,8 +1068,9 @@ fn check_never_reads_a_failing_tsrs_as_clean() {
 #[test]
 fn check_synthesises_the_configuration_a_project_does_not_have() {
     assert!(
-        std::env::var_os("PATH")
-            .is_some_and(|p| std::env::split_paths(&p).any(|d| d.join("tsrs").is_file())),
+        cfg!(windows)
+            || std::env::var_os("PATH")
+                .is_some_and(|p| std::env::split_paths(&p).any(|d| d.join("tsrs").is_file())),
         "this test needs tsrs on PATH (scripts/install-tools.sh)"
     );
     let dir = std::env::temp_dir().join(format!("og-check-synth-{}", std::process::id()));
@@ -1057,7 +1095,7 @@ fn check_synthesises_the_configuration_a_project_does_not_have() {
     };
     let (code, v) = check(&entry);
     assert_eq!(code, Some(1), "{v}");
-    assert_eq!(v["tool"], "tsrs");
+    assert_eq!(v["tool"], if cfg!(windows) { "tsgo" } else { "tsrs" });
     assert_eq!(
         (
             v["diagnostics"][0]["file"].as_str(),
@@ -1120,8 +1158,9 @@ fn check_synthesises_the_configuration_a_project_does_not_have() {
 #[test]
 fn run_test_and_build_stop_on_a_type_error_before_bundling() {
     assert!(
-        std::env::var_os("PATH")
-            .is_some_and(|p| std::env::split_paths(&p).any(|d| d.join("tsrs").is_file())),
+        cfg!(windows)
+            || std::env::var_os("PATH")
+                .is_some_and(|p| std::env::split_paths(&p).any(|d| d.join("tsrs").is_file())),
         "this test needs tsrs on PATH (scripts/install-tools.sh)"
     );
     let dir = scratch_root();
@@ -1321,8 +1360,9 @@ fn test_filters_unit_and_playtest_paths_and_refuses_no_match() {
 fn dev_reports_the_check_of_each_save_and_reloads_anyway() {
     use std::io::{BufRead, BufReader};
     assert!(
-        std::env::var_os("PATH")
-            .is_some_and(|p| std::env::split_paths(&p).any(|d| d.join("tsrs").is_file())),
+        cfg!(windows)
+            || std::env::var_os("PATH")
+                .is_some_and(|p| std::env::split_paths(&p).any(|d| d.join("tsrs").is_file())),
         "this test needs tsrs on PATH (scripts/install-tools.sh)"
     );
     let dir = scratch_root();

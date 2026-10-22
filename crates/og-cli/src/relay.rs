@@ -9,6 +9,8 @@
 
 /// Where a signal goes: one process, or every process of a group.
 #[derive(Clone, Copy, Debug)]
+// Windows console events reach attached children directly, not through POSIX pids.
+#[cfg_attr(not(unix), allow(dead_code))]
 pub enum Target {
     Process(u32),
     /// A process group, by its leader's pid (a child spawned with

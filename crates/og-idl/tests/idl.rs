@@ -406,7 +406,14 @@ fn the_committed_generated_files_match_the_idl() {
 #[test]
 fn the_generated_declarations_type_check_with_the_examples() {
     let package = repo().join("packages/engine");
-    let out = Command::new("tsrs")
+    let mut checker = if cfg!(windows) {
+        let mut c = Command::new("bun");
+        c.args(["x", "--package", "typescript@7.0.2", "tsc"]);
+        c
+    } else {
+        Command::new("tsrs")
+    };
+    let out = checker
         .args([
             "-p",
             "tsconfig.json",

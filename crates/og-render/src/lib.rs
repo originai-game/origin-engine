@@ -363,6 +363,7 @@ impl Backend {
     fn backends(self) -> wgpu::Backends {
         match self {
             Backend::Auto if cfg!(target_arch = "wasm32") => wgpu::Backends::BROWSER_WEBGPU,
+            Backend::Auto if cfg!(target_os = "windows") => wgpu::Backends::DX12,
             Backend::Auto => wgpu::Backends::PRIMARY,
             Backend::WebGpu => wgpu::Backends::BROWSER_WEBGPU,
             Backend::WebGl2 => wgpu::Backends::GL,

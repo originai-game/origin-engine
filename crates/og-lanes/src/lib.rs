@@ -225,7 +225,7 @@ pub fn record_panic(message: &str, location: &str, tick: u64) {
     {
         *slot = Some(PanicReport {
             message: message.to_string(),
-            location: location.to_string(),
+            location: location.replace('\\', "/"),
             tick,
             lane,
         });
