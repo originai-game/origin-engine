@@ -38,6 +38,8 @@ import { openAudio } from "./audio.ts";
 import { nativePlatform } from "./platform.ts";
 import { createEngine, fixedClock, type Engine, type GameToken } from "../runtime.ts";
 
+declare const Bun: { sleepSync(ms: number): void };
+
 const argv = process.argv.slice(2);
 let entry = "";
 let root: string | undefined;
@@ -110,9 +112,9 @@ if (leader ? end === undefined : first === undefined || count === undefined) fai
 
 /** One record on stdout: length, JSON, payload. */
 function record(header: Record<string, unknown>, payload?: Uint8Array): void {
-  const json = Buffer.from(JSON.stringify({ ...header, bytes: payload?.length ?? 0 }));
-  const len = Buffer.alloc(4);
-  len.writeUInt32LE(json.length);
+  const json = new TextEncoder().encode(JSON.stringify({ ...header, bytes: payload?.length ?? 0 }));
+  const len = new Uint8Array(4);
+  new DataView(len.buffer).setUint32(0, json.length, true);
   writeAll(len);
   writeAll(json);
   if (payload) writeAll(payload);
@@ -125,7 +127,7 @@ function writeAll(bytes: Uint8Array): void {
       at += writeSync(1, bytes, at, bytes.length - at);
     } catch (e) {
       // A pipe that is full answers EAGAIN on a non-blocking descriptor: wait.
-      if ((e as NodeJS.ErrnoException).code !== "EAGAIN") throw e;
+      if ((e as { code?: string }).code !== "EAGAIN") throw e;
       Bun.sleepSync(1);
     }
   }
@@ -194,7 +196,7 @@ function drain(): void {
     const inside = relative(out, path);
     if (inside === "" || inside.startsWith(".." + sep) || inside === ".." || isAbsolute(inside)) continue;
     mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, o.kind === "png" || o.kind === "wav" ? Buffer.from(o.data, "base64") : o.data);
+    writeFileSync(path, o.kind === "png" || o.kind === "wav" ? Uint8Array.from(atob(o.data), (c) => c.charCodeAt(0)) : o.data);
     process.stderr.write(`tick ${o.tick} ${o.action}: wrote ${path}\n`);
   }
   for (const l of engine.takeLog()) {
