@@ -166,6 +166,23 @@ pub fn run(args: &[&str]) -> ExitCode {
             (Some(v), _) => println!("ok       {:<13} {v}", tool.name),
         }
     }
+    // ffmpeg: og render's video (absent, og render writes frames only).
+    match crate::render::ffmpeg() {
+        Some((bin, v)) => println!(
+            "ok       {:<13} {v} ({}; og render encodes video)",
+            "ffmpeg",
+            bin.display()
+        ),
+        None => {
+            println!(
+                "optional {:<13} not found (OG_FFMPEG or PATH): og render writes frames only",
+                "ffmpeg"
+            );
+            println!(
+                "         fix: install ffmpeg (apt install ffmpeg, brew install ffmpeg) or set OG_FFMPEG for video and footage (type video)"
+            );
+        }
+    }
     problems += engine_checks(&cwd);
     if problems == 0 {
         println!("all tools present.");

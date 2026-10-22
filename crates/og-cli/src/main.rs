@@ -9,6 +9,7 @@
 mod api;
 mod bundle;
 mod check;
+mod contact_sheet;
 mod cook;
 mod dev;
 mod device;
@@ -18,6 +19,7 @@ mod probe;
 mod project;
 mod publish;
 mod relay;
+mod render;
 mod run;
 mod sfx;
 mod skin;
@@ -46,6 +48,12 @@ commands:
                       or for the iPhone on 0.0.0.0 with the LAN URL printed; --host names the
                       address), pass the play gate and time the first frame and the frames;
                       report.md and device.json in --out (default <project>/og-out/device)
+  render [project] --commands \"t:action[:args];...\" | --timeline <name> [--fps F] [--from S] [--to S]
+      [--size WxH] [--out DIR|out.mp4|out.webm] [--frames png|jpg] [--audio] [--contact-sheet COLS]
+      [--jobs N] [--seed S] [--json] [--no-check]
+                      render the script to frames, a video (ffmpeg: H.264 or VP9, the capture
+                      mixer's audio with --audio), frames.json (tick, time, sha256 per frame) and a
+                      contact sheet; the fps divides the tick rate; --jobs splits the range
   probe <method> [params-json] [--port P] [--out file.png] [--raw]
                       one probe call to a running `og run --port P` / `og dev` (JSON-RPC over WebSocket)
   dev [project] [--port P] [--exit-after N] [--json]
@@ -105,6 +113,7 @@ fn main() -> ExitCode {
         }
         ["doctor", rest @ ..] => doctor::run(rest),
         ["run", rest @ ..] => run::run(rest),
+        ["render", rest @ ..] => render::run(rest),
         ["probe", rest @ ..] => probe::run(rest),
         ["dev", rest @ ..] => dev::run(rest),
         ["check", rest @ ..] => check::run(rest),
