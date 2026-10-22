@@ -6,7 +6,7 @@ and `@origingame/create-game` (docs/release.md §3). Before 1.0.0 a minor
 bump carries API additions or changes, one line each, written at the merge
 that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
-## 0.1.1 (unreleased)
+## 0.1.1 (2026-10-22)
 
 - Fix: the published template, archetypes and knowledge scaffold carried no
   `.gitignore` (npm drops the file from every tarball), so a scaffolded game
