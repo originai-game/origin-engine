@@ -30,6 +30,7 @@ import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const args = process.argv.slice(2);
 const opt = (name: string): string | undefined => {
@@ -47,7 +48,7 @@ const HOST_ONLY = flag("--host-only");
 const CONTAINER_ONLY = flag("--container-only");
 const PLATFORM = `${process.platform}-${process.arch}`;
 const SCOPE = "@origingame";
-const HERE = dirname(new URL(import.meta.url).pathname);
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 if (!VERSION || (!FROM && !REGISTRY)) {
   process.stderr.write("usage: bun tests/install/run.ts --from <dir> --version <v> [--registry] [--manifest <file>] [--host-only|--container-only] [--keep] [--image <name>]\n");
@@ -151,7 +152,7 @@ function host(): void {
     const enginePkg = join(demo, "node_modules", SCOPE, "engine");
     const installed = (JSON.parse(readFileSync(join(enginePkg, "package.json"), "utf8")) as { version: string }).version;
     if (installed !== VERSION) step.fail(`installed ${SCOPE}/engine is ${installed}`);
-    const ogBin = join(demo, "node_modules", SCOPE, `engine-${PLATFORM}`, "og");
+    const ogBin = join(demo, "node_modules", SCOPE, `engine-${PLATFORM}`, process.platform === "win32" ? "og.exe" : "og");
     if (!existsSync(ogBin)) step.fail(`no ${ogBin}: the platform package did not install`);
     for (const f of ["dist/web-publish/origin-engine_bg.wasm", "dist/web-publish-2d/origin-engine_bg.wasm", "dist/web-publish/origin-engine-lanes_bg.wasm", "shell", "types/index.d.ts", "schema/api.schema.json"]) {
       if (!existsSync(join(enginePkg, f))) step.fail(`the engine package has no ${f}`);
@@ -168,6 +169,8 @@ function host(): void {
     const renderer = /^(ok|none)\s+renderer\s+(.*)$/m.exec(doctor.stdout);
     log(`   renderer: ${renderer ? `${renderer[1]} ${renderer[2]}` : "(no line)"}`);
     if (!doctor.stdout.includes("tsrs") || /missing\s+tsrs/.test(doctor.stdout)) step.fail(`og doctor: tsrs is not beside the package:\n${doctor.stdout}`);
+    if (process.platform === "win32" && !doctor.stdout.includes("og check uses tsgo 7.0.2 through bun x")) step.fail(`og doctor: Windows must report its tsgo fallback:\n${doctor.stdout}`);
+    log(`   checker: ${doctor.stdout.split("\n").find(line => /^(ok|optional)\s+tsrs\s/.test(line))?.trim()}`);
 
     // 4. check, test, build --publish.
     step = new Step("4 og check, og test, og build --publish");

@@ -45,9 +45,11 @@ for addon in "$here"/native/origin-engine.*.node; do
   cp "$addon" "$stage/origin-engine.node"
   files='"origin-engine.node"'
   if [ -f "$here/native/og.$platform" ]; then
-    cp "$here/native/og.$platform" "$stage/og"
-    chmod +x "$stage/og"
-    files="$files, \"og\""
+    exe=og
+    [ "$os" != win32 ] || exe=og.exe
+    cp "$here/native/og.$platform" "$stage/$exe"
+    chmod +x "$stage/$exe"
+    files="$files, \"$exe\""
   fi
   cp "$root/LICENSE" "$stage/LICENSE"
   libc=""
