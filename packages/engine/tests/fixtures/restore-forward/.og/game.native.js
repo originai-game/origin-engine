@@ -1,6 +1,6 @@
 // @bun
 // packages/engine/tests/fixtures/restore-forward/src/main.ts
-import { og } from "/Volumes/app/origin-engine-lane-2/packages/engine/src/index.ts";
+import { og } from "/home/user/workspace/repo/packages/engine/src/index.ts";
 var main_default = og.game({
   commands: {
     print_save: (world) => {

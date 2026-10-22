@@ -4,6 +4,11 @@
 import { og } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 
+// The native host's console: a game's lib is ES2022 alone (og check reads
+// templates/game/tsconfig.json for a project without one), so this fixture,
+// which prints the save for og-run.test.ts to read, declares what it uses.
+declare const console: { log(line: string): void };
+
 export default og.game({
   commands: {
     print_save: (world: World) => {
