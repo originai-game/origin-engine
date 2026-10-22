@@ -1,9 +1,9 @@
 {
-  "extends": "../../../../templates/game/tsconfig.json",
+  "extends": "../../templates/game/tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@origingame/engine": ["../../../../packages/engine/types/index.d.ts"],
-      "@origingame/engine/playtest": ["../../../../packages/engine/src/playtest.ts"]
+      "@origingame/engine": ["../../packages/engine/types/index.d.ts"],
+      "@origingame/engine/playtest": ["../../packages/engine/src/playtest.ts"]
     }
   },
   "include": ["*.ts"]

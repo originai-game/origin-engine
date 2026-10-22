@@ -1,29 +1,30 @@
 #!/usr/bin/env bash
-# check-conformance (goals/tsrs/plan.md §4.6): tsrs against the authority,
-# tsgo (typescript@TSGO_VERSION, the constant in crates/og-cli/src/check.rs),
-# on the same configs with the same checker count.
+# check-conformance: tsrs (og check's checker) held to tsgo, the TypeScript
+# compiler it ports (typescript@TSGO_VERSION, the constant in
+# crates/og-cli/src/check.rs), on the same configs with the same checker
+# count. A wave's end runs it (scripts/wave-end.sh, stage conformance), and
+# a tsrs version move runs it before it lands (docs/ci.md §Toolchain).
 #
 #   scripts/tsrs-diff.sh [CONFIG...]
 #
 # Without arguments: packages/engine's three tsconfigs, every template (with
-# the paths og check gives a project without node_modules) and the five
-# examples. Each config runs once per checker (`-p CONFIG --noEmit
-# --incremental false --pretty false --checkers 4`; tsrs adds
+# the paths og check gives a project without node_modules), the five
+# examples and the error corpus scripts/tsrs-corpus/ (22 files, one error a
+# game author makes each). Each config runs once per checker (`-p CONFIG
+# --noEmit --incremental false --pretty false --checkers 4`; tsrs adds
 # `--checkerAssignment go --noLazyMembers`, the order closest to tsgo's) and
 # each side's diagnostics become (file, line, col, code) keys:
 #
 #   - one tsgo reports and tsrs does not (a miss) fails, each listed;
 #   - one tsrs reports and tsgo does not, or the same key with another
-#     message, is printed (`diff` lines; under the gate they land in
-#     $OG_EVIDENCE_DIR/gate/check-conformance.log) and passes; re-check
-#     those with typescript@7.1.0-dev, the commit tsrs ports, before
-#     calling them tsrs defects;
+#     message, is printed (`diff` lines) and passes; re-check those with
+#     the typescript 7.1.0-dev tsrs ports before calling them tsrs defects;
 #   - both clean is one PASS line.
 #
-# It also holds the pins to their single statements: every
-# devDependencies.typescript of the templates and examples equals
-# TSGO_VERSION, and packages/engine's optionalDependencies @tsrs/* equal
-# TSRS_VERSION of scripts/install-tools.sh.
+# It also holds the pins to their single statements: no template or example
+# declares a typescript devDependency (og check is their checker), and
+# packages/engine's optionalDependencies @tsrs/* equal TSRS_VERSION of
+# scripts/install-tools.sh.
 #
 # TSRS and TSGO name the binaries (default: tsrs on PATH, `bun x --package
 # typescript@TSGO_VERSION tsc`).
@@ -46,9 +47,8 @@ tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 fail=0
 # The pins.
 for f in templates/*/package.json templates/archetypes/*/package.json examples/*/package.json; do
-  v="$(sed -n 's/^ *"typescript": "\(.*\)",\{0,1\}$/\1/p' "$f")"
-  if [ -n "$v" ] && [ "$v" != "$TSGO_VERSION" ]; then
-    og_err "check-conformance: $f pins typescript $v; crates/og-cli/src/check.rs TSGO_VERSION is $TSGO_VERSION"; fail=1
+  if grep -q '"typescript":' "$f"; then
+    og_err "check-conformance: $f declares typescript; og check (tsrs) is a project's checker"; fail=1
   fi
 done
 while read -r v; do
@@ -77,6 +77,7 @@ EOF
     configs+=("$w/tsconfig.json")
   done
   for e in brasswick hollowbell kestrel-stair lantern-vale meridian-loop; do configs+=("examples/$e/tsconfig.json"); done
+  configs+=(scripts/tsrs-corpus/tsconfig.json)
 fi
 
 args=(--noEmit --incremental false --pretty false --checkers 4)
