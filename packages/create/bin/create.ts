@@ -2,13 +2,16 @@
 // `npm create @origingame/game` (and `bun create`): scaffolds the Origin
 // Engine project template (templates/game) into a directory, naming the game.
 //
-//   create [dir] [--name "Name"] [--id slug] [--archetype runner|match3|...]
+//   create [dir] [--name "Name"] [--id slug] [--profile 2d|3d] [--archetype runner|match3|...]
 //          [--premise "one line"] [--look <slug>] [--force]
 //
-// The template comes from ./template/ in the published package (prepack:
-// scripts/pack-template.ts) or ../../templates/game in the engine repository;
-// an archetype (a complete small game to start from) from ./archetypes/<name>/
-// or ../../templates/archetypes/<name>/.
+// The template comes from ./template/ (the 3D template, templates/game) or
+// ./template-2d/ (the 2D starter, templates/game-2d) in the published
+// package (prepack: scripts/pack-template.ts), or from ../../templates/ in
+// the engine repository; an archetype (a complete small game to start from)
+// from ./archetypes/<name>/ or ../../templates/archetypes/<name>/. The 2D
+// starter is written for --profile 2d, or for a premise that says 2D
+// (platformer, side-scroller, metroidvania, pixel art) without saying 3D.
 //
 // Every game gets its look, `assets/looks/<id>.ogt`, named by GameDesc.look
 // in the entry: it extends the style catalogue's preset given by --look, or
@@ -46,6 +49,8 @@ export interface CreateOptions {
   readonly force?: boolean;
   /** Start from an archetype (`runner`, `match3`, `topdown`, `tower-defense`, `roguelike`, `idle`, `rhythm`, `third-person`: templates/archetypes/README.md) instead of the project template. */
   readonly archetype?: string;
+  /** The template's profile: `2d` writes the 2D starter (templates/game-2d), `3d` the 3D template (templates/game). Unset, a premise that says 2D picks `2d`; else `3d`. Not for an archetype, which has its own. */
+  readonly profile?: Profile;
   /** The template directory; found next to this file when omitted. */
   readonly template?: string;
   /** A style catalogue slug the game's look extends (og-taste §12). */
@@ -68,11 +73,22 @@ export interface CreatedLook {
   readonly chosen: "flag" | "premise" | "template" | "none";
 }
 
+/** A project's profile (`project.ogt`'s `profile` line): 2D or 3D. */
+export type Profile = "2d" | "3d";
+
+/** The profile the game was written in, and how it was chosen. */
+export interface CreatedProfile {
+  readonly value: Profile;
+  /** `flag` for --profile, `premise` for a premise that says 2D, `archetype` for an archetype's own, `template` for the 3D template by default. */
+  readonly chosen: "flag" | "premise" | "archetype" | "template";
+}
+
 export interface Created {
   readonly dir: string;
   readonly name: string;
   readonly id: string;
   readonly files: readonly string[];
+  readonly profile: CreatedProfile;
   readonly look: CreatedLook;
   /** What the game's author should know, such as reference frames a look will move. */
   readonly notes: readonly string[];
@@ -164,8 +180,30 @@ function title(id: string): string {
     .join(" ");
 }
 
-/** The template this copy of the package scaffolds. */
-export function templateDir(archetype?: string): string {
+/** Words of a premise that say the game is 2D (platformer, side-scroller, metroidvania, pixel art, sprites, tiles). */
+const TWO_D = new Set(["platformer", "platforming", "side-scroller", "side-scrolling", "sidescroller", "sidescrolling", "scroller", "metroidvania", "pixel", "pixel-art", "pixelart", "sprite", "tilemap", "tile", "8bit", "16bit", "1bit"]);
+const THREE_D = new Set(["third-person", "first-person", "fps", "voxel", "lowpoly", "low-poly"]);
+
+/**
+ * The profile a premise asks for: `2d` when it uses a 2D word (TWO_D, or
+ * `2D` itself) and no 3D word (THREE_D, or `3D`), else null: the template's
+ * own, 3D, applies.
+ */
+export function premiseProfile(premise: string): Profile | null {
+  const asked = new Set(words(premise));
+  const says = (w: string) => new RegExp(`(^|[^a-z0-9])${w}($|[^a-z0-9])`, "i").test(premise);
+  if (says("3d") || [...THREE_D].some((w) => asked.has(w))) return null;
+  return says("2d") || [...TWO_D].some((w) => asked.has(w)) ? "2d" : null;
+}
+
+/** The `profile "2d"` line of a project manifest; `3d` when it has none. */
+function profileOf(dir: string): Profile {
+  const m = /^profile[ \t]+"(2d|3d)"/m.exec(readFileSync(join(dir, "project.ogt"), "utf8"));
+  return m?.[1] === "2d" ? "2d" : "3d";
+}
+
+/** The template this copy of the package scaffolds: the archetype's, or the project template of a profile (3D unless `2d`). */
+export function templateDir(archetype?: string, profile: Profile = "3d"): string {
   const here = dirname(fileURLToPath(import.meta.url));
   if (archetype !== undefined) {
     const roots = [join(here, "..", "archetypes"), join(here, "..", "..", "..", "templates", "archetypes")];
@@ -175,10 +213,12 @@ export function templateDir(archetype?: string): string {
     const known = roots.filter(existsSync).flatMap((r) => readdirSync(r).filter((d) => existsSync(join(r, d, "project.ogt"))));
     throw new Error(`no archetype '${archetype}': choose one of ${[...new Set(known)].sort().join(", ") || "(none shipped)"}`);
   }
-  for (const candidate of [join(here, "..", "template"), join(here, "..", "..", "..", "templates", "game")]) {
+  const packed = profile === "2d" ? "template-2d" : "template";
+  const source = profile === "2d" ? "game-2d" : "game";
+  for (const candidate of [join(here, "..", packed), join(here, "..", "..", "..", "templates", source)]) {
     if (existsSync(join(candidate, "project.ogt"))) return candidate;
   }
-  throw new Error(`no project template next to ${here}: expected ../template (published package) or ../../../templates/game (engine repository)`);
+  throw new Error(`no ${profile} project template next to ${here}: expected ../${packed} (published package) or ../../../templates/${source} (engine repository)`);
 }
 
 function ogtString(value: string): string {
@@ -322,8 +362,16 @@ export function create(options: CreateOptions): Created {
       throw new Error(`${dir} is not empty; pick an empty directory, or pass --force to write the template over it`);
     }
   }
+  if (options.profile !== undefined && options.archetype !== undefined) {
+    throw new Error(`--profile and --archetype together: an archetype has its own profile (${options.archetype}); drop one`);
+  }
   const choice = chooseStyle(options);
-  const template = options.template ?? templateDir(options.archetype);
+  const asked = options.profile ?? (options.premise !== undefined ? premiseProfile(options.premise) : null);
+  const template = options.template ?? templateDir(options.archetype, asked ?? "3d");
+  const profile: CreatedProfile = {
+    value: profileOf(template),
+    chosen: options.archetype !== undefined ? "archetype" : options.profile !== undefined ? "flag" : asked !== null ? "premise" : "template",
+  };
   const list = files(template);
   const written: string[] = [];
   mkdirSync(dir, { recursive: true });
@@ -342,7 +390,7 @@ export function create(options: CreateOptions): Created {
     writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
   }
   const { look, notes } = writeLook(dir, name, id, choice, written);
-  return { dir, name, id, files: written, look, notes };
+  return { dir, name, id, files: written, profile, look, notes };
 }
 
 /**
@@ -427,12 +475,13 @@ function writeLook(dir: string, name: string, id: string, choice: ReturnType<typ
   return { look, notes };
 }
 
-const USAGE = `usage: create [dir] [--name "Name"] [--id slug] [--archetype name] [--premise "one line"] [--look slug] [--force]
+const USAGE = `usage: create [dir] [--name "Name"] [--id slug] [--profile 2d|3d] [--archetype name] [--premise "one line"] [--look slug] [--force]
 
 Scaffolds an Origin Engine game into dir (default: ./origin-game).
   --name   the game's display name (default: from the id or the directory)
   --id     the game's id, lowercase-hyphen (default: from the name)
-  --archetype  start from a complete archetype game (runner, match3, topdown, tower-defense, roguelike, idle, rhythm, third-person) instead of the template
+  --profile    2d writes the 2D starter (a platformer: sprites, tilemap, 2D physics), 3d the 3D template (default: 2d for a premise that says 2D, platformer, side-scroller, metroidvania or pixel art without saying 3D; else 3d)
+  --archetype  start from a complete archetype game (runner, match3, topdown, tower-defense, roguelike, idle, rhythm, third-person) instead of the template; it has its own profile
   --premise    the game in one line (genre, mood, setting, audience): its look extends the style catalogue's best match (asked for on a terminal when neither this nor --look is given)
   --look   the style catalogue slug the look extends (og-taste §12), such as anime-cel-3d or 16bit-pixel
   --no-prompt  never ask for the premise
@@ -444,6 +493,7 @@ function main(argv: string[]): number {
   let id: string | undefined;
   let force = false;
   let archetype: string | undefined;
+  let profile: Profile | undefined;
   let premise: string | undefined;
   let look: string | undefined;
   let ask = true;
@@ -458,7 +508,11 @@ function main(argv: string[]): number {
     else if (a === "--id") id = value();
     else if (a === "--force") force = true;
     else if (a === "--archetype") archetype = value();
-    else if (a === "--premise") premise = value();
+    else if (a === "--profile") {
+      const v = value();
+      if (v !== "2d" && v !== "3d") throw new Error(`--profile ${v}: use 2d or 3d. ${USAGE}`);
+      profile = v;
+    } else if (a === "--premise") premise = value();
     else if (a === "--look") look = value();
     else if (a === "--no-prompt") ask = false;
     else if (a === "-h" || a === "--help") {
@@ -476,13 +530,16 @@ function main(argv: string[]): number {
     ...(name ? { name } : {}),
     ...(id ? { id } : {}),
     ...(archetype ? { archetype } : {}),
+    ...(profile ? { profile } : {}),
     ...(premise ? { premise } : {}),
     ...(look ? { look } : {}),
     force,
   });
   const shown = relative(process.cwd(), made.dir) || ".";
   const style = made.look.extends ? `extends ${made.look.extends}${made.look.chosen === "premise" ? " (from the premise)" : made.look.chosen === "flag" ? " (--look)" : ""}` : "extends no preset";
+  const how = { flag: " (--profile)", premise: " (from the premise)", archetype: ` (the ${archetype} archetype's)`, template: "" }[made.profile.chosen];
   console.log(`Created ${made.name} (${made.id}) in ${shown}: ${made.files.length} files.
+Profile: ${made.profile.value}${how}.
 Look: ${made.look.file}, ${style}; README.md says how to change it.${made.notes.map((n) => `\nNote: ${n}`).join("")}
 
 Next:

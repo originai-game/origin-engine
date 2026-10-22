@@ -1,7 +1,8 @@
 # @origingame/create-game
 
-Scaffolds an Origin Engine game from the project template (`templates/game`
-of the engine repository): `project.ogt`, `src/`, `assets/`, `tests/`,
+Scaffolds an Origin Engine game from a project template of the engine
+repository, the 3D template `templates/game` or the 2D starter
+`templates/game-2d`: `project.ogt`, `src/`, `assets/`, `tests/`,
 `package.json` and `tsconfig.json`, with the game's name and id filled in.
 
 ```sh
@@ -9,13 +10,20 @@ bun packages/create/bin/create.ts my-game --name "My Game"   # in the engine rep
 cd my-game && bun install && og cook && og run .
 ```
 
-`create [dir] [--name "Name"] [--id slug] [--archetype name] [--premise "one line"] [--look slug] [--force]`: the
+`create [dir] [--name "Name"] [--id slug] [--profile 2d|3d] [--archetype name] [--premise "one line"] [--look slug] [--force]`: the
 id defaults to the name in lowercase-hyphen form (or the directory's name);
 a directory that is not empty is refused unless `--force` is given.
+`--profile 2d` writes the 2D starter (a courier's platformer: sprites,
+flipbooks, a tilemap with one-way ledges, 2D physics, a HUD and a pause
+menu, one playtest), `--profile 3d` the 3D template; without the flag, a
+premise that says 2D, platformer, side-scroller, metroidvania, pixel art,
+sprites or tiles without saying 3D gets the 2D starter, anything else the
+3D template. The output's `Profile:` line says which and why.
 `--archetype` starts from a complete game of `templates/archetypes/`
-instead of the template: `runner`, `match3`, `topdown`, `tower-defense`,
+instead of either template: `runner`, `match3`, `topdown`, `tower-defense`,
 `roguelike`, `idle`, `rhythm` or `third-person` (the published package carries them under
-`archetypes/`).
+`archetypes/`); an archetype has its own profile, so `--profile` beside it
+is refused.
 
 Every game gets its look: `assets/looks/<id>.ogt`, an `.ogt` of `type look`
 (og-taste §12 of the knowledge package) that `GameDesc.look` in the entry
@@ -42,8 +50,8 @@ is, what it extends and how to change it. For an archetype, a preset moves
 the frames its `references/` hold; create says so and how to record them
 again.
 
-The published package carries the template under `template/` and the style
-catalogue under `looks/`, copied by the `prepack` script
+The published package carries the 3D template under `template/`, the 2D
+starter under `template-2d/` and the style catalogue under `looks/`, copied by the `prepack` script
 (`scripts/pack-template.ts`); build output (`cooked/`,
 `dist/`, `node_modules/`) is never copied. The template's `gitattributes`
 (media through Git LFS) is written as the project's `.gitattributes`: under

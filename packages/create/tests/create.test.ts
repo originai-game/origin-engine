@@ -5,7 +5,7 @@ import { afterAll, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { pickStyle, readCatalogue, words } from "../bin/create.ts";
+import { pickStyle, premiseProfile, readCatalogue, words } from "../bin/create.ts";
 import { fileURLToPath } from "node:url";
 
 declare const Bun: { spawnSync(cmd: string[], o?: { cwd?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
@@ -115,6 +115,7 @@ test("a scaffolded project routes media through Git LFS; the engine repository d
   const repo = join(pkg, "..", "..");
   for (const [dir, args] of [
     ["lfs-game", ["--name", "LFS Game"]],
+    ["lfs-game-2d", ["--profile", "2d"]],
     ["lfs-runner", ["--archetype", "runner"]],
     ["lfs-match3", ["--archetype", "match3"]],
     ["lfs-topdown", ["--archetype", "topdown"]],
@@ -133,9 +134,64 @@ test("a scaffolded project routes media through Git LFS; the engine repository d
     expect(git(made, "check-attr", "filter", "project.ogt").trim()).toBe("project.ogt: filter: unspecified");
     expect(existsSync(join(made, "gitattributes"))).toBeFalse();
   }
-  for (const media of ["templates/game/assets/models/dropship.glb", "templates/archetypes/runner/assets/x.png", "templates/archetypes/topdown/a.wav"]) {
+  for (const media of ["templates/game/assets/models/dropship.glb", "templates/game-2d/assets/sprites/hero.png", "templates/archetypes/runner/assets/x.png", "templates/archetypes/topdown/a.wav"]) {
     expect(git(repo, "check-attr", "filter", media).trim()).toBe(`${media}: filter: unspecified`);
   }
+});
+
+// The profile: --profile 2d writes the 2D starter (templates/game-2d), a
+// premise that says 2D picks it, and the 3D template is the default.
+
+test("--profile 2d scaffolds the 2D starter with its look renamed; the output names the profile", () => {
+  const template2d = join(pkg, "..", "..", "templates", "game-2d");
+  const r = cli("hop", "--profile", "2d", "--name", "Hop", "--no-prompt");
+  expect(r.code).toBe(0);
+  expect(r.out).toContain("Profile: 2d (--profile)");
+  expect(walk(join(scratch, "hop")).sort()).toEqual(expected(template2d, "hop"));
+  const manifest = readFileSync(join(scratch, "hop", "project.ogt"), "utf8");
+  expect(manifest.split("\n")).toContain('profile "2d"');
+  expect(manifest.split("\n")).toContain('name "Hop"');
+  expect(manifest.split("\n")).toContain('id "hop"');
+  expect(JSON.parse(readFileSync(join(scratch, "hop", "package.json"), "utf8")).name).toBe("hop");
+  const look = readFileSync(join(scratch, "hop", "assets", "looks", "hop.ogt"), "utf8");
+  expect(new RegExp('^extends "([^"]*)"$', "m").exec(look)?.[1]).toBe("16bit-pixel");
+  expect(existsSync(join(scratch, "hop", "assets", "looks", "origin-game-2d.ogt"))).toBeFalse();
+  expect([...readFileSync(join(scratch, "hop", "src", "main.ts"), "utf8").matchAll(/^\s*look: "([^"]+)",$/gm)].map((m) => m[1])).toEqual(["looks/hop.ogt"]);
+  // --profile 3d and no flag both write the 3D template.
+  const three = cli("flat", "--profile", "3d", "--no-prompt");
+  expect(three.code).toBe(0);
+  expect(three.out).toContain("Profile: 3d (--profile)");
+  expect(walk(join(scratch, "flat")).sort()).toEqual(expected(template, "flat"));
+  const plain = cli("plain", "--no-prompt");
+  expect(plain.code).toBe(0);
+  expect(plain.out).toContain("Profile: 3d.\n");
+  expect(readFileSync(join(scratch, "plain", "project.ogt"), "utf8")).toContain('profile "3d"');
+  // An archetype has its own profile; --profile beside it is refused before anything is written.
+  expect(cli("dash2", "--archetype", "runner", "--no-prompt").out).toContain("Profile: 2d (the runner archetype's)");
+  const both = cli("both", "--profile", "2d", "--archetype", "runner");
+  expect(both.code).not.toBe(0);
+  expect(both.err).toContain("--profile and --archetype together");
+  expect(existsSync(join(scratch, "both"))).toBeFalse();
+  const bad = cli("bad", "--profile", "4d");
+  expect(bad.code).not.toBe(0);
+  expect(bad.err).toContain("use 2d or 3d");
+});
+
+test("a premise that says 2D picks the 2D starter unless it also says 3D", () => {
+  const cave = cli("cave", "--premise", "A 16-bit metroidvania platformer, energetic and heroic");
+  expect(cave.code).toBe(0);
+  expect(cave.out).toContain("Profile: 2d (from the premise)");
+  expect(cave.out).toContain("extends 16bit-pixel (from the premise)");
+  expect(readFileSync(join(scratch, "cave", "project.ogt"), "utf8")).toContain('profile "2d"');
+  const voxel = cli("cave3", "--premise", "A 3D platformer with pixel textures");
+  expect(voxel.code).toBe(0);
+  expect(voxel.out).toContain("Profile: 3d.\n");
+  expect(readFileSync(join(scratch, "cave3", "project.ogt"), "utf8")).toContain('profile "3d"');
+  expect(premiseProfile("Cozy Side-Scroller about a lost kite")).toBe("2d");
+  expect(premiseProfile("a 2D puzzle game")).toBe("2d");
+  expect(premiseProfile("a sprite-based roguelike in first-person")).toBeNull();
+  expect(premiseProfile("a survival horror in lonely corridors")).toBeNull();
+  expect(premiseProfile("")).toBeNull();
 });
 
 // The look: every game gets assets/looks/<id>.ogt, named by GameDesc.look.
