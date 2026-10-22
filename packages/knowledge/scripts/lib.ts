@@ -19,13 +19,23 @@ export interface Roots {
   readonly engine: string;
 }
 
-/** The roots in the engine repository, or in the published package when the repository is absent. */
+/** Whether `dir` is the published @origingame/engine package (the knowledge ships inside it as knowledge/). */
+function isEnginePackage(dir: string): boolean {
+  try {
+    return (JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as { name?: string }).name === "@origingame/engine";
+  } catch {
+    return false;
+  }
+}
+
+/** The roots in the engine repository (packages/knowledge beside packages/engine), or in the published @origingame/engine, whose knowledge/ this is. */
 export function defaultRoots(pkg = PACKAGE_ROOT): Roots {
   const repoTemplate = join(pkg, "..", "..", "templates", "game");
+  const parent = join(pkg, "..");
   return {
     pkg,
     template: existsSync(join(repoTemplate, "project.ogt")) ? repoTemplate : join(pkg, "scaffold", "template"),
-    engine: join(pkg, "..", "engine"),
+    engine: isEnginePackage(parent) ? parent : join(parent, "engine"),
   };
 }
 
@@ -80,7 +90,11 @@ export const TEMPLATE_SKIP: ReadonlySet<string> = new Set(["cooked", "dist", "og
  * overlay as `.gitattributes`, which in the engine repository would route
  * the template's plain-blob media through LFS.
  */
-export const TEMPLATE_RENAMED: ReadonlyMap<string, string> = new Map([["gitattributes", ".gitattributes"]]);
+export const TEMPLATE_RENAMED: ReadonlyMap<string, string> = new Map([
+  ["gitattributes", ".gitattributes"],
+  // npm drops .gitignore from a tarball: the published scaffold/template carries it as `gitignore` (scripts/pack.ts).
+  ["gitignore", ".gitignore"],
+]);
 
 const fatal = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 

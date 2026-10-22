@@ -23,7 +23,8 @@ node, which CI takes from `actions/setup-node`.
 | wasm-bindgen (crate and CLI), js-sys, web-sys, wasm-bindgen-futures | 0.2.129, 0.3.106, 0.3.106, 0.4.79 | `crates/og-host-web/Cargo.toml` (exact), the CLI from `Cargo.lock` |
 | binaryen (`wasm-opt`) | 133 | `BINARYEN_VERSION` in `scripts/install-tools.sh` (release archive on Linux and macOS) |
 | bun | 1.4.2 | `BUN_VERSION` in `scripts/install-tools.sh` |
-| TypeScript (type checking only; Bun bundles) | 7.0.2 | `packages/engine/package.json` `typecheck`, `crates/og-idl/tests/idl.rs`, the templates' `devDependencies` |
+| TypeScript, tsgo (`check-conformance`'s comparison and `og check`'s fallback where tsrs has no package; no project or package depends on it) | 7.0.2 | `TSGO_VERSION` in `crates/og-cli/src/check.rs` (`scripts/tsrs-diff.sh` and `.agents/setup` read it) |
+| tsrs (the type checker: `og check`, the check before `og run`/`test`/`build`/`dev`, `packages/engine`'s `typecheck`, og-idl's declaration test) | 0.18.0-ts7.1.0-dev.20260929 (TypeScript 7.1.0-dev.20260930.4) | `TSRS_VERSION` and the five SRIs in `scripts/install-tools.sh`; `packages/engine/package.json` `optionalDependencies` copy it (`check-conformance` holds them equal). It moves only at a wave's end, with a tsrs release, all of these in one commit, after `scripts/tsrs-diff.sh` passes on the new binary |
 | cargo-nextest | 0.9.148 here | not pinned |
 | ShellCheck (CI lints `scripts/*.sh` with it; Ubuntu's 0.9 reports what 0.11 does not) | 0.11.0 | `SHELLCHECK_VERSION` in `scripts/install-tools.sh` (Homebrew's on macOS) |
 | node (`determinism`'s wasm32 runs) | 24 in CI | `.github/actions/provision` |
@@ -68,6 +69,7 @@ changed:
 | the GPU reference tests (nextest `-E 'not (package(og-tests) \| package(og-ui) \| package(og-render))'` in test and test-quick; `--exclude` under cargo test) | og-tests, og-ui, og-render and every workspace crate they build on (`cargo tree`, with dev-dependencies), `templates/ui-kit/assets` | the rest of the test step runs; the step's summary line says the GPU tests were skipped |
 | wasm-build, wasm-opt, size-gate | `crates/` | the last outputs in `target/og-wasm` are reused (only when every file they list exists; a step that ran upstream in this invocation always runs the next) |
 | drift | `crates/og-api` (`api.ogt`), og-idl and the crates it builds on, `crates/og-cli`, and every generated directory (`og_idl::OUTPUT_DIRS`), so a hand edit to a generated file is still caught | |
+| check-conformance (in no lane; `scripts/check.sh check-conformance`) | `packages/engine`, `templates/`, `examples/`, `crates/og-cli/src/check.rs`, `scripts/tsrs-diff.sh`, `scripts/tsrs-corpus/`, `scripts/install-tools.sh`, `scripts/lib.sh` | |
 | web-reference (`make web-reference`; in no lane) | og-host-web's and og-tests-web's crates for wasm32 (og-tests-web takes og-tests' scenes, assets and references and og-ui's, whose references hold ui-kit's frames), `packages/engine`, `templates/fx-showcase`, `templates/looks`, `templates/ui-kit`, `templates/archetypes/third-person` | |
 
 A change to `scripts/`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`,
@@ -166,6 +168,7 @@ had grown `target/` to 143 GB.
 | `drift` | `og api check` (generated `.d.ts`, wiki, JSON schema, Rust glue vs `crates/og-api/api.ogt`), the dev `og` the test step built | every | yes | yes | yes | |
 | `bun-quick` | `bun run test` in `packages/knowledge` and `packages/create` (no native build) | quick | yes | | | |
 | `bun-functional` | `bun run test` in each `packages/*` with the last full lane's wasm (`OG_GATE=1`, as bun-test) when `target/og-wasm/opt-all.txt` exists, else only `packages/knowledge` and `packages/create` (CI's functional job builds no wasm, so it runs those two) | functional | | yes | | |
+| `check-conformance` | `scripts/tsrs-diff.sh`: tsrs (`og check`'s checker) against tsgo `TSGO_VERSION` (its comparison), both at `--checkers 4`, on `packages/engine`'s three tsconfigs, every template (with the `paths` og check gives them here), the five examples and the error corpus `scripts/tsrs-corpus/`; a diagnostic tsgo reports and tsrs does not fails, any other difference is printed as a `diff` line into the step's log and passes; it also refuses a `typescript` devDependency in a template or example and holds the engine's `@tsrs/*` `optionalDependencies` to `TSRS_VERSION`. Reads sources only (no `step_needs`); 5 s | `scripts/wave-end.sh` (stage `conformance`), `scripts/check.sh check-conformance`; in no lane | | | | |
 | `bun-test` | `bun run test` in each `packages/*` with a `test` script (the engine's files in parallel workers, `bun test --parallel`; the engine's `typecheck` also checks the six templates' `src/` against the generated declarations, `packages/engine/tsconfig.templates.json`; their playtests run under bun in `og test`); `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | | yes | |
 | `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hashes on the host and on wasm32 scalar and simd128 under node, the host release once more with lanes off and once with lanes on (failing when the lanes run did no parallel work), and the lanes wasm once per physics profile (`scripts/wasm-lanes.sh`, og-physics with `physics3d` or `physics2d` alone as the 3D and 2D lanes modules are built, bound by wasm-bindgen and run on one lane under node: the 2D world hash on the 2D lanes build, the 3D ones on the 3D) | full | | | yes (node from `actions/setup-node`) | |
 | perf | `scripts/perf.sh`: `cargo test -p og-tests -p og-runtime --release --no-fail-fast -- --ignored perf` against this machine's baselines (og-tests: `crates/og-tests/perf/<tier>-<adapter>/`, og-runtime: extraction of 20,000 meshes, `crates/og-runtime/perf/<cpu>/`); `--measure` records instead, copies the numbers to `target/evidence/perf/` and restores the tree | `make perf` | | | | `--measure` (below) |
@@ -333,7 +336,9 @@ the table go to `target/evidence/wave-end/`.
 requirement (a playtest's frames on Mesa lavapipe in a sandbox with no
 GPU) was set aside by the owner to put features first
 (docs/phase-1.md, "The CPU sandbox requirement set aside"; docs/design.md
-§5 and §8). The default run is the `gate` and `web` stages alone; the
+§5 and §8). The default run is the `gate`, `web`, `conformance` and `release` stages
+(`conformance`: `scripts/tsrs-diff.sh`, og check's tsrs held to tsgo;
+`release`: the tarballs and the install test, docs/release.md §3); the
 lavapipe stages below (`cross`, `prepare`, `gfx`, `ui`, `playtests`,
 `table`) stay in the script and run only when `--stages` names them. No
 `references/vulkan-cpu/` directory is kept any more (the last 25 copies
@@ -345,6 +350,7 @@ describes the script as it is, for when the requirement returns.
 |---|---|
 | `gate` | `scripts/check.sh --all` |
 | `web` | `scripts/check.sh web-reference` |
+| `release` | `scripts/release.sh pack` then `verify`: the five packages as release tarballs in `dist/release/<version>/` with `manifest.json`, and the install test (`tests/install/run.ts`) from them on this machine and in the linux-x64 container (docs/release.md §3); publish never runs here |
 | `cross` | `cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31` of `-p og-tests --bin og-gfx`, of og-ui's GPU test binaries (`--test gfx --test kit_gfx --test materials_gfx --test text_gfx`) and of `-p og-host-node`, the addon copied to `packages/engine/native/origin-engine.linux-x64.node` |
 | `prepare` | each template cooked (`og cook`, the gate's dev `og`) and bundled for the native host into `<template>/.og/game.native.js`, as `og test` does, on the Mac |
 | `gfx` | `og-gfx --all --capture target/lava-gfx` in `og-lavapipe-bun:local` (`docker run --rm -v <checkout>:<checkout> -w <checkout>`, `OG_TEST_ASSETS=<checkout>/crates/og-tests/assets`, the og-gfx binary as `--entrypoint`; no `--platform`: the amd64 image runs under emulation, and the checkout sits at its own path because the bundles hold absolute paths) |

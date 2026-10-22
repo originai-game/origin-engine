@@ -643,7 +643,7 @@ pub enum ScrollAxes {
     Both,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ImageDesc {
     /// `None` draws a solid rectangle of `tint`.
     pub texture: Option<TextureHandle>,
@@ -656,6 +656,9 @@ pub struct ImageDesc {
     /// Width over height (0: none): with the height left to fit, the image
     /// is as tall as its width over this (`Element::aspect`).
     pub aspect: f32,
+    /// What a screen reader calls it (and the probe's text); empty is
+    /// decoration.
+    pub label: String,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -1611,6 +1614,7 @@ impl Ui {
             uv: desc.uv.unwrap_or([0.0, 0.0, 1.0, 1.0]),
             tint: desc.tint.unwrap_or(Srgba::WHITE),
         };
+        self.nodes[i].probe_text = desc.label;
     }
 
     /// A capsule track filled to `value` (0–1).
@@ -2284,7 +2288,49 @@ impl Ui {
                 c
             }
         };
-        for &f in &self.floating.clone() {
+        let gap = self.theme.space.xs;
+        // The anchored groups first, each laid out in its area and placed
+        // once all of them are known (so one the host's control moves keeps
+        // off the others), then the other layers in their order (a popover
+        // reads its anchor's final place).
+        let (groups, rest): (Vec<usize>, Vec<usize>) = self
+            .floating
+            .iter()
+            .partition(|&&f| matches!(self.nodes[f].float, Float::Anchored { .. }));
+        let mut spots: Vec<(usize, Rect)> = Vec::new();
+        for f in groups.into_iter().chain([NONE]).chain(rest) {
+            // NONE marks the groups' end: place them, then go on to the rest.
+            if f == NONE {
+                if !covered.is_empty() {
+                    for k in 0..spots.len() {
+                        let (g, r) = spots[k];
+                        let Float::Anchored { anchor, margin, .. } = self.nodes[g].float else {
+                            continue;
+                        };
+                        let others: Vec<Rect> = spots
+                            .iter()
+                            .enumerate()
+                            .filter(|&(j, _)| j != k)
+                            .map(|(_, &(_, o))| o)
+                            .collect();
+                        spots[k].1 = keep_out(r, anchor, covered, margin.max(gap), safe, &others);
+                    }
+                }
+                for &(g, placed) in &spots {
+                    self.nodes[g].el.width = Size::Fixed(placed.width);
+                    self.nodes[g].el.height = Size::Fixed(placed.height);
+                    layout(
+                        &mut self.nodes,
+                        g,
+                        placed,
+                        &self.fonts,
+                        &offset,
+                        dpr,
+                        screen,
+                    );
+                }
+                continue;
+            }
             let float = self.nodes[f].float;
             if float == Float::Modal {
                 // The backdrop covers the surface; the safe area pads its content.
@@ -2315,7 +2361,6 @@ impl Ui {
             };
             layout(&mut self.nodes, f, area, &self.fonts, &offset, dpr, screen);
             let (w, h) = (self.nodes[f].w, self.nodes[f].h);
-            let gap = self.theme.space.xs;
             let (x, y) = match float {
                 Float::Anchored { anchor, dx, dy, .. } => {
                     let (ax, ay) = anchor.fractions();
@@ -2350,13 +2395,11 @@ impl Ui {
                     (x, y)
                 }
             };
-            let (x, y) = match float {
-                Float::Anchored { anchor, margin, .. } => {
-                    keep_out(Rect::new(x, y, w, h), anchor, covered, margin.max(gap))
-                }
-                _ => (x, y),
-            };
             let placed = Rect::new(x, y, w, h);
+            if matches!(float, Float::Anchored { .. }) {
+                spots.push((f, placed));
+                continue;
+            }
             self.nodes[f].el.width = Size::Fixed(w);
             self.nodes[f].el.height = Size::Fixed(h);
             layout(
@@ -4411,21 +4454,60 @@ impl Reader<'_> {
 
 /// An anchored group's place moved out of the host's control `c`: along
 /// the edge it sits on, past `c` by `gap` (a corner or side group sideways,
-/// a top or bottom centred group up or down); a centred group stays.
-fn keep_out(r: Rect, anchor: Anchor, c: Rect, gap: f32) -> (f32, f32) {
+/// a top or bottom centred group up or down), or for a corner group past it
+/// vertically when that lands on less of the `others` and of the surface
+/// outside `bounds`; a centred group stays.
+fn keep_out(r: Rect, anchor: Anchor, c: Rect, gap: f32, bounds: Rect, others: &[Rect]) -> Rect {
     if c.is_empty() || !r.overlaps(&c) {
-        return (r.x, r.y);
+        return r;
     }
     let (ax, ay) = anchor.fractions();
-    if ax < 0.5 {
-        (r.x.max(c.right() + gap), r.y)
+    let along = if ax < 0.5 {
+        Rect {
+            x: r.x.max(c.right() + gap),
+            ..r
+        }
     } else if ax > 0.5 {
-        (r.x.min(c.x - gap - r.width), r.y)
+        Rect {
+            x: r.x.min(c.x - gap - r.width),
+            ..r
+        }
     } else if ay < 0.5 {
-        (r.x, r.y.max(c.bottom() + gap))
+        Rect {
+            y: r.y.max(c.bottom() + gap),
+            ..r
+        }
     } else if ay > 0.5 {
-        (r.x, r.y.min(c.y - gap - r.height))
+        Rect {
+            y: r.y.min(c.y - gap - r.height),
+            ..r
+        }
     } else {
-        (r.x, r.y)
+        return r;
+    };
+    // A corner group may also step past it the other way (under a top-left
+    // control, down): taken when moving along the edge would land on more
+    // of the other groups, or off the safe area, than that does.
+    let across = if ax == 0.5 || ay == 0.5 {
+        None
+    } else if ay < 0.5 {
+        Some(Rect {
+            y: r.y.max(c.bottom() + gap),
+            ..r
+        })
+    } else {
+        Some(Rect {
+            y: r.y.min(c.y - gap - r.height),
+            ..r
+        })
+    };
+    let area = |a: Rect| a.width * a.height;
+    let cost = |p: Rect| {
+        let off = area(p) - area(p.intersect(&bounds));
+        off + others.iter().map(|o| area(p.intersect(o))).sum::<f32>()
+    };
+    match across {
+        Some(a) if cost(a) < cost(along) => a,
+        _ => along,
     }
 }

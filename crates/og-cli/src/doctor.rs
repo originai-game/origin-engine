@@ -1,5 +1,5 @@
-//! `og doctor`: what a game author's loop needs (bun, the engine package,
-//! its native addon, the web host's wasm), whether this machine has a
+//! `og doctor`: what a game author's loop needs (bun, tsrs, the engine
+//! package, its native addon, the web host's wasm), whether this machine has a
 //! headless renderer (reported, not required: without one the playtests'
 //! frames are unchecked), then, inside the engine repository, the build
 //! toolchain against the repository's pins. Every problem has one line
@@ -28,6 +28,9 @@ enum Pin {
     RustToolchain,
     /// The `wasm-bindgen` crate version in Cargo.lock: the CLI must match it.
     WasmBindgenLock,
+    /// `TSRS_VERSION` in scripts/install-tools.sh; tsrs is found by og
+    /// check's own chain (crate::check::locate_tsrs), not only on PATH.
+    TsrsVersion,
     None,
 }
 
@@ -74,6 +77,18 @@ const TOOLS: &[Tool] = &[
         pin: Pin::None,
     },
     Tool {
+        name: "tsrs",
+        role: "type-checks game code (og check, and before og run/test/build)",
+        install: |pin| {
+            match pin {
+            Some(v) => format!("run scripts/install-tools.sh (tsrs {v}), or set OG_TSRS to the binary"),
+            None => "`bun install` in the project (@origingame/engine brings @tsrs/<platform>), or set OG_TSRS to the binary".into(),
+        }
+        },
+        repo_only: false,
+        pin: Pin::TsrsVersion,
+    },
+    Tool {
         name: "node",
         role: "loads the native addon outside bun",
         install: |_| "install Node.js 22 or newer from https://nodejs.org".into(),
@@ -91,15 +106,17 @@ pub fn run(args: &[&str]) -> ExitCode {
     let root = crate::find_root(&cwd);
     let toolchain = root.as_deref().and_then(rust_channel);
     let bindgen = root.as_deref().and_then(wasm_bindgen_lock);
+    let tsrs = root.as_deref().and_then(tsrs_version);
 
     println!("og doctor (og {})", crate::VERSION);
     match &root {
         Some(r) => {
             println!("repository  {}", r.display());
             println!(
-                "pinned      rust {} (rust-toolchain.toml), wasm-bindgen {} (Cargo.lock)",
+                "pinned      rust {} (rust-toolchain.toml), wasm-bindgen {} (Cargo.lock), tsrs {} (TSRS_VERSION)",
                 toolchain.as_deref().unwrap_or("not pinned"),
-                bindgen.as_deref().unwrap_or("not locked")
+                bindgen.as_deref().unwrap_or("not locked"),
+                tsrs.as_deref().unwrap_or("not pinned")
             );
         }
         None => println!(
@@ -121,6 +138,10 @@ pub fn run(args: &[&str]) -> ExitCode {
         let pin = match tool.pin {
             Pin::RustToolchain => toolchain.as_deref(),
             Pin::WasmBindgenLock => bindgen.as_deref(),
+            Pin::TsrsVersion => {
+                problems += tsrs_check(tool, tsrs.as_deref(), &cwd);
+                continue;
+            }
             Pin::None => None,
         };
         // rustup resolves rust-toolchain.toml from the working directory.
@@ -198,6 +219,65 @@ fn wasm_bindgen_lock(root: &Path) -> Option<String> {
     None
 }
 
+/// `TSRS_VERSION="${TSRS_VERSION:-<version>}"` in scripts/install-tools.sh.
+fn tsrs_version(root: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(root.join("scripts/install-tools.sh")).ok()?;
+    text.lines().find_map(|l| {
+        let v = l.strip_prefix("TSRS_VERSION=\"${TSRS_VERSION:-")?;
+        Some(v.strip_suffix("}\"")?.to_string())
+    })
+}
+
+/// The tsrs line: found by og check's chain, its package version against
+/// the pin inside the repository. A platform tsrs has no package for is
+/// not a problem: og check takes tsgo there.
+fn tsrs_check(tool: &Tool, pin: Option<&str>, cwd: &Path) -> usize {
+    let package = crate::project::engine_package(Some(cwd));
+    match crate::check::locate_tsrs(package.as_deref()) {
+        Ok(Some(t)) => match pin {
+            Some(p) if t.package_version != p => {
+                println!(
+                    "differs  {:<13} {}, pinned {p} ({})",
+                    tool.name,
+                    t.package_version,
+                    t.path.display()
+                );
+                println!("         fix: {}", (tool.install)(Some(p)));
+                1
+            }
+            _ => {
+                println!(
+                    "ok       {:<13} {} (TypeScript {}, from {}: {})",
+                    tool.name,
+                    t.package_version,
+                    t.version,
+                    t.source,
+                    t.path.display()
+                );
+                0
+            }
+        },
+        Ok(None) if crate::check::platform().is_none() => {
+            println!(
+                "optional {:<13} no tsrs package for this platform; og check uses tsgo {} through bun x",
+                tool.name,
+                crate::check::TSGO_VERSION
+            );
+            0
+        }
+        Ok(None) => {
+            println!("missing  {:<13} {}", tool.name, tool.role);
+            println!("         fix: {}", (tool.install)(pin));
+            1
+        }
+        Err(e) => {
+            println!("broken   {:<13} {e}", tool.name);
+            println!("         fix: {}", (tool.install)(pin));
+            1
+        }
+    }
+}
+
 /// The engine package's checks (`packages/engine/src/node/doctor.ts`): the
 /// addon loads, the wasm is built, and whether a 64x64 frame renders headless.
 fn engine_checks(cwd: &Path) -> usize {
@@ -238,6 +318,29 @@ fn engine_checks(cwd: &Path) -> usize {
         package.display()
     );
     let mut problems = 0;
+    // In a project: its pin against the installed package (docs/release.md §3).
+    if let Ok(p) = crate::project::Project::open(cwd)
+        && p.manifest
+    {
+        match (p.engine.as_deref(), report["version"].as_str()) {
+            (Some(pinned), Some(installed)) if pinned != installed => {
+                problems += 1;
+                println!("differs  {:<13} project.ogt pins engine \"{pinned}\", installed {installed}", "pin");
+                println!(
+                    "         fix: when the game is written against {installed}, set `engine \"{installed}\"` in project.ogt; otherwise bun add @origingame/engine@{pinned}"
+                );
+            }
+            (Some(pinned), _) => println!("ok       {:<13} project.ogt pins engine \"{pinned}\"", "pin"),
+            (None, _) => {
+                problems += 1;
+                println!("missing  {:<13} project.ogt has no `engine \"<version>\"` line", "pin");
+                println!(
+                    "         fix: add `engine \"{}\"` to project.ogt (the version this game is written against)",
+                    report["version"].as_str().unwrap_or("?")
+                );
+            }
+        }
+    }
     let mut line = |name: &str, ok: bool, detail: String, fix: &str| {
         if ok {
             println!("ok       {name:<13} {detail}");

@@ -6,10 +6,10 @@ import type * as Api from "@origingame/engine";
 import { kit } from "./bind.ts";
 import { capsule, fit, fmt, frame, grow, iconOr, px, token } from "./util.ts";
 
-/** A screen panel: a dialog over the game, wide on desktop, full width on a phone. */
-function screen(id: string, title: string, width: number, build: () => void): boolean {
+/** A screen panel: a dialog over the game, wide on desktop, full width on a phone. With `scrim` a press on the backdrop closes it too. */
+function screen(id: string, title: string, width: number, build: () => void, scrim = false): boolean {
   const { phone, viewport } = frame();
-  const m = kit.modal(id, true, { title, width: phone ? grow() : px(Math.min(width, viewport.width - 48)), ignoreBackdrop: true }, build);
+  const m = kit.modal(id, true, { title, width: phone ? grow() : px(Math.min(width, viewport.width - 48)), ignoreBackdrop: !scrim }, build);
   return m.dismissed;
 }
 
@@ -135,9 +135,15 @@ export function levelSelect(id: string, desc: Api.LevelSelectDesc = {}): Api.Lev
   const levels = desc.levels ?? [];
   const earned = levels.reduce((n, l) => n + Math.min(3, l.stars ?? 0), 0);
   const out: { chosen: number | null; closed: boolean } = { chosen: null, closed: false };
+  // A screen reader hears the stars as the desc words them ("2 of 3 stars"),
+  // never the icons' English names: the first star carries it, the others
+  // are decoration; a locked card is named by its level, not "lock".
+  const starsLabel = (stars: number, max: number): string => (desc.starsLabel ?? "{stars} of {max} stars").replaceAll("{stars}", `${stars}`).replaceAll("{max}", `${max}`);
+  let back = false;
+  // Back from every input: the button, a press on the scrim, Escape, B.
   out.closed = screen(id, desc.title ?? "Levels", 720, () => {
     kit.row("Total", { gap: t.xs, cross: "center" }, () => {
-      iconOr("Star", "star", 18, token("accent"));
+      iconOr("Star", "star", 18, token("accent"), starsLabel(earned, levels.length * 3));
       kit.label("Count", `${earned} / ${levels.length * 3}`, { font: "mono", color: token("fgMuted"), nowrap: true });
     });
     // A numeral is the card's face, in display type on a square card; a
@@ -149,19 +155,24 @@ export function levelSelect(id: string, desc: Api.LevelSelectDesc = {}): Api.Lev
     const cell = phone ? 84 : 104;
     const g = kit.grid("Levels", { count: levels.length, cellWidth: named ? (phone ? 136 : 168) : cell, cellHeight: cell, columns: desc.columns ?? 0, height: fit(0, phone ? 420 : 400), width: grow() }, (i) => {
       const l = levels[i]!;
+      const name = l.name ?? `${i + 1}`;
       if (l.locked) {
-        iconOr("Lock", "lock", 28, token("fgSubtle"));
+        iconOr("Lock", "lock", 28, token("fgSubtle"), (desc.lockedLabel ?? "{name}, locked").replaceAll("{name}", name));
         return;
       }
-      const name = l.name ?? `${i + 1}`;
       if ([...name].length > 3) kit.label("Name", name, { step: phone ? "base" : "lg", font: "display", align: "center", width: grow(), maxLines: 2, ellipsis: true });
       else kit.label("Name", name, { step: "xl3", font: "display", nowrap: true });
+      const stars = Math.min(3, l.stars ?? 0);
       kit.row("Stars", { gap: 2 }, () => {
-        for (let k = 0; k < 3; k++) iconOr(kit.idi("Star", k), "star", 14, token(k < (l.stars ?? 0) ? "accent" : "fillStrong"));
+        for (let k = 0; k < 3; k++) iconOr(kit.idi("Star", k), "star", 14, token(k < stars ? "accent" : "fillStrong"), k === 0 ? starsLabel(stars, 3) : "");
       });
     });
     if (g.clicked !== null && g.clicked !== undefined && !levels[g.clicked]?.locked) out.chosen = g.clicked;
-  });
+    kit.row("Footer", { width: grow(), align: "end" }, () => {
+      if ((kit.button("Back", desc.backLabel ?? "Back", {}) as Api.Response).clicked) back = true;
+    });
+  }, true);
+  out.closed ||= back;
   return out;
 }
 

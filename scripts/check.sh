@@ -23,7 +23,8 @@
 # none of its inputs changed since: the GPU reference tests (og-tests,
 # og-ui, og-render and the crates they build on, templates/ui-kit/assets),
 # the wasm steps (crates/), drift (the IDL, og-idl, og and the generated
-# files), web-reference (og-host-web's and og-tests-web's crates,
+# files), check-conformance (packages/engine, templates/, examples/, the
+# comparer, its corpus and the pins), web-reference (og-host-web's and og-tests-web's crates,
 # packages/engine, templates/fx-showcase). A change to scripts/, Cargo.toml,
 # Cargo.lock, rust-toolchain.toml, .cargo/ or .config/ reruns all of them. Each skip is
 # printed with its reason. --all, or CI set in the environment, runs
@@ -57,7 +58,7 @@ STEPS_QUICK="fmt clippy test-quick drift bun-quick"
 # host), without the wasm build, its size, determinism and the browser
 # tiers, which are a wave's end measurements (docs/ci.md §Lanes).
 STEPS_FUNCTIONAL="fmt clippy test drift bun-functional"
-STEPS="$STEPS_FULL test-quick bun-quick bun-functional web-reference"
+STEPS="$STEPS_FULL test-quick bun-quick bun-functional web-reference check-conformance"
 FUNCTIONAL=0
 BUN_QUICK_PACKAGES="packages/knowledge packages/create"   # no native build needed
 WASM_TRIPLE=wasm32-unknown-unknown
@@ -80,6 +81,11 @@ rule_drift() {
   echo "crates/og-api $(og_crate_dirs -p og-idl -e normal,build | og_words) crates/og-cli \
 packages/engine/types packages/engine/schema packages/engine/src/generated \
 crates/og-host-web/src/generated crates/og-host-node/src/generated packages/knowledge/wiki $RULE_COMMON"
+}
+# check-conformance: what the two checkers read (the engine package, the
+# templates, the examples), the comparer, and where the pins are stated.
+rule_conformance() {
+  echo "packages/engine templates examples crates/og-cli/src/check.rs scripts/tsrs-diff.sh scripts/tsrs-corpus scripts/install-tools.sh scripts/lib.sh"
 }
 rule_web() {
   echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) packages/engine templates/fx-showcase templates/looks templates/ui-kit templates/archetypes/third-person $RULE_COMMON"
@@ -415,6 +421,16 @@ step_drift() {
   fi
   og_say "SKIPPED: og api check not available yet (\`og --help\` lists no 'api' command); becomes a failure once scripts/budgets.txt says 'drift_check required'"
   return $SKIP
+}
+
+# tsrs (og check) against tsgo on the engine's configs, every template, the
+# examples and scripts/tsrs-corpus (scripts/tsrs-diff.sh): a diagnostic tsgo
+# reports and tsrs does not fails; every other difference is logged, not
+# failed. In no lane: a wave's end runs it (scripts/wave-end.sh). Reads
+# sources only, never a build output, so it waits for no step.
+step_check_conformance() {
+  if skip_unchanged check-conformance "check-conformance" "$(rule_conformance)"; then return $SKIP; fi
+  scripts/tsrs-diff.sh
 }
 
 # The determinism tool and the workspace crates it links (og-core, og-ecs,

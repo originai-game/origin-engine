@@ -87,10 +87,10 @@ export function capsule(id: string, build: () => void, desc: { gap?: number; pad
   }, build) as Api.Response;
 }
 
-/** An icon of the atlas, or a small solid mark of the same ink when the atlas lacks it. */
-export function iconOr(id: string, name: string, size: number, tint: Api.Paint): void {
-  if (kit.hasIcon(name)) kit.icon(id, name, { size, tint });
-  else kit.image(id, { tint, width: px(size * 0.6), height: px(size * 0.6) });
+/** An icon of the atlas, or a small solid mark of the same ink when the atlas lacks it; `label` names it for a screen reader (IconDesc.label: empty is decoration). */
+export function iconOr(id: string, name: string, size: number, tint: Api.Paint, label?: string): void {
+  if (kit.hasIcon(name)) kit.icon(id, name, label === undefined ? { size, tint } : { size, tint, label });
+  else kit.image(id, { tint, width: px(size * 0.6), height: px(size * 0.6), label: label ?? "" });
 }
 
 /** Menu items with defaults filled in, the first primary unless one is. */

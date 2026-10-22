@@ -9,14 +9,11 @@
     "start": "og run .",
     "build": "og build .",
     "cook": "og cook .",
+    "check": "og check .",
     "test": "og test .",
-    "typecheck": "bun x --package typescript@7.0.2 tsc --noEmit -p .",
     "polish": "og polish ."
   },
   "dependencies": {
-    "@origingame/engine": "0.0.1"
-  },
-  "devDependencies": {
-    "typescript": "7.0.2"
+    "@origingame/engine": "0.1.1"
   }
 }

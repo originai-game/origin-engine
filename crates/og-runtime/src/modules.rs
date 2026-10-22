@@ -1404,6 +1404,7 @@ pub fn og_ui_image(id: String, desc: Option<String>) {
             width: size_or(&d["width"], Size::fit()),
             height: size_or(&d["height"], Size::fit()),
             aspect: f(&d, "aspect", 0.0).max(0.0),
+            label: d["label"].as_str().unwrap_or_default().to_string(),
         };
         ui.image(id.as_str(), i)
     });
@@ -1915,6 +1916,7 @@ pub fn og_ui_tabs(id: String, items: String, selected: u32, desc: Option<String>
             TabsDesc {
                 fill: d["fill"].as_bool().unwrap_or(false),
                 width: size(&d["width"]),
+                label: d["label"].as_str().unwrap_or_default().to_string(),
             },
         )
     });
@@ -1935,6 +1937,7 @@ pub fn og_ui_select(id: String, options: String, selected: u32, desc: Option<Str
                 placeholder: d["placeholder"].as_str().unwrap_or_default().to_string(),
                 width: size(&d["width"]),
                 disabled: d["disabled"].as_bool().unwrap_or(false),
+                label: d["label"].as_str().unwrap_or_default().to_string(),
             },
         )
     });
@@ -1971,6 +1974,7 @@ pub fn og_ui_radio(id: String, options: String, selected: u32, desc: Option<Stri
             &mut sel,
             RadioDesc {
                 horizontal: d["horizontal"].as_bool().unwrap_or(false),
+                label: d["label"].as_str().unwrap_or_default().to_string(),
             },
         )
     });
@@ -2059,6 +2063,7 @@ pub fn og_ui_icon(id: String, name: String, desc: Option<String>) {
             IconDesc {
                 size: f(&d, "size", 0.0),
                 tint: paint(&t, &d["tint"]),
+                label: d["label"].as_str().map(str::to_owned),
             },
         )
     });

@@ -1,0 +1,23 @@
+type look
+version 1
+---
+# The look of Brasswick (og-taste §1, §12): the detailed-pixel preset (a 270-line
+# grid, twelve tones a channel, a fine Bayer dither, no tone curve), the fantasy
+# skin recoloured brass (skins/brasswick, written by tools/make-assets.ts) and
+# the 2D glow for the lamps, gears and the hatch.
+name "Brasswick"
+extends "detailed-pixel"
+skin "skins/brasswick/skin.ogt"
+PostEffects {
+  glow true
+  glowIntensity 0.9
+}
+Stylise {
+  # 360 lines: 2x at 1280x720, 3x at 1920x1080, no border (og-taste §12's table;
+  # the preset's 270 leaves a border at 720p). 22.5 cells of 16 px tall.
+  pixelHeight 360
+  ditherStrength 0.35
+  # Finer steps than the preset's twelve: the third level is dark, and twelve tones a channel leave its
+  # shadows one step (og-taste: each material at least 6 tones).
+  posterize 24
+}

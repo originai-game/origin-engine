@@ -1,0 +1,20 @@
+type project
+version 1
+---
+# The project manifest (og-game §2): `og run`, `og build`, `og cook`, `og dev`
+# and `og test` read it. Written by `npm create @origingame/game`, then made
+# 2D: no scenes (the levels are tilemaps built in `start`).
+name "Brasswick"
+id "brasswick"
+# The engine this game is written against (upgrades are explicit).
+engine "0.1.1"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 6
+publish {
+  # `og build --publish` keeps only the player-facing probe members
+  # (hello, tick, state, pick, entity, input, capture).
+  probe player
+  out "dist"
+}

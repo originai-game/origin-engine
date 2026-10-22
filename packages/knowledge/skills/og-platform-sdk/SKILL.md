@@ -100,9 +100,17 @@ trying.
   settings, a slot's manifest, then its parts), up to 8 ticks, before the
   first frame while the answers come within 300 ms and drawn as they land
   for 5 s after (docs/web-export.md §The shell). So apply an answer the
-  tick it arrives (the language, Continue's label): a title that waits for
-  a later tick, or a screen transition that only starts after the tap,
-  still shows its defaults behind the gate.
+  tick it arrives (the language, Continue's label), and apply it before
+  the title is built that tick: systems run in `GameDesc.systems` order,
+  so the system that reads the answers comes before (or is) the one that
+  builds the title. A title built by a `Ui` system listed before an
+  `Answers` system draws that tick in the defaults even though the answer
+  landed, and the frame behind the gate is that tick's: the saved Spanish
+  shows only after the tap. The fix is the order: list the system that
+  reads every answer first (`systems: [Answers, ..., Ui, Saves]`, writes
+  last), or read the answers at the top of the system that builds the
+  title. A title that waits for a later tick, or a screen transition that
+  only starts after the tap, still shows its defaults behind the gate.
 - The frame behind the gate is a still of the opening title a few ticks
   in, held until the tap, so anything on it that moves into place over
   its first second stands part-way there: the skin's panel entrance and

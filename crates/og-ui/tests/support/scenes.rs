@@ -495,7 +495,10 @@ pub fn kit_screen(ui: &mut Ui, s: &mut Kit) {
                         "Mode",
                         &["Solo", "Co-op", "Versus"],
                         &mut s.mode,
-                        RadioDesc { horizontal: true },
+                        RadioDesc {
+                            horizontal: true,
+                            ..RadioDesc::default()
+                        },
                     );
                     ui.checkbox_list("Options", &["Show hints", "Hard mode"], &mut s.checks);
                     ui.row(

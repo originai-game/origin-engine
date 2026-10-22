@@ -134,16 +134,27 @@ and `scene` are the defaults of the `GameDesc` fields of those names: what
 and `main`). Write each in one place; set in both to different values, the
 engine refuses to start and names both.
 
-`og` bundles TypeScript without checking its types, so type-check the
-project yourself after each change: `bun x tsc --noEmit` in a created
-project, whose `tsconfig.json` resolves `@origingame/engine` (the
-generated `types/index.d.ts`) and `@origingame/engine/playtest` from
-`node_modules`. An example inside the engine repository has no
-`node_modules`: its `tsconfig.json` maps both through `paths` to
+`og check` type-checks the project (tsrs, a Rust port of TypeScript 7,
+installed with the engine package; where it has no package, tsgo through
+`bun x`). `og run`, `og test` and `og build` check before they bundle and
+stop on a type error, printing each diagnostic as `file(line,col): error
+TS<code>: message`; with `--json` the diagnostics are a `check` event
+(`{"event":"check","ok":false,"diagnostics":[{"file":"src/main.ts","line":12,"col":7,"code":2322,"message":"..."}]}`)
+on the same stream as the run's other events. `og dev` checks each save
+beside the rebuild: the reload still happens, the `reload` event carries a
+`check` object of `ok`, `ms` and `errors` (`null` while the check runs)
+and a `check` event with the diagnostics follows; `og test --json` ends
+with a `test` event whose `check` object has the same three. Read the
+diagnostics and fix them before anything else; `--no-check` skips the
+check (never for `og build --publish`). A created project's
+`tsconfig.json` resolves `@origingame/engine` (the generated
+`types/index.d.ts`) and `@origingame/engine/playtest` from `node_modules`.
+An example inside the engine repository has no `node_modules`: its
+`tsconfig.json` maps both through `paths` to
 `packages/engine/types/index.d.ts` and `packages/engine/src/playtest.ts`
 (with `packages/engine/src/env.d.ts` and a `host.d.ts` for the `node:`
-modules and globals its bun scripts touch), and `bun run typecheck` runs
-it (`examples/hollowbell`, `examples/lantern-vale`).
+modules and globals its bun scripts touch), and `og check .` reads it
+(`examples/hollowbell`, `examples/lantern-vale`).
 
 ## 3. Components, resources, systems, the game
 

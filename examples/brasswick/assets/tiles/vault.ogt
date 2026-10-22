@@ -1,0 +1,66 @@
+type tileset
+version 1
+---
+# Written by tools/make-assets.ts. Tiles 0-46 are the plate terrain's 47 blob shapes
+# (tile id = the index of its reduced neighbour mask), 47-50 the back wall, 51-53 a grate,
+# 54 spikes, 55-58 the far pipes, 59-62 the mid girders, 63-66 decor, 67-70 a vent, 71 a chain.
+texture "tiles/vault.png"
+grid 16 16 8 9
+filter nearest
+solid 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46
+tile 67 {
+  frames 67 68 69 70
+  fps 6
+}
+terrain plate {
+  mode blob47
+  rule 0 0
+  rule 1 1
+  rule 4 2
+  rule 5 3
+  rule 7 4
+  rule 16 5
+  rule 17 6
+  rule 20 7
+  rule 21 8
+  rule 23 9
+  rule 28 10
+  rule 29 11
+  rule 31 12
+  rule 64 13
+  rule 65 14
+  rule 68 15
+  rule 69 16
+  rule 71 17
+  rule 80 18
+  rule 81 19
+  rule 84 20
+  rule 85 21
+  rule 87 22
+  rule 92 23
+  rule 93 24
+  rule 95 25
+  rule 112 26
+  rule 113 27
+  rule 116 28
+  rule 117 29
+  rule 119 30
+  rule 124 31
+  rule 125 32
+  rule 127 33
+  rule 193 34
+  rule 197 35
+  rule 199 36
+  rule 209 37
+  rule 213 38
+  rule 215 39
+  rule 221 40
+  rule 223 41
+  rule 241 42
+  rule 245 43
+  rule 247 44
+  rule 253 45
+  rule 255 46
+  default 46
+  edge filled
+}

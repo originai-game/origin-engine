@@ -4,7 +4,7 @@
 // project template plus origin-engine.json and distribution.json as the
 // scaffold overlay game-scaffold/<overlay>/.
 //
-//   bun scripts/mount.ts <origingame checkout> [--check] [--commit <rev>]
+//   bun scripts/mount.ts <origingame checkout> [--check] [--commit <rev> | --package <dir>]
 //
 // The package owns, in the platform tree, exactly the directories it mounts:
 // game/skills/<each of its skills>/ and game-scaffold/<overlay>/. Within
@@ -20,7 +20,10 @@
 // each added, changed and removed path. --commit mounts the package as
 // committed at <rev> (a `git archive` of packages/knowledge, templates/game
 // and packages/engine/package.json) instead of the working tree, so work in
-// progress in this checkout never reaches the platform.
+// progress in this checkout never reaches the platform. --package mounts the
+// knowledge of an installed @origingame/engine (the directory `bun install`
+// put it in; the package carries this directory as knowledge/): what the
+// platform does at a pinned version (docs/release.md §4 L2).
 
 import { execFileSync } from "node:child_process";
 import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmdirSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -149,6 +152,21 @@ export function committed(repo: string, rev: string): { roots: Roots; revision: 
   return { roots: defaultRoots(join(dir, "packages/knowledge")), revision: short, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
+/** An installed @origingame/engine (the directory `bun install` put it in, or its knowledge/): the knowledge's roots and `@origingame/engine@<version>`. */
+export function installed(dir: string): { roots: Roots; revision: string; cleanup: () => void } {
+  const manifest = join(dir, "package.json");
+  if (!existsSync(manifest)) throw new Error(`${dir}: no package.json; --package takes the installed @origingame/engine directory`);
+  const pkg = JSON.parse(readFileSync(manifest, "utf8")) as { name?: string; version?: string };
+  let knowledge = dir;
+  if (pkg.name === "@origingame/engine") knowledge = join(dir, "knowledge");
+  else if (pkg.name !== "@origingame/engine-knowledge") throw new Error(`${dir}: ${pkg.name ?? "no name"}, not @origingame/engine`);
+  if (!existsSync(join(knowledge, "knowledge.json"))) throw new Error(`${knowledge}: no knowledge.json; the published @origingame/engine carries the knowledge in knowledge/`);
+  const roots = defaultRoots(knowledge);
+  if (!existsSync(join(roots.engine, "package.json"))) throw new Error(`${roots.engine}: no @origingame/engine package.json`);
+  const engine = JSON.parse(readFileSync(join(roots.engine, "package.json"), "utf8")) as { name?: string; version?: string };
+  return { roots, revision: `${engine.name}@${engine.version} (knowledge)`, cleanup: () => {} };
+}
+
 export function summary(r: MountResult, rev: string, check: boolean): string {
   const count = (k: Change["kind"]) => r.changes.filter((c) => c.kind === k).length;
   const lines = [
@@ -166,9 +184,11 @@ if (import.meta.main) {
   const check = args.includes("--check");
   const ci = args.indexOf("--commit");
   const commit = ci >= 0 ? args[ci + 1] : undefined;
-  const positional = args.filter((a, i) => !a.startsWith("--") && !(ci >= 0 && i === ci + 1));
-  if ((ci >= 0 && !commit) || positional.length !== 1 || args.some((a) => a.startsWith("--") && a !== "--check" && a !== "--commit")) {
-    process.stderr.write("usage: bun scripts/mount.ts <origingame checkout> [--check] [--commit <rev>]\n");
+  const pi = args.indexOf("--package");
+  const pkgDir = pi >= 0 ? args[pi + 1] : undefined;
+  const positional = args.filter((a, i) => !a.startsWith("--") && !(ci >= 0 && i === ci + 1) && !(pi >= 0 && i === pi + 1));
+  if ((ci >= 0 && !commit) || (pi >= 0 && !pkgDir) || (commit && pkgDir) || positional.length !== 1 || args.some((a) => a.startsWith("--") && a !== "--check" && a !== "--commit" && a !== "--package")) {
+    process.stderr.write("usage: bun scripts/mount.ts <origingame checkout> [--check] [--commit <rev> | --package <dir>]\n");
     process.exit(2);
   }
   const repo = join(PACKAGE_ROOT, "..", "..");
@@ -176,7 +196,7 @@ if (import.meta.main) {
   let code = 0;
   let source: { roots: Roots; revision: string; cleanup: () => void } | undefined;
   try {
-    source = commit ? committed(repo, commit) : { roots: defaultRoots(), revision: revision(repo), cleanup: () => {} };
+    source = commit ? committed(repo, commit) : pkgDir ? installed(resolve(pkgDir)) : { roots: defaultRoots(), revision: revision(repo), cleanup: () => {} };
     const result = mount(source.roots, production, !check);
     process.stdout.write(summary(result, source.revision, check));
     if (check && result.changes.length) code = 1;

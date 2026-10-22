@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# a quick upward square chirp: og.load.sound(world, "<this file>") plays it.
+preset "jump"
+seed 3
+pitch 1.25
+length 0.7
+volume 0.75

@@ -1,0 +1,20 @@
+{
+  "name": "brasswick",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "assets": "bun tools/make-assets.ts",
+    "dev": "og dev .",
+    "start": "og run .",
+    "build": "og build .",
+    "publish-build": "og build . --publish",
+    "cook": "og cook .",
+    "check": "og check .",
+    "test": "og test .",
+    "polish": "og polish ."
+  },
+  "dependencies": {
+    "@origingame/engine": "0.1.1"
+  }
+}

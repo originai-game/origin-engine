@@ -9,12 +9,10 @@
     "build": "og build .",
     "publish-build": "og build . --publish",
     "cook": "og cook .",
+    "check": "og check .",
     "test": "og test ."
   },
   "dependencies": {
-    "@origingame/engine": "0.0.1"
-  },
-  "devDependencies": {
-    "typescript": "7.0.2"
+    "@origingame/engine": "0.1.1"
   }
 }

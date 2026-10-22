@@ -63,10 +63,12 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
   const width = phone ? grow() : px(Math.min(600, frame().viewport.width - 48));
   const m = kit.modal(id, desc.open ?? false, { title: desc.title ?? "Settings", width, ignoreBackdrop: true }, () => {
     // Tabs on a wide surface, a select on a phone (one selection grammar).
+    // The groups' names are the desc's too: a screen reader hears them in the game's language.
     const labels = tabs.map(([, label]) => label);
+    const section = desc.sectionLabel ?? "Section";
     const pick = phone
-      ? (kit.select("Section", labels, tab, { width: grow() }) as Api.ChoiceResult)
-      : (kit.tabs("Section", labels, tab, { fill: true, width: grow() }) as Api.ChoiceResult);
+      ? (kit.select("Section", labels, tab, { width: grow(), label: section }) as Api.ChoiceResult)
+      : (kit.tabs("Section", labels, tab, { fill: true, width: grow(), label: section }) as Api.ChoiceResult);
     tab = pick.selected;
     kit.column("Body", { width: grow(), gap: t.sm, height: px(phone ? 300 : 260) }, () => {
       const pct = (v: number): string => `${Math.round(v * 100)}%`;
@@ -79,9 +81,10 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
           break;
         }
         case "graphics": {
-          kit.label("QualityLabel", desc.qualityLabel ?? "Quality", { step: "meta", color: token("fgMuted") });
+          const quality = desc.qualityLabel ?? "Quality";
+          kit.label("QualityLabel", quality, { step: "meta", color: token("fgMuted") });
           const levels = [desc.lowLabel ?? "Low", desc.mediumLabel ?? "Medium", desc.highLabel ?? "High"];
-          const q = kit.radio("Quality", levels, QUALITIES.indexOf(s.quality), { horizontal: !phone });
+          const q = kit.radio("Quality", levels, QUALITIES.indexOf(s.quality), { horizontal: !phone, label: quality });
           s.quality = QUALITIES[q.selected] ?? "medium";
           s.showFps = (kit.toggle("Fps", s.showFps, desc.fpsLabel ?? "Show frame rate") as Api.ToggleResult).on;
           s.reducedMotion = (kit.toggle("Motion", s.reducedMotion, desc.motionLabel ?? "Reduce motion") as Api.ToggleResult).on;
@@ -102,7 +105,7 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
         }
         case "language": {
           const at = Math.max(0, languages.findIndex((l) => l.code === s.language));
-          const r = kit.radio("Languages", languages.map((l) => l.label ?? l.code ?? ""), at, {});
+          const r = kit.radio("Languages", languages.map((l) => l.label ?? l.code ?? ""), at, { label: desc.languagesLabel ?? "Languages" });
           s.language = languages[r.selected]?.code ?? s.language;
           break;
         }
