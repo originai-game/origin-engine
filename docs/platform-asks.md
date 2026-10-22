@@ -72,3 +72,9 @@ Not an ask, for the platform's own use: `@tsrs/wasm` (the same checker as
 a wasm module) returns diagnostics as JSON (`diagnostics: "json"`), the
 piece an in-browser check (the Player page, an online editor) would use.
 The engine does not consume it.
+
+## The engine as published packages (release, 2026-10-22)
+
+| # | Ask | Why | Before | State |
+|---|---|---|---|---|
+| 14 | The platform installs the engine from the npm registry at a pinned version and nowhere else: `agent-server/scripts/e2b/origin-engine.json` names `{ "package": "@origingame/engine", "version": "<v>" }`; `engine-toolchain.ts` and the E2B images run `bun install` of `@origingame/engine`, `@origingame/create` and `@origingame/engine-knowledge` at that version (with `optionalDependencies`, ask 13) and lay `ORIGIN_ENGINE_DIST` out of `node_modules`; `mount.ts --package` mounts the knowledge of that version; `origin-engine.ts`'s export-and-build of a git revision, the Rust toolchain on the platform's side and the `ORIGIN_ENGINE_READ_TOKEN` secret go. The order for every version: the engine's gate and install test, publish, the platform's local stack and M7 acceptance at the version, then the image, once (`docs/release.md` §1 and §4 L and E). | The owner's decision of 2026-10-22: develop and test locally against public packages, E2B last; what a thread runs is what an author installs; a pin move is a version bump. | The platform exports a pinned revision of the private repository with a read token, builds it with cargo (release addon, wasm, lanes), hashes the layout into the template names and uploads it; the local stack builds the same layout to run at all. | Open on the platform. The engine's part is rows R1 to R8 of `docs/release.md` §4; `0.1.0` is the first version the platform can pin. |

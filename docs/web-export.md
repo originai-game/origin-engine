@@ -887,9 +887,7 @@ bun scripts/e2b-addon.ts          # optional, billable: install the tarballs in 
   version; `check-conformance` holds them equal), so a project's `bun
   install` brings the checker and `og check` finds it beside the engine
   package with no registry call at check time.
-- Publishing (not done yet): bump the version in `package.json` (the
-  optional dependencies follow it in `pack.sh`'s platform manifests and must
-  be bumped with it), `sh scripts/pack.sh --linux-x64` on macOS arm64 (a
-  release build: `pack.sh` refuses a dev `native/`), then
-  `npm publish` each platform tarball before the main one, with access
-  public under the `@origingame` scope.
+- Publishing: `docs/release.md` §3 (`scripts/release.sh bump`, `pack`,
+  `verify`, `publish`; the install test; one version across the five
+  packages). Until `0.1.0` is published nothing is on the registry and a
+  project outside the checkout runs with `OG_ENGINE_PACKAGE`.

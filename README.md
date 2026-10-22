@@ -6,8 +6,13 @@ executors, driven by game code written in TypeScript. It is built for one
 author above all others: an AI agent that has to write, run, observe and
 correct a game in minutes without a human at the editor.
 
-Status: **spike done, phase 1 starting** (`docs/design.md`, results in `docs/spike-results.md`, execution in `docs/phase-1.md`). The
-platform-side execution package is `origingame/goals/origin-engine/plan.md`.
+Status (2026-10-22): **features of phases 1 to 3 landed, optimisation
+deferred, release pipeline next** (`docs/design.md` §11, the record in
+`docs/phase-1.md`, the path to a published version and what remains to
+launch in `docs/release.md`). The platform-side execution package is
+`origingame/goals/origin-engine/plan.md`. The packages are not on npm yet:
+until `0.1.0` is published, a project outside this repository runs with
+`OG_ENGINE_PACKAGE=<checkout>/packages/engine`.
 
 ## What it is, in one paragraph
 

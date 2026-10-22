@@ -368,7 +368,13 @@ the only mode:
 | `browser-check` (evaluation only) | plus Chrome headless-shell for the final "runs in a real browser" check | ≈ 800 MB |
 
 No Godot, no Chromium in the inner loop, no Rust toolchain anywhere in the
-sandbox. Sweeps, replays, determinism and the probe's dumps run through
+sandbox. An image installs the published packages at the version the
+platform pins (`bun install` of `@origingame/engine`, `@origingame/create`
+and the knowledge package, with their `optionalDependencies`: the platform
+addon and `og`, tsrs), the same install an author's machine and the
+platform's local stack make; no layout built from a git revision, no
+engine checkout (`docs/release.md` §1, 2026-10-22). Sweeps, replays,
+determinism and the probe's dumps run through
 `og` on the native addon without a GPU and are deterministic. Frames need
 a renderer: the `engine` and `probe` classes carry none (the CPU-only
 renderer on Mesa lavapipe, which they carried through the build-out, was
@@ -518,6 +524,7 @@ the engine pulls ahead on CPU-bound content further.
 | 2 Mid-size 3D | 4 | skeletal animation + blend trees + IK, rapier + character controller, navmesh, particles, post stack, terrain, decals, UI toolkit on tokens, MSDF text, Tune | all six Discover archetypes rebuilt; one mid-size 3D showcase; perf baselines in CI |
 | 3 Scale | 3 | lanes, GPU-driven culling, streaming, `og run --device`, splats (optional) | the §7 budgets held on the reference scene with lanes on |
 | Platform migration | overlaps 1–2 | §5 executor classes; Player top-level for desktop and creator; `@origingame/engine` in the knowledge pack; Wizard deploys the new artifact; Godot distribution and Three.js substrate retired after the last Game migrates or is archived | `bun deploy/ovh/state.ts` drift closed; `verify-production.sh`; image sizes |
+| Release (2026-10-22, `docs/release.md`) | after the features | the five packages published at one version; the install test on darwin-arm64 and linux-x64; the platform's local stack and the M7 acceptance on the published version; E2B images that install the version, last | `release.sh verify --registry` passes; `pin-<version>.md` on the platform; a production thread on the `engine` class |
 
 **Phase 4 status (2026-10-21).** Phase 4 took the renderer, text, UI shell,
 cook, streaming and the lanes past phases 1–3 in one wave of streams

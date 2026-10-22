@@ -7,6 +7,23 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Public packages first, the local loop, E2B last (2026-10-22)
+
+The owner's decision, after the two below: the engine is consumed as
+public npm packages pinned by version, every version is developed and
+tested locally against them (the install test on this machine and in a
+linux-x64 container, then the platform's local stack and the M7
+acceptance), and only then does an E2B image install it, once, as the last
+consumer. The layout the platform has built from a pinned git revision of
+this repository (`origin-engine.ts`: `git archive`, cargo, zigbuild, the
+lanes wasm, a read token) and the E2B rebuild as the first place a change
+is tried are what this replaces. The decision, the packages, the version
+rule, `scripts/release.sh` and the complete plan of what remains to launch
+(stages R, L, F, T, E, P) are `docs/release.md`; the platform's side is
+decision E10 of `origingame/goals/origin-engine/plan.md`. In this table:
+rows 91 to 98 (the release pipeline, stage R), each closed with its
+commit; the first published version is `0.1.0`.
+
 ## Features before optimisation (2026-10-22)
 
 The owner's decision, the same day: the build-out distinguishes feature
@@ -5450,6 +5467,14 @@ resource only the owner can give.
 | 88 | A terrain streaming test whose tiles arrive after the first frame: since 441f4e6e the first frame that draws a streamed terrain settles every wanted tile (as a capture does), and the fx-showcase terrain station wants its five tiles at that frame, so `tests/terrain-stream.test.ts` (e565ede7) now proves the hashes agree with nothing streaming after the settle; a station whose walk wants tiles beyond the first frame's (a larger terrain, or a camera that moves off it) would prove the stream itself leaves the simulation alone, and the settle's cost on the web's tick-0 frame (every wanted tile decoded in one frame) is unmeasured | W13 webgl2-render-2 | S | engine, phase 4 (terrain) | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open |
 | 89 | perf-games' tables and `og polish` rows on an idle machine (load under 8 for the whole run): every run of 2b896be5 shared the machine with the lavapipe VM, the gate or an iOS simulator | W12 perf-games | S | engine, phase 4 (a wave-end measurement) | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open |
 | 90 | perf-games' follow-ups: the lanes on a loaded machine (Kestrel's physics 0.93 ms serial, 2.9 to 4.2 ms on the pool at load 20 to 25; the grains were measured idle); release sprite extraction still looks each field up by name (about 5 % of Hollowbell's frame); `og.ui.end` re-measures every text each tick; Lantern Vale's dev playtests' step spikes (p95 7 to 9.5 ms against a 2.2 ms median), unprofiled | W12 perf-games | M | engine, phase 4 (perf) | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open; the text measurement cache and the painter-level grid are on branch perf-2 (6f7f9f6c, a53bb596) |
+| 91 | One version everywhere, written by `scripts/release.sh bump`, held equal by the knowledge test; `create` writes it; `og` compares `project.ogt`'s `engine` with the installed package (`doctor` line, run/test/build warning) | release R1 | S | engine, release | open |
+| 92 | `@origingame/engine-knowledge` publishable (`private` dropped, `files`, README); `mount.ts --package <tgz or version>` | release R2 | S | engine, release | open |
+| 93 | `scripts/release.sh` (`bump`, `pack`, `verify`, `publish`), `pack.sh` packing create and knowledge, `dist/release/<version>/manifest.json`, `CHANGELOG.md`; the wave-end `release` stage | release R3 | M | engine, release | open |
+| 94 | The install test `tests/install/` (an empty directory, `bun add`, `create-game`, `og doctor`, `og check`, `og test`, `og build --publish`, the runner archetype, the knowledge validate and mount check) on darwin-arm64 and in the `node:22-bookworm-slim` container, from tarballs and `--registry` | release R4 | M | engine, release | open |
+| 95 | `og doctor` and `og --version` outside a checkout (the package's and the addon's version, both wasm files, tsrs, the renderer) | release R5 | S | engine, release | open |
+| 96 | The template's `trickster.glb` and `dropship.glb` (from `origingame-examples`, licence unnamed) replaced by engine-owned or CC0 models, or the owner's leave to redistribute; every binary in every template and archetype with a named licence | release R6 | S | engine, release (owner for the leave) | open |
+| 97 | Package metadata: `repository.url` naming the repository the packages are built from, `homepage`, `bugs`; the README's install section | release R7 | S | engine, release | open |
+| 98 | Publish `0.1.0` (`npm login`, the `@origingame` scope: owner), `release.sh verify --registry`, tag `v0.1.0`, `tests/evidence/release/0.1.0.md` | release R8 | S | owner, then engine | open, waiting on the owner's npm account |
 
 ## 0. Rules that shape the plan
 
