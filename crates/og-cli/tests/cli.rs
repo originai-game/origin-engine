@@ -1112,3 +1112,204 @@ fn check_synthesises_the_configuration_a_project_does_not_have() {
     assert_eq!(check(&game).0, Some(0));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// `og run`, `og test` and `og build` type-check before they bundle: a
+/// type error stops each before the engine package's bundler, test runner
+/// or exporter is started; `--no-check` runs as before, and a publish
+/// build refuses it.
+#[test]
+fn run_test_and_build_stop_on_a_type_error_before_bundling() {
+    assert!(
+        std::env::var_os("PATH")
+            .is_some_and(|p| std::env::split_paths(&p).any(|d| d.join("tsrs").is_file())),
+        "this test needs tsrs on PATH (scripts/install-tools.sh)"
+    );
+    let dir = scratch_root();
+    std::fs::remove_dir_all(dir.join("crates")).unwrap();
+    // A stand-in engine package: each step it would run leaves a mark.
+    let engine = dir.join("engine");
+    std::fs::create_dir_all(engine.join("src/node")).unwrap();
+    let marks = dir.join("marks");
+    std::fs::create_dir_all(&marks).unwrap();
+    for (script, extra) in [
+        (
+            "build.ts",
+            "const i = process.argv.indexOf('--out'); await Bun.write(process.argv[i + 1], 'export default 0;');",
+        ),
+        ("run.ts", ""),
+        ("playtest-run.ts", ""),
+        ("web-build.ts", ""),
+    ] {
+        std::fs::write(
+            engine.join("src/node").join(script),
+            format!(
+                "await Bun.write({:?}, '');\n{extra}\n",
+                marks.join(script).to_str().unwrap()
+            ),
+        )
+        .unwrap();
+    }
+    let game = dir.join("game");
+    std::fs::create_dir_all(game.join("src")).unwrap();
+    std::fs::create_dir_all(game.join("tests")).unwrap();
+    std::fs::write(
+        game.join("src/main.ts"),
+        "export const n: number = \"one\";\nexport default 0;\n",
+    )
+    .unwrap();
+    std::fs::write(game.join("tests/smoke.og.ts"), "export default 0;\n").unwrap();
+    std::fs::write(
+        game.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    let og_in = |args: &[&str]| {
+        let out = og()
+            .args(args)
+            .arg(&game)
+            .env("OG_ENGINE_PACKAGE", &engine)
+            .env_remove("OG_TSRS")
+            .output()
+            .unwrap();
+        let ran: Vec<String> = std::fs::read_dir(&marks)
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        for e in std::fs::read_dir(&marks).unwrap().flatten() {
+            std::fs::remove_file(e.path()).unwrap();
+        }
+        let mut ran = ran;
+        ran.sort();
+        (out.status.code(), text(&out), ran)
+    };
+    for cmd in [&["run", "--headless"][..], &["test"], &["build"]] {
+        let (code, t, ran) = og_in(cmd);
+        assert_eq!(code, Some(1), "og {cmd:?}: {t}");
+        assert!(
+            t.contains("src/main.ts(1,14): error TS2322"),
+            "og {cmd:?}: {t}"
+        );
+        assert!(
+            t.contains("1 type error(s); fix them or pass --no-check"),
+            "og {cmd:?}: {t}"
+        );
+        assert!(
+            ran.is_empty(),
+            "og {cmd:?} started {ran:?} past a type error"
+        );
+    }
+    assert!(!game.join(".og/game.native.js").exists());
+    let (_, t, _) = og_in(&["test"]);
+    assert!(
+        t.contains("the 1 playtest(s) did not run: the type check failed"),
+        "{t}"
+    );
+
+    let (code, t, ran) = og_in(&["run", "--headless", "--no-check"]);
+    assert_eq!(
+        (code, ran.clone()),
+        (Some(0), vec!["build.ts".to_string(), "run.ts".into()]),
+        "{t}"
+    );
+    let (code, _, ran) = og_in(&["test", "--no-check"]);
+    assert_eq!(
+        (code, ran),
+        (
+            Some(0),
+            vec!["build.ts".to_string(), "playtest-run.ts".into()]
+        )
+    );
+    let (code, _, ran) = og_in(&["build", "--no-check"]);
+    assert_eq!((code, ran), (Some(0), vec!["web-build.ts".to_string()]));
+    let (code, t, ran) = og_in(&["build", "--publish", "--no-check"]);
+    assert_eq!(code, Some(2), "{t}");
+    assert!(
+        t.contains("always type-checked; drop --no-check") && ran.is_empty(),
+        "{t}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// `og dev` checks a source change beside the rebuild and never refuses the
+/// reload over it: the reload goes through, its event carries the check
+/// (or `null` while it runs), the `check` event lists the diagnostic, and
+/// `--exit-after` waits for that check to land.
+#[test]
+fn dev_reports_the_check_of_each_save_and_reloads_anyway() {
+    use std::io::{BufRead, BufReader};
+    assert!(
+        std::env::var_os("PATH")
+            .is_some_and(|p| std::env::split_paths(&p).any(|d| d.join("tsrs").is_file())),
+        "this test needs tsrs on PATH (scripts/install-tools.sh)"
+    );
+    let dir = scratch_root();
+    std::fs::remove_dir_all(dir.join("crates")).unwrap();
+    let engine = dir.join("engine");
+    std::fs::create_dir_all(engine.join("src/node")).unwrap();
+    std::fs::write(
+        engine.join("src/node/build.ts"),
+        "const i = process.argv.indexOf('--out'); await Bun.write(process.argv[i + 1], `export default ${Date.now()};`);\n",
+    )
+    .unwrap();
+    // The game: a reload event each time the watched bundle changes.
+    std::fs::write(
+        engine.join("src/node/run.ts"),
+        "import { statSync } from 'node:fs';\nconst f = process.argv[process.argv.indexOf('--watch') + 1];\nlet m = statSync(f).mtimeMs, n = 0;\nsetInterval(() => { const t = statSync(f).mtimeMs; if (t !== m) { m = t; console.log(JSON.stringify({ event: 'reload', ok: true, latencyMs: 1, report: {}, tick: ++n })); } }, 10);\n",
+    )
+    .unwrap();
+    let game = dir.join("game");
+    std::fs::create_dir_all(game.join("src")).unwrap();
+    std::fs::write(game.join("src/main.ts"), "export default 0;\n").unwrap();
+    std::fs::write(
+        game.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    let mut child = og()
+        .args(["dev", "--json", "--exit-after", "1", "--port", "47997"])
+        .arg(&game)
+        .env("OG_ENGINE_PACKAGE", &engine)
+        .env_remove("OG_TSRS")
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+    let mut lines = BufReader::new(child.stdout.take().unwrap()).lines();
+    let mut next = || -> serde_json::Value {
+        serde_json::from_str(&lines.next().expect("og dev ended").unwrap()).unwrap()
+    };
+    // The first bundle's check, then a save with a type error.
+    let first = next();
+    assert_eq!(
+        (first["event"].as_str(), first["ok"].as_bool()),
+        (Some("check"), Some(true)),
+        "{first}"
+    );
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    std::fs::write(
+        game.join("src/main.ts"),
+        "export const n: number = \"one\";\nexport default 0;\n",
+    )
+    .unwrap();
+    let (a, b) = (next(), next());
+    let status = child.wait().unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    let (reload, check) = if a["event"] == "reload" {
+        (a, b)
+    } else {
+        (b, a)
+    };
+    assert_eq!(reload["event"], "reload", "{reload}");
+    assert_eq!(reload["ok"], true, "the reload went through: {reload}");
+    assert!(
+        reload["check"].is_null()
+            || reload["check"]
+                == serde_json::json!({ "ok": false, "ms": check["ms"], "errors": 1 }),
+        "{reload}"
+    );
+    assert_eq!(check["event"], "check", "{check}");
+    assert_eq!(check["diagnostics"][0]["code"], 2322, "{check}");
+    assert_eq!(check["diagnostics"][0]["file"], "src/main.ts", "{check}");
+    assert!(status.success(), "{status:?}");
+}

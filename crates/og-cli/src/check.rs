@@ -332,12 +332,11 @@ impl Checker {
         }
     }
 
-    /// Checks `target` with `checkers` threads.
-    pub fn check(&self, target: &Target, checkers: usize) -> Result<Report, String> {
-        let t0 = Instant::now();
-        let out = self
-            .command()
-            .arg("-p")
+    /// The check of `target` with `checkers` threads, to spawn (stdout
+    /// piped, stderr passed through).
+    pub fn command_for(&self, target: &Target, checkers: usize) -> Command {
+        let mut c = self.command();
+        c.arg("-p")
             .arg(&target.config)
             .args([
                 "--noEmit",
@@ -350,13 +349,26 @@ impl Checker {
             .arg(checkers.max(1).to_string())
             .current_dir(&target.root)
             .stdin(Stdio::null())
-            .stderr(Stdio::inherit())
-            .output()
-            .map_err(|e| match self.tool {
-                Tool::Tsrs => format!("cannot start tsrs ({e})"),
-                Tool::Tsgo => format!("{} ({e})", project::NO_BUN),
-            })?;
-        let ms = t0.elapsed().as_secs_f64() * 1000.0;
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit());
+        c
+    }
+
+    /// Why the checker could not start.
+    pub fn spawn_error(&self, e: std::io::Error) -> String {
+        match self.tool {
+            Tool::Tsrs => format!("cannot start tsrs ({e})"),
+            Tool::Tsgo => format!("{} ({e})", project::NO_BUN),
+        }
+    }
+
+    /// The report of a check that ended with `out` after `ms`.
+    pub fn report(
+        &self,
+        target: &Target,
+        out: std::process::Output,
+        ms: f64,
+    ) -> Result<Report, String> {
         let raw = String::from_utf8_lossy(&out.stdout).into_owned();
         let diagnostics = outcome(out.status.code(), &raw).map_err(|e| {
             format!(
@@ -373,6 +385,16 @@ impl Checker {
             diagnostics,
             raw,
         })
+    }
+
+    /// Checks `target` with `checkers` threads.
+    pub fn check(&self, target: &Target, checkers: usize) -> Result<Report, String> {
+        let t0 = Instant::now();
+        let out = self
+            .command_for(target, checkers)
+            .output()
+            .map_err(|e| self.spawn_error(e))?;
+        self.report(target, out, t0.elapsed().as_secs_f64() * 1000.0)
     }
 }
 
@@ -551,6 +573,11 @@ impl Report {
         })
     }
 
+    /// The short form carried by `og dev`'s reload and `og test`'s result.
+    pub fn brief(&self) -> serde_json::Value {
+        serde_json::json!({ "ok": self.ok(), "ms": self.ms, "errors": self.diagnostics.len() })
+    }
+
     /// `og check: ok (tsrs, 41 ms)` or `og check: N error(s) in M file(s) (tsrs, 41 ms)`.
     pub fn summary(&self) -> String {
         let what = format!("({}, {:.0} ms)", self.tool, self.ms);
@@ -564,6 +591,42 @@ impl Report {
             )
         }
     }
+}
+
+/// The check `og run`, `og test` and `og build` make before bundling:
+/// prints the diagnostics (the `check` event with `json`) and returns the
+/// report; `Err` when no checker could check.
+pub fn gate(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
+    let (checker, note) = Checker::find(Some(package), None)?;
+    if let Some(n) = note {
+        eprintln!("og check: {n}");
+    }
+    let target = Target::of(p, Some(package))?;
+    let report = checker.check(&target, default_checkers())?;
+    if json {
+        println!("{}", report.json());
+    } else {
+        eprint!("{}", report.raw);
+        eprintln!("{}", report.summary());
+    }
+    Ok(report)
+}
+
+/// `gate`, and `Err` on a type error as well: what stops a bundle.
+pub fn require(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
+    let report = gate(p, package, json)?;
+    if report.ok() {
+        Ok(report)
+    } else {
+        Err(refusal(&report))
+    }
+}
+
+pub fn refusal(report: &Report) -> String {
+    format!(
+        "{} type error(s); fix them or pass --no-check",
+        report.diagnostics.len()
+    )
 }
 
 pub fn run(args: &[&str]) -> ExitCode {

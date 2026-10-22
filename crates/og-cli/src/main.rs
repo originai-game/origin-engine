@@ -36,9 +36,9 @@ usage: og <command> [options]
 commands:
   run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P]
       [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio <out.wav>]
-      [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json]
-                      cook, bundle and run the game on the native host with the probe; outputs of
-                      screenshot/dump_* land in --out (default <project>/og-out)
+      [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json] [--no-check]
+                      cook, type-check, bundle and run the game on the native host with the probe;
+                      outputs of screenshot/dump_* land in --out (default <project>/og-out)
   run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR]
       [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>]
       [--json]
@@ -50,7 +50,8 @@ commands:
                       one probe call to a running `og run --port P` / `og dev` (JSON-RPC over WebSocket)
   dev [project] [--port P] [--exit-after N] [--json]
                       watch src/ and assets/, rebuild and re-cook, hot-reload through the probe,
-                      report each reload against the 300 ms budget
+                      report each reload against the 300 ms budget and type-check each src/ change
+                      beside the rebuild (reported, never refusing the reload)
   check [project|entry|tsconfig.json] [--json] [--checkers N] [--tool tsrs|tsgo]
                       type-check the game code with tsrs (tsgo where tsrs has no package);
                       --json prints the diagnostics as one `check` event; og run, og test and
@@ -62,8 +63,8 @@ commands:
                       (contrast, text size, HUD, transitions, UI sounds, input latency, hit
                       feedback, idle frames, frame time, missing locale keys) into DIR/report.md
                       (default <project>/og-out/polish) with frames and a fix per finding
-  build [project] [--publish] [--out DIR] [--json]
-                      cook and export the game to dist/ (or publish.out): the player shell,
+  build [project] [--publish] [--out DIR] [--json] [--no-check]
+                      cook, type-check and export the game to dist/ (or publish.out): the player shell,
                       game.js, the web host, cooked/, og-build.json, _headers; --publish keeps
                       only the player-facing probe members and adds the PWA (sw.js, manifest)
   cook [project] [--threads N] [--report [out.md]] [--json] [--watch [--exit-after N]]

@@ -1,8 +1,11 @@
 //! `og run [project|entry] [--headless] [--commands "t:action[:args];..."] [--seed S]
 //! [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]...
-//! [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json]`
+//! [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json] [--no-check]`
 //!
-//! Cooks the project, bundles its entry for the native host and runs it with
+//! Cooks the project, type-checks it (crate::check: a type error stops the
+//! run before anything is bundled, its diagnostics printed, or with
+//! `--json` as the `check` event on the run's stream; `--no-check` skips
+//! it), bundles its entry for the native host and runs it with
 //! `packages/engine/src/node/run.ts` under bun on the napi addon: the probe is
 //! mounted, `--commands` are scheduled through og-probe, outputs
 //! (`screenshot`, `dump_*`) are written under `--out` (default
@@ -29,7 +32,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json]\n       og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json] [--no-check]\n       og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -38,6 +41,9 @@ pub struct RunArgs {
     pub forward: Vec<String>,
     pub out: Option<String>,
     pub port: Option<String>,
+    /// Type-check before bundling (not `--no-check`).
+    pub check: bool,
+    pub json: bool,
     /// `--device`: the browser target and device.ts's own options.
     pub device: Option<crate::device::DeviceArgs>,
     /// Native-only options given (refused with `--device`).
@@ -51,6 +57,8 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
         forward: Vec::new(),
         out: None,
         port: None,
+        check: true,
+        json: false,
         device: None,
         native: Vec::new(),
     };
@@ -63,8 +71,13 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                 r.native.push(args[i].into());
             }
             "--json" => {
+                r.json = true;
                 r.forward.push(args[i].into());
                 device_forward.push(args[i].to_string());
+            }
+            "--no-check" => {
+                r.check = false;
+                r.native.push(args[i].into());
             }
             "--no-render" => {
                 r.forward.push(args[i].into());
@@ -156,8 +169,15 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
     Ok(r)
 }
 
-/// Cook (when the project has assets) and bundle; the bundle's path.
-pub fn prepare(p: &Project, package: &Path) -> Result<std::path::PathBuf, String> {
+/// Cook (when the project has assets), type-check when `check` (the
+/// diagnostics printed, as the `check` event with `json`) and bundle; the
+/// bundle's path.
+pub fn prepare(
+    p: &Project,
+    package: &Path,
+    check: bool,
+    json: bool,
+) -> Result<std::path::PathBuf, String> {
     if p.has_assets() {
         let report = crate::cook::cook(&p.root, 0)?;
         let cooked = report
@@ -169,6 +189,9 @@ pub fn prepare(p: &Project, package: &Path) -> Result<std::path::PathBuf, String
         if cooked > 0 {
             eprintln!("{}", crate::cook::summary(&report));
         }
+    }
+    if check {
+        crate::check::require(p, package, json)?;
     }
     project::bundle_native(p, package)
 }
@@ -195,7 +218,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         eprintln!("og run: {}", project::NO_ENGINE);
         return ExitCode::FAILURE;
     };
-    let bundle = match prepare(&p, &package) {
+    let bundle = match prepare(&p, &package, a.check, a.json) {
         Ok(b) => b,
         Err(e) => {
             eprintln!("og run: {e}");

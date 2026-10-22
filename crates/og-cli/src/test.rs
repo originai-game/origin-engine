@@ -1,7 +1,11 @@
-//! `og test [project] [--json]`: the project's bun tests (`*.test.ts`), then
-//! each playtest script `tests/*.og.ts` through `og run --headless
-//! --commands` in its own process (`packages/engine/src/node/playtest-run.ts`).
-//! Fails when anything fails, and when there was nothing to run.
+//! `og test [project] [--json] [--no-check]`: the project's type check
+//! (crate::check), its bun tests (`*.test.ts`), then each playtest script
+//! `tests/*.og.ts` through `og run --headless --commands` in its own process
+//! (`packages/engine/src/node/playtest-run.ts`). Fails when anything fails,
+//! and when there was nothing to run. A type error fails the run and the
+//! playtests do not run (there is no bundle); the bun tests still do.
+//! `--json` prints the `check` event first and a `test` event last, with
+//! the check's `{ok, ms, errors}`.
 //!
 //! Without a renderer (the platform's engine and probe sandboxes,
 //! `OG_RENDERER=none`) a playtest's screenshots are frames unchecked: each
@@ -35,11 +39,15 @@ pub(crate) fn files(dir: &Path, suffix: &str, out: &mut Vec<PathBuf>) {
 pub fn run(args: &[&str]) -> ExitCode {
     let mut project = ".";
     let mut json = false;
+    let mut check = true;
     for a in args {
         match *a {
             "--json" => json = true,
+            "--no-check" => check = false,
             a if a.starts_with('-') => {
-                eprintln!("og test: unknown option `{a}`. usage: og test [project] [--json]");
+                eprintln!(
+                    "og test: unknown option `{a}`. usage: og test [project] [--json] [--no-check]"
+                );
                 return ExitCode::from(2);
             }
             a => project = a,
@@ -69,6 +77,37 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
     let mut failed = 0;
     let mut unchecked = 0;
+    // The type check first: its failure leaves no bundle for the playtests.
+    let checked = if check {
+        if p.has_assets() {
+            // Cook first, as og run does, so the check sees what the run would.
+            if let Err(e) = crate::cook::cook(&p.root, 0) {
+                eprintln!("og test: {e}");
+                return ExitCode::FAILURE;
+            }
+        }
+        match crate::check::gate(&p, &package, json) {
+            Ok(r) => {
+                if !r.ok() {
+                    eprintln!("og test: {}", crate::check::refusal(&r));
+                    failed += 1;
+                }
+                Some(Ok(r))
+            }
+            Err(e) => {
+                eprintln!("og test: {e}");
+                failed += 1;
+                Some(Err(e))
+            }
+        }
+    } else {
+        None
+    };
+    let check_failed = match &checked {
+        Some(Ok(r)) => !r.ok(),
+        Some(Err(_)) => true,
+        None => false,
+    };
     if !unit.is_empty() {
         println!("og test: bun test ({} file(s))", unit.len());
         match Command::new("bun")
@@ -85,8 +124,13 @@ pub fn run(args: &[&str]) -> ExitCode {
             }
         }
     }
-    if !playtests.is_empty() {
-        let bundle = match crate::run::prepare(&p, &package) {
+    if !playtests.is_empty() && check_failed {
+        println!(
+            "og test: the {} playtest(s) did not run: the type check failed",
+            playtests.len()
+        );
+    } else if !playtests.is_empty() {
+        let bundle = match crate::run::prepare(&p, &package, false, json) {
             Ok(b) => b,
             Err(e) => {
                 eprintln!("og test: {e}");
@@ -119,7 +163,22 @@ pub fn run(args: &[&str]) -> ExitCode {
         }
         let _ = std::fs::remove_dir_all(&results);
     }
-    let total = usize::from(!unit.is_empty()) + playtests.len();
+    let total = usize::from(!unit.is_empty()) + playtests.len() + usize::from(check_failed);
+    if json {
+        println!(
+            "{}",
+            serde_json::json!({
+                "event": "test", "ok": failed == 0, "suites": total, "failed": failed,
+                "unchecked": unchecked,
+                "check": match &checked {
+                    Some(Ok(r)) => r.brief(),
+                    // A checker that failed.
+                    Some(Err(e)) => serde_json::json!({ "ok": false, "error": e }),
+                    None => serde_json::Value::Null,
+                },
+            })
+        );
+    }
     let frames = if unchecked > 0 {
         format!(
             "; {unchecked} frame(s) unchecked: no renderer here (frames are verified on the author's machine, in the browser-check sandbox or on an executor with a GPU)"
