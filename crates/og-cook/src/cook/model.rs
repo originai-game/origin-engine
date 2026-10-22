@@ -363,35 +363,114 @@ pub(super) struct CookedPrimitive {
 
 pub(super) fn cook_primitive(
     src: &GltfSource,
-    prim: &gltf::Primitive,
+    levels: &[gltf::Primitive],
     material: u32,
     normal_mapped: bool,
     opts: &MeshOptions,
     coarsest: bool,
 ) -> Result<Option<CookedPrimitive>, String> {
-    let reader = prim.reader(|b| Some(&src.buffers[b.index()].0[..]));
-    let Some(positions) = reader
-        .read_positions()
-        .map(|p| p.collect::<Vec<[f32; 3]>>())
-    else {
-        return Ok(None);
-    };
-    if positions.is_empty() {
-        return Ok(None);
+    // The primitive's levels of detail as the glTF gives them (MSFT_lod: the
+    // first is the full mesh), read one after the other into one vertex
+    // list; `given` holds each level's range of `indices`.
+    let prim = &levels[0];
+    let mut positions: Vec<[f32; 3]> = Vec::new();
+    let (mut normals, mut uvs, mut colors, mut tangents) = (
+        Some(Vec::<[f32; 3]>::new()),
+        Some(Vec::<[f32; 2]>::new()),
+        Some(Vec::<[f32; 4]>::new()),
+        Some(Vec::<[f32; 4]>::new()),
+    );
+    let mut indices: Vec<u32> = Vec::new();
+    let mut keys: Vec<[u32; 2]> = Vec::new();
+    let mut given: Vec<std::ops::Range<usize>> = Vec::new();
+    for (l, level) in levels.iter().enumerate() {
+        let reader = level.reader(|b| Some(&src.buffers[b.index()].0[..]));
+        let Some(p) = reader
+            .read_positions()
+            .map(|p| p.collect::<Vec<[f32; 3]>>())
+        else {
+            if l == 0 {
+                return Ok(None);
+            }
+            continue;
+        };
+        if p.is_empty() {
+            if l == 0 {
+                return Ok(None);
+            }
+            continue;
+        }
+        let base = positions.len() as u32;
+        let count = p.len();
+        // An attribute the full mesh lacks is dropped from every level; one
+        // only a coarser level lacks takes its default there.
+        fn extend<T: Copy>(
+            to: &mut Option<Vec<T>>,
+            from: Option<Vec<T>>,
+            first: bool,
+            count: usize,
+            default: T,
+        ) {
+            match (to.as_mut(), from) {
+                (Some(t), Some(f)) => t.extend(
+                    f.into_iter()
+                        .take(count)
+                        .chain(std::iter::repeat(default))
+                        .take(count),
+                ),
+                (Some(_), None) if first => *to = None,
+                (Some(t), None) => t.extend(std::iter::repeat_n(default, count)),
+                (None, _) => {}
+            }
+        }
+        let first = l == 0;
+        extend(
+            &mut normals,
+            reader.read_normals().map(|n| n.collect()),
+            first,
+            count,
+            [0.0, 0.0, 1.0],
+        );
+        extend(
+            &mut uvs,
+            reader.read_tex_coords(0).map(|u| u.into_f32().collect()),
+            first,
+            count,
+            [0.0; 2],
+        );
+        extend(
+            &mut colors,
+            reader.read_colors(0).map(|c| c.into_rgba_f32().collect()),
+            first,
+            count,
+            [1.0; 4],
+        );
+        extend(
+            &mut tangents,
+            reader.read_tangents().map(|t| t.collect()),
+            first,
+            count,
+            [0.0; 4],
+        );
+        let mut idx: Vec<u32> = reader
+            .read_indices()
+            .map(|i| i.into_u32().collect())
+            .unwrap_or_else(|| (0..count as u32).collect());
+        idx.truncate(idx.len() / 3 * 3);
+        if idx.iter().any(|&i| i as usize >= count) {
+            return Err(if l == 0 {
+                "index out of range".to_string()
+            } else {
+                format!("MSFT_lod level {l}: index out of range")
+            });
+        }
+        let start = indices.len();
+        indices.extend(idx.iter().map(|&i| i + base));
+        given.push(start..indices.len());
+        positions.extend_from_slice(&p);
+        keys.extend(vertex_keys(src, level, count));
     }
-    let normals: Option<Vec<[f32; 3]>> = reader.read_normals().map(|n| n.collect());
-    let uvs: Option<Vec<[f32; 2]>> = reader.read_tex_coords(0).map(|u| u.into_f32().collect());
-    let colors: Option<Vec<[f32; 4]>> = reader.read_colors(0).map(|c| c.into_rgba_f32().collect());
-    let tangents: Option<Vec<[f32; 4]>> = reader.read_tangents().map(|t| t.collect());
-    let mut indices: Vec<u32> = reader
-        .read_indices()
-        .map(|i| i.into_u32().collect())
-        .unwrap_or_else(|| (0..positions.len() as u32).collect());
-    indices.truncate(indices.len() / 3 * 3);
-    if indices.iter().any(|&i| i as usize >= positions.len()) {
-        return Err("index out of range".into());
-    }
-    let keys = vertex_keys(src, prim, positions.len());
+    let _ = prim;
     let mut verts: Vec<FVertex> = (0..positions.len())
         .map(|i| FVertex {
             p: positions[i],
@@ -487,7 +566,8 @@ pub(super) fn cook_primitive(
             key: v.key,
         })
         .collect();
-    let (q, mut lod0) = weld(&q, &indices, &mut sources);
+    let flat_source = normals.is_none();
+    let (mut q, welded) = weld(&q, &indices, &mut sources);
     let pos: Vec<[f32; 3]> = q
         .iter()
         .map(|v| {
@@ -499,29 +579,110 @@ pub(super) fn cook_primitive(
         })
         .collect();
     let adapter = positions_adapter(&pos);
+    // Welding keeps the triangles in order: each given level is its range.
+    let mut lod0 = welded[given[0].clone()].to_vec();
     lod0 = meshopt::optimize_vertex_cache(&lod0, q.len());
     meshopt::optimize_overdraw_in_place(&mut lod0, &adapter, opts.overdraw_threshold);
     let mut levels: Vec<(Vec<u32>, f32)> = vec![(lod0.clone(), 0.0)];
-    for level in 1..opts.lod_levels.max(1) {
-        let target =
-            ((lod0.len() as f64 * (opts.lod_ratio as f64).powi(level as i32)) as usize) / 3 * 3;
-        if target < 3 {
-            break;
+    if given.len() > 1 {
+        // MSFT_lod: the glTF's own levels, kept as they are.
+        for r in &given[1..] {
+            if r.len() >= 3 {
+                levels.push((
+                    meshopt::optimize_vertex_cache(&welded[r.clone()], q.len()),
+                    0.0,
+                ));
+            }
         }
-        let mut error = 0.0f32;
-        let simplified = meshopt::simplify(
-            &lod0,
-            &adapter,
-            target,
-            opts.lod_max_error,
-            meshopt::SimplifyOptions::None,
-            Some(&mut error),
-        );
-        let previous = levels.last().map_or(lod0.len(), |l| l.0.len());
-        if simplified.len() < 3 || simplified.len() as f64 > previous as f64 * 0.95 {
-            break;
+    } else {
+        // A mesh whose corners are not shared (flat shading: no normals, or
+        // every face its own vertices) has every edge on a border, which
+        // meshoptimizer will not move: such a level is simplified over the
+        // vertices welded by position alone (a shadow index buffer) and
+        // given its own corners with face normals below.
+        let flat = flat_source || q.len() as f64 >= 0.9 * lod0.len() as f64;
+        let mut shadow: Option<(Vec<u32>, Vec<u32>, Vec<[f32; 3]>)> = None;
+        let mut refaceted: Vec<bool> = vec![false];
+        for fraction in opts.fractions().into_iter().skip(1) {
+            let target = ((lod0.len() as f64 * fraction as f64) as usize) / 3 * 3;
+            if target < 3 {
+                break;
+            }
+            let previous = levels.last().map_or(lod0.len(), |l| l.0.len());
+            let stalled = |s: &[u32]| s.len() < 3 || s.len() as f64 > previous as f64 * 0.95;
+            let mut error = 0.0f32;
+            let mut simplified = meshopt::simplify(
+                &lod0,
+                &adapter,
+                target,
+                opts.lod_max_error,
+                meshopt::SimplifyOptions::None,
+                Some(&mut error),
+            );
+            let mut by_position = false;
+            if stalled(&simplified) {
+                // Over the distinct positions alone: vertices that share a
+                // position but no triangle would count as seams and lock it.
+                let (compact, back, compact_pos) = shadow.get_or_insert_with(|| {
+                    let sh = meshopt::generate_shadow_indices(&lod0, &adapter);
+                    let mut at = vec![u32::MAX; pos.len()];
+                    let (mut back, mut compact_pos) = (Vec::new(), Vec::new());
+                    let compact: Vec<u32> = sh
+                        .iter()
+                        .map(|&i| {
+                            if at[i as usize] == u32::MAX {
+                                at[i as usize] = back.len() as u32;
+                                back.push(i);
+                                compact_pos.push(pos[i as usize]);
+                            }
+                            at[i as usize]
+                        })
+                        .collect();
+                    (compact, back, compact_pos)
+                });
+                simplified = meshopt::simplify(
+                    compact,
+                    &positions_adapter(compact_pos),
+                    target,
+                    opts.lod_max_error,
+                    meshopt::SimplifyOptions::None,
+                    Some(&mut error),
+                )
+                .into_iter()
+                .map(|i| back[i as usize])
+                .collect();
+                by_position = flat;
+            }
+            if stalled(&simplified) {
+                break;
+            }
+            levels.push((simplified, error));
+            refaceted.push(by_position);
         }
-        levels.push((meshopt::optimize_vertex_cache(&simplified, q.len()), error));
+        // The levels simplified by position over a flat mesh: their own
+        // corners, each with its face's normal (the welded vertex's normal
+        // is some other face's).
+        for (l, r) in levels.iter_mut().zip(&refaceted) {
+            if !*r {
+                continue;
+            }
+            let mut out = Vec::with_capacity(l.0.len());
+            for tri in l.0.chunks_exact(3) {
+                let [a, b, c] = [tri[0], tri[1], tri[2]].map(|i| Vec3::from(pos[i as usize]));
+                let n = oct_encode((b - a).cross(c - a).normalize_or(Vec3::Y));
+                for &i in tri {
+                    let mut v = q[i as usize];
+                    v.n = n;
+                    out.push(q.len() as u32);
+                    q.push(v);
+                    sources.push(sources[i as usize]);
+                }
+            }
+            l.0 = out;
+        }
+        for l in levels.iter_mut().skip(1) {
+            l.0 = meshopt::optimize_vertex_cache(&l.0, q.len());
+        }
     }
     // A streaming proxy keeps only the coarsest level (and the vertices it uses).
     if coarsest && let Some((last, _)) = levels.pop() {
@@ -622,6 +783,49 @@ pub(super) fn cook_primitive(
         indices: index_bytes,
         sources: ordered_sources,
     }))
+}
+
+/// `MSFT_lod`: per mesh, the meshes of its coarser levels in order, from
+/// every node whose extension names other nodes (`ids`) with meshes. The
+/// nodes it names are levels, not parts of the scene: a scene that also
+/// draws them draws them twice, so the cook says so.
+pub(super) fn msft_lod(
+    doc: &gltf::Document,
+    notes: &mut Vec<String>,
+) -> std::collections::BTreeMap<usize, Vec<usize>> {
+    let mut out = std::collections::BTreeMap::new();
+    let nodes: Vec<gltf::Node> = doc.nodes().collect();
+    for n in &nodes {
+        let (Some(mesh), Some(ext)) = (n.mesh(), n.extension_value("MSFT_lod")) else {
+            continue;
+        };
+        let ids: Vec<usize> = ext
+            .get("ids")
+            .and_then(|v| v.as_array())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|i| i.as_u64())
+                    .map(|i| i as usize)
+                    .collect()
+            })
+            .unwrap_or_default();
+        let meshes: Vec<usize> = ids
+            .iter()
+            .filter_map(|&i| nodes.get(i)?.mesh().map(|m| m.index()))
+            .collect();
+        if meshes.len() != ids.len() {
+            notes.push(format!(
+                "node {}: MSFT_lod names {} node(s), {} with a mesh; the others are skipped",
+                n.index(),
+                ids.len(),
+                meshes.len()
+            ));
+        }
+        if !meshes.is_empty() {
+            out.insert(mesh.index(), meshes);
+        }
+    }
+    out
 }
 
 /// The glTF's nodes in topological order (roots by index, then depth
@@ -845,6 +1049,7 @@ pub fn cook(
     let mut meshes: Vec<MeshRow> = Vec::new();
     let mut vertices: Vec<u8> = Vec::new();
     let mut indices: Vec<u8> = Vec::new();
+    let lod_meshes = msft_lod(doc, &mut notes);
     for mesh in doc.meshes() {
         let first = prims.len() as u32;
         for (pi, prim) in mesh.primitives().enumerate() {
@@ -861,7 +1066,20 @@ pub fn cook(
                 .index()
                 .map_or(default_material, |i| i as u32);
             let normal_mapped = !proxy && prim.material().normal_texture().is_some();
-            match cook_primitive(src, &prim, material, normal_mapped, opts, proxy)
+            // MSFT_lod: the same primitive of each coarser mesh is a level.
+            let mut levels = vec![prim.clone()];
+            for &m in lod_meshes.get(&mesh.index()).into_iter().flatten() {
+                match doc.meshes().nth(m).and_then(|lm| lm.primitives().nth(pi)) {
+                    Some(lp) if lp.mode() == gltf::mesh::Mode::Triangles => levels.push(lp),
+                    _ => {
+                        notes.push(format!(
+                            "{what}: MSFT_lod mesh {m} has no triangle primitive {pi}; its levels stop there"
+                        ));
+                        break;
+                    }
+                }
+            }
+            match cook_primitive(src, &levels, material, normal_mapped, opts, proxy)
                 .map_err(|e| CookError(format!("{what}: {e}")))?
             {
                 Some(mut c) => {
@@ -1004,7 +1222,7 @@ pub fn cook(
         .iter()
         .map(|p| lods[p.lod_first as usize].index_count as usize / 3)
         .sum();
-    let tris_lod: Vec<usize> = (0..opts.lod_levels.max(1) as usize)
+    let tris_lod: Vec<usize> = (0..prims.iter().map(|p| p.lod_count).max().unwrap_or(1) as usize)
         .map(|l| {
             prims
                 .iter()
