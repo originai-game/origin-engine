@@ -9,6 +9,7 @@
     "build": "og build .",
     "publish-build": "og build . --publish",
     "cook": "og cook .",
+    "check": "og check .",
     "test": "og test ."
   },
   "dependencies": {

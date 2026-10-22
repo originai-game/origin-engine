@@ -5,7 +5,7 @@
 #
 #   scripts/tsrs-diff.sh [CONFIG...]
 #
-# Without arguments: packages/engine's three tsconfigs, templates/game (with
+# Without arguments: packages/engine's three tsconfigs, every template (with
 # the paths og check gives a project without node_modules) and the five
 # examples. Each config runs once per checker (`-p CONFIG --noEmit
 # --incremental false --pretty false --checkers 4`; tsrs adds
@@ -45,7 +45,7 @@ tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 
 fail=0
 # The pins.
-for f in templates/game/package.json examples/*/package.json; do
+for f in templates/*/package.json templates/archetypes/*/package.json examples/*/package.json; do
   v="$(sed -n 's/^ *"typescript": "\(.*\)",\{0,1\}$/\1/p' "$f")"
   if [ -n "$v" ] && [ "$v" != "$TSGO_VERSION" ]; then
     og_err "check-conformance: $f pins typescript $v; crates/og-cli/src/check.rs TSGO_VERSION is $TSGO_VERSION"; fail=1
@@ -60,23 +60,28 @@ done < <(sed -n 's/^ *"@tsrs\/[^"]*": "\(.*\)",\{0,1\}$/\1/p' packages/engine/pa
 if [ "$#" -gt 0 ]; then
   configs=("$@")
 else
-  # templates/game resolves the engine through node_modules in a created
+  # A template resolves the engine through node_modules in a created
   # project; here, as og check does, through paths to packages/engine.
-  mkdir -p "$tmp/template"
-  cat > "$tmp/template/tsconfig.json" <<EOF
-{ "extends": "$OG_ROOT/templates/game/tsconfig.json",
+  configs=(packages/engine/tsconfig.json packages/engine/tsconfig.runtime.json
+    packages/engine/tsconfig.templates.json)
+  for t in templates/*/ templates/archetypes/*/; do
+    [ -f "$t/project.ogt" ] || continue
+    t="${t%/}"; w="$tmp/wrap/$t"
+    mkdir -p "$w"
+    cat > "$w/tsconfig.json" <<EOF
+{ "extends": "$OG_ROOT/$t/tsconfig.json",
   "compilerOptions": { "paths": {
     "@origingame/engine": ["$OG_ROOT/packages/engine/types/index.d.ts"],
     "@origingame/engine/playtest": ["$OG_ROOT/packages/engine/src/playtest.ts"] } } }
 EOF
-  configs=(packages/engine/tsconfig.json packages/engine/tsconfig.runtime.json
-    packages/engine/tsconfig.templates.json "$tmp/template/tsconfig.json")
+    configs+=("$w/tsconfig.json")
+  done
   for e in brasswick hollowbell kestrel-stair lantern-vale meridian-loop; do configs+=("examples/$e/tsconfig.json"); done
 fi
 
 args=(--noEmit --incremental false --pretty false --checkers 4)
 for c in "${configs[@]}"; do
-  name="$c"; case "$c" in "$tmp"/template/*) name="templates/game" ;; esac
+  name="$c"; case "$c" in "$tmp"/wrap/*) name="${c#"$tmp"/wrap/}"; name="${name%/tsconfig.json}" ;; esac
   "${tsgo[@]}" -p "$c" "${args[@]}" > "$tmp/tsgo.txt" 2> "$tmp/tsgo.err"; a=$?
   "$TSRS" -p "$c" "${args[@]}" --checkerAssignment go --noLazyMembers > "$tmp/tsrs.txt" 2> "$tmp/tsrs.err"; b=$?
   # Exit 0-2 is a finished check (2 is TypeScript's "diagnostics, outputs
