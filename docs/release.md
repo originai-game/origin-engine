@@ -1,20 +1,45 @@
-# Release: public packages first, the local loop, E2B last
+# Release: public packages first, the local loop, the development sandbox on InstaBox, E2B last
 
 Normative for how the engine leaves this repository and how the rest of
 the work to launch is ordered. `docs/design.md` is the design, `docs/ci.md`
 the gate, `docs/web-export.md` §Packaging the tarballs; this document is
 the path from `main` to a version a game author, the platform's local
-stack and an E2B image all install the same way, and the plan of what is
-still to be developed and tested, in order, with what passes each step.
-The platform's side of the same plan is `origingame/goals/origin-engine/
-plan.md` §四 (decision E10).
+stack, the development sandbox and an E2B image all install the same way,
+and the plan of what is still to be developed and tested, in order, with
+what passes each step. The platform's side of the same plan is
+`origingame/goals/origin-engine/plan.md` §四 (decision E10).
 
 ## 1. The decision (owner, 2026-10-22)
 
 **The engine is consumed as public npm packages pinned by version, developed
-and tested locally against them, and only then installed into E2B.** The
-E2B image is the last consumer of a version, never the first place a change
-is tried.
+and tested locally against them, then in the development sandbox, and only
+then installed into E2B.** The E2B image is the last consumer of a version,
+never the first place a change is tried.
+
+**The development stage's sandbox is InstaBox, not E2B** (the owner, the
+same day, made explicit here on the owner's instruction). The threads of
+the development stage (the build-out, the dogfood rounds, the M7
+acceptance, every pin move before launch) run in InstaBox machines
+(https://dashboard.instabox.sh; a full Linux VM per thread, 4 vCPU and
+8 GiB, a persistent `/data`, pause and resume, snapshots as images, an
+HTTPS URL per port; the SDK `@insforge/instabox-sdk`, the API at
+`api.instabox.sh` with `INSTABOX_API_KEY`). E2B stays production's
+provider and the last consumer of a version (stage E); nothing of the
+engine or of the development loop depends on it. What this changes on the
+engine's side is small and all here: the install test runs inside an
+InstaBox machine too (`tests/install/instabox.ts`, `release.sh verify
+--instabox`, §3), it is the engine's check that a version runs on the
+machine class the development threads use, and every script that reached
+an E2B sandbox for development (`packages/engine/scripts/e2b-addon.ts`)
+is gone; the two that remain (`tools/bench/e2b-run.ts`,
+`crates/og-tests/scripts/capture-vulkan-cpu.ts`) are the lavapipe
+measurements set aside with the CPU sandbox requirement. The platform's
+side (the `instabox` provider beside `e2b`, the per-class snapshots that
+install the pinned version, the development routing) is stage D and
+`docs/platform-asks.md` ask 15. The account today is InstaBox's free plan
+(one machine, from the `agent-browser` template or a snapshot; verified
+2026-10-22, `tests/evidence/release/instabox-0.1.1.md`); more than one
+development thread at a time needs the Pro plan (§6).
 
 What this replaces. Since the cutover the platform has consumed the engine
 through a *layout*: `agent-server/scripts/e2b/origin-engine.ts` exports a
@@ -58,21 +83,29 @@ What holds from this commit:
    (decision E9); `og` compares the two and says so (§4 row R1).
 4. **Local first, in this order, for every version.** The gate on `main`;
    `scripts/release.sh pack` and `verify` (the install test on this
-   machine and in a linux-x64 container, §3); publish; the platform's
-   local stack (`stage-engine`, `deploy`, the runner's `tests/og.rs`, the
-   published page on a real Portal) against the published version; the
-   M7 acceptance (one Discover prototype end to end by a thread) on the
-   local stack; **then** the E2B image, which does `bun install` of the
-   version and is checked once by `check-templates.ts`; then the owner
-   enables it in the runtime configuration. A template rebuild happens
-   only when the pinned version moves and only after the local stack
-   passed at that version.
-5. **Nothing of the sandbox is special.** The image carries bun, git, the
-   installed packages with their `optionalDependencies` (the platform
-   addon and `og`, tsrs for `og check`: `docs/platform-asks.md` ask 13),
-   ffmpeg for the `probe` class, no renderer (design §5), no engine
-   checkout, no Rust. `og doctor` in the image and on an author's machine
+   machine, in a linux-x64 container and, `--instabox`, in an InstaBox
+   machine, §3); publish; the platform's local stack (`stage-engine`,
+   `deploy`, the runner's `tests/og.rs`, the published page on a real
+   Portal) against the published version; the platform's InstaBox
+   snapshots of the version, checked once (stage D), on which the M7
+   acceptance (one Discover prototype end to end by a thread) runs;
+   **then** the E2B image, which does `bun install` of the version and is
+   checked once by `check-templates.ts`; then the owner enables it in the
+   runtime configuration. A snapshot or template rebuild happens only
+   when the pinned version moves and only after the local stack passed
+   at that version.
+5. **Nothing of the sandbox is special, whichever provider.** The
+   snapshot or image carries bun, git, the installed packages with their
+   `optionalDependencies` (the platform addon and `og`, tsrs for `og
+   check`: `docs/platform-asks.md` ask 13), ffmpeg for the `probe` class,
+   no renderer (design §5), no engine checkout, no Rust. `og doctor` in
+   an InstaBox machine, in the E2B image and on an author's machine
    checks the same things and prints the same lines.
+6. **Development on InstaBox, production on E2B.** A thread of the
+   development stage runs in an InstaBox machine made from the
+   platform's snapshot of the pinned version; a production thread runs
+   in the E2B image of the same version. The engine never tells them
+   apart: what differs is the provider the platform routes a class to.
 
 Why. The author's loop and the platform's loop become the same loop;
 every defect is found with `bun install` instead of a billed round; the
@@ -117,7 +150,7 @@ step of the path, all local:
 ```sh
 scripts/release.sh bump <version>     # every occurrence of the version, CHANGELOG.md's heading
 scripts/release.sh pack               # OG_RELEASE=1 pack.sh --linux-x64 (the engine with knowledge/, the platform packages), then create-game: dist/release/<version>/*.tgz + manifest.json (sizes, sha256)
-scripts/release.sh verify [--registry] # the install test (below) from the tarballs, or from the registry after publishing
+scripts/release.sh verify [--registry] [--instabox]  # the install test (below) from the tarballs, or from the registry after publishing; --instabox once more inside an InstaBox machine
 scripts/release.sh publish            # npm publish, platform packages first, then engine, create-game; git tag v<version>; prints the install line
 ```
 
@@ -156,6 +189,22 @@ It is also a stage of the wave's end (`scripts/wave-end.sh release`:
 ships), so the gate never compiles release (`docs/ci.md` §One profile per
 lane) and a wave ends with a candidate ready.
 
+**In an InstaBox machine** (`tests/install/instabox.ts`; `verify
+--instabox`): the same `run.ts`, uploaded into a machine the script
+creates from the `agent-browser` template (node 22, git; the script
+installs bun 1.4.2 as the container's Dockerfile does, and nothing of the
+engine), run there `--host-only` in the background (a foreground command
+is capped at ten minutes and not streamed) with its log followed from
+here, from the registry or from the tarballs (uploaded in 8 MiB parts,
+the API's file limit being 10 MiB), the machine deleted after a pass and
+kept after a failure to look at. It records `verified.instabox` in the
+manifest. It is not a condition of `publish` (it needs the key and is
+billed by the minute) but it is the check of every published version on
+the machine class the development threads run on (§4 T), and the
+0.1.1 run is `tests/evidence/release/instabox-0.1.1.md`: 14 s from the
+registry, renderer `none`, frames unchecked, the same lines as the
+container.
+
 ## 4. The plan: what remains, in order
 
 Everything still to develop and test before the engine is live, as the
@@ -177,7 +226,7 @@ evidence/` (platform).
 | R1 | **Done 2026-10-22** (`scripts/release-bump.ts`, `og` pin notice and doctor line). One version everywhere: `release.sh bump`; `create` writes it into `project.ogt` and `package.json`; the knowledge test holds every occurrence equal (`validate.test.ts` already names `origin-engine.json` and the template's `project.ogt`); `og` compares `project.ogt`'s `engine` with the installed package's version (`doctor` line, run/test/build warning) | `bump 0.1.0` leaves `git grep 0.0.1` empty outside history; `og doctor` in a project pinned at another version prints the mismatch and its fix |
 | R2 | **Done 2026-10-22**, then folded (the owner, the same day): the knowledge ships inside `@origingame/engine` as `knowledge/` (pack.sh copies `packages/knowledge`'s files there); `mount.ts --package <installed engine dir>` mounts it; `packages/knowledge` stays private | `bun pm pack` of the package installs in an empty directory and `bunx` its `validate.ts` passes; `mount.ts --package` on a stand-in platform tree gives the same bytes as `--commit` of the same source |
 | R3 | **Done 2026-10-22.** `scripts/release.sh` (`bump`, `pack`, `verify`, `publish`) and the wave-end `release` stage; `pack.sh` packs create and knowledge too; `manifest.json` with sizes and sha256; `CHANGELOG.md` with 0.1.0's entry (the IDL as it stands) | `wave-end.sh release` leaves `dist/release/0.1.0/` with four tarballs and a manifest; `publish` refuses a dirty tree, an unverified manifest, a wrong `main` |
-| R4 | **Written 2026-10-22** (`tests/install/run.ts`, `tests/install/Dockerfile`); its first pass is recorded in R8's evidence. The install test (`tests/install/`, §3) on this machine and in the linux-x64 container, from tarballs and `--registry` | both runs pass on the 0.1.0 candidate; the container run shows `renderer none` and `N frame(s) unchecked`, never a failure |
+| R4 | **Written 2026-10-22** (`tests/install/run.ts`, `tests/install/Dockerfile`); its first pass is recorded in R8's evidence. The install test (`tests/install/`, §3) on this machine and in the linux-x64 container, from tarballs and `--registry`. **InstaBox added the same day** (`tests/install/instabox.ts`, `verify --instabox`): the test inside an InstaBox machine, 0.1.1 from the registry passing in `tests/evidence/release/instabox-0.1.1.md` | both runs pass on the 0.1.0 candidate; the container run and the InstaBox run show `renderer none` and `N frame(s) unchecked`, never a failure |
 | R5 | **Done 2026-10-22** (the `pin` line; the rest was there). `og doctor` and `og --version` outside a checkout: the package's version, the addon's, the wasm files, tsrs, the renderer, bun; inside a checkout the toolchain lines as today | the doctor's output in the container and on this machine differ only in the renderer line |
 | R6 | The template's two models (`trickster.glb`, `dropship.glb`, copied from `origingame-examples`): `dropship.glb` is MIT (the `core-business` example's `LICENSE`, named in `templates/game/LICENSES.md` now); `trickster.glb` came from `edg-king-match`, which declares no licence, so the template's `trickster` entity is an instance of the CC0 `walker.glb` since 2026-10-22 and the file left the template. `@origingame/create-game` ships nothing whose licence is not named. The engine's test copy (`crates/og-tests/assets/`, `templates/fx-showcase`) is not in any package; whether it stays in a public repository is the owner's (§6) | done 2026-10-22 for the packages: `LICENSES.md` of the template names a licence for every binary; `distribution.json` regenerated; the owner's word still owed for the repository's copies |
 | R7 | **Done 2026-10-22.** Package metadata: `repository.url` names the repository the packages are built from (today `origingame/origin-engine`, which is not where the code is); `homepage`, `bugs`; the README's install section (`bun add`, `npm create`, the three commands) | `npm pack --dry-run` lists what §2 says and nothing else; the README's lines run as written |
@@ -192,6 +241,22 @@ evidence/` (platform).
 | L3 | **In progress 2026-10-22**: the runner's `tests/og.rs` passes on the 0.1.1 layout; agent-server 442 of 443 (one staff-route test failed under load, to rerun idle); `stage-engine`, `deploy`, `engine-page.ts` pending. The local stack at the version: `stage-engine`, `deploy`, `engine-page.ts` on a real Portal (desktop and phone, plain and isolated releases), `agent-runner` `tests/og.rs`; this is the merge gate of every pin move | all four pass; `origingame/goals/origin-engine/evidence/pin-0.1.0.md` |
 | L4 | **Done 2026-10-22** (no cargo or git archive under `agent-server/scripts/e2b`; the workflows check out no engine and need no token; E1's image contents written: lavapipe only in `asset`). `origin-engine.ts` (the layout builder) and `build-templates.ts`'s engine step reduced to the install of L1; `ORIGIN_ENGINE_READ_TOKEN` removed from the workflows and the plan's §四 4 | `rg cargo agent-server/scripts/e2b` finds nothing; the workflows check out no engine repository |
 | L5 | **M7 acceptance, locally**: a thread on the local stack makes one Discover prototype end to end (`engine_scaffold` → `og run --commands` playtest → delivery → publish to the local Portal, played back byte for byte) | the receipt in `evidence/m7-local-0.1.x.json`; the published page passes `engine-page.ts` |
+
+### D. The development sandbox on InstaBox (platform repository and engine; after L3, before E)
+
+The sandbox the development stage's threads run in is an InstaBox machine
+(§1). The platform reaches it as one more provider beside `e2b`, routed
+per class; the engine's part is the install test inside such a machine
+(R4, `tests/install/instabox.ts`) and ask 15 of `docs/platform-asks.md`,
+which lists what the machine must carry. Nothing here waits on E2B.
+
+| # | Row | Passes when |
+|---|---|---|
+| D1 | The platform's `instabox` provider beside `e2b` (`agent-server/src/sandbox/`): create from a snapshot or template, run, files, pause and resume, delete, the port URL; the same `Sandbox` interface the runner already speaks, no engine-specific member | agent-server's sandbox tests pass on the `instabox` provider against the real account (the free plan's one machine, serially); a thread on it runs `og doctor` |
+| D2 | Per-class snapshots that install the pinned version (`agent-server/scripts/instabox/`: from `agent-browser`, bun 1.4.2, `bun install` of the engine and create-game with `optionalDependencies`, ffmpeg for `probe`; no renderer, no checkout, no Rust, no credential left in the image), rebuilt only when `origin-engine.json` moves; a checker that is `check-templates.ts` for InstaBox | the checker passes on the snapshot of the pinned version; its receipt in `origingame/goals/origin-engine/evidence/instabox-<version>.md` |
+| D3 | The development routing: `sandbox.provider.<class>` names `instabox` for the development stage's classes and `e2b` for production's, in the runtime configuration, never in code; the runner reconnects after a machine's auto-pause (thirty idle minutes on every plan) | a development thread on `engine` lands in an InstaBox machine, a production thread in E2B, with no change to the engine package |
+| D4 | **Done for 0.1.1** (`tests/evidence/release/instabox-0.1.1.md`). The install test in an InstaBox machine at every published version (`release.sh verify --registry --instabox`) | `verified.instabox` in the manifest of every version from 0.1.1 on |
+| D5 | **M7 acceptance in the sandbox**: L5's prototype, made by a thread in an InstaBox machine from D2's snapshot | the receipt in `evidence/m7-instabox-0.1.x.json`; the published page passes `engine-page.ts` |
 
 ### F. The features still owed (engine repository; beside R and L)
 
@@ -222,10 +287,15 @@ optimisation rows (§P) after them.
 | Registry | the install test from npm | `release.sh verify --registry` | after every publish |
 | Platform, local | `stage-engine`, `deploy`, `engine-page.ts`, runner `tests/og.rs`, the knowledge mount `--check` | the platform's local stack | every pin move (L3) |
 | Devices | iPhone first frame and frame times (Safari, WebGPU), a mid-range Android's 10,000-entity tick (design §7; owed row 40) | `og run --device iphone`, `--device android` on the owner's devices | once before launch, then per minor version |
-| E2B | `check-templates.ts` on the image that installs the version | E2B (billed) | once per pin move, after L3 |
+| InstaBox (development) | the install test inside a machine (`release.sh verify --registry --instabox`); the platform's snapshot checker (D2) | an InstaBox machine (billed by the minute; the free plan's one machine) | the install test after every publish; the checker once per pin move, after L3 |
+| E2B (production only) | `check-templates.ts` on the image that installs the version | E2B (billed) | once per pin move, after D; never for development |
 | Production | `verify-production.sh`, `state.ts` without drift, the Player telemetry of the first releases | the platform's release process | at launch and each ship |
 
 ### E. E2B and production (platform and owner; last)
+
+E2B is production's provider only (§1). No row of R, L, D or F waits on
+one of these; they run once per pin move after D, as the last consumer of
+the version.
 
 | # | Row | Passes when |
 |---|---|---|
@@ -275,3 +345,14 @@ this repository does.
    Godot Web exports, the WebGL2 fallback's lifetime, a third native tier
    (rows 39): unchanged from the platform's plan §四.
 5. The devices for the T matrix's device row (row 40).
+6. The InstaBox plan. The account (zhangfan0220@gmail.com) is on the free
+   plan on 2026-10-22: one machine at a time, created from the
+   `agent-browser` template or a snapshot only, 4 vCPU and 8 GiB,
+   auto-paused after thirty idle minutes. One development thread at a
+   time fits; the dogfood rounds and the M7 acceptance beside each other
+   (D3, D5), and the per-class snapshots (D2: up to five snapshots, one
+   per class and version), need the Pro plan. The owner's upgrade is the
+   condition of running more than one development thread.
+7. Whether E2B stays production's provider once D passes, or InstaBox
+   takes production too. Today's answer (§1) is E2B for production, and
+   stage E is written for it; the engine is indifferent.

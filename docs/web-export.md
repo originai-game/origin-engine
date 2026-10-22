@@ -870,7 +870,7 @@ icons) is.
 ```sh
 cd packages/engine
 sh scripts/pack.sh --linux-x64    # OG_RELEASE=1 scripts/build.sh --linux-x64 (this machine's addon and og, the Linux x64 addon and og through cargo zigbuild against glibc 2.31, both web hosts), then dist/pack/*.tgz with sizes and sha256
-bun scripts/e2b-addon.ts          # optional, billable: install the tarballs in the platform's E2B probe sandbox and og run the runner there
+bun ../../tests/install/instabox.ts --version <v> --from ../../dist/release/<v>   # optional, billed by the minute: the install test inside an InstaBox machine, the development sandbox (docs/release.md §4 D; scripts/release.sh verify --instabox)
 ```
 
 - `@origingame/engine`: the TypeScript API and runtime, both web hosts, the

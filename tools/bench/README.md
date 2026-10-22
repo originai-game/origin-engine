@@ -13,6 +13,6 @@ The measurement pages and scripts from the spike (`docs/spike-results.md`).
 - `serve.ts` — a static server with COOP/COEP and a `POST /result` sink (`bun serve.ts`).
 - `run-chrome.sh <url> <seconds>` — headless Chrome for Testing with vsync off; pages POST their numbers.
 - `views.ts` — the TypeScript typed-view system benchmark (`bun views.ts 10000`).
-- `e2b-run.ts` — runs a Linux binary headless in the platform's E2B `probe` sandbox (billable).
+- `e2b-run.ts` — runs a Linux binary headless in the platform's E2B `probe` sandbox (billable). E2B is the production provider only; the development sandbox is InstaBox since 2026-10-22 (`docs/release.md` §1), checked by `tests/install/instabox.ts`. This script and `crates/og-tests/scripts/capture-vulkan-cpu.ts` stay with the lavapipe measurements they were written for, set aside with the CPU sandbox requirement.
 
 Models for `compare.html` are the ones in `crates/og-tests/models/`; copy or symlink them to `tools/bench/models/`.
