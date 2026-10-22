@@ -237,6 +237,12 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
     if let Some(ui) = eng.state.borrow().ui.as_ref() {
         probe.set_ui(ui.probe());
     }
+    // describe and pick: the id pass over the extracted frame, with or
+    // without a renderer.
+    probe.set_scene_view(Box::new(super::describe::RuntimeView {
+        render: eng.render.clone(),
+        engine: id,
+    }));
     for (name, usage, doc) in commands {
         register_one(&mut probe, id, &name, &usage, &doc)?;
     }

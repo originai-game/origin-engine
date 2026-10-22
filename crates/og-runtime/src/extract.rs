@@ -183,6 +183,8 @@ pub(crate) struct RenderState {
     pub hierarchy: Hierarchy,
     /// Runtime geometry, lines, points, debug draw (`super::geometry`).
     pub geo: super::geometry::GeoState,
+    /// The entity of each drawable of the last extraction (`super::describe`).
+    pub ids: super::describe::DrawIds,
 }
 
 impl RenderState {
@@ -219,6 +221,7 @@ impl RenderState {
             terrain: Default::default(),
             hierarchy: Hierarchy::default(),
             geo: Default::default(),
+            ids: Default::default(),
         }
     }
 }
@@ -589,6 +592,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let mut h = std::mem::take(&mut rs.hierarchy);
     h.refresh(world);
     rs.atmo.palettes.clear();
+    rs.ids.sprites.clear();
     let scene = &mut rs.scene;
     let (models, geometries, materials) = (&rs.models, &rs.geometries, &rs.materials);
     scene.instances.clear();
@@ -919,6 +923,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // bounds view).
     super::geometry::extract(world, rs, &mut h, vp);
     super::fx::motion(rs, &keys, tick);
+    // Which entity each instance came from, for the probe's id pass.
+    rs.ids.instances.clear();
+    rs.ids.instances.extend(keys.iter().map(|k| k.0));
     // Drop shadows over the terrain under their sprites.
     super::terrain::ground_drop_shadows(rs);
 

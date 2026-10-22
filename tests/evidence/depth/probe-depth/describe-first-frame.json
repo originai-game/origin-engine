@@ -1,0 +1,239 @@
+{
+  "camera": {
+    "far": 2000.0,
+    "fov": 50.0,
+    "height": null,
+    "near": 0.10000000149011612,
+    "position": [
+      0.4000000059604645,
+      1.7999999523162842,
+      8.0
+    ],
+    "projection": "perspective",
+    "target": [
+      0.4000000059604645,
+      1.7999999523162842,
+      7.0
+    ],
+    "up": [
+      0.0,
+      1.0,
+      0.0
+    ]
+  },
+  "entities": [
+    {
+      "archetype": [
+        "og.Transform",
+        "og.Mesh",
+        "og.Collider"
+      ],
+      "box": {
+        "height": 150.0,
+        "width": 640.0,
+        "x": 0.0,
+        "y": 210.0
+      },
+      "coverage": 0.38392,
+      "depth": 3.8816,
+      "drawn": {
+        "height": 150.0,
+        "width": 640.0,
+        "x": 0.0,
+        "y": 210.0
+      },
+      "id": "ground",
+      "labels": [
+        "mesh"
+      ],
+      "name": "ground",
+      "occlusion": 0.0729,
+      "order": 0,
+      "point": {
+        "x": 319.0,
+        "y": 285.0
+      }
+    },
+    {
+      "archetype": [
+        "og.Transform",
+        "og.Model"
+      ],
+      "box": {
+        "height": 98.0,
+        "width": 200.0,
+        "x": 192.0,
+        "y": 128.0
+      },
+      "coverage": 0.03139,
+      "depth": 6.9456,
+      "drawn": {
+        "height": 98.0,
+        "width": 200.0,
+        "x": 192.0,
+        "y": 128.0
+      },
+      "id": "dropship",
+      "labels": [
+        "model",
+        "models/dropship.glb"
+      ],
+      "name": "dropship",
+      "occlusion": 0.0,
+      "order": 1,
+      "point": {
+        "x": 291.0,
+        "y": 177.0
+      }
+    },
+    {
+      "archetype": [
+        "og.Transform",
+        "og.Mesh",
+        "og.RigidBody",
+        "og.Collider",
+        "og.AudioSource"
+      ],
+      "box": {
+        "height": 66.0,
+        "width": 72.0,
+        "x": 138.0,
+        "y": 32.0
+      },
+      "coverage": 0.01934,
+      "depth": 6.9999,
+      "drawn": {
+        "height": 66.0,
+        "width": 72.0,
+        "x": 138.0,
+        "y": 32.0
+      },
+      "id": "crate",
+      "labels": [
+        "mesh"
+      ],
+      "name": "crate",
+      "occlusion": 0.0,
+      "order": 2,
+      "point": {
+        "x": 173.0,
+        "y": 65.0
+      }
+    },
+    {
+      "archetype": [
+        "og.Transform",
+        "og.Mesh",
+        "og.Collider"
+      ],
+      "box": {
+        "height": 112.0,
+        "width": 112.0,
+        "x": 116.0,
+        "y": 168.0
+      },
+      "coverage": 0.04502,
+      "depth": 6.9999,
+      "drawn": {
+        "height": 112.0,
+        "width": 112.0,
+        "x": 116.0,
+        "y": 168.0
+      },
+      "id": "wall",
+      "labels": [
+        "mesh"
+      ],
+      "name": "wall",
+      "occlusion": 0.0019,
+      "order": 3,
+      "point": {
+        "x": 171.0,
+        "y": 223.0
+      }
+    },
+    {
+      "archetype": [
+        "og.Transform",
+        "og.Model",
+        "og.Perceivable",
+        "Health",
+        "Spin"
+      ],
+      "box": {
+        "height": 84.0,
+        "width": 16.0,
+        "x": 388.0,
+        "y": 180.0
+      },
+      "coverage": 0.0042,
+      "depth": 7.7899,
+      "drawn": {
+        "height": 84.0,
+        "width": 16.0,
+        "x": 388.0,
+        "y": 180.0
+      },
+      "id": "trickster",
+      "labels": [
+        "model",
+        "models/walker.glb"
+      ],
+      "name": "trickster",
+      "occlusion": 0.0,
+      "order": 4,
+      "point": {
+        "x": 395.0,
+        "y": 221.0
+      }
+    },
+    {
+      "archetype": [
+        "og.Transform",
+        "og.Model",
+        "og.NavAgent",
+        "og.AiAgent",
+        "og.Perception",
+        "Alarm"
+      ],
+      "box": {
+        "height": 60.0,
+        "width": 24.0,
+        "x": 88.0,
+        "y": 180.0
+      },
+      "coverage": 0.0034,
+      "depth": 10.7897,
+      "drawn": {
+        "height": 60.0,
+        "width": 24.0,
+        "x": 88.0,
+        "y": 180.0
+      },
+      "id": "guard",
+      "labels": [
+        "model",
+        "models/walker.glb"
+      ],
+      "name": "guard",
+      "occlusion": 0.0,
+      "order": 5,
+      "point": {
+        "x": 99.0,
+        "y": 209.0
+      }
+    }
+  ],
+  "kind": "describe",
+  "pass": {
+    "height": 180,
+    "width": 320
+  },
+  "surface": {
+    "dpr": 1.0,
+    "height": 720.0,
+    "width": 1280.0
+  },
+  "tick": 0,
+  "ui": []
+}

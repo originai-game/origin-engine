@@ -33,6 +33,7 @@ mod api;
 mod assets;
 mod atmosphere;
 mod codec;
+mod describe;
 mod e6;
 mod engine;
 mod environment;
