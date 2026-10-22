@@ -19,9 +19,13 @@ what remains to launch, `docs/release.md`.
   by version, installed from the npm registry: never a layout built from a
   git revision, never a checkout or `cargo` on the platform's side
   (`docs/release.md` §1, the owner's decision of 2026-10-22). A version is
-  tested locally (the install test, the platform's local stack) before an
-  E2B image installs it. No platform code imports engine internals; no
-  engine code imports platform code.
+  tested locally (the install test, the platform's local stack) before a
+  sandbox installs it. The sandbox of the development stage is an InstaBox
+  machine (dashboard.instabox.sh; the owner, 2026-10-22), where the install
+  test runs too (`tests/install/instabox.ts`); E2B is production's provider
+  and the last consumer of a version. No engine script targets E2B for
+  development. No platform code imports engine internals; no engine code
+  imports platform code.
 
 ## Non-negotiable contracts
 

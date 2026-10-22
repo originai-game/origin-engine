@@ -7,22 +7,32 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
-## Public packages first, the local loop, E2B last (2026-10-22)
+## Public packages first, the local loop, the development sandbox on InstaBox, E2B last (2026-10-22)
 
 The owner's decision, after the two below: the engine is consumed as
 public npm packages pinned by version, every version is developed and
 tested locally against them (the install test on this machine and in a
 linux-x64 container, then the platform's local stack and the M7
-acceptance), and only then does an E2B image install it, once, as the last
-consumer. The layout the platform has built from a pinned git revision of
-this repository (`origin-engine.ts`: `git archive`, cargo, zigbuild, the
-lanes wasm, a read token) and the E2B rebuild as the first place a change
-is tried are what this replaces. The decision, the packages, the version
-rule, `scripts/release.sh` and the complete plan of what remains to launch
-(stages R, L, F, T, E, P) are `docs/release.md`; the platform's side is
-decision E10 of `origingame/goals/origin-engine/plan.md`. In this table:
-rows 91 to 98 (the release pipeline, stage R), each closed with its
-commit; the first published version is `0.1.0`.
+acceptance), then in the development sandbox, and only then does an E2B
+image install it, once, as the last consumer. The layout the platform has
+built from a pinned git revision of this repository (`origin-engine.ts`:
+`git archive`, cargo, zigbuild, the lanes wasm, a read token) and the E2B
+rebuild as the first place a change is tried are what this replaces. The
+same day the owner made explicit that **the development stage's sandbox
+is InstaBox** (dashboard.instabox.sh), not E2B: the development threads
+run in InstaBox machines the platform makes from per-class snapshots of
+the pinned version, E2B is production's provider only, and the install
+test runs inside an InstaBox machine too (`tests/install/instabox.ts`;
+0.1.1 passing in `tests/evidence/release/instabox-0.1.1.md`; the
+engine's last script that reached E2B for development,
+`packages/engine/scripts/e2b-addon.ts`, is gone). The decision, the
+packages, the version rule, `scripts/release.sh` and the complete plan
+of what remains to launch (stages R, L, D, F, T, E, P) are
+`docs/release.md`; the platform's side is decision E10 of
+`origingame/goals/origin-engine/plan.md` and `docs/platform-asks.md`
+ask 15. In this table: rows 91 to 98 (the release pipeline, stage R),
+each closed with its commit; the first published version is `0.1.0`,
+the pinned one `0.1.1`.
 
 ## Features before optimisation (2026-10-22)
 
