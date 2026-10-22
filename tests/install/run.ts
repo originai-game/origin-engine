@@ -16,8 +16,8 @@
 //      --publish`: og-build.json names the version, the shipped publish wasm is
 //      the package's byte for byte
 //   5. the runner archetype through steps 1 to 4's test
-//   6. the knowledge package: validate.ts on the installed package, mount.ts
-//      --package into a stand-in platform tree, then --check
+//   6. the knowledge inside the engine package (knowledge/): its validate.ts,
+//      mount.ts --package into a stand-in platform tree, then --check
 //
 // --container builds tests/install/Dockerfile (node 22, bun) and runs this
 // script inside it with --host-only, the tarballs mounted read-only. With
@@ -191,27 +191,21 @@ function host(): void {
     run(step, ["bun", "install"], runner);
     og(step, runner, "test", ".");
 
-    // 6. The knowledge package.
-    step = new Step("6 engine-knowledge: validate, mount --package, --check");
-    const kn = join(work, "knowledge");
-    writeJson(join(kn, "package.json"), {
-      name: "knowledge-consumer",
-      private: true,
-      dependencies: { [`${SCOPE}/engine-knowledge`]: spec("engine-knowledge"), [`${SCOPE}/engine`]: spec("engine") },
-      overrides: overrides(),
-    });
-    run(step, ["bun", "install", "--omit=optional"], kn);
-    const knPkg = join(kn, "node_modules", SCOPE, "engine-knowledge");
-    run(step, ["bun", join(knPkg, "scripts", "validate.ts")], kn);
+    // 6. The knowledge, inside the installed engine package (knowledge/).
+    step = new Step("6 knowledge: validate, mount --package, --check");
+    const knPkg = join(enginePkg, "knowledge");
+    if (!existsSync(join(knPkg, "knowledge.json"))) step.fail(`${enginePkg} carries no knowledge/`);
+    run(step, ["bun", join(knPkg, "scripts", "validate.ts")], demo);
     const platform = join(work, "platform");
     mkdirSync(join(platform, "packages/game-knowledge/production/game/skills/someone-else"), { recursive: true });
     writeFileSync(join(platform, "packages/game-knowledge/production/game/skills/someone-else/SKILL.md"), "---\nname: someone-else\ndescription: not ours\n---\n");
     mkdirSync(join(platform, "packages/game-knowledge/production/game-scaffold/three"), { recursive: true });
     writeFileSync(join(platform, "packages/game-knowledge/production/game-scaffold/three/package.json"), "{}\n");
-    const mounted = run(step, ["bun", join(knPkg, "scripts", "mount.ts"), platform, "--package", knPkg], kn);
+    const mounted = run(step, ["bun", join(knPkg, "scripts", "mount.ts"), platform, "--package", enginePkg], demo);
     if (!/text files: \d+/.test(mounted.stdout)) step.fail(`mount printed no summary:\n${mounted.stdout}`);
-    run(step, ["bun", join(knPkg, "scripts", "mount.ts"), platform, "--package", knPkg, "--check"], kn);
+    run(step, ["bun", join(knPkg, "scripts", "mount.ts"), platform, "--package", enginePkg, "--check"], demo);
     if (!existsSync(join(platform, "packages/game-knowledge/production/game/skills/og-game/SKILL.md"))) step.fail("the mount wrote no og-game skill");
+    if (!existsSync(join(platform, "packages/game-knowledge/production/game-scaffold/origin-engine-ts/project.ogt"))) step.fail("the mount wrote no scaffold overlay");
     if (!existsSync(join(platform, "packages/game-knowledge/production/game/skills/someone-else/SKILL.md"))) step.fail("the mount removed someone else's skill");
 
     log(`PASS on ${PLATFORM}`);

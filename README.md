@@ -22,11 +22,11 @@ cd my-game && bun install                 # @origingame/engine, this platform's 
 bunx og doctor && bunx og test . && bunx og dev .
 ```
 
-`@origingame/engine` (the API, the runtime, both web hosts, the shell),
+`@origingame/engine` (the API, the runtime, both web hosts, the shell, and
+the agents' knowledge in `knowledge/`: skills, wiki, style catalogue),
 `@origingame/engine-darwin-arm64` and `@origingame/engine-linux-x64` (the
-native addon and `og`), `@origingame/create-game` (the template and the
-archetypes) and `@origingame/engine-knowledge` (the skills and the wiki)
-are published together at one version (`docs/release.md`). Nothing else is
+native addon and `og`) and `@origingame/create-game` (the template and the
+archetypes) are published together at one version (`docs/release.md`). Nothing else is
 needed: no Rust, no checkout. Windows and linux-arm64 have no prebuilt
 `og` yet.
 

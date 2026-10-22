@@ -20,9 +20,9 @@
 // each added, changed and removed path. --commit mounts the package as
 // committed at <rev> (a `git archive` of packages/knowledge, templates/game
 // and packages/engine/package.json) instead of the working tree, so work in
-// progress in this checkout never reaches the platform. --package mounts an
-// installed @origingame/engine-knowledge (the directory `bun install` put it
-// in, with @origingame/engine beside it at the same version): what the
+// progress in this checkout never reaches the platform. --package mounts the
+// knowledge of an installed @origingame/engine (the directory `bun install`
+// put it in; the package carries this directory as knowledge/): what the
 // platform does at a pinned version (docs/release.md §4 L2).
 
 import { execFileSync } from "node:child_process";
@@ -152,17 +152,19 @@ export function committed(repo: string, rev: string): { roots: Roots; revision: 
   return { roots: defaultRoots(join(dir, "packages/knowledge")), revision: short, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
-/** An installed @origingame/engine-knowledge: its roots (scaffold/template, @origingame/engine beside it) and `name@version`. */
+/** An installed @origingame/engine (the directory `bun install` put it in, or its knowledge/): the knowledge's roots and `@origingame/engine@<version>`. */
 export function installed(dir: string): { roots: Roots; revision: string; cleanup: () => void } {
   const manifest = join(dir, "package.json");
-  if (!existsSync(manifest)) throw new Error(`${dir}: no package.json; --package takes the installed @origingame/engine-knowledge directory`);
+  if (!existsSync(manifest)) throw new Error(`${dir}: no package.json; --package takes the installed @origingame/engine directory`);
   const pkg = JSON.parse(readFileSync(manifest, "utf8")) as { name?: string; version?: string };
-  if (pkg.name !== "@origingame/engine-knowledge") throw new Error(`${dir}: ${pkg.name ?? "no name"}, not @origingame/engine-knowledge`);
-  const roots = defaultRoots(dir);
-  if (!existsSync(join(roots.engine, "package.json"))) throw new Error(`${roots.engine}: no @origingame/engine beside the knowledge package; install both at the same version`);
-  const engine = (JSON.parse(readFileSync(join(roots.engine, "package.json"), "utf8")) as { version?: string }).version;
-  if (engine !== pkg.version) throw new Error(`@origingame/engine-knowledge is ${pkg.version} and @origingame/engine beside it is ${engine}: one version (docs/release.md §3)`);
-  return { roots, revision: `${pkg.name}@${pkg.version}`, cleanup: () => {} };
+  let knowledge = dir;
+  if (pkg.name === "@origingame/engine") knowledge = join(dir, "knowledge");
+  else if (pkg.name !== "@origingame/engine-knowledge") throw new Error(`${dir}: ${pkg.name ?? "no name"}, not @origingame/engine`);
+  if (!existsSync(join(knowledge, "knowledge.json"))) throw new Error(`${knowledge}: no knowledge.json; the published @origingame/engine carries the knowledge in knowledge/`);
+  const roots = defaultRoots(knowledge);
+  if (!existsSync(join(roots.engine, "package.json"))) throw new Error(`${roots.engine}: no @origingame/engine package.json`);
+  const engine = JSON.parse(readFileSync(join(roots.engine, "package.json"), "utf8")) as { name?: string; version?: string };
+  return { roots, revision: `${engine.name}@${engine.version} (knowledge)`, cleanup: () => {} };
 }
 
 export function summary(r: MountResult, rev: string, check: boolean): string {

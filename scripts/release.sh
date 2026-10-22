@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# The release path (docs/release.md §3): one version across the five
+# The release path (docs/release.md §3): one version across the four
 # packages, release tarballs, the install test, and the publish.
 #
 #   scripts/release.sh check                    every occurrence of the version equals packages/engine's
 #   scripts/release.sh bump <version>           write the version everywhere (scripts/release-bump.ts), Cargo.lock through cargo update
-#   scripts/release.sh pack                     OG_RELEASE=1 packages/engine/scripts/pack.sh --linux-x64, then @origingame/create-game and
-#                                               @origingame/engine-knowledge: dist/release/<version>/*.tgz and manifest.json (sizes, sha256,
-#                                               the commit built from)
+#   scripts/release.sh pack                     OG_RELEASE=1 packages/engine/scripts/pack.sh --linux-x64 (the engine with its knowledge/,
+#                                               the two platform packages), then @origingame/create-game: dist/release/<version>/*.tgz and
+#                                               manifest.json (sizes, sha256, the commit built from)
 #   scripts/release.sh verify [--registry] [--host-only] [--container-only]
 #                                               the install test (tests/install/run.ts) from the tarballs (or, --registry, from npm) on this
 #                                               machine and in the linux-x64 container; records the pass in manifest.json
 #   scripts/release.sh publish [--dry-run] [--otp <code>]
-#                                               npm publish each tarball (platform packages, engine, create-game, knowledge), tag v<version>;
+#                                               npm publish each tarball (platform packages, engine, create-game), tag v<version>;
 #                                               refuses a dirty tree, a manifest not verified on both platforms, a HEAD whose packaged inputs
 #                                               (crates, packages, templates, Cargo.lock, the wasm and tool scripts) differ from the manifest's commit, a version on the registry with other bytes, or no npm login. Resumable:
 #                                               a package already published with these bytes is skipped. npm's two-factor prompt (a URL
@@ -55,10 +55,9 @@ cmd_pack() {
   (cd packages/engine && sh scripts/pack.sh --linux-x64) || { og_err "release: packages/engine/scripts/pack.sh failed"; return 1; }
   cp packages/engine/dist/pack/*.tgz "$out/" || return 1
   (cd packages/create && bun scripts/pack-template.ts >/dev/null && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null) || { og_err "release: packing @origingame/create-game failed"; return 1; }
-  (cd packages/knowledge && bun scripts/pack.ts >/dev/null && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null) || { og_err "release: packing @origingame/engine-knowledge failed"; return 1; }
   local n
   n="$(ls "$out"/*.tgz | wc -l | tr -d ' ')"
-  [ "$n" -eq 5 ] || { og_err "release: expected 5 tarballs in $out, found $n"; ls "$out"; return 1; }
+  [ "$n" -eq 4 ] || { og_err "release: expected 4 tarballs in $out, found $n"; ls "$out"; return 1; }
   bun -e '
     const { readdirSync, readFileSync, statSync, writeFileSync } = require("node:fs");
     const { createHash } = require("node:crypto");
@@ -124,7 +123,7 @@ cmd_publish() {
   og_say "release: publishing $v as $who"
   # Resumable: a package already on the registry at this version is skipped
   # when its bytes are these (npm's sha512 integrity), refused when they differ.
-  local pkgs="engine-darwin-arm64 engine-linux-x64 engine create-game engine-knowledge" name tgz published local_sum
+  local pkgs="engine-darwin-arm64 engine-linux-x64 engine create-game" name tgz published local_sum
   for name in $pkgs; do
     tgz="$out/origingame-$name-$v.tgz"
     [ -f "$tgz" ] || { og_err "release: no $tgz"; return 1; }

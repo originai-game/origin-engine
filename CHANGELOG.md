@@ -1,8 +1,8 @@
 # Changelog
 
-One version across `@origingame/engine`, `@origingame/engine-darwin-arm64`,
-`@origingame/engine-linux-x64`, `@origingame/create-game` and
-`@origingame/engine-knowledge` (docs/release.md §3). Before 1.0.0 a minor
+One version across `@origingame/engine` (the knowledge inside it as
+`knowledge/`), `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64`
+and `@origingame/create-game` (docs/release.md §3). Before 1.0.0 a minor
 bump carries API additions or changes, one line each, written at the merge
 that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 

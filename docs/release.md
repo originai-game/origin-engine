@@ -35,11 +35,13 @@ the layout was the interim that never became the rule. Now it does.
 
 What holds from this commit:
 
-1. **Five packages, one version.** `@origingame/engine`,
-   `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64`,
-   `@origingame/create-game` and `@origingame/engine-knowledge` are published to
-   the npm registry, public, MIT, at the same version, bumped together
-   (§3). The knowledge package stops being `private`.
+1. **Four packages, one version.** `@origingame/engine` (with the
+   agents' knowledge inside it as `knowledge/`, the owner's call of
+   2026-10-22: one version, one install, 424 KB of text),
+   `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64` and
+   `@origingame/create-game` are published to the npm registry, public, MIT,
+   at the same version, bumped together (§3). `packages/knowledge` stays a
+   private source package of this repository.
 2. **Three ways to run the engine, and no fourth.** (a) The registry:
    `bun add @origingame/engine@<v>`, `npm create @origingame/game@<v>`,
    which is what an author, the platform's local stack and an E2B image
@@ -83,10 +85,9 @@ platform, and public when the owner decides (§6).
 
 | Package | Contents | Built by |
 |---|---|---|
-| `@origingame/engine` | the TypeScript API and runtime (`src/`, `types/*.d.ts`, `schema/api.schema.json`, `bindings.json`), the web hosts (`dist/web`, `dist/web-publish`, `dist/web-publish-2d`, each publish directory with its lanes variant), the player shell, the Basis transcoder, `bin/og.mjs` (runs the platform package's `og` with this package as `OG_ENGINE_PACKAGE`); no native code | `packages/engine/scripts/pack.sh` (`OG_RELEASE=1 build.sh --linux-x64` first) |
+| `@origingame/engine` | the TypeScript API and runtime (`src/`, `types/*.d.ts`, `schema/api.schema.json`, `bindings.json`), the web hosts (`dist/web`, `dist/web-publish`, `dist/web-publish-2d`, each publish directory with its lanes variant), the player shell, the Basis transcoder, `bin/og.mjs` (runs the platform package's `og` with this package as `OG_ENGINE_PACKAGE`), and `knowledge/`: `skills/og-*` (ten), `wiki/` (generated from `api.ogt`), `looks/catalogue.json`, `scaffold/` (`origin-engine.json`, `distribution.json`, the template's text), `knowledge.json`, `scripts/mount.ts` and `validate.ts` (copied from `packages/knowledge` at pack); no native code | `packages/engine/scripts/pack.sh` (`OG_RELEASE=1 build.sh --linux-x64` first) |
 | `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64` | `origin-engine.node` (napi addon, `crates/og-host-node`) and `og` (`crates/og-cli`), release profile, `os`/`cpu`/`libc` so only the matching one installs, as `optionalDependencies` of the main package | the same |
 | `@origingame/create-game` | `bin/create.ts` (`npm create @origingame/game` runs it: npm and bun map `create @scope/name` to `@scope/create-name`, which is why the package is `create-game`, not `create`), `template/` (`templates/game`), `archetypes/` (the eight), `looks/` (the catalogue) | `packages/create` `prepack` |
-| `@origingame/engine-knowledge` | `skills/og-*` (ten), `wiki/` (generated from `api.ogt`), `looks/catalogue.json`, `scaffold/` (`origin-engine.json`, `distribution.json`), `knowledge.json`, `scripts/mount.ts` and `validate.ts` | `packages/knowledge` `prepack` |
 
 Not shipped: Windows, linux-arm64 (design §12 item 5; `og.mjs` says so
 when the platform package is missing). `@tsrs/*` are someone else's
@@ -100,7 +101,7 @@ minor bump carries API additions or changes (recorded in `CHANGELOG.md`,
 one line per IDL member added, changed or removed, written at the merge
 that changes `api.ogt`), a patch bump carries fixes and frames. Every
 occurrence of the version is written by `scripts/release.sh bump` and
-held equal by `packages/knowledge`'s test: the five `package.json`
+held equal by `packages/knowledge`'s test: the three `package.json`
 (`optionalDependencies` included), `scaffold/origin-engine.json`,
 `templates/*/project.ogt` and `package.json`, `templates/archetypes/*`,
 `examples/*`, and what `create` writes into a new project. A Game's
@@ -114,9 +115,9 @@ step of the path, all local:
 
 ```sh
 scripts/release.sh bump <version>     # every occurrence of the version, CHANGELOG.md's heading
-scripts/release.sh pack               # OG_RELEASE=1 pack.sh --linux-x64, then create and knowledge: dist/release/<version>/*.tgz + manifest.json (sizes, sha256)
+scripts/release.sh pack               # OG_RELEASE=1 pack.sh --linux-x64 (the engine with knowledge/, the platform packages), then create-game: dist/release/<version>/*.tgz + manifest.json (sizes, sha256)
 scripts/release.sh verify [--registry] # the install test (below) from the tarballs, or from the registry after publishing
-scripts/release.sh publish            # npm publish, platform packages first, then engine, create, knowledge; git tag v<version>; prints the install line
+scripts/release.sh publish            # npm publish, platform packages first, then engine, create-game; git tag v<version>; prints the install line
 ```
 
 `pack` holds the gate lock (a release build compiles beside nothing) and
@@ -133,7 +134,7 @@ container with bun (linux-x64, the executor's platform), from the tarballs
 or the registry:
 
 1. an empty directory; `bun add` the engine (and, from tarballs, the
-   platform package and the create and knowledge tarballs) at the version;
+   platform package and the create-game tarball) at the version;
 2. `bunx create-game demo --name Demo --no-prompt`, then `bun install` in
    it, with no `OG_ENGINE_PACKAGE`, `OG_NATIVE_ADDON` or `ORIGIN_OG_BIN`
    in the environment;
@@ -145,8 +146,9 @@ or the registry:
    (`og-build.json` names the version, the publish wasm's sha256 equals
    the tarball's);
 5. `--archetype runner` once more through steps 2 to 4;
-6. the knowledge package's `validate.ts` on the installed package, and
-   `mount.ts --check` against a stand-in platform tree.
+6. the knowledge inside the installed engine (`knowledge/validate.ts`), and
+   `knowledge/scripts/mount.ts --package <the engine package> --check`
+   against a stand-in platform tree.
 
 It is also a stage of the wave's end (`scripts/wave-end.sh release`:
 `pack` and `verify`, the tarballs it leaves are the ones `publish`
@@ -172,8 +174,8 @@ evidence/` (platform).
 | # | Row | Passes when |
 |---|---|---|
 | R1 | **Done 2026-10-22** (`scripts/release-bump.ts`, `og` pin notice and doctor line). One version everywhere: `release.sh bump`; `create` writes it into `project.ogt` and `package.json`; the knowledge test holds every occurrence equal (`validate.test.ts` already names `origin-engine.json` and the template's `project.ogt`); `og` compares `project.ogt`'s `engine` with the installed package's version (`doctor` line, run/test/build warning) | `bump 0.1.0` leaves `git grep 0.0.1` empty outside history; `og doctor` in a project pinned at another version prints the mismatch and its fix |
-| R2 | **Done 2026-10-22.** `@origingame/engine-knowledge` publishable: `private` dropped, `files` complete, `mount.ts --package <tgz or version>` mounts a published package instead of a checkout commit, README's install line | `bun pm pack` of the package installs in an empty directory and `bunx` its `validate.ts` passes; `mount.ts --package` on a stand-in platform tree gives the same bytes as `--commit` of the same source |
-| R3 | **Done 2026-10-22.** `scripts/release.sh` (`bump`, `pack`, `verify`, `publish`) and the wave-end `release` stage; `pack.sh` packs create and knowledge too; `manifest.json` with sizes and sha256; `CHANGELOG.md` with 0.1.0's entry (the IDL as it stands) | `wave-end.sh release` leaves `dist/release/0.1.0/` with five tarballs and a manifest; `publish` refuses a dirty tree, an unverified manifest, a wrong `main` |
+| R2 | **Done 2026-10-22**, then folded (the owner, the same day): the knowledge ships inside `@origingame/engine` as `knowledge/` (pack.sh copies `packages/knowledge`'s files there); `mount.ts --package <installed engine dir>` mounts it; `packages/knowledge` stays private | `bun pm pack` of the package installs in an empty directory and `bunx` its `validate.ts` passes; `mount.ts --package` on a stand-in platform tree gives the same bytes as `--commit` of the same source |
+| R3 | **Done 2026-10-22.** `scripts/release.sh` (`bump`, `pack`, `verify`, `publish`) and the wave-end `release` stage; `pack.sh` packs create and knowledge too; `manifest.json` with sizes and sha256; `CHANGELOG.md` with 0.1.0's entry (the IDL as it stands) | `wave-end.sh release` leaves `dist/release/0.1.0/` with four tarballs and a manifest; `publish` refuses a dirty tree, an unverified manifest, a wrong `main` |
 | R4 | **Written 2026-10-22** (`tests/install/run.ts`, `tests/install/Dockerfile`); its first pass is recorded in R8's evidence. The install test (`tests/install/`, §3) on this machine and in the linux-x64 container, from tarballs and `--registry` | both runs pass on the 0.1.0 candidate; the container run shows `renderer none` and `N frame(s) unchecked`, never a failure |
 | R5 | **Done 2026-10-22** (the `pin` line; the rest was there). `og doctor` and `og --version` outside a checkout: the package's version, the addon's, the wasm files, tsrs, the renderer, bun; inside a checkout the toolchain lines as today | the doctor's output in the container and on this machine differ only in the renderer line |
 | R6 | The template's two models (`trickster.glb`, `dropship.glb`, copied from `origingame-examples`): `dropship.glb` is MIT (the `core-business` example's `LICENSE`, named in `templates/game/LICENSES.md` now); `trickster.glb` came from `edg-king-match`, which declares no licence, so the template's `trickster` entity is an instance of the CC0 `walker.glb` since 2026-10-22 and the file left the template. `@origingame/create-game` ships nothing whose licence is not named. The engine's test copy (`crates/og-tests/assets/`, `templates/fx-showcase`) is not in any package; whether it stays in a public repository is the owner's (§6) | done 2026-10-22 for the packages: `LICENSES.md` of the template names a licence for every binary; `distribution.json` regenerated; the owner's word still owed for the repository's copies |
@@ -184,8 +186,8 @@ evidence/` (platform).
 
 | # | Row | Passes when |
 |---|---|---|
-| L1 | `origin-engine.json` pins `{ "package": "@origingame/engine", "version": "0.1.0" }`; `engine-toolchain.ts` runs `bun install` of the engine, create and knowledge at that version into `ORIGIN_ENGINE_CACHE/<version>/` (`--from <dir>` takes candidate tarballs) and lays `ORIGIN_ENGINE_DIST` out of `node_modules` (`bin/og` → the platform package's `og`, `engine/` → the package, `archetypes/` → create's, `overlay/` → the mounted scaffold); no checkout, no `git archive`, no cargo, no token | `bun scripts/dev/workspace-stack/engine-toolchain.ts` on a machine with no engine checkout and no Rust produces a layout `readEngineLayout` accepts |
-| L2 | The knowledge mount from the package: `mount.ts --package @origingame/engine-knowledge@<version>` writes `packages/game-knowledge/production`; `--check` in the platform's tests | `--check` is clean at the pinned version; game-knowledge's bundle tests pass |
+| L1 | `origin-engine.json` pins `{ "package": "@origingame/engine", "version": "0.1.0" }`; `engine-toolchain.ts` runs `bun install` of the engine and create-game at that version into `ORIGIN_ENGINE_CACHE/<version>/` (`--from <dir>` takes candidate tarballs) and lays `ORIGIN_ENGINE_DIST` out of `node_modules` (`bin/og` → the platform package's `og`, `engine/` → the package, `archetypes/` → create's, `overlay/` → the mounted scaffold); no checkout, no `git archive`, no cargo, no token | `bun scripts/dev/workspace-stack/engine-toolchain.ts` on a machine with no engine checkout and no Rust produces a layout `readEngineLayout` accepts |
+| L2 | The knowledge mount from the package: `node_modules/@origingame/engine/knowledge/scripts/mount.ts <checkout> --package node_modules/@origingame/engine` writes `packages/game-knowledge/production`; `--check` in the platform's tests | `--check` is clean at the pinned version; game-knowledge's bundle tests pass |
 | L3 | The local stack at the version: `stage-engine`, `deploy`, `engine-page.ts` on a real Portal (desktop and phone, plain and isolated releases), `agent-runner` `tests/og.rs`; this is the merge gate of every pin move | all four pass; `origingame/goals/origin-engine/evidence/pin-0.1.0.md` |
 | L4 | `origin-engine.ts` (the layout builder) and `build-templates.ts`'s engine step reduced to the install of L1; `ORIGIN_ENGINE_READ_TOKEN` removed from the workflows and the plan's §四 4 | `rg cargo agent-server/scripts/e2b` finds nothing; the workflows check out no engine repository |
 | L5 | **M7 acceptance, locally**: a thread on the local stack makes one Discover prototype end to end (`engine_scaffold` → `og run --commands` playtest → delivery → publish to the local Portal, played back byte for byte) | the receipt in `evidence/m7-local-0.1.x.json`; the published page passes `engine-page.ts` |
@@ -225,7 +227,7 @@ optimisation rows (§P) after them.
 
 | # | Row | Passes when |
 |---|---|---|
-| E1 | The `engine`, `probe` and `asset` images install the pinned version (`bun install` with `optionalDependencies`, in the image, no registry at run time), carry no renderer, no layout, no checkout; `/opt/origin-engine` is the installed project directory; the `engine` image ≤ 600 MB | `check-templates.ts` passes on the image built from the version; the size in its receipt |
+| E1 | The `engine`, `probe` and `asset` images install the pinned version (`bun install` of the engine and create-game with `optionalDependencies`, in the image, no registry at run time), carry no renderer, no layout, no checkout; `/opt/origin-engine` is the installed project directory; the `engine` image ≤ 600 MB | `check-templates.ts` passes on the image built from the version; the size in its receipt |
 | E2 | The owner enables the four templates in the runtime configuration and ships agent-server (`release.sh ship agent-server --development`; the prerequisites of the plan's §四 4 minus the token) | `bun deploy/ovh/state.ts` shows no drift but HELD; a production thread on the `engine` class |
 | E3 | The templates built on 2026-10-20 from the `d51c8ae` layout are not enabled; they are superseded by E1 | the runtime configuration never names them |
 | E4 | Production: the game-host ingress for `/__player/v2/` (applied 2026-10-20), `verify-production.sh`, the first engine release's Player telemetry read | the receipt in the platform's evidence |
@@ -260,9 +262,7 @@ this repository does.
 
 ## 6. Open with the owner
 
-1. The npm account and the `@origingame` scope (the `origingame` package,
-   the Wizard, is published already); `npm login` on the publishing
-   machine. Blocks R8.
+1. ~~The npm account and the `@origingame` scope~~ (2026-10-22: `doufunao123`, owner of the `origingame` organisation, logged in; npm asks a one-time password per publish, answered by the person).
 2. Whether the repository becomes public (MIT since 2026-10-17). A public
    package built from a private repository is allowed and the packages'
    `repository.url` must then be honest (R7); a public repository restores
