@@ -110,6 +110,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
         Palette,
         NavMesh,
         Strings,
+        Timeline,
         Terrain,
         EnvironmentMap,
         StreamPack,
@@ -1207,6 +1208,31 @@ impl BlobKind for Strings {
     const NAME: &'static str = "og.Strings";
     fn schemas() -> Vec<Schema> {
         vec![StringsMeta::schema()]
+    }
+}
+
+// ── depth S2: timelines ──────────────────────────────────────────────────
+
+row!(
+    /// The root of a timeline blob (an `.ogt` of `type timeline`).
+    TimelineMeta, "og.TimelineAsset", 1 {
+        /// Bytes of the canonical timeline text in `text`.
+        text_bytes: u32,
+        /// Its tracks.
+        tracks: u32,
+        /// Its duration in seconds.
+        duration: f32,
+    }
+);
+
+/// The timeline blob: `text` holds the canonical timeline
+/// (`og_timeline::Timeline::to_text`, its caption files imported as keys),
+/// parsed again at load.
+pub struct Timeline;
+impl BlobKind for Timeline {
+    const NAME: &'static str = "og.TimelineAsset";
+    fn schemas() -> Vec<Schema> {
+        vec![TimelineMeta::schema()]
     }
 }
 

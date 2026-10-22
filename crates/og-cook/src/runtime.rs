@@ -1652,6 +1652,8 @@ pub struct SceneDesc {
     pub entities: Vec<EntityDesc>,
     /// Sorted by type name.
     pub components: Vec<ComponentTable>,
+    /// Its named paths (`path "<name>" { ... }`), in file order.
+    pub paths: Vec<(String, og_timeline::PathDesc)>,
 }
 
 impl SceneDesc {
@@ -1726,11 +1728,19 @@ impl SceneDesc {
                 rows,
             });
         }
+        // Older blobs and scenes without paths have no `paths` section.
+        let paths = match blob.raw_opt("paths") {
+            None => Vec::new(),
+            Some(text) => std::str::from_utf8(text)
+                .map_err(|_| bad("the paths text is not UTF-8".into()))
+                .and_then(|t| og_timeline::parse_paths(t).map_err(bad))?,
+        };
         Ok(SceneDesc {
             id: id.to_string(),
             name: s(meta.name_offset, meta.name_len)?,
             entities: out,
             components,
+            paths,
         })
     }
 }
@@ -2226,6 +2236,22 @@ impl Bundle {
             .and_then(|t| std::str::from_utf8(t).ok())
             .ok_or_else(|| invalid(&blob, "the rig text is cut short or not UTF-8"))?;
         og_anim::RigAsset::parse(text).map_err(|e| invalid(&blob, e.reason().to_string()))
+    }
+
+    /// Decodes a timeline blob (`og.TimelineAsset`): the canonical text
+    /// the cook wrote, parsed by og-timeline.
+    pub fn timeline(&self, id: &str, bytes: &[u8]) -> Result<og_timeline::Timeline, LoadError> {
+        let blob = self.blob::<format::Timeline>(id, bytes)?;
+        let meta = one::<format::TimelineMeta>(&blob)?;
+        let text = blob
+            .raw("text")?
+            .get(..meta.text_bytes as usize)
+            .and_then(|t| std::str::from_utf8(t).ok())
+            .ok_or_else(|| invalid(&blob, "the timeline text is cut short or not UTF-8"))?;
+        og_timeline::Timeline::parse(text, &mut |f| {
+            Err(format!("the cooked text names caption file '{f}'"))
+        })
+        .map_err(|e| invalid(&blob, e))
     }
 
     /// Decodes a navmesh blob (`og.NavMesh`): the heightfield and the tiles

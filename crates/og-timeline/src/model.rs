@@ -503,17 +503,10 @@ impl Timeline {
                     duration = Some(d);
                 }
                 "path" => {
-                    let name = string(e)?;
+                    let (name, desc) = path_entry(e)?;
                     if t.paths.iter().any(|(n, _)| *n == name) {
                         return Err(at(e, format!("path '{name}' is declared twice")));
                     }
-                    let block = e
-                        .block
-                        .as_ref()
-                        .ok_or_else(|| at(e, "a path opens a block: `path \"name\" {`"))?;
-                    let desc = path_desc(block)?;
-                    crate::Path::new(desc.clone())
-                        .map_err(|m| at(e, format!("path '{name}': {m}")))?;
                     t.paths.push((name, desc));
                 }
                 "track" => t.tracks.push(track(e, read)?),
@@ -573,18 +566,7 @@ impl Timeline {
         }
         b.push(Entry::new("duration").with(num(self.duration)));
         for (name, p) in &self.paths {
-            let mut pb = Block::new();
-            pb.push(Entry::new("kind").with(Value::Word(p.kind.name().into())));
-            pb.push(Entry::new("closed").with(boolean(p.closed)));
-            pb.push(Entry::new("tension").with(num(p.tension)));
-            for q in &p.points {
-                pb.push(v3(Entry::new("point"), *q));
-            }
-            b.push(
-                Entry::new("path")
-                    .with(Value::String(name.clone()))
-                    .with_block(pb),
-            );
+            b.push(write_path(name, p));
         }
         for tr in &self.tracks {
             b.push(write_track(tr));
@@ -592,6 +574,66 @@ impl Timeline {
         doc.to_text()
             .expect("timeline text is made of words, numbers and strings")
     }
+}
+
+/// A `path "<name>" { kind, closed, tension, point... }` entry, as a
+/// timeline or a scene declares one; the points are checked against the kind.
+pub fn path_entry(e: &Entry) -> Result<(String, PathDesc), String> {
+    let name = match e.values.as_slice() {
+        [Value::String(s)] if !s.is_empty() => s.clone(),
+        _ => return Err(at(e, "a path is `path \"<name>\" {`")),
+    };
+    let block = e
+        .block
+        .as_ref()
+        .ok_or_else(|| at(e, "a path opens a block: `path \"name\" {`"))?;
+    let desc = path_desc(block)?;
+    crate::Path::new(desc.clone()).map_err(|m| at(e, format!("path '{name}': {m}")))?;
+    Ok((name, desc))
+}
+
+fn write_path(name: &str, p: &PathDesc) -> Entry {
+    let mut pb = Block::new();
+    pb.push(Entry::new("kind").with(Value::Word(p.kind.name().into())));
+    pb.push(Entry::new("closed").with(boolean(p.closed)));
+    pb.push(Entry::new("tension").with(num(p.tension)));
+    for q in &p.points {
+        pb.push(v3(Entry::new("point"), *q));
+    }
+    Entry::new("path")
+        .with(Value::String(name.to_string()))
+        .with_block(pb)
+}
+
+/// The `.ogt` type of a scene's paths section.
+pub const PATHS_TYPE: &str = "paths";
+
+/// Named paths as canonical text (`type paths`: a scene blob's `paths`).
+pub fn paths_to_text(paths: &[(String, PathDesc)]) -> String {
+    let mut doc = Document::new(PATHS_TYPE, 1);
+    for (name, p) in paths {
+        doc.body.push(write_path(name, p));
+    }
+    doc.to_text()
+        .expect("paths text is made of words and numbers")
+}
+
+/// Reads [`paths_to_text`]'s text back.
+pub fn parse_paths(text: &str) -> Result<Vec<(String, PathDesc)>, String> {
+    let doc = Document::parse(text).map_err(|e| e.to_string())?;
+    if doc.ty != PATHS_TYPE {
+        return Err(format!("expected `type paths`, not `{}`", doc.ty));
+    }
+    doc.body
+        .entries
+        .iter()
+        .map(|e| {
+            if e.key != "path" {
+                return Err(unknown(e, "paths entry", "path"));
+            }
+            path_entry(e)
+        })
+        .collect()
 }
 
 fn num(v: f32) -> Value {
