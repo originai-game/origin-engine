@@ -1285,6 +1285,13 @@ fn stylised_matches_its_reference() {
     assert!(check("stylised").stats.prepass_draws > 0);
 }
 
+// FXC cannot compile this paint pipeline on Windows; the shipping native
+// host must carry DXC rather than falling back to the legacy compiler.
+#[test]
+fn stylise_paint_matches_its_reference() {
+    check("stylise-paint");
+}
+
 /// One glTF model's three instances (one flashing, one tinted) and two
 /// skinned cylinders (one flashing) share their materials: each look rides
 /// in its instance's record, so the flash is drawn without a draw of its

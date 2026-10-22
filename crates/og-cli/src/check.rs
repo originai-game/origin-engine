@@ -29,7 +29,7 @@
 //! and stop on a type error unless `--no-check`; `og dev` checks each
 //! rebuild beside the bundle and reports without refusing the reload.
 
-use crate::project::{self, Project};
+use crate::project::{self, Project, typescript_path};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 use std::time::Instant;
@@ -212,6 +212,9 @@ pub struct Tsrs {
 /// when there is none; `Err` when the one found cannot be used (OG_TSRS
 /// naming no file, a binary apart from its lib files, one that is no tsrs).
 pub fn locate_tsrs(package: Option<&Path>) -> Result<Option<Tsrs>, String> {
+    if platform().is_none() && std::env::var_os("OG_TSRS").is_none() {
+        return Ok(None);
+    }
     let exe = if cfg!(windows) { "tsrs.exe" } else { "tsrs" };
     let (path, source) = if let Some(p) = std::env::var_os("OG_TSRS").filter(|p| !p.is_empty()) {
         let p = PathBuf::from(p);
@@ -292,6 +295,12 @@ impl Checker {
         };
         match tool {
             Some(Tool::Tsgo) => Ok((tsgo, None)),
+            None if platform().is_none() && std::env::var_os("OG_TSRS").is_none() => Ok((
+                tsgo,
+                Some(format!(
+                    "no tsrs package for this platform; checking with tsgo {TSGO_VERSION} through bun x (needs the network or bun's cache)"
+                )),
+            )),
             Some(Tool::Tsrs) => match locate_tsrs(package)? {
                 Some(t) => Ok((Checker::from(t), None)),
                 None => Err(NO_TSRS.into()),
@@ -337,7 +346,7 @@ impl Checker {
     pub fn command_for(&self, target: &Target, checkers: usize) -> Command {
         let mut c = self.command();
         c.arg("-p")
-            .arg(&target.config)
+            .arg(typescript_path(&target.config))
             .args([
                 "--noEmit",
                 "--incremental",
@@ -432,11 +441,7 @@ pub struct Target {
 
 impl Target {
     fn display_config(&self) -> String {
-        self.config
-            .strip_prefix(&self.root)
-            .unwrap_or(&self.config)
-            .display()
-            .to_string()
+        typescript_path(self.config.strip_prefix(&self.root).unwrap_or(&self.config))
     }
 
     /// A tsconfig file, or a directory holding `tsconfig.json`, as is.
@@ -457,7 +462,9 @@ impl Target {
 
     /// The configuration of a project (see the module doc).
     pub fn of(p: &Project, package: Option<&Path>) -> Result<Target, String> {
-        let root = p.root.canonicalize().unwrap_or_else(|_| p.root.clone());
+        let root = PathBuf::from(typescript_path(
+            &p.root.canonicalize().unwrap_or_else(|_| p.root.clone()),
+        ));
         let own = root.join("tsconfig.json");
         let engine_in_node_modules = root
             .ancestors()
@@ -465,8 +472,8 @@ impl Target {
         let engine_paths = package.map(|pkg| {
             let pkg = pkg.canonicalize().unwrap_or_else(|_| pkg.to_path_buf());
             serde_json::json!({
-                "@origingame/engine": [pkg.join("types/index.d.ts")],
-                "@origingame/engine/playtest": [pkg.join("src/playtest.ts")],
+                "@origingame/engine": [typescript_path(&pkg.join("types/index.d.ts"))],
+                "@origingame/engine/playtest": [typescript_path(&pkg.join("src/playtest.ts"))],
             })
         });
         let config = if own.is_file() {
@@ -489,13 +496,13 @@ impl Target {
                                 .into_iter()
                                 .flatten()
                                 .filter_map(|s| s.as_str())
-                                .map(|s| root.join(s).display().to_string())
+                                .map(|s| typescript_path(&root.join(s)))
                                 .collect();
                             paths[k] = serde_json::json!(abs);
                         }
                     }
                     serde_json::json!({
-                        "extends": own,
+                        "extends": typescript_path(&own),
                         "compilerOptions": { "paths": paths },
                     })
                 }
@@ -516,11 +523,11 @@ impl Target {
                     .into_iter()
                     .flatten()
                     .filter_map(|s| s.as_str())
-                    .map(|s| root.join(s).display().to_string())
+                    .map(|s| typescript_path(&root.join(s)))
                     .collect()
             } else {
                 let entry = p.entry.canonicalize().unwrap_or_else(|_| p.entry.clone());
-                vec![entry.display().to_string()]
+                vec![typescript_path(&entry)]
             };
             serde_json::json!({ "compilerOptions": options, "include": include })
         };

@@ -39,6 +39,8 @@ case "$target" in /*) ;; *) target="$root/$target" ;; esac
 cd "$root"
 . "$root/scripts/lock.sh"
 gate_wasm="${OG_WASM_OUT:-$target/og-wasm}"
+exe=""
+case "$(uname -s)" in MINGW*|MSYS*) exe=.exe ;; esac
 # A release ships only the wasm-opt output the size gate measures: without
 # wasm-opt it stops here, before compiling anything.
 if [ "${OG_RELEASE:-}" = 1 ] && ! command -v wasm-opt >/dev/null 2>&1; then
@@ -46,8 +48,8 @@ if [ "${OG_RELEASE:-}" = 1 ] && ! command -v wasm-opt >/dev/null 2>&1; then
   exit 1
 fi
 if [ "${OG_GATE:-}" != 1 ] && [ "${OG_RELEASE:-}" != 1 ] && [ "${1:-}" != --linux-x64 ] \
-    && [ -s "$gate_wasm/opt-all.txt" ] && [ -f "$target/debug/og" ] \
-    && { [ -f "$target/debug/libog_host_node.dylib" ] || [ -f "$target/debug/libog_host_node.so" ]; }; then
+    && [ -s "$gate_wasm/opt-all.txt" ] && [ -f "$target/debug/og$exe" ] \
+    && { [ -f "$target/debug/libog_host_node.dylib" ] || [ -f "$target/debug/libog_host_node.so" ] || [ -f "$target/debug/og_host_node.dll" ]; }; then
   echo "build.sh: the gate has built here, so this is the OG_GATE=1 build (dev addon and og, the gate's wasm); OG_RELEASE=1 sh scripts/build.sh builds release" >&2
   OG_GATE=1
 fi
@@ -77,8 +79,13 @@ if [ -f "$bindir/libog_host_node.dylib" ]; then
   codesign -s - "$addon"
 elif [ -f "$bindir/libog_host_node.so" ]; then
   cp "$bindir/libog_host_node.so" "$addon"
+elif [ -f "$bindir/og_host_node.dll" ]; then
+  cp "$bindir/og_host_node.dll" "$addon"
+else
+  echo "build.sh: no native addon in $bindir" >&2
+  exit 1
 fi
-cp "$bindir/og" "$here/native/og.$platform"
+cp "$bindir/og$exe" "$here/native/og.$platform"
 if [ "${1:-}" = --linux-x64 ]; then
   triple=x86_64-unknown-linux-gnu
   cargo zigbuild --release -q -p og-host-node -p og-cli --target "$triple.2.31"

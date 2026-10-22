@@ -49,6 +49,34 @@ wasm-opt) went from 9,438,293 bytes, 2,543,558 brotli, to 9,283,994 bytes,
 2,518,068 brotli (-1.0 %); `tests/evidence/toolchain-2026-10.md` has each
 step.
 
+## Windows x64 native lane
+
+Use Git Bash on a Windows x64 host with Visual Studio 2022 Build Tools
+(Desktop C++, Windows SDK and C++ ATL for x64/x86, component
+`Microsoft.VisualStudio.Component.VC.ATL`), the `x86_64-pc-windows-msvc` Rust toolchain,
+and the tools pinned above on PATH. Cargo finds the MSVC linker through
+Visual Studio; do not substitute the GNU target for the napi addon.
+The repository's `.gitattributes` keeps source and generated files LF and
+HDR images binary even with `core.autocrlf=true`.
+
+Run `cargo check --workspace --all-targets`,
+`cargo clippy --workspace --all-targets -- -D warnings`, and
+`cargo nextest run --workspace --no-fail-fast`. Windows selects DX12 and
+statically links DXC on x64 MSVC, so the installed engine needs no compiler
+DLL. The native binaries use the Microsoft Visual C++ x64 runtime
+(MSVCP140/VCRUNTIME140); game authors need its redistributable, not Visual
+Studio or Rust. The reference harness falls back to Metal; differences are reported,
+not silently recorded. `og check` and the package's typecheck command use
+the pinned tsgo through Bun because there is no Windows tsrs package.
+
+`OG_RELEASE=1 sh packages/engine/scripts/pack.sh` builds the Windows native
+package and the shared wasm package. Pack create-game in `packages/create`
+with `bun scripts/pack-template.ts` then `bun pm pack --ignore-scripts` into
+the same tarball directory. Run `bun tests/install/run.ts --from <dir>
+--version <version> --host-only` there with Bun and Node 22. This is a
+local candidate, not permission to publish. F7's evidence and remaining
+registry/runner work live in `tests/evidence/release/windows-x64.md`.
+
 ## Lanes
 
 | Lane | Steps | When | Warm, Apple M4 Pro, another agent on the machine |

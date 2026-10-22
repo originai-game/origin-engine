@@ -13,7 +13,7 @@ let bin;
 try {
   bin = join(dirname(createRequire(import.meta.url).resolve(`@origingame/engine-${platform}/package.json`)), process.platform === "win32" ? "og.exe" : "og");
 } catch {
-  process.stderr.write(`og: no @origingame/engine-${platform} package (this platform has no prebuilt og; the engine ships darwin-arm64 and linux-x64). Reinstall @origingame/engine with optional dependencies enabled.\n`);
+  process.stderr.write(`og: no @origingame/engine-${platform} package (the engine ships darwin-arm64, linux-x64 and win32-x64). Reinstall @origingame/engine with optional dependencies enabled.\n`);
   process.exit(1);
 }
 const engine = join(dirname(fileURLToPath(import.meta.url)), "..");

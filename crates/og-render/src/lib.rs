@@ -348,7 +348,8 @@ impl std::error::Error for RenderError {}
 /// Which graphics API to run on.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Backend {
-    /// The platform's primary API: Metal or Vulkan natively, WebGPU in a browser.
+    /// The platform's primary API: DX12 on Windows, Metal or Vulkan elsewhere,
+    /// WebGPU in a browser.
     #[default]
     Auto,
     /// Browser WebGPU.
@@ -363,6 +364,7 @@ impl Backend {
     fn backends(self) -> wgpu::Backends {
         match self {
             Backend::Auto if cfg!(target_arch = "wasm32") => wgpu::Backends::BROWSER_WEBGPU,
+            Backend::Auto if cfg!(target_os = "windows") => wgpu::Backends::DX12,
             Backend::Auto => wgpu::Backends::PRIMARY,
             Backend::WebGpu => wgpu::Backends::BROWSER_WEBGPU,
             Backend::WebGl2 => wgpu::Backends::GL,
@@ -385,11 +387,18 @@ impl Backend {
     pub fn instance(self) -> wgpu::Instance {
         let mut flags = wgpu::InstanceFlags::from_build_config();
         flags.remove(wgpu::InstanceFlags::VALIDATION_INDIRECT_CALL);
-        wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let descriptor = wgpu::InstanceDescriptor {
             backends: self.backends(),
             flags,
             ..wgpu::InstanceDescriptor::new_without_display_handle()
-        })
+        };
+        #[cfg(all(target_os = "windows", target_arch = "x86_64", target_env = "msvc"))]
+        let descriptor = {
+            let mut descriptor = descriptor;
+            descriptor.backend_options.dx12.shader_compiler = wgpu::Dx12Compiler::StaticDxc;
+            descriptor
+        };
+        wgpu::Instance::new(descriptor)
     }
 }
 

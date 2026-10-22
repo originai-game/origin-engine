@@ -90,7 +90,8 @@ export function mount(roots: Roots, production: string, write: boolean): MountRe
     if (exists && lstatSync(target).isDirectory()) throw new Error(`${f.path}: a directory in the platform tree where the package has a file`);
     const same = exists && Buffer.compare(readFileSync(target), Buffer.from(f.bytes)) === 0;
     const mode = executable(f.source) ? 0o755 : 0o644;
-    const modeSame = exists && (statSync(target).mode & 0o777) === mode;
+    // Windows chmod cannot represent POSIX group/other or executable bits.
+    const modeSame = exists && (process.platform === "win32" || (statSync(target).mode & 0o777) === mode);
     if (same && modeSame) continue;
     changes.push({ kind: exists ? "changed" : "added", path: f.path });
     if (write) {

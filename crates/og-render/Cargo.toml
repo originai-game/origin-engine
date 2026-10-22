@@ -32,8 +32,12 @@ gltf = { workspace = true, optional = true }
 naga = { version = "30.0.1", features = ["wgsl-in", "glsl-out", "msl-out", "spv-out"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-wgpu = { workspace = true, features = ["metal", "vulkan"] }
+wgpu = { workspace = true, features = ["metal", "vulkan", "dx12"] }
 pollster = { workspace = true }
+
+[target.'cfg(all(target_os = "windows", target_arch = "x86_64", target_env = "msvc"))'.dependencies]
+# Ship the shader compiler inside the native host: no FXC fallback or DLL install.
+wgpu = { workspace = true, features = ["static-dxc"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wgpu = { workspace = true, features = ["webgpu", "webgl"] }
