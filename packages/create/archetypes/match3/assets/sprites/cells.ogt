@@ -1,0 +1,7 @@
+type tileset
+version 1
+---
+# Written by tools/make-assets.py: the board's two checker cells.
+texture "sprites/cells.png"
+grid 64 64 2 1
+filter nearest

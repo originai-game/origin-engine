@@ -1,0 +1,10 @@
+type tileset
+version 1
+---
+# Written by tools/make-assets.py: 0-1 grass, 2 hedge, 3 stone, 4 the gate,
+# 5 the doorstep, 6 a thorn's pad, 7 night flowers, 8 a frost lily's pad,
+# 9 a hedge's pad (the pads layer says which plant stands on a cell).
+texture "tiles/garden.png"
+grid 32 32 10 1
+filter linear
+solid 2 3

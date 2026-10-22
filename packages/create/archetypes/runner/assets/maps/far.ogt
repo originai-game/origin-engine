@@ -1,0 +1,25 @@
+type tilemap
+version 1
+---
+# The far skyline, 0.5 units a tile (tools/make-assets.py).
+size 40 9
+tile 16 16
+unit 0.5
+tileset "tiles/city.ogt"
+layer far {
+  z 0
+  repeat x
+  legend "#" 4
+  legend "w" 5
+  legend "^" 6
+  legend "a" 7
+  row ".............a.................a........"
+  row "....a........^^.......a........^........"
+  row "....^^^......##......^^^.......w........"
+  row "....#w#..^^..##...^..###..^^...#..^^...."
+  row ".^^.w##..w#.^#w^..#..###^.##.^^#..w#..^^"
+  row ".##^###.^##.#w##^^w..##w#^##.###^^##..w#"
+  row "^#w####^###.w####w#^^#w####w^###w###^.##"
+  row "#w####w####^####w####w####w####w####w^##"
+  row "w####w####w####w####w####w####w####w####"
+}

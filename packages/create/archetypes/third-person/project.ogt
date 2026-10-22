@@ -1,0 +1,14 @@
+type project
+version 1
+---
+name "Ember Vale"
+id "third-person"
+engine "0.1.0"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
+publish {
+  probe player
+  out "dist"
+}

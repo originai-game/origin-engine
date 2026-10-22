@@ -1,0 +1,110 @@
+type skin
+version 1
+---
+# Three-Lane Beat's skin: the engine's sci-fi style pack (templates/ui-kit/tools/make-skins.py,
+# CC0 art, OFL fonts; LICENSES.md) with this game's palette and its Chinese fallback font, by hand.
+name "lanebeat"
+base dark
+atlas "skins/lanebeat/atlas.png" 384 256
+scale 1
+palette {
+  bg "#03080f"
+  bgSubtle "#071220"
+  surface "#0f2a3d"
+  surfaceRaised "#0f2a3d"
+  surfaceHover "#16384f"
+  materialThick "#0f2a3d"
+  materialRegular "#0f2a3de6"
+  materialThin "#0f2a3dcc"
+  fg "#e2f7ff"
+  fgMuted "#a6cde0"
+  fgSubtle "#8fb3c6"
+  fgInverse "#03080f"
+  fill "#3f8fb3"
+  fillStrong "#5aaed4"
+  border "#2c6a88"
+  borderStrong "#6fd3f5"
+  accent "#38e1ff"
+  accentHover "#30d4f0"
+  accentActive "#16c4e6"
+  accentFg "#e2f7ff"
+  accentInk "#7fecff"
+  accentSoft "#38e1ff2a"
+  focus "#ffd23f"
+  thumb "#2f7194"
+  scrim "#010409cc"
+  success "#3dffa0"
+  warn "#ffc53d"
+  danger "#ff4d6a"
+  info "#38e1ff"
+  shadow "#00000099"
+}
+radius {
+  control 2
+  field 2
+  block 2
+  card 2
+  panel 2
+  sheet 2
+  button 2
+}
+ramp {
+  body 16 22
+  meta 13 18
+  caption 13 18
+  lg 17 24
+  xl 19 26
+  xl2 22 28
+  xl3 26 30
+  displaySm 26 32
+  displayMd 32 38
+  displayLg 38 44
+}
+durations {
+  instant 90
+  fast 140
+  base 220
+  slow 360
+}
+fonts {
+  body "skins/lanebeat/ChakraPetch-Medium.ttf"
+  display "skins/lanebeat/Orbitron-Bold.ttf"
+  numeric "skins/lanebeat/JetBrainsMono-Regular.ttf"
+  fallback "fonts/NotoSansSC-subset.ttf"
+}
+icons "skins/lanebeat/icons.png" 8 4 {
+  names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
+}
+slice panel 4 4 96 96 18 tint
+slice card 104 4 64 64 12 tint
+slice button 172 4 48 48 12 tint
+slice buttonHover 224 4 48 48 12 tint
+slice buttonPressed 276 4 48 48 12 tint
+slice buttonDisabled 328 4 48 48 12 tint
+slice field 4 104 48 48 8 tint
+slice slot 56 104 48 48 10 tint
+slice tooltip 108 104 32 32 8 tint
+slice capsule 144 104 32 32 10 tint
+slice track 180 104 32 16 5 tint
+slice fill 216 104 32 16 2 tint
+soft 252 104 64 64 24
+corner 320 104 32 32 18 18 accent 4
+corners panel card slot
+divider 4 172 128 24 128 24 accent
+flourish 136 172 64 24 32 14 accent 0
+tile 204 172 64 64 64 64 0.08 3 panel
+shadow panel 0 0 18 0 "#000000aa"
+glow button 5 accent 0.22
+glow panel 10 accent 0.12
+glow capsule 4 accent 0.18
+textGlow display 1.5 accent 0.55
+press 0.98 0.98 0
+hover 0 1.02
+motion {
+  enter fade
+  stagger 30
+  toast slideLeft
+  progress 300
+  shake 6
+  pop 0.1
+}

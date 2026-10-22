@@ -200,7 +200,7 @@ function host(): void {
       dependencies: { [`${SCOPE}/engine-knowledge`]: spec("engine-knowledge"), [`${SCOPE}/engine`]: spec("engine") },
       overrides: overrides(),
     });
-    run(step, ["bun", "install", "--omit", "optional"], kn);
+    run(step, ["bun", "install", "--omit=optional"], kn);
     const knPkg = join(kn, "node_modules", SCOPE, "engine-knowledge");
     run(step, ["bun", join(knPkg, "scripts", "validate.ts")], kn);
     const platform = join(work, "platform");

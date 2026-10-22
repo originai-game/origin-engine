@@ -1,0 +1,919 @@
+type scene
+version 1
+---
+# Neon Pulse's chart (tools/make-assets.py writes it from the song's note lists).
+# A chart is a scene: one entity with a Song (tempo, metre, length in bars) and an
+# entity per note, its Note's lane (0 left, 1 middle, 2 right) and beat (from 0 at bar
+# 1's first beat; 3.5 is the 'and' of beat 4). Edit it by hand: the game reads it as is.
+name "Neon Pulse"
+entity "song" {
+  Song {
+    bpm 120
+    beatsPerBar 4
+    bars 24
+    notes 129
+  }
+}
+entity "note-0" {
+  Note {
+    index 0
+    lane 1
+    beat 0
+  }
+}
+entity "note-1" {
+  Note {
+    index 1
+    lane 1
+    beat 1
+  }
+}
+entity "note-2" {
+  Note {
+    index 2
+    lane 1
+    beat 2
+  }
+}
+entity "note-3" {
+  Note {
+    index 3
+    lane 1
+    beat 3
+  }
+}
+entity "note-4" {
+  Note {
+    index 4
+    lane 0
+    beat 4
+  }
+}
+entity "note-5" {
+  Note {
+    index 5
+    lane 2
+    beat 5
+  }
+}
+entity "note-6" {
+  Note {
+    index 6
+    lane 0
+    beat 6
+  }
+}
+entity "note-7" {
+  Note {
+    index 7
+    lane 2
+    beat 7
+  }
+}
+entity "note-8" {
+  Note {
+    index 8
+    lane 0
+    beat 8
+  }
+}
+entity "note-9" {
+  Note {
+    index 9
+    lane 2
+    beat 9
+  }
+}
+entity "note-10" {
+  Note {
+    index 10
+    lane 0
+    beat 10
+  }
+}
+entity "note-11" {
+  Note {
+    index 11
+    lane 2
+    beat 11
+  }
+}
+entity "note-12" {
+  Note {
+    index 12
+    lane 0
+    beat 12
+  }
+}
+entity "note-13" {
+  Note {
+    index 13
+    lane 2
+    beat 13
+  }
+}
+entity "note-14" {
+  Note {
+    index 14
+    lane 0
+    beat 14
+  }
+}
+entity "note-15" {
+  Note {
+    index 15
+    lane 2
+    beat 15
+  }
+}
+entity "note-16" {
+  Note {
+    index 16
+    lane 1
+    beat 15.5
+  }
+}
+entity "note-17" {
+  Note {
+    index 17
+    lane 0
+    beat 16
+  }
+}
+entity "note-18" {
+  Note {
+    index 18
+    lane 2
+    beat 17
+  }
+}
+entity "note-19" {
+  Note {
+    index 19
+    lane 0
+    beat 18
+  }
+}
+entity "note-20" {
+  Note {
+    index 20
+    lane 1
+    beat 18.5
+  }
+}
+entity "note-21" {
+  Note {
+    index 21
+    lane 2
+    beat 19
+  }
+}
+entity "note-22" {
+  Note {
+    index 22
+    lane 0
+    beat 20
+  }
+}
+entity "note-23" {
+  Note {
+    index 23
+    lane 2
+    beat 21
+  }
+}
+entity "note-24" {
+  Note {
+    index 24
+    lane 1
+    beat 21.5
+  }
+}
+entity "note-25" {
+  Note {
+    index 25
+    lane 0
+    beat 22
+  }
+}
+entity "note-26" {
+  Note {
+    index 26
+    lane 2
+    beat 23
+  }
+}
+entity "note-27" {
+  Note {
+    index 27
+    lane 0
+    beat 24
+  }
+}
+entity "note-28" {
+  Note {
+    index 28
+    lane 2
+    beat 25
+  }
+}
+entity "note-29" {
+  Note {
+    index 29
+    lane 0
+    beat 26
+  }
+}
+entity "note-30" {
+  Note {
+    index 30
+    lane 1
+    beat 26.5
+  }
+}
+entity "note-31" {
+  Note {
+    index 31
+    lane 2
+    beat 27
+  }
+}
+entity "note-32" {
+  Note {
+    index 32
+    lane 0
+    beat 28
+  }
+}
+entity "note-33" {
+  Note {
+    index 33
+    lane 2
+    beat 29
+  }
+}
+entity "note-34" {
+  Note {
+    index 34
+    lane 1
+    beat 29.5
+  }
+}
+entity "note-35" {
+  Note {
+    index 35
+    lane 0
+    beat 30
+  }
+}
+entity "note-36" {
+  Note {
+    index 36
+    lane 2
+    beat 31
+  }
+}
+entity "note-37" {
+  Note {
+    index 37
+    lane 0
+    beat 32
+  }
+}
+entity "note-38" {
+  Note {
+    index 38
+    lane 1
+    beat 33
+  }
+}
+entity "note-39" {
+  Note {
+    index 39
+    lane 1
+    beat 33.5
+  }
+}
+entity "note-40" {
+  Note {
+    index 40
+    lane 2
+    beat 34
+  }
+}
+entity "note-41" {
+  Note {
+    index 41
+    lane 1
+    beat 35
+  }
+}
+entity "note-42" {
+  Note {
+    index 42
+    lane 1
+    beat 35.5
+  }
+}
+entity "note-43" {
+  Note {
+    index 43
+    lane 0
+    beat 36
+  }
+}
+entity "note-44" {
+  Note {
+    index 44
+    lane 0
+    beat 37
+  }
+}
+entity "note-45" {
+  Note {
+    index 45
+    lane 0
+    beat 37.5
+  }
+}
+entity "note-46" {
+  Note {
+    index 46
+    lane 1
+    beat 38
+  }
+}
+entity "note-47" {
+  Note {
+    index 47
+    lane 2
+    beat 40
+  }
+}
+entity "note-48" {
+  Note {
+    index 48
+    lane 2
+    beat 40.5
+  }
+}
+entity "note-49" {
+  Note {
+    index 49
+    lane 2
+    beat 41
+  }
+}
+entity "note-50" {
+  Note {
+    index 50
+    lane 1
+    beat 41.5
+  }
+}
+entity "note-51" {
+  Note {
+    index 51
+    lane 1
+    beat 42
+  }
+}
+entity "note-52" {
+  Note {
+    index 52
+    lane 1
+    beat 43
+  }
+}
+entity "note-53" {
+  Note {
+    index 53
+    lane 2
+    beat 43.5
+  }
+}
+entity "note-54" {
+  Note {
+    index 54
+    lane 2
+    beat 44
+  }
+}
+entity "note-55" {
+  Note {
+    index 55
+    lane 2
+    beat 45
+  }
+}
+entity "note-56" {
+  Note {
+    index 56
+    lane 2
+    beat 45.5
+  }
+}
+entity "note-57" {
+  Note {
+    index 57
+    lane 1
+    beat 46
+  }
+}
+entity "note-58" {
+  Note {
+    index 58
+    lane 1
+    beat 46.5
+  }
+}
+entity "note-59" {
+  Note {
+    index 59
+    lane 0
+    beat 47
+  }
+}
+entity "note-60" {
+  Note {
+    index 60
+    lane 0
+    beat 48
+  }
+}
+entity "note-61" {
+  Note {
+    index 61
+    lane 1
+    beat 49
+  }
+}
+entity "note-62" {
+  Note {
+    index 62
+    lane 1
+    beat 49.5
+  }
+}
+entity "note-63" {
+  Note {
+    index 63
+    lane 2
+    beat 50
+  }
+}
+entity "note-64" {
+  Note {
+    index 64
+    lane 1
+    beat 51
+  }
+}
+entity "note-65" {
+  Note {
+    index 65
+    lane 1
+    beat 51.5
+  }
+}
+entity "note-66" {
+  Note {
+    index 66
+    lane 0
+    beat 52
+  }
+}
+entity "note-67" {
+  Note {
+    index 67
+    lane 0
+    beat 53
+  }
+}
+entity "note-68" {
+  Note {
+    index 68
+    lane 0
+    beat 53.5
+  }
+}
+entity "note-69" {
+  Note {
+    index 69
+    lane 1
+    beat 54
+  }
+}
+entity "note-70" {
+  Note {
+    index 70
+    lane 2
+    beat 56
+  }
+}
+entity "note-71" {
+  Note {
+    index 71
+    lane 2
+    beat 56.5
+  }
+}
+entity "note-72" {
+  Note {
+    index 72
+    lane 2
+    beat 57
+  }
+}
+entity "note-73" {
+  Note {
+    index 73
+    lane 1
+    beat 57.5
+  }
+}
+entity "note-74" {
+  Note {
+    index 74
+    lane 1
+    beat 58
+  }
+}
+entity "note-75" {
+  Note {
+    index 75
+    lane 1
+    beat 59
+  }
+}
+entity "note-76" {
+  Note {
+    index 76
+    lane 2
+    beat 59.5
+  }
+}
+entity "note-77" {
+  Note {
+    index 77
+    lane 2
+    beat 60
+  }
+}
+entity "note-78" {
+  Note {
+    index 78
+    lane 2
+    beat 61
+  }
+}
+entity "note-79" {
+  Note {
+    index 79
+    lane 2
+    beat 61.5
+  }
+}
+entity "note-80" {
+  Note {
+    index 80
+    lane 1
+    beat 62
+  }
+}
+entity "note-81" {
+  Note {
+    index 81
+    lane 1
+    beat 62.5
+  }
+}
+entity "note-82" {
+  Note {
+    index 82
+    lane 0
+    beat 63
+  }
+}
+entity "note-83" {
+  Note {
+    index 83
+    lane 0
+    beat 64
+  }
+}
+entity "note-84" {
+  Note {
+    index 84
+    lane 1
+    beat 65
+  }
+}
+entity "note-85" {
+  Note {
+    index 85
+    lane 1
+    beat 65.5
+  }
+}
+entity "note-86" {
+  Note {
+    index 86
+    lane 2
+    beat 66
+  }
+}
+entity "note-87" {
+  Note {
+    index 87
+    lane 1
+    beat 67
+  }
+}
+entity "note-88" {
+  Note {
+    index 88
+    lane 1
+    beat 67.5
+  }
+}
+entity "note-89" {
+  Note {
+    index 89
+    lane 0
+    beat 68
+  }
+}
+entity "note-90" {
+  Note {
+    index 90
+    lane 0
+    beat 69
+  }
+}
+entity "note-91" {
+  Note {
+    index 91
+    lane 0
+    beat 69.5
+  }
+}
+entity "note-92" {
+  Note {
+    index 92
+    lane 1
+    beat 70
+  }
+}
+entity "note-93" {
+  Note {
+    index 93
+    lane 2
+    beat 72
+  }
+}
+entity "note-94" {
+  Note {
+    index 94
+    lane 2
+    beat 72.5
+  }
+}
+entity "note-95" {
+  Note {
+    index 95
+    lane 2
+    beat 73
+  }
+}
+entity "note-96" {
+  Note {
+    index 96
+    lane 1
+    beat 73.5
+  }
+}
+entity "note-97" {
+  Note {
+    index 97
+    lane 1
+    beat 74
+  }
+}
+entity "note-98" {
+  Note {
+    index 98
+    lane 1
+    beat 75
+  }
+}
+entity "note-99" {
+  Note {
+    index 99
+    lane 2
+    beat 75.5
+  }
+}
+entity "note-100" {
+  Note {
+    index 100
+    lane 2
+    beat 76
+  }
+}
+entity "note-101" {
+  Note {
+    index 101
+    lane 2
+    beat 77
+  }
+}
+entity "note-102" {
+  Note {
+    index 102
+    lane 2
+    beat 77.5
+  }
+}
+entity "note-103" {
+  Note {
+    index 103
+    lane 1
+    beat 78
+  }
+}
+entity "note-104" {
+  Note {
+    index 104
+    lane 1
+    beat 78.5
+  }
+}
+entity "note-105" {
+  Note {
+    index 105
+    lane 0
+    beat 79
+  }
+}
+entity "note-106" {
+  Note {
+    index 106
+    lane 0
+    beat 80
+  }
+}
+entity "note-107" {
+  Note {
+    index 107
+    lane 2
+    beat 80
+  }
+}
+entity "note-108" {
+  Note {
+    index 108
+    lane 1
+    beat 81
+  }
+}
+entity "note-109" {
+  Note {
+    index 109
+    lane 0
+    beat 82
+  }
+}
+entity "note-110" {
+  Note {
+    index 110
+    lane 1
+    beat 82
+  }
+}
+entity "note-111" {
+  Note {
+    index 111
+    lane 2
+    beat 83
+  }
+}
+entity "note-112" {
+  Note {
+    index 112
+    lane 0
+    beat 84
+  }
+}
+entity "note-113" {
+  Note {
+    index 113
+    lane 2
+    beat 84
+  }
+}
+entity "note-114" {
+  Note {
+    index 114
+    lane 1
+    beat 85
+  }
+}
+entity "note-115" {
+  Note {
+    index 115
+    lane 0
+    beat 86
+  }
+}
+entity "note-116" {
+  Note {
+    index 116
+    lane 1
+    beat 86
+  }
+}
+entity "note-117" {
+  Note {
+    index 117
+    lane 2
+    beat 87
+  }
+}
+entity "note-118" {
+  Note {
+    index 118
+    lane 0
+    beat 88
+  }
+}
+entity "note-119" {
+  Note {
+    index 119
+    lane 1
+    beat 89
+  }
+}
+entity "note-120" {
+  Note {
+    index 120
+    lane 2
+    beat 90
+  }
+}
+entity "note-121" {
+  Note {
+    index 121
+    lane 1
+    beat 91
+  }
+}
+entity "note-122" {
+  Note {
+    index 122
+    lane 0
+    beat 92
+  }
+}
+entity "note-123" {
+  Note {
+    index 123
+    lane 1
+    beat 93
+  }
+}
+entity "note-124" {
+  Note {
+    index 124
+    lane 2
+    beat 94
+  }
+}
+entity "note-125" {
+  Note {
+    index 125
+    lane 1
+    beat 95
+  }
+}
+entity "note-126" {
+  Note {
+    index 126
+    lane 0
+    beat 96
+  }
+}
+entity "note-127" {
+  Note {
+    index 127
+    lane 1
+    beat 96
+  }
+}
+entity "note-128" {
+  Note {
+    index 128
+    lane 2
+    beat 96
+  }
+}

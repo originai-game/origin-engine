@@ -1,0 +1,11 @@
+type import
+version 1
+---
+# Written by tools/make-assets.py: the atlas holds Latin-1 and the HUD's own
+# CJK characters (CHARS there); add a character to CHARS before showing it.
+font {
+  charset latin
+  chars "三消开始游戏点击或拖动交换相邻方块连成同色分数步数目标胜利失败再来一次剩余最高"
+  em_px 48
+  px_range 6
+}
