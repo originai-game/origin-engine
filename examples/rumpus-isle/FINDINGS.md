@@ -51,6 +51,31 @@ All statuses below are against main ff952176 plus this branch's fixes.
 | #13 polish feedback | Open. Align the fixes table with the three-of-four hit-feedback rule: suppress an optional fourth signal when three are present for that impact, rather than recommending floating numbers on every party-game bump. Cover both satisfied and deficient impacts in a package test. |
 | #14 suite selection | **Fixed by [8dfd2416](https://github.com/originai-game/origin-engine/commit/8dfd2416)**: `og test . --filter tests/lobby.og.ts`; case-sensitive substring of project-relative paths, for both `.og.ts` and `.test.ts`, with the normal type check retained. No match fails. Help and og-build document it; a CLI regression fails on the old code and checks selected suites, excluded failing suites, nested paths, missing arguments and no-match failures. |
 
+## Metal frames (2026-10-23)
+
+The eleven reference frames were recorded on the owner's Mac
+([e9b69719](https://github.com/originai-game/origin-engine/commit/e9b69719))
+and each was read against the game's intent: all eleven show what the
+suite asserts (the title's records line, the lobby's three seats and one
+open, the bump round's contact, the splash's third-place badge, the
+scoreboard's standings and the podium's 9/8/7). The `scores` capture
+moved from 7 s to 8 s with the rest of the script, because at 7 s the
+iris was still closing over the scoreboard. Two presentation debts of
+the game itself are visible in the frames and stay for the next round
+(no engine work; fixing them re-records `bump`, `podium`, `scores` and
+`title`):
+
+- **Name tags overlap on contact.** `feel.ts` writes each critter's tag
+  at `worldToScreen` of its head, so two critters in a bump ring read as
+  one merged label (`bump.png`: "P2 JunoP1 Pip"). The pattern of #3
+  wants a resolver: when two tags are within a tag's width, offset the
+  later one upward (or hide the tag of the critter behind).
+- **The display text's shadow reads as a second copy.** The skin's
+  `textShadow display 0 4 0 "#2b1a4a"` is an opaque, unblurred, four
+  pixel drop; on the podium's ordinals and points and the HUD's clock it
+  looks like doubled text. A two pixel offset with blur, or the ui-kit
+  cartoon pack's default, is the fix.
+
 ## Recovery verification (2026-10-22)
 
 From `examples/rumpus-isle`, using the checkout's dev addon and CLI:

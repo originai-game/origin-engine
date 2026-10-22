@@ -89,9 +89,9 @@ switch for a sandbox whose only adapter is Mesa lavapipe, which renders
 every tick at a quarter of a second: `FINDINGS.md` #7) the frames are
 reported unchecked and the rest runs the same.
 
-The recovered branch passes all nine suites (216 checks), but its eleven
-metal reference frames still need to be recorded and inspected on the
-owner's Mac. The interrupted orb capture was not a complete visual check.
+All nine suites pass on Metal (239 checks, 2026-10-22). All eleven
+reference frames were inspected on the owner's Mac and reproduced at
+RMSE 0. The scoreboard capture waits until its iris and counters settle.
 With this branch's CLI, `og test . --filter tests/lobby.og.ts` runs just the
 lobby suite while iterating; run without the filter before delivery.
 
