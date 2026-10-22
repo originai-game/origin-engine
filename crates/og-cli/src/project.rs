@@ -35,6 +35,22 @@ fn string(v: Option<&Entry>) -> Option<String> {
     v.and_then(|v| v.string(0).ok().map(str::to_string))
 }
 
+// Bun imports and TypeScript do not understand canonicalize's Win32 verbatim
+// paths. Nor may a verbatim root be joined with '/' by the native host.
+pub(crate) fn typescript_path(path: &Path) -> String {
+    let s = path.to_string_lossy();
+    if cfg!(windows) {
+        let s = if let Some(unc) = s.strip_prefix(r"\\?\UNC\") {
+            format!(r"\\{unc}")
+        } else {
+            s.strip_prefix(r"\\?\").unwrap_or(&s).to_string()
+        };
+        s.replace('\\', "/")
+    } else {
+        s.into_owned()
+    }
+}
+
 impl Project {
     /// `path` is a project directory, a `project.ogt`, or an entry file.
     pub fn open(path: &Path) -> Result<Project, String> {
@@ -53,13 +69,15 @@ impl Project {
                 .map(Path::to_path_buf);
             return Ok(match root {
                 Some(r) => Project {
-                    entry: path.canonicalize().unwrap_or_else(|_| path.to_path_buf()),
+                    entry: PathBuf::from(typescript_path(
+                        &path.canonicalize().unwrap_or_else(|_| path.to_path_buf()),
+                    )),
                     ..Project::open(&r)?
                 },
                 None => Project {
-                    root: dir,
+                    root: PathBuf::from(typescript_path(&dir)),
                     manifest: false,
-                    entry: path.to_path_buf(),
+                    entry: PathBuf::from(typescript_path(path)),
                     out: "dist".into(),
                     engine: None,
                 },
@@ -70,7 +88,7 @@ impl Project {
                 path.display()
             ));
         };
-        let root = root.canonicalize().unwrap_or(root);
+        let root = PathBuf::from(typescript_path(&root.canonicalize().unwrap_or(root)));
         if !manifest.is_file() {
             return Err(format!(
                 "{}: no project.ogt; scaffold a project with `npm create @origingame/game` or pass a game entry file",

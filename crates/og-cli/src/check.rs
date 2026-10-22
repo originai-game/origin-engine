@@ -29,7 +29,7 @@
 //! and stop on a type error unless `--no-check`; `og dev` checks each
 //! rebuild beside the bundle and reports without refusing the reload.
 
-use crate::project::{self, Project};
+use crate::project::{self, Project, typescript_path};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 use std::time::Instant;
@@ -38,22 +38,6 @@ use std::time::Instant;
 /// (`scripts/tsrs-diff.sh` reads it here) and the fallback where tsrs has
 /// no package (Windows, Intel macOS).
 pub const TSGO_VERSION: &str = "7.0.2";
-
-// TypeScript normalises slashes but does not understand Win32 verbatim paths
-// returned by canonicalize (\\?\C:\... or \\?\UNC\server\share).
-pub(crate) fn typescript_path(path: &Path) -> String {
-    let s = path.to_string_lossy();
-    if cfg!(windows) {
-        let s = if let Some(unc) = s.strip_prefix(r"\\?\UNC\") {
-            format!(r"\\{unc}")
-        } else {
-            s.strip_prefix(r"\\?\").unwrap_or(&s).to_string()
-        };
-        s.replace('\\', "/")
-    } else {
-        s.into_owned()
-    }
-}
 
 /// The template's compiler options: the options of a project without a
 /// tsconfig.json of its own.
@@ -478,7 +462,9 @@ impl Target {
 
     /// The configuration of a project (see the module doc).
     pub fn of(p: &Project, package: Option<&Path>) -> Result<Target, String> {
-        let root = p.root.canonicalize().unwrap_or_else(|_| p.root.clone());
+        let root = PathBuf::from(typescript_path(
+            &p.root.canonicalize().unwrap_or_else(|_| p.root.clone()),
+        ));
         let own = root.join("tsconfig.json");
         let engine_in_node_modules = root
             .ancestors()
