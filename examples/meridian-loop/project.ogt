@@ -3,7 +3,7 @@ version 1
 ---
 name "Meridian Loop"
 id "meridian-loop"
-engine "0.1.1"
+engine "0.2.0"
 entry "src/main.ts"
 profile "3d"
 tick 60

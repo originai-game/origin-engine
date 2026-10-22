@@ -6,7 +6,7 @@ and `@origingame/create-game` (docs/release.md §3). Before 1.0.0 a minor
 bump carries API additions or changes, one line each, written at the merge
 that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
-## 0.2.0 (unreleased)
+## 0.2.0 (2026-10-23)
 
 - Windows x64: build and pack the MSVC `og.exe` and napi addon as
   `@origingame/engine-win32-x64`, with DX12 rendering and the same TypeScript

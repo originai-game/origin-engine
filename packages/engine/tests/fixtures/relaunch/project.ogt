@@ -3,7 +3,7 @@ version 1
 ---
 name "Relaunch"
 id "relaunch"
-engine "0.1.1"
+engine "0.2.0"
 entry "src/main.ts"
 profile "2d"
 tick 60
