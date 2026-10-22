@@ -142,7 +142,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         println!("og test: bun test ({} file(s))", unit.len());
         match Command::new("bun")
             .arg("test")
-            .args(&unit)
+            .args(unit.iter().map(|p| crate::check::typescript_path(p)))
             .current_dir(&p.root)
             .status()
         {
@@ -172,7 +172,10 @@ pub fn run(args: &[&str]) -> ExitCode {
         for (i, t) in playtests.iter().enumerate() {
             let result = results.join(format!("{i}.json"));
             let mut cmd = project::bun(&package, "src/node/playtest-run.ts");
-            cmd.arg("--file").arg(t).arg("--entry").arg(&bundle);
+            cmd.arg("--file")
+                .arg(crate::check::typescript_path(t))
+                .arg("--entry")
+                .arg(&bundle);
             cmd.arg("--result").arg(&result);
             if p.manifest {
                 cmd.arg("--root").arg(&p.root);

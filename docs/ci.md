@@ -52,7 +52,8 @@ step.
 ## Windows x64 native lane
 
 Use Git Bash on a Windows x64 host with Visual Studio 2022 Build Tools
-(Desktop C++ and Windows SDK), the `x86_64-pc-windows-msvc` Rust toolchain,
+(Desktop C++, Windows SDK and C++ ATL for x64/x86, component
+`Microsoft.VisualStudio.Component.VC.ATL`), the `x86_64-pc-windows-msvc` Rust toolchain,
 and the tools pinned above on PATH. Cargo finds the MSVC linker through
 Visual Studio; do not substitute the GNU target for the napi addon.
 The repository's `.gitattributes` keeps source and generated files LF and

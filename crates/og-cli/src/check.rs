@@ -41,7 +41,7 @@ pub const TSGO_VERSION: &str = "7.0.2";
 
 // TypeScript normalises slashes but does not understand Win32 verbatim paths
 // returned by canonicalize (\\?\C:\... or \\?\UNC\server\share).
-fn typescript_path(path: &Path) -> String {
+pub(crate) fn typescript_path(path: &Path) -> String {
     let s = path.to_string_lossy();
     if cfg!(windows) {
         let s = if let Some(unc) = s.strip_prefix(r"\\?\UNC\") {
