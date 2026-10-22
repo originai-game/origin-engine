@@ -43,7 +43,11 @@ change, without a warning, and its refusals named the line and the fix.
 The order the games found productive:
 
 1. **`project.ogt`** (§2): name, id, the engine pin, the profile, tick and
-   seed. The scaffold writes it; change it there and nowhere else.
+   seed. The scaffold writes it (`npm create @origingame/game --profile
+   2d` writes the 2D starter, a platformer with sprites, a tilemap and 2D
+   physics, as does a premise that says 2D, platformer, side-scroller,
+   metroidvania or pixel art; `3d`, the default, the 3D template; an
+   archetype brings its own); change it there and nowhere else.
 2. **`GameDesc`** in `src/main.ts` (§3): the scene, the look, the systems,
    and from the start a command for each state a test must reach (`play`,
    `warp:<where>`) and facts for what it must check.
