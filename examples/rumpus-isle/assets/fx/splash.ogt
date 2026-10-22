@@ -1,0 +1,22 @@
+type particles
+version 1
+---
+# A critter hits the sea (tools/make-assets.ts).
+maxParticles 96
+shape cone 35 0.4
+rate 0
+burst 0 60
+duration 0.1
+looping false
+lifetime 0.5 0.9
+speed 3.5 6.5
+size 0.12 0.24
+sizeOverLife 0 1 1 0.4
+colorOverLife {
+  key 0 0.85 0.95 1 1
+  key 0.7 0.6 0.85 1 0.8
+  key 1 0.6 0.85 1 0
+}
+gravity 0 -14 0
+drag 0.6
+blend alpha

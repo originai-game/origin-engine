@@ -74,7 +74,16 @@ a number and a sound (taste 98, feel 79).
    matched count. A system that matched 0 entities is usually a missing
    component on the spawn, not a logic bug.
 
-   Where there is no renderer (a sandbox with no GPU: `og run --json` says
+   Headless means no window, not no rendering: `og run`, `og test` and
+   `og polish` still render every tick when an adapter is available. A
+   sandbox without a GPU may have Mesa lavapipe (`vulkan-cpu` in
+   `og doctor`), which renders on the CPU and can take minutes per
+   game-second. Use `OG_RENDERER=none og test .` (likewise `og run` and
+   `og polish`) for simulation-only iteration there. Do not treat this as
+   visual approval: record and compare frames on the retained reference
+   tier, and run visual polish with a renderer.
+
+   Where there is no renderer (`OG_RENDERER=none`, or no usable adapter: `og run --json` says
    `"tier": "none"`, `og doctor` says the renderer is `none`), the run is
    the same run: the same ticks, dumps and world hash. A `screenshot`
    writes no PNG and logs "no renderer, frame unchecked" with the file it
@@ -116,6 +125,13 @@ how the code is written. Each playtest writes into its own
 step's file by the name the step gave (`run.json("shop.json")`,
 `run.png("title.png")`); give each step's file its own name. A test that ran no checks fails. Run it before
 claiming a change works.
+
+While iterating, `og test . --filter tests/lobby.og.ts` runs only that
+suite. The filter is a case-sensitive substring of the project-relative
+file path, using `/` separators: `--filter lobby` selects every matching
+`.og.ts` and `.test.ts` file; it does not match test titles or use globs.
+No matching files is a failure, not a passing empty run. The project's
+type check still runs. Drop the filter for the complete regression run.
 
 Put every check that reads a frame (`run.png`, a decoded screenshot, a
 comparison with `references/`) inside `t.frame(files, () => ...)`:

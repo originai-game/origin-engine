@@ -1,0 +1,44 @@
+type look
+version 1
+---
+# The look of Rumpus Isle (og-taste §12): the frame's art direction as data.
+# GameDesc.look in the entry names it; it is applied after the first scene
+# spawns and before start runs.
+# It extends the style catalogue's miniature-diorama preset (a tabletop
+# model: tilt-shift focus, soft sun and occlusion, a high camera), chosen
+# over the rubber-hose-animation `create --premise` matched (a 2D flipbook
+# style: FINDINGS.md #1). Its UI skin pack is cartoon, copied and recoloured
+# by tools/make-assets.ts into skins/rumpus/.
+name "Rumpus Isle"
+extends "miniature-diorama"
+skin "skins/rumpus/skin.ogt"
+PostEffects {
+  # The camera looks down at the island from about 19 m: the island in
+  # focus, the sea at the frame's top and bottom softened (the tilt-shift).
+  depthOfField true
+  dofFocusDistance 18.5
+  dofFocusRange 6
+  dofMaxBlur 0.01
+  dofQuality high
+  ao true
+  aoRadius 0.6
+  aoIntensity 0.8
+  vignette true
+  vignetteIntensity 0.3
+}
+RenderSettings {
+  toneMapping agx
+  exposure 1.05
+}
+Sky {
+  enabled true
+  zenith "#5fb4e8"
+  horizon "#cfeefc"
+  ground "#2c7fa8"
+  sunDirection 0.45 0.8 0.4
+  sunSize 0
+}
+MaterialStyle {
+  shadowTint "#3a4f9a"
+  shadowTintAmount 0.35
+}

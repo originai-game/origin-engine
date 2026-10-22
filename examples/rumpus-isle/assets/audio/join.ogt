@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's pickup preset (tools/make-assets.ts): og.load.sound(world, "audio/join.ogt") plays it.
+preset "pickup"
+seed 2
+pitch 1
+length 0.8
+volume 0.6

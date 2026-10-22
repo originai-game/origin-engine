@@ -1,0 +1,21 @@
+type particles
+version 1
+---
+# A dash's dust at the feet (tools/make-assets.ts).
+maxParticles 48
+shape sphere 0.25
+rate 0
+burst 0 14
+duration 0.1
+looping false
+lifetime 0.35 0.6
+speed 0.6 1.6
+size 0.18 0.3
+sizeOverLife 0 0.6 1 1.4
+colorOverLife {
+  key 0 1 0.95 0.85 0.8
+  key 1 1 0.95 0.85 0
+}
+gravity 0 0.6 0
+drag 3
+blend alpha

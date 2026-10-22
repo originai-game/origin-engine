@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's door preset (tools/make-assets.ts): og.load.sound(world, "audio/crack.ogt") plays it.
+preset "door"
+seed 6
+pitch 1.6
+length 0.4
+volume 0.5

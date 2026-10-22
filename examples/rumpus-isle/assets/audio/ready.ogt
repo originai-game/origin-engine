@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's select preset (tools/make-assets.ts): og.load.sound(world, "audio/ready.ogt") plays it.
+preset "select"
+seed 3
+pitch 1.25
+length 0.8
+volume 0.55
