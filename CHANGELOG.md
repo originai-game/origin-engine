@@ -8,6 +8,13 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## 0.2.0 (unreleased)
 
+- Windows x64: build and pack the MSVC `og.exe` and napi addon as
+  `@origingame/engine-win32-x64`, with DX12 rendering and the same TypeScript
+  API. `og check` deliberately uses the pinned tsgo/Bun fallback, reported
+  by doctor. Windows paths, source line endings and HDR fixture checkout
+  bytes are portable. Release validation and remaining frame differences:
+  `tests/evidence/release/windows-x64.md`.
+
 API additions and changes (a minor bump, §3), by the stream that landed
 each:
 

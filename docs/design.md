@@ -436,6 +436,13 @@ docs/ci.md §Updating a budget).
 | capture | readback | readback | readback | readback |
 | determinism | yes | yes | yes | yes |
 
+Windows x64 uses the same native API: the MSVC-built
+`@origingame/engine-win32-x64` carries `og.exe` and `origin-engine.node`.
+Its automatic renderer is DX12, lanes use rayon, and capture uses GPU
+readback. `og check` reports the pinned tsgo fallback because tsrs has no
+Windows package. Host validation is recorded in
+`tests/evidence/release/windows-x64.md` (release row F7).
+
 ## 9. Branding **(D unless noted)**
 
 - **Name**: Origin Engine. The platform's current `engine/` workspace (the
