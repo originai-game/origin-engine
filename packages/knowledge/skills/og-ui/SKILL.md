@@ -212,8 +212,13 @@ through). A gameplay HUD whose keys
 move the player calls `og.ui.setNavigation(false)` (the HUD templates do);
 dialogs turn navigation back on while open. What opens takes the focus:
 a dialog (every modal template: pause, settings, shop, results, confirm)
-its first control, a dialogue box or cutscene the box, so Enter, Space and
-A answer it at once without a Tab first. The UI reads pad 0 from
+its first control, a dialogue box or cutscene the box, without a Tab first.
+An entering panel is inert until its entrance finishes: Enter, Space, A
+and pointer presses during that motion are ignored, not buffered. Its
+controls answer once the panel arrives, even if their stagger continues.
+Use `instant: true` on a `mainMenu` or `anchor` to skip its entrance when
+immediate input is needed (for example under a screen wipe, §6).
+The UI reads pad 0 from
 `og.Gamepad` itself (d-pad, A, B, the left stick); for a custom binding,
 queue intents with `og.ui.navigate(world, intent)`. A focus move plays the
 `hover` sound and Enter, Space or A the `press` sound, as the pointer does
@@ -355,6 +360,14 @@ Motion and juice, all by the tick and in the UI state:
 | A panel or item popping in | `og.ui.transition(id, show, { kind: "pop" })` (also `fade`, `slideUp`…, `scale`) |
 | A change of game screen | `const s = og.ui.screenTransition("Screens", state.screen, { kind: "iris" }).shown;` then build `s` (`fade`, `wipe`, `iris`, `dissolve`, `slide`; a colour or a texture) |
 | A wrong answer, a locked door, a refused purchase | `og.ui.shake({ sound: true })` right after the element, once, on the tick it happens: it swings three times and comes to rest by itself (the skin's `motion.shake`, else 6 px), with the `error` sound |
+
+`screenTransition` keeps the previous screen in `shown` for the closing
+half of its duration, switches at full cover, then reveals the new one.
+Build `shown`, not the requested screen; `dump_ui` therefore lists the old
+screen until the midpoint. The cover itself does not block input. A new
+panel's own skin entrance starts when that panel is first built, and
+ignores presses until it arrives (§4): the closing half of a wipe plus
+that entrance explains why a press just after the switch can be lost.
 
 Skins add the rest themselves: dialog and panel entrances with staggered
 controls, hover lift and press squash on springs (the `hoverSpring 1 350` and `pressSpring 0.55 120` lines of a

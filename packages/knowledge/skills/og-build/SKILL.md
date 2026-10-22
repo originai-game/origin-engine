@@ -74,7 +74,16 @@ a number and a sound (taste 98, feel 79).
    matched count. A system that matched 0 entities is usually a missing
    component on the spawn, not a logic bug.
 
-   Where there is no renderer (a sandbox with no GPU: `og run --json` says
+   Headless means no window, not no rendering: `og run`, `og test` and
+   `og polish` still render every tick when an adapter is available. A
+   sandbox without a GPU may have Mesa lavapipe (`vulkan-cpu` in
+   `og doctor`), which renders on the CPU and can take minutes per
+   game-second. Use `OG_RENDERER=none og test .` (likewise `og run` and
+   `og polish`) for simulation-only iteration there. Do not treat this as
+   visual approval: record and compare frames on the retained reference
+   tier, and run visual polish with a renderer.
+
+   Where there is no renderer (`OG_RENDERER=none`, or no usable adapter: `og run --json` says
    `"tier": "none"`, `og doctor` says the renderer is `none`), the run is
    the same run: the same ticks, dumps and world hash. A `screenshot`
    writes no PNG and logs "no renderer, frame unchecked" with the file it

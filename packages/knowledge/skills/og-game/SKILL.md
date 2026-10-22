@@ -1204,6 +1204,17 @@ there. `world.set(e, og.Velocity, ...)` refuses on
 an entity without one (a body in `start`, before its first step):
 `world.insert` it there, which adds and sets it.
 
+`og.CollisionStarted` is read on the tick after the physics step. Its
+`normal` points from `a` to `b`; the bodies' `og.Velocity` already contains
+the solver's outgoing velocity, not their incoming impact velocity. Do
+not derive impact weight from those velocities: bodies may already be
+separating. There is no contact-time velocity or impulse on this event.
+For driven bodies, retain the velocity handed to physics in a component
+and read that cache before the next drive system overwrites it (as in
+`examples/rumpus-isle/src/critters.ts`). Project `velocityA - velocityB`
+onto the event normal for closing speed. This estimates linear approach
+speed, not contact-point speed from rotation or forces during the step.
+
 ```ts
 const hit = og.physics.raycast(world, { origin: eye, direction: { x: 0, y: 0, z: -1 }, maxDistance: 30, filter: { mask: 0b10, exclude: player } });
 if (hit.ok && hit.value) { /* hit.value.entity, distance, point, normal */ }
