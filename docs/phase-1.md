@@ -259,6 +259,41 @@ benchmarks, both set aside on 2026-10-22):**
   passed at a later tick). The check accepts 30 or later since this
   commit (bdc1d850); rerun on the measure build, both runs pass every check.
 
+**F1 wave-end follow-up (2026-10-22, measure pinned at da1d3ea3,
+before dogfood-7):** `scripts/wave-end.sh` finished in 1,722 s with
+gate passing (682 s), web failing (354 s), conformance passing (6 s),
+and release passing (680 s). No lavapipe reference stage ran.
+
+- The full gate passed all nine steps: fmt 1 s, clippy 14 s,
+  wasm-build 314 s, test 203 s (947 passed, 12 skipped), wasm-opt 202 s,
+  size-gate 43 s, drift 14 s, bun-test 162 s, determinism 258 s.
+- Shipping wasm brotli bytes: 3D lanes 3,169,321; 2D lanes 3,001,064;
+  3D publish 3,132,262; 2D publish 2,966,074. The largest fits 4 MiB.
+- Every determinism build agrees: math 6117185439544271997,
+  bouncing boxes 15551159556835976588, physics3d 917465598921449438,
+  physics2d 4867922716644344347, animation 6030136770684287795.
+  Native lanes used four threads and made 1,660 parallel calls.
+- Both browser tiers failed the locale playtest because the runner
+  treated 25 diagnostic HUD screenshots as references. The native test
+  deliberately compares only its original 15 frames. f3d2d858 shares
+  that list with the browser runner; both tiers then passed all 15,
+  and native locales passed all 147 checks without new references.
+- The other browser failures are stale `stylise-pixel` and
+  `stylise-palette` Metal references (RMSE 0.24104 and 0.17555 on both
+  tiers). A fresh native capture is pixel-identical to WebGPU, removing
+  the same dark horizon band. This matches the earlier grazing-plane
+  outline correction in 8a9338b6, not either F1 merge. Those two scenes
+  have no native reference test, so the passing native gate did not
+  cover them. Their references remain unchanged for the owning stream.
+  All other browser comparisons passed; lane-panic passed 23 checks
+  and a11y passed 26 per tier.
+- The 0.1.1 tarballs packed and passed the install test on darwin-arm64
+  and linux-x64. The Linux container has no renderer and reported its
+  smoke and ledge frames unchecked. No package was published.
+  Determinism also refreshed six local path-package versions in its
+  separate Cargo.lock from 0.0.1 to 0.1.1; this generated-only change
+  was not retained.
+
 ## Main gate, wave 12 (2026-10-21)
 
 Wave 12 started as soon as wave 11's last stream merged (the owner's
