@@ -213,7 +213,7 @@ pub struct Tsrs {
 /// naming no file, a binary apart from its lib files, one that is no tsrs).
 pub fn locate_tsrs(package: Option<&Path>) -> Result<Option<Tsrs>, String> {
     let exe = if cfg!(windows) { "tsrs.exe" } else { "tsrs" };
-    let (path, source) = if let Some(p) = std::env::var_os("OG_TSRS") {
+    let (path, source) = if let Some(p) = std::env::var_os("OG_TSRS").filter(|p| !p.is_empty()) {
         let p = PathBuf::from(p);
         if !p.is_file() {
             return Err(format!("OG_TSRS={} is not a file", p.display()));

@@ -881,6 +881,12 @@ bun scripts/e2b-addon.ts          # optional, billable: install the tarballs in 
   `optionalDependencies` of the main package, so npm and bun install only the
   matching one. The loader takes `OG_NATIVE_ADDON`, then a checkout's
   `native/`, then the platform package.
+- `@tsrs/darwin-arm64`, `@tsrs/linux-{x64,arm64}-{gnu,musl}`: tsrs, `og
+  check`'s type checker, with its `lib.*.d.ts`, the same way (pinned exactly
+  at `TSRS_VERSION` of `scripts/install-tools.sh`, not at the engine's
+  version; `check-conformance` holds them equal), so a project's `bun
+  install` brings the checker and `og check` finds it beside the engine
+  package with no registry call at check time.
 - Publishing (not done yet): bump the version in `package.json` (the
   optional dependencies follow it in `pack.sh`'s platform manifests and must
   be bumped with it), `sh scripts/pack.sh --linux-x64` on macOS arm64 (a

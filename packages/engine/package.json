@@ -44,7 +44,12 @@
   },
   "optionalDependencies": {
     "@origingame/engine-darwin-arm64": "0.0.1",
-    "@origingame/engine-linux-x64": "0.0.1"
+    "@origingame/engine-linux-x64": "0.0.1",
+    "@tsrs/darwin-arm64": "0.18.0-ts7.1.0-dev.20260929",
+    "@tsrs/linux-arm64-gnu": "0.18.0-ts7.1.0-dev.20260929",
+    "@tsrs/linux-arm64-musl": "0.18.0-ts7.1.0-dev.20260929",
+    "@tsrs/linux-x64-gnu": "0.18.0-ts7.1.0-dev.20260929",
+    "@tsrs/linux-x64-musl": "0.18.0-ts7.1.0-dev.20260929"
   },
   "publishConfig": {
     "access": "public"
