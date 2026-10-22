@@ -37,7 +37,7 @@ og cook .
 og run . --headless --commands "1:screenshot:title.png;1.2:race;4:drive:auto;20:screenshot:sweeper.png;20.1:quit"
 og test .                       # the ten playtests, the reference frames against references/<tier>/
 OG_FX_CAPTURE=1 og test .       # records this tier's reference frames
-bun run typecheck               # tsc over src, tests and tools
+og check .                      # tsrs over src, tests and tools
 ```
 
 Inside the engine repository `og` is `target/debug/og`, and the playtests
