@@ -1242,6 +1242,14 @@ pub struct RenderScene {
     pub trails: Vec<Trail>,
     pub ribbons: Vec<Ribbon>,
     pub beams: Vec<Beam>,
+    /// Line sets drawn this frame (`lines.rs`): in the scene or over the
+    /// finished frame (debug draw, screen lines).
+    pub lines: Vec<crate::Lines>,
+    /// Point clouds drawn this frame (`points.rs`).
+    pub points: Vec<crate::Points>,
+    /// The output's height in CSS pixels, which line widths and point sizes
+    /// are measured in (0: one CSS pixel per device pixel).
+    pub css_height: f32,
     /// Projected decals (the first [`crate::MAX_DECALS`] are drawn).
     pub decals: Vec<Decal>,
     /// The texture decals take their `uv_rect` from (`None`: solid colour).
@@ -1369,6 +1377,9 @@ impl RenderScene {
             particle_colliders: Vec::new(),
             trails: Vec::new(),
             ribbons: Vec::new(),
+            lines: Vec::new(),
+            points: Vec::new(),
+            css_height: 0.0,
             beams: Vec::new(),
             decals: Vec::new(),
             decal_atlas: None,
@@ -2425,6 +2436,11 @@ impl RenderScene {
         self.mesh_slots
             .live(index, generation)
             .then(|| MeshHandle::from_parts(index, generation))
+    }
+
+    /// How many times the mesh at `index` was replaced (or removed).
+    pub(crate) fn mesh_revision(&self, index: usize) -> u64 {
+        self.mesh_revisions.get(index).copied().unwrap_or(0)
     }
 
     pub fn mesh(&self, handle: MeshHandle) -> Option<&MeshData> {

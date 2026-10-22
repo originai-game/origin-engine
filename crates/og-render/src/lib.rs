@@ -42,6 +42,7 @@ mod capture;
 mod clusters;
 mod compact;
 mod cull_gpu;
+pub mod debug;
 mod deferred;
 mod effects;
 mod environment;
@@ -55,6 +56,7 @@ mod hooks;
 mod ibl;
 mod instances;
 mod light2d;
+mod lines;
 mod material;
 mod metaballs;
 mod mips;
@@ -64,6 +66,7 @@ mod particles_gpu;
 mod pipeline_cache;
 pub use pipeline_cache::set_pipeline_cache_dir;
 mod physical;
+mod points;
 mod post;
 mod ribbons;
 mod scatter;
@@ -108,6 +111,7 @@ pub use hooks::{
     MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderParam, lit_module_source,
     physical_module_source, shadow_module_source,
 };
+pub use lines::{LineLayer, LineMode, Lines, wire_edges};
 pub use material::{PhysicalExtensions, Side, StandardMaterial};
 pub use metaballs::{FIELDS, MAX_FLUIDS, Metaballs};
 pub use particles::{
@@ -116,6 +120,7 @@ pub use particles::{
     ParticleRender, ParticleSimulation, ParticleState, ParticleSystem, SheetMode, SimulationSpace,
     SpriteSheet,
 };
+pub use points::Points;
 pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailStyleHandle};
 pub use scatter::ScatterDraw;
 pub use scene::*;
@@ -724,6 +729,8 @@ pub struct FrameStats {
     /// Trail, ribbon and beam strips drawn, and their segments.
     pub strips: u32,
     pub strip_segments: u32,
+    /// Line segments and points drawn (`lines.rs`; wireframe edges included).
+    pub line_instances: u32,
     /// Decals drawn, and those beyond [`MAX_DECALS`].
     pub decals: u32,
     pub decals_dropped: u32,
@@ -950,6 +957,8 @@ struct GpuMaterial {
     lean: bool,
     /// Flat-shaded: its normals come from screen derivatives.
     flat: bool,
+    /// Drawn as its triangles' edges in this colour (`lines.rs`), not as triangles.
+    wireframe: Option<[f32; 4]>,
 }
 
 struct GpuTexture {
@@ -1351,6 +1360,8 @@ pub struct Renderer {
     prev_instance_buffer: wgpu::Buffer,
     ribbon_buffer: wgpu::Buffer,
     ribbon_sampler: wgpu::Sampler,
+    /// Lines, points and wireframes (`lines.rs`).
+    lines: lines::LineRenderer,
     particles: particles_gpu::ParticleRenderer,
     lights_2d: light2d::Light2dRenderer,
     trails: ribbons::Trails,
@@ -2665,6 +2676,12 @@ impl Renderer {
             &sprite_layout,
         );
         let glass = glass::GlassPasses::new(&device, output_format);
+        let lines = lines::LineRenderer::new(
+            &device,
+            samples,
+            output_format,
+            offscreen_linear.or(surface_linear),
+        );
 
         Ok(Renderer {
             device,
@@ -2739,6 +2756,7 @@ impl Renderer {
             prev_instance_buffer,
             ribbon_buffer,
             ribbon_sampler,
+            lines,
             particles,
             lights_2d,
             trails: ribbons::Trails::default(),
@@ -3286,6 +3304,10 @@ impl Renderer {
                     && !material.draws_array_maps(),
                 lean: false,
                 flat: material.flatShading != 0,
+                wireframe: (material.wireframe != 0).then(|| {
+                    let c = material.color + material.emissive * material.emissiveIntensity;
+                    [c.x, c.y, c.z, material.opacity]
+                }),
             };
             let gpu = GpuMaterial {
                 lean: gpu.occluder
@@ -3975,6 +3997,7 @@ impl Renderer {
             materials.len(),
             |mesh, material| Self::dequant(meshes, materials, mesh, material),
             |material| materials[material].array.is_some(),
+            |material| materials[material].wireframe.is_some(),
         )?;
         let batches = sorted
             .runs
@@ -4780,6 +4803,26 @@ impl Renderer {
                 &self.sprite_layout,
             ));
         }
+        // Lines, points and wireframes (lines.rs): made and uploaded now,
+        // drawn in the main pass and over the finished frame.
+        let any_wire = self.cache.materials.iter().any(|m| m.wireframe.is_some());
+        let materials = &self.cache.materials;
+        let line_frame = self
+            .lines
+            .prepare(&self.device, &self.queue, scene, any_wire, |m| {
+                materials.get(m).and_then(|g| g.wireframe)
+            });
+        self.lines.set_scene_uniform(
+            &self.queue,
+            &lines::LineUniform::new(
+                cam.jittered_view_proj,
+                cam.proj,
+                self.width,
+                self.height,
+                scene.css_height,
+                false,
+            ),
+        );
         let mut ribbon_frame = self
             .trails
             .build(
@@ -6108,6 +6151,7 @@ impl Renderer {
             particle_collision_skipped: particle_frame.collision_skipped,
             strips: ribbon_frame.strips,
             strip_segments: ribbon_frame.segments,
+            line_instances: line_frame.instances,
             decals,
             decals_dropped: scene.decals.len() as u32 - decals,
             lights_2d,
@@ -7177,6 +7221,12 @@ impl Renderer {
                         pass.draw(0..run.count, 0..1);
                         stats.draw_calls += 1;
                     }
+                    // Lines, points and wireframes (lines.rs), with their own group 0.
+                    let n = self.lines.draw_scene(&mut pass, &line_frame);
+                    if n > 0 {
+                        stats.draw_calls += n;
+                        pass.set_bind_group(0, frame_bind_group, &[]);
+                    }
                     // Sprites and text, blended over the scene in sorted order.
                     pass.set_bind_group(2, sprite_fx_group, &[]);
                     let mut current: Option<(bool, SpriteBlend, bool)> = None;
@@ -7400,6 +7450,26 @@ impl Renderer {
                 rebuilds.clear();
             }
         }
+        // Lines over the finished frame (debug draw, screen lines), under
+        // the overlay, where the overlay draws (lines.rs).
+        if line_frame.overlay.1 > 0 {
+            let srgb_view = overlay_view.is_some();
+            self.lines.set_overlay_uniform(
+                &self.queue,
+                &lines::LineUniform::new(
+                    cam.view_proj,
+                    cam.proj,
+                    self.out_width,
+                    self.out_height,
+                    scene.css_height,
+                    !srgb_view && !self.output_format.is_srgb(),
+                ),
+            );
+            let target = layered.unwrap_or(overlay_view.unwrap_or(output));
+            stats.draw_calls +=
+                self.lines
+                    .draw_overlay(&mut encoder, target, srgb_view, &line_frame);
+        }
         // The overlay: over the finished frame, in the output (or its sRGB
         // view), or in the glass source when glass lies over overlay content.
         if !runs.is_empty() {
@@ -7570,6 +7640,7 @@ impl Renderer {
             || self.terrain.warm()
             || self.metaballs.warm()
             || self.fluid3d.warm()
+            || self.lines.warm()
     }
 
     /// Natively: waits for the GPU culling counts of the frame `stats` came
