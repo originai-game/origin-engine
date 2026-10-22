@@ -52,7 +52,7 @@ export default playtest({
       return `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, "0")}.${String(ms % 1000).padStart(3, "0")}`;
     };
     for (const l of laps) t.ok(shown.includes(lapText(l)), `the results show lap ${lapText(l)}`);
-    t.ok(shown.includes(lapText(r.total)), `the results show the total ${lapText(r.total)}`);
+    t.ok(shown.includes(lapText(r.total)) && shown.includes("Total time"), `the results' headline is the total, ${lapText(r.total)}, under "Total time"`);
     const calls = run.json<{ calls: Call[] }>("calls.json").calls;
     const submit = calls.find((c) => c.method === "leaderboard.submit");
     t.ok(submit !== undefined, "the best lap was submitted");

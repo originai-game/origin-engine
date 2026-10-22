@@ -25805,6 +25805,16 @@
           "type": "boolean",
           "description": "Show touch controls (a d-pad and Jump) on phones and tablets.",
           "default": false
+        },
+        "jumpLabel": {
+          "type": "string",
+          "description": "The touch Jump button. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t).",
+          "default": "Jump"
+        },
+        "pauseLabel": {
+          "type": "string",
+          "description": "The pause button's name (what a screen reader says; the button shows its icon).",
+          "default": "Pause"
         }
       },
       "additionalProperties": false
@@ -25943,6 +25953,21 @@
           "type": "boolean",
           "description": "Show touch controls (a stick and Fire) on phones and tablets.",
           "default": false
+        },
+        "killsLabel": {
+          "type": "string",
+          "description": "The word after the kill count. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t).",
+          "default": "kills"
+        },
+        "fireLabel": {
+          "type": "string",
+          "description": "The touch Fire button.",
+          "default": "Fire"
+        },
+        "pauseLabel": {
+          "type": "string",
+          "description": "The pause button's name (what a screen reader says; the button shows its icon).",
+          "default": "Pause"
         }
       },
       "additionalProperties": false
@@ -26007,6 +26032,21 @@
           ],
           "description": "Seconds left; null hides it.",
           "default": null
+        },
+        "movesLabel": {
+          "type": "string",
+          "description": "The caption under the moves left. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t).",
+          "default": "moves left"
+        },
+        "targetLabel": {
+          "type": "string",
+          "description": "The line beside the stars; `{target}` is replaced by the target, formatted (1,000). A localised game passes its string table's, with `{target}` in it.",
+          "default": "Target {target}"
+        },
+        "pauseLabel": {
+          "type": "string",
+          "description": "The pause button's name (what a screen reader says; the button shows its icon).",
+          "default": "Pause"
         }
       },
       "additionalProperties": false
@@ -26118,6 +26158,21 @@
           "type": "string",
           "description": "The tap target's label; empty hides it.",
           "default": "Tap"
+        },
+        "levelLabel": {
+          "type": "string",
+          "description": "A generator's level badge; `{level}` is replaced by its level. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t), with `{level}` in it.",
+          "default": "Lv {level}"
+        },
+        "rateLabel": {
+          "type": "string",
+          "description": "A currency's rate; `{rate}` is replaced by its per-second amount, formatted (+12/s is `+{rate}/s`). A localised game passes its string table's, with `{rate}` in it.",
+          "default": "+{rate}/s"
+        },
+        "pauseLabel": {
+          "type": "string",
+          "description": "The pause button's name (what a screen reader says; the button shows its icon).",
+          "default": "Pause"
         }
       },
       "additionalProperties": false

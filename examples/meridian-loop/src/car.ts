@@ -12,8 +12,9 @@
 // eased towards the asked lock, the lock shortened with speed, and two
 // assists written as small changes of og.Velocity (there is no force or
 // torque call, FINDINGS #2): the roll and pitch rates damped, so a banked turn or a
-// landing does not tip the car, and a little downforce with four wheels
-// down. It also reads back the slide, the air time and the landings.
+// landing does not tip the car, a little downforce with four wheels
+// down, and in the air the nose turned to where the car flies. It also
+// reads back the slide, the air time and the landings.
 
 import { og, defineSystem } from "@origingame/engine";
 import type { Value, World } from "@origingame/engine";
@@ -151,6 +152,15 @@ export const Chassis = defineSystem("Chassis", { reads: [Tuning], writes: [Race,
     y: ang.y - k * (rollRate * fwd.y + pitchRate * right.y),
     z: ang.z - k * (rollRate * fwd.z + pitchRate * right.z),
   };
+  // In the air the nose is turned towards where the car flies: a twist off the
+  // kicker's lip (a few degrees at 40 m/s) would otherwise land it sideways and
+  // spin it on the landing ramp.
+  if (contacts === 0 && speed > 5) {
+    let err = Math.atan2(lin.x, lin.z) - Math.atan2(fwd.x, fwd.z);
+    while (err > Math.PI) err -= 2 * Math.PI;
+    while (err < -Math.PI) err += 2 * Math.PI;
+    newAng.y += (err * t.airAlign - newAng.y) * 0.25;
+  }
   must(world.set(carE, og.Velocity, { linear: { x: lin.x - up.x * down, y: lin.y - up.y * down, z: lin.z - up.z * down }, angular: newAng }));
 
   // The slide: sideways speed at the rear axle (the yaw rate swings it out).

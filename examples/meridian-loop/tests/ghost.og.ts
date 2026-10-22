@@ -2,14 +2,14 @@
 // from the start of the second lap the ghost drives it again: at the same
 // time into its lap it is where the car was, to the poses' centimetre.
 // The race starts at 0.5 s (`race:go`): GO is tick 31, the first lap is
-// 2046 ticks (the autopilot's, asserted), so the second starts on tick
-// 2077; the car is read 300, 900 and 1500 ticks into its first lap and the
+// 2048 ticks (the autopilot's, asserted), so the second starts on tick
+// 2079; the car is read 300, 900 and 1500 ticks into its first lap and the
 // ghost as far into the second.
 import { playtest } from "@origingame/engine/playtest";
 import { dist, position, race, script } from "./lib.ts";
 
 const GO = 31;
-const LAP1 = 2046;
+const LAP1 = 2048;
 const AT = [300, 900, 1500];
 const t = (tick: number) => (tick / 60).toFixed(3);
 

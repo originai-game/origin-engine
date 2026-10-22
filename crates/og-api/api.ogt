@@ -9727,6 +9727,12 @@ module ui {
     field timeLeft Option.f32 "Seconds left; null hides the timer."
     field health Option.f32 "A health bar instead of hearts, 0 to 1; null shows hearts."
     field touch bool "Show touch controls (a d-pad and Jump) on phones and tablets."
+    field jumpLabel String "The touch Jump button. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+      default "Jump"
+    }
+    field pauseLabel String "The pause button's name (what a screen reader says; the button shows its icon)." {
+      default "Pause"
+    }
   }
 
   struct HudResult {
@@ -9758,6 +9764,15 @@ module ui {
     }
     field map Option.MinimapDesc "A mini-map top left; null is none."
     field touch bool "Show touch controls (a stick and Fire) on phones and tablets."
+    field killsLabel String "The word after the kill count. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+      default "kills"
+    }
+    field fireLabel String "The touch Fire button." {
+      default "Fire"
+    }
+    field pauseLabel String "The pause button's name (what a screen reader says; the button shows its icon)." {
+      default "Pause"
+    }
   }
 
   struct PuzzleHudDesc {
@@ -9771,6 +9786,15 @@ module ui {
     field stars List.u32 "The scores for one, two and three stars; empty is a third, two thirds and all of the target."
     field moves Option.u32 "Moves left; null hides it."
     field timeLeft Option.f32 "Seconds left; null hides it."
+    field movesLabel String "The caption under the moves left. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+      default "moves left"
+    }
+    field targetLabel String "The line beside the stars; `{target}` is replaced by the target, formatted (1,000). A localised game passes its string table's, with `{target}` in it." {
+      default "Target {target}"
+    }
+    field pauseLabel String "The pause button's name (what a screen reader says; the button shows its icon)." {
+      default "Pause"
+    }
   }
 
   struct Currency {
@@ -9804,6 +9828,15 @@ module ui {
     field generators List.Generator "The generators."
     field tapLabel String "The tap target's label; empty hides it." {
       default "Tap"
+    }
+    field levelLabel String "A generator's level badge; `{level}` is replaced by its level. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t), with `{level}` in it." {
+      default "Lv {level}"
+    }
+    field rateLabel String "A currency's rate; `{rate}` is replaced by its per-second amount, formatted (+12/s is `+{rate}/s`). A localised game passes its string table's, with `{rate}` in it." {
+      default "+{rate}/s"
+    }
+    field pauseLabel String "The pause button's name (what a screen reader says; the button shows its icon)." {
+      default "Pause"
     }
   }
 

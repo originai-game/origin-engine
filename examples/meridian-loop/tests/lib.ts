@@ -28,7 +28,8 @@ export interface Race {
   recordS1: number;
   recordS2: number;
   recordS3: number;
-  recordPoints: number;
+  bestTotal: number;
+  totalBefore: number;
   delta: number;
   deltaAt: number;
   valid: boolean;
