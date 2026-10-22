@@ -70,8 +70,23 @@ platforms. Ray tracing. Networking engines beyond the platform SDK's rooms.
 | Hosts | Rust + generated glue | engine team | `og-host-web` (wasm-bindgen, Worker + OffscreenCanvas), `og-host-node` (napi) |
 | TypeScript API | generated `.d.ts` + a thin hand-written ergonomic layer | engine team | generated from one IDL (§3); the ergonomic layer is the three.js-flavoured vocabulary |
 | Game | TypeScript | the Maker's agent | components, systems, scenes, tunables, assets |
-| Tooling | Rust (`og`) | engine team | one binary: build, run, cook, probe, test, doctor |
+| Tooling | Rust (`og`) | engine team | one binary: build, run, cook, probe, check, test, doctor |
 | Shell | TypeScript (platform `site/`) | platform | the play page and the creator overlay; consumes `@origingame/engine` |
+
+`og check` type-checks game code with tsrs (the Rust port of TypeScript 7),
+a pinned binary `og` runs as a child process and never links: from
+`OG_TSRS`, the `@tsrs/<platform>` package the engine package brings
+through `optionalDependencies`, or `PATH` (`scripts/install-tools.sh`);
+where tsrs has no package (Windows, Intel macOS) it falls back to tsgo
+through `bun x` and says so. Diagnostics are values: `--json` prints one
+`check` event, `{file, line, col, code, message}` per diagnostic, on the
+same channel as the frames and the dumps. `og run`, `og test` and `og
+build` check before they bundle and stop on a type error (`--no-check`
+skips it; `og build --publish` refuses `--no-check`); `og dev` checks each
+rebuild beside the bundle and reports it on the `reload` event without
+refusing the reload. A checker that crashes or prints nothing readable is
+a failure, never a clean check. tsgo 7.0.2 stays the gate's authority
+until goals/tsrs's switch (`check-conformance`, docs/ci.md).
 
 ### 2.2 Threads **(D)**
 
