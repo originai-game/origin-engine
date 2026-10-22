@@ -17,7 +17,9 @@
 #                                               refuses a dirty tree, a manifest not verified on both platforms, a HEAD whose packaged inputs
 #                                               (crates, packages, templates, Cargo.lock, the wasm and tool scripts) differ from the manifest's commit, a version on the registry with other bytes, or no npm login. Resumable:
 #                                               a package already published with these bytes is skipped. npm's two-factor prompt (a URL
-#                                               to open, or --otp) is answered by the person running it
+#                                               to open, or --otp) is answered by the person running it, unless NPM_TOKEN is set (the
+#                                               project secret: a granular access token with publish rights and 2FA bypass), which
+#                                               publishes without a login or a prompt (a private userconfig for the run)
 #
 # pack holds the gate lock through pack.sh (a release build compiles beside
 # nothing) and refuses a dev native/ as pack.sh does. publish is an outward
@@ -135,8 +137,18 @@ cmd_publish() {
     console.log(problems.join("\n"));
   ' "$out/manifest.json")"
   if [ -n "$status" ]; then og_err "release: publish refused:"; printf '%s\n' "$status" | sed 's/^/  /' >&2; return 1; fi
+  # NPM_TOKEN (the project secret, an npm granular access token with publish
+  # rights on @origingame and 2FA bypass) stands in for npm login and the
+  # one-time password: it goes into a private userconfig for this run, never
+  # into the checkout's .npmrc or the log.
+  if [ -n "${NPM_TOKEN:-}" ]; then
+    local rc; rc="$(mktemp)" || return 1
+    printf '//registry.npmjs.org/:_authToken=%s\n' "$NPM_TOKEN" > "$rc"
+    export NPM_CONFIG_USERCONFIG="$rc"
+    trap 'rm -f "$NPM_CONFIG_USERCONFIG"' RETURN
+  fi
   local who
-  who="$(npm whoami 2>/dev/null)" || { og_err "release: not logged in to npm (npm login); publish needs the @origingame scope"; return 1; }
+  who="$(npm whoami 2>/dev/null)" || { og_err "release: not logged in to npm (npm login, or NPM_TOKEN); publish needs the @origingame scope"; return 1; }
   og_say "release: publishing $v as $who"
   # Resumable: a package already on the registry at this version is skipped
   # when its bytes are these (npm's sha512 integrity), refused when they differ.
