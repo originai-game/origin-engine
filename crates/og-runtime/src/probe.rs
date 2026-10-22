@@ -118,6 +118,31 @@ pub(crate) fn register_debug_view(probe: &mut Probe, engine: u32) {
             Ok(())
         },
     );
+    let _ = probe.register_dump(
+        "dump_render",
+        og_probe::CommandDesc {
+            usage: "dump_render[:path]".into(),
+            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), render time, and how many og.Model entities drew each level of detail".into(),
+        },
+        0,
+        move |_world, _args| {
+            let eng = super::engine::engine(engine)?;
+            let st = eng.state.borrow();
+            let rs = eng.render.borrow();
+            let mut levels = [0u32; og_render::lod::MAX_LOD_LEVELS];
+            for &l in rs.lod_drawn.values() {
+                levels[(l as usize).min(levels.len() - 1)] += 1;
+            }
+            let last = levels.iter().rposition(|&n| n > 0).map_or(0, |i| i + 1);
+            Ok(json!({
+                "kind": "render",
+                "triangles": st.triangles,
+                "renderMs": (st.render_ms * 1000.0).round() / 1000.0,
+                "debugView": super::extract::debug_view(&rs.options),
+                "lodLevels": &levels[..last],
+            }))
+        },
+    );
 }
 
 /// A name change made outside the probe, replayed into it.
