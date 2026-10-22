@@ -77,6 +77,7 @@ mod shadows;
 pub mod shapes;
 mod skin;
 mod sprite_array;
+mod sprite_mesh;
 mod sprites;
 mod stylise;
 mod stylise_object;
@@ -125,6 +126,7 @@ pub use points::Points;
 pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailStyleHandle};
 pub use scatter::ScatterDraw;
 pub use scene::*;
+pub use sprite_mesh::{SpriteMesh, SpriteMeshVertex};
 pub use shadows::PointShadows;
 pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
@@ -1422,6 +1424,8 @@ pub struct Renderer {
     stylise_chain: Option<u16>,
     /// The array sprite pipelines, made on the first frame that draws one.
     sprite_arrays: Option<sprite_array::SpriteArrayPipelines>,
+    /// The sprite mesh pipelines and buffer, made on the first frame that draws one.
+    sprite_meshes: Option<sprite_mesh::SpriteMeshRenderer>,
 }
 
 fn uniform_entry(binding: u32, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayoutEntry {
@@ -2789,6 +2793,7 @@ impl Renderer {
             taa_history: None,
             stylise_chain: None,
             sprite_arrays: None,
+            sprite_meshes: None,
         })
     }
 
@@ -4928,8 +4933,31 @@ impl Renderer {
                     self.sprite_group(t);
                 }
                 RunSource::Array(_, a) => self.sprite_array_group(scene, a),
+                RunSource::Mesh(i) => {
+                    self.sprite_group(scene.sprite_meshes[i as usize].texture);
+                }
                 _ => {}
             }
+        }
+        // The sprite meshes' corners (sprite_mesh.rs), lit as their layers' sprites.
+        if !scene.sprite_meshes.is_empty() {
+            let corners = sprite_mesh::vertices(scene, |layer| {
+                lit_range.is_some_and(|(lo, hi)| (lo..=hi).contains(&layer))
+            });
+            let meshes = self.sprite_meshes.get_or_insert_with(|| {
+                sprite_mesh::SpriteMeshRenderer::new(
+                    &self.device,
+                    [&self.frame_layout, &self.sprite_layout, &self.sprite_fx_layout],
+                    self.samples,
+                )
+            });
+            grow_and_write(
+                &self.device,
+                &self.queue,
+                &mut meshes.buffer,
+                "sprite meshes",
+                bytemuck::cast_slice(&corners),
+            );
         }
         for s in &particle_frame.systems {
             self.sprite_group(s.texture);
@@ -7283,6 +7311,26 @@ impl Renderer {
                             current = None;
                             continue;
                         }
+                        if let RunSource::Mesh(i) = run.source {
+                            let mesh = &scene.sprite_meshes[i as usize];
+                            pass.set_bind_group(
+                                1,
+                                match mesh.texture {
+                                    None => &self.white_sprite_group,
+                                    Some(t) => self.cache.sprite_groups[t.index()]
+                                        .as_ref()
+                                        .expect("made before the pass"),
+                                },
+                                &[],
+                            );
+                            self.sprite_meshes
+                                .as_ref()
+                                .expect("made before the pass")
+                                .draw(&mut pass, mesh.blend, run.first, run.count);
+                            stats.draw_calls += 1;
+                            current = None;
+                            continue;
+                        }
                         if let RunSource::Array(blend, a) = run.source {
                             let arrays = self.sprite_arrays.as_ref().expect("made before the pass");
                             pass.set_pipeline(arrays.pipeline(blend, run.tone_mapped));
@@ -7304,6 +7352,7 @@ impl Renderer {
                         let (msdf, blend, group) = match run.source {
                             RunSource::Strip(..)
                             | RunSource::Metaballs(_)
+                            | RunSource::Mesh(_)
                             | RunSource::Array(..) => {
                                 unreachable!("drawn above")
                             }
@@ -7543,8 +7592,8 @@ impl Renderer {
                                 .expect("made before the pass")
                                 .0,
                         ),
-                        RunSource::Strip(..) | RunSource::Metaballs(_) => {
-                            unreachable!("the overlay has no strips or fluids")
+                        RunSource::Strip(..) | RunSource::Metaballs(_) | RunSource::Mesh(_) => {
+                            unreachable!("the overlay has no strips, fluids or meshes")
                         }
                     };
                     if bound != Some(kind) {

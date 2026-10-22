@@ -74,6 +74,9 @@ pub(crate) enum RunSource {
     Glass,
     /// Sprites drawn from layers of a texture array, and their blend.
     Array(SpriteBlend, TextureArrayHandle),
+    /// [`RenderScene::sprite_meshes`]' mesh `n`: `first`/`count` are
+    /// corners of the mesh buffer (crate::sprite_mesh).
+    Mesh(u32),
 }
 
 /// A ribbon run drawn in the sprite order at `layer` (a 2D trail, a 2D
@@ -570,7 +573,16 @@ pub(crate) fn build<'a>(
         }
         keyed.push((s.layer, 0.0, run(e.blend), false, inst));
     }
-    let sprites = keyed.len() as u32 - shadow_count;
+    // The sprite meshes, sorted as sprites are; each is a run of its own
+    // corners (`mesh_ranges`), not an instance.
+    let mesh_ranges = crate::sprite_mesh::ranges(scene, texture_count)?;
+    let mesh_count = scene.sprite_meshes.len() as u32;
+    for (i, m) in scene.sprite_meshes.iter().enumerate() {
+        let key = if m.key.is_finite() { m.key } else { 0.0 };
+        let placeholder = sprite_instance(&Sprite::default(), [1.0, 1.0, 1.0, 0.0], 0.0, false, false);
+        keyed.push((m.layer, key, RunSource::Mesh(i as u32), false, placeholder));
+    }
+    let sprites = keyed.len() as u32 - shadow_count - mesh_count;
     let after_sprites = keyed.len() as u32;
     let mut missing_glyphs = 0;
     for (i, text) in scene.texts.iter().enumerate() {
@@ -711,6 +723,11 @@ pub(crate) fn build<'a>(
     };
     for (layer, _, source, untonemapped, inst) in keyed {
         place_under(layer, &mut instances, &mut runs, &mut next_under);
+        if let RunSource::Mesh(i) = source {
+            let (first, count) = mesh_ranges[i as usize];
+            push(&mut runs, source, true, first, count);
+            continue;
+        }
         let index = instances.len() as u32;
         instances.push(inst);
         push(&mut runs, source, !untonemapped, index, 1);
@@ -938,6 +955,41 @@ mod tests {
         // A ridge is bent over too, not only a pit.
         let ridge = |_x: f32, z: f32| if (z - 3.5).abs() < 0.2 { 0.4 } else { 0.0 };
         assert!(ShadowGround::fit(ridge, &sprite, sun).bend.is_some());
+    }
+
+    #[test]
+    fn a_sprite_mesh_is_one_run_in_its_layers_sprite_order() {
+        use crate::{SpriteMesh, SpriteMeshVertex};
+        let mut scene = RenderScene::new();
+        let at = |x: f32, layer: i32| Sprite {
+            position: Vec3::new(x, 0.0, 0.0),
+            layer,
+            ..Default::default()
+        };
+        scene.sprites = vec![at(0.0, 2), at(1.0, 0), at(2.0, 1)];
+        let corner = SpriteMeshVertex {
+            position: Vec3::ZERO,
+            uv: glam::Vec2::ZERO,
+            color: [1.0; 4],
+        };
+        // Layer 1, after the layer's sprites (key 1 > their 0); two triangles.
+        scene.sprite_meshes = vec![SpriteMesh {
+            vertices: vec![corner; 4],
+            indices: vec![0, 1, 2, 2, 3, 0],
+            layer: 1,
+            key: 1.0,
+            ..Default::default()
+        }];
+        let f = frame(&scene);
+        assert_eq!(f.sprites, 3, "a mesh is not a sprite");
+        assert_eq!(f.instances.len(), 3, "nor an instance");
+        let kinds: Vec<_> = f.runs.iter().map(|r| r.source).collect();
+        assert_eq!(kinds.len(), 4);
+        assert_eq!(kinds[2], RunSource::Mesh(0), "between layer 1's sprite and layer 2's");
+        assert_eq!((f.runs[2].first, f.runs[2].count), (0, 6));
+        // An index past its vertices is refused.
+        scene.sprite_meshes[0].indices[5] = 9;
+        assert!(build(&scene, |_| None, 0, |_| None, &[], |_| false, None, &[]).is_err());
     }
 
     #[test]
