@@ -7381,11 +7381,13 @@
         "ProbeTunable",
         "ProbeEntityRef",
         "ProbeTimings",
+        "ProbeTiming",
         "ProbeState",
         "AdvanceOperation",
         "InputOperation",
         "PickOperation",
         "EntityOperation",
+        "ExpectOperation",
         "ProbeOperation",
         "ProbeProgramResult",
         "Hello",
@@ -7410,7 +7412,18 @@
         "UiElement",
         "UiSurface",
         "UiDump",
-        "DumpResult"
+        "DumpResult",
+        "ScreenBox",
+        "ScreenPoint",
+        "DescribedEntity",
+        "DescribedUi",
+        "DescribedCamera",
+        "PassSize",
+        "Description",
+        "ExpectStatus",
+        "ExpectResult",
+        "ExpectReport",
+        "SavedScene"
       ],
       "consts": [
         {
@@ -7755,6 +7768,51 @@
               "params": [],
               "returns": "Option<ProbeMemory>",
               "returnsDoc": "Null from a host that gives no figures.",
+              "publish": false
+            },
+            {
+              "name": "describe",
+              "doc": "The frame of the current tick as data: the visible entities with screen boxes, depth order and occlusion from the entity-id pass, their names, archetypes and labels; the UI elements with rects and text; the camera. Answers without a renderer too (the pass runs on the CPU).",
+              "params": [],
+              "returns": "Description",
+              "publish": false
+            },
+            {
+              "name": "expect",
+              "doc": "Evaluate one expectation now (the forms of the command channel's `expect:`); the result is also kept for expectations().",
+              "params": [
+                {
+                  "name": "what",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The expectation, such as `entity:crate:within:0,0.4,-1,1,0.6,1`."
+                }
+              ],
+              "returns": "ExpectResult",
+              "returnsDoc": "A malformed expectation is a malformed call.",
+              "publish": false
+            },
+            {
+              "name": "expectations",
+              "doc": "Every expectation evaluated since the last call (scripts' `expect:` steps, programs, expect()), and the counts.",
+              "params": [],
+              "returns": "ExpectReport",
+              "publish": false
+            },
+            {
+              "name": "saveScene",
+              "doc": "Write the boot scene back from the world: its entities' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order. The probe writes the file only with write; otherwise the text is returned.",
+              "params": [
+                {
+                  "name": "write",
+                  "type": "bool",
+                  "optional": true,
+                  "default": false,
+                  "doc": "Replace the scene's source file."
+                }
+              ],
+              "returns": "Option<SavedScene>",
+              "returnsDoc": "Null without a scene to write back (the reason is in the log).",
               "publish": false
             }
           ]
@@ -29310,6 +29368,9 @@
         "resume",
         "advance",
         "quit",
+        "describe",
+        "expect",
+        "save_scene",
         "help"
       ],
       "x-og-variants": {
@@ -29340,6 +29401,9 @@
         "resume": "`resume`: release the clock.",
         "advance": "`advance:<ticks>`: take fixed steps.",
         "quit": "`quit`: exit.",
+        "describe": "`describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, the UI elements with rects and text, the camera.",
+        "expect": "`expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked.",
+        "save_scene": "`save_scene[:path]`: write the boot scene's `.ogt` back from the world, only the lines whose values changed (comments and order kept) and the fields set or patch tuned; to the scene's source, or with a path to that file under the output directory.",
         "help": "`help`: list every action the channel knows, core and registered."
       }
     },
@@ -29578,12 +29642,50 @@
           "type": "number",
           "description": "step + render.",
           "x-og-unit": "ms"
+        },
+        "systems": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProbeTiming"
+          },
+          "description": "The last tick's systems in run order, each with its milliseconds."
+        },
+        "passes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProbeTiming"
+          },
+          "description": "The last rendered frame's render passes in the render graph's order, each with its milliseconds (CPU encode time; empty without a renderer)."
         }
       },
       "required": [
         "step",
         "render",
-        "frameMs"
+        "frameMs",
+        "systems",
+        "passes"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeTiming": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One named span of the last tick or frame.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "A system's name, or a render pass's (`Main`, `Cascade0`, `Bloom`)."
+        },
+        "ms": {
+          "type": "number",
+          "description": "Its time.",
+          "x-og-unit": "ms"
+        }
+      },
+      "required": [
+        "name",
+        "ms"
       ],
       "additionalProperties": false
     },
@@ -29702,6 +29804,22 @@
       },
       "required": [
         "id"
+      ],
+      "additionalProperties": false
+    },
+    "ExpectOperation": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The expect operation's payload.",
+      "type": "object",
+      "properties": {
+        "what": {
+          "type": "string",
+          "description": "The expectation, as after `expect:` in a script, such as `state:started==true`."
+        }
+      },
+      "required": [
+        "what"
       ],
       "additionalProperties": false
     },
@@ -29832,6 +29950,38 @@
           ],
           "additionalProperties": false,
           "x-og-payload": "EntityOperation"
+        },
+        {
+          "description": "Evaluate an expectation; answers its ExpectResult, failed or not (a malformed one is a refusal).",
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "expect"
+            },
+            "what": {
+              "type": "string",
+              "description": "The expectation, as after `expect:` in a script, such as `state:started==true`."
+            }
+          },
+          "required": [
+            "op",
+            "what"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "ExpectOperation"
+        },
+        {
+          "description": "Describe the frame; answers its Description.",
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "describe"
+            }
+          },
+          "required": [
+            "op"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -30897,6 +31047,539 @@
           "x-og-payload": "UiDump"
         }
       ]
+    },
+    "ScreenBox": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "A box on the play surface.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Left edge.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "Top edge.",
+          "x-og-unit": "cssPx"
+        },
+        "width": {
+          "type": "number",
+          "description": "Width.",
+          "x-og-unit": "cssPx"
+        },
+        "height": {
+          "type": "number",
+          "description": "Height.",
+          "x-og-unit": "cssPx"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "ScreenPoint": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "A point on the play surface.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Horizontal position.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "Vertical position.",
+          "x-og-unit": "cssPx"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "DescribedEntity": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One entity the frame shows, from the entity-id pass (a CPU rasterisation of the frame's meshes, skinned meshes and world sprites at a quarter of its pixels).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Its probe id."
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its name."
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its depth order: 0 is the nearest."
+        },
+        "archetype": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its components, by name."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "What draws it: `model` with its asset path, `mesh`, `skinned`, `sprite`."
+        },
+        "box": {
+          "$ref": "#/$defs/ScreenBox",
+          "description": "The box of its visible pixels."
+        },
+        "drawn": {
+          "$ref": "#/$defs/ScreenBox",
+          "description": "The box of what it covers with nothing in front of it."
+        },
+        "point": {
+          "$ref": "#/$defs/ScreenPoint",
+          "description": "A visible point nearest the box's centre: pick answers this entity there."
+        },
+        "depth": {
+          "type": "number",
+          "description": "From the camera to its nearest visible point, along the view.",
+          "x-og-unit": "m"
+        },
+        "coverage": {
+          "type": "number",
+          "description": "Its visible share of the surface.",
+          "x-og-unit": "ratio"
+        },
+        "occlusion": {
+          "type": "number",
+          "description": "The share of what it covers alone that something else hides.",
+          "x-og-unit": "ratio"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "order",
+        "archetype",
+        "labels",
+        "box",
+        "drawn",
+        "point",
+        "depth",
+        "coverage",
+        "occlusion"
+      ],
+      "additionalProperties": false
+    },
+    "DescribedUi": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One UI element as describe lists it (the tree dump_ui writes).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Its id."
+        },
+        "parent": {
+          "type": "string",
+          "description": "Its parent's id."
+        },
+        "kind": {
+          "type": "string",
+          "description": "What made it."
+        },
+        "role": {
+          "type": "string",
+          "description": "Its accessibility role."
+        },
+        "text": {
+          "type": "string",
+          "description": "The text it shows."
+        },
+        "value": {
+          "type": "string",
+          "description": "Its value as text."
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its states."
+        },
+        "box": {
+          "$ref": "#/$defs/ScreenBox",
+          "description": "Its rect."
+        }
+      },
+      "required": [
+        "id",
+        "parent",
+        "kind",
+        "role",
+        "text",
+        "value",
+        "states",
+        "box"
+      ],
+      "additionalProperties": false
+    },
+    "DescribedCamera": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The camera as drawn, with its shake.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Where it is."
+        },
+        "target": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "What it looks at."
+        },
+        "up": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Its up."
+        },
+        "projection": {
+          "type": "string",
+          "description": "`perspective` or `orthographic`."
+        },
+        "fov": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The vertical field of view (perspective).",
+          "x-og-unit": "deg"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The height in view (orthographic).",
+          "x-og-unit": "m"
+        },
+        "near": {
+          "type": "number",
+          "description": "The near plane.",
+          "x-og-unit": "m"
+        },
+        "far": {
+          "type": "number",
+          "description": "The far plane.",
+          "x-og-unit": "m"
+        }
+      },
+      "required": [
+        "position",
+        "target",
+        "up",
+        "projection",
+        "fov",
+        "height",
+        "near",
+        "far"
+      ],
+      "additionalProperties": false
+    },
+    "PassSize": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The entity-id pass's size.",
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Width in pixels."
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Height in pixels."
+        }
+      },
+      "required": [
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "Description": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The frame as data: deterministic, the same JSON on every host and backend for the same world.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick."
+        },
+        "surface": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UiSurface"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The play surface."
+        },
+        "pass": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PassSize"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The entity-id pass; null without a scene."
+        },
+        "camera": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DescribedCamera"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The camera; null without a scene."
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DescribedEntity"
+          },
+          "description": "The visible entities, nearest first."
+        },
+        "ui": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DescribedUi"
+          },
+          "description": "The UI elements in draw order."
+        }
+      },
+      "required": [
+        "tick",
+        "surface",
+        "pass",
+        "camera",
+        "entities",
+        "ui"
+      ],
+      "additionalProperties": false
+    },
+    "ExpectStatus": {
+      "x-og-kind": "enum",
+      "x-og-module": "probe",
+      "description": "How an expectation came out.",
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "unchecked"
+      ],
+      "x-og-variants": {
+        "pass": "It held.",
+        "fail": "It did not: the result carries the tick and the observed value.",
+        "unchecked": "It reads a frame and the host has no renderer."
+      }
+    },
+    "ExpectResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One evaluated expectation.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick it was evaluated at."
+        },
+        "at": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The script step's time, when a script ran it.",
+          "x-og-unit": "s"
+        },
+        "expect": {
+          "type": "string",
+          "description": "As written after `expect:`."
+        },
+        "kind": {
+          "type": "string",
+          "description": "`entity`, `event`, `ui`, `region`, `frame` or `state`."
+        },
+        "status": {
+          "$ref": "#/$defs/ExpectStatus",
+          "description": "The outcome."
+        },
+        "expected": {
+          "description": "What was expected."
+        },
+        "observed": {
+          "description": "What was there."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why it failed or was unchecked; empty on a pass."
+        }
+      },
+      "required": [
+        "tick",
+        "at",
+        "expect",
+        "kind",
+        "status",
+        "expected",
+        "observed",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "ExpectReport": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The expectations evaluated since the last call.",
+      "type": "object",
+      "properties": {
+        "passed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Those that held."
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Those that did not."
+        },
+        "unchecked": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Those that needed a renderer."
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExpectResult"
+          },
+          "description": "Each, in order."
+        }
+      },
+      "required": [
+        "passed",
+        "failed",
+        "unchecked",
+        "results"
+      ],
+      "additionalProperties": false
+    },
+    "SavedScene": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "A scene written back from the world.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick of the world it was written from."
+        },
+        "source": {
+          "type": "string",
+          "description": "The scene's source, project-relative."
+        },
+        "written": {
+          "type": "string",
+          "description": "Where it was written; empty when only returned."
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "The 1-based lines of the new text that changed or were added."
+        },
+        "text": {
+          "type": "string",
+          "description": "The new text."
+        }
+      },
+      "required": [
+        "tick",
+        "source",
+        "written",
+        "lines",
+        "text"
+      ],
+      "additionalProperties": false
     },
     "TerrainData": {
       "x-og-kind": "handle",

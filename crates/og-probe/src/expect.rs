@@ -604,7 +604,7 @@ impl Probe {
                 tolerance,
             } => {
                 r.expected = json!({"color": format!("#{:02x}{:02x}{:02x}", color[0], color[1], color[2]), "tolerance": tolerance});
-                let Some(image) = self.frame_rgba(world, &mut r) else {
+                let Some(image) = self.expect_frame(world, &mut r) else {
                     return Ok(self.record(r));
                 };
                 let scale = self.css_scale(world, &image);
@@ -715,7 +715,7 @@ impl Probe {
 
     /// The frame at the target's size, or `None` with the result marked
     /// unchecked (no renderer) or failed (no frame).
-    fn frame_rgba(&mut self, world: &World, r: &mut ExpectResult) -> Option<Rgba> {
+    fn expect_frame(&mut self, world: &World, r: &mut ExpectResult) -> Option<Rgba> {
         self.frame_rgba_sized(world, r, 0, 0)
     }
 

@@ -10966,6 +10966,9 @@ module commands {
     variant resume "`resume`: release the clock."
     variant advance "`advance:<ticks>`: take fixed steps."
     variant quit "`quit`: exit."
+    variant describe "`describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, the UI elements with rects and text, the camera."
+    variant expect "`expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked."
+    variant save_scene "`save_scene[:path]`: write the boot scene's `.ogt` back from the world, only the lines whose values changed (comments and order kept) and the fields set or patch tuned; to the scene's source, or with a path to that file under the output directory."
     variant help "`help`: list every action the channel knows, core and registered."
   }
 
@@ -11093,6 +11096,16 @@ module probe {
     field frameMs f32 "step + render." {
       unit ms
     }
+    field systems List.ProbeTiming "The last tick's systems in run order, each with its milliseconds."
+    field passes List.ProbeTiming "The last rendered frame's render passes in the render graph's order, each with its milliseconds (CPU encode time; empty without a renderer)."
+  }
+
+  struct ProbeTiming {
+    doc "One named span of the last tick or frame."
+    field name String "A system's name, or a render pass's (`Main`, `Cascade0`, `Bloom`)."
+    field ms f32 "Its time." {
+      unit ms
+    }
   }
 
   struct ProbeState {
@@ -11126,6 +11139,11 @@ module probe {
     field id String "The probe id."
   }
 
+  struct ExpectOperation {
+    doc "The expect operation's payload."
+    field what String "The expectation, as after `expect:` in a script, such as `state:started==true`."
+  }
+
   union ProbeOperation {
     doc "One operation of a probe program, which runs in one evaluation so a scripted segment costs one round trip."
     tag op
@@ -11136,6 +11154,8 @@ module probe {
     case read "Read the state; answers `{ tick, state }`."
     case pick PickOperation "Pick a point; answers its result or null."
     case entity EntityOperation "Read an entity's parameters; null is a refusal."
+    case expect ExpectOperation "Evaluate an expectation; answers its ExpectResult, failed or not (a malformed one is a refusal)."
+    case describe "Describe the frame; answers its Description."
   }
 
   struct ProbeProgramResult {
@@ -11379,6 +11399,139 @@ module probe {
     case ui UiDump "The UI dump."
   }
 
+  struct ScreenBox {
+    doc "A box on the play surface."
+    field x f32 "Left edge." {
+      unit cssPx
+    }
+    field y f32 "Top edge." {
+      unit cssPx
+    }
+    field width f32 "Width." {
+      unit cssPx
+    }
+    field height f32 "Height." {
+      unit cssPx
+    }
+  }
+
+  struct ScreenPoint {
+    doc "A point on the play surface."
+    field x f32 "Horizontal position." {
+      unit cssPx
+    }
+    field y f32 "Vertical position." {
+      unit cssPx
+    }
+  }
+
+  struct DescribedEntity {
+    doc "One entity the frame shows, from the entity-id pass (a CPU rasterisation of the frame's meshes, skinned meshes and world sprites at a quarter of its pixels)."
+    field id String "Its probe id."
+    field name Option.String "Its name."
+    field order u32 "Its depth order: 0 is the nearest."
+    field archetype List.String "Its components, by name."
+    field labels List.String "What draws it: `model` with its asset path, `mesh`, `skinned`, `sprite`."
+    field box ScreenBox "The box of its visible pixels."
+    field drawn ScreenBox "The box of what it covers with nothing in front of it."
+    field point ScreenPoint "A visible point nearest the box's centre: pick answers this entity there."
+    field depth f32 "From the camera to its nearest visible point, along the view." {
+      unit m
+    }
+    field coverage f32 "Its visible share of the surface." {
+      unit ratio
+    }
+    field occlusion f32 "The share of what it covers alone that something else hides." {
+      unit ratio
+    }
+  }
+
+  struct DescribedUi {
+    doc "One UI element as describe lists it (the tree dump_ui writes)."
+    field id String "Its id."
+    field parent String "Its parent's id."
+    field kind String "What made it."
+    field role String "Its accessibility role."
+    field text String "The text it shows."
+    field value String "Its value as text."
+    field states List.String "Its states."
+    field box ScreenBox "Its rect."
+  }
+
+  struct DescribedCamera {
+    doc "The camera as drawn, with its shake."
+    field position Array.f32.3 "Where it is."
+    field target Array.f32.3 "What it looks at."
+    field up Array.f32.3 "Its up."
+    field projection String "`perspective` or `orthographic`."
+    field fov Option.f32 "The vertical field of view (perspective)." {
+      unit deg
+    }
+    field height Option.f32 "The height in view (orthographic)." {
+      unit m
+    }
+    field near f32 "The near plane." {
+      unit m
+    }
+    field far f32 "The far plane." {
+      unit m
+    }
+  }
+
+  struct PassSize {
+    doc "The entity-id pass's size."
+    field width u32 "Width in pixels."
+    field height u32 "Height in pixels."
+  }
+
+  struct Description {
+    doc "The frame as data: deterministic, the same JSON on every host and backend for the same world."
+    field tick u32 "The tick."
+    field surface Option.UiSurface "The play surface."
+    field pass Option.PassSize "The entity-id pass; null without a scene."
+    field camera Option.DescribedCamera "The camera; null without a scene."
+    field entities List.DescribedEntity "The visible entities, nearest first."
+    field ui List.DescribedUi "The UI elements in draw order."
+  }
+
+  enum ExpectStatus {
+    doc "How an expectation came out."
+    variant pass "It held."
+    variant fail "It did not: the result carries the tick and the observed value."
+    variant unchecked "It reads a frame and the host has no renderer."
+  }
+
+  struct ExpectResult {
+    doc "One evaluated expectation."
+    field tick u32 "The tick it was evaluated at."
+    field at Option.f32 "The script step's time, when a script ran it." {
+      unit s
+    }
+    field expect String "As written after `expect:`."
+    field kind String "`entity`, `event`, `ui`, `region`, `frame` or `state`."
+    field status ExpectStatus "The outcome."
+    field expected Json "What was expected."
+    field observed Json "What was there."
+    field reason String "Why it failed or was unchecked; empty on a pass."
+  }
+
+  struct ExpectReport {
+    doc "The expectations evaluated since the last call."
+    field passed u32 "Those that held."
+    field failed u32 "Those that did not."
+    field unchecked u32 "Those that needed a renderer."
+    field results List.ExpectResult "Each, in order."
+  }
+
+  struct SavedScene {
+    doc "A scene written back from the world."
+    field tick u32 "The tick of the world it was written from."
+    field source String "The scene's source, project-relative."
+    field written String "Where it was written; empty when only returned."
+    field lines List.u32 "The 1-based lines of the new text that changed or were added."
+    field text String "The new text."
+  }
+
   interface RuntimeProbe {
     doc "RuntimeProbe protocol 5, member for member. Every member answers synchronously with JSON-serialisable values."
     publish false
@@ -11516,6 +11669,26 @@ module probe {
     fn memory {
       doc "What the engine holds: the wasm linear memory on the web or the process's resident memory natively, the engine's counted heap, the world's entities, the streaming budget and the audio bank, in the same shape on both hosts."
       returns Option.ProbeMemory "Null from a host that gives no figures."
+    }
+    fn describe {
+      doc "The frame of the current tick as data: the visible entities with screen boxes, depth order and occlusion from the entity-id pass, their names, archetypes and labels; the UI elements with rects and text; the camera. Answers without a renderer too (the pass runs on the CPU)."
+      returns Description
+    }
+    fn expect {
+      doc "Evaluate one expectation now (the forms of the command channel's `expect:`); the result is also kept for expectations()."
+      param what String "The expectation, such as `entity:crate:within:0,0.4,-1,1,0.6,1`."
+      returns ExpectResult "A malformed expectation is a malformed call."
+    }
+    fn expectations {
+      doc "Every expectation evaluated since the last call (scripts' `expect:` steps, programs, expect()), and the counts."
+      returns ExpectReport
+    }
+    fn saveScene {
+      doc "Write the boot scene back from the world: its entities' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order. The probe writes the file only with write; otherwise the text is returned."
+      param write bool "Replace the scene's source file." {
+        default false
+      }
+      returns Option.SavedScene "Null without a scene to write back (the reason is in the log)."
     }
   }
 }

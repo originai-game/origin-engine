@@ -14022,6 +14022,67 @@
     },
     {
       "id": 310,
+      "kind": "method",
+      "path": "EngineProbe.describe",
+      "symbol": "og_engine_probe_describe",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "describe",
+      "params": [],
+      "returns": "Description",
+      "publish": false
+    },
+    {
+      "id": 311,
+      "kind": "method",
+      "path": "EngineProbe.expect",
+      "symbol": "og_engine_probe_expect",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "expect",
+      "params": [
+        {
+          "name": "what",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "ExpectResult",
+      "publish": false
+    },
+    {
+      "id": 312,
+      "kind": "method",
+      "path": "EngineProbe.expectations",
+      "symbol": "og_engine_probe_expectations",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "expectations",
+      "params": [],
+      "returns": "ExpectReport",
+      "publish": false
+    },
+    {
+      "id": 313,
+      "kind": "method",
+      "path": "EngineProbe.saveScene",
+      "symbol": "og_engine_probe_save_scene",
+      "module": "probe",
+      "owner": "EngineProbe",
+      "name": "saveScene",
+      "params": [
+        {
+          "name": "write",
+          "type": "bool",
+          "optional": true,
+          "default": false
+        }
+      ],
+      "returns": "Option<SavedScene>",
+      "publish": false
+    },
+    {
+      "id": 314,
       "kind": "fn",
       "path": "og.terrain.load",
       "symbol": "og_terrain_load",
@@ -14043,7 +14104,7 @@
       "publish": true
     },
     {
-      "id": 311,
+      "id": 315,
       "kind": "fn",
       "path": "og.terrain.sample",
       "symbol": "og_terrain_sample",
@@ -14065,7 +14126,7 @@
       "publish": true
     },
     {
-      "id": 312,
+      "id": 316,
       "kind": "fn",
       "path": "og.terrain.bounds",
       "symbol": "og_terrain_bounds",
@@ -14102,7 +14163,7 @@
       "publish": true
     },
     {
-      "id": 313,
+      "id": 317,
       "kind": "fn",
       "path": "og.terrain.edit",
       "symbol": "og_terrain_edit",
@@ -14129,7 +14190,7 @@
       "publish": true
     },
     {
-      "id": 314,
+      "id": 318,
       "kind": "fn",
       "path": "og.terrain.layer",
       "symbol": "og_terrain_layer",
@@ -14156,7 +14217,7 @@
       "publish": true
     },
     {
-      "id": 315,
+      "id": 319,
       "kind": "fn",
       "path": "og.terrain.setLayer",
       "symbol": "og_terrain_set_layer",
@@ -14188,7 +14249,7 @@
       "publish": true
     },
     {
-      "id": 316,
+      "id": 320,
       "kind": "fn",
       "path": "og.stream.status",
       "symbol": "og_stream_status",
@@ -14210,7 +14271,7 @@
       "publish": true
     },
     {
-      "id": 317,
+      "id": 321,
       "kind": "fn",
       "path": "og.stream.request",
       "symbol": "og_stream_request",
@@ -14232,7 +14293,7 @@
       "publish": true
     },
     {
-      "id": 318,
+      "id": 322,
       "kind": "fn",
       "path": "og.stream.release",
       "symbol": "og_stream_release",
@@ -14254,7 +14315,7 @@
       "publish": true
     },
     {
-      "id": 319,
+      "id": 323,
       "kind": "fn",
       "path": "og.stream.budget",
       "symbol": "og_stream_budget",
@@ -14271,7 +14332,7 @@
       "publish": true
     },
     {
-      "id": 320,
+      "id": 324,
       "kind": "fn",
       "path": "og.stream.setBudget",
       "symbol": "og_stream_set_budget",
@@ -14293,7 +14354,7 @@
       "publish": true
     },
     {
-      "id": 321,
+      "id": 325,
       "kind": "fn",
       "path": "og.debug.line",
       "symbol": "og_debug_line",
@@ -14325,7 +14386,7 @@
       "publish": false
     },
     {
-      "id": 322,
+      "id": 326,
       "kind": "fn",
       "path": "og.debug.box",
       "symbol": "og_debug_box",
@@ -14357,7 +14418,7 @@
       "publish": false
     },
     {
-      "id": 323,
+      "id": 327,
       "kind": "fn",
       "path": "og.debug.sphere",
       "symbol": "og_debug_sphere",
@@ -14389,7 +14450,7 @@
       "publish": false
     },
     {
-      "id": 324,
+      "id": 328,
       "kind": "fn",
       "path": "og.debug.arrow",
       "symbol": "og_debug_arrow",
@@ -14421,7 +14482,7 @@
       "publish": false
     },
     {
-      "id": 325,
+      "id": 329,
       "kind": "fn",
       "path": "og.debug.axes",
       "symbol": "og_debug_axes",
@@ -14453,7 +14514,7 @@
       "publish": false
     },
     {
-      "id": 326,
+      "id": 330,
       "kind": "fn",
       "path": "og.debug.text",
       "symbol": "og_debug_text",
@@ -14485,7 +14546,7 @@
       "publish": false
     },
     {
-      "id": 327,
+      "id": 331,
       "kind": "fn",
       "path": "og.debug.clear",
       "symbol": "og_debug_clear",
@@ -14502,7 +14563,7 @@
       "publish": false
     },
     {
-      "id": 328,
+      "id": 332,
       "kind": "fn",
       "path": "og.debug.setView",
       "symbol": "og_debug_set_view",
@@ -14524,7 +14585,7 @@
       "publish": false
     },
     {
-      "id": 329,
+      "id": 333,
       "kind": "fn",
       "path": "og.debug.view",
       "symbol": "og_debug_view",
@@ -14541,7 +14602,7 @@
       "publish": false
     },
     {
-      "id": 330,
+      "id": 334,
       "kind": "fn",
       "path": "og.debug.setEnabled",
       "symbol": "og_debug_set_enabled",
@@ -14563,7 +14624,7 @@
       "publish": false
     },
     {
-      "id": 331,
+      "id": 335,
       "kind": "fn",
       "path": "og.debug.enabled",
       "symbol": "og_debug_enabled",
@@ -14580,7 +14641,7 @@
       "publish": false
     },
     {
-      "id": 332,
+      "id": 336,
       "kind": "fn",
       "path": "og.path.create",
       "symbol": "og_path_create",
@@ -14602,7 +14663,7 @@
       "publish": true
     },
     {
-      "id": 333,
+      "id": 337,
       "kind": "fn",
       "path": "og.path.find",
       "symbol": "og_path_find",
@@ -14624,7 +14685,7 @@
       "publish": true
     },
     {
-      "id": 334,
+      "id": 338,
       "kind": "fn",
       "path": "og.path.sample",
       "symbol": "og_path_sample",
@@ -14651,7 +14712,7 @@
       "publish": true
     },
     {
-      "id": 335,
+      "id": 339,
       "kind": "fn",
       "path": "og.path.length",
       "symbol": "og_path_length",
@@ -14673,7 +14734,7 @@
       "publish": true
     },
     {
-      "id": 336,
+      "id": 340,
       "kind": "fn",
       "path": "og.path.nearest",
       "symbol": "og_path_nearest",
@@ -14700,7 +14761,7 @@
       "publish": true
     },
     {
-      "id": 337,
+      "id": 341,
       "kind": "fn",
       "path": "og.timeline.info",
       "symbol": "og_timeline_info",
@@ -14722,7 +14783,7 @@
       "publish": true
     },
     {
-      "id": 338,
+      "id": 342,
       "kind": "fn",
       "path": "og.timeline.play",
       "symbol": "og_timeline_play",
@@ -14744,7 +14805,7 @@
       "publish": true
     },
     {
-      "id": 339,
+      "id": 343,
       "kind": "fn",
       "path": "og.timeline.pause",
       "symbol": "og_timeline_pause",
@@ -14766,7 +14827,7 @@
       "publish": true
     },
     {
-      "id": 340,
+      "id": 344,
       "kind": "fn",
       "path": "og.timeline.seek",
       "symbol": "og_timeline_seek",
@@ -14793,7 +14854,7 @@
       "publish": true
     },
     {
-      "id": 341,
+      "id": 345,
       "kind": "fn",
       "path": "og.timeline.stop",
       "symbol": "og_timeline_stop",

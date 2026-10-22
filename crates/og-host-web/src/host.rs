@@ -1002,4 +1002,20 @@ impl ProbeApi for WebHost {
     fn og_engine_probe_memory(&self, engine_probe: u32) -> String {
         rt::og_engine_probe_memory(engine_probe)
     }
+
+    fn og_engine_probe_describe(&self, engine_probe: u32) -> String {
+        rt::og_engine_probe_describe(engine_probe)
+    }
+
+    fn og_engine_probe_expect(&self, engine_probe: u32, what: String) -> String {
+        rt::og_engine_probe_expect(engine_probe, what)
+    }
+
+    fn og_engine_probe_expectations(&self, engine_probe: u32) -> String {
+        rt::og_engine_probe_expectations(engine_probe)
+    }
+
+    fn og_engine_probe_save_scene(&self, engine_probe: u32, write: Option<bool>) -> String {
+        rt::og_engine_probe_save_scene(engine_probe, write)
+    }
 }

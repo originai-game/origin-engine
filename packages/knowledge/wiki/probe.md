@@ -20,7 +20,7 @@ module probe {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 11039</sub>
+<sub>`api.ogt` line 11042</sub>
 
 ## Contents
 
@@ -36,11 +36,13 @@ module probe {
 | [`ProbeTunable`](#type-ProbeTunable) | struct | One published tunable parameter and the range it means something over. |
 | [`ProbeEntityRef`](#type-ProbeEntityRef) | struct | One entity the probe publishes in state(). |
 | [`ProbeTimings`](#type-ProbeTimings) | struct | The fixed timings head of state(). |
+| [`ProbeTiming`](#type-ProbeTiming) | struct | One named span of the last tick or frame. |
 | [`ProbeState`](#type-ProbeState) | struct | The probe's state(): a fixed head, then the game's own facts. |
 | [`AdvanceOperation`](#type-AdvanceOperation) | struct | The advance operation's payload. |
 | [`InputOperation`](#type-InputOperation) | struct | The input operation's payload. |
 | [`PickOperation`](#type-PickOperation) | struct | The pick operation's payload. |
 | [`EntityOperation`](#type-EntityOperation) | struct | The entity operation's payload. |
+| [`ExpectOperation`](#type-ExpectOperation) | struct | The expect operation's payload. |
 | [`ProbeOperation`](#type-ProbeOperation) | union | One operation of a probe program, which runs in one evaluation so a scripted segment costs one round trip. |
 | [`ProbeProgramResult`](#type-ProbeProgramResult) | struct | What a program observed: one answer per operation that ran. A false, or entity's null, stops the program and `refused` names its index. |
 | [`Hello`](#type-Hello) | struct | The wire's hello: who is speaking. |
@@ -66,6 +68,17 @@ module probe {
 | [`UiSurface`](#type-UiSurface) | struct | The surface UI bounds are laid out on. |
 | [`UiDump`](#type-UiDump) | struct | The UI tree, flattened in draw order. |
 | [`DumpResult`](#type-DumpResult) | union | A dump, tagged by its kind. |
+| [`ScreenBox`](#type-ScreenBox) | struct | A box on the play surface. |
+| [`ScreenPoint`](#type-ScreenPoint) | struct | A point on the play surface. |
+| [`DescribedEntity`](#type-DescribedEntity) | struct | One entity the frame shows, from the entity-id pass (a CPU rasterisation of the frame's meshes, skinned meshes and world sprites at a quarter of its pixels). |
+| [`DescribedUi`](#type-DescribedUi) | struct | One UI element as describe lists it (the tree dump_ui writes). |
+| [`DescribedCamera`](#type-DescribedCamera) | struct | The camera as drawn, with its shake. |
+| [`PassSize`](#type-PassSize) | struct | The entity-id pass's size. |
+| [`Description`](#type-Description) | struct | The frame as data: deterministic, the same JSON on every host and backend for the same world. |
+| [`ExpectStatus`](#type-ExpectStatus) | enum | How an expectation came out. |
+| [`ExpectResult`](#type-ExpectResult) | struct | One evaluated expectation. |
+| [`ExpectReport`](#type-ExpectReport) | struct | The expectations evaluated since the last call. |
+| [`SavedScene`](#type-SavedScene) | struct | A scene written back from the world. |
 | [`RuntimeProbe`](#type-RuntimeProbe) | interface | RuntimeProbe protocol 5, member for member. Every member answers synchronously with JSON-serialisable values. |
 | [`EngineProbe`](#type-EngineProbe) | interface | The engine's probe: protocol 5 plus the wire members of the loopback WebSocket and the in-page request ring. |
 
@@ -84,7 +97,7 @@ interface RuntimeProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 11382</sub>
+<sub>`api.ogt` line 11535</sub>
 
 <a id="member-RuntimeProbe-version"></a>
 
@@ -104,7 +117,7 @@ prop version u32 "PROBE_VERSION." {
 }
 ```
 
-<sub>`api.ogt` line 11386</sub>
+<sub>`api.ogt` line 11539</sub>
 
 <a id="member-RuntimeProbe-tick"></a>
 
@@ -128,7 +141,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 11389</sub>
+<sub>`api.ogt` line 11542</sub>
 
 <a id="member-RuntimeProbe-state"></a>
 
@@ -152,7 +165,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 11394</sub>
+<sub>`api.ogt` line 11547</sub>
 
 <a id="member-RuntimeProbe-advance"></a>
 
@@ -180,7 +193,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 11399</sub>
+<sub>`api.ogt` line 11552</sub>
 
 <a id="member-RuntimeProbe-pause"></a>
 
@@ -203,7 +216,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 11404</sub>
+<sub>`api.ogt` line 11557</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -226,7 +239,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 11408</sub>
+<sub>`api.ogt` line 11561</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -255,7 +268,7 @@ fn input {
 }
 ```
 
-<sub>`api.ogt` line 11412</sub>
+<sub>`api.ogt` line 11565</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -278,7 +291,7 @@ fn accepted {
 }
 ```
 
-<sub>`api.ogt` line 11418</sub>
+<sub>`api.ogt` line 11571</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
@@ -309,7 +322,7 @@ fn pick {
 }
 ```
 
-<sub>`api.ogt` line 11422</sub>
+<sub>`api.ogt` line 11575</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -338,7 +351,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 11429</sub>
+<sub>`api.ogt` line 11582</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
@@ -366,7 +379,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 11435</sub>
+<sub>`api.ogt` line 11588</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -398,7 +411,7 @@ fn patch {
 }
 ```
 
-<sub>`api.ogt` line 11440</sub>
+<sub>`api.ogt` line 11593</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -426,7 +439,7 @@ fn run {
 }
 ```
 
-<sub>`api.ogt` line 11447</sub>
+<sub>`api.ogt` line 11600</sub>
 
 <a id="type-EngineProbe"></a>
 
@@ -444,7 +457,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 11454</sub>
+<sub>`api.ogt` line 11607</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -468,7 +481,7 @@ fn hello {
 }
 ```
 
-<sub>`api.ogt` line 11459</sub>
+<sub>`api.ogt` line 11612</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -509,7 +522,7 @@ fn capture {
 }
 ```
 
-<sub>`api.ogt` line 11464</sub>
+<sub>`api.ogt` line 11617</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -539,7 +552,7 @@ fn sweep {
 }
 ```
 
-<sub>`api.ogt` line 11477</sub>
+<sub>`api.ogt` line 11630</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -562,7 +575,7 @@ fn reload {
 }
 ```
 
-<sub>`api.ogt` line 11484</sub>
+<sub>`api.ogt` line 11637</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -585,7 +598,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 11488</sub>
+<sub>`api.ogt` line 11641</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -613,7 +626,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 11492</sub>
+<sub>`api.ogt` line 11645</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -643,7 +656,7 @@ fn dump {
 }
 ```
 
-<sub>`api.ogt` line 11497</sub>
+<sub>`api.ogt` line 11650</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -671,7 +684,7 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 11504</sub>
+<sub>`api.ogt` line 11657</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -701,7 +714,7 @@ fn listen {
 }
 ```
 
-<sub>`api.ogt` line 11509</sub>
+<sub>`api.ogt` line 11662</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -724,7 +737,111 @@ fn memory {
 }
 ```
 
-<sub>`api.ogt` line 11516</sub>
+<sub>`api.ogt` line 11669</sub>
+
+<a id="member-EngineProbe-describe"></a>
+
+#### `EngineProbe.describe`
+
+The frame of the current tick as data: the visible entities with screen boxes, depth order and occlusion from the entity-id pass, their names, archetypes and labels; the UI elements with rects and text; the camera. Answers without a renderer too (the pass runs on the CPU).
+
+```ts
+EngineProbe.describe(): Description
+```
+
+**Returns** `Description`.
+
+Binding symbol `og_engine_probe_describe` · publish builds: dropped
+
+```ogt
+fn describe {
+  doc "The frame of the current tick as data: the visible entities with screen boxes, depth order and occlusion from the entity-id pass, their names, archetypes and labels; the UI elements with rects and text; the camera. Answers without a renderer too (the pass runs on the CPU)."
+  returns Description
+}
+```
+
+<sub>`api.ogt` line 11673</sub>
+
+<a id="member-EngineProbe-expect"></a>
+
+#### `EngineProbe.expect`
+
+Evaluate one expectation now (the forms of the command channel's `expect:`); the result is also kept for expectations().
+
+```ts
+EngineProbe.expect(what: string): ExpectResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `what` | `string` | no | The expectation, such as `entity:crate:within:0,0.4,-1,1,0.6,1`. |
+
+**Returns** `ExpectResult`: A malformed expectation is a malformed call.
+
+Binding symbol `og_engine_probe_expect` · publish builds: dropped
+
+```ogt
+fn expect {
+  doc "Evaluate one expectation now (the forms of the command channel's `expect:`); the result is also kept for expectations()."
+  param what String "The expectation, such as `entity:crate:within:0,0.4,-1,1,0.6,1`."
+  returns ExpectResult "A malformed expectation is a malformed call."
+}
+```
+
+<sub>`api.ogt` line 11677</sub>
+
+<a id="member-EngineProbe-expectations"></a>
+
+#### `EngineProbe.expectations`
+
+Every expectation evaluated since the last call (scripts' `expect:` steps, programs, expect()), and the counts.
+
+```ts
+EngineProbe.expectations(): ExpectReport
+```
+
+**Returns** `ExpectReport`.
+
+Binding symbol `og_engine_probe_expectations` · publish builds: dropped
+
+```ogt
+fn expectations {
+  doc "Every expectation evaluated since the last call (scripts' `expect:` steps, programs, expect()), and the counts."
+  returns ExpectReport
+}
+```
+
+<sub>`api.ogt` line 11682</sub>
+
+<a id="member-EngineProbe-saveScene"></a>
+
+#### `EngineProbe.saveScene`
+
+Write the boot scene back from the world: its entities' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order. The probe writes the file only with write; otherwise the text is returned.
+
+```ts
+EngineProbe.saveScene(write?: boolean): SavedScene | null
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `write` | `boolean` | yes | Replace the scene's source file. Default `false`. |
+
+**Returns** `SavedScene | null`: Null without a scene to write back (the reason is in the log).
+
+Binding symbol `og_engine_probe_save_scene` · publish builds: dropped
+
+```ogt
+fn saveScene {
+  doc "Write the boot scene back from the world: its entities' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order. The probe writes the file only with write; otherwise the text is returned."
+  param write bool "Replace the scene's source file." {
+    default false
+  }
+  returns Option.SavedScene "Null without a scene to write back (the reason is in the log)."
+}
+```
+
+<sub>`api.ogt` line 11686</sub>
 
 ## Types
 
@@ -749,7 +866,7 @@ struct PickResult {
 }
 ```
 
-<sub>`api.ogt` line 11053</sub>
+<sub>`api.ogt` line 11056</sub>
 
 <a id="type-ProbeTunable"></a>
 
@@ -784,7 +901,7 @@ struct ProbeTunable {
 }
 ```
 
-<sub>`api.ogt` line 11060</sub>
+<sub>`api.ogt` line 11063</sub>
 
 <a id="type-ProbeEntityRef"></a>
 
@@ -807,7 +924,7 @@ struct ProbeEntityRef {
 }
 ```
 
-<sub>`api.ogt` line 11077</sub>
+<sub>`api.ogt` line 11080</sub>
 
 <a id="type-ProbeTimings"></a>
 
@@ -820,6 +937,8 @@ The fixed timings head of state().
 | `step` | `number` | `0` | — | `ms` | — | Time the last tick took. |
 | `render` | `number` | `0` | — | `ms` | — | Time the last frame's render took; 0 without a renderer. |
 | `frameMs` | `number` | `0` | — | `ms` | — | step + render. |
+| `systems` | `readonly ProbeTiming[]` | `[]` | — | — | — | The last tick's systems in run order, each with its milliseconds. |
+| `passes` | `readonly ProbeTiming[]` | `[]` | — | — | — | The last rendered frame's render passes in the render graph's order, each with its milliseconds (CPU encode time; empty without a renderer). |
 
 ```ogt
 struct ProbeTimings {
@@ -833,10 +952,35 @@ struct ProbeTimings {
   field frameMs f32 "step + render." {
     unit ms
   }
+  field systems List.ProbeTiming "The last tick's systems in run order, each with its milliseconds."
+  field passes List.ProbeTiming "The last rendered frame's render passes in the render graph's order, each with its milliseconds (CPU encode time; empty without a renderer)."
 }
 ```
 
-<sub>`api.ogt` line 11085</sub>
+<sub>`api.ogt` line 11088</sub>
+
+<a id="type-ProbeTiming"></a>
+
+### `ProbeTiming` (struct)
+
+One named span of the last tick or frame.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `name` | `string` | `""` | — | — | — | A system's name, or a render pass's (`Main`, `Cascade0`, `Bloom`). |
+| `ms` | `number` | `0` | — | `ms` | — | Its time. |
+
+```ogt
+struct ProbeTiming {
+  doc "One named span of the last tick or frame."
+  field name String "A system's name, or a render pass's (`Main`, `Cascade0`, `Bloom`)."
+  field ms f32 "Its time." {
+    unit ms
+  }
+}
+```
+
+<sub>`api.ogt` line 11103</sub>
 
 <a id="type-ProbeState"></a>
 
@@ -849,7 +993,7 @@ The probe's state(): a fixed head, then the game's own facts.
 | `tick` | `number` | `0` | — | — | — | Fixed steps since load. |
 | `paused` | `boolean` | `false` | — | — | — | Whether the clock is held. |
 | `seed` | `number` | `0` | — | — | — | The seed the world was assembled from. |
-| `timings` | `ProbeTimings` | `{ step: 0, render: 0, frameMs: 0 }` | — | — | — | The last tick's timings. |
+| `timings` | `ProbeTimings` | `{ step: 0, render: 0, frameMs: 0, systems: [], passes: [] }` | — | — | — | The last tick's timings. |
 | `entities` | `readonly ProbeEntityRef[]` | `[]` | — | — | — | The named entities. |
 | `facts` | `unknown` | `null` | — | — | — | What GameDesc.facts returned, or null. |
 
@@ -865,7 +1009,7 @@ struct ProbeState {
 }
 ```
 
-<sub>`api.ogt` line 11098</sub>
+<sub>`api.ogt` line 11111</sub>
 
 <a id="type-AdvanceOperation"></a>
 
@@ -884,7 +1028,7 @@ struct AdvanceOperation {
 }
 ```
 
-<sub>`api.ogt` line 11108</sub>
+<sub>`api.ogt` line 11121</sub>
 
 <a id="type-InputOperation"></a>
 
@@ -903,7 +1047,7 @@ struct InputOperation {
 }
 ```
 
-<sub>`api.ogt` line 11113</sub>
+<sub>`api.ogt` line 11126</sub>
 
 <a id="type-PickOperation"></a>
 
@@ -924,7 +1068,7 @@ struct PickOperation {
 }
 ```
 
-<sub>`api.ogt` line 11118</sub>
+<sub>`api.ogt` line 11131</sub>
 
 <a id="type-EntityOperation"></a>
 
@@ -943,7 +1087,26 @@ struct EntityOperation {
 }
 ```
 
-<sub>`api.ogt` line 11124</sub>
+<sub>`api.ogt` line 11137</sub>
+
+<a id="type-ExpectOperation"></a>
+
+### `ExpectOperation` (struct)
+
+The expect operation's payload.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `what` | `string` | `""` | — | — | — | The expectation, as after `expect:` in a script, such as `state:started==true`. |
+
+```ogt
+struct ExpectOperation {
+  doc "The expect operation's payload."
+  field what String "The expectation, as after `expect:` in a script, such as `state:started==true`."
+}
+```
+
+<sub>`api.ogt` line 11142</sub>
 
 <a id="type-ProbeOperation"></a>
 
@@ -962,6 +1125,8 @@ Tagged by `op`.
 | `op: "read"` | — | Read the state; answers `{ tick, state }`. |
 | `op: "pick"` | [`PickOperation`](#type-PickOperation) | Pick a point; answers its result or null. |
 | `op: "entity"` | [`EntityOperation`](#type-EntityOperation) | Read an entity's parameters; null is a refusal. |
+| `op: "expect"` | [`ExpectOperation`](#type-ExpectOperation) | Evaluate an expectation; answers its ExpectResult, failed or not (a malformed one is a refusal). |
+| `op: "describe"` | — | Describe the frame; answers its Description. |
 
 ```ogt
 union ProbeOperation {
@@ -974,10 +1139,12 @@ union ProbeOperation {
   case read "Read the state; answers `{ tick, state }`."
   case pick PickOperation "Pick a point; answers its result or null."
   case entity EntityOperation "Read an entity's parameters; null is a refusal."
+  case expect ExpectOperation "Evaluate an expectation; answers its ExpectResult, failed or not (a malformed one is a refusal)."
+  case describe "Describe the frame; answers its Description."
 }
 ```
 
-<sub>`api.ogt` line 11129</sub>
+<sub>`api.ogt` line 11147</sub>
 
 <a id="type-ProbeProgramResult"></a>
 
@@ -1000,7 +1167,7 @@ struct ProbeProgramResult {
 }
 ```
 
-<sub>`api.ogt` line 11141</sub>
+<sub>`api.ogt` line 11161</sub>
 
 <a id="type-Hello"></a>
 
@@ -1037,7 +1204,7 @@ struct Hello {
 }
 ```
 
-<sub>`api.ogt` line 11148</sub>
+<sub>`api.ogt` line 11168</sub>
 
 <a id="type-BuildProfile"></a>
 
@@ -1062,7 +1229,7 @@ enum BuildProfile {
 }
 ```
 
-<sub>`api.ogt` line 11163</sub>
+<sub>`api.ogt` line 11183</sub>
 
 <a id="type-Capture"></a>
 
@@ -1087,7 +1254,7 @@ struct Capture {
 }
 ```
 
-<sub>`api.ogt` line 11170</sub>
+<sub>`api.ogt` line 11190</sub>
 
 <a id="type-Heard"></a>
 
@@ -1118,7 +1285,7 @@ struct Heard {
 }
 ```
 
-<sub>`api.ogt` line 11178</sub>
+<sub>`api.ogt` line 11198</sub>
 
 <a id="type-ProbeHeap"></a>
 
@@ -1145,7 +1312,7 @@ struct ProbeHeap {
 }
 ```
 
-<sub>`api.ogt` line 11190</sub>
+<sub>`api.ogt` line 11210</sub>
 
 <a id="type-ProbeWorldMemory"></a>
 
@@ -1164,7 +1331,7 @@ struct ProbeWorldMemory {
 }
 ```
 
-<sub>`api.ogt` line 11201</sub>
+<sub>`api.ogt` line 11221</sub>
 
 <a id="type-ProbeStreamMemory"></a>
 
@@ -1193,7 +1360,7 @@ struct ProbeStreamMemory {
 }
 ```
 
-<sub>`api.ogt` line 11206</sub>
+<sub>`api.ogt` line 11226</sub>
 
 <a id="type-ProbeMemory"></a>
 
@@ -1230,7 +1397,7 @@ struct ProbeMemory {
 }
 ```
 
-<sub>`api.ogt` line 11219</sub>
+<sub>`api.ogt` line 11239</sub>
 
 <a id="type-SweepDesc"></a>
 
@@ -1262,7 +1429,7 @@ struct SweepDesc {
 }
 ```
 
-<sub>`api.ogt` line 11236</sub>
+<sub>`api.ogt` line 11256</sub>
 
 <a id="type-SweepFrame"></a>
 
@@ -1285,7 +1452,7 @@ struct SweepFrame {
 }
 ```
 
-<sub>`api.ogt` line 11247</sub>
+<sub>`api.ogt` line 11267</sub>
 
 <a id="type-SweepResult"></a>
 
@@ -1304,7 +1471,7 @@ struct SweepResult {
 }
 ```
 
-<sub>`api.ogt` line 11254</sub>
+<sub>`api.ogt` line 11274</sub>
 
 <a id="type-ReloadReport"></a>
 
@@ -1333,7 +1500,7 @@ struct ReloadReport {
 }
 ```
 
-<sub>`api.ogt` line 11259</sub>
+<sub>`api.ogt` line 11279</sub>
 
 <a id="type-SnapshotInfo"></a>
 
@@ -1360,7 +1527,7 @@ struct SnapshotInfo {
 }
 ```
 
-<sub>`api.ogt` line 11270</sub>
+<sub>`api.ogt` line 11290</sub>
 
 <a id="type-DumpKind"></a>
 
@@ -1385,7 +1552,7 @@ enum DumpKind {
 }
 ```
 
-<sub>`api.ogt` line 11280</sub>
+<sub>`api.ogt` line 11300</sub>
 
 <a id="type-DumpDesc"></a>
 
@@ -1409,7 +1576,7 @@ struct DumpDesc {
 }
 ```
 
-<sub>`api.ogt` line 11287</sub>
+<sub>`api.ogt` line 11307</sub>
 
 <a id="type-ArchetypeDump"></a>
 
@@ -1430,7 +1597,7 @@ struct ArchetypeDump {
 }
 ```
 
-<sub>`api.ogt` line 11294</sub>
+<sub>`api.ogt` line 11314</sub>
 
 <a id="type-SystemDump"></a>
 
@@ -1459,7 +1626,7 @@ struct SystemDump {
 }
 ```
 
-<sub>`api.ogt` line 11300</sub>
+<sub>`api.ogt` line 11320</sub>
 
 <a id="type-WorldDump"></a>
 
@@ -1488,7 +1655,7 @@ struct WorldDump {
 }
 ```
 
-<sub>`api.ogt` line 11311</sub>
+<sub>`api.ogt` line 11331</sub>
 
 <a id="type-EntityDump"></a>
 
@@ -1511,7 +1678,7 @@ struct EntityDump {
 }
 ```
 
-<sub>`api.ogt` line 11321</sub>
+<sub>`api.ogt` line 11341</sub>
 
 <a id="type-UiElement"></a>
 
@@ -1564,7 +1731,7 @@ struct UiElement {
 }
 ```
 
-<sub>`api.ogt` line 11328</sub>
+<sub>`api.ogt` line 11348</sub>
 
 <a id="type-UiSurface"></a>
 
@@ -1593,7 +1760,7 @@ struct UiSurface {
 }
 ```
 
-<sub>`api.ogt` line 11354</sub>
+<sub>`api.ogt` line 11374</sub>
 
 <a id="type-UiDump"></a>
 
@@ -1616,7 +1783,7 @@ struct UiDump {
 }
 ```
 
-<sub>`api.ogt` line 11367</sub>
+<sub>`api.ogt` line 11387</sub>
 
 <a id="type-DumpResult"></a>
 
@@ -1642,7 +1809,346 @@ union DumpResult {
 }
 ```
 
-<sub>`api.ogt` line 11374</sub>
+<sub>`api.ogt` line 11394</sub>
+
+<a id="type-ScreenBox"></a>
+
+### `ScreenBox` (struct)
+
+A box on the play surface.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `x` | `number` | `0` | — | `cssPx` | — | Left edge. |
+| `y` | `number` | `0` | — | `cssPx` | — | Top edge. |
+| `width` | `number` | `0` | — | `cssPx` | — | Width. |
+| `height` | `number` | `0` | — | `cssPx` | — | Height. |
+
+```ogt
+struct ScreenBox {
+  doc "A box on the play surface."
+  field x f32 "Left edge." {
+    unit cssPx
+  }
+  field y f32 "Top edge." {
+    unit cssPx
+  }
+  field width f32 "Width." {
+    unit cssPx
+  }
+  field height f32 "Height." {
+    unit cssPx
+  }
+}
+```
+
+<sub>`api.ogt` line 11402</sub>
+
+<a id="type-ScreenPoint"></a>
+
+### `ScreenPoint` (struct)
+
+A point on the play surface.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `x` | `number` | `0` | — | `cssPx` | — | Horizontal position. |
+| `y` | `number` | `0` | — | `cssPx` | — | Vertical position. |
+
+```ogt
+struct ScreenPoint {
+  doc "A point on the play surface."
+  field x f32 "Horizontal position." {
+    unit cssPx
+  }
+  field y f32 "Vertical position." {
+    unit cssPx
+  }
+}
+```
+
+<sub>`api.ogt` line 11418</sub>
+
+<a id="type-DescribedEntity"></a>
+
+### `DescribedEntity` (struct)
+
+One entity the frame shows, from the entity-id pass (a CPU rasterisation of the frame's meshes, skinned meshes and world sprites at a quarter of its pixels).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `id` | `string` | `""` | — | — | — | Its probe id. |
+| `name` | `string \| null` | `null` | — | — | — | Its name. |
+| `order` | `number` | `0` | — | — | — | Its depth order: 0 is the nearest. |
+| `archetype` | `readonly string[]` | `[]` | — | — | — | Its components, by name. |
+| `labels` | `readonly string[]` | `[]` | — | — | — | What draws it: `model` with its asset path, `mesh`, `skinned`, `sprite`. |
+| `box` | `ScreenBox` | `{ x: 0, y: 0, width: 0, height: 0 }` | — | — | — | The box of its visible pixels. |
+| `drawn` | `ScreenBox` | `{ x: 0, y: 0, width: 0, height: 0 }` | — | — | — | The box of what it covers with nothing in front of it. |
+| `point` | `ScreenPoint` | `{ x: 0, y: 0 }` | — | — | — | A visible point nearest the box's centre: pick answers this entity there. |
+| `depth` | `number` | `0` | — | `m` | — | From the camera to its nearest visible point, along the view. |
+| `coverage` | `number` | `0` | — | `ratio` | — | Its visible share of the surface. |
+| `occlusion` | `number` | `0` | — | `ratio` | — | The share of what it covers alone that something else hides. |
+
+```ogt
+struct DescribedEntity {
+  doc "One entity the frame shows, from the entity-id pass (a CPU rasterisation of the frame's meshes, skinned meshes and world sprites at a quarter of its pixels)."
+  field id String "Its probe id."
+  field name Option.String "Its name."
+  field order u32 "Its depth order: 0 is the nearest."
+  field archetype List.String "Its components, by name."
+  field labels List.String "What draws it: `model` with its asset path, `mesh`, `skinned`, `sprite`."
+  field box ScreenBox "The box of its visible pixels."
+  field drawn ScreenBox "The box of what it covers with nothing in front of it."
+  field point ScreenPoint "A visible point nearest the box's centre: pick answers this entity there."
+  field depth f32 "From the camera to its nearest visible point, along the view." {
+    unit m
+  }
+  field coverage f32 "Its visible share of the surface." {
+    unit ratio
+  }
+  field occlusion f32 "The share of what it covers alone that something else hides." {
+    unit ratio
+  }
+}
+```
+
+<sub>`api.ogt` line 11428</sub>
+
+<a id="type-DescribedUi"></a>
+
+### `DescribedUi` (struct)
+
+One UI element as describe lists it (the tree dump_ui writes).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `id` | `string` | `""` | — | — | — | Its id. |
+| `parent` | `string` | `""` | — | — | — | Its parent's id. |
+| `kind` | `string` | `""` | — | — | — | What made it. |
+| `role` | `string` | `""` | — | — | — | Its accessibility role. |
+| `text` | `string` | `""` | — | — | — | The text it shows. |
+| `value` | `string` | `""` | — | — | — | Its value as text. |
+| `states` | `readonly string[]` | `[]` | — | — | — | Its states. |
+| `box` | `ScreenBox` | `{ x: 0, y: 0, width: 0, height: 0 }` | — | — | — | Its rect. |
+
+```ogt
+struct DescribedUi {
+  doc "One UI element as describe lists it (the tree dump_ui writes)."
+  field id String "Its id."
+  field parent String "Its parent's id."
+  field kind String "What made it."
+  field role String "Its accessibility role."
+  field text String "The text it shows."
+  field value String "Its value as text."
+  field states List.String "Its states."
+  field box ScreenBox "Its rect."
+}
+```
+
+<sub>`api.ogt` line 11449</sub>
+
+<a id="type-DescribedCamera"></a>
+
+### `DescribedCamera` (struct)
+
+The camera as drawn, with its shake.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `position` | `[number, number, number]` | `[0, 0, 0]` | — | — | — | Where it is. |
+| `target` | `[number, number, number]` | `[0, 0, 0]` | — | — | — | What it looks at. |
+| `up` | `[number, number, number]` | `[0, 0, 0]` | — | — | — | Its up. |
+| `projection` | `string` | `""` | — | — | — | `perspective` or `orthographic`. |
+| `fov` | `number \| null` | `null` | — | `deg` | — | The vertical field of view (perspective). |
+| `height` | `number \| null` | `null` | — | `m` | — | The height in view (orthographic). |
+| `near` | `number` | `0` | — | `m` | — | The near plane. |
+| `far` | `number` | `0` | — | `m` | — | The far plane. |
+
+```ogt
+struct DescribedCamera {
+  doc "The camera as drawn, with its shake."
+  field position Array.f32.3 "Where it is."
+  field target Array.f32.3 "What it looks at."
+  field up Array.f32.3 "Its up."
+  field projection String "`perspective` or `orthographic`."
+  field fov Option.f32 "The vertical field of view (perspective)." {
+    unit deg
+  }
+  field height Option.f32 "The height in view (orthographic)." {
+    unit m
+  }
+  field near f32 "The near plane." {
+    unit m
+  }
+  field far f32 "The far plane." {
+    unit m
+  }
+}
+```
+
+<sub>`api.ogt` line 11461</sub>
+
+<a id="type-PassSize"></a>
+
+### `PassSize` (struct)
+
+The entity-id pass's size.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `width` | `number` | `0` | — | — | — | Width in pixels. |
+| `height` | `number` | `0` | — | — | — | Height in pixels. |
+
+```ogt
+struct PassSize {
+  doc "The entity-id pass's size."
+  field width u32 "Width in pixels."
+  field height u32 "Height in pixels."
+}
+```
+
+<sub>`api.ogt` line 11481</sub>
+
+<a id="type-Description"></a>
+
+### `Description` (struct)
+
+The frame as data: deterministic, the same JSON on every host and backend for the same world.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `tick` | `number` | `0` | — | — | — | The tick. |
+| `surface` | `UiSurface \| null` | `null` | — | — | — | The play surface. |
+| `pass` | `PassSize \| null` | `null` | — | — | — | The entity-id pass; null without a scene. |
+| `camera` | `DescribedCamera \| null` | `null` | — | — | — | The camera; null without a scene. |
+| `entities` | `readonly DescribedEntity[]` | `[]` | — | — | — | The visible entities, nearest first. |
+| `ui` | `readonly DescribedUi[]` | `[]` | — | — | — | The UI elements in draw order. |
+
+```ogt
+struct Description {
+  doc "The frame as data: deterministic, the same JSON on every host and backend for the same world."
+  field tick u32 "The tick."
+  field surface Option.UiSurface "The play surface."
+  field pass Option.PassSize "The entity-id pass; null without a scene."
+  field camera Option.DescribedCamera "The camera; null without a scene."
+  field entities List.DescribedEntity "The visible entities, nearest first."
+  field ui List.DescribedUi "The UI elements in draw order."
+}
+```
+
+<sub>`api.ogt` line 11487</sub>
+
+<a id="type-ExpectStatus"></a>
+
+### `ExpectStatus` (enum)
+
+How an expectation came out.
+
+A string: one of the variants below. The zero value is `"pass"`.
+
+| Variant | Doc |
+|---|---|
+| `"pass"` | It held. |
+| `"fail"` | It did not: the result carries the tick and the observed value. |
+| `"unchecked"` | It reads a frame and the host has no renderer. |
+
+```ogt
+enum ExpectStatus {
+  doc "How an expectation came out."
+  variant pass "It held."
+  variant fail "It did not: the result carries the tick and the observed value."
+  variant unchecked "It reads a frame and the host has no renderer."
+}
+```
+
+<sub>`api.ogt` line 11497</sub>
+
+<a id="type-ExpectResult"></a>
+
+### `ExpectResult` (struct)
+
+One evaluated expectation.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `tick` | `number` | `0` | — | — | — | The tick it was evaluated at. |
+| `at` | `number \| null` | `null` | — | `s` | — | The script step's time, when a script ran it. |
+| `expect` | `string` | `""` | — | — | — | As written after `expect:`. |
+| `kind` | `string` | `""` | — | — | — | `entity`, `event`, `ui`, `region`, `frame` or `state`. |
+| `status` | `ExpectStatus` | `"pass"` | — | — | — | The outcome. |
+| `expected` | `unknown` | `null` | — | — | — | What was expected. |
+| `observed` | `unknown` | `null` | — | — | — | What was there. |
+| `reason` | `string` | `""` | — | — | — | Why it failed or was unchecked; empty on a pass. |
+
+```ogt
+struct ExpectResult {
+  doc "One evaluated expectation."
+  field tick u32 "The tick it was evaluated at."
+  field at Option.f32 "The script step's time, when a script ran it." {
+    unit s
+  }
+  field expect String "As written after `expect:`."
+  field kind String "`entity`, `event`, `ui`, `region`, `frame` or `state`."
+  field status ExpectStatus "The outcome."
+  field expected Json "What was expected."
+  field observed Json "What was there."
+  field reason String "Why it failed or was unchecked; empty on a pass."
+}
+```
+
+<sub>`api.ogt` line 11504</sub>
+
+<a id="type-ExpectReport"></a>
+
+### `ExpectReport` (struct)
+
+The expectations evaluated since the last call.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `passed` | `number` | `0` | — | — | — | Those that held. |
+| `failed` | `number` | `0` | — | — | — | Those that did not. |
+| `unchecked` | `number` | `0` | — | — | — | Those that needed a renderer. |
+| `results` | `readonly ExpectResult[]` | `[]` | — | — | — | Each, in order. |
+
+```ogt
+struct ExpectReport {
+  doc "The expectations evaluated since the last call."
+  field passed u32 "Those that held."
+  field failed u32 "Those that did not."
+  field unchecked u32 "Those that needed a renderer."
+  field results List.ExpectResult "Each, in order."
+}
+```
+
+<sub>`api.ogt` line 11518</sub>
+
+<a id="type-SavedScene"></a>
+
+### `SavedScene` (struct)
+
+A scene written back from the world.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `tick` | `number` | `0` | — | — | — | The tick of the world it was written from. |
+| `source` | `string` | `""` | — | — | — | The scene's source, project-relative. |
+| `written` | `string` | `""` | — | — | — | Where it was written; empty when only returned. |
+| `lines` | `readonly number[]` | `[]` | — | — | — | The 1-based lines of the new text that changed or were added. |
+| `text` | `string` | `""` | — | — | — | The new text. |
+
+```ogt
+struct SavedScene {
+  doc "A scene written back from the world."
+  field tick u32 "The tick of the world it was written from."
+  field source String "The scene's source, project-relative."
+  field written String "Where it was written; empty when only returned."
+  field lines List.u32 "The 1-based lines of the new text that changed or were added."
+  field text String "The new text."
+}
+```
+
+<sub>`api.ogt` line 11526</sub>
 
 ## Constants
 
@@ -1659,34 +2165,34 @@ union DumpResult {
 const PROBE_GLOBAL String "__runtime_probe__" "The global the page publishes the probe on."
 ```
 
-<sub>`api.ogt` line 11046</sub>
+<sub>`api.ogt` line 11049</sub>
 
 ```ogt
 const PROBE_VERSION u32 5 "The RuntimeProbe contract revision both sides speak."
 ```
 
-<sub>`api.ogt` line 11047</sub>
+<sub>`api.ogt` line 11050</sub>
 
 ```ogt
 const PROBE_WIRE_VERSION u32 1 "The wire revision hello reports."
 ```
 
-<sub>`api.ogt` line 11048</sub>
+<sub>`api.ogt` line 11051</sub>
 
 ```ogt
 const REPLAY_SEED_PARAM String "replay-seed" "The page query parameter that starts a deterministic replay from a uint32 seed."
 ```
 
-<sub>`api.ogt` line 11049</sub>
+<sub>`api.ogt` line 11052</sub>
 
 ```ogt
 const PLAYTEST_MAX_TICKS u32 3600 "The longest playtest one request may advance, in fixed steps."
 ```
 
-<sub>`api.ogt` line 11050</sub>
+<sub>`api.ogt` line 11053</sub>
 
 ```ogt
 const PROBE_PROGRAM_MAX_OPERATIONS u32 256 "The most operations one probe program may carry."
 ```
 
-<sub>`api.ogt` line 11051</sub>
+<sub>`api.ogt` line 11054</sub>

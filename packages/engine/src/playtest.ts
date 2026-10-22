@@ -108,7 +108,12 @@ export interface PlaytestDesc {
   readonly store?: "keep";
   /** More processes after the script, in order, each a fresh `og run` (a relaunch): their runs are `run.then`. */
   readonly then?: readonly PlaytestStep[];
-  readonly check: (run: PlaytestRun, t: PlaytestChecks) => void | Promise<void>;
+  /**
+   * Checks over what the run wrote. Optional when the script carries `expect:` steps: each
+   * expectation is a check (a failed one fails the playtest with its tick and observed value,
+   * a frame one without a renderer is unchecked), so a playtest can be its script alone.
+   */
+  readonly check?: (run: PlaytestRun, t: PlaytestChecks) => void | Promise<void>;
 }
 
 /** A later process of a playtest (`PlaytestDesc.then`). */
@@ -124,8 +129,9 @@ export const PLAYTEST_CLOCK = 1767225600000;
 
 /** Declare a playtest: the default export of a `tests/*.og.ts` file. */
 export function playtest(desc: PlaytestDesc): PlaytestDesc {
-  if (!desc.name || !desc.commands || typeof desc.check !== "function") {
-    throw new Error("playtest({ name, commands, check }) needs all three");
+  const expects = /(^|;)\s*[\d.]+:expect:/.test(desc.commands ?? "");
+  if (!desc.name || !desc.commands || (typeof desc.check !== "function" && !expects)) {
+    throw new Error("playtest({ name, commands, check }) needs all three (check may be left out when the commands carry expect: steps)");
   }
   return Object.freeze({ ...desc });
 }

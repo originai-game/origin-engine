@@ -17266,9 +17266,12 @@ export interface AlertDesc {
  * - `"resume"`: `resume`: release the clock.
  * - `"advance"`: `advance:<ticks>`: take fixed steps.
  * - `"quit"`: `quit`: exit.
+ * - `"describe"`: `describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, the UI elements with rects and text, the camera.
+ * - `"expect"`: `expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked.
+ * - `"save_scene"`: `save_scene[:path]`: write the boot scene's `.ogt` back from the world, only the lines whose values changed (comments and order kept) and the fields set or patch tuned; to the scene's source, or with a path to that file under the output directory.
  * - `"help"`: `help`: list every action the channel knows, core and registered.
  */
-export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "compose" | "commit" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "help";
+export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "compose" | "commit" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "describe" | "expect" | "save_scene" | "help";
 
 /**
  * A registered action. It runs at the start of the tick it was scheduled for.
@@ -17416,6 +17419,24 @@ export interface ProbeTimings {
    * @unit ms (milliseconds)
    */
   readonly frameMs: number;
+  /** The last tick's systems in run order, each with its milliseconds. */
+  readonly systems: readonly ProbeTiming[];
+  /**
+   * The last rendered frame's render passes in the render graph's order, each with its milliseconds (CPU encode time; empty without a renderer).
+   */
+  readonly passes: readonly ProbeTiming[];
+}
+
+/** One named span of the last tick or frame. */
+export interface ProbeTiming {
+  /** A system's name, or a render pass's (`Main`, `Cascade0`, `Bloom`). */
+  readonly name: string;
+  /**
+   * Its time.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly ms: number;
 }
 
 /** The probe's state(): a fixed head, then the game's own facts. */
@@ -17460,6 +17481,12 @@ export interface EntityOperation {
   readonly id: string;
 }
 
+/** The expect operation's payload. */
+export interface ExpectOperation {
+  /** The expectation, as after `expect:` in a script, such as `state:started==true`. */
+  readonly what: string;
+}
+
 /**
  * One operation of a probe program, which runs in one evaluation so a scripted segment costs one round trip.
  */
@@ -17477,7 +17504,11 @@ export type ProbeOperation =
   /** Pick a point; answers its result or null. */
   | ({ readonly op: "pick" } & PickOperation)
   /** Read an entity's parameters; null is a refusal. */
-  | ({ readonly op: "entity" } & EntityOperation);
+  | ({ readonly op: "entity" } & EntityOperation)
+  /** Evaluate an expectation; answers its ExpectResult, failed or not (a malformed one is a refusal). */
+  | ({ readonly op: "expect" } & ExpectOperation)
+  /** Describe the frame; answers its Description. */
+  | { readonly op: "describe" };
 
 /**
  * What a program observed: one answer per operation that ran. A false, or entity's null, stops the program and `refused` names its index.
@@ -17922,6 +17953,230 @@ export type DumpResult =
   /** The UI dump. */
   | ({ readonly kind: "ui" } & UiDump);
 
+/** A box on the play surface. */
+export interface ScreenBox {
+  /**
+   * Left edge.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * Top edge.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+  /**
+   * Width.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width: number;
+  /**
+   * Height.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height: number;
+}
+
+/** A point on the play surface. */
+export interface ScreenPoint {
+  /**
+   * Horizontal position.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * Vertical position.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+}
+
+/**
+ * One entity the frame shows, from the entity-id pass (a CPU rasterisation of the frame's meshes, skinned meshes and world sprites at a quarter of its pixels).
+ */
+export interface DescribedEntity {
+  /** Its probe id. */
+  readonly id: string;
+  /** Its name. */
+  readonly name: string | null;
+  /** Its depth order: 0 is the nearest. */
+  readonly order: number;
+  /** Its components, by name. */
+  readonly archetype: readonly string[];
+  /** What draws it: `model` with its asset path, `mesh`, `skinned`, `sprite`. */
+  readonly labels: readonly string[];
+  /** The box of its visible pixels. */
+  readonly box: ScreenBox;
+  /** The box of what it covers with nothing in front of it. */
+  readonly drawn: ScreenBox;
+  /** A visible point nearest the box's centre: pick answers this entity there. */
+  readonly point: ScreenPoint;
+  /**
+   * From the camera to its nearest visible point, along the view.
+   *
+   * @unit m (metres)
+   */
+  readonly depth: number;
+  /**
+   * Its visible share of the surface.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly coverage: number;
+  /**
+   * The share of what it covers alone that something else hides.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly occlusion: number;
+}
+
+/** One UI element as describe lists it (the tree dump_ui writes). */
+export interface DescribedUi {
+  /** Its id. */
+  readonly id: string;
+  /** Its parent's id. */
+  readonly parent: string;
+  /** What made it. */
+  readonly kind: string;
+  /** Its accessibility role. */
+  readonly role: string;
+  /** The text it shows. */
+  readonly text: string;
+  /** Its value as text. */
+  readonly value: string;
+  /** Its states. */
+  readonly states: readonly string[];
+  /** Its rect. */
+  readonly box: ScreenBox;
+}
+
+/** The camera as drawn, with its shake. */
+export interface DescribedCamera {
+  /** Where it is. */
+  readonly position: [number, number, number];
+  /** What it looks at. */
+  readonly target: [number, number, number];
+  /** Its up. */
+  readonly up: [number, number, number];
+  /** `perspective` or `orthographic`. */
+  readonly projection: string;
+  /**
+   * The vertical field of view (perspective).
+   *
+   * @unit deg (degrees)
+   */
+  readonly fov: number | null;
+  /**
+   * The height in view (orthographic).
+   *
+   * @unit m (metres)
+   */
+  readonly height: number | null;
+  /**
+   * The near plane.
+   *
+   * @unit m (metres)
+   */
+  readonly near: number;
+  /**
+   * The far plane.
+   *
+   * @unit m (metres)
+   */
+  readonly far: number;
+}
+
+/** The entity-id pass's size. */
+export interface PassSize {
+  /** Width in pixels. */
+  readonly width: number;
+  /** Height in pixels. */
+  readonly height: number;
+}
+
+/**
+ * The frame as data: deterministic, the same JSON on every host and backend for the same world.
+ */
+export interface Description {
+  /** The tick. */
+  readonly tick: number;
+  /** The play surface. */
+  readonly surface: UiSurface | null;
+  /** The entity-id pass; null without a scene. */
+  readonly pass: PassSize | null;
+  /** The camera; null without a scene. */
+  readonly camera: DescribedCamera | null;
+  /** The visible entities, nearest first. */
+  readonly entities: readonly DescribedEntity[];
+  /** The UI elements in draw order. */
+  readonly ui: readonly DescribedUi[];
+}
+
+/**
+ * How an expectation came out.
+ * - `"pass"`: It held.
+ * - `"fail"`: It did not: the result carries the tick and the observed value.
+ * - `"unchecked"`: It reads a frame and the host has no renderer.
+ */
+export type ExpectStatus = "pass" | "fail" | "unchecked";
+
+/** One evaluated expectation. */
+export interface ExpectResult {
+  /** The tick it was evaluated at. */
+  readonly tick: number;
+  /**
+   * The script step's time, when a script ran it.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly at: number | null;
+  /** As written after `expect:`. */
+  readonly expect: string;
+  /** `entity`, `event`, `ui`, `region`, `frame` or `state`. */
+  readonly kind: string;
+  /** The outcome. */
+  readonly status: ExpectStatus;
+  /** What was expected. */
+  readonly expected: unknown;
+  /** What was there. */
+  readonly observed: unknown;
+  /** Why it failed or was unchecked; empty on a pass. */
+  readonly reason: string;
+}
+
+/** The expectations evaluated since the last call. */
+export interface ExpectReport {
+  /** Those that held. */
+  readonly passed: number;
+  /** Those that did not. */
+  readonly failed: number;
+  /** Those that needed a renderer. */
+  readonly unchecked: number;
+  /** Each, in order. */
+  readonly results: readonly ExpectResult[];
+}
+
+/** A scene written back from the world. */
+export interface SavedScene {
+  /** The tick of the world it was written from. */
+  readonly tick: number;
+  /** The scene's source, project-relative. */
+  readonly source: string;
+  /** Where it was written; empty when only returned. */
+  readonly written: string;
+  /** The 1-based lines of the new text that changed or were added. */
+  readonly lines: readonly number[];
+  /** The new text. */
+  readonly text: string;
+}
+
 /**
  * RuntimeProbe protocol 5, member for member. Every member answers synchronously with JSON-serialisable values.
  */
@@ -18056,6 +18311,28 @@ export interface EngineProbe extends RuntimeProbe {
    * @returns Null from a host that gives no figures.
    */
   memory(): ProbeMemory | null;
+  /**
+   * The frame of the current tick as data: the visible entities with screen boxes, depth order and occlusion from the entity-id pass, their names, archetypes and labels; the UI elements with rects and text; the camera. Answers without a renderer too (the pass runs on the CPU).
+   */
+  describe(): Description;
+  /**
+   * Evaluate one expectation now (the forms of the command channel's `expect:`); the result is also kept for expectations().
+   *
+   * @param what The expectation, such as `entity:crate:within:0,0.4,-1,1,0.6,1`.
+   * @returns A malformed expectation is a malformed call.
+   */
+  expect(what: string): ExpectResult;
+  /**
+   * Every expectation evaluated since the last call (scripts' `expect:` steps, programs, expect()), and the counts.
+   */
+  expectations(): ExpectReport;
+  /**
+   * Write the boot scene back from the world: its entities' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order. The probe writes the file only with write; otherwise the text is returned.
+   *
+   * @param write Replace the scene's source file. Default `false`.
+   * @returns Null without a scene to write back (the reason is in the log).
+   */
+  saveScene(write?: boolean): SavedScene | null;
 }
 
 // ── terrain ─────────────────────────────────────────────────────

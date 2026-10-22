@@ -1990,6 +1990,34 @@ pub fn og_engine_probe_memory(env: Env, engine_probe: u32) -> String {
     <Host as ProbeApi>::og_engine_probe_memory(&Host, engine_probe)
 }
 
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_describe")]
+pub fn og_engine_probe_describe(env: Env, engine_probe: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_describe(&Host, engine_probe)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_expect")]
+pub fn og_engine_probe_expect(env: Env, engine_probe: u32, what: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_expect(&Host, engine_probe, what)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_expectations")]
+pub fn og_engine_probe_expectations(env: Env, engine_probe: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_expectations(&Host, engine_probe)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_save_scene")]
+pub fn og_engine_probe_save_scene(env: Env, engine_probe: u32, write: Option<bool>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_save_scene(&Host, engine_probe, write)
+}
+
 #[napi(js_name = "og_terrain_load")]
 pub fn og_terrain_load(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);

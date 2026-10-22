@@ -327,6 +327,9 @@ const audioStats = sink.stats();
 sink.close();
 if (frameFailed) process.stderr.write(`og run: ${frameFailed}\n`);
 const dump = engine.probe.dump({ what: "world" }) as unknown as { hash: string; entities: number; tick: number; systems?: SystemTimes };
+// The script's expectations (`expect:` steps): a failure fails the run.
+type ExpectResult = { tick: number; expect: string; status: "pass" | "fail" | "unchecked"; expected: unknown; observed: unknown; reason: string };
+const expectations = engine.probe.expectations() as { passed: number; failed: number; unchecked: number; results: ExpectResult[] };
 // og polish's order statistics (src/node/polish.ts), so the two agree.
 const percentile = (xs: number[], q: number): number => {
   if (xs.length === 0) return 0;
@@ -370,8 +373,12 @@ const summary = {
   audio: { mode: audioMode, commands: audioStats.commands, receivedHash: audioStats.receivedHash, wavSha256 },
   outputs,
   warnings,
+  expectations,
 };
 if (asJson) process.stdout.write(JSON.stringify(summary) + "\n");
-else process.stdout.write(`tick ${dump.tick} hash ${dump.hash} entities ${dump.entities}\n`);
+else {
+  process.stdout.write(`tick ${dump.tick} hash ${dump.hash} entities ${dump.entities}\n`);
+  if (expectations.results.length > 0) process.stdout.write(`expectations: ${expectations.passed} passed, ${expectations.failed} failed, ${expectations.unchecked} unchecked\n`);
+}
 if (listening !== undefined) extras.og_node_probe_close(engine.id);
-process.exit(frameFailed ? 1 : 0);
+process.exit(frameFailed || expectations.failed > 0 ? 1 : 0);

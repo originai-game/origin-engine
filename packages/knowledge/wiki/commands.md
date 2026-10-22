@@ -67,7 +67,7 @@ fn register {
 }
 ```
 
-<sub>`api.ogt` line 11009</sub>
+<sub>`api.ogt` line 11012</sub>
 
 <a id="fn-parse"></a>
 
@@ -95,7 +95,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 11017</sub>
+<sub>`api.ogt` line 11020</sub>
 
 <a id="fn-help"></a>
 
@@ -123,7 +123,7 @@ fn help {
 }
 ```
 
-<sub>`api.ogt` line 11023</sub>
+<sub>`api.ogt` line 11026</sub>
 
 <a id="fn-schedule"></a>
 
@@ -153,7 +153,7 @@ fn schedule {
 }
 ```
 
-<sub>`api.ogt` line 11029</sub>
+<sub>`api.ogt` line 11032</sub>
 
 ## Types
 
@@ -194,6 +194,9 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 | `"resume"` | `resume`: release the clock. |
 | `"advance"` | `advance:<ticks>`: take fixed steps. |
 | `"quit"` | `quit`: exit. |
+| `"describe"` | `describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, the UI elements with rects and text, the camera. |
+| `"expect"` | `expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked. |
+| `"save_scene"` | `save_scene[:path]`: write the boot scene's `.ogt` back from the world, only the lines whose values changed (comments and order kept) and the fields set or patch tuned; to the scene's source, or with a path to that file under the output directory. |
 | `"help"` | `help`: list every action the channel knows, core and registered. |
 
 ```ogt
@@ -226,6 +229,9 @@ enum CoreAction {
   variant resume "`resume`: release the clock."
   variant advance "`advance:<ticks>`: take fixed steps."
   variant quit "`quit`: exit."
+  variant describe "`describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, the UI elements with rects and text, the camera."
+  variant expect "`expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked."
+  variant save_scene "`save_scene[:path]`: write the boot scene's `.ogt` back from the world, only the lines whose values changed (comments and order kept) and the fields set or patch tuned; to the scene's source, or with a path to that file under the output directory."
   variant help "`help`: list every action the channel knows, core and registered."
 }
 ```
@@ -257,7 +263,7 @@ callback CommandHandler {
 }
 ```
 
-<sub>`api.ogt` line 10972</sub>
+<sub>`api.ogt` line 10975</sub>
 
 <a id="type-CommandDesc"></a>
 
@@ -281,7 +287,7 @@ struct CommandDesc {
 }
 ```
 
-<sub>`api.ogt` line 10978</sub>
+<sub>`api.ogt` line 10981</sub>
 
 <a id="type-CommandStep"></a>
 
@@ -306,7 +312,7 @@ struct CommandStep {
 }
 ```
 
-<sub>`api.ogt` line 10985</sub>
+<sub>`api.ogt` line 10988</sub>
 
 <a id="type-CommandInfo"></a>
 
@@ -331,7 +337,7 @@ struct CommandInfo {
 }
 ```
 
-<sub>`api.ogt` line 10994</sub>
+<sub>`api.ogt` line 10997</sub>
 
 <a id="type-CommandsReport"></a>
 
@@ -354,4 +360,4 @@ struct CommandsReport {
 }
 ```
 
-<sub>`api.ogt` line 11002</sub>
+<sub>`api.ogt` line 11005</sub>

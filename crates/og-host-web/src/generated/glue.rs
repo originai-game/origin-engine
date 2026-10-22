@@ -1662,6 +1662,30 @@ pub fn og_engine_probe_memory(engine_probe: u32) -> String {
     <Host as ProbeApi>::og_engine_probe_memory(&Host, engine_probe)
 }
 
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_engine_probe_describe(engine_probe: u32) -> String {
+    <Host as ProbeApi>::og_engine_probe_describe(&Host, engine_probe)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_engine_probe_expect(engine_probe: u32, what: String) -> String {
+    <Host as ProbeApi>::og_engine_probe_expect(&Host, engine_probe, what)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_engine_probe_expectations(engine_probe: u32) -> String {
+    <Host as ProbeApi>::og_engine_probe_expectations(&Host, engine_probe)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_engine_probe_save_scene(engine_probe: u32, write: Option<bool>) -> String {
+    <Host as ProbeApi>::og_engine_probe_save_scene(&Host, engine_probe, write)
+}
+
 #[wasm_bindgen]
 pub fn og_terrain_load(world: u32, path: String) -> String {
     <Host as TerrainApi>::og_terrain_load(&Host, world, path)
