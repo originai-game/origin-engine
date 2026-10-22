@@ -13,7 +13,8 @@
 //! `og.Time`'s jump: the probe's scheduled steps keep their remaining
 //! delays, `og.platform.now` its time. Inside a system or a command (the
 //! probe is mid-tick) the restore waits for the tick's end
-//! ([`after_tick`]); elsewhere it applies at once.
+//! ([`after_tick`]); elsewhere it applies at once. Either way the next
+//! tick delivers og.WorldRestored ([`before_tick`]).
 
 use super::engine::{Engine, engine, running};
 use og_ecs::World;
@@ -207,6 +208,36 @@ pub(crate) fn after_tick(eng: &Engine, world: &mut World) {
     }
 }
 
+/// The probe's start-of-tick hook: after a restore, the tick that follows
+/// delivers og.WorldRestored (`from`, the tick the world was at, and
+/// `tick`, the saved one), so systems can reset what lives in the session
+/// (request numbers, settings read from the store). Sent here rather than
+/// when the restore applies, so the world between the two hashes as the
+/// save did.
+pub(crate) fn before_tick(eng: &Engine, world: &mut World) {
+    let Some((from, to)) = eng.state.borrow_mut().restored.take() else {
+        return;
+    };
+    let Some(layout) = eng.state.borrow().layouts.get(RESTORED).cloned() else {
+        return;
+    };
+    let sent = world.id_by_name(RESTORED).and_then(|id| {
+        let v = serde_json::json!({ "from": from, "tick": to });
+        let bytes = layout
+            .encode(None, Some(&v))
+            .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))?;
+        world.send_bytes(id, &bytes)
+    });
+    if let Err(e) = sent {
+        eng.state.borrow_mut().log.push(serde_json::json!({
+            "tick": to, "warning": true, "text": format!("{RESTORED}: {e}"),
+        }));
+    }
+}
+
+/// The event a restore delivers the next tick.
+const RESTORED: &str = "og.WorldRestored";
+
 /// Restores a checked save, keeping the session, and brings the runtime's
 /// own view of the world (names, views, the platform clock, the renderer's
 /// history) along.
@@ -242,6 +273,7 @@ fn apply(eng: &Engine, world: &mut World, pending: &Pending) -> Result<(), Strin
             st.name_of.insert(e.to_bits(), name.to_string());
         }
     }
+    eng.state.borrow_mut().restored = Some((from, to));
     super::platform::shift_ticks(eng.id, from, to);
     if let Ok(mut rs) = eng.render.try_borrow_mut()
         && let Some(b) = rs.backend.as_mut()

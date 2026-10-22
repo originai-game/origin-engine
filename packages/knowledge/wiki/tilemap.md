@@ -20,7 +20,7 @@ module tilemap {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 6263</sub>
+<sub>`api.ogt` line 6293</sub>
 
 ## Contents
 
@@ -69,7 +69,7 @@ fn setTile {
 }
 ```
 
-<sub>`api.ogt` line 6371</sub>
+<sub>`api.ogt` line 6403</sub>
 
 <a id="fn-getTile"></a>
 
@@ -105,7 +105,7 @@ fn getTile {
 }
 ```
 
-<sub>`api.ogt` line 6378</sub>
+<sub>`api.ogt` line 6410</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -137,7 +137,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 6388</sub>
+<sub>`api.ogt` line 6420</sub>
 
 <a id="fn-cellCenter"></a>
 
@@ -171,7 +171,7 @@ fn cellCenter {
 }
 ```
 
-<sub>`api.ogt` line 6396</sub>
+<sub>`api.ogt` line 6428</sub>
 
 ## Components, resources and events
 
@@ -191,7 +191,7 @@ Token `og.Tilemap`, registered under the schema name `og.Tilemap`; its value typ
 | `opacity` | `number` | `1` | 0 … 1 | — | — | The alpha, times each layer's. |
 | `visible` | `boolean` | `true` | — | — | — | Whether it is drawn. |
 | `collision` | `boolean` | `true` | — | — | — | Give the layers marked collision static colliders (rectangles merged from the solid tiles). |
-| `colliderLayers` | `number` | `1` | — | — | — | The collision layers of those colliders, as bits (Collider.layers). |
+| `colliderLayers` | `number` | `1` | — | — | — | The collision layers of those colliders, as bits (Collider.layers), for every collision layer of the map that names none of its own (a map layer's `colliderLayers`, with its `colliderMask`, puts a layer of grates on a one-way layer while the walls stay here). |
 | `friction` | `number` | `0.5` | 0 … 2 | — | — | The colliders' friction. |
 
 ```ogt
@@ -215,7 +215,7 @@ component Tilemap {
   field collision bool "Give the layers marked collision static colliders (rectangles merged from the solid tiles)." {
     default true
   }
-  field colliderLayers u32 "The collision layers of those colliders, as bits (Collider.layers)." {
+  field colliderLayers u32 "The collision layers of those colliders, as bits (Collider.layers), for every collision layer of the map that names none of its own (a map layer's `colliderLayers`, with its `colliderMask`, puts a layer of grates on a one-way layer while the walls stay here)." {
     default 1
   }
   field friction f32 "The colliders' friction." {
@@ -226,7 +226,7 @@ component Tilemap {
 }
 ```
 
-<sub>`api.ogt` line 6279</sub>
+<sub>`api.ogt` line 6309</sub>
 
 ## Types
 
@@ -242,7 +242,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TilemapAsset "A loaded map: its layers, tilesets and objects."
 ```
 
-<sub>`api.ogt` line 6270</sub>
+<sub>`api.ogt` line 6300</sub>
 
 <a id="type-TileLayerInfo"></a>
 
@@ -257,6 +257,8 @@ One layer of a map.
 | `z` | `number` | `0` | — | — | — | Its sprite-layer offset from Tilemap.layer. |
 | `parallax` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | Its scroll factors: 1 1 moves with the world, 0.5 at half the camera's speed (far away), 0 stays with the camera. |
 | `collision` | `boolean` | `false` | — | — | — | Its solid tiles collide. |
+| `colliderLayers` | `number` | `0` | — | — | — | The collision layers (og.Collider.layers bits) of its colliders, from its `colliderLayers` line or Tiled int property; 0 (unset) takes Tilemap.colliderLayers. |
+| `colliderMask` | `number` | `0` | — | — | — | The layers its colliders collide with (og.Collider.mask bits), from its `colliderMask` line or Tiled int property; 0 (unset) is every layer. |
 | `terrain` | `string` | `""` | — | — | — | The auto-tiling terrain of a terrain layer (its cells are 1 filled or 0 empty); empty for a tile layer. |
 | `visible` | `boolean` | `false` | — | — | — | Whether it is drawn. |
 | `lit` | `boolean` | `false` | — | — | — | Whether og.Lighting2D lights it when its sprite layer is in the lit range (true unless the Tiled layer's bool property `lit` or the `.ogt` layer's `lit` line says false). |
@@ -269,13 +271,15 @@ struct TileLayerInfo {
   field z i32 "Its sprite-layer offset from Tilemap.layer."
   field parallax Vector2 "Its scroll factors: 1 1 moves with the world, 0.5 at half the camera's speed (far away), 0 stays with the camera."
   field collision bool "Its solid tiles collide."
+  field colliderLayers u32 "The collision layers (og.Collider.layers bits) of its colliders, from its `colliderLayers` line or Tiled int property; 0 (unset) takes Tilemap.colliderLayers."
+  field colliderMask u32 "The layers its colliders collide with (og.Collider.mask bits), from its `colliderMask` line or Tiled int property; 0 (unset) is every layer."
   field terrain String "The auto-tiling terrain of a terrain layer (its cells are 1 filled or 0 empty); empty for a tile layer."
   field visible bool "Whether it is drawn."
   field lit bool "Whether og.Lighting2D lights it when its sprite layer is in the lit range (true unless the Tiled layer's bool property `lit` or the `.ogt` layer's `lit` line says false)."
 }
 ```
 
-<sub>`api.ogt` line 6309</sub>
+<sub>`api.ogt` line 6339</sub>
 
 <a id="type-TileObject"></a>
 
@@ -310,7 +314,7 @@ struct TileObject {
 }
 ```
 
-<sub>`api.ogt` line 6321</sub>
+<sub>`api.ogt` line 6353</sub>
 
 <a id="type-TilemapInfo"></a>
 
@@ -345,7 +349,7 @@ struct TilemapInfo {
 }
 ```
 
-<sub>`api.ogt` line 6337</sub>
+<sub>`api.ogt` line 6369</sub>
 
 <a id="type-SetTileDesc"></a>
 
@@ -377,7 +381,7 @@ struct SetTileDesc {
 }
 ```
 
-<sub>`api.ogt` line 6352</sub>
+<sub>`api.ogt` line 6384</sub>
 
 <a id="type-TileCell"></a>
 
@@ -400,7 +404,7 @@ struct TileCell {
 }
 ```
 
-<sub>`api.ogt` line 6364</sub>
+<sub>`api.ogt` line 6396</sub>
 
 ## Column kinds
 
@@ -419,4 +423,4 @@ column TilemapAsset {
 }
 ```
 
-<sub>`api.ogt` line 6272</sub>
+<sub>`api.ogt` line 6302</sub>

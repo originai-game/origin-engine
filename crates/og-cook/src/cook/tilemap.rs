@@ -281,6 +281,8 @@ pub fn encode(map: &TilemapAsset, stamp: u64) -> Vec<u8> {
             flags,
             z: l.z,
             cell_offset: offset,
+            collider_layers: l.collider_layers,
+            collider_mask: l.collider_mask,
         });
         for c in &l.cells {
             cells.extend_from_slice(&c.to_le_bytes());
@@ -728,6 +730,25 @@ fn walk_tiled(
                 if let Some(z) = props.get("z").and_then(Value::as_i64) {
                     layer.z = z as i32;
                 }
+                for (key, bits) in [
+                    ("colliderLayers", props.get("colliderLayers")),
+                    ("colliderMask", props.get("colliderMask")),
+                ] {
+                    let Some(bits) = bits else { continue };
+                    let bits = bits
+                        .as_u64()
+                        .and_then(|b| u32::try_from(b).ok())
+                        .ok_or_else(|| {
+                            format!(
+                                "layer '{name}': the property {key} is an int of collision layer bits (0 to 4294967295)"
+                            )
+                        })?;
+                    if key == "colliderLayers" {
+                        layer.collider_layers = bits;
+                    } else {
+                        layer.collider_mask = bits;
+                    }
+                }
                 if let Some(lit) = props.get("lit") {
                     layer.lit = lit.as_bool().ok_or_else(|| {
                         format!("layer '{name}': the property lit is a bool (true or false)")
@@ -782,6 +803,8 @@ fn walk_tiled(
 const TILED_LAYER_PROPS: &[(&str, &str)] = &[
     ("autotile", "string"),
     ("collision", "bool"),
+    ("colliderLayers", "int"),
+    ("colliderMask", "int"),
     ("lit", "bool"),
     ("z", "int"),
     ("repeatx", "bool"),

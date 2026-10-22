@@ -8,6 +8,9 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## 0.2.0 (unreleased)
 
+API additions and changes (a minor bump, §3), by the stream that landed
+each:
+
 - API: every word of the kit HUDs is a field with its English default
   (kit-words, 2026-10-22): `PlatformerHudDesc.jumpLabel`,
   `ShooterHudDesc.killsLabel` and `fireLabel`, `PuzzleHudDesc.movesLabel`
@@ -16,6 +19,41 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
   button's name for a screen reader); a localised game passes its string
   table's (`og.i18n.t`). Additive; the defaults are the words the HUDs
   showed before.
+
+The `platformer-2d` stream (Brasswick's runtime findings,
+`examples/brasswick/FINDINGS.md`, 2026-10-22):
+
+- `og.WorldRestored` (event, module world): delivered the tick after a
+  `world.restore` applies, with `from` (the tick the world was at) and
+  `tick` (the saved tick), for systems that reset what lives in the session
+  (#8). `world.restore`'s doc says so, and that an `og run --commands`
+  script goes on to its last step whichever way a restore moved og.Time.
+- `og.PARTICLES_ARMED` (const, module render): `ParticleSystem.startTick`'s
+  default, never written; a one-shot (`looping false`) emitter stays armed
+  and emits nothing until a tick is written, a looping one emits as if
+  started at tick 0 (#3). `startTick` carries the default.
+- `og.CharacterController.pushStrength` and
+  `og.PlatformerController.pushBodies` (default true) and `pushStrength`
+  (newtons, default 1000, tunable): the push on the dynamic bodies a
+  controller walks or runs into is an impulse capped by the strength, so a
+  light body is shoved and a heavy one holds (#6). Unit `newton` added.
+- `og.TilemapLayer.colliderLayers` and `colliderMask`: a collision layer's
+  own `og.Collider` layers and mask, from its `.ogt` line or Tiled int
+  property; 0 takes `Tilemap.colliderLayers` and every layer (#5).
+- `PlatformAnswer.time`: a slot call (`saveSlot`, `loadSlot`) answers the
+  time of the store answer that ended it (#7). `CharacterEvent`'s doc says
+  the event is read the tick after the move (#14).
+
+Also:
+
+- `og run --commands`: the script ends when its last step has run, wherever
+  a restore moved og.Time (#13).
+- `create-game --profile 2d` writes the 2D starter `templates/game-2d`
+  (shipped as `template-2d/`), as does a premise that says 2D, platformer,
+  side-scroller, metroidvania or pixel art without saying 3D (#1). The
+  install test scaffolds and tests it.
+- Knowledge: og-game §8 gives the flipbook grammar line by line (#2);
+  og-feel §12 reads the jump event the tick after (#14).
 
 ## 0.1.1 (2026-10-22)
 

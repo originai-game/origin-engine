@@ -102,6 +102,7 @@ Field units the docs and Tune use.
 | `ratio` | a fraction between 0 and 1 |
 | `bytes` | bytes |
 | `kg` | kilograms |
+| `newton` | newtons: the force that gives a kilogram one metre per second squared |
 | `mps` | metres per second |
 | `mps2` | metres per second squared |
 | `radps` | radians per second |
@@ -113,7 +114,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-908 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+910 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -734,6 +735,7 @@ Field units the docs and Tune use.
 | [`og.WaterSurface`](physics.md#record-WaterSurface) | component | physics | — |
 | [`og.Weather`](atmosphere.md#record-Weather) | resource | atmosphere | — |
 | [`og.Wheel`](input.md#record-Wheel) | event | input | — |
+| [`og.WorldRestored`](world.md#record-WorldRestored) | event | world | — |
 | [`OverlapDesc`](physics.md#type-OverlapDesc) | desc struct | physics | — |
 | [`Paint`](ui.md#type-Paint) | desc struct | ui | — |
 | [`Palette`](render.md#type-Palette) | handle | render | — |
@@ -741,6 +743,7 @@ Field units the docs and Tune use.
 | [`PanelDesc`](ui.md#type-PanelDesc) | desc struct | ui | — |
 | [`ParticleEmitter`](render.md#type-ParticleEmitter) | handle | render | — |
 | [`ParticleEmitter()`](render.md#column-ParticleEmitter) | column kind | render | — |
+| [`PARTICLES_ARMED`](render.md#const-PARTICLES_ARMED) | constant | render | — |
 | [`PathDesc`](nav.md#type-PathDesc) | desc struct | nav | — |
 | [`PauseMenuDesc`](ui.md#type-PauseMenuDesc) | desc struct | ui | — |
 | [`PercentSize`](ui.md#type-PercentSize) | struct | ui | — |

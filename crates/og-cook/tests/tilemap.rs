@@ -43,6 +43,8 @@ tile 16 16
 tileset "tiles/dungeon.ogt"
 layer floor {
   collision true
+  colliderLayers 4
+  colliderMask 3
   legend "#" 1
   row "##.."
   row "...."
@@ -67,7 +69,7 @@ const TILED: &str = r#"{
   "layers": [
     { "type": "tilelayer", "name": "ground", "width": 4, "height": 3, "opacity": 0.5, "visible": true,
       "offsetx": 8, "offsety": 16, "parallaxx": 0.5, "parallaxy": 1,
-      "properties": [ { "name": "collision", "type": "bool", "value": true }, { "name": "z", "type": "int", "value": -5 }, { "name": "lit", "type": "bool", "value": false } ],
+      "properties": [ { "name": "collision", "type": "bool", "value": true }, { "name": "z", "type": "int", "value": -5 }, { "name": "lit", "type": "bool", "value": false }, { "name": "colliderLayers", "type": "int", "value": 8 }, { "name": "colliderMask", "type": "int", "value": 4294967294 } ],
       "data": [2, 2147483651, 0, 0,  1073741826, 0, 0, 0,  0, 0, 0, 0] },
     { "type": "tilelayer", "name": "walls", "width": 4, "height": 3, "visible": true,
       "properties": [ { "name": "autotile", "type": "string", "value": "wall" } ],
@@ -162,6 +164,11 @@ fn tilesets_and_maps_from_three_sources_cook_and_load() {
     assert_eq!(room, TilemapAsset::parse(ROOM).unwrap());
     let s = MapState::new(&room, &tilesets(&bundle, &room)).unwrap();
     assert_eq!(collision_rects_all(&s), vec![rect(0.0, -1.0, 2.0, 0.0)]);
+    assert_eq!(
+        (room.layers[0].collider_layers, room.layers[0].collider_mask),
+        (4, 3),
+        "a collision layer's own collider layers and mask survive the blob"
+    );
     assert_eq!(room.objects[0].kind, "door");
 
     // Tiled: an external tileset (the sibling .ogt), an embedded one, flips,
@@ -203,8 +210,18 @@ fn tilesets_and_maps_from_three_sources_cook_and_load() {
             false
         )
     );
+    assert_eq!(
+        (g.collider_layers, g.collider_mask),
+        (8, 4294967294),
+        "the Tiled int properties colliderLayers and colliderMask"
+    );
     let w = &tm.layers[1];
     assert_eq!((w.terrain.as_deref(), w.z, w.lit), (Some("wall"), 1, true));
+    assert_eq!(
+        (w.collider_layers, w.collider_mask),
+        (0, 0),
+        "unset: the og.Tilemap's layers, every layer"
+    );
     assert_eq!(w.cells, vec![0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1]);
     assert_eq!(
         (tm.layers[2].tileset, tm.layers[2].cells[3]),
@@ -354,8 +371,8 @@ fn a_tiled_custom_property_the_importer_does_not_read_is_a_warning_naming_it() {
     // and an object's class value.
     let unread = TILED
         .replace(
-            r#"{ "name": "lit", "type": "bool", "value": false } ]"#,
-            r#"{ "name": "lit", "type": "bool", "value": false }, { "name": "repeat", "type": "string", "value": "x" } ]"#,
+            r#"{ "name": "colliderMask", "type": "int", "value": 4294967294 } ]"#,
+            r#"{ "name": "colliderMask", "type": "int", "value": 4294967294 }, { "name": "repeat", "type": "string", "value": "x" } ]"#,
         )
         .replace(
             r#"[ { "name": "autotile", "type": "string", "value": "wall" } ]"#,
@@ -384,7 +401,7 @@ fn a_tiled_custom_property_the_importer_does_not_read_is_a_warning_naming_it() {
         "a warning fails nothing: {:?}",
         report.errors()
     );
-    let known = "it reads autotile, collision, lit, z, repeatx, repeaty; og-game §8";
+    let known = "it reads autotile, collision, colliderLayers, colliderMask, lit, z, repeatx, repeaty; og-game §8";
     assert_eq!(
         report.warnings,
         vec![

@@ -938,10 +938,22 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
                         // and only its own answer is sent.
                         let slot = p.sub.contains_key(&id);
                         let done = slot.then(|| advance_slot(p, id, &v, tick)).flatten();
+                        let host_time = time_of(&v);
                         if let Some(r) = p.log.get_mut(&id) {
                             r.answer = Some((v, tick));
                         }
-                        if let Some((outer, answer)) = done {
+                        if let Some((outer, mut answer)) = done {
+                            // Every answer carries the host's time (og-platform-sdk
+                            // §1): a slot call's, that of the store answer that
+                            // ended it, or the clock moved on to this tick.
+                            if time_of(&answer).is_none()
+                                && let Some(t) = host_time.or_else(|| {
+                                    p.base
+                                        .map(|(t, at)| t + tick.saturating_sub(at) as f64 * ms)
+                                })
+                            {
+                                answer["time"] = json!(t);
+                            }
                             let ok = answer["ok"].as_bool() == Some(true);
                             if let Some(r) = p.log.get_mut(&outer) {
                                 r.answer = Some((answer, tick));
@@ -1117,6 +1129,76 @@ mod tests {
             assert!(og_platform_answer(e, id, answer.to_string()));
         }
         calls.len()
+    }
+
+    /// [`serve`], every answer stamped with the host's `time` as og run's
+    /// host does.
+    fn serve_at(e: u32, store: &mut BTreeMap<String, (Value, u64)>, time: f64) {
+        let calls: Vec<Value> = serde_json::from_str(&og_platform_take(e)).unwrap();
+        for c in &calls {
+            let id = c["request"].as_u64().unwrap() as u32;
+            let a = &c["args"];
+            let key = a["key"].as_str().unwrap_or("").to_string();
+            let data = match c["method"].as_str().unwrap() {
+                "store.get" => {
+                    let (value, revision) = store.get(&key).cloned().unwrap_or((Value::Null, 0));
+                    json!({ "key": key, "value": value, "revision": revision })
+                }
+                "store.set" => {
+                    let at = store.get(&key).map_or(0, |v| v.1);
+                    store.insert(key.clone(), (a["value"].clone(), at + 1));
+                    json!({ "key": key, "revision": at + 1 })
+                }
+                m => panic!("unexpected {m}"),
+            };
+            let answer = json!({ "ok": true, "data": data, "time": time });
+            assert!(og_platform_answer(e, id, answer.to_string()));
+        }
+    }
+
+    #[test]
+    fn a_slot_calls_answer_carries_the_hosts_time_as_a_store_answer_does() {
+        // brasswick FINDINGS #7: under og run, store.get answered the
+        // host's clock while slot.load and slot.save answered time 0.
+        let e = engine_at_60();
+        host(e, 1_000_000.0, "fixed");
+        let mut store = BTreeMap::new();
+        let mut settle_at = |id: u32, time: f64| {
+            for _ in 0..8 {
+                serve_at(e, &mut store, time);
+                advance(e, 1);
+                let r: Value = serde_json::from_str(&og_platform_result(e, id)).unwrap();
+                if !r.is_null() {
+                    return r;
+                }
+            }
+            panic!("request {id} was never answered");
+        };
+        let get = request_id(&og_platform_store_get(e, "progress".into()));
+        assert_eq!(settle_at(get, 1_000_500.0)["time"], json!(1_000_500.0));
+        let save = request_id(&og_platform_save_slot(
+            e,
+            Some(
+                json!({ "slot": "slot1", "text": "og-save:1:abc", "meta": { "at": 1 } })
+                    .to_string(),
+            ),
+        ));
+        let r = settle_at(save, 1_002_000.0);
+        assert_eq!(r["ok"], json!(true), "{r}");
+        assert_eq!(r["time"], json!(1_002_000.0), "slot.save: {r}");
+        for meta_only in [true, false] {
+            let load = request_id(&og_platform_load_slot(
+                e,
+                Some(json!({ "slot": "slot1", "metaOnly": meta_only }).to_string()),
+            ));
+            let r = settle_at(load, 1_003_000.0);
+            assert_eq!(r["ok"], json!(true), "{r}");
+            assert_eq!(
+                r["time"],
+                json!(1_003_000.0),
+                "slot.load (metaOnly {meta_only}): {r}"
+            );
+        }
     }
 
     /// Serves and ticks until request `id` is answered.

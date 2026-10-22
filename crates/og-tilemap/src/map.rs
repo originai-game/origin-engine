@@ -43,6 +43,13 @@ pub struct Layer {
     pub visible: bool,
     /// Its tiles' collision shapes become colliders.
     pub collision: bool,
+    /// The collision layers (og.Collider.layers bits) of this layer's
+    /// colliders; 0 takes the owner's (og.Tilemap.colliderLayers), so a
+    /// layer of grates can sit on a one-way layer while the walls do not.
+    pub collider_layers: u32,
+    /// The layers (bits) this layer's colliders collide with
+    /// (og.Collider.mask); 0 is every layer, og.Collider's default.
+    pub collider_mask: u32,
     pub repeat_x: bool,
     pub repeat_y: bool,
     /// The sprite layer offset it draws at (the owner's base plus this).
@@ -67,6 +74,8 @@ impl Layer {
             opacity: 1.0,
             visible: true,
             collision: false,
+            collider_layers: 0,
+            collider_mask: 0,
             repeat_x: false,
             repeat_y: false,
             z,
@@ -354,6 +363,8 @@ fn parse_layer(e: &Entry, m: &TilemapAsset, index: i32) -> Result<Layer> {
                     .and_then(|v| v.as_bool())
                     .ok_or_else(|| err(p.line, "collision is true or false"))?
             }
+            "colliderLayers" => l.collider_layers = uint(p, 0)?,
+            "colliderMask" => l.collider_mask = uint(p, 0)?,
             "lit" => {
                 l.lit = p
                     .values
@@ -397,6 +408,15 @@ fn parse_layer(e: &Entry, m: &TilemapAsset, index: i32) -> Result<Layer> {
                 ));
             }
         }
+    }
+    if (l.collider_layers != 0 || l.collider_mask != 0) && !l.collision {
+        return Err(err(
+            e.line,
+            format!(
+                "layer '{}' names colliderLayers or colliderMask without `collision true`",
+                l.name
+            ),
+        ));
     }
     let terrain = l.terrain.is_some();
     if !rows.is_empty() && rows.len() != m.height as usize {

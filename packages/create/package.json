@@ -22,6 +22,7 @@
   "files": [
     "bin",
     "template",
+    "template-2d",
     "archetypes",
     "looks",
     "README.md"

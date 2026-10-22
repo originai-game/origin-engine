@@ -1,0 +1,11 @@
+type flipbook
+version 1
+---
+# The coin (the runner archetype's sheet): six frames of a turn.
+texture "coin.png"
+grid 16 16 6 1
+spacing 2
+clip spin {
+  frames 0 1 2 3 4 5
+  fps 10
+}

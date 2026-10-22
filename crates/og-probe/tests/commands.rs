@@ -843,3 +843,34 @@ fn a_dot_name_is_kept_for_the_harness() {
     assert_eq!(outputs.len(), 1);
     assert_eq!(outputs[0].file_name(), "./ok.json");
 }
+
+#[test]
+fn steps_left_ends_a_script_whose_steps_a_restore_moved_past_its_scheduled_end() {
+    // brasswick FINDINGS #13: a host ending the run at the tick the last
+    // step was scheduled for (`untilTick`) stopped as soon as a restore
+    // moved og.Time past it; the steps keep their delays, so the run ends
+    // when none is left.
+    let mut h = build(1, false);
+    let report = h
+        .probe
+        .schedule(&h.world, "0.1:seed:3;0.5:seed:4;0.6:quit")
+        .unwrap();
+    let until = report.until_tick;
+    assert_eq!(h.probe.steps_left(), 3);
+    while h.probe.tick(&h.world) < 10 {
+        h.probe.step(&mut h.world).unwrap();
+    }
+    assert_eq!(h.probe.steps_left(), 2, "the step at 0.1 s ran");
+    // A save of tick 500 restored as tick 10 ended: og.Time jumps forward.
+    h.probe.shift_schedule(10, 500);
+    assert!(500 > until, "past the scheduled end ({until})");
+    assert_eq!(h.probe.steps_left(), 2, "nothing ran or was dropped");
+    let mut ticks = 0;
+    while h.probe.steps_left() > 0 && !h.probe.quit_requested() {
+        h.probe.step(&mut h.world).unwrap();
+        ticks += 1;
+        assert!(ticks < 1000, "the steps never ran");
+    }
+    assert!(h.probe.quit_requested());
+    assert_eq!(h.probe.steps_left(), 0);
+}

@@ -546,11 +546,12 @@ export function readKeys(region: string): string[] {
 }
 
 /**
- * The grammars the skills write out (og-game §8 tilesets and maps, §9 a
+ * The grammars the skills write out (og-game §8 flipbooks, tilesets and maps, §9 a
  * model's animation settings and the animation graph, §10 emitters; og-ai
  * §1 the navmesh, §3 behaviours) and the parsers they come from.
  */
 export const GRAMMARS: readonly Grammar[] = [
+  { type: "flipbook", source: "crates/og-anim/src/flipbook.rs", region: [/impl FlipMode/, /pub fn to_text/], names: { frame: 1, clip: 1 } },
   { type: "tileset", source: "crates/og-tilemap/src/tileset.rs" },
   { type: "tilemap", source: "crates/og-tilemap/src/map.rs", region: [/pub fn parse\(text/, /^pub fn world_to_cell/m] },
   { type: "particles", source: "crates/og-cook/src/fx.rs", unnamed: { key: "colorOverLife's lines: the parser reads their five numbers whatever the key" } },

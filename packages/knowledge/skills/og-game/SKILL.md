@@ -43,7 +43,11 @@ change, without a warning, and its refusals named the line and the fix.
 The order the games found productive:
 
 1. **`project.ogt`** (§2): name, id, the engine pin, the profile, tick and
-   seed. The scaffold writes it; change it there and nowhere else.
+   seed. The scaffold writes it (`npm create @origingame/game --profile
+   2d` writes the 2D starter, a platformer with sprites, a tilemap and 2D
+   physics, as does a premise that says 2D, platformer, side-scroller,
+   metroidvania or pixel art; `3d`, the default, the 3D template; an
+   archetype brings its own); change it there and nowhere else.
 2. **`GameDesc`** in `src/main.ts` (§3): the scene, the look, the systems,
    and from the start a command for each state a test must reach (`play`,
    `warp:<where>`) and facts for what it must check.
@@ -393,7 +397,8 @@ else ignores it. The stamp is world state, so a replay reproduces it.
   sprites only.
 - **Sprite sheets** are `.ogt` files of `type flipbook` next to the PNG
   (grid or named frames, or an Aseprite / TexturePacker JSON `atlas`; clips
-  with `fps`, `mode loop | pingPong | once` and `event <frame> "name"`).
+  with `fps`, `mode loop | pingPong | once` and `event <frame> "name"`;
+  every line is the grammar at the end of this section).
   `og.load.flipbook(world, "sprites/hero.ogt")` answers the sheet and its
   clips; `og.Flipbook { sheet, clip: og.anim.clip(info, "walk") }` on the
   sprite's entity plays it, and `og.FlipbookEvent` reports the frames named
@@ -436,7 +441,11 @@ else ignores it. The stamp is world state, so a replay reproduces it.
   `og.tilemap.setTile` edits a cell (terrain layers re-tile their
   neighbours, colliders follow); `getTile` answers the tile there (on a
   terrain layer the one auto-tiling chose, -1 when empty), `cellAt` and
-  `cellCenter` convert positions. Layers scroll by their `parallax`;
+  `cellCenter` convert positions. Every collision layer's colliders sit
+  on `og.Tilemap.colliderLayers` unless the layer names its own
+  `colliderLayers` and `colliderMask` (grammar below): a layer of grates
+  on the bit of the platformer's `oneWayLayers` is one-way while the
+  walls on another layer stay solid. Layers scroll by their `parallax`;
   `repeat x` tiles a background (`reference/tilemap.md`). Every line of a
   tileset and a map, and what the cook reads of a Tiled map, is the
   grammar at the end of this section.
@@ -450,6 +459,55 @@ pickups with floating text, a door to a second room the camera scrolls to),
 this; `templates/archetypes/roguelike` carves a tilemap at run time from
 og.Rng and keeps its fog of war on a layer, and
 `templates/archetypes/tower-defense` writes placements to a map's layer.
+
+### Flipbooks: the grammar
+
+A **flipbook** is an `.ogt` of `type flipbook` beside its PNG (give the
+PNG `texture { kind pixel }` import settings for pixel art). Its frames
+are the grid's (row-major from the top left, named `0`, `1`, ... by
+their index), then the `frame` lines', then an atlas's; its clips are
+numbered in file order from 0, and that index is what
+`og.anim.clip(info, "walk")` answers and what `og.Flipbook.clip` holds,
+so a system that compares `og.Flipbook.clip` with a constant relies on
+that order (look the indices up with `og.anim.clip` in `start` instead).
+Every line, with its default:
+
+```text
+type flipbook
+version 1
+---
+texture "hero.png"        # the sheet (required): beside the .ogt when that file exists, else an asset id
+size 256 80               # the texture in pixels: the cook fills it in from the PNG
+filter nearest            # nearest (default, pixel art) | linear
+array false               # true: the frames become the layers of a texture array, one draw for every sprite (one size each)
+pivot 0.5 0               # the point of each frame at the entity's position, from its bottom left (default 0.5 0.5): 0.5 0 stands on the feet
+margin 0                  # grid only: pixels round the grid (default 0)
+spacing 2                 # grid only: pixels between cells (default 0)
+grid 32 40 8 2            # <cell width px> <cell height px> [<columns> <rows>]: frames 0.., row-major
+frame slash 0 80 48 40 0.25 0   # a named frame: <name> x y w h [pivot x y], x y from the texture's top left
+atlas "hero.json"         # an Aseprite or TexturePacker JSON: its frames (and Aseprite's tags as clips)
+clip idle {               # clip 0
+  frames 14 15            # frame indices or names, in order (required)
+  fps 2                   # frames a second (default 12) ...
+}
+clip run {                # clip 1
+  frames 0 1 2 3 4 5 6 7
+  durations 0.07 0.07 0.1 0.07 0.07 0.07 0.1 0.07   # ... or seconds per frame, one per frame
+  mode loop               # loop (default) | pingPong (or pingpong) | once (holds the last frame, sets og.Flipbook.finished)
+  event 2 "step"          # entering clip frame 2 sends og.FlipbookEvent "step" (at most 63 bytes)
+  event 6 "step"
+}
+```
+
+An **atlas** names a JSON exported beside the PNG: Aseprite's (Export
+Sprite Sheet, JSON hash or array: frames in the natural order of their
+names with their own durations, and each `frameTags` entry a clip, its
+direction `forward`, `reverse` or `pingpong`) or TexturePacker's (JSON
+hash or array, its pivots taken; rotated frames are refused). The tags'
+clips come first, in the atlas's order, then the sheet's own `clip`
+blocks; a clip the sheet declares wins over a tag of the same name (to
+give it `event` lines or another `mode`). `templates/archetypes/runner`'s
+`assets/sprites/courier.ogt` is a grid sheet with five clips.
 
 ### Tilesets, maps and Tiled: the grammar
 
@@ -539,6 +597,8 @@ layer walls {
   opacity 1                # (default 1)
   visible true             # (default true)
   collision true           # its tiles' collision becomes static colliders (default false)
+  colliderLayers 4         # those colliders' og.Collider.layers bits (default: og.Tilemap.colliderLayers)
+  colliderMask 3           # the layers they collide with, og.Collider.mask bits (default: every layer)
   lit false                # the layer takes no 2D light (og.Lighting2D); default true: lit like a sprite in the lit range
   repeat x                 # x, y or both: tile the layer endlessly (a background)
   terrain wall             # a terrain layer: cells are 1 (filled) or 0, the terrain picks the tiles
@@ -571,6 +631,7 @@ cook reads of a layer and an object:
 |---|---|---|
 | `autotile` | tile layer custom property (string) | the layer is a terrain layer of that terrain of its tileset; any tile in a cell marks it filled, the terrain picks the drawn tile |
 | `collision` | tile layer custom property (bool) | the layer's tile collision becomes static colliders |
+| `colliderLayers`, `colliderMask` | tile layer custom properties (int) | the og.Collider `layers` and `mask` bits of that layer's colliders (default: og.Tilemap.colliderLayers, every layer) |
 | `lit` | tile layer custom property (bool) | false keeps the layer out of og.Lighting2D (a sky or window layer); default true |
 | `z` | tile layer custom property (int) | the sprite layer offset from og.Tilemap.layer (default: the layer's index among the tile layers) |
 | `repeatx`, `repeaty` | tile layer custom properties (bool), or Tiled's own layer fields | the layer repeats along x or y (`repeat` is not a name the cook reads) |
@@ -583,7 +644,7 @@ cook reads of a layer and an object:
 
 `og cook` warns on every custom property it does not read, naming the
 property, its layer, object or tile and the names read there: a tile
-layer's other than the six names above (or one whose value has another
+layer's other than the eight names above (or one whose value has another
 type: a `collision` written as the string "true"), a tile's other than
 `solid`, the map's, a group's, an object layer's or an image layer's own
 (none is imported), and an object's class-typed one (no text to give). A
@@ -945,10 +1006,14 @@ round false               # sprite mode: fade each particle to a round edge over
   speeds are in world units like a sprite's, and the particles take the
   sprite batch's order and glow like any sprite.
 - A one-shot effect (a hit, a pickup, landing dust) is `rate 0`,
-  `looping false`, one `burst 0 <count>` and a short `duration`; restart
-  it by writing the tick to its `og.ParticleSystem.startTick` (moving the
-  entity first). A lasting one (embers, motes, rain) keeps the defaults
-  `looping true` and a `rate`.
+  `looping false`, one `burst 0 <count>` and a short `duration`; fire
+  and restart it by writing the tick to its `og.ParticleSystem.startTick`
+  (moving the entity first). Spawn it in `start` without a `startTick`:
+  the default, `PARTICLES_ARMED`, means never written, so it waits
+  armed and emits nothing until its first use (write `PARTICLES_ARMED`
+  back to re-arm one without firing it). A lasting one (embers, motes,
+  rain) keeps the defaults `looping true` and a `rate`, and emits from
+  tick 0 without a `startTick`.
 - `sheet` animates a sprite sheet texture: `life 1` plays its frames once
   over each particle's life, `fps 12` at a rate, `random` one frame per
   particle. `array` does the same over a texture array's layers (§8), one
@@ -1170,7 +1235,7 @@ deterministic and part of snapshots (`reference/physics.md`):
 - `og.CharacterController` (3D, or top-down with `gravityScale` 0) — set
   `move` every tick and `jump` to jump; it climbs `maxSlope` and
   `stepHeight`, snaps to the ground, rides moving platforms, slides along
-  walls, pushes bodies; read `grounded`, `velocity`, `ground`. Its
+  walls, pushes dynamic bodies; read `grounded`, `velocity`, `ground`. Its
   og.Collider's `layers` and `mask` decide what blocks it, as for bodies
   (a ghost through a gate: leave the gate's layer out of its `mask`); the
   same for the PlatformerController.
@@ -1180,6 +1245,13 @@ deterministic and part of snapshots (`reference/physics.md`):
   `impulse` (m/s, taken once on the next step) knocks it back or launches
   it;
   `og.CharacterEvent` reports jumps and landings for dust and sounds.
+  Both controllers push the dynamic bodies they move into (`pushBodies`,
+  on by default) with at most `pushStrength` (1,000 N): the push is mass
+  times the speed asked of the body, capped, so mass tells. Give a crate
+  its `og.RigidBody.mass`: 2 kg is shoved at the run speed, 100 kg creeps,
+  a tonne on the ground holds (friction beats the push). Lower
+  `pushStrength` for a weak hero; `pushBodies: false` for a hero that
+  never shoves (a crate then blocks like a wall).
   `templates/archetypes/runner`'s courier is one.
 - `og.Vehicle` — a raycast car (3D, `throttle`, `steer`, `brake`; wheels
   from `og.physics.vehicleWheels`) or a car on wheel joints (2D). Its
@@ -1450,15 +1522,36 @@ to 64 KiB a key: a record in one key, the world in a slot
   its tick: restored, the next step completes that tick (the systems
   after the saver and the physics step), so a replay from it (the
   countdown's world restored, the taped inputs fed again) runs the saved
-  race tick for tick. Take it as the system's last write of the tick:
+  race tick for tick. The command channel's scheduled steps keep their
+  remaining delays across a restore (og.Time takes the saved tick), so a
+  playtest that taps Continue onto a save of a later tick, or an earlier
+  one, runs the rest of its script and ends at its last step or `quit`.
+  Take it as the system's last write of the tick:
   what the system does after the call is not in it. A saved type whose fields changed since (a
   release added one) is refused naming the type and fields; pass
   `{ migrate: true }` to map it by field name (new fields take their
   defaults), and keep a saved type's fields stable between releases where
   you can. Keep progress in components and resources, never in module
-  variables (they are not in the save), and keep request numbers and the
-  session's own state (a best score read from the store, an open menu)
-  where a restore cannot roll them back: reset them after it. Asset
+  variables (they are not in the save). Everything in the world rolls
+  back with it, request numbers and the session's own state (a best score
+  read from the store, the settings, an open menu) included, so reset
+  them after it: the tick after a restore delivers `og.WorldRestored`
+  (`from`, the tick the world was at; `tick`, the saved one). A system
+  that reads it (`reads: [og.WorldRestored]`, `world.events(og.WorldRestored)`)
+  forgets the request numbers, asks the store again and closes what the
+  player had open:
+
+  ```ts
+  if (world.events(og.WorldRestored).length > 0) {
+    g.progressRequest = 0;                           // answered long ago, in another session
+    const asked = og.platform.storeGet(world, "settings");
+    g.settingsRequest = asked.ok ? asked.value : 0;  // the language and volumes live on in the session
+  }
+  ```
+
+  It is sent as that tick starts, so the world between the restore and
+  that tick hashes as the save did; after a save taken mid-tick it comes
+  with the first whole tick after the completing step. Asset
   handles are saved as numbers: load in `start`, in the same order every
   launch.
 - **A record** (`storeSet(world, { key: "save", value: { chimes, glimmers,

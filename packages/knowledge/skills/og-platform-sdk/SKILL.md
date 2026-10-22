@@ -61,7 +61,9 @@ if (answer.ok && typeof answer.data.value === "number") run.best[i] = Math.max(r
 - Answers are host input, like key presses: a replay records them, so the
   same answers give the same world.
 - Every answer carries `time` (UTC ms): the host's clock when it was
-  answered. `og.platform.now(world)` is the host's clock at the last
+  answered (a `saveSlot` or `loadSlot` answer, the time of the store
+  answer that ended it, so a slot's load is as good a clock as a
+  `storeGet`). `og.platform.now(world)` is the host's clock at the last
   answer (or when the platform attached) advanced by the ticks since, so
   it is the one wall clock a game may read: the time away is a store
   answer's `time` less the time the save wrote down

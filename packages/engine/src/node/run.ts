@@ -304,7 +304,11 @@ if (!probing) {
       break;
     }
     if (ticks !== undefined && tick >= ticks) break;
-    if (ticks === undefined && commands !== undefined && listening === undefined && !watchFile && tick > untilTick) break;
+    // The script ends once its last step has run: a restore moving og.Time
+    // forward or back moves the steps with it (they keep their delays), so
+    // the tick its last step was scheduled for is no end (brasswick #13).
+    const left = answer.pending ?? (tick > untilTick ? 0 : 1);
+    if (ticks === undefined && commands !== undefined && listening === undefined && !watchFile && left === 0) break;
     if (realtime || listening !== undefined || watchFile) await sleep(Math.max(0, tickMs - (performance.now() - last)));
   }
 }

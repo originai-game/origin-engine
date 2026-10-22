@@ -1271,6 +1271,7 @@ fn load_tilemap(eng: &Engine, path: &str) -> Result<Value, String> {
                 "parallax": { "x": l.parallax.x, "y": l.parallax.y },
                 "collision": l.collision, "terrain": l.terrain.clone().unwrap_or_default(), "visible": l.visible,
                 "lit": l.lit,
+                "colliderLayers": l.collider_layers, "colliderMask": l.collider_mask,
             })
         })
         .collect();
@@ -1486,13 +1487,14 @@ fn tilemap_system(
         if !live.collision {
             continue;
         }
-        for rect in og_tilemap::collision_rects_all(&live.state) {
+        for mc in og_tilemap::map_colliders(&live.state, live.layers) {
+            let rect = mc.rect;
             let c = (rect.min + rect.max) * 0.5;
             let size = rect.max - rect.min;
             let tj = json!({ "position": { "x": live.origin.x + c.x, "y": live.origin.y + c.y, "z": live.origin.z } });
             let cj = json!({
                 "shape": 0, "size": { "x": size.x, "y": size.y, "z": 1.0 },
-                "friction": live.friction, "layers": live.layers,
+                "friction": live.friction, "layers": mc.layers, "mask": mc.mask,
             });
             let enc = |l: &Layout, v: &Value| {
                 l.encode(None, Some(v))

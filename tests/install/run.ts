@@ -16,7 +16,8 @@
 //      --publish`: og-build.json names the version, the shipped publish wasm is
 //      the package's byte for byte
 //   5. the runner archetype through steps 1 to 4's test
-//   6. the knowledge inside the engine package (knowledge/): its validate.ts,
+//   6. the 2D starter (`create-game --profile 2d`) through the same test
+//   7. the knowledge inside the engine package (knowledge/): its validate.ts,
 //      mount.ts --package into a stand-in platform tree, then --check
 //
 // --container builds tests/install/Dockerfile (node 22, bun) and runs this
@@ -192,8 +193,25 @@ function host(): void {
     run(step, ["bun", "install"], runner);
     og(step, runner, "test", ".");
 
-    // 6. The knowledge, inside the installed engine package (knowledge/).
-    step = new Step("6 knowledge: validate, mount --package, --check");
+    // 6. The 2D starter: the package's template-2d/, written for --profile 2d.
+    step = new Step("6 the 2D starter (--profile 2d)");
+    const flat = join(work, "demo-2d");
+    run(step, ["bun", create, flat, "--name", "Demo 2D", "--profile", "2d", "--no-prompt"], consumer);
+    for (const f of ["project.ogt", "src/main.ts", "tests", "assets/looks/demo-2d.ogt", ".gitignore", ".gitattributes"]) {
+      if (!existsSync(join(flat, f))) step.fail(`the 2D scaffold wrote no ${f}`);
+    }
+    const manifest2d = readFileSync(join(flat, "project.ogt"), "utf8");
+    if (!/^profile\s+"2d"/m.test(manifest2d)) step.fail("the 2D scaffold's project.ogt has no `profile \"2d\"` line");
+    const pinned2d = /^engine\s+"([^"]+)"/m.exec(manifest2d)?.[1];
+    if (pinned2d !== VERSION) step.fail(`the 2D scaffold's project.ogt pins engine "${pinned2d}", expected "${VERSION}"`);
+    pinProject(flat);
+    run(step, ["bun", "install"], flat);
+    og(step, flat, "check", ".");
+    const test2d = og(step, flat, "test", ".");
+    log(`   og test: ${test2d.stdout.trim().split("\n").slice(-2).join(" | ")}`);
+
+    // 7. The knowledge, inside the installed engine package (knowledge/).
+    step = new Step("7 knowledge: validate, mount --package, --check");
     const knPkg = join(enginePkg, "knowledge");
     if (!existsSync(join(knPkg, "knowledge.json"))) step.fail(`${enginePkg} carries no knowledge/`);
     run(step, ["bun", join(knPkg, "scripts", "validate.ts")], demo);
