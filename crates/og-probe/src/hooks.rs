@@ -58,6 +58,13 @@ pub trait Capture {
     fn restore_state(&mut self, state: u64) {
         let _ = state;
     }
+    /// How the renderer last drew an entity, for `dump_entity`'s `render`
+    /// (an og.Model's level of detail: `{ "lod": 1 }`); `None` leaves it
+    /// out (an entity not drawn, or no renderer).
+    fn entity_render(&self, world: &World, entity: Entity) -> Option<Value> {
+        let _ = (world, entity);
+        None
+    }
     /// What is under a point of the play surface, in CSS pixels. `None` until
     /// the renderer provides picking: the probe answers `pick` with `null`.
     fn pick(&mut self, world: &World, x: f32, y: f32) -> Option<Pick> {

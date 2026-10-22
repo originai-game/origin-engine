@@ -74,6 +74,11 @@ impl Capture for RuntimeCapture {
             rgba: image.pixels,
         })
     }
+    fn entity_render(&self, _world: &World, entity: Entity) -> Option<Value> {
+        let rs = self.render.try_borrow().ok()?;
+        let level = rs.lod_drawn.get(&entity.to_bits())?;
+        Some(json!({ "lod": level }))
+    }
 
     fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
         let mut rs = self.render.try_borrow_mut().ok()?;
@@ -92,6 +97,27 @@ impl Capture for RuntimeCapture {
         rs.capture_ms += now_ms() - t0;
         frame
     }
+}
+
+/// Registers `debug_view:<none|lod>`: `RenderOptions.debugView` switched
+/// for the following frames (the renderer reads it every frame).
+pub(crate) fn register_debug_view(probe: &mut Probe, engine: u32) {
+    let _ = probe.register_command(
+        "debug_view",
+        og_probe::CommandDesc {
+            usage: "debug_view:<none|lod>".into(),
+            doc: "draw a diagnostic view in place of the lit image (RenderOptions.debugView): lod colours every model by the level of detail it draws".into(),
+        },
+        move |_world, args| {
+            let view = args.first().map(String::as_str).unwrap_or("");
+            if !matches!(view, "none" | "lod") {
+                return Err("write debug_view:none or debug_view:lod".into());
+            }
+            let eng = super::engine::engine(engine)?;
+            eng.render.borrow_mut().options["debugView"] = json!(view);
+            Ok(())
+        },
+    );
 }
 
 /// A name change made outside the probe, replayed into it.
@@ -120,6 +146,7 @@ pub(crate) fn with_probe<T>(
     {
         let st = eng.state.borrow();
         probe.set_timings(st.step_ms, st.render_ms);
+        probe.set_triangles(st.triangles);
     }
     invalidate(moving);
     super::engine::clear_world_queries();

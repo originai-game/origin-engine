@@ -438,6 +438,8 @@ pub(crate) struct State {
     pub render_ms: f64,
     /// The last frame's render-graph passes and their encode milliseconds.
     pub pass_ms: Vec<(String, f64)>,
+    /// The last frame's main-pass triangles (`ProbeTimings.triangles`).
+    pub triangles: u64,
     pub warnings: Vec<String>,
     /// Log lines for `og_engine_take_log`.
     pub log: Vec<Value>,
@@ -1151,6 +1153,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         step_ms: 0.0,
         render_ms: 0.0,
         pass_ms: Vec::new(),
+        triangles: 0,
         // A GameDesc mistake is logged at once (the others answer the call that meets them).
         log: a
             .warnings
@@ -1208,6 +1211,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         super::e6::register_commands(&mut probe, engine_id);
         super::timeline::commit(engine_id, probe.inbox());
         super::timeline::register_commands(&mut probe, engine_id);
+        super::probe::register_debug_view(&mut probe, engine_id);
     }
     // The host's locale (og run --locale, the browser's language).
     super::i18n::request(engine_id, options["locale"].as_str().unwrap_or(""));
@@ -1589,6 +1593,7 @@ fn render(eng: &Engine) -> Result<bool, String> {
     // The tick this frame shows: its notes (and a missing glyph) are this tick's.
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
     let mut passes = Vec::new();
+    let mut triangles = 0;
     let notes = {
         let world = eng.world()?;
         let mut rs = eng.render.borrow_mut();
@@ -1598,6 +1603,7 @@ fn render(eng: &Engine) -> Result<bool, String> {
             b.set_clock(Some(rprobe::now_ms));
             b.render(&rs.scene)?;
             passes = b.pass_timings();
+            triangles = b.triangles();
             if b.missing_glyphs() > 0 {
                 let assets = eng.assets.borrow();
                 let named = |handle: og_render::FontHandle| {
@@ -1618,6 +1624,7 @@ fn render(eng: &Engine) -> Result<bool, String> {
     st.render_ms = rprobe::now_ms() - t0;
     super::trace::frame(eng.id, tick, t0, st.render_ms, &passes);
     st.pass_ms = passes;
+    st.triangles = triangles;
     for n in notes {
         if st.ui_warned.insert(n.clone()) {
             st.log

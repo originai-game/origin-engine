@@ -62,6 +62,11 @@ pub trait RenderBackend {
     fn pass_timings(&self) -> Vec<(String, f64)> {
         Vec::new()
     }
+    /// The last frame's main-pass triangles (og-render's
+    /// `FrameStats::triangles`): `ProbeTimings.triangles`.
+    fn triangles(&self) -> u64 {
+        0
+    }
     /// Draw the scene offscreen at `width`×`height` (0×0: the target's size)
     /// and read it back. Native hosts block on the readback; the web host
     /// answers a frame it requested earlier (request on tick N, answer on
@@ -129,6 +134,17 @@ pub(crate) struct QueuedText {
 /// transform within the model.
 pub(crate) type Parts = Vec<(MeshHandle, MaterialHandle, Mat4)>;
 
+/// A model's levels of detail (`og-render`'s `lod.rs` picks one per
+/// entity): per part, the meshes of its coarser levels with their fraction
+/// of the full mesh's triangles, and the model's bounding sphere in its
+/// own space.
+#[derive(Clone, Debug)]
+pub(crate) struct ModelLods {
+    pub parts: Vec<Vec<(MeshHandle, f32)>>,
+    pub center: Vec3,
+    pub radius: f32,
+}
+
 /// The render side of an engine, shared with the probe's capture hook.
 pub(crate) struct RenderState {
     pub scene: RenderScene,
@@ -139,6 +155,12 @@ pub(crate) struct RenderState {
     pub geometries: Vec<MeshHandle>,
     /// Model parts by asset handle bits.
     pub models: BTreeMap<u64, Parts>,
+    /// The models' levels of detail by asset handle bits (models with one
+    /// level have none).
+    pub model_lods: BTreeMap<u64, ModelLods>,
+    /// The level each og.Model entity drew last (by entity bits): the
+    /// hysteresis of the next choice, and what dump_entity reports.
+    pub lod_drawn: BTreeMap<u64, u8>,
     /// Fonts by Font handle index.
     pub fonts: Vec<FontPages>,
     /// Text queued during the current tick, and that tick.
@@ -203,6 +225,8 @@ impl RenderState {
             materials: Vec::new(),
             geometries: Vec::new(),
             models: BTreeMap::new(),
+            model_lods: BTreeMap::new(),
+            lod_drawn: BTreeMap::new(),
             fonts: Vec::new(),
             texts: Vec::new(),
             texts_tick: 0,
@@ -251,6 +275,19 @@ fn on(v: &Value, key: &str, default: bool) -> bool {
         Value::Bool(b) => *b,
         Value::Number(n) => n.as_f64().is_some_and(|x| x != 0.0),
         _ => default,
+    }
+}
+
+/// `RenderOptions.debugView` (GameDesc.render, or a probe's `debug_view`
+/// command since): its variant's name, `none` when unset.
+pub(crate) fn debug_view(options: &Value) -> String {
+    match &options["debugView"] {
+        Value::String(s) => s.clone(),
+        Value::Number(n) => match n.as_u64() {
+            Some(1) => "lod".into(),
+            _ => "none".into(),
+        },
+        _ => "none".into(),
     }
 }
 
@@ -727,10 +764,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // (kestrel-stair #11: a glTF's materials are shared by every instance),
     // with its shadow flags (on unless the model says otherwise). A hidden
     // model draws nothing (meridian-loop #14).
-    let model_parts: Vec<(u64, u64, Parts, super::fx::ModelLook)> = model_rows
+    let model_parts: Vec<(u64, u64, Parts, super::fx::ModelLook, f32)> = model_rows
         .into_iter()
         .filter(|(_, v)| on(v, "visible", true))
         .filter_map(|(e, v)| {
+            let bias = f(&v, "lodBias", 1.0).max(0.0);
             let asset = v["asset"].as_f64().unwrap_or(0.0) as u64;
             let look = super::fx::ModelLook {
                 fx: og_render::InstanceFx {
@@ -741,7 +779,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 cast: on(&v, "castShadow", true),
                 receive: on(&v, "receiveShadow", true),
             };
-            models.get(&asset).map(|p| (e, asset, p.clone(), look))
+            models
+                .get(&asset)
+                .map(|p| (e, asset, p.clone(), look, bias))
         })
         .collect();
     let mesh_rows = layouts
@@ -750,12 +790,57 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         .map(|m| mesh_rows(world, m))
         .unwrap_or_default();
     let (geometries, materials) = (geometries.clone(), materials.clone());
-    for (e, asset, parts, look) in model_parts {
+    // Levels of detail: per entity, the level its bounding sphere's size on
+    // screen calls for (og_render::lod), kept near a boundary by the level
+    // it drew last. `RenderOptions.debugView lod` colours each by its level.
+    let settings_bias = settings
+        .as_ref()
+        .map_or(1.0, |s| f(s, "lodBias", 1.0).max(0.0));
+    let debug_lod = debug_view(&rs.options) == "lod";
+    let model_lods = std::mem::take(&mut rs.model_lods);
+    let last_drawn = std::mem::take(&mut rs.lod_drawn);
+    let mut drawn = BTreeMap::new();
+    for (e, asset, parts, mut look, bias) in model_parts {
         let m = h.world_of(e);
+        let level = match model_lods.get(&asset) {
+            Some(l) => {
+                let fractions = l
+                    .parts
+                    .iter()
+                    .max_by_key(|p| p.len())
+                    .map(|p| {
+                        std::iter::once(1.0)
+                            .chain(p.iter().map(|x| x.1))
+                            .collect::<Vec<f32>>()
+                    })
+                    .unwrap_or_default();
+                let scale = m.to_scale_rotation_translation().0.abs().max_element();
+                let size = og_render::lod::projected_size(
+                    &rs.scene.camera,
+                    m.transform_point3(l.center),
+                    l.radius * scale,
+                );
+                let previous = last_drawn.get(&e).map(|&x| x as usize);
+                og_render::lod::select(&fractions, size, bias * settings_bias, previous)
+            }
+            None => 0,
+        };
+        drawn.insert(e, level as u8);
+        if debug_lod {
+            look.fx.flash = 0.8;
+            look.fx.flash_color = og_render::lod::debug_color(level);
+        }
         if posed.contains(&e) && super::fx::posed_model(rs, e, asset, m, &parts, look, &mut keys) {
             continue;
         }
+        let levels = model_lods.get(&asset).map(|l| &l.parts);
         for (k, &(mesh, material, local)) in parts.iter().enumerate() {
+            // A part with fewer levels than the model draws its coarsest.
+            let mesh = match (level, levels.and_then(|l| l.get(k))) {
+                (0, _) | (_, None) => mesh,
+                (_, Some(p)) if p.is_empty() => mesh,
+                (l, Some(p)) => p[(l - 1).min(p.len() - 1)].0,
+            };
             rs.scene.instances.push(og_render::Instance {
                 mesh,
                 material,
@@ -768,6 +853,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             keys.push((e, k as u32));
         }
     }
+    rs.model_lods = model_lods;
+    rs.lod_drawn = drawn;
     let scene = &mut rs.scene;
     // Meshes.
     {

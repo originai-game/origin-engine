@@ -627,6 +627,8 @@ mod canvas {
         pending: Vec<Pending>,
         /// The last frame's `FrameStats::missing_glyphs`.
         missing: u32,
+        /// The last frame's `FrameStats::triangles`.
+        triangles: u64,
     }
 
     struct Pending {
@@ -671,7 +673,10 @@ mod canvas {
             });
             self.renderer
                 .render(scene, &RenderTarget::Surface)
-                .map(|s| self.missing = s.missing_glyphs)
+                .map(|s| {
+                    self.missing = s.missing_glyphs;
+                    self.triangles = s.triangles;
+                })
                 .map_err(|e| e.to_string())
         }
         fn missing_glyphs(&self) -> u32 {
@@ -682,6 +687,9 @@ mod canvas {
         }
         fn pass_timings(&self) -> Vec<(String, f64)> {
             self.renderer.pass_timings().to_vec()
+        }
+        fn triangles(&self) -> u64 {
+            self.triangles
         }
         /// Request on one call, answer on a later one: the first call draws
         /// offscreen and starts the readback; a later call at the same size
@@ -784,6 +792,7 @@ mod canvas {
                 tier: tier.clone(),
                 pending: Vec::new(),
                 missing: 0,
+                triangles: 0,
             })),
         )
         .map_err(|e| JsValue::from_str(&e))?;

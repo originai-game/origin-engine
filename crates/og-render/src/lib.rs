@@ -58,6 +58,7 @@ mod id_pass;
 mod instances;
 mod light2d;
 mod lines;
+pub mod lod;
 mod material;
 mod metaballs;
 mod mips;

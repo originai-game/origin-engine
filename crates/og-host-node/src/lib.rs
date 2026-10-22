@@ -472,6 +472,8 @@ struct OffscreenBackend {
     tier: String,
     /// The last frame's `FrameStats::missing_glyphs`.
     missing: u32,
+    /// The last frame's `FrameStats::triangles`.
+    triangles: u64,
 }
 
 impl RenderBackend for OffscreenBackend {
@@ -493,7 +495,10 @@ impl RenderBackend for OffscreenBackend {
     fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
         self.renderer
             .render(scene, &og_render::RenderTarget::Offscreen)
-            .map(|s| self.missing = s.missing_glyphs)
+            .map(|s| {
+                self.missing = s.missing_glyphs;
+                self.triangles = s.triangles;
+            })
             .map_err(|e| e.to_string())
     }
     fn missing_glyphs(&self) -> u32 {
@@ -504,6 +509,9 @@ impl RenderBackend for OffscreenBackend {
     }
     fn pass_timings(&self) -> Vec<(String, f64)> {
         self.renderer.pass_timings().to_vec()
+    }
+    fn triangles(&self) -> u64 {
+        self.triangles
     }
     fn capture(
         &mut self,
@@ -589,6 +597,7 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
                     renderer,
                     tier: tier.clone(),
                     missing: 0,
+                    triangles: 0,
                 })),
             )?;
             Ok(tier)
