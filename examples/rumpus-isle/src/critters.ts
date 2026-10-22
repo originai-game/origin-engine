@@ -2,7 +2,7 @@
 // (a push towards the speed asked, a dash on the action, turning to face the
 // way it goes), and Bumps answers critters running into each other (a shove
 // for both by how fast they met, more for one a dash hit, a squash, a thud, a
-// shake, a few ticks of hit stop for a dash).
+// shake, a few ticks of hit stop by how hard they met).
 
 import { og, defineSystem } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
@@ -73,6 +73,8 @@ export const Drive = defineSystem(
         }
         v.linear[i * 3] = vx;
         v.linear[i * 3 + 2] = vz;
+        c.vx[i] = vx;
+        c.vz[i] = vz;
         // Turn to face the way it goes (a spin about +y, eased).
         const sp = Math.hypot(vx, vz);
         const target = sp > 0.6 ? Math.atan2(vx, vz) : yaw;
@@ -98,14 +100,21 @@ export const Bumps = defineSystem(
     for (const e of world.events(og.CollisionStarted)) {
       if (!isCritter(world, e.a) || !isCritter(world, e.b)) continue;
       const ca = must(world.get(e.a, Critter)), cb = must(world.get(e.b, Critter));
-      const pa = must(world.get(e.a, og.Transform)).position, pb = must(world.get(e.b, og.Transform)).position;
-      const va = must(world.get(e.a, og.Velocity)).linear, vb = must(world.get(e.b, og.Velocity)).linear;
-      let nx = pb.x - pa.x, nz = pb.z - pa.z;
-      const l = Math.hypot(nx, nz) || 1;
+      // The contact's normal from a to b, flat (two spheres of one size meet level; a lands on b's
+      // head only in a fall, and then the line between them serves).
+      let nx = e.normal.x, nz = e.normal.z;
+      let l = Math.hypot(nx, nz);
+      if (l < 0.1) {
+        const pa = must(world.get(e.a, og.Transform)).position, pb = must(world.get(e.b, og.Transform)).position;
+        nx = pb.x - pa.x;
+        nz = pb.z - pa.z;
+        l = Math.hypot(nx, nz) || 1;
+      }
       nx /= l;
       nz /= l;
-      // How fast they closed along the line between them.
-      const closing = Math.max(0, (va.x - vb.x) * nx + (va.z - vb.z) * nz);
+      // How fast they closed: the velocities Drive handed the step, not og.Velocity, which by this
+      // tick holds the contact's answer (they already part: FINDINGS.md #9).
+      const closing = Math.max(0, (ca.vx - cb.vx) * nx + (ca.vz - cb.vz) * nz);
       const shove = Math.max(t.bumpMin, closing * t.bumpShove);
       const aDash = ca.dash > 0, bDash = cb.dash > 0;
       // The one a dash hit takes most of it, and is stunned; the dasher recoils a little.
@@ -119,7 +128,10 @@ export const Bumps = defineSystem(
       g.bumps += 1;
       sfx.bits |= Sound.Bump;
       fx.shake = Math.max(fx.shake, aDash || bDash ? 0.45 : 0.22);
-      if (aDash || bDash) og.time.hitStop(world, 3);
+      // Hit stop by impact weight (og-feel §3): three ticks for a dash, two for a hard bump (closing
+      // faster than half the top speed), none for a jostle. The engine never shortens one running.
+      const stop = aDash || bDash ? 3 : closing >= t.speed * 0.5 ? 2 : 0;
+      if (stop > 0) og.time.hitStop(world, stop);
     }
   },
 );

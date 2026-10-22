@@ -60,38 +60,17 @@ export const View = defineSystem("View", { reads: [Prefs], writes: [og.Camera, G
   if (ps.visible !== on) must(world.set(confetti, og.ParticleSystem, { visible: on, startTick: time.tick }));
 });
 
-/**
- * Where a world point lands on the screen, in CSS pixels from the top left (null behind the camera):
- * the camera's pose and vertical fov, as three.js projects. The engine has no world-to-screen call,
- * and world text faces +z, rides the tone curve and the depth of field (FINDINGS.md), so the name
- * tags are screen text placed here.
- */
-export function toScreen(cam: { position: Vector3; quaternion: { x: number; y: number; z: number; w: number }; fov: number }, p: Vector3, width: number, height: number): { x: number; y: number } | null {
-  const d = { x: p.x - cam.position.x, y: p.y - cam.position.y, z: p.z - cam.position.z };
-  // Rotate by the inverse of the camera's rotation.
-  const q = cam.quaternion;
-  const ix = -q.x, iy = -q.y, iz = -q.z, w = q.w;
-  const tx = 2 * (iy * d.z - iz * d.y), ty = 2 * (iz * d.x - ix * d.z), tz = 2 * (ix * d.y - iy * d.x);
-  const cx = d.x + w * tx + (iy * tz - iz * ty);
-  const cy = d.y + w * ty + (iz * tx - ix * tz);
-  const cz = d.z + w * tz + (ix * ty - iy * tx);
-  if (cz > -0.1) return null;
-  const f = 1 / Math.tan(((cam.fov || 50) * Math.PI) / 360);
-  const ndcX = ((cx / -cz) * f) / (width / height);
-  const ndcY = (cy / -cz) * f;
-  return { x: ((ndcX + 1) / 2) * width, y: ((1 - ndcY) / 2) * height };
-}
-
 /** Name tags: each seated critter's name over it in its colour (screen text, under the UI). */
 export const Tags = defineSystem("Tags", { reads: [Game, og.Camera] }, (_q, _time, world) => {
   const g = must(world.resource(Game));
   if (g.phase === Phase.Title || g.phase === Phase.Scores) return;
   const cam = must(world.resource(og.Camera));
-  const vp = og.ui.frameViewport();
   const font = g.font as Font;
   seats(g).forEach((s, k) => {
     if (!s.joined || s.y < -0.4 || s.y < PARK_Y + 1) return;
-    const at = toScreen(cam, { x: s.x, y: s.y + 1.25, z: s.z }, vp.width, vp.height);
+    // Screen text over the critter (og.Camera.worldToScreen): world text faces +z and rides the tone
+    // curve and the depth of field, and nothing in the skills points here (FINDINGS.md #3).
+    const at = cam.worldToScreen({ x: s.x, y: s.y + 1.25, z: s.z });
     if (at === null) return;
     og.render.text(world, {
       font,

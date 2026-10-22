@@ -137,6 +137,12 @@ export function buildArena(world: World): void {
   // The podium, under the island until the end.
   const podium = must(og.load.gltf(world, "models/podium.glb"));
   must(world.instantiate(podium, { name: "podium", position: { x: PODIUM.x, y: PARK_Y, z: PODIUM.z } }));
+  // Its steps are ground too (the model is a mesh only): one kinematic box each, moved with it (src/rules.ts setStage).
+  PODIUM.steps.forEach((step, i) => {
+    const s = must(world.spawn({ name: `podium-step-${i}`, position: { x: PODIUM.x + step.x, y: PARK_Y + step.y / 2, z: PODIUM.z } }));
+    must(world.insert(s, og.RigidBody, { kind: BODY_KINEMATIC }));
+    must(world.insert(s, og.Collider, { shape: SHAPE_BOX, size: { x: 1.6, y: step.y, z: 1.6 }, friction: 0.6, layers: Bits.Ground, mask: Bits.Critter }));
+  });
 
   // The effects: one entity per emitter, moved where it plays and restarted (og-game §10).
   const fx: [string, string, number][] = [["fx-splash", "fx/splash.ogt", 0], ["fx-dust", "fx/dust.ogt", 1], ["fx-sparkle", "fx/sparkle.ogt", 2], ["fx-crumbs", "fx/crumbs.ogt", 3]];

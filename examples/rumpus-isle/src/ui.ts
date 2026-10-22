@@ -147,7 +147,7 @@ function hud(world: World, g: GameV): boolean {
   og.ui.anchor("Top", { anchor: "top", direction: "row", gap: S.sm, cross: "center" }, () => {
     og.ui.row("Round", { gap: S.sm, cross: "center", padding: { left: S.md, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "surface" } }, () => {
       og.ui.label("Name", say(world, "hud.round", { n: g.round + 1, of: ROUNDS, name: roundName }), { step: "lg", font: "display", nowrap: true });
-      og.ui.icon("Clock", "clock", { size: 20, tint: { token: "fgMuted" } });
+      og.ui.icon("ClockIcon", "clock", { size: 20, tint: { token: "fgMuted" } });
       og.ui.label("Clock", clock(g.phase === Phase.Intro ? g.left : g.ticks / 60), { step: "lg", font: "mono", nowrap: true });
     });
     if (og.ui.button("Pause", say(world, "hud.pause"), { size: "small", variant: "secondary" }).clicked) paused = true;

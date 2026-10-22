@@ -165,7 +165,7 @@ export const Game = defineResource("Game", {
   a11yNodes: u32(0),
   /**
    * The display font's handle for the world's name tags (og.load.font). A handle wants a field of its
-   * own kind (og-core §4), but there is no Font() factory: an f64 holds it (FINDINGS.md).
+   * own kind (og-core §4), but there is no Font() factory: an f64 holds it (FINDINGS.md #2).
    */
   font: f64(0),
   /** The title's camera drift and the podium's, eased in seconds. */
@@ -190,6 +190,12 @@ export const Critter = defineComponent("Critter", {
   stun: u32(0),
   /** Ticks since it went into the sea (berry round: back on the island after a while). */
   sunk: u32(0),
+  /**
+   * The velocity Drive handed the step (m/s). og.CollisionStarted is read the tick after the step,
+   * when og.Velocity already holds the contact's answer, so this is how hard a bump closed (FINDINGS.md #9).
+   */
+  vx: f32(0),
+  vz: f32(0),
   /** The material of its body, made in start in its seat's colour. */
   body: Material(),
   /** The body's mesh entity (squashed on bumps). */
@@ -238,9 +244,13 @@ export const Tuning = defineResource("Tuning", {
   dashSpeed: f32(11, { min: 4, max: 20, tunable: true, unit: "m/s" }),
   dashTicks: u32(10, { min: 1, max: 40 }),
   dashCooldown: u32(45, { min: 0, max: 180 }),
-  /** The shove a bump gives the critter hit, N·s per m/s of closing speed, and its least. */
-  bumpShove: f32(1.1, { min: 0, max: 5, tunable: true }),
-  bumpMin: f32(2.5, { min: 0, max: 20, tunable: true }),
+  /**
+   * The shove a bump gives the critter hit, N·s per m/s of closing speed (a critter weighs 1 kg: a
+   * full-speed head-on at 10 m/s shoves each about 2.4 m/s, a landed dash at 16 m/s throws the one hit
+   * nearly 8 m/s), and its least (a jostle).
+   */
+  bumpShove: f32(0.3, { min: 0, max: 5, tunable: true }),
+  bumpMin: f32(1.5, { min: 0, max: 20, tunable: true }),
   /** Ticks a dashed-into critter loses control for. */
   stunTicks: u32(14, { min: 0, max: 60 }),
   /** Rounds' lengths, s. */

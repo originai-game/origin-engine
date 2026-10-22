@@ -65,7 +65,11 @@ function setStage(world: World, island: boolean, tiles: boolean, podium: boolean
     must(world.set(e, og.Transform, { position: { x: b, y: PARK_Y, z: 0 } }));
     must(world.set(e, Berry, { up: false, gold: false, age: 0 }));
   }
-  must(world.set(named(world, "podium"), og.Transform, { position: { x: PODIUM.x, y: podium ? 0 : PARK_Y, z: PODIUM.z } }));
+  const podiumY = podium ? 0 : PARK_Y;
+  must(world.set(named(world, "podium"), og.Transform, { position: { x: PODIUM.x, y: podiumY, z: PODIUM.z } }));
+  PODIUM.steps.forEach((step, i) => {
+    must(world.set(named(world, `podium-step-${i}`), og.Transform, { position: { x: PODIUM.x + step.x, y: podiumY + step.y / 2, z: PODIUM.z } }));
+  });
 }
 
 /** The lobby: everyone off stage, the island back. */

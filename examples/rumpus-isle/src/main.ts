@@ -57,7 +57,7 @@ function sourceArg(s: string | undefined): number {
 export default og.game({
   look: "looks/rumpus-isle.ogt",
   resources: [Game, Prefs, Tuning, Fx, Sfx],
-  systems: [Answers, Lobby, Ui, Rules, Drive, Bumps, Tiles, Berries, View, Tags, Effects, Voices, Saves],
+  systems: [Answers, Lobby, Ui, Rules, Bumps, Drive, Tiles, Berries, View, Tags, Effects, Voices, Saves],
   render: { antialias: "taa" },
   start,
   commands: {
@@ -144,7 +144,7 @@ export default og.game({
     settings: { usage: "", doc: "Open the settings." },
     title: { usage: "", doc: "Back to the title (everyone stands up)." },
     language: { usage: "<en|fr>", doc: "Switch the language as the settings do." },
-    records: { usage: "<berries> <seconds>", doc: "Set the isle's records (for frames)." },
+    records: { usage: "<berries>:<seconds>", doc: "Set the isle's records (for frames)." },
   },
   facts: (world) => {
     const game = world.resource(Game);

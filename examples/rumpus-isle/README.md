@@ -1,70 +1,98 @@
-# The game template
+# Rumpus Isle
 
-What `npm create @origingame/game` writes: the smallest whole Origin Engine
-project, and the hello of the engine's design grown into a scene. A menu's
-Start button (or S, or Enter) spins the trickster and drops a crate onto
-the ground; a guard patrols the yard, sees only inside its cone and not
-through the wall, raises the alarm, chases, searches and goes back.
+The sixth dogfood game of the Origin Engine build-out, written from the
+knowledge package alone (`packages/knowledge`: the skills, the wiki, `og
+--help`): a local-multiplayer party game for two to four on one screen.
+Round critters on a little island bump each other about in three short
+minigames, with a scoreboard after each and a podium at the end. What the
+knowledge package got wrong or left out, and what the engine did not do,
+is `FINDINGS.md`.
 
 ```sh
-og run .     # headless with the probe; og dev . reloads on save
-og test .    # tests/smoke.og.ts and tests/guard.og.ts
-og polish .  # the taste and feel scores of those playtests
-og build .   # the play page
+bun tools/make-assets.ts   # every asset (the music, a splash and the copied skin's art are not committed)
+og cook .
+og run .                   # headless with the probe; og dev . reloads on save
+og test .                  # nine playtests, the frames against references/<tier>
+og check .
+og polish .                # the taste and feel scores of the playtests
+og build . --publish       # the web build
 ```
 
-## What it demonstrates, and the skills it exercises
+## Controls
+
+Up to four players: any of the four pads, and two halves of one keyboard.
+
+| Action | WASD half | Arrows half | Pad |
+|---|---|---|---|
+| Move | W, A, S, D | the arrows | left stick, d-pad |
+| Sit down in the lobby, dash in a round | Space | Enter | A |
+| Stand up (lobby) | Q | Backspace | B |
+| Pick a colour (lobby) | A, D | Left, Right | its own focus ring (`og.ui.setPlayers`) |
+| Pause | Escape | Escape | Start (any seated pad) |
+| Menus | arrows, Tab, Enter, Escape | | d-pad, A, B |
+
+The camera looks down the island from the south, so up on the screen is
+away from the camera.
+
+## The rounds
+
+A match is three rounds (`src/rules.ts`), each a card with how it is
+played, a count-in, play, a beat with a banner naming the winner, then the
+scoreboard; places give points (3, 2, 1, 0) and the podium follows the
+third. New players can sit down between rounds and join from the next.
+
+1. **Bump Ring** (40 s): shove the others into the sea; a dash (A, Space,
+   Enter) hits harder and stuns. The last one on the island wins; at the
+   whistle those still on are ranked by how near the middle they stand.
+2. **Berry Rush** (30 s): berries come up on the island, up to six at a
+   time, a gold one worth three; the most when the whistle goes wins. A dip
+   in the sea costs a berry and a moment off the island.
+3. **Crumble Tiles** (45 s): the island sinks away under a grid of tiles;
+   a tile stood on cracks and drops after a moment. The last one standing
+   wins, and the longest stood is the isle's record.
+
+## What it uses
 
 | Part | Where | Skill |
 |---|---|---|
-| The project: `project.ogt`, the entry's `og.game` default export, `cooked/` from `assets/` | `project.ogt`, `src/main.ts` | og-game §2, §5 |
-| Components, a resource, systems over archetype columns, one job each | `Health`, `Velocity`, `Spin`, `Run`; `Move`, `StartSpin`, `Drop`, `Rotate` | og-core §4, §5; og-game §3 |
-| The frame's art direction as data: a look extending a catalogue preset, applied by `GameDesc.look` | `assets/looks/origin-game.ogt` (a created game's is `<id>.ogt`), `og.game({ look })` | og-taste §1, §12 |
-| A text scene spawned before the first tick, a glTF model, a font, a box with a collider that falls | `assets/scenes/main.ogt`, `start` | og-game §4, §6, §13 |
-| A menu panel whose button answers with a look and a sound (og sfx's click preset) | `Menu`, `assets/audio/click.ogt` | og-ui §1, §3; og-taste §6; og-audio §2, §3 |
-| Every word the menu shows from a string table, the base one in the source language | `assets/strings/en.ogt`, `Menu` | og-i18n §1, §2 |
-| A guard as data: a state machine on og.ai, a navmesh cooked from the yard, sight cones against the wall | `assets/ai/guard.ogt`, `assets/nav/yard.ogt` | og-ai §1–§5 |
-| Commands with their usage in `help`, facts for playtests | `commands`, `commandHelp`, `facts` | og-game §3; og-build §1 |
-| Playtests that assert on dumps and facts, never on the code | `tests/` | og-build §3, §4 |
-
-`og polish .` (2026-10-19): taste 100, feel 87 (tests/evidence/E7/polish/
-in the engine repository). The feel row below 90 is idle frames: the guard
-playtest stages its scenario without pressing Start, so for half its ticks
-only the guard stands still at a corner of its search, and the smoke
-playtest waits half a second on the title before its press. A game made
-from the template should keep a playtest that plays it.
-
-Asset licences: `LICENSES.md`.
+| Dynamic sphere critters (rotation locked but about +y), pushed towards the speed their player asks, a dash, bumps answered from `og.CollisionStarted` with an impulse by how fast they closed, a stun for a dash hit | `src/critters.ts`, `src/arena.ts` | og-game §13, og-feel §12 |
+| Six input sources on one world: four `og.Gamepad` pads and two halves of `og.Input`'s keyboard, each a seat | `src/input.ts`, `src/lobby.ts`, `src/seats.ts` | og-game §7, og-ui §4 |
+| A kinematic island that sinks for the crumble round, kinematic tiles that shake and drop, the podium's steps as ground, `og.Water` with an `og.WaterSurface` the critters splash | `src/arena.ts`, `src/rules.ts` | og-game §13 |
+| Three glTF models from a script (the island, a tile, a berry, the podium, palms), `og.load.gltf` and `world.instantiate` | `tools/make-assets.ts`, `tools/glb.ts`, `src/arena.ts` | og-game §6 |
+| Juice: hit stop by impact weight, trauma shake, squash on a bump, one-shot emitters (splash, dust, sparkle, crumbs, confetti) restarted by `startTick`, slow motion on the last knock | `src/critters.ts`, `src/feel.ts`, `assets/fx/` | og-feel §3–§6, og-game §10 |
+| Name tags as screen text over each critter, placed by `og.Camera.worldToScreen` | `src/feel.ts` | og-ui §3 |
+| The title (`og.ui.mainMenu`), a lobby from widgets with a focus ring per pad (`og.ui.setPlayers`), a HUD from widgets, the round's card, `og.ui.pauseMenu`, `og.ui.settingsScreen`, the scoreboard and podium, every screen change through an iris (`og.ui.screenTransition`), count-ups and bursts | `src/ui.ts` | og-ui §2–§6 |
+| English and French string tables with plurals and selects, the settings' words from them | `assets/strings/`, `src/ui.ts`, `src/prefs.ts` | og-i18n |
+| og sfx presets on voices, a splash from a script, the music streamed in chunks on its bus and ducked under the effects, a limiter on the master | `src/sound.ts`, `assets/audio/`, `assets/music/romp.wav.ogt` | og-audio |
+| og.platform: the settings (read on the first tick, saved when the settings close) and the isle's records written at the revision read, merged on a conflict | `src/save.ts`, `src/prefs.ts` | og-platform-sdk, og-game §17 |
+| A look extending a catalogue preset, with the cartoon skin pack copied and recoloured | `assets/looks/rumpus-isle.ogt`, `assets/skins/rumpus/` | og-taste §1, §12 |
 
 ## The look
 
-The game's art direction is data, in one file a reader can diff:
-`assets/looks/rumpus-isle.ogt` (an `.ogt` of `type look`), named by
-`look: "looks/rumpus-isle.ogt"` in the `og.game({...})` of `src/main.ts`. It is applied
-after the first scene spawns and before `start` runs, and sets tone
-mapping and exposure, the post stack, the stylisation (`Stylise`),
-material defaults (`MaterialStyle`: toon, outlines, flat shading), fog,
-sky, the environment map and the UI skin.
+`assets/looks/rumpus-isle.ogt` extends the catalogue's `miniature-diorama`
+(og-taste §12: a tabletop model, tilt-shift focus, a soft sun, a high
+camera), with the depth of field focused on the island from the camera's
+19 m, and the cartoon skin recoloured sea and coral (`skins/rumpus`, copied
+by the generator). `create --premise` matched `rubber-hose-animation`, a 2D
+flipbook style, for the premise (`FINDINGS.md` #1).
 
-It extends `rubber-hose-animation`, chosen from the game's premise: "Rubber-hose cartoon" in the style
-catalogue. Round-headed characters with bendy tube limbs, pie-cut eyes and constant squash and stretch, inked like early theatrical cartoons. Its UI skin pack is `cartoon`.
+## Playtests
 
-To change it:
+`tests/`: `frames.og.ts` (eleven frames against `references/<tier>/`),
+`replay.og.ts` (a match by the keys from the title through two rounds,
+twice, one hash), `lobby.og.ts`, `bump.og.ts`, `berry.og.ts`,
+`crumble.og.ts`, `flow.og.ts` (a whole match for three with pause),
+`save.og.ts` (a relaunch over a kept store), `locales.og.ts` (French on
+every screen). `OG_FX_CAPTURE=1 og test .` records this tier's references
+(`metal` is the one kept); with no renderer (`OG_RENDERER=none`, the
+switch for a sandbox whose only adapter is Mesa lavapipe, which renders
+every tick at a quarter of a second: `FINDINGS.md` #7) the frames are
+reported unchecked and the rest runs the same.
 
-- **Another style**: set `extends "<slug>"` to another entry of the style
-  catalogue (the og-taste skill's §12 lists all 37 with the premises each
-  fits and three checks to hold the frames to), then `og cook`.
-- **Tune it**: add a block after `extends`; a field written there wins
-  over the preset's, field by field:
+`og polish .` (2026-10-22, `OG_RENDERER=none`): taste 100, feel 93. The feel row
+below 100 is sound on input (71: a stick held is an input every tick, and
+only a dash and a bump sound); hit feedback is 100, though its fixes table
+still asks for a floating number on every bump, and a party game's bumps
+are not numbers (`FINDINGS.md` #13).
 
-  ```text
-  RenderSettings {
-    toneMapping agx
-    exposure 1.1
-  }
-  ```
-
-- **Switch at a tick** (a flashback, an area's mood): `og.load.look` a
-  second look file and `og.render.applyLook(world, look)`.
-- **Check it**: `og run --headless --commands "1:screenshot:look.png;1.1:quit"`
-  and read the frame against the style's checks.
+Asset licences: `LICENSES.md`.

@@ -10,14 +10,11 @@
     "publish-build": "og build . --publish",
     "cook": "og cook .",
     "assets": "bun tools/make-assets.ts",
-    "typecheck": "bun x --package typescript@7.0.2 tsc --noEmit -p .",
+    "check": "og check .",
     "polish": "og polish .",
     "test": "og test ."
   },
   "dependencies": {
-    "@origingame/engine": "0.0.1"
-  },
-  "devDependencies": {
-    "typescript": "7.0.2"
+    "@origingame/engine": "0.1.1"
   }
 }
