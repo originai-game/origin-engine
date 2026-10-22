@@ -228,9 +228,17 @@ with several arguments, #6 named-output collisions, #8 `dump` of vector
 arrays, #9 a contact-time velocity or impulse on the collision event
 (both physics backends, the reflected event, host parity), #11 f32 and
 JSON precision, #13 polish advice aligned with its three-of-four rule.
-Owed to the Mac: Rumpus Isle's eleven reference frames recorded and
-inspected on metal (none exist yet; the orb's lavapipe captures were
-inspected for five frames only).
+The Mac recorded and inspected all eleven Metal frames in e9b69719:
+title with records, three-seat lobby, Bump Ring card at 3, two critters
+meeting, Moss splashing into the sea, the 3/2/1 scoreboard, six berries
+with zero counters, the crumble grid, pause, French settings, and the
+9/8/7 podium. The scoreboard capture moved one second later to clear the
+iris and finish its counters; subsequent commands moved with it. All
+nine suites passed (239 checks), every frame reproduced at RMSE 0, and
+the functional lane passed in 91 s. Contact name tags still overlap;
+the skin's four-pixel display shadow is heavy and tile cracks are subtle
+in the still frame. The orb's earlier five inspected lavapipe captures
+were not used as references.
 
 **Wave-end figures (waves 12 and 13 so far, the measure worktree at
 d56f3490, after the shadow-flags merge; no lavapipe run and no Chrome
@@ -293,6 +301,16 @@ and release passing (680 s). No lavapipe reference stage ran.
   Determinism also refreshed six local path-package versions in its
   separate Cargo.lock from 0.0.1 to 0.1.1; this generated-only change
   was not retained.
+
+The owner's follow-up re-recorded `stylise-pixel` and `stylise-palette`
+for 8a9338b6 after inspecting both old/native pairs: only the dark band
+along the grazing ground disappeared. Both browser tiers use these
+shared Metal references, not duplicate tier copies. `scripts/check.sh
+web-reference` then passed every comparison and harness in 339 s.
+An initial main-checkout attempt used stale wasm left by its functional
+lane and failed at startup; the passing run used the measure lane's
+fresh wasm through `OG_GATE=1 OG_WASM_OUT=<measure>/target/og-wasm
+sh packages/engine/scripts/build.sh` before the browser gate.
 
 ## Main gate, wave 12 (2026-10-21)
 
