@@ -18,7 +18,7 @@ entity "dropship" {
   }
 }
 entity "trickster" {
-  model "models/trickster.glb"
+  model "models/walker.glb"
   Transform {
     position 2 0 0
     quaternion 0 0.7071068 0 0.7071068

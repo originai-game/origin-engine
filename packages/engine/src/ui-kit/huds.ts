@@ -57,17 +57,23 @@ function touchControls(out: Hud, desc: { dpad?: boolean; buttons: ReadonlyArray<
 export function platformerHud(id: string, desc: Api.PlatformerHudDesc = {}): Api.HudResult {
   const { t, touch } = frame();
   const out = hud();
-  kit.anchor(`${id}.left`, { anchor: "topLeft", direction: "column", gap: t.sm }, () => {
-    capsule("Lives", () => {
-      if (desc.health !== null && desc.health !== undefined) {
-        kit.meter("Health", desc.health, 1, { width: px(120) });
-      } else {
-        const max = desc.maxLives ?? 3;
-        for (let i = 0; i < max; i++) iconOr(kit.idi("Life", i), "heart", 20, token(i < (desc.lives ?? 0) ? "danger" : "fillStrong"));
+  // What the game leaves out is not drawn: no hearts with maxLives 0 (and
+  // no health bar), no coins or score capsule without coins or score.
+  const health = desc.health ?? null;
+  const maxLives = desc.maxLives ?? 3;
+  const coins = desc.coins ?? null;
+  const score = desc.score ?? null;
+  if (health !== null || maxLives > 0 || desc.level) {
+    kit.anchor(`${id}.left`, { anchor: "topLeft", direction: "column", gap: t.sm }, () => {
+      if (health !== null) capsule("Lives", () => kit.meter("Health", health, 1, { width: px(120) }));
+      else if (maxLives > 0) {
+        capsule("Lives", () => {
+          for (let i = 0; i < maxLives; i++) iconOr(kit.idi("Life", i), "heart", 20, token(i < (desc.lives ?? 0) ? "danger" : "fillStrong"));
+        });
       }
+      if (desc.level) kit.label("Level", desc.level, { step: "meta", color: token("fgMuted"), nowrap: true });
     });
-    if (desc.level) kit.label("Level", desc.level, { step: "meta", color: token("fgMuted"), nowrap: true });
-  });
+  }
   if (desc.timeLeft !== null && desc.timeLeft !== undefined) {
     const low = desc.timeLeft <= 10;
     kit.anchor(`${id}.top`, { anchor: "top" }, () => {
@@ -75,11 +81,13 @@ export function platformerHud(id: string, desc: Api.PlatformerHudDesc = {}): Api
     });
   }
   kit.anchor(`${id}.right`, { anchor: "topRight", gap: t.sm, cross: "center" }, () => {
-    capsule("Coins", () => {
-      iconOr("Coin", "coin", 20, token("accent"));
-      kit.label("Count", fmt(desc.coins ?? 0), { font: "mono", nowrap: true });
-    });
-    capsule("Score", () => kit.label("Points", fmt(desc.score ?? 0), { font: "mono", nowrap: true }));
+    if (coins !== null) {
+      capsule("Coins", () => {
+        iconOr("Coin", "coin", 20, token("accent"));
+        kit.label("Count", fmt(coins), { font: "mono", nowrap: true });
+      });
+    }
+    if (score !== null) capsule("Score", () => kit.label("Points", fmt(score), { font: "mono", nowrap: true }));
     pauseButton(out, desc.pauseLabel ?? "Pause");
   });
   if ((desc.touch ?? false) && touch) touchControls(out, { dpad: true, buttons: [{ id: "jump", label: desc.jumpLabel ?? "Jump", primary: true }] });

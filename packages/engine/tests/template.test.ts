@@ -4,7 +4,7 @@
 // the guard on og.ai and og.nav), and the run leaves the frame and the dumps
 // the smoke test checked. The scaffold stays in target/evidence/template/ for inspection.
 import { expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
@@ -52,3 +52,37 @@ test("a scaffolded game cooks, passes its playtest and leaves the frame and dump
   const ui = JSON.parse(readFileSync(join(out, "ui.json"), "utf8")) as { elements: Array<{ id: string; text: string }> };
   expect(ui.elements.find((e) => e.id === "Start")?.text).toBe("Started");
 }, 600_000);
+
+// A scaffolded game is type-checked by og (og check, tsrs): `og check` passes
+// on it as scaffolded, a type error is a value in `--json` (code 2322 at
+// its line), and og run, og test and og build stop on it before bundling.
+test("a scaffolded game type-checks clean, and a type error stops og before it bundles", () => {
+  const dir = join(repo, "target", "evidence", "template-check");
+  const checked = join(dir, "game");
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  expect(run(["bun", join(repo, "packages", "create", "bin", "create.ts"), checked, "--name", "Checked Game"]).code).toBe(0);
+
+  const clean = run([ogBin(), "check", checked, "--json"]);
+  if (clean.code !== 0) throw new Error(clean.out);
+  expect(JSON.parse(clean.out.trim().split("\n").at(-1)!)).toMatchObject({ event: "check", ok: true, diagnostics: [] });
+
+  const main = join(checked, "src", "main.ts");
+  const source = readFileSync(main, "utf8");
+  const lines = source.split("\n");
+  const at = lines.findIndex((l) => l.startsWith("export const Velocity"));
+  lines.splice(at + 1, 0, 'export const speed: number = "fast";');
+  writeFileSync(main, lines.join("\n"));
+  const bad = run([ogBin(), "check", checked, "--json"]);
+  expect(bad.code).toBe(1);
+  const event = JSON.parse(bad.out.trim().split("\n").at(-1)!) as { ok: boolean; diagnostics: Array<{ file: string; line: number; code: number }> };
+  expect(event.ok).toBeFalse();
+  expect(event.diagnostics.map((d) => [d.file, d.line, d.code])).toEqual([["src/main.ts", at + 2, 2322]]);
+  for (const cmd of [["run", "--headless", "--ticks", "1"], ["test"], ["build"]]) {
+    const r = run([ogBin(), ...cmd, checked]);
+    expect(r.code).toBe(1);
+    expect(r.out).toContain("1 type error(s); fix them or pass --no-check");
+  }
+  expect(existsSync(join(checked, ".og", "game.native.js"))).toBeFalse();
+  expect(existsSync(join(checked, "dist"))).toBeFalse();
+}, 120_000);

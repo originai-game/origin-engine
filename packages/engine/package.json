@@ -1,12 +1,19 @@
 {
   "name": "@origingame/engine",
-  "version": "0.0.1",
-  "description": "Origin Engine: the TypeScript API, generated from crates/og-api/api.ogt, and its runtime on the web (wasm in a Worker) and native (napi addon) hosts.",
+  "version": "0.1.1",
+  "description": "Origin Engine: the TypeScript API, generated from crates/og-api/api.ogt, its runtime on the web (wasm in a Worker) and native (napi addon) hosts, the player shell, and the agents' knowledge (skills, wiki, style catalogue) in knowledge/.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/origingame/origin-engine",
+    "url": "git+https://github.com/fran0220/origin-engine.git",
     "directory": "packages/engine"
+  },
+  "homepage": "https://github.com/fran0220/origin-engine#readme",
+  "bugs": {
+    "url": "https://github.com/fran0220/origin-engine/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "type": "module",
   "types": "./types/index.d.ts",
@@ -37,22 +44,25 @@
     "dist/web",
     "dist/web-publish",
     "dist/web-publish-2d",
-    "vendor"
+    "vendor",
+    "knowledge"
   ],
   "engines": {
     "bun": ">=1.3"
   },
   "optionalDependencies": {
-    "@origingame/engine-darwin-arm64": "0.0.1",
-    "@origingame/engine-linux-x64": "0.0.1"
-  },
-  "publishConfig": {
-    "access": "public"
+    "@origingame/engine-darwin-arm64": "0.1.1",
+    "@origingame/engine-linux-x64": "0.1.1",
+    "@tsrs/darwin-arm64": "0.18.0-ts7.1.0-dev.20260929",
+    "@tsrs/linux-arm64-gnu": "0.18.0-ts7.1.0-dev.20260929",
+    "@tsrs/linux-arm64-musl": "0.18.0-ts7.1.0-dev.20260929",
+    "@tsrs/linux-x64-gnu": "0.18.0-ts7.1.0-dev.20260929",
+    "@tsrs/linux-x64-musl": "0.18.0-ts7.1.0-dev.20260929"
   },
   "scripts": {
     "build": "sh scripts/build.sh",
-    "typecheck": "bun x --package typescript@7.0.2 tsc --noEmit -p tsconfig.json && bun x --package typescript@7.0.2 tsc --noEmit -p tsconfig.runtime.json && bun x --package typescript@7.0.2 tsc --noEmit -p tsconfig.templates.json",
-    "test": "bun run typecheck && sh scripts/build.sh && bun test --parallel ${OG_BUN_TEST_TIMEOUT:+--timeout=$OG_BUN_TEST_TIMEOUT} tests/",
+    "typecheck": "bun scripts/typecheck.ts",
+    "test": "sh scripts/build.sh && bun run typecheck && bun test --parallel ${OG_BUN_TEST_TIMEOUT:+--timeout=$OG_BUN_TEST_TIMEOUT} tests/",
     "pack": "sh scripts/pack.sh",
     "test:browser": "bun tests/web/wire.ts && bun tests/web/player.ts && bun tests/web/export.ts && bun tests/web/device.ts",
     "test:reference": "bun tests/web/reference.ts && bun tests/web/reference.ts --webgl"

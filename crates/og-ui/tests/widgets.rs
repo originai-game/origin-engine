@@ -894,6 +894,76 @@ fn anchored_groups_keep_out_of_the_host_control() {
     assert_eq!(at(&rig, "Times"), times, "a group clear of it stays");
 }
 
+/// On a phone a top-left group moved right of the host's control would
+/// land on the top-right group beside it (a shooter HUD's vitals on its
+/// kills and pause): it steps down past the control instead, at the same
+/// x, and a group with room to its right still moves right (Brasswick #15).
+#[test]
+fn a_corner_group_steps_down_past_the_control_when_moving_along_lands_on_another() {
+    let mut rig = Rig::new(());
+    rig.vp = Viewport {
+        width: 390.0,
+        height: 844.0,
+        dpr: 3.0,
+        safe_area: Insets {
+            left: 0.0,
+            top: 47.0,
+            right: 0.0,
+            bottom: 34.0,
+        },
+        coarse_pointer: true,
+        ..Viewport::default()
+    };
+    let wide = std::cell::Cell::new(240.0);
+    let b = &mut |ui: &mut Ui, _: &mut ()| {
+        ui.anchor(
+            "Vitals",
+            AnchorDesc {
+                anchor: Anchor::TopLeft,
+                width: Size::Fixed(wide.get()),
+                height: Size::Fixed(20.0),
+                ..AnchorDesc::default()
+            },
+            |_| {},
+        );
+        ui.anchor(
+            "Kills",
+            AnchorDesc {
+                anchor: Anchor::TopRight,
+                width: Size::Fixed(110.0),
+                height: Size::Fixed(44.0),
+                ..AnchorDesc::default()
+            },
+            |_| {},
+        );
+    };
+    rig.idle(1, b);
+    let at = |rig: &Rig<()>, id: &str| rig.ui.frame().element(id).expect(id).clone();
+    let (free, kills) = (at(&rig, "Vitals"), at(&rig, "Kills"));
+    assert!(free.x + free.width <= kills.x, "apart without the control");
+    // The web shell's Back, top left inside the safe area.
+    rig.vp.covered = Rect::new(12.0, 59.0, 40.0, 40.0);
+    rig.idle(1, b);
+    let moved = at(&rig, "Vitals");
+    assert_eq!(at(&rig, "Kills"), kills, "the group clear of it stays");
+    assert!(
+        (moved.x - free.x).abs() < 0.5 && moved.y >= 99.0,
+        "down past the control at the same x: {moved:?}"
+    );
+    assert!(
+        moved.x + moved.width <= kills.x || moved.y >= kills.y + kills.height,
+        "and off the other group: {moved:?} {kills:?}"
+    );
+    // A narrow group has room along the edge: it moves right, as on a desktop.
+    wide.set(120.0);
+    rig.idle(1, b);
+    let narrow = at(&rig, "Vitals");
+    assert!(
+        narrow.x >= 52.0 && (narrow.y - free.y).abs() < 0.5,
+        "a group with room moves right at the same height: {narrow:?}"
+    );
+}
+
 #[test]
 fn anchors_sit_in_the_safe_area_and_touch_controls_keep_44px() {
     let mut rig = Rig::new(JoystickResponse::default());
@@ -1817,6 +1887,7 @@ fn an_icon_set_draws_its_glyphs_in_their_squares() {
             IconDesc {
                 size: 32.0,
                 tint: Some(Srgba::rgb(255, 0, 0)),
+                ..IconDesc::default()
             },
         );
         ui.rich_text("Line", "Gold [icon=heart] left", RichTextDesc::default());

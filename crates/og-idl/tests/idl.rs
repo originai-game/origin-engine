@@ -399,28 +399,29 @@ fn the_committed_generated_files_match_the_idl() {
 }
 
 /// The generated declarations, the design's hello world and the type-level
-/// contract assertions compile together under strict TypeScript.
+/// contract assertions compile together under strict TypeScript: tsrs, the
+/// checker `og check` runs (scripts/install-tools.sh pins it), with og
+/// check's arguments. og itself cannot be the runner here: og-cli depends
+/// on this crate, so its binary is not this test's to name.
 #[test]
 fn the_generated_declarations_type_check_with_the_examples() {
     let package = repo().join("packages/engine");
-    let out = Command::new("bun")
+    let out = Command::new("tsrs")
         .args([
-            "x",
-            "--package",
-            "typescript@7.0.2",
-            "tsc",
-            "--noEmit",
             "-p",
             "tsconfig.json",
+            "--noEmit",
+            "--incremental",
+            "false",
+            "--pretty",
+            "false",
         ])
         .current_dir(&package)
         .output()
-        .unwrap_or_else(|e| {
-            panic!("cannot run bun ({e}); install it: curl -fsSL https://bun.sh/install | bash")
-        });
+        .unwrap_or_else(|e| panic!("cannot run tsrs ({e}); run scripts/install-tools.sh"));
     assert!(
         out.status.success(),
-        "tsc failed in {}:\n{}{}",
+        "tsrs failed in {}:\n{}{}",
         package.display(),
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)

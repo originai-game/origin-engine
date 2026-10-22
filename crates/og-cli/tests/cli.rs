@@ -223,12 +223,36 @@ fn doctor_reports_the_pins_and_each_tool() {
         t.contains(&format!("pinned      rust {rust} (rust-toolchain.toml)")),
         "{t}"
     );
-    for tool in ["rustc", "cargo", "wasm-bindgen", "bun", "node"] {
+    for tool in ["rustc", "cargo", "wasm-bindgen", "bun", "tsrs", "node"] {
         assert!(
             t.lines().any(|l| l.split_whitespace().nth(1) == Some(tool)),
             "no line for {tool}:\n{t}"
         );
     }
+    let install = std::fs::read_to_string(repo().join("scripts/install-tools.sh")).unwrap();
+    let tsrs = install
+        .lines()
+        .find_map(|l| l.strip_prefix("TSRS_VERSION=\"${TSRS_VERSION:-"))
+        .unwrap()
+        .trim_end_matches("}\"");
+    assert!(t.contains(&format!("tsrs {tsrs} (TSRS_VERSION)")), "{t}");
+    // Inside the repository the version found is held to the pin.
+    let dir = std::env::temp_dir().join(format!("og-cli-doctor-tsrs-{}", std::process::id()));
+    let fake = fake_tsrs(&dir, "9.9.9", "", 0, true);
+    let out = og()
+        .arg("doctor")
+        .current_dir(repo())
+        .env("OG_TSRS", &fake)
+        .output()
+        .unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    let t = text(&out);
+    assert!(
+        t.contains(&format!(
+            "differs  tsrs          0.0.0-9.9.9, pinned {tsrs}"
+        )),
+        "{t}"
+    );
 }
 
 #[test]
@@ -252,6 +276,7 @@ fn doctor_names_a_fix_for_every_missing_tool() {
         ("cargo", rustup.as_str()),
         ("wasm-bindgen", cli.as_str()),
         ("bun", "https://bun.sh/install"),
+        ("tsrs", "scripts/install-tools.sh"),
         ("node", "https://nodejs.org"),
     ] {
         let at = t
@@ -264,7 +289,7 @@ fn doctor_names_a_fix_for_every_missing_tool() {
             "{tool}: `{next}`"
         );
     }
-    assert!(t.contains("5 problem(s)"), "{t}");
+    assert!(t.contains("6 problem(s)"), "{t}");
 }
 
 /// When the game process dies, `og run` says so at once with its exit
@@ -374,6 +399,32 @@ fn doctor_outside_the_repository_needs_only_bun_and_the_engine() {
     }
     assert!(line("node").starts_with("optional"), "{t}");
     assert!(line("bun").starts_with("ok"), "{t}");
+    // No tsrs: the fix outside the repository is the project's bun install.
+    assert!(line("tsrs").starts_with("missing"), "{t}");
+    assert!(t.contains("fix: `bun install` in the project"), "{t}");
+    // Outside the repository a tsrs found is not compared with any pin.
+    let fake_dir = std::env::temp_dir().join(format!("og-cli-doctor-out-{}", std::process::id()));
+    let fake = fake_tsrs(&fake_dir, "9.9.9", "", 0, true);
+    let other = scratch_root();
+    std::fs::remove_dir_all(other.join("crates")).unwrap();
+    let out = og()
+        .arg("doctor")
+        .current_dir(&other)
+        .env("PATH", bun.parent().unwrap())
+        .env("OG_TSRS", &fake)
+        .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+        .output()
+        .unwrap();
+    let _ = std::fs::remove_dir_all(&fake_dir);
+    let _ = std::fs::remove_dir_all(&other);
+    assert!(
+        text(&out)
+            .lines()
+            .any(|l| l
+                .starts_with("ok       tsrs          0.0.0-9.9.9 (TypeScript 9.9.9, from OG_TSRS")),
+        "{}",
+        text(&out)
+    );
     // Whatever else fails (an unbuilt addon in a fresh checkout) is engine
     // lines only: every counted problem has a `missing`/`broken` line.
     let counted = t
@@ -773,4 +824,492 @@ fn cook_watch_times_one_changed_asset_and_report_prints_the_slowest() {
     let report = std::fs::read_to_string(&md).unwrap();
     assert!(report.contains("## The slowest ten") && report.contains("palettes/sea.hex"));
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A stand-in tsrs in `dir`: `--version` names it `version`, a check
+/// prints `out` and exits `status`; `lib` puts lib.es2022.d.ts beside it.
+#[cfg(unix)]
+fn fake_tsrs(dir: &Path, version: &str, out: &str, status: i32, lib: bool) -> PathBuf {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::create_dir_all(dir).unwrap();
+    let bin = dir.join("tsrs");
+    std::fs::write(
+        &bin,
+        format!(
+            "#!/bin/sh\nPATH=/usr/bin:/bin\nif [ \"$1\" = --version ]; then echo 'Version {version} (tsrs 0.0.0-{version}, test)'; exit 0; fi\necho \"$@\" > \"$(dirname \"$0\")/args.txt\"\ncat \"$(dirname \"$0\")/out.txt\"\nexit {status}\n"
+        ),
+    )
+    .unwrap();
+    std::fs::write(dir.join("out.txt"), out).unwrap();
+    std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+    if lib {
+        std::fs::write(dir.join("lib.es2022.d.ts"), "").unwrap();
+    }
+    bin
+}
+
+/// A project with a tsconfig.json of its own, in a scratch root.
+fn check_project() -> (PathBuf, PathBuf) {
+    let dir = scratch_root();
+    let game = dir.join("game");
+    std::fs::create_dir_all(game.join("src")).unwrap();
+    std::fs::write(game.join("src/main.ts"), "export default 0;\n").unwrap();
+    std::fs::write(game.join("tsconfig.json"), "{}\n").unwrap();
+    std::fs::write(
+        game.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    (dir, game)
+}
+
+const TS2322: &str =
+    "src/main.ts(1,7): error TS2322: Type 'string' is not assignable to type 'number'.\n";
+
+/// `og check` finds tsrs by OG_TSRS, then the engine package's
+/// node_modules/@tsrs/<platform>, then PATH, and reports its diagnostics
+/// as one `check` event; without any it falls back to tsgo through bun x.
+#[cfg(unix)]
+#[test]
+fn check_finds_tsrs_by_its_chain_and_reports_diagnostics_as_values() {
+    let plat = match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("linux", "x86_64") => "linux-x64-gnu",
+        ("linux", "aarch64") => "linux-arm64-gnu",
+        ("macos", "aarch64") => "darwin-arm64",
+        _ => return,
+    };
+    let (dir, game) = check_project();
+    // The engine package in the project's node_modules, its tsrs beside it.
+    let engine = game.join("node_modules/@origingame/engine");
+    std::fs::create_dir_all(engine.join("src/node")).unwrap();
+    std::fs::write(engine.join("src/node/run.ts"), "").unwrap();
+    fake_tsrs(
+        &game.join("node_modules/@tsrs").join(plat),
+        "1.0.0-modules",
+        TS2322,
+        2,
+        true,
+    );
+    let on_path = dir.join("path");
+    fake_tsrs(&on_path, "1.0.0-path", "", 0, true);
+    let named = fake_tsrs(&dir.join("named"), "1.0.0-named", "", 0, true);
+    let path = format!("{}:{}", on_path.display(), std::env::var("PATH").unwrap());
+    let check = |env: &[(&str, &std::ffi::OsStr)]| {
+        let mut c = og();
+        c.args(["check", "--json"])
+            .arg(&game)
+            .current_dir(&dir)
+            .env_remove("OG_TSRS")
+            .env_remove("OG_ENGINE_PACKAGE");
+        for (k, v) in env {
+            c.env(k, v);
+        }
+        let out = c.output().unwrap();
+        let line = String::from_utf8_lossy(&out.stdout).to_string();
+        let v: serde_json::Value =
+            serde_json::from_str(line.trim()).unwrap_or_else(|e| panic!("{e}: {}", text(&out)));
+        (out.status.code(), v)
+    };
+
+    let (code, v) = check(&[("OG_TSRS", named.as_os_str()), ("PATH", path.as_ref())]);
+    assert_eq!(
+        (code, v["version"].as_str()),
+        (Some(0), Some("1.0.0-named")),
+        "{v}"
+    );
+    assert_eq!(v["ok"], true);
+    assert_eq!(v["diagnostics"], serde_json::json!([]));
+
+    let (code, v) = check(&[("PATH", path.as_ref())]);
+    assert_eq!(
+        (code, v["version"].as_str()),
+        (Some(1), Some("1.0.0-modules")),
+        "{v}"
+    );
+    assert_eq!(v["tool"], "tsrs");
+    assert_eq!(v["ok"], false);
+    assert_eq!(
+        v["config"], "tsconfig.json",
+        "the engine is in node_modules: its own config"
+    );
+    assert_eq!(
+        v["diagnostics"],
+        serde_json::json!([{ "file": "src/main.ts", "line": 1, "col": 7, "code": 2322,
+            "message": "Type 'string' is not assignable to type 'number'." }])
+    );
+    let args = std::fs::read_to_string(game.join("node_modules/@tsrs").join(plat).join("args.txt"))
+        .unwrap();
+    assert!(
+        args.contains("-p")
+            && args.contains("--noEmit --incremental false --pretty false --checkers"),
+        "{args}"
+    );
+
+    std::fs::remove_dir_all(game.join("node_modules/@tsrs")).unwrap();
+    let (code, v) = check(&[("PATH", path.as_ref())]);
+    assert_eq!(
+        (code, v["version"].as_str()),
+        (Some(0), Some("1.0.0-path")),
+        "{v}"
+    );
+
+    // No tsrs anywhere: tsgo through `bun x` (a stand-in bun here), the same JSON.
+    std::fs::remove_dir_all(&on_path).unwrap();
+    let bun = dir.join("bun-only");
+    fake_tsrs(&bun, "unused", TS2322, 1, false);
+    std::fs::rename(bun.join("tsrs"), bun.join("bun")).unwrap();
+    let out = og()
+        .args(["check", "--json"])
+        .arg(&game)
+        .current_dir(&dir)
+        .env_remove("OG_TSRS")
+        .env("PATH", &bun)
+        .output()
+        .unwrap();
+    let v: serde_json::Value = serde_json::from_slice(out.stdout.trim_ascii()).unwrap();
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out));
+    assert_eq!(
+        (v["tool"].as_str(), v["version"].as_str()),
+        (Some("tsgo"), Some("7.0.2"))
+    );
+    assert_eq!(v["diagnostics"][0]["code"], 2322);
+    assert!(
+        text(&out).contains("no tsrs") && text(&out).contains("checking with tsgo 7.0.2"),
+        "{}",
+        text(&out)
+    );
+    let args = std::fs::read_to_string(bun.join("args.txt")).unwrap();
+    assert!(
+        args.starts_with("x --package typescript@7.0.2 tsc -p "),
+        "{args}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A checker that crashes, exits with nothing readable, or sits apart from
+/// its lib files is a failure, never a clean check.
+#[cfg(unix)]
+#[test]
+fn check_never_reads_a_failing_tsrs_as_clean() {
+    let (dir, game) = check_project();
+    for (name, out, status, lib, expect) in [
+        (
+            "crash",
+            "thread main panicked",
+            101,
+            true,
+            "tsrs failed: it exited with status 101",
+        ),
+        (
+            "silent",
+            "",
+            1,
+            true,
+            "reported nothing it could be read as",
+        ),
+        ("nolib", "", 0, false, "has no lib.es2022.d.ts beside it"),
+    ] {
+        let bin = fake_tsrs(&dir.join(name), name, out, status, lib);
+        let o = og()
+            .args(["check"])
+            .arg(&game)
+            .current_dir(&dir)
+            .env("OG_TSRS", &bin)
+            .output()
+            .unwrap();
+        assert_eq!(o.status.code(), Some(1), "{name}: {}", text(&o));
+        assert!(text(&o).contains(expect), "{name}: {}", text(&o));
+        assert!(!text(&o).contains("og check: ok"), "{name}: {}", text(&o));
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Without a tsconfig.json of its own, a bare entry and a project are
+/// checked with the template's options and `paths` to the engine package
+/// og resolved (here the checkout's): a type error in the entry, and one
+/// in a playtest the entry never imports, are found; fixed, both pass.
+#[test]
+fn check_synthesises_the_configuration_a_project_does_not_have() {
+    assert!(
+        std::env::var_os("PATH")
+            .is_some_and(|p| std::env::split_paths(&p).any(|d| d.join("tsrs").is_file())),
+        "this test needs tsrs on PATH (scripts/install-tools.sh)"
+    );
+    let dir = std::env::temp_dir().join(format!("og-check-synth-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("game/src")).unwrap();
+    std::fs::create_dir_all(dir.join("game/tests")).unwrap();
+    let entry = dir.join("bare.ts");
+    let bad = "import { og, Vector3 } from \"@origingame/engine\";\nvoid og; void Vector3;\nexport const n: number = \"one\";\n";
+    std::fs::write(&entry, bad).unwrap();
+    let check = |path: &Path| {
+        let out = og()
+            .args(["check", "--json"])
+            .arg(path)
+            .current_dir(&dir)
+            .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+            .env_remove("OG_TSRS")
+            .output()
+            .unwrap();
+        let v: serde_json::Value = serde_json::from_slice(out.stdout.trim_ascii())
+            .unwrap_or_else(|e| panic!("{e}: {}", text(&out)));
+        (out.status.code(), v)
+    };
+    let (code, v) = check(&entry);
+    assert_eq!(code, Some(1), "{v}");
+    assert_eq!(v["tool"], "tsrs");
+    assert_eq!(
+        (
+            v["diagnostics"][0]["file"].as_str(),
+            v["diagnostics"][0]["line"].as_u64(),
+            v["diagnostics"][0]["code"].as_u64()
+        ),
+        (Some("bare.ts"), Some(3), Some(2322)),
+        "{v}"
+    );
+    assert_eq!(
+        v["diagnostics"].as_array().unwrap().len(),
+        1,
+        "the engine resolved: {v}"
+    );
+    std::fs::write(&entry, bad.replace("\"one\"", "1")).unwrap();
+    assert_eq!(check(&entry).0, Some(0));
+
+    let game = dir.join("game");
+    std::fs::write(
+        game.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        game.join("src/main.ts"),
+        "import { og } from \"@origingame/engine\";\nexport default og.game({});\n",
+    )
+    .unwrap();
+    std::fs::write(
+        game.join("tests/smoke.og.ts"),
+        "import { playtest } from \"@origingame/engine/playtest\";\nexport default playtest({ name: \"n\", commands: \"0.1:quit\", check(run, t) { t.ok(run.quit); } });\n",
+    )
+    .unwrap();
+    let (code, v) = check(&game);
+    assert_eq!(code, Some(1), "{v}");
+    assert_eq!(v["config"], ".og/tsconfig.check.json");
+    assert_eq!(v["diagnostics"][0]["file"], "tests/smoke.og.ts", "{v}");
+    assert_eq!(v["diagnostics"][0]["code"], 2554, "{v}");
+    let written = std::fs::read_to_string(game.join(".og/tsconfig.check.json")).unwrap();
+    assert!(
+        written.starts_with("// Written by og check")
+            && written.contains("exactOptionalPropertyTypes"),
+        "{written}"
+    );
+    std::fs::write(
+        game.join("tests/smoke.og.ts"),
+        std::fs::read_to_string(game.join("tests/smoke.og.ts"))
+            .unwrap()
+            .replace("t.ok(run.quit)", "t.ok(run.quit, \"quit\")"),
+    )
+    .unwrap();
+    assert_eq!(check(&game).0, Some(0));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// `og run`, `og test` and `og build` type-check before they bundle: a
+/// type error stops each before the engine package's bundler, test runner
+/// or exporter is started; `--no-check` runs as before, and a publish
+/// build refuses it.
+#[test]
+fn run_test_and_build_stop_on_a_type_error_before_bundling() {
+    assert!(
+        std::env::var_os("PATH")
+            .is_some_and(|p| std::env::split_paths(&p).any(|d| d.join("tsrs").is_file())),
+        "this test needs tsrs on PATH (scripts/install-tools.sh)"
+    );
+    let dir = scratch_root();
+    std::fs::remove_dir_all(dir.join("crates")).unwrap();
+    // A stand-in engine package: each step it would run leaves a mark.
+    let engine = dir.join("engine");
+    std::fs::create_dir_all(engine.join("src/node")).unwrap();
+    let marks = dir.join("marks");
+    std::fs::create_dir_all(&marks).unwrap();
+    for (script, extra) in [
+        (
+            "build.ts",
+            "const i = process.argv.indexOf('--out'); await Bun.write(process.argv[i + 1], 'export default 0;');",
+        ),
+        ("run.ts", ""),
+        ("playtest-run.ts", ""),
+        ("web-build.ts", ""),
+    ] {
+        std::fs::write(
+            engine.join("src/node").join(script),
+            format!(
+                "await Bun.write({:?}, '');\n{extra}\n",
+                marks.join(script).to_str().unwrap()
+            ),
+        )
+        .unwrap();
+    }
+    let game = dir.join("game");
+    std::fs::create_dir_all(game.join("src")).unwrap();
+    std::fs::create_dir_all(game.join("tests")).unwrap();
+    std::fs::write(
+        game.join("src/main.ts"),
+        "export const n: number = \"one\";\nexport default 0;\n",
+    )
+    .unwrap();
+    std::fs::write(game.join("tests/smoke.og.ts"), "export default 0;\n").unwrap();
+    std::fs::write(
+        game.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    let og_in = |args: &[&str]| {
+        let out = og()
+            .args(args)
+            .arg(&game)
+            .env("OG_ENGINE_PACKAGE", &engine)
+            .env_remove("OG_TSRS")
+            .output()
+            .unwrap();
+        let ran: Vec<String> = std::fs::read_dir(&marks)
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        for e in std::fs::read_dir(&marks).unwrap().flatten() {
+            std::fs::remove_file(e.path()).unwrap();
+        }
+        let mut ran = ran;
+        ran.sort();
+        (out.status.code(), text(&out), ran)
+    };
+    for cmd in [&["run", "--headless"][..], &["test"], &["build"]] {
+        let (code, t, ran) = og_in(cmd);
+        assert_eq!(code, Some(1), "og {cmd:?}: {t}");
+        assert!(
+            t.contains("src/main.ts(1,14): error TS2322"),
+            "og {cmd:?}: {t}"
+        );
+        assert!(
+            t.contains("1 type error(s); fix them or pass --no-check"),
+            "og {cmd:?}: {t}"
+        );
+        assert!(
+            ran.is_empty(),
+            "og {cmd:?} started {ran:?} past a type error"
+        );
+    }
+    assert!(!game.join(".og/game.native.js").exists());
+    let (_, t, _) = og_in(&["test"]);
+    assert!(
+        t.contains("the 1 playtest(s) did not run: the type check failed"),
+        "{t}"
+    );
+
+    let (code, t, ran) = og_in(&["run", "--headless", "--no-check"]);
+    assert_eq!(
+        (code, ran.clone()),
+        (Some(0), vec!["build.ts".to_string(), "run.ts".into()]),
+        "{t}"
+    );
+    let (code, _, ran) = og_in(&["test", "--no-check"]);
+    assert_eq!(
+        (code, ran),
+        (
+            Some(0),
+            vec!["build.ts".to_string(), "playtest-run.ts".into()]
+        )
+    );
+    let (code, _, ran) = og_in(&["build", "--no-check"]);
+    assert_eq!((code, ran), (Some(0), vec!["web-build.ts".to_string()]));
+    let (code, t, ran) = og_in(&["build", "--publish", "--no-check"]);
+    assert_eq!(code, Some(2), "{t}");
+    assert!(
+        t.contains("always type-checked; drop --no-check") && ran.is_empty(),
+        "{t}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// `og dev` checks a source change beside the rebuild and never refuses the
+/// reload over it: the reload goes through, its event carries the check
+/// (or `null` while it runs), the `check` event lists the diagnostic, and
+/// `--exit-after` waits for that check to land.
+#[test]
+fn dev_reports_the_check_of_each_save_and_reloads_anyway() {
+    use std::io::{BufRead, BufReader};
+    assert!(
+        std::env::var_os("PATH")
+            .is_some_and(|p| std::env::split_paths(&p).any(|d| d.join("tsrs").is_file())),
+        "this test needs tsrs on PATH (scripts/install-tools.sh)"
+    );
+    let dir = scratch_root();
+    std::fs::remove_dir_all(dir.join("crates")).unwrap();
+    let engine = dir.join("engine");
+    std::fs::create_dir_all(engine.join("src/node")).unwrap();
+    std::fs::write(
+        engine.join("src/node/build.ts"),
+        "const i = process.argv.indexOf('--out'); await Bun.write(process.argv[i + 1], `export default ${Date.now()};`);\n",
+    )
+    .unwrap();
+    // The game: a reload event each time the watched bundle changes.
+    std::fs::write(
+        engine.join("src/node/run.ts"),
+        "import { statSync } from 'node:fs';\nconst f = process.argv[process.argv.indexOf('--watch') + 1];\nlet m = statSync(f).mtimeMs, n = 0;\nsetInterval(() => { const t = statSync(f).mtimeMs; if (t !== m) { m = t; console.log(JSON.stringify({ event: 'reload', ok: true, latencyMs: 1, report: {}, tick: ++n })); } }, 10);\n",
+    )
+    .unwrap();
+    let game = dir.join("game");
+    std::fs::create_dir_all(game.join("src")).unwrap();
+    std::fs::write(game.join("src/main.ts"), "export default 0;\n").unwrap();
+    std::fs::write(
+        game.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    let mut child = og()
+        .args(["dev", "--json", "--exit-after", "1", "--port", "47997"])
+        .arg(&game)
+        .env("OG_ENGINE_PACKAGE", &engine)
+        .env_remove("OG_TSRS")
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+    let mut lines = BufReader::new(child.stdout.take().unwrap()).lines();
+    let mut next = || -> serde_json::Value {
+        serde_json::from_str(&lines.next().expect("og dev ended").unwrap()).unwrap()
+    };
+    // The first bundle's check, then a save with a type error.
+    let first = next();
+    assert_eq!(
+        (first["event"].as_str(), first["ok"].as_bool()),
+        (Some("check"), Some(true)),
+        "{first}"
+    );
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    std::fs::write(
+        game.join("src/main.ts"),
+        "export const n: number = \"one\";\nexport default 0;\n",
+    )
+    .unwrap();
+    let (a, b) = (next(), next());
+    let status = child.wait().unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    let (reload, check) = if a["event"] == "reload" {
+        (a, b)
+    } else {
+        (b, a)
+    };
+    assert_eq!(reload["event"], "reload", "{reload}");
+    assert_eq!(reload["ok"], true, "the reload went through: {reload}");
+    assert!(
+        reload["check"].is_null()
+            || reload["check"]
+                == serde_json::json!({ "ok": false, "ms": check["ms"], "errors": 1 }),
+        "{reload}"
+    );
+    assert_eq!(check["event"], "check", "{check}");
+    assert_eq!(check["diagnostics"][0]["code"], 2322, "{check}");
+    assert_eq!(check["diagnostics"][0]["file"], "src/main.ts", "{check}");
+    assert!(status.success(), "{status:?}");
 }

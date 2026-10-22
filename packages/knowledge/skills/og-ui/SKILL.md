@@ -57,7 +57,7 @@ and every style pack's screens on a phone `kit-skin-<pack>-phone.png`.
 | A title screen | `og.ui.mainMenu(id, { title, subtitle, items, footer, instant })` (`instant` while it is the screen the game opens on: §6) | `selected`: the item id |
 | Pause | `og.ui.pauseMenu(id, { open, items })` (Resume, Settings, Quit by default) | `selected`; Back answers `resume` |
 | Settings | `og.ui.settingsScreen(id, { open, settings, languages, onChange, onSave })` | the new `GameSettings`, `changed`, `closed` |
-| A platformer HUD | `og.ui.platformerHud(id, { lives, coins, score, level, timeLeft, touch })` (the words `pauseLabel`, `jumpLabel` from the string table, og-i18n §2) | `paused`, `moveX`, `action: "jump"` |
+| A platformer HUD | `og.ui.platformerHud(id, { lives, maxLives, coins, score, level, timeLeft, touch })` (what it is not given it does not draw: `maxLives: 0` no hearts, no `coins` or `score` no capsule for them; the words `pauseLabel`, `jumpLabel` from the string table, og-i18n §2) | `paused`, `moveX`, `action: "jump"` |
 | A shooter HUD | `og.ui.shooterHud(id, { health, armor, ammo, reserve, abilities, map, touch })` (the words `killsLabel`, `fireLabel`, `pauseLabel`) | `paused`, `action` (ability id, `fire`), stick |
 | A puzzle HUD | `og.ui.puzzleHud(id, { level, score, target, stars, moves, timeLeft })` (the words `movesLabel`, `targetLabel` with `{target}`, `pauseLabel`) | `paused` |
 | An idle or incremental HUD | `og.ui.idleHud(id, { currencies, generators })` (the words `tapLabel`, `levelLabel` with `{level}`, `rateLabel` with `{rate}`, `pauseLabel`) | `action: "tap"` or `"buy:<id>"` |
@@ -65,7 +65,7 @@ and every style pack's screens on a phone `kit-skin-<pack>-phone.png`.
 | Dialogue or a cutscene | `og.ui.cutscene(id, { open, lines, index })` | the next `index`, `finished`, `skipped` |
 | A shop | `og.ui.shopScreen(id, { balance, currency, items, categories })` | `bought`, `refused` (Buy pressed short of the price: it shook with the error sound), `closed` |
 | An inventory | `og.ui.inventoryScreen(id, { slots, items })` | `selected`, `moved` (drag and drop), `used`, `closed` |
-| Level select | `og.ui.levelSelect(id, { levels })` | `chosen`, `closed` |
+| Level select | `og.ui.levelSelect(id, { levels, backLabel, starsLabel, lockedLabel })` (a card is named for a screen reader by its level and `starsLabel`, "2 of 3 stars", a locked one by `lockedLabel`, "3, locked") | `chosen`; `closed` from its Back button, a tap on the scrim, Escape or B |
 | Results | `og.ui.resultsScreen(id, { open, score, best, newBest, stars, stats, shareText, onShare, scoreLabel, bestLabel, newBestLabel })` (the labels from the string table, og-i18n §2); a time trial passes `format: "time"` with the score and best in seconds: the headline counts up as m:ss.mmm (1:36.233) and the lower time is the best | `selected` (`retry`, `next`, `menu`, `share`) |
 | A leaderboard | `og.ui.leaderboardScreen(id, { scopes, entries, loading, error })` | `scope`, `changed`, `retry`, `closed` |
 | Onboarding | `og.ui.tutorialOverlay(id, { open, steps, index })` (each step names an element id) | the next `index`, `finished`, `skipped` |
@@ -170,11 +170,18 @@ game's own settings: nothing to wire. A stepper is adjusted as a whole
 tell the reader their bounds (a node's `valueMin`, `valueMax`, `valueNow`:
 a slider's `min` and `max`, a stepper's when it has them).
 
-There are no label or role fields to set: a node's `role` comes from the
+There are no role fields to set: a node's `role` comes from the
 widget (button, link, text, heading, image, checkbox, slider, textbox,
 progressbar, dialog, status…; layout containers have none) and its `name`
 from its text, then the text inside it, then the label just before it in
-its row, then its id. A text field is named by that label (put the label
+its row, then its id. A group a player never reads as text names itself
+from its desc's `label` (`tabs`, `radio`, `select`: "Apartado", not the id
+`Section`), and an icon or image from its `label`: an icon left without one
+is named by its atlas name, an English word (`star`), so a card of a name
+and three stars reads "1. La escalera star star star" in every language.
+Name the meaningful one in the game's words and leave the rest `""`
+(decoration): `og.ui.icon("Star#0", "star", { label: og.i18n.t(world,
+"stars", { n: 2 }) })`, then `{ label: "" }` for the others. A text field is named by that label (put the label
 and the field in one `row`), else by its placeholder, and the placeholder
 is its `description`: `"Lamplighter"`, then `"Your name"`, never the text
 typed in it (that is its `value`). So the work is in the ids and texts:
@@ -238,8 +245,12 @@ They also keep out of the host's own control over the canvas: on a
 published page the web shell's round Back to the Portal sits top left
 (about 12, 12 to 52, 52 CSS px) and says where in
 `og.ui.frameViewport().covered`, so a group it would overlap moves along
-its edge past it (the racing HUD's place and lap to its right). A game
-drawing its own top-left corner reads `covered` the same way; preview it
+its edge past it (the racing HUD's place and lap to its right), or, in a
+corner where that would land it on another group (a shooter's vitals on a
+phone), down past it. Every HUD template and any HUD built from
+`og.ui.anchor` groups gets this; a corner drawn another way (screen
+sprites, a row placed by hand) reads `covered` itself, so put a game's own
+HUD in anchored groups. Preview it
 with `og.ui.previewViewport(world, { ..., covered: { x: 12, y: 12, width: 40, height: 40 } })`.
 `og.ui.frameViewport().breakpoint` is `phonePortrait`, `phoneLandscape`,
 `tablet` or `desktop`; templates rearrange themselves by it (tabs become a

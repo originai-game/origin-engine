@@ -37,7 +37,7 @@ og run . --headless --commands "1:screenshot:title.png;1.1:play:0:quick;1.5:key_
 og test .                       # the thirteen playtests, the reference frames against references/<tier>/
 og polish .                     # taste 99, feel 97 on metal (og-out/polish/report.md)
 OG_FX_CAPTURE=1 og test .       # records this tier's reference frames
-bun run typecheck               # tsc over src, tests and tools
+og check .                      # tsrs over src, tests and tools
 ```
 
 Inside the engine repository `og` is `target/debug/og` (`cargo build -p

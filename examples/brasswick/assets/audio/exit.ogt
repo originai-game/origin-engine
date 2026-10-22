@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# a three-note rising fanfare: og.load.sound(world, "<this file>") plays it.
+preset "levelup"
+seed 2
+pitch 1
+length 1.3
+volume 0.9

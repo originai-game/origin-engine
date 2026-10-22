@@ -25,6 +25,10 @@ pub struct Project {
     pub manifest: bool,
     pub entry: PathBuf,
     pub out: String,
+    /// `engine "<version>"` of project.ogt: the engine version the game was
+    /// written against (design §9: an upgrade is an explicit edit). `None`
+    /// for a bare entry or a manifest without the line.
+    pub engine: Option<String>,
 }
 
 fn string(v: Option<&Entry>) -> Option<String> {
@@ -57,6 +61,7 @@ impl Project {
                     manifest: false,
                     entry: path.to_path_buf(),
                     out: "dist".into(),
+                    engine: None,
                 },
             });
         } else {
@@ -97,11 +102,13 @@ impl Project {
                 entry.display()
             ));
         }
+        let engine = string(b.get("engine"));
         Ok(Project {
             entry,
             root,
             manifest: true,
             out,
+            engine,
         })
     }
 
@@ -145,6 +152,28 @@ pub fn engine_package(project: Option<&Path>) -> Option<PathBuf> {
     })?;
     let p = repo.join("packages/engine");
     ok(&p).then_some(p)
+}
+
+/// The installed engine package's version: `version` of its package.json.
+pub fn package_version(package: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(package.join("package.json")).ok()?;
+    let v: serde_json::Value = serde_json::from_str(&text).ok()?;
+    v["version"].as_str().map(str::to_string)
+}
+
+/// What `og run`, `og test`, `og build`, `og dev` and `og polish` print to
+/// stderr when the project pins another engine version than the installed
+/// package (docs/release.md §3): the installed package runs; the pin is the
+/// author's record of what the game was written against, and moving it is
+/// an explicit edit. `None` when they agree or either is unknown.
+pub fn pin_notice(project: &Project, package: &Path) -> Option<String> {
+    let pinned = project.engine.as_deref()?;
+    let installed = package_version(package)?;
+    (pinned != installed).then(|| {
+        format!(
+            "project.ogt pins engine \"{pinned}\" and the installed @origingame/engine is {installed}: the installed one runs; when the game is written against it, set `engine \"{installed}\"` in project.ogt, or install the pinned version (bun add @origingame/engine@{pinned})"
+        )
+    })
 }
 
 pub const NO_ENGINE: &str = "no engine package: run `bun install` in the project (it depends on @origingame/engine), set OG_ENGINE_PACKAGE to packages/engine of an origin-engine checkout, or run inside one";

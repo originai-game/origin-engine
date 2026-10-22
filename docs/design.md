@@ -70,8 +70,25 @@ platforms. Ray tracing. Networking engines beyond the platform SDK's rooms.
 | Hosts | Rust + generated glue | engine team | `og-host-web` (wasm-bindgen, Worker + OffscreenCanvas), `og-host-node` (napi) |
 | TypeScript API | generated `.d.ts` + a thin hand-written ergonomic layer | engine team | generated from one IDL (§3); the ergonomic layer is the three.js-flavoured vocabulary |
 | Game | TypeScript | the Maker's agent | components, systems, scenes, tunables, assets |
-| Tooling | Rust (`og`) | engine team | one binary: build, run, cook, probe, test, doctor |
+| Tooling | Rust (`og`) | engine team | one binary: build, run, cook, probe, check, test, doctor |
 | Shell | TypeScript (platform `site/`) | platform | the play page and the creator overlay; consumes `@origingame/engine` |
+
+`og check` type-checks game code with tsrs (the Rust port of TypeScript 7),
+a pinned binary `og` runs as a child process and never links: from
+`OG_TSRS`, the `@tsrs/<platform>` package the engine package brings
+through `optionalDependencies`, or `PATH` (`scripts/install-tools.sh`);
+where tsrs has no package (Windows, Intel macOS) it falls back to tsgo
+through `bun x` and says so. Diagnostics are values: `--json` prints one
+`check` event, `{file, line, col, code, message}` per diagnostic, on the
+same channel as the frames and the dumps. `og run`, `og test` and `og
+build` check before they bundle and stop on a type error (`--no-check`
+skips it; `og build --publish` refuses `--no-check`); `og dev` checks each
+rebuild beside the bundle and reports it on the `reload` event without
+refusing the reload. A checker that crashes or prints nothing readable is
+a failure, never a clean check. tsrs is the repository's checker as well
+(`packages/engine`'s `typecheck`); tsgo, the compiler it ports, is only
+the comparison a wave's end holds it to (`check-conformance`, docs/ci.md)
+and the fallback where tsrs has no package.
 
 ### 2.2 Threads **(D)**
 
@@ -351,7 +368,13 @@ the only mode:
 | `browser-check` (evaluation only) | plus Chrome headless-shell for the final "runs in a real browser" check | ≈ 800 MB |
 
 No Godot, no Chromium in the inner loop, no Rust toolchain anywhere in the
-sandbox. Sweeps, replays, determinism and the probe's dumps run through
+sandbox. An image installs the published packages at the version the
+platform pins (`bun install` of `@origingame/engine`, which carries the knowledge, and
+`@origingame/create-game`, with their `optionalDependencies`: the platform
+addon and `og`, tsrs), the same install an author's machine and the
+platform's local stack make; no layout built from a git revision, no
+engine checkout (`docs/release.md` §1, 2026-10-22). Sweeps, replays,
+determinism and the probe's dumps run through
 `og` on the native addon without a GPU and are deterministic. Frames need
 a renderer: the `engine` and `probe` classes carry none (the CPU-only
 renderer on Mesa lavapipe, which they carried through the build-out, was
@@ -391,6 +414,11 @@ Measured in the spike (§10) and gated in CI afterwards.
 | hot reload | ≤ 300 ms from bundle write to first new frame |
 | headless executor image (`engine`) | ≤ 600 MB |
 
+The hot-reload budget is rebuild and swap. `og dev`'s type check of the same
+save runs beside the rebuild in a process of its own and is reported apart
+(`check.ms`, 33–48 ms on the template, `tests/evidence/tsrs/wave-2.md`); it
+never delays or refuses a reload, so it is outside the 300 ms.
+
 The wasm budget is per download: a page downloads one engine module, the
 publish variant of its game's physics profile (3D or 2D) or, on a
 cross-origin isolated page, the lanes variant, so each module is held to
@@ -418,8 +446,10 @@ docs/ci.md §Updating a budget).
   TypeScript root object (`og`). The platform already uses `og-` for
   credentials, `og-probe` for the wire and `OG_*` for environment, so the
   family stays consistent.
-- **Packages**: `@origingame/engine`, `@origingame/create`,
-  `@origingame/engine-knowledge`. Repository `origingame/origin-engine`.
+- **Packages**: `@origingame/engine` (the knowledge inside it as
+  `knowledge/`), `@origingame/engine-darwin-arm64`,
+  `@origingame/engine-linux-x64`, `@origingame/create-game`. Repository
+  `fran0220/origin-engine` (`docs/release.md` §2).
 - **Artifacts**: `origin-engine.wasm`, `origin-engine.node`; telemetry and
   user-agent token `OriginEngine/<version>`; `hello.engine` reports
   `origin-engine <version>`.
@@ -496,6 +526,7 @@ the engine pulls ahead on CPU-bound content further.
 | 2 Mid-size 3D | 4 | skeletal animation + blend trees + IK, rapier + character controller, navmesh, particles, post stack, terrain, decals, UI toolkit on tokens, MSDF text, Tune | all six Discover archetypes rebuilt; one mid-size 3D showcase; perf baselines in CI |
 | 3 Scale | 3 | lanes, GPU-driven culling, streaming, `og run --device`, splats (optional) | the §7 budgets held on the reference scene with lanes on |
 | Platform migration | overlaps 1–2 | §5 executor classes; Player top-level for desktop and creator; `@origingame/engine` in the knowledge pack; Wizard deploys the new artifact; Godot distribution and Three.js substrate retired after the last Game migrates or is archived | `bun deploy/ovh/state.ts` drift closed; `verify-production.sh`; image sizes |
+| Release (2026-10-22, `docs/release.md`) | after the features | the five packages published at one version; the install test on darwin-arm64 and linux-x64; the platform's local stack and the M7 acceptance on the published version; E2B images that install the version, last | `release.sh verify --registry` passes; `pin-<version>.md` on the platform; a production thread on the `engine` class |
 
 **Phase 4 status (2026-10-21).** Phase 4 took the renderer, text, UI shell,
 cook, streaming and the lanes past phases 1–3 in one wave of streams

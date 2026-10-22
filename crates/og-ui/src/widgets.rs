@@ -143,11 +143,14 @@ pub struct GridDesc {
 }
 
 /// A segmented control of tabs.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct TabsDesc {
     /// Equal segments across the width.
     pub fill: bool,
     pub width: Option<Size>,
+    /// The tab row's accessible name (what a screen reader calls it);
+    /// empty is its id.
+    pub label: String,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -156,6 +159,8 @@ pub struct SelectDesc {
     pub placeholder: String,
     pub width: Option<Size>,
     pub disabled: bool,
+    /// Its accessible name; empty is its id.
+    pub label: String,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -169,9 +174,11 @@ pub struct StepperDesc {
     pub decimals: u32,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct RadioDesc {
     pub horizontal: bool,
+    /// The group's accessible name; empty is its id.
+    pub label: String,
 }
 
 /// Status tones (`docs/design-language.md`: Badge, Toast).
@@ -264,6 +271,10 @@ pub struct IconDesc {
     pub size: f32,
     /// `None`: `fg`.
     pub tint: Option<Srgba>,
+    /// What a screen reader calls it (and the probe's text): `None` is the
+    /// icon's name; empty is decoration, named by nothing, so a card it
+    /// sits on is named by its other text alone.
+    pub label: Option<String>,
 }
 
 /// A marker on a mini-map, in the map's 0–1 coordinates.
@@ -1434,6 +1445,9 @@ impl Ui {
         );
         let list = self.parent();
         self.nodes[list].a11y.role = Some("tablist");
+        if !desc.label.is_empty() {
+            self.nodes[list].a11y.name = Some(desc.label.clone());
+        }
         let mut out = Response::default();
         for (k, label) in items.iter().enumerate() {
             let i = self.leaf(
@@ -1566,7 +1580,11 @@ impl Ui {
             let n = &mut self.nodes[i];
             n.content = Content::Text(c);
             n.probe_text = text.to_owned();
-            n.a11y.name = Some(name.clone());
+            n.a11y.name = Some(if desc.label.is_empty() {
+                name.clone()
+            } else {
+                desc.label.clone()
+            });
             n.a11y.value = Some(shown.to_owned());
             n.a11y.expanded = Some(open);
             if r.hovered && !desc.disabled {
@@ -1812,6 +1830,9 @@ impl Ui {
         );
         let group = self.parent();
         self.nodes[group].a11y.role = Some("radiogroup");
+        if !desc.label.is_empty() {
+            self.nodes[group].a11y.name = Some(desc.label.clone());
+        }
         let mut out = Response::default();
         for (k, label) in options.iter().enumerate() {
             let r = self.mark_control(
@@ -2311,7 +2332,7 @@ impl Ui {
             }
             _ => {}
         }
-        self.nodes[i].probe_text = name.to_owned();
+        self.nodes[i].probe_text = desc.label.unwrap_or_else(|| name.to_owned());
     }
 
     /// Whether the icon atlas has an icon of this name.

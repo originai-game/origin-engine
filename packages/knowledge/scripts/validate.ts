@@ -217,7 +217,9 @@ function scaffold(roots: Roots, rules: Rules, overlay: string, files: readonly P
     if (!e) problems.push(`${b.path}: a binary file distribution.json does not list; run \`bun scripts/scaffold.ts --write\``);
     else if (e.sha256 !== sha256(b.bytes) || e.bytes !== b.bytes.length) problems.push(`${b.path}: differs from its distribution.json digest; run \`bun scripts/scaffold.ts --write\` after a deliberate asset change`);
   }
-  for (const rel of listed.keys()) if (!binaries.some((b) => b.path === prefix + rel)) problems.push(`${prefix}${rules.scaffold.distributionFile}: lists ${rel}, which the template does not have`);
+  // The published package's scaffold/template carries text only (scripts/pack.ts): the binaries it lists are @origingame/create-game's.
+  const published = roots.template === join(roots.pkg, "scaffold", "template");
+  if (!published) for (const rel of listed.keys()) if (!binaries.some((b) => b.path === prefix + rel)) problems.push(`${prefix}${rules.scaffold.distributionFile}: lists ${rel}, which the template does not have`);
 }
 
 /** The bundle the platform's production reader would build: text files only. */

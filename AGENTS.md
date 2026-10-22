@@ -5,7 +5,8 @@ Normative design: `docs/design.md`. Platform contracts this engine implements:
 `origingame/origin/packages/contracts/src/probe.ts` (the probe, protocol 5),
 `origingame/docs/design-language.md` (tokens and components for the UI toolkit
 and the player shell). The execution package during the build-out is
-`origingame/goals/origin-engine/plan.md`.
+`origingame/goals/origin-engine/plan.md`; the release path and the plan of
+what remains to launch, `docs/release.md`.
 
 ## Ownership
 
@@ -14,9 +15,13 @@ and the player shell). The execution package during the build-out is
   accounts, money, publishing, threads or the agent loop: those stay in the
   platform, reached through the host ABI with game-scoped tokens.
 - The platform consumes this repository only through published packages
-  (`@origingame/engine`, `@origingame/create`, the knowledge package) pinned
-  by version. No platform code imports engine internals; no engine code
-  imports platform code.
+  (`@origingame/engine`, `@origingame/create-game`, the knowledge package) pinned
+  by version, installed from the npm registry: never a layout built from a
+  git revision, never a checkout or `cargo` on the platform's side
+  (`docs/release.md` §1, the owner's decision of 2026-10-22). A version is
+  tested locally (the install test, the platform's local stack) before an
+  E2B image installs it. No platform code imports engine internals; no
+  engine code imports platform code.
 
 ## Non-negotiable contracts
 

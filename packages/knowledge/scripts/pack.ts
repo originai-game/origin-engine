@@ -16,7 +16,8 @@ rmSync(target, { recursive: true, force: true });
 let n = 0;
 for (const full of walk(source, TEMPLATE_SKIP)) {
   if (!isText(new Uint8Array(readFileSync(full)))) continue;
-  const to = join(target, relative(source, full));
+  // npm drops .gitignore from a tarball; TEMPLATE_RENAMED maps it back at mount.
+  const to = join(target, relative(source, full) === ".gitignore" ? "gitignore" : relative(source, full));
   mkdirSync(dirname(to), { recursive: true });
   cpSync(full, to);
   n++;

@@ -113,6 +113,18 @@ string "results.time" "タイム {time}"
 
 ## 3. Fonts for every script
 
+- What a screen reader hears is words too, and the same rule holds: a
+  group or a picture the kit names for a reader takes its name from the
+  desc, with the English default. `LevelSelectDesc.backLabel` (its Back
+  button), `starsLabel` (`"{stars} of {max} stars"`, a card's stars and
+  the total's: `"{stars} de {max} estrellas"`), `lockedLabel` (`"{name},
+  locked"`, a locked card); `SettingsDesc.sectionLabel` (the tab row, the
+  select on a phone: "Section") and `languagesLabel` (the language list:
+  "Languages"), and `qualityLabel` names the presets as well as heading
+  them. Below the templates, `TabsDesc`, `RadioDesc` and `SelectDesc`
+  take a `label` (else the reader hears the id) and `IconDesc` and
+  `ImageDesc` a `label` (else an icon is its atlas name, `star`; `""` is
+  decoration): og-ui §4.
 - Latin and Cyrillic: the skin's font. Every other script: a subset of a
   Noto face for that script holding exactly the characters your tables
   use, named first in that table's `fonts` line.

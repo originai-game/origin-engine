@@ -1,11 +1,29 @@
 {
   "name": "@origingame/engine-knowledge",
-  "version": "0.0.1",
-  "description": "Origin Engine knowledge for agents: the API wiki generated from api.ogt, the og-core, og-build and og-game skills, and the project scaffold description, laid out for the OriginGame platform's knowledge packs.",
+  "version": "0.1.1",
+  "description": "Origin Engine knowledge for agents: the API wiki generated from api.ogt, the ten og-* skills, the style catalogue and the project scaffold description, laid out for the OriginGame platform's knowledge packs. Not published on its own: @origingame/engine carries it as knowledge/ (docs/release.md §2).",
   "license": "MIT",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fran0220/origin-engine.git",
+    "directory": "packages/knowledge"
+  },
+  "homepage": "https://github.com/fran0220/origin-engine#readme",
+  "bugs": {
+    "url": "https://github.com/fran0220/origin-engine/issues"
+  },
   "type": "module",
-  "files": ["wiki", "skills", "looks", "scaffold", "rules", "knowledge.json", "scripts", "README.md"],
+  "files": [
+    "wiki",
+    "skills",
+    "looks",
+    "scaffold",
+    "rules",
+    "knowledge.json",
+    "scripts",
+    "README.md"
+  ],
   "scripts": {
     "prepack": "bun scripts/pack.ts",
     "validate": "bun scripts/validate.ts",

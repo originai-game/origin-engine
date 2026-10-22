@@ -1,0 +1,15 @@
+type flipbook
+version 1
+---
+# A tick (tools/make-assets.ts): 24 x 16 frames facing right, the feet on the bottom row.
+texture "tick.png"
+pivot 0.5 0
+grid 24 16 5 1
+clip walk {
+  frames 0 1 2 3
+  fps 8
+}
+clip squashed {
+  frames 4
+  fps 1
+}

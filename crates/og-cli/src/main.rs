@@ -2,12 +2,13 @@
 //!
 //! One binary for the author's loop: `og run` (native host, probe, command
 //! channel; `--device` times the publish build in a real browser), `og probe` (a WebSocket client of the probe), `og dev` (watch,
-//! rebuild, hot reload), `og test` (bun tests and playtests), `og polish`
+//! rebuild, hot reload), `og check` (type-check with tsrs), `og test` (bun tests and playtests), `og polish`
 //! (playtests scored against og-taste and og-feel), `og build`
 //! (the play page), `og cook`, `og doctor` and `og api` (the IDL outputs).
 
 mod api;
 mod bundle;
+mod check;
 mod cook;
 mod dev;
 mod device;
@@ -35,9 +36,9 @@ usage: og <command> [options]
 commands:
   run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P]
       [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio <out.wav>]
-      [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json]
-                      cook, bundle and run the game on the native host with the probe; outputs of
-                      screenshot/dump_* land in --out (default <project>/og-out)
+      [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json] [--no-check]
+                      cook, type-check, bundle and run the game on the native host with the probe;
+                      outputs of screenshot/dump_* land in --out (default <project>/og-out)
   run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR]
       [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>]
       [--json]
@@ -49,16 +50,21 @@ commands:
                       one probe call to a running `og run --port P` / `og dev` (JSON-RPC over WebSocket)
   dev [project] [--port P] [--exit-after N] [--json]
                       watch src/ and assets/, rebuild and re-cook, hot-reload through the probe,
-                      report each reload against the 300 ms budget
-  test [project] [--json]
+                      report each reload against the 300 ms budget and type-check each src/ change
+                      beside the rebuild (reported, never refusing the reload)
+  check [project|entry|tsconfig.json] [--json] [--checkers N] [--tool tsrs|tsgo]
+                      type-check the game code with tsrs (tsgo where tsrs has no package);
+                      --json prints the diagnostics as one `check` event; og run, og test and
+                      og build check before bundling (--no-check skips it), og dev on each save
+  test [project] [--json] [--no-check]
                       the project's bun tests, then each tests/*.og.ts playtest headless
   polish [project] [--out DIR] [--frames N] [--json]
                       play the playtests headless and score them against og-taste and og-feel
                       (contrast, text size, HUD, transitions, UI sounds, input latency, hit
                       feedback, idle frames, frame time, missing locale keys) into DIR/report.md
                       (default <project>/og-out/polish) with frames and a fix per finding
-  build [project] [--publish] [--out DIR] [--json]
-                      cook and export the game to dist/ (or publish.out): the player shell,
+  build [project] [--publish] [--out DIR] [--json] [--no-check]
+                      cook, type-check and export the game to dist/ (or publish.out): the player shell,
                       game.js, the web host, cooked/, og-build.json, _headers; --publish keeps
                       only the player-facing probe members and adds the PWA (sw.js, manifest)
   cook [project] [--threads N] [--report [out.md]] [--json] [--watch [--exit-after N]]
@@ -100,6 +106,7 @@ fn main() -> ExitCode {
         ["run", rest @ ..] => run::run(rest),
         ["probe", rest @ ..] => probe::run(rest),
         ["dev", rest @ ..] => dev::run(rest),
+        ["check", rest @ ..] => check::run(rest),
         ["test", rest @ ..] => test::run(rest),
         ["polish", rest @ ..] => polish::run(rest),
         ["build", rest @ ..] => bundle::run(rest),

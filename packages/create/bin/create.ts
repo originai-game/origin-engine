@@ -28,9 +28,16 @@ export const SKIPPED = new Set(["cooked", "dist", "node_modules", "og-out", ".og
  * Template files stored under another name and renamed in the scaffold: the
  * template's Git attributes route media through LFS in a game's repository,
  * but as `.gitattributes` they would do the same in the engine repository,
- * which stores the template's media as plain blobs.
+ * which stores the template's media as plain blobs; and `.gitignore`, which
+ * npm drops from every tarball, so the published package carries it as
+ * `gitignore` (scripts/pack-template.ts renames it at pack; the engine
+ * repository keeps the dotted name, and a copy taken from there scaffolds
+ * the same).
  */
-export const RENAMED: ReadonlyMap<string, string> = new Map([["gitattributes", ".gitattributes"]]);
+export const RENAMED: ReadonlyMap<string, string> = new Map([
+  ["gitattributes", ".gitattributes"],
+  ["gitignore", ".gitignore"],
+]);
 
 export interface CreateOptions {
   readonly dir: string;
