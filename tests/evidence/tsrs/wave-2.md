@@ -1,4 +1,4 @@
-# Wave 2 — og dev with the check in the loop (goals/tsrs/plan.md §六)
+# Wave 2 — og dev with the check in the loop (goals/tsrs, 2026-10-22)
 
 Tree `2d7c282a` (main) plus this file; 2026-10-22; an Amp orb: Linux
 x86_64, Intel Xeon @ 2.60 GHz, `nproc` 8, load under 1, nothing else

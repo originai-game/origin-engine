@@ -1,4 +1,8 @@
-# Wave 0 — measurements (goals/tsrs/plan.md §五)
+# Wave 0 — measurements (goals/tsrs, 2026-10-22)
+
+The execution package `goals/tsrs/plan.md` is in Git history (deleted at
+its end, docs/phase-1.md "tsrs 2026-10"); its `evidence/bench.sh` and
+`evidence/corpus/` are there too, the corpus now `scripts/tsrs-corpus/`.
 
 Tree `684db7cb` (main, the plan's commit) plus the Wave 0 files; 2026-10-22;
 an Amp orb: Linux x86_64, Intel Xeon @ 2.60 GHz, `nproc` 8, 15 GB, load

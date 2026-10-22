@@ -85,8 +85,10 @@ build` check before they bundle and stop on a type error (`--no-check`
 skips it; `og build --publish` refuses `--no-check`); `og dev` checks each
 rebuild beside the bundle and reports it on the `reload` event without
 refusing the reload. A checker that crashes or prints nothing readable is
-a failure, never a clean check. tsgo 7.0.2 stays the gate's authority
-until goals/tsrs's switch (`check-conformance`, docs/ci.md).
+a failure, never a clean check. tsrs is the repository's checker as well
+(`packages/engine`'s `typecheck`); tsgo, the compiler it ports, is only
+the comparison a wave's end holds it to (`check-conformance`, docs/ci.md)
+and the fallback where tsrs has no package.
 
 ### 2.2 Threads **(D)**
 
@@ -408,7 +410,7 @@ Measured in the spike (§10) and gated in CI afterwards.
 
 The hot-reload budget is rebuild and swap. `og dev`'s type check of the same
 save runs beside the rebuild in a process of its own and is reported apart
-(`check.ms`, 33–48 ms on the template, goals/tsrs `evidence/wave-2.md`); it
+(`check.ms`, 33–48 ms on the template, `tests/evidence/tsrs/wave-2.md`); it
 never delays or refuses a reload, so it is outside the 300 ms.
 
 The wasm budget is per download: a page downloads one engine module, the

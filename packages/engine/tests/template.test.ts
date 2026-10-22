@@ -53,7 +53,7 @@ test("a scaffolded game cooks, passes its playtest and leaves the frame and dump
   expect(ui.elements.find((e) => e.id === "Start")?.text).toBe("Started");
 }, 600_000);
 
-// A scaffolded game is type-checked by og (goals/tsrs): `og check` passes
+// A scaffolded game is type-checked by og (og check, tsrs): `og check` passes
 // on it as scaffolded, a type error is a value in `--json` (code 2322 at
 // its line), and og run, og test and og build stop on it before bundling.
 test("a scaffolded game type-checks clean, and a type error stops og before it bundles", () => {

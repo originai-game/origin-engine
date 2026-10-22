@@ -5618,6 +5618,53 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   (wasm 2,428,536 bytes brotli, 57 % of the budget; +59,841 over E1).
   Evidence `tests/evidence/E3/`. Owed: §Owed rows 1–3 and 15–20.
 
+### tsrs 2026-10: type checking in the author's loop
+
+The execution package `goals/tsrs/plan.md` (its commit `684db7cb`, deleted
+at its end; Git history keeps it) put tsrs, the Rust port of TypeScript 7
+(oxc-project/tsrs, pinned at 0.18.0-ts7.1.0-dev.20260929), into `og`:
+
+- `og check` runs it as a pinned child process (`crates/og-cli/src/check.rs`)
+  found by `OG_TSRS`, the engine package's `optionalDependencies`
+  (`@tsrs/<platform>`), or `PATH` (`scripts/install-tools.sh`, SRI-checked);
+  diagnostics are values (`--json`: one `check` event). `og run`, `og test`
+  and `og build` check before they bundle and stop on a type error
+  (`--no-check`; never for `--publish`); `og dev` checks each save beside
+  the rebuild and reports it on the reload without refusing it. `og doctor`
+  reports tsrs against its pin.
+- Measured (`tests/evidence/tsrs/wave-0.md`): at 4 checker threads tsrs takes
+  20–47 % of tsgo 7.0.2's wall clock on every config, 23 ms to start, 32.5 MB
+  installed; a 22-file corpus of game-code errors (`scripts/tsrs-corpus/`)
+  gave the same 23 diagnostics, messages byte for byte. In `og dev` the check
+  lands in 33–48 ms and does not move the rebuild
+  (`tests/evidence/tsrs/wave-2.md`).
+- Found on the way: ten of the eleven templates (fx-showcase, ui-kit, the
+  eight archetypes) had never been checked as the projects they scaffold;
+  their playtest helpers' `node:` imports and globals were 10–16 errors each
+  under `types: []`, tsgo and tsrs alike. Each now carries a `host.d.ts`.
+- **The switch (owner's delegation, 2026-10-22).** The package proposed
+  switching the repository's authority from tsgo to tsrs after two wave
+  ends with no difference. Decided instead to switch at once: the first
+  comparison was already complete (19 configs and the corpus, no miss, no
+  extra, no message difference, against tsgo 7.0.2 and against the
+  7.1.0-dev tsrs ports), and the comparison stays as the wave end's
+  `conformance` stage, so a regression in a later tsrs is caught where a
+  version moves. Since then `packages/engine`'s `typecheck` is `og check
+  --tool tsrs` over its three configs (`scripts/typecheck.ts`, after
+  `build.sh`; 0.25–0.28 s against 1.16–1.26 s for the three `bun x tsc`),
+  og-idl's declaration test runs tsrs, and no template, example or package
+  depends on `typescript`. tsgo remains only as `TSGO_VERSION` in check.rs:
+  the comparison and the fallback on Windows and Intel macOS, which tsrs
+  does not build for.
+- Pins (docs/ci.md §Toolchain): `TSRS_VERSION` and the five SRIs in
+  `scripts/install-tools.sh`, copied by the engine's `optionalDependencies`;
+  they move together at a wave's end with a tsrs release, after
+  `scripts/tsrs-diff.sh` passes on it. The engine image keeps the optional
+  dependencies (docs/platform-asks.md #13).
+- Owed to the merging session: the functional lane and an `og dev` reload
+  measurement on Metal with this og (the orb where it was built has only
+  lavapipe, whose first frame takes 650 ms and over).
+
 ### Toolchain 2026-10
 
 - **2026-10-19** (c1290aa..HEAD): Rust 1.97.0 to 1.99.1 with every crate

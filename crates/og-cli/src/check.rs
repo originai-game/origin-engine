@@ -2,7 +2,8 @@
 //! type-checks game code, with the diagnostics as values.
 //!
 //! The checker is tsrs (the Rust port of TypeScript 7), a pinned binary run
-//! as a child process, never linked (goals/tsrs/plan.md D1). It is found in
+//! as a child process, never linked: an upgrade is a new pinned binary, not
+//! a rebuilt engine (docs/ci.md §Toolchain). It is found in
 //! this order: `OG_TSRS` (a file), `node_modules/@tsrs/<platform>/tsrs`
 //! beside the engine package (its `optionalDependencies`), `tsrs` on `PATH`
 //! (`scripts/install-tools.sh`). Without one (Windows, Intel macOS) the
@@ -33,10 +34,9 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 use std::time::Instant;
 
-/// The TypeScript (tsgo) version that is the authority while tsrs is not
-/// (goals/tsrs/plan.md D4), and the fallback where tsrs has no package.
-/// The templates' and examples' `devDependencies.typescript` copy it;
-/// `scripts/tsrs-diff.sh` reads it here and holds them equal.
+/// The TypeScript (tsgo) version tsrs is held to at a wave's end
+/// (`scripts/tsrs-diff.sh` reads it here) and the fallback where tsrs has
+/// no package (Windows, Intel macOS).
 pub const TSGO_VERSION: &str = "7.0.2";
 
 /// The template's compiler options: the options of a project without a
