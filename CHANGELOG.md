@@ -55,6 +55,17 @@ Also:
 - Knowledge: og-game §8 gives the flipbook grammar line by line (#2);
   og-feel §12 reads the jump event the tick after (#14).
 
+The `dogfood-7` stream (Rumpus Isle, a local-multiplayer party game,
+`examples/rumpus-isle/FINDINGS.md`, 2026-10-22):
+
+- `og test --filter <path>`: selects suite files by a substring of their
+  project-relative path before anything runs; an empty selection fails
+  (#14). No API change.
+- Knowledge: og-build on headless rendering (`OG_RENDERER=none`, the
+  lavapipe fallback) (#7); og-ui on the UI's entrance timing and the
+  presses it rejects (#10) and the iris midpoint (#12); og-game on the
+  post-solver velocity a contact event carries (#9).
+
 ## 0.1.1 (2026-10-22)
 
 - Fix: the published template, archetypes and knowledge scaffold carried no
