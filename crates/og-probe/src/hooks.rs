@@ -81,6 +81,79 @@ pub struct RawFrame {
     pub rgba: Vec<u8>,
 }
 
+/// One entity a frame shows, as the renderer's entity-id pass saw it
+/// (`describe`; IDL `probe.DescribedEntity`). Screen values are in CSS
+/// pixels of the play surface.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Shown {
+    pub entity: Entity,
+    /// The box of its visible pixels: `[x, y, width, height]`.
+    pub rect: [f32; 4],
+    /// The box of what it covers with nothing in front of it.
+    pub drawn: [f32; 4],
+    /// A point that shows it, nearest the box's centre (`pick` answers the
+    /// entity there).
+    pub point: [f32; 2],
+    /// From the camera to its nearest visible point, along the view, in
+    /// world units.
+    pub depth: f32,
+    /// Its visible share of the surface, 0 to 1.
+    pub coverage: f32,
+    /// The share of what it covers alone that something else hides, 0 to 1.
+    pub occlusion: f32,
+    /// What draws it: `model`, `mesh`, `skinned`, `sprite`, and the model's
+    /// asset path, such as `models/walker.glb`.
+    pub labels: Vec<String>,
+}
+
+/// The renderer's view of the frame at the current tick (`describe`).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Seen {
+    /// The entity-id pass's size in pixels (a quarter of the frame's).
+    pub pass: (u32, u32),
+    /// The camera as drawn: position, target, up, projection, fov or height, near, far.
+    pub camera: Value,
+    /// Every entity with a visible pixel, any order (`describe` sorts them).
+    pub entities: Vec<Shown>,
+}
+
+/// The frame described as data and points resolved to entities, over the
+/// renderer's scene at the current tick: the host implements it with
+/// og-render's entity-id pass (`render_ids`), which needs no GPU, so it
+/// answers in a host without a renderer too.
+pub trait SceneView {
+    /// What the frame shows at the current tick; `None` when the host has
+    /// no scene to describe.
+    fn seen(&mut self, world: &World) -> Option<Seen>;
+    /// What is under a point of the play surface, in CSS pixels.
+    fn pick(&mut self, world: &World, x: f32, y: f32) -> Option<Pick>;
+}
+
+/// A scene's text written back (`save_scene`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct SavedScene {
+    /// The scene's source, project-relative (`assets/scenes/main.ogt`).
+    pub source: String,
+    /// Where the text was written: the source itself, or the caller's path
+    /// (empty when the caller writes it).
+    pub written: String,
+    /// The whole new text.
+    pub text: String,
+    /// The 1-based lines of the new text that changed or were added.
+    pub lines: Vec<usize>,
+}
+
+/// The host's half of `save_scene`: the scene the world was loaded from,
+/// rewritten line by line from the world.
+pub trait SceneWriter {
+    /// Rewrites the boot scene's text from `world`: the lines of its
+    /// entities' fields whose values changed, keeping every other line, and
+    /// a line or block for each `tuned` field (`<entity>.<Component>.<field>`
+    /// or `<Resource>.<field>`) the text does not have. With `write`, the
+    /// text replaces the source file; otherwise it is only returned.
+    fn save(&mut self, world: &World, tuned: &[String], write: bool) -> Result<SavedScene, String>;
+}
+
 /// One UI element with its bounds, in CSS pixels (IDL `probe.UiElement`).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct UiElement {

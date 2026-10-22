@@ -20,6 +20,8 @@
 
 mod base64;
 pub mod command;
+mod describe;
+pub mod expect;
 pub mod hooks;
 pub mod input;
 mod names;
@@ -33,12 +35,16 @@ pub use command::{
     CommandDesc, CommandInfo, CommandStep, CommandsReport, DumpHandler, Inbox, LogLine, Output,
     ParseError, Payload,
 };
-pub use hooks::{Capture, Frame, Pick, RawFrame, Rebuilt, Reloader, StaticUi, UiElement, UiTree};
+pub use expect::{ExpectResult, Status};
+pub use hooks::{
+    Capture, Frame, Pick, RawFrame, Rebuilt, Reloader, SavedScene, SceneView, SceneWriter, Seen, Shown,
+    StaticUi, UiElement, UiTree,
+};
 pub use input::{InjectedInput, Input, InputSink, WorldInput};
 pub use names::Names;
 pub use probe::{
     AfterTickFn, BUILD, DeriveFn, DumpKind, ENGINE_VERSION, FRAME_UNCHECKED, Heard, ListenFn,
     MAX_CAPTURE_EDGE, MAX_SNAPSHOTS, MAX_SWEEP_VALUES, MEMBERS, PLAYTEST_MAX_TICKS,
     PROBE_PROGRAM_MAX_OPERATIONS, PROBE_VERSION, PROBE_WIRE_VERSION, PUBLISH_MEMBERS, Probe,
-    SweepDesc, served_members, time_json,
+    ReaderFn, SweepDesc, served_members, time_json,
 };

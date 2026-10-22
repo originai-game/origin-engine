@@ -302,6 +302,38 @@ impl Probe {
                 or_null(self.listen(world, seconds))
             }
             "memory" => or_null(self.memory(world)),
+            "describe" => self.describe(world),
+            "expect" => match self.expect(world, string(p, "what")?) {
+                Ok(r) => r.to_json(),
+                Err(reason) => return Err(RpcError::invalid(reason)),
+            },
+            "expectations" => {
+                let taken = self.take_expectations();
+                let failed = taken
+                    .iter()
+                    .filter(|r| r.status == crate::expect::Status::Fail)
+                    .count();
+                let passed = taken
+                    .iter()
+                    .filter(|r| r.status == crate::expect::Status::Pass)
+                    .count();
+                json!({
+                    "passed": passed,
+                    "failed": failed,
+                    "unchecked": taken.len() - passed - failed,
+                    "results": taken.iter().map(|r| r.to_json()).collect::<Vec<_>>(),
+                })
+            }
+            "save_scene" => {
+                let write = p.get("write").and_then(Value::as_bool).unwrap_or(false);
+                match self.save_scene(world, write) {
+                    Ok(v) => v,
+                    Err(reason) => {
+                        self.note(world.time().tick, true, format!("save_scene: {reason}"));
+                        Value::Null
+                    }
+                }
+            }
             _ => unreachable!("served_members lists only implemented members"),
         })
     }
