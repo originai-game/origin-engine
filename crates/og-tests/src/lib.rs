@@ -10,6 +10,7 @@ pub mod compare;
 pub mod culling_scenes;
 pub mod fx_scenes;
 // Headless native runs (files, a blocking renderer); the browser's is og-tests-web.
+pub mod geometry_scenes;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod gfx;
 pub mod ibl_scenes;

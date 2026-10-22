@@ -100,6 +100,11 @@ pub const SCENES: &[&str] = &[
     "shadow-flags",
     "ground-grid",
     "stylise-outline-ground",
+    "geometry-procedural",
+    "lines",
+    "points",
+    "wireframe",
+    "debug-overlay",
 ];
 
 /// Scenes rendered natively only, beside [`SCENES`] (`og-gfx --all` takes
@@ -489,6 +494,15 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // iridescence, anisotropy) and transmission in front of textured
         // geometry.
         "materials-physical" => g.scene = crate::physical_scenes::physical_scene(),
+        // The depth wave's geometry (docs/depth.md §1, geometry_scenes.rs):
+        // the three.js primitives, a tube and a buffer-geometry height
+        // field; lines of every kind; point clouds; wireframe materials;
+        // debug draw over a bloomed frame.
+        "geometry-procedural" => g.scene = crate::geometry_scenes::procedural_scene(),
+        "lines" => g.scene = crate::geometry_scenes::lines_scene(),
+        "points" => g.scene = crate::geometry_scenes::points_scene(),
+        "wireframe" => g.scene = crate::geometry_scenes::wireframe_scene(),
+        "debug-overlay" => g.scene = crate::geometry_scenes::debug_scene(),
         // Materials sampling texture arrays: eight cubes of one tile
         // material (colour and normal arrays), each on its own layer or the
         // material's, one batch; a cube of layer 1 as plain 2D textures;
