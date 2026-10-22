@@ -13,7 +13,7 @@
 #   scripts/release.sh publish [--dry-run] [--otp <code>]
 #                                               npm publish each tarball (platform packages, engine, create-game, knowledge), tag v<version>;
 #                                               refuses a dirty tree, a manifest not verified on both platforms, a HEAD whose packaged inputs
-#                                               (crates, packages, templates, scripts, Cargo.lock) differ from the manifest's commit, a version on the registry with other bytes, or no npm login. Resumable:
+#                                               (crates, packages, templates, Cargo.lock, the wasm and tool scripts) differ from the manifest's commit, a version on the registry with other bytes, or no npm login. Resumable:
 #                                               a package already published with these bytes is skipped. npm's two-factor prompt (a URL
 #                                               to open, or --otp) is answered by the person running it
 #
@@ -110,7 +110,7 @@ cmd_publish() {
       try { git("merge-base", "--is-ancestor", m.commit, head); } catch { ancestor = false; }
       if (!ancestor) problems.push(`packed from ${m.commit.slice(0, 12)}, which is not an ancestor of HEAD ${head.slice(0, 12)}`);
       else {
-        const inputs = ["crates", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "packages", "templates", "scripts", ".cargo"];
+        const inputs = ["crates", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "packages", "templates", ".cargo", "scripts/wasm-crates.txt", "scripts/budgets.txt", "scripts/wasm-opt.sh", "scripts/wasm-lanes.sh", "scripts/install-tools.sh", "scripts/lib.sh", "scripts/lock.sh", "scripts/release-bump.ts"];
         const changed = git("diff", "--name-only", m.commit, head, "--", ...inputs);
         if (changed) problems.push(`packed from ${m.commit.slice(0, 12)}; since then these inputs of the packages changed (pack again):\n    ${changed.split("\n").join("\n    ")}`);
       }
