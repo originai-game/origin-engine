@@ -54,6 +54,7 @@ mod glass;
 pub mod graph;
 mod hooks;
 mod ibl;
+mod id_pass;
 mod instances;
 mod light2d;
 mod lines;
@@ -112,6 +113,7 @@ pub use hooks::{
     MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderParam, lit_module_source,
     physical_module_source, shadow_module_source,
 };
+pub use id_pass::{IdFrame, IdObject, IdSources, id_pass_size, projection_name, render_ids};
 pub use lines::{LineLayer, LineMode, Lines, wire_edges};
 pub use material::{PhysicalExtensions, Side, StandardMaterial};
 pub use metaballs::{FIELDS, MAX_FLUIDS, Metaballs};
