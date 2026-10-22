@@ -364,3 +364,8 @@ Wave 3 的切换判据（D7，⚑）：连续两个 wave 末 `check-conformance`
 | 日期 | 事 |
 |---|---|
 | 2026-10-21 | 本包写成于 `66f65c03`。tsrs 的事实（版本、包、退出码、诊断格式、选项支持、一致性数字）核自 oxc-project/tsrs 的 `docs/COMPATIBILITY.md`、`docs/STATUS.md`、`docs/USAGE.md`、`npm/README.md`、`bench/run.py`，当日。等 owner：D5、D7、D8。Wave 0 未开始。 |
+| 2026-10-22 | **Wave 0** `f23984a8`：go，四个阈值全过（`evidence/wave-0.md`：`--checkers 4` 下 tsrs 为 tsgo 墙钟的 20–47 %，启动 23 ms，32.5 MB；22 个语料文件 23 条诊断零漏报、零多报、消息逐字相同）。 |
+| 2026-10-22 | **Wave 1** `c3196eaa`…`722fcc87`：`install-tools.sh` 的 tsrs 段（五个平台 SRI 记齐）、`og check`（`check.rs`，解析器 8 个单元测试，定位链/失败/合成配置 4 个集成测试）、`og doctor` 的 tsrs 行、引擎包 `optionalDependencies`（D5 按提议落地；`bun install` 实测落下 `@tsrs/linux-x64-gnu`，bun 1.4.2 无视 `libc` 也装上 musl 包，记进 ask #13）、functional lane 的 `check-conformance`。实测与计划不同处：tsrs 对配置错误退出 2 而非 3；`--version` 自带包版本，`og doctor` 直接比 `TSRS_VERSION`；找到但不可用的 tsrs（无 lib 文件、`OG_TSRS` 指空）报错而不回退 tsgo，只有“找不到”才回退。 |
+| 2026-10-22 | **Wave 2** `bd3b2e96`…`2d7c282a`：`run`/`test`/`build` 打包前检查、`--no-check`、`--publish` 拒绝它；`og dev` 并行检查（一次一个在飞，新保存杀掉旧检查进程）；SKILL.md；ask #13。发现：除 `templates/game` 外十个模板（fx-showcase、ui-kit、八个 archetype）从未作为项目被检查过，`tests/*.ts` 的 `node:` 模块与全局在 `types: []` 下各报 10–16 个错误（tsgo 同报），接入后会挡住 `og run`/`og test`；各加 `host.d.ts` 修复，`check-conformance` 扩到全部模板。`og dev` 证据见 `evidence/wave-2.md`（检查 33–48 ms，不挪动 rebuild；本 orb 只有 lavapipe，swap 670–1220 ms 与检查无关，Metal 上的 300 ms 复测归合并者）。 |
+| 2026-10-22 | **Wave 3 未开始，按 D7 的判据不能开始**：判据要连续两个 wave 末 `check-conformance` 零差异；今天是第一次（19 个配置 + 语料全部零差异，对 tsgo 7.0.2 与 7.1.0-dev.20260930.4 都是），npm 上 tsrs 最新仍是 0.18.0。等 owner：D7、D8（D5 已按提议实施，可否决）。 |
+

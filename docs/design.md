@@ -406,6 +406,11 @@ Measured in the spike (§10) and gated in CI afterwards.
 | hot reload | ≤ 300 ms from bundle write to first new frame |
 | headless executor image (`engine`) | ≤ 600 MB |
 
+The hot-reload budget is rebuild and swap. `og dev`'s type check of the same
+save runs beside the rebuild in a process of its own and is reported apart
+(`check.ms`, 33–48 ms on the template, goals/tsrs `evidence/wave-2.md`); it
+never delays or refuses a reload, so it is outside the 300 ms.
+
 The wasm budget is per download: a page downloads one engine module, the
 publish variant of its game's physics profile (3D or 2D) or, on a
 cross-origin isolated page, the lanes variant, so each module is held to
