@@ -6,7 +6,7 @@ and `@origingame/create-game` (docs/release.md §3). Before 1.0.0 a minor
 bump carries API additions or changes, one line each, written at the merge
 that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-10-22)
 
 The first published version: the API as `crates/og-api/api.ogt` stands at
 the tag (modules math, reflect, world, system, game, transform, time, rng,
