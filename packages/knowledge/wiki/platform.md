@@ -8,6 +8,8 @@ Calls are asynchronous: each returns a request number at once, and the answer ar
 
 Errors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed; retryable is true for offline, timeout, unavailable and rate_limited.
 
+Rooms (roomCreate, roomJoin, roomSend, ...) put this engine with other players' engines: the host carries them (natively `og relay` with `og run --room`, on the web the platform's rooms through the shell, docs/platform-asks.md) and its answers and the other peers' messages arrive as events at the start of a tick (og.RoomJoined, og.RoomPeerJoined, og.RoomPeerLeft, og.RoomMessage), host input like key presses. Deterministic play over a room is og.net's lockstep.
+
 - **TypeScript**: functions are the namespace `og.platform`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Skill**: `og-platform-sdk`, which teaches the module (how much of it to use, and how to prove it).
@@ -52,6 +54,21 @@ module platform {
 | [`og.platform.result`](#fn-result) | function | The answer to a call, once it arrived. |
 | [`og.platform.info`](#fn-info) | function | What answers platform calls here, and what it answers. |
 | [`og.platform.now`](#fn-now) | function | The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time). |
+| [`RoomDesc`](#type-RoomDesc) | desc struct | A room to create. |
+| [`RoomPeer`](#type-RoomPeer) | struct | One peer in the room. |
+| [`RoomInfo`](#type-RoomInfo) | struct | The room this engine is in. |
+| [`RoomMessageData`](#type-RoomMessageData) | struct | A message another peer sent: what og.RoomMessage announced. |
+| [`og.RoomJoined`](#record-RoomJoined) | event | roomCreate or roomJoin finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why. |
+| [`og.RoomPeerJoined`](#record-RoomPeerJoined) | event | Another peer joined this engine's room. |
+| [`og.RoomPeerLeft`](#record-RoomPeerLeft) | event | A peer left this engine's room (it left, closed, or lost its connection), after every message it sent; or, with peer equal to this engine's own number, this engine is in no room any more (roomLeave, or the host lost the room). |
+| [`og.RoomMessage`](#record-RoomMessage) | event | Another peer's message arrived; read it with og.platform.roomMessage. Messages from one peer arrive in the order it sent them. While lockstep runs (og.Lockstep) a message is this peer's host input alone: a system that changes the world from one makes it differ from the other peers' (og.Desync); carry what all must see in og.PlayerInput. |
+| [`og.platform.roomCreate`](#fn-roomCreate) | function | Create a room and join it. The answer is og.RoomJoined, with the room's id to share (natively the relay names it `room-N`; on the web the platform does). |
+| [`og.platform.roomJoin`](#fn-roomJoin) | function | Join a room by its id. The answer is og.RoomJoined (with ok false and `not_found` or `full` when it cannot); then og.RoomPeerJoined and og.RoomPeerLeft as others come and go. |
+| [`og.platform.roomLeave`](#fn-roomLeave) | function | Leave the room: og.RoomPeerLeft with this engine's own peer number answers, and the other peers hear it leave after its last message. |
+| [`og.platform.roomSend`](#fn-roomSend) | function | Send a message to every other peer in the room, or to one: a JSON value, or bytes (a Uint8Array). It arrives as og.RoomMessage, after every earlier message of this peer. |
+| [`og.platform.roomPeers`](#fn-roomPeers) | function | The peers in this engine's room, this one included, by number; empty in none. |
+| [`og.platform.roomInfo`](#fn-roomInfo) | function | The room this engine is in, and what carries rooms here. |
+| [`og.platform.roomMessage`](#fn-roomMessage) | function | A message og.RoomMessage announced: who sent it and what it carries. The engine keeps the last 256. |
 
 ## Functions
 
@@ -83,7 +100,7 @@ fn storeGet {
 }
 ```
 
-<sub>`api.ogt` line 8149</sub>
+<sub>`api.ogt` line 8150</sub>
 
 <a id="fn-storeSet"></a>
 
@@ -113,7 +130,7 @@ fn storeSet {
 }
 ```
 
-<sub>`api.ogt` line 8156</sub>
+<sub>`api.ogt` line 8157</sub>
 
 <a id="fn-storeList"></a>
 
@@ -141,7 +158,7 @@ fn storeList {
 }
 ```
 
-<sub>`api.ogt` line 8163</sub>
+<sub>`api.ogt` line 8164</sub>
 
 <a id="fn-leaderboardSubmit"></a>
 
@@ -171,7 +188,7 @@ fn leaderboardSubmit {
 }
 ```
 
-<sub>`api.ogt` line 8169</sub>
+<sub>`api.ogt` line 8170</sub>
 
 <a id="fn-leaderboardTop"></a>
 
@@ -201,7 +218,7 @@ fn leaderboardTop {
 }
 ```
 
-<sub>`api.ogt` line 8176</sub>
+<sub>`api.ogt` line 8177</sub>
 
 <a id="fn-leaderboardAround"></a>
 
@@ -231,7 +248,7 @@ fn leaderboardAround {
 }
 ```
 
-<sub>`api.ogt` line 8183</sub>
+<sub>`api.ogt` line 8184</sub>
 
 <a id="fn-telemetry"></a>
 
@@ -265,7 +282,7 @@ fn telemetry {
 }
 ```
 
-<sub>`api.ogt` line 8190</sub>
+<sub>`api.ogt` line 8191</sub>
 
 <a id="fn-point"></a>
 
@@ -295,7 +312,7 @@ fn point {
 }
 ```
 
-<sub>`api.ogt` line 8200</sub>
+<sub>`api.ogt` line 8201</sub>
 
 <a id="fn-aiMark"></a>
 
@@ -325,7 +342,7 @@ fn aiMark {
 }
 ```
 
-<sub>`api.ogt` line 8207</sub>
+<sub>`api.ogt` line 8208</sub>
 
 <a id="fn-loadSettings"></a>
 
@@ -353,7 +370,7 @@ fn loadSettings {
 }
 ```
 
-<sub>`api.ogt` line 8214</sub>
+<sub>`api.ogt` line 8215</sub>
 
 <a id="fn-saveSettings"></a>
 
@@ -383,7 +400,7 @@ fn saveSettings {
 }
 ```
 
-<sub>`api.ogt` line 8220</sub>
+<sub>`api.ogt` line 8221</sub>
 
 <a id="fn-saveSlot"></a>
 
@@ -413,7 +430,7 @@ fn saveSlot {
 }
 ```
 
-<sub>`api.ogt` line 8227</sub>
+<sub>`api.ogt` line 8228</sub>
 
 <a id="fn-loadSlot"></a>
 
@@ -443,7 +460,7 @@ fn loadSlot {
 }
 ```
 
-<sub>`api.ogt` line 8234</sub>
+<sub>`api.ogt` line 8235</sub>
 
 <a id="fn-result"></a>
 
@@ -473,7 +490,7 @@ fn result {
 }
 ```
 
-<sub>`api.ogt` line 8241</sub>
+<sub>`api.ogt` line 8242</sub>
 
 <a id="fn-info"></a>
 
@@ -501,7 +518,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 8248</sub>
+<sub>`api.ogt` line 8249</sub>
 
 <a id="fn-now"></a>
 
@@ -529,7 +546,217 @@ fn now {
 }
 ```
 
-<sub>`api.ogt` line 8254</sub>
+<sub>`api.ogt` line 8255</sub>
+
+<a id="fn-roomCreate"></a>
+
+### `og.platform.roomCreate`
+
+Create a room and join it. The answer is og.RoomJoined, with the room's id to share (natively the relay names it `room-N`; on the web the platform does).
+
+```ts
+og.platform.roomCreate(world: World, desc?: RoomDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `RoomDesc` | yes | Its name and capacity. |
+
+**Returns** `Result<void>`: Refused with no room host (og.platform.roomInfo's host `none`), while in or joining a room (roomLeave first), or for a malformed name.
+
+Binding symbol `og_platform_room_create` · publish builds: kept
+
+```ogt
+fn roomCreate {
+  doc "Create a room and join it. The answer is og.RoomJoined, with the room's id to share (natively the relay names it `room-N`; on the web the platform does)."
+  param world World "The world."
+  param desc RoomDesc "Its name and capacity." {
+    optional true
+  }
+  returns Result.Void "Refused with no room host (og.platform.roomInfo's host `none`), while in or joining a room (roomLeave first), or for a malformed name."
+}
+```
+
+<sub>`api.ogt` line 8327</sub>
+
+<a id="fn-roomJoin"></a>
+
+### `og.platform.roomJoin`
+
+Join a room by its id. The answer is og.RoomJoined (with ok false and `not_found` or `full` when it cannot); then og.RoomPeerJoined and og.RoomPeerLeft as others come and go.
+
+```ts
+og.platform.roomJoin(world: World, room: string): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `room` | `string` | no | The room's id: 1 to 64 of letters, digits, `.`, `_` and `-`. |
+
+**Returns** `Result<void>`: Refused with no room host, while in or joining a room, or for a malformed id.
+
+Binding symbol `og_platform_room_join` · publish builds: kept
+
+```ogt
+fn roomJoin {
+  doc "Join a room by its id. The answer is og.RoomJoined (with ok false and `not_found` or `full` when it cannot); then og.RoomPeerJoined and og.RoomPeerLeft as others come and go."
+  param world World "The world."
+  param room String "The room's id: 1 to 64 of letters, digits, `.`, `_` and `-`."
+  returns Result.Void "Refused with no room host, while in or joining a room, or for a malformed id."
+}
+```
+
+<sub>`api.ogt` line 8336</sub>
+
+<a id="fn-roomLeave"></a>
+
+### `og.platform.roomLeave`
+
+Leave the room: og.RoomPeerLeft with this engine's own peer number answers, and the other peers hear it leave after its last message.
+
+```ts
+og.platform.roomLeave(world: World): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+
+**Returns** `Result<void>`: Refused when in no room.
+
+Binding symbol `og_platform_room_leave` · publish builds: kept
+
+```ogt
+fn roomLeave {
+  doc "Leave the room: og.RoomPeerLeft with this engine's own peer number answers, and the other peers hear it leave after its last message."
+  param world World "The world."
+  returns Result.Void "Refused when in no room."
+}
+```
+
+<sub>`api.ogt` line 8343</sub>
+
+<a id="fn-roomSend"></a>
+
+### `og.platform.roomSend`
+
+Send a message to every other peer in the room, or to one: a JSON value, or bytes (a Uint8Array). It arrives as og.RoomMessage, after every earlier message of this peer.
+
+```ts
+og.platform.roomSend(world: World, data: Uint8Array | unknown, to?: number): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `data` | `Uint8Array \| unknown` | no | What to send: a Uint8Array, or any JSON value; at most 64 KiB encoded. |
+| `to` | `number` | yes | The one peer to send it to; omitted is every other peer. |
+
+**Returns** `Result<void>`: Refused when in no room, for a message over 64 KiB, or a peer not in the room.
+
+Binding symbol `og_platform_room_send` · publish builds: kept
+
+```ogt
+fn roomSend {
+  doc "Send a message to every other peer in the room, or to one: a JSON value, or bytes (a Uint8Array). It arrives as og.RoomMessage, after every earlier message of this peer."
+  param world World "The world."
+  param data OneOf.Bytes.Json "What to send: a Uint8Array, or any JSON value; at most 64 KiB encoded."
+  param to u32 "The one peer to send it to; omitted is every other peer." {
+    optional true
+  }
+  returns Result.Void "Refused when in no room, for a message over 64 KiB, or a peer not in the room."
+}
+```
+
+<sub>`api.ogt` line 8349</sub>
+
+<a id="fn-roomPeers"></a>
+
+### `og.platform.roomPeers`
+
+The peers in this engine's room, this one included, by number; empty in none.
+
+```ts
+og.platform.roomPeers(world: World): readonly RoomPeer[]
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+
+**Returns** `readonly RoomPeer[]`.
+
+Binding symbol `og_platform_room_peers` · publish builds: kept
+
+```ogt
+fn roomPeers {
+  doc "The peers in this engine's room, this one included, by number; empty in none."
+  param world World "The world."
+  returns List.RoomPeer
+}
+```
+
+<sub>`api.ogt` line 8359</sub>
+
+<a id="fn-roomInfo"></a>
+
+### `og.platform.roomInfo`
+
+The room this engine is in, and what carries rooms here.
+
+```ts
+og.platform.roomInfo(world: World): RoomInfo
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+
+**Returns** `RoomInfo`.
+
+Binding symbol `og_platform_room_info` · publish builds: kept
+
+```ogt
+fn roomInfo {
+  doc "The room this engine is in, and what carries rooms here."
+  param world World "The world."
+  returns RoomInfo
+}
+```
+
+<sub>`api.ogt` line 8365</sub>
+
+<a id="fn-roomMessage"></a>
+
+### `og.platform.roomMessage`
+
+A message og.RoomMessage announced: who sent it and what it carries. The engine keeps the last 256.
+
+```ts
+og.platform.roomMessage(world: World, message: number): RoomMessageData | null
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `message` | `number` | no | og.RoomMessage.message. |
+
+**Returns** `RoomMessageData | null`: Null for a number never given, or a message older than the last 256.
+
+Binding symbol `og_platform_room_message` · publish builds: kept
+
+```ogt
+fn roomMessage {
+  doc "A message og.RoomMessage announced: who sent it and what it carries. The engine keeps the last 256."
+  param world World "The world."
+  param message u32 "og.RoomMessage.message."
+  returns Option.RoomMessageData "Null for a number never given, or a message older than the last 256."
+}
+```
+
+<sub>`api.ogt` line 8371</sub>
 
 ## Components, resources and events
 
@@ -554,7 +781,107 @@ event PlatformAnswered {
 }
 ```
 
-<sub>`api.ogt` line 8046</sub>
+<sub>`api.ogt` line 8047</sub>
+
+<a id="record-RoomJoined"></a>
+
+### `og.RoomJoined` (event)
+
+roomCreate or roomJoin finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why.
+
+Token `og.RoomJoined`, registered under the schema name `og.RoomJoined`; its value type is `RoomJoined`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `ok` | `boolean` | `false` | — | — | — | Whether this engine is in the room now. |
+| `room` | `string` | `""` | — | — | — | The room's id (at most 63 bytes); empty when not ok. |
+| `peer` | `number` | `0` | — | — | — | This engine's peer number. |
+| `peers` | `number` | `0` | — | — | — | How many peers are in the room, this one included. |
+| `reason` | `string` | `""` | — | — | — | Why it failed: `unavailable` (no rooms here), `not_found`, `full`, `invalid` or `offline`, then a colon and the host's words; empty when ok. |
+
+```ogt
+event RoomJoined {
+  doc "roomCreate or roomJoin finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why."
+  field ok bool "Whether this engine is in the room now."
+  field room String "The room's id (at most 63 bytes); empty when not ok."
+  field peer u32 "This engine's peer number."
+  field peers u32 "How many peers are in the room, this one included."
+  field reason String "Why it failed: `unavailable` (no rooms here), `not_found`, `full`, `invalid` or `offline`, then a colon and the host's words; empty when ok."
+}
+```
+
+<sub>`api.ogt` line 8299</sub>
+
+<a id="record-RoomPeerJoined"></a>
+
+### `og.RoomPeerJoined` (event)
+
+Another peer joined this engine's room.
+
+Token `og.RoomPeerJoined`, registered under the schema name `og.RoomPeerJoined`; its value type is `RoomPeerJoined`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `peer` | `number` | `0` | — | — | — | Its peer number. |
+| `peers` | `number` | `0` | — | — | — | How many peers are in the room now. |
+
+```ogt
+event RoomPeerJoined {
+  doc "Another peer joined this engine's room."
+  field peer u32 "Its peer number."
+  field peers u32 "How many peers are in the room now."
+}
+```
+
+<sub>`api.ogt` line 8308</sub>
+
+<a id="record-RoomPeerLeft"></a>
+
+### `og.RoomPeerLeft` (event)
+
+A peer left this engine's room (it left, closed, or lost its connection), after every message it sent; or, with peer equal to this engine's own number, this engine is in no room any more (roomLeave, or the host lost the room).
+
+Token `og.RoomPeerLeft`, registered under the schema name `og.RoomPeerLeft`; its value type is `RoomPeerLeft`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `peer` | `number` | `0` | — | — | — | Its peer number. |
+| `peers` | `number` | `0` | — | — | — | How many peers are in the room now (0 once this engine left). |
+
+```ogt
+event RoomPeerLeft {
+  doc "A peer left this engine's room (it left, closed, or lost its connection), after every message it sent; or, with peer equal to this engine's own number, this engine is in no room any more (roomLeave, or the host lost the room)."
+  field peer u32 "Its peer number."
+  field peers u32 "How many peers are in the room now (0 once this engine left)."
+}
+```
+
+<sub>`api.ogt` line 8314</sub>
+
+<a id="record-RoomMessage"></a>
+
+### `og.RoomMessage` (event)
+
+Another peer's message arrived; read it with og.platform.roomMessage. Messages from one peer arrive in the order it sent them. While lockstep runs (og.Lockstep) a message is this peer's host input alone: a system that changes the world from one makes it differ from the other peers' (og.Desync); carry what all must see in og.PlayerInput.
+
+Token `og.RoomMessage`, registered under the schema name `og.RoomMessage`; its value type is `RoomMessage`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `from` | `number` | `0` | — | — | — | The sender's peer number. |
+| `message` | `number` | `0` | — | — | — | The message's number, for og.platform.roomMessage. |
+| `binary` | `boolean` | `false` | — | — | — | Whether it was sent as bytes (else as a JSON value). |
+
+```ogt
+event RoomMessage {
+  doc "Another peer's message arrived; read it with og.platform.roomMessage. Messages from one peer arrive in the order it sent them. While lockstep runs (og.Lockstep) a message is this peer's host input alone: a system that changes the world from one makes it differ from the other peers' (og.Desync); carry what all must see in og.PlayerInput."
+  field from u32 "The sender's peer number."
+  field message u32 "The message's number, for og.platform.roomMessage."
+  field binary bool "Whether it was sent as bytes (else as a JSON value)."
+}
+```
+
+<sub>`api.ogt` line 8320</sub>
 
 ## Types
 
@@ -579,7 +906,7 @@ enum PlatformOrder {
 }
 ```
 
-<sub>`api.ogt` line 8040</sub>
+<sub>`api.ogt` line 8041</sub>
 
 <a id="type-StoreSetDesc"></a>
 
@@ -607,7 +934,7 @@ struct StoreSetDesc {
 }
 ```
 
-<sub>`api.ogt` line 8052</sub>
+<sub>`api.ogt` line 8053</sub>
 
 <a id="type-LeaderboardSubmitDesc"></a>
 
@@ -635,7 +962,7 @@ struct LeaderboardSubmitDesc {
 }
 ```
 
-<sub>`api.ogt` line 8061</sub>
+<sub>`api.ogt` line 8062</sub>
 
 <a id="type-LeaderboardQueryDesc"></a>
 
@@ -665,7 +992,7 @@ struct LeaderboardQueryDesc {
 }
 ```
 
-<sub>`api.ogt` line 8071</sub>
+<sub>`api.ogt` line 8072</sub>
 
 <a id="type-PointDesc"></a>
 
@@ -693,7 +1020,7 @@ struct PointDesc {
 }
 ```
 
-<sub>`api.ogt` line 8084</sub>
+<sub>`api.ogt` line 8085</sub>
 
 <a id="type-AiMarkDesc"></a>
 
@@ -719,7 +1046,7 @@ struct AiMarkDesc {
 }
 ```
 
-<sub>`api.ogt` line 8095</sub>
+<sub>`api.ogt` line 8096</sub>
 
 <a id="type-SaveSlotDesc"></a>
 
@@ -745,7 +1072,7 @@ struct SaveSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 8103</sub>
+<sub>`api.ogt` line 8104</sub>
 
 <a id="type-LoadSlotDesc"></a>
 
@@ -769,7 +1096,7 @@ struct LoadSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 8111</sub>
+<sub>`api.ogt` line 8112</sub>
 
 <a id="type-PlatformError"></a>
 
@@ -794,7 +1121,7 @@ struct PlatformError {
 }
 ```
 
-<sub>`api.ogt` line 8118</sub>
+<sub>`api.ogt` line 8119</sub>
 
 <a id="type-PlatformResult"></a>
 
@@ -829,7 +1156,7 @@ struct PlatformResult {
 }
 ```
 
-<sub>`api.ogt` line 8126</sub>
+<sub>`api.ogt` line 8127</sub>
 
 <a id="type-PlatformInfo"></a>
 
@@ -854,4 +1181,109 @@ struct PlatformInfo {
 }
 ```
 
-<sub>`api.ogt` line 8141</sub>
+<sub>`api.ogt` line 8142</sub>
+
+<a id="type-RoomDesc"></a>
+
+### `RoomDesc` (desc struct)
+
+A room to create.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `name` | `string` | `""` | — | — | — | What the room is called (at most 64 of letters, digits, `.`, `_` and `-`); empty for none. The host gives the room its id. |
+| `capacity` | `number` | `2` | 1 … 16 | — | — | The most peers it takes. |
+
+```ogt
+struct RoomDesc {
+  doc "A room to create."
+  desc true
+  field name String "What the room is called (at most 64 of letters, digits, `.`, `_` and `-`); empty for none. The host gives the room its id."
+  field capacity u32 "The most peers it takes." {
+    default 2
+    min 1
+    max 16
+  }
+}
+```
+
+<sub>`api.ogt` line 8263</sub>
+
+<a id="type-RoomPeer"></a>
+
+### `RoomPeer` (struct)
+
+One peer in the room.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `peer` | `number` | `0` | — | — | — | Its number: the room numbers peers in join order from 0 and never gives one twice. |
+| `name` | `string` | `""` | — | — | — | Its name, as its host gave it; empty for none. |
+| `local` | `boolean` | `false` | — | — | — | Whether it is this engine. |
+
+```ogt
+struct RoomPeer {
+  doc "One peer in the room."
+  field peer u32 "Its number: the room numbers peers in join order from 0 and never gives one twice."
+  field name String "Its name, as its host gave it; empty for none."
+  field local bool "Whether it is this engine."
+}
+```
+
+<sub>`api.ogt` line 8274</sub>
+
+<a id="type-RoomInfo"></a>
+
+### `RoomInfo` (struct)
+
+The room this engine is in.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `state` | `string` | `""` | — | — | — | `none` (in no room), `joining` (roomCreate or roomJoin asked, not answered yet) or `in`. |
+| `room` | `string` | `""` | — | — | — | The room's id; empty in none. |
+| `host` | `string` | `""` | — | — | — | What carries rooms here: `relay` (natively, `og run --room` through `og relay`), `player` (the platform's rooms through the Player, on the web) or `none` (roomCreate and roomJoin are refused). |
+| `peer` | `number` | `0` | — | — | — | This engine's peer number; 0 in none. |
+| `peers` | `readonly RoomPeer[]` | `[]` | — | — | — | Every peer present, this one included, by number. |
+
+```ogt
+struct RoomInfo {
+  doc "The room this engine is in."
+  field state String "`none` (in no room), `joining` (roomCreate or roomJoin asked, not answered yet) or `in`."
+  field room String "The room's id; empty in none."
+  field host String "What carries rooms here: `relay` (natively, `og run --room` through `og relay`), `player` (the platform's rooms through the Player, on the web) or `none` (roomCreate and roomJoin are refused)."
+  field peer u32 "This engine's peer number; 0 in none."
+  field peers List.RoomPeer "Every peer present, this one included, by number."
+}
+```
+
+<sub>`api.ogt` line 8281</sub>
+
+<a id="type-RoomMessageData"></a>
+
+### `RoomMessageData` (struct)
+
+A message another peer sent: what og.RoomMessage announced.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `message` | `number` | `0` | — | — | — | Its number (og.RoomMessage.message): 1 for the first message this engine received, counting up. |
+| `from` | `number` | `0` | — | — | — | The sender's peer number. |
+| `tick` | `number` | `0` | — | — | — | The tick it was delivered at. |
+| `data` | `unknown` | `null` | — | — | — | What it carries, when it was sent as a JSON value; null when it was sent as bytes. |
+| `bytes` | `Uint8Array \| null` | `null` | — | — | — | What it carries, when it was sent as bytes. |
+
+```ogt
+struct RoomMessageData {
+  doc "A message another peer sent: what og.RoomMessage announced."
+  field message u32 "Its number (og.RoomMessage.message): 1 for the first message this engine received, counting up."
+  field from u32 "The sender's peer number."
+  field tick u32 "The tick it was delivered at."
+  field data Json "What it carries, when it was sent as a JSON value; null when it was sent as bytes."
+  field bytes Option.Bytes "What it carries, when it was sent as bytes."
+}
+```
+
+<sub>`api.ogt` line 8290</sub>

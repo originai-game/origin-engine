@@ -94,6 +94,21 @@ pub fn og_platform_set_host(engine: u32, info: String) {
 }
 
 #[wasm_bindgen]
+pub fn og_room_take(engine: u32) -> String {
+    <Host as Lifecycle>::og_room_take(&Host, engine)
+}
+
+#[wasm_bindgen]
+pub fn og_room_deliver(engine: u32, event: String) -> bool {
+    <Host as Lifecycle>::og_room_deliver(&Host, engine, event)
+}
+
+#[wasm_bindgen]
+pub fn og_room_set_host(engine: u32, info: String) {
+    <Host as Lifecycle>::og_room_set_host(&Host, engine, info)
+}
+
+#[wasm_bindgen]
 pub fn og_reflect_define_component(name: String, fields: String) -> String {
     <Host as ReflectApi>::og_reflect_define_component(&Host, name, fields)
 }
@@ -1124,6 +1139,41 @@ pub fn og_platform_now(world: u32) -> f64 {
 }
 
 #[wasm_bindgen]
+pub fn og_platform_room_create(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_room_create(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_room_join(world: u32, room: String) -> String {
+    <Host as PlatformApi>::og_platform_room_join(&Host, world, room)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_room_leave(world: u32) -> String {
+    <Host as PlatformApi>::og_platform_room_leave(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_room_send(world: u32, data: String, to: Option<u32>) -> String {
+    <Host as PlatformApi>::og_platform_room_send(&Host, world, data, to)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_room_peers(world: u32) -> String {
+    <Host as PlatformApi>::og_platform_room_peers(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_room_info(world: u32) -> String {
+    <Host as PlatformApi>::og_platform_room_info(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_room_message(world: u32, message: u32) -> String {
+    <Host as PlatformApi>::og_platform_room_message(&Host, world, message)
+}
+
+#[wasm_bindgen]
 pub fn og_i18n_load(world: u32, path: String) -> String {
     <Host as I18nApi>::og_i18n_load(&Host, world, path)
 }
@@ -1831,4 +1881,19 @@ pub fn og_timeline_seek(world: u32, entity: f64, time: f64) -> String {
 #[wasm_bindgen]
 pub fn og_timeline_stop(world: u32, entity: f64) -> String {
     <Host as TimelineApi>::og_timeline_stop(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_net_submit(world: u32, input: Option<String>) -> String {
+    <Host as NetApi>::og_net_submit(&Host, world, input)
+}
+
+#[wasm_bindgen]
+pub fn og_net_status(world: u32) -> String {
+    <Host as NetApi>::og_net_status(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_net_hash(world: u32) -> String {
+    <Host as NetApi>::og_net_hash(&Host, world)
 }

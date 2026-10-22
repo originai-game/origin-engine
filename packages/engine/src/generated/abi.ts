@@ -41,6 +41,12 @@ export interface HostAbi<A, V> {
   og_platform_answer(engine: number, request: number, answer: string): boolean;
   /** Say what answers this engine's platform calls: JSON `{ host, capabilities }` (`player`, `local` or `none`; the methods it answers), as og.platform.info reports. */
   og_platform_set_host(engine: number, info: string): void;
+  /** The room ops (IDL `platform` rooms, og.net's lockstep) made since the last call, oldest first, as JSON `[op]`: `{ op: "create", name, capacity }`, `{ op: "join", room, name }`, `{ op: "leave" }`, `{ op: "send", to?, channel?, data? | bytes? }` (bytes base64; a channel starting `og.` is the engine's own). The host carries each in order (docs/design.md §2.8). */
+  og_room_take(engine: number): string;
+  /** One room event from the host, JSON: `{ type: "joined", room, peer, peers: [{ peer, name }] }`, `{ type: "peer_joined", peer, name }`, `{ type: "peer_left", peer }`, `{ type: "message", from, channel?, data? | bytes? }`, `{ type: "left", reason }` or `{ type: "error", op, code, message }`. Lockstep's messages act between ticks at once; the game's events are sent at the start of the next tick. False for a malformed event. */
+  og_room_deliver(engine: number, event: string): boolean;
+  /** Say what carries this engine's rooms: JSON `{ host }` (`relay`, `player` or `none`), as og.platform.roomInfo reports; with `none` roomCreate and roomJoin are refused. */
+  og_room_set_host(engine: number, info: string): void;
   /** `defineComponent` */
   og_reflect_define_component(name: string, fields: string): string;
   /** `defineResource` */
@@ -453,6 +459,20 @@ export interface HostAbi<A, V> {
   og_platform_info(world: number): string;
   /** `og.platform.now` */
   og_platform_now(world: number): number;
+  /** `og.platform.roomCreate` */
+  og_platform_room_create(world: number, desc: string | undefined): string;
+  /** `og.platform.roomJoin` */
+  og_platform_room_join(world: number, room: string): string;
+  /** `og.platform.roomLeave` */
+  og_platform_room_leave(world: number): string;
+  /** `og.platform.roomSend` */
+  og_platform_room_send(world: number, data: string, to: number | undefined): string;
+  /** `og.platform.roomPeers` */
+  og_platform_room_peers(world: number): string;
+  /** `og.platform.roomInfo` */
+  og_platform_room_info(world: number): string;
+  /** `og.platform.roomMessage` */
+  og_platform_room_message(world: number, message: number): string;
   /** `og.i18n.load` */
   og_i18n_load(world: number, path: string): string;
   /** `og.i18n.setLocale` */
@@ -725,6 +745,12 @@ export interface HostAbi<A, V> {
   og_timeline_seek(world: number, entity: number, time: number): string;
   /** `og.timeline.stop` */
   og_timeline_stop(world: number, entity: number): string;
+  /** `og.net.submit` */
+  og_net_submit(world: number, input: string | undefined): string;
+  /** `og.net.status` */
+  og_net_status(world: number): string;
+  /** `og.net.hash` */
+  og_net_hash(world: number): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle members. */
@@ -935,6 +961,13 @@ export const SYMBOLS: readonly string[] = [
   "og_platform_result",
   "og_platform_info",
   "og_platform_now",
+  "og_platform_room_create",
+  "og_platform_room_join",
+  "og_platform_room_leave",
+  "og_platform_room_send",
+  "og_platform_room_peers",
+  "og_platform_room_info",
+  "og_platform_room_message",
   "og_i18n_load",
   "og_i18n_set_locale",
   "og_i18n_locale",
@@ -1071,6 +1104,9 @@ export const SYMBOLS: readonly string[] = [
   "og_timeline_pause",
   "og_timeline_seek",
   "og_timeline_stop",
+  "og_net_submit",
+  "og_net_status",
+  "og_net_hash",
   "og_host_set_dispatcher",
   "og_engine_create",
   "og_engine_destroy",
@@ -1088,4 +1124,7 @@ export const SYMBOLS: readonly string[] = [
   "og_platform_take",
   "og_platform_answer",
   "og_platform_set_host",
+  "og_room_take",
+  "og_room_deliver",
+  "og_room_set_host",
 ];

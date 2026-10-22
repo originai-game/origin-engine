@@ -12360,6 +12360,7 @@ export interface AiDescription {
 // Platform services as host capabilities (docs/design.md §2.8): cloud store, leaderboards, telemetry, Origin Point and AI marks. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them. On the web the shell forwards each call to the Player through origin-checked postMessage (Player protocol 2, docs/web-export.md); natively the host answers from a local JSON store (`og run --platform-store`, default `<project>/.og/platform.json`).
 // Calls are asynchronous: each returns a request number at once, and the answer arrives at the start of a later tick, when og.platform sends PlatformAnswered; read it with og.platform.result. Answers are host input, like key presses: the probe's `dump_platform` lists every call, its arguments, its answer and the ticks.
 // Errors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed; retryable is true for offline, timeout, unavailable and rate_limited.
+// Rooms (roomCreate, roomJoin, roomSend, ...) put this engine with other players' engines: the host carries them (natively `og relay` with `og run --room`, on the web the platform's rooms through the shell, docs/platform-asks.md) and its answers and the other peers' messages arrive as events at the start of a tick (og.RoomJoined, og.RoomPeerJoined, og.RoomPeerLeft, og.RoomMessage), host input like key presses. Deterministic play over a room is og.net's lockstep.
 
 /**
  * How a leaderboard sorts; the first submission to a board fixes it.
@@ -12616,6 +12617,136 @@ export interface PlatformInfo {
 
 
 
+
+
+
+
+
+
+
+
+/**
+ * A room to create.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RoomDesc {
+  /**
+   * What the room is called (at most 64 of letters, digits, `.`, `_` and `-`); empty for none. The host gives the room its id.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * The most peers it takes.
+   *
+   * @default 2
+   * @range 1..16
+   */
+  readonly capacity?: number;
+}
+
+/** One peer in the room. */
+export interface RoomPeer {
+  /** Its number: the room numbers peers in join order from 0 and never gives one twice. */
+  readonly peer: number;
+  /** Its name, as its host gave it; empty for none. */
+  readonly name: string;
+  /** Whether it is this engine. */
+  readonly local: boolean;
+}
+
+/** The room this engine is in. */
+export interface RoomInfo {
+  /**
+   * `none` (in no room), `joining` (roomCreate or roomJoin asked, not answered yet) or `in`.
+   */
+  readonly state: string;
+  /** The room's id; empty in none. */
+  readonly room: string;
+  /**
+   * What carries rooms here: `relay` (natively, `og run --room` through `og relay`), `player` (the platform's rooms through the Player, on the web) or `none` (roomCreate and roomJoin are refused).
+   */
+  readonly host: string;
+  /** This engine's peer number; 0 in none. */
+  readonly peer: number;
+  /** Every peer present, this one included, by number. */
+  readonly peers: readonly RoomPeer[];
+}
+
+/** A message another peer sent: what og.RoomMessage announced. */
+export interface RoomMessageData {
+  /**
+   * Its number (og.RoomMessage.message): 1 for the first message this engine received, counting up.
+   */
+  readonly message: number;
+  /** The sender's peer number. */
+  readonly from: number;
+  /** The tick it was delivered at. */
+  readonly tick: number;
+  /** What it carries, when it was sent as a JSON value; null when it was sent as bytes. */
+  readonly data: unknown;
+  /** What it carries, when it was sent as bytes. */
+  readonly bytes: Uint8Array | null;
+}
+
+/**
+ * roomCreate or roomJoin finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why.
+ *
+ * The payload of the `RoomJoined` event (token `og.RoomJoined`).
+ */
+export interface RoomJoined {
+  /** Whether this engine is in the room now. */
+  readonly ok: boolean;
+  /** The room's id (at most 63 bytes); empty when not ok. */
+  readonly room: string;
+  /** This engine's peer number. */
+  readonly peer: number;
+  /** How many peers are in the room, this one included. */
+  readonly peers: number;
+  /**
+   * Why it failed: `unavailable` (no rooms here), `not_found`, `full`, `invalid` or `offline`, then a colon and the host's words; empty when ok.
+   */
+  readonly reason: string;
+}
+
+/**
+ * Another peer joined this engine's room.
+ *
+ * The payload of the `RoomPeerJoined` event (token `og.RoomPeerJoined`).
+ */
+export interface RoomPeerJoined {
+  /** Its peer number. */
+  readonly peer: number;
+  /** How many peers are in the room now. */
+  readonly peers: number;
+}
+
+/**
+ * A peer left this engine's room (it left, closed, or lost its connection), after every message it sent; or, with peer equal to this engine's own number, this engine is in no room any more (roomLeave, or the host lost the room).
+ *
+ * The payload of the `RoomPeerLeft` event (token `og.RoomPeerLeft`).
+ */
+export interface RoomPeerLeft {
+  /** Its peer number. */
+  readonly peer: number;
+  /** How many peers are in the room now (0 once this engine left). */
+  readonly peers: number;
+}
+
+/**
+ * Another peer's message arrived; read it with og.platform.roomMessage. Messages from one peer arrive in the order it sent them. While lockstep runs (og.Lockstep) a message is this peer's host input alone: a system that changes the world from one makes it differ from the other peers' (og.Desync); carry what all must see in og.PlayerInput.
+ *
+ * The payload of the `RoomMessage` event (token `og.RoomMessage`).
+ */
+export interface RoomMessage {
+  /** The sender's peer number. */
+  readonly from: number;
+  /** The message's number, for og.platform.roomMessage. */
+  readonly message: number;
+  /** Whether it was sent as bytes (else as a JSON value). */
+  readonly binary: boolean;
+}
 
 
 
@@ -17740,8 +17871,9 @@ export interface SnapshotInfo {
  * - `"world"`: Archetype tables, systems and their matched counts.
  * - `"entity"`: One entity's components and transform.
  * - `"ui"`: The UI tree with bounds.
+ * - `"desync"`: The first desync of a lockstep session (og.net): its tick, both hashes and the component-level diff of the two peers' snapshots.
  */
-export type DumpKind = "world" | "entity" | "ui";
+export type DumpKind = "world" | "entity" | "ui" | "desync";
 
 /**
  * What to dump.
@@ -17913,6 +18045,22 @@ export interface UiDump {
   readonly elements: readonly UiElement[];
 }
 
+/** The first desync of this peer's lockstep session (og.net), as `dump_desync` writes it. */
+export interface DesyncDump {
+  /** Whether a desync happened; false lists the ticks compared with each peer so far. */
+  readonly desync: boolean;
+  /** The first divergent tick: og.Time.tick of the two worlds that differ. */
+  readonly tick: number | null;
+  /** This peer: `{ peer, player, hash }`. */
+  readonly local: unknown;
+  /** The other peer: `{ peer, player, hash }`. */
+  readonly remote: unknown;
+  /**
+   * What differs: `{ components: [{ entity, component, fields: [{ field, local, remote }] }], entities: { onlyLocal, onlyRemote }, resources, events, blocks, allocator }`, in the local world's entity order (the first entry is the first difference in storage order); `{ pending }` until the other peer's snapshot arrived.
+   */
+  readonly diff: unknown;
+}
+
 /** A dump, tagged by its kind. */
 export type DumpResult =
   /** The world dump. */
@@ -17920,7 +18068,9 @@ export type DumpResult =
   /** An entity dump. */
   | ({ readonly kind: "entity" } & EntityDump)
   /** The UI dump. */
-  | ({ readonly kind: "ui" } & UiDump);
+  | ({ readonly kind: "ui" } & UiDump)
+  /** The desync dump. */
+  | ({ readonly kind: "desync" } & DesyncDump);
 
 /**
  * RuntimeProbe protocol 5, member for member. Every member answers synchronously with JSON-serialisable values.
@@ -19071,6 +19221,197 @@ export interface TimelineInfo {
 }
 
 
+
+
+
+
+// ── net ─────────────────────────────────────────────────────────
+// Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it.
+// Inputs are og.PlayerInput: one entity per player carries it with `player` set to its seat; the engine writes every other field at the start of each tick from that seat's input for the tick. A system reads the inputs from og.PlayerInput, never from og.Input, and gives this peer's own with og.net.submit (from a system that reads og.Input: what the local player holds now, sent for the tick inputDelay ticks on). Without a room, or with lockstep off, og.net.submit drives the local player's og.PlayerInput the next tick, so the same game plays alone.
+// Every tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.Audio, og.Camera, og.Lockstep, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input).
+
+/**
+ * Lockstep's settings and this peer's place. The game sets enabled, players, inputDelay and hashEvery (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared.
+ *
+ * The `Lockstep` resource (token `og.Lockstep`).
+ */
+export interface Lockstep {
+  /** Whether the world takes its ticks in lockstep when in a room. */
+  enabled: boolean;
+  /**
+   * The seats: the peers lockstep waits for before it starts, and whose inputs each tick waits for.
+   *
+   * @default 2
+   * @range 1..16
+   */
+  players: number;
+  /**
+   * This peer's seat, the og.PlayerInput.player its input drives; `players` while it watches (a peer beyond the seats). 0 before the start.
+   *
+   * @readonly written by the engine
+   */
+  readonly localPlayer: number;
+  /**
+   * Ticks between a player's input and the tick it acts on: the time the input has to cross the room. 2 (33 ms at 60 Hz) on a LAN, 4 to 6 over the internet.
+   *
+   * @default 2
+   * @range 1..30
+   * @unit ticks (fixed simulation steps)
+   */
+  inputDelay: number;
+  /**
+   * How often the peers exchange their world hashes, in ticks (every tick is hashed, so the first divergent tick is exact); 0 compares nothing.
+   *
+   * @default 10
+   * @range 0..600
+   * @unit ticks (fixed simulation steps)
+   */
+  hashEvery: number;
+  /**
+   * Whether lockstep runs: the room filled the seats and the authority started (until this peer leaves the room or turns it off).
+   *
+   * @readonly written by the engine
+   */
+  readonly running: boolean;
+}
+
+/**
+ * One player's input for this tick, the same on every peer: the engine writes every field but `player` at the start of each tick from the seat's input (zero for a seat nobody holds, and before its holder's first input). Its packed bytes are what crosses the room, read through this layout.
+ *
+ * The value of the `PlayerInput` component (token `og.PlayerInput`).
+ */
+export interface PlayerInput {
+  /**
+   * The seat whose input this entity carries (0 to og.Lockstep.players - 1); the game sets it when it spawns the player.
+   */
+  player: number;
+  /** The buttons held, one bit each, as the game numbers them (bit 0 fire, bit 1 dash, ...). */
+  buttons: number;
+  /**
+   * The move axis, left -1 to right 1.
+   *
+   * @range -1..1
+   */
+  x: number;
+  /**
+   * The move axis, back -1 to forward 1.
+   *
+   * @range -1..1
+   */
+  y: number;
+  /** A second axis (aim, a cursor's world x), as the game uses it. */
+  aimX: number;
+  /** A second axis (aim, a cursor's world y), as the game uses it. */
+  aimY: number;
+  /**
+   * The tick these values are for: the tick now, once the engine wrote them.
+   *
+   * @readonly written by the engine
+   */
+  readonly tick: number;
+}
+
+/**
+ * This peer's world and another's differ: sent once, at the start of the tick after the hashes showed it. The probe's `desync` dump (`dump_desync`) names the component and field that differ, once the other peer's snapshot of that tick arrived.
+ *
+ * The payload of the `Desync` event (token `og.Desync`).
+ */
+export interface Desync {
+  /**
+   * The first divergent tick: the world after it differs (og.Time.tick of the snapshots compared).
+   */
+  readonly tick: number;
+  /** The first peer whose world differs from this one. */
+  readonly peer: number;
+  /** How many peers' worlds differ from this one. */
+  readonly peers: number;
+}
+
+/**
+ * This peer's player's input: og.PlayerInput's fields but `player` and `tick`.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface InputDesc {
+  /**
+   * The buttons held, one bit each.
+   *
+   * @default 0
+   */
+  readonly buttons?: number;
+  /**
+   * The move axis, -1 to 1.
+   *
+   * @default 0
+   */
+  readonly x?: number;
+  /**
+   * The move axis, -1 to 1.
+   *
+   * @default 0
+   */
+  readonly y?: number;
+  /**
+   * A second axis.
+   *
+   * @default 0
+   */
+  readonly aimX?: number;
+  /**
+   * A second axis.
+   *
+   * @default 0
+   */
+  readonly aimY?: number;
+}
+
+/** One peer's hold on a seat. */
+export interface LockstepSeat {
+  /** The seat. */
+  readonly seat: number;
+  /** The peer that holds (or held) it. */
+  readonly peer: number;
+  /**
+   * The first tick of its input.
+   *
+   * @unit ticks (fixed simulation steps)
+   */
+  readonly since: number;
+  /**
+   * The last tick of its input, once it left.
+   *
+   * @unit ticks (fixed simulation steps)
+   */
+  readonly until: number | null;
+}
+
+/** Lockstep on this peer, as the probe and a HUD read it. */
+export interface LockstepStatus {
+  /** Whether lockstep runs. */
+  readonly running: boolean;
+  /** This peer's number; null in no room. */
+  readonly peer: number | null;
+  /** The peers present, by number. */
+  readonly peers: readonly number[];
+  /**
+   * The tick lockstep started (or this peer joined it) at.
+   *
+   * @unit ticks (fixed simulation steps)
+   */
+  readonly startTick: number | null;
+  /** The seats, while running. */
+  readonly players: number | null;
+  /** Every seat's holds, in order. */
+  readonly seats: readonly LockstepSeat[];
+  /** The running peers without a seat. */
+  readonly spectators: readonly number[];
+  /** The seats whose input for the next tick has not arrived. */
+  readonly waitingFor: readonly number[];
+  /** Tick boundaries this peer waited at for an input. */
+  readonly waits: number;
+  /** The first divergent tick, once og.Desync was sent. */
+  readonly desync: number | null;
+}
 
 
 
@@ -20547,9 +20888,24 @@ export declare namespace og {
    */
   const PlatformAnswered: EventType<PlatformAnswered>;
   /**
+   * roomCreate or roomJoin finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why.
+   */
+  const RoomJoined: EventType<RoomJoined>;
+  /** Another peer joined this engine's room. */
+  const RoomPeerJoined: EventType<RoomPeerJoined>;
+  /**
+   * A peer left this engine's room (it left, closed, or lost its connection), after every message it sent; or, with peer equal to this engine's own number, this engine is in no room any more (roomLeave, or the host lost the room).
+   */
+  const RoomPeerLeft: EventType<RoomPeerLeft>;
+  /**
+   * Another peer's message arrived; read it with og.platform.roomMessage. Messages from one peer arrive in the order it sent them. While lockstep runs (og.Lockstep) a message is this peer's host input alone: a system that changes the world from one makes it differ from the other peers' (og.Desync); carry what all must see in og.PlayerInput.
+   */
+  const RoomMessage: EventType<RoomMessage>;
+  /**
    * Platform services as host capabilities (docs/design.md §2.8): cloud store, leaderboards, telemetry, Origin Point and AI marks. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them. On the web the shell forwards each call to the Player through origin-checked postMessage (Player protocol 2, docs/web-export.md); natively the host answers from a local JSON store (`og run --platform-store`, default `<project>/.og/platform.json`).
    * Calls are asynchronous: each returns a request number at once, and the answer arrives at the start of a later tick, when og.platform sends PlatformAnswered; read it with og.platform.result. Answers are host input, like key presses: the probe's `dump_platform` lists every call, its arguments, its answer and the ticks.
    * Errors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed; retryable is true for offline, timeout, unavailable and rate_limited.
+   * Rooms (roomCreate, roomJoin, roomSend, ...) put this engine with other players' engines: the host carries them (natively `og relay` with `og run --room`, on the web the platform's rooms through the shell, docs/platform-asks.md) and its answers and the other peers' messages arrive as events at the start of a tick (og.RoomJoined, og.RoomPeerJoined, og.RoomPeerLeft, og.RoomMessage), host input like key presses. Deterministic play over a room is og.net's lockstep.
    */
   namespace platform {
     /**
@@ -20676,6 +21032,58 @@ export declare namespace og {
      * @returns UTC milliseconds; 0 until a host has told the time (`none`).
      */
     function now(world: World): number;
+    /**
+     * Create a room and join it. The answer is og.RoomJoined, with the room's id to share (natively the relay names it `room-N`; on the web the platform does).
+     *
+     * @param world The world.
+     * @param desc Its name and capacity.
+     * @returns Refused with no room host (og.platform.roomInfo's host `none`), while in or joining a room (roomLeave first), or for a malformed name.
+     */
+    function roomCreate(world: World, desc?: RoomDesc): Result<void>;
+    /**
+     * Join a room by its id. The answer is og.RoomJoined (with ok false and `not_found` or `full` when it cannot); then og.RoomPeerJoined and og.RoomPeerLeft as others come and go.
+     *
+     * @param world The world.
+     * @param room The room's id: 1 to 64 of letters, digits, `.`, `_` and `-`.
+     * @returns Refused with no room host, while in or joining a room, or for a malformed id.
+     */
+    function roomJoin(world: World, room: string): Result<void>;
+    /**
+     * Leave the room: og.RoomPeerLeft with this engine's own peer number answers, and the other peers hear it leave after its last message.
+     *
+     * @param world The world.
+     * @returns Refused when in no room.
+     */
+    function roomLeave(world: World): Result<void>;
+    /**
+     * Send a message to every other peer in the room, or to one: a JSON value, or bytes (a Uint8Array). It arrives as og.RoomMessage, after every earlier message of this peer.
+     *
+     * @param world The world.
+     * @param data What to send: a Uint8Array, or any JSON value; at most 64 KiB encoded.
+     * @param to The one peer to send it to; omitted is every other peer.
+     * @returns Refused when in no room, for a message over 64 KiB, or a peer not in the room.
+     */
+    function roomSend(world: World, data: Uint8Array | unknown, to?: number): Result<void>;
+    /**
+     * The peers in this engine's room, this one included, by number; empty in none.
+     *
+     * @param world The world.
+     */
+    function roomPeers(world: World): readonly RoomPeer[];
+    /**
+     * The room this engine is in, and what carries rooms here.
+     *
+     * @param world The world.
+     */
+    function roomInfo(world: World): RoomInfo;
+    /**
+     * A message og.RoomMessage announced: who sent it and what it carries. The engine keeps the last 256.
+     *
+     * @param world The world.
+     * @param message og.RoomMessage.message.
+     * @returns Null for a number never given, or a message older than the last 256.
+     */
+    function roomMessage(world: World, message: number): RoomMessageData | null;
   }
   /**
    * Localization: one string table per locale (`.ogt` of `type strings`: `locale "ja"`, its font chain `fonts "..."`, `string "key" "message"`), messages in a subset of ICU MessageFormat (`{name}`, `{n, number}`, `{n, plural, =0 {..} one {..} other {..}}` with `#`, `{g, select, a {..} other {..}}`), CLDR plural rules, and the locale the host asks for (the browser's `navigator.language` on the web, `og run --locale` natively).
@@ -21802,5 +22210,44 @@ export declare namespace og {
      * @returns Refused for an entity without og.Timeline.
      */
     function stop(world: World, entity: Entity): Result<void>;
+  }
+  /**
+   * Lockstep's settings and this peer's place. The game sets enabled, players, inputDelay and hashEvery (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared.
+   */
+  const Lockstep: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly players: FieldSpec<"u32">; readonly localPlayer: FieldSpec<"u32">; readonly inputDelay: FieldSpec<"u32">; readonly hashEvery: FieldSpec<"u32">; readonly running: FieldSpec<"bool"> }, Lockstep>;
+  /**
+   * One player's input for this tick, the same on every peer: the engine writes every field but `player` at the start of each tick from the seat's input (zero for a seat nobody holds, and before its holder's first input). Its packed bytes are what crosses the room, read through this layout.
+   */
+  const PlayerInput: ComponentType<{ readonly player: FieldSpec<"u32">; readonly buttons: FieldSpec<"u32">; readonly x: FieldSpec<"f32">; readonly y: FieldSpec<"f32">; readonly aimX: FieldSpec<"f32">; readonly aimY: FieldSpec<"f32">; readonly tick: FieldSpec<"u32"> }, PlayerInput>;
+  /**
+   * This peer's world and another's differ: sent once, at the start of the tick after the hashes showed it. The probe's `desync` dump (`dump_desync`) names the component and field that differ, once the other peer's snapshot of that tick arrived.
+   */
+  const Desync: EventType<Desync>;
+  /**
+   * Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it.
+   * Inputs are og.PlayerInput: one entity per player carries it with `player` set to its seat; the engine writes every other field at the start of each tick from that seat's input for the tick. A system reads the inputs from og.PlayerInput, never from og.Input, and gives this peer's own with og.net.submit (from a system that reads og.Input: what the local player holds now, sent for the tick inputDelay ticks on). Without a room, or with lockstep off, og.net.submit drives the local player's og.PlayerInput the next tick, so the same game plays alone.
+   * Every tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.Audio, og.Camera, og.Lockstep, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input).
+   */
+  namespace net {
+    /**
+     * Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call, so a game calls it once a tick from a system that reads og.Input (or og.Gamepad, or the UI's touch controls). Callable from a system.
+     *
+     * @param world The world.
+     * @param input The buttons and axes.
+     * @returns Refused for an axis that is not finite.
+     */
+    function submit(world: World, input?: InputDesc): Result<void>;
+    /**
+     * Lockstep on this peer: running, the seats and who it waits for.
+     *
+     * @param world The world.
+     */
+    function status(world: World): LockstepStatus;
+    /**
+     * The world's shared hash now, hex: the hash lockstep compares, which leaves this peer's session out (og.Input, og.Lockstep, input and room events, the UI's focus; module docs). Two peers at the same tick agree on it exactly when their simulations agree; the world dump's `hash` covers everything and differs between peers.
+     *
+     * @param world The world.
+     */
+    function hash(world: World): string;
   }
 }

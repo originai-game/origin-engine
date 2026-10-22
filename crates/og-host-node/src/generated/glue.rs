@@ -111,6 +111,24 @@ pub fn og_platform_set_host(env: Env, engine: u32, info: String) {
     <Host as Lifecycle>::og_platform_set_host(&Host, engine, info)
 }
 
+#[napi(js_name = "og_room_take")]
+pub fn og_room_take(env: Env, engine: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_room_take(&Host, engine)
+}
+
+#[napi(js_name = "og_room_deliver")]
+pub fn og_room_deliver(env: Env, engine: u32, event: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_room_deliver(&Host, engine, event)
+}
+
+#[napi(js_name = "og_room_set_host")]
+pub fn og_room_set_host(env: Env, engine: u32, info: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_room_set_host(&Host, engine, info)
+}
+
 #[napi(js_name = "og_reflect_define_component")]
 pub fn og_reflect_define_component(env: Env, name: String, fields: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -1347,6 +1365,48 @@ pub fn og_platform_now(env: Env, world: u32) -> f64 {
     <Host as PlatformApi>::og_platform_now(&Host, world)
 }
 
+#[napi(js_name = "og_platform_room_create")]
+pub fn og_platform_room_create(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_room_create(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_room_join")]
+pub fn og_platform_room_join(env: Env, world: u32, room: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_room_join(&Host, world, room)
+}
+
+#[napi(js_name = "og_platform_room_leave")]
+pub fn og_platform_room_leave(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_room_leave(&Host, world)
+}
+
+#[napi(js_name = "og_platform_room_send")]
+pub fn og_platform_room_send(env: Env, world: u32, data: String, to: Option<u32>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_room_send(&Host, world, data, to)
+}
+
+#[napi(js_name = "og_platform_room_peers")]
+pub fn og_platform_room_peers(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_room_peers(&Host, world)
+}
+
+#[napi(js_name = "og_platform_room_info")]
+pub fn og_platform_room_info(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_room_info(&Host, world)
+}
+
+#[napi(js_name = "og_platform_room_message")]
+pub fn og_platform_room_message(env: Env, world: u32, message: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_room_message(&Host, world, message)
+}
+
 #[napi(js_name = "og_i18n_load")]
 pub fn og_i18n_load(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -2191,4 +2251,22 @@ pub fn og_timeline_seek(env: Env, world: u32, entity: f64, time: f64) -> String 
 pub fn og_timeline_stop(env: Env, world: u32, entity: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as TimelineApi>::og_timeline_stop(&Host, world, entity)
+}
+
+#[napi(js_name = "og_net_submit")]
+pub fn og_net_submit(env: Env, world: u32, input: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NetApi>::og_net_submit(&Host, world, input)
+}
+
+#[napi(js_name = "og_net_status")]
+pub fn og_net_status(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NetApi>::og_net_status(&Host, world)
+}
+
+#[napi(js_name = "og_net_hash")]
+pub fn og_net_hash(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NetApi>::og_net_hash(&Host, world)
 }
