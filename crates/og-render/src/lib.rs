@@ -48,6 +48,7 @@ mod environment;
 mod fluid3d;
 mod frame;
 mod fx;
+pub mod geometry;
 mod glass;
 pub mod graph;
 mod hooks;
