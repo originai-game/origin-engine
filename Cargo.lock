@@ -1890,6 +1890,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-net"
+version = "0.2.0"
+dependencies = [
+ "og-core",
+ "serde_json",
+ "tungstenite",
+]
+
+[[package]]
 name = "og-physics"
 version = "0.2.0"
 dependencies = [
