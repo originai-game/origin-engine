@@ -10,9 +10,12 @@
 #   scripts/release.sh verify [--registry] [--host-only] [--container-only]
 #                                               the install test (tests/install/run.ts) from the tarballs (or, --registry, from npm) on this
 #                                               machine and in the linux-x64 container; records the pass in manifest.json
-#   scripts/release.sh publish [--dry-run]      npm publish each tarball (platform packages, engine, create-game, knowledge), tag v<version>;
-#                                               refuses a dirty tree, a manifest not verified on both platforms, a HEAD that is not the
-#                                               manifest's commit, a version already on the registry, or no npm login
+#   scripts/release.sh publish [--dry-run] [--otp <code>]
+#                                               npm publish each tarball (platform packages, engine, create-game, knowledge), tag v<version>;
+#                                               refuses a dirty tree, a manifest not verified on both platforms, a HEAD whose packaged inputs
+#                                               (crates, packages, templates, scripts, Cargo.lock) differ from the manifest's commit, a version on the registry with other bytes, or no npm login. Resumable:
+#                                               a package already published with these bytes is skipped. npm's two-factor prompt (a URL
+#                                               to open, or --otp) is answered by the person running it
 #
 # pack holds the gate lock through pack.sh (a release build compiles beside
 # nothing) and refuses a dev native/ as pack.sh does. publish is an outward
@@ -23,7 +26,7 @@ set -u -o pipefail
 . "$(dirname "$0")/lib.sh"
 cd "$OG_ROOT" || exit 1
 
-usage() { sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { awk 'NR>1 && !/^#/ {exit} NR>1 {sub(/^# ?/, ""); print}' "$0"; }
 verb="${1:-}"; shift || true
 
 version() { bun scripts/release-bump.ts --print; }
@@ -81,8 +84,15 @@ cmd_verify() {
 }
 
 cmd_publish() {
-  local dry=0 v out
-  [ "${1:-}" = --dry-run ] && dry=1
+  local dry=0 v out otp=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --dry-run) dry=1 ;;
+      --otp) otp="${2:?--otp <code>}"; shift ;;
+      *) og_err "release: publish takes --dry-run and --otp <code>"; return 2 ;;
+    esac
+    shift
+  done
   v="$(version)"; out="$(out_dir "$v")"
   [ -f "$out/manifest.json" ] || { og_err "release: no $out/manifest.json; run pack and verify first"; return 1; }
   local status
@@ -92,8 +102,19 @@ cmd_publish() {
     if (m.dirty) problems.push("packed from a dirty tree");
     if (!m.verified?.host) problems.push("not verified on this machine (scripts/release.sh verify)");
     if (!m.verified?.container) problems.push("not verified in the linux-x64 container (scripts/release.sh verify)");
-    const head = require("node:child_process").execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
-    if (m.commit !== head) problems.push(`packed from ${m.commit.slice(0, 12)}, HEAD is ${head.slice(0, 12)}`);
+    // The tarballs are a function of these paths: a later commit outside them (docs, tests/evidence) keeps the manifest valid.
+    const git = (...a) => require("node:child_process").execFileSync("git", a, { encoding: "utf8" }).trim();
+    const head = git("rev-parse", "HEAD");
+    if (m.commit !== head) {
+      let ancestor = true;
+      try { git("merge-base", "--is-ancestor", m.commit, head); } catch { ancestor = false; }
+      if (!ancestor) problems.push(`packed from ${m.commit.slice(0, 12)}, which is not an ancestor of HEAD ${head.slice(0, 12)}`);
+      else {
+        const inputs = ["crates", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "packages", "templates", "scripts", ".cargo"];
+        const changed = git("diff", "--name-only", m.commit, head, "--", ...inputs);
+        if (changed) problems.push(`packed from ${m.commit.slice(0, 12)}; since then these inputs of the packages changed (pack again):\n    ${changed.split("\n").join("\n    ")}`);
+      }
+    }
     if (require("node:child_process").execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim()) problems.push("the working tree is dirty");
     console.log(problems.join("\n"));
   ' "$out/manifest.json")"
@@ -101,18 +122,22 @@ cmd_publish() {
   local who
   who="$(npm whoami 2>/dev/null)" || { og_err "release: not logged in to npm (npm login); publish needs the @origingame scope"; return 1; }
   og_say "release: publishing $v as $who"
-  local pkgs="engine-darwin-arm64 engine-linux-x64 engine create-game engine-knowledge" name tgz
-  for name in $pkgs; do
-    if npm view "@origingame/$name@$v" version >/dev/null 2>&1; then
-      og_err "release: @origingame/$name@$v is already on the registry; bump the version"; return 1
-    fi
-  done
+  # Resumable: a package already on the registry at this version is skipped
+  # when its bytes are these (npm's sha512 integrity), refused when they differ.
+  local pkgs="engine-darwin-arm64 engine-linux-x64 engine create-game engine-knowledge" name tgz published local_sum
   for name in $pkgs; do
     tgz="$out/origingame-$name-$v.tgz"
     [ -f "$tgz" ] || { og_err "release: no $tgz"; return 1; }
+    published="$(npm view "@origingame/$name@$v" dist.integrity 2>/dev/null || true)"
+    if [ -n "$published" ]; then
+      local_sum="sha512-$(openssl dgst -sha512 -binary "$tgz" | base64 | tr -d '\n')"
+      if [ "$published" = "$local_sum" ]; then og_say "release: @origingame/$name@$v is already on the registry with these bytes; skipped"; continue; fi
+      og_err "release: @origingame/$name@$v is already on the registry with other bytes; bump the version"; return 1
+    fi
     if [ "$dry" = 1 ]; then og_say "+ npm publish --access public $tgz (dry run)"; continue; fi
     og_say "+ npm publish --access public ${tgz#"$OG_ROOT"/}"
-    npm publish --access public "$tgz" || { og_err "release: npm publish of @origingame/$name failed; the packages before it are published, finish by hand in this order: $pkgs"; return 1; }
+    # shellcheck disable=SC2086 # --otp is one word or none
+    npm publish --access public ${otp:+--otp "$otp"} "$tgz" || { og_err "release: npm publish of @origingame/$name failed (a one-time password: run this in your terminal and open the URL npm prints, or pass --otp <code>); run publish again to continue, the packages already published are skipped"; return 1; }
   done
   if [ "$dry" = 1 ]; then og_say "release: dry run; nothing published"; return 0; fi
   git tag -a "v$v" -m "Origin Engine $v" && og_say "release: tagged v$v (push it: git push origin v$v)"
