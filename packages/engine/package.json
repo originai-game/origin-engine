@@ -56,8 +56,8 @@
   },
   "scripts": {
     "build": "sh scripts/build.sh",
-    "typecheck": "bun x --package typescript@7.0.2 tsc --noEmit -p tsconfig.json && bun x --package typescript@7.0.2 tsc --noEmit -p tsconfig.runtime.json && bun x --package typescript@7.0.2 tsc --noEmit -p tsconfig.templates.json",
-    "test": "bun run typecheck && sh scripts/build.sh && bun test --parallel ${OG_BUN_TEST_TIMEOUT:+--timeout=$OG_BUN_TEST_TIMEOUT} tests/",
+    "typecheck": "bun scripts/typecheck.ts",
+    "test": "sh scripts/build.sh && bun run typecheck && bun test --parallel ${OG_BUN_TEST_TIMEOUT:+--timeout=$OG_BUN_TEST_TIMEOUT} tests/",
     "pack": "sh scripts/pack.sh",
     "test:browser": "bun tests/web/wire.ts && bun tests/web/player.ts && bun tests/web/export.ts && bun tests/web/device.ts",
     "test:reference": "bun tests/web/reference.ts && bun tests/web/reference.ts --webgl"
