@@ -89,6 +89,12 @@ switch for a sandbox whose only adapter is Mesa lavapipe, which renders
 every tick at a quarter of a second: `FINDINGS.md` #7) the frames are
 reported unchecked and the rest runs the same.
 
+The recovered branch passes all nine suites (216 checks), but its eleven
+metal reference frames still need to be recorded and inspected on the
+owner's Mac. The interrupted orb capture was not a complete visual check.
+With this branch's CLI, `og test . --filter tests/lobby.og.ts` runs just the
+lobby suite while iterating; run without the filter before delivery.
+
 `og polish .` (2026-10-22, `OG_RENDERER=none`): taste 100, feel 93. The feel row
 below 100 is sound on input (71: a stick held is an input every tick, and
 only a dash and a bump sound); hit feedback is 100, though its fixes table
