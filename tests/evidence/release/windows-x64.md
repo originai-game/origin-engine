@@ -114,8 +114,30 @@ captures on the agreed Windows GPU/driver baseline at the scene's fixed
 size/tick/AA. Only differences shown to be intentional should receive their
 own frame; matching scenes can continue using Metal. UI and project
 playtest references are separate harnesses and require their own review.
-No DX12 references or tolerance changes are committed. The coordinator
-must decide whether the six differences require fixes or approved frames.
+No DX12 references or tolerance changes are committed.
+
+### The coordinator's review (2026-10-23, at the merge)
+
+The six DX12 captures were read beside their Metal references
+(side-by-side and absolute-difference images, `magick compare`):
+
+| Scene | Max channel diff | Mean | Pixels over 20 % | Where |
+|---|---:|---:|---:|---|
+| atmosphere-night | 234 | 0.23 | 0.079 % | isolated star pixels of the sky's noise |
+| atmosphere-moon | 234 | 0.21 | 0.077 % | the same stars |
+| sprites-array | 216 | 0.14 | 0.134 % | the texel edges of the 16 pixel-art clocks (nearest sampling at a half-texel tie) |
+| stylise-pixel | 51 | 0.21 | 0 % | the dither pattern, nowhere over 20 % |
+| tilemap-lit | 206 | 1.60 | 0.140 % | tile edges across the lit room |
+| water-underwater | 121 | 1.31 | 0.063 % | the caustic pattern on the sea floor (procedural noise, float differences) |
+
+Nothing moved: every object, light, shadow and UI element is where the
+Metal frame has it; the differences are rasterisation tie rules and
+transcendental-function precision between the two backends, the same kind
+lavapipe shows against Metal. Verdict: the six are not defects and not
+intentional backend behaviour either, so no DX12 reference tier is
+recorded and no tolerance moves; the five tests keep comparing DX12
+against Metal and keep failing there, reported as such in the device row.
+A DX12 tier is recorded only if a scene's content ever differs.
 
 ## Remaining release acceptance
 

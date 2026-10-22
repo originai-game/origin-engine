@@ -7,15 +7,23 @@ One version across `@origingame/engine` (the knowledge inside it as
 bump carries API additions or changes, one line each, written at the merge
 that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
-## 0.2.0 (2026-10-23)
+## Unreleased
 
-- Windows x64: build and pack the MSVC `og.exe` and napi addon as
-  `@origingame/engine-win32-x64`, with DX12 rendering, embedded DXC and the same TypeScript
-  API. `og check` deliberately uses the pinned tsgo/Bun fallback, reported
-  by doctor. Windows paths, source line endings, HDR fixture checkout
-  bytes and knowledge mount permissions are portable. The tarball install
-  test passes; five gfx tests still differ from Metal. Evidence:
-  `tests/evidence/release/windows-x64.md`.
+- Windows x64 (F7, merged after 0.2.0 was published, so the package first
+  ships with the next version): build and pack the MSVC `og.exe` and napi
+  addon as `@origingame/engine-win32-x64`, with DX12 rendering, embedded
+  DXC and the same TypeScript API. `og check` deliberately uses the pinned
+  tsgo/Bun fallback, reported by doctor. Windows paths, source line
+  endings, HDR fixture checkout bytes and knowledge mount permissions are
+  portable. The tarball install test passes on Windows 11; the five gfx
+  tests that compare DX12 frames against the Metal references differ only
+  by edge and noise dither (reviewed by the coordinator, nothing moved; no
+  DX12 reference tier). Evidence: `tests/evidence/release/windows-x64.md`.
+  `@origingame/engine@0.2.0` on the registry does not reference the
+  win32-x64 package; the engine's `optionalDependencies` pin it from this
+  commit on.
+
+## 0.2.0 (2026-10-23)
 
 API additions and changes (a minor bump, §3), by the stream that landed
 each:
