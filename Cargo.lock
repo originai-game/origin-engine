@@ -1995,6 +1995,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-timeline"
+version = "0.2.0"
+dependencies = [
+ "og-core",
+ "og-tween",
+ "serde_json",
+]
+
+[[package]]
 name = "og-tween"
 version = "0.2.0"
 dependencies = [
