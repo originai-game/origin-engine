@@ -1,7 +1,0 @@
-type import
-version 1
----
-# Drawn art: lossless, sampled linear.
-texture {
-  kind color
-}

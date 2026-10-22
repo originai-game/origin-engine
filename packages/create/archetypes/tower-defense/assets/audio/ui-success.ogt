@@ -1,9 +1,0 @@
-type sfx
-version 1
----
-# og sfx's "levelup" preset, synthesised by og cook (the UI's success sound).
-preset "levelup"
-seed 0
-pitch 1
-length 1
-volume 0.8
