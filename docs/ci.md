@@ -274,8 +274,9 @@ not used). It exports `OG_EVIDENCE_DIR` (default `<target>/evidence`) and
 `.agents/setup` installs the Linux build prerequisites, activates
 `rust-toolchain.toml`, and reuses `scripts/install-tools.sh` for the pinned
 tools. It downloads a nextest binary instead of compiling the runner, fetches
-both locked Cargo dependency graphs, installs `tools/bench` from its Bun
-lockfile, and caches the engine's pinned TypeScript executable. It does not
+both locked Cargo dependency graphs, installs `tools/bench` and
+`tests/install` (the InstaBox SDK of `instabox.ts`) from their Bun
+lockfiles, and caches the engine's pinned TypeScript executable. It does not
 compile the engine or run the gate during startup. Amp snapshots these tools
 and caches; a stale snapshot reruns the idempotent setup using what is already
 installed. Build outputs still use the checkout's shared `target/`.

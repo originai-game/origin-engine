@@ -43,6 +43,7 @@ step scripts/install-tools.sh
 step cargo fetch --locked
 step cargo fetch --locked --manifest-path tools/wasm-determinism/Cargo.toml
 step bun install --cwd tools/bench --frozen-lockfile
+step bun install --cwd tests/install --frozen-lockfile
 # og check's tsrs comes from scripts/install-tools.sh above. Cache the tsgo
 # check-conformance compares it with (TSGO_VERSION in crates/og-cli/src/check.rs).
 typescript=$(sed -n 's/^pub const TSGO_VERSION: &str = "\(.*\)";/\1/p' crates/og-cli/src/check.rs)

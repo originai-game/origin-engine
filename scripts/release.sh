@@ -7,9 +7,11 @@
 #   scripts/release.sh pack                     OG_RELEASE=1 packages/engine/scripts/pack.sh --linux-x64 (the engine with its knowledge/,
 #                                               the two platform packages), then @origingame/create-game: dist/release/<version>/*.tgz and
 #                                               manifest.json (sizes, sha256, the commit built from)
-#   scripts/release.sh verify [--registry] [--host-only] [--container-only]
+#   scripts/release.sh verify [--registry] [--host-only] [--container-only] [--instabox]
 #                                               the install test (tests/install/run.ts) from the tarballs (or, --registry, from npm) on this
-#                                               machine and in the linux-x64 container; records the pass in manifest.json
+#                                               machine and in the linux-x64 container; --instabox runs it once more inside an InstaBox
+#                                               machine (tests/install/instabox.ts, the development sandbox; INSTABOX_API_KEY, billed by
+#                                               the minute); records each pass in manifest.json
 #   scripts/release.sh publish [--dry-run] [--otp <code>]
 #                                               npm publish each tarball (platform packages, engine, create-game), tag v<version>;
 #                                               refuses a dirty tree, a manifest not verified on both platforms, a HEAD whose packaged inputs
@@ -79,7 +81,22 @@ cmd_verify() {
   local v out
   v="$(version)"; out="$(out_dir "$v")"
   [ -f "$out/manifest.json" ] || { og_err "release: no $out/manifest.json; run scripts/release.sh pack first"; return 1; }
-  bun tests/install/run.ts --from "$out" --version "$v" --manifest "$out/manifest.json" "$@"
+  local instabox=0 registry=0 rest=()
+  for a in "$@"; do
+    case "$a" in
+      --instabox) instabox=1 ;;
+      --registry) registry=1; rest+=("$a") ;;
+      *) rest+=("$a") ;;
+    esac
+  done
+  bun tests/install/run.ts --from "$out" --version "$v" --manifest "$out/manifest.json" "${rest[@]}" || return 1
+  if [ "$instabox" -eq 1 ]; then
+    if [ "$registry" -eq 1 ]; then
+      bun tests/install/instabox.ts --version "$v" --registry --manifest "$out/manifest.json"
+    else
+      bun tests/install/instabox.ts --version "$v" --from "$out" --manifest "$out/manifest.json"
+    fi
+  fi
 }
 
 cmd_publish() {

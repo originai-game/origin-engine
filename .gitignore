@@ -1,6 +1,7 @@
 target/
 tools/bench/pkg/
 tools/bench/node_modules/
+tests/install/node_modules/
 .spike-out/
 .DS_Store
 .amp/portals/*
