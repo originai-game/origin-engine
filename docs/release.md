@@ -160,7 +160,11 @@ has not passed on these tarballs (`manifest.json` records it), when the
 working tree is dirty, or when `main` is not at the commit the tarballs
 were built from. It needs the owner's `npm login` (the `@origingame`
 scope; 2FA) once per machine. Publishing is an outward action: it runs
-only by hand.
+only by hand. **Where (the owner, 2026-10-23):** every publish runs on
+the `macrunner` runner (`/Volumes/app/origin-engine`, the owner's npm
+login), by the Mac's thread, from a `main` the metal functional lane
+has passed; the orb then runs `verify --registry` and, when the one
+InstaBox machine is free, `verify --registry --instabox` (D4).
 
 **The install test** (`tests/install/`, bun; §4 row R4) is what `verify`
 runs, on this machine (darwin-arm64) and in a `node:22-bookworm-slim`
@@ -228,8 +232,8 @@ evidence/` (platform).
 | R3 | **Done 2026-10-22.** `scripts/release.sh` (`bump`, `pack`, `verify`, `publish`) and the wave-end `release` stage; `pack.sh` packs create and knowledge too; `manifest.json` with sizes and sha256; `CHANGELOG.md` with 0.1.0's entry (the IDL as it stands) | `wave-end.sh release` leaves `dist/release/0.1.0/` with four tarballs and a manifest; `publish` refuses a dirty tree, an unverified manifest, a wrong `main` |
 | R4 | **Written 2026-10-22** (`tests/install/run.ts`, `tests/install/Dockerfile`); its first pass is recorded in R8's evidence. The install test (`tests/install/`, §3) on this machine and in the linux-x64 container, from tarballs and `--registry`. **InstaBox added the same day** (`tests/install/instabox.ts`, `verify --instabox`): the test inside an InstaBox machine, 0.1.1 from the registry passing in `tests/evidence/release/instabox-0.1.1.md` | both runs pass on the 0.1.0 candidate; the container run and the InstaBox run show `renderer none` and `N frame(s) unchecked`, never a failure |
 | R5 | **Done 2026-10-22** (the `pin` line; the rest was there). `og doctor` and `og --version` outside a checkout: the package's version, the addon's, the wasm files, tsrs, the renderer, bun; inside a checkout the toolchain lines as today | the doctor's output in the container and on this machine differ only in the renderer line |
-| R6 | The template's two models (`trickster.glb`, `dropship.glb`, copied from `origingame-examples`): `dropship.glb` is MIT (the `core-business` example's `LICENSE`, named in `templates/game/LICENSES.md` now); `trickster.glb` came from `edg-king-match`, which declares no licence, so the template's `trickster` entity is an instance of the CC0 `walker.glb` since 2026-10-22 and the file left the template. `@origingame/create-game` ships nothing whose licence is not named. The engine's test copy (`crates/og-tests/assets/`, `templates/fx-showcase`) is not in any package; whether it stays in a public repository is the owner's (§6) | done 2026-10-22 for the packages: `LICENSES.md` of the template names a licence for every binary; `distribution.json` regenerated; the owner's word still owed for the repository's copies |
-| R7 | **Done 2026-10-22.** Package metadata: `repository.url` names the repository the packages are built from (today `origingame/origin-engine`, which is not where the code is); `homepage`, `bugs`; the README's install section (`bun add`, `npm create`, the three commands) | `npm pack --dry-run` lists what §2 says and nothing else; the README's lines run as written |
+| R6 | The template's two models (`trickster.glb`, `dropship.glb`, copied from `origingame-examples`): `dropship.glb` is MIT (the `core-business` example's `LICENSE`, named in `templates/game/LICENSES.md` now); `trickster.glb` came from `edg-king-match`, which declares no licence, so the template's `trickster` entity is an instance of the CC0 `walker.glb` since 2026-10-22 and the file left the template. `@origingame/create-game` ships nothing whose licence is not named. The engine's test copy (`crates/og-tests/assets/`, `templates/fx-showcase`) is not in any package; **the owner's word 2026-10-23: the repository's copies stay** | done: `LICENSES.md` of the template names a licence for every binary; `distribution.json` regenerated; the test copies stay in the public repository (owner, 2026-10-23) |
+| R7 | **Done 2026-10-22**, the URL moved to `originai-game/origin-engine` 2026-10-23 (where the code is since GitHub's move; the old name redirects). Package metadata: `repository.url` names the repository the packages are built from; `homepage`, `bugs`; the README's install section (`bun add`, `npm create`, the three commands) | `npm pack --dry-run` lists what §2 says and nothing else; the README's lines run as written |
 | R8 | **Done 2026-10-22**, 0.1.0 then 0.1.1 the same day (`tests/evidence/release/0.1.0.md`, `0.1.1.md`; 0.1.1: the `.gitignore` npm drops from tarballs, stored as `gitignore`) ( the four packages on npm, `verify --registry` passing on darwin-arm64 and in the linux-x64 container; npm's staged publishing held the darwin package back for ten minutes, see the evidence). Publish 0.1.0 (owner: `npm login`, the `@origingame` scope); `release.sh verify --registry`; tag `v0.1.0` | `npm view @origingame/engine version` answers `0.1.0`; `npm create @origingame/game` in an empty directory on a machine without this checkout runs `og test`; evidence `tests/evidence/release/0.1.0.md` |
 
 ### L. The local loop on the platform (platform repository; after R8)
@@ -288,7 +292,7 @@ optimisation rows (§P) after them.
 | Platform, local | `stage-engine`, `deploy`, `engine-page.ts`, runner `tests/og.rs`, the knowledge mount `--check` | the platform's local stack | every pin move (L3) |
 | Devices | iPhone first frame and frame times (Safari, WebGPU), a mid-range Android's 10,000-entity tick (design §7; owed row 40) | `og run --device iphone`, `--device android` on the owner's devices | once before launch, then per minor version |
 | InstaBox (development) | the install test inside a machine (`release.sh verify --registry --instabox`); the platform's snapshot checker (D2) | an InstaBox machine (billed by the minute; the free plan's one machine, kept at one for the verification stage, §6 item 6) | the install test after every publish; the checker once per pin move, after L3 |
-| Runners (the owner's machines, Amp runners) | `macrunner`: the functional lane on `metal`, every reference frame's recording, the wave's end (`--all`, web-reference) in the measure lane; `studio-win`: the Windows x64 build, its tests, the install test with the `dx12` tier (F7); a coordinator orb (InstaBox stage, no GPU) merges and runs the functional lane with the GPU frames set aside | `/Volumes/app/origin-engine` on the Mac, `C:\Users\win\src\origin-engine` on the Windows host | the metal lane after every batch of merges the orb cannot frame-check; Windows per F7, then every publish |
+| Runners (the owner's machines, Amp runners) | `macrunner`: the functional lane on `metal`, every reference frame's recording, the wave's end (`--all`, web-reference) in the measure lane; `studio-win`: the Windows x64 build, its tests, the install test with the `dx12` tier (F7); a coordinator orb (InstaBox stage, no GPU) merges and runs the functional lane with the GPU frames set aside. **Every runner's checkout is kept at the latest `origin/main`** (the owner, 2026-10-23): a runner thread fast-forwards `main` before each job and merges `origin/main` into its stream branch before each push; a publish runs from the Mac (§3) | `/Volumes/app/origin-engine` on the Mac, `C:\Users\win\src\origin-engine` on the Windows host | the metal lane after every batch of merges the orb cannot frame-check; Windows per F7, then every publish |
 | E2B (production only) | `check-templates.ts` on the image that installs the version | E2B (billed) | once per pin move, after D; never for development |
 | Production | `verify-production.sh`, `state.ts` without drift, the Player telemetry of the first releases | the platform's release process | at launch and each ship |
 
@@ -336,12 +340,13 @@ this repository does.
 ## 6. Open with the owner
 
 1. ~~The npm account and the `@origingame` scope~~ (2026-10-22: `doufunao123`, owner of the `origingame` organisation, logged in; npm asks a one-time password per publish, answered by the person).
-2. Whether the repository becomes public (MIT since 2026-10-17). A public
-   package built from a private repository is allowed and the packages'
-   `repository.url` must then be honest (R7); a public repository restores
-   CI on GitHub (owed row 83).
-3. The two models of the template (R6): leave to redistribute, or
-   replaced.
+2. ~~Whether the repository becomes public~~ (MIT since 2026-10-17;
+   **decided 2026-10-23: public**. The packages' `repository.url` names
+   `originai-game/origin-engine` (R7); the visibility change is made on
+   GitHub by the owner's account (the orb's token cannot); a public
+   repository restores CI on GitHub, owed row 83).
+3. ~~The two models of the template (R6)~~ (2026-10-23: the test copies
+   stay; the template ships the CC0 `walker.glb`).
 4. The wasm budget's meaning (row 44), `topdown` in Discover, third-party
    Godot Web exports, the WebGL2 fallback's lifetime, a third native tier
    (rows 39): unchanged from the platform's plan §四.

@@ -5,12 +5,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fran0220/origin-engine.git",
+    "url": "git+https://github.com/originai-game/origin-engine.git",
     "directory": "packages/create"
   },
-  "homepage": "https://github.com/fran0220/origin-engine#readme",
+  "homepage": "https://github.com/originai-game/origin-engine#readme",
   "bugs": {
-    "url": "https://github.com/fran0220/origin-engine/issues"
+    "url": "https://github.com/originai-game/origin-engine/issues"
   },
   "publishConfig": {
     "access": "public"

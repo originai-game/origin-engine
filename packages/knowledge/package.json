@@ -6,12 +6,12 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fran0220/origin-engine.git",
+    "url": "git+https://github.com/originai-game/origin-engine.git",
     "directory": "packages/knowledge"
   },
-  "homepage": "https://github.com/fran0220/origin-engine#readme",
+  "homepage": "https://github.com/originai-game/origin-engine#readme",
   "bugs": {
-    "url": "https://github.com/fran0220/origin-engine/issues"
+    "url": "https://github.com/originai-game/origin-engine/issues"
   },
   "type": "module",
   "files": [
