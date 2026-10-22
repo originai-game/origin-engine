@@ -56,8 +56,9 @@ commands:
                       type-check the game code with tsrs (tsgo where tsrs has no package);
                       --json prints the diagnostics as one `check` event; og run, og test and
                       og build check before bundling (--no-check skips it), og dev on each save
-  test [project] [--json] [--no-check]
+  test [project] [--filter <path>] [--json] [--no-check]
                       the project's bun tests, then each tests/*.og.ts playtest headless
+                      --filter selects suite files by a project-relative path substring
   polish [project] [--out DIR] [--frames N] [--json]
                       play the playtests headless and score them against og-taste and og-feel
                       (contrast, text size, HUD, transitions, UI sounds, input latency, hit

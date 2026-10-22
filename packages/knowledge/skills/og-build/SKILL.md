@@ -126,6 +126,13 @@ step's file by the name the step gave (`run.json("shop.json")`,
 `run.png("title.png")`); give each step's file its own name. A test that ran no checks fails. Run it before
 claiming a change works.
 
+While iterating, `og test . --filter tests/lobby.og.ts` runs only that
+suite. The filter is a case-sensitive substring of the project-relative
+file path, using `/` separators: `--filter lobby` selects every matching
+`.og.ts` and `.test.ts` file; it does not match test titles or use globs.
+No matching files is a failure, not a passing empty run. The project's
+type check still runs. Drop the filter for the complete regression run.
+
 Put every check that reads a frame (`run.png`, a decoded screenshot, a
 comparison with `references/`) inside `t.frame(files, () => ...)`:
 

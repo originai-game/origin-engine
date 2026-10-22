@@ -1,4 +1,4 @@
-//! `og test [project] [--json] [--no-check]`: the project's type check
+//! `og test [project] [--filter <path>] [--json] [--no-check]`: the project's type check
 //! (crate::check), its bun tests (`*.test.ts`), then each playtest script
 //! `tests/*.og.ts` through `og run --headless --commands` in its own process
 //! (`packages/engine/src/node/playtest-run.ts`). Fails when anything fails,
@@ -6,6 +6,8 @@
 //! playtests do not run (there is no bundle); the bun tests still do.
 //! `--json` prints the `check` event first and a `test` event last, with
 //! the check's `{ok, ms, errors}`.
+//! `--filter` selects suite files by a case-sensitive substring of their
+//! project-relative path (with `/` separators), before any tests execute.
 //!
 //! Without a renderer (the platform's engine and probe sandboxes,
 //! `OG_RENDERER=none`) a playtest's screenshots are frames unchecked: each
@@ -40,13 +42,23 @@ pub fn run(args: &[&str]) -> ExitCode {
     let mut project = ".";
     let mut json = false;
     let mut check = true;
-    for a in args {
+    let mut filter = None;
+    let mut args = args.iter();
+    while let Some(a) = args.next() {
         match *a {
             "--json" => json = true,
             "--no-check" => check = false,
+            "--filter" => {
+                let Some(value) = args.next().filter(|v| !v.is_empty() && !v.starts_with('-'))
+                else {
+                    eprintln!("og test: --filter needs a nonempty suite path substring");
+                    return ExitCode::from(2);
+                };
+                filter = Some(*value);
+            }
             a if a.starts_with('-') => {
                 eprintln!(
-                    "og test: unknown option `{a}`. usage: og test [project] [--json] [--no-check]"
+                    "og test: unknown option `{a}`. usage: og test [project] [--filter <path>] [--json] [--no-check]"
                 );
                 return ExitCode::from(2);
             }
@@ -71,6 +83,21 @@ pub fn run(args: &[&str]) -> ExitCode {
     files(&p.root, ".test.ts", &mut unit);
     let mut playtests = Vec::new();
     files(&p.root.join("tests"), ".og.ts", &mut playtests);
+    if let Some(filter) = filter {
+        let matches = |path: &PathBuf| {
+            path.strip_prefix(&p.root)
+                .expect("discovered tests are inside the project")
+                .to_string_lossy()
+                .replace('\\', "/")
+                .contains(filter)
+        };
+        unit.retain(matches);
+        playtests.retain(matches);
+        if unit.is_empty() && playtests.is_empty() {
+            eprintln!("og test: no suite paths match --filter `{filter}`");
+            return ExitCode::FAILURE;
+        }
+    }
     if unit.is_empty() && playtests.is_empty() {
         eprintln!(
             "og test: {} has no tests: add tests/*.og.ts playtests (see the template's tests/smoke.og.ts) or *.test.ts files",

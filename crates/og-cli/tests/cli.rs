@@ -1231,6 +1231,88 @@ fn run_test_and_build_stop_on_a_type_error_before_bundling() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Filtering selects project-relative suite paths, not the project directory
+/// or test titles. Unselected failing suites must not run; typos must fail.
+#[test]
+fn test_filters_unit_and_playtest_paths_and_refuses_no_match() {
+    let dir = scratch_root();
+    std::fs::remove_dir_all(dir.join("crates")).unwrap();
+    let engine = dir.join("engine");
+    std::fs::create_dir_all(engine.join("src/node")).unwrap();
+    std::fs::write(
+        engine.join("src/node/build.ts"),
+        "await Bun.write(process.argv[process.argv.indexOf('--out') + 1], 'export default 0;');",
+    )
+    .unwrap();
+    std::fs::write(
+        engine.join("src/node/playtest-run.ts"),
+        "await import(process.argv[process.argv.indexOf('--file') + 1]);",
+    )
+    .unwrap();
+    let game = dir.join("game");
+    std::fs::create_dir_all(game.join("tests/nested")).unwrap();
+    std::fs::create_dir_all(game.join("src")).unwrap();
+    std::fs::write(game.join("src/main.ts"), "export default 0;").unwrap();
+    std::fs::write(
+        game.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    for (path, source) in [
+        ("tests/nested/chosen.og.ts", "export default 0;"),
+        (
+            "tests/rejected.og.ts",
+            "throw new Error('unselected playtest');",
+        ),
+        (
+            "tests/chosen.test.ts",
+            "import { test, expect } from 'bun:test'; test('not a path', () => expect(3).toBe(3));",
+        ),
+        (
+            "tests/rejected.test.ts",
+            "import { test, expect } from 'bun:test'; test('chosen', () => expect(3).toBe(4));",
+        ),
+    ] {
+        std::fs::write(game.join(path), source).unwrap();
+    }
+    for (filter, suites) in [("chosen", 2), ("tests/nested/", 1), ("chosen.test.ts", 1)] {
+        let out = og()
+            .args(["test", "--no-check", "--json", "--filter", filter])
+            .arg(&game)
+            .env("OG_ENGINE_PACKAGE", &engine)
+            .output()
+            .unwrap();
+        let t = text(&out);
+        assert!(out.status.success(), "{filter}: {t}");
+        assert!(t.contains(&format!("\"suites\":{suites}")), "{t}");
+    }
+    for args in [
+        vec!["--filter", "missing"],
+        vec!["--filter", "game"],
+        vec!["--filter"],
+    ] {
+        let out = og()
+            .arg("test")
+            .arg(&game)
+            .arg("--no-check")
+            .args(args)
+            .env("OG_ENGINE_PACKAGE", &engine)
+            .output()
+            .unwrap();
+        assert!(!out.status.success(), "{}", text(&out));
+        assert!(text(&out).contains("--filter"), "{}", text(&out));
+    }
+    let out = og()
+        .arg("test")
+        .arg(&game)
+        .arg("--no-check")
+        .env("OG_ENGINE_PACKAGE", &engine)
+        .output()
+        .unwrap();
+    assert!(!out.status.success(), "unfiltered failing suites must run");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 /// `og dev` checks a source change beside the rebuild and never refuses the
 /// reload over it: the reload goes through, its event carries the check
 /// (or `null` while it runs), the `check` event lists the diagnostic, and
