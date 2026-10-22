@@ -189,6 +189,25 @@ gfx frames (atmosphere-night, atmosphere-moon, sprites-array,
 tilemap-lit, water-underwater) are the CPU tier set aside above.
 `dogfood-7` (Rumpus Isle) is still in flight on its thread.
 
+The owner's Metal follow-up passed `scripts/check.sh functional` on
+ff952176 in 90 s: fmt 2 s, clippy 1 s, test 44 s, bun-functional 88 s,
+drift reused. The GPU references were reused from the preceding passing
+Metal run because their inputs were unchanged. That first run found
+`PARTICLES_ARMED` missing from the runtime exports; ff952176 supplies it.
+The gate does not run the examples' playtests. Separate runs passed
+Brasswick's eight suites with all nine frames at RMSE 0, including door,
+stomp and gate. Meridian Loop's eight non-frame suites passed; its frames
+and published suites initially failed on eleven stale references.
+Each before/after pair was inspected before recording in d07963ef:
+`jump`, `slide`, `countdown`, `race`, `pub-countdown`, `pub-straight`
+show the new split rows without place or boost controls (the remaining
+thin bar is the speed meter). `ghost` also reflects the intended air-yaw
+retune, with delta under the lap time. `pause`, `board`, `settings-de`
+keep their UI over the retuned trajectory; the latter two are captured
+later. `results` shows total time instead of points, with updated lap
+records and a later capture. Both affected suites then reproduced all
+eleven recorded frames at RMSE 0. No Brasswick reference changed.
+
 **Wave-end figures (waves 12 and 13 so far, the measure worktree at
 d56f3490, after the shadow-flags merge; no lavapipe run and no Chrome
 benchmarks, both set aside on 2026-10-22):**
