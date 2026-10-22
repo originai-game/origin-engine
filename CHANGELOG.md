@@ -6,6 +6,17 @@ and `@origingame/create-game` (docs/release.md §3). Before 1.0.0 a minor
 bump carries API additions or changes, one line each, written at the merge
 that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
+## 0.2.0 (unreleased)
+
+- API: every word of the kit HUDs is a field with its English default
+  (kit-words, 2026-10-22): `PlatformerHudDesc.jumpLabel`,
+  `ShooterHudDesc.killsLabel` and `fireLabel`, `PuzzleHudDesc.movesLabel`
+  and `targetLabel` (`{target}`), `IdleHudDesc.levelLabel` (`{level}`) and
+  `rateLabel` (`{rate}`), and `pauseLabel` on each of them (the pause
+  button's name for a screen reader); a localised game passes its string
+  table's (`og.i18n.t`). Additive; the defaults are the words the HUDs
+  showed before.
+
 ## 0.1.1 (2026-10-22)
 
 - Fix: the published template, archetypes and knowledge scaffold carried no

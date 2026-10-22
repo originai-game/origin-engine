@@ -325,15 +325,24 @@ fn engine_checks(cwd: &Path) -> usize {
         match (p.engine.as_deref(), report["version"].as_str()) {
             (Some(pinned), Some(installed)) if pinned != installed => {
                 problems += 1;
-                println!("differs  {:<13} project.ogt pins engine \"{pinned}\", installed {installed}", "pin");
+                println!(
+                    "differs  {:<13} project.ogt pins engine \"{pinned}\", installed {installed}",
+                    "pin"
+                );
                 println!(
                     "         fix: when the game is written against {installed}, set `engine \"{installed}\"` in project.ogt; otherwise bun add @origingame/engine@{pinned}"
                 );
             }
-            (Some(pinned), _) => println!("ok       {:<13} project.ogt pins engine \"{pinned}\"", "pin"),
+            (Some(pinned), _) => println!(
+                "ok       {:<13} project.ogt pins engine \"{pinned}\"",
+                "pin"
+            ),
             (None, _) => {
                 problems += 1;
-                println!("missing  {:<13} project.ogt has no `engine \"<version>\"` line", "pin");
+                println!(
+                    "missing  {:<13} project.ogt has no `engine \"<version>\"` line",
+                    "pin"
+                );
                 println!(
                     "         fix: add `engine \"{}\"` to project.ogt (the version this game is written against)",
                     report["version"].as_str().unwrap_or("?")
