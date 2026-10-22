@@ -297,7 +297,14 @@ starting from these (the defaults are the first column):
   bounce, `jumpSpeed` from the height you want: `sqrt(2 × 9.81 × h)`.
 - Read `og.CharacterEvent` for juice: `CHARACTER_LANDED` with its `speed`
   scales the landing squash and dust; `CHARACTER_JUMPED` plays the jump
-  stretch (§5) and sound on the same tick.
+  stretch (§5) and sound. The controllers move in the physics step, after
+  the game's systems, so their events are read **the tick after**: the
+  press's tick starts the jump (§1 holds), the next tick plays its juice,
+  one tick (17 ms at 60 Hz) late. Where that tick shows (a rhythm jump, a
+  sound on a beat), start the stretch and sound in the system that sets
+  `jump`, on the press while the controller can jump (`grounded`, or
+  `coyote` above 0), and leave the event's `CHARACTER_JUMPED` to the
+  buffered and air jumps.
 - Ragdolls: `blendTime` 0.15–0.3 s from the animation to the bones; set
   `weight` 1 on the killing blow's tick, with its hit stop, so the fall
   starts from the hit pose.

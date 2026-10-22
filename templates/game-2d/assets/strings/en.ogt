@@ -1,0 +1,11 @@
+type strings
+version 1
+---
+# The starter's strings (og.i18n, og-i18n §1): every word the HUD shows is
+# a key here, never a literal in a system. A locale is its own file beside
+# it (`zh-CN.ogt`, the same keys and its `fonts` line), loaded in `start`.
+locale "en"
+base true
+string "hud.level" "The Rooftops"
+string "hud.clear" "Rooftops clear!"
+string "pause.resume" "Resume"

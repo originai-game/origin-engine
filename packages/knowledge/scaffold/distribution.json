@@ -1,55 +1,48 @@
 {
   "schema": 1,
-  "about": "Binary files of the Origin Engine project template that a scaffolded Game needs but that are not knowledge text. The scaffolder copies them from the published template (@origingame/create) and verifies each digest.",
+  "about": "Binary files of the Origin Engine project template that a scaffolded Game needs but that are not knowledge text. The scaffolder copies them from the published template (@origingame/create-game) and verifies each digest.",
   "files": [
     {
       "path": "assets/audio/blip.wav",
       "bytes": 44144,
       "sha256": "4fe30d6e883337c7d3c99f2cf0e3f2b1ca80c742587479fd878cb719580acaea",
       "licence": "CC0 1.0 (LICENSES.md)",
-      "source": "templates/game/assets/audio/blip.wav of origingame/origin-engine; shipped in @origingame/create's template/"
+      "source": "templates/game/assets/audio/blip.wav of origingame/origin-engine; shipped in @origingame/create-game's template/"
     },
     {
       "path": "assets/fonts/NotoSansSC-Regular-subset.ttf",
       "bytes": 2513672,
       "sha256": "9235b106a17bed31a2b28acc6deccb3d45a6aa02848c96fd2cc1d8540211a1e6",
       "licence": "SIL Open Font License 1.1 (`assets/fonts/OFL.txt`) (LICENSES.md)",
-      "source": "templates/game/assets/fonts/NotoSansSC-Regular-subset.ttf of origingame/origin-engine; shipped in @origingame/create's template/"
+      "source": "templates/game/assets/fonts/NotoSansSC-Regular-subset.ttf of origingame/origin-engine; shipped in @origingame/create-game's template/"
     },
     {
       "path": "assets/models/dropship.glb",
       "bytes": 562864,
       "sha256": "c7bf4c177bf360bc65b66d8636c1d8cf063cb65209505cf9f8e0e21461ec9c54",
-      "licence": "as recorded for `crates/og-tests/assets/` (the engine's test models) (LICENSES.md)",
-      "source": "templates/game/assets/models/dropship.glb of origingame/origin-engine; shipped in @origingame/create's template/"
-    },
-    {
-      "path": "assets/models/trickster.glb",
-      "bytes": 1419580,
-      "sha256": "7c40f67f386c609a56e85d8a6c26d261fbd31660031d1cae5aa5f2ce0ad796cf",
-      "licence": "as recorded for `crates/og-tests/assets/` (the engine's test models) (LICENSES.md)",
-      "source": "templates/game/assets/models/trickster.glb of origingame/origin-engine; shipped in @origingame/create's template/"
+      "licence": "MIT (copyright 2026 Leichtbier) (LICENSES.md)",
+      "source": "templates/game/assets/models/dropship.glb of origingame/origin-engine; shipped in @origingame/create-game's template/"
     },
     {
       "path": "assets/models/walker.glb",
       "bytes": 34296,
       "sha256": "e068aeca18b491e54b48ae8c264d208a414f9de455a571340bf55ef0c3d2face",
       "licence": "CC0 1.0 (LICENSES.md)",
-      "source": "templates/game/assets/models/walker.glb of origingame/origin-engine; shipped in @origingame/create's template/"
+      "source": "templates/game/assets/models/walker.glb of origingame/origin-engine; shipped in @origingame/create-game's template/"
     },
     {
       "path": "assets/textures/stone.png",
       "bytes": 112774,
       "sha256": "8622957415b5174f09a2564256d319c14692998b3f7fd1ac6ae9d3709ed71a9c",
       "licence": "CC0 1.0 (LICENSES.md)",
-      "source": "templates/game/assets/textures/stone.png of origingame/origin-engine; shipped in @origingame/create's template/"
+      "source": "templates/game/assets/textures/stone.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
     },
     {
       "path": "assets/textures/stone_n.png",
       "bytes": 212633,
       "sha256": "c3bfb1778ace9010f8da8f3ea8664e68cddf446776a2dff7bdcf11f31bb22dcb",
       "licence": "CC0 1.0 (LICENSES.md)",
-      "source": "templates/game/assets/textures/stone_n.png of origingame/origin-engine; shipped in @origingame/create's template/"
+      "source": "templates/game/assets/textures/stone_n.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
     }
   ]
 }

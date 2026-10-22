@@ -21,10 +21,6 @@ use std::path::PathBuf;
 
 mod support;
 
-fn repo() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
-}
-
 fn project(name: &str, settings: Option<&str>) -> PathBuf {
     let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
         .join("og-cook-anim")
@@ -33,7 +29,7 @@ fn project(name: &str, settings: Option<&str>) -> PathBuf {
     std::fs::create_dir_all(dir.join("assets/models")).unwrap();
     for m in ["walker.glb", "trickster.glb"] {
         std::fs::copy(
-            repo().join("templates/game/assets/models").join(m),
+            support::template_model(m),
             dir.join("assets/models").join(m),
         )
         .unwrap();
@@ -55,20 +51,25 @@ fn cooked(name: &str, settings: Option<&str>) -> (PathBuf, Bundle) {
 /// The two models cooked with no import settings, once for every test
 /// process that only reads them (`support::shared`).
 fn cooked_default() -> Bundle {
-    let models = repo().join("templates/game/assets/models");
-    let sources = [models.join("walker.glb"), models.join("trickster.glb")];
+    let sources = [
+        support::template_model("walker.glb"),
+        support::template_model("trickster.glb"),
+    ];
     let cook = support::shared("anim-default", &sources, |root| {
         std::fs::create_dir_all(root.join("assets/models")).unwrap();
         for m in ["walker.glb", "trickster.glb"] {
-            std::fs::copy(models.join(m), root.join("assets/models").join(m)).unwrap();
+            std::fs::copy(
+                support::template_model(m),
+                root.join("assets/models").join(m),
+            )
+            .unwrap();
         }
     });
     Bundle::open(&cook.root.join("cooked")).unwrap()
 }
 
 fn source(name: &str) -> (gltf::Document, Vec<gltf::buffer::Data>) {
-    let (doc, buffers, _) =
-        gltf::import(repo().join("templates/game/assets/models").join(name)).unwrap();
+    let (doc, buffers, _) = gltf::import(support::template_model(name)).unwrap();
     (doc, buffers)
 }
 

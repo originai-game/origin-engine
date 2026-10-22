@@ -1,13 +1,32 @@
 {
-  "name": "@origingame/create",
-  "version": "0.0.1",
+  "name": "@origingame/create-game",
+  "version": "0.1.1",
   "description": "Scaffolds an Origin Engine game from the project template: npm create @origingame/game.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fran0220/origin-engine.git",
+    "directory": "packages/create"
+  },
+  "homepage": "https://github.com/fran0220/origin-engine#readme",
+  "bugs": {
+    "url": "https://github.com/fran0220/origin-engine/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "bin": {
     "create-game": "bin/create.ts"
   },
-  "files": ["bin", "template", "archetypes", "looks", "README.md"],
+  "files": [
+    "bin",
+    "template",
+    "template-2d",
+    "archetypes",
+    "looks",
+    "README.md"
+  ],
   "scripts": {
     "prepack": "bun scripts/pack-template.ts",
     "test": "bun test ${OG_BUN_TEST_TIMEOUT:+--timeout=$OG_BUN_TEST_TIMEOUT} tests/"

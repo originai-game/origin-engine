@@ -948,6 +948,10 @@ row!(
         flags: u32,
         z: i32,
         cell_offset: u32,
+        /// `og_tilemap::Layer::collider_layers` (0: the og.Tilemap's).
+        collider_layers: u32,
+        /// `og_tilemap::Layer::collider_mask` (0: every layer).
+        collider_mask: u32,
     }
 );
 

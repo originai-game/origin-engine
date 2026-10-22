@@ -505,6 +505,65 @@ fn a_platformer_rides_a_moving_platform() {
     assert!(platformer(&w, e).grounded);
 }
 
+/// A platformer running right at 6.4 m/s into a 1 m crate of `mass` kg two
+/// metres ahead for a second: how far the crate went, and where the hero
+/// stopped.
+fn push_run(mass: f32, push_bodies: bool) -> (f32, f32) {
+    let (mut w, _p) = world2d();
+    ground2d(&mut w);
+    let crate_ = spawn_body(
+        &mut w,
+        at(2.0, 0.5, 0.0),
+        RigidBody {
+            mass,
+            ..RigidBody::dynamic()
+        },
+        Collider::cuboid(Vec3::ONE),
+    );
+    let e = hero(
+        &mut w,
+        0.0,
+        0.0,
+        PlatformerController {
+            max_speed: 6.4,
+            push_bodies,
+            ..PlatformerController::default()
+        },
+    );
+    run(&mut w, 10);
+    let x0 = transform(&w, crate_).position.x;
+    set_platformer(&mut w, e, |c| c.move_x = 1.0);
+    run(&mut w, 60);
+    (
+        transform(&w, crate_).position.x - x0,
+        transform(&w, e).position.x,
+    )
+}
+
+#[test]
+fn a_platformer_shoves_a_light_crate_and_not_a_heavy_one_nor_any_without_push_bodies() {
+    // 2 kg: shoved ahead at about the run speed (0.3 s to reach the crate).
+    let (light, _) = push_run(2.0, true);
+    assert!(light > 2.5, "a 2 kg crate went {light} m");
+    // A tonne: friction holds more than pushStrength's 1000 N.
+    let (heavy, hero_x) = push_run(1000.0, true);
+    assert!(heavy.abs() < 0.05, "a 1000 kg crate went {heavy} m");
+    assert!(
+        hero_x < 1.2,
+        "the hero stopped at the heavy crate, at {hero_x}"
+    );
+    // 100 kg: 1000 N beats its 490 N of friction, slowly.
+    let (middle, _) = push_run(100.0, true);
+    assert!(
+        middle > 0.05 && middle < light * 0.5,
+        "a 100 kg crate went {middle} m (2 kg: {light})"
+    );
+    // pushBodies false: even the light one stays.
+    let (none, hero_x) = push_run(2.0, false);
+    assert!(none.abs() < 0.01, "pushBodies false moved it {none} m");
+    assert!(hero_x < 1.2, "the hero stopped at the crate, at {hero_x}");
+}
+
 #[test]
 fn an_impulse_knocks_a_platformer_back_once() {
     let (mut w, _p) = world2d();

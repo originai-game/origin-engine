@@ -14,7 +14,7 @@
 # exists), then @origingame/engine itself (the TypeScript API, the runtime,
 # the web hosts in dist/web, dist/web-publish and dist/web-publish-2d (each
 # publish directory with its profile's lanes variant), the player shell, the Basis
-# transcoder; no native code: npm installs the platform package through
+# transcoder, the knowledge in knowledge/; no native code: npm installs the platform package through
 # optionalDependencies). Prints each tarball with its size and sha256.
 set -eu
 here="$(cd "$(dirname "$0")/.." && pwd)"
@@ -58,7 +58,9 @@ for addon in "$here"/native/origin-engine.*.node; do
   "version": "$version",
   "description": "Origin Engine's native host (napi addon, built from crates/og-host-node) and the og tool for $platform. Installed by @origingame/engine through optionalDependencies.",
   "license": "MIT",
-  "repository": { "type": "git", "url": "https://github.com/origingame/origin-engine" },
+  "repository": { "type": "git", "url": "git+https://github.com/fran0220/origin-engine.git", "directory": "packages/engine" },
+  "homepage": "https://github.com/fran0220/origin-engine#readme",
+  "bugs": { "url": "https://github.com/fran0220/origin-engine/issues" },
   "os": ["$os"],
   "cpu": ["$cpu"]$libc,
   "main": "origin-engine.node",
@@ -69,6 +71,17 @@ JSON
   (cd "$stage" && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null)
   packed="$packed $name"
 done
+# The knowledge (packages/knowledge's publishable files, the template's text
+# into its scaffold/template first) ships inside the main package as
+# knowledge/ (docs/release.md §2); the copy is ignored by Git.
+knowledge="$here/../knowledge"
+(cd "$knowledge" && bun scripts/pack.ts >/dev/null) || { echo "pack: packages/knowledge/scripts/pack.ts failed" >&2; exit 1; }
+rm -rf "$here/knowledge"; mkdir -p "$here/knowledge"
+for f in $(bun -e 'console.log(require(process.argv[1]).files.join(" "))' "$knowledge/package.json") package.json; do
+  [ -e "$knowledge/$f" ] || { echo "pack: packages/knowledge has no $f (its files list)" >&2; exit 1; }
+  cp -R "$knowledge/$f" "$here/knowledge/$f"
+done
+rm -rf "$here/knowledge/scripts/sync-rules.ts" "$here/knowledge/scaffold/template/node_modules"
 # The main package: its files list leaves native/ and the test pages out.
 (cd "$here" && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null)
 rm -rf "$out/stage"

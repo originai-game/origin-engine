@@ -217,7 +217,9 @@ function scaffold(roots: Roots, rules: Rules, overlay: string, files: readonly P
     if (!e) problems.push(`${b.path}: a binary file distribution.json does not list; run \`bun scripts/scaffold.ts --write\``);
     else if (e.sha256 !== sha256(b.bytes) || e.bytes !== b.bytes.length) problems.push(`${b.path}: differs from its distribution.json digest; run \`bun scripts/scaffold.ts --write\` after a deliberate asset change`);
   }
-  for (const rel of listed.keys()) if (!binaries.some((b) => b.path === prefix + rel)) problems.push(`${prefix}${rules.scaffold.distributionFile}: lists ${rel}, which the template does not have`);
+  // The published package's scaffold/template carries text only (scripts/pack.ts): the binaries it lists are @origingame/create-game's.
+  const published = roots.template === join(roots.pkg, "scaffold", "template");
+  if (!published) for (const rel of listed.keys()) if (!binaries.some((b) => b.path === prefix + rel)) problems.push(`${prefix}${rules.scaffold.distributionFile}: lists ${rel}, which the template does not have`);
 }
 
 /** The bundle the platform's production reader would build: text files only. */
@@ -544,11 +546,12 @@ export function readKeys(region: string): string[] {
 }
 
 /**
- * The grammars the skills write out (og-game §8 tilesets and maps, §9 a
+ * The grammars the skills write out (og-game §8 flipbooks, tilesets and maps, §9 a
  * model's animation settings and the animation graph, §10 emitters; og-ai
  * §1 the navmesh, §3 behaviours) and the parsers they come from.
  */
 export const GRAMMARS: readonly Grammar[] = [
+  { type: "flipbook", source: "crates/og-anim/src/flipbook.rs", region: [/impl FlipMode/, /pub fn to_text/], names: { frame: 1, clip: 1 } },
   { type: "tileset", source: "crates/og-tilemap/src/tileset.rs" },
   { type: "tilemap", source: "crates/og-tilemap/src/map.rs", region: [/pub fn parse\(text/, /^pub fn world_to_cell/m] },
   { type: "particles", source: "crates/og-cook/src/fx.rs", unnamed: { key: "colorOverLife's lines: the parser reads their five numbers whatever the key" } },

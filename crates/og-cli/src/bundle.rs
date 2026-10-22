@@ -1,4 +1,6 @@
-//! `og build [project] [--publish] [--out DIR] [--json]`: cook, then export
+//! `og build [project] [--publish] [--out DIR] [--json] [--no-check]`: cook,
+//! type-check (crate::check; a type error builds nothing, and a publish
+//! build is always checked: `--publish` refuses `--no-check`), then export
 //! the game into `<project>/dist` (or `publish.out` of project.ogt): the
 //! player shell (`index.html`, `play.js`), the engine Worker bundle
 //! `game.js`, the web host (`origin-engine.js`, `origin-engine_bg.wasm`),
@@ -15,18 +17,20 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og build [project] [--publish] [--out DIR] [--json]";
+const USAGE: &str = "usage: og build [project] [--publish] [--out DIR] [--json] [--no-check]";
 
 pub fn run(args: &[&str]) -> ExitCode {
     let mut project = ".".to_string();
     let mut publish = false;
     let mut json = false;
+    let mut check = true;
     let mut out = None;
     let mut i = 0;
     while i < args.len() {
         match args[i] {
             "--publish" => publish = true,
             "--json" => json = true,
+            "--no-check" => check = false,
             "--out" => {
                 let Some(o) = args.get(i + 1) else {
                     eprintln!("og build: --out takes a directory. {USAGE}");
@@ -42,6 +46,12 @@ pub fn run(args: &[&str]) -> ExitCode {
             a => project = a.to_string(),
         }
         i += 1;
+    }
+    if publish && !check {
+        eprintln!(
+            "og build: --publish builds what players get and is always type-checked; drop --no-check"
+        );
+        return ExitCode::from(2);
     }
     let p = match Project::open(Path::new(&project)) {
         Ok(p) if p.manifest => p,
@@ -68,6 +78,9 @@ pub fn run(args: &[&str]) -> ExitCode {
         eprintln!("og build: {}", project::NO_ENGINE);
         return ExitCode::FAILURE;
     };
+    if let Some(n) = project::pin_notice(&p, &package) {
+        eprintln!("og build: {n}");
+    }
     if p.has_assets() {
         match crate::cook::cook(&p.root, 0) {
             Ok(r) => {
@@ -80,6 +93,10 @@ pub fn run(args: &[&str]) -> ExitCode {
                 return ExitCode::FAILURE;
             }
         }
+    }
+    if check && let Err(e) = crate::check::require(&p, &package, json) {
+        eprintln!("og build: {e}");
+        return ExitCode::FAILURE;
     }
     let out = out.unwrap_or_else(|| p.root.join(&p.out).display().to_string());
     let mut cmd = web_build(&p, &package, &settings, Path::new(&out), publish);

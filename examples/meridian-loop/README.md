@@ -25,9 +25,9 @@ has two splits, each shown against the record's; a lap that beats the
 record becomes it, and from then on its ghost drives every lap beside
 you. R (the pad's Y) puts the car back on the road. P or the HUD's button
 pauses (Resume, Restart, the ghost on or off, Settings, Quit). The results
-give the laps, the stars (laps under 40, 37 and 35 s) and the rank on the
-leaderboard of best laps; Watch replay drives the whole race again from the
-countdown.
+give the race's time against the session's best, the laps, the stars
+(laps under 40, 37 and 35 s) and the rank on the leaderboard of best laps;
+Watch replay drives the whole race again from the countdown.
 
 ## Run it
 
@@ -37,7 +37,7 @@ og cook .
 og run . --headless --commands "1:screenshot:title.png;1.2:race;4:drive:auto;20:screenshot:sweeper.png;20.1:quit"
 og test .                       # the ten playtests, the reference frames against references/<tier>/
 OG_FX_CAPTURE=1 og test .       # records this tier's reference frames
-bun run typecheck               # tsc over src, tests and tools
+og check .                      # tsrs over src, tests and tools
 ```
 
 Inside the engine repository `og` is `target/debug/og`, and the playtests
@@ -55,7 +55,7 @@ and the music. The UI skin is the engine's neon pack, copied from
 | Area | How | Where |
 |---|---|---|
 | A generated circuit | a closed centripetal Catmull-Rom spline through 22 control points, resampled every 2 m (478 samples, 956 m); a 14 m road banked into each bend (the outside edge raised up to 25°, the bank smoothed over 12 m, the low edge kept on the ground); a kicker ramp to a 3.4 m lip, a 15 m gap, a landing ramp; walls along both edges; one triangle-mesh collider for the road (it grips) and one for the walls (slick) | `src/track.ts`, `tools/circuit.ts`, `src/world.ts` |
-| `og.Vehicle` | a raycast car on a 1,000 kg dynamic chassis (rear drive, 5.2 kN a wheel, 46 m/s), its tuning in a `Tuning` resource; a flat chassis box with the wheel mounts above its centre, so the car corners without rolling; the wheel eased to the asked lock and the lock shortened with speed; roll and pitch damped and a little downforce through `og.Velocity` (FINDINGS #2); the wheel models placed from `og.physics.vehicleWheels` | `src/car.ts`, `src/world.ts`, `src/fx.ts` |
+| `og.Vehicle` | a raycast car on a 1,000 kg dynamic chassis (rear drive, 5.2 kN a wheel, 46 m/s), its tuning in a `Tuning` resource; a flat chassis box with the wheel mounts above its centre, so the car corners without rolling; the wheel eased to the asked lock and the lock shortened with speed; roll and pitch damped, a little downforce and, in the air, the nose turned to where the car flies (`airAlign`, so a twist off the kicker's lip does not land it sideways), all through `og.Velocity` (FINDINGS #2); the wheel models placed from `og.physics.vehicleWheels` | `src/car.ts`, `src/world.ts`, `src/fx.ts` |
 | Lap timing | progress along the centre line (the nearest sample, searched near the last); two splits and the line, forward only and in order; laps, sectors and the record in ticks; a delta against the record at each split; resets (R, upside down, or a second in the gap) put the car back and the lap no longer counts | `src/race.ts` |
 | The ghost | the car's pose every second tick of a lap (15 characters a pose, `src/tape.ts`) on the current lap's tape; a lap that beats the record keeps its tape as the best, stored with the record; the ghost (a translucent model and wheels, no body) drawn from the start of every lap where the record's car was, to the centimetre (FINDINGS #3 says why poses and not a second car replaying the inputs) | `src/ghost.ts`, `src/tape.ts`, `tests/ghost.og.ts` |
 | The replay | the world saved in the countdown (`world.snapshot()` through `og.platform.saveSlot`) and the run's inputs taped two characters a tick; Watch replay restores the world (`world.restore`) and feeds the inputs back: the same race, every lap on its tick | `src/replay.ts`, `tests/rerun.og.ts` |
@@ -63,7 +63,7 @@ and the music. The UI skin is the engine's neon pack, copied from
 | Engine audio | a synthesised four-cylinder loop pitched by the revs (rising through each of five gears, dropping at the shift) and loudened by the throttle; a tyre squeal faded in with the slide; knocks, landings, the countdown's beeps, GO, split and lap chimes, the record's fanfare; "Meridian" (57.6 s of synthwave, streamed in 4-second chunks) on the music bus ducked under the effects; a limiter on the master | `tools/audio.ts`, `src/sound.ts`, `tests/audio.og.ts` |
 | Effects | tyre smoke from the rear wheels while sliding (`og.ParticleSystem` start and stop ticks); skid marks, a ring of 28 `og.Decal` streaks laid every 1.1 m of a slide and fading; sparks and a shake on a wall; dust, a shake and a punch on a landing | `src/fx.ts`, `assets/fx/` |
 | A look | `looks/meridian.ogt` extends `neon-vector` (AgX, bloom, a violet fog, a dusk sky with stars, a vignette; the preset's hull outline off, FINDINGS #7) | `tools/make-assets.ts` |
-| og.ui on the neon pack | `mainMenu`, `racingHud` (speed, gear, lap, the lap time, the record, the mini-map with the car and the ghost, touch steering), the sector capsule and the delta, the countdown, `pauseMenu`, `settingsScreen` (every word from the tables), `resultsScreen`, `leaderboardScreen` (honest loading, error and empty states); a wipe between screens; toasts | `src/ui.ts` |
+| og.ui on the neon pack | `mainMenu`, `racingHud` as a time trial (speed, gear, lap, the lap time with the last split's delta under it, the record, the three sectors as its splits, no place and no boost meter, the mini-map with the car and the ghost, touch steering; every word of it from the tables), the countdown, `pauseMenu`, `settingsScreen` (every word from the tables), `resultsScreen` (the race's time as its headline, counted up as m:ss.mmm, against the session's best race), `leaderboardScreen` (honest loading, error and empty states); a wipe between screens; toasts | `src/ui.ts` |
 | Two languages | `strings/en.ogt` and `strings/de.ogt` (German: the longest labels, umlauts in the pack's Latin-1 faces) | `assets/strings/`, `tests/locales.og.ts` |
 
 ## Playtests
@@ -76,7 +76,7 @@ and the music. The UI skin is the engine's neon pack, copied from
 | `rerun.og.ts` | Watch replay: the countdown's world restored and the taped inputs driving the same three laps, tick for tick; nothing new on the board |
 | `save.og.ts` | a relaunch (`store: "keep"`): the record and its ghost back, the title in German, the stored ghost driving the new race's first lap where the first process's car drove |
 | `audio.og.ts` | the engine's pitch from the grid to speed, the beeps and GO, the tyres in a slide and after it, the music streamed and looping, a mix that is heard and never clips |
-| `locales.og.ts` | the title, the leaderboard, the HUD, pause, the settings and the results in German, no English of the game's table left; the racing HUD's own English words (FINDINGS #8); no control unnamed |
+| `locales.og.ts` | the title, the leaderboard, the HUD, pause, the settings and the results in German, no English of the game's table left, the racing HUD's own words included (`Runde` under the lap, no `lap`, no boost meter; FINDINGS #8 fixed and taken up); no control unnamed |
 | `replay.og.ts` | a session of slides, the jump, resets, pause and the ghost run twice in fresh processes ends on one world hash |
 | `frames.og.ts` | ten reference frames at 1280 x 720 (`references/metal/`): the title, the jump, a slide, the countdown, the sweeper, the ghost, pause, the results, the leaderboard, the German settings |
 | `published.og.ts` | input and screenshots only (Time trial pressed, the countdown, W held up the start straight, Escape): four frames (`pub-*.png`) the published page is held to as well (`packages/engine/tests/web/published.ts --playtest tests/published.og.ts`) |

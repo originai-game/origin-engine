@@ -551,6 +551,43 @@ pub fn collision_rects_all(state: &MapState) -> Vec<Rect> {
         .collect()
 }
 
+/// One static collider of a placed map: its rectangle and the collision
+/// layers and mask (og.Collider's bits) its map layer gives it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MapCollider {
+    pub rect: Rect,
+    pub layers: u32,
+    pub mask: u32,
+}
+
+/// [`collision_rects_all`] with each rectangle's layers and mask: its map
+/// layer's `collider_layers` (0: `default_layers`, the owner's) and
+/// `collider_mask` (0: every layer).
+pub fn map_colliders(state: &MapState, default_layers: u32) -> Vec<MapCollider> {
+    let mut out = Vec::new();
+    for (i, l) in state.asset.layers.iter().enumerate() {
+        if !l.collision {
+            continue;
+        }
+        let layers = if l.collider_layers != 0 {
+            l.collider_layers
+        } else {
+            default_layers
+        };
+        let mask = if l.collider_mask != 0 {
+            l.collider_mask
+        } else {
+            u32::MAX
+        };
+        out.extend(
+            collision_rects(state, i)
+                .into_iter()
+                .map(|rect| MapCollider { rect, layers, mask }),
+        );
+    }
+    out
+}
+
 fn flipped(mut uv: [f32; 4], fx: bool, fy: bool) -> [f32; 4] {
     if fx {
         uv.swap(0, 2);

@@ -3,7 +3,7 @@ version 1
 ---
 name "Lane panic"
 id "lane-panic"
-engine "0.0.1"
+engine "0.1.1"
 entry "src/main.ts"
 profile "3d"
 tick 60

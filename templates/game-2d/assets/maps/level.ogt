@@ -1,0 +1,112 @@
+type tilemap
+version 1
+---
+# The level (og-game §8's grammar): 48 x 14 cells of 16 px, one world unit
+# each, over the city tileset. The roofs collide on og.Tilemap.colliderLayers
+# (1); the ledges name their own collider layer (2), which the courier's
+# og.PlatformerController.oneWayLayers makes one-way: it jumps up through
+# them and lands on top, and Down drops it through.
+size 48 14
+tile 16 16
+unit 1
+tileset "tiles/city.ogt"
+layer skyline {
+  z -2
+  parallax 0.5 1
+  repeat x
+  legend "^" 6
+  legend "f" 4
+  legend "w" 5
+  row "................................................"
+  row "................................................"
+  row "................................................"
+  row "...........................^^^^^^^.............."
+  row ".....^^^^^^................fffffff...........^^^"
+  row ".....ffffff.....^^^^^......fwfwfwf.....^^^^^.fff"
+  row "^^^^.fwfwff.....fffff.^^^^.fffffff.....fffff.fwf"
+  row "ffff.ffffff.^^^.fwfwf.ffff.fwfwfwf.^^^.fwfwf.fff"
+  row "fwff.fwfwff.fff.fffff.fwff.fffffff.fff.fffff.fwf"
+  row "ffff.ffffff.fwf.fwfwf.ffff.fwfwfwf.fwf.fwfwf.fff"
+  row "fwff.fwfwff.fff.fffff.fwff.fffffff.fff.fffff.fwf"
+  row "ffff.ffffff.fwf.fwfwf.ffff.fwfwfwf.fwf.fwfwf.fff"
+  row "fwff.fwfwff.fff.fffff.fwff.fffffff.fff.fffff.fwf"
+  row "ffff.ffffff.fwf.fwfwf.ffff.fwfwfwf.fwf.fwfwf.fff"
+}
+layer roofs {
+  z 0
+  collision true
+  legend "=" 0
+  legend "b" 1
+  legend "L" 2
+  legend "D" 3
+  row "b..............................................b"
+  row "b..............................................b"
+  row "D..............................................D"
+  row "b..............................................b"
+  row "b..............................................b"
+  row "b..............................................b"
+  row "b..............................................b"
+  row "D..............................................D"
+  row "b..............................................b"
+  row "b..............................................b"
+  row "b.............................======...........b"
+  row "b.............................bbLbbb...........b"
+  row "====================...========================="
+  row "bbbLbbDbbbLbbbbbbLbb...bLbbbDbbLbbbbbbLDbbbbbLbb"
+}
+layer ledges {
+  z 0
+  collision true
+  colliderLayers 2
+  legend "=" 0
+  row "................................................"
+  row "................................................"
+  row "................................................"
+  row "................................................"
+  row "................................................"
+  row "................................................"
+  row ".......................=====...................."
+  row "................................................"
+  row "................................................"
+  row "...........=====................................"
+  row "................................................"
+  row "................................................"
+  row "................................................"
+  row "................................................"
+}
+object spawn {
+  kind "spawn"
+  at 2.5 12
+}
+object coin-0 {
+  kind "coin"
+  at 6.5 11.2
+}
+object coin-1 {
+  kind "coin"
+  at 9.5 11.2
+}
+object coin-2 {
+  kind "coin"
+  at 13.5 8.2
+}
+object coin-3 {
+  kind "coin"
+  at 21.5 9.5
+}
+object coin-4 {
+  kind "coin"
+  at 25.5 5.2
+}
+object coin-5 {
+  kind "coin"
+  at 32.5 9.2
+}
+object coin-6 {
+  kind "coin"
+  at 40.5 11.2
+}
+object goal {
+  kind "goal"
+  rect 45 10 1 2
+}

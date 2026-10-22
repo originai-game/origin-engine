@@ -470,6 +470,10 @@ pub(crate) struct State {
     pub feel_assets: super::feel::FeelAssets,
     /// A world.restore asked for inside a tick, applied when it ends.
     pub pending_restore: Option<super::save::Pending>,
+    /// A restore applied since the last tick began, (the tick the world
+    /// was at, the saved tick): og.WorldRestored is sent as the next tick
+    /// starts, so the world between ticks hashes as the save did.
+    pub restored: Option<(u64, u64)>,
 }
 
 pub(crate) struct Engine {
@@ -1150,6 +1154,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         feel: Some(a.feel.clone()),
         feel_assets: Default::default(),
         pending_restore: None,
+        restored: None,
     };
     og_audio::publish_link(engine_id, a.mounted.audio.clone());
     let render = Rc::new(RefCell::new(RenderState::new(a.game.render.clone())));
@@ -1491,10 +1496,13 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     // the selection a copy takes), `copy`: text a Ctrl/Cmd+C or X took.
     // `stepMs`: wall milliseconds a tick took (the mean of this frame's, or
     // the last frame's that ticked), `renderMs`: the last render's.
+    // `pending`: the command channel's steps still to run (a script has
+    // ended when it is 0, wherever a restore moved og.Time).
     let mut answer = json!({
         "ok": true, "ticks": ticks, "tick": tick, "rendered": rendered,
         "paused": probe.paused(), "quit": probe.quit_requested(), "behind": behind,
         "text": text, "stepMs": step_ms, "renderMs": render_ms,
+        "pending": probe.steps_left(),
     });
     if let Some(c) = copy {
         answer["copy"] = json!(c);

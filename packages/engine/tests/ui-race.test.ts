@@ -121,3 +121,13 @@ test("og.ui.resultsScreen: a time trial's result is its headline, a time under i
   expect(ui.find((e) => e.id === "Score")?.text).toBe("1:36.233");
   expect(ui.find((e) => e.id === "Best")?.text).toBe("Bestzeit 1:35.100");
 });
+
+test("og.ui.racingHud: the best lap reads as the results read it, never a millisecond short by a float's last bit", () => {
+  const Best = defineSystem("UrBest", {}, (_q, _t, _world: World) => {
+    og.ui.racingHud("Hud", { racers: 0, boostMeter: false, time: 2, best: 30.717 });
+  });
+  const engine = start(og.game({ systems: [Best] }));
+  engine.advance(2);
+  // 30.717 - 30 is 0.716999…: the running clock's floor would say 0:30.716.
+  expect(elements(engine).find((e) => e.id === "Best")?.text).toBe("Best 0:30.717");
+});

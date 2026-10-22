@@ -1,0 +1,9 @@
+{
+  "name": "og-install-test",
+  "private": true,
+  "type": "module",
+  "description": "The install test's only dependency: the InstaBox SDK for tests/install/instabox.ts (docs/release.md §3). run.ts itself needs nothing.",
+  "dependencies": {
+    "@insforge/instabox-sdk": "0.5.3"
+  }
+}

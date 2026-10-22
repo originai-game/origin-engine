@@ -16,6 +16,54 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
+/// `templates/game/assets`: what the template ships.
+pub fn template_assets() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates/game/assets")
+}
+
+/// A model of the template fixture by file name. `trickster.glb` is the
+/// engine's test copy (`crates/og-tests/assets/`): it left the template on
+/// 2026-10-22 for want of a licence (docs/release.md R6; the template's
+/// `trickster` entity is the CC0 walker since), while the tests below and
+/// their frames were recorded with it, and the engine's copy is in no
+/// package. Every other model is the template's.
+pub fn template_model(name: &str) -> PathBuf {
+    if name == "trickster.glb" {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../og-tests/assets/trickster.glb")
+    } else {
+        template_assets().join("models").join(name)
+    }
+}
+
+/// The sources of the template fixture, for [`shared`]'s key.
+pub fn template_sources() -> Vec<PathBuf> {
+    vec![template_assets(), template_model("trickster.glb")]
+}
+
+/// Stages the template fixture at `assets`: the template's assets with
+/// `trickster.glb` beside them, as the template shipped until 2026-10-22.
+pub fn stage_template(assets: &Path) {
+    copy_dir(&template_assets(), assets);
+    std::fs::copy(
+        template_model("trickster.glb"),
+        assets.join("models/trickster.glb"),
+    )
+    .unwrap();
+}
+
+pub fn copy_dir(from: &Path, to: &Path) {
+    std::fs::create_dir_all(to).unwrap();
+    for e in std::fs::read_dir(from).unwrap() {
+        let e = e.unwrap();
+        let dst = to.join(e.file_name());
+        if e.file_type().unwrap().is_dir() {
+            copy_dir(&e.path(), &dst);
+        } else {
+            std::fs::copy(e.path(), dst).unwrap();
+        }
+    }
+}
+
 /// What the cook that made a shared directory reported.
 pub struct SharedCook {
     /// The project directory: `assets/` as staged, `cooked/` as cooked.

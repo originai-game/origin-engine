@@ -36,15 +36,11 @@ use og_render::{
     TextureFormat, TextureFormats, TextureSource, shapes,
 };
 use og_tests::compare::{Comparison, Tolerance, compare};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::OnceLock;
 use std::time::Instant;
 
 mod support;
-
-fn template_assets() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates/game/assets")
-}
 
 fn evidence_dir() -> PathBuf {
     let base = std::env::var_os("OG_EVIDENCE_DIR")
@@ -55,27 +51,16 @@ fn evidence_dir() -> PathBuf {
     dir
 }
 
-fn copy_dir(from: &Path, to: &Path) {
-    std::fs::create_dir_all(to).unwrap();
-    for e in std::fs::read_dir(from).unwrap() {
-        let e = e.unwrap();
-        let dst = to.join(e.file_name());
-        if e.file_type().unwrap().is_dir() {
-            copy_dir(&e.path(), &dst);
-        } else {
-            std::fs::copy(e.path(), dst).unwrap();
-        }
-    }
-}
-
 fn bundle() -> Bundle {
     static COOKED: OnceLock<support::SharedCook> = OnceLock::new();
     let cooked = COOKED.get_or_init(|| {
         // Its own name: a shared cook removes the stale keys of its name,
         // and template.rs's binary has another key for the same sources.
-        support::shared("template-compressed", &[template_assets()], |root| {
-            copy_dir(&template_assets(), &root.join("assets"))
-        })
+        support::shared(
+            "template-compressed",
+            &support::template_sources(),
+            |root| support::stage_template(&root.join("assets")),
+        )
     });
     Bundle::open(&cooked.root.join("cooked")).expect("the manifest loads")
 }
@@ -389,7 +374,7 @@ fn cooked_reference(
     let counts: Vec<usize> = ["trickster.glb", "dropship.glb"]
         .iter()
         .map(|n| {
-            load_glb(&std::fs::read(template_assets().join("models").join(n)).unwrap())
+            load_glb(&std::fs::read(support::template_model(n)).unwrap())
                 .unwrap()
                 .primitives
                 .len()

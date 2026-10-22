@@ -12,7 +12,7 @@ bun tools/make-assets.ts   # every asset (the music and the copied skin are not 
 og cook .
 og run .                   # headless with the probe; og dev . reloads on save
 og test .                  # eight playtests, the frames against references/metal
-bun run typecheck
+og check .
 og build . --publish       # the web build
 ```
 

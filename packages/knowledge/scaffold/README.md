@@ -1,6 +1,6 @@
 # The Origin Engine scaffold
 
-What `npm create @origingame/game` (`@origingame/create`) produces: a copy
+What `npm create @origingame/game` (`@origingame/create-game`) produces: a copy
 of the engine repository's `templates/game/` with the project's `name` and
 `id` filled in. The platform mounts it as the scaffold overlay
 `game-scaffold/origin-engine-ts/` (`knowledge.json`); it stands alone, never

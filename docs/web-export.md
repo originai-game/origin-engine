@@ -870,7 +870,7 @@ icons) is.
 ```sh
 cd packages/engine
 sh scripts/pack.sh --linux-x64    # OG_RELEASE=1 scripts/build.sh --linux-x64 (this machine's addon and og, the Linux x64 addon and og through cargo zigbuild against glibc 2.31, both web hosts), then dist/pack/*.tgz with sizes and sha256
-bun scripts/e2b-addon.ts          # optional, billable: install the tarballs in the platform's E2B probe sandbox and og run the runner there
+bun ../../tests/install/instabox.ts --version <v> --from ../../dist/release/<v>   # optional, billed by the minute: the install test inside an InstaBox machine, the development sandbox (docs/release.md §4 D; scripts/release.sh verify --instabox)
 ```
 
 - `@origingame/engine`: the TypeScript API and runtime, both web hosts, the
@@ -881,9 +881,13 @@ bun scripts/e2b-addon.ts          # optional, billable: install the tarballs in 
   `optionalDependencies` of the main package, so npm and bun install only the
   matching one. The loader takes `OG_NATIVE_ADDON`, then a checkout's
   `native/`, then the platform package.
-- Publishing (not done yet): bump the version in `package.json` (the
-  optional dependencies follow it in `pack.sh`'s platform manifests and must
-  be bumped with it), `sh scripts/pack.sh --linux-x64` on macOS arm64 (a
-  release build: `pack.sh` refuses a dev `native/`), then
-  `npm publish` each platform tarball before the main one, with access
-  public under the `@origingame` scope.
+- `@tsrs/darwin-arm64`, `@tsrs/linux-{x64,arm64}-{gnu,musl}`: tsrs, `og
+  check`'s type checker, with its `lib.*.d.ts`, the same way (pinned exactly
+  at `TSRS_VERSION` of `scripts/install-tools.sh`, not at the engine's
+  version; `check-conformance` holds them equal), so a project's `bun
+  install` brings the checker and `og check` finds it beside the engine
+  package with no registry call at check time.
+- Publishing: `docs/release.md` §3 (`scripts/release.sh bump`, `pack`,
+  `verify`, `publish`; the install test; one version across the five
+  packages). Until `0.1.0` is published nothing is on the registry and a
+  project outside the checkout runs with `OG_ENGINE_PACKAGE`.

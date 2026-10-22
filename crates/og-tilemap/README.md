@@ -43,11 +43,11 @@ top-left corner in the same coordinates (y ≤ 0 inside the map).
 | `Terrain { name, mode: TerrainMode::{Blob47, Bitmask16}, rules: BTreeMap<u8, u32>, default, edge_filled }`, `resolve(neighbours)`, `reduce_blob(mask)`, `mask::{N, NE, E, SE, S, SW, W, NW}` | auto-tiling |
 | `TilemapAsset { width, height, tile_width_px, tile_height_px, unit, tilesets: Vec<TilesetRef>, layers, objects }` | `parse(text)`, `validate()`, `tile_size()`, `world_size()`, `layer(name)` |
 | `TilesetRef::{Asset(id), Embedded(Tileset)}` | an asset id of a tileset `.ogt`, or one an importer made |
-| `Layer { name, tileset, cells, terrain: Option<String>, parallax, offset, opacity, visible, collision, repeat_x, repeat_y, z }`, `Layer::new(name, w, h, z)` | cells: tile layers 0 empty else `(tile + 1) | FLIP_X | FLIP_Y`; terrain layers 0/1 |
+| `Layer { name, tileset, cells, terrain: Option<String>, parallax, offset, opacity, visible, collision, collider_layers, collider_mask, repeat_x, repeat_y, z, lit }`, `Layer::new(name, w, h, z)` | cells: tile layers 0 empty else `(tile + 1) | FLIP_X | FLIP_Y`; terrain layers 0/1 |
 | `FLIP_X` (bit 31), `FLIP_Y` (bit 30), `FLIP_DIAGONAL` (bit 29, refused), `TILE_MASK` | the cell encoding (Tiled's gid flip bits) |
 | `MapObject { name, kind, x, y, width, height, properties }` | spawns, doors, triggers |
 | `MapState` | `new(asset, tilesets)`, `get(layer, x, y) -> i32` (tile id or −1; terrain 1/0), `tile(layer, x, y) -> Option<(tile, flip_x, flip_y)>` (resolved), `set(layer, x, y, value)`, `layer_version`, `chunk_version(layer, cx, cy)`, `chunks()`, `encode(&mut Vec<u8>)`, `decode(asset, tilesets, bytes)`, `asset()`, `tileset(layer)`; `==` compares cells |
-| `collision_rects(&state, layer)`, `collision_rects_all(&state)` → `Vec<Rect { min, max }>` | merged static colliders |
+| `collision_rects(&state, layer)`, `collision_rects_all(&state)` → `Vec<Rect { min, max }>`; `map_colliders(&state, default_layers)` → `Vec<MapCollider { rect, layers, mask }>` (each layer's `collider_layers`, 0 the owner's, and `collider_mask`, 0 every layer) | merged static colliders |
 | `chunk_quads(&state, layer, cx, cy, texture_w, texture_h) -> ChunkQuads { quads: Vec<TileQuad { min, size, uv }>, animated: Vec<AnimatedQuad { quad, frames, durations }> }`, `chunks_in(&state, layer, view_min, view_max)`, `animated_frame(durations, seconds)`, `CHUNK` = 16 | drawing |
 | `world_to_cell(asset, local) -> Option<(x, y)>`, `cell_center(asset, x, y)` | coordinates |
 
@@ -101,6 +101,8 @@ layer floor {
   opacity 1                # optional
   visible true             # optional
   collision true           # optional: its tiles' shapes become colliders
+  colliderLayers 4         # optional: those colliders' layer bits (default: the owner's)
+  colliderMask 3           # optional: the layers they collide with (default: every layer)
   repeat x                 # optional: x, y or both
   terrain wall             # optional: a terrain layer (cells 1 filled)
   legend "#" 1             # a character and the tile id (terrain: 1 filled); "." is empty unless given

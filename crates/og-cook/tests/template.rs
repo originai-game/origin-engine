@@ -37,13 +37,7 @@ use std::sync::OnceLock;
 
 mod support;
 
-fn repo() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
-}
-
-fn template_assets() -> PathBuf {
-    repo().join("templates/game/assets")
-}
+use support::{copy_dir, template_assets};
 
 fn evidence_dir() -> PathBuf {
     let base = std::env::var_os("OG_EVIDENCE_DIR")
@@ -54,26 +48,14 @@ fn evidence_dir() -> PathBuf {
     dir
 }
 
-fn copy_dir(from: &Path, to: &Path) {
-    std::fs::create_dir_all(to).unwrap();
-    for e in std::fs::read_dir(from).unwrap() {
-        let e = e.unwrap();
-        let dst = to.join(e.file_name());
-        if e.file_type().unwrap().is_dir() {
-            copy_dir(&e.path(), &dst);
-        } else {
-            std::fs::copy(e.path(), dst).unwrap();
-        }
-    }
-}
-
-/// A fresh project directory holding a copy of the template's assets.
+/// A fresh project directory holding a copy of the template fixture
+/// (`support::stage_template`: the template's assets with the trickster).
 fn fresh_project(name: &str) -> PathBuf {
     let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
         .join("og-cook")
         .join(name);
     let _ = std::fs::remove_dir_all(&dir);
-    copy_dir(&template_assets(), &dir.join("assets"));
+    support::stage_template(&dir.join("assets"));
     dir
 }
 
@@ -166,8 +148,8 @@ fn differences(a: &BTreeMap<String, Vec<u8>>, b: &BTreeMap<String, Vec<u8>>) -> 
 fn cooked() -> &'static support::SharedCook {
     static COOKED: OnceLock<support::SharedCook> = OnceLock::new();
     COOKED.get_or_init(|| {
-        support::shared("template", &[template_assets()], |root| {
-            copy_dir(&template_assets(), &root.join("assets"))
+        support::shared("template", &support::template_sources(), |root| {
+            support::stage_template(&root.join("assets"))
         })
     })
 }
@@ -236,20 +218,15 @@ fn cooking_twice_gives_identical_bytes() {
     );
 }
 
-/// The template made small enough to cook thirty times: trickster.glb (its
-/// three 1024² textures are most of a cook) left out and its scene entity
-/// given the walker, the two standalone
+/// The template made small enough to cook thirty times: as the template
+/// ships (without the fixture's trickster.glb, whose three 1024² textures
+/// are most of a cook; its scene entity is the walker), the two standalone
 /// textures cut to 128², the font's charset to ASCII and the template's own
 /// characters. Every kind of output and both texture encoders remain, and
 /// the font still renders its glyphs on the cook's thread count.
 fn small_template(root: &Path) {
     copy_dir(&template_assets(), &root.join("assets"));
     let assets = root.join("assets");
-    std::fs::remove_file(assets.join("models/trickster.glb")).unwrap();
-    let scene = assets.join("scenes/main.ogt");
-    let text = std::fs::read_to_string(&scene).unwrap();
-    let text = text.replace("models/trickster.glb", "models/walker.glb");
-    std::fs::write(&scene, text).unwrap();
     for t in ["textures/stone.png", "textures/stone_n.png"] {
         let img = image::open(assets.join(t)).unwrap();
         img.resize_exact(128, 128, image::imageops::FilterType::Triangle)
@@ -471,7 +448,7 @@ fn source_doc(
     Vec<gltf::buffer::Data>,
     Vec<gltf::image::Data>,
 ) {
-    gltf::import(template_assets().join("models").join(name)).unwrap()
+    gltf::import(support::template_model(name)).unwrap()
 }
 
 #[test]
@@ -557,10 +534,9 @@ fn meshes_keep_their_triangles_and_bounds() {
         assert_eq!(src_tris, cooked_tris);
         // Model bounds (default scene, node transforms) against og-render's
         // own glTF loader, from the decoded vertices.
-        let reference = og_render::gltf::load_glb(
-            &std::fs::read(template_assets().join("models").join(name)).unwrap(),
-        )
-        .unwrap();
+        let reference =
+            og_render::gltf::load_glb(&std::fs::read(support::template_model(name)).unwrap())
+                .unwrap();
         let world = model.node_world();
         let (mut lo, mut hi) = (glam::Vec3::splat(f32::MAX), glam::Vec3::splat(f32::MIN));
         for n in model.scene_nodes(model.default_scene.unwrap()) {
@@ -859,7 +835,7 @@ fn cooked_models_render_the_gltf_reference_scene() {
     let counts: Vec<usize> = ["trickster.glb", "dropship.glb"]
         .iter()
         .map(|n| {
-            load_glb(&std::fs::read(template_assets().join("models").join(n)).unwrap())
+            load_glb(&std::fs::read(support::template_model(n)).unwrap())
                 .unwrap()
                 .primitives
                 .len()

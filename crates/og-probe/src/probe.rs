@@ -203,6 +203,8 @@ pub struct Probe {
     written: BTreeMap<String, (f64, String)>,
     /// The host's end-of-tick work ([`Probe::set_after_tick`]).
     after_tick: Option<AfterTickFn>,
+    /// The host's start-of-tick work ([`Probe::set_before_tick`]).
+    before_tick: Option<AfterTickFn>,
 }
 
 /// The host's end-of-tick hook: called after every tick the probe takes,
@@ -395,6 +397,7 @@ impl Probe {
             gets: (u64::MAX, 0),
             written: BTreeMap::new(),
             after_tick: None,
+            before_tick: None,
         })
     }
 
@@ -431,6 +434,14 @@ impl Probe {
     /// keep their remaining delays ([`Probe::shift_schedule`]).
     pub fn set_after_tick(&mut self, after: AfterTickFn) {
         self.after_tick = Some(after);
+    }
+
+    /// Work the host does as every tick starts, just before the step (after
+    /// the command steps due at it): events it sends there are delivered in
+    /// that tick, and the world between ticks is untouched by them (a
+    /// restore's og.WorldRestored).
+    pub fn set_before_tick(&mut self, before: AfterTickFn) {
+        self.before_tick = Some(before);
     }
 
     /// The world's clock jumped from `from` to `to` outside a tick (a game
@@ -510,6 +521,14 @@ impl Probe {
     /// Steps still scheduled.
     pub fn pending(&self) -> usize {
         self.queue.len()
+    }
+
+    /// Steps still to run: those scheduled and a screenshot waiting for
+    /// its frame. A host running a script ends it when this is 0 (or on
+    /// `quit`), not at the tick the script's last step was scheduled for,
+    /// which a restore moving og.Time ([`Probe::shift_schedule`]) moves.
+    pub fn steps_left(&self) -> usize {
+        self.queue.len() + usize::from(self.shot.is_some())
     }
 
     /// Files commands produced since the last call, for the host to write.
@@ -801,6 +820,9 @@ impl Probe {
     }
 
     fn tick_once(&mut self, world: &mut World) -> og_core::Result<()> {
+        if let Some(before) = self.before_tick.as_mut() {
+            before(world);
+        }
         world.step()?;
         self.input.end_tick(world);
         if let Some(after) = self.after_tick.as_mut() {

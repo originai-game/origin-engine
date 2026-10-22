@@ -3,7 +3,7 @@
 import { fileURLToPath } from "node:url";
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { ogBin } from "./support/og-bin.ts";
 
@@ -59,6 +59,31 @@ test("og run takes tick and seed from project.ogt for a GameDesc that leaves the
     const read = (f: string) => (JSON.parse(readFileSync(join(out, f), "utf8")) as { value: unknown }).value;
     expect((read("time.json") as { rate: number }).rate).toBe(30);
     expect(read("seed.json")).toBe(5);
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+}, 120_000);
+
+test("a restore that moves og.Time past the script's last scheduled tick still runs the steps after it, and quit ends the run", () => {
+  // brasswick FINDINGS #13: the run ended at the first tick past the tick
+  // its last step was scheduled for, so a Continue restoring a later save
+  // ended it at once, without the steps after it, a quit or a warning.
+  const game = "packages/engine/tests/fixtures/restore-forward";
+  const first = spawn([ogBin(), "run", "--headless", game, "--no-render", "--commands", "5:print_save;5.1:quit"], repo);
+  if (first.exitCode !== 0) throw new Error(`og run exited ${first.exitCode}: ${first.stderr}${first.stdout}`);
+  const save = first.stdout.split("\n").find((l) => l.startsWith("og-save:1:"));
+  if (!save) throw new Error(`no save printed: ${first.stdout}`);
+  const out = mkdtempSync(join(tmpdir(), "og-restore-forward-"));
+  try {
+    // Tick 3 restores the save of tick 150 as it ends, so tick 150 follows in place of tick 4: the
+    // get (due at 15) and the quit (due at 18) keep the 11 and 14 ticks they had left.
+    const r = spawn([ogBin(), "run", "--headless", game, "--no-render", "--out", out, "--json", "--commands", `0.1:load:${save};0.5:get:og.Time.tick:tick.json;0.6:quit`], repo);
+    if (r.exitCode !== 0) throw new Error(`og run exited ${r.exitCode}: ${r.stderr}${r.stdout}`);
+    const summary = JSON.parse(r.stdout.trim().split("\n").pop()!) as { tick: number; quit: boolean };
+    expect(summary.quit).toBeTrue();
+    expect(existsSync(join(out, "tick.json"))).toBeTrue();
+    expect((JSON.parse(readFileSync(join(out, "tick.json"), "utf8")) as { value: number }).value).toBe(150 + 11);
+    expect(summary.tick).toBe(150 + 14);
   } finally {
     rmSync(out, { recursive: true, force: true });
   }

@@ -7,6 +7,40 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Public packages first, the local loop, the development sandbox on InstaBox, E2B last (2026-10-22)
+
+The owner's decision, after the two below: the engine is consumed as
+public npm packages pinned by version, every version is developed and
+tested locally against them (the install test on this machine and in a
+linux-x64 container, then the platform's local stack and the M7
+acceptance), then in the development sandbox, and only then does an E2B
+image install it, once, as the last consumer. The layout the platform has
+built from a pinned git revision of this repository (`origin-engine.ts`:
+`git archive`, cargo, zigbuild, the lanes wasm, a read token) and the E2B
+rebuild as the first place a change is tried are what this replaces. The
+same day the owner made explicit that **the development stage's sandbox
+is InstaBox** (dashboard.instabox.sh), not E2B: the development threads
+run in InstaBox machines the platform makes from per-class snapshots of
+the pinned version, E2B is production's provider only, and the install
+test runs inside an InstaBox machine too (`tests/install/instabox.ts`;
+0.1.1 passing in `tests/evidence/release/instabox-0.1.1.md`; the
+engine's last script that reached E2B for development,
+`packages/engine/scripts/e2b-addon.ts`, is gone). The decision, the
+packages, the version rule, `scripts/release.sh` and the complete plan
+of what remains to launch (stages R, L, D, F, T, E, P) are
+`docs/release.md`; the platform's side is decision E10 of
+`origingame/goals/origin-engine/plan.md` and `docs/platform-asks.md`
+ask 15. In this table: rows 91 to 98 (the release pipeline, stage R),
+each closed with its commit; the first published version is `0.1.0`,
+the pinned one `0.1.1`. **The verification stage's machines (the owner,
+later the same day):** the InstaBox account stays at one machine (the
+free plan, no upgrade) while the features are not all working and the
+tests not fully implemented; the owner's own runners carry what a
+GPU-less orb cannot: `macrunner` (`/Volumes/app/origin-engine`) runs the
+functional lane on metal, records every reference frame and the wave's
+end, and `studio-win` (Windows x64) builds and tests the engine natively
+for F7 (`docs/release.md` §4 T, the Runners row; §6 item 6).
+
 ## Features before optimisation (2026-10-22)
 
 The owner's decision, the same day: the build-out distinguishes feature
@@ -109,6 +143,51 @@ perf-games. The round sections below have each.
   bun-functional 116 s, drift 55 s; the kit's and the three games'
   suites after it) and main was pushed at e3a7ac9d. shadow-flags'
   merge and lane follow, then this wave's `--all` and web-reference.
+
+**The day's wrap-up (2026-10-22, main at 0e0d71af):** the kit-2d merge
+is the last of the day (its lane passed in 95 s after the package's
+test matchers gained `toBeLessThanOrEqual` and `toMatchObject`;
+20954c20 re-recorded the level select's frames). Three streams were
+stopped mid-way at the owner's request and their work committed as WIP
+on their branches, pushed to origin: `kit-words` (the kit HUDs' words,
+the kit's tables and subsets, Meridian Loop on the new HUD fields and
+retuned to the vehicle defaults; Meridian Loop's `ghost`, `lap`,
+`rerun`, `locales` and `frames` playtests fail on main until it lands),
+`platformer-2d` (Brasswick's runtime findings 6, 5, 3, 13, 8, 7, 2, 14,
+1) and `dogfood-7` (a local-multiplayer party game, begun). `perf-2`
+stays parked. Still owed at this point: the wave's end (`--all` and
+web-reference at the last merge), Brasswick's and Meridian Loop's
+browser frames on both tiers and the published-page harness on the
+new games, and the rounds for the three stopped streams.
+
+**F1, two of three (2026-10-22, from an InstaBox-stage orb, no GPU):**
+`kit-words` (origin/kit-words abad0059) merged at a61fd4f4 and
+`platformer-2d` (origin/platformer-2d 7e5084b5) at c9845b1e, CHANGELOG
+holding one `0.2.0 (unreleased)` section for both streams' API
+additions (the kit HUDs' label fields; `og.WorldRestored`,
+`og.PARTICLES_ARMED`, `CharacterController.pushStrength`,
+`PlatformerController.pushBodies/pushStrength`,
+`TilemapLayer.colliderLayers/colliderMask`, `PlatformAnswer.time`), the
+wiki regenerated, `og api check` clean; `release.sh bump 0.2.0` waits
+for the next publish. The functional lane on the merged tree found two
+debts of main, neither from the streams: `cargo fmt` of
+`og-cli/src/doctor.rs` (45848398), and og-cook's twelve tests that
+still read `templates/game/assets/models/trickster.glb` after R6 moved
+it out of the template (3f914f69): the fixture is now declared once in
+`og-cook/tests/support` as the template's assets plus the engine's own
+copy from `crates/og-tests/assets`, staged by `stage_template`
+(bf7db9f4; 111 of 114 og-cook tests here, the other three want a
+`vulkan-cpu` reference frame this orb has none of). What the orb could
+not do and the owner's metal run owes: Meridian Loop's `race`, `ghost`,
+`results`, `settings-de` (perhaps `pub-straight`) frames move with the
+new HUD rows (the splits in rows, no sector capsule, the delta under
+the lap time, a time as the results headline) and are to be re-recorded
+there; Brasswick's `door`, `stomp`, `gate` on lavapipe sit at RMSE
+0.0101 against 0.01 (edge dither like the passing title frame, nothing
+moved) and are the same metal check; og-tests' five lavapipe-vs-metal
+gfx frames (atmosphere-night, atmosphere-moon, sprites-array,
+tilemap-lit, water-underwater) are the CPU tier set aside above.
+`dogfood-7` (Rumpus Isle) is still in flight on its thread.
 
 **Wave-end figures (waves 12 and 13 so far, the measure worktree at
 d56f3490, after the shadow-flags merge; no lavapipe run and no Chrome
@@ -3278,7 +3357,7 @@ merge commit and no evidence directory.
   style step, its table held to the catalogue row by row; og-ui's text and
   accessibility; og-i18n, og-build §7, og-audio's chunked music, og-feel's
   stepFps, og-core's lanes. A test names each phase 4 API's skill.
-- **Every game gets a look** (3517983, c2c1370): `@origingame/create
+- **Every game gets a look** (3517983, c2c1370): `@origingame/create-game
   --look <slug>` names a catalogue preset and `--premise` picks the style
   whose premise fits best (asked on a terminal otherwise); the game's
   `assets/looks/<id>.ogt` keeps the template's blocks under it and
@@ -5434,6 +5513,14 @@ resource only the owner can give.
 | 88 | A terrain streaming test whose tiles arrive after the first frame: since 441f4e6e the first frame that draws a streamed terrain settles every wanted tile (as a capture does), and the fx-showcase terrain station wants its five tiles at that frame, so `tests/terrain-stream.test.ts` (e565ede7) now proves the hashes agree with nothing streaming after the settle; a station whose walk wants tiles beyond the first frame's (a larger terrain, or a camera that moves off it) would prove the stream itself leaves the simulation alone, and the settle's cost on the web's tick-0 frame (every wanted tile decoded in one frame) is unmeasured | W13 webgl2-render-2 | S | engine, phase 4 (terrain) | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open |
 | 89 | perf-games' tables and `og polish` rows on an idle machine (load under 8 for the whole run): every run of 2b896be5 shared the machine with the lavapipe VM, the gate or an iOS simulator | W12 perf-games | S | engine, phase 4 (a wave-end measurement) | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open |
 | 90 | perf-games' follow-ups: the lanes on a loaded machine (Kestrel's physics 0.93 ms serial, 2.9 to 4.2 ms on the pool at load 20 to 25; the grains were measured idle); release sprite extraction still looks each field up by name (about 5 % of Hollowbell's frame); `og.ui.end` re-measures every text each tick; Lantern Vale's dev playtests' step spikes (p95 7 to 9.5 ms against a 2.2 ms median), unprofiled | W12 perf-games | M | engine, phase 4 (perf) | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open; the text measurement cache and the painter-level grid are on branch perf-2 (6f7f9f6c, a53bb596) |
+| 91 | One version everywhere, written by `scripts/release.sh bump`, held equal by the knowledge test; `create` writes it; `og` compares `project.ogt`'s `engine` with the installed package (`doctor` line, run/test/build warning) | release R1 | S | engine, release | done, 3f914f69 (`scripts/release-bump.ts`; `og` prints the pin notice and the doctor its `pin` line) |
+| 92 | The knowledge published: inside `@origingame/engine` as `knowledge/` (the owner, 2026-10-22: one package less), `mount.ts --package <installed engine dir>` | release R2 | S | engine, release | done, 3f914f69 and the fold-in commit (a published template's listed binaries are create-game's) |
+| 93 | `scripts/release.sh` (`bump`, `pack`, `verify`, `publish`), `pack.sh` packing create and knowledge, `dist/release/<version>/manifest.json`, `CHANGELOG.md`; the wave-end `release` stage | release R3 | M | engine, release | done, 3f914f69 (`scripts/release.sh`, `CHANGELOG.md`, `dist/release/<version>/manifest.json`, wave-end `release` stage) |
+| 94 | The install test `tests/install/` (an empty directory, `bun add`, `create-game`, `og doctor`, `og check`, `og test`, `og build --publish`, the runner archetype, the knowledge validate and mount check) on darwin-arm64 and in the `node:22-bookworm-slim` container, from tarballs and `--registry` | release R4 | M | engine, release | written, 3f914f69 (`tests/install/run.ts`, `tests/install/Dockerfile`: node 22 + bun 1.4.2); its first pass is row 98's evidence |
+| 95 | `og doctor` and `og --version` outside a checkout (the package's and the addon's version, both wasm files, tsrs, the renderer) | release R5 | S | engine, release | done, 3f914f69 (the doctor's `pin` line; `--version` and the package lines were there) |
+| 96 | The template's `trickster.glb` and `dropship.glb` (from `origingame-examples`, licence unnamed) replaced by engine-owned or CC0 models, or the owner's leave to redistribute; every binary in every template and archetype with a named licence | release R6 | S | engine, release (owner for the leave) | done for the packages, 3f914f69: `dropship.glb` is MIT (core-business's LICENSE, named); `trickster.glb` (edg-king-match, no licence) left the template, the `trickster` entity is the CC0 walker; the repository's test copy (`crates/og-tests/assets/`, fx-showcase) is the owner's call before the repository goes public |
+| 97 | Package metadata: `repository.url` naming the repository the packages are built from, `homepage`, `bugs`; the README's install section | release R7 | S | engine, release | done, 3f914f69 (`repository` fran0220/origin-engine with `directory`, `homepage`, `bugs`; the README's Install section; the package is `@origingame/create-game` since `npm create @origingame/game` maps to it) |
+| 98 | Publish `0.1.0` (`npm login`, the `@origingame` scope: owner), `release.sh verify --registry`, tag `v0.1.0`, `tests/evidence/release/0.1.0.md` | release R8 | S | owner, then engine | done 2026-10-22: `@origingame/engine`, `engine-darwin-arm64`, `engine-linux-x64`, `create-game` at 0.1.0 on npm (packed from 53c3629e), `verify --registry` passing on both platforms, tag `v0.1.0`; `tests/evidence/release/0.1.0.md` |
 
 ## 0. Rules that shape the plan
 
@@ -5601,6 +5688,53 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   metal sheet per pack; the og-taste skill. Full gate at 24d3663 in 4 min 2 s
   (wasm 2,428,536 bytes brotli, 57 % of the budget; +59,841 over E1).
   Evidence `tests/evidence/E3/`. Owed: §Owed rows 1–3 and 15–20.
+
+### tsrs 2026-10: type checking in the author's loop
+
+The execution package `goals/tsrs/plan.md` (its commit `684db7cb`, deleted
+at its end; Git history keeps it) put tsrs, the Rust port of TypeScript 7
+(oxc-project/tsrs, pinned at 0.18.0-ts7.1.0-dev.20260929), into `og`:
+
+- `og check` runs it as a pinned child process (`crates/og-cli/src/check.rs`)
+  found by `OG_TSRS`, the engine package's `optionalDependencies`
+  (`@tsrs/<platform>`), or `PATH` (`scripts/install-tools.sh`, SRI-checked);
+  diagnostics are values (`--json`: one `check` event). `og run`, `og test`
+  and `og build` check before they bundle and stop on a type error
+  (`--no-check`; never for `--publish`); `og dev` checks each save beside
+  the rebuild and reports it on the reload without refusing it. `og doctor`
+  reports tsrs against its pin.
+- Measured (`tests/evidence/tsrs/wave-0.md`): at 4 checker threads tsrs takes
+  20–47 % of tsgo 7.0.2's wall clock on every config, 23 ms to start, 32.5 MB
+  installed; a 22-file corpus of game-code errors (`scripts/tsrs-corpus/`)
+  gave the same 23 diagnostics, messages byte for byte. In `og dev` the check
+  lands in 33–48 ms and does not move the rebuild
+  (`tests/evidence/tsrs/wave-2.md`).
+- Found on the way: ten of the eleven templates (fx-showcase, ui-kit, the
+  eight archetypes) had never been checked as the projects they scaffold;
+  their playtest helpers' `node:` imports and globals were 10–16 errors each
+  under `types: []`, tsgo and tsrs alike. Each now carries a `host.d.ts`.
+- **The switch (owner's delegation, 2026-10-22).** The package proposed
+  switching the repository's authority from tsgo to tsrs after two wave
+  ends with no difference. Decided instead to switch at once: the first
+  comparison was already complete (19 configs and the corpus, no miss, no
+  extra, no message difference, against tsgo 7.0.2 and against the
+  7.1.0-dev tsrs ports), and the comparison stays as the wave end's
+  `conformance` stage, so a regression in a later tsrs is caught where a
+  version moves. Since then `packages/engine`'s `typecheck` is `og check
+  --tool tsrs` over its three configs (`scripts/typecheck.ts`, after
+  `build.sh`; 0.25–0.28 s against 1.16–1.26 s for the three `bun x tsc`),
+  og-idl's declaration test runs tsrs, and no template, example or package
+  depends on `typescript`. tsgo remains only as `TSGO_VERSION` in check.rs:
+  the comparison and the fallback on Windows and Intel macOS, which tsrs
+  does not build for.
+- Pins (docs/ci.md §Toolchain): `TSRS_VERSION` and the five SRIs in
+  `scripts/install-tools.sh`, copied by the engine's `optionalDependencies`;
+  they move together at a wave's end with a tsrs release, after
+  `scripts/tsrs-diff.sh` passes on it. The engine image keeps the optional
+  dependencies (docs/platform-asks.md #13).
+- Owed to the merging session: the functional lane and an `og dev` reload
+  measurement on Metal with this og (the orb where it was built has only
+  lavapipe, whose first frame takes 650 ms and over).
 
 ### Toolchain 2026-10
 

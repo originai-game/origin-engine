@@ -1,2 +1,6 @@
 template/
+template-2d/
 node_modules/
+# Copied from templates/ and packages/knowledge/looks at prepack (scripts/pack-template.ts).
+archetypes/
+looks/
