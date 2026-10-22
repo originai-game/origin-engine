@@ -83,6 +83,12 @@ pub trait RenderBackend {
     fn warm(&mut self) -> bool {
         false
     }
+    /// The last frame `render` drew, read back without drawing it again
+    /// (`og render`'s every-frame capture); `None` where the readback cannot
+    /// block (the web) or nothing was drawn.
+    fn read_frame(&mut self) -> Option<og_render::RgbaImage> {
+        None
+    }
 }
 
 /// One loaded font: a cooked MTSDF font as one `MsdfFont` per atlas page.

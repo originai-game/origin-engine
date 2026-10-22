@@ -36,6 +36,8 @@ mod audio;
 mod host;
 mod host_e6;
 mod host_p2;
+#[cfg(not(feature = "publish"))]
+mod render;
 
 use napi::bindgen_prelude::{FromNapiValue, ToNapiValue, TypeName, ValidateNapiValue, ValueType};
 use napi::{Env, sys};
@@ -505,6 +507,9 @@ impl RenderBackend for OffscreenBackend {
             self.renderer.resize(target.0, target.1);
         }
         image
+    }
+    fn read_frame(&mut self) -> Option<og_render::RgbaImage> {
+        self.renderer.read_offscreen().ok()
     }
     fn save_state(&mut self) -> u64 {
         self.renderer.save_state().id()

@@ -51,6 +51,8 @@ mod physics_ext;
 mod platform;
 mod polish;
 mod probe;
+#[cfg(not(feature = "publish"))]
+mod record;
 mod save;
 mod stream;
 mod terrain;
@@ -121,6 +123,8 @@ pub use platform::{
     og_platform_store_list, og_platform_store_set, og_platform_take, og_platform_telemetry,
 };
 pub use probe::png;
+#[cfg(not(feature = "publish"))]
+pub use record::{render_frame, render_restore, render_snapshot};
 pub use save::{og_world_restore, og_world_snapshot};
 pub use stream::{
     og_stream_budget, og_stream_release, og_stream_request, og_stream_set_budget, og_stream_status,
