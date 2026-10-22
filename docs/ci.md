@@ -63,7 +63,9 @@ Run `cargo check --workspace --all-targets`,
 `cargo clippy --workspace --all-targets -- -D warnings`, and
 `cargo nextest run --workspace --no-fail-fast`. Windows selects DX12 and
 statically links DXC on x64 MSVC, so the installed engine needs no compiler
-DLL. The reference harness falls back to Metal; differences are reported,
+DLL. The native binaries use the Microsoft Visual C++ x64 runtime
+(MSVCP140/VCRUNTIME140); game authors need its redistributable, not Visual
+Studio or Rust. The reference harness falls back to Metal; differences are reported,
 not silently recorded. `og check` and the package's typecheck command use
 the pinned tsgo through Bun because there is no Windows tsrs package.
 

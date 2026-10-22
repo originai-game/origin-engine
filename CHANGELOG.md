@@ -2,17 +2,19 @@
 
 One version across `@origingame/engine` (the knowledge inside it as
 `knowledge/`), `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64`
-and `@origingame/create-game` (docs/release.md §3). Before 1.0.0 a minor
+(`@origingame/engine-win32-x64` from F7) and `@origingame/create-game`
+(docs/release.md §3). Before 1.0.0 a minor
 bump carries API additions or changes, one line each, written at the merge
 that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## 0.2.0 (2026-10-23)
 
 - Windows x64: build and pack the MSVC `og.exe` and napi addon as
-  `@origingame/engine-win32-x64`, with DX12 rendering and the same TypeScript
+  `@origingame/engine-win32-x64`, with DX12 rendering, embedded DXC and the same TypeScript
   API. `og check` deliberately uses the pinned tsgo/Bun fallback, reported
-  by doctor. Windows paths, source line endings and HDR fixture checkout
-  bytes are portable. Release validation and remaining frame differences:
+  by doctor. Windows paths, source line endings, HDR fixture checkout
+  bytes and knowledge mount permissions are portable. The tarball install
+  test passes; five gfx tests still differ from Metal. Evidence:
   `tests/evidence/release/windows-x64.md`.
 
 API additions and changes (a minor bump, §3), by the stream that landed
