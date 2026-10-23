@@ -175,6 +175,27 @@ minor bump, §3), by stream:
   terrain and sky only, and a frame with views culls on the CPU.
   fx-showcase station `views` (new) and `shaders` (a full-shader dissolve
   and a CRT post pass).
+- `render-light` (S7), module render: the og-bake crate (xatlas UVs, a
+  BVH, a progressive CPU path tracer, L1 SH light volumes). `og bake
+  lightmaps [project] [--samples] [--bounces] [--texels-per-metre]
+  [--max-size] [--sky] [--seconds] [--threads] [--scene]` writes
+  `<scene>.lightmap.ogt` and `.ktx2` beside the scene, which the cook makes
+  an `og.Lightmap` blob (`cook --report` lists it). `og.Model.static`
+  marks what the bake covers; the runtime draws a scene's bake when its
+  scene and model hashes still match and otherwise reports why through
+  `og.render.bakedLighting` (`BakedScene`); `RenderSettings.bakedLighting`
+  (on by default) turns it off; `og doctor --project` warns `unbaked`.
+  `og.LightVolume` (`size`, `spacing`): baked SH probes sampled as ambient
+  light by what moves through them. `og.RectLight` (`color`, `intensity`,
+  `width`, `height`, `twoSided`) shaded with LTC. `cookie` on
+  `og.SpotLight` (a texture) and `og.PointLight` (a cube), 24 layers at
+  most. `Fog.volumetric` with `scattering`, `anisotropy` and
+  `volumetricDistance`: a froxel compute pass named `volumetric` on the full tier, a
+  sun-only raymarch on WebGL2; `RenderCapabilities.volumetricFog` names
+  which. fx-showcase stations `baked` (a Cornell box, `baked:on|off`) and
+  `volumetric` (window shafts under a day-night sun, a rect light, a
+  lattice cookie, a lantern's cube cookie); gfx scenes `rect-lights`,
+  `light-cookies`, `volumetric-fog` and, natively, `baked-cornell`.
 
 ## 0.2.0 (2026-10-23)
 

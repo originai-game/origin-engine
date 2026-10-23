@@ -337,6 +337,56 @@ the IDL changes are the CHANGELOG's `## Unreleased` depth wave 3 entry.
   sky only (no transparents, sprites, particles, lines or post); a frame
   with views culls on the CPU; target depth is full tier only;
   `PostEffects.custom` is four fixed slots, not a list.
+- **S7 render-light** (f55588a8, merged as pushed at fe2dd662, rebased
+  on c5aa7ff1, so its conflicts were with S6 and S8): og-render `lib.rs`
+  (the prepass runs for custom posts, AO, SSR or volumetric fog) and
+  `post.rs` (the main pass reads both S8's `views` and S7's `froxels`);
+  `pbr_fs.wgsl` and `physical.wgsl`, where the ambient term is
+  `ambient_irradiance(ambient_light(n, p), p, n)`: a lightmap or light
+  volume wins, else S6's probe-blended environment; og-runtime
+  `extract.rs` (the lightmapped tuple keeps S6's `bias`), `api.rs` (the
+  no-renderer capability JSON carries `volumetricFog: "raymarch"`),
+  og-tests `NATIVE_SCENES` (+ `baked-cornell`); `api.ogt` (`RenderSettings`
+  `lodBias` then `bakedLighting`; `og.Model` `lodBias`, `layers`, then
+  `static`); `index.ts` (`render` spreads S1's, S8's and S7's modules,
+  `load` S8's); fx-showcase `main.ts` (`...VW_STATIONS, ...LIGHT_STATIONS`,
+  usage `<name|1-32>`, the `baked` command and the `LightShow` system);
+  og-cli `main.rs` (`bake probes` dispatched before `bake`); design §2.6
+  (S6, S8, then S7) and the og-game skill (S7's section §24, "Where to
+  look things up" §25). Generated outputs regenerated; `api check`, `cargo
+  check --workspace --all-targets`, og-idl, og-probe, og-render, the
+  knowledge tests and api-surface pass. Four **Metal references**
+  recorded (`OG_GFX_CAPTURE=rect-lights,light-cookies,volumetric-fog,
+  baked-cornell`, og-tests `light`) and read against S7's lavapipe
+  frames: `rect-lights`, `light-cookies` and `volumetric-fog` are the
+  same picture on both (the cookie blur too, and the vertical froxel
+  streaks of `volumetric-fog`, which S7 traced to the 160-column grid);
+  `baked-cornell` shows the red and green bleed, a bounce-lit ceiling,
+  the bake's noise and its jagged shadow edges. Station references
+  `baked.png` and `volumetric.png` recorded with `OG_FX_CAPTURE=1`;
+  `volumetric` shows the window shafts, the floor patch, the lantern's
+  dots and the cyan panel. **The `baked` playtest failed on the first
+  capture**: the station drew unbaked (block side 94,102,119, ceiling
+  luma 46, S7's unbaked numbers). `og.render.bakedLighting` gave the
+  reason, "its bake is stale: scenes/cornell.ogt changed since og bake
+  lightmaps": the scene source is untouched, but the merged cook (the
+  schema S6 and S8 added to) gives the scene a new output hash, and the
+  bake is keyed on that hash. The fix is the legitimate one, a rebake
+  with S7's options (`og bake lightmaps templates/fx-showcase --scene
+  scenes/cornell.ogt --samples 512 --texels-per-metre 32`): the new
+  `.lightmap.ogt` differs in `scene-hash` and the bake's seconds only,
+  the pages are re-traced, and the playtest passes (7 checks). The
+  lesson for the wave's end: a bake goes stale with every engine change
+  that moves a scene's cooked bytes, so every project's bakes are
+  re-baked after a merge that touches the scene schema, and `og doctor
+  --project` is the check.
+- **Owed to the wave's end**, S7: one scene's lightmap drawn at a time;
+  the physical, texture-array, material-shader and compact batches use
+  the probes, not the lightmap; rect lights cast no shadows and terrain,
+  scatter and fluids light them as a point; cookies are capped at 24
+  layers; WebGL2's volumetric fog is lit by the sun alone; render
+  snapshot/restore keeps the baked data by design but is untested; the
+  froxel grid's vertical streaks in `volumetric-fog` (on Metal too).
 
 ## Main gate, wave 13 (2026-10-21)
 
