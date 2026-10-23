@@ -25,11 +25,22 @@ module reflect {
     capacity true
     value String
   }
+  column list {
+    doc "A list of another column's values."
+    list true
+  }
+  handle Post "A post pass."
+  column Post {
+    doc "A Post field."
+    array Uint32Array
+    stride 2
+    value Post
+  }
 }
 
 module game {
   skill og-core
-  doc "The game: records with text fields (`str.N`), which tests/idl.rs follows into every generated output."
+  doc "The game: records with text fields (`str.N`) and list fields (`List.X.N`), which tests/idl.rs follows into every generated output."
   component Label {
     doc "A label."
     field text str.48 "The text." {
@@ -40,5 +51,10 @@ module game {
   resource Profile {
     doc "The player's profile."
     field name str.16 "The player's name."
+  }
+  resource Chain {
+    doc "A chain of passes: list fields (`List.X.N`)."
+    field passes List.Post.4 "The passes, in order."
+    field weights List.f32.2 "Two weights at most."
   }
 }

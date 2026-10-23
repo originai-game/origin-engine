@@ -258,6 +258,18 @@ fn fields_table(out: &mut String, ix: &Index<'_>, fields: &[Field]) {
             cell(&range(f)),
             f.unit.as_deref().map_or_else(|| "—".to_string(), code),
             cell(&match ix.capacity(&f.ty) {
+                None if ix.list(&f.ty).is_some() => {
+                    let (element, n) = ix.list(&f.ty).expect("a list");
+                    let notes = field_notes(f);
+                    let text = format!(
+                        "a list of at most {n} `{element}` (`List.{element}.{n}`): reads a frozen copy, writes a whole array"
+                    );
+                    if notes.is_empty() {
+                        text
+                    } else {
+                        format!("{text}, {notes}")
+                    }
+                }
                 Some(n) => {
                     let notes = field_notes(f);
                     let text = format!("`{}({n})`: at most {n} bytes of UTF-8", f.ty.name());
@@ -698,21 +710,41 @@ fn module_page(ix: &Index<'_>, m: &Module, binds: &[Binding<'_>]) -> String {
                 c.name
             );
         }
+        for c in columns.iter().filter(|c| c.list) {
+            let _ = write!(
+                out,
+                "; `{}(of, capacity, options?)` takes another factory's field (`u32()`, `Asset()`) and a capacity in elements",
+                c.name
+            );
+        }
         out.push_str(".\n\n");
         out.push_str("| Column | Value | Typed array | Stride | Doc |\n|---|---|---|---|---|\n");
         for c in &columns {
             let stride = if c.capacity {
                 "the capacity".to_string()
+            } else if c.list {
+                "the element's × (capacity + 1)".to_string()
             } else {
                 c.stride.to_string()
             };
+            let (value, array) = if c.list {
+                (
+                    "an array of the element's".to_string(),
+                    "the element's".to_string(),
+                )
+            } else {
+                (
+                    code(&ts::type_text(ix, &c.value, &[])),
+                    format!("`{}`", c.array),
+                )
+            };
             let _ = writeln!(
                 out,
-                "| <a id=\"{}\"></a>`{}` | {} | `{}` | {} | {} |",
+                "| <a id=\"{}\"></a>`{}` | {} | {} | {} | {} |",
                 anchor_column(&c.name),
                 c.name,
-                code(&ts::type_text(ix, &c.value, &[])),
-                c.array,
+                value,
+                array,
                 stride,
                 cell(&c.doc.join(" "))
             );

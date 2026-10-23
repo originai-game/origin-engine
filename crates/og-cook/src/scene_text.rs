@@ -24,7 +24,8 @@
 /// A field's current value, as the scene text would give it.
 #[derive(Clone, Debug, PartialEq)]
 pub enum FieldValue {
-    /// Numbers, one per lane (a vector's `x y z`, a scalar's one).
+    /// Numbers, one per lane (a vector's `x y z`, a scalar's one, a list's
+    /// elements: none for an empty list).
     Lanes(Vec<f64>),
     /// A flag: `true`/`false`.
     Bool(bool),
@@ -198,9 +199,19 @@ fn lane(token: &str) -> Option<f32> {
     }
 }
 
-/// The value tokens of `value`, with the old tokens' spelling kept where
-/// they read the same (a `true` stays a word).
+/// The value tokens of `value`, each after a space, with the old tokens'
+/// spelling kept where they read the same (a `true` stays a word); nothing
+/// for an empty list, whose line is its key alone.
 fn spell(value: &FieldValue, old: &[&str]) -> String {
+    let tokens = spell_tokens(value, old);
+    if tokens.is_empty() {
+        tokens
+    } else {
+        format!(" {tokens}")
+    }
+}
+
+fn spell_tokens(value: &FieldValue, old: &[&str]) -> String {
     match value {
         FieldValue::Text(s) => quote(s),
         FieldValue::Bool(b) => b.to_string(),
@@ -338,7 +349,7 @@ fn spawned_block(e: &SpawnedEntity, indent: &str, out: &mut Vec<String>) {
     for (c, fields) in &e.components {
         out.push(format!("{indent}  {c} {{"));
         for (f, v) in fields {
-            out.push(format!("{indent}    {f} {}", spell(v, &[])));
+            out.push(format!("{indent}    {f}{}", spell(v, &[])));
         }
         out.push(format!("{indent}  }}"));
     }
@@ -434,7 +445,7 @@ fn rewrite_lines(
                             && !listed.contains(&(e.clone(), c.clone(), f.clone()))
                             && let Some(v) = current(e, c, f)
                         {
-                            let l = format!("{ci}  {f} {}", spell(&v, &[]));
+                            let l = format!("{ci}  {f}{}", spell(&v, &[]));
                             push(&mut out, &mut changed, l, true);
                             listed.insert((e.clone(), c.clone(), f.clone()));
                             placed.insert(i);
@@ -470,7 +481,7 @@ fn rewrite_lines(
                             push(
                                 &mut out,
                                 &mut changed,
-                                format!("{ei}    {f} {}", spell(&v, &[])),
+                                format!("{ei}    {f}{}", spell(&v, &[])),
                                 true,
                             );
                             placed.insert(i);
@@ -491,7 +502,7 @@ fn rewrite_lines(
                 if let Some(v) = current(entity, name, key)
                     && !same(&v, old)
                 {
-                    let l = format!("{indent}{key} {}{comment}", spell(&v, old));
+                    let l = format!("{indent}{key}{}{comment}", spell(&v, old));
                     push(&mut out, &mut changed, l, true);
                     continue;
                 }
@@ -528,7 +539,7 @@ fn rewrite_lines(
                     push(
                         &mut out,
                         &mut changed,
-                        format!("  {f} {}", spell(&v, &[])),
+                        format!("  {f}{}", spell(&v, &[])),
                         true,
                     );
                     placed.insert(i);

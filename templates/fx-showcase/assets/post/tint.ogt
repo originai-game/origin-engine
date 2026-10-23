@@ -1,7 +1,7 @@
 type post
 version 1
 ---
-# A warm grade (PostEffects.custom5 at the shaders station): the image
-# multiplied by a colour, run before the CRT in slot 8, which bends it.
+# A warm grade (PostEffects.custom's first at the shaders station): the
+# image multiplied by a colour, run before the CRT, which bends it.
 code "fn post(f: PostInput, p: Params) -> vec4<f32> { return vec4<f32>(previous(f.uv).rgb * p.tint, 1.0); }"
 param tint color 1.25 0.95 0.6

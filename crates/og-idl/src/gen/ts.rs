@@ -54,12 +54,32 @@ export interface FieldSpec<K extends ColumnKind = ColumnKind> {
   readonly capacity?: number;
 }
 
-/** A reflected layout: field names to field specs. */
-export type Fields = { readonly [field: string]: FieldSpec };
+/** The column kinds a list holds: one number (`f32`, `f64`, `u32`, `i32`) or a handle. */
+export type ListKind = {
+  [K in ColumnKind]: ColumnKinds[K]["value"] extends number ? K : never;
+}[ColumnKind];
 
-/** The value of a layout: each field as its column's value type. */
+/**
+ * A list field, made by `list(of, capacity)`: at most `list` values of the
+ * element's kind, starting empty. Its value is a frozen array: read it as a
+ * copy, write it whole (`post.custom = [...post.custom, h]`).
+ */
+export interface ListSpec<K extends ListKind = ListKind> {
+  readonly kind: K;
+  readonly default: readonly ColumnKinds[K]["value"][];
+  readonly options: FieldOptions;
+  /** The capacity in elements, 1 to 1024. */
+  readonly list: number;
+}
+
+/** A reflected layout: field names to field specs. */
+export type Fields = { readonly [field: string]: FieldSpec | ListSpec };
+
+/** The value of a layout: each field as its column's value type, a list as a read-only array of it. */
 export type FieldValues<F extends Fields> = {
-  -readonly [K in keyof F]: ColumnKinds[F[K]["kind"]]["value"];
+  -readonly [K in keyof F]: F[K] extends { readonly list: number }
+    ? readonly ColumnKinds[F[K]["kind"]]["value"][]
+    : ColumnKinds[F[K]["kind"]]["value"];
 };
 
 /** The typed views of a layout: each field as its column's typed array. */
@@ -144,7 +164,7 @@ impl<'a> Gen<'a, '_> {
                 _ => None,
             })
             .collect();
-        for c in columns {
+        for c in columns.into_iter().filter(|c| !c.list) {
             self.jsdoc("  ", &c.doc, &[]);
             let value = self.ty(&c.value, &[]);
             let stride = if c.capacity {
@@ -230,6 +250,19 @@ impl<'a> Gen<'a, '_> {
                     let params = self.params(&c.params, &[], false);
                     let ret = self.ty(&c.returns, &[]);
                     self.line(&format!("export type {} = ({params}) => {ret};", c.name));
+                }
+                Item::Column(c) if c.list => {
+                    let tags = vec![
+                        "A list field: stored in the element's typed array, (capacity + 1) of its lanes per entity, the count first.".to_string(),
+                        "@param of The element's column factory, called for its kind: `u32()`, `Asset()`, `Post()` (its default and options are not used).".to_string(),
+                        "@param capacity The most elements it holds, 1 to 1024.".to_string(),
+                        "@param options Label and docs (a list has no range and is not tunable).".to_string(),
+                    ];
+                    self.jsdoc("", &c.doc, &tags);
+                    self.line(&format!(
+                        "export declare function {}<K extends ListKind>(of: FieldSpec<K>, capacity: number, options?: FieldOptions): ListSpec<K>;",
+                        c.name
+                    ));
                 }
                 Item::Column(c) if c.capacity => {
                     let value = self.ty(&c.value, &[]);
@@ -413,7 +446,12 @@ impl<'a> Gen<'a, '_> {
         let fields: Vec<String> = r
             .fields
             .iter()
-            .map(|f| format!("readonly {}: FieldSpec<\"{}\">", f.name, f.ty.name()))
+            .map(|f| match self.ix.list(&f.ty) {
+                Some((element, _)) => {
+                    format!("readonly {}: ListSpec<\"{}\">", f.name, element.name())
+                }
+                None => format!("readonly {}: FieldSpec<\"{}\">", f.name, f.ty.name()),
+            })
             .collect();
         let layout = if fields.is_empty() {
             "{}".to_string()
@@ -500,6 +538,11 @@ impl<'a> Gen<'a, '_> {
             tags.push(format!(
                 "@capacity {n} bytes of UTF-8 ({}({n})); longer text is refused, never truncated",
                 f.ty.name()
+            ));
+        }
+        if let Some((element, n)) = self.ix.list(&f.ty) {
+            tags.push(format!(
+                "@capacity {n} elements (List.{element}.{n}): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated"
             ));
         }
         if let Some(u) = &f.unit {

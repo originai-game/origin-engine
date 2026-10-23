@@ -144,14 +144,15 @@ impl TypeRef {
     /// Built-in generics have fixed arities, so the form is unambiguous;
     /// every other name takes no arguments, except that a whole type may
     /// end in one number: a text column's byte capacity (`str.48` is
-    /// `str<48>`, which the validator allows only there).
+    /// `str<48>`) or a list column's capacity in elements (`List.Post.8` is
+    /// `List<Post,8>`), which the validator allows only in a record field.
     pub fn parse(text: &str) -> Option<TypeRef> {
         let mut parts = text.split('.');
         let mut ty = Self::parse_parts(&mut parts)?;
         if let Some(n) = parts.next() {
             match &mut ty {
-                TypeRef::Named { args, .. }
-                    if args.is_empty()
+                TypeRef::Named { name, args }
+                    if (args.is_empty() || (name == "List" && args.len() == 1))
                         && !n.is_empty()
                         && n.bytes().all(|b| b.is_ascii_digit()) =>
                 {
@@ -416,6 +417,10 @@ pub struct Column {
     /// The factory takes a byte capacity first, and the stride is that
     /// capacity (`str(32)`: a `Uint8Array` of stride 32 holding text).
     pub capacity: bool,
+    /// The factory makes a list of another column's values: it takes that
+    /// column's field spec and a capacity in elements (`list(u32(), 8)`),
+    /// and the column is the element's. No array, stride or value of its own.
+    pub list: bool,
     pub value: TypeRef,
     pub line: usize,
 }

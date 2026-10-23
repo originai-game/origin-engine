@@ -94,6 +94,7 @@ fn load_handle(eng: &Engine, column: &str, path: &str) -> Result<Value, String> 
         "Lut" => super::fx::load_lut(eng, path)?,
         "Palette" => load_palette(eng, path)?,
         "EnvironmentMap" => super::environment::load(eng, path)?,
+        "Post" => super::views::load_post(eng, path)?,
         other => return Err(format!("a {other} is not loaded by a look")),
     };
     Ok(handle_value(i))
@@ -111,6 +112,21 @@ fn field_value(eng: &Engine, decl: &og_api::host::FieldDecl, v: &[Ogt]) -> Resul
         return Ok(json!(v.first().and_then(Ogt::as_word).unwrap_or_default()));
     }
     let n = numbers(v);
+    if decl.list > 0 {
+        // A list on its one line: numbers, or a handle per element by its
+        // asset id, each loaded by the element's loader.
+        if matches!(decl.column, "f32" | "f64" | "u32" | "i32") {
+            return Ok(json!(n));
+        }
+        return v
+            .iter()
+            .map(|x| match x.as_str() {
+                Some(path) => load_handle(eng, decl.column, path),
+                None => Err(format!("{} takes asset ids", decl.name)),
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(Value::Array);
+    }
     let at = |i: usize| n.get(i).copied().unwrap_or(0.0);
     Ok(match decl.column {
         "bool" => json!(v.first().and_then(Ogt::as_word) == Some("true")),

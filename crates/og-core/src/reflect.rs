@@ -21,6 +21,17 @@
 //! | `bool` | 1: `0` or `1` | `bool`, or [`Bool8`] for column views | a `Uint8Array` |
 //! | `enum` | 4: a `u32` index into the field's `variants` | `u32` with `#[reflect(variants = [..])]` | a `Uint32Array` |
 //! | `strN` (`str32`, `str64`, ...) | N, the capacity: 1 to [`STR_MAX_CAPACITY`] | [`Str<N>`] ([`Str64`] [`Str256`]) | a `Uint8Array` of stride N |
+//! | `S[N]` (`u64[8]`, `f32[4]`) | (N + 1) × the element's: 1 to [`LIST_MAX_CAPACITY`] | [`List<T, N>`] | the element's typed array, of stride (N + 1) × the element's |
+//!
+//! **Lists** are fixed-capacity lists of one number type (`f32` `f64` `i32`
+//! `u32` `i64` `u64`, the last also every handle) stored inline: a count
+//! lane, then N element lanes, each lane the element's size. The count lane
+//! holds the length as a value of the element type (`3.0` in an `f32[4]`,
+//! `3` in a `u64[8]`), so `[]` and `[0]` differ, and the lanes past the length
+//! are zero, so the bytes (the world's hash, snapshots) depend on the list
+//! alone. The capacity is part of the type (`u64[8]`) and of the layout hash.
+//! A list longer than its capacity is refused, never truncated. A list field
+//! has no range, no declared default (it starts empty) and is not tunable.
 //!
 //! **Strings** are fixed-capacity UTF-8 stored inline: the text, then zeros
 //! up to the capacity (no interior NUL), so a string is plain component
@@ -32,7 +43,8 @@
 //! schema ([`FieldSchema::variants`]) and in the layout hash, so reordering
 //! variants is a layout change. **Bools** are one byte; the byte entry points
 //! ([`Schema::check_packed`]) refuse anything but 0 and 1, while a column view
-//! reads any non-zero byte as true.
+//! reads any non-zero byte as true; a list's count past its capacity, or a
+//! non-zero lane past its length, is refused there too.
 
 use crate::error::{Error, ErrorKind, Result};
 use crate::hash::StableHasher;
@@ -55,6 +67,70 @@ pub enum Scalar {
 }
 
 impl Scalar {
+    /// The scalar's field-type name (`f32`, `u64`); `bool` and `utf8` for
+    /// the two byte scalars.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Scalar::F32 => "f32",
+            Scalar::F64 => "f64",
+            Scalar::I32 => "i32",
+            Scalar::U32 => "u32",
+            Scalar::I64 => "i64",
+            Scalar::U64 => "u64",
+            Scalar::Bool => "bool",
+            Scalar::Utf8 => "utf8",
+        }
+    }
+
+    /// The single-lane field type of this scalar: a list element read alone
+    /// (`u64` for a handle). A UTF-8 byte is a `str1`.
+    pub const fn field_type(self) -> FieldType {
+        match self {
+            Scalar::F32 => FieldType::F32,
+            Scalar::F64 => FieldType::F64,
+            Scalar::I32 => FieldType::I32,
+            Scalar::U32 => FieldType::U32,
+            Scalar::I64 => FieldType::I64,
+            Scalar::U64 => FieldType::U64,
+            Scalar::Bool => FieldType::Bool,
+            Scalar::Utf8 => FieldType::Str(1),
+        }
+    }
+
+    /// Whether a list may hold it: the six number types (a handle is a `u64`).
+    pub const fn is_list_element(self) -> bool {
+        !matches!(self, Scalar::Bool | Scalar::Utf8)
+    }
+
+    /// `n` as one lane of this scalar: the count lane of a list.
+    fn count_lane(self, n: usize, out: &mut [u8]) {
+        match self {
+            Scalar::F32 => out.copy_from_slice(&(n as f32).to_le_bytes()),
+            Scalar::F64 => out.copy_from_slice(&(n as f64).to_le_bytes()),
+            Scalar::I32 | Scalar::U32 => out.copy_from_slice(&(n as u32).to_le_bytes()),
+            Scalar::I64 | Scalar::U64 => out.copy_from_slice(&(n as u64).to_le_bytes()),
+            Scalar::Bool | Scalar::Utf8 => out[0] = n as u8,
+        }
+    }
+
+    /// The whole number one lane of this scalar holds; `None` for a
+    /// fraction, a negative, a NaN or a number past `u32`.
+    fn whole_lane(self, b: &[u8]) -> Option<u64> {
+        let w4 = || <[u8; 4]>::try_from(&b[..4]).ok();
+        let w8 = || <[u8; 8]>::try_from(&b[..8]).ok();
+        let float =
+            |x: f64| (x.fract() == 0.0 && (0.0..=u32::MAX as f64).contains(&x)).then_some(x as u64);
+        match self {
+            Scalar::F32 => float(f64::from(f32::from_le_bytes(w4()?))),
+            Scalar::F64 => float(f64::from_le_bytes(w8()?)),
+            Scalar::I32 => u64::try_from(i32::from_le_bytes(w4()?)).ok(),
+            Scalar::U32 => Some(u64::from(u32::from_le_bytes(w4()?))),
+            Scalar::I64 => u64::try_from(i64::from_le_bytes(w8()?)).ok(),
+            Scalar::U64 => Some(u64::from_le_bytes(w8()?)),
+            Scalar::Bool | Scalar::Utf8 => Some(u64::from(b[0])),
+        }
+    }
+
     pub const fn size(self) -> usize {
         match self {
             Scalar::Bool | Scalar::Utf8 => 1,
@@ -66,6 +142,9 @@ impl Scalar {
 
 /// The most bytes a string field holds (`str4096`).
 pub const STR_MAX_CAPACITY: usize = 4096;
+
+/// The most elements a list field holds (`u64[1024]`).
+pub const LIST_MAX_CAPACITY: usize = 1024;
 
 /// The type of one reflected field. JSON spells it by [`FieldType::name`]
 /// (`"vec3"`, `"str32"`).
@@ -90,6 +169,10 @@ pub enum FieldType {
     /// UTF-8 text of at most this many bytes (1 to [`STR_MAX_CAPACITY`]),
     /// zero-padded: `str32` is `Str(32)`.
     Str(u16),
+    /// A list of at most this many elements (1 to [`LIST_MAX_CAPACITY`]) of
+    /// one number type ([`Scalar::is_list_element`]): a count lane, then the
+    /// element lanes, zero past the length. `u64[8]` is `List(Scalar::U64, 8)`.
+    List(Scalar, u16),
 }
 
 impl Serialize for FieldType {
@@ -103,7 +186,7 @@ impl<'de> Deserialize<'de> for FieldType {
         let name = String::deserialize(d)?;
         FieldType::parse(&name).ok_or_else(|| {
             serde::de::Error::custom(format!(
-                "unknown field type '{name}': f32, f64, i32, u32, i64, u64, vec2, vec3, vec4, quat, bool, mat4, enum or strN (N bytes, 1 to {STR_MAX_CAPACITY})"
+                "unknown field type '{name}': f32, f64, i32, u32, i64, u64, vec2, vec3, vec4, quat, bool, mat4, enum, strN (N bytes, 1 to {STR_MAX_CAPACITY}) or a list S[N] of f32, f64, i32, u32, i64 or u64 (N elements, 1 to {LIST_MAX_CAPACITY})"
             ))
         })
     }
@@ -127,11 +210,13 @@ impl FieldType {
             FieldType::U64 => Scalar::U64,
             FieldType::Bool => Scalar::Bool,
             FieldType::Str(_) => Scalar::Utf8,
+            FieldType::List(element, _) => element,
         }
     }
 
     /// Scalars per value: 1, 2/3/4 for vectors and quaternions, 16 for a
-    /// matrix, the byte capacity for a string.
+    /// matrix, the byte capacity for a string, the capacity plus the count
+    /// lane for a list.
     pub const fn lanes(self) -> usize {
         match self {
             FieldType::Vec2 => 2,
@@ -139,7 +224,46 @@ impl FieldType {
             FieldType::Vec4 | FieldType::Quat => 4,
             FieldType::Mat4 => 16,
             FieldType::Str(capacity) => capacity as usize,
+            FieldType::List(_, capacity) => capacity as usize + 1,
             _ => 1,
+        }
+    }
+
+    /// A list type of at most `capacity` elements of `element`, refused for
+    /// an element that is not a number type or a capacity outside 1 to
+    /// [`LIST_MAX_CAPACITY`].
+    pub fn list(element: Scalar, capacity: usize) -> Result<FieldType> {
+        if !element.is_list_element() {
+            return Err(Error::new(
+                ErrorKind::Schema,
+                format!(
+                    "a list holds f32, f64, i32, u32, i64 or u64 (a handle is a u64), not {}",
+                    element.name()
+                ),
+            ));
+        }
+        if !(1..=LIST_MAX_CAPACITY).contains(&capacity) {
+            return Err(Error::new(
+                ErrorKind::Schema,
+                format!(
+                    "a list field holds 1 to {LIST_MAX_CAPACITY} elements, got a capacity of {capacity}"
+                ),
+            ));
+        }
+        Ok(FieldType::List(element, capacity as u16))
+    }
+
+    /// Whether this is a list (`u64[8]`).
+    pub const fn is_list(self) -> bool {
+        matches!(self, FieldType::List(..))
+    }
+
+    /// A list's element type and capacity in elements; `None` for every
+    /// other type.
+    pub const fn list_of(self) -> Option<(Scalar, usize)> {
+        match self {
+            FieldType::List(element, capacity) => Some((element, capacity as usize)),
+            _ => None,
         }
     }
 
@@ -173,9 +297,13 @@ impl FieldType {
 
     /// Whether packed bytes of this type have values outside the type (a
     /// bool byte other than 0 or 1, an enum index past its variants, a string
-    /// that is not zero-padded UTF-8), which [`Schema::check_packed`] refuses.
+    /// that is not zero-padded UTF-8, a list whose count or tail is not
+    /// one), which [`Schema::check_packed`] refuses.
     pub const fn is_checked(self) -> bool {
-        matches!(self, FieldType::Bool | FieldType::Enum | FieldType::Str(_))
+        matches!(
+            self,
+            FieldType::Bool | FieldType::Enum | FieldType::Str(_) | FieldType::List(..)
+        )
     }
 
     /// Bytes per value.
@@ -184,7 +312,7 @@ impl FieldType {
     }
 
     /// The lower-case name used in JSON, snapshots and hashes: `f32`,
-    /// `vec3`, `str32`.
+    /// `vec3`, `str32`, `u64[8]`.
     pub fn name(self) -> std::borrow::Cow<'static, str> {
         std::borrow::Cow::Borrowed(match self {
             FieldType::F32 => "f32",
@@ -203,12 +331,36 @@ impl FieldType {
             FieldType::Str(64) => "str64",
             FieldType::Str(256) => "str256",
             FieldType::Str(capacity) => return format!("str{capacity}").into(),
+            FieldType::List(element, capacity) => {
+                return format!("{}[{capacity}]", element.name()).into();
+            }
         })
     }
 
-    /// The type a [`FieldType::name`] names; `None` for an unknown name or a
-    /// string capacity outside 1 to [`STR_MAX_CAPACITY`].
+    /// The type a [`FieldType::name`] names; `None` for an unknown name, a
+    /// string capacity outside 1 to [`STR_MAX_CAPACITY`] or a list that
+    /// [`FieldType::list`] refuses.
     pub fn parse(name: &str) -> Option<FieldType> {
+        if let Some((element, rest)) = name.split_once('[') {
+            let digits = rest.strip_suffix(']')?;
+            // One spelling per type: no sign, no leading zero.
+            if digits.is_empty()
+                || !digits.bytes().all(|b| b.is_ascii_digit())
+                || digits.starts_with('0')
+            {
+                return None;
+            }
+            let element = match FieldType::parse(element)? {
+                FieldType::F32 => Scalar::F32,
+                FieldType::F64 => Scalar::F64,
+                FieldType::I32 => Scalar::I32,
+                FieldType::U32 => Scalar::U32,
+                FieldType::I64 => Scalar::I64,
+                FieldType::U64 => Scalar::U64,
+                _ => return None,
+            };
+            return FieldType::list(element, digits.parse().ok()?).ok();
+        }
         Some(match name {
             "f32" => FieldType::F32,
             "f64" => FieldType::F64,
@@ -273,6 +425,59 @@ pub fn unpack_str(bytes: &[u8]) -> &str {
         Ok(s) => s,
         Err(e) => std::str::from_utf8(&bytes[..e.valid_up_to()]).unwrap_or_default(),
     }
+}
+
+/// The length a list field's packed bytes hold: its count lane, read as a
+/// whole number of the element type. `None` for a type that is not a list,
+/// or a count lane that is not a whole number from 0 to the capacity.
+pub fn list_len(ty: FieldType, bytes: &[u8]) -> Option<usize> {
+    let (element, capacity) = ty.list_of()?;
+    let n = element.whole_lane(bytes.get(..element.size())?)?;
+    (n <= capacity as u64).then_some(n as usize)
+}
+
+/// The packed bytes of a list field of type `ty` holding `elements` (each
+/// one lane: the element's little-endian bytes), the lanes past them zero.
+/// Refused, with the fix named, past the capacity; never truncated.
+pub fn pack_list(ty: FieldType, elements: &[&[u8]]) -> std::result::Result<Vec<u8>, String> {
+    let (element, capacity) = ty
+        .list_of()
+        .ok_or_else(|| format!("{} is not a list type", ty.name()))?;
+    if elements.len() > capacity {
+        return Err(format!(
+            "{} elements and the field holds {capacity}: remove {}, or declare the field {}[{}] or larger",
+            elements.len(),
+            elements.len() - capacity,
+            element.name(),
+            elements.len()
+        ));
+    }
+    let lane = element.size();
+    let mut out = vec![0u8; ty.size()];
+    element.count_lane(elements.len(), &mut out[..lane]);
+    for (i, e) in elements.iter().enumerate() {
+        if e.len() != lane {
+            return Err(format!(
+                "element {i} is {} bytes, a {} is {lane}",
+                e.len(),
+                element.name()
+            ));
+        }
+        out[lane * (i + 1)..lane * (i + 2)].copy_from_slice(e);
+    }
+    Ok(out)
+}
+
+/// The element lanes of a list field's packed bytes, up to its length (none
+/// for bytes whose count lane [`list_len`] does not read).
+pub fn list_elements(ty: FieldType, bytes: &[u8]) -> impl Iterator<Item = &[u8]> {
+    let lane = ty.scalar().size();
+    let n = list_len(ty, bytes).unwrap_or(0);
+    bytes
+        .get(lane..)
+        .unwrap_or_default()
+        .chunks_exact(lane)
+        .take(n)
 }
 
 mod sealed {
@@ -488,6 +693,134 @@ impl<const N: usize> ReflectField for Str<N> {
     }
 }
 
+/// A number type a [`List`] holds: `f32`, `f64`, `i32`, `u32`, `i64`,
+/// `u64` (a handle is a `u64`). Sealed.
+pub trait ListElement: FieldValue + Send + Sync {
+    #[doc(hidden)]
+    const SCALAR: Scalar;
+}
+
+macro_rules! list_element {
+    ($($t:ty => $s:ident),* $(,)?) => {$(
+        impl ListElement for $t {
+            const SCALAR: Scalar = Scalar::$s;
+        }
+    )*};
+}
+
+list_element! { f32 => F32, f64 => F64, i32 => I32, u32 => U32, i64 => I64, u64 => U64 }
+
+/// A list field: at most `N` values of `T` stored inline (`u64[8]` is
+/// `List<u64, 8>`). `N` is 1 to [`LIST_MAX_CAPACITY`], checked at compile
+/// time. The slots past the length are kept zero, so two lists with the same
+/// elements are the same bytes.
+#[derive(Clone, Copy, PartialEq)]
+pub struct List<T: ListElement, const N: usize> {
+    items: [T; N],
+    len: usize,
+}
+
+impl<T: ListElement, const N: usize> List<T, N> {
+    /// The capacity in elements.
+    pub const CAPACITY: usize = N;
+
+    /// The empty list.
+    pub fn new() -> Self {
+        List {
+            items: [T::zero(); N],
+            len: 0,
+        }
+    }
+
+    /// A list of `items`, refused past the capacity ([`pack_list`]'s reason).
+    pub fn from_slice(items: &[T]) -> Result<Self> {
+        let mut out = Self::new();
+        for &x in items {
+            out.push(x)?;
+        }
+        Ok(out)
+    }
+
+    /// Appends `x`, refused when the list is full.
+    pub fn push(&mut self, x: T) -> Result<()> {
+        if self.len == N {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("the list is full: it holds {N}"),
+            ));
+        }
+        self.items[self.len] = x;
+        self.len += 1;
+        Ok(())
+    }
+
+    /// Empties the list.
+    pub fn clear(&mut self) {
+        self.items = [T::zero(); N];
+        self.len = 0;
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    pub fn as_slice(&self) -> &[T] {
+        &self.items[..self.len]
+    }
+}
+
+impl<T: ListElement, const N: usize> Default for List<T, N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T: ListElement + std::fmt::Debug, const N: usize> std::fmt::Debug for List<T, N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self.as_slice()).finish()
+    }
+}
+
+impl<T: ListElement, const N: usize> sealed::SealedField for List<T, N> {}
+
+impl<T: ListElement, const N: usize> ReflectField for List<T, N> {
+    const TYPE: FieldType = {
+        assert!(
+            N >= 1 && N <= LIST_MAX_CAPACITY,
+            "a List<T, N> holds 1 to LIST_MAX_CAPACITY (1024) elements"
+        );
+        FieldType::List(T::SCALAR, N as u16)
+    };
+
+    fn write_packed(&self, out: &mut dyn FnMut(&[u8])) {
+        let mut bytes = vec![0u8; <Self as ReflectField>::TYPE.size()];
+        let lane = T::SCALAR.size();
+        T::SCALAR.count_lane(self.len, &mut bytes[..lane]);
+        for (i, x) in self.items.iter().enumerate() {
+            bytes[lane * (i + 1)..lane * (i + 2)].copy_from_slice(x.as_bytes());
+        }
+        out(&bytes);
+    }
+
+    fn read_packed(input: &mut dyn FnMut(&mut [u8])) -> Self {
+        let ty = <Self as ReflectField>::TYPE;
+        let mut bytes = vec![0u8; ty.size()];
+        input(&mut bytes);
+        let mut out = Self::new();
+        for e in list_elements(ty, &bytes) {
+            let mut x = T::zero();
+            x.as_bytes_mut().copy_from_slice(e);
+            out.items[out.len] = x;
+            out.len += 1;
+        }
+        out
+    }
+}
+
 /// One field of a [`Schema`].
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FieldSchema {
@@ -507,7 +840,8 @@ pub struct FieldSchema {
     #[serde(default)]
     pub tunable: bool,
     /// One number per lane, when the field has a declared default (an
-    /// enum's is the variant index, a bool's 0 or 1; strings have none).
+    /// enum's is the variant index, a bool's 0 or 1; strings and lists have
+    /// none).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default: Option<Vec<f64>>,
     /// The variant names of an `enum` field, by index; empty for every other
@@ -541,11 +875,12 @@ impl FieldSchema {
     }
 
     /// The field's default as packed bytes: its declared `default`, or zeros
-    /// (`0`, `false`, the first variant, the empty string).
+    /// (`0`, `false`, the first variant, the empty string, the empty list).
     pub fn default_bytes(&self) -> Vec<u8> {
         let mut out = Vec::with_capacity(self.ty.size());
+        let declared = !self.ty.is_string() && !self.ty.is_list();
         match &self.default {
-            Some(values) if !self.ty.is_string() && values.len() == self.ty.lanes() => {
+            Some(values) if declared && values.len() == self.ty.lanes() => {
                 for &v in values {
                     match self.ty.scalar() {
                         Scalar::F32 => out.extend_from_slice(&(v as f32).to_le_bytes()),
@@ -565,7 +900,8 @@ impl FieldSchema {
 
     /// `Ok` when `bytes` (this field's packed bytes) hold a value of the
     /// type: a bool is 0 or 1, an enum index names a variant, a string is
-    /// UTF-8 followed only by zeros. Other types accept every bit pattern.
+    /// UTF-8 followed only by zeros, a list's count is a whole number up to
+    /// its capacity with zeros past it. Other types accept every bit pattern.
     pub fn check_value(&self, bytes: &[u8]) -> std::result::Result<(), String> {
         if bytes.len() != self.ty.size() {
             return Err(format!(
@@ -596,6 +932,18 @@ impl FieldSchema {
                 std::str::from_utf8(&bytes[..end])
                     .map(|_| ())
                     .map_err(|_| "a string that is not UTF-8".into())
+            }
+            FieldType::List(element, capacity) => {
+                let lane = element.size();
+                let n = list_len(self.ty, bytes).ok_or_else(|| {
+                    format!("a list's count lane is not a whole number from 0 to {capacity}")
+                })?;
+                if bytes[lane * (n + 1)..].iter().any(|&b| b != 0) {
+                    return Err(format!(
+                        "a list of {n} element(s) has non-zero lanes past its length"
+                    ));
+                }
+                Ok(())
             }
             _ => Ok(()),
         }
@@ -699,6 +1047,29 @@ impl Schema {
                 if f.tunable {
                     return err(format!(
                         "string field '{at}' is tunable; Tune and the probe's bounds publish numbers only (set the text with world.set or the probe's set:)"
+                    ));
+                }
+            }
+            if let Some((element, capacity)) = f.ty.list_of() {
+                if !element.is_list_element() || !(1..=LIST_MAX_CAPACITY).contains(&capacity) {
+                    return err(format!(
+                        "list field '{at}' is {}; a list holds 1 to {LIST_MAX_CAPACITY} f32, f64, i32, u32, i64 or u64",
+                        f.ty.name()
+                    ));
+                }
+                if f.default.is_some() {
+                    return err(format!(
+                        "list field '{at}' has a default; a list field starts empty"
+                    ));
+                }
+                if f.min.is_some() || f.max.is_some() {
+                    return err(format!(
+                        "list field '{at}' has a range; only a single number has one"
+                    ));
+                }
+                if f.tunable {
+                    return err(format!(
+                        "list field '{at}' is tunable; Tune and the probe's bounds publish single numbers only (set the whole list with world.set or the probe's set:)"
                     ));
                 }
             }

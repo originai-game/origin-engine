@@ -1,6 +1,10 @@
 //! Reflected layouts as the hosts see them: which column kind each field has,
 //! and the conversion between a value's JSON (what crosses the boundary) and
 //! its packed bytes (what `og-ecs` stores).
+//!
+//! A list field (`list(Asset(), 4)`, the IDL's `List.Post.8`) has its
+//! element's kind and a list type (`u64[4]`): its JSON is an array of the
+//! element's values, refused past the capacity, never truncated.
 
 use og_core::reflect::{FieldSchema, FieldType, Schema};
 use serde_json::{Map, Value, json};
@@ -84,8 +88,33 @@ impl Kind {
     /// The og-core field type this kind is stored as: a `bool` is one byte
     /// (a `Uint8Array` column), a `Matrix4` sixteen f32, handles a `u64`, a
     /// `str(N)` field its `capacity` bytes (an event's text without one a
-    /// `str256`), an enum a `u32` index.
-    pub fn field_type(self, viewed: bool, capacity: Option<usize>) -> Result<FieldType, String> {
+    /// `str256`), an enum a `u32` index; with `list`, a list of at most that
+    /// many of a number or a handle.
+    pub fn field_type(
+        self,
+        viewed: bool,
+        capacity: Option<usize>,
+        list: Option<usize>,
+    ) -> Result<FieldType, String> {
+        if let Some(n) = list {
+            let element = match self {
+                Kind::F32 => og_core::Scalar::F32,
+                Kind::F64 => og_core::Scalar::F64,
+                Kind::U32 => og_core::Scalar::U32,
+                Kind::I32 => og_core::Scalar::I32,
+                k if k.is_handle() => og_core::Scalar::U64,
+                _ => {
+                    return Err(
+                        "a list holds f32, f64, u32, i32 or a handle (Asset(), Entity(), Post(), ...)"
+                            .into(),
+                    );
+                }
+            };
+            if capacity.is_some() {
+                return Err("a list has a capacity in elements, not bytes".into());
+            }
+            return FieldType::list(element, n).map_err(|e| e.reason().to_owned());
+        }
         if let Some(n) = capacity {
             if self != Kind::Str {
                 return Err("only a str field has a capacity".into());
@@ -113,9 +142,19 @@ impl Kind {
         })
     }
 
-    /// The kind a field of a registered og-core schema is read as.
+    /// Whether the kind is a 64-bit handle (an entity or an asset).
+    pub fn is_handle(self) -> bool {
+        matches!(
+            self,
+            Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset | Kind::Sound
+        )
+    }
+
+    /// The kind a field of a registered og-core schema is read as (a list's
+    /// is its element's).
     pub fn of(ty: FieldType) -> Kind {
         match ty {
+            FieldType::List(element, _) => Kind::of(element.field_type()),
             FieldType::F32 => Kind::F32,
             FieldType::F64 => Kind::F64,
             FieldType::I32 => Kind::I32,
@@ -229,10 +268,27 @@ impl Layout {
                         })?,
                 ),
             };
+            let list = match f.get("list") {
+                None | Some(Value::Null) => None,
+                Some(c) => Some(
+                    c.as_u64()
+                        .and_then(|c| usize::try_from(c).ok())
+                        .ok_or_else(|| {
+                            format!(
+                                "'{schema}.{name}': a list's capacity is a whole number of elements, got {c}"
+                            )
+                        })?,
+                ),
+            };
             let ty = k
-                .field_type(kind == RecordKind::Component, capacity)
+                .field_type(kind == RecordKind::Component, capacity, list)
                 .map_err(|e| format!("'{schema}.{name}': {e}"))?;
             let o = &f["options"];
+            if list.is_some() && o.get("tunable").and_then(Value::as_bool) == Some(true) {
+                return Err(format!(
+                    "'{schema}.{name}': a list is never tunable (Tune and the probe's bounds move one number)"
+                ));
+            }
             let opt_num = |key: &str| o.get(key).and_then(Value::as_f64);
             let opt_str = |key: &str| {
                 o.get(key)
@@ -286,10 +342,12 @@ impl Layout {
             } else {
                 Kind::Enum
             };
-            // A text field's capacity is the IDL's (`str.48`).
+            // A text field's capacity is the IDL's (`str.48`), a list's too
+            // (`List.Post.8`).
             let capacity = (f.capacity > 0).then_some(f.capacity as usize);
+            let list = (f.list > 0).then_some(f.list as usize);
             let ty = k
-                .field_type(kind == RecordKind::Component, capacity)
+                .field_type(kind == RecordKind::Component, capacity, list)
                 .map_err(|e| format!("'{}.{}': {e}", decl.schema, f.name))?;
             fields.push(FieldLayout {
                 name: f.name.to_string(),
@@ -528,9 +586,13 @@ impl<'a> Row<'a> {
         Row { layout, bytes }
     }
 
-    /// The field named `key` and its bytes.
+    /// The field named `key` and its bytes; `None` for a list, whose JSON
+    /// is an array that none of these reads answers.
     fn field(&self, key: &str) -> Option<(&'a FieldLayout, &'a [u8])> {
         let (f, at) = self.layout.slot(key)?;
+        if f.ty.is_list() {
+            return None;
+        }
         self.bytes.get(at..at + f.ty.size()).map(|b| (f, b))
     }
 
@@ -609,8 +671,52 @@ fn f32_lanes(v: &Value, keys: &[&str], out: &mut Vec<u8>) -> Result<(), String> 
     Ok(())
 }
 
-fn encode_field(f: &FieldLayout, v: &Value, out: &mut Vec<u8>) -> Result<(), String> {
-    match f.kind {
+/// A list's JSON (an array; `null` is the empty list) as its packed bytes.
+fn encode_list(f: &FieldLayout, v: &Value, out: &mut Vec<u8>) -> Result<(), String> {
+    let (_, capacity) = f.ty.list_of().expect("a list type");
+    let items: &[Value] = match v {
+        Value::Null => &[],
+        Value::Array(items) => items,
+        other => return Err(format!("a list is an array, got {other}")),
+    };
+    if items.len() > capacity {
+        let kind = kind_label(f.kind);
+        return Err(format!(
+            "{} elements and the field holds {capacity}: remove {}, or declare the field list({kind}(), {}) or larger",
+            items.len(),
+            items.len() - capacity,
+            items.len()
+        ));
+    }
+    let mut lanes = Vec::with_capacity(items.len());
+    for (i, item) in items.iter().enumerate() {
+        let mut lane = Vec::with_capacity(8);
+        encode_number(f.kind, item, &mut lane).map_err(|e| format!("element {i}: {e}"))?;
+        lanes.push(lane);
+    }
+    let refs: Vec<&[u8]> = lanes.iter().map(Vec::as_slice).collect();
+    out.extend_from_slice(&og_core::pack_list(f.ty, &refs)?);
+    Ok(())
+}
+
+/// The factory name of a list's element kind, for messages.
+fn kind_label(kind: Kind) -> &'static str {
+    match kind {
+        Kind::F32 => "f32",
+        Kind::F64 => "f64",
+        Kind::U32 => "u32",
+        Kind::I32 => "i32",
+        Kind::Entity => "Entity",
+        Kind::Geometry => "Geometry",
+        Kind::Material => "Material",
+        Kind::Sound => "Sound",
+        _ => "Asset",
+    }
+}
+
+/// One number or handle lane.
+fn encode_number(kind: Kind, v: &Value, out: &mut Vec<u8>) -> Result<(), String> {
+    match kind {
         Kind::F32 => out.extend_from_slice(&(number(v, "the value")? as f32).to_le_bytes()),
         Kind::F64 => out.extend_from_slice(&number(v, "the value")?.to_le_bytes()),
         Kind::U32 => {
@@ -627,6 +733,24 @@ fn encode_field(f: &FieldLayout, v: &Value, out: &mut Vec<u8>) -> Result<(), Str
             }
             out.extend_from_slice(&(n as i32).to_le_bytes())
         }
+        k if k.is_handle() => {
+            let n = number(v, "a handle")?;
+            if n.fract() != 0.0 || !(0.0..9_007_199_254_740_992.0).contains(&n) {
+                return Err(format!("{n} is not a handle"));
+            }
+            out.extend_from_slice(&(n as u64).to_le_bytes())
+        }
+        _ => unreachable!("a number or a handle"),
+    }
+    Ok(())
+}
+
+fn encode_field(f: &FieldLayout, v: &Value, out: &mut Vec<u8>) -> Result<(), String> {
+    if f.ty.is_list() {
+        return encode_list(f, v, out);
+    }
+    match f.kind {
+        Kind::F32 | Kind::F64 | Kind::U32 | Kind::I32 => encode_number(f.kind, v, out)?,
         Kind::Bool => {
             let b = match v {
                 Value::Null => false,
@@ -658,11 +782,7 @@ fn encode_field(f: &FieldLayout, v: &Value, out: &mut Vec<u8>) -> Result<(), Str
             out.extend_from_slice(&(index as u32).to_le_bytes())
         }
         Kind::Entity | Kind::Geometry | Kind::Material | Kind::Asset | Kind::Sound => {
-            let n = number(v, "a handle")?;
-            if n.fract() != 0.0 || !(0.0..9_007_199_254_740_992.0).contains(&n) {
-                return Err(format!("{n} is not a handle"));
-            }
-            out.extend_from_slice(&(n as u64).to_le_bytes())
+            encode_number(f.kind, v, out)?
         }
         Kind::Vector2 | Kind::Vector3 | Kind::Quaternion | Kind::Color => {
             f32_lanes(v, f.kind.keys(), out)?
@@ -686,6 +806,17 @@ fn f32_at(b: &[u8], i: usize) -> f32 {
 }
 
 fn decode_field(f: &FieldLayout, b: &[u8]) -> Value {
+    if f.ty.is_list() {
+        // The elements up to its length, each as its kind reads alone.
+        let one = |e: &[u8]| match f.kind {
+            Kind::F32 => json!(f32_at(e, 0) as f64),
+            Kind::F64 => json!(f64::from_le_bytes(e[..8].try_into().expect("8 bytes"))),
+            Kind::U32 => json!(u32::from_le_bytes(e[..4].try_into().expect("4 bytes"))),
+            Kind::I32 => json!(i32::from_le_bytes(e[..4].try_into().expect("4 bytes"))),
+            _ => json!(u64::from_le_bytes(e[..8].try_into().expect("8 bytes"))),
+        };
+        return Value::Array(og_core::list_elements(f.ty, b).map(one).collect());
+    }
     match f.kind {
         Kind::F32 => json!(f32_at(b, 0) as f64),
         Kind::F64 => json!(f64::from_le_bytes(b[..8].try_into().expect("8 bytes"))),
@@ -738,6 +869,7 @@ mod tests {
             doc: "",
             variants: &[],
             capacity,
+            list: 0,
         }
     }
 
@@ -810,5 +942,82 @@ mod tests {
         assert_eq!(bytes.len(), 24 + 4);
         assert_eq!(&bytes[..3], b"Ada");
         assert!(bytes[3..24].iter().all(|b| *b == 0));
+    }
+
+    /// A list field (`List.Post.8` in the IDL) is its element's kind at the
+    /// IDL's capacity: an array of handles in and out, `[]` and `[0]` apart,
+    /// refused past the capacity with the fix and never truncated.
+    #[test]
+    fn an_engine_record_list_field_takes_the_idl_capacity() {
+        let mut passes = field("passes", "Post", "[]", 0);
+        passes.list = 3;
+        let mut weights = field("weights", "f32", "[]", 0);
+        weights.list = 2;
+        let fields: &'static [FieldDecl] = Box::leak(Box::new([passes, weights]));
+        let decl = RecordDecl {
+            kind: "resource",
+            name: "Chain",
+            schema: "og.Chain",
+            fields,
+        };
+        let layout = Layout::from_decl(&decl).unwrap();
+        assert_eq!(
+            layout.fields[0].ty,
+            FieldType::List(og_core::Scalar::U64, 3)
+        );
+        assert_eq!(
+            layout.fields[1].ty,
+            FieldType::List(og_core::Scalar::F32, 2)
+        );
+        let empty = layout.encode(None, None).unwrap();
+        assert_eq!(empty.len(), 8 * 4 + 4 * 3);
+        assert_eq!(
+            layout.decode(&empty),
+            json!({ "passes": [], "weights": [] })
+        );
+        let big = 4_294_967_298u64;
+        let value = json!({ "passes": [big, 0], "weights": [0.5] });
+        let bytes = layout.encode(None, Some(&value)).unwrap();
+        assert_eq!(layout.decode(&bytes), value);
+        assert_eq!(bytes[..8], 2u64.to_le_bytes());
+        let zero = layout
+            .encode(None, Some(&json!({ "passes": [0] })))
+            .unwrap();
+        assert_ne!(zero, empty, "[0] is not []");
+        let long = layout
+            .encode(Some(&bytes), Some(&json!({ "passes": [1, 2, 3, 4] })))
+            .unwrap_err();
+        assert!(
+            long.contains("og.Chain.passes': 4 elements and the field holds 3")
+                && long.contains("list(Asset(), 4)"),
+            "{long}"
+        );
+        let bad = layout
+            .encode(None, Some(&json!({ "weights": "x" })))
+            .unwrap_err();
+        assert!(bad.contains("a list is an array"), "{bad}");
+        // A row reads no list field: its JSON is an array.
+        let row = Row::new(&layout, &bytes);
+        assert_eq!((row.num("passes"), row.uint("passes")), (None, None));
+    }
+
+    /// PostEffects.custom holds what og-render runs, so the two cannot drift.
+    #[test]
+    fn post_effects_custom_is_a_list_of_every_pass_og_render_runs() {
+        let post = og_api::host::RECORDS
+            .iter()
+            .find(|r| r.schema == "og.PostEffects")
+            .unwrap();
+        let custom = post.fields.iter().find(|f| f.name == "custom").unwrap();
+        assert_eq!(
+            (custom.column, custom.list as usize),
+            ("Post", og_render::MAX_CUSTOM_POSTS)
+        );
+        assert!(
+            !post
+                .fields
+                .iter()
+                .any(|f| f.name.starts_with("custom") && f.name != "custom")
+        );
     }
 }

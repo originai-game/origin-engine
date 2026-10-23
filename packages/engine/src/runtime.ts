@@ -42,6 +42,8 @@ export interface ColumnSpec {
   readonly stride: number;
   /** The stride is each field's capacity (`str(32)`), not the kind's. */
   readonly capacity?: boolean;
+  /** The list factory (`list(u32(), 8)`): no kind of its own, a list field's kind is its element's. */
+  readonly list?: boolean;
 }
 
 export const COLUMNS: ReadonlyMap<string, ColumnSpec> = new Map(
@@ -122,6 +124,8 @@ export interface FieldSpec {
   readonly options: Record<string, unknown>;
   /** A `str` field's capacity in bytes. */
   readonly capacity?: number;
+  /** A list field's capacity in elements (`list(u32(), 8)`); `kind` is the element's. */
+  readonly list?: number;
 }
 
 export interface Token {
@@ -138,6 +142,7 @@ function fieldList(fields: Readonly<Record<string, FieldSpec>>): unknown[] {
     default: spec?.default,
     options: spec?.options ?? {},
     ...(spec?.capacity === undefined ? {} : { capacity: spec.capacity }),
+    ...(spec?.list === undefined ? {} : { list: spec.list }),
   }));
 }
 
@@ -150,13 +155,18 @@ export function defineRecord(kind: "component" | "resource", name: string, field
   return token;
 }
 
-function builtinFields(fields: ReadonlyArray<{ name: string; column?: string; type?: string; default?: unknown }>): Record<string, FieldSpec> {
+type DeclField = { name: string; column?: string; type?: string; default?: unknown; list?: number };
+
+function builtinFields(fields: ReadonlyArray<DeclField>): Record<string, FieldSpec> {
   const out: Record<string, FieldSpec> = {};
-  for (const f of fields) out[f.name] = Object.freeze({ kind: f.column ?? f.type ?? "", default: f.default, options: Object.freeze({}) });
+  for (const f of fields) {
+    const spec = { kind: f.column ?? f.type ?? "", default: f.default, options: Object.freeze({}) };
+    out[f.name] = Object.freeze(f.list === undefined ? spec : { ...spec, list: f.list });
+  }
   return out;
 }
 
-type Decl = { name: string; schema: string; fields: Array<{ name: string; column?: string; type?: string; default?: unknown }> };
+type Decl = { name: string; schema: string; fields: Array<DeclField> };
 
 /** The engine-owned tokens on `og`, under their schema names (`og.Transform`). */
 export const BUILTINS: Readonly<Record<string, Token>> = Object.freeze(
@@ -316,7 +326,9 @@ function layoutOf(component: Token): { names: string[]; kinds: ColumnSpec[] } {
       const kind = COLUMNS.get(field.kind);
       if (!kind) throw new Error(`'${component.name}.${n}' is not a column field`);
       // A str column's stride is the field's capacity: one byte lane per byte.
-      return kind.capacity ? { ...kind, stride: field.capacity ?? 0 } : kind;
+      if (kind.capacity) return { ...kind, stride: field.capacity ?? 0 };
+      // A list's is its element's, once for the count and once per element.
+      return field.list === undefined ? kind : { ...kind, stride: kind.stride * (field.list + 1) };
     });
     layouts.set(component, (l = { names, kinds }));
   }
@@ -483,6 +495,9 @@ interface RecordField {
   readonly size: number;
   readonly readonly: boolean;
   readonly variants?: readonly string[];
+  /** A list's element kind (`f32`, `f64`, `u32`, `i32`, `handle`) and capacity in elements. */
+  readonly element?: string;
+  readonly capacity?: number;
 }
 
 interface RecordLayout {
@@ -599,9 +614,55 @@ const LANES: Readonly<Record<string, readonly string[]>> = {
   Color: ["r", "g", "b"],
 };
 
+/** Bytes of one lane of a list's element kind. */
+const LANE_SIZE: Readonly<Record<string, number>> = { f32: 4, f64: 8, u32: 4, i32: 4, handle: 8 };
+
+function readLane(v: DataView, o: number, element: string): number {
+  switch (element) {
+    case "f32": return v.getFloat32(o, true);
+    case "f64": return v.getFloat64(o, true);
+    case "u32": return v.getUint32(o, true);
+    case "i32": return v.getInt32(o, true);
+    default: return v.getUint32(o, true) + v.getUint32(o + 4, true) * 4294967296;
+  }
+}
+
+function writeLane(v: DataView, o: number, element: string, n: number): void {
+  switch (element) {
+    case "f32": return v.setFloat32(o, n, true);
+    case "f64": return v.setFloat64(o, n, true);
+    case "u32": return v.setUint32(o, n, true);
+    case "i32": return v.setInt32(o, n, true);
+    default:
+      v.setUint32(o, n % 4294967296, true);
+      v.setUint32(o + 4, Math.floor(n / 4294967296), true);
+  }
+}
+
+/** A list element checked as the engine's JSON path checks it; throws what it refuses. */
+function listElement(value: unknown, element: string, i: number): number {
+  const n = number(value, `element ${i}`);
+  const whole = (lo: number, hi: number, what: string) => {
+    if (!Number.isInteger(n) || n < lo || n > hi) throw new Error(`element ${i}: ${n} is not ${what}`);
+  };
+  if (element === "u32") whole(0, 4294967295, "a u32");
+  else if (element === "i32") whole(-2147483648, 2147483647, "an i32");
+  else if (element === "handle") whole(0, 9007199254740991, "a handle");
+  return n;
+}
+
 function decodeField(v: DataView, bytes: Uint8Array, f: RecordField): unknown {
   const o = f.offset;
   switch (f.kind) {
+    case "list": {
+      // A frozen copy: `push` throws instead of changing nothing.
+      const element = f.element ?? "f32";
+      const lane = LANE_SIZE[element] ?? 4;
+      const count = Math.min(readLane(v, o, element), f.capacity ?? 0);
+      const out: number[] = [];
+      for (let i = 0; i < count; i++) out.push(readLane(v, o + lane * (i + 1), element));
+      return Object.freeze(out);
+    }
     case "f32": return v.getFloat32(o, true);
     case "f64": return v.getFloat64(o, true);
     case "u32": return v.getUint32(o, true);
@@ -639,6 +700,23 @@ function number(value: unknown, what: string): number {
 function encodeField(v: DataView, bytes: Uint8Array, f: RecordField, value: unknown): void {
   const o = f.offset;
   switch (f.kind) {
+    case "list": {
+      // The whole list: an array, at most the capacity, every element checked before a byte moves.
+      const element = f.element ?? "f32";
+      const capacity = f.capacity ?? 0;
+      const items = value === null || value === undefined ? [] : value;
+      if (!Array.isArray(items)) throw new Error(`a list is written whole, as an array, got ${JSON.stringify(value)}`);
+      if (items.length > capacity) {
+        const kind = element === "handle" ? "Asset" : element;
+        throw new Error(`${items.length} elements and the field holds ${capacity}: remove ${items.length - capacity}, or declare the field list(${kind}(), ${items.length}) or larger`);
+      }
+      const lanes = items.map((x, i) => listElement(x, element, i));
+      const lane = LANE_SIZE[element] ?? 4;
+      bytes.fill(0, o, o + f.size);
+      writeLane(v, o, element, lanes.length);
+      lanes.forEach((n, i) => writeLane(v, o + lane * (i + 1), element, n));
+      return;
+    }
     case "f32": return v.setFloat32(o, number(value, "the value"), true);
     case "f64": return v.setFloat64(o, number(value, "the value"), true);
     case "u32": {
@@ -732,7 +810,9 @@ function recordHandle(world: WorldImpl, r: RecordCopy): object {
         if (!refresh(r)) {
           const answer = parse<Result<Record<string, unknown>>>(host!.abi.og_world_resource(id, name));
           if (!answer.ok) throw new Error(`${name}: ${answer.reason}`);
-          return (lastValue = answer.value[key]);
+          const value = answer.value[key];
+          // A list reads as a frozen copy on this path too.
+          return (lastValue = Array.isArray(value) ? Object.freeze(value) : value);
         }
       }
       return (lastValue = decodeField(r.view, r.bytes, field()));

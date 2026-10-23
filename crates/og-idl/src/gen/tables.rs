@@ -54,6 +54,13 @@ pub fn bindings(ix: &Index<'_>) -> String {
     for m in &api.modules {
         for item in &m.items {
             match item {
+                // A list factory (`list(u32(), 8)`): a field's column is
+                // then its element's, so it has no array of its own.
+                Item::Column(c) if c.list => columns.push(
+                    Json::obj()
+                        .with("name", Json::str(c.name.clone()))
+                        .with("list", Json::Bool(true)),
+                ),
                 Item::Column(c) => {
                     let mut o = Json::obj()
                         .with("name", Json::str(c.name.clone()))
@@ -83,13 +90,18 @@ pub fn bindings(ix: &Index<'_>) -> String {
                             } else {
                                 "column"
                             };
-                            match ix.capacity(&f.ty) {
+                            match (ix.capacity(&f.ty), ix.list(&f.ty)) {
                                 // A text column: its kind, and the capacity the factory takes (`str(48)`).
-                                Some(n) => {
+                                (Some(n), _) => {
                                     o.set(key, Json::str(f.ty.name()));
                                     o.set("capacity", Json::num(n));
                                 }
-                                None => o.set(key, Json::str(f.ty.to_string())),
+                                // A list column: its element's kind and its capacity in elements.
+                                (None, Some((element, n))) => {
+                                    o.set(key, Json::str(element.to_string()));
+                                    o.set("list", Json::num(n));
+                                }
+                                (None, None) => o.set(key, Json::str(f.ty.to_string())),
                             }
                             if let Some(d) = default_json(ix, &f.ty, f.default.as_deref()) {
                                 o.set("default", d);
@@ -461,7 +473,13 @@ fn type_schema(ix: &Index<'_>, ty: &TypeRef) -> Json {
         "Float32Array" | "Float64Array" | "Uint32Array" | "Int32Array" | "Uint8Array" => {
             t("array").with("items", t("number"))
         }
-        "List" => t("array").with("items", type_schema(ix, &args[0])),
+        "List" => {
+            let list = t("array").with("items", type_schema(ix, &args[0]));
+            match ix.list(ty) {
+                Some((_, n)) => list.with("maxItems", Json::num(n)),
+                None => list,
+            }
+        }
         "Map" => t("object").with("additionalProperties", type_schema(ix, &args[0])),
         "Option" => Json::obj().with(
             "anyOf",

@@ -16,7 +16,7 @@ module world {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 778</sub>
+<sub>`api.ogt` line 784</sub>
 
 ## Contents
 
@@ -59,7 +59,7 @@ event WorldRestored {
 }
 ```
 
-<sub>`api.ogt` line 816</sub>
+<sub>`api.ogt` line 822</sub>
 
 ## Interfaces
 
@@ -75,7 +75,7 @@ interface World {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 833</sub>
+<sub>`api.ogt` line 839</sub>
 
 <a id="member-World-tick"></a>
 
@@ -93,7 +93,7 @@ Binding symbol `og_world_get_tick` · publish builds: kept
 prop tick u32 "Fixed steps taken since the world was created."
 ```
 
-<sub>`api.ogt` line 836</sub>
+<sub>`api.ogt` line 842</sub>
 
 <a id="member-World-spawn"></a>
 
@@ -121,7 +121,7 @@ fn spawn {
 }
 ```
 
-<sub>`api.ogt` line 838</sub>
+<sub>`api.ogt` line 844</sub>
 
 <a id="member-World-despawn"></a>
 
@@ -149,7 +149,7 @@ fn despawn {
 }
 ```
 
-<sub>`api.ogt` line 844</sub>
+<sub>`api.ogt` line 850</sub>
 
 <a id="member-World-alive"></a>
 
@@ -177,7 +177,7 @@ fn alive {
 }
 ```
 
-<sub>`api.ogt` line 850</sub>
+<sub>`api.ogt` line 856</sub>
 
 <a id="member-World-has"></a>
 
@@ -208,7 +208,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 856</sub>
+<sub>`api.ogt` line 862</sub>
 
 <a id="member-World-insert"></a>
 
@@ -243,7 +243,7 @@ fn insert {
 }
 ```
 
-<sub>`api.ogt` line 864</sub>
+<sub>`api.ogt` line 870</sub>
 
 <a id="member-World-remove"></a>
 
@@ -274,7 +274,7 @@ fn remove {
 }
 ```
 
-<sub>`api.ogt` line 875</sub>
+<sub>`api.ogt` line 881</sub>
 
 <a id="member-World-get"></a>
 
@@ -305,7 +305,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 883</sub>
+<sub>`api.ogt` line 889</sub>
 
 <a id="member-World-set"></a>
 
@@ -338,7 +338,7 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 891</sub>
+<sub>`api.ogt` line 897</sub>
 
 <a id="member-World-resource"></a>
 
@@ -367,7 +367,7 @@ fn resource {
 }
 ```
 
-<sub>`api.ogt` line 900</sub>
+<sub>`api.ogt` line 906</sub>
 
 <a id="member-World-find"></a>
 
@@ -395,7 +395,7 @@ fn find {
 }
 ```
 
-<sub>`api.ogt` line 907</sub>
+<sub>`api.ogt` line 913</sub>
 
 <a id="member-World-nameOf"></a>
 
@@ -423,7 +423,7 @@ fn nameOf {
 }
 ```
 
-<sub>`api.ogt` line 913</sub>
+<sub>`api.ogt` line 919</sub>
 
 <a id="member-World-query"></a>
 
@@ -451,7 +451,7 @@ fn query {
 }
 ```
 
-<sub>`api.ogt` line 919</sub>
+<sub>`api.ogt` line 925</sub>
 
 <a id="member-World-events"></a>
 
@@ -480,7 +480,7 @@ fn events {
 }
 ```
 
-<sub>`api.ogt` line 925</sub>
+<sub>`api.ogt` line 931</sub>
 
 <a id="member-World-emit"></a>
 
@@ -511,7 +511,7 @@ fn emit {
 }
 ```
 
-<sub>`api.ogt` line 932</sub>
+<sub>`api.ogt` line 938</sub>
 
 <a id="member-World-instantiate"></a>
 
@@ -544,7 +544,7 @@ fn instantiate {
 }
 ```
 
-<sub>`api.ogt` line 940</sub>
+<sub>`api.ogt` line 946</sub>
 
 <a id="member-World-snapshot"></a>
 
@@ -567,7 +567,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 948</sub>
+<sub>`api.ogt` line 954</sub>
 
 <a id="member-World-restore"></a>
 
@@ -597,7 +597,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 953</sub>
+<sub>`api.ogt` line 959</sub>
 
 <a id="type-Query"></a>
 
@@ -611,7 +611,7 @@ interface Query {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 961</sub>
+<sub>`api.ogt` line 967</sub>
 
 <a id="member-Query-archetypes"></a>
 
@@ -634,7 +634,7 @@ fn archetypes {
 }
 ```
 
-<sub>`api.ogt` line 963</sub>
+<sub>`api.ogt` line 969</sub>
 
 <a id="member-Query-count"></a>
 
@@ -657,7 +657,7 @@ fn count {
 }
 ```
 
-<sub>`api.ogt` line 967</sub>
+<sub>`api.ogt` line 973</sub>
 
 <a id="type-ArchetypeView"></a>
 
@@ -671,7 +671,7 @@ interface ArchetypeView {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 973</sub>
+<sub>`api.ogt` line 979</sub>
 
 <a id="member-ArchetypeView-count"></a>
 
@@ -689,7 +689,7 @@ Binding symbol `og_archetype_view_get_count` · publish builds: kept
 prop count u32 "The number of entities in the archetype."
 ```
 
-<sub>`api.ogt` line 975</sub>
+<sub>`api.ogt` line 981</sub>
 
 <a id="member-ArchetypeView-tick"></a>
 
@@ -707,7 +707,7 @@ Binding symbol `og_archetype_view_get_tick` · publish builds: kept
 prop tick u32 "The tick this view belongs to."
 ```
 
-<sub>`api.ogt` line 976</sub>
+<sub>`api.ogt` line 982</sub>
 
 <a id="member-ArchetypeView-entities"></a>
 
@@ -725,7 +725,7 @@ Binding symbol `og_archetype_view_get_entities` · publish builds: kept
 prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1."
 ```
 
-<sub>`api.ogt` line 977</sub>
+<sub>`api.ogt` line 983</sub>
 
 <a id="member-ArchetypeView-entity"></a>
 
@@ -753,7 +753,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 978</sub>
+<sub>`api.ogt` line 984</sub>
 
 <a id="member-ArchetypeView-has"></a>
 
@@ -782,7 +782,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 983</sub>
+<sub>`api.ogt` line 989</sub>
 
 <a id="member-ArchetypeView-column"></a>
 
@@ -814,7 +814,7 @@ fn column {
 }
 ```
 
-<sub>`api.ogt` line 989</sub>
+<sub>`api.ogt` line 995</sub>
 
 ## Types
 
@@ -835,7 +835,7 @@ handle Entity {
 }
 ```
 
-<sub>`api.ogt` line 783</sub>
+<sub>`api.ogt` line 789</sub>
 
 <a id="type-SpawnDesc"></a>
 
@@ -871,7 +871,7 @@ struct SpawnDesc {
 }
 ```
 
-<sub>`api.ogt` line 795</sub>
+<sub>`api.ogt` line 801</sub>
 
 <a id="type-RestoreDesc"></a>
 
@@ -893,7 +893,7 @@ struct RestoreDesc {
 }
 ```
 
-<sub>`api.ogt` line 810</sub>
+<sub>`api.ogt` line 816</sub>
 
 <a id="type-QueryDesc"></a>
 
@@ -917,7 +917,7 @@ struct QueryDesc {
 }
 ```
 
-<sub>`api.ogt` line 826</sub>
+<sub>`api.ogt` line 832</sub>
 
 ## Column kinds
 
@@ -936,4 +936,4 @@ column Entity {
 }
 ```
 
-<sub>`api.ogt` line 788</sub>
+<sub>`api.ogt` line 794</sub>

@@ -27,7 +27,8 @@ fn word<const N: usize>(bytes: &[u8], at: usize) -> [u8; N] {
 }
 
 /// One field's packed bytes as JSON: a number, an array for vectors and
-/// quaternions (`[x, y, z, w]`), the text of a string.
+/// quaternions (`[x, y, z, w]`), the text of a string, an array of a list's
+/// elements.
 pub(crate) fn field_json(ty: FieldType, bytes: &[u8]) -> Value {
     match ty {
         FieldType::F32 => f32_json(f32::from_le_bytes(word(bytes, 0))),
@@ -46,6 +47,12 @@ pub(crate) fn field_json(ty: FieldType, bytes: &[u8]) -> Value {
         FieldType::Bool => Value::Bool(bytes[0] != 0),
         FieldType::Enum => Value::from(u32::from_le_bytes(word(bytes, 0))),
         FieldType::Str(_) => Value::from(og_core::unpack_str(bytes)),
+        // The elements up to its length: `[]` and `[0]` differ.
+        FieldType::List(element, _) => Value::Array(
+            og_core::list_elements(ty, bytes)
+                .map(|e| field_json(element.field_type(), e))
+                .collect(),
+        ),
     }
 }
 
@@ -155,6 +162,24 @@ pub(crate) fn json_field(field: &FieldSchema, value: &Value) -> Result<Vec<u8>, 
                 .ok_or_else(|| format!("a {} takes a string, got {value}", field.ty.name()))?;
             return og_core::pack_str(text, field.ty.size());
         }
+        // The whole list, as an array of its elements (none is `[]`).
+        FieldType::List(element, capacity) => {
+            let items = value.as_array().ok_or_else(|| {
+                format!(
+                    "a {} takes an array of at most {capacity} numbers, got {value}",
+                    field.ty.name()
+                )
+            })?;
+            let mut lanes = Vec::with_capacity(items.len());
+            for (i, item) in items.iter().enumerate() {
+                let mut out = Vec::with_capacity(element.size());
+                lane(field, item, element.field_type(), &mut out)
+                    .map_err(|e| format!("element {i}: {e}"))?;
+                lanes.push(out);
+            }
+            let refs: Vec<&[u8]> = lanes.iter().map(Vec::as_slice).collect();
+            return og_core::pack_list(field.ty, &refs);
+        }
         // A variant's name, as game code writes it, or its index.
         FieldType::Enum if !field.variants.is_empty() => {
             let index = match value {
@@ -202,12 +227,31 @@ pub(crate) fn json_field(field: &FieldSchema, value: &Value) -> Result<Vec<u8>, 
 /// Command text as the JSON value of `field` for [`json_field`]: an enum
 /// takes a variant's name or its index; a string field takes the text as it is (`set:Prefs.name=Ada Lovelace`), or a JSON
 /// string literal for escapes and the empty string (`set:Prefs.name=""`);
-/// every other field takes [`text_json`].
+/// a list takes a JSON array (`[3,5]`, `[]`) or its numbers by commas
+/// (`3,5`; nothing is `[]`); every other field takes [`text_json`].
 pub(crate) fn command_value(field: &FieldSchema, text: &str) -> Result<Value, String> {
     // An enum takes its variant's name bare (`set:music.og.AudioSource.bus=music`) or its index.
     if field.ty == FieldType::Enum && !field.variants.is_empty() {
         let t = text.trim();
         return Ok(text_json(t).unwrap_or_else(|_| Value::String(t.to_owned())));
+    }
+    // A list takes a JSON array (`[3,5]`, `[]`) or its numbers by commas
+    // (`3,5`, `3`); nothing at all is the empty list.
+    if field.ty.is_list() {
+        let t = text.trim();
+        if t.starts_with('[') {
+            return serde_json::from_str::<Value>(t)
+                .ok()
+                .filter(Value::is_array)
+                .ok_or_else(|| format!("{t} is not a JSON array of numbers"));
+        }
+        if t.is_empty() {
+            return Ok(Value::Array(Vec::new()));
+        }
+        return Ok(match text_json(t)? {
+            Value::Array(items) => Value::Array(items),
+            one => Value::Array(vec![one]),
+        });
     }
     if !field.ty.is_string() {
         return text_json(text);

@@ -146,9 +146,8 @@ impl LookFile {
                             f.line, e.key, f.key
                         ));
                     }
-                    if f.values.is_empty() {
-                        return Err(format!("line {}: {}.{} has no value", f.line, e.key, f.key));
-                    }
+                    // A key alone is an empty list; the cook refuses it for
+                    // any other field (`cook::look`, which reads the records).
                     if fields.iter().any(|(n, _, _)| n == &f.key) {
                         return Err(format!("line {}: {}.{} is set twice", f.line, e.key, f.key));
                     }

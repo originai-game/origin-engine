@@ -218,11 +218,26 @@ export const Move = defineSystem("Move", { reads: [Velocity], writes: [og.Transf
   module variable or as numbers of code points.
   A `str` holds 1 to 4,096 bytes: a larger capacity typechecks and is
   refused when the game starts (`a string field holds 1 to 4096 bytes`).
-- A field holds one value: a component has no array or list field. A few
-  values are numbered fields (`p0`..`p7`, as og.CameraRail's rail points);
-  a list is an entity per element with its own component, looped over by
-  a query (a ring of skid marks, the laps of a race); a long record (a
-  lap's taped inputs) is text in `str(4096)` chunks, an entity each.
+- A field holds one value, or a fixed-capacity list of one number or
+  handle kind: `list(u32(), 8)`, `list(Asset(), 4)` (1 to 1,024 elements,
+  starting empty, never tunable). Reading it answers a frozen array, a
+  copy: `push`, `splice` and index writes throw, so write it whole
+  (`v.passes = [...v.passes, h]`, `v.passes = []`, `world.set(e, Chain,
+  { passes: [3, 5] })`). One over the capacity is refused with the fix
+  named (`declare the field list(u32(), 9) or larger`), never truncated.
+  Its column is the element's typed array with (capacity + 1) lanes per
+  entity, the count first, zeros past it, so `[]` and `[0]` are different
+  worlds. The probe reads it as a JSON array (`get:`, `dump_entity`),
+  `set:Chain.passes=[3,5]` (or `3,5`, nothing for `[]`) writes it whole, a
+  scene or a look gives it on one line (`passes 3 5`, the key alone for
+  `[]`), and snapshots and the hash carry it; a migrating restore keeps a
+  list that fits a new capacity and empties one that does not.
+  A list holds numbers only: a few vectors are numbered fields
+  (`p0`..`p7`, as og.CameraRail's rail points); a list of things with
+  fields of their own is an entity per element with its own component,
+  looped over by a query (a ring of skid marks, the laps of a race); a
+  long record (a lap's taped inputs) is text in `str(4096)` chunks, an
+  entity each.
 - A handle is a 64-bit number (an `og.load` answer, a texture, a sound,
   a geometry, a material, an entity): keep it in a field of its own kind,
   `Asset()`, `Texture()`, `Sound()`, `Geometry()`, `Material()` or

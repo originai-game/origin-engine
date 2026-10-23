@@ -233,7 +233,7 @@ function show(world: World, station: Station): void {
   Object.assign(post, {
     ao: false, outline: false, depthOfField: false, motionBlur: false, godRays: false, glow: false,
     lut: 0, vignette: false, chromaticAberration: 0, filmGrain: 0, flash: 0, shakeTrauma: 0,
-    custom1: 0, custom2: 0, custom3: 0, custom4: 0, custom5: 0, custom6: 0, custom7: 0, custom8: 0,
+    custom: [],
   });
   l2d.enabled = false;
   resetE5(world);

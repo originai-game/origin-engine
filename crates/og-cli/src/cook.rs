@@ -57,11 +57,7 @@ pub fn write_cook_report(root: &Path, report: &Report, path: &Path) -> Result<()
 /// (`Transform`, `Model`, the lights), by the names scenes use.
 pub fn engine_schemas() -> Vec<og_core::Schema> {
     use og_core::reflect::{FieldSchema, FieldType};
-    let ty = |f: &og_api::host::FieldDecl| -> Option<FieldType> {
-        if f.capacity > 0 {
-            // A text field (`str.48` in the IDL).
-            return FieldType::string(f.capacity as usize).ok();
-        }
+    let scalar = |f: &og_api::host::FieldDecl| -> Option<FieldType> {
         Some(match f.column {
             "f32" => FieldType::F32,
             "f64" => FieldType::F64,
@@ -84,6 +80,17 @@ pub fn engine_schemas() -> Vec<og_core::Schema> {
             }
         })
     };
+    let ty = |f: &og_api::host::FieldDecl| -> Option<FieldType> {
+        if f.capacity > 0 {
+            // A text field (`str.48` in the IDL).
+            return FieldType::string(f.capacity as usize).ok();
+        }
+        if f.list > 0 {
+            // A list field (`List.u32.4` in the IDL): its element's scalar.
+            return FieldType::list(scalar(f)?.scalar(), f.list as usize).ok();
+        }
+        scalar(f)
+    };
     og_api::host::RECORDS
         .iter()
         .filter(|r| r.kind == "component")
@@ -94,7 +101,10 @@ pub fn engine_schemas() -> Vec<og_core::Schema> {
                 .map(|f| {
                     ty(f).map(|t| {
                         let mut fs = FieldSchema::new(f.name.to_string(), t);
-                        fs.default = default_lanes(f, t.lanes());
+                        // A list starts empty: it declares no default.
+                        fs.default = (!t.is_list())
+                            .then(|| default_lanes(f, t.lanes()))
+                            .flatten();
                         fs
                     })
                 })

@@ -251,7 +251,7 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "og_engine_resource_layout",
         &[("world", "u32", "number"), ("resource", "String", "string")],
         "String",
-        "A resource's packed layout, how the runtime reads and writes its fields as bytes: a Result of `{ epoch, size, fields: [{ name, kind, offset, size, readonly, capacity, variants }] }` (`kind`: f32, f64, u32, i32, bool, Vector2, Vector3, Quaternion, Color, Matrix4, handle, str, enum). Refused for og.Time, og.Rng and og.Input, whose handles are computed, and for what is not a registered resource.",
+        "A resource's packed layout, how the runtime reads and writes its fields as bytes: a Result of `{ epoch, size, fields: [{ name, kind, offset, size, readonly, capacity, variants, element }] }` (`kind`: f32, f64, u32, i32, bool, Vector2, Vector3, Quaternion, Color, Matrix4, handle, str, enum, or list: `element` one of f32, f64, u32, i32, handle and `capacity` its elements, a count lane first, each lane the element's size). Refused for og.Time, og.Rng and og.Input, whose handles are computed, and for what is not a registered resource.",
     ),
     (
         "og_engine_read_resource",
@@ -424,6 +424,9 @@ pub fn host_rs(ix: &Index<'_>) -> String {
          \x20   pub variants: &'static [&'static str],\n\
          \x20   /// A text column's capacity in bytes (`str.48` in the IDL); 0 otherwise.\n\
          \x20   pub capacity: u32,\n\
+         \x20   /// A list column's capacity in elements (`List.Post.8` in the IDL),\n\
+         \x20   /// whose `column` is the element's kind; 0 otherwise.\n\
+         \x20   pub list: u32,\n\
          }\n\n\
          /// An engine-owned component, resource or event.\n\
          #[derive(Clone, Copy, Debug, PartialEq)]\n\
@@ -466,9 +469,9 @@ pub fn host_rs(ix: &Index<'_>) -> String {
                     _ => String::new(),
                 };
                 out.push_str(&format!(
-                    "            FieldDecl {{\n                name: \"{}\",\n                column: \"{}\",\n                default: {:?},\n                readonly: {},\n                tunable: {},\n                min: {},\n                max: {},\n                step: {},\n                unit: {:?},\n                label: {:?},\n                doc: {:?},\n                variants: &[{}],\n                capacity: {},\n            }},\n",
+                    "            FieldDecl {{\n                name: \"{}\",\n                column: \"{}\",\n                default: {:?},\n                readonly: {},\n                tunable: {},\n                min: {},\n                max: {},\n                step: {},\n                unit: {:?},\n                label: {:?},\n                doc: {:?},\n                variants: &[{}],\n                capacity: {},\n                list: {},\n            }},\n",
                     f.name,
-                    f.ty.name(),
+                    ix.list(&f.ty).map_or(f.ty.name(), |(element, _)| element.name()),
                     default,
                     f.readonly,
                     f.tunable,
@@ -479,7 +482,8 @@ pub fn host_rs(ix: &Index<'_>) -> String {
                     f.label.as_deref().unwrap_or_default(),
                     f.doc.join(" "),
                     variants,
-                    ix.capacity(&f.ty).unwrap_or(0)
+                    ix.capacity(&f.ty).unwrap_or(0),
+                    ix.list(&f.ty).map_or(0, |(_, n)| n)
                 ));
             }
             out.push_str("        ],\n    },\n");
@@ -504,6 +508,10 @@ pub fn host_rs(ix: &Index<'_>) -> String {
     for m in &ix.api.modules {
         for item in &m.items {
             let Item::Column(c) = item else { continue };
+            if c.list {
+                // A list's kind is its element's.
+                continue;
+            }
             let variants = match ix.decl(c.value.name()) {
                 Some(crate::index::TypeDecl::Enum(e)) => e
                     .variants

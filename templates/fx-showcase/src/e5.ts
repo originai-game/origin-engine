@@ -10,8 +10,8 @@
 //               with og.render.setShaderParam), wind-swayed grass, a slab
 //               drawn by a full custom shader (`mode full lit`) whose shadow
 //               has the same holes as its cut, all under a CRT custom post
-//               pass (og.load.post, PostEffects.custom8) after a warm
-//               grade (custom5)
+//               pass (og.load.post, the last of PostEffects.custom) after
+//               a warm grade (the first)
 //   controller  og.CharacterController walking up a slope and stairs, onto
 //               a moving platform that carries it, and jumping
 //   joints      a motorised hinge, a chain of ball joints, a spring, and the
@@ -251,12 +251,11 @@ export function showE5(world: World, station: E5Station): void {
     case "shaders":
       look({ x: x, y: 2.2, z: 6.5 }, { x: x, y: 0.9, z: -1 });
       sunAt({ x: -0.45, y: -0.8, z: -0.35 }, 3);
-      // A chain over the whole station (main.ts' show clears it
-      // elsewhere): a warm grade in slot 5, then the CRT in the last slot,
-      // 8, the slots between them left 0.
+      // A chain over the whole station (main.ts' show empties it
+      // elsewhere): a warm grade, then the CRT over it, written whole.
       if (e !== null) {
         const h = must(world.get(e, E5));
-        Object.assign(must(world.resource(og.PostEffects)), { custom5: h.tint as never, custom8: h.crt as never });
+        must(world.resource(og.PostEffects)).custom = [h.tint, h.crt] as never;
       }
       break;
     case "controller":
