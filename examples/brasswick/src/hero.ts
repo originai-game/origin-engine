@@ -1,7 +1,7 @@
 // Wick: the keyboard and the pad into og.PlatformerController (run, jump with
 // coyote time and a buffer, wall slide and wall jump, grates dropped
-// through with Down), the push (the controller shoves a crate it runs into;
-// Wick slows to Tuning.pushSpeed while a crate is in front of him), the
+// through with Down), the push (the controller shoves a crate it runs into
+// with its pushStrength; Wick walks at Tuning.pushSpeed behind one), the
 // flipbook clip by what he is doing, the hurt and the respawn at the last
 // lamp, warps, the stomp's bounce, and the feel of each (sounds, dust,
 // squash and stretch, shake). Per-entity calls on the one named entity
@@ -135,8 +135,9 @@ export const Control = defineSystem(
     if (g.phase === Phase.Play && g.heroY < -40) hurtWick(g);
 
     const facing = want.x !== 0 ? want.x : c.facing;
-    // The controller shoves any dynamic body at its full run speed whatever its mass, and has no
-    // pushBodies (FINDINGS.md #6): a crate ahead slows Wick to Tuning.pushSpeed instead.
+    // A crate ahead slows Wick to Tuning.pushSpeed: the controller's push is a force (pushStrength),
+    // which takes a light crate up to the run speed and past its plate, so the puzzles' crates are
+    // walked at a push speed (FINDINGS.md #6; a heavier or damped crate is not the same game).
     const pushing = playing && c.grounded && want.x !== 0 && crateAhead(world, wick, pos.x, pos.y, facing);
     g.pushing = pushing;
     must(world.set(wick, og.PlatformerController, {

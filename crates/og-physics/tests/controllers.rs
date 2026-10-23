@@ -717,3 +717,66 @@ fn a_platformer_runs_through_colliders_its_layers_do_not_meet() {
     assert!(p.x > 14.0, "ran through the walls it does not meet: {p}");
     assert!(platformer(&w, e).grounded);
 }
+
+/// A walker pressing at 2 m/s into the gap between two 40 kg balls (it
+/// slides off one into the other, so both are hit each tick): the tick
+/// both are first pushed, and the state 40 ticks on, bit for bit.
+fn wedge_run() -> ([Vec3; 2], Vec<u32>) {
+    let (mut w, _p) = world(Physics::default(), 1);
+    floor(&mut w);
+    let ball = |w: &mut World, x: f32| {
+        let body = RigidBody {
+            mass: 40.0,
+            ..RigidBody::dynamic()
+        };
+        let e = spawn_body(w, at(x, 0.5, 1.0), body, Collider::sphere(0.5));
+        w.insert(e, Velocity::default()).unwrap();
+        e
+    };
+    let balls = [ball(&mut w, -0.55), ball(&mut w, 0.55)];
+    let c = walker(&mut w, 0.0, 0.05, 0.0);
+    run(&mut w, 10);
+    set_character(&mut w, c, |c| c.movement = Vec3::new(0.0, 0.0, 2.0));
+    let mut first = None;
+    for _ in 0..40 {
+        w.step().unwrap();
+        let v = balls.map(|b| velocity(&w, b).linear);
+        if first.is_none() && v.iter().any(|v| v.length() > 1e-4) {
+            first = Some(v);
+        }
+    }
+    let mut bits = Vec::new();
+    for e in [balls[0], balls[1], c] {
+        let t = transform(&w, e);
+        bits.extend(t.position.to_array().map(f32::to_bits));
+        bits.extend(t.quaternion.to_array().map(f32::to_bits));
+    }
+    for b in balls {
+        bits.extend(velocity(&w, b).linear.to_array().map(f32::to_bits));
+    }
+    (first.expect("the walker reached the balls"), bits)
+}
+
+#[test]
+fn two_bodies_walked_into_at_once_share_the_push() {
+    let ([a, b], bits) = wedge_run();
+    // Each asks 0.8 × 40 kg × its closing speed, well past the tick's
+    // 1000 N × 1/60 s, so each gets half: before, the first hit took all of
+    // it and the other none (a 0.335 m/s, b 0).
+    assert!(
+        a.length() > 0.05 && b.length() > 0.05,
+        "both balls are pushed the first tick: {a} and {b}"
+    );
+    let ratio = a.length() / b.length();
+    assert!(
+        (0.9..1.1).contains(&ratio),
+        "the two balls share alike: {a} and {b}"
+    );
+    let taken = 40.0 * (a.length() + b.length());
+    assert!(
+        taken <= 1000.0 / 60.0 * 1.001,
+        "the tick's pushes sum to at most pushStrength × dt: {taken} N·s"
+    );
+    // Determinism: the same scenario again, bit for bit.
+    assert_eq!(wedge_run().1, bits, "a second run ends elsewhere");
+}

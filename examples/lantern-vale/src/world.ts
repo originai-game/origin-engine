@@ -7,7 +7,7 @@
 // Keep LANTERNS, START and the terrain's numbers in step with
 // tools/make-assets.ts.
 
-import { og, SHAPE_CYLINDER, SHAPE_HEIGHTFIELD, SHAPE_SPHERE } from "@origingame/engine";
+import { og, SHAPE_CONVEX, SHAPE_CYLINDER, SHAPE_HEIGHTFIELD } from "@origingame/engine";
 import type { Asset, Entity, TerrainData, World } from "@origingame/engine";
 import { Game, Lantern, Rock } from "./components.ts";
 
@@ -75,21 +75,40 @@ export function buildVale(world: World): void {
     must(world.insert(e, og.Collider, { shape: SHAPE_CYLINDER, radius: 0.3 * s, height: 2, offset: { x: 0, y: 1, z: 0 }, layers: LAYER.world }));
   });
 
-  // The pile: ten boulders the hero's controller shoves about (pushBodies).
-  // The controller pushes with its default pushStrength (1,000 N, a strong
-  // walker), so the rocks are hollow-light, density 150 (46 kg each): the
-  // hero parts the front two and rolls the middle one ahead. At 900 (279 kg)
-  // it only wedged between the front two.
+  // The pile: ten boulders the hero's controller shoves about (pushBodies,
+  // its default pushStrength of 1,000 N, a strong walker).
+  //
+  // Each collides as the convex hull of its own voxel mesh, so it rests on
+  // a face as a boulder does: as spheres the pile rolled off down the
+  // meadow's slope by itself (Game.rockMoved 0.6 m by 2.6 s with nobody
+  // near), and even one layer of touching spheres crept. The eight on the
+  // ground stand a hand apart (0.25 m), turned alternately, the two on top
+  // across the seams of four; hulls that touch are shoved as one block,
+  // whose friction holds more than the push (the hero stopped at its
+  // front). Density 50, hollow-light, so the push parts the front two and
+  // slides the middle one ahead.
   const rock = must(og.load.gltf(world, "models/rock.vox"));
-  const spots: [number, number, number][] = [[-1, 0, -1], [0, 0, -1], [1, 0, -1], [-1, 0, 0], [0, 0, 0], [1, 0, 0], [-0.5, 0, 1], [0.5, 0, 1], [-0.5, 1, -0.5], [0.5, 1, 0]];
-  spots.forEach(([dx, dy, dz], i) => {
-    const x = PILE.x + dx * 1.05;
-    const z = PILE.z + dz * 1.05;
-    const y = groundY(world, g, x, z) + 0.02 + dy * 0.75;
-    const e = place(world, rock, `rock-${i}`, x, y, z, i * 2.3, 1);
+  const hull = must(og.load.gltfInfo(world, rock)).geometries[0];
+  // The mesh about its centre; the model stands it on y 0 (voxOrigin bottom).
+  const box = must(og.render.geometryInfo(world, hull));
+  const sx = box.max.x - box.min.x + 0.25;
+  const sz = box.max.z - box.min.z + 0.25;
+  const tall = box.max.y - box.min.y;
+  const ground: [number, number][] = [[-1, -1], [0, -1], [1, -1], [-1, 0], [0, 0], [1, 0], [-0.5, 1], [0.5, 1]];
+  const spots: { x: number; y: number; z: number }[] = ground.map(([dx, dz]) => {
+    const x = PILE.x + dx * sx;
+    const z = PILE.z + dz * sz;
+    return { x, y: groundY(world, g, x, z) + 0.01, z };
+  });
+  for (const under of [[0, 1, 3, 4], [1, 2, 4, 5]]) {
+    const mean = (k: "x" | "z") => under.reduce((sum, i) => sum + spots[i][k], 0) / under.length;
+    spots.push({ x: mean("x"), y: Math.max(...under.map((i) => spots[i].y)) + tall + 0.01, z: mean("z") });
+  }
+  spots.forEach(({ x, y, z }, i) => {
+    const e = place(world, rock, `rock-${i}`, x, y, z, ((i + 1) % 2) * Math.PI, 1);
     must(world.insert(e, og.RigidBody, { linearDamping: 0.8, angularDamping: 0.8 }));
     must(world.insert(e, og.Velocity));
-    must(world.insert(e, og.Collider, { shape: SHAPE_SPHERE, radius: 0.42, offset: { x: 0, y: 0.38, z: 0 }, density: 150, friction: 0.9, layers: LAYER.rock }));
+    must(world.insert(e, og.Collider, { shape: SHAPE_CONVEX, mesh: hull, offset: { x: 0, y: -box.min.y, z: 0 }, density: 50, friction: 0.9, layers: LAYER.rock }));
     must(world.insert(e, Rock, { x0: x, z0: z }));
   });
 
