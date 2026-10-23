@@ -4146,7 +4146,7 @@ export interface RenderSettings {
    */
   decalAtlas: Texture;
   /**
-   * A multiplier on every model's projected size when its level of detail is picked (og.Model.lodBias multiplies it again): 1 is the engine's choice, 2 keeps full meshes twice as far, 0.5 simplifies sooner; 0 draws every model at its full mesh.
+   * A multiplier on every model's projected level-of-detail error when its level is picked (og.Model.lodBias multiplies it again): a level is drawn while its error, measured by the cook against the full mesh, covers less than a pixel on the screen. 1 is the engine's choice, 2 keeps full meshes twice as far, 0.5 simplifies sooner; 0 draws every model at its full mesh.
    *
    * @default 1
    * @range 0..16
@@ -7837,7 +7837,7 @@ export interface Model {
    */
   visible: boolean;
   /**
-   * This instance's level of detail bias, multiplied with RenderSettings.lodBias: the cook simplifies every mesh into levels (a model's import settings, `model { lods 1 0.5 0.25 }` by default, the triangle fraction of each level; a glTF with MSFT_lod keeps its own levels), and the renderer draws the level its projected size calls for, with hysteresis so it does not flicker at the boundary. Above 1 keeps detail farther (a hero), below 1 drops it sooner (a crowd); 0 always draws the full mesh. dump_entity shows the level drawn.
+   * This instance's level of detail bias, multiplied with RenderSettings.lodBias: the cook simplifies every mesh into levels (a model's import settings, `model { lods 1 0.5 0.25 }` by default, the triangle fraction of each level; a glTF with MSFT_lod keeps its own levels) and measures each level's error against the full mesh, and the renderer draws the coarsest level whose error covers less than a pixel at the model's distance, with hysteresis so it does not flicker at the boundary. Above 1 keeps detail farther (a hero), below 1 drops it sooner (a crowd); 0 always draws the full mesh. dump_entity shows the level drawn.
    *
    * @default 1
    * @range 0..16
