@@ -1108,7 +1108,7 @@ Windows package. Host validation is recorded in
 - **Packages**: `@origingame/engine` (the knowledge inside it as
   `knowledge/`), `@origingame/engine-darwin-arm64`,
   `@origingame/engine-linux-x64`, `@origingame/create-game`. Repository
-  `fran0220/origin-engine` (`docs/release.md` §2).
+  `originai-game/origin-engine` (`docs/release.md` §2).
 - **Artifacts**: `origin-engine.wasm`, `origin-engine.node`; telemetry and
   user-agent token `OriginEngine/<version>`; `hello.engine` reports
   `origin-engine <version>`.
