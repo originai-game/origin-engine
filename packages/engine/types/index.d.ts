@@ -6981,7 +6981,7 @@ export interface GeometryHit {
 
 /**
  * How the device draws Fog.volumetric (RenderCapabilities.volumetricFog).
- * - `"froxel"`: A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, exponentially deeper) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows, then integrated front to back: the full tier.
+ * - `"froxel"`: A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows, then integrated front to back: the full tier.
  * - `"raymarch"`: Each pixel's view ray marched through the fog in 24 steps, lit by the sun through its cascades alone: WebGL2, which has no compute.
  */
 export type VolumetricFog = "froxel" | "raymarch";
