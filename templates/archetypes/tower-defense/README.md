@@ -225,7 +225,7 @@ in the engine repository).
 give the same bytes): the tileset, the map, the sprite sheet, the glow and
 particle textures and emitters, the sounds and the music, the `og sfx`
 preset files of the UI's sounds, and the font subset. `LICENSES.md` lists
-them; the skin's are in `assets/styles/pathguard/LICENSES.md`.
+them; the style's are in `assets/styles/pathguard/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)
 
