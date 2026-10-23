@@ -18,7 +18,8 @@
 //! ```
 //!
 //! A frame expectation without a renderer is `unchecked` (never a failure),
-//! as an unchecked screenshot is.
+//! as an unchecked screenshot is; so are an entity's `render.*` fields and
+//! the renderer's timings (`triangles`, `render`, `passes`).
 
 use crate::hooks::find_by_text;
 use crate::probe::Probe;
@@ -775,6 +776,15 @@ impl Probe {
                 check_path(&mut r, &facts, "state().facts", "facts.", &path, op, &value);
             }
             Expect::Timings { path, op, value } => {
+                // What the renderer measures, without one: unchecked.
+                if self.capture.is_none()
+                    && ["triangles", "render", "passes"]
+                        .contains(&path.split('.').next().unwrap_or(""))
+                {
+                    r.status = Status::Unchecked;
+                    r.reason = "no renderer, timings.".to_string() + &path + " unchecked";
+                    return Ok(self.record(r));
+                }
                 let state = self.state(world);
                 check_path(
                     &mut r,
@@ -796,6 +806,12 @@ impl Probe {
                     fail(&mut r, format!("no live entity '{id}'"));
                     return Ok(self.record(r));
                 };
+                // The renderer's observation (render.lod), without one: unchecked.
+                if self.capture.is_none() && path.split('.').next() == Some("render") {
+                    r.status = Status::Unchecked;
+                    r.reason = format!("no renderer, {path} unchecked");
+                    return Ok(self.record(r));
+                }
                 let mut dump = self.dump_entity(world, e);
                 // `og.Transform.position` as well as `components.og.Transform...`.
                 let found = at_path(&dump, &path).is_some();
