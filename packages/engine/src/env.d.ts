@@ -76,7 +76,8 @@ declare module "bun:test" {
     toThrow(pattern?: RegExp | string): void;
     not: Matchers;
   }
-  export function expect(value: unknown): Matchers;
+  /** `message` names the assertion in its failure (bun's custom failure message). */
+  export function expect(value: unknown, message?: string): Matchers;
 }
 
 declare const process: {
