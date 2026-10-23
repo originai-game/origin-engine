@@ -1775,7 +1775,8 @@ tick started, as `og.physics.raycast` does. Use it for picking, decals on
 detailed meshes, and line of sight against geometry without colliders.
 
 **Debug draw.** `og.debug.line`, `box`, `sphere`, `arrow`, `axes` and
-`text` (a label above a world point, in the UI's body font) each take
+`text` (a label above a world point, in the UI's body font; every field is
+in `reference/debug.md`) each take
 `{ color, width, duration, rotation }`. `duration` is in ticks; 0 shows the
 shape this frame only, so draw it every tick. Debug draws show over the
 finished frame and never hide behind geometry, so they read in every

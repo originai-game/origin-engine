@@ -43,6 +43,20 @@
       "sha256": "c3bfb1778ace9010f8da8f3ea8664e68cddf446776a2dff7bdcf11f31bb22dcb",
       "licence": "CC0 1.0 (LICENSES.md)",
       "source": "templates/game/assets/textures/stone_n.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
+    },
+    {
+      "path": "references/metal/intro-4.png",
+      "bytes": 157482,
+      "sha256": "472c5d41a5f60064003528641f550ce26bead43c4fa008c8a21590353802c5dc",
+      "licence": "unrecorded: add it to the template's LICENSES.md",
+      "source": "templates/game/references/metal/intro-4.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
+    },
+    {
+      "path": "references/metal/intro-8.png",
+      "bytes": 176055,
+      "sha256": "c805c76dfdd73eaea539e93e7933d3aa95bf5e73122e2b9497987400d5aa5702",
+      "licence": "unrecorded: add it to the template's LICENSES.md",
+      "source": "templates/game/references/metal/intro-8.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
     }
   ]
 }
