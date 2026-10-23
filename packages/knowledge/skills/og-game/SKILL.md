@@ -1989,9 +1989,14 @@ Alone, or with lockstep off, `submit` drives the local player on the next
 tick, so the same code plays single-player. Natively, run `og relay` and
 then `og run . --room ws://127.0.0.1:47900/<room>` in two terminals; on
 the web the shell carries the platform's rooms. A playtest plays itself in
-a room with `room: { players: 2, ticks: 600, commands: [...] }`: its runs
-are `run` and `run.peers`, and each has `netHash` and `lockstep`. Equal
-`netHash` values at the same tick mean the peers stayed in step.
+a room with `room: { players: 2, commands: [...] }`: its runs are `run`
+and `run.peers`, and each has `netHash` and `lockstep`. Equal `netHash`
+values at the same tick mean the peers stayed in step. Once lockstep runs
+a script's steps are on the room's shared ticks (a peer that took the
+authority's snapshot keeps its steps on theirs), so end each script with
+`quit` (or give `room.ticks`) and every place stops on one tick; a `then`
+step relaunches every place at once into a room of its own, its runs in
+`run.then[n]` and `run.then[n].peers`.
 
 When the worlds part, `og.Desync { tick, peer }` fires once and
 `og.net.status(world).desync` holds the tick. Then

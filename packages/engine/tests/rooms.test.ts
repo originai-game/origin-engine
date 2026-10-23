@@ -98,3 +98,28 @@ test("Math.random() in a system is a desync: og.Desync names tick 101 and dump_d
     for (const o of outs) rmSync(o, { recursive: true, force: true });
   }
 }, 300_000);
+
+test("a room playtest's quit and its then step land on one tick for every place", async () => {
+  // playtest-run.ts, as `og test` runs it, on tests/fixtures/room-then/then.og.ts over the arena.
+  // Before: a room playtest refused `then`, and a joiner that took the authority's snapshot
+  // moved its steps with the jump, so its `quit` landed ticks after the authority's.
+  const { bundleGame } = await import("../src/node/build.ts");
+  const out = mkdtempSync(join(tmpdir(), "og-room-then-"));
+  try {
+    const entry = join(out, "game.js");
+    const b = await bundleGame(join(repo, "templates/archetypes/arena/src/main.ts"), entry, "native");
+    expect(b.ok).toBe(true);
+    const p = Bun.spawn(
+      ["bun", join(repo, "packages/engine/src/node/playtest-run.ts"), "--file", join(repo, "packages/engine/tests/fixtures/room-then/then.og.ts"), "--entry", entry, "--out", join(out, "test"), "--json"],
+      { cwd: repo, stdout: "pipe", stderr: "pipe" },
+    );
+    const [code, stdout, stderr] = await Promise.all([p.exited, new Response(p.stdout).text(), new Response(p.stderr).text()]);
+    const line = JSON.parse(stdout.trim().split("\n").pop() || "null") as { ok: boolean; checks: number; failures: string[]; netHashes: string[] } | null;
+    expect(line?.failures ?? [stderr]).toEqual([]);
+    expect(line!.ok).toBe(true);
+    expect(line!.checks).toBe(8);
+    expect(code).toBe(0);
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+}, 300_000);

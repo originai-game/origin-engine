@@ -263,7 +263,9 @@ pub struct Probe {
 /// The host's tick gate: asked before every tick the clock takes (a frame's
 /// ticks, `advance`), with the world between ticks; false holds the tick
 /// (og.net's lockstep waiting for a player's input). It may restore the
-/// world (a lockstep start or late join hands a peer's snapshot over).
+/// world (a lockstep start or late join hands a peer's snapshot over): the
+/// clock it moves to is the one every peer shares, so the scheduled steps
+/// stay on their ticks ([`Probe::step`]), unlike a game's own restore.
 pub type GateFn = Box<dyn FnMut(&mut World) -> bool>;
 
 /// The host's end-of-tick hook: called after every tick the probe takes,
@@ -537,19 +539,17 @@ impl Probe {
         self.gate = Some(gate);
     }
 
-    /// Whether the gate holds the next tick. A gate that moved `Time` (it
-    /// restored a peer's snapshot) moves the scheduled steps with it.
+    /// Whether the gate holds the next tick. A gate that moved `Time`
+    /// restored a peer's snapshot (lockstep's start or a late join): the
+    /// world now runs on the room's shared clock, and the scheduled steps
+    /// stay on their ticks of it, so every peer of a room runs the same
+    /// script step (a `quit`, an `expect`) on the same tick. A step whose
+    /// tick the jump passed runs at the next tick, in order.
     fn held(&mut self, world: &mut World) -> bool {
         let Some(gate) = self.gate.as_mut() else {
             return false;
         };
-        let before = world.time().tick;
-        let go = gate(world);
-        let now = world.time().tick;
-        if now != before {
-            self.shift_schedule(before, now);
-        }
-        !go
+        !gate(world)
     }
 
     /// The world's clock jumped from `from` to `to` outside a tick (a game

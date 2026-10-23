@@ -724,8 +724,12 @@ cross the room. Lockstep rests on §1's determinism and snapshot.
   (`packages/engine/tests/rooms.test.ts`).
 - **The proof.** `templates/archetypes/arena` (Coin Duel) is two players in
   lockstep. Its playtest `tests/duel.og.ts` (`PlaytestDesc.room`) runs two
-  native processes through a relay that the playtest starts, and both hash
-  the same at tick 600.
+  native processes through a relay that the playtest starts; both quit on
+  tick 600 and hash the same there. A script's steps sit on the room's
+  shared ticks once lockstep runs (the gate's snapshot restore leaves the
+  schedule on them, unlike a game's own restore, which moves it), so a
+  `quit` or an `expect` lands on one tick for every peer, and a `then`
+  step relaunches every place into a room of its own.
 
 ## 3. API surface
 
