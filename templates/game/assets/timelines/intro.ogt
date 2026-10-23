@@ -1,0 +1,91 @@
+type timeline
+version 1
+---
+name "Intro"
+duration 8
+# The camera's rail: a slow arc in front of the yard, from the left to the right.
+path "flyby" {
+  kind catmullRom
+  point -5 3.2 9
+  point -1.5 2.4 7.5
+  point 2 2 7
+  point 5 2.8 8.5
+}
+track camera {
+  rail "flyby"
+  key 0 {
+    at 0
+    target 0 1 0
+    fov 50
+  }
+  key 7.5 {
+    at 1
+    target 1.5 1 0
+    fov 42
+    ease cubicInOut
+  }
+}
+track transform "trickster" {
+  key 2 {
+    position 2 0 0
+  }
+  key 5 {
+    position 0.5 0 1.5
+    ease cubicInOut
+  }
+}
+track animation "trickster" {
+  key 0 {
+    clip "idle"
+    loop true
+  }
+  key 2 {
+    clip "walk"
+    loop true
+    blendIn 0.3
+  }
+  key 5 {
+    clip "wave"
+    blendIn 0.25
+  }
+}
+track caption {
+  captions "narration.srt"
+  style lg
+  anchor bottom
+}
+track audio {
+  key 1 {
+    sound "audio/blip.wav"
+    volume 0.6
+  }
+  key 5 {
+    sound "audio/click.ogt"
+  }
+}
+track event {
+  key 5.5 {
+    do "spawn_wave:2"
+    retroactive true
+  }
+}
+track transition {
+  key 0 {
+    kind fade
+    mode in
+    duration 1
+  }
+  key 7 {
+    kind fade
+    mode out
+    duration 1
+  }
+}
+track marker {
+  key 2 {
+    name "walk"
+  }
+  key 5.5 {
+    name "drop"
+  }
+}
