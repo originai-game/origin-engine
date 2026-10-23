@@ -986,7 +986,9 @@ linearly to the next, holds with `step`, or follows `curve x1 y1 x2 y2`
 `x y x1 y1 x2 y2`). A `deform` key offsets every influence in order, one
 `x y` pair each; `order <time> <every slot>` redraws back to front from
 then (alone, the file's order); an `ik` key sets the constraint's weight
-and bend. A `box` draws nothing: `og.anim.skeleton2dBoxes(world, hero)`
+and bend. An `ik`'s `bones` are a chain of any length, root first: one
+bone points, two bend at the joint, three or more (a tail, a tentacle, a
+three-joint leg) are solved by FABRIK and curl to the `bend` side. A `box` draws nothing: `og.anim.skeleton2dBoxes(world, hero)`
 answers its polygon (in the Transform's frame) while its slot shows it,
 for hit and hurt boxes a clip switches. A `child` shows an `armature`
 block (a rig of its own on the same texture) in its slot; it plays the

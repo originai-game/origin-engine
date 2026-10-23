@@ -572,8 +572,11 @@ Baked lighting, volumetrics and area lights (depth S7).
   bones parent first (rotation, skew, scale), slots in draw order (colour
   multiplier and offset), `region`, weighted `mesh`, `box` (a bounding
   polygon, drawn as nothing) and `child` (a child `armature` of the same
-  rig, posed and drawn inside its slot) attachments, one- or two-bone `ik`
-  constraints, and clips of bone (rotate, skew, translate, scale), slot
+  rig, posed and drawn inside its slot) attachments, `ik` constraints over
+  a chain of any length (one bone points, two are solved exactly, three
+  or more by FABRIK from the animated pose, seeded on the `bend` side:
+  position passes with no trigonometry inside them, as og-anim's 3D
+  chains are solved), and clips of bone (rotate, skew, translate, scale), slot
   (attachment, colour, offset), deform, draw-order (`order`) and IK
   (weight and bend) keys with events; keys ease linearly, hold (`step`)
   or follow a cubic Bézier (`curve`, solved by bisection). A child

@@ -70,7 +70,10 @@ const SKE: &str = r#"{ "name": "hero", "version": "5.5", "frameRate": 10, "armat
   "bone": [
     { "name": "root" },
     { "name": "arm", "parent": "root", "length": 40, "transform": { "x": 10, "y": -20, "skX": 30, "skY": 30 } },
-    { "name": "lean", "parent": "root", "transform": { "skX": 40, "skY": 10, "scX": 2 } }
+    { "name": "lean", "parent": "root", "transform": { "skX": 40, "skY": 10, "scX": 2 } },
+    { "name": "tail1", "parent": "root", "length": 10 },
+    { "name": "tail2", "parent": "tail1", "length": 10, "transform": { "x": 10 } },
+    { "name": "tail3", "parent": "tail2", "length": 10, "transform": { "x": 10 } }
   ],
   "slot": [
     { "name": "s-arm", "parent": "arm", "color": { "aM": 50, "rO": 51, "bO": -255 } },
@@ -90,7 +93,10 @@ const SKE: &str = r#"{ "name": "hero", "version": "5.5", "frameRate": 10, "armat
       { "name": "hat", "type": "armature", "transform": { "x": 5, "y": -6 } }
     ] }
   ] }],
-  "ik": [{ "name": "aim", "bone": "arm", "target": "root", "bendPositive": false }],
+  "ik": [
+    { "name": "aim", "bone": "arm", "target": "root", "bendPositive": false },
+    { "name": "wag", "bone": "tail3", "chain": 2, "target": "lean" }
+  ],
   "animation": [{ "name": "walk", "duration": 10, "playTimes": 0,
     "frame": [{ "duration": 3 }, { "duration": 7, "events": [{ "name": "step" }] }],
     "bone": [
@@ -345,4 +351,38 @@ fn a_dragonbones_export_keeps_skew_offsets_order_ik_keys_children_boxes_and_curv
     let p = rig.pose(Some(walk), 0.25, &[(0, [0.0, 0.0], 0.0)]);
     // s² at half: a quarter of the way from 0.4 to 0.
     assert!((p.offsets[0][1] - 0.3).abs() < 1e-4, "{:?}", p.offsets[0]);
+}
+
+/// A DragonBones `chain` of 2 is three bones (the old import refused any
+/// chain past 1), solved as one constraint.
+#[test]
+fn a_dragonbones_ik_chain_of_any_length_is_imported_root_first() {
+    let root = project(
+        "dragonbones-chain",
+        &[
+            ("rigs/hero_tex.png", png(32, 16)),
+            ("rigs/hero_ske.json", SKE.as_bytes().to_vec()),
+            ("rigs/hero_tex.json", ATLAS.as_bytes().to_vec()),
+            ("rigs/hero.ogt", IMPORT.as_bytes().to_vec()),
+        ],
+    );
+    let rig = cooked(&root).load_rig2d("rigs/hero.ogt").unwrap();
+    let wag = &rig.iks[1];
+    let names: Vec<&str> = wag
+        .bones
+        .iter()
+        .map(|b| rig.bones[*b].name.as_str())
+        .collect();
+    assert_eq!(
+        (wag.name.as_str(), names, wag.counterclockwise),
+        ("wag", vec!["tail1", "tail2", "tail3"], false)
+    );
+    // Solved: the tail's tip at (12, 9) px, inside its 30 px of reach.
+    let p = rig.pose(None, 0.0, &[(0, [0.0, 0.0], 0.0), (1, [12.0, 9.0], 1.0)]);
+    let tip = p.world[wag.bones[2]].apply(10.0, 0.0);
+    assert!(
+        (tip[0] - 12.0).abs() < 1e-3 && (tip[1] - 9.0).abs() < 1e-3,
+        "{tip:?}"
+    );
+    assert!(p.ik_error[1] < 1e-3);
 }

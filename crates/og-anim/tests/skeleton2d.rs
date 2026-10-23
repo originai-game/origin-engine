@@ -261,3 +261,80 @@ fn bounding_boxes_follow_the_pose_in_the_entitys_frame_and_restore_with_snapshot
     w.restore(&snap).unwrap();
     assert_eq!(sys.boxes(e.to_bits()).unwrap(), flipped);
 }
+
+#[test]
+fn an_ik_target_on_a_chain_of_three_bones_is_reached_and_its_error_is_the_tips_distance() {
+    // A tail of three 10-pixel bones (unit 10: one world unit each).
+    let tail = r#"type rig2d
+version 1
+---
+texture "tail.png"
+size 8 8
+unit 10
+bone root {
+}
+bone t1 {
+  parent root
+  length 10
+}
+bone t2 {
+  parent t1
+  at 10 0
+  length 10
+}
+bone t3 {
+  parent t2
+  at 10 0
+  length 10
+}
+ik tail {
+  bones t1 t2 t3
+  target root
+  bend clockwise
+}
+clip still {
+  duration 1
+}
+"#;
+    let mut w = World::new(&WorldDesc {
+        tick_rate: 64,
+        seed: 1,
+    })
+    .unwrap();
+    let sys = install_skeleton2d(&mut w).unwrap();
+    sys.add_rig(3, Rig2dAsset::parse(tail).unwrap()).unwrap();
+    let e = w
+        .spawn((
+            Transform {
+                position: Vec3::new(1.0, 2.0, 0.0),
+                ..Default::default()
+            },
+            Skeleton2D {
+                rig: 3,
+                ..Default::default()
+            },
+        ))
+        .unwrap();
+    let t = w
+        .spawn((IkTarget2D {
+            skeleton: e.to_bits(),
+            target: Vec2::new(2.5, 3.5),
+            ..Default::default()
+        },))
+        .unwrap();
+    w.step().unwrap();
+    let ik = w.get::<IkTarget2D>(t).unwrap();
+    assert!(ik.reached && ik.error < 1e-4, "{ik:?}");
+    // Out of reach (3 units of tail, 5 away): pointed at it, 2 short.
+    w.insert(
+        t,
+        IkTarget2D {
+            target: Vec2::new(4.0, 6.0),
+            ..ik
+        },
+    )
+    .unwrap();
+    w.step().unwrap();
+    let ik = w.get::<IkTarget2D>(t).unwrap();
+    assert!(!ik.reached && (ik.error - 2.0).abs() < 1e-4, "{ik:?}");
+}

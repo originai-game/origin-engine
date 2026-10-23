@@ -69,7 +69,7 @@ module anim {
 | [`Rig2D()`](#column-Rig2D) | column kind | A Rig2D handle field. |
 | [`og.Skeleton2D`](#record-Skeleton2D) | component | Plays a clip of a 2D rig at the entity: the og.skeleton2d system advances it by scaled time (Time.scaledDt) after the game's systems and fires its events as og.Skeleton2DEvent; extraction draws its slots, in their order, as textured triangles of the sprite batch at `layer` (region attachments as quads, mesh attachments weighted to bones and deformed by the clip), lit by og.Lighting2D when the layer is in its range, as a sprite there is. The rig's pixels are `unit` to a world unit and +y is up; the entity's og.Transform places, turns (about z) and scales it. |
 | [`og.Skeleton2DEvent`](#record-Skeleton2DEvent) | event | A 2D skeleton's clip passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass. |
-| [`og.IkTarget2D`](#record-IkTarget2D) | component | Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way. |
+| [`og.IkTarget2D`](#record-IkTarget2D) | component | Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge, a tail's tip. A constraint is a chain of any length: one bone points at the target, two are solved exactly (bending the way the rig says), three or more by FABRIK from the animated pose, curling the way the rig says. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way. |
 | [`Rig2DClipInfo`](#type-Rig2DClipInfo) | struct | One clip of a loaded 2D rig. |
 | [`Rig2DInfo`](#type-Rig2DInfo) | struct | What og.load.rig2d registered, or og.anim.rig2dInfo reads back from a handle. |
 | [`og.anim.rig2dInfo`](#fn-rig2dInfo) | function | What a loaded 2D rig holds: its bones, slots, IK constraints and clips, by the handle Skeleton2D.rig keeps (og.load.rig2d answers the same on load). |
@@ -839,7 +839,7 @@ event Skeleton2DEvent {
 
 ### `og.IkTarget2D` (component)
 
-Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way.
+Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge, a tail's tip. A constraint is a chain of any length: one bone points at the target, two are solved exactly (bending the way the rig says), three or more by FABRIK from the animated pose, curling the way the rig says. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way.
 
 Token `og.IkTarget2D`, registered under the schema name `og.IkTarget2D`; its value type is `IkTarget2D`.
 
@@ -855,7 +855,7 @@ Token `og.IkTarget2D`, registered under the schema name `og.IkTarget2D`; its val
 
 ```ogt
 component IkTarget2D {
-  doc "Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way."
+  doc "Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge, a tail's tip. A constraint is a chain of any length: one bone points at the target, two are solved exactly (bending the way the rig says), three or more by FABRIK from the animated pose, curling the way the rig says. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way."
   field skeleton Entity "The entity with the og.Skeleton2D."
   field constraint u32 "The constraint: an index into Rig2DInfo.constraints." {
     min 0

@@ -18,8 +18,8 @@
 //! through the display's transform) and its `armature` displays child
 //! attachments (the armature of that name in the same export, imported as
 //! a child armature, playing the display's or the slot's `actions`); an
-//! `ik`'s `bone` with `chain` 1 is two bones, `bendPositive` (clockwise on
-//! screen) is `bend clockwise`; an animation's `duration` and frame
+//! `ik`'s `bone` with `chain` n is that bone and its n ancestors, root
+//! first, and `bendPositive` (clockwise on screen) is `bend clockwise`; an animation's `duration` and frame
 //! `duration`s are frames of `frameRate`, `playTimes` 0 loops,
 //! `translateFrame`, `rotateFrame` (`rotate` and `skew`) and `scaleFrame`
 //! become bone keys (relative to the setup pose, as there), `displayFrame`
@@ -599,16 +599,14 @@ fn armature(
             bone_of(&rig, k["bone"].as_str().unwrap_or("")).ok_or(format!("ik {n}: no bone"))?;
         let target = bone_of(&rig, k["target"].as_str().unwrap_or(""))
             .ok_or(format!("ik {n}: no target"))?;
-        let bones = match k["chain"].as_u64().unwrap_or(0) {
-            0 => vec![bone],
-            1 => vec![
-                rig.bones[bone]
-                    .parent
-                    .ok_or(format!("ik {n}: chain 1 on a root bone"))?,
-                bone,
-            ],
-            c => return Err(format!("ik {n}: chain {c}; one or two bones are imported")),
-        };
+        // `chain` counts the ancestors above `bone` in the chain.
+        let mut bones = vec![bone];
+        for _ in 0..k["chain"].as_u64().unwrap_or(0) {
+            let up = rig.bones[bones[0]]
+                .parent
+                .ok_or(format!("ik {n}: its chain runs past the root bone"))?;
+            bones.insert(0, up);
+        }
         rig.iks.push(Ik2d {
             name: n,
             bones,

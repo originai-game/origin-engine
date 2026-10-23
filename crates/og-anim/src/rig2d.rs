@@ -70,11 +70,16 @@
 //! slot once, back to front) until the next. An `ik` key sets the
 //! constraint's weight (eased) and its bend (held until the next key).
 //!
-//! **IK.** An `ik` constraint turns one bone to point at the target bone's
-//! origin, or two (a parent and its child) so the child's tip reaches it,
-//! bending clockwise or counter-clockwise; a game moves the target with
-//! og.IkTarget2D, whose weight multiplies the constraint's (its `weight`
-//! line, or its clip's key).
+//! **IK.** An `ik` constraint's `bones` are a chain, root first, each the
+//! previous one's child. One bone turns to point at the target bone's
+//! origin; two (a parent and its child) are solved exactly so the child's
+//! tip reaches it, the joint bending clockwise or counter-clockwise; three
+//! or more are solved by FABRIK (at most 64 passes, to 1e-4 pixels) from
+//! the animated pose, its joints first put on the `bend` side of the line
+//! from the root to the target, so a tail or a tentacle curls the asked
+//! way. Out of reach the chain points straight at the target. A game moves
+//! the target with og.IkTarget2D, whose weight multiplies the constraint's
+//! (its `weight` line, or its clip's key).
 //!
 //! **Child armatures.** A `child` attachment shows an `armature` in its
 //! slot, placed by `at`, `rotation`, `skew` and `scale` in the slot's bone
@@ -102,7 +107,7 @@
 //! size, plus its corner) and `vertices` (unweighted pairs, or Spine's
 //! `count, bone, x, y, weight` groups) to `vertex` lines and `triangles` as
 //! they are; a `boundingbox` to `box` with its `vertices` as `polygon`;
-//! `ik` with its `bones`, `target` and `bendPositive` true as
+//! `ik` with its `bones` (any number), `target` and `bendPositive` true as
 //! `counterclockwise`; an animation's `bones` timelines (`rotate` `value`,
 //! `translate` and `scale` `x` `y`, `shear` as `skew`, `time` in seconds;
 //! `curve: "stepped"` as `step`, a Bézier `curve` c1 c2 c3 c4 as `curve`),
@@ -375,8 +380,9 @@ impl Attachment2d {
     }
 }
 
-/// An IK constraint: `bones` (one, or a parent and its child) turn so the
-/// last one's tip (one bone: its direction) reaches `target`'s origin.
+/// An IK constraint: `bones` (a chain, root first, each the previous one's
+/// child) turn so the last one's tip (one bone: its direction) reaches
+/// `target`'s origin.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ik2d {
     pub name: String,
@@ -1005,21 +1011,21 @@ fn parse_body(body: &[Entry], armatures: &[String]) -> Result<Armature2d> {
                 k => return Err(parse_err(c.line, format!("unknown key `{k}` in ik {name}"))),
             }
         }
-        match ik.bones.as_slice() {
-            [_] => {}
-            [p, c] if rig.bones[*c].parent == Some(*p) => {}
-            [_, _] => {
-                return Err(parse_err(
-                    e.line,
-                    format!("ik {name}: the second bone is the first's child"),
-                ));
-            }
-            _ => {
-                return Err(parse_err(
-                    e.line,
-                    format!("ik {name}: `bones` names one or two bones"),
-                ));
-            }
+        if ik.bones.is_empty() {
+            return Err(parse_err(
+                e.line,
+                format!("ik {name}: `bones` names the chain, root first"),
+            ));
+        }
+        if ik
+            .bones
+            .windows(2)
+            .any(|w| rig.bones[w[1]].parent != Some(w[0]))
+        {
+            return Err(parse_err(
+                e.line,
+                format!("ik {name}: each bone of `bones` is the previous one's child"),
+            ));
         }
         if ik.target == usize::MAX {
             return Err(parse_err(e.line, format!("ik {name} needs `target`")));
@@ -1646,10 +1652,10 @@ impl Rig2dAsset {
                     let now = atan2(tip[1] - o2[1], tip[0] - o2[0]);
                     local[*ch][2] += (wrap(want - now) * w / DEG) as f32;
                 }
-                _ => {}
+                chain => fabrik(body.bones, &mut local, chain, t, w, counterclockwise),
             }
             world = world_of(body.bones, &local);
-            let last = *c.bones.last().expect("one or two bones");
+            let last = *c.bones.last().expect("a chain has a bone");
             let reach = if c.bones.len() == 1 {
                 // One bone points: its error is how far off its direction the target lies.
                 let m = world[last];
@@ -1887,6 +1893,120 @@ impl Rig2dAsset {
                 _ => {}
             }
         }
+    }
+}
+
+/// FABRIK's passes over a chain of three or more bones: at most this many.
+const FABRIK_PASSES: usize = 64;
+/// ... stopping when the tip is this close to the target (pixels).
+const FABRIK_TOLERANCE: f64 = 1e-4;
+
+/// Turns `chain` (three or more bones, each the previous one's child) so
+/// the last one's tip reaches `t`, by FABRIK over the joints (each bone's
+/// origin, then the tip): from the animated pose, its interior joints
+/// first moved to the asked side of the line from the root to the target
+/// (mirrored across it when they lie on the other side, pushed off it when
+/// the chain is straight), then backward and forward passes that keep each
+/// segment's length; each bone then turns, root first, towards its solved
+/// joint, by `w` of the way. Out of reach the chain points straight at it.
+fn fabrik(
+    bones: &[Bone2d],
+    local: &mut [[f32; 6]],
+    chain: &[usize],
+    t: [f64; 2],
+    w: f64,
+    counterclockwise: bool,
+) {
+    let joint = |world: &[Affine2], i: usize| -> [f64; 2] {
+        match chain.get(i) {
+            Some(&b) => [f64::from(world[b].tx), f64::from(world[b].ty)],
+            None => {
+                let last = chain[chain.len() - 1];
+                world[last].apply(bones[last].length, 0.0).map(f64::from)
+            }
+        }
+    };
+    let world = world_of(bones, local);
+    let mut p: Vec<[f64; 2]> = (0..=chain.len()).map(|i| joint(&world, i)).collect();
+    let n = chain.len();
+    let lengths: Vec<f64> = (0..n)
+        .map(|i| sq(p[i + 1][0] - p[i][0], p[i + 1][1] - p[i][1]))
+        .collect();
+    let total: f64 = lengths.iter().sum();
+    let root = p[0];
+    let (dx, dy) = (t[0] - root[0], t[1] - root[1]);
+    let dist = sq(dx, dy);
+    if dist >= total {
+        let (ux, uy) = if dist > 0.0 {
+            (dx / dist, dy / dist)
+        } else {
+            (1.0, 0.0)
+        };
+        for i in 1..=n {
+            p[i] = [
+                p[i - 1][0] + ux * lengths[i - 1],
+                p[i - 1][1] + uy * lengths[i - 1],
+            ];
+        }
+    } else {
+        if dist > 0.0 {
+            let (ux, uy) = (dx / dist, dy / dist);
+            let side = if counterclockwise { 1.0 } else { -1.0 };
+            // Left of the line (counter-clockwise) is a positive cross product.
+            let bent: f64 = p[1..n]
+                .iter()
+                .map(|q| ux * (q[1] - root[1]) - uy * (q[0] - root[0]))
+                .sum();
+            if bent * side < 0.0 {
+                for q in &mut p[1..] {
+                    let (rx, ry) = (q[0] - root[0], q[1] - root[1]);
+                    let along = rx * ux + ry * uy;
+                    *q = [
+                        root[0] + 2.0 * along * ux - rx,
+                        root[1] + 2.0 * along * uy - ry,
+                    ];
+                }
+            } else if bent.abs() <= 1e-9 * total * total {
+                for q in &mut p[1..n] {
+                    *q = [
+                        q[0] - side * uy * total * 0.05,
+                        q[1] + side * ux * total * 0.05,
+                    ];
+                }
+            }
+        }
+        for _ in 0..FABRIK_PASSES {
+            if sq(p[n][0] - t[0], p[n][1] - t[1]) <= FABRIK_TOLERANCE {
+                break;
+            }
+            p[n] = t;
+            for i in (0..n).rev() {
+                let (ex, ey) = (p[i][0] - p[i + 1][0], p[i][1] - p[i + 1][1]);
+                let l = sq(ex, ey);
+                if l > 1e-12 {
+                    let k = lengths[i] / l;
+                    p[i] = [p[i + 1][0] + ex * k, p[i + 1][1] + ey * k];
+                }
+            }
+            p[0] = root;
+            for i in 1..=n {
+                let (ex, ey) = (p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]);
+                let l = sq(ex, ey);
+                if l > 1e-12 {
+                    let k = lengths[i - 1] / l;
+                    p[i] = [p[i - 1][0] + ex * k, p[i - 1][1] + ey * k];
+                }
+            }
+        }
+    }
+    // Root first: each bone turns its next joint towards the solved one.
+    for (i, &b) in chain.iter().enumerate() {
+        let world = world_of(bones, local);
+        let o = joint(&world, i);
+        let next = joint(&world, i + 1);
+        let now = atan2(next[1] - o[1], next[0] - o[0]);
+        let want = atan2(p[i + 1][1] - o[1], p[i + 1][0] - o[0]);
+        local[b][2] += (wrap(want - now) * w / DEG) as f32;
     }
 }
 
@@ -2775,6 +2895,186 @@ armature flame {
         );
         let (v, i) = r.triangles(&r.pose(Some(idle), 3.6, &[]));
         assert_eq!((v.len(), i.len()), (8, 12), "a box draws nothing");
+    }
+
+    /// The one- and two-bone solutions as they were before chains of any
+    /// length (the numbers the depth stream's solver gave, to the bit).
+    #[test]
+    fn one_and_two_bone_ik_give_the_poses_they_always_gave() {
+        let a = |a: f32, b: f32, c: f32, d: f32, tx: f32, ty: f32| Affine2 { a, b, c, d, tx, ty };
+        let r = rig();
+        let cases = [
+            (
+                [30.0, 10.0],
+                1.0,
+                a(0.5563508, 0.8309475, -0.8309475, 0.5563508, 0.0, 0.0),
+                a(
+                    0.9436492,
+                    -0.33094752,
+                    0.33094752,
+                    0.9436492,
+                    11.127016,
+                    16.61895,
+                ),
+                0.0,
+            ),
+            (
+                [-12.5, 21.25],
+                1.0,
+                a(-0.9912518, 0.13198434, -0.13198434, -0.9912518, 0.0, 0.0),
+                a(
+                    0.36625195,
+                    0.93051577,
+                    -0.93051577,
+                    0.36625195,
+                    -19.825037,
+                    2.6396868,
+                ),
+                2.6973983e-6,
+            ),
+            (
+                [0.0, -100.0],
+                1.0,
+                a(0.00022357237, -1.0, 1.0, 0.00022357237, 0.0, 0.0),
+                a(-5.5893106e-5, -1.0, 1.0, -5.5893106e-5, 0.0044714473, -20.0),
+                60.0,
+            ),
+            (
+                [25.0, -5.0],
+                0.4,
+                a(0.96298677, 0.26954868, -0.26954868, 0.96298677, 0.0, 0.0),
+                a(
+                    0.9656971,
+                    -0.25967127,
+                    0.25967127,
+                    0.9656971,
+                    19.259735,
+                    5.3909736,
+                ),
+                14.534759,
+            ),
+        ];
+        for (t, w, upper, lower, err) in cases {
+            let p = r.pose(None, 0.0, &[(0, t, w)]);
+            assert_eq!(
+                (p.world[1], p.world[2], p.ik_error[0]),
+                (upper, lower, err),
+                "{t:?}"
+            );
+        }
+        let r = Rig2dAsset::parse(&ARM.replace("bones upper lower", "bones upper")).unwrap();
+        for (t, w, upper, err) in [
+            (
+                [30.0, 10.0],
+                1.0,
+                a(0.9486833, 0.31622776, -0.31622776, 0.9486833, 0.0, 0.0),
+                2.9802322e-7,
+            ),
+            (
+                [-12.5, -21.25],
+                0.5,
+                a(0.4964775, -0.86804956, 0.86804956, 0.4964775, 0.0, 0.0),
+                21.400766,
+            ),
+        ] {
+            let p = r.pose(None, 0.0, &[(0, t, w)]);
+            assert_eq!((p.world[1], p.ik_error[0]), (upper, err), "{t:?}");
+        }
+    }
+
+    /// A tail of four 10-pixel bones, straight along x in its setup pose.
+    const TAIL: &str = r#"type rig2d
+version 1
+---
+texture "tail.png"
+size 8 8
+bone root {
+}
+bone t1 {
+  parent root
+  length 10
+}
+bone t2 {
+  parent t1
+  at 10 0
+  length 10
+}
+bone t3 {
+  parent t2
+  at 10 0
+  length 10
+}
+bone t4 {
+  parent t3
+  at 10 0
+  length 10
+}
+bone goal {
+  parent root
+  at 25 15
+}
+ik curl {
+  bones t1 t2 t3 t4
+  target goal
+  bend counterclockwise
+}
+"#;
+
+    #[test]
+    fn a_chain_of_any_length_reaches_and_curls_the_asked_way() {
+        let r = Rig2dAsset::parse(TAIL).expect("a four-bone chain");
+        assert_eq!(r.iks[0].bones, [1, 2, 3, 4]);
+        let joints = |p: &Pose2d| -> Vec<[f32; 2]> {
+            (1..=4)
+                .map(|b| [p.world[b].tx, p.world[b].ty])
+                .chain(std::iter::once(p.world[4].apply(10.0, 0.0)))
+                .collect()
+        };
+        // Left of the line from the root to the target is counter-clockwise.
+        let sides = |p: &Pose2d, t: [f32; 2]| -> Vec<f32> {
+            joints(p)[1..4]
+                .iter()
+                .map(|q| t[0] * q[1] - t[1] * q[0])
+                .collect()
+        };
+        for (bend, sign) in [("counterclockwise", 1.0), ("clockwise", -1.0)] {
+            let r = Rig2dAsset::parse(&TAIL.replace("counterclockwise", bend)).unwrap();
+            // From the straight setup pose, to the goal bone (25, 15): 29.15 of 40 away.
+            let p = r.pose(None, 0.0, &[]);
+            let j = joints(&p);
+            assert!(close(j[4], [25.0, 15.0], 1e-3), "{bend}: {j:?}");
+            assert!(p.ik_error[0] < 1e-3, "{:?}", p.ik_error);
+            for w in j.windows(2) {
+                let l = ((w[1][0] - w[0][0]).powi(2) + (w[1][1] - w[0][1]).powi(2)).sqrt();
+                assert!((l - 10.0).abs() < 1e-3, "{bend}: a bone stretched to {l}");
+            }
+            assert!(
+                sides(&p, [25.0, 15.0]).iter().all(|s| s * sign > 0.0),
+                "{bend}: {j:?}"
+            );
+        }
+        // A target behind the root, closer than the chain is long: the tail folds back to it.
+        let p = r.pose(None, 0.0, &[(0, [-12.0, -6.0], 1.0)]);
+        assert!(
+            close(joints(&p)[4], [-12.0, -6.0], 1e-3) && p.ik_error[0] < 1e-3,
+            "{:?}",
+            joints(&p)
+        );
+        assert!(sides(&p, [-12.0, -6.0]).iter().all(|s| *s > 0.0));
+        // Out of reach: straight at the target, 60 short.
+        let p = r.pose(None, 0.0, &[(0, [0.0, -100.0], 1.0)]);
+        assert!(close(joints(&p)[4], [0.0, -40.0], 1e-3), "{:?}", joints(&p));
+        assert!((p.ik_error[0] - 60.0).abs() < 1e-3);
+        // Weight 0 keeps the setup pose.
+        let p = r.pose(None, 0.0, &[(0, [25.0, 15.0], 0.0)]);
+        assert!(close(joints(&p)[4], [40.0, 0.0], 1e-4));
+        assert_eq!(Rig2dAsset::parse(&r.to_text()).expect("canonical"), r);
+        // A chain with a gap is refused.
+        let e = Rig2dAsset::parse(&TAIL.replace("bones t1 t2 t3 t4", "bones t1 t3 t4"))
+            .expect_err("t3 is not t1's child")
+            .reason()
+            .to_string();
+        assert!(e.contains("previous one's child"), "{e}");
     }
 
     #[test]
