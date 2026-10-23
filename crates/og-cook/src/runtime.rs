@@ -596,6 +596,22 @@ impl Bundle {
         .map_err(|e| invalid(&blob, &e))
     }
 
+    /// The custom post pass of a post blob.
+    pub fn post(&self, id: &str, bytes: &[u8]) -> Result<og_render::PostShader, LoadError> {
+        let blob = self.blob::<format::Post>(id, bytes)?;
+        let meta = one::<format::PostMeta>(&blob)?;
+        let text = blob.raw("text")?;
+        if text.len() < meta.text_bytes as usize {
+            return Err(invalid(&blob, "the post text is cut short"));
+        }
+        let text = std::str::from_utf8(&text[..meta.text_bytes as usize])
+            .map_err(|_| invalid(&blob, "the post text is not UTF-8"))?;
+        crate::shader::parse_post(id, text, &mut |_| {
+            Err("a cooked post pass carries its code".to_string())
+        })
+        .map_err(|e| invalid(&blob, &e))
+    }
+
     /// The validated text of a UI skin blob (parse it with og-ui's
     /// `parse_skin` and load the assets it names from the bundle).
     pub fn skin_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {

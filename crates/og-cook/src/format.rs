@@ -23,6 +23,7 @@
 //! | particle emitter (`og.ParticleEmitter`, an `.ogt` of `type particles`) | [`EmitterMeta`] | `text` (the validated emitter file) |
 //! | UI skin (`og.UiSkin`, an `.ogt` of `type skin`) | [`SkinMeta`] | `text` (the validated skin file) |
 //! | material shader (`og.MaterialShader`, an `.ogt` of `type shader`) | [`ShaderMeta`] | `text` (the canonical shader file, code inlined) |
+//! | custom post pass (`og.PostPass`, an `.ogt` of `type post`) | [`PostMeta`] | `text` (the canonical post file, code inlined) |
 //! | 2D rig (`og.Skeleton2D`, an `.ogt` of `type rig2d`) | [`Rig2DMeta`] | `text` (the canonical rig: a DragonBones export converted, the texture's id and size) |
 //! | flipbook sheet (`og.Flipbook`, an `.ogt` of `type flipbook`) | [`FlipbookMeta`] | `text` (the canonical sheet: frames resolved from the grid and an Aseprite or TexturePacker atlas, clips with frame indices and durations, the texture's size) |
 //! | animation (`og.Animation`, a glTF's `#anim`) | [`AnimMeta`] | `nodes` [`NodeRow`], `skins` [`SkinRow`], `joints` (u32 node indices), `inverse_binds` (16 f32 per joint, column-major), `clips` [`ClipRow`], `channels` [`ChannelRow`], `samples` (f32), `packed` (u16: quantised keys, `crate::anim_codec`), `events` [`EventRow`], `skin_streams` [`SkinStreamRow`], `skin_data` (meshopt streams), `morphs` [`MorphRow`], `targets` [`TargetRow`], `morph_data` (meshopt streams of the moved vertices' deltas and indices), `strings` |
@@ -103,6 +104,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
         Lut,
         Skin,
         Shader,
+        Post,
         Emitter,
         Tileset,
         Tilemap,
@@ -899,6 +901,24 @@ impl BlobKind for Shader {
     const NAME: &'static str = "og.MaterialShader";
     fn schemas() -> Vec<Schema> {
         vec![ShaderMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a custom post pass blob (an `.ogt` of `type post`).
+    PostMeta, "og.PostPass", 1 {
+        /// Bytes of the canonical post file (code inlined) in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The custom post pass blob: `text` holds the post file the cook compiled
+/// for every back end (`crate::shader`), its code inlined.
+pub struct Post;
+impl BlobKind for Post {
+    const NAME: &'static str = "og.PostPass";
+    fn schemas() -> Vec<Schema> {
+        vec![PostMeta::schema()]
     }
 }
 

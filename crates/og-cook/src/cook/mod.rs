@@ -542,6 +542,7 @@ enum Kind {
     Flipbook,
     Rig2d,
     Shader,
+    Post,
     Behaviour,
     NavMesh,
     Strings,
@@ -572,6 +573,7 @@ impl Kind {
             Kind::Flipbook => "flipbook",
             Kind::Rig2d => "rig2d",
             Kind::Shader => "shader",
+            Kind::Post => "post",
             Kind::Behaviour => "behaviour",
             Kind::NavMesh => "navmesh",
             Kind::Strings => "strings",
@@ -633,6 +635,7 @@ enum Work<'a> {
     FlipbookLayer(&'a Source, Box<og_anim::FlipbookSheet>, usize),
     Rig2d(&'a Source),
     Shader(&'a Source),
+    Post(&'a Source),
     Behaviour(&'a Source),
     NavMesh(&'a Source),
     Strings(&'a Source),
@@ -846,6 +849,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == "flipbook" => Kind::Flipbook,
                     Ok(doc) if doc.ty == og_anim::RIG2D_TYPE => Kind::Rig2d,
                     Ok(doc) if doc.ty == crate::shader::SHADER_TYPE => Kind::Shader,
+                    Ok(doc) if doc.ty == crate::shader::POST_TYPE => Kind::Post,
                     Ok(doc) if doc.ty == sfx::SFX_TYPE => Kind::Sound,
                     Ok(doc) if doc.ty == e6::BEHAVIOUR_TYPE => Kind::Behaviour,
                     Ok(doc) if doc.ty == og_i18n::STRINGS_TYPE => Kind::Strings,
@@ -1177,6 +1181,14 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     .unwrap_or_default();
                 let st = stamp(&[b"shader", &hash, wgsl.as_bytes()]);
                 outs.push((s.rel.clone(), format::Shader::NAME, st, Work::Shader(s)));
+            }
+            Kind::Post => {
+                let text = String::from_utf8_lossy(&s.bytes);
+                let wgsl = crate::shader::shader_source(&text)
+                    .map(|src| read_sibling(s, &src).unwrap_or_default())
+                    .unwrap_or_default();
+                let st = stamp(&[b"post", &hash, wgsl.as_bytes()]);
+                outs.push((s.rel.clone(), format::Post::NAME, st, Work::Post(s)));
             }
             Kind::Skin => {
                 let text = String::from_utf8_lossy(&s.bytes);
@@ -1914,6 +1926,37 @@ fn run(
                 vec![format!(
                     "{} parameter(s); compiled for {}",
                     shader.params.len(),
+                    compiled.join(", ")
+                )],
+            ))
+        }
+        Work::Post(s) => {
+            let text = std::str::from_utf8(&s.bytes)
+                .map_err(|_| CookError("a post pass is text (UTF-8)".into()))?;
+            let name = s.rel.trim_end_matches(".ogt");
+            let post = crate::shader::parse_post(name, text, &mut |src| read_sibling(s, src))
+                .map_err(CookError)?;
+            let compiled = crate::shader::validate_post(&post)
+                .map_err(|e| CookError(format!("the post pass does not compile: {e}")))?;
+            let canonical = crate::shader::post_text(&post);
+            let mut w = og_blob::BlobWriter::new(
+                format::Post::type_hash(),
+                format::Post::schema_version(),
+                p.stamp,
+            );
+            w.table(
+                "meta",
+                &[format::PostMeta {
+                    text_bytes: canonical.len() as u32,
+                }],
+                format::row_hash::<format::PostMeta>(),
+            )
+            .raw("text", canonical.into_bytes(), 16);
+            Ok((
+                w.finish(),
+                vec![format!(
+                    "{} parameter(s); compiled for {}",
+                    post.params.len(),
                     compiled.join(", ")
                 )],
             ))

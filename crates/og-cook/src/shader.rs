@@ -29,6 +29,105 @@ use og_render::{MaterialShader, ParamKind, ShaderMode, ShaderParam};
 /// The `.ogt` type of a shader file.
 pub const SHADER_TYPE: &str = "shader";
 
+/// The `.ogt` type of a custom post pass (og-render `post_custom.rs`): the
+/// same `code`/`source` and `param` lines as a shader, the code defining
+/// `fn post(f: PostInput, p: Params) -> vec4<f32>`.
+pub const POST_TYPE: &str = "post";
+
+/// Parses a post pass file (`read` as for [`parse_shader`]).
+pub fn parse_post(
+    name: &str,
+    text: &str,
+    read: &mut dyn FnMut(&str) -> Result<String, String>,
+) -> Result<og_render::PostShader, String> {
+    let (code, params, _) = parse_entries(text, read, POST_TYPE)?;
+    let post = og_render::PostShader {
+        name: name.to_string(),
+        code: code.ok_or("a post pass needs `code` or `source` (its WGSL `post` function)")?,
+        params,
+    };
+    post.check()?;
+    Ok(post)
+}
+
+/// The canonical file of a post pass, its code inlined.
+pub fn post_text(post: &og_render::PostShader) -> String {
+    entries_text(POST_TYPE, &post.code, &post.params, ShaderMode::Hooks)
+}
+
+/// Compiles a post pass for every tier and back end (naga: WGSL, SPIR-V,
+/// MSL, GLSL ES 3.0). The engine also compiles it on the device and skips
+/// it, reported, when that fails.
+#[cfg(feature = "cook")]
+pub fn validate_post(post: &og_render::PostShader) -> Result<Vec<String>, String> {
+    use naga::valid::{Capabilities, ValidationFlags, Validator};
+    let src = og_render::post_module_source(post);
+    let first = src
+        .find(post.code.as_str())
+        .map_or(0, |at| src[..at].lines().count());
+    let lines = post.code.lines().count();
+    let module = naga::front::wgsl::parse_str(&src).map_err(|e| {
+        format!(
+            "WGSL: {}",
+            user_lines(&e.emit_to_string(&src), first, lines)
+        )
+    })?;
+    let mut done = Vec::new();
+    for full in [true, false] {
+        let caps = if full {
+            Capabilities::all()
+        } else {
+            Capabilities::empty()
+        };
+        let info = Validator::new(ValidationFlags::all(), caps)
+            .validate(&module)
+            .map_err(|e| {
+                format!(
+                    "validation: {}",
+                    user_lines(&e.emit_to_string(&src), first, lines)
+                )
+            })?;
+        if full {
+            naga::back::spv::write_vec(&module, &info, &Default::default(), None)
+                .map_err(|e| format!("SPIR-V: {e}"))?;
+            naga::back::msl::write_string(&module, &info, &Default::default(), &Default::default())
+                .map_err(|e| format!("MSL: {e}"))?;
+            done.push("full tier: SPIR-V, MSL".to_string());
+        } else {
+            for (stage, entry) in [
+                (naga::ShaderStage::Vertex, "vs"),
+                (naga::ShaderStage::Fragment, "fs_custom_post"),
+            ] {
+                let options = naga::back::glsl::Options {
+                    version: naga::back::glsl::Version::Embedded {
+                        version: 300,
+                        is_webgl: true,
+                    },
+                    ..Default::default()
+                };
+                let pipeline = naga::back::glsl::PipelineOptions {
+                    shader_stage: stage,
+                    entry_point: entry.to_string(),
+                    multiview: None,
+                };
+                let mut out = String::new();
+                naga::back::glsl::Writer::new(
+                    &mut out,
+                    &module,
+                    &info,
+                    &options,
+                    &pipeline,
+                    naga::proc::BoundsCheckPolicies::default(),
+                )
+                .and_then(|mut w| w.write().map(|_| ()))
+                .map_err(|e| format!("GLSL ES 3.0 ({entry}): {e}"))?;
+            }
+            done.push("WebGL2: GLSL ES 3.0".to_string());
+        }
+    }
+    Ok(done)
+}
+
 /// The WGSL file a shader names with `source` (the cook reads it).
 pub fn shader_source(text: &str) -> Option<String> {
     Document::parse(text).ok().and_then(|d| {
@@ -47,16 +146,32 @@ pub fn parse_shader(
     text: &str,
     read: &mut dyn FnMut(&str) -> Result<String, String>,
 ) -> Result<MaterialShader, String> {
+    let (code, params, mode) = parse_entries(text, read, SHADER_TYPE)?;
+    let shader = MaterialShader {
+        name: name.to_string(),
+        code: code.ok_or("a shader needs `code` or `source` (the WGSL hooks or full entries)")?,
+        params,
+        mode,
+    };
+    shader.check()?;
+    Ok(shader)
+}
+
+type Entries = (Option<String>, Vec<ShaderParam>, ShaderMode);
+
+/// The code, parameters and mode of a shader or post file of type `ty`.
+fn parse_entries(
+    text: &str,
+    read: &mut dyn FnMut(&str) -> Result<String, String>,
+    ty: &str,
+) -> Result<Entries, String> {
     let doc = Document::parse(text).map_err(|e| e.to_string())?;
-    if doc.ty != SHADER_TYPE {
-        return Err(format!(
-            "a shader is `type {SHADER_TYPE}`, not `type {}`",
-            doc.ty
-        ));
+    if doc.ty != ty {
+        return Err(format!("a {ty} is `type {ty}`, not `type {}`", doc.ty));
     }
     if doc.version != 1 {
         return Err(format!(
-            "shader version {} (this engine reads 1)",
+            "{ty} version {} (this engine reads 1)",
             doc.version
         ));
     }
@@ -66,7 +181,7 @@ pub fn parse_shader(
     for e in &doc.body.entries {
         let line = e.line;
         match e.key.as_str() {
-            "mode" => {
+            "mode" if ty == SHADER_TYPE => {
                 let word = |i: usize| e.values.get(i).and_then(Value::as_word);
                 mode = match (word(0), word(1), e.values.len()) {
                     (Some("hooks"), None, 1) => ShaderMode::Hooks,
@@ -133,23 +248,20 @@ pub fn parse_shader(
                     default,
                 });
             }
-            other => return Err(format!("line {line}: unknown shader entry `{other}`")),
+            other => return Err(format!("line {line}: unknown {ty} entry `{other}`")),
         }
     }
-    let shader = MaterialShader {
-        name: name.to_string(),
-        code: code.ok_or("a shader needs `code` or `source` (the WGSL hooks or full entries)")?,
-        params,
-        mode,
-    };
-    shader.check()?;
-    Ok(shader)
+    Ok((code, params, mode))
 }
 
 /// The canonical file of `shader`, its code inlined (what a cooked blob holds).
 pub fn shader_text(shader: &MaterialShader) -> String {
-    let mut doc = Document::new(SHADER_TYPE, 1);
-    if let ShaderMode::Full { lit } = shader.mode {
+    entries_text(SHADER_TYPE, &shader.code, &shader.params, shader.mode)
+}
+
+fn entries_text(ty: &str, code: &str, params: &[ShaderParam], mode: ShaderMode) -> String {
+    let mut doc = Document::new(ty, 1);
+    if let ShaderMode::Full { lit } = mode {
         doc.body.entries.push(
             Entry::new("mode")
                 .with(Value::Word("full".into()))
@@ -158,8 +270,8 @@ pub fn shader_text(shader: &MaterialShader) -> String {
     }
     doc.body
         .entries
-        .push(Entry::new("code").with(Value::String(shader.code.clone())));
-    for p in &shader.params {
+        .push(Entry::new("code").with(Value::String(code.to_string())));
+    for p in params {
         let mut e = Entry::new("param")
             .with(Value::Word(p.name.clone()))
             .with(Value::Word(
@@ -344,6 +456,35 @@ mod tests {
         assert_eq!(done.len(), 2, "{done:?}");
         let again = parse_shader("crt", &shader_text(&s), &mut refuse).expect("round trip");
         assert_eq!(again, s);
+    }
+
+    /// A post pass cooks for every tier and round-trips; a broken one is
+    /// refused at its line.
+    #[test]
+    fn a_post_pass_cooks_for_every_tier() {
+        let text = |code: &str| {
+            format!(
+                "type post\nversion 1\n---\ncode \"{}\"\nparam curve float 0.1\n",
+                code.replace('\n', "\\n")
+            )
+        };
+        let code = "fn post(f: PostInput, p: Params) -> vec4<f32> {\n  let d = depth(f.uv) + normal(f.uv).x;\n  return previous(f.uv * (1.0 + p.curve)) + scene_color(f.uv) * 0.0 * d;\n}";
+        let post = parse_post("crt", &text(code), &mut refuse).expect("parses");
+        assert_eq!(validate_post(&post).expect("validates").len(), 2);
+        assert_eq!(
+            parse_post("crt", &post_text(&post), &mut refuse).expect("again"),
+            post
+        );
+        let broken = parse_post(
+            "crt",
+            &text(&code.replace("p.curve", "p.bend")),
+            &mut refuse,
+        )
+        .expect("parses");
+        let e = validate_post(&broken).expect_err("refused");
+        assert!(e.contains("hooks:3"), "{e}");
+        let e = parse_post("crt", &text("fn other() {}"), &mut refuse).expect_err("no post");
+        assert!(e.contains("post"), "{e}");
     }
 
     /// A full shader's error is reported at its own line, and one with
