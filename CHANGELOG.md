@@ -206,6 +206,46 @@ minor bump, §3), by stream:
   third-person's `beacon` and the two webgl2 looks whose badge wears the
   preset's style.
 
+Debt round (merged 2026-10-23, in progress: what the depth streams and
+`ui/style` left owed, `tests/evidence/debt/<stream>/NOTES.md` each), API
+changes by stream:
+
+- `render-targets`: an `og.CameraView` or `og.Mirror` draws what the main
+  pass draws on its layers: transparents sorted from the view's eye, world
+  sprites and text, particles (`og.ParticleSystem.layers`), lines and
+  points; an ldr target or viewport carries exposure and the tone curve,
+  an hdr target linear radiance. The main camera keeps GPU culling in a
+  frame with views (views and probe faces cull on the CPU and append; the
+  GPU cull tests the layer mask). A target's `depth` texture is drawn on
+  every tier, WebGL2 included (`RenderCapabilities.renderTargetDepth` is
+  true wherever a renderer exists). `PostEffects.custom1` to `custom8`
+  (eight slots, `maxCustomPosts` 8 on every tier). `describe` entries name
+  the `views` an entity shows in and `Description.views` lists each
+  view's own id pass. The mirror's near plane sits a hair off the glass.
+  Gfx scenes `views-layers` and `views-depth`.
+- `render-lod`: reflection probes are picked per instance (a shared mesh
+  splits into one batch per probe); captures draw skinned meshes in their
+  pose, terrain, scatter near the box, the sky and transparents; terrain,
+  scatter, custom, water and fluid shaders take the probe's ambient and
+  reflected light; the prepass reflectivity reads the roughness and
+  metalness maps. `expect:entity:<id>:<path><op><value>` and
+  `expect:timings:<path><op><value>`; fx-showcase playtests `lod` and
+  `reflections`. A probe bake's key hashes the room's content
+  (`cooked/probes/<key>.ogt` beside it) and `og doctor --project` reports
+  `stale-probe`. Gfx scenes `probe-two-rooms` and `probe-outdoor`.
+- `style-names`: og-ui's Rust names say style (`style_file`, `Art`,
+  `Theme::art`, an element's `frame`); ui-kit's `style:` command and
+  `kit-style-*` sheets; Path Guard and Rumpus Isle on the current cartoon
+  art (modest corners, no pills; Path Guard's primary `#974009` for 7:1).
+  `og.load.look`'s docs call the look's `ui` line its style.
+- `lantern-vale-physics`: the pile's rocks are density 150 (46 kg), light
+  enough for the controller's capped push (`pushStrength`, 1,000 N); the
+  physics playtest checks the rocks the hero walks into, not the pile's
+  own slump. No engine change.
+- `geometry-video` (first item): the `debug-overlay` gfx scene draws two
+  `og.debug.text` labels. The og-cli doctor tests clear `OG_TSRS` and
+  `OG_ENGINE_PACKAGE` themselves and skip an installed tsrs.
+
 ## 0.2.0 (2026-10-23)
 
 API additions and changes (a minor bump, §3), by the stream that landed

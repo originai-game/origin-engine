@@ -6104,6 +6104,28 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   Linux build (reproduced at RMSE 0; within RMSE 0.0031 of `metal`).
 - Owed: §Owed rows 9–13, 20 and 36–37.
 
+### Status 2026-10-23, debt round (in progress)
+
+- The owed items of depth wave 1 and `ui/style`, one branch
+  `debt/<stream>` per stream, two or three Claude Code threads on Opus
+  5.5 high at a time (the AGENTS.md rule, 52ccd97e), merged in the order
+  they report: `lantern-vale-physics` (586019b8: the engine's capped push
+  is right, the example's rocks were 279 kg), `style-names` (c1784e47),
+  `render-targets` (34122f3a), `render-lod` (b2918766; its og-render
+  lib.rs and api.ogt conflicts with render-targets resolved at the merge:
+  probe faces cull with `!gpu_cull`, the probe transparents join the
+  GPU-cull range remap, the view passes bind no probe). Metal references
+  re-recorded per merge (89af43d4, 7f5d7bd9, 50f1dafd), each frame read.
+- Functional gate at 50f1dafd: PASS 5/5 in 200 s (fmt 2 s, clippy 13 s,
+  test 196 s, drift 71 s, bun-functional 99 s).
+- Running: `render-light`, `geometry-video`, `probe-rooms`; then
+  `two-d-math`. The wave's end (`scripts/wave-end.sh`) once after the
+  last merge.
+- Left for a later round: a list column in records (og-core; eight
+  custom post slots until then), the raycast's per-tick hierarchy
+  refresh, rollback and the platform's ask #16, og-ui's nine-slice band
+  on buttons shorter than their corners, the games' "skin" prose.
+
 ### Status 2026-10-19, E5 round
 
 - **Atmosphere, water, material shaders and physics beyond rigid bodies**
