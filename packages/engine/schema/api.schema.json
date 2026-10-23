@@ -2818,7 +2818,11 @@
         "Lines",
         "Points",
         "RaycastGeometryDesc",
-        "GeometryHit"
+        "GeometryHit",
+        "VolumetricFog",
+        "RectLight",
+        "LightVolume",
+        "BakedScene"
       ],
       "consts": [
         {
@@ -3472,6 +3476,20 @@
           ],
           "returns": "Result<List<GeometryHit>>",
           "returnsDoc": "Refused for a zero or non-finite direction.",
+          "publish": true
+        },
+        {
+          "name": "bakedLighting",
+          "doc": "The baked lighting of every scene instantiated in the world, in instantiation order: whether it is drawn, and why not. A scene with no static model and no LightVolume is not listed.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world asked."
+            }
+          ],
+          "returns": "List<BakedScene>",
           "publish": true
         }
       ],
@@ -14263,6 +14281,11 @@
           "type": "boolean",
           "description": "Cast shadows: six cube faces or two paraboloid hemispheres (RenderOptions.pointShadows).",
           "default": false
+        },
+        "cookie": {
+          "$ref": "#/$defs/Texture",
+          "description": "A light cookie projected all around the light: a cube of six square faces in one texture, stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z (a KTX2 cube's face order and a cube map's orientation, world axes; the texture is six times as tall as it is wide). The light's colour is multiplied by the texel its direction meets, so a lamp behind a pierced shade throws its pattern on the walls. 0 is none.",
+          "default": 0
         }
       },
       "additionalProperties": false
@@ -14318,6 +14341,11 @@
           "type": "boolean",
           "description": "Cast a shadow map.",
           "default": false
+        },
+        "cookie": {
+          "$ref": "#/$defs/Texture",
+          "description": "A light cookie, as three.js SpotLight.map: the texture projected along the cone (its centre on the axis, its edges at the outer angle, its top towards world up), multiplying the light's colour, so a spot throws a window's bars or a stained-glass pattern. 0 is none. A shadowed spot keeps its shadow over the pattern.",
+          "default": 0
         }
       },
       "additionalProperties": false
@@ -14426,6 +14454,11 @@
           "$ref": "#/$defs/Texture",
           "description": "The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour.",
           "default": 0
+        },
+        "bakedLighting": {
+          "type": "boolean",
+          "description": "Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map: to compare, or to see the realtime lights alone.",
+          "default": true
         }
       },
       "additionalProperties": false
@@ -16873,6 +16906,10 @@
             "type": "string"
           },
           "description": "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
+        },
+        "volumetricFog": {
+          "$ref": "#/$defs/VolumetricFog",
+          "description": "How Fog.volumetric is drawn on this device: a froxel grid lit by the sun and the clustered point, spot and rect lights (the full tier), or a raymarch of the sun alone along each pixel's view ray (WebGL2)."
         }
       },
       "required": [
@@ -16884,7 +16921,8 @@
         "pointShadows",
         "width",
         "height",
-        "stylise"
+        "stylise",
+        "volumetricFog"
       ],
       "additionalProperties": false
     },
@@ -17740,6 +17778,154 @@
       ],
       "additionalProperties": false
     },
+    "VolumetricFog": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "How the device draws Fog.volumetric (RenderCapabilities.volumetricFog).",
+      "type": "string",
+      "enum": [
+        "froxel",
+        "raymarch"
+      ],
+      "x-og-variants": {
+        "froxel": "A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, exponentially deeper) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows, then integrated front to back: the full tier.",
+        "raymarch": "Each pixel's view ray marched through the fog in 24 steps, lit by the sun through its cascades alone: WebGL2, which has no compute."
+      }
+    },
+    "RectLight": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light.\nArea lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches as far as its brightness carries (where it would light a white surface facing it at one hundredth of one), and fades smoothly to zero there.",
+      "type": "object",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The light's linear colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "intensity": {
+          "type": "number",
+          "description": "The emitted radiance (luminance), as three.js RectAreaLight.intensity.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "width": {
+          "type": "number",
+          "description": "Its size along the entity's local x, as RectAreaLight.width.",
+          "default": 10,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "height": {
+          "type": "number",
+          "description": "Its size along the entity's local y, as RectAreaLight.height.",
+          "default": 10,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "twoSided": {
+          "type": "boolean",
+          "description": "Emit from the back face as well (a hanging panel lit both ways).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "LightVolume": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (bounced off its static models, from the sky, from emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every mesh, model, skinned character and particle-lit surface drawn inside it that has no lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing: a ball rolling past a red wall turns red on that side.\nThe box is size metres centred on the entity, axis-aligned in world space (its rotation and scale are ignored). Its probes are the scene's: unbaked (no bake since the volume was added, moved or resized) it lights nothing and og doctor --project names the scene.",
+      "type": "object",
+      "properties": {
+        "size": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The box's extent along world x, y and z.",
+          "default": {
+            "x": 4,
+            "y": 4,
+            "z": 4
+          },
+          "x-og-unit": "m"
+        },
+        "spacing": {
+          "type": "number",
+          "description": "The most distance between neighbouring probes (the box is divided evenly, with probes on its faces; at most 64 a side).",
+          "default": 1,
+          "minimum": 0.1,
+          "maximum": 16,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "BakedScene": {
+      "x-og-kind": "struct",
+      "x-og-module": "render",
+      "description": "One instantiated scene's baked lighting, as og.render.bakedLighting reports it.",
+      "type": "object",
+      "properties": {
+        "scene": {
+          "type": "string",
+          "description": "The scene's asset id, such as `scenes/cornell.ogt`."
+        },
+        "baked": {
+          "type": "boolean",
+          "description": "Its lightmap and probes are loaded and drawn."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why not, when not: the scene has no bake (`og bake lightmaps` writes `<scene>.lightmap.ogt`), its bake is stale (a static model or the scene changed since; the reason names which), or RenderSettings.bakedLighting is off. Empty when baked."
+        },
+        "models": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Static model instances drawn with the lightmap."
+        },
+        "pages": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Lightmap pages (RGBA16F texture array layers)."
+        },
+        "texels": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The pages' side in texels."
+        },
+        "volumes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "LightVolume grids its dynamic objects sample."
+        },
+        "probes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Probes in those volumes."
+        }
+      },
+      "required": [
+        "scene",
+        "baked",
+        "reason",
+        "models",
+        "pages",
+        "texels",
+        "volumes",
+        "probes"
+      ],
+      "additionalProperties": false
+    },
     "Asset": {
       "x-og-kind": "handle",
       "x-og-module": "load",
@@ -18099,6 +18285,11 @@
           "type": "boolean",
           "description": "Whether it is drawn, as Mesh.visible: false skips every draw of this instance (its meshes, its shadows) while it keeps its transform, its animation and its physics, so a ghost car or a pickup waiting to respawn is hidden without moving it away.",
           "default": true
+        },
+        "static": {
+          "type": "boolean",
+          "description": "Part of its scene's baked lighting: og bake lightmaps gives a static model lightmap UVs (xatlas, over its world-space triangles) and traces the light arriving at its surfaces from the scene into the scene's lightmap (`<scene>.lightmap.ogt` and `.ktx2` beside the scene). Once baked, the model draws with it (its ambient light from the lightmap instead of the sky; its lights' direct light, shadows and highlights still drawn every frame) for as long as the bake matches the scene. A scene entity says `static true` beside its `model` line; an unbaked static model draws as any model, and og doctor --project names the scene.",
+          "default": false
         }
       },
       "additionalProperties": false
@@ -20913,6 +21104,35 @@
           "maximum": 1,
           "x-og-unit": "ratio",
           "x-og-tunable": true
+        },
+        "volumetric": {
+          "type": "boolean",
+          "description": "Light the fog as a participating medium: within volumetricDistance of the camera the fog (density per metre, thickened below height by heightDensity and falloff, as above) scatters the sun through its shadow cascades, so light shafts fall through windows and between trees and move with the sun, and on the full tier every point, spot and rect light it is lit by; it dims what lies behind it by the same amounts. RenderCapabilities.volumetricFog names the method (a froxel grid on the full tier, a raymarch of the sun on WebGL2). Opaque surfaces and the sky are seen through the volume; blended surfaces, particles and sprites take the plain distance and height fog of the same medium. Past volumetricDistance nothing more is added.",
+          "default": false
+        },
+        "scattering": {
+          "type": "number",
+          "description": "How much of the light the fog takes from a ray it scatters (its albedo, tinted by color): 0 dims without glowing, 1 sends all of it on, above 1 brightens the shafts for effect.",
+          "default": 0.8,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-tunable": true
+        },
+        "anisotropy": {
+          "type": "number",
+          "description": "Which way the fog scatters (Henyey–Greenstein g): 0 evenly, towards 1 forward (bright looking into the light: shafts against the sun), below 0 back towards the light.",
+          "default": 0.6,
+          "minimum": -0.95,
+          "maximum": 0.95,
+          "x-og-tunable": true
+        },
+        "volumetricDistance": {
+          "type": "number",
+          "description": "How far from the camera the volume reaches.",
+          "default": 48,
+          "minimum": 4,
+          "maximum": 400,
+          "x-og-unit": "m"
         }
       },
       "additionalProperties": false

@@ -259,6 +259,8 @@ export interface HostAbi<A, V> {
   og_render_points(world: number, desc: string | undefined): string;
   /** `og.render.raycast` */
   og_render_raycast(world: number, ray: string, desc: string | undefined): string;
+  /** `og.render.bakedLighting` */
+  og_render_baked_lighting(world: number): string;
   /** `og.load.bundle` */
   og_load_bundle(world: number, path: string): string;
   /** `og.load.bundleInfo` */
@@ -873,6 +875,7 @@ export const SYMBOLS: readonly string[] = [
   "og_render_lines",
   "og_render_points",
   "og_render_raycast",
+  "og_render_baked_lighting",
   "og_load_bundle",
   "og_load_bundle_info",
   "og_load_default_bundle",

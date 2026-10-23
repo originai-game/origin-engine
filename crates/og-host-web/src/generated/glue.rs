@@ -639,6 +639,11 @@ pub fn og_render_raycast(world: u32, ray: String, desc: Option<String>) -> Strin
 }
 
 #[wasm_bindgen]
+pub fn og_render_baked_lighting(world: u32) -> String {
+    <Host as RenderApi>::og_render_baked_lighting(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_load_bundle(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_bundle(&Host, world, path)
 }

@@ -32,6 +32,7 @@ mod anim;
 mod api;
 mod assets;
 mod atmosphere;
+mod baked;
 mod codec;
 mod describe;
 mod e6;
@@ -83,6 +84,7 @@ pub use engine::{
     set_render_backend, take_log, take_outputs, view_columns, view_entities, warm_renderer,
     write_resource,
 };
+pub use baked::og_render_baked_lighting;
 pub use feel::{
     og_camera_kick, og_camera_punch, og_camera_shake, og_load_flipbook, og_load_tilemap,
     og_render_floating_text, og_tilemap_cell_at, og_tilemap_cell_center, og_tilemap_get_tile,

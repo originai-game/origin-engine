@@ -16,7 +16,7 @@ module atmosphere {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 6343</sub>
+<sub>`api.ogt` line 6417</sub>
 
 ## Contents
 
@@ -63,7 +63,7 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 6720</sub>
+<sub>`api.ogt` line 6813</sub>
 
 ## Components, resources and events
 
@@ -89,6 +89,10 @@ Token `og.Fog`, registered under the schema name `og.Fog`; its value type is `Fo
 | `sunPower` | `number` | `8` | 0 … 256 | — | tunable | How tight the sun's glow in the fog is (higher: smaller). |
 | `maxOpacity` | `number` | `1` | 0 … 1 | `ratio` | tunable | The most the fog hides. |
 | `sky` | `number` | `1` | 0 … 1 | `ratio` | tunable | How much of the fog covers the sky (0: the sky stays clear). |
+| `volumetric` | `boolean` | `false` | — | — | — | Light the fog as a participating medium: within volumetricDistance of the camera the fog (density per metre, thickened below height by heightDensity and falloff, as above) scatters the sun through its shadow cascades, so light shafts fall through windows and between trees and move with the sun, and on the full tier every point, spot and rect light it is lit by; it dims what lies behind it by the same amounts. RenderCapabilities.volumetricFog names the method (a froxel grid on the full tier, a raymarch of the sun on WebGL2). Opaque surfaces and the sky are seen through the volume; blended surfaces, particles and sprites take the plain distance and height fog of the same medium. Past volumetricDistance nothing more is added. |
+| `scattering` | `number` | `0.8` | 0 … 4 | — | tunable | How much of the light the fog takes from a ray it scatters (its albedo, tinted by color): 0 dims without glowing, 1 sends all of it on, above 1 brightens the shafts for effect. |
+| `anisotropy` | `number` | `0.6` | -0.95 … 0.95 | — | tunable | Which way the fog scatters (Henyey–Greenstein g): 0 evenly, towards 1 forward (bright looking into the light: shafts against the sun), below 0 back towards the light. |
+| `volumetricDistance` | `number` | `48` | 4 … 400 | `m` | — | How far from the camera the volume reaches. |
 
 ```ogt
 resource Fog {
@@ -151,10 +155,29 @@ resource Fog {
     unit ratio
     tunable true
   }
+  field volumetric bool "Light the fog as a participating medium: within volumetricDistance of the camera the fog (density per metre, thickened below height by heightDensity and falloff, as above) scatters the sun through its shadow cascades, so light shafts fall through windows and between trees and move with the sun, and on the full tier every point, spot and rect light it is lit by; it dims what lies behind it by the same amounts. RenderCapabilities.volumetricFog names the method (a froxel grid on the full tier, a raymarch of the sun on WebGL2). Opaque surfaces and the sky are seen through the volume; blended surfaces, particles and sprites take the plain distance and height fog of the same medium. Past volumetricDistance nothing more is added."
+  field scattering f32 "How much of the light the fog takes from a ray it scatters (its albedo, tinted by color): 0 dims without glowing, 1 sends all of it on, above 1 brightens the shafts for effect." {
+    default 0.8
+    min 0
+    max 4
+    tunable true
+  }
+  field anisotropy f32 "Which way the fog scatters (Henyey–Greenstein g): 0 evenly, towards 1 forward (bright looking into the light: shafts against the sun), below 0 back towards the light." {
+    default 0.6
+    min -0.95
+    max 0.95
+    tunable true
+  }
+  field volumetricDistance f32 "How far from the camera the volume reaches." {
+    default 48
+    min 4
+    max 400
+    unit m
+  }
 }
 ```
 
-<sub>`api.ogt` line 6354</sub>
+<sub>`api.ogt` line 6428</sub>
 
 <a id="record-Sky"></a>
 
@@ -261,7 +284,7 @@ resource Sky {
 }
 ```
 
-<sub>`api.ogt` line 6416</sub>
+<sub>`api.ogt` line 6509</sub>
 
 <a id="record-DayNight"></a>
 
@@ -343,7 +366,7 @@ resource DayNight {
 }
 ```
 
-<sub>`api.ogt` line 6491</sub>
+<sub>`api.ogt` line 6584</sub>
 
 <a id="record-Weather"></a>
 
@@ -405,7 +428,7 @@ resource Weather {
 }
 ```
 
-<sub>`api.ogt` line 6548</sub>
+<sub>`api.ogt` line 6641</sub>
 
 <a id="record-Water"></a>
 
@@ -539,7 +562,7 @@ component Water {
 }
 ```
 
-<sub>`api.ogt` line 6588</sub>
+<sub>`api.ogt` line 6681</sub>
 
 <a id="record-Water2D"></a>
 
@@ -593,7 +616,7 @@ component Water2D {
 }
 ```
 
-<sub>`api.ogt` line 6688</sub>
+<sub>`api.ogt` line 6781</sub>
 
 ## Constants
 
@@ -609,28 +632,28 @@ component Water2D {
 const WEATHER_NONE u32 0 "Weather.kind: clear."
 ```
 
-<sub>`api.ogt` line 6348</sub>
+<sub>`api.ogt` line 6422</sub>
 
 ```ogt
 const WEATHER_RAIN u32 1 "Weather.kind: rain streaks falling with the wind, the light dimmed and a grey distance fog."
 ```
 
-<sub>`api.ogt` line 6349</sub>
+<sub>`api.ogt` line 6423</sub>
 
 ```ogt
 const WEATHER_SNOW u32 2 "Weather.kind: flakes drifting down on gusts, a pale fog."
 ```
 
-<sub>`api.ogt` line 6350</sub>
+<sub>`api.ogt` line 6424</sub>
 
 ```ogt
 const WEATHER_DUST u32 3 "Weather.kind: dust blowing along the wind near the ground, a warm thick fog."
 ```
 
-<sub>`api.ogt` line 6351</sub>
+<sub>`api.ogt` line 6425</sub>
 
 ```ogt
 const WEATHER_MIST u32 4 "Weather.kind: no particles, a dense low height fog."
 ```
 
-<sub>`api.ogt` line 6352</sub>
+<sub>`api.ogt` line 6426</sub>

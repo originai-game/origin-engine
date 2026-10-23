@@ -765,6 +765,12 @@ pub fn og_render_raycast(env: Env, world: u32, ray: String, desc: Option<String>
     <Host as RenderApi>::og_render_raycast(&Host, world, ray, desc)
 }
 
+#[napi(js_name = "og_render_baked_lighting")]
+pub fn og_render_baked_lighting(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_baked_lighting(&Host, world)
+}
+
 #[napi(js_name = "og_load_bundle")]
 pub fn og_load_bundle(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
