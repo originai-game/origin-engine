@@ -909,6 +909,13 @@ fn a_frame_smaller_than_its_art_tiles_exactly_and_never_squeezes_its_middle_past
                 (!mid_x || sx <= 2.0 + 1e-3) && (!mid_y || sy <= 2.0 + 1e-3),
                 "{w}x{h}: {p:?} squeezes its middle art {sx}x{sy}"
             );
+            // A corner shows its whole inset, 12 texels, along each corner
+            // axis (scaled to fit or not): the middle's cut never moves it.
+            let (tu, tv) = ((uv[2] - uv[0]) / texel[0], (uv[3] - uv[1]) / texel[1]);
+            assert!(
+                (mid_x || (tu - 12.0).abs() < 1e-3) && (mid_y || (tv - 12.0).abs() < 1e-3),
+                "{w}x{h}: {p:?} shows {tu}x{tv} texels of its corner"
+            );
         }
     }
     // The tall element's middle row still shows the whole 24 texel middle.

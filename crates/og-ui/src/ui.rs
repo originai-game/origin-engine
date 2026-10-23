@@ -4120,17 +4120,22 @@ fn nine(
     let ys = [rect.y, rect.y + t, rect.bottom() - b, rect.bottom()];
     let [u0, v0, u1, v1] = s.uv;
     let [bl, bt, br, bb] = s.border_uv;
-    let mut us = [u0, u0 + bl, u1 - br, u1];
-    let mut vs = [v0, v0 + bt, v1 - bb, v1];
-    // A middle squeezed more than twice shows the centre of the art's
-    // middle, squeezed twice, rather than all of it: squeezed further, the
-    // mipmapped atlas samples a level that blurs an edge piece's border into
-    // its fill (a light band across both ends of a button a few px taller
-    // than its corners, Rumpus Isle's small Pause). Repeat cuts its tile.
-    if s.fill != SliceFill::Repeat {
-        fit_middle(&mut us, xs[2] - xs[1], s.middle[0]);
-        fit_middle(&mut vs, ys[2] - ys[1], s.middle[1]);
-    }
+    let us = [u0, u0 + bl, u1 - br, u1];
+    let vs = [v0, v0 + bt, v1 - bb, v1];
+    // The middle column's and row's cut of the art. Squeezed more than
+    // twice, the middle shows the centre of the art's middle, squeezed
+    // twice, rather than all of it: further, the mipmapped atlas samples a
+    // level that blurs an edge piece's border into its fill (a light band
+    // across both ends of a button a few px taller than its corners, Rumpus
+    // Isle's small Pause). The corners keep their cut; Repeat cuts its tile.
+    let (mu, mv) = if s.fill == SliceFill::Repeat {
+        ((us[1], us[2]), (vs[1], vs[2]))
+    } else {
+        (
+            middle_cut(us[1], us[2], xs[2] - xs[1], s.middle[0]),
+            middle_cut(vs[1], vs[2], ys[2] - ys[1], s.middle[1]),
+        )
+    };
     let color = tint.linear();
     for row in 0..3 {
         for col in 0..3 {
@@ -4143,7 +4148,9 @@ fn nine(
             if piece.width <= 0.0 || piece.height <= 0.0 {
                 continue;
             }
-            let uv = [us[col], vs[row], us[col + 1], vs[row + 1]];
+            let (ua, ub) = if col == 1 { mu } else { (us[col], us[col + 1]) };
+            let (va, vb) = if row == 1 { mv } else { (vs[row], vs[row + 1]) };
+            let uv = [ua, va, ub, vb];
             // Corners never tile; an edge tiles along its length, the centre both ways.
             let along_x = col == 1 && s.fill != SliceFill::Stretch;
             let along_y = row == 1 && s.fill != SliceFill::Stretch;
@@ -4169,16 +4176,16 @@ fn nine(
     }
 }
 
-/// Narrows the middle `[at[1], at[2]]` of one axis's texture cuts to its
-/// centre, when the art's middle (`art`, on screen px) would be squeezed
-/// into `len` more than twice: the window kept is `2 × len` of the art,
-/// so the squeeze stays at 2 (continuous with the plain squeeze above it).
-fn fit_middle(at: &mut [f32; 4], len: f32, art: f32) {
-    if 2.0 * len < art {
-        let (c, h) = ((at[1] + at[2]) / 2.0, (at[2] - at[1]) * len.max(0.0) / art);
-        at[1] = c - h;
-        at[2] = c + h;
+/// The cut `(a, b)` of the art's middle a middle `len` long on screen
+/// shows, when the art's middle (`art`, on screen px) would be squeezed
+/// into it more than twice: the centre `2 × len` of the art, so the squeeze
+/// stays at 2 (continuous with the plain squeeze above it).
+fn middle_cut(a: f32, b: f32, len: f32, art: f32) -> (f32, f32) {
+    if 2.0 * len >= art {
+        return (a, b);
     }
+    let (c, h) = ((a + b) / 2.0, (b - a) * len.max(0.0) / art);
+    (c - h, c + h)
 }
 
 /// The tiles along one axis of a piece starting at `at`, `len` long: each
