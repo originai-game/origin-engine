@@ -50,7 +50,7 @@ if (r.closed) state.screen = "map";
 Screenshots of every template at desktop (1280×720) and on a phone in portrait
 (390×844 at 3×) are in the engine repository under `templates/ui-kit/screens/`;
 the full-size reference frames are `crates/og-ui/references/metal/kit-*.png`,
-and every style pack's screens on a phone `kit-skin-<pack>-phone.png`.
+and every style pack's screens on a phone `kit-style-<pack>-phone.png`.
 
 | The game needs | Call | It answers |
 |---|---|---|

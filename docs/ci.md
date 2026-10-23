@@ -754,16 +754,16 @@ native metal run gives against that reference.
 
 `packages/engine/tests/web/reference-ui.ts` runs templates/ui-kit's
 reference playtests in headless Chrome: `frames-desktop`, `frames-phone`,
-`players`, `locales` and the twelve `skin-<pack>[-phone]` playtests, all of
-them (72 frames: 23 desktop, 22 phone, 15 locale screens, 12 skin sheets of
+`players`, `locales` and the twelve `style-<pack>[-phone]` playtests, all of
+them (72 frames: 23 desktop, 22 phone, 15 locale screens, 12 style sheets of
 21 cells). It bundles each playtest (`bundleGame`, as `og test` does), reads
 its size, commands and screenshot times, and runs reference.ts once per
 playtest with `--project templates/ui-kit --references
 crates/og-ui/references --size <w>x<h> --script <the commands without
 screenshot, quit and dump> --shots <file>@<round(60 t)>,…`, so each
-browser run is the same fresh run as the native playtest. A skin playtest
-adds `--sheet kit-skin-<pack>[-phone].png,<factor>,<cols>`: each shot is
-box-shrunk (2 on desktop, 3 on a phone, as `tests/skins.ts` does) and
+browser run is the same fresh run as the native playtest. A style playtest
+adds `--sheet kit-style-<pack>[-phone].png,<factor>,<cols>`: each shot is
+box-shrunk (2 on desktop, 3 on a phone, as `tests/styles.ts` does) and
 compared with its cell of the sheet; the gallery shot that only
 proves the pack applied is not a cell. Frames are judged against
 `crates/og-ui/references/<webgpu|webgl2>/`, else `metal`, at og-tests'

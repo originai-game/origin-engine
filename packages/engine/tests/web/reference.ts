@@ -116,7 +116,7 @@ const SCRIPT = looks
   ? LOOK_COMMANDS.join(";")
   : opt("--script") ?? STATIONS.filter((s) => s.at > 0).map((s) => `${s.at}:station:${s.name}`).join(";");
 
-/** An n× box filter, rounded (templates/ui-kit/tests/skins.ts `shrink`). */
+/** An n× box filter, rounded (templates/ui-kit/tests/styles.ts `shrink`). */
 function shrink(img: Image, n: number): Image {
   const w = Math.floor(img.width / n);
   const h = Math.floor(img.height / n);

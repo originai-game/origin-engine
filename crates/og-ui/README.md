@@ -349,7 +349,7 @@ slug, `@styles/<slug>/style.ogt` built in, or by the game's own id). It declares
 
 Six built-in styles live in `templates/styles/<slug>/` (pixel, cartoon,
 fantasy, scifi, paper, neon; og-cook embeds them as `@styles/<slug>/`),
-drawn by `templates/ui-kit/tools/make-skins.py`; art drawn by hand is
+drawn by `templates/ui-kit/tools/make-styles.py`; art drawn by hand is
 packed by `og style pack <dir>` (og-cli's `src/style.rs`: `<part>.9.png`
 nine-patches, whose one-pixel border marks what stretches, and plain PNGs
 for ornaments, into `atlas.png` and the style file's atlas, slice, soft
@@ -853,7 +853,7 @@ cargo check --target wasm32-unknown-unknown -p og-ui
 | `tests/a11y.rs` | roles, names, values and states of every widget; Tab walks `focus_order`; a screen reader's requests (focus, activate, increment, decrement) reach the control the path names and not one under a dialog, increment and decrement on a stepper's spinbutton step it within its range, and the tree's digest moves with what a mirror shows; a slider, a stepper (bounded or not), a progress and a meter carry their bounds and value as numbers; the page's reduced motion, contrast and transparency reach the theme and leave again, reduced transparency (the page's or the game's) flattening the scrim and the translucent fills |
 | `tests/materials_gfx.rs` | `references/<tier>/materials.png`: a dark card, 16 of the kit's iconoir icons cooked at test time (og-cook) at 48 and 24 px and one inline in rich text, a 16:9 picture in a growing column, a zoom view pinched to 2x and a list two touches scrolled and flung as they lift; no missing glyph |
 | `tests/kit_gfx.rs` | the widget set (tabs, an open select menu with the focus ring, stepper, radio, checkboxes, chips, badges, meters with trail, notches and label, skeleton, four cooldown rings, stick, d-pad, action button, spinner, a toast) matches `references/<tier>/widget-set.png` in 4 sprite draws; the pies are the expected half-disc angles |
-| `templates/ui-kit/tests/*.og.ts` | through the command channel on the native host: every template at 1280×720 and 390×844@3 matches `references/<tier>/kit-{desktop,phone}-<screen>.png`; every screen in each built-in style matches its cell of `references/<tier>/kit-skin-<pack>.png`; an iris transition, the count-up and UI voices (`juice`); touch, keyboard and gamepad flows, drag and drop, the phone's safe area and 44 px targets, the tutorial spotlight (`templates/ui-kit/README.md`) |
+| `templates/ui-kit/tests/*.og.ts` | through the command channel on the native host: every template at 1280×720 and 390×844@3 matches `references/<tier>/kit-{desktop,phone}-<screen>.png`; every screen in each built-in style matches its cell of `references/<tier>/kit-style-<pack>.png`; an iris transition, the count-up and UI voices (`juice`); touch, keyboard and gamepad flows, drag and drop, the phone's safe area and 44 px targets, the tutorial spotlight (`templates/ui-kit/README.md`) |
 
 Each was checked by breaking the code it covers (the kit round's breaks are
 in `tests/evidence/E1/ui-break-and-restore.md`; earlier: grow caps, the
@@ -861,7 +861,7 @@ release-inside rule, label probe text, element order, scroll clipping, wheel
 scrolling, a theme constant, the primary colour, the saved scroll state,
 Backspace, the toggle's click). Every reference frame (85: the five scenes,
 the four text scenes, the materials scene, 23 desktop and 22 phone kit
-screens, the text screen's three, 15 locale screens, 12 skin sheets of
+screens, the text screen's three, 15 locale screens, 12 style sheets of
 21 cells) is committed for `metal` and `vulkan-cpu` (Mesa lavapipe, CI's
 tier), and the browser tiers judge the 77 they run (not the text and
 materials scenes, which cook their fonts and icons, nor the kit's text

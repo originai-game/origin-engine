@@ -1,7 +1,7 @@
 type style
 version 1
 ---
-# Path Guard's skin: the engine's cartoon style pack (templates/ui-kit/tools/make-skins.py; CC0 art, OFL fonts;
+# Path Guard's skin: the engine's cartoon style pack (templates/ui-kit/tools/make-styles.py; CC0 art, OFL fonts;
 # LICENSES.md) in a night-garden palette: cream panels on the dark lawn, the lantern's orange as the one accent.
 name "pathguard"
 scheme light

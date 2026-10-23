@@ -2,7 +2,7 @@
 
 | File | Licence | Origin |
 |---|---|---|
-| `atlas.png` | CC0 1.0 | self-made by the Origin Engine authors: drawn by `templates/ui-kit/tools/make-skins.py` (deterministic) |
+| `atlas.png` | CC0 1.0 | self-made by the Origin Engine authors: drawn by `templates/ui-kit/tools/make-styles.py` (deterministic) |
 | `icons.png` | CC0 1.0 | self-made: the kit's 32 icons (`tools/make-assets.py`) restyled by the same script |
 | `style.ogt`, `*.ogt` | CC0 1.0 | written by the same script |
 | `Fredoka-SemiBold.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Fredoka SemiBold (Google Fonts); unmodified. Copyright 2016 The Fredoka Project Authors (https://github.com/hafontia/Fredoka-One) |

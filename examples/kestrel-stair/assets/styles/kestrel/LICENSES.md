@@ -2,7 +2,7 @@
 
 | File | Licence | Origin |
 |---|---|---|
-| `atlas.png` | CC0 1.0 | self-made by the Origin Engine authors: drawn by `templates/ui-kit/tools/make-skins.py` (deterministic) |
+| `atlas.png` | CC0 1.0 | self-made by the Origin Engine authors: drawn by `templates/ui-kit/tools/make-styles.py` (deterministic) |
 | `icons.png` | CC0 1.0 | self-made: the kit's 32 icons (`tools/make-assets.py`) restyled by the same script |
 | `style.ogt`, `*.ogt` | CC0 1.0 | written by the same script |
 | `InstrumentSans-Regular.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Instrument Sans (github.com/Instrument/instrument-sans); unmodified. Copyright 2022 The Instrument Sans Project Authors (https://github.com/Instrument/instrument-sans) |

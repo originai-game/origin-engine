@@ -12,7 +12,7 @@ export default playtest({
   name: "an iris transition switches screens at full cover, the score counts up, UI events sound",
   size: "1280x720",
   commands: [
-    "0.10:skin:cartoon", "0.15:transition:iris", "0.20:sounds:on",
+    "0.10:style:cartoon", "0.15:transition:iris", "0.20:sounds:on",
     "0.30:show:results",
     "0.45:screenshot:iris-closing.png", "0.45:dump_ui:covering.json",
     "0.75:screenshot:iris-opening.png", "0.75:dump_ui:revealing.json",
