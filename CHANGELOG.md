@@ -7,6 +7,18 @@ One version across `@origingame/engine` (the knowledge inside it as
 bump carries API additions or changes, one line each, written at the merge
 that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
+## Unreleased
+
+Debt round 2 (`docs/phase-1.md`, "Plan 2026-10-23, debt round 2").
+
+- `records-list`: records take a fixed-capacity list column of one number
+  type (`List.X.N` in the IDL, `S[N]` in the schema, the `list` factory in
+  TypeScript; through og-core, og-ecs snapshots, og-net, og-probe, og-cook
+  scene text, the codec and both runtimes). `PostEffects.custom` is one
+  `List.Post.8`; `custom1..custom8` are gone and their callers migrated
+  (fx-showcase's shaders station, the og-game skill, design §2.6).
+  `maxCustomPosts` stays the bound.
+
 ## 0.3.0 (2026-10-23)
 
 The depth wave (`docs/depth.md`, nine streams), its debt round and the
