@@ -2486,3 +2486,25 @@ pub fn og_engine_probe_listen(probe: u32, seconds: Option<f64>) -> String {
 pub fn og_engine_probe_memory(probe: u32) -> String {
     member(probe, "memory", json!({})).to_string()
 }
+
+pub fn og_engine_probe_describe(probe: u32) -> String {
+    member(probe, "describe", json!({})).to_string()
+}
+
+/// A malformed expectation answers null (the call's error names why).
+pub fn og_engine_probe_expect(probe: u32, what: String) -> String {
+    member(probe, "expect", json!({ "what": what })).to_string()
+}
+
+pub fn og_engine_probe_expectations(probe: u32) -> String {
+    member(probe, "expectations", json!({})).to_string()
+}
+
+pub fn og_engine_probe_save_scene(probe: u32, write: Option<bool>) -> String {
+    member(
+        probe,
+        "save_scene",
+        json!({ "write": write.unwrap_or(false) }),
+    )
+    .to_string()
+}

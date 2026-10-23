@@ -1,0 +1,318 @@
+{
+  "camera": {
+    "far": 2000.0,
+    "fov": 50.0,
+    "height": null,
+    "near": 0.10000000149011612,
+    "position": [
+      0.4000000059604645,
+      1.7999999523162842,
+      8.0
+    ],
+    "projection": "perspective",
+    "target": [
+      0.4000000059604645,
+      1.7999999523162842,
+      7.0
+    ],
+    "up": [
+      0.0,
+      1.0,
+      0.0
+    ]
+  },
+  "entities": [
+    {
+      "archetype": [
+        "og.Transform",
+        "og.Mesh",
+        "og.Collider"
+      ],
+      "box": {
+        "height": 300.0,
+        "width": 1280.0,
+        "x": 0.0,
+        "y": 420.0
+      },
+      "coverage": 0.38434,
+      "depth": 3.8708,
+      "drawn": {
+        "height": 300.0,
+        "width": 1280.0,
+        "x": 0.0,
+        "y": 420.0
+      },
+      "id": "ground",
+      "labels": [
+        "mesh"
+      ],
+      "name": "ground",
+      "occlusion": 0.0718,
+      "order": 0,
+      "point": {
+        "x": 639.0,
+        "y": 569.0
+      }
+    },
+    {
+      "archetype": [
+        "og.Transform",
+        "og.Model"
+      ],
+      "box": {
+        "height": 204.0,
+        "width": 398.0,
+        "x": 384.0,
+        "y": 248.0
+      },
+      "coverage": 0.03124,
+      "depth": 6.9432,
+      "drawn": {
+        "height": 204.0,
+        "width": 398.0,
+        "x": 384.0,
+        "y": 248.0
+      },
+      "id": "dropship",
+      "labels": [
+        "model",
+        "models/dropship.glb"
+      ],
+      "name": "dropship",
+      "occlusion": 0.0,
+      "order": 1,
+      "point": {
+        "x": 583.0,
+        "y": 349.0
+      }
+    },
+    {
+      "archetype": [
+        "og.Transform",
+        "og.Mesh",
+        "og.RigidBody",
+        "og.Collider",
+        "og.Velocity",
+        "og.AudioSource"
+      ],
+      "box": {
+        "height": 134.0,
+        "width": 142.0,
+        "x": 276.0,
+        "y": 62.0
+      },
+      "coverage": 0.01942,
+      "depth": 6.9998,
+      "drawn": {
+        "height": 134.0,
+        "width": 142.0,
+        "x": 276.0,
+        "y": 62.0
+      },
+      "id": "crate",
+      "labels": [
+        "mesh"
+      ],
+      "name": "crate",
+      "occlusion": 0.0,
+      "order": 2,
+      "point": {
+        "x": 347.0,
+        "y": 129.0
+      }
+    },
+    {
+      "archetype": [
+        "og.Transform",
+        "og.Mesh",
+        "og.Collider"
+      ],
+      "box": {
+        "height": 220.0,
+        "width": 224.0,
+        "x": 232.0,
+        "y": 338.0
+      },
+      "coverage": 0.04478,
+      "depth": 6.9999,
+      "drawn": {
+        "height": 220.0,
+        "width": 224.0,
+        "x": 232.0,
+        "y": 338.0
+      },
+      "id": "wall",
+      "labels": [
+        "mesh"
+      ],
+      "name": "wall",
+      "occlusion": 0.0015,
+      "order": 3,
+      "point": {
+        "x": 343.0,
+        "y": 447.0
+      }
+    },
+    {
+      "archetype": [
+        "og.Transform",
+        "og.Model",
+        "og.Perceivable",
+        "Health",
+        "Spin"
+      ],
+      "box": {
+        "height": 170.0,
+        "width": 32.0,
+        "x": 776.0,
+        "y": 358.0
+      },
+      "coverage": 0.00415,
+      "depth": 7.7898,
+      "drawn": {
+        "height": 170.0,
+        "width": 32.0,
+        "x": 776.0,
+        "y": 358.0
+      },
+      "id": "trickster",
+      "labels": [
+        "model",
+        "models/walker.glb"
+      ],
+      "name": "trickster",
+      "occlusion": 0.0,
+      "order": 4,
+      "point": {
+        "x": 791.0,
+        "y": 443.0
+      }
+    },
+    {
+      "archetype": [
+        "og.Transform",
+        "og.Model",
+        "og.NavAgent",
+        "og.AiAgent",
+        "og.Perception",
+        "Alarm"
+      ],
+      "box": {
+        "height": 124.0,
+        "width": 48.0,
+        "x": 178.0,
+        "y": 358.0
+      },
+      "coverage": 0.00337,
+      "depth": 10.7897,
+      "drawn": {
+        "height": 124.0,
+        "width": 48.0,
+        "x": 178.0,
+        "y": 358.0
+      },
+      "id": "guard",
+      "labels": [
+        "model",
+        "models/walker.glb"
+      ],
+      "name": "guard",
+      "occlusion": 0.0,
+      "order": 5,
+      "point": {
+        "x": 201.0,
+        "y": 419.0
+      }
+    }
+  ],
+  "kind": "describe",
+  "pass": {
+    "height": 360,
+    "width": 640
+  },
+  "surface": {
+    "dpr": 1.0,
+    "height": 720.0,
+    "width": 1280.0
+  },
+  "tick": 1,
+  "ui": [
+    {
+      "box": {
+        "height": 192.0,
+        "width": 259.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "id": "Hud",
+      "kind": "column",
+      "parent": "",
+      "role": "",
+      "states": [],
+      "text": "",
+      "value": ""
+    },
+    {
+      "box": {
+        "height": 144.0,
+        "width": 211.0,
+        "x": 24.0,
+        "y": 24.0
+      },
+      "id": "Menu",
+      "kind": "panel",
+      "parent": "Hud",
+      "role": "",
+      "states": [],
+      "text": "",
+      "value": ""
+    },
+    {
+      "box": {
+        "height": 32.0,
+        "width": 171.0,
+        "x": 44.0,
+        "y": 40.0
+      },
+      "id": "Title",
+      "kind": "label",
+      "parent": "Menu",
+      "role": "text",
+      "states": [],
+      "text": "Origin Engine",
+      "value": ""
+    },
+    {
+      "box": {
+        "height": 20.0,
+        "width": 126.0,
+        "x": 44.0,
+        "y": 84.0
+      },
+      "id": "Status",
+      "kind": "label",
+      "parent": "Menu",
+      "role": "text",
+      "states": [],
+      "text": "Press Start to begin",
+      "value": ""
+    },
+    {
+      "box": {
+        "height": 36.0,
+        "width": 63.0,
+        "x": 44.0,
+        "y": 116.0
+      },
+      "id": "Start",
+      "kind": "button",
+      "parent": "Menu",
+      "role": "button",
+      "states": [
+        "focusable"
+      ],
+      "text": "Start",
+      "value": ""
+    }
+  ]
+}

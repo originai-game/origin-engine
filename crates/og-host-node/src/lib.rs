@@ -446,6 +446,19 @@ impl Hooks for NodeHooks {
     }
 }
 
+/// `og run --trace`: turns the engine's trace on or off (og-runtime's
+/// `trace.rs`).
+#[napi(js_name = "og_node_trace")]
+pub fn og_node_trace(engine: u32, on: bool) {
+    og_runtime::trace_set(engine, on);
+}
+
+/// The trace's spans since the last take, as JSON (`{ now, events }`).
+#[napi(js_name = "og_node_trace_take")]
+pub fn og_node_trace_take(engine: u32) -> String {
+    og_runtime::trace_take(engine)
+}
+
 /// Whether column views alias engine memory (`"alias"`) or are copied in
 /// and out (`"copy"`), as decided so far.
 #[napi(js_name = "og_node_views_mode")]
@@ -484,6 +497,12 @@ impl RenderBackend for OffscreenBackend {
     }
     fn missing_glyphs(&self) -> u32 {
         self.missing
+    }
+    fn set_clock(&mut self, clock: Option<fn() -> f64>) {
+        self.renderer.set_clock(clock);
+    }
+    fn pass_timings(&self) -> Vec<(String, f64)> {
+        self.renderer.pass_timings().to_vec()
     }
     fn capture(
         &mut self,

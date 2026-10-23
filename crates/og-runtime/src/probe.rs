@@ -124,6 +124,15 @@ pub(crate) fn with_probe<T>(
     invalidate(moving);
     super::engine::clear_world_queries();
     let world = eng.world()?;
+    // state().timings.systems (the last tick, run order) and .passes.
+    {
+        let systems = world
+            .system_info()
+            .into_iter()
+            .filter_map(|s| s.ms.map(|ms| (s.name, ms)))
+            .collect();
+        probe.set_timing_detail(systems, eng.state.borrow().pass_ms.clone());
+    }
     let out = f(&mut probe, world);
     flush_names(eng);
     let log = probe.take_log();
@@ -223,12 +232,14 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
     probe.set_engine_version(format!("origin-engine {}", env!("CARGO_PKG_VERSION")));
     // A world.restore asked for during a tick applies as the tick ends.
     probe.set_after_tick(Box::new(move |world| {
+        super::trace::after_tick(id, world);
         if let Ok(eng) = engine(id) {
             super::save::after_tick(&eng, world);
         }
     }));
     // og.WorldRestored, the tick after a restore.
     probe.set_before_tick(Box::new(move |world| {
+        super::trace::before_tick(id);
         if let Ok(eng) = engine(id) {
             super::save::before_tick(&eng, world);
             super::geometry::before_tick(&eng, world);
@@ -237,6 +248,14 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
     if let Some(ui) = eng.state.borrow().ui.as_ref() {
         probe.set_ui(ui.probe());
     }
+    // describe and pick: the id pass over the extracted frame, with or
+    // without a renderer.
+    probe.set_scene_view(Box::new(super::describe::RuntimeView {
+        render: eng.render.clone(),
+        engine: id,
+    }));
+    // save_scene: the boot scene's text rewritten from the world.
+    probe.set_scene_writer(Box::new(super::scene_save::RuntimeWriter { engine: id }));
     for (name, usage, doc) in commands {
         register_one(&mut probe, id, &name, &usage, &doc)?;
     }

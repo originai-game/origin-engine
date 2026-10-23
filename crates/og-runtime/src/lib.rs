@@ -33,6 +33,7 @@ mod api;
 mod assets;
 mod atmosphere;
 mod codec;
+mod describe;
 mod e6;
 mod engine;
 mod environment;
@@ -55,10 +56,12 @@ mod probe;
 #[cfg(not(feature = "publish"))]
 mod record;
 mod save;
+mod scene_save;
 mod stream;
 mod terrain;
 mod terrain_stream;
 mod timeline;
+mod trace;
 mod video;
 
 pub use ai::{
@@ -149,6 +152,7 @@ pub use timeline::{
     og_path_sample, og_timeline_info, og_timeline_pause, og_timeline_play, og_timeline_seek,
     og_timeline_stop,
 };
+pub use trace::{BEFORE_ENGINE as TRACE_BEFORE_ENGINE, set as trace_set, take as trace_take};
 pub use video::{og_load_video, og_load_video_info};
 
 use serde_json::{Value, json};

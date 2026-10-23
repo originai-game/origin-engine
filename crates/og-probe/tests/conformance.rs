@@ -100,7 +100,7 @@ fn every_member_answers_as_protocol_5_says() {
     assert_eq!(hello["tier"], json!("vulkan"));
     assert!(["dev", "release"].contains(&hello["build"].as_str().unwrap()));
     assert_eq!(hello["members"], json!(MEMBERS));
-    assert_eq!(MEMBERS.len(), 22, "13 protocol-5 members + 9 wire members");
+    assert_eq!(MEMBERS.len(), 26, "13 protocol-5 members + 13 wire members");
 
     // tick, state: the fixed head, then the game's facts.
     assert_eq!(t.tick(), 0);
@@ -117,9 +117,12 @@ fn every_member_answers_as_protocol_5_says() {
     );
     assert_eq!(state["facts"], json!({"draws": 0}));
     t.h.probe.set_timings(1.5, 4.0);
+    t.h.probe
+        .set_timing_detail(vec![("move".into(), 0.25)], vec![("Main".into(), 3.0)]);
     assert_eq!(
         t.ok("state", json!({}))["timings"],
-        json!({"step": 1.5, "render": 4.0, "frameMs": 5.5})
+        json!({"step": 1.5, "render": 4.0, "frameMs": 5.5,
+            "systems": [{"name": "move", "ms": 0.25}], "passes": [{"name": "Main", "ms": 3.0}]})
     );
 
     // pause / resume: true, reflected in state; advance still steps while held.

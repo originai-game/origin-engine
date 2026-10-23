@@ -68,6 +68,7 @@ const INSTALL_DISMISSED = "og-install-dismissed";
 const MEMBERS = [
   "hello", "tick", "state", "advance", "pause", "resume", "input", "accepted", "pick", "entity",
   "bounds", "patch", "run", "capture", "sweep", "reload", "snapshot", "restore", "dump", "commands",
+  "describe", "expect", "expectations",
 ] as const;
 
 /** Positional protocol-5 arguments to JSON-RPC params, as og-probe reads them. */
@@ -91,6 +92,8 @@ export function probeParams(member: string, args: unknown[]): Record<string, unk
       return { width: args[0] ?? 0, height: args[1] ?? 0 };
     case "commands":
       return { script: args[0] };
+    case "expect":
+      return { what: args[0] };
     case "sweep":
     case "dump":
       return (args[0] as Record<string, unknown>) ?? {};
@@ -494,6 +497,8 @@ export async function play(): Promise<PlayHandle> {
   // `boot`: where the Worker's boot went (src/web/worker.ts BootPhases), null before the first frame.
   Object.defineProperty(probe, "boot", { get: () => shell.boot, enumerable: true });
   for (const m of MEMBERS) probe[m] = (...args: unknown[]) => shell.probe(m, probeParams(m, args));
+  // `saveScene`: the wire's save_scene; a page writes no file, so it answers the text.
+  probe["saveScene"] = () => shell.probe("save_scene", { write: false });
   // `memory`: what the engine holds (ProbeMemory), from the Worker in every build (a publish probe has no `memory`).
   probe["memory"] = () => shell.call("memory");
   (globalThis as Record<string, unknown>)[PROBE_GLOBAL] = Object.freeze(probe);

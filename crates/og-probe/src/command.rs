@@ -336,6 +336,21 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
         "listen[:path][:seconds]",
         "Write the last seconds (default 1, at most 2) of audio the host's mixer rendered as a 16-bit stereo WAV.",
     ),
+    (
+        "describe",
+        "describe[:path]",
+        "Write the frame as data: the visible entities with their screen boxes, depth order and occlusion (the entity-id pass), names, archetypes and labels; the UI elements with rects and text; the camera.",
+    ),
+    (
+        "expect",
+        "expect:<entity:<id>:within:x,y,w,h | event:<Name>[:count] | ui:text:<text> | region:x,y,w,h:color:#rrggbb[:tol] | frame:<ref.png>:rmse:<=v | state:<path>==<value>>",
+        "Assert at this tick: a failure is logged as a warning with the tick and the observed value, and fails `og run --json` (exit 1) and the playtest; a frame expectation without a renderer is unchecked.",
+    ),
+    (
+        "save_scene",
+        "save_scene[:path]",
+        "Write the boot scene back from the world: only the lines whose values changed (comments and order kept), plus the fields set or patch tuned; over the scene's .ogt, or to path under the output directory.",
+    ),
     ("quit", "quit", "End the run."),
     (
         "help",

@@ -8,6 +8,9 @@
 //! Outside the engine repository (an executor: bun, the engine package and
 //! its addon) the Rust and wasm-bindgen checks are skipped, and node is
 //! optional when bun is present (bun loads the addon itself).
+//!
+//! `og doctor --project <dir> [--json]` checks a project instead: its cook
+//! report against its budgets (`doctor_project.rs`).
 
 use std::path::Path;
 use std::process::{Command, ExitCode};
@@ -98,8 +101,14 @@ const TOOLS: &[Tool] = &[
 ];
 
 pub fn run(args: &[&str]) -> ExitCode {
+    // `og doctor --project <dir> [--json]`: the project's diagnostics.
+    if args.contains(&"--project") {
+        return crate::doctor_project::run(args);
+    }
     if let Some(a) = args.first() {
-        eprintln!("og doctor: unexpected argument `{a}`; og doctor takes none.");
+        eprintln!(
+            "og doctor: unexpected argument `{a}`; og doctor takes none (or --project <dir> [--json])."
+        );
         return ExitCode::from(2);
     }
     let cwd = std::env::current_dir().unwrap_or_else(|_| ".".into());

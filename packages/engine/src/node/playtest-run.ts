@@ -84,7 +84,7 @@ if (!b.ok) {
   finish();
 }
 const desc = ((await import(pathToFileURL(bundled).href)) as { default?: PlaytestDesc }).default;
-if (!desc || typeof desc.check !== "function") {
+if (!desc || !desc.commands) {
   failures.push(`${file} has no default export: export default playtest({ name, commands, check })`);
   finish();
 }
@@ -105,7 +105,8 @@ const command = (commands: string, dir: string, clock: number) => {
   if (store) c.push("--platform-store", store);
   return c;
 };
-type Summary = { tick: number; hash: string; entities: number; quit: boolean; tier: string; outputs: string[]; warnings: string[]; unchecked?: string[] };
+type ExpectResult = { tick: number; expect: string; status: "pass" | "fail" | "unchecked"; expected: unknown; observed: unknown; reason: string };
+type Summary = { tick: number; hash: string; entities: number; quit: boolean; tier: string; outputs: string[]; warnings: string[]; unchecked?: string[]; expectations?: { failed: number; results: ExpectResult[] } };
 const spawn = (c: string[], what: string): Summary | null => {
   const r = Bun.spawnSync(c, { stdout: "pipe", stderr: "pipe" });
   const stdout = new TextDecoder().decode(r.stdout);
@@ -116,9 +117,18 @@ const spawn = (c: string[], what: string): Summary | null => {
   } catch {
     summary = null;
   }
-  if (r.exitCode !== 0 || !summary) {
+  // A run whose only failure is its expectations exits 1 with its summary: each is a check.
+  const expectedOnly = r.exitCode === 1 && summary !== null && (summary.expectations?.failed ?? 0) > 0;
+  if ((r.exitCode !== 0 && !expectedOnly) || !summary) {
     failures.push(`${what} failed (exit ${r.exitCode}): ${stderr.trim() || stdout.trim()}`);
     return null;
+  }
+  for (const e of summary.expectations?.results ?? []) {
+    if (e.status === "unchecked") unchecked.push(`${what}: expect:${e.expect}`);
+    else {
+      checks++;
+      if (e.status === "fail") failures.push(`${what}: expect:${e.expect} failed at tick ${e.tick}: expected ${JSON.stringify(e.expected)}, observed ${JSON.stringify(e.observed)}; ${e.reason}`);
+    }
   }
   return summary;
 };
@@ -240,7 +250,7 @@ function missedFrame(e: unknown): string | null {
   return null;
 }
 try {
-  await desc!.check(run, t);
+  if (desc!.check) await desc!.check(run, t);
 } catch (e) {
   const frame = missedFrame(e);
   if (frame !== null) notes.push(`the check read ${frame}, a frame taken without a renderer, and stopped there: the checks after it did not run (put frame checks in t.frame so every other check runs)`);

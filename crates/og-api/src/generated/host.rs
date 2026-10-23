@@ -778,6 +778,14 @@ pub trait ProbeApi: Wire {
     fn og_engine_probe_listen(&self, engine_probe: u32, seconds: Option<f64>) -> String;
     /// `EngineProbe.memory`
     fn og_engine_probe_memory(&self, engine_probe: u32) -> String;
+    /// `EngineProbe.describe`
+    fn og_engine_probe_describe(&self, engine_probe: u32) -> String;
+    /// `EngineProbe.expect`
+    fn og_engine_probe_expect(&self, engine_probe: u32, what: String) -> String;
+    /// `EngineProbe.expectations`
+    fn og_engine_probe_expectations(&self, engine_probe: u32) -> String;
+    /// `EngineProbe.saveScene`
+    fn og_engine_probe_save_scene(&self, engine_probe: u32, write: Option<bool>) -> String;
 }
 
 /// `terrain`: packages/knowledge/wiki/terrain.md.
@@ -1181,6 +1189,10 @@ pub const SYMBOLS: &[&str] = &[
     "og_engine_probe_commands",
     "og_engine_probe_listen",
     "og_engine_probe_memory",
+    "og_engine_probe_describe",
+    "og_engine_probe_expect",
+    "og_engine_probe_expectations",
+    "og_engine_probe_save_scene",
     "og_terrain_load",
     "og_terrain_sample",
     "og_terrain_bounds",

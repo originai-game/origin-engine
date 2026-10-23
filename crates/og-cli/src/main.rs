@@ -14,6 +14,7 @@ mod cook;
 mod dev;
 mod device;
 mod doctor;
+mod doctor_project;
 mod polish;
 mod probe;
 mod project;
@@ -24,6 +25,7 @@ mod run;
 mod sfx;
 mod skin;
 mod test;
+mod trace;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;

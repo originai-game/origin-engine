@@ -2051,6 +2051,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     let textures = rs.textures.clone();
     let arrays = &rs.texture_arrays;
     let scene = &mut rs.scene;
+    // og.Sprite rows' sprites by index, for the probe's id pass.
+    let mut drawn: Vec<(u32, u64)> = Vec::new();
     for (e, bytes) in &sprites {
         let (e, v) = (*e, Row::new(&r.sprite.1, bytes));
         if !on(&v, "visible", true) {
@@ -2208,6 +2210,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         let drop_shadow = f(&v, "dropShadow", 0.0).clamp(0.0, 1.0);
         let drop_shadow_height = f(&v, "dropShadowHeight", 0.0);
         for (i, p) in pieces.into_iter().enumerate() {
+            drawn.push((scene.sprites.len() as u32, e));
             push(
                 scene,
                 SpriteOut {
@@ -2225,6 +2228,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             );
         }
     }
+    rs.ids.sprites = drawn;
     floating(rs, &feel, scaled_now);
     tile_layers(world, rs, &feel, &r, h, scaled_now);
 }

@@ -118,7 +118,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-986 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1003 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -218,6 +218,10 @@ Field units the docs and Tune use.
 | [`defineResource`](reflect.md#fn-defineResource) | function | reflect | `og_reflect_define_resource` |
 | [`defineSystem`](system.md#fn-defineSystem) | function | system | `og_system_define_system` |
 | [`DensityMode`](ui.md#type-DensityMode) | enum | ui | — |
+| [`DescribedCamera`](probe.md#type-DescribedCamera) | struct | probe | — |
+| [`DescribedEntity`](probe.md#type-DescribedEntity) | struct | probe | — |
+| [`DescribedUi`](probe.md#type-DescribedUi) | struct | probe | — |
+| [`Description`](probe.md#type-Description) | struct | probe | — |
 | [`DialogueDesc`](ui.md#type-DialogueDesc) | desc struct | ui | — |
 | [`DialogueLine`](ui.md#type-DialogueLine) | desc struct | ui | — |
 | [`DialogueResult`](ui.md#type-DialogueResult) | struct | ui | — |
@@ -239,12 +243,16 @@ Field units the docs and Tune use.
 | [`EngineProbe`](probe.md#type-EngineProbe) | interface | probe | — |
 | [`EngineProbe.capture`](probe.md#member-EngineProbe-capture) | method | probe | `og_engine_probe_capture` |
 | [`EngineProbe.commands`](probe.md#member-EngineProbe-commands) | method | probe | `og_engine_probe_commands` |
+| [`EngineProbe.describe`](probe.md#member-EngineProbe-describe) | method | probe | `og_engine_probe_describe` |
 | [`EngineProbe.dump`](probe.md#member-EngineProbe-dump) | method | probe | `og_engine_probe_dump` |
+| [`EngineProbe.expect`](probe.md#member-EngineProbe-expect) | method | probe | `og_engine_probe_expect` |
+| [`EngineProbe.expectations`](probe.md#member-EngineProbe-expectations) | method | probe | `og_engine_probe_expectations` |
 | [`EngineProbe.hello`](probe.md#member-EngineProbe-hello) | method | probe | `og_engine_probe_hello` |
 | [`EngineProbe.listen`](probe.md#member-EngineProbe-listen) | method | probe | `og_engine_probe_listen` |
 | [`EngineProbe.memory`](probe.md#member-EngineProbe-memory) | method | probe | `og_engine_probe_memory` |
 | [`EngineProbe.reload`](probe.md#member-EngineProbe-reload) | method | probe | `og_engine_probe_reload` |
 | [`EngineProbe.restore`](probe.md#member-EngineProbe-restore) | method | probe | `og_engine_probe_restore` |
+| [`EngineProbe.saveScene`](probe.md#member-EngineProbe-saveScene) | method | probe | `og_engine_probe_save_scene` |
 | [`EngineProbe.snapshot`](probe.md#member-EngineProbe-snapshot) | method | probe | `og_engine_probe_snapshot` |
 | [`EngineProbe.sweep`](probe.md#member-EngineProbe-sweep) | method | probe | `og_engine_probe_sweep` |
 | [`Entity`](world.md#type-Entity) | handle | world | — |
@@ -253,6 +261,10 @@ Field units the docs and Tune use.
 | [`EntityOperation`](probe.md#type-EntityOperation) | struct | probe | — |
 | [`EnvironmentMap`](render.md#type-EnvironmentMap) | handle | render | — |
 | [`EnvironmentMap()`](render.md#column-EnvironmentMap) | column kind | render | — |
+| [`ExpectOperation`](probe.md#type-ExpectOperation) | struct | probe | — |
+| [`ExpectReport`](probe.md#type-ExpectReport) | struct | probe | — |
+| [`ExpectResult`](probe.md#type-ExpectResult) | struct | probe | — |
+| [`ExpectStatus`](probe.md#type-ExpectStatus) | enum | probe | — |
 | [`f32()`](reflect.md#column-f32) | column kind | reflect | — |
 | [`f64()`](reflect.md#column-f64) | column kind | reflect | — |
 | [`FactsFn`](game.md#type-FactsFn) | callback | game | — |
@@ -806,6 +818,7 @@ Field units the docs and Tune use.
 | [`ParticleEmitter`](render.md#type-ParticleEmitter) | handle | render | — |
 | [`ParticleEmitter()`](render.md#column-ParticleEmitter) | column kind | render | — |
 | [`PARTICLES_ARMED`](render.md#const-PARTICLES_ARMED) | constant | render | — |
+| [`PassSize`](probe.md#type-PassSize) | struct | probe | — |
 | [`Path`](path.md#type-Path) | handle | path | — |
 | [`Path()`](path.md#column-Path) | column kind | path | — |
 | [`PathDesc`](nav.md#type-PathDesc) | desc struct | nav | — |
@@ -854,6 +867,7 @@ Field units the docs and Tune use.
 | [`ProbeProgramResult`](probe.md#type-ProbeProgramResult) | struct | probe | — |
 | [`ProbeState`](probe.md#type-ProbeState) | struct | probe | — |
 | [`ProbeStreamMemory`](probe.md#type-ProbeStreamMemory) | struct | probe | — |
+| [`ProbeTiming`](probe.md#type-ProbeTiming) | struct | probe | — |
 | [`ProbeTimings`](probe.md#type-ProbeTimings) | struct | probe | — |
 | [`ProbeTunable`](probe.md#type-ProbeTunable) | struct | probe | — |
 | [`ProbeWorldMemory`](probe.md#type-ProbeWorldMemory) | struct | probe | — |
@@ -920,9 +934,12 @@ Field units the docs and Tune use.
 | [`RuntimeProbe.state`](probe.md#member-RuntimeProbe-state) | method | probe | `og_runtime_probe_state` |
 | [`RuntimeProbe.tick`](probe.md#member-RuntimeProbe-tick) | method | probe | `og_runtime_probe_tick` |
 | [`RuntimeProbe.version`](probe.md#member-RuntimeProbe-version) | property | probe | `og_runtime_probe_get_version` |
+| [`SavedScene`](probe.md#type-SavedScene) | struct | probe | — |
 | [`SaveSlotDesc`](platform.md#type-SaveSlotDesc) | desc struct | platform | — |
 | [`Scheme`](ui.md#type-Scheme) | enum | ui | — |
 | [`ScoreFormat`](ui.md#type-ScoreFormat) | enum | ui | — |
+| [`ScreenBox`](probe.md#type-ScreenBox) | struct | probe | — |
+| [`ScreenPoint`](probe.md#type-ScreenPoint) | struct | probe | — |
 | [`ScreenTransitionDesc`](ui.md#type-ScreenTransitionDesc) | desc struct | ui | — |
 | [`ScreenTransitionResult`](ui.md#type-ScreenTransitionResult) | struct | ui | — |
 | [`ScreenWipe`](ui.md#type-ScreenWipe) | enum | ui | — |

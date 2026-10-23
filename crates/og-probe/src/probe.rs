@@ -6,7 +6,8 @@ use crate::command::{
     self, CORE_ACTIONS, CommandDesc, CommandHandler, CommandInfo, CommandStep, CommandsReport,
     DumpHandler, Inbox, LogLine, Output, ParseError, Payload,
 };
-use crate::hooks::{Capture, Reloader, UiTree, find_by_id, find_by_text};
+use crate::expect::{ExpectResult, Watch};
+use crate::hooks::{Capture, Reloader, SceneView, SceneWriter, UiTree, find_by_id, find_by_text};
 use crate::input::{
     InjectedInput, InputSink, KeyAction, Modifiers, PointerAction, PointerButton, WorldInput,
     key_for_char,
@@ -17,7 +18,7 @@ use og_core::glam::{Mat3, Quat, Vec3};
 use og_core::{Error, ErrorKind, FieldType, Layout, Rng, Schema};
 use og_ecs::{Entity, QueryDesc, SchemaId, World};
 use serde_json::{Map, Value, json};
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::rc::Rc;
 
 mod record;
@@ -49,9 +50,32 @@ pub const ENGINE_VERSION: &str = concat!("origin-engine ", env!("CARGO_PKG_VERSI
 
 /// Every member this crate implements, in protocol order.
 pub const MEMBERS: &[&str] = &[
-    "hello", "tick", "state", "advance", "pause", "resume", "input", "accepted", "pick", "entity",
-    "bounds", "patch", "run", "capture", "sweep", "reload", "snapshot", "restore", "dump",
-    "commands", "listen", "memory",
+    "hello",
+    "tick",
+    "state",
+    "advance",
+    "pause",
+    "resume",
+    "input",
+    "accepted",
+    "pick",
+    "entity",
+    "bounds",
+    "patch",
+    "run",
+    "capture",
+    "sweep",
+    "reload",
+    "snapshot",
+    "restore",
+    "dump",
+    "commands",
+    "listen",
+    "memory",
+    "describe",
+    "expect",
+    "expectations",
+    "save_scene",
 ];
 
 /// The player-facing members a `publish` build keeps.
@@ -155,6 +179,10 @@ enum Handler {
 
 type FactsFn = Box<dyn Fn(&World) -> Value>;
 
+/// The host's file reader for `expect:frame` references: a project-relative
+/// path's bytes, `None` when it cannot be read.
+pub type ReaderFn = Box<dyn Fn(&str) -> Option<Vec<u8>>>;
+
 /// The engine's probe over a world the host owns.
 ///
 /// The host creates it once per world ([`Probe::new`]), hands it the hooks it
@@ -168,12 +196,29 @@ type FactsFn = Box<dyn Fn(&World) -> Value>;
 /// objects (JavaScript values on the web). Create it on the engine thread.
 pub struct Probe {
     engine: String,
-    names: Names,
+    pub(crate) names: Names,
     input: Box<dyn InputSink>,
-    capture: Option<Box<dyn Capture>>,
-    ui: Option<Box<dyn UiTree>>,
+    pub(crate) capture: Option<Box<dyn Capture>>,
+    pub(crate) ui: Option<Box<dyn UiTree>>,
     reloader: Option<Box<dyn Reloader>>,
-    facts: Option<FactsFn>,
+    pub(crate) facts: Option<FactsFn>,
+    /// The frame as data and picking ([`Probe::set_scene_view`]).
+    pub(crate) scene_view: Option<Box<dyn SceneView>>,
+    /// The boot scene's write-back ([`Probe::set_scene_writer`]).
+    scene_writer: Option<Box<dyn SceneWriter>>,
+    /// Reference files for `expect:frame` ([`Probe::set_reader`]).
+    pub(crate) reader: Option<ReaderFn>,
+    /// Expectations evaluated since the host last took them.
+    pub(crate) expectations: Vec<ExpectResult>,
+    /// Event types an expectation counts, with their counts, and each
+    /// one's count when the script that asks began.
+    pub(crate) events: BTreeMap<String, Watch>,
+    pub(crate) event_base: BTreeMap<String, u64>,
+    /// Fields `set` and `patch` wrote (`save_scene` writes them back).
+    tuned: BTreeSet<String>,
+    /// The last tick's milliseconds per system and per render pass.
+    systems_ms: Vec<(String, f64)>,
+    passes_ms: Vec<(String, f64)>,
     commands: BTreeMap<String, Registered>,
     queue: BTreeMap<(u64, u64), Queued>,
     seq: u64,
@@ -376,6 +421,15 @@ impl Probe {
             ui: None,
             reloader: None,
             facts: None,
+            scene_view: None,
+            scene_writer: None,
+            reader: None,
+            expectations: Vec::new(),
+            events: BTreeMap::new(),
+            event_base: BTreeMap::new(),
+            tuned: BTreeSet::new(),
+            systems_ms: Vec::new(),
+            passes_ms: Vec::new(),
             listen: None,
             memory: None,
             stamp: 0.0,
@@ -418,6 +472,22 @@ impl Probe {
     /// The UI tree for `dump_ui`, `touch_move_to` and `move_to_text`.
     pub fn set_ui(&mut self, ui: Box<dyn UiTree>) {
         self.ui = Some(ui);
+    }
+
+    /// The frame as data (`describe`) and picking where the capture hook
+    /// does not pick.
+    pub fn set_scene_view(&mut self, view: Box<dyn SceneView>) {
+        self.scene_view = Some(view);
+    }
+
+    /// The boot scene's write-back for `save_scene`.
+    pub fn set_scene_writer(&mut self, writer: Box<dyn SceneWriter>) {
+        self.scene_writer = Some(writer);
+    }
+
+    /// Reads `expect:frame` references (project-relative paths).
+    pub fn set_reader(&mut self, read: impl Fn(&str) -> Option<Vec<u8>> + 'static) {
+        self.reader = Some(Box::new(read));
     }
 
     /// The bundle swap for `reload`.
@@ -505,6 +575,14 @@ impl Probe {
         self.render_ms = render_ms;
     }
 
+    /// The last tick's milliseconds per system (in run order) and the last
+    /// frame's per render pass (in the graph's order), for
+    /// `state().timings.systems` and `.passes`.
+    pub fn set_timing_detail(&mut self, systems: Vec<(String, f64)>, passes: Vec<(String, f64)>) {
+        self.systems_ms = systems;
+        self.passes_ms = passes;
+    }
+
     /// Probe ids over the world's names (`World::set_name` names entities).
     pub fn names(&self) -> &Names {
         &self.names
@@ -576,7 +654,7 @@ impl Probe {
         std::mem::take(&mut self.log)
     }
 
-    fn note(&mut self, tick: u64, warning: bool, text: String) {
+    pub(crate) fn note(&mut self, tick: u64, warning: bool, text: String) {
         self.log.push(LogLine {
             tick,
             warning,
@@ -680,6 +758,13 @@ impl Probe {
     pub fn schedule(&mut self, world: &World, script: &str) -> Result<CommandsReport, ParseError> {
         let steps = command::parse(script)?;
         let now = world.time().tick;
+        // The events its expectations count, from now.
+        let watched: Vec<String> = steps
+            .iter()
+            .filter(|s| s.action == "expect" && s.args.first().map(String::as_str) == Some("event"))
+            .filter_map(|s| s.args.get(1).cloned())
+            .collect();
+        self.watch_events(watched.iter().map(String::as_str));
         // A script's outputs are its own: one names each file once.
         self.written.clear();
         let rate = f64::from(tick_rate(world));
@@ -825,7 +910,14 @@ impl Probe {
         if let Some(before) = self.before_tick.as_mut() {
             before(world);
         }
+        let counting = !self.events.is_empty();
+        if counting {
+            self.count_events(world, true);
+        }
         world.step()?;
+        if counting {
+            self.count_events(world, false);
+        }
         self.input.end_tick(world);
         if let Some(after) = self.after_tick.as_mut() {
             let next = world.time().tick;
@@ -1309,6 +1401,60 @@ impl Probe {
                     .insert_resource_bytes(cid, &bytes)
                     .map_err(|e| e.reason().to_owned())
             }
+            "describe" => {
+                let value = self.describe(world);
+                self.emit(
+                    step.at,
+                    Output {
+                        tick,
+                        action: step.action.clone(),
+                        path: output_path(args.first())?,
+                        payload: Payload::Json(value),
+                    },
+                );
+                Ok(())
+            }
+            "expect" => self.expect_args(world, args, Some(step.at)).map(|_| ()),
+            "save_scene" => {
+                let path = output_path(args.first())?;
+                let saved = self.save_scene(world, path.is_none())?;
+                self.note(
+                    tick,
+                    false,
+                    format!(
+                        "save_scene: {} ({} line(s) changed{}{})",
+                        saved["source"].as_str().unwrap_or(""),
+                        saved["lines"].as_array().map_or(0, Vec::len),
+                        match saved["written"].as_str() {
+                            Some(w) if !w.is_empty() => format!(", written to {w}"),
+                            _ => String::new(),
+                        },
+                        match saved["skipped"].as_array() {
+                            Some(s) if !s.is_empty() => format!(
+                                "; not written: {}",
+                                s.iter()
+                                    .filter_map(Value::as_str)
+                                    .collect::<Vec<_>>()
+                                    .join("; ")
+                            ),
+                            _ => String::new(),
+                        }
+                    ),
+                );
+                if let Some(path) = path {
+                    let text = saved["text"].as_str().unwrap_or("").to_owned();
+                    self.emit(
+                        step.at,
+                        Output {
+                            tick,
+                            action: step.action.clone(),
+                            path: Some(path),
+                            payload: Payload::Text(text),
+                        },
+                    );
+                }
+                Ok(())
+            }
             "dump_world" | "dump_ui" => {
                 let dump = if step.action == "dump_world" {
                     self.dump_world(world)
@@ -1352,7 +1498,9 @@ impl Probe {
                     None => value::text_json(text)?,
                 };
                 if let Some((resource, field)) = Self::resource_target(world, target) {
-                    return Self::write_resource_field(world, resource, &field, &value);
+                    Self::write_resource_field(world, resource, &field, &value)?;
+                    self.tuned.insert(target.to_owned());
+                    return Ok(());
                 }
                 let (entity, parameter) = match target.strip_prefix('#') {
                     Some(rest) => {
@@ -1370,7 +1518,9 @@ impl Probe {
                     }
                 };
                 let e = self.entity_of(world, &entity)?;
-                self.write_field(world, e, &parameter, &value, false)
+                self.write_field(world, e, &parameter, &value, false)?;
+                self.tuned.insert(format!("{entity}.{parameter}"));
+                Ok(())
             }
             "get" => {
                 let usage = "get:<Resource>[.<field>] or get:<entity>[.<component>[.<field>]]";
@@ -1504,7 +1654,7 @@ impl Probe {
         })
     }
 
-    fn position_of(&self, world: &World, e: Entity) -> Result<Vec3, String> {
+    pub(crate) fn position_of(&self, world: &World, e: Entity) -> Result<Vec3, String> {
         let tid = engine_type(world, "Transform")?;
         let schema = world.schema(tid).map_err(|e| e.reason().to_owned())?;
         let fi = schema
@@ -1726,7 +1876,13 @@ impl Probe {
             "tick": world.time().tick,
             "paused": self.paused,
             "seed": seed,
-            "timings": {"step": self.step_ms, "render": self.render_ms, "frameMs": self.step_ms + self.render_ms},
+            "timings": {
+                "step": self.step_ms,
+                "render": self.render_ms,
+                "frameMs": self.step_ms + self.render_ms,
+                "systems": self.systems_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
+                "passes": self.passes_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
+            },
             "entities": entities,
             "facts": self.facts.as_ref().map_or(Value::Null, |f| f(world)),
         })
@@ -1784,7 +1940,10 @@ impl Probe {
 
     /// `pick`: what is under a point; `None` without a renderer that picks.
     pub fn pick(&mut self, world: &World, x: f32, y: f32) -> Option<Value> {
-        let hit = self.capture.as_mut()?.pick(world, x, y)?;
+        let hit = match self.capture.as_mut().and_then(|c| c.pick(world, x, y)) {
+            Some(hit) => hit,
+            None => self.scene_view.as_mut()?.pick(world, x, y)?,
+        };
         Some(json!({
             "entity": self.names.id_of(world, hit.entity),
             "world": hit.world,
@@ -1835,10 +1994,14 @@ impl Probe {
     /// unknown entity or field, a field that is not tunable, or a value of
     /// another kind or outside the schema's range.
     pub fn patch(&mut self, world: &mut World, id: &str, parameter: &str, value: &Value) -> bool {
-        match self.names.resolve(world, id) {
+        let written = match self.names.resolve(world, id) {
             Some(e) => self.write_field(world, e, parameter, value, true).is_ok(),
             None => false,
+        };
+        if written {
+            self.tuned.insert(format!("{id}.{parameter}"));
         }
+        written
     }
 
     /// `run`: a program of members, stopping at the first refusal.
@@ -1847,6 +2010,14 @@ impl Probe {
         if program.len() > PROBE_PROGRAM_MAX_OPERATIONS {
             return Ok(json!({"results": results, "refused": 0, "tick": self.tick(world)}));
         }
+        let watched: Vec<String> = program
+            .iter()
+            .filter(|o| o.get("op").and_then(Value::as_str) == Some("expect"))
+            .filter_map(|o| o.get("what").and_then(Value::as_str))
+            .filter_map(|w| w.strip_prefix("event:"))
+            .map(|w| w.split(':').next().unwrap_or("").to_owned())
+            .collect();
+        self.watch_events(watched.iter().map(String::as_str));
         for (index, operation) in program.iter().enumerate() {
             let op = operation.get("op").and_then(Value::as_str).unwrap_or("");
             let answer: Option<Value> = match op {
@@ -1886,6 +2057,14 @@ impl Probe {
                     .and_then(Value::as_str)
                     .and_then(|id| self.entity(world, id))
                     .map(Value::Object),
+                // An expectation answers its result, failed or not: the
+                // program goes on and the caller reads `status`.
+                "expect" => operation
+                    .get("what")
+                    .and_then(Value::as_str)
+                    .and_then(|what| self.expect(world, what).ok())
+                    .map(|r| r.to_json()),
+                "describe" => Some(self.describe(world)),
                 _ => None,
             };
             match answer {
@@ -2182,6 +2361,27 @@ impl Probe {
                 None
             }
         }
+    }
+
+    /// `save_scene`: the boot scene's text rewritten from the world (the
+    /// lines whose values changed, and the fields `set` and `patch` tuned);
+    /// with `write`, over its source file. `Err` without a scene writer or
+    /// a scene.
+    pub fn save_scene(&mut self, world: &World, write: bool) -> Result<Value, String> {
+        let tuned: Vec<String> = self.tuned.iter().cloned().collect();
+        let writer = self
+            .scene_writer
+            .as_mut()
+            .ok_or("this host has no scene write-back")?;
+        let saved = writer.save(world, &tuned, write)?;
+        Ok(json!({
+            "tick": world.time().tick,
+            "source": saved.source,
+            "written": saved.written,
+            "lines": saved.lines,
+            "skipped": saved.skipped,
+            "text": saved.text,
+        }))
     }
 
     // ---- dumps ------------------------------------------------------------
