@@ -2,15 +2,16 @@ type lightmap
 version 1
 ---
 # Written by og bake lightmaps: the scene's baked lighting. Bake again
-# after changing the scene or its static models.
+# after changing the scene or a static model's geometry (a re-cook alone
+# keeps it).
 scene "scenes/cornell.ogt"
-scene-hash "d39c7eb72d72837b"
+scene-hash "5ce2f55522c1342f"
 pages "cornell.lightmap.ktx2"
 samples 512
 seconds 0.4
 model "cornell-box" {
   asset "models/cornell.glb"
-  hash "b1c1fd58b2cbe412"
+  hash "8d3a71f0438b5afb"
   part {
     vertices 12
     xref 0 1 2 3 4 6 7 5 8 9 10 11
