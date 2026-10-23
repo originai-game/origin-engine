@@ -205,7 +205,8 @@ fn asset_text(rel: &str) -> Result<String, String> {
 }
 
 /// The renderer description every scene starts from: 1280x720 on the
-/// adapter `OG_GFX_BACKEND` names (`metal`, `vulkan`; default: the platform's).
+/// adapter `OG_GFX_BACKEND` names (`metal`, `vulkan`; default: the platform's),
+/// with WebGL2's volumetric raymarch when `OG_GFX_VOLUMETRIC=raymarch`.
 pub fn base_desc() -> RenderDesc {
     let backend = match std::env::var("OG_GFX_BACKEND").as_deref() {
         Ok("metal") => og_render::Backend::Metal,
@@ -216,6 +217,10 @@ pub fn base_desc() -> RenderDesc {
         width: 1280,
         height: 720,
         backend,
+        // OG_GFX_VOLUMETRIC=raymarch draws WebGL2's volumetric fog here.
+        volumetric: std::env::var("OG_GFX_VOLUMETRIC")
+            .is_ok_and(|v| v == "raymarch")
+            .then_some(og_render::VolumetricMethod::Raymarch),
         ..Default::default()
     }
 }

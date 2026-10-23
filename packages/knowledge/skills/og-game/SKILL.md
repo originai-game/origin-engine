@@ -2287,9 +2287,11 @@ with `density`, `heightDensity` and `falloff` (thicker low down),
 `scattering` (how bright) and `anisotropy` (towards 1, bright looking into
 the light), up to `volumetricDistance`. Fog of 0.03 to 0.1 per metre reads
 well indoors. With `og.DayNight`, the shafts move with the sun.
-`RenderCapabilities.volumetricFog` is `froxel` on the full tier, where
-spots, points and rect lights light the fog too, or `raymarch` on WebGL2,
-where only the sun does.
+`RenderCapabilities.volumetricFog` is `froxel` on the full tier or
+`raymarch` on WebGL2. On both, the sun, spots, points and rect lights light
+the fog, so a lantern glows in it on WebGL2 too.
+`RenderCapabilities.volumetricLights` is how many local lights light one
+sample (64 for the froxel grid, 8 for the raymarch, brightest first).
 
 **Area lights.** `og.RectLight { width, height, color, intensity,
 twoSided }` emits from a rectangle facing the entity's -Z. Aim it with

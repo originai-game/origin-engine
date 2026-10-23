@@ -213,3 +213,33 @@ fn the_compiled_wgsl_is_the_source_without_its_comments() {
     assert!(files >= 50, "{files} WGSL files");
     assert!(removed > 50_000, "{removed} bytes of comments");
 }
+
+/// WebGL2's volumetric fog (the raymarch, volumetric.rs) is lit by the
+/// point, spot and rect lights of each step's cluster, not the sun alone
+/// (debt render-light #5): its fragment stage reads the light list and the
+/// cluster table (frame bindings 7 and 8), bounded by RAYMARCH_LIGHTS.
+#[test]
+fn the_gl_volumetric_raymarch_reads_the_local_lights() {
+    let vol = og_render::shader_sources(false)
+        .into_iter()
+        .find(|s| s.label == "volumetric")
+        .expect("the volumetric module");
+    assert!(vol.wgsl.contains(&format!(
+        "const RAYMARCH_LIGHTS: u32 = {}u;",
+        og_render::RAYMARCH_LIGHTS
+    )));
+    let (module, info) = checked(&vol.label, &vol.wgsl, &vol.constants, Capabilities::empty())
+        .expect("the raymarch validates");
+    let entry = module
+        .entry_points
+        .iter()
+        .find(|e| e.name == "fs_raymarch")
+        .expect("fs_raymarch");
+    let glsl = glsl_es(&module, &info, entry).expect("the raymarch translates");
+    for binding in ["_group_0_binding_7_", "_group_0_binding_8_"] {
+        assert!(
+            glsl.contains(binding),
+            "fs_raymarch reads no {binding} (the light tables): lit by the sun alone"
+        );
+    }
+}

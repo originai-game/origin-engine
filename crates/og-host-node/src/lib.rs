@@ -583,6 +583,11 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
             } else {
                 og_render::Culling::Auto
             },
+            // OG_GFX_VOLUMETRIC=raymarch draws WebGL2's volumetric fog on
+            // this device, as og-gfx does (its frames read natively).
+            volumetric: std::env::var("OG_GFX_VOLUMETRIC")
+                .is_ok_and(|v| v == "raymarch")
+                .then_some(og_render::VolumetricMethod::Raymarch),
             ..og_render::RenderDesc::default()
         },
     );

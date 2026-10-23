@@ -35,7 +35,7 @@ fn inject(@builtin(global_invocation_id) id: vec3<u32>) {
     let sigma = vol_density(p);
     sigma_sum += sigma;
     if (sigma > 0.0) {
-      light_sum += sigma * (sun_in(p, dir) + locals_in(p, dir, uv * vol.extent.zw));
+      light_sum += sigma * (sun_in(p, dir) + locals_in(p, dir, uv * vol.extent.zw, 0xffffffffu));
     }
   }
   let n = f32(INJECT_TAPS);

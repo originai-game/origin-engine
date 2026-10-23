@@ -1,4 +1,7 @@
-// The raymarch of volumetric.wgsl (WebGL2).
+// The raymarch of volumetric.wgsl (WebGL2): each step lit by the sun
+// through its cascades and by the first RAYMARCH_LIGHTS (volumetric.rs)
+// point, spot and rect lights of its cluster through their shadows and
+// cookies.
 
 @fragment
 fn fs_raymarch(in: VolOut) -> @location(0) vec4<f32> {
@@ -18,7 +21,7 @@ fn fs_raymarch(in: VolOut) -> @location(0) vec4<f32> {
     let sigma = vol_density(p);
     if (sigma <= 0.0) { continue; }
     let tr = exp(-sigma * dt);
-    let s = vol.scatter.rgb * sigma * sun_in(p, dir);
+    let s = vol.scatter.rgb * sigma * (sun_in(p, dir) + locals_in(p, dir, in.pos.xy, RAYMARCH_LIGHTS));
     acc += transmittance * s * (1.0 - tr) / sigma;
     transmittance *= tr;
   }

@@ -211,3 +211,34 @@ fn the_volumetric_fog_has_no_froxel_streaks() {
         "streaks: {residual:.3} levels between neighbouring columns"
     );
 }
+
+/// WebGL2's raymarch lights its fog with the point, spot and rect lights
+/// too (debt render-light #5), drawn here on this device
+/// (`RenderDesc::volumetric`): the orange spot's cone in the fog matches
+/// the froxel grid's within a few levels. Lit by the sun alone, as main's
+/// raymarch was, the cone is the sun's grey: 76,73,69 against 100,89,79.
+#[test]
+fn the_raymarch_lights_the_fog_with_the_spot() {
+    let froxel = gfx::render("volumetric-fog").expect("render").image;
+    let mut built = og_tests::scenes::build("volumetric-fog").expect("build");
+    built.desc.volumetric = Some(og_render::VolumetricMethod::Raymarch);
+    let rendered = gfx::render_built(&mut built).expect("render");
+    assert_eq!(
+        (rendered.info.volumetric, rendered.info.volumetric_lights),
+        (
+            og_render::VolumetricMethod::Raymarch,
+            og_render::RAYMARCH_LIGHTS
+        )
+    );
+    let (a, b) = (
+        mean(&froxel, 1040, 120, 1090, 250),
+        mean(&rendered.image, 1040, 120, 1090, 250),
+    );
+    println!("spot cone: froxel {a:?}, raymarch {b:?}");
+    for k in 0..3 {
+        assert!(
+            (a[k] - b[k]).abs() < 6.0,
+            "the raymarch's cone {b:?} against the froxel grid's {a:?}"
+        );
+    }
+}

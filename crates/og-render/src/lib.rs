@@ -173,7 +173,7 @@ pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats
 pub use texture_array::{TextureArrayData, TextureArrayHandle, TextureArrayInfo};
 pub use video::FrameTexture;
 pub use views::{MirrorQuad, View, ViewTarget};
-pub use volumetric::{FROXELS, RAYMARCH_STEPS, VolumetricFog, VolumetricMethod};
+pub use volumetric::{FROXELS, RAYMARCH_LIGHTS, RAYMARCH_STEPS, VolumetricFog, VolumetricMethod};
 pub use water::{Water, Water2d, WaterHeights};
 pub use weather::{
     WEATHER_DUST, WEATHER_MIST, WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW, WeatherLook, weather,
@@ -524,6 +524,12 @@ pub struct RenderDesc {
     /// clamped unsharp mask over the 4 neighbours that restores what the
     /// history's blend softened, never past the neighbourhood's range.
     pub taa_sharpen: f32,
+    /// How volumetric fog is drawn: `None` by the tier (the froxel grid
+    /// where there is compute, the raymarch on WebGL2); `Some(Raymarch)`
+    /// draws WebGL2's raymarch on a full-tier device too (to read that
+    /// path's frames natively: `OG_GFX_VOLUMETRIC=raymarch`). A froxel grid
+    /// asked for without compute is the raymarch.
+    pub volumetric: Option<VolumetricMethod>,
 }
 
 /// Where instances are culled ([`RenderDesc::culling`]).
@@ -572,6 +578,7 @@ impl Default for RenderDesc {
             point_shadows: PointShadows::Auto,
             taa_history: TaaHistory::Bilinear,
             taa_sharpen: 0.0,
+            volumetric: None,
         }
     }
 }
@@ -624,6 +631,12 @@ pub struct RenderInfo {
     pub pipeline_cache: bool,
     /// The largest side of a 2D texture, so of a render target.
     pub max_texture_size: u32,
+    /// How volumetric fog is drawn ([`RenderDesc::volumetric`], the tier).
+    pub volumetric: VolumetricMethod,
+    /// The most point, spot and rect lights that light one sample of the
+    /// volumetric fog: the cluster's ([`MAX_CLUSTER_LIGHTS`]) in the froxel
+    /// grid, [`RAYMARCH_LIGHTS`] in the raymarch.
+    pub volumetric_lights: u32,
 }
 
 impl RenderInfo {
@@ -2237,7 +2250,15 @@ impl Renderer {
             texture_formats,
             pipeline_cache: false,
             max_texture_size: limits.max_texture_dimension_2d,
+            volumetric: if tier == Tier::Full && desc.volumetric != Some(VolumetricMethod::Raymarch)
+            {
+                VolumetricMethod::Froxel
+            } else {
+                VolumetricMethod::Raymarch
+            },
+            volumetric_lights: 0,
         };
+        info.volumetric_lights = volumetric::lights(info.volumetric);
         log::info!(
             "og-render: {} ({:?}, {:?}, {:?}, antialias {:?}, shadows {}x{}², textures {:?}/{:?})",
             info.adapter,
@@ -2421,7 +2442,8 @@ impl Renderer {
         let volumetric = volumetric::Volumetric::new(
             &device,
             light_tables,
-            light_tables == clusters::LightTables::Storage,
+            light_tables == clusters::LightTables::Storage
+                && desc.volumetric != Some(VolumetricMethod::Raymarch),
         );
         let reflection_light_buffers = light_tables.buffers(&device);
         let reflection_buffer = device.create_buffer(&wgpu::BufferDescriptor {

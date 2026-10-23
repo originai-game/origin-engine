@@ -420,8 +420,14 @@ Baked lighting, volumetrics and area lights (depth S7).
   point, spot and rect lights through their shadows and cookies (each
   froxel the mean of eight stratified, jittered samples over its slice's
   depth, so a shaft crossing a deep slice is integrated, not hit or
-  missed column by column), then integrates front to back. On WebGL2, which has no compute, each pixel's
-  ray is marched in 24 steps lit by the sun alone.
+  missed column by column), then integrates front to back. On WebGL2,
+  which has no compute, each pixel's ray is marched in 24 steps, each lit
+  by the sun and by the first 8 point, spot and rect lights of its
+  cluster (`RAYMARCH_LIGHTS`) through their shadows and cookies.
+  `RenderCapabilities.volumetricLights` reports the per-sample bound (64
+  in the froxel grid, 8 in the raymarch); `RenderDesc::volumetric`
+  (`OG_GFX_VOLUMETRIC=raymarch`) draws the raymarch on a full-tier device
+  to read its frames natively.
   `RenderCapabilities.volumetricFog` reports which method the device uses.
   Both methods blend over the lit image after the main pass as
   colour × transmittance plus in-scattered light, reading the prepass's
