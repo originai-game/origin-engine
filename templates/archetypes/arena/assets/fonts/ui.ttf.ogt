@@ -1,9 +1,0 @@
-type import
-version 1
----
-# The HUD uses Latin-1 only (the font is the topdown archetype's subset).
-font {
-  charset latin
-  em_px 48
-  px_range 6
-}

@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
 
 declare const Bun: {
+  spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number };
   spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe" }): {
     exited: Promise<number>;
     stdout: ReadableStream<Uint8Array>;
@@ -107,10 +108,12 @@ test("a room playtest's quit and its then step land on one tick for every place"
   const out = mkdtempSync(join(tmpdir(), "og-room-then-"));
   try {
     const entry = join(out, "game.js");
-    const b = await bundleGame(join(repo, "templates/archetypes/arena/src/main.ts"), entry, "native");
+    const arena = join(repo, "templates/archetypes/arena");
+    expect(Bun.spawnSync([ogBin(), "cook", arena], { cwd: repo }).exitCode).toBe(0);
+    const b = await bundleGame(join(arena, "src/main.ts"), entry, "native");
     expect(b.ok).toBe(true);
     const p = Bun.spawn(
-      ["bun", join(repo, "packages/engine/src/node/playtest-run.ts"), "--file", join(repo, "packages/engine/tests/fixtures/room-then/then.og.ts"), "--entry", entry, "--out", join(out, "test"), "--json"],
+      ["bun", join(repo, "packages/engine/src/node/playtest-run.ts"), "--file", join(repo, "packages/engine/tests/fixtures/room-then/then.og.ts"), "--entry", entry, "--root", arena, "--out", join(out, "test"), "--json"],
       { cwd: repo, stdout: "pipe", stderr: "pipe" },
     );
     const [code, stdout, stderr] = await Promise.all([p.exited, new Response(p.stdout).text(), new Response(p.stderr).text()]);

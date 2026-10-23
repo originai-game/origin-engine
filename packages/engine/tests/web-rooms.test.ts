@@ -20,6 +20,7 @@ import { bundleGame } from "../src/node/build.ts";
 import { ogBin } from "./support/og-bin.ts";
 
 declare const Bun: {
+  spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number };
   spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe" }): {
     exited: Promise<number>;
     stdout: ReadableStream<Uint8Array>;
@@ -45,6 +46,9 @@ test("two Worker-hosted pages joined by a Play link play one duel in lockstep th
   const dir = mkdtempSync(join(tmpdir(), "og-web-rooms-"));
   const relay = Bun.spawn([ogBin(), "relay", "--port", "0"], { cwd: repo, stdout: "pipe", stderr: "pipe" });
   try {
+    const arena = join(repo, "templates/archetypes/arena");
+    const cooked = Bun.spawnSync([ogBin(), "cook", arena], { cwd: repo });
+    expect(cooked.exitCode).toBe(0);
     const game = join(dir, "arena.js");
     expect((await bundleGame(join(repo, "templates/archetypes/arena/src/main.ts"), game, "native")).ok).toBe(true);
     const reader = relay.stdout.getReader();
@@ -57,7 +61,7 @@ test("two Worker-hosted pages joined by a Play link play one duel in lockstep th
     const port = /:(\d+)\//.exec(text)![1]!;
     const pages = await Promise.all(
       ["1", "2"].map(async (bot) => {
-        const p = Bun.spawn(["bun", join(here, "support/room-page.ts"), game, port, "duel-web", bot, "300"], { cwd: repo, stdout: "pipe", stderr: "pipe" });
+        const p = Bun.spawn(["bun", join(here, "support/room-page.ts"), game, arena, port, "duel-web", bot, "300"], { cwd: repo, stdout: "pipe", stderr: "pipe" });
         const [code, out, err] = await Promise.all([p.exited, new Response(p.stdout).text(), new Response(p.stderr).text()]);
         if (code !== 0) throw new Error(`page ${bot} exited ${code}: ${err}${out}`);
         return JSON.parse(out.trim().split("\n").pop()!) as Page;

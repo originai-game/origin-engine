@@ -23,3 +23,14 @@ export function og_web_trace(engine: number, on: boolean): void {
 export function og_web_trace_take(engine: number, last: boolean): string {
   return native().og_node_trace_take(engine, last);
 }
+// A cooked bundle (tests/support/room-page.ts passes the project's root):
+// the native host reads `<root>/cooked/` from disk itself, so the Worker's
+// preload hands over nothing and a later fetch has nothing to deliver.
+export function og_web_bundle_files(_manifest: string): string {
+  return "[]";
+}
+export function og_web_put_file(_path: string, _bytes: Uint8Array): void {}
+export function og_web_fail_file(path: string, reason: string): void {
+  throw new Error(`${path}: ${reason}`);
+}
+export function og_web_set_fetcher(_fetch: (path: string) => void): void {}

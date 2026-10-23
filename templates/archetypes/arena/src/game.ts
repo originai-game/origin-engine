@@ -17,6 +17,15 @@ export const FIGHTER = 0.4;
 export const COIN = 0.25;
 /** og.PlayerInput.buttons: bit 0 dashes. */
 export const DASH = 1;
+/** Duel.sfx: the sounds asked for this tick. */
+export const Sound = { Coin: 1, Dash: 2, Win: 4 } as const;
+/** Gold, linear: the coin, its sparks. */
+const GOLD_TEXT = { r: 1, g: 0.78, b: 0.25 };
+/** Red and Blue for the "+1" over the taker. */
+const TEXT_INKS = [
+  { r: 1, g: 0.42, b: 0.36 },
+  { r: 0.45, g: 0.68, b: 1 },
+];
 
 /** One of the two fighters: its own state beside the og.PlayerInput the engine writes. */
 export const Fighter = defineComponent("Fighter", {
@@ -48,7 +57,18 @@ export const Duel = defineResource("Duel", {
   y0: f32(0, { unit: "m" }),
   x1: f32(0, { unit: "m" }),
   y1: f32(0, { unit: "m" }),
+  /** Sound.* bits asked for this tick; Feedback plays and clears them. */
+  sfx: u32(),
+  /** The coin taken this tick, by whom (player + 1), and where it lay: Feedback's sparks, "+1" and shake. */
+  took: u32(),
+  tookX: f32(0, { unit: "m" }),
+  tookY: f32(0, { unit: "m" }),
 });
+
+/** A one-shot voice: Feedback starts it when its Sound bit is asked for. */
+export const Voice = defineComponent("Voice", { bit: u32(), plays: u32() });
+/** The coin's spark emitter: Feedback moves it where the coin was and restarts it. */
+export const Sparks = defineComponent("Sparks", { bursts: u32() });
 
 /** The tunables: `set:Tuning.<field>=<value>` and Tune write them; the same on every peer, or the worlds part. */
 export const Tuning = defineResource("Tuning", {
@@ -129,7 +149,10 @@ export const Move = defineSystem(
           f.faceX[i] = x / Math.max(len, 1e-6);
           f.faceY[i] = y / Math.max(len, 1e-6);
         }
-        if (playing && (input.buttons[i]! & DASH) !== 0 && f.dash[i]! <= -t.dashCooldown) f.dash[i] = t.dashTicks;
+        if (playing && (input.buttons[i]! & DASH) !== 0 && f.dash[i]! <= -t.dashCooldown) {
+          f.dash[i] = t.dashTicks;
+          duel.sfx |= Sound.Dash;
+        }
         let vx = x * t.speed;
         let vy = y * t.speed;
         if (f.dash[i]! > 0) {
@@ -180,6 +203,10 @@ export const CoinDrop = defineSystem(
       if (duel.taken === 1) duel.score0 += 1;
       else duel.score1 += 1;
       duel.coins += 1;
+      duel.took = duel.taken;
+      duel.tookX = duel.coinX;
+      duel.tookY = duel.coinY;
+      duel.sfx |= Sound.Coin;
       duel.taken = 0;
       duel.coinX = rng.range(1, WIDTH - 1);
       duel.coinY = rng.range(1, HEIGHT - 1);
@@ -187,6 +214,7 @@ export const CoinDrop = defineSystem(
       if (best >= t.target) {
         duel.winner = duel.score0 >= t.target ? 1 : 2;
         duel.rest = t.restTicks;
+        duel.sfx |= Sound.Win;
       }
     }
     for (const a of q.archetypes()) {
@@ -198,6 +226,60 @@ export const CoinDrop = defineSystem(
     }
   },
 );
+
+/**
+ * What a coin, a dash and a round won look and sound like (og-feel §3, §4, §7): the coin's
+ * chime and a ring of sparks where it lay, "+1" in the taker's ink, a short hit stop and a
+ * light shake; a dash's whoosh; the round's fanfare and a heavier shake. Everything is asked
+ * for in Duel by the systems before and played here from the world alone, so every peer of a
+ * room plays the same.
+ */
+export const Feedback = defineSystem(
+  "Feedback",
+  { writes: [Duel, Sparks, og.Transform, og.ParticleSystem], after: ["CoinDrop"] },
+  (q, time, world) => {
+    const duel = must(world.resource(Duel));
+    if (duel.took === 0) return;
+    const who = duel.took - 1;
+    must(og.render.floatingText(world, { text: "+1", position: { x: duel.tookX, y: duel.tookY + 0.5, z: 1 }, color: TEXT_INKS[who] ?? GOLD_TEXT, size: 0.6, rise: 1.2, spread: 0.2, lifetime: 0.7 }));
+    must(og.time.hitStop(world, 3));
+    must(og.camera.shake(world, duel.winner !== 0 ? 0.45 : 0.15));
+    for (const a of q.archetypes()) {
+      const p = a.column(og.Transform).position;
+      const ps = a.column(og.ParticleSystem);
+      const sp = a.column(Sparks);
+      for (let i = 0; i < a.count; i++) {
+        p[i * 3] = duel.tookX;
+        p[i * 3 + 1] = duel.tookY;
+        ps.startTick[i] = time.tick;
+        sp.bursts[i] = sp.bursts[i]! + 1;
+      }
+    }
+    duel.took = 0;
+  },
+);
+
+/** Plays each sound Duel.sfx asks for once; a voice still sounding stops this tick and starts on the next. */
+export const Voices = defineSystem("Voices", { writes: [Duel, Voice, og.AudioSource], after: ["Feedback"] }, (q, _time, world) => {
+  const duel = must(world.resource(Duel));
+  if (duel.sfx === 0) return;
+  let left = duel.sfx;
+  for (const a of q.archetypes()) {
+    const v = a.column(Voice);
+    const src = a.column(og.AudioSource);
+    for (let i = 0; i < a.count; i++) {
+      const b = v.bit[i]!;
+      if ((duel.sfx & b) === 0) continue;
+      if (src.playing[i]) src.playing[i] = 0;
+      else {
+        src.playing[i] = 1;
+        v.plays[i] = v.plays[i]! + 1;
+        left &= ~b;
+      }
+    }
+  }
+  duel.sfx = left;
+});
 
 /** The HUD: both scores, and who this peer plays or whom it waits for. */
 export const Hud = defineSystem("Hud", { reads: [Duel, og.Lockstep] }, (_q, _time, world) => {

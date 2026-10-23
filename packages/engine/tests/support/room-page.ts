@@ -7,14 +7,15 @@
 // link (`setRooms(rooms, link)`, what shell/page.ts does with `?room=`):
 // the game never calls roomJoin.
 //
-//   bun tests/support/room-page.ts <game bundle> <relay port> <room> <bot> <ticks>
+//   bun tests/support/room-page.ts <game bundle> <project root, cooked> <relay port> <room> <bot> <ticks>
+import { readFileSync } from "node:fs";
 import { loadNativeHost } from "../../src/node/index.ts";
 import type { GameToken } from "../../src/runtime.ts";
 import { Shell } from "../../src/web/shell.ts";
 import { startWorker } from "../../src/web/worker.ts";
 import { playerRooms, type PlayerLink } from "../../shell/platform.ts";
 
-const [bundle, port, room, bot, ticks] = process.argv.slice(2) as [string, string, string, string, string];
+const [bundle, root, port, room, bot, ticks] = process.argv.slice(2) as [string, string, string, string, string, string];
 
 function anything(): any {
   const f = () => {};
@@ -51,10 +52,14 @@ class Port extends EventTarget {
 
 // The accessibility mirror's DOM class checks, with no DOM.
 (globalThis as Record<string, unknown>)["HTMLInputElement"] ??= class {};
+// The Worker fetches its bundle's manifest by path; the page's origin is this disk.
+const webFetch = globalThis.fetch;
+globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) =>
+  typeof url === "string" && url.startsWith("/") ? new Response(new Uint8Array(readFileSync(url))) : webFetch(url, init)) as typeof fetch;
 loadNativeHost();
 const game = ((await import(bundle)) as { default: GameToken }).default;
 startWorker(game);
-const shell = await Shell.start({ canvas: canvas(), worker: new Port() as unknown as Worker, glue: new URL("../fixtures/web-glue/native.ts", import.meta.url).href, wasm: "unused.wasm", autoplay: false });
+const shell = await Shell.start({ canvas: canvas(), worker: new Port() as unknown as Worker, glue: new URL("../fixtures/web-glue/native.ts", import.meta.url).href, wasm: "unused.wasm", autoplay: false, root });
 
 // The Player's rooms: each room.* request is the op of the same name on the relay's socket.
 const socket = new WebSocket(`ws://127.0.0.1:${port}/`);

@@ -13,7 +13,7 @@
 
 import { og } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
-import { Coin, COIN, CoinDrop, Duel, facts, Fighter, FIGHTER, HEIGHT, Hud, Move, must, setBot, Submit, Tuning, WIDTH } from "./game.ts";
+import { Coin, COIN, CoinDrop, Duel, facts, Feedback, Fighter, FIGHTER, HEIGHT, Hud, Move, must, setBot, Sound, Sparks, Submit, Tuning, Voice, Voices, WIDTH } from "./game.ts";
 
 /** The brand ink #14161b, linear, behind the floor. */
 const INK = { r: 0.00699, g: 0.00802, b: 0.01096 };
@@ -57,15 +57,28 @@ function start(world: World): void {
   const coin = rect(world, "coin", WIDTH / 2, HEIGHT / 2, COIN * 2, COIN * 2, GOLD, 0, 0.6);
   must(world.insert(coin, Coin));
 
-  const font = og.load.font(world, "fonts/ui.ttf");
-  if (font.ok) og.ui.configure(world, { font: font.value });
+  // The feedback (src/game.ts Feedback, Voices): one voice per sound, the coin's sparks.
+  for (const [path, bit, volume] of [
+    ["audio/coin.ogt", Sound.Coin, 0.7],
+    ["audio/dash.ogt", Sound.Dash, 0.45],
+    ["audio/win.ogt", Sound.Win, 0.8],
+  ] as const) {
+    const v = must(world.spawn({ name: `sfx-${bit}` }));
+    must(world.insert(v, og.AudioSource, { sound: must(og.load.sound(world, path)), playing: false, bus: "sfx", volume, priority: 200 }));
+    must(world.insert(v, Voice, { bit }));
+  }
+  const sparks = must(world.spawn({ name: "sparks", position: { x: WIDTH / 2, y: HEIGHT / 2, z: 2 } }));
+  must(world.insert(sparks, og.ParticleSystem, { emitter: must(og.load.emitter(world, "fx/coin.ogt")), seed: 7 }));
+  must(world.insert(sparks, Sparks));
+
 }
 
 export default og.game({
   tick: 60,
   seed: 1,
+  look: "looks/arena.ogt",
   resources: [Duel, Tuning],
-  systems: [Submit, Move, CoinDrop, Hud],
+  systems: [Submit, Move, CoinDrop, Feedback, Voices, Hud],
   start,
   commands: {
     /** `bot:<n>`: this peer's input comes from scripted bot n (0 hands it back to the keys). */
