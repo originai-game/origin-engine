@@ -157,6 +157,24 @@ minor bump, §3), by stream:
   channel the reflectivity. fx-showcase stations `lod` (2,000 trees:
   1,300,812 triangles with LOD against 5,150,788 at `lodBias` 0) and
   `reflections`.
+- `render-targets` (S8), module render: `og.render.renderTarget(world,
+  { width, height, format, depth })` makes an `ldr` or `hdr` target whose
+  colour is an ordinary `Texture` (a material map, a UI image, a mirror);
+  depth is the full tier's (`RenderCapabilities.renderTargetDepth`,
+  `maxRenderTargetSize`, `maxCustomPosts`). `og.CameraView` renders a
+  second camera into a target or a viewport rect (a monitor, a split
+  screen); `og.Mirror` fits an off-axis frustum to its glass. `layers u32`
+  (default 1) on `og.Mesh`, `og.Model`, `og.Sprite`, `og.Lines`,
+  `og.Points`, `og.Camera`, `og.CameraView` and `og.Mirror`, tested with
+  three.js's `&`; `og.render.raycast` reads each mesh's mask; shadows
+  take every caster. `type shader` gains `mode full lit|unlit`: vertex
+  and fragment entries that the prepass and shadow passes run too. `type
+  post` with `og.load.post`, `PostEffects.custom1..4` (four fixed slots),
+  `og.render.setPostParam` and `og.render.postErrors` (a pass a device
+  fails to compile is skipped and listed). A view draws opaque meshes,
+  terrain and sky only, and a frame with views culls on the CPU.
+  fx-showcase station `views` (new) and `shaders` (a full-shader dissolve
+  and a CRT post pass).
 
 ## 0.2.0 (2026-10-23)
 

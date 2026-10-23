@@ -304,6 +304,39 @@ the IDL changes are the CHANGELOG's `## Unreleased` depth wave 3 entry.
   scatter and transparent meshes; one probe per batch, not per instance;
   SSR reads material factors, not maps; no expect-step station playtest;
   WebGL2 not run in a browser.
+- **S8 render-targets** (adfd6d64, merged as pushed at 148b0617, rebased
+  on c5aa7ff1 so every conflict was with S6): og-render `lib.rs` (the
+  prepass now runs for custom posts, AO or SSR; at the frame's end the
+  probe captures resolve, then the viewport views; the views' `draw_list`
+  takes S6's probe argument), og-runtime `engine.rs`/`extract.rs`/`api.rs`
+  (the probe and views layouts side by side, the capability JSON with
+  both streams' fields), og-cook `cook/mod.rs` and `runtime.rs` (S8's
+  `post` beside main's `style`, S8's stale `skin` names dropped),
+  `api.ogt` (`PostEffects` ssr then `custom1..4`, the capabilities, `og.Model`
+  `lodBias` then `layers`), fx-showcase `main.ts` (the lod, reflections
+  and views stations all label as depth stations), design §2.6 (S6's
+  paragraphs then S8's) and the og-game skill (S8's section is §23,
+  "Where to look things up" §24). Generated outputs regenerated; `api
+  check`, `cargo check --workspace --all-targets`, og-idl, og-probe, the
+  knowledge tests and api-surface (after the addon rebuild) pass. Five
+  **Metal references** recorded (`OG_GFX_CAPTURE=views-monitor,views-mirror,
+  views-split,shader-full-dissolve,post-crt`, og-tests `targets`), each
+  read: `views-monitor` (the inset on the back wall shows the second
+  camera with the magenta cube, which the main view lacks); `views-mirror`
+  (the glass in the blue wall reflects the green pillar, the red box and
+  the blue sphere); `views-split` (left the front camera, right the
+  top-down view with the yellow cube); `shader-full-dissolve` (the torus
+  and the eroded slab with pale glowing rims, the shadow cut by the same
+  holes, as on lavapipe); `post-crt` (barrel distortion, black corners,
+  scanlines, the room still readable). Station references `views.png`
+  (new: the mirror wall, the back-wall monitor and the bottom-right
+  top-down inset) and `shaders.png` (the cyan panel dissolving beside the
+  disintegrating sphere and the grass, now through the CRT pass; the old
+  frame had no distortion) recorded with `OG_FX_CAPTURE=1`.
+- **Owed to the wave's end**, S8: views draw opaque meshes, terrain and
+  sky only (no transparents, sprites, particles, lines or post); a frame
+  with views culls on the CPU; target depth is full tier only;
+  `PostEffects.custom` is four fixed slots, not a list.
 
 ## Main gate, wave 13 (2026-10-21)
 
