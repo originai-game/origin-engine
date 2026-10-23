@@ -159,6 +159,17 @@ test("a section reference names a numbered section that exists", () => {
   expect(own).toEqual(["skills/og-audio/SKILL.md: refers to its own §8, which it does not have (its sections: 1, 2, 3, 4, 5, 6, 7)"]);
 });
 
+test("a skill or wiki page that calls a UI style a skin is refused; the glTF and collision skins pass", () => {
+  const p = added((r) => {
+    edit(join(r.pkg, "skills/og-ui/SKILL.md"), (s) => `${s}\nCopy the pack as the game's skin and keep its\n\`fallback\` beside the skin file.\n\nThe controller keeps \`skin\` off every surface. A glTF's skins hold its joints.\n`);
+    edit(join(r.pkg, "wiki/physics.md"), (s) => s.replace("The gap kept between it and every surface.", "The gap kept between it and every surface; the HUD wears the skin's panel."));
+  });
+  expect(p).toEqual([
+    "wiki/physics.md: calls a UI style a skin (\"the HUD wears the skin's panel.\"); og-ui's word is style (type style, og.load.style, styles/<name>/)",
+    "skills/og-ui/SKILL.md: calls a UI style a skin (\"Copy the pack as the game's skin and keep its `fallback` beside the skin file.\"); og-ui's word is style (type style, og.load.style, styles/<name>/)",
+  ]);
+});
+
 test("the style catalogue covers 37 styles, each complete and listed in og-taste", () => {
   const cat = JSON.parse(readFileSync(join(real.pkg, "looks/catalogue.json"), "utf8")) as { styles: { slug: string; checks: string[]; look: { support: string; missing: string[] } }[] };
   expect(cat.styles).toHaveLength(37);
