@@ -47,6 +47,7 @@ host declares a layout by name.
 | `bool` | 1 | `bool` or `Bool8` | `Bool8` | `Uint8Array`; byte entry points take 0 or 1 only |
 | `enum` | 4 | `u32` + `variants = [..]` | `u32` | the variant index; names in `FieldSchema::variants` |
 | `strN` (`str32`, `str64` ...) | N, 1 to 4096 | `Str<N>` (`Str64`, `Str256`) | raw bytes (`Uint8Array` stride N) | UTF-8, zero-padded, no NUL; no range, default or `tunable` |
+| `S[N]` (`u64[8]`, `f32[4]`) | (N + 1) × the element's, N 1 to 1024 | `List<T, N>` | the element's array, stride N + 1 lanes | a count lane, then N elements of `f32 f64 i32 u32 i64 u64`, zero past the length; no range, default or `tunable` |
 
 A string is fixed-capacity and inline, so it is plain data in a component,
 a resource or an event alike: its bytes are the text then zeros, so the
@@ -59,6 +60,15 @@ world's byte entry points run (bool 0/1, enum index in range, strings
 zero-padded UTF-8), naming the field; every other type accepts every bit
 pattern. `FieldSchema::default_bytes` is a field's declared default (or
 zeros), which a migrating restore fills new fields with.
+
+A list is fixed-capacity and inline in the same way: lane 0 is the count,
+held as a value of the element type (`2` in a `u64[8]`, `1.0` in an
+`f32[3]`), so `[]` and `[0]` are different bytes, and the lanes past the
+length are zero, so the bytes depend on the list alone. `pack_list`
+refuses a list over the capacity with the fix named (`declare the field
+u64[9] or larger`); `list_len` and `list_elements` read one; a migrating
+restore keeps a list that fits a new capacity and starts one that does not
+empty, as it does a string.
 
 Schema names are identifiers, optionally dot-separated. Engine-owned schemas
 are named `og.<Type>` (`og.Time`, `og.Rng`), the same string as their

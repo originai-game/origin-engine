@@ -490,3 +490,147 @@ fn a_string_field_has_no_range_default_or_tune() {
         err.reason()
     );
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+struct Chain {
+    passes: og_core::List<u64, 8>,
+    weights: og_core::List<f32, 3>,
+    after: u32,
+}
+
+#[test]
+fn a_list_field_is_a_count_lane_then_its_capacity_of_elements() {
+    let s = Chain::schema();
+    assert_eq!(s.fields[0].ty, FieldType::List(og_core::Scalar::U64, 8));
+    assert_eq!(s.fields[1].ty, FieldType::List(og_core::Scalar::F32, 3));
+    s.validate().unwrap();
+    // 9 u64 lanes, 4 f32 lanes, a u32.
+    let layout = Layout::of(&s);
+    assert_eq!(layout.size(), 72 + 16 + 4);
+
+    let value = Chain {
+        passes: og_core::List::from_slice(&[7, 0]).unwrap(),
+        weights: og_core::List::from_slice(&[0.5]).unwrap(),
+        after: 3,
+    };
+    let bytes = to_bytes(&value).unwrap();
+    // The count lane holds the length as the element type: 2 as a u64,
+    // 1.0 as an f32; the lanes past the length are zero.
+    assert_eq!(bytes[..8], 2u64.to_le_bytes());
+    assert_eq!(bytes[8..16], 7u64.to_le_bytes());
+    assert_eq!(bytes[16..24], [0; 8]);
+    assert!(bytes[24..72].iter().all(|b| *b == 0));
+    assert_eq!(bytes[72..76], 1.0f32.to_le_bytes());
+    assert_eq!(bytes[76..80], 0.5f32.to_le_bytes());
+    assert_eq!(from_bytes::<Chain>(&bytes).unwrap(), value);
+    s.check_packed(&bytes).unwrap();
+
+    // `[]` and `[0]` are different bytes.
+    let empty = og_core::pack_list(s.fields[0].ty, &[]).unwrap();
+    let zero = og_core::pack_list(s.fields[0].ty, &[&0u64.to_le_bytes()]).unwrap();
+    assert_ne!(empty, zero);
+    assert_eq!(og_core::list_len(s.fields[0].ty, &empty), Some(0));
+    assert_eq!(og_core::list_len(s.fields[0].ty, &zero), Some(1));
+
+    // A count past the capacity, a fractional count and a non-zero lane past
+    // the length are refused by the byte entry points.
+    let mut bad = bytes.clone();
+    bad[..8].copy_from_slice(&9u64.to_le_bytes());
+    assert!(
+        s.check_packed(&bad)
+            .unwrap_err()
+            .reason()
+            .contains("Chain.passes")
+    );
+    let mut bad = bytes.clone();
+    bad[24] = 1;
+    assert!(
+        s.check_packed(&bad)
+            .unwrap_err()
+            .reason()
+            .contains("past its length")
+    );
+    let mut bad = bytes.clone();
+    bad[72..76].copy_from_slice(&1.5f32.to_le_bytes());
+    assert!(s.check_packed(&bad).is_err());
+
+    // Over the capacity: refused with the fix, never truncated.
+    let nine: Vec<[u8; 8]> = (0..9u64).map(u64::to_le_bytes).collect();
+    let refs: Vec<&[u8]> = nine.iter().map(|b| b.as_slice()).collect();
+    let err = og_core::pack_list(s.fields[0].ty, &refs).unwrap_err();
+    assert!(err.contains("declare the field u64[9] or larger"), "{err}");
+    let mut full = og_core::List::<u32, 1>::new();
+    full.push(1).unwrap();
+    assert!(full.push(2).is_err());
+    assert_eq!(full.as_slice(), [1]);
+}
+
+#[test]
+fn a_list_type_is_named_by_its_element_and_capacity() {
+    use og_core::Scalar;
+    for (name, ty) in [
+        ("u64[8]", FieldType::List(Scalar::U64, 8)),
+        ("f32[1]", FieldType::List(Scalar::F32, 1)),
+        ("i32[1024]", FieldType::List(Scalar::I32, 1024)),
+        ("f64[3]", FieldType::List(Scalar::F64, 3)),
+    ] {
+        assert_eq!(ty.name(), name);
+        assert_eq!(FieldType::parse(name), Some(ty));
+        let json = serde_json::to_string(&ty).unwrap();
+        assert_eq!(serde_json::from_str::<FieldType>(&json).unwrap(), ty);
+    }
+    for bad in [
+        "u64[]",
+        "u64[0]",
+        "u64[08]",
+        "u64[1025]",
+        "bool[4]",
+        "vec3[2]",
+        "str8[2]",
+        "u64[8",
+        "u64[8]]",
+        "[8]",
+    ] {
+        assert_eq!(FieldType::parse(bad), None, "{bad}");
+    }
+    let schema = |ty: FieldType| Schema {
+        name: "Chain".into(),
+        version: 1,
+        doc: String::new(),
+        fields: vec![FieldSchema::new("passes", ty)],
+    };
+    let a = schema(FieldType::List(Scalar::U64, 8)).layout_hash();
+    assert_ne!(a, schema(FieldType::List(Scalar::U64, 4)).layout_hash());
+    assert_ne!(a, schema(FieldType::List(Scalar::U32, 8)).layout_hash());
+    assert_ne!(a, schema(FieldType::U64).layout_hash());
+}
+
+#[test]
+fn a_list_field_has_no_range_default_or_tune() {
+    let base = || Schema {
+        name: "Chain".into(),
+        version: 1,
+        doc: String::new(),
+        fields: vec![FieldSchema::new(
+            "passes",
+            FieldType::List(og_core::Scalar::U64, 8),
+        )],
+    };
+    let refuse = |s: Schema, needle: &str| {
+        let err = s.validate().unwrap_err();
+        assert!(err.reason().contains(needle), "{}", err.reason());
+    };
+    base().validate().unwrap();
+    let mut s = base();
+    s.fields[0].ty = FieldType::List(og_core::Scalar::Bool, 2);
+    refuse(s, "a list holds 1 to 1024");
+    let mut s = base();
+    s.fields[0].default = Some(vec![0.0; 9]);
+    refuse(s, "starts empty");
+    let mut s = base();
+    s.fields[0].min = Some(0.0);
+    refuse(s, "has a range");
+    let mut s = base();
+    s.fields[0].tunable = true;
+    refuse(s, "is tunable");
+}
