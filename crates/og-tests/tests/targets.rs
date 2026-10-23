@@ -185,3 +185,48 @@ fn a_view_draws_transparents_sprites_particles_and_lines_on_its_layers() {
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+#[test]
+fn views_depth_matches_its_reference() {
+    check("views-depth");
+}
+
+/// A target's depth texture holds the view's linear depth from near (0)
+/// to far (1) on every tier (the view's depth prepass, which WebGL2 runs
+/// too): the wall 5.9 m away reads (5.9 - 0.1) / 19.9, the box 2.5 m away
+/// 2.4 / 19.9, the sky 1, and the box off the view's layers writes none.
+#[test]
+fn a_targets_depth_texture_holds_the_views_linear_depth() {
+    let img = frame(&og_tests::target_scenes::depth_scene());
+    let srgb = |v: f32| {
+        let c = if v <= 0.003_130_8 {
+            v * 12.92
+        } else {
+            1.055 * v.powf(1.0 / 2.4) - 0.055
+        };
+        (c * 255.0).round() as i32
+    };
+    let at = |u: f32, v: f32| {
+        let (x, y) = (
+            (u * img.width as f32) as u32,
+            (v * img.height as f32) as u32,
+        );
+        img.pixels[((y * img.width + x) * 4) as usize] as i32
+    };
+    let checks = [
+        ("box", at(0.5, 0.5), srgb(2.4 / 19.9)),
+        ("wall right of the box", at(0.8, 0.5), srgb(5.8 / 19.9)),
+        (
+            "wall behind the layer-1 box",
+            at(0.25, 0.5),
+            srgb(5.8 / 19.9),
+        ),
+        ("sky above the wall", at(0.5, 0.03), 255),
+    ];
+    for (what, got, want) in checks {
+        assert!(
+            (got - want).abs() <= 3,
+            "{what}: {got}, the linear depth {want}"
+        );
+    }
+}

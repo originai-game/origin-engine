@@ -2150,8 +2150,9 @@ default) or `hdr`:
   `color` is black.
 
 `depth: true` also keeps the view's linear depth, from near (0) to far
-(1). It is drawn on the full tier only: `RenderCapabilities.renderTargetDepth`
-is false on WebGL2, where the depth texture stays 0.
+(1), of its opaque meshes, on every tier, WebGL2 included. It costs a
+second draw of the view's opaque meshes, so ask for it only when a
+material reads it.
 `RenderCapabilities.maxRenderTargetSize` is the largest side.
 
 **A second camera.** `og.CameraView` on an entity is a camera with

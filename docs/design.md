@@ -320,9 +320,14 @@ next frame, so a target drawn every few ticks never shows the cut run.
 - `ldr` (Rgba8 sRGB) holds the view's finished image.
 - `hdr` (Rgba16Float) holds its linear radiance. The frame that shows it
   exposes it, so a mirror matches the room.
-- The depth texture is drawn on the full tier only, because GLSL ES cannot
-  load a depth buffer. `RenderCapabilities.renderTargetDepth` reports
-  this; the member is never missing.
+- The depth texture is drawn on every tier. GLSL ES 3.0 cannot load a
+  depth buffer (a multisampled one least of all), so the depth never comes
+  from the view's depth buffer: the view draws its opaque meshes, skinned
+  meshes and terrain again through the prepass pipelines into a
+  single-sampled linear-depth colour target (RG32F, as the main
+  prepass's `lindepth`), and the resolve normalises it from near to far.
+  One path on every tier, so the native gfx tests run what WebGL2 runs.
+  `RenderCapabilities.renderTargetDepth` is true with a renderer.
 
 **Views.** A view (`views.rs`, `og.CameraView`, `og.Mirror`) is a
 secondary camera. Each is a timed graph pass, `view-<i>`, drawn before the

@@ -111,13 +111,11 @@ fn max_target_size(rs: &RenderState) -> u32 {
 
 /// RenderCapabilities' members of this module.
 pub(crate) fn capabilities(rs: &RenderState) -> Value {
-    let full = rs
-        .backend
-        .as_ref()
-        .and_then(|b| b.info())
-        .is_some_and(|i| i.tier == og_render::Tier::Full);
+    // Every tier draws a target's depth (og-render views.rs: from the
+    // view's linear depth prepass, which WebGL2 reads too).
+    let renderer = rs.backend.as_ref().and_then(|b| b.info()).is_some();
     json!({
-        "renderTargetDepth": full,
+        "renderTargetDepth": renderer,
         "maxRenderTargetSize": max_target_size(rs),
         "maxCustomPosts": POST_SLOTS.min(og_render::MAX_CUSTOM_POSTS),
     })

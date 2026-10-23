@@ -387,3 +387,71 @@ pub fn view_kinds_scene(kinds: &[ViewKind], view_layers: u32, tick: u64) -> Rend
     crate::fx_scenes::tick_all(&mut scene, tick);
     scene
 }
+
+/// A render target's depth texture (`views-depth`): a camera at (0, 1.5, 0)
+/// looking down -z at a wall whose face is 5.9 m away, with a box whose
+/// face is 2.5 m away in the middle, near 0.1 and far 20; the target's
+/// depth texture fills the frame through an unlit screen seen by an
+/// orthographic main camera, untonemapped at exposure 1, so a pixel shows
+/// the normalised linear depth sRGB-encoded. A box on layer 1, which the
+/// view's camera leaves out, writes no depth.
+pub fn depth_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    scene.environment.sky.sun_direction = Vec3::new(-0.4, 0.8, 0.5);
+    scene.post.tonemap = og_render::Tonemap::None;
+    let grey = scene.add_standard_material(colour(0.6, 0.6, 0.6));
+    let ground = scene.add_mesh(shapes::plane(12.0, 12.0));
+    scene.add_instance(ground, grey, Mat4::IDENTITY);
+    let wall = scene.add_mesh(shapes::cuboid(Vec3::new(12.0, 3.0, 0.2)));
+    scene.add_instance(
+        wall,
+        grey,
+        Mat4::from_translation(Vec3::new(0.0, 1.5, -6.0)),
+    );
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::splat(1.0)));
+    let red = scene.add_standard_material(colour(0.8, 0.1, 0.1));
+    scene.add_instance(cube, red, Mat4::from_translation(Vec3::new(0.0, 1.5, -3.0)));
+    // Off the view's layers, between it and the wall's left half.
+    scene.add_instance(
+        cube,
+        red,
+        Mat4::from_translation(Vec3::new(-1.6, 1.5, -4.0)),
+    );
+    let i = scene.instances.len() - 1;
+    scene.instance_layers.resize(i + 1, 1);
+    scene.instance_layers[i] = 2;
+    let target = scene.add_render_target(RenderTargetDesc {
+        width: 320,
+        height: 180,
+        depth: true,
+        ..Default::default()
+    });
+    scene.views.push(View {
+        camera: Camera {
+            position: Vec3::new(0.0, 1.5, 0.0),
+            target: Vec3::new(0.0, 1.5, -6.0),
+            near: 0.1,
+            far: 20.0,
+            ..Default::default()
+        },
+        target: ViewTarget::Texture(target),
+        ..Default::default()
+    });
+    // The screen, far from the room, filling an orthographic frame.
+    let at = Vec3::new(200.0, 0.0, 0.0);
+    screen(
+        &mut scene,
+        target.depth.expect("asked for"),
+        16.0,
+        9.0,
+        Mat4::from_translation(at),
+    );
+    scene.camera = Camera {
+        position: at + Vec3::Z * 5.0,
+        target: at,
+        projection: og_render::Projection::Orthographic { height: 9.0 },
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    scene
+}

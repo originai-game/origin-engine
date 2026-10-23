@@ -109,6 +109,7 @@ pub const SCENES: &[&str] = &[
     "views-mirror",
     "views-split",
     "views-layers",
+    "views-depth",
     "shader-full-dissolve",
     "post-crt",
     "rect-lights",
@@ -532,6 +533,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             use crate::target_scenes::{ViewKind, view_kinds_scene};
             g.scene = view_kinds_scene(&ViewKind::ALL, 3, 60);
         }
+        // A render target's depth texture shown full frame (every tier
+        // draws it, from the view's depth prepass).
+        "views-depth" => g.scene = crate::target_scenes::depth_scene(),
         // A full custom shader (`mode full`): a dissolve cut through a
         // sphere and a box, their shadows cut the same way.
         "shader-full-dissolve" => g.scene = crate::target_scenes::full_dissolve_scene(0.45),
