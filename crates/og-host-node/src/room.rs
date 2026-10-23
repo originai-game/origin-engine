@@ -65,3 +65,29 @@ pub fn og_node_room_close(engine: u32) -> bool {
     og_node_room_pump(engine);
     LINKS.with(|l| l.borrow_mut().remove(&engine).is_some())
 }
+
+thread_local! {
+    static RELAYS: RefCell<Vec<og_net::relay::Relay>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Start an `og relay` inside this process, on 127.0.0.1 (0 picks a free
+/// port), for as long as the process lives: a playtest's room (PlaytestDesc.room)
+/// runs its peers through one. A Result with the port.
+#[napi(js_name = "og_node_relay_start")]
+pub fn og_node_relay_start(port: u32) -> String {
+    let Ok(port) = u16::try_from(port) else {
+        return r#"{"ok":false,"reason":"the port is 0 (a free port) to 65535"}"#.into();
+    };
+    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
+    match og_net::relay::Relay::bind(addr) {
+        Ok(relay) => {
+            let port = relay.port();
+            RELAYS.with(|r| r.borrow_mut().push(relay));
+            format!(r#"{{"ok":true,"value":{port}}}"#)
+        }
+        Err(e) => format!(
+            r#"{{"ok":false,"reason":{}}}"#,
+            json_str(&format!("cannot listen on {addr}: {e}"))
+        ),
+    }
+}

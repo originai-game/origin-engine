@@ -20,6 +20,7 @@ pub struct RelayClient {
     ops: Sender<String>,
     events: Receiver<Value>,
     stop: Arc<AtomicBool>,
+    thread: Option<thread::JoinHandle<()>>,
 }
 
 impl RelayClient {
@@ -42,7 +43,7 @@ impl RelayClient {
         let (events_tx, events) = mpsc::channel::<Value>();
         let stop = Arc::new(AtomicBool::new(false));
         let stopping = stop.clone();
-        thread::Builder::new()
+        let thread = thread::Builder::new()
             .name("og-room-client".into())
             .spawn(move || run(&mut socket, ops_rx, events_tx, stopping))
             .map_err(|e| e.to_string())?;
@@ -51,6 +52,7 @@ impl RelayClient {
             ops,
             events,
             stop,
+            thread: Some(thread),
         })
     }
 
@@ -72,6 +74,13 @@ impl RelayClient {
 impl Drop for RelayClient {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Relaxed);
+        // Wait for the queued ops and the close frame to leave (the thread
+        // reads with a 1 ms timeout, so it sees the flag at once): a process
+        // that exits right after would otherwise cut the connection, and the
+        // relay would report a failure instead of a departure.
+        if let Some(t) = self.thread.take() {
+            let _ = t.join();
+        }
     }
 }
 

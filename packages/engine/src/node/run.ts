@@ -237,6 +237,9 @@ function abiRoomInfo(): string {
   return boundHost()!.abi.og_platform_room_info(engine.id);
 }
 
+type NetStatus = { running: boolean; startTick: number | null; waits: number; desync: number | null };
+const netStatus = (): NetStatus => JSON.parse(boundHost()!.abi.og_net_status(engine.id)) as NetStatus;
+
 let untilTick = -1;
 if (commands !== undefined) {
   const report = engine.probe.commands(commands) as { scheduled: number; untilTick: number; warnings: string[] } | null;
@@ -333,8 +336,12 @@ if (!probing) {
     const left = answer.pending ?? (tick > untilTick ? 0 : 1);
     if (ticks === undefined && commands !== undefined && listening === undefined && !watchFile && left === 0) break;
     if (realtime || listening !== undefined || watchFile) await sleep(Math.max(0, tickMs - (performance.now() - last)));
-    // In a room a frame that took no tick waits for the other players' inputs.
+    // In a room a frame that took no tick waits for the other players' inputs,
+    // and outside lockstep (its lobby, or a game that leaves it off) the run
+    // keeps the tick's pace with the other peers: an unpaced lobby would
+    // spend the run's --ticks before they arrive.
     else if (room !== undefined && (answer.ticks ?? 0) === 0) await sleep(1);
+    else if (room !== undefined && !netStatus().running) await sleep(Math.max(0, tickMs - (performance.now() - last)));
   }
 }
 const ms = performance.now() - t0;
@@ -386,6 +393,8 @@ const summary = {
   hash: dump.hash,
   // og.net's shared hash: the world without this peer's session, what lockstep peers compare.
   netHash: JSON.parse(boundHost()!.abi.og_net_hash(engine.id)) as string,
+  // With --room: lockstep's state at the end (the tick it started, the waits, the first divergent tick).
+  ...(room !== undefined ? { lockstep: netStatus() } : {}),
   entities: dump.entities,
   advanceMs: +ms.toFixed(2),
   frames,

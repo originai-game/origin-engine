@@ -52,6 +52,40 @@ export interface PlaytestRun {
   wav(file: string): { rate: number; frames: number; peak: number; rms: number };
   /** The runs of PlaytestDesc.then, in order, each with its own files (empty without `then`). */
   readonly then: readonly PlaytestRun[];
+  /** og.net's shared hash at the end (og.net.hash): the world without this process's session, what lockstep peers compare. */
+  readonly netHash: string;
+  /** With PlaytestDesc.room: og.net.status at the end (running, the start tick, the seats, the first divergent tick); null outside a room. */
+  readonly lockstep: PlaytestLockstep | null;
+  /** With PlaytestDesc.room: the room's other processes (peer scripts 1, 2, ...), each with its own files; empty outside a room. */
+  readonly peers: readonly PlaytestRun[];
+}
+
+/** og.net.status of a playtest process in a room, at its end. */
+export interface PlaytestLockstep {
+  readonly running: boolean;
+  readonly peer: number | null;
+  readonly startTick: number | null;
+  readonly players: number | null;
+  readonly waits: number;
+  /** The first divergent tick, once og.Desync was sent. */
+  readonly desync: number | null;
+}
+
+/** PlaytestDesc.room: the script's processes play together in one room. */
+export interface PlaytestRoom {
+  /** How many processes join the room (2 to 16). */
+  readonly players: number;
+  /** Each process's script by its place (0 is the playtest's own `commands`); a process without one runs `commands`. */
+  readonly commands?: readonly string[];
+  /** The room's name in the relay (default `playtest`). */
+  readonly name?: string;
+  /**
+   * The tick every process stops at (`og run --ticks`): their `netHash` there is what lockstep
+   * makes equal. A script's steps run on each process's own ticks, and a peer that takes the
+   * authority's snapshot at the start moves to its tick (the steps keep their delays), so a
+   * `quit` step would stop the peers at different ticks: end a room script by `ticks`.
+   */
+  readonly ticks: number;
 }
 
 /** The checks a playtest makes; a playtest that made none fails. */
@@ -106,6 +140,14 @@ export interface PlaytestDesc {
    * process has its own store in memory.
    */
   readonly store?: "keep";
+  /**
+   * Play the script in a room (docs/design.md §2.8, §2.10): the playtest starts a relay
+   * (`og relay`, in its own process) and runs `players` processes at once, each `og run
+   * --room ws://127.0.0.1:P/<name>` with its own script (`room.commands[i]`, else `commands`)
+   * and its own files. The first is the run; the others are `run.peers`. Every process stops
+   * at `room.ticks`. `runs` and `then` are refused with it.
+   */
+  readonly room?: PlaytestRoom;
   /** More processes after the script, in order, each a fresh `og run` (a relaunch): their runs are `run.then`. */
   readonly then?: readonly PlaytestStep[];
   readonly check: (run: PlaytestRun, t: PlaytestChecks) => void | Promise<void>;

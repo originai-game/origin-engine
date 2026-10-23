@@ -16,10 +16,12 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { bundleGame } from "./build.ts";
-import { FrameUnchecked, PLAYTEST_CLOCK, type PlaytestChecks, type PlaytestDesc, type PlaytestRun } from "../playtest.ts";
+import { FrameUnchecked, PLAYTEST_CLOCK, type PlaytestChecks, type PlaytestDesc, type PlaytestLockstep, type PlaytestRun } from "../playtest.ts";
+import { loadNativeHost, native } from "./index.ts";
 
 declare const Bun: {
   spawnSync(cmd: string[], o?: { cwd?: string; stdout?: string; stderr?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
+  spawn(cmd: string[], o?: { stdout?: string; stderr?: string }): { exited: Promise<number>; stdout: ReadableStream<Uint8Array>; stderr: ReadableStream<Uint8Array> };
 };
 
 const argv = process.argv.slice(2);
@@ -97,37 +99,86 @@ result.title = desc!.name;
 // `platform.json` once replaced it: hollowbell FINDINGS #18).
 const store = desc!.store === "keep" ? join(out, ".store", "platform.json") : undefined;
 if (store) mkdirSync(dirname(store), { recursive: true });
-const command = (commands: string, dir: string, clock: number) => {
+const command = (commands: string, dir: string, clock: number, room?: { url: string; ticks: number }) => {
   const c = ["bun", join(here, "run.ts"), "--entry", entry!, "--commands", commands, "--out", dir, "--json", "--clock", String(clock)];
+  if (room) c.push("--room", room.url, "--ticks", String(room.ticks));
   if (root) c.push("--root", root);
   if (desc!.seed !== undefined) c.push("--seed", String(desc!.seed));
   if (desc!.size) c.push("--size", desc!.size);
   if (store) c.push("--platform-store", store);
   return c;
 };
-type Summary = { tick: number; hash: string; entities: number; quit: boolean; tier: string; outputs: string[]; warnings: string[]; unchecked?: string[] };
+type Summary = {
+  tick: number;
+  hash: string;
+  netHash?: string;
+  lockstep?: PlaytestLockstep;
+  entities: number;
+  quit: boolean;
+  tier: string;
+  outputs: string[];
+  warnings: string[];
+  unchecked?: string[];
+};
 const spawn = (c: string[], what: string): Summary | null => {
   const r = Bun.spawnSync(c, { stdout: "pipe", stderr: "pipe" });
-  const stdout = new TextDecoder().decode(r.stdout);
-  const stderr = new TextDecoder().decode(r.stderr);
+  return summarise(r.exitCode, new TextDecoder().decode(r.stdout), new TextDecoder().decode(r.stderr), what);
+};
+function summarise(exitCode: number, stdout: string, stderr: string, what: string): Summary | null {
   let summary: Summary | null = null;
   try {
     summary = JSON.parse(stdout.trim().split("\n").pop() ?? "");
   } catch {
     summary = null;
   }
-  if (r.exitCode !== 0 || !summary) {
-    failures.push(`${what} failed (exit ${r.exitCode}): ${stderr.trim() || stdout.trim()}`);
+  if (exitCode !== 0 || !summary) {
+    failures.push(`${what} failed (exit ${exitCode}): ${stderr.trim() || stdout.trim()}`);
     return null;
   }
   return summary;
-};
+}
 const clock = desc!.clock ?? PLAYTEST_CLOCK;
-const summary = spawn(command(desc!.commands, out, clock), "og run");
+
+// PlaytestDesc.room: a relay in this process, and every peer's process at
+// once, each joined to the room (the first is the run, the others its peers).
+const room = desc!.room;
+const peerSummaries: Summary[] = [];
+let summary: Summary | null;
+if (room) {
+  const players = Math.floor(room.players);
+  if (!(players >= 2 && players <= 16)) failures.push(`room.players is ${room.players}: a room playtest takes 2 to 16 processes`);
+  if ((desc!.runs ?? 1) > 1 || (desc!.then ?? []).length > 0) failures.push("a room playtest takes neither `runs` nor `then`: its processes play at once");
+  const name = room.name ?? "playtest";
+  if (!(Number.isInteger(room.ticks) && room.ticks > 0)) failures.push(`room.ticks is ${room.ticks}: the tick every process stops at, a whole number above 0`);
+  if (!/^[A-Za-z0-9._-]{1,64}$/.test(name)) failures.push(`room.name '${name}' is not a room id: 1 to 64 of letters, digits, '.', '_' and '-'`);
+  if (failures.length > 0) finish();
+  loadNativeHost();
+  const relay = JSON.parse(native().og_node_relay_start(0)) as { ok: boolean; value?: number; reason?: string };
+  if (!relay.ok) {
+    failures.push(`the playtest's relay did not start: ${relay.reason}`);
+    finish();
+  }
+  const url = `ws://127.0.0.1:${relay.value}/${name}`;
+  const results = await Promise.all(
+    Array.from({ length: players }, async (_, i) => {
+      const dir = i === 0 ? out : join(out, `peer-${i}`);
+      mkdirSync(dir, { recursive: true });
+      const p = Bun.spawn(command(room.commands?.[i] ?? desc!.commands, dir, clock, { url, ticks: room.ticks }), { stdout: "pipe", stderr: "pipe" });
+      const [code, stdout, stderr] = await Promise.all([p.exited, new Response(p.stdout).text(), new Response(p.stderr).text()]);
+      return summarise(code, stdout, stderr, i === 0 ? "og run (peer 0)" : `og run (peer ${i})`);
+    }),
+  );
+  if (results.some((r) => r === null)) finish();
+  summary = results[0]!;
+  peerSummaries.push(...(results.slice(1) as Summary[]));
+  for (const [i, s] of peerSummaries.entries()) for (const f of s.unchecked ?? []) unchecked.push(`peer ${i + 1} ${f}`);
+} else summary = spawn(command(desc!.commands, out, clock), "og run");
 if (!summary) finish();
 const rendered = summary!.tier !== "none";
 unchecked.push(...(summary!.unchecked ?? []));
 result = { ...result, tick: summary!.tick, hash: summary!.hash, tier: summary!.tier, warnings: summary!.warnings };
+// A room's shared hashes, the run's first: equal ones are peers that stayed in step.
+if (room) result = { ...result, netHashes: [summary!, ...peerSummaries].map((s) => s.netHash ?? ""), lockstep: [summary!, ...peerSummaries].map((s) => s.lockstep ?? null) };
 // More runs of the same script (desc.runs), each in a fresh process into its
 // own directory: only their end hashes are kept.
 const hashes = [summary!.hash];
@@ -137,7 +188,7 @@ for (let i = 1; i < Math.max(1, Math.floor(desc!.runs ?? 1)); i++) {
 }
 result = { ...result, hashes };
 
-const runOf = (s: Summary, dir: string, later: readonly PlaytestRun[]): PlaytestRun => {
+const runOf = (s: Summary, dir: string, later: readonly PlaytestRun[], peers: readonly PlaytestRun[] = []): PlaytestRun => {
   const path = (f: string) => {
     const p = resolve(dir, f);
     if (!existsSync(p)) throw new Error(`the run wrote no ${f} (it wrote ${s.outputs.map((o) => o.slice(dir.length + 1)).join(", ") || "nothing"})`);
@@ -156,6 +207,9 @@ const runOf = (s: Summary, dir: string, later: readonly PlaytestRun[]): Playtest
     files: s.outputs.map((o) => o.slice(dir.length + 1)),
     warnings: s.warnings,
     then: later,
+    netHash: s.netHash ?? "",
+    lockstep: s.lockstep ?? null,
+    peers,
     json: <T>(f: string) => JSON.parse(readFileSync(path(f), "utf8")) as T,
     text: (f: string) => readFileSync(path(f), "utf8"),
     png: (f: string) => {
@@ -193,7 +247,12 @@ for (const [i, step] of (desc!.then ?? []).entries()) {
   for (const f of s!.unchecked ?? []) unchecked.push(`then[${i}] ${f}`);
   later.push(runOf(s!, dir, []));
 }
-const run = runOf(summary!, out, later);
+const run = runOf(
+  summary!,
+  out,
+  later,
+  peerSummaries.map((s, i) => runOf(s, join(out, `peer-${i + 1}`), [])),
+);
 // Every file a run took a screenshot for without a renderer, by name and by path.
 const missedPaths = new Set<string>([...(summary!.unchecked ?? []).map((f) => resolve(out, f)), ...later.flatMap((r, i) => r.unchecked.map((f) => resolve(join(out, `then-${i + 1}`), f)))]);
 const missedNames = new Set<string>([...(summary!.unchecked ?? []), ...later.flatMap((r) => r.unchecked)]);
