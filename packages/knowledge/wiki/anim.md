@@ -289,7 +289,7 @@ fn rig2dInfo {
 }
 ```
 
-<sub>`api.ogt` line 7707</sub>
+<sub>`api.ogt` line 7711</sub>
 
 <a id="fn-skeleton2dBoxes"></a>
 
@@ -319,7 +319,7 @@ fn skeleton2dBoxes {
 }
 ```
 
-<sub>`api.ogt` line 7721</sub>
+<sub>`api.ogt` line 7725</sub>
 
 ## Components, resources and events
 
@@ -773,6 +773,7 @@ Token `og.Skeleton2D`, registered under the schema name `og.Skeleton2D`; its val
 | `loop` | `boolean` | `true` | — | — | — | Wrap at the clip's end; otherwise hold the last pose and set `finished`. Rig2DInfo.clips says what the rig's author meant. |
 | `flipX` | `boolean` | `false` | — | — | — | Mirror the rig left to right about the entity's position (a character facing left). |
 | `layer` | `number` | `0` | — | — | — | The sprite layer it draws in, sorted with the sprites there (after them when they share the layer). |
+| `skin` | `number` | `0` | ≥ 0 | — | — | The skin it wears: an index into Rig2DInfo.skins (0 is the rig's default; `rig.skins.indexOf("armor")` finds one by name). A skin shows its own attachment wherever the setup pose or a clip shows the default's; a slot the skin leaves alone shows the default's. Change it any tick: the pose is drawn from it. |
 | `finished` | `boolean` | `false` | — | — | read only | Written: a clip that does not loop reached its end (or its start, played backwards). |
 
 ```ogt
@@ -798,6 +799,9 @@ component Skeleton2D {
   }
   field flipX bool "Mirror the rig left to right about the entity's position (a character facing left)."
   field layer i32 "The sprite layer it draws in, sorted with the sprites there (after them when they share the layer)."
+  field skin u32 "The skin it wears: an index into Rig2DInfo.skins (0 is the rig's default; `rig.skins.indexOf(\"armor\")` finds one by name). A skin shows its own attachment wherever the setup pose or a clip shows the default's; a slot the skin leaves alone shows the default's. Change it any tick: the pose is drawn from it." {
+    min 0
+  }
   field finished bool "Written: a clip that does not loop reached its end (or its start, played backwards)." {
     readonly true
   }
@@ -833,7 +837,7 @@ event Skeleton2DEvent {
 }
 ```
 
-<sub>`api.ogt` line 7646</sub>
+<sub>`api.ogt` line 7649</sub>
 
 <a id="record-IkTarget2D"></a>
 
@@ -884,7 +888,7 @@ component IkTarget2D {
 }
 ```
 
-<sub>`api.ogt` line 7656</sub>
+<sub>`api.ogt` line 7659</sub>
 
 ## Types
 
@@ -1358,7 +1362,7 @@ struct Rig2DClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 7685</sub>
+<sub>`api.ogt` line 7688</sub>
 
 <a id="type-Rig2DInfo"></a>
 
@@ -1374,6 +1378,7 @@ What og.load.rig2d registered, or og.anim.rig2dInfo reads back from a handle.
 | `bones` | `readonly string[]` | `[]` | — | — | — | The bones' names, parents first. |
 | `slots` | `readonly string[]` | `[]` | — | — | — | The slots' names, in draw order. |
 | `constraints` | `readonly string[]` | `[]` | — | — | — | The IK constraints' names: an index here is IkTarget2D.constraint. |
+| `skins` | `readonly string[]` | `[]` | — | — | — | Its skins' names, `default` (the rig's own attachments) first: an index here is Skeleton2D.skin. |
 | `clips` | `readonly Rig2DClipInfo[]` | `[]` | — | — | — | Its clips, in file order. |
 
 ```ogt
@@ -1385,11 +1390,12 @@ struct Rig2DInfo {
   field bones List.String "The bones' names, parents first."
   field slots List.String "The slots' names, in draw order."
   field constraints List.String "The IK constraints' names: an index here is IkTarget2D.constraint."
+  field skins List.String "Its skins' names, `default` (the rig's own attachments) first: an index here is Skeleton2D.skin."
   field clips List.Rig2DClipInfo "Its clips, in file order."
 }
 ```
 
-<sub>`api.ogt` line 7696</sub>
+<sub>`api.ogt` line 7699</sub>
 
 <a id="type-Skeleton2DBox"></a>
 
@@ -1412,7 +1418,7 @@ struct Skeleton2DBox {
 }
 ```
 
-<sub>`api.ogt` line 7714</sub>
+<sub>`api.ogt` line 7718</sub>
 
 ## Column kinds
 

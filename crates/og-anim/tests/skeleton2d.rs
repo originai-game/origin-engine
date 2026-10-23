@@ -338,3 +338,65 @@ clip still {
     let ik = w.get::<IkTarget2D>(t).unwrap();
     assert!(!ik.reached && (ik.error - 2.0).abs() < 1e-4, "{ik:?}");
 }
+
+/// og.Skeleton2D.skin picks what its slots show: here a bigger hurt box.
+#[test]
+fn the_skin_a_skeleton_wears_is_what_its_pose_shows() {
+    let rig = r#"type rig2d
+version 1
+---
+texture "t.png"
+size 16 16
+unit 10
+bone root {
+}
+slot hurt {
+  bone root
+  attachment small
+}
+box small {
+  slot hurt
+  polygon 0 0 10 0 10 10
+}
+box big {
+  slot hurt
+  polygon 0 0 20 0 20 20
+}
+skin giant {
+  swap small big
+}
+clip still {
+  duration 1
+}
+"#;
+    let mut w = World::new(&WorldDesc {
+        tick_rate: 64,
+        seed: 1,
+    })
+    .unwrap();
+    let sys = install_skeleton2d(&mut w).unwrap();
+    sys.add_rig(4, Rig2dAsset::parse(rig).unwrap()).unwrap();
+    let e = w
+        .spawn((
+            Transform::default(),
+            Skeleton2D {
+                rig: 4,
+                ..Default::default()
+            },
+        ))
+        .unwrap();
+    w.step().unwrap();
+    let shown = |sys: &Skeleton2dSystem| sys.boxes(e.to_bits()).unwrap()[0].clone();
+    // 10 pixels to a unit: the default's box reaches (1, 1).
+    assert_eq!(
+        (shown(&sys).name.as_str(), shown(&sys).points[2]),
+        ("small", Vec2::new(1.0, 1.0))
+    );
+    let s = w.get::<Skeleton2D>(e).unwrap();
+    w.insert(e, Skeleton2D { skin: 1, ..s }).unwrap();
+    w.step().unwrap();
+    assert_eq!(
+        (shown(&sys).name.as_str(), shown(&sys).points[2]),
+        ("big", Vec2::new(2.0, 2.0))
+    );
+}

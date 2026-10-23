@@ -23376,6 +23376,14 @@
           "description": "The sprite layer it draws in, sorted with the sprites there (after them when they share the layer).",
           "default": 0
         },
+        "skin": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The skin it wears: an index into Rig2DInfo.skins (0 is the rig's default; `rig.skins.indexOf(\"armor\")` finds one by name). A skin shows its own attachment wherever the setup pose or a clip shows the default's; a slot the skin leaves alone shows the default's. Change it any tick: the pose is drawn from it.",
+          "default": 0,
+          "minimum": 0
+        },
         "finished": {
           "type": "boolean",
           "description": "Written: a clip that does not loop reached its end (or its start, played backwards).",
@@ -23559,6 +23567,13 @@
           },
           "description": "The IK constraints' names: an index here is IkTarget2D.constraint."
         },
+        "skins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its skins' names, `default` (the rig's own attachments) first: an index here is Skeleton2D.skin."
+        },
         "clips": {
           "type": "array",
           "items": {
@@ -23574,6 +23589,7 @@
         "bones",
         "slots",
         "constraints",
+        "skins",
         "clips"
       ],
       "additionalProperties": false

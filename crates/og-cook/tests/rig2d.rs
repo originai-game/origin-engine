@@ -556,3 +556,63 @@ fn a_dragonbones_path_constraint_places_its_bones_on_the_path_display() {
     );
     assert!(angle(&b).abs() < 1e-3, "{}", angle(&b));
 }
+
+/// Every skin of an export (the old import read the first only): the one
+/// named `default` is the rig's own, each other one a skin of swaps.
+#[test]
+fn every_dragonbones_skin_is_imported_and_the_default_comes_first() {
+    let ske = r#"{ "name": "kit", "version": "5.5", "frameRate": 10, "armature": [{
+  "name": "kit",
+  "bone": [{ "name": "root" }],
+  "slot": [{ "name": "body", "parent": "root", "displayIndex": 0 }, { "name": "hat", "parent": "root" }],
+  "skin": [
+    { "name": "armor", "slot": [
+      { "name": "body", "display": [{ "name": "plate", "path": "cloth" }, null] },
+      { "name": "hat", "display": [null] } ] },
+    { "name": "default", "slot": [
+      { "name": "body", "display": [{ "name": "shirt", "path": "arm" }, { "name": "vest", "path": "arm" }] },
+      { "name": "hat", "display": [{ "name": "cap", "path": "arm" }] } ] }
+  ],
+  "animation": [{ "name": "swap", "duration": 10, "slot": [{ "name": "body",
+    "displayFrame": [{ "duration": 5, "value": 0 }, { "duration": 5, "value": 1 }] }] }]
+}] }"#;
+    let root = project(
+        "dragonbones-skins",
+        &[
+            ("rigs/hero_tex.png", png(32, 16)),
+            ("rigs/hero_ske.json", ske.as_bytes().to_vec()),
+            ("rigs/hero_tex.json", ATLAS.as_bytes().to_vec()),
+            ("rigs/hero.ogt", IMPORT.as_bytes().to_vec()),
+        ],
+    );
+    let rig = cooked(&root).load_rig2d("rigs/hero.ogt").unwrap();
+    let id = |n: &str| {
+        rig.attachments
+            .iter()
+            .position(|a| a.name == n)
+            .unwrap_or_else(|| panic!("{n}"))
+    };
+    // The default skin (named so, though second in the file) is the rig's own.
+    assert_eq!(rig.slots[0].attachment, Some(id("shirt")));
+    assert_eq!(rig.skins.len(), 1);
+    assert_eq!(rig.skins[0].name, "armor");
+    assert_eq!(
+        rig.skins[0].swaps,
+        [
+            (id("shirt"), Some(id("armor/plate"))),
+            (id("vest"), None),
+            (id("cap"), None)
+        ]
+    );
+    let walk = &rig.clips[0];
+    let shows = |skin: u32, t: f32| rig.pose_in_skin(Some(walk), t, &[], skin).slots;
+    assert_eq!(shows(0, 0.2), [Some(id("shirt")), Some(id("cap"))]);
+    assert_eq!(shows(0, 0.7), [Some(id("vest")), Some(id("cap"))]);
+    // Armor: the plate (the cloth sub-texture) for the shirt, nothing for the vest or the cap.
+    assert_eq!(shows(1, 0.2), [Some(id("armor/plate")), None]);
+    assert_eq!(shows(1, 0.7), [None, None]);
+    match &rig.attachments[id("armor/plate")].kind {
+        AttachmentKind::Region { rect, .. } => assert_eq!(*rect, [16.0, 0.0, 16.0, 16.0]),
+        k => panic!("{k:?}"),
+    }
+}

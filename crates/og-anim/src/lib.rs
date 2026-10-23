@@ -56,8 +56,8 @@ pub use retarget::{
 pub use rig2d::{
     Affine2, Armature2d, Attachment2d, AttachmentKind, Bone2d, BoneTimeline, BoundingBox2d, Clip2d,
     DeformTimeline, Ease, Ik2d, IkKey, IkTimeline, Influence, Key, MeshVertex2d, PathConstraint2d,
-    PathRotate, PathSpacing, PathUnit, Pose2d, RIG2D_TYPE, Rig2dAsset, RigVertex, Rotation, Slot2d,
-    SlotTimeline, TransformConstraint2d, Turn, check_curve, sincos, turn_delta,
+    PathRotate, PathSpacing, PathUnit, Pose2d, RIG2D_TYPE, Rig2dAsset, RigVertex, Rotation, Skin2d,
+    Slot2d, SlotTimeline, TransformConstraint2d, Turn, check_curve, sincos, turn_delta,
 };
 pub use schema::*;
 pub use skeleton2d::{

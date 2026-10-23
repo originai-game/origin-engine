@@ -7638,6 +7638,9 @@ module anim {
     }
     field flipX bool "Mirror the rig left to right about the entity's position (a character facing left)."
     field layer i32 "The sprite layer it draws in, sorted with the sprites there (after them when they share the layer)."
+    field skin u32 "The skin it wears: an index into Rig2DInfo.skins (0 is the rig's default; `rig.skins.indexOf(\"armor\")` finds one by name). A skin shows its own attachment wherever the setup pose or a clip shows the default's; a slot the skin leaves alone shows the default's. Change it any tick: the pose is drawn from it." {
+      min 0
+    }
     field finished bool "Written: a clip that does not loop reached its end (or its start, played backwards)." {
       readonly true
     }
@@ -7701,6 +7704,7 @@ module anim {
     field bones List.String "The bones' names, parents first."
     field slots List.String "The slots' names, in draw order."
     field constraints List.String "The IK constraints' names: an index here is IkTarget2D.constraint."
+    field skins List.String "Its skins' names, `default` (the rig's own attachments) first: an index here is Skeleton2D.skin."
     field clips List.Rig2DClipInfo "Its clips, in file order."
   }
 

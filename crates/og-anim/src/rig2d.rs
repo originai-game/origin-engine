@@ -120,6 +120,13 @@
 //! A closed path wraps; an open one runs on past its ends along its end
 //! handles. A `path` draws nothing and a `deform` key offsets its points.
 //!
+//! **Skins.** The rig's own attachments are its `default` skin. A `skin
+//! armor { swap torso torso-armor; swap hat none }` block (at the top
+//! level, after the attachments it names) shows, wherever the setup pose
+//! or a clip shows the first attachment, the second (in the same slot) or
+//! nothing; og.Skeleton2D.skin picks one (Rig2DInfo.skins, `default`
+//! first). A child armature wears its own default skin.
+//!
 //! **Bounding boxes.** A `box` attachment draws nothing: its `polygon` (at
 //! least three x y points in the slot's bone) is data a game queries
 //! (og.anim.skeleton2dBoxes) while its slot shows it.
@@ -633,8 +640,17 @@ pub struct Armature2d {
     pub clips: Vec<Clip2d>,
 }
 
-/// A 2D rig: the texture, bones, slots, attachments, constraints, clips
-/// and the child armatures its `child` attachments show.
+/// A skin: what each slot shows instead of the rig's own (the default
+/// skin's) attachments, wherever the setup pose or a clip shows them.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Skin2d {
+    pub name: String,
+    /// (an attachment of the default skin, what this skin shows for it: another or none).
+    pub swaps: Vec<(usize, Option<usize>)>,
+}
+
+/// A 2D rig: the texture, bones, slots, attachments, constraints, clips,
+/// skins and the child armatures its `child` attachments show.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Rig2dAsset {
     pub texture: String,
@@ -651,6 +667,9 @@ pub struct Rig2dAsset {
     /// Applied after the transform constraints, in order.
     pub paths: Vec<PathConstraint2d>,
     pub clips: Vec<Clip2d>,
+    /// Skins beyond the default (the rig's own attachments): skin `i + 1`
+    /// of og.Skeleton2D.skin.
+    pub skins: Vec<Skin2d>,
     pub armatures: Vec<Armature2d>,
 }
 
@@ -1390,6 +1409,58 @@ fn parse_body(body: &[Entry], armatures: &[String]) -> Result<Armature2d> {
     Ok(rig)
 }
 
+/// The top level's `skin` blocks: `swap <attachment> <attachment or none>`
+/// lines, each pair in one slot.
+fn parse_skins(body: &[Entry], rig: &Rig2dAsset) -> Result<Vec<Skin2d>> {
+    let find = |n: &str, line: usize| -> Result<usize> {
+        rig.attachments
+            .iter()
+            .position(|a| a.name == n)
+            .ok_or_else(|| parse_err(line, format!("no attachment `{n}`")))
+    };
+    let mut out: Vec<Skin2d> = Vec::new();
+    for e in body.iter().filter(|e| e.key == "skin") {
+        let name = name_of(e)?;
+        if name == "default" || out.iter().any(|k| k.name == name) {
+            return Err(parse_err(
+                e.line,
+                format!(
+                    "skin `{name}` is declared twice (the rig's own attachments are `default`)"
+                ),
+            ));
+        }
+        let mut skin = Skin2d {
+            name,
+            swaps: Vec::new(),
+        };
+        for c in &block(e)?.entries {
+            if c.key != "swap" {
+                return Err(parse_err(
+                    c.line,
+                    format!(
+                        "unknown key `{}` in skin {} (swap <attachment> <attachment or none>)",
+                        c.key, skin.name
+                    ),
+                ));
+            }
+            let from = find(&word(c, 0)?, c.line)?;
+            let to = match word(c, 1)?.as_str() {
+                "none" => None,
+                t => Some(find(t, c.line)?),
+            };
+            if to.is_some_and(|t| rig.attachments[t].slot != rig.attachments[from].slot) {
+                return Err(parse_err(
+                    c.line,
+                    format!("skin {}: a swap stays in its slot", skin.name),
+                ));
+            }
+            skin.swaps.push((from, to));
+        }
+        out.push(skin);
+    }
+    Ok(out)
+}
+
 /// A vertex's influences from value `from` on: `bone x y weight` each,
 /// the weights summing to 1.
 fn weighted(c: &Entry, from: usize, bones: &[String], what: &str) -> Result<Vec<Influence>> {
@@ -1848,7 +1919,7 @@ impl Rig2dAsset {
                         return Err(parse_err(e.line, "unit is above 0 (pixels per world unit)"));
                     }
                 }
-                "armature" | "dragonbones" | "atlas" => {}
+                "armature" | "dragonbones" | "atlas" | "skin" => {}
                 k if BODY_KEYS.contains(&k) => {}
                 k => return Err(parse_err(e.line, format!("unknown key `{k}` in a 2D rig"))),
             }
@@ -1906,8 +1977,11 @@ impl Rig2dAsset {
             transforms: top.transforms,
             paths: top.paths,
             clips: top.clips,
+            skins: Vec::new(),
             armatures,
         };
+        let mut rig = rig;
+        rig.skins = parse_skins(body, &rig)?;
         rig.check_children()?;
         Ok(rig)
     }
@@ -1985,6 +2059,14 @@ impl Rig2dAsset {
         );
         s += &format!("unit {}\n", num_text(self.unit));
         s += &body_text(self.body(), &self.armatures);
+        for k in &self.skins {
+            s += &format!("skin {} {{\n", quote(&k.name));
+            for (from, to) in &k.swaps {
+                let to = to.map_or("none".to_string(), |t| quote(&self.attachments[t].name));
+                s += &format!("  swap {} {to}\n", quote(&self.attachments[*from].name));
+            }
+            s += "}\n";
+        }
         for a in &self.armatures {
             s += &format!("armature {} {{\n", quote(&a.name));
             for line in body_text(a.body(), &self.armatures).lines() {
@@ -2016,7 +2098,23 @@ impl Rig2dAsset {
         time: f32,
         targets: &[(usize, [f32; 2], f32)],
     ) -> Pose2d {
-        self.pose_of(self.body(), clip, time, targets)
+        self.pose_of(self.body(), clip, time, targets, &[])
+    }
+
+    /// [`Rig2dAsset::pose`] wearing skin `skin` (0 the default, `i + 1`
+    /// [`Rig2dAsset::skins`]`[i]`; one past them is the default).
+    pub fn pose_in_skin(
+        &self,
+        clip: Option<&Clip2d>,
+        time: f32,
+        targets: &[(usize, [f32; 2], f32)],
+        skin: u32,
+    ) -> Pose2d {
+        let swaps = (skin as usize)
+            .checked_sub(1)
+            .and_then(|i| self.skins.get(i))
+            .map_or(&[][..], |k| k.swaps.as_slice());
+        self.pose_of(self.body(), clip, time, targets, swaps)
     }
 
     fn pose_of(
@@ -2025,6 +2123,7 @@ impl Rig2dAsset {
         clip: Option<&Clip2d>,
         time: f32,
         targets: &[(usize, [f32; 2], f32)],
+        swaps: &[(usize, Option<usize>)],
     ) -> Pose2d {
         // x, y, rotation, scale x, scale y, skew.
         let mut local: Vec<[f32; 6]> = body
@@ -2095,6 +2194,12 @@ impl Rig2dAsset {
                 }) {
                     ik_keys[t.ik] = (k.weight.clamp(0.0, 1.0), k.counterclockwise);
                 }
+            }
+        }
+        // The skin: what each slot shows in place of the default's.
+        for a in slots.iter_mut() {
+            if let Some(&(_, to)) = a.and_then(|x| swaps.iter().find(|(f, _)| *f == x)) {
+                *a = to;
             }
         }
         let mut world = world_of(body.bones, &local);
@@ -2200,7 +2305,7 @@ impl Rig2dAsset {
                 Some(c) => time.clamp(0.0, c.duration),
                 None => 0.0,
             };
-            children.push((s, self.pose_of(arm.body(), played, t, &[])));
+            children.push((s, self.pose_of(arm.body(), played, t, &[], &[])));
         }
         Pose2d {
             world,
@@ -4239,6 +4344,50 @@ along follow {{
             (a.tx + 40.0).abs() < 1e-6 && (a.ty - 3.0).abs() < 1e-6,
             "{a:?}"
         );
+    }
+
+    #[test]
+    fn a_skin_swaps_the_default_attachments_wherever_they_show() {
+        let text = ARM.replace(
+            "ik reach {",
+            "region plate-gold {\n  slot plate\n  rect 10 0 10 4\n  at 10 0\n  rotation 90\n}\nskin gold {\n  swap plate plate-gold\n  swap skin none\n}\nik reach {",
+        );
+        let r = Rig2dAsset::parse(&text).expect("a skin");
+        assert_eq!(Rig2dAsset::parse(&r.to_text()).expect("canonical"), r);
+        let gold = r
+            .attachments
+            .iter()
+            .position(|a| a.name == "plate-gold")
+            .unwrap();
+        let plate = r
+            .attachments
+            .iter()
+            .position(|a| a.name == "plate")
+            .unwrap();
+        // Default: the mesh and the plate; gold: no mesh and the gold plate.
+        let pose = |skin: u32, t: f32| {
+            r.pose_in_skin(Some(&r.clips[0]), t, &[(0, [0.0, 0.0], 0.0)], skin)
+                .slots
+        };
+        assert_eq!(pose(0, 0.2), [Some(0), Some(plate)]);
+        assert_eq!(pose(1, 0.2), [None, Some(gold)]);
+        // A skin index past the rig's is the default.
+        assert_eq!(pose(7, 0.2), [Some(0), Some(plate)]);
+        // The clip hides the plate at 0.5: in every skin.
+        assert_eq!(pose(1, 0.6), [None, None]);
+        // The gold plate's texels: u from 10 of 64.
+        let p = r.pose_in_skin(None, 0.0, &[(0, [0.0, 0.0], 0.0)], 1);
+        let (v, _) = r.triangles(&p);
+        assert_eq!(v.len(), 4);
+        assert!((v[0].uv[0] - 10.0 / 64.0).abs() < 1e-6, "{:?}", v[0]);
+        let bad = |swap: &str| {
+            Rig2dAsset::parse(&text.replace("  swap skin none", swap))
+                .expect_err(swap)
+                .reason()
+                .to_string()
+        };
+        assert!(bad("  swap skin plate").contains("stays in its slot"));
+        assert!(bad("  swap skin cape").contains("no attachment"));
     }
 
     #[test]

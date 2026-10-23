@@ -996,7 +996,10 @@ another bone's world rotation, origin, scale and shear by its mix, and an
 `along s { path rail; bones s1 s2; position 0 percent; spacing 0 length;
 rotate tangent 0; mix 1 1 }` lays bones along a `path` attachment (a
 cubic spline, `vertex x y` three per knot, drawn as nothing) while its
-slot shows it. A `box` draws nothing: `og.anim.skeleton2dBoxes(world, hero)`
+slot shows it. A `skin armor { swap torso torso-armor; swap hat none }`
+block shows other attachments of the same slots wherever the default ones
+would show; `og.Skeleton2D.skin` picks it (`rig.skins.indexOf("armor")`,
+`default` is 0). A `box` draws nothing: `og.anim.skeleton2dBoxes(world, hero)`
 answers its polygon (in the Transform's frame) while its slot shows it,
 for hit and hurt boxes a clip switches. A `child` shows an `armature`
 block (a rig of its own on the same texture) in its slot; it plays the
@@ -1004,7 +1007,7 @@ parent's clip by name when it has one, else its `clip`, at the parent's
 time. A DragonBones 5.5 export is imported instead of written: a rig2d
 `.ogt` with `dragonbones "hero_ske.json"` and `atlas "hero_tex.json"`
 (skew, colour offsets, zOrder and IK timelines, armature displays,
-bounding boxes, path displays and constraints, curves and `clockwise`
+bounding boxes, path displays and constraints, every skin, curves and `clockwise`
 turns included; Spine's files are not read, convert
 them to this text).
 

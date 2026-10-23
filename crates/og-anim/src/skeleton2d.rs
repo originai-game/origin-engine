@@ -44,6 +44,9 @@ pub struct Skeleton2D {
     pub flip_x: bool,
     /// The sprite layer it draws in.
     pub layer: i32,
+    /// The skin it wears: an index into Rig2DInfo.skins (0 the default).
+    #[reflect(min = 0)]
+    pub skin: u32,
     /// Written: a clip that does not loop reached its end.
     pub finished: bool,
 }
@@ -58,6 +61,7 @@ impl Default for Skeleton2D {
             looping: true,
             flip_x: false,
             layer: 0,
+            skin: 0,
             finished: false,
         }
     }
@@ -144,7 +148,7 @@ pub fn skeleton_pose(
         .iter()
         .map(|(c, p, w)| (*c as usize, inv.apply(p.x, p.y), *w))
         .collect();
-    rig.pose(rig.clips.get(s.clip as usize), s.time, &t)
+    rig.pose_in_skin(rig.clips.get(s.clip as usize), s.time, &t, s.skin)
 }
 
 /// A bounding box a skeleton's pose showed: its slot (`slot/child-slot`

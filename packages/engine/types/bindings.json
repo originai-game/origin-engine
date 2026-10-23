@@ -4059,6 +4059,11 @@
           "default": 0
         },
         {
+          "name": "skin",
+          "column": "u32",
+          "default": 0
+        },
+        {
           "name": "finished",
           "column": "bool",
           "default": false,
