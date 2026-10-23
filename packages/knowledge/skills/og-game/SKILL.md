@@ -2056,7 +2056,116 @@ These are the checks to use before opening frames. All of them run from
   `clips` 64, `assetBytes` 8 MiB and `totalBytes` 64 MiB, each a default
   a project may move.
 
-## 22. Where to look things up
+## 22. Render targets, second cameras, layers, custom shaders and post passes
+
+**Render to a texture.** `og.render.renderTarget(world, { width, height,
+format, depth })` makes a target, as three.js `WebGLRenderTarget`. It
+answers `{ target, texture, depthTexture, width, height }`. `texture` is
+an ordinary Texture: a material's `map` or `emissiveMap`, an og.Sprite, an
+`og.render.sprite` or an og.ui image shows it. `format` is `ldr` (the
+default) or `hdr`:
+- `ldr`: 8-bit and finished (exposed with the view's `exposure`, tone
+  mapped). Use it for a monitor, a minimap or a portrait, shown through an
+  unlit material's `map`.
+- `hdr`: linear radiance, exposed once with the frame that shows it. Use
+  it for a mirror or a portal, shown as `emissiveMap` on a material whose
+  `color` is black.
+
+`depth: true` also keeps the view's linear depth, from near (0) to far
+(1). It is drawn on the full tier only: `RenderCapabilities.renderTargetDepth`
+is false on WebGL2, where the depth texture stays 0.
+`RenderCapabilities.maxRenderTargetSize` is the largest side.
+
+**A second camera.** `og.CameraView` on an entity is a camera with
+og.Camera's fields (`fov`, `near`, `far`, `zoom`, `orthographic`,
+`height`, `exposure`). It looks down the entity's local -Z:
+```ts
+const screen = must(og.render.renderTarget(world, { width: 480, height: 270 }));
+world.insert(monitorMesh, og.Mesh, { geometry: plane, material: must(og.render.standardMaterial(world, { map: screen.texture, unlit: true })) });
+const cam = must(world.spawn({ name: "cctv", position: eye, quaternion: og.transform.lookAt(eye, target) }));
+world.insert(cam, og.CameraView, { target: screen.target, fov: 60, every: 2 });
+// Split-screen: no target, a rect of the frame (fractions from the top left).
+world.insert(p2, og.CameraView, { viewportX: 0.5, viewportWidth: 0.5 });
+```
+- `every: n` draws it on every n-th tick, and the target keeps its last
+  image in between.
+- `order` sorts the views. Every view draws before the frame, so a
+  material shows this frame's image.
+- `clear` with `clearColor` replaces the sky or background colour.
+- `active: false` stops it.
+
+A view draws the opaque meshes and models (skinned meshes and custom
+shaders included), the terrain and the sky, lit and shadowed by the
+frame's lights. Transparent meshes, sprites, particles, text, lines and
+post effects are the main camera's only. A viewport view draws over the
+finished image and under the UI.
+
+**A mirror.** Put `og.Mirror` on the glass's entity. It reflects the main
+camera in the entity's xy plane (its +Z faces the room) and fits the image
+to a `width` × `height` rect:
+```ts
+const rt = must(og.render.renderTarget(world, { width: 512, height: 384, format: "hdr" }));
+world.insert(glass, og.Mesh, { geometry: must(og.render.planeGeometry(world, { width: 4, height: 2.4 })),
+  material: mat({ color: { r: 0, g: 0, b: 0 }, emissive: { r: 1, g: 1, b: 1 }, emissiveMap: rt.texture }) });
+world.insert(glass, og.Mirror, { target: rt.target, width: 4, height: 2.4 });
+```
+
+**Layers.** `layers` on og.Mesh, og.Model, og.Sprite, og.Lines, og.Points
+and og.Camera (and on og.CameraView and og.Mirror) is a three.js bit mask:
+bit n is layer n, and the default 1 is layer 0. A camera draws an object
+when `object.layers & camera.layers` is not 0. `og.render.raycast`'s
+`layers` uses the same test. Some uses:
+- A first-person body on layer 1 (mask 2) is hidden from the player's
+  camera (mask 1) and shown on a third-person monitor (mask 3).
+- A minimap marker only the minimap camera draws.
+
+Shadow maps take every caster whatever its layers, so a hidden object
+still casts a shadow. Give it `castShadow: false` if it should not.
+
+**Full custom shaders.** `mode full lit` (or `mode full unlit`) in a `type
+shader` asset replaces the lit shader's stages with your own entries:
+```wgsl
+fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput   // v: position normal uv color tangent (object space; skin and morphs applied)
+fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput                  // f: world local normal uv color data view pixel time
+// VertexOutput: world (projected by the engine), normal, uv, color, data (free, interpolated)
+// SurfaceOutput: color (albedo + alpha; unlit: the colour), normal, metallic, roughness, emissive
+// camera(): view_proj, position, forward, time. tex0(uv)..tex7(uv): the material's map, metalnessMap,
+// roughnessMap, normalMap, emissiveMap, aoMap, gradientMap, dissolveMap. Helpers: standard_vertex(v, model),
+// standard_surface(f), noise3(p).
+```
+An entry you leave out is the standard one.
+- `lit` surfaces are lit by the sun's cascades, the point and spot lights
+  with their shadows, the environment and the fog. `unlit` surfaces draw
+  as returned.
+- The depth prepass, every shadow pass and every view run the same
+  entries, and alpha under the material's `alphaTest` is cut in each of
+  them. A dissolve's shadow therefore has its holes.
+- Make the material with `og.render.shaderMaterial` and set parameters with
+  `og.render.setShaderParam`, as for hooks (§12).
+- `templates/fx-showcase/assets/shaders/dissolve-full.*` is the example.
+
+**Custom post passes.** A `type post` asset declares
+`fn post(f: PostInput, p: Params) -> vec4<f32>` in its `code` or `source`,
+with up to eight `param` lines. The function reads:
+- `previous(uv)`: the pass before it, linear HDR;
+- `scene_color(uv)`: the lit image;
+- `depth(uv)`: view depth in metres;
+- `normal(uv)`: the world normal;
+- `f.uv`, `f.pixel`, `f.size` and `f.time`.
+
+It returns linear HDR. To use one:
+1. Load it with `og.load.post(world, "post/crt.ogt")`.
+2. Put the handle in `PostEffects.custom1` to `custom4`. They run in that
+   order, after depth of field and motion blur and before exposure, bloom
+   and tone mapping.
+3. Set its parameters with `og.render.setPostParam(world, post, "curve",
+   [0.1])`.
+
+The cook compiles it for every back end. A pass that a device still fails
+to compile is skipped and listed by `og.render.postErrors(world)`.
+`templates/fx-showcase/assets/post/crt.*` is a CRT example.
+
+## 23. Where to look things up
 
 `reference/index.md` (the generated wiki shipped with this skill) maps every
 module (grouped by skill, as in §1), type and function to its page, with the IDL text, defaults, ranges
