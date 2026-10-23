@@ -38,7 +38,6 @@ mod engine;
 mod environment;
 mod extract;
 mod feel;
-mod skeleton2d;
 mod fx;
 mod geometry;
 mod glyphs;
@@ -46,6 +45,7 @@ mod i18n;
 mod lanes;
 mod look;
 mod memory;
+mod skeleton2d;
 pub use lanes::{panic_report, record_panic, report as lanes_report};
 mod modules;
 mod nav;
@@ -79,7 +79,6 @@ pub use engine::{
     set_render_backend, take_log, take_outputs, view_columns, view_entities, warm_renderer,
     write_resource,
 };
-pub use skeleton2d::{og_anim_rig2d_info, og_load_rig2d};
 pub use feel::{
     og_camera_kick, og_camera_punch, og_camera_shake, og_load_flipbook, og_load_tilemap,
     og_render_floating_text, og_tilemap_cell_at, og_tilemap_cell_center, og_tilemap_get_tile,
@@ -139,6 +138,7 @@ pub use probe::png;
 #[cfg(not(feature = "publish"))]
 pub use record::{render_frame, render_restore, render_snapshot};
 pub use save::{og_world_restore, og_world_snapshot};
+pub use skeleton2d::{og_anim_rig2d_info, og_load_rig2d};
 pub use stream::{
     og_stream_budget, og_stream_release, og_stream_request, og_stream_set_budget, og_stream_status,
 };

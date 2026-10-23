@@ -55,7 +55,9 @@ fn load_rig2d(eng: &Engine, path: &str) -> Result<Value, String> {
     let rig = {
         let assets = eng.assets.borrow();
         let (bytes, bundle) = assets.blob(&id)?;
-        bundle.rig2d(&id, bytes.bytes()).map_err(|e| e.to_string())?
+        bundle
+            .rig2d(&id, bytes.bytes())
+            .map_err(|e| e.to_string())?
     };
     let texture = super::assets::load_texture(eng, &rig.texture)
         .map_err(|e| format!("{id}: texture {}: {e}", rig.texture))?;

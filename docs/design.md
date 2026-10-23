@@ -301,6 +301,30 @@ tick, and the `debug` module is left out of publish builds.
   channel drives it: `timeline:play:<name>` (`timelines/<name>.ogt`, on an
   entity `timeline-<name>`), `timeline:seek:<s>`, `pause`, `resume`,
   `stop`.
+- **2D skeletal animation** (depth S9, og-anim `rig2d.rs` and
+  `skeleton2d.rs`): a `type rig2d` `.ogt` asset in the engine's text
+  (pixels, +y up, degrees counter-clockwise, `unit` pixels per world unit):
+  bones parent first, slots in draw order, `region` and weighted `mesh`
+  attachments, one- or two-bone `ik` constraints, and clips of bone
+  (rotate, translate, scale), slot (attachment, colour) and deform keys
+  with events; keys interpolate linearly or hold (`step`). The cook stores
+  the canonical text in an `og.Rig2D` blob, written by hand or imported
+  from a DragonBones 5.5 export with its atlas (`dragonbones "x_ske.json"`,
+  `atlas "x_tex.json"`). Spine's format is not imported (its licence); the
+  module docs of `rig2d.rs` give the mapping a converter follows.
+  `og.load.rig2d` registers a rig and its texture (`og.anim.rig2dInfo`
+  reads it back; `og.anim.clip` finds a clip by name). `og.Skeleton2D`
+  (`rig`, `clip`, `time`, `speed`, `loop`, `flipX`, `layer`, `finished`)
+  plays it through the `og.skeleton2d` system, run with the tweens and
+  flipbooks after the game's systems; clip events arrive as
+  `og.Skeleton2DEvent`; `og.IkTarget2D` moves a constraint's target and
+  reads back `reached` and `error`. The pose is a function of the
+  component, its Transform and its IK targets, every angle through
+  arithmetic-only sincos and atan2, so it is the same bits on both hosts;
+  only the playback position is a state block. Extraction draws each
+  skeleton as one `og_render::SpriteMesh`: the sprite batch extended to
+  triangles (`sprite_mesh.rs`), sorted with the sprites of its layer and
+  lit by `og.Lighting2D` as a sprite there.
 
 ### 2.8 Platform SDK as host ABI **(D)**
 
@@ -426,6 +450,24 @@ global mutable state in game code (the world and resources are passed in);
 `Vector3`, `Quaternion`, `Matrix4`, `Color`, transform fields, material
 parameter names and `og.load.gltf()` follow three.js naming so an author's
 prior transfers, while the ECS, the tick and determinism are the engine's.
+
+**The math layer** (depth S9): three.js's methods as pure functions over
+the plain structs, declared in the IDL's `math` module (`host false`: no
+binding symbol) and implemented in TypeScript (`packages/engine/src/math.ts`),
+exported as `vec3`, `vec2`, `quat`, `mat4`, `box3`, `sphere`, `plane`,
+`frustum`, `ray` and `color`: `vec3.add, sub, scale, dot, cross, length,
+normalize, lerp, distance, applyQuaternion` (and `vec2` likewise, with
+`rotateAround`), `quat.multiply, slerp, fromEuler, invert, rotate`,
+`mat4.multiply, invert, transformPoint, transformDirection, compose`,
+`Box3`, `Sphere`, `Plane`, `Frustum` (`containsPoint`, `intersectsBox`,
+from the camera), `Ray` (`intersectBox`, `intersectSphere`, `intersectPlane`,
+`intersectTriangle`, null on a miss) and `color.fromHex, toHex, lerp,
+fromHsl` (hex and HSL are sRGB, the result linear, as three.js's colour
+management). No classes and no mutation of arguments: values stay plain, so
+columns and reflection are untouched and a result can be written straight
+into a column. Only `+ - * /` and `sqrt` (sincos as the camera systems'),
+so a system using them stays deterministic. `packages/engine/tests/math.test.ts`
+holds a table of cases against three.js's documented results.
 
 ### 3.3 Command channel **(D)**
 
