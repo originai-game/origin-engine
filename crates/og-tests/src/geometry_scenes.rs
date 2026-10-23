@@ -363,12 +363,52 @@ pub fn wireframe_scene() -> RenderScene {
     scene
 }
 
+/// A debug label as `og.debug.text` draws one (og-runtime `geometry.rs`
+/// `texts`): the world point projected through the scene's camera to the
+/// 1280×720 play surface, the label centred above it in the overlay's UI
+/// layer, so it is neither bloomed nor tone mapped and no mesh hides it.
+fn debug_label(
+    scene: &mut RenderScene,
+    font: og_render::FontHandle,
+    at: Vec3,
+    text: &str,
+    size: f32,
+    color: [f32; 4],
+) {
+    let (w, h) = (1280.0, 720.0);
+    let cam = &scene.camera;
+    let fov = match cam.projection {
+        og_render::Projection::Perspective { fov_y_degrees } => fov_y_degrees,
+        og_render::Projection::Orthographic { .. } => 50.0,
+    };
+    let vpm =
+        glam::camera::rh::proj::directx::perspective(fov.to_radians(), w / h, cam.near, cam.far)
+            * glam::camera::rh::view::look_at_mat4(cam.position, cam.target, cam.up);
+    let clip = vpm * at.extend(1.0);
+    let ndc = clip.truncate() / clip.w;
+    let width = scene.font(font).map_or(0.0, |f| f.measure(text) * size);
+    let x = (ndc.x * 0.5 + 0.5) * w - width * 0.5;
+    let y = (0.5 - ndc.y * 0.5) * h - size * 0.6;
+    let o = scene
+        .overlay
+        .get_or_insert_with(|| og_render::Overlay::new(w, h, 0.0));
+    o.texts.push(og_render::Text {
+        position: Vec3::new(x, y, 0.0),
+        size,
+        color,
+        layer: og_render::screen_layer(og_render::UI_LAYER),
+        ..og_render::Text::new(font, text)
+    });
+}
+
 /// `debug-overlay`: a bloomed scene with debug draw over the finished frame
 /// (never bloomed, tone mapped or hidden): a box around a sphere, the
 /// sphere's outline, an arrow along the sun, a frame's axes, a box behind a
-/// wall that shows through it.
-pub fn debug_scene() -> RenderScene {
+/// wall that shows through it, and two `og.debug.text` labels: one above
+/// the sphere (over the bloom), one at the hidden box (through the wall).
+pub fn debug_scene() -> Result<RenderScene, String> {
     let mut scene = RenderScene::new();
+    let font = crate::scenes::load_font(&mut scene)?;
     crate::scenes::ground(&mut scene, 40.0, 0.5, 0.85);
     put(
         &mut scene,
@@ -440,5 +480,22 @@ pub fn debug_scene() -> RenderScene {
         Vec3::new(0.0, 3.0, 6.2),
         Vec3::new(0.0, 0.6, 0.0),
     );
-    scene
+    // The labels: after the camera, since they are projected through it.
+    debug_label(
+        &mut scene,
+        font,
+        Vec3::new(-1.5, 1.5, 0.0),
+        "sphere 1.2 m",
+        22.0,
+        [0.3, 1.0, 0.4, 1.0],
+    );
+    debug_label(
+        &mut scene,
+        font,
+        Vec3::new(1.6, 1.1, -0.4),
+        "hidden box",
+        22.0,
+        [1.0, 0.3, 0.9, 1.0],
+    );
+    Ok(scene)
 }
