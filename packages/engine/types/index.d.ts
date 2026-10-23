@@ -173,6 +173,12 @@ export interface ColumnKinds {
   Behaviour: { readonly array: Uint32Array; readonly stride: 2; readonly value: Behaviour };
   /** A TerrainData handle field. */
   TerrainData: { readonly array: Uint32Array; readonly stride: 2; readonly value: TerrainData };
+  /** A Path handle field (0 is none). */
+  Path: { readonly array: Uint32Array; readonly stride: 2; readonly value: Path };
+  /** A PathKind field: the variant's index. */
+  PathKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: PathKind };
+  /** A TimelineAsset handle field (0 is none). */
+  TimelineAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: TimelineAsset };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -2558,6 +2564,10 @@ export interface CameraRail {
    * @tunable
    */
   smoothTime: number;
+  /**
+   * A path (og.path.create, or a scene's `path` by og.path.find) the rail follows instead of p0 to p(points - 1): any number of points, catmullRom, bezier or linear, closed or not. 0 uses the points.
+   */
+  path: Path;
 }
 
 
@@ -5775,6 +5785,7 @@ export interface Model {
    */
   visible: boolean;
 }
+
 
 
 
@@ -17830,6 +17841,304 @@ export interface StreamBudget {
 
 
 
+// ── path ────────────────────────────────────────────────────────
+// Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t.
+// Make one with og.path.create, or declare it in a scene (`path "<name>" { kind catmullRom; closed false; point x y z ... }`) and find it by name with og.path.find; a timeline's camera rides one with `rail "<name>"`. og.PathFollower moves an entity along one, og.CameraRail.path moves the camera along one, og.render's tube geometry can take its og.path.sample points. Paths are assets: they are not world state, and a hot reload registers them again.
+
+/**
+ * A path: its points, kind and arc-length table.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type Path = number & { readonly [handleType]: "Path" };
+
+/**
+ * A Path handle field (0 is none).
+ *
+ * A `Path` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Path(value?: Path, options?: FieldOptions): FieldSpec<"Path">;
+
+/**
+ * How the points make the curve.
+ * - `"catmullRom"`: Through every point, as three.js CatmullRomCurve3: tension scales the tangents (0.5 is Catmull-Rom).
+ * - `"bezier"`: Cubic Bezier segments: anchor, two controls, anchor, ... (3n + 1 points open, 3n closed).
+ * - `"linear"`: Straight segments between the points.
+ */
+export type PathKind = "catmullRom" | "bezier" | "linear";
+
+/**
+ * A PathKind field: the variant's index.
+ *
+ * A `PathKind` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function PathKind(value?: PathKind, options?: FieldOptions): FieldSpec<"PathKind">;
+
+/**
+ * What makes a path (three.js's Curve; PathDesc is og.nav's path query).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CurveDesc {
+  /**
+   * The points, in order: at least 2 (catmullRom, linear), 3n + 1 open or 3n closed (bezier).
+   *
+   * @default []
+   */
+  readonly points?: readonly Vector3[];
+  /**
+   * Join the last point to the first; t wraps.
+   *
+   * @default false
+   */
+  readonly closed?: boolean;
+  /**
+   * How the points make the curve.
+   *
+   * @default "catmullRom"
+   */
+  readonly kind?: PathKind;
+  /**
+   * catmullRom's tangent scale, as three.js's tension.
+   *
+   * @default 0.5
+   * @range 0..1
+   */
+  readonly tension?: number;
+}
+
+/** A point of a path. */
+export interface PathSample {
+  /**
+   * Where it is.
+   *
+   * @unit m (metres)
+   */
+  readonly position: Vector3;
+  /** The unit direction of travel. */
+  readonly tangent: Vector3;
+  /**
+   * A unit up perpendicular to the tangent: world +Y made perpendicular (world +Z where the path runs straight up or down).
+   */
+  readonly up: Vector3;
+}
+
+/** The point of a path nearest another point. */
+export interface PathNearest {
+  /**
+   * Its arc-length parameter, 0 to 1.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly t: number;
+  /**
+   * Where it is.
+   *
+   * @unit m (metres)
+   */
+  readonly position: Vector3;
+  /**
+   * How far it is from the point asked about.
+   *
+   * @unit m (metres)
+   */
+  readonly distance: number;
+}
+
+/**
+ * Moves the entity along a path at `speed`, by the engine's og.path system after the game's systems and before physics: og.Transform.position is the path's point at `distance` plus `offset` (in the path's frame with align, else in world axes). Advanced by scaled time (slow motion, hit stop). The distance is the component's own field, so a snapshot, a restore and the world hash carry it, and writing it moves the entity there.
+ *
+ * The value of the `PathFollower` component (token `og.PathFollower`).
+ */
+export interface PathFollower {
+  /** The path (og.path.create or og.path.find); 0 does nothing. */
+  path: Path;
+  /**
+   * Metres per second along the path; negative goes backwards.
+   *
+   * @default 1
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  speed: number;
+  /**
+   * How far along the path it is, from its start; written every tick, set it to place the entity.
+   *
+   * @unit m (metres)
+   */
+  distance: number;
+  /**
+   * Wrap at the end (and the start, going backwards); otherwise stop there and set `finished`.
+   *
+   * @default true
+   */
+  loop: boolean;
+  /**
+   * Turn og.Transform.quaternion to face along the tangent (local -Z forward, +Y the path's up).
+   */
+  align: boolean;
+  /**
+   * Added to the path's point: along the path's right, up and backward axes with align, else world x, y and z.
+   *
+   * @unit m (metres)
+   */
+  offset: Vector3;
+  /**
+   * Moves while true.
+   *
+   * @default true
+   */
+  playing: boolean;
+  /**
+   * Written: a path without loop reached its end.
+   *
+   * @readonly written by the engine
+   */
+  readonly finished: boolean;
+}
+
+
+
+
+
+
+// ── timeline ────────────────────────────────────────────────────
+// Timelines: cutscenes and sequences as data, Unity's Timeline and Godot's AnimationPlayer as an `.ogt` the agent reads and diffs. A `type timeline` file has a `duration` in seconds, `path "<name>" { ... }` blocks (as og.path's) and `track <kind> ["<entity>"] { key <seconds> { ... } }` blocks; `og cook` cooks it (importing caption files) and og.load.timeline loads it. Tracks: `camera` (position and target keys, or `rail "<path>"` with `at` 0..1 along it, or `follow "<entity>"` with offsets; fov; eased), `transform "<entity>"` (position, rotation in degrees or quaternion, scale; eased), `animation "<entity>"` (clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model), `audio` (sound, volume, pitch, bus), `music` (sound, volume, fadeIn, fadeOut, end, loop, bus), `caption` (text from `key` to `end` with a UI type step `style` and an `anchor`; `captions "narration.srt" [offset]` imports a SubRip file or word timestamps `.json`), `event` (`do "<command-channel action>"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it), `transition` (kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from, over og.ui's screen cover) and `marker` (`name`, sending og.TimelineMarker when played past).
+// Between two keys that set a value the later key's `ease` (og.tween's Ease names, linear when it gives none) mixes them; before the first and after the last the value is held. Every value is evaluated at the timeline's time, never accumulated over ticks, and that time is kept exactly (in steps of a thousandth of a tick), so seeking to a time and playing to it give the same world: a seek is how a video render starts at any frame.
+// An og.Timeline component plays one on its entity, run by the engine's og.timeline system after the game's systems (and tweens) and before og.anim and physics, so what it sets is what animation, physics and the frame see that tick. While one with a camera track plays (or is paused) it owns og.Camera, and hands back the camera it found when it stops or ends. Its event keys' actions run at the start of the next tick, as og.ai's commands do. The command channel plays them too: `timeline:play:<name>` (`timelines/<name>.ogt`, or an asset id), `timeline:seek:<seconds>[:<name>]`, `timeline:pause[:<name>]`, `timeline:resume[:<name>]`, `timeline:stop[:<name>]`.
+
+/**
+ * A loaded timeline: its tracks, paths, sounds and clips.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type TimelineAsset = number & { readonly [handleType]: "TimelineAsset" };
+
+/**
+ * A TimelineAsset handle field (0 is none).
+ *
+ * A `TimelineAsset` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function TimelineAsset(value?: TimelineAsset, options?: FieldOptions): FieldSpec<"TimelineAsset">;
+
+/**
+ * Plays a loaded timeline. Set `playing` (or call og.timeline.play) to run it from `time`; write `time` (or call og.timeline.seek) to jump; og.timeline.stop goes back to 0 and lets go of what it owns.
+ *
+ * The value of the `Timeline` component (token `og.Timeline`).
+ */
+export interface Timeline {
+  /** The timeline (og.load.timeline); 0 plays nothing. */
+  asset: TimelineAsset;
+  /** Advances while true. */
+  playing: boolean;
+  /**
+   * Where it is, in seconds; written every tick it plays, set it to seek.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  time: number;
+  /**
+   * Playback rate: 1 as authored, 0.5 half speed (0 holds the time while playing).
+   *
+   * @default 1
+   * @range 0..16
+   * @tunable
+   */
+  speed: number;
+  /**
+   * Start over at the end; otherwise stop playing there, hand the camera back and send og.TimelineEnded.
+   */
+  loop: boolean;
+}
+
+/**
+ * A timeline started playing from stopped or ended (not on a resume from pause, nor on a loop).
+ *
+ * The payload of the `TimelineStarted` event (token `og.TimelineStarted`).
+ */
+export interface TimelineStarted {
+  /** The og.Timeline's entity. */
+  readonly entity: Entity;
+  /** The timeline. */
+  readonly asset: TimelineAsset;
+}
+
+/**
+ * Playback passed a marker key (a seek over one does not send it).
+ *
+ * The payload of the `TimelineMarker` event (token `og.TimelineMarker`).
+ */
+export interface TimelineMarker {
+  /** The og.Timeline's entity. */
+  readonly entity: Entity;
+  /** The timeline. */
+  readonly asset: TimelineAsset;
+  /** The marker's name (at most 63 bytes). */
+  readonly name: string;
+  /**
+   * The marker's time.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly time: number;
+}
+
+/**
+ * A timeline without loop reached its duration and stopped playing.
+ *
+ * The payload of the `TimelineEnded` event (token `og.TimelineEnded`).
+ */
+export interface TimelineEnded {
+  /** The og.Timeline's entity. */
+  readonly entity: Entity;
+  /** The timeline. */
+  readonly asset: TimelineAsset;
+}
+
+/** One track of a loaded timeline. */
+export interface TimelineTrackInfo {
+  /** camera, transform, animation, audio, music, caption, event, transition or marker. */
+  readonly kind: string;
+  /**
+   * The entity a transform or animation track drives, the path a rail rides, the entity a camera follows; empty otherwise.
+   */
+  readonly target: string;
+  /** Its keys. */
+  readonly keys: number;
+}
+
+/** A loaded timeline. */
+export interface TimelineInfo {
+  /** Its handle. */
+  readonly asset: TimelineAsset;
+  /** Its `name`. */
+  readonly name: string;
+  /**
+   * Its length.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration: number;
+  /** Its tracks, in file order. */
+  readonly tracks: readonly TimelineTrackInfo[];
+  /** The paths it declares. */
+  readonly paths: readonly string[];
+  /** Its markers' names, in time order. */
+  readonly markers: readonly string[];
+}
+
+
+
+
+
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -17978,7 +18287,7 @@ export declare namespace og {
   /**
    * Moves og.Camera along a spline through p0 to p(points - 1) (Catmull-Rom, through every point) to the point nearest the entity carrying it, easing by smoothTime: a corridor, a side-scroller's track, a 3D chase on rails. A perspective camera looks at the entity; an orthographic one keeps its z and rotation. Applied by the engine's og.camera system after the game's systems.
    */
-  const CameraRail: ComponentType<{ readonly points: FieldSpec<"u32">; readonly p0: FieldSpec<"Vector3">; readonly p1: FieldSpec<"Vector3">; readonly p2: FieldSpec<"Vector3">; readonly p3: FieldSpec<"Vector3">; readonly p4: FieldSpec<"Vector3">; readonly p5: FieldSpec<"Vector3">; readonly p6: FieldSpec<"Vector3">; readonly p7: FieldSpec<"Vector3">; readonly smoothTime: FieldSpec<"f32"> }, CameraRail>;
+  const CameraRail: ComponentType<{ readonly points: FieldSpec<"u32">; readonly p0: FieldSpec<"Vector3">; readonly p1: FieldSpec<"Vector3">; readonly p2: FieldSpec<"Vector3">; readonly p3: FieldSpec<"Vector3">; readonly p4: FieldSpec<"Vector3">; readonly p5: FieldSpec<"Vector3">; readonly p6: FieldSpec<"Vector3">; readonly p7: FieldSpec<"Vector3">; readonly smoothTime: FieldSpec<"f32">; readonly path: FieldSpec<"Path"> }, CameraRail>;
   /**
    * The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.
    * Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras.
@@ -18436,6 +18745,14 @@ export declare namespace og {
      * @returns Refused for a path not in the bundle, a missing tileset or texture, or a terrain its tileset lacks.
      */
     function tilemap(world: World, path: string): Result<TilemapInfo>;
+    /**
+     * Load a timeline: an `.ogt` of `type timeline` (the og.timeline module's file: duration, paths and tracks of keys), cooked with its caption files imported. Loaded once per path; play it with an og.Timeline whose asset is the handle, or `timeline:play:<name>` on the command channel.
+     *
+     * @param world The world.
+     * @param path The timeline's asset id, such as `timelines/intro.ogt`.
+     * @returns Refused for a path not in the bundle (run og cook) or a file that is not a timeline.
+     */
+    function timeline(world: World, path: string): Result<TimelineAsset>;
   }
   /**
    * A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one.
@@ -20217,5 +20534,117 @@ export declare namespace og {
      * @returns Refused for a negative or non-finite size.
      */
     function setBudget(world: World, bytes: number): Result<void>;
+  }
+  /**
+   * Moves the entity along a path at `speed`, by the engine's og.path system after the game's systems and before physics: og.Transform.position is the path's point at `distance` plus `offset` (in the path's frame with align, else in world axes). Advanced by scaled time (slow motion, hit stop). The distance is the component's own field, so a snapshot, a restore and the world hash carry it, and writing it moves the entity there.
+   */
+  const PathFollower: ComponentType<{ readonly path: FieldSpec<"Path">; readonly speed: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly align: FieldSpec<"bool">; readonly offset: FieldSpec<"Vector3">; readonly playing: FieldSpec<"bool">; readonly finished: FieldSpec<"bool"> }, PathFollower>;
+  /**
+   * Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t.
+   * Make one with og.path.create, or declare it in a scene (`path "<name>" { kind catmullRom; closed false; point x y z ... }`) and find it by name with og.path.find; a timeline's camera rides one with `rail "<name>"`. og.PathFollower moves an entity along one, og.CameraRail.path moves the camera along one, og.render's tube geometry can take its og.path.sample points. Paths are assets: they are not world state, and a hot reload registers them again.
+   */
+  namespace path {
+    /**
+     * Make a path from points.
+     *
+     * @param world The world.
+     * @param desc The points, kind, closed and tension.
+     * @returns Refused for too few points for the kind (bezier needs 3n + 1 open, 3n closed) or a point that is not finite.
+     */
+    function create(world: World, desc?: CurveDesc): Result<Path>;
+    /**
+     * A path a loaded scene declares (`path "<name>" { ... }`), by name.
+     *
+     * @param world The world.
+     * @param name The path's name in its scene.
+     * @returns Refused for a name no spawned scene declares; the reason lists the names.
+     */
+    function find(world: World, name: string): Result<Path>;
+    /**
+     * The point at arc-length parameter t: 0 the start, 1 the end (a closed path wraps, an open one clamps). Equal steps of t are equal lengths along the curve.
+     *
+     * @param world The world.
+     * @param path The path.
+     * @param t The parameter, 0 to 1.
+     * @returns Refused for a dead path.
+     */
+    function sample(world: World, path: Path, t: number): Result<PathSample>;
+    /**
+     * Its length along the curve.
+     *
+     * @param world The world.
+     * @param path The path.
+     * @returns Metres; refused for a dead path.
+     */
+    function length(world: World, path: Path): Result<number>;
+    /**
+     * The point of the path nearest a point, with its parameter: snapping to a track, projecting a pointer onto a rail.
+     *
+     * @param world The world.
+     * @param path The path.
+     * @param point The point.
+     * @returns Refused for a dead path.
+     */
+    function nearest(world: World, path: Path, point: Vector3): Result<PathNearest>;
+  }
+  /**
+   * Plays a loaded timeline. Set `playing` (or call og.timeline.play) to run it from `time`; write `time` (or call og.timeline.seek) to jump; og.timeline.stop goes back to 0 and lets go of what it owns.
+   */
+  const Timeline: ComponentType<{ readonly asset: FieldSpec<"TimelineAsset">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool"> }, Timeline>;
+  /**
+   * A timeline started playing from stopped or ended (not on a resume from pause, nor on a loop).
+   */
+  const TimelineStarted: EventType<TimelineStarted>;
+  /** Playback passed a marker key (a seek over one does not send it). */
+  const TimelineMarker: EventType<TimelineMarker>;
+  /** A timeline without loop reached its duration and stopped playing. */
+  const TimelineEnded: EventType<TimelineEnded>;
+  /**
+   * Timelines: cutscenes and sequences as data, Unity's Timeline and Godot's AnimationPlayer as an `.ogt` the agent reads and diffs. A `type timeline` file has a `duration` in seconds, `path "<name>" { ... }` blocks (as og.path's) and `track <kind> ["<entity>"] { key <seconds> { ... } }` blocks; `og cook` cooks it (importing caption files) and og.load.timeline loads it. Tracks: `camera` (position and target keys, or `rail "<path>"` with `at` 0..1 along it, or `follow "<entity>"` with offsets; fov; eased), `transform "<entity>"` (position, rotation in degrees or quaternion, scale; eased), `animation "<entity>"` (clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model), `audio` (sound, volume, pitch, bus), `music` (sound, volume, fadeIn, fadeOut, end, loop, bus), `caption` (text from `key` to `end` with a UI type step `style` and an `anchor`; `captions "narration.srt" [offset]` imports a SubRip file or word timestamps `.json`), `event` (`do "<command-channel action>"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it), `transition` (kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from, over og.ui's screen cover) and `marker` (`name`, sending og.TimelineMarker when played past).
+   * Between two keys that set a value the later key's `ease` (og.tween's Ease names, linear when it gives none) mixes them; before the first and after the last the value is held. Every value is evaluated at the timeline's time, never accumulated over ticks, and that time is kept exactly (in steps of a thousandth of a tick), so seeking to a time and playing to it give the same world: a seek is how a video render starts at any frame.
+   * An og.Timeline component plays one on its entity, run by the engine's og.timeline system after the game's systems (and tweens) and before og.anim and physics, so what it sets is what animation, physics and the frame see that tick. While one with a camera track plays (or is paused) it owns og.Camera, and hands back the camera it found when it stops or ends. Its event keys' actions run at the start of the next tick, as og.ai's commands do. The command channel plays them too: `timeline:play:<name>` (`timelines/<name>.ogt`, or an asset id), `timeline:seek:<seconds>[:<name>]`, `timeline:pause[:<name>]`, `timeline:resume[:<name>]`, `timeline:stop[:<name>]`.
+   */
+  namespace timeline {
+    /**
+     * What a loaded timeline holds.
+     *
+     * @param world The world.
+     * @param asset The timeline.
+     * @returns Refused for a timeline not loaded in this world.
+     */
+    function info(world: World, asset: TimelineAsset): Result<TimelineInfo>;
+    /**
+     * Play the entity's og.Timeline from its time (0 after a stop or an end); systems may call it, it takes effect at this tick's og.timeline.
+     *
+     * @param world The world.
+     * @param entity The entity with the og.Timeline.
+     * @returns Refused for an entity without og.Timeline, or one whose asset is not loaded.
+     */
+    function play(world: World, entity: Entity): Result<void>;
+    /**
+     * Hold the entity's og.Timeline where it is (it keeps the camera).
+     *
+     * @param world The world.
+     * @param entity The entity with the og.Timeline.
+     * @returns Refused for an entity without og.Timeline.
+     */
+    function pause(world: World, entity: Entity): Result<void>;
+    /**
+     * Jump to a time: this tick evaluates every track there exactly as playing to it would, without sending the markers or running the events passed (except `retroactive` ones).
+     *
+     * @param world The world.
+     * @param entity The entity with the og.Timeline.
+     * @param time Seconds, 0 to the duration.
+     * @returns Refused for an entity without og.Timeline or a time outside 0 to its duration.
+     */
+    function seek(world: World, entity: Entity, time: number): Result<void>;
+    /**
+     * Stop at 0: the camera is handed back, its sounds and music stop, its caption and cover go.
+     *
+     * @param world The world.
+     * @param entity The entity with the og.Timeline.
+     * @returns Refused for an entity without og.Timeline.
+     */
+    function stop(world: World, entity: Entity): Result<void>;
   }
 }

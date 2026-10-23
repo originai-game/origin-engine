@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 28 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 30 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -37,6 +37,8 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`tilemap`](tilemap.md) | `og.tilemap.*` | kept | Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component. |
 | [`terrain`](terrain.md) | `og.terrain.*` | kept | Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry. |
 | [`stream`](stream.md) | `og.stream.*` | kept | Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] \| volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures, texture arrays, flipbooks (an `array true` sheet brings its array), sounds, environment maps, palettes, looks and colour LUTs (`.cube`) that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads. |
+| [`path`](path.md) | `og.path.*` | kept | Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t. |
+| [`timeline`](timeline.md) | `og.timeline.*` | kept | Timelines: cutscenes and sequences as data, Unity's Timeline and Godot's AnimationPlayer as an `.ogt` the agent reads and diffs. A `type timeline` file has a `duration` in seconds, `path "<name>" { ... }` blocks (as og.path's) and `track <kind> ["<entity>"] { key <seconds> { ... } }` blocks; `og cook` cooks it (importing caption files) and og.load.timeline loads it. Tracks: `camera` (position and target keys, or `rail "<path>"` with `at` 0..1 along it, or `follow "<entity>"` with offsets; fov; eased), `transform "<entity>"` (position, rotation in degrees or quaternion, scale; eased), `animation "<entity>"` (clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model), `audio` (sound, volume, pitch, bus), `music` (sound, volume, fadeIn, fadeOut, end, loop, bus), `caption` (text from `key` to `end` with a UI type step `style` and an `anchor`; `captions "narration.srt" [offset]` imports a SubRip file or word timestamps `.json`), `event` (`do "<command-channel action>"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it), `transition` (kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from, over og.ui's screen cover) and `marker` (`name`, sending og.TimelineMarker when played past). |
 
 ### `og-feel`
 
@@ -114,7 +116,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-910 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+937 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -200,6 +202,7 @@ Field units the docs and Tune use.
 | [`CounterDesc`](ui.md#type-CounterDesc) | desc struct | ui | — |
 | [`Cross`](ui.md#type-Cross) | enum | ui | — |
 | [`Currency`](ui.md#type-Currency) | desc struct | ui | — |
+| [`CurveDesc`](path.md#type-CurveDesc) | desc struct | path | — |
 | [`CutsceneDesc`](ui.md#type-CutsceneDesc) | desc struct | ui | — |
 | [`CutsceneResult`](ui.md#type-CutsceneResult) | struct | ui | — |
 | [`defineComponent`](reflect.md#fn-defineComponent) | function | reflect | `og_reflect_define_component` |
@@ -486,6 +489,7 @@ Field units the docs and Tune use.
 | [`og.load.texture`](load.md#fn-texture) | function | load | `og_load_texture` |
 | [`og.load.textureArray`](load.md#fn-textureArray) | function | load | `og_load_texture_array` |
 | [`og.load.tilemap`](load.md#fn-tilemap) | function | load | `og_load_tilemap` |
+| [`og.load.timeline`](load.md#fn-timeline) | function | load | `og_load_timeline` |
 | [`og.MaterialStyle`](render.md#record-MaterialStyle) | resource | render | — |
 | [`og.MatrixWorld`](transform.md#record-MatrixWorld) | component | transform | — |
 | [`og.Mesh`](render.md#record-Mesh) | component | render | — |
@@ -510,6 +514,12 @@ Field units the docs and Tune use.
 | [`og.OrbitCamera`](camera.md#record-OrbitCamera) | component | camera | — |
 | [`og.Parent`](transform.md#record-Parent) | component | transform | — |
 | [`og.ParticleSystem`](render.md#record-ParticleSystem) | component | render | — |
+| [`og.path.create`](path.md#fn-create) | function | path | `og_path_create` |
+| [`og.path.find`](path.md#fn-find) | function | path | `og_path_find` |
+| [`og.path.length`](path.md#fn-length) | function | path | `og_path_length` |
+| [`og.path.nearest`](path.md#fn-nearest) | function | path | `og_path_nearest` |
+| [`og.path.sample`](path.md#fn-sample) | function | path | `og_path_sample` |
+| [`og.PathFollower`](path.md#record-PathFollower) | component | path | — |
 | [`og.Perceivable`](ai.md#record-Perceivable) | component | ai | — |
 | [`og.Perception`](ai.md#record-Perception) | component | ai | — |
 | [`og.Physics`](physics.md#record-Physics) | resource | physics | — |
@@ -612,6 +622,15 @@ Field units the docs and Tune use.
 | [`og.Time`](time.md#record-Time) | resource | time | — |
 | [`og.time.hitStop`](time.md#fn-hitStop) | function | time | `og_time_hit_stop` |
 | [`og.time.setScale`](time.md#fn-setScale) | function | time | `og_time_set_scale` |
+| [`og.Timeline`](timeline.md#record-Timeline) | component | timeline | — |
+| [`og.timeline.info`](timeline.md#fn-info) | function | timeline | `og_timeline_info` |
+| [`og.timeline.pause`](timeline.md#fn-pause) | function | timeline | `og_timeline_pause` |
+| [`og.timeline.play`](timeline.md#fn-play) | function | timeline | `og_timeline_play` |
+| [`og.timeline.seek`](timeline.md#fn-seek) | function | timeline | `og_timeline_seek` |
+| [`og.timeline.stop`](timeline.md#fn-stop) | function | timeline | `og_timeline_stop` |
+| [`og.TimelineEnded`](timeline.md#record-TimelineEnded) | event | timeline | — |
+| [`og.TimelineMarker`](timeline.md#record-TimelineMarker) | event | timeline | — |
+| [`og.TimelineStarted`](timeline.md#record-TimelineStarted) | event | timeline | — |
 | [`og.Trail`](render.md#record-Trail) | component | render | — |
 | [`og.Transform`](transform.md#record-Transform) | component | transform | — |
 | [`og.transform.compose`](transform.md#fn-compose) | function | transform | `og_transform_compose` |
@@ -744,7 +763,13 @@ Field units the docs and Tune use.
 | [`ParticleEmitter`](render.md#type-ParticleEmitter) | handle | render | — |
 | [`ParticleEmitter()`](render.md#column-ParticleEmitter) | column kind | render | — |
 | [`PARTICLES_ARMED`](render.md#const-PARTICLES_ARMED) | constant | render | — |
+| [`Path`](path.md#type-Path) | handle | path | — |
+| [`Path()`](path.md#column-Path) | column kind | path | — |
 | [`PathDesc`](nav.md#type-PathDesc) | desc struct | nav | — |
+| [`PathKind`](path.md#type-PathKind) | enum | path | — |
+| [`PathKind()`](path.md#column-PathKind) | column kind | path | — |
+| [`PathNearest`](path.md#type-PathNearest) | struct | path | — |
+| [`PathSample`](path.md#type-PathSample) | struct | path | — |
 | [`PauseMenuDesc`](ui.md#type-PauseMenuDesc) | desc struct | ui | — |
 | [`PercentSize`](ui.md#type-PercentSize) | struct | ui | — |
 | [`PhysicsPhase`](physics.md#type-PhysicsPhase) | struct | physics | — |
@@ -965,6 +990,10 @@ Field units the docs and Tune use.
 | [`TilemapGridDesc`](nav.md#type-TilemapGridDesc) | desc struct | nav | — |
 | [`TilemapInfo`](tilemap.md#type-TilemapInfo) | struct | tilemap | — |
 | [`TileObject`](tilemap.md#type-TileObject) | struct | tilemap | — |
+| [`TimelineAsset`](timeline.md#type-TimelineAsset) | handle | timeline | — |
+| [`TimelineAsset()`](timeline.md#column-TimelineAsset) | column kind | timeline | — |
+| [`TimelineInfo`](timeline.md#type-TimelineInfo) | struct | timeline | — |
+| [`TimelineTrackInfo`](timeline.md#type-TimelineTrackInfo) | struct | timeline | — |
 | [`ToastDesc`](ui.md#type-ToastDesc) | desc struct | ui | — |
 | [`ToggleResult`](ui.md#type-ToggleResult) | struct | ui | — |
 | [`Tone`](ui.md#type-Tone) | enum | ui | — |
