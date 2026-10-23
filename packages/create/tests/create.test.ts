@@ -137,7 +137,9 @@ test("a scaffolded project routes media through Git LFS; the engine repository d
   for (const media of ["templates/game/assets/models/dropship.glb", "templates/game-2d/assets/sprites/hero.png", "templates/archetypes/runner/assets/x.png", "templates/archetypes/topdown/a.wav"]) {
     expect(git(repo, "check-attr", "filter", media).trim()).toBe(`${media}: filter: unspecified`);
   }
-});
+  // Nine scaffolds and some eighty git spawns: 1.2 s alone, past bun's 5 s
+  // default beside the gate's cargo step.
+}, 60_000);
 
 // The profile: --profile 2d writes the 2D starter (templates/game-2d), a
 // premise that says 2D picks it, and the 3D template is the default.
