@@ -1,7 +1,7 @@
 type look
 version 1
 ---
-# A base other looks extend: tone, fog, the UI skin and no antialiasing.
+# A base other looks extend: tone, fog, the UI style and no antialiasing.
 name "Base"
 ui "styles/tiny/style.ogt"
 antialias off

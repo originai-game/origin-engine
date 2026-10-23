@@ -292,7 +292,7 @@ function coherence(files: readonly PayloadFile[], problems: string[]): void {
  * character controllers' collision gap (the `skin` field, off a surface),
  * or a surface (a skin tone, peach skin, a crowd's or a tile set's looks).
  */
-const SKIN_ELSEWHERE = /gltf|joint|skelet|morph|\brig\b|bone|mesh|model|clips?\b|anim|`skins?`|surface|\bgap\b|collid|\btones?\b|peach|crowd|tiles/i;
+export const SKIN_ELSEWHERE = /gltf|joint|skelet|morph|\brig\b|bone|mesh|model|clips?\b|anim|`skins?`|surface|\bgap\b|collid|\btones?\b|peach|crowd|tiles/i;
 
 /**
  * A skill or wiki page never calls a UI style a "skin": og-ui's word is

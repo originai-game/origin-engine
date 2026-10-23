@@ -4,7 +4,7 @@
 // (tests/fixtures/look) is flattened over the look it extends, applied
 // before GameDesc.start runs, and sets the resources it names whole (the
 // fields it names from the look, the rest at their defaults, the animated
-// ones kept) while leaving the others alone; its skin configures the UI and
+// ones kept) while leaving the others alone; its style configures the UI and
 // its antialias is the renderer's; refusals name the fix.
 import { expect, test } from "bun:test";
 import { existsSync } from "node:fs";
@@ -86,7 +86,7 @@ test("GameDesc.look is flattened over its base and applied before start runs", (
   expect(info.resources).toEqual(["RenderSettings", "PostEffects", "Stylise", "MaterialStyle", "Fog"]);
   expect(info.antialias).toBe("off");
   expect(info.style).not.toBeNull();
-  // The skin configures the UI from the next tick.
+  // The style configures the UI from the next tick.
   expect(engine.advance(1).ok).toBeTrue();
   expect((og.ui.theme(engine.world) as unknown as { style: string }).style).toBe("tiny");
 });

@@ -1,4 +1,4 @@
-// Path Guard's screens on og.ui and the skin in assets/styles/pathguard:
+// Path Guard's screens on og.ui and the style in assets/styles/pathguard:
 // the title, the HUD (the light and the coins in the top-left corner, the
 // wave and pause in the top-right, the plant tray on the right on a wide
 // screen and along the bottom on a phone), the pause menu, the settings
@@ -351,7 +351,7 @@ export const Ui = defineSystem("Ui", { reads: [Tuning], writes: [Game, Prefs, og
       ],
       footer: say(world, "title.footer"),
       // The title the game opens on is built settled: the web draws it behind the play gate, where
-      // the skin's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
+      // the style's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
       instant: !g.leftTitle,
     });
     if (!g.settingsOpen && r.selected === "play") startRound(world, g, t);
