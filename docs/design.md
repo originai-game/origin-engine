@@ -903,10 +903,19 @@ reading pixels:
 - **Diagnostics as data.** `og cook --report` writes
   `og-out/cook-report.json`. For each asset it records triangles,
   vertices and LODs, textures with sizes and formats, bones, clips, bytes
-  cooked and budget flags. `og doctor --project <dir> [--json]` checks it
-  against the budgets project.ogt sets (`budgets { triangles vertices
-  textureSize bones clips assetBytes totalBytes }`, each with a default)
-  and prints findings with severity, asset, budget, limit, value and fix.
+  cooked and budget flags, and every other output type its own figures,
+  read back through the runtime's loaders: a sound its seconds, channels,
+  rate and chunks; a font its glyphs, kerning pairs and atlas pages; a
+  scene its entities, instances and components; a navmesh its tiles,
+  polygons and vertices; a timeline its tracks and seconds; a string
+  table its locale and keys; a style, behaviour, tileset, tilemap, rig,
+  flipbook, shader, post pass, emitter, look, palette, LUT, environment
+  map, video, terrain and stream pack theirs. `og doctor --project <dir>
+  [--json]` checks it against the budgets project.ogt sets (`budgets {
+  triangles vertices textureSize bones clips assetBytes totalBytes
+  soundSeconds videoSeconds fontGlyphs navPolygons sceneEntities
+  emitterParticles }`, each with a default) and prints findings with
+  severity, asset, budget, limit, value and fix.
 
 ### 3.5 Hot reload **(D)**
 

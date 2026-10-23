@@ -1,0 +1,505 @@
+{
+  "assets": [
+    {
+      "cookMs": 352.29,
+      "cookedBytes": 332596,
+      "flags": [],
+      "font": {
+        "emPx": 32.0,
+        "glyphs": 192,
+        "kerningPairs": 14647,
+        "pageHeight": 268,
+        "pageWidth": 512,
+        "pages": 1,
+        "uncookedCodepoints": 151
+      },
+      "kind": "font",
+      "outputs": [
+        {
+          "bytes": 332596,
+          "id": "@styles/paper/InstrumentSans-Regular.ttf",
+          "type": "og.Font"
+        }
+      ],
+      "source": "@styles/paper/InstrumentSans-Regular.ttf",
+      "sourceBytes": 68193
+    },
+    {
+      "cookMs": 406.016,
+      "cookedBytes": 432623,
+      "flags": [],
+      "font": {
+        "emPx": 48.0,
+        "glyphs": 199,
+        "kerningPairs": 11754,
+        "pageHeight": 260,
+        "pageWidth": 1024,
+        "pages": 1,
+        "uncookedCodepoints": 2
+      },
+      "kind": "font",
+      "outputs": [
+        {
+          "bytes": 432623,
+          "id": "@styles/paper/Newsreader-SemiBold.ttf",
+          "type": "og.Font"
+        }
+      ],
+      "source": "@styles/paper/Newsreader-SemiBold.ttf",
+      "sourceBytes": 42485
+    },
+    {
+      "cookMs": 395.906,
+      "cookedBytes": 281236,
+      "flags": [],
+      "font": {
+        "emPx": 48.0,
+        "glyphs": 208,
+        "kerningPairs": 0,
+        "pageHeight": 260,
+        "pageWidth": 1024,
+        "pages": 1,
+        "uncookedCodepoints": 597
+      },
+      "kind": "font",
+      "outputs": [
+        {
+          "bytes": 281236,
+          "id": "@styles/paper/PTMono-Regular.ttf",
+          "type": "og.Font"
+        }
+      ],
+      "source": "@styles/paper/PTMono-Regular.ttf",
+      "sourceBytes": 157285
+    },
+    {
+      "cookMs": 636.322,
+      "cookedBytes": 14635,
+      "flags": [],
+      "kind": "texture",
+      "outputs": [
+        {
+          "bytes": 14635,
+          "id": "@styles/paper/atlas.png",
+          "type": "og.Texture"
+        }
+      ],
+      "source": "@styles/paper/atlas.png",
+      "sourceBytes": 15938,
+      "textures": [
+        {
+          "alpha": true,
+          "format": "etc1s",
+          "height": 256,
+          "id": "@styles/paper/atlas.png",
+          "kind": "color",
+          "levels": 9,
+          "width": 384
+        }
+      ]
+    },
+    {
+      "cookMs": 1680.824,
+      "cookedBytes": 44894,
+      "flags": [],
+      "kind": "texture",
+      "outputs": [
+        {
+          "bytes": 44894,
+          "id": "@styles/paper/icons.png",
+          "type": "og.Texture"
+        }
+      ],
+      "source": "@styles/paper/icons.png",
+      "sourceBytes": 27792,
+      "textures": [
+        {
+          "alpha": true,
+          "format": "uastc",
+          "height": 256,
+          "id": "@styles/paper/icons.png",
+          "kind": "linear",
+          "levels": 10,
+          "width": 512
+        }
+      ]
+    },
+    {
+      "cookMs": 1.644,
+      "cookedBytes": 2546,
+      "flags": [],
+      "kind": "style",
+      "outputs": [
+        {
+          "bytes": 2546,
+          "id": "@styles/paper/style.ogt",
+          "type": "og.UiStyle"
+        }
+      ],
+      "source": "@styles/paper/style.ogt",
+      "sourceBytes": 2354,
+      "style": {
+        "atlas": true,
+        "fonts": 3,
+        "icons": 32,
+        "name": "paper",
+        "references": 5,
+        "sounds": 0
+      }
+    },
+    {
+      "behaviour": {
+        "keys": 0,
+        "nodes": 3,
+        "routes": 1
+      },
+      "cookMs": 0.729,
+      "cookedBytes": 1025,
+      "flags": [],
+      "kind": "behaviour",
+      "outputs": [
+        {
+          "bytes": 1025,
+          "id": "ai/guard.ogt",
+          "type": "og.Behaviour"
+        }
+      ],
+      "source": "ai/guard.ogt",
+      "sourceBytes": 833
+    },
+    {
+      "cookMs": 25.674,
+      "cookedBytes": 9160,
+      "flags": [],
+      "kind": "sound",
+      "outputs": [
+        {
+          "bytes": 9160,
+          "id": "audio/blip.wav",
+          "type": "og.Sound"
+        }
+      ],
+      "sound": {
+        "channels": 1,
+        "chunks": 0,
+        "frames": 22050,
+        "sampleRate": 44100,
+        "seconds": 0.5
+      },
+      "source": "audio/blip.wav",
+      "sourceBytes": 44144
+    },
+    {
+      "cookMs": 2.761,
+      "cookedBytes": 928,
+      "flags": [],
+      "kind": "sound",
+      "outputs": [
+        {
+          "bytes": 928,
+          "id": "audio/click.ogt",
+          "type": "og.Sound"
+        }
+      ],
+      "sound": {
+        "channels": 1,
+        "chunks": 0,
+        "frames": 1705,
+        "sampleRate": 48000,
+        "seconds": 0.036
+      },
+      "source": "audio/click.ogt",
+      "sourceBytes": 135
+    },
+    {
+      "cookMs": 479.724,
+      "cookedBytes": 592881,
+      "flags": [],
+      "font": {
+        "emPx": 32.0,
+        "glyphs": 508,
+        "kerningPairs": 3390,
+        "pageHeight": 408,
+        "pageWidth": 1024,
+        "pages": 1,
+        "uncookedCodepoints": 7323
+      },
+      "kind": "font",
+      "outputs": [
+        {
+          "bytes": 592881,
+          "id": "fonts/NotoSansSC-Regular-subset.ttf",
+          "type": "og.Font"
+        }
+      ],
+      "source": "fonts/NotoSansSC-Regular-subset.ttf",
+      "sourceBytes": 2514063
+    },
+    {
+      "cookMs": 0.392,
+      "cookedBytes": 421,
+      "flags": [],
+      "kind": "look",
+      "look": {
+        "blocks": 3,
+        "extends": [
+          "faceted-low-poly"
+        ],
+        "ui": "@styles/paper/style.ogt"
+      },
+      "outputs": [
+        {
+          "bytes": 421,
+          "id": "looks/origin-game.ogt",
+          "type": "og.Look"
+        }
+      ],
+      "source": "looks/origin-game.ogt",
+      "sourceBytes": 587
+    },
+    {
+      "cookMs": 332.788,
+      "cookedBytes": 171609,
+      "flags": [],
+      "kind": "model",
+      "model": {
+        "lods": [
+          16512,
+          8286,
+          4265
+        ],
+        "materials": 17,
+        "meshes": 26,
+        "nodes": 29,
+        "primitives": 36,
+        "triangles": 16512,
+        "vertices": 16870
+      },
+      "outputs": [
+        {
+          "bytes": 171609,
+          "id": "models/dropship.glb",
+          "type": "og.Model"
+        }
+      ],
+      "source": "models/dropship.glb",
+      "sourceBytes": 562864
+    },
+    {
+      "animation": {
+        "bones": 12,
+        "clips": [
+          "idle",
+          "walk",
+          "run",
+          "wave",
+          "turn",
+          "blink"
+        ],
+        "morphTargets": 1,
+        "nodes": 14,
+        "skins": 1
+      },
+      "cookMs": 31.405,
+      "cookedBytes": 12671,
+      "flags": [],
+      "kind": "model",
+      "model": {
+        "lods": [
+          108,
+          54,
+          44
+        ],
+        "materials": 2,
+        "meshes": 1,
+        "nodes": 14,
+        "primitives": 1,
+        "triangles": 108,
+        "vertices": 216
+      },
+      "outputs": [
+        {
+          "bytes": 3620,
+          "id": "models/walker.glb",
+          "type": "og.Model"
+        },
+        {
+          "bytes": 9051,
+          "id": "models/walker.glb#anim",
+          "type": "og.Animation"
+        }
+      ],
+      "source": "models/walker.glb",
+      "sourceBytes": 34296
+    },
+    {
+      "cookMs": 308.601,
+      "cookedBytes": 138800,
+      "flags": [],
+      "kind": "navmesh",
+      "navmesh": {
+        "agentHeight": 1.8,
+        "agentRadius": 0.4,
+        "cellSize": 0.25,
+        "cells": [
+          96,
+          96
+        ],
+        "polygons": 13,
+        "spans": 7872,
+        "tiles": 9,
+        "vertices": 52
+      },
+      "outputs": [
+        {
+          "bytes": 138800,
+          "id": "nav/yard.ogt",
+          "type": "og.NavMesh"
+        }
+      ],
+      "source": "nav/yard.ogt",
+      "sourceBytes": 485
+    },
+    {
+      "cookMs": 0.73,
+      "cookedBytes": 1385,
+      "flags": [],
+      "kind": "scene",
+      "outputs": [
+        {
+          "bytes": 1385,
+          "id": "scenes/main.ogt",
+          "type": "og.Scene"
+        }
+      ],
+      "scene": {
+        "componentTypes": 1,
+        "components": 4,
+        "entities": 4,
+        "instances": 2,
+        "paths": 0,
+        "resources": 0
+      },
+      "source": "scenes/main.ogt",
+      "sourceBytes": 527
+    },
+    {
+      "cookMs": 0.656,
+      "cookedBytes": 720,
+      "flags": [],
+      "kind": "strings",
+      "outputs": [
+        {
+          "bytes": 720,
+          "id": "strings/en.ogt",
+          "type": "og.Strings"
+        }
+      ],
+      "source": "strings/en.ogt",
+      "sourceBytes": 528,
+      "strings": {
+        "base": true,
+        "fonts": 0,
+        "keys": 5,
+        "locale": "en"
+      }
+    },
+    {
+      "cookMs": 1003.749,
+      "cookedBytes": 22134,
+      "flags": [],
+      "kind": "texture",
+      "outputs": [
+        {
+          "bytes": 22134,
+          "id": "textures/stone.png",
+          "type": "og.Texture"
+        }
+      ],
+      "source": "textures/stone.png",
+      "sourceBytes": 112774,
+      "textures": [
+        {
+          "alpha": false,
+          "format": "etc1s",
+          "height": 512,
+          "id": "textures/stone.png",
+          "kind": "color",
+          "levels": 10,
+          "width": 512
+        }
+      ]
+    },
+    {
+      "cookMs": 7041.827,
+      "cookedBytes": 189501,
+      "flags": [],
+      "kind": "texture",
+      "outputs": [
+        {
+          "bytes": 189501,
+          "id": "textures/stone_n.png",
+          "type": "og.Texture"
+        }
+      ],
+      "source": "textures/stone_n.png",
+      "sourceBytes": 212771,
+      "textures": [
+        {
+          "alpha": true,
+          "format": "uastc",
+          "height": 512,
+          "id": "textures/stone_n.png",
+          "kind": "normal",
+          "levels": 10,
+          "width": 512
+        }
+      ]
+    },
+    {
+      "cookMs": 2.577,
+      "cookedBytes": 1668,
+      "flags": [],
+      "kind": "timeline",
+      "outputs": [
+        {
+          "bytes": 1668,
+          "id": "timelines/intro.ogt",
+          "type": "og.TimelineAsset"
+        }
+      ],
+      "source": "timelines/intro.ogt",
+      "sourceBytes": 1175,
+      "timeline": {
+        "paths": 1,
+        "seconds": 10.0,
+        "tracks": 8
+      }
+    }
+  ],
+  "budgets": {
+    "assetBytes": 8388608,
+    "bones": 128,
+    "clips": 64,
+    "emitterParticles": 16384,
+    "fontGlyphs": 8192,
+    "navPolygons": 65536,
+    "sceneEntities": 10000,
+    "soundSeconds": 600,
+    "textureSize": 2048,
+    "totalBytes": 67108864,
+    "triangles": 100000,
+    "vertices": 65536,
+    "videoSeconds": 300
+  },
+  "cooker": "og-cook 0.2.0 r5",
+  "flags": [],
+  "totals": {
+    "assets": 19,
+    "cookedBytes": 2251433,
+    "flagged": 0,
+    "sourceBytes": 3799229,
+    "triangles": 16620
+  },
+  "version": 1
+}

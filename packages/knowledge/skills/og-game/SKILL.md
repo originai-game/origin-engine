@@ -2059,12 +2059,20 @@ These are the checks to use before opening frames. All of them run from
   (`set:marker.og.Transform.scale=0.5,0.5,0.5`).
 - **`og cook --report`** writes `og-out/cook-report.json`: per asset its
   triangles per LOD, vertices, textures (size, format), bones, clips,
-  bytes cooked and flags. **`og doctor --project . [--json]`** checks it
-  against `budgets { }` in project.ogt and exits 1 on an over-budget
-  asset, naming the asset, the limit, the value and the fix. The keys are
-  `triangles` 100000, `vertices` 65536, `textureSize` 2048, `bones` 128,
-  `clips` 64, `assetBytes` 8 MiB and `totalBytes` 64 MiB, each a default
-  a project may move.
+  bytes cooked and flags, and for every other asset its figures under its
+  kind (`sound` seconds/channels/sampleRate/chunks, `font`
+  glyphs/kerningPairs/pages, `scene` entities/instances/components,
+  `navmesh` tiles/polygons/vertices, `timeline` tracks/seconds, `strings`
+  locale/keys, `style`, `behaviour`, `tileset`, `tilemap`, `rig`,
+  `rig2d`, `flipbook`, `shader`, `post`, `emitter`, `look`, `palette`,
+  `lut`, `environment`, `video`, `terrain`, `streamPack`). **`og doctor
+  --project . [--json]`** checks it against `budgets { }` in project.ogt
+  and exits 1 on an over-budget asset, naming the asset, the limit, the
+  value and the fix. The keys are `triangles` 100000, `vertices` 65536,
+  `textureSize` 2048, `bones` 128, `clips` 64, `assetBytes` 8 MiB,
+  `totalBytes` 64 MiB, `soundSeconds` 600, `videoSeconds` 300,
+  `fontGlyphs` 8192, `navPolygons` 65536, `sceneEntities` 10000 and
+  `emitterParticles` 16384, each a default a project may move.
 
 ## 22. Levels of detail, reflection probes and screen-space reflections
 
