@@ -137,3 +137,51 @@ fn a_failing_post_pass_is_reported_and_skipped() {
     assert_eq!(&bent.pixels[..3], &[0, 0, 0]);
     assert_ne!(&plain.pixels[..3], &[0, 0, 0]);
 }
+
+#[test]
+fn views_layers_matches_its_reference() {
+    check("views-layers");
+}
+
+/// A view draws what the main pass draws over its opaque scene: glass, a
+/// world sprite, particles and lines on layer 1 alone change the monitor
+/// when its camera sees layer 1 and nothing when it does not, and never
+/// change the main frame around it (the main camera is on layer 0).
+#[test]
+fn a_view_draws_transparents_sprites_particles_and_lines_on_its_layers() {
+    use og_tests::target_scenes::{ViewKind, view_kinds_scene};
+    // The monitor on the back wall, with a pixel's margin.
+    let on_monitor = |x: u32, y: u32| (543..738).contains(&x) && (181..293).contains(&y);
+    let mut failures = Vec::new();
+    for kind in ViewKind::ALL {
+        let seen = frame(&view_kinds_scene(&[kind], 3, 60));
+        let unseen = frame(&view_kinds_scene(&[kind], 1, 60));
+        let (mut inside, mut outside) = (0, 0);
+        for y in 0..seen.height {
+            for x in 0..seen.width {
+                let i = ((y * seen.width + x) * 4) as usize;
+                let d = (0..3)
+                    .map(|c| seen.pixels[i + c].abs_diff(unseen.pixels[i + c]))
+                    .max()
+                    .unwrap_or(0);
+                if d > 24 {
+                    if on_monitor(x, y) {
+                        inside += 1;
+                    } else {
+                        outside += 1;
+                    }
+                }
+            }
+        }
+        println!("{kind:?}: {inside} pixels moved on the monitor, {outside} elsewhere");
+        if inside < 60 {
+            failures.push(format!("{kind:?}: the view drew it on {inside} pixels"));
+        }
+        if outside > 0 {
+            failures.push(format!(
+                "{kind:?}: the main frame moved on {outside} pixels"
+            ));
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}

@@ -228,7 +228,8 @@ pub fn render_ids(scene: &RenderScene, sources: &IdSources, width: u32, height: 
     }
     for (i, s) in scene.sprites.iter().enumerate() {
         let id = sources.sprites.get(i).copied().unwrap_or(0);
-        if id == 0 || s.size.x == 0.0 || s.size.y == 0.0 {
+        let shown = crate::views::layer_of(&scene.sprite_layers, i) & scene.camera_layers != 0;
+        if id == 0 || !shown || s.size.x == 0.0 || s.size.y == 0.0 {
             continue;
         }
         let (sin, cos) = s.rotation.sin_cos();

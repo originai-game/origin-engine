@@ -108,6 +108,7 @@ pub const SCENES: &[&str] = &[
     "views-monitor",
     "views-mirror",
     "views-split",
+    "views-layers",
     "shader-full-dissolve",
     "post-crt",
     "rect-lights",
@@ -524,6 +525,13 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "views-monitor" => g.scene = crate::target_scenes::monitor_scene(),
         "views-mirror" => g.scene = crate::target_scenes::mirror_scene(),
         "views-split" => g.scene = crate::target_scenes::split_scene(),
+        // The monitor's camera drawing what the main pass draws over its
+        // opaque scene: glass, a world sprite, particles and lines, each on
+        // a layer the main camera leaves out.
+        "views-layers" => {
+            use crate::target_scenes::{ViewKind, view_kinds_scene};
+            g.scene = view_kinds_scene(&ViewKind::ALL, 3, 60);
+        }
         // A full custom shader (`mode full`): a dissolve cut through a
         // sphere and a box, their shadows cut the same way.
         "shader-full-dissolve" => g.scene = crate::target_scenes::full_dissolve_scene(0.45),

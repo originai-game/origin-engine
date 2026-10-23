@@ -259,3 +259,131 @@ pub fn full_dissolve_scene(amount: f32) -> RenderScene {
     };
     scene
 }
+
+/// What a secondary camera draws besides opaque meshes (`views-layers`):
+/// a translucent cyan glass box, a pink world sprite, a green particle
+/// fountain and a yellow line loop, each on layer 1 alone.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ViewKind {
+    Transparent,
+    Sprite,
+    Particles,
+    Lines,
+}
+
+impl ViewKind {
+    pub const ALL: [ViewKind; 4] = [
+        ViewKind::Transparent,
+        ViewKind::Sprite,
+        ViewKind::Particles,
+        ViewKind::Lines,
+    ];
+}
+
+/// Puts `kind` into `scene` on layer 1 alone (mask 2), in front of the
+/// monitor's corner camera and of the main camera.
+fn add_view_kind(scene: &mut RenderScene, kind: ViewKind) {
+    match kind {
+        ViewKind::Transparent => {
+            let glass = scene.add_mesh(shapes::cuboid(Vec3::splat(1.1)));
+            let m = scene.add_standard_material(StandardMaterial {
+                color: Vec3::new(0.1, 0.9, 0.95),
+                emissive: Vec3::new(0.05, 0.35, 0.4),
+                opacity: 0.6,
+                transparent: 1,
+                ..Default::default()
+            });
+            scene.add_instance(glass, m, Mat4::from_translation(Vec3::new(-2.6, 0.7, 2.4)));
+            let i = scene.instances.len() - 1;
+            // Out of the shadow maps: the main frame keeps no trace of it.
+            scene.instances[i].cast_shadows = false;
+            scene.instance_layers.resize(i + 1, 1);
+            scene.instance_layers[i] = 2;
+        }
+        ViewKind::Sprite => {
+            scene.add_sprite(og_render::Sprite {
+                position: Vec3::new(1.4, 1.3, 2.6),
+                size: glam::Vec2::new(1.2, 1.2),
+                color: [1.0, 0.2, 0.65, 1.0],
+                ..Default::default()
+            });
+            let i = scene.sprites.len() - 1;
+            scene.sprite_layers.resize(i + 1, 1);
+            scene.sprite_layers[i] = 2;
+        }
+        ViewKind::Particles => {
+            let e = scene.add_emitter(og_render::ParticleEmitter {
+                rate: 90.0,
+                lifetime: [1.4, 1.6],
+                speed: [0.5, 0.7],
+                size: [0.45, 0.6],
+                gravity: Vec3::ZERO,
+                color: [0.1, 0.85, 0.15, 1.0],
+                blend: og_render::ParticleBlend::Alpha,
+                ..Default::default()
+            });
+            scene.particles.push(og_render::ParticleSystem::new(
+                7,
+                e,
+                Mat4::from_translation(Vec3::new(2.0, 0.2, 2.4)),
+                0x51e8,
+                0,
+            ));
+            scene.particle_layers = vec![2; scene.particles.len()];
+        }
+        ViewKind::Lines => {
+            let c = Vec3::new(3.6, 1.2, 3.4);
+            scene.lines.push(og_render::Lines {
+                points: vec![
+                    c + Vec3::new(-0.8, -0.8, 0.0),
+                    c + Vec3::new(0.8, -0.8, 0.0),
+                    c + Vec3::new(0.8, 0.8, 0.0),
+                    c + Vec3::new(-0.8, 0.8, 0.0),
+                ],
+                color: [1.0, 0.95, 0.1, 1.0],
+                mode: og_render::LineMode::Loop,
+                width: 0.12,
+                world_width: true,
+                ..Default::default()
+            });
+            let i = scene.lines.len() - 1;
+            scene.line_layers.resize(i + 1, 1);
+            scene.line_layers[i] = 2;
+        }
+    }
+}
+
+/// The monitor room (`monitor_scene` without its ghost cube) with
+/// `kinds` on layer 1 alone; the monitor's camera sees layers `view_layers`.
+/// The scene's clocks stand at `tick` (the fountain's age).
+pub fn view_kinds_scene(kinds: &[ViewKind], view_layers: u32, tick: u64) -> RenderScene {
+    let mut scene = room();
+    let target = scene.add_render_target(RenderTargetDesc {
+        width: 480,
+        height: 270,
+        ..Default::default()
+    });
+    screen(
+        &mut scene,
+        target.color,
+        3.2,
+        1.8,
+        Mat4::from_translation(Vec3::new(0.0, 1.9, -5.85)),
+    );
+    for &k in kinds {
+        add_view_kind(&mut scene, k);
+    }
+    scene.views.push(View {
+        camera: Camera {
+            position: Vec3::new(5.5, 2.8, 5.5),
+            target: Vec3::new(-1.0, 0.6, -1.0),
+            exposure: Exposure::linear(0.8),
+            ..Default::default()
+        },
+        target: ViewTarget::Texture(target),
+        layers: view_layers,
+        ..Default::default()
+    });
+    crate::fx_scenes::tick_all(&mut scene, tick);
+    scene
+}

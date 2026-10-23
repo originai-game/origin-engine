@@ -585,6 +585,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
     scene.occluders_2d.clear();
     scene.decals.clear();
     scene.particles.clear();
+    scene.particle_layers.clear();
     scene.trails.clear();
     scene.beams.clear();
     scene.ribbons.clear();
@@ -657,6 +658,11 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             PARTICLES_ARMED => 0,
             t => t,
         };
+        let layers = v["layers"].as_u64().map_or(1, |x| x as u32);
+        if layers != 1 {
+            scene.particle_layers.resize(scene.particles.len(), 1);
+            scene.particle_layers.push(layers);
+        }
         scene.particles.push(ParticleSystem {
             id: e,
             emitter,

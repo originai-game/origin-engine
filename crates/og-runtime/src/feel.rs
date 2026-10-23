@@ -2068,11 +2068,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     let mut drawn: Vec<(u32, u64)> = Vec::new();
     for (e, bytes) in &sprites {
         let (e, v) = (*e, Row::new(&r.sprite.1, bytes));
-        // Off the main camera's layers: not drawn (secondary cameras draw no sprites).
+        // Its layers: the renderer draws it on the cameras they admit
+        // (the main one and every og.CameraView or og.Mirror).
         let layers = v.uint("layers").map_or(1, |x| x as u32);
-        if !on(&v, "visible", true) || layers & scene.camera_layers == 0 {
+        if !on(&v, "visible", true) {
             continue;
         }
+        let first = scene.sprites.len();
         let m = h.world_of(e);
         let pos = m.w_axis.truncate();
         let xa = m.x_axis.truncate();
@@ -2241,6 +2243,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     tone_mapped,
                 },
             );
+        }
+        // Its blob shadow, afterimages and pieces carry its mask.
+        if layers != 1 {
+            let masks = &mut scene.sprite_layers;
+            masks.resize(first, 1);
+            masks.resize(scene.sprites.len(), layers);
         }
     }
     rs.ids.sprites = drawn;

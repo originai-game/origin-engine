@@ -2002,7 +2002,7 @@ module camera {
       param y f32 "Vertical position in CSS pixels."
       returns Ray
     }
-    field layers u32 "Three.js layers, as Camera.layers.mask: the frame draws the meshes, models and world sprites whose layers share a bit with it. 1 (layer 0) by default, as every object's." {
+    field layers u32 "Three.js layers, as Camera.layers.mask: the frame draws the meshes, models, world sprites, particle systems, lines and points whose layers share a bit with it. 1 (layer 0) by default, as every object's." {
       default 1
     }
   }
@@ -3399,6 +3399,9 @@ module render {
     field visible bool "Whether it is drawn (a hidden system loses its particles)." {
       default true
     }
+    field layers u32 "Three.js layers, as Mesh.layers: its particles (billboards and 2D sprite particles alike) are drawn by the cameras whose masks share a bit with it (og.Camera, og.CameraView, og.Mirror)." {
+      default 1
+    }
   }
 
   component Trail {
@@ -4479,7 +4482,7 @@ module render {
     field visible bool "Whether it is drawn." {
       default true
     }
-    field layers u32 "Three.js layers, as Mesh.layers: drawn by the main camera when its mask shares a bit (secondary cameras do not draw lines)." {
+    field layers u32 "Three.js layers, as Mesh.layers: drawn by every camera whose mask shares a bit with it (og.Camera, og.CameraView, og.Mirror)." {
       default 1
     }
   }
@@ -4510,7 +4513,7 @@ module render {
     field visible bool "Whether it is drawn." {
       default true
     }
-    field layers u32 "Three.js layers, as Mesh.layers: drawn by the main camera when its mask shares a bit (secondary cameras do not draw points)." {
+    field layers u32 "Three.js layers, as Mesh.layers: drawn by every camera whose mask shares a bit with it (og.Camera, og.CameraView, og.Mirror)." {
       default 1
     }
   }
@@ -4609,7 +4612,7 @@ module render {
 
   component CameraView {
     doc "A secondary camera, as a second three.js camera rendered with setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z, as og.Camera) into a render target (target), or, without one, into a rect of the frame (viewport: split-screen, picture-in-picture) over the finished image and under the UI."
-    doc "It draws the opaque meshes and models on its layers (skinned and with any material: hooks and full shaders run their vertex and fragment entries), the terrain and the sky, lit by the frame's lights and shadowed by its shadow maps. Transparent meshes, sprites, particles, text, lines and the post effects are the main camera's. Views draw lowest order first, all before the frame."
+    doc "It draws what the main camera draws, from its own eye and on its own layers: the meshes and models (skinned and with any material: hooks and full shaders run their vertex and fragment entries), opaque then transparent back to front, the terrain and the sky, the particle systems, og.Lines and og.Points, world sprites (og.Sprite, og.render.sprite) and world text, lit by the frame's lights and shadowed by its shadow maps. Each view is a draw of everything its layers admit: keep a view cheap with its layers and `every`. Screen sprites, the UI and debug draw stay on the main frame. Of the post chain, an ldr target and a viewport carry the view's exposure (its camera's) and the frame's tone curve; an hdr target carries linear radiance before exposure, exposed by the frame that shows it. Neither runs the frame's bloom, AO, SSR, depth of field, colour grading or custom post passes, whose inputs are the main camera's. Sprites in a view are not 2D-lit and do not glow; trails and 2D fluids draw on the main frame only. Views draw lowest order first, all before the frame."
     field target RenderTarget "The target it draws into; 0 draws into the viewport rect of the frame."
     field viewportX f32 "The viewport's left edge, as a fraction of the frame's width (without a target)." {
       min 0

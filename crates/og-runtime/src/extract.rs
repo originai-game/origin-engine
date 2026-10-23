@@ -686,6 +686,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.trail_layers.clear();
     scene.lines.clear();
     scene.points.clear();
+    // Layer masks of the sprites, lines, points and particle systems
+    // (views.rs): filled by what pushes them, 1 past their ends.
+    scene.sprite_layers.clear();
+    scene.line_layers.clear();
+    scene.point_layers.clear();
+    scene.particle_layers.clear();
     let time = world.time();
     scene.tick = time.tick;
     scene.tick_rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };

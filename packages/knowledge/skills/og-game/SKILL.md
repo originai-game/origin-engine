@@ -2172,11 +2172,21 @@ world.insert(p2, og.CameraView, { viewportX: 0.5, viewportWidth: 0.5 });
 - `clear` with `clearColor` replaces the sky or background colour.
 - `active: false` stops it.
 
-A view draws the opaque meshes and models (skinned meshes and custom
-shaders included), the terrain and the sky, lit and shadowed by the
-frame's lights. Transparent meshes, sprites, particles, text, lines and
-post effects are the main camera's only. A viewport view draws over the
-finished image and under the UI.
+A view draws what the main camera draws, from its own eye and on its own
+`layers`: meshes and models (skinned meshes and custom shaders included),
+opaque then transparent back to front, the terrain and the sky, particle
+systems, og.Lines and og.Points, and world sprites and text, lit and
+shadowed by the frame's lights. Each view is a second draw of everything
+its layers admit, so keep it cheap with `layers` and `every`.
+- An `ldr` target and a viewport are exposed with the view's `exposure`
+  and tone mapped with the frame's curve. An `hdr` target holds linear
+  radiance and is exposed by the frame that shows it.
+- Bloom, AO, SSR, depth of field, colour grading and custom post passes
+  run on the main frame only.
+- In a view, sprites are not 2D-lit and do not glow. Trails, 2D fluids,
+  screen sprites, the UI and debug draw stay on the main frame.
+
+A viewport view draws over the finished image and under the UI.
 
 **A mirror.** Put `og.Mirror` on the glass's entity. It reflects the main
 camera in the entity's xy plane (its +Z faces the room) and fits the image
@@ -2188,8 +2198,9 @@ world.insert(glass, og.Mesh, { geometry: must(og.render.planeGeometry(world, { w
 world.insert(glass, og.Mirror, { target: rt.target, width: 4, height: 2.4 });
 ```
 
-**Layers.** `layers` on og.Mesh, og.Model, og.Sprite, og.Lines, og.Points
-and og.Camera (and on og.CameraView and og.Mirror) is a three.js bit mask:
+**Layers.** `layers` on og.Mesh, og.Model, og.Sprite, og.ParticleSystem,
+og.Lines, og.Points and og.Camera (and on og.CameraView and og.Mirror) is a
+three.js bit mask:
 bit n is layer n, and the default 1 is layer 0. A camera draws an object
 when `object.layers & camera.layers` is not 0. `og.render.raycast`'s
 `layers` uses the same test. Some uses:

@@ -165,7 +165,7 @@ Token `og.Camera`, registered under the schema name `og.Camera`; its value type 
 | `zoneFromMax` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | Its top-right corner. |
 | `zoneScroll` | `number` | `1` | 0 … 1 | — | — | How far the transition has come, 0 to 1 (eased; 1 is settled). |
 | `zoneScrollTime` | `number` | `0` | ≥ 0 | `s` | — | How long the transition takes: the entered zone's scrollTime. |
-| `layers` | `number` | `1` | — | — | — | Three.js layers, as Camera.layers.mask: the frame draws the meshes, models and world sprites whose layers share a bit with it. 1 (layer 0) by default, as every object's. |
+| `layers` | `number` | `1` | — | — | — | Three.js layers, as Camera.layers.mask: the frame draws the meshes, models, world sprites, particle systems, lines and points whose layers share a bit with it. 1 (layer 0) by default, as every object's. |
 
 ```ogt
 resource Camera {
@@ -296,7 +296,7 @@ resource Camera {
     param y f32 "Vertical position in CSS pixels."
     returns Ray
   }
-  field layers u32 "Three.js layers, as Camera.layers.mask: the frame draws the meshes, models and world sprites whose layers share a bit with it. 1 (layer 0) by default, as every object's." {
+  field layers u32 "Three.js layers, as Camera.layers.mask: the frame draws the meshes, models, world sprites, particle systems, lines and points whose layers share a bit with it. 1 (layer 0) by default, as every object's." {
     default 1
   }
 }

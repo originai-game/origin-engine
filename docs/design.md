@@ -334,9 +334,20 @@ main pass in `order`, so a target shows this frame's image. Each view has:
   tone mapped for ldr, and copied linear for hdr. A viewport rect draws
   after the post chain, under lines, the overlay and the UI.
 
-A view draws the opaque instances, skinned instances, terrain and sky,
-with the frame's shadow maps. Transparents, sprites, particles, text and
-post effects belong to the main camera. Views cull on the CPU while the
+A view draws what the main pass draws, from its eye and on its layers:
+opaque and transparent instances (sorted from its eye), skinned
+instances, terrain, sky, particles (billboards facing its camera, through
+its own `ParticleViewGpu`), scene lines and points (its own
+`LineUniform`) and world sprites and text (`sprites::build` once per view
+with its mask, the instances appended after the main camera's). The
+main camera's screen-space inputs stay its own: a view's sprites are not
+2D-lit and do not glow, its soft particles do not fade into depth, and
+trails (built facing the main eye), 2D fluids, screen sprites, the UI and
+the post chain are the main frame's. Of the post chain an `ldr` target or
+a viewport carries exposure and the tone curve (the resolve); an `hdr`
+target carries linear radiance for the frame that shows it to expose.
+The cost is explicit: a view draws everything its mask admits, so its
+`layers` and `every` are the knobs. Views cull on the CPU while the
 main camera, its shadow maps and the planar reflection keep GPU culling
 (`cull_gpu.rs`): under it a view's list appends every instance it draws
 to the instance buffer, since the sorted instances live in the culling's
@@ -352,8 +363,11 @@ do.
 **Layers.** Layers are three.js masks: bit n is layer n, everything
 defaults to 1, and a camera draws an object when `a & b != 0`.
 `RenderScene::instance_layers` and `skinned_layers` split runs and batches
-by mask. og-runtime fills them from og.Mesh and og.Model `layers`, and
-filters sprites, lines and points against og.Camera's mask.
+by mask; `sprite_layers`, `line_layers`, `point_layers` and
+`particle_layers` carry the other drawables' masks, and every camera (the
+main one with `camera_layers`, each view with its own) tests them in the
+renderer. og-runtime fills them from the `layers` of og.Mesh, og.Model,
+og.Sprite, og.Lines, og.Points and og.ParticleSystem.
 `og.render.raycast` makes the same test against the same per-entity masks.
 Shadow maps take every caster.
 

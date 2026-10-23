@@ -343,6 +343,10 @@ pub(crate) struct ViewSlot {
     pub light_buffers: [wgpu::Buffer; 3],
     pub clusters: crate::clusters::ClusterBuilder,
     pub resolve_buffer: wgpu::Buffer,
+    /// Its camera for the particle billboards (`ParticleViewGpu`) and for
+    /// the lines and points (`LineUniform`).
+    pub particle_buffer: wgpu::Buffer,
+    pub line_buffer: wgpu::Buffer,
     /// (size, samples, depth readable): the attachments below.
     key: ((u32, u32), u32, bool),
     pub hdr: wgpu::TextureView,
@@ -407,6 +411,14 @@ impl Views {
                 resolve_buffer: buffer(
                     "view resolve",
                     std::mem::size_of::<ResolveUniform>() as u64,
+                ),
+                particle_buffer: buffer(
+                    "view particles",
+                    std::mem::size_of::<crate::particles_gpu::ParticleViewGpu>() as u64,
+                ),
+                line_buffer: buffer(
+                    "view lines",
+                    std::mem::size_of::<crate::lines::LineUniform>() as u64,
                 ),
                 key,
                 hdr,
@@ -542,6 +554,30 @@ impl Views {
             let (w, h) = (p.size.0 as f32, p.size.1 as f32);
             f.screen = [w, h, 1.0 / w, 1.0 / h];
             queue.write_buffer(&slot.fx_buffer, 0, bytemuck::bytes_of(&f));
+            // Billboards face the view's camera; lines keep their width as a
+            // share of the image (CSS pixels of a frame of the view's height).
+            let view_t = p.frame.view.transpose();
+            let particles = crate::particles_gpu::ParticleViewGpu {
+                view_proj: vp,
+                cam_pos: p
+                    .position
+                    .extend(p.frame.orthographic as u32 as f32)
+                    .to_array(),
+                cam_forward: p.frame.forward.extend(0.0).to_array(),
+                cam_right: view_t.x_axis.truncate().extend(0.0).to_array(),
+                cam_up: view_t.y_axis.truncate().extend(0.0).to_array(),
+                screen: f.screen,
+            };
+            queue.write_buffer(&slot.particle_buffer, 0, bytemuck::bytes_of(&particles));
+            let lines = crate::lines::LineUniform::new(
+                p.frame.view_proj,
+                p.frame.proj,
+                p.size.0,
+                p.size.1,
+                scene.css_height,
+                false,
+            );
+            queue.write_buffer(&slot.line_buffer, 0, bytemuck::bytes_of(&lines));
         }
         for p in plans {
             match p.dest {

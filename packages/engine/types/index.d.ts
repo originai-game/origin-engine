@@ -2847,7 +2847,7 @@ export interface Camera {
    */
   zoneScrollTime: number;
   /**
-   * Three.js layers, as Camera.layers.mask: the frame draws the meshes, models and world sprites whose layers share a bit with it. 1 (layer 0) by default, as every object's.
+   * Three.js layers, as Camera.layers.mask: the frame draws the meshes, models, world sprites, particle systems, lines and points whose layers share a bit with it. 1 (layer 0) by default, as every object's.
    *
    * @default 1
    */
@@ -5288,6 +5288,12 @@ export interface ParticleSystem {
    * @default true
    */
   visible: boolean;
+  /**
+   * Three.js layers, as Mesh.layers: its particles (billboards and 2D sprite particles alike) are drawn by the cameras whose masks share a bit with it (og.Camera, og.CameraView, og.Mirror).
+   *
+   * @default 1
+   */
+  layers: number;
 }
 
 /**
@@ -7051,7 +7057,7 @@ export interface Lines {
    */
   visible: boolean;
   /**
-   * Three.js layers, as Mesh.layers: drawn by the main camera when its mask shares a bit (secondary cameras do not draw lines).
+   * Three.js layers, as Mesh.layers: drawn by every camera whose mask shares a bit with it (og.Camera, og.CameraView, og.Mirror).
    *
    * @default 1
    */
@@ -7107,7 +7113,7 @@ export interface Points {
    */
   visible: boolean;
   /**
-   * Three.js layers, as Mesh.layers: drawn by the main camera when its mask shares a bit (secondary cameras do not draw points).
+   * Three.js layers, as Mesh.layers: drawn by every camera whose mask shares a bit with it (og.Camera, og.CameraView, og.Mirror).
    *
    * @default 1
    */
@@ -7262,7 +7268,7 @@ export interface RenderTargetInfo {
 
 /**
  * A secondary camera, as a second three.js camera rendered with setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z, as og.Camera) into a render target (target), or, without one, into a rect of the frame (viewport: split-screen, picture-in-picture) over the finished image and under the UI.
- * It draws the opaque meshes and models on its layers (skinned and with any material: hooks and full shaders run their vertex and fragment entries), the terrain and the sky, lit by the frame's lights and shadowed by its shadow maps. Transparent meshes, sprites, particles, text, lines and the post effects are the main camera's. Views draw lowest order first, all before the frame.
+ * It draws what the main camera draws, from its own eye and on its own layers: the meshes and models (skinned and with any material: hooks and full shaders run their vertex and fragment entries), opaque then transparent back to front, the terrain and the sky, the particle systems, og.Lines and og.Points, world sprites (og.Sprite, og.render.sprite) and world text, lit by the frame's lights and shadowed by its shadow maps. Each view is a draw of everything its layers admit: keep a view cheap with its layers and `every`. Screen sprites, the UI and debug draw stay on the main frame. Of the post chain, an ldr target and a viewport carry the view's exposure (its camera's) and the frame's tone curve; an hdr target carries linear radiance before exposure, exposed by the frame that shows it. Neither runs the frame's bloom, AO, SSR, depth of field, colour grading or custom post passes, whose inputs are the main camera's. Sprites in a view are not 2D-lit and do not glow; trails and 2D fluids draw on the main frame only. Views draw lowest order first, all before the frame.
  *
  * The value of the `CameraView` component (token `og.CameraView`).
  */
@@ -21341,7 +21347,7 @@ export declare namespace og {
   /**
    * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: compute on the full tier, the CPU on WebGL2, identical either way.
    */
-  const ParticleSystem: ComponentType<{ readonly emitter: FieldSpec<"ParticleEmitter">; readonly seed: FieldSpec<"u32">; readonly startTick: FieldSpec<"u32">; readonly stopTick: FieldSpec<"u32">; readonly visible: FieldSpec<"bool"> }, ParticleSystem>;
+  const ParticleSystem: ComponentType<{ readonly emitter: FieldSpec<"ParticleEmitter">; readonly seed: FieldSpec<"u32">; readonly startTick: FieldSpec<"u32">; readonly stopTick: FieldSpec<"u32">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32"> }, ParticleSystem>;
   /**
    * A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail.
    */
@@ -21373,7 +21379,7 @@ export declare namespace og {
   const Points: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly size: FieldSpec<"f32">; readonly sizeAttenuation: FieldSpec<"bool">; readonly depthTest: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32"> }, Points>;
   /**
    * A secondary camera, as a second three.js camera rendered with setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z, as og.Camera) into a render target (target), or, without one, into a rect of the frame (viewport: split-screen, picture-in-picture) over the finished image and under the UI.
-   * It draws the opaque meshes and models on its layers (skinned and with any material: hooks and full shaders run their vertex and fragment entries), the terrain and the sky, lit by the frame's lights and shadowed by its shadow maps. Transparent meshes, sprites, particles, text, lines and the post effects are the main camera's. Views draw lowest order first, all before the frame.
+   * It draws what the main camera draws, from its own eye and on its own layers: the meshes and models (skinned and with any material: hooks and full shaders run their vertex and fragment entries), opaque then transparent back to front, the terrain and the sky, the particle systems, og.Lines and og.Points, world sprites (og.Sprite, og.render.sprite) and world text, lit by the frame's lights and shadowed by its shadow maps. Each view is a draw of everything its layers admit: keep a view cheap with its layers and `every`. Screen sprites, the UI and debug draw stay on the main frame. Of the post chain, an ldr target and a viewport carry the view's exposure (its camera's) and the frame's tone curve; an hdr target carries linear radiance before exposure, exposed by the frame that shows it. Neither runs the frame's bloom, AO, SSR, depth of field, colour grading or custom post passes, whose inputs are the main camera's. Sprites in a view are not 2D-lit and do not glow; trails and 2D fluids draw on the main frame only. Views draw lowest order first, all before the frame.
    */
   const CameraView: ComponentType<{ readonly target: FieldSpec<"RenderTarget">; readonly viewportX: FieldSpec<"f32">; readonly viewportY: FieldSpec<"f32">; readonly viewportWidth: FieldSpec<"f32">; readonly viewportHeight: FieldSpec<"f32">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly exposure: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly order: FieldSpec<"i32">; readonly clear: FieldSpec<"bool">; readonly clearColor: FieldSpec<"Color">; readonly every: FieldSpec<"u32">; readonly active: FieldSpec<"bool"> }, CameraView>;
   /**
