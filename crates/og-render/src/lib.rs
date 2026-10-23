@@ -62,9 +62,11 @@ mod light2d;
 mod lightmap;
 mod lines;
 pub mod lod;
+mod probe_content;
 mod probe_select;
 mod probes;
 mod ssr;
+pub use probe_content::{ProbeContent, ProbeRoom};
 pub use probes::{
     MAX_REFLECTION_PROBES, PROBE_MAX_RESOLUTION, PROBE_MIN_RESOLUTION, ProbeCapture, ProbeMode,
     ReflectionProbe,

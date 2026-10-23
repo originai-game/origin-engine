@@ -4,11 +4,13 @@
 //! captures back with.
 //!
 //! A probe's bake is keyed by what it would capture: its position (to the
-//! millimetre), box and face size (`probes/<16 hex digits>`, an
+//! millimetre), box and face size, and its room's content
+//! (`og_render::ProbeContent`: the meshes, materials, textures, terrain,
+//! scatter and lights in its box, by value) (`probes/<16 hex digits>`, an
 //! `og.EnvironmentMap` output of the manifest). A baked probe whose key is
-//! in the bundle samples that map; one whose key is not (never baked, or
-//! moved since) draws its own capture on its first frame, as a realtime
-//! probe does every `interval` ticks.
+//! in the bundle samples that map; one whose key is not (never baked,
+//! moved, or its room changed since) draws its own capture on its first
+//! frame, as a realtime probe does every `interval` ticks.
 
 use super::engine::Engine;
 use super::extract::{Hierarchy, RenderState};
@@ -23,15 +25,20 @@ use std::collections::BTreeMap;
 #[derive(Default)]
 pub(crate) struct ProbeBakes {
     pub tried: BTreeMap<String, Option<og_render::EnvironmentMapHandle>>,
+    /// The rooms' content hashes, kept across frames.
+    pub content: og_render::ProbeContent,
+    /// The last frame's baked probes, by entity: their key and room.
+    pub rooms: BTreeMap<u64, (String, og_render::ProbeRoom)>,
 }
 
-/// The asset id of `p`'s bake.
-pub(crate) fn key(p: &ReflectionProbe) -> String {
+/// The asset id of `p`'s bake, whose room hashes to `room`.
+pub(crate) fn key(p: &ReflectionProbe, room: u64) -> String {
     let mut h = StableHasher::new();
     for v in p.position.to_array().into_iter().chain(p.size.to_array()) {
         h.write_u64((v * 1000.0).round() as i64 as u64);
     }
     h.write_u64(p.face_size() as u64);
+    h.write_u64(room);
     format!("probes/{:016x}", h.finish())
 }
 
@@ -64,9 +71,6 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         p.interval = v["interval"].as_u64().unwrap_or(30).max(1) as u32;
         p.intensity = f(&v, "intensity", 1.0).max(0.0);
         p.blend_distance = f(&v, "blendDistance", 1.0).max(0.0);
-        if p.mode == ProbeMode::Baked {
-            p.baked = rs.probe_bakes.tried.get(&key(&p)).copied().flatten();
-        }
         probes.push(p);
     }
     let eye = rs.scene.camera.position;
@@ -80,19 +84,38 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     rs.scene.reflection_probes = probes;
 }
 
-/// After extraction: the bakes of the frame's baked probes not tried yet,
-/// loaded from the bundle when it has them (their probes sample them from
-/// this frame on).
+/// After extraction (the room complete): each baked probe's key, from its
+/// room's content, and its bake, loaded from the bundle the first time the
+/// key is seen (the probe samples it from this frame on; none: it draws its
+/// own capture).
 pub(crate) fn load_bakes(eng: &Engine, rs: &mut RenderState) {
-    let wanted: Vec<(usize, String)> = rs
-        .scene
-        .reflection_probes
-        .iter()
-        .enumerate()
-        .filter(|(_, p)| p.mode == ProbeMode::Baked && p.baked.is_none())
-        .map(|(i, p)| (i, key(p)))
-        .filter(|(_, k)| !rs.probe_bakes.tried.contains_key(k))
-        .collect();
+    let wanted = apply_bakes(rs);
+    load(eng, rs, wanted);
+}
+
+/// Each baked probe's key and the bake already tried under it (a capture
+/// between frames uses these without loading); answers the probes whose
+/// keys were never tried, with their keys.
+pub(crate) fn apply_bakes(rs: &mut RenderState) -> Vec<(usize, String)> {
+    rs.probe_bakes.rooms.clear();
+    let mut wanted = Vec::new();
+    for i in 0..rs.scene.reflection_probes.len() {
+        let p = rs.scene.reflection_probes[i];
+        if p.mode != ProbeMode::Baked {
+            continue;
+        }
+        let room = rs.probe_bakes.content.room(&rs.scene, &p);
+        let k = key(&p, room.hash);
+        match rs.probe_bakes.tried.get(&k) {
+            Some(&h) => rs.scene.reflection_probes[i].baked = h,
+            None => wanted.push((i, k.clone())),
+        }
+        rs.probe_bakes.rooms.insert(p.id, (k, room));
+    }
+    wanted
+}
+
+fn load(eng: &Engine, rs: &mut RenderState, wanted: Vec<(usize, String)>) {
     for (i, k) in wanted {
         let size = rs.scene.reflection_probes[i].face_size();
         let map = {
@@ -108,6 +131,37 @@ pub(crate) fn load_bakes(eng: &Engine, rs: &mut RenderState) {
         rs.probe_bakes.tried.insert(k, handle);
         rs.scene.reflection_probes[i].baked = handle;
     }
+}
+
+/// The model assets whose meshes or materials a room draws (sorted), and
+/// whether some of its meshes are not a model's (built by the game's code).
+fn room_assets(
+    rs: &RenderState,
+    assets: &super::assets::Assets,
+    room: &og_render::ProbeRoom,
+) -> (Vec<String>, bool) {
+    let mut found = std::collections::BTreeSet::new();
+    let mut covered = std::collections::BTreeSet::new();
+    for (&model, parts) in &rs.models {
+        let lods = rs.model_lods.get(&model);
+        let meshes = parts.iter().map(|p| p.0).chain(
+            lods.into_iter()
+                .flat_map(|l| l.parts.iter().flatten().map(|x| x.0)),
+        );
+        let mut drawn = false;
+        for m in meshes {
+            if room.meshes.contains(&m) {
+                covered.insert(m.index());
+                drawn = true;
+            }
+        }
+        drawn |= parts.iter().any(|p| room.materials.contains(&p.1));
+        if drawn && let Some(e) = assets.entries.get((model & 0xffff_ffff) as usize) {
+            found.insert(e.path.clone());
+        }
+    }
+    let built = room.meshes.iter().any(|m| !covered.contains(&m.index()));
+    (found.into_iter().collect(), built)
 }
 
 /// The `bake_probes` dump: every probe of the last frame whose capture the
@@ -129,15 +183,27 @@ pub(crate) fn register_bake_dump(probe: &mut og_probe::Probe, engine: u32) {
                 .as_ref()
                 .ok_or("no renderer: bake_probes reads the probes' captures back")?;
             let mut out = Vec::new();
+            let assets = eng.assets.borrow();
             for p in &rs.scene.reflection_probes {
+                let Some((k, room)) = rs.probe_bakes.rooms.get(&p.id) else {
+                    continue;
+                };
                 let Some(read) = backend.read_reflection_probe(p.id) else {
                     continue;
                 };
                 let (size, levels) = read?;
+                let (models, built) = room_assets(&rs, &assets, room);
                 out.push(json!({
-                    "key": key(p),
+                    "key": k,
                     "entity": p.id,
                     "size": size,
+                    "position": p.position.to_array(),
+                    "box": p.size.to_array(),
+                    "room": format!("{:016x}", room.hash),
+                    // The model assets drawn in the room, and whether the
+                    // game's code built some of it (og doctor's staleness).
+                    "assets": models,
+                    "built": built,
                     "levels": levels,
                 }));
             }
