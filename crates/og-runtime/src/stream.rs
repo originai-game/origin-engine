@@ -618,6 +618,8 @@ fn replace_texture(
     match src {
         TextureSource::Rgba(d) => scene.set_texture(h, d),
         TextureSource::Encoded(u) => scene.set_texture_upload(h, u),
+        // A render target is never streamed: the renderer owns its pixels.
+        TextureSource::Target(_) => false,
     };
 }
 

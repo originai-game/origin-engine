@@ -7,7 +7,10 @@
 //   water       og.Water over an og.WaterSurface: depth colour, foam at the
 //               posts, reflections, a crate dropped in that splashes
 //   shaders     og.load.shader: a sphere dissolving by noise (its amount set
-//               with og.render.setShaderParam) and wind-swayed grass
+//               with og.render.setShaderParam), wind-swayed grass, a slab
+//               drawn by a full custom shader (`mode full lit`) whose shadow
+//               has the same holes as its cut, all under a CRT custom post
+//               pass (og.load.post, PostEffects.custom1)
 //   controller  og.CharacterController walking up a slope and stairs, onto
 //               a moving platform that carries it, and jumping
 //   joints      a motorised hinge, a chain of ball joints, a spring, and the
@@ -56,6 +59,9 @@ export const E5 = defineComponent("E5", {
   /** Ticks since the station was shown. */
   shown: u32(0),
   dissolve: f64(0),
+  /** The full-shader slab's material and the CRT post pass. */
+  fullDissolve: f64(0),
+  crt: f64(0),
   crate: f64(0),
   pondCrate: f64(0),
   hero: f64(0),
@@ -107,6 +113,8 @@ export const E5Show = defineSystem(
         // The dissolve sweeps 0 → 0.8 over 3 s and back.
         const phase = (time.tick % 360) / 360;
         must(og.render.setShaderParam(world, s.dissolve as unknown as Material, "amount", [0.8 * (phase < 0.5 ? phase * 2 : 2 - phase * 2)]));
+        // The full shader's cut opens from 0.25 to 0.55 over the same period.
+        must(og.render.setShaderParam(world, s.fullDissolve as unknown as Material, "amount", [0.25 + 0.3 * (phase < 0.5 ? phase * 2 : 2 - phase * 2)]));
         break;
       }
       case "controller": {
@@ -241,6 +249,8 @@ export function showE5(world: World, station: E5Station): void {
     case "shaders":
       look({ x: x, y: 2.2, z: 6.5 }, { x: x, y: 0.9, z: -1 });
       sunAt({ x: -0.45, y: -0.8, z: -0.35 }, 3);
+      // The CRT over the whole station (main.ts' show clears it elsewhere).
+      if (e !== null) must(world.resource(og.PostEffects)).custom1 = must(world.get(e, E5)).crt as never;
       break;
     case "controller":
       look({ x: x + 2.5, y: 3.5, z: 11 }, { x: x + 2.5, y: 1.2, z: 0 });
@@ -353,9 +363,16 @@ export function buildE5(world: World, k: Kit, walkerModel: Asset, walkerRig: { s
     const grassShader = must(og.load.shader(world, "shaders/grass.ogt"));
     const dissolve = must(og.render.shaderMaterial(world, dissolveShader, { color: { r: 0.9, g: 0.62, b: 0.2 }, roughness: 0.4, alphaTest: 0.5, side: "double" }));
     mesh(world, "dissolving", k.sphere, dissolve, { x: x - 1.6, y: 1.2, z: -1 }, { scale: { x: 2, y: 2, z: 2 } });
-    const solid = must(og.render.shaderMaterial(world, dissolveShader, { color: { r: 0.15, g: 0.55, b: 0.6 }, roughness: 0.4, alphaTest: 0.5 }));
-    must(og.render.setShaderParam(world, solid, "amount", [0.35]));
-    mesh(world, "cut", k.box, solid, { x: x + 1.8, y: 0.8, z: -1.5 }, { scale: { x: 1.4, y: 1.4, z: 1.4 }, quaternion: axisAngle({ x: 0, y: 1, z: 0 }, 0.6) });
+    // A full custom shader: its own vertex and fragment entries; the
+    // shadow maps and the prepass run them too, so the slab's shadow on the
+    // ground behind it has the holes of its cut.
+    const fullShader = must(og.load.shader(world, "shaders/dissolve-full.ogt"));
+    const fullDissolve = must(og.render.shaderMaterial(world, fullShader, { color: { r: 0.15, g: 0.55, b: 0.6 }, roughness: 0.4, alphaTest: 0.5, side: "double" }));
+    // One double-sided plane (a box's back face would cut its own holes
+    // elsewhere and fill the front's in the shadow).
+    const panel = must(og.render.planeGeometry(world, { width: 2.2, height: 1.9 }));
+    mesh(world, "full-dissolve", panel, fullDissolve, { x: x + 1.9, y: 2.1, z: -1.4 }, { quaternion: axisAngle({ x: 0, y: 1, z: 0 }, 0.9) });
+    const crt = must(og.load.post(world, "post/crt.ogt"));
     const blade = must(og.render.boxGeometry(world, { width: 0.06, height: 0.7, depth: 0.01 }));
     const bladeMat = must(og.render.shaderMaterial(world, grassShader, { color: { r: 0.3, g: 0.55, b: 0.16 }, roughness: 0.8, side: "double" }));
     must(og.render.setShaderParam(world, bladeMat, "base", [-0.35]));
@@ -367,7 +384,7 @@ export function buildE5(world: World, k: Kit, walkerModel: Asset, walkerRig: { s
       const s = 0.7 + rnd() * 0.6;
       mesh(world, `blade-${i}`, blade, bladeMat, { x: bx, y: 0.35 * s, z: bz }, { quaternion: axisAngle({ x: 0, y: 1, z: 0 }, (rnd() - 0.5) * 1.6), scale: { x: s, y: s, z: s } });
     }
-    world.set(world.find("e5")!, E5, { dissolve });
+    world.set(world.find("e5")!, E5, { dissolve, fullDissolve, crt });
     },
   // controller: a slope, stairs, a moving platform, and the character.
     controller: (world: World) => {

@@ -105,6 +105,11 @@ pub const SCENES: &[&str] = &[
     "points",
     "wireframe",
     "debug-overlay",
+    "views-monitor",
+    "views-mirror",
+    "views-split",
+    "shader-full-dissolve",
+    "post-crt",
 ];
 
 /// Scenes rendered natively only, beside [`SCENES`] (`og-gfx --all` takes
@@ -509,6 +514,21 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "points" => g.scene = crate::geometry_scenes::points_scene(),
         "wireframe" => g.scene = crate::geometry_scenes::wireframe_scene(),
         "debug-overlay" => g.scene = crate::geometry_scenes::debug_scene(),
+        // Render targets and secondary cameras (docs/depth.md §8): a
+        // monitor showing a second camera's view (with an object on a layer
+        // only it sees), a mirror reflecting the room, split-screen.
+        "views-monitor" => g.scene = crate::target_scenes::monitor_scene(),
+        "views-mirror" => g.scene = crate::target_scenes::mirror_scene(),
+        "views-split" => g.scene = crate::target_scenes::split_scene(),
+        // A full custom shader (`mode full`): a dissolve cut through a
+        // sphere and a box, their shadows cut the same way.
+        "shader-full-dissolve" => g.scene = crate::target_scenes::full_dissolve_scene(0.45),
+        // A custom post pass (`type post`): the room through a CRT curve.
+        "post-crt" => {
+            g.scene = crate::target_scenes::room();
+            let crt = g.scene.add_post(og_render::example_crt());
+            g.scene.custom_post.push(crt);
+        }
         // Materials sampling texture arrays: eight cubes of one tile
         // material (colour and normal arrays), each on its own layer or the
         // material's, one batch; a cube of layer 1 as plain 2D textures;

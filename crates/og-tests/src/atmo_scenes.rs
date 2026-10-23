@@ -520,6 +520,7 @@ pub fn dissolve_shader() -> MaterialShader {
             param("edgeWidth", ParamKind::Float, [0.08, 0.0, 0.0, 0.0]),
             param("edgeColor", ParamKind::Vec3, [4.0, 1.6, 0.4, 0.0]),
         ],
+        mode: Default::default(),
     }
 }
 
@@ -537,6 +538,7 @@ pub fn grass_shader() -> MaterialShader {
             param("base", ParamKind::Float, [0.0; 4]),
             param("tip", ParamKind::Vec3, [0.75, 0.85, 0.35, 0.0]),
         ],
+        mode: Default::default(),
     }
 }
 

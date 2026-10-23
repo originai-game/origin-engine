@@ -76,6 +76,35 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
             &format!("stylise object ({p})"),
             crate::stylise_object::object_source(palette, tables),
         );
+        // A full custom shader (custom.rs), lit and unlit, and its casters.
+        let example = crate::custom::example();
+        for lit in [true, false] {
+            add(
+                &format!("custom full lit={lit} ({p})"),
+                crate::custom::lit_source(&example, lit, palette, tables),
+            );
+        }
+        add(
+            &format!("custom full shadow ({p})"),
+            crate::custom::shadow_source(&example, palette),
+        );
+    }
+    add("view resolve", crate::views::resolve_color_source());
+    add(
+        "custom post (crt)",
+        crate::post_custom::post_module_source(&crate::post_custom::example_crt()),
+    );
+    // A target's depth texture is the full tier's (RenderCapabilities
+    // reports it): GLSL ES 3.0 cannot load from a depth texture.
+    if full {
+        add(
+            "view resolve depth",
+            crate::views::resolve_depth_source(false),
+        );
+        add(
+            "view resolve depth (msaa)",
+            crate::views::resolve_depth_source(true),
+        );
     }
     add("lines", crate::lines::LINES_WGSL.to_string());
     add("sky", format!("{}{}", crate::FRAME_WGSL, crate::SKY_WGSL));

@@ -21,7 +21,8 @@
 // lights, moon, materials, skinned, and the 3D fluid station (src/sph.ts):
 // fluids3d; P4 the physical materials station (src/physical.ts): physical,
 // and the image-based lighting station (src/ibl.ts): environment; the
-// depth wave the geometry station (src/geometry.ts): geometry.
+// depth wave the geometry station (src/geometry.ts): geometry, and the views
+// station (src/views.ts): views (render targets, a mirror, split-screen).
 //
 // Commands: station:<name> (or station:<1-25>). `dump_entity:stage` reads
 // the Stage component (the station, the frame counter of the pulses);
@@ -38,10 +39,11 @@ import { PM_STATIONS, buildPM, showPM, type PMStation } from "./physical.ts";
 import { IBL_STATIONS, buildIBL, resetIBL, showIBL, type IBLStation } from "./ibl.ts";
 import { GEO_STATIONS, GEOShow, buildGEO, resetGEO, showGEO, type GEOStation } from "./geometry.ts";
 import { DEPTH_STATIONS, buildDepth, resetDepth, showDepth, type DepthStation } from "./depth.ts";
+import { VW_STATIONS, buildVW, resetVW, showVW, type VWStation } from "./views.ts";
 import { LOOK_PRESETS, LOOK_STATIONS, applyLookPreset, buildLooks, resetLooks, showLooks, type LookStation } from "./looks.ts";
 
 /** The first five stations, then the E5 round's (src/e5.ts) and phase 2's (src/p2.ts, src/anim-physics.ts, src/render.ts, src/sph.ts). */
-export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS, ...P2_STATIONS, ...AP_STATIONS, ...RD_STATIONS, ...SPH_STATIONS, ...PM_STATIONS, ...IBL_STATIONS, ...LOOK_STATIONS, ...GEO_STATIONS, ...DEPTH_STATIONS] as const;
+export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS, ...P2_STATIONS, ...AP_STATIONS, ...RD_STATIONS, ...SPH_STATIONS, ...PM_STATIONS, ...IBL_STATIONS, ...LOOK_STATIONS, ...GEO_STATIONS, ...DEPTH_STATIONS, ...VW_STATIONS] as const;
 export type Station = (typeof STATIONS)[number];
 
 /** The showcase's state, on one entity named "stage". */
@@ -207,7 +209,7 @@ function hud(world: World, font: Font, station: Station, look: number): void {
   const ap = p2 - P2_STATIONS.length;
   const rd = ap - AP_STATIONS.length;
   const pm = rd - RD_STATIONS.length - SPH_STATIONS.length;
-  const label = i < 5 ? `station ${i + 1}/5  ${station}` : p2 < 0 ? `E5 station ${e5 + 1}/${E5_STATIONS.length}  ${station}` : ap < 0 ? `P2 station ${p2 + 1}/${P2_STATIONS.length}  ${station}` : rd < 0 ? `P2 station ${ap + 1}/${AP_STATIONS.length}  ${station}` : pm < 0 ? `phase 2 station  ${station}` : (GEO_STATIONS as readonly string[]).includes(station) ? `depth station  ${station}` : (IBL_STATIONS as readonly string[]).includes(station) ? `phase 4 station  ${station}` : `P4 station  ${station}`;
+  const label = i < 5 ? `station ${i + 1}/5  ${station}` : p2 < 0 ? `E5 station ${e5 + 1}/${E5_STATIONS.length}  ${station}` : ap < 0 ? `P2 station ${p2 + 1}/${P2_STATIONS.length}  ${station}` : rd < 0 ? `P2 station ${ap + 1}/${AP_STATIONS.length}  ${station}` : pm < 0 ? `phase 2 station  ${station}` : (GEO_STATIONS as readonly string[]).includes(station) || (DEPTH_STATIONS as readonly string[]).includes(station) || (VW_STATIONS as readonly string[]).includes(station) ? `depth station  ${station}` : (IBL_STATIONS as readonly string[]).includes(station) ? `phase 4 station  ${station}` : `P4 station  ${station}`;
   const line = looks ? `${label}  ${LOOK_PRESETS[look - 1] ?? "none"}` : label;
   og.render.text(world, { font, text: line, position: { x: 34, y: 76, z: 0 }, size: 18, color: { r: 1, g: 0.72, b: 0.3 }, screen: true, layer: 2 });
   og.ui.anchor("Badge", { anchor: "bottomRight" }, () => og.ui.panel("BadgePanel", { padding: { left: 12, top: 8, right: 12, bottom: 8 } }, () => og.ui.label("BadgeText", "og.ui over the frame", {})));
@@ -229,6 +231,7 @@ function show(world: World, station: Station): void {
   Object.assign(post, {
     ao: false, outline: false, depthOfField: false, motionBlur: false, godRays: false, glow: false,
     lut: 0, vignette: false, chromaticAberration: 0, filmGrain: 0, flash: 0, shakeTrauma: 0,
+    custom1: 0, custom2: 0, custom3: 0, custom4: 0,
   });
   l2d.enabled = false;
   resetE5(world);
@@ -239,6 +242,7 @@ function show(world: World, station: Station): void {
   resetLooks(world);
   resetGEO(world);
   resetDepth(world);
+  resetVW(world);
   cam.orthographic = false;
   cam.fov = 50;
   settings.toneMapped = true;
@@ -323,6 +327,7 @@ function show(world: World, station: Station): void {
       else if ((LOOK_STATIONS as readonly string[]).includes(station)) showLooks(world, station as LookStation);
       else if ((GEO_STATIONS as readonly string[]).includes(station)) showGEO(world, station as GEOStation);
       else if ((DEPTH_STATIONS as readonly string[]).includes(station)) showDepth(world, station as DepthStation);
+      else if ((VW_STATIONS as readonly string[]).includes(station)) showVW(world, station as VWStation);
       else showE5(world, station as E5Station);
   }
 }
@@ -465,6 +470,8 @@ function build(world: World): void {
   buildGEO(world, { mat, ground: (x, c) => ground(world, x, c) });
   // The depth wave's render stations: levels of detail and reflections.
   buildDepth({ box, sphere, mat });
+  // The depth wave's views station: render targets, a mirror, split-screen.
+  buildVW(world, { box, sphere, mat, ground: (x, c) => ground(world, x, c), walker: walkerModel, rig });
 
   const stage = must(world.spawn({ name: "stage" }));
   world.insert(stage, Stage, {
@@ -499,7 +506,7 @@ export default og.game({
       if (stage !== null) world.set(stage, Stage, { look: LOOK_PRESETS.indexOf(slug as (typeof LOOK_PRESETS)[number]) + 1 });
     },
   },
-  commandHelp: { station: { usage: "<name|1-29>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, the render round's four (lights, moon, materials, skinned), the 3D fluid station (fluids3d), P4's physical materials (physical) and the image-based lighting station (environment), the looks station (looks), and the depth wave's geometry station (geometry: runtime geometry, lines, points, debug draw), lod (2,000 trees in levels of detail) and reflections (a reflection probe and SSR on a wet floor)." }, look: { usage: "<slug|none>", doc: "On the looks station: apply one of the engine's look presets (templates/looks/<slug>.ogt) to the diorama, or none." } },
+  commandHelp: { station: { usage: "<name|1-30>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, the render round's four (lights, moon, materials, skinned), the 3D fluid station (fluids3d), P4's physical materials (physical) and the image-based lighting station (environment), the looks station (looks), and the depth wave's geometry station (geometry: runtime geometry, lines, points, debug draw), lod (2,000 trees in levels of detail), reflections (a reflection probe and SSR on a wet floor) and views (a security monitor, a mirror and split-screen, from render targets and secondary cameras)." }, look: { usage: "<slug|none>", doc: "On the looks station: apply one of the engine's look presets (templates/looks/<slug>.ogt) to the diorama, or none." } },
   facts: (world) => {
     const e = world.find("stage");
     const s = e === null ? null : world.get(e, Stage);

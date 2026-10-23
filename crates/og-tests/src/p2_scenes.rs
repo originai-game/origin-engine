@@ -406,6 +406,7 @@ fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> {
             param("bulge", ParamKind::Float, [0.0; 4]),
             param("stripe", ParamKind::Vec3, [0.95, 0.85, 0.2, 0.0]),
         ],
+        mode: Default::default(),
     }
 }
 

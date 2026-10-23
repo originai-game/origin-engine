@@ -183,6 +183,9 @@ pub struct TextureData {
 pub enum TextureSource {
     Rgba(TextureData),
     Encoded(TextureUpload),
+    /// A render target's colour or depth ([`crate::RenderScene::add_render_target`]):
+    /// drawn on the GPU by a [`crate::View`], never uploaded.
+    Target(crate::TargetTexture),
 }
 
 impl TextureSource {
@@ -191,6 +194,7 @@ impl TextureSource {
         match self {
             TextureSource::Rgba(t) => (t.width, t.height),
             TextureSource::Encoded(t) => (t.desc.width, t.desc.height),
+            TextureSource::Target(t) => (t.width, t.height),
         }
     }
 }
@@ -1319,6 +1323,33 @@ pub struct RenderScene {
     /// on the ground plane y = 0 cast along [`RenderScene::light`], drawn
     /// before every sprite of its layer.
     pub sprite_shadows: Vec<SpriteShadow>,
+    /// Three.js layer masks of the instances, by index in `instances`
+    /// (bit `n` set: on layer `n`): an index past the end is on layer 0
+    /// alone (mask 1), as every object is in three.js. A camera draws the
+    /// instances whose mask shares a bit with its own
+    /// ([`RenderScene::camera_layers`], [`crate::View::layers`]); the shadow
+    /// maps take every caster whatever its layers, so a body hidden from a
+    /// first-person camera still casts its shadow.
+    pub instance_layers: Vec<u32>,
+    /// The same for `skinned_instances`.
+    pub skinned_layers: Vec<u32>,
+    /// The main camera's layer mask (three.js `Camera.layers`): it draws the
+    /// instances and skinned instances whose masks share a bit with it. 1
+    /// by default; 0 draws none of them (the sky, terrain, water,
+    /// particles, sprites and text are on every layer: a host filters its
+    /// sprites and lines by their own masks before it submits them).
+    pub camera_layers: u32,
+    /// Secondary cameras drawn into render targets or viewports of the
+    /// frame, before it in [`crate::View::order`] (`views.rs`).
+    pub views: Vec<crate::View>,
+    /// Custom post passes ([`RenderScene::add_post`], `post_custom.rs`) and
+    /// their parameters, by handle.
+    pub posts: Vec<crate::PostShader>,
+    pub post_params: Vec<[[f32; 4]; crate::MAX_SHADER_PARAMS]>,
+    /// The custom post passes the frame runs, in order (at most
+    /// [`crate::MAX_CUSTOM_POSTS`]), after the built-in effects and before
+    /// exposure, bloom and the tone curve (`PostEffects.custom` in the API).
+    pub custom_post: Vec<crate::PostHandle>,
     /// How each texture is sampled by sprites, tiles and text (by texture index).
     texture_filters: Vec<TextureFilter>,
     /// Live slots and generations of the removable kinds.
@@ -1380,6 +1411,13 @@ impl RenderScene {
             trail_styles: Vec::new(),
             terrain_data: Vec::new(),
             terrain_revisions: Vec::new(),
+            instance_layers: Vec::new(),
+            skinned_layers: Vec::new(),
+            camera_layers: 1,
+            posts: Vec::new(),
+            post_params: Vec::new(),
+            custom_post: Vec::new(),
+            views: Vec::new(),
             tick: 0,
             tick_rate: 60.0,
             particles: Vec::new(),
@@ -2466,7 +2504,7 @@ impl RenderScene {
     pub fn texture(&self, handle: TextureHandle) -> Option<&TextureData> {
         match self.textures.get(handle.index())? {
             TextureSource::Rgba(t) => Some(t),
-            TextureSource::Encoded(_) => None,
+            TextureSource::Encoded(_) | TextureSource::Target(_) => None,
         }
     }
 
@@ -2474,7 +2512,7 @@ impl RenderScene {
     pub fn texture_upload(&self, handle: TextureHandle) -> Option<&TextureUpload> {
         match self.textures.get(handle.index())? {
             TextureSource::Encoded(t) => Some(t),
-            TextureSource::Rgba(_) => None,
+            TextureSource::Rgba(_) | TextureSource::Target(_) => None,
         }
     }
 

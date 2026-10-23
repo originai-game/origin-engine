@@ -1606,8 +1606,14 @@ pub fn og_render_capabilities(world: u32) -> String {
                 "reflectionProbes": og_render::MAX_REFLECTION_PROBES,
             })
         })
+        .map(|mut c| {
+            if let (Value::Object(c), Value::Object(v)) = (&mut c, super::views::capabilities(&rs)) {
+                c.extend(v);
+            }
+            c
+        })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0 }))
+    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0 }))
         .to_string()
 }
 

@@ -63,6 +63,8 @@ impl Kind {
             "TerrainData" => Kind::Asset,
             // Depth S2: paths and timelines.
             "Path" | "TimelineAsset" => Kind::Asset,
+            // Depth S8: render targets and custom post passes.
+            "RenderTarget" | "Post" => Kind::Asset,
             "String" | "str" => Kind::Str,
             _ => return None,
         })

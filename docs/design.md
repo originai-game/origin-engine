@@ -308,6 +308,74 @@ S6).
   no SSR (`RenderCapabilities.ssr` is false), so its smooth surfaces show
   the probes alone.
 
+Render targets, views, layers and custom shaders (depth S8).
+
+**Render targets.** A render target (`targets.rs`) is two entries in the
+scene's texture table: its colour and, optionally, its depth. Any
+material slot, sprite or UI image samples it like any other texture, and
+there is no separate texture kind for a game to learn. Snapshot and
+restore keep the targets. A restored renderer draws every view on its
+next frame, so a target drawn every few ticks never shows the cut run.
+- `ldr` (Rgba8 sRGB) holds the view's finished image.
+- `hdr` (Rgba16Float) holds its linear radiance. The frame that shows it
+  exposes it, so a mirror matches the room.
+- The depth texture is drawn on the full tier only, because GLSL ES cannot
+  load a depth buffer. `RenderCapabilities.renderTargetDepth` reports
+  this; the member is never missing.
+
+**Views.** A view (`views.rs`, `og.CameraView`, `og.Mirror`) is a
+secondary camera. Each is a timed graph pass, `view-<i>`, drawn before the
+main pass in `order`, so a target shows this frame's image. Each view has:
+- its own frame and effect uniforms;
+- light clusters built from the frame's lights;
+- its HDR and depth attachments, kept while the view exists;
+- a resolve into its destination. A target destination is exposed and
+  tone mapped for ldr, and copied linear for hdr. A viewport rect draws
+  after the post chain, under lines, the overlay and the UI.
+
+A view draws the opaque instances, skinned instances, terrain and sky,
+with the frame's shadow maps. Transparents, sprites, particles, text and
+post effects belong to the main camera. A frame with views culls on the
+CPU, because GPU culling builds one camera's draw list.
+- `every` skips ticks.
+- A mirror reflects the main eye in its plane. It draws through an
+  off-axis frustum fitted to the quad's corners (Kooima), with the near
+  plane on the glass.
+- The id pass (`id_pass.rs`) and the probe always describe the main
+  camera.
+
+**Layers.** Layers are three.js masks: bit n is layer n, everything
+defaults to 1, and a camera draws an object when `a & b != 0`.
+`RenderScene::instance_layers` and `skinned_layers` split runs and batches
+by mask. og-runtime fills them from og.Mesh and og.Model `layers`, and
+filters sprites, lines and points against og.Camera's mask.
+`og.render.raycast` makes the same test against the same per-entity masks.
+Shadow maps take every caster.
+
+**Full custom shaders.** `type shader` with `mode full [lit|unlit]`
+(`custom.rs`, `shaders/custom_*.wgsl`) has its own `vertex` and
+`fragment` entries over a fixed binding contract:
+- `camera()`;
+- the model matrix, with the skin folded in and morphs applied;
+- `Params`;
+- `tex0` to `tex7`, the material's eight texture slots;
+- the `standard_vertex`, `standard_surface` and `noise3` helpers.
+
+The modules keep the built-in entry names and vertex buffers, so they
+draw through the hooked materials' pipelines. The prepass, every shadow
+pass, the water's reflection and every view run the user's vertex
+entry, and cut by its alpha. The cook validates each tier's modules
+(WGSL, SPIR-V, MSL, GLSL ES) with naga, as it does for hooks.
+
+**Custom post passes.** A `type post` asset (`post_custom.rs`, an
+og.PostPass blob) is a WGSL `post` function. It reads the previous pass,
+the lit image, the prepass's depth and normals, and its parameters.
+`PostEffects.custom1..4` names up to four passes, which run as
+`custom-post.<i>` after motion blur and before exposure, bloom and the
+tone curve. Each pass compiles in an error scope. One the device refuses
+is skipped and reported (`og.render.postErrors`); the frame draws as if
+the pass were absent.
+
 ### 2.7 Animation, physics, navigation, audio, UI **(D)**
 
 - **Animation**: glTF skins and clips, a blend tree asset (`.ogt`), state

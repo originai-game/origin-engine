@@ -2068,7 +2068,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     let mut drawn: Vec<(u32, u64)> = Vec::new();
     for (e, bytes) in &sprites {
         let (e, v) = (*e, Row::new(&r.sprite.1, bytes));
-        if !on(&v, "visible", true) {
+        // Off the main camera's layers: not drawn (secondary cameras draw no sprites).
+        let layers = v.uint("layers").map_or(1, |x| x as u32);
+        if !on(&v, "visible", true) || layers & scene.camera_layers == 0 {
             continue;
         }
         let m = h.world_of(e);

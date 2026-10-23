@@ -63,6 +63,7 @@ impl FrameTexture {
         let replaced = match &self.layers[frame] {
             TextureSource::Rgba(t) => scene.set_texture(self.texture, t.clone()),
             TextureSource::Encoded(u) => scene.set_texture_upload(self.texture, u.clone()),
+            TextureSource::Target(_) => false,
         };
         if replaced {
             self.shown = frame;

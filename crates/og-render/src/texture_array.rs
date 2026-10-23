@@ -52,6 +52,10 @@ impl TextureArrayData {
                         Mips::None => 1,
                     },
                 ),
+                // A render target is drawn on the GPU, never a layer.
+                TextureSource::Target(t) => {
+                    (t.width, t.height, TextureFormat::Rgba8, ColorSpace::Srgb, 1)
+                }
                 TextureSource::Encoded(u) => (
                     u.desc.width,
                     u.desc.height,
@@ -122,6 +126,7 @@ impl TextureArrayData {
             .iter()
             .map(|l| match l {
                 TextureSource::Encoded(u) => u.levels.concat(),
+                TextureSource::Target(t) => vec![0; t.width as usize * t.height as usize * 4],
                 TextureSource::Rgba(t) => {
                     let mut out = t.rgba.clone();
                     let (mut level, mut w, mut h) = (t.rgba.clone(), t.width, t.height);

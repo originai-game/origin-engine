@@ -2821,7 +2821,18 @@
         "Lines",
         "Points",
         "RaycastGeometryDesc",
-        "GeometryHit"
+        "GeometryHit",
+        "RenderTargetFormat",
+        "RenderTargetFormat",
+        "RenderTarget",
+        "RenderTarget",
+        "RenderTargetDesc",
+        "RenderTargetInfo",
+        "CameraView",
+        "Mirror",
+        "Post",
+        "Post",
+        "PostError"
       ],
       "consts": [
         {
@@ -3482,6 +3493,74 @@
           "returns": "Result<List<GeometryHit>>",
           "returnsDoc": "Refused for a zero or non-finite direction.",
           "publish": true
+        },
+        {
+          "name": "renderTarget",
+          "doc": "Make a render target: a texture an og.CameraView or og.Mirror draws into, its colour (RenderTargetInfo.texture) usable by any map, sprite or UI image, as three.js WebGLRenderTarget and its texture. Targets are drawn before the frame, so a material shows this frame's image; one a camera draws while it sees itself (a monitor in the room it films) shows the frame before.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns it."
+            },
+            {
+              "name": "desc",
+              "type": "RenderTargetDesc",
+              "optional": true,
+              "doc": "Its size, format and depth."
+            }
+          ],
+          "returns": "Result<RenderTargetInfo>",
+          "returnsDoc": "Refused for a side past RenderCapabilities.maxRenderTargetSize.",
+          "publish": true
+        },
+        {
+          "name": "setPostParam",
+          "doc": "Set a parameter of a custom post pass, by the name its asset declares: a number for float, two to four for vec2, vec3, vec4 and color. Every frame it runs in reads it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the pass."
+            },
+            {
+              "name": "post",
+              "type": "Post",
+              "optional": false,
+              "doc": "The pass, from og.load.post."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The parameter's name."
+            },
+            {
+              "name": "value",
+              "type": "List<f32>",
+              "optional": false,
+              "doc": "Its value; missing components are 0."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a pass not loaded in this world or a parameter it does not declare.",
+          "publish": true
+        },
+        {
+          "name": "postErrors",
+          "doc": "The custom post passes PostEffects.custom1 to custom4 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world asked."
+            }
+          ],
+          "returns": "List<PostError>",
+          "publish": true
         }
       ],
       "interfaces": [],
@@ -3744,7 +3823,7 @@
         },
         {
           "name": "shader",
-          "doc": "A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path.",
+          "doc": "A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots; the og-game skill's Full custom shaders section), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path.",
           "params": [
             {
               "name": "world",
@@ -3761,6 +3840,27 @@
           ],
           "returns": "Result<Shader>",
           "returnsDoc": "Refused for a path not in the bundle or not a shader.",
+          "publish": true
+        },
+        {
+          "name": "post",
+          "doc": "A custom post pass for PostEffects.custom1 to custom4, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The asset id, such as `post/crt.ogt`."
+            }
+          ],
+          "returns": "Result<Post>",
+          "returnsDoc": "Refused for a path not in the bundle or not a post pass.",
           "publish": true
         },
         {
@@ -12948,6 +13048,13 @@
           "default": 0,
           "minimum": 0,
           "x-og-unit": "s"
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Three.js layers, as Camera.layers.mask: the frame draws the meshes, models and world sprites whose layers share a bit with it. 1 (layer 0) by default, as every object's.",
+          "default": 1
         }
       },
       "additionalProperties": false
@@ -14181,6 +14288,13 @@
           "default": -1,
           "minimum": -1,
           "x-og-tunable": true
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Three.js layers, as Object3D.layers.mask: bit n set puts it on layer n. A camera (og.Camera, og.CameraView, og.Mirror) draws it when their masks share a bit, and og.render.raycast tests it when its own `layers` does. Shadow maps take every caster whatever its layers, so a body hidden from a first-person camera still casts.",
+          "default": 1
         }
       },
       "additionalProperties": false
@@ -14928,6 +15042,26 @@
           "minimum": 0,
           "maximum": 1,
           "x-og-tunable": true
+        },
+        "custom1": {
+          "$ref": "#/$defs/Post",
+          "description": "The first custom post pass (og.load.post, a `type post` asset; 0 is none). PostEffects.custom1 to custom4 are an ordered list: each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (it turns the prepass on). Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped.",
+          "default": 0
+        },
+        "custom2": {
+          "$ref": "#/$defs/Post",
+          "description": "The second custom post pass, over the first's output (0 skips the slot).",
+          "default": 0
+        },
+        "custom3": {
+          "$ref": "#/$defs/Post",
+          "description": "The third custom post pass.",
+          "default": 0
+        },
+        "custom4": {
+          "$ref": "#/$defs/Post",
+          "description": "The fourth custom post pass.",
+          "default": 0
         }
       },
       "additionalProperties": false
@@ -16598,6 +16732,13 @@
           "type": "boolean",
           "description": "Whether it is drawn.",
           "default": true
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Three.js layers, as Mesh.layers: a world sprite is drawn by the cameras whose masks share a bit with it (a screen sprite draws on every camera's frame).",
+          "default": 1
         }
       },
       "additionalProperties": false
@@ -16947,6 +17088,22 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "How many og.ReflectionProbe components one frame samples (MAX_REFLECTION_PROBES on every tier)."
+        },
+        "renderTargetDepth": {
+          "type": "boolean",
+          "description": "Whether a render target made with `depth` gets its view's depth drawn (the full tier). WebGL2 cannot read a depth buffer in a shader: there the depth texture stays cleared to 0, and every other part of the target draws."
+        },
+        "maxRenderTargetSize": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The largest side of a render target (the device's largest 2D texture)."
+        },
+        "maxCustomPosts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most custom post passes a frame runs (PostEffects.custom1 to custom4 on every tier)."
         }
       },
       "required": [
@@ -16960,7 +17117,10 @@
         "height",
         "stylise",
         "ssr",
-        "reflectionProbes"
+        "reflectionProbes",
+        "renderTargetDepth",
+        "maxRenderTargetSize",
+        "maxCustomPosts"
       ],
       "additionalProperties": false
     },
@@ -17041,7 +17201,7 @@
     "Shader": {
       "x-og-kind": "handle",
       "x-og-module": "render",
-      "description": "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read.",
+      "description": "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read.",
       "type": "integer",
       "minimum": 0
     },
@@ -17750,6 +17910,13 @@
           "type": "boolean",
           "description": "Whether it is drawn.",
           "default": true
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Three.js layers, as Mesh.layers: drawn by the main camera when its mask shares a bit (secondary cameras do not draw lines).",
+          "default": 1
         }
       },
       "additionalProperties": false
@@ -17803,6 +17970,13 @@
           "type": "boolean",
           "description": "Whether it is drawn.",
           "default": true
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Three.js layers, as Mesh.layers: drawn by the main camera when its mask shares a bit (secondary cameras do not draw points).",
+          "default": 1
         }
       },
       "additionalProperties": false
@@ -17829,7 +18003,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "A bit mask of the layers tested, as three.js Raycaster.layers: an entity's meshes are tested when its layers share a bit with it. Every mesh is on layer 1 (bit 0) until per-object layers land, so the default tests them all.",
+          "description": "A bit mask of the layers tested, as three.js Raycaster.layers: an og.Mesh or og.Model is tested when its own layers (Mesh.layers, Model.layers, 1 by default) share a bit with it, so the default tests every mesh on layer 0.",
           "default": 1
         },
         "invisible": {
@@ -17887,6 +18061,309 @@
         "normal",
         "uv",
         "faceIndex"
+      ],
+      "additionalProperties": false
+    },
+    "RenderTargetFormat": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "How a render target's colour is stored.",
+      "type": "string",
+      "enum": [
+        "ldr",
+        "hdr"
+      ],
+      "x-og-variants": {
+        "ldr": "8-bit sRGB: the view's finished image (exposed with its camera's exposure and tone mapped with RenderSettings' curve), as a loaded colour texture: a monitor, a minimap, a portrait (show it with an unlit material's map or a sprite).",
+        "hdr": "16-bit float, linear: the view's radiance before exposure and tone mapping, exposed once with the frame that shows it: a mirror or a portal (show it as a material's emissiveMap with color black)."
+      }
+    },
+    "RenderTarget": {
+      "x-og-kind": "handle",
+      "x-og-module": "render",
+      "description": "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "RenderTargetDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A render target's size and storage, as three.js WebGLRenderTarget's width, height, type and depthTexture.",
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its width in texels.",
+          "default": 512,
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its height in texels.",
+          "default": 512,
+          "minimum": 1
+        },
+        "format": {
+          "$ref": "#/$defs/RenderTargetFormat",
+          "description": "How its colour is stored.",
+          "default": "ldr"
+        },
+        "depth": {
+          "type": "boolean",
+          "description": "Keep the view's depth too, as a second texture (RenderTargetInfo.depthTexture): its linear view depth from near (0) to far (1) in red, green and blue. Drawn on the full tier (RenderCapabilities.renderTargetDepth).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "RenderTargetInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "render",
+      "description": "What og.render.renderTarget made.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/RenderTarget",
+          "description": "The target, for CameraView.target and Mirror.target."
+        },
+        "texture": {
+          "$ref": "#/$defs/Texture",
+          "description": "Its colour: any material map, og.Sprite, og.render.sprite or og.ui image shows it, as drawn by the last camera that drew into it (transparent black before)."
+        },
+        "depthTexture": {
+          "$ref": "#/$defs/Texture",
+          "description": "Its depth (RenderTargetDesc.depth); 0 without."
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its width in texels."
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its height in texels."
+        }
+      },
+      "required": [
+        "target",
+        "texture",
+        "depthTexture",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "CameraView": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "A secondary camera, as a second three.js camera rendered with setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z, as og.Camera) into a render target (target), or, without one, into a rect of the frame (viewport: split-screen, picture-in-picture) over the finished image and under the UI.\nIt draws the opaque meshes and models on its layers (skinned and with any material: hooks and full shaders run their vertex and fragment entries), the terrain and the sky, lit by the frame's lights and shadowed by its shadow maps. Transparent meshes, sprites, particles, text, lines and the post effects are the main camera's. Views draw lowest order first, all before the frame.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/RenderTarget",
+          "description": "The target it draws into; 0 draws into the viewport rect of the frame.",
+          "default": 0
+        },
+        "viewportX": {
+          "type": "number",
+          "description": "The viewport's left edge, as a fraction of the frame's width (without a target).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "viewportY": {
+          "type": "number",
+          "description": "The viewport's top edge, as a fraction of the frame's height.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "viewportWidth": {
+          "type": "number",
+          "description": "The viewport's width, as a fraction of the frame's.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "viewportHeight": {
+          "type": "number",
+          "description": "The viewport's height, as a fraction of the frame's.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "fov": {
+          "type": "number",
+          "description": "The vertical field of view, as og.Camera.fov.",
+          "default": 50,
+          "minimum": 1,
+          "maximum": 179,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "near": {
+          "type": "number",
+          "description": "The near clipping plane.",
+          "default": 0.1,
+          "minimum": 0.001,
+          "x-og-unit": "m"
+        },
+        "far": {
+          "type": "number",
+          "description": "The far clipping plane.",
+          "default": 2000,
+          "minimum": 0.01,
+          "x-og-unit": "m"
+        },
+        "zoom": {
+          "type": "number",
+          "description": "The zoom factor, as og.Camera.zoom.",
+          "default": 1,
+          "minimum": 0.01,
+          "maximum": 100
+        },
+        "orthographic": {
+          "type": "boolean",
+          "description": "An orthographic projection of `height` world units.",
+          "default": false
+        },
+        "height": {
+          "type": "number",
+          "description": "The visible world height of the orthographic projection.",
+          "default": 10,
+          "minimum": 0.01,
+          "x-og-unit": "m"
+        },
+        "exposure": {
+          "type": "number",
+          "description": "Its exposure before tone mapping (an ldr target and a viewport).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 16,
+          "x-og-tunable": true
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Three.js layers, as og.Camera.layers: it draws the objects whose layers share a bit with it.",
+          "default": 1
+        },
+        "order": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Views draw in ascending order (ties in entity order), all before the frame.",
+          "default": 0
+        },
+        "clear": {
+          "type": "boolean",
+          "description": "Clear to clearColor instead of drawing the scene's background (sky or colour).",
+          "default": false
+        },
+        "clearColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The linear colour it clears to with clear.",
+          "default": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
+        },
+        "every": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Draw once every this many ticks (when the tick is a multiple of it); the target keeps its image between. 0 and 1 draw every frame: a security monitor at 4 costs a quarter.",
+          "default": 1
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether it draws.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Mirror": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "A planar mirror: the main camera reflected in the entity's xy plane (its local +Z the mirror's facing side), drawn into target fitted to a width by height rect centred on the entity, as a mirrored og.CameraView. Give the mirror's mesh (an og.render.planeGeometry of the same size) a material that reads the target: an hdr target as emissiveMap with color black, or an ldr target as an unlit map. Nothing behind the glass is drawn; seen from behind, it draws nothing.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/RenderTarget",
+          "description": "The target it draws into.",
+          "default": 0
+        },
+        "width": {
+          "type": "number",
+          "description": "The mirror's width along the entity's local +X.",
+          "default": 1,
+          "minimum": 0.001,
+          "x-og-unit": "m"
+        },
+        "height": {
+          "type": "number",
+          "description": "Its height along local +Y.",
+          "default": 1,
+          "minimum": 0.001,
+          "x-og-unit": "m"
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Three.js layers it reflects, as og.Camera.layers.",
+          "default": 1
+        },
+        "every": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Draw once every this many ticks, as CameraView.every.",
+          "default": 1
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether it draws.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Post": {
+      "x-og-kind": "handle",
+      "x-og-module": "render",
+      "description": "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "PostError": {
+      "x-og-kind": "struct",
+      "x-og-module": "render",
+      "description": "A custom post pass the device failed to compile.",
+      "type": "object",
+      "properties": {
+        "post": {
+          "$ref": "#/$defs/Post",
+          "description": "The pass."
+        },
+        "message": {
+          "type": "string",
+          "description": "The device's message."
+        }
+      },
+      "required": [
+        "post",
+        "message"
       ],
       "additionalProperties": false
     },
@@ -18257,6 +18734,13 @@
           "minimum": 0,
           "maximum": 16,
           "x-og-tunable": true
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Three.js layers of every mesh of the model, as Mesh.layers.",
+          "default": 1
         }
       },
       "additionalProperties": false

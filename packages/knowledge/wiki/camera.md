@@ -62,7 +62,7 @@ fn shake {
 }
 ```
 
-<sub>`api.ogt` line 2209</sub>
+<sub>`api.ogt` line 2212</sub>
 
 <a id="fn-punch"></a>
 
@@ -92,7 +92,7 @@ fn punch {
 }
 ```
 
-<sub>`api.ogt` line 2216</sub>
+<sub>`api.ogt` line 2219</sub>
 
 <a id="fn-kick"></a>
 
@@ -124,7 +124,7 @@ fn kick {
 }
 ```
 
-<sub>`api.ogt` line 2223</sub>
+<sub>`api.ogt` line 2226</sub>
 
 ## Components, resources and events
 
@@ -165,6 +165,7 @@ Token `og.Camera`, registered under the schema name `og.Camera`; its value type 
 | `zoneFromMax` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | Its top-right corner. |
 | `zoneScroll` | `number` | `1` | 0 … 1 | — | — | How far the transition has come, 0 to 1 (eased; 1 is settled). |
 | `zoneScrollTime` | `number` | `0` | ≥ 0 | `s` | — | How long the transition takes: the entered zone's scrollTime. |
+| `layers` | `number` | `1` | — | — | — | Three.js layers, as Camera.layers.mask: the frame draws the meshes, models and world sprites whose layers share a bit with it. 1 (layer 0) by default, as every object's. |
 
 ```ogt
 resource Camera {
@@ -294,6 +295,9 @@ resource Camera {
     param x f32 "Horizontal position in CSS pixels."
     param y f32 "Vertical position in CSS pixels."
     returns Ray
+  }
+  field layers u32 "Three.js layers, as Camera.layers.mask: the frame draws the meshes, models and world sprites whose layers share a bit with it. 1 (layer 0) by default, as every object's." {
+    default 1
   }
 }
 ```
@@ -491,7 +495,7 @@ component OrbitCamera {
 }
 ```
 
-<sub>`api.ogt` line 2007</sub>
+<sub>`api.ogt` line 2010</sub>
 
 <a id="record-FollowCamera"></a>
 
@@ -529,7 +533,7 @@ component FollowCamera {
 }
 ```
 
-<sub>`api.ogt` line 2081</sub>
+<sub>`api.ogt` line 2084</sub>
 
 <a id="record-Follow2D"></a>
 
@@ -608,7 +612,7 @@ component Follow2D {
 }
 ```
 
-<sub>`api.ogt` line 2100</sub>
+<sub>`api.ogt` line 2103</sub>
 
 <a id="record-CameraZone"></a>
 
@@ -643,7 +647,7 @@ component CameraZone {
 }
 ```
 
-<sub>`api.ogt` line 2152</sub>
+<sub>`api.ogt` line 2155</sub>
 
 <a id="record-CameraRail"></a>
 
@@ -710,4 +714,4 @@ component CameraRail {
 }
 ```
 
-<sub>`api.ogt` line 2168</sub>
+<sub>`api.ogt` line 2171</sub>

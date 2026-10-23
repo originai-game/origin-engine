@@ -28,6 +28,7 @@ import { cameras } from "./systems/cameras.ts";
 import { ai, i18n, nav, net, platform } from "./e6.ts";
 import { path, stream, terrain, timeline } from "./p2.ts";
 import { debug, depthRender } from "./depth.ts";
+import { targetsLoad, targetsRender } from "./targets.ts";
 import { uiKit } from "./ui-kit/index.ts";
 
 // The math layer (IDL `math`): three.js's methods as pure functions over the plain structs.
@@ -82,6 +83,9 @@ export const Path = ((value = 0 as Api.Path, options) => spec("Path", value, opt
 export const PathKind = ((value = "catmullRom" as Api.PathKind, options) => spec("PathKind", value, options)) as typeof Api.PathKind;
 export const TimelineAsset = ((value = 0 as Api.TimelineAsset, options) => spec("TimelineAsset", value, options)) as typeof Api.TimelineAsset;
 export const Rig2D = ((value = 0 as Api.Rig2D, options) => spec("Rig2D", value, options)) as typeof Api.Rig2D;
+export const RenderTargetFormat = ((value = "ldr" as Api.RenderTargetFormat, options) => spec("RenderTargetFormat", value, options)) as typeof Api.RenderTargetFormat;
+export const RenderTarget = ((value = 0 as Api.RenderTarget, options) => spec("RenderTarget", value, options)) as typeof Api.RenderTarget;
+export const Post = ((value = 0 as Api.Post, options) => spec("Post", value, options)) as typeof Api.Post;
 export const TilemapAsset = ((value = 0 as Api.TilemapAsset, options) => spec("TilemapAsset", value, options)) as typeof Api.TilemapAsset;
 export const TerrainData = ((value = 0 as Api.TerrainData, options) => spec("TerrainData", value, options)) as typeof Api.TerrainData;
 export const RootMotion = ((value = "off" as Api.RootMotion, options) => spec("RootMotion", value, options)) as typeof Api.RootMotion;
@@ -184,8 +188,8 @@ export const og: typeof Api.og = Object.freeze({
   ...BUILTINS,
   game: (desc?: Api.GameDesc) => defineGame(desc as never),
   transform,
-  render: Object.freeze({ ...render, ...depthRender }),
-  load,
+  render: Object.freeze({ ...render, ...depthRender, ...targetsRender }),
+  load: Object.freeze({ ...load, ...targetsLoad }),
   commands,
   physics,
   atmosphere,

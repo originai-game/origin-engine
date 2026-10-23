@@ -66,6 +66,7 @@ mod terrain_stream;
 mod timeline;
 mod trace;
 mod video;
+mod views;
 
 pub use ai::{
     og_ai_describe, og_ai_get, og_ai_load, og_ai_noise, og_ai_parse, og_ai_restart, og_ai_set,
@@ -163,6 +164,9 @@ pub use timeline::{
 };
 pub use trace::{BEFORE_ENGINE as TRACE_BEFORE_ENGINE, set as trace_set, take as trace_take};
 pub use video::{og_load_video, og_load_video_info};
+pub use views::{
+    og_load_post, og_render_post_errors, og_render_render_target, og_render_set_post_param,
+};
 
 use serde_json::{Value, json};
 

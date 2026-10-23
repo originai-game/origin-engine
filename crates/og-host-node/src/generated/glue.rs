@@ -765,6 +765,24 @@ pub fn og_render_raycast(env: Env, world: u32, ray: String, desc: Option<String>
     <Host as RenderApi>::og_render_raycast(&Host, world, ray, desc)
 }
 
+#[napi(js_name = "og_render_render_target")]
+pub fn og_render_render_target(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_render_target(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_set_post_param")]
+pub fn og_render_set_post_param(env: Env, world: u32, post: f64, name: String, value: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_set_post_param(&Host, world, post, name, value)
+}
+
+#[napi(js_name = "og_render_post_errors")]
+pub fn og_render_post_errors(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_post_errors(&Host, world)
+}
+
 #[napi(js_name = "og_load_bundle")]
 pub fn og_load_bundle(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -835,6 +853,12 @@ pub fn og_load_emitter(env: Env, world: u32, path: String) -> String {
 pub fn og_load_shader(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as LoadApi>::og_load_shader(&Host, world, path)
+}
+
+#[napi(js_name = "og_load_post")]
+pub fn og_load_post(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_post(&Host, world, path)
 }
 
 #[napi(js_name = "og_load_texture")]
