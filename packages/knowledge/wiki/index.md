@@ -119,7 +119,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1133 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1137 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -430,6 +430,7 @@ Field units the docs and Tune use.
 | [`MAX_GAMEPADS`](input.md#const-MAX_GAMEPADS) | constant | input | — |
 | [`MAX_LIGHTS`](render.md#const-MAX_LIGHTS) | constant | render | — |
 | [`MAX_POINTERS`](input.md#const-MAX_POINTERS) | constant | input | — |
+| [`MAX_REFLECTION_PROBES`](render.md#const-MAX_REFLECTION_PROBES) | constant | render | — |
 | [`MenuItem`](ui.md#type-MenuItem) | desc struct | ui | — |
 | [`MenuResult`](ui.md#type-MenuResult) | struct | ui | — |
 | [`MeshDesc`](physics.md#type-MeshDesc) | desc struct | physics | — |
@@ -665,6 +666,7 @@ Field units the docs and Tune use.
 | [`og.Points`](render.md#record-Points) | component | render | — |
 | [`og.PostEffects`](render.md#record-PostEffects) | resource | render | — |
 | [`og.Ragdoll`](physics.md#record-Ragdoll) | component | physics | — |
+| [`og.ReflectionProbe`](render.md#record-ReflectionProbe) | component | render | — |
 | [`og.render.applyLook`](render.md#fn-applyLook) | function | render | `og_render_apply_look` |
 | [`og.render.boxGeometry`](render.md#fn-boxGeometry) | function | render | `og_render_box_geometry` |
 | [`og.render.bufferGeometry`](render.md#fn-bufferGeometry) | function | render | `og_render_buffer_geometry` |
@@ -980,6 +982,8 @@ Field units the docs and Tune use.
 | [`RayMath.intersectPlane`](math.md#member-RayMath-intersectPlane) | method | math | — |
 | [`RayMath.intersectSphere`](math.md#member-RayMath-intersectSphere) | method | math | — |
 | [`RayMath.intersectTriangle`](math.md#member-RayMath-intersectTriangle) | method | math | — |
+| [`ReflectionProbeMode`](render.md#type-ReflectionProbeMode) | enum | render | — |
+| [`ReflectionProbeMode()`](render.md#column-ReflectionProbeMode) | column kind | render | — |
 | [`ReloadReport`](probe.md#type-ReloadReport) | struct | probe | — |
 | [`RenderCapabilities`](render.md#type-RenderCapabilities) | struct | render | — |
 | [`RenderOptions`](render.md#type-RenderOptions) | desc struct | render | — |

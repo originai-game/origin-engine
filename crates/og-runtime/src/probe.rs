@@ -99,25 +99,9 @@ impl Capture for RuntimeCapture {
     }
 }
 
-/// Registers `debug_view:<none|lod>`: `RenderOptions.debugView` switched
-/// for the following frames (the renderer reads it every frame).
-pub(crate) fn register_debug_view(probe: &mut Probe, engine: u32) {
-    let _ = probe.register_command(
-        "debug_view",
-        og_probe::CommandDesc {
-            usage: "debug_view:<none|lod>".into(),
-            doc: "draw a diagnostic view in place of the lit image (RenderOptions.debugView): lod colours every model by the level of detail it draws".into(),
-        },
-        move |_world, args| {
-            let view = args.first().map(String::as_str).unwrap_or("");
-            if !matches!(view, "none" | "lod") {
-                return Err("write debug_view:none or debug_view:lod".into());
-            }
-            let eng = super::engine::engine(engine)?;
-            eng.render.borrow_mut().options["debugView"] = json!(view);
-            Ok(())
-        },
-    );
+/// Registers `dump_render[:path]`: the last frame's triangles and how many
+/// og.Model entities drew each level of detail.
+pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
     let _ = probe.register_dump(
         "dump_render",
         og_probe::CommandDesc {
@@ -138,7 +122,7 @@ pub(crate) fn register_debug_view(probe: &mut Probe, engine: u32) {
                 "kind": "render",
                 "triangles": st.triangles,
                 "renderMs": (st.render_ms * 1000.0).round() / 1000.0,
-                "debugView": super::extract::debug_view(&rs.options),
+                "debugView": super::geometry::current_view(&rs),
                 "lodLevels": &levels[..last],
             }))
         },

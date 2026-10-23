@@ -139,6 +139,8 @@ export interface ColumnKinds {
   DitherPattern: { readonly array: Uint32Array; readonly stride: 1; readonly value: DitherPattern };
   /** A StyliseSpace field: the variant's index. */
   StyliseSpace: { readonly array: Uint32Array; readonly stride: 1; readonly value: StyliseSpace };
+  /** A ReflectionProbeMode field: the variant's index. */
+  ReflectionProbeMode: { readonly array: Uint32Array; readonly stride: 1; readonly value: ReflectionProbeMode };
   /** A LineMode field: the variant's index. */
   LineMode: { readonly array: Uint32Array; readonly stride: 1; readonly value: LineMode };
   /** A TextureArray handle field (0 is none). */
@@ -3305,8 +3307,9 @@ export type TaaHistory = "bilinear" | "catmullRom";
  * - `"physics"`: The colliders' shapes, joints and contacts as the last physics step left them.
  * - `"nav"`: The navigation grids (blocked cells) and navmeshes (polygon edges), and every og.NavAgent's path.
  * - `"bounds"`: Every drawn mesh's bounds (its geometry's box at its transform).
+ * - `"lod"`: Every og.Model tinted by the level of detail it draws (green the full mesh, yellow level 1, orange level 2, red level 3 and beyond), so the levels' distances read in one frame.
  */
-export type DebugView = "none" | "physics" | "nav" | "bounds";
+export type DebugView = "none" | "physics" | "nav" | "bounds" | "lod";
 
 /**
  * How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer.
@@ -4085,6 +4088,14 @@ export interface RenderSettings {
    * The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour.
    */
   decalAtlas: Texture;
+  /**
+   * A multiplier on every model's projected size when its level of detail is picked (og.Model.lodBias multiplies it again): 1 is the engine's choice, 2 keeps full meshes twice as far, 0.5 simplifies sooner; 0 draws every model at its full mesh.
+   *
+   * @default 1
+   * @range 0..16
+   * @tunable
+   */
+  lodBias: number;
 }
 
 /**
@@ -4528,6 +4539,51 @@ export interface PostEffects {
   shakeFrequency: number;
   /** The shake's noise seed. */
   shakeSeed: number;
+  /**
+   * Screen-space reflections on the full tier: smooth surfaces reflect what the frame already drew by marching the depth-normal prepass along the reflected ray, faded by roughness and at the screen's edges, over the reflection probes and the environment where the ray misses. WebGL2 draws none (RenderCapabilities.ssr is false) and smooth surfaces keep the probes' reflection.
+   */
+  ssr: boolean;
+  /**
+   * How far a reflected ray marches, in world units.
+   *
+   * @default 20
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  ssrMaxDistance: number;
+  /**
+   * How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it.
+   *
+   * @default 0.3
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  ssrThickness: number;
+  /**
+   * Steps along each ray (a binary refinement follows the hit).
+   *
+   * @default 32
+   * @range 4..128
+   */
+  ssrSteps: number;
+  /**
+   * The fraction of the screen's edge, and of the march's end, over which a reflection fades into the probes'.
+   *
+   * @default 0.15
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  ssrFade: number;
+  /**
+   * How much of the reflection is laid over the frame; 1 is physically weighted by the surface's Fresnel.
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  ssrIntensity: number;
 }
 
 /**
@@ -6188,6 +6244,90 @@ export interface RenderCapabilities {
    * The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn.
    */
   readonly stylise: readonly string[];
+  /**
+   * Whether PostEffects.ssr draws: true on the full tier, false on WebGL2, where smooth surfaces reflect the reflection probes and the environment instead.
+   */
+  readonly ssr: boolean;
+  /**
+   * How many og.ReflectionProbe components one frame samples (MAX_REFLECTION_PROBES on every tier).
+   */
+  readonly reflectionProbes: number;
+}
+
+/**
+ * The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped.
+ */
+export declare const MAX_REFLECTION_PROBES: 8;
+
+/**
+ * When a reflection probe's cube is rendered.
+ * - `"baked"`: Once: read from the project's cook cache when `og bake probes` wrote it there, otherwise rendered on its first frame and kept. Static rooms.
+ * - `"realtime"`: Again every `interval` ticks, so moving things show in it (a cost per update of six faces).
+ */
+export type ReflectionProbeMode = "baked" | "realtime";
+
+/**
+ * A ReflectionProbeMode field: the variant's index.
+ *
+ * A `ReflectionProbeMode` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function ReflectionProbeMode(value?: ReflectionProbeMode, options?: FieldOptions): FieldSpec<"ReflectionProbeMode">;
+
+/**
+ * A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (the reflected ray meets the box, so a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Interiors that the sky must not light: a chrome sphere in a room shows the room. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it (nothing is drawn twice) and without the probes' own reflections.
+ *
+ * The value of the `ReflectionProbe` component (token `og.ReflectionProbe`).
+ */
+export interface ReflectionProbe {
+  /**
+   * The box's full extents in world units, centred on the entity (its rotation is ignored: the box is axis-aligned).
+   *
+   * @default { x: 10, y: 10, z: 10 }
+   */
+  size: Vector3;
+  /**
+   * The side of each cube face in texels; it is rounded to a power of two.
+   *
+   * @default 128
+   * @range 16..1024
+   */
+  resolution: number;
+  /**
+   * baked (rendered once, or loaded from `og bake probes`) or realtime (every interval ticks).
+   */
+  mode: ReflectionProbeMode;
+  /**
+   * With realtime: ticks between updates (1 is every frame).
+   *
+   * @default 30
+   * @range 1..
+   * @unit ticks (fixed simulation steps)
+   */
+  interval: number;
+  /**
+   * A multiplier on the probe's light.
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  intensity: number;
+  /**
+   * The distance inside the box's faces over which the probe fades into the environment map.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  blendDistance: number;
+  /**
+   * Whether it is sampled.
+   *
+   * @default true
+   */
+  visible: boolean;
 }
 
 
@@ -7200,6 +7340,14 @@ export interface Model {
    * @default true
    */
   visible: boolean;
+  /**
+   * This instance's level of detail bias, multiplied with RenderSettings.lodBias: the cook simplifies every mesh into levels (a model's import settings, `model { lods 1 0.5 0.25 }` by default, the triangle fraction of each level; a glTF with MSFT_lod keeps its own levels), and the renderer draws the level its projected size calls for, with hysteresis so it does not flicker at the boundary. Above 1 keeps detail farther (a hero), below 1 drops it sooner (a crowd); 0 always draws the full mesh. dump_entity shows the level drawn.
+   *
+   * @default 1
+   * @range 0..16
+   * @tunable
+   */
+  lodBias: number;
 }
 
 
@@ -18370,6 +18518,10 @@ export interface ProbeTimings {
    * The last rendered frame's render passes in the render graph's order, each with its milliseconds (CPU encode time; empty without a renderer).
    */
   readonly passes: readonly ProbeTiming[];
+  /**
+   * Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer.
+   */
+  readonly triangles: number;
 }
 
 /** One named span of the last tick or frame. */
@@ -20708,7 +20860,7 @@ export declare namespace og {
   /**
    * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    */
-  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture"> }, RenderSettings>;
+  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32"> }, RenderSettings>;
   /**
    * Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.
    */
@@ -20717,7 +20869,7 @@ export declare namespace og {
    * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.
    * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.
    */
-  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32"> }, PostEffects>;
+  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly ssr: FieldSpec<"bool">; readonly ssrMaxDistance: FieldSpec<"f32">; readonly ssrThickness: FieldSpec<"f32">; readonly ssrSteps: FieldSpec<"u32">; readonly ssrFade: FieldSpec<"f32">; readonly ssrIntensity: FieldSpec<"f32"> }, PostEffects>;
   /**
    * Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.
    * Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised.
@@ -20764,6 +20916,10 @@ export declare namespace og {
    * Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
    */
   const Afterimage: ComponentType<{ readonly count: FieldSpec<"u32">; readonly interval: FieldSpec<"u32">; readonly opacity: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly additive: FieldSpec<"bool">; readonly active: FieldSpec<"bool"> }, Afterimage>;
+  /**
+   * A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (the reflected ray meets the box, so a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Interiors that the sky must not light: a chrome sphere in a room shows the room. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it (nothing is drawn twice) and without the probes' own reflections.
+   */
+  const ReflectionProbe: ComponentType<{ readonly size: FieldSpec<"Vector3">; readonly resolution: FieldSpec<"u32">; readonly mode: FieldSpec<"ReflectionProbeMode">; readonly interval: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly blendDistance: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, ReflectionProbe>;
   /**
    * Draws a geometry's vertices as lines at the entity's MatrixWorld, every frame (three.js Line, LineSegments or LineLoop over a BufferGeometry): a static set of lines kept as data, a level's outline, a track, a constellation. The vertices are taken in order (the geometry's indices are not read), with its vertex colours times color.
    */
@@ -21006,7 +21162,7 @@ export declare namespace og {
    * Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
    * The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck.
    */
-  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool"> }, Model>;
+  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly lodBias: FieldSpec<"f32"> }, Model>;
   /** A load completed. */
   const AssetReady: EventType<AssetReady>;
   /** A load failed. */

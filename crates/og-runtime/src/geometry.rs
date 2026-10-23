@@ -25,7 +25,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::rc::Rc;
 
 /// The debug views (`render.DebugView`), by variant index.
-const VIEWS: [&str; 4] = ["none", "physics", "nav", "bounds"];
+const VIEWS: [&str; 5] = ["none", "physics", "nav", "bounds", "lod"];
 
 /// A debug label (`og.debug.text`).
 struct DebugText {
@@ -76,6 +76,15 @@ impl GeoState {
     fn view_index(&self, options: &Value) -> usize {
         self.view.unwrap_or_else(|| view_of(&options["debugView"]))
     }
+}
+
+/// The debug view drawn this frame (`none` while the overlay is off):
+/// `lod` is drawn by extraction itself, tinting each model by its level.
+pub(crate) fn current_view(rs: &RenderState) -> &'static str {
+    if rs.geo.disabled {
+        return "none";
+    }
+    VIEWS[rs.geo.view_index(&rs.options)]
 }
 
 fn view_of(v: &Value) -> usize {
@@ -829,8 +838,8 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
     let _ = probe.register_command(
         "debug",
         og_probe::CommandDesc {
-            usage: "debug:on|off|none|physics|nav|bounds".into(),
-            doc: "show or hide the debug overlay (og.debug's draws), or pick its view: physics (colliders, joints, contacts), nav (grids, navmeshes, agents' paths), bounds (every drawn mesh's box), none".into(),
+            usage: "debug:on|off|none|physics|nav|bounds|lod".into(),
+            doc: "show or hide the debug overlay (og.debug's draws), or pick its view: physics (colliders, joints, contacts), nav (grids, navmeshes, agents' paths), bounds (every drawn mesh's box), lod (every model tinted by its level of detail), none".into(),
         },
         move |_world, args| {
             let arg = args.first().map(String::as_str).unwrap_or("on");

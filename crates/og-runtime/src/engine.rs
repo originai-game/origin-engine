@@ -1211,7 +1211,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         super::e6::register_commands(&mut probe, engine_id);
         super::timeline::commit(engine_id, probe.inbox());
         super::timeline::register_commands(&mut probe, engine_id);
-        super::probe::register_debug_view(&mut probe, engine_id);
+        super::probe::register_render_dump(&mut probe, engine_id);
     }
     // The host's locale (og run --locale, the browser's language).
     super::i18n::request(engine_id, options["locale"].as_str().unwrap_or(""));

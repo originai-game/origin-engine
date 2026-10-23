@@ -278,19 +278,6 @@ fn on(v: &Value, key: &str, default: bool) -> bool {
     }
 }
 
-/// `RenderOptions.debugView` (GameDesc.render, or a probe's `debug_view`
-/// command since): its variant's name, `none` when unset.
-pub(crate) fn debug_view(options: &Value) -> String {
-    match &options["debugView"] {
-        Value::String(s) => s.clone(),
-        Value::Number(n) => match n.as_u64() {
-            Some(1) => "lod".into(),
-            _ => "none".into(),
-        },
-        _ => "none".into(),
-    }
-}
-
 /// The value of a resource the world holds, decoded with its layout.
 pub(crate) fn resource(world: &World, layout: Option<&Layout>) -> Option<Value> {
     let layout = layout?;
@@ -796,7 +783,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let settings_bias = settings
         .as_ref()
         .map_or(1.0, |s| f(s, "lodBias", 1.0).max(0.0));
-    let debug_lod = debug_view(&rs.options) == "lod";
+    let debug_lod = super::geometry::current_view(rs) == "lod";
     let model_lods = std::mem::take(&mut rs.model_lods);
     let last_drawn = std::mem::take(&mut rs.lod_drawn);
     let mut drawn = BTreeMap::new();

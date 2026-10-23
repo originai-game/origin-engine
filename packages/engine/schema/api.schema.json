@@ -2801,6 +2801,9 @@
         "PlaneGeometryDesc",
         "SphereGeometryDesc",
         "RenderCapabilities",
+        "ReflectionProbeMode",
+        "ReflectionProbeMode",
+        "ReflectionProbe",
         "Shader",
         "BufferGeometryDesc",
         "GeometryInfo",
@@ -2844,6 +2847,12 @@
           "type": "i32",
           "value": 1000,
           "doc": "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
+        },
+        {
+          "name": "MAX_REFLECTION_PROBES",
+          "type": "u32",
+          "value": 8,
+          "doc": "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
         }
       ],
       "functions": [
@@ -13487,13 +13496,15 @@
         "none",
         "physics",
         "nav",
-        "bounds"
+        "bounds",
+        "lod"
       ],
       "x-og-variants": {
         "none": "Only og.debug's draws.",
         "physics": "The colliders' shapes, joints and contacts as the last physics step left them.",
         "nav": "The navigation grids (blocked cells) and navmeshes (polygon edges), and every og.NavAgent's path.",
-        "bounds": "Every drawn mesh's bounds (its geometry's box at its transform)."
+        "bounds": "Every drawn mesh's bounds (its geometry's box at its transform).",
+        "lod": "Every og.Model tinted by the level of detail it draws (green the full mesh, yellow level 1, orange level 2, red level 3 and beyond), so the levels' distances read in one frame."
       }
     },
     "RenderOptions": {
@@ -14426,6 +14437,14 @@
           "$ref": "#/$defs/Texture",
           "description": "The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour.",
           "default": 0
+        },
+        "lodBias": {
+          "type": "number",
+          "description": "A multiplier on every model's projected size when its level of detail is picked (og.Model.lodBias multiplies it again): 1 is the engine's choice, 2 keeps full meshes twice as far, 0.5 simplifies sooner; 0 draws every model at its full mesh.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 16,
+          "x-og-tunable": true
         }
       },
       "additionalProperties": false
@@ -14864,6 +14883,52 @@
           "maximum": 4294967295,
           "description": "The shake's noise seed.",
           "default": 0
+        },
+        "ssr": {
+          "type": "boolean",
+          "description": "Screen-space reflections on the full tier: smooth surfaces reflect what the frame already drew by marching the depth-normal prepass along the reflected ray, faded by roughness and at the screen's edges, over the reflection probes and the environment where the ray misses. WebGL2 draws none (RenderCapabilities.ssr is false) and smooth surfaces keep the probes' reflection.",
+          "default": false
+        },
+        "ssrMaxDistance": {
+          "type": "number",
+          "description": "How far a reflected ray marches, in world units.",
+          "default": 20,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "ssrThickness": {
+          "type": "number",
+          "description": "How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it.",
+          "default": 0.3,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "ssrSteps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Steps along each ray (a binary refinement follows the hit).",
+          "default": 32,
+          "minimum": 4,
+          "maximum": 128
+        },
+        "ssrFade": {
+          "type": "number",
+          "description": "The fraction of the screen's edge, and of the march's end, over which a reflection fades into the probes'.",
+          "default": 0.15,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "ssrIntensity": {
+          "type": "number",
+          "description": "How much of the reflection is laid over the frame; 1 is physically weighted by the surface's Fresnel.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
         }
       },
       "additionalProperties": false
@@ -16873,6 +16938,16 @@
             "type": "string"
           },
           "description": "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
+        },
+        "ssr": {
+          "type": "boolean",
+          "description": "Whether PostEffects.ssr draws: true on the full tier, false on WebGL2, where smooth surfaces reflect the reflection probes and the environment instead."
+        },
+        "reflectionProbes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many og.ReflectionProbe components one frame samples (MAX_REFLECTION_PROBES on every tier)."
         }
       },
       "required": [
@@ -16884,8 +16959,84 @@
         "pointShadows",
         "width",
         "height",
-        "stylise"
+        "stylise",
+        "ssr",
+        "reflectionProbes"
       ],
+      "additionalProperties": false
+    },
+    "ReflectionProbeMode": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "When a reflection probe's cube is rendered.",
+      "type": "string",
+      "enum": [
+        "baked",
+        "realtime"
+      ],
+      "x-og-variants": {
+        "baked": "Once: read from the project's cook cache when `og bake probes` wrote it there, otherwise rendered on its first frame and kept. Static rooms.",
+        "realtime": "Again every `interval` ticks, so moving things show in it (a cost per update of six faces)."
+      }
+    },
+    "ReflectionProbe": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (the reflected ray meets the box, so a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Interiors that the sky must not light: a chrome sphere in a room shows the room. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it (nothing is drawn twice) and without the probes' own reflections.",
+      "type": "object",
+      "properties": {
+        "size": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The box's full extents in world units, centred on the entity (its rotation is ignored: the box is axis-aligned).",
+          "default": {
+            "x": 10,
+            "y": 10,
+            "z": 10
+          }
+        },
+        "resolution": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The side of each cube face in texels; it is rounded to a power of two.",
+          "default": 128,
+          "minimum": 16,
+          "maximum": 1024
+        },
+        "mode": {
+          "$ref": "#/$defs/ReflectionProbeMode",
+          "description": "baked (rendered once, or loaded from `og bake probes`) or realtime (every interval ticks).",
+          "default": "baked"
+        },
+        "interval": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "With realtime: ticks between updates (1 is every frame).",
+          "default": 30,
+          "minimum": 1,
+          "x-og-unit": "ticks"
+        },
+        "intensity": {
+          "type": "number",
+          "description": "A multiplier on the probe's light.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "blendDistance": {
+          "type": "number",
+          "description": "The distance inside the box's faces over which the probe fades into the environment map.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Whether it is sampled.",
+          "default": true
+        }
+      },
       "additionalProperties": false
     },
     "Shader": {
@@ -18099,6 +18250,14 @@
           "type": "boolean",
           "description": "Whether it is drawn, as Mesh.visible: false skips every draw of this instance (its meshes, its shadows) while it keeps its transform, its animation and its physics, so a ghost car or a pickup waiting to respawn is hidden without moving it away.",
           "default": true
+        },
+        "lodBias": {
+          "type": "number",
+          "description": "This instance's level of detail bias, multiplied with RenderSettings.lodBias: the cook simplifies every mesh into levels (a model's import settings, `model { lods 1 0.5 0.25 }` by default, the triangle fraction of each level; a glTF with MSFT_lod keeps its own levels), and the renderer draws the level its projected size calls for, with hysteresis so it does not flicker at the boundary. Above 1 keeps detail farther (a hero), below 1 drops it sooner (a crowd); 0 always draws the full mesh. dump_entity shows the level drawn.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 16,
+          "x-og-tunable": true
         }
       },
       "additionalProperties": false
@@ -32108,6 +32267,12 @@
             "$ref": "#/$defs/ProbeTiming"
           },
           "description": "The last rendered frame's render passes in the render graph's order, each with its milliseconds (CPU encode time; empty without a renderer)."
+        },
+        "triangles": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer."
         }
       },
       "required": [
@@ -32115,7 +32280,8 @@
         "render",
         "frameMs",
         "systems",
-        "passes"
+        "passes",
+        "triangles"
       ],
       "additionalProperties": false
     },
