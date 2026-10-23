@@ -1,0 +1,11 @@
+type post
+version 1
+---
+# A CRT monitor over the finished lit image (PostEffects.custom1): the
+# screen bulges, scanlines and an RGB shadow mask cross it, and its rounded
+# corners darken. crt.wgsl reads the pass before it with previous(uv).
+source "post/crt.wgsl"
+param curve float 0.1
+param scanlines float 0.3
+param lines float 240
+param vignette float 0.6

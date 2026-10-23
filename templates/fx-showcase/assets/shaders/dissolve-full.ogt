@@ -1,0 +1,13 @@
+type shader
+version 1
+---
+# A full custom shader (mode full lit): dissolve-full.wgsl's own vertex and
+# fragment entries over the binding contract. The fragment cuts the surface
+# where its noise is below `amount`; the shadow passes and the depth prepass
+# run the same entries, so the shadow has the same holes.
+mode full lit
+source "shaders/dissolve-full.wgsl"
+param amount float 0.4
+param scale float 3
+param edge float 0.07
+param glow color 4 1.2 0.25
