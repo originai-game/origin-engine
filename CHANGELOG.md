@@ -33,6 +33,15 @@ Debt round 2 (`docs/phase-1.md`, "Plan 2026-10-23, debt round 2").
   Vale's rock pile is convex hulls that stand still without the hero.
   brasswick keeps its `pushSpeed` slowdown as the game's push speed: the
   force-capped push alone runs the 2 kg crates past their plates.
+- `anim-2d-2`: `og.Skeleton2D.skin` and `Rig2DInfo.skins` (a rig2d `skin`
+  block swaps the default skin's attachments; `default` first), and
+  `og.Skeleton2DEvent.armature` names the child armature an event came
+  from. The DragonBones import brings over `clockwise` multi-turn
+  rotations (a `rotate` key's `clockwise <n>`), sine `tweenEasing` as
+  Hermite curve keys (worst error 1.3e-5°), path displays and path
+  constraints (rig2d `path`, `along`), Spine's `transform` constraint, and
+  every skin; the lamp keeper turns over 12 ticks and its feet settle on
+  arrival instead of snapping.
 - Mesh levels of detail are picked by measured error, not by triangle
   fraction. The cook measures each level's distance from the full mesh
   (two-way nearest surface through the BVHs; `LodRow` version 2,
