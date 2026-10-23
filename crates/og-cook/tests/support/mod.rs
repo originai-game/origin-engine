@@ -70,6 +70,8 @@ pub struct SharedCook {
     pub root: PathBuf,
     pub report_markdown: String,
     pub report_json: String,
+    /// Source and cooked bytes of the project's own assets (not the
+    /// engine's built-ins its looks name).
     pub source_bytes: u64,
     pub cooked_bytes: u64,
     pub elapsed_ms: f64,
@@ -143,14 +145,19 @@ pub fn shared(name: &str, sources: &[PathBuf], stage: impl FnOnce(&Path)) -> Sha
         std::fs::create_dir_all(&meta).unwrap();
         std::fs::write(meta.join("report.md"), report.to_markdown()).unwrap();
         std::fs::write(meta.join("report.json"), report.to_json()).unwrap();
+        // The project's own assets: the engine's built-ins a look names
+        // (`@styles/...`, `@canvas/...`) are cooked beside them but are not
+        // the project's, and their fonts barely compress.
+        let own: Vec<_> = report
+            .assets
+            .iter()
+            .filter(|a| !a.source.starts_with('@'))
+            .collect();
+        let source_bytes: u64 = own.iter().map(|a| a.source_bytes).sum();
+        let cooked_bytes: u64 = own.iter().flat_map(|a| &a.outputs).map(|o| o.bytes).sum();
         std::fs::write(
             meta.join("numbers"),
-            format!(
-                "{} {} {}",
-                report.source_bytes(),
-                report.cooked_bytes(),
-                report.elapsed_ms
-            ),
+            format!("{source_bytes} {cooked_bytes} {}", report.elapsed_ms),
         )
         .unwrap();
         std::fs::write(meta.join("ok"), "").unwrap();

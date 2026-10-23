@@ -8292,7 +8292,7 @@
         },
         {
           "name": "actionButton",
-          "doc": "A round touch action button: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px.",
+          "doc": "A square touch action button, cornered by the style's control radius: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px.",
           "params": [
             {
               "name": "id",
@@ -29054,12 +29054,12 @@
     "ActionButtonDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A round touch action button (jump, fire).",
+      "description": "A square touch action button (jump, fire), cornered by the style's control radius.",
       "type": "object",
       "properties": {
         "size": {
           "type": "number",
-          "description": "Its diameter; 0 is 64 (never under 44).",
+          "description": "Its side; 0 is 64 (never under 44).",
           "default": 0,
           "minimum": 0,
           "x-og-unit": "cssPx"
