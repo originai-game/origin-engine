@@ -126,6 +126,8 @@ pub const NATIVE_SCENES: &[&str] = &[
     "probe-interior",
     "ssr-wet-floor",
     "baked-cornell",
+    "probe-two-rooms",
+    "probe-outdoor",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -583,6 +585,18 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "ssr-wet-floor" => {
             g.scene = crate::depth_render_scenes::ssr_scene(true);
             g.applies = Applies::FullTier;
+        }
+        // Reflection probes picked per instance (two rooms sharing a
+        // sphere mesh) and capturing skinned meshes, terrain, grass and a
+        // translucent pane outdoors (probe_scenes.rs).
+        #[cfg(not(target_arch = "wasm32"))]
+        "probe-two-rooms" => g.scene = crate::probe_scenes::two_rooms_scene(true),
+        #[cfg(not(target_arch = "wasm32"))]
+        "probe-outdoor" => {
+            g.scene = crate::probe_scenes::outdoor_scene(crate::probe_scenes::Outdoor {
+                content: true,
+                probe: Some(1.0),
+            })
         }
         "stylise-toon-physical" => g.scene = crate::stylise_scenes::toon_physical_scene(),
         "stylise-bands-tint" => g.scene = crate::stylise_scenes::bands_tint_scene(),
