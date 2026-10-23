@@ -273,12 +273,17 @@ struct TerrainPrepass {
 
 @fragment
 fn fs_prepass(in: TerrainOut) -> TerrainPrepass {
-  let n = terrain_point(in.local).normal;
+  let point = terrain_point(in.local);
+  let n = point.normal;
+  // The layers' roughness as the lit pass shades it, for screen-space
+  // reflections (a terrain is never metal).
+  let look = terrain_look(in, point, dpdx(in.world), dpdy(in.world));
   let cur = in.cur_clip.xy / in.cur_clip.w;
   let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
   var o: TerrainPrepass;
   o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
-  o.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), 0.0, 0.0, 1.0);
+  let reflectivity = reflectivity_bits(clamp(look.roughness, 0.04, 1.0), 0.0);
+  o.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
   o.outline = vec4<f32>(0.0);
   return o;
 }

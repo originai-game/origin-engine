@@ -113,6 +113,14 @@ fn reflected_light(r: vec3<f32>, p: vec3<f32>, mip: f32) -> vec3<f32> {
   return mix(env, probe, probe_weight(p));
 }
 
+// The prepass's reflectivity (lindepth's y, read by ssr.wgsl
+// `ssr_surface`): the gloss (1 - roughness) in 255ths, the metalness in
+// 255ths times 256 above it. The standard prepass, terrain and scattered
+// copies write it.
+fn reflectivity_bits(roughness: f32, metalness: f32) -> f32 {
+  return round((1.0 - clamp(roughness, 0.0, 1.0)) * 255.0) + 256.0 * round(clamp(metalness, 0.0, 1.0) * 255.0);
+}
+
 // Fog: distance (exponential from start, or a linear ramp start..end) and
 // exponential height fog integrated along the view ray, mixed towards the
 // fog colour, which turns towards the sun's scattering colour looking into
