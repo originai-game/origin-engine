@@ -437,8 +437,10 @@ Baked lighting, volumetrics and area lights (depth S7).
   lights and shaded with linearly transformed cosines (Heitz et al.'s GGX
   fit, `third_party/ltc`, resampled to 32 × 32 half floats in one 16 KiB
   uniform). Their highlight on a glossy surface is the rectangle's shape.
-  They cast no shadows. Shaders that do not know rect lights (terrain,
-  scattered copies, 3D fluids) light them as a point at their centre.
+  They cast no shadows. Terrain, scattered copies and 3D fluids shade
+  them with LTC too (and take point and spot cookies), through one
+  shared `surface_local_light` in `area.wgsl`; a full custom shader
+  (`custom_lit.wgsl`) still lights them as a point.
 - **Light cookies** (`SpotLight.cookie`, `PointLight.cookie`, a cube of
   six faces stacked in one texture). A small pass draws each cookie from
   its uploaded texture, in whatever format was cooked, into layers of the

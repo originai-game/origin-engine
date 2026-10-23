@@ -187,3 +187,27 @@ fn light_cookie(light: LocalLight, d: vec3<f32>) -> vec3<f32> {
   }
   return vec3<f32>(1.0);
 }
+
+// A point, spot or rect light's light on a surface for the lit shaders
+// that draw no material effects (terrain, scattered copies, the 3D fluid):
+// a rect light through linearly transformed cosines (area_light), a point
+// or spot by its falloff, cone, shadow and cookie, as pbr.wgsl's
+// local_light without the toon and receive switches.
+fn surface_local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
+  if (light.color_kind.w < -0.5) { return area_light(light, s, p, n, v); }
+  let to_light = light.position_range.xyz - p;
+  let d2 = max(dot(to_light, to_light), 1e-4);
+  let range = light.position_range.w;
+  let ratio = d2 / (range * range);
+  let window = clamp(1.0 - ratio * ratio, 0.0, 1.0);
+  var atten = window * window / d2;
+  let l = to_light * inverseSqrt(d2);
+  if (light.color_kind.w > 0.5) {
+    let cos_angle = dot(-l, light.direction_slot.xyz);
+    let t = clamp((cos_angle - light.cone.x) * light.cone.y, 0.0, 1.0);
+    atten *= t * t;
+  }
+  if (atten <= 0.0 || dot(n, l) <= 0.0) { return vec3<f32>(0.0); }
+  let radiance = light.color_kind.rgb * light_cookie(light, -l);
+  return brdf(s, n, v, l) * radiance * atten * local_shadow(light, p, n);
+}

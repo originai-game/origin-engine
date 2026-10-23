@@ -316,7 +316,7 @@ pub(crate) fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
 /// The scattered copies' lit module with the light tables `tables`.
 fn scatter_lit_source(tables: clusters::LightTables) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{INSTANCE_WGSL}{}{}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{AREA_WGSL}{INSTANCE_WGSL}{}{}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         wgsl!("scatter_common.wgsl"),
@@ -335,9 +335,9 @@ fn scatter_shadow_source() -> String {
 }
 
 /// What the 3D fluid's module starts with: the frame group, the light
-/// tables `tables` and the lighting.
+/// tables `tables`, the lighting and the area lights (area.wgsl).
 fn fluid_shared_source(tables: clusters::LightTables) -> String {
-    format!("{FRAME_WGSL}{}{LIGHTING_WGSL}", tables.wgsl())
+    format!("{FRAME_WGSL}{}{LIGHTING_WGSL}{AREA_WGSL}", tables.wgsl())
 }
 const SKY_WGSL: &str = wgsl!("sky.wgsl");
 const SPRITE_WGSL: &str = wgsl!("sprite.wgsl");

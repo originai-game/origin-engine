@@ -242,3 +242,49 @@ fn the_raymarch_lights_the_fog_with_the_spot() {
         );
     }
 }
+
+/// Where a world point lands on a 1280x720 frame of `camera`.
+fn project(camera: &og_render::Camera, p: glam::Vec3) -> (u32, u32) {
+    let view = glam::camera::rh::view::look_at_mat4(camera.position, camera.target, camera.up);
+    let og_render::Projection::Perspective { fov_y_degrees } = camera.projection else {
+        unreachable!("perspective cameras only")
+    };
+    let proj = glam::camera::rh::proj::directx::perspective(
+        fov_y_degrees.to_radians(),
+        1280.0 / 720.0,
+        camera.near,
+        camera.far,
+    );
+    let c = proj * view * p.extend(1.0);
+    let ndc = c.truncate() / c.w;
+    (
+        ((ndc.x * 0.5 + 0.5) * 1280.0) as u32,
+        ((0.5 - ndc.y * 0.5) * 720.0) as u32,
+    )
+}
+
+/// Terrain and its scattered grass light a rect light as an area (debt
+/// render-light #3): an upright one-sided panel facing left lights the
+/// meadow to its left and leaves the meadow behind it, on its right,
+/// dark. Lit as a point at its centre (main's terrain and scatter
+/// shaders), both sides take the same light.
+#[test]
+fn terrain_and_scatter_light_rect_lights_as_areas() {
+    for grass in [false, true] {
+        let (scene, [left, right]) = og_tests::light_scenes::rect_meadow_scene(grass);
+        let mut built = og_tests::scenes::build("baked-cornell").expect("build");
+        built.scene = scene;
+        let img = gfx::render_built(&mut built).expect("render").image;
+        let luma = |p: glam::Vec3| {
+            let (x, y) = project(&built.scene.camera, p);
+            let c = mean(&img, x - 12, y - 6, x + 12, y + 6);
+            0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+        };
+        let (lit, behind) = (luma(left), luma(right));
+        println!("grass {grass}: left of the panel {lit:.1}, behind it {behind:.1}");
+        assert!(
+            lit > 2.0 * behind + 4.0,
+            "grass {grass}: the meadow behind the panel is lit ({behind:.1} against {lit:.1} in front)"
+        );
+    }
+}

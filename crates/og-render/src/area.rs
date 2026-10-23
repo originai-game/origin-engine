@@ -8,8 +8,9 @@
 //! from WebGL2's full skinned pipeline). Its record in the light table:
 //! `color_kind.w` -1 one-sided, -2 two-sided; the half-width vector in
 //! `direction_slot.xyz` (no shadow slot); the half-height in `cone.xyz`.
-//! Shaders that do not know rect lights (terrain, scattered copies, 3D
-//! fluids) light them as a point at their centre.
+//! Terrain, scattered copies and the 3D fluid light them the same way
+//! through area.wgsl's `surface_local_light` (with the points' and spots'
+//! cookies).
 //!
 //! Cookies ([`LightCookie`]) take layers of the local shadow array past the
 //! shadow layers, each texel the cookie's linear colour packed 8:8:8 in an

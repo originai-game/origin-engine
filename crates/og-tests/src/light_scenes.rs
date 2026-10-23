@@ -752,3 +752,47 @@ fn cornell_box(
     });
     Ok(())
 }
+
+/// The island's meadow at night (`grass` with its scattered grass, else the
+/// bare terrain) lit by one upright one-sided rect light 10 m ahead of the
+/// camera, its face turned to the camera's left. With linearly transformed
+/// cosines the meadow left of the panel is lit and the meadow right of it,
+/// behind its back, stays dark; a point at its centre (how terrain and
+/// scatter lit rect lights before) lights both sides alike. Also the two
+/// ground points, left and right of the panel, 2.5 m from it.
+pub fn rect_meadow_scene(grass: bool) -> (RenderScene, [Vec3; 2]) {
+    use crate::terrain_scenes::{grass_scene, island_height, island_view};
+    let mut scene = if grass {
+        grass_scene()
+    } else {
+        island_view("near")
+    };
+    scene.light.intensity = 0.0;
+    scene.light.cast_shadows = false;
+    scene.environment.intensity = 0.02;
+    scene.environment.background = Background::Color(Vec3::new(0.004, 0.006, 0.015));
+    scene.fog = None;
+    let eye = scene.camera.position;
+    let ahead = (scene.camera.target - eye) * Vec3::new(1.0, 0.0, 1.0);
+    let forward = ahead.normalize();
+    let side = forward.cross(Vec3::Y).normalize();
+    let foot = eye + forward * 10.0;
+    let ground = |p: Vec3| Vec3::new(p.x, island_height(p.x, p.z), p.z);
+    let centre = ground(foot) + Vec3::Y * 0.9;
+    // Spanned by forward and up, so it faces -(forward × up): the left.
+    let panel = rect(
+        centre,
+        forward,
+        Vec3::Y,
+        (1.6, 1.4),
+        Vec3::new(1.0, 0.85, 0.6),
+        6.0,
+        false,
+    );
+    fixture(&mut scene, &panel);
+    scene.lights = vec![panel];
+    (
+        scene,
+        [ground(foot - side * 2.5), ground(foot + side * 2.5)],
+    )
+}

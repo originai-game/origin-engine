@@ -153,23 +153,6 @@ fn layer_weights(p: vec3<f32>, n: vec3<f32>, c: vec4<f32>, heights_of: vec4<f32>
   return w / sum;
 }
 
-fn terrain_local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
-  let to_light = light.position_range.xyz - p;
-  let d2 = max(dot(to_light, to_light), 1e-4);
-  let range = light.position_range.w;
-  let ratio = d2 / (range * range);
-  let window = clamp(1.0 - ratio * ratio, 0.0, 1.0);
-  var atten = window * window / d2;
-  let l = to_light * inverseSqrt(d2);
-  if (light.color_kind.w > 0.5) {
-    let cos_angle = dot(-l, light.direction_slot.xyz);
-    let t = clamp((cos_angle - light.cone.x) * light.cone.y, 0.0, 1.0);
-    atten *= t * t;
-  }
-  if (atten <= 0.0 || dot(n, l) <= 0.0) { return vec3<f32>(0.0); }
-  return brdf(s, n, v, l) * light.color_kind.rgb * atten * local_shadow(light, p, n);
-}
-
 @fragment
 fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let p = in.world;
@@ -224,7 +207,7 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
     let first = word & 0xffffffu;
     let light_count = word >> 24u;
     for (var k = 0u; k < light_count; k++) {
-      color += terrain_local_light(light_list[cluster_ref(first + k)], s, p, n, v);
+      color += surface_local_light(light_list[cluster_ref(first + k)], s, p, n, v);
     }
   }
   let n_dot_v = max(dot(n, v), 1e-4);

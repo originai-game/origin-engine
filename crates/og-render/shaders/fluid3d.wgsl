@@ -147,20 +147,8 @@ fn cluster_lights(frag: vec2<f32>, s: Surface, p: vec3<f32>, n: vec3<f32>, v: ve
   let first = word & 0xffffffu;
   let count = word >> 24u;
   for (var k = 0u; k < count; k++) {
-    let light = light_list[cluster_ref(first + k)];
-    let to_light = light.position_range.xyz - p;
-    let d2 = max(dot(to_light, to_light), 1e-4);
-    let range = light.position_range.w;
-    let ratio = d2 / (range * range);
-    let window = clamp(1.0 - ratio * ratio, 0.0, 1.0);
-    var atten = window * window / d2;
-    let l = to_light * inverseSqrt(d2);
-    if (light.color_kind.w > 0.5) {
-      let t = clamp((dot(-l, light.direction_slot.xyz) - light.cone.x) * light.cone.y, 0.0, 1.0);
-      atten *= t * t;
-    }
-    if (atten <= 0.0 || dot(n, l) <= 0.0) { continue; }
-    color += brdf(s, n, v, l) * light.color_kind.rgb * atten * local_shadow(light, p, n);
+    // Rect lights through LTC, points and spots with cookies (area.wgsl).
+    color += surface_local_light(light_list[cluster_ref(first + k)], s, p, n, v);
   }
   return color;
 }
