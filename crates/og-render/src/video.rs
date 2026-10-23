@@ -4,14 +4,17 @@
 //! size whose contents become the frame shown when it changes. Materials,
 //! sprites, the overlay and UI images sample it as any texture, so footage
 //! needs no shader of its own and takes one frame of GPU memory, not the
-//! whole clip's.
+//! whole clip's. Several players of one video each have a texture of their
+//! own ([`FrameTexture::view`]): the decoded frames are shared, each view
+//! uploads the frame its player shows.
 
 use crate::scene::{RenderScene, TextureFilter, TextureHandle, TextureSource};
 use crate::texture_array::{TextureArrayData, TextureArrayInfo};
 
 /// The frames and the texture that shows one of them.
 pub struct FrameTexture {
-    layers: Vec<TextureSource>,
+    /// Shared by every view of the video.
+    layers: std::rc::Rc<Vec<TextureSource>>,
     texture: TextureHandle,
     shown: usize,
     info: TextureArrayInfo,
@@ -31,11 +34,25 @@ impl FrameTexture {
             scene.set_texture_filter(texture, TextureFilter::Nearest);
         }
         Ok(FrameTexture {
-            layers: frames.layers,
+            layers: std::rc::Rc::new(frames.layers),
             texture,
             shown: 0,
             info,
         })
+    }
+
+    /// Another texture of the same frames, showing frame 0 (a second
+    /// player of the video): its own upload, the frames not copied.
+    pub fn view(&self, scene: &mut RenderScene) -> FrameTexture {
+        let texture = scene.add_texture_source(self.layers[0].clone());
+        let filter = scene.texture_filter(self.texture);
+        scene.set_texture_filter(texture, filter);
+        FrameTexture {
+            layers: self.layers.clone(),
+            texture,
+            shown: 0,
+            info: self.info,
+        }
     }
 
     /// The texture that shows the frame.
@@ -107,5 +124,15 @@ mod tests {
         assert!(v.show(&mut scene, 99));
         assert_eq!(v.shown(), 4);
         assert_eq!(v.info().layers, 5);
+        // A second view: its own texture, at frame 0 while the first shows 4.
+        let mut w = v.view(&mut scene);
+        assert_ne!(w.texture(), v.texture());
+        assert!(w.show(&mut scene, 2));
+        let at = |s: &RenderScene, t: TextureHandle| match &s.textures()[t.index()] {
+            TextureSource::Rgba(d) => d.rgba[0],
+            _ => 0,
+        };
+        assert_eq!(at(&scene, w.texture()), 100);
+        assert_eq!(at(&scene, v.texture()), 200);
     }
 }

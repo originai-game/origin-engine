@@ -1,0 +1,24 @@
+type scene
+version 1
+---
+# The geometry station's rail (src/geometry.ts): a closed Bezier loop
+# around the point cloud, saddled up and down twice per lap. The station
+# finds it by name (og.path.find) and makes it a tube with
+# og.render.tubeGeometry({ path }): a cooked path becomes geometry.
+name "Geometry rail"
+path "geo-rail" {
+  kind bezier
+  closed true
+  point 3206.250 1.300 -1.000
+  point 3206.250 1.590 -0.310
+  point 3205.690 1.590 0.250
+  point 3205.000 1.300 0.250
+  point 3204.310 1.010 0.250
+  point 3203.750 1.010 -0.310
+  point 3203.750 1.300 -1.000
+  point 3203.750 1.590 -1.690
+  point 3204.310 1.590 -2.250
+  point 3205.000 1.300 -2.250
+  point 3205.690 1.010 -2.250
+  point 3206.250 1.010 -1.690
+}

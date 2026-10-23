@@ -357,8 +357,75 @@ pub(super) struct CookedPrimitive {
     lods: Vec<LodRow>,
     vertices: Vec<u8>,
     indices: Vec<u8>,
+    /// The raycast BVH over LOD 0 (empty with `raycast false`): its nodes,
+    /// `first` of a leaf relative to `bvh_tris`.
+    bvh_nodes: Vec<BvhNodeRow>,
+    bvh_tris: Vec<u32>,
     /// The source (glTF accessor) vertex of every cooked vertex.
     pub sources: Vec<u32>,
+}
+
+/// zlib at the best level (the BVH sections: about 2.5 times smaller).
+fn zlib(bytes: &[u8]) -> Vec<u8> {
+    miniz_oxide::deflate::compress_to_vec_zlib(bytes, 9)
+}
+
+/// The bytes the BVH sections take in the blob, compressed.
+fn w_len_of_bvh(nodes: &[BvhNodeRow], tris: &[u32]) -> usize {
+    zlib(bytemuck::cast_slice(nodes)).len() + zlib(bytemuck::cast_slice(tris)).len()
+}
+
+/// The raycast BVH og-render builds over LOD 0 as the runtime decodes it
+/// (`ordered` dequantised exactly as `runtime::dequantize` does), with its
+/// bounds quantised back onto the same grid: they decode to the bounds the
+/// build computed, bit for bit.
+fn cook_bvh(
+    ordered: &[QVertex],
+    lod0: &[u32],
+    lo: Vec3,
+    scale: Vec3,
+) -> (Vec<BvhNodeRow>, Vec<u32>) {
+    let deq = |a: usize, q: u16| lo[a] + q as f32 / 65535.0 * scale[a];
+    let mesh = og_render::MeshData {
+        vertices: ordered
+            .iter()
+            .map(|v| og_render::Vertex {
+                position: [0, 1, 2].map(|a| deq(a, v.p[a])),
+                ..bytemuck::Zeroable::zeroed()
+            })
+            .collect(),
+        indices: lod0.to_vec(),
+    };
+    let bvh = og_render::geometry::Bvh::build(&mesh);
+    // The grid point of a bound; a value off the grid (never: every bound is
+    // some corner's coordinate) takes the next point outwards.
+    let quant = |a: usize, v: f32, up: bool| -> u32 {
+        if scale[a] <= 0.0 {
+            return 0;
+        }
+        let guess = ((v - lo[a]) / scale[a] * 65535.0).round() as i64;
+        let near = (guess - 2..=guess + 2).map(|q| q.clamp(0, 65535) as u16);
+        let exact = near.clone().find(|&q| deq(a, q) == v);
+        exact.unwrap_or_else(|| {
+            if up {
+                near.filter(|&q| deq(a, q) >= v).min().unwrap_or(65535)
+            } else {
+                near.filter(|&q| deq(a, q) <= v).max().unwrap_or(0)
+            }
+        }) as u32
+    };
+    let nodes = bvh
+        .node_list()
+        .iter()
+        .map(|n| BvhNodeRow {
+            min_xy: quant(0, n.min.x, false) | quant(1, n.min.y, false) << 16,
+            min_z_max_x: quant(2, n.min.z, false) | quant(0, n.max.x, true) << 16,
+            max_yz: quant(1, n.max.y, true) | quant(2, n.max.z, true) << 16,
+            first: n.first,
+            count: n.count,
+        })
+        .collect();
+    (nodes, bvh.order().to_vec())
 }
 
 pub(super) fn cook_primitive(
@@ -741,6 +808,13 @@ pub(super) fn cook_primitive(
             packed.extend_from_slice(&b[20..28]);
         }
     }
+    let (bvh_nodes, bvh_tris) = if opts.raycast {
+        let l0 = &lods[0];
+        let lod0 = &all[l0.index_first as usize..(l0.index_first + l0.index_count) as usize];
+        cook_bvh(&ordered, lod0, lo, scale)
+    } else {
+        (Vec::new(), Vec::new())
+    };
     let vertices = encode_vertices(&packed, vertex_count, stride)?;
     let index_bytes =
         meshopt::encode_index_buffer(&all, vertex_count).map_err(|e| format!("meshopt: {e}"))?;
@@ -783,6 +857,8 @@ pub(super) fn cook_primitive(
         lods,
         vertices,
         indices: index_bytes,
+        bvh_nodes,
+        bvh_tris,
         sources: ordered_sources,
     }))
 }
@@ -1051,6 +1127,8 @@ pub fn cook(
     let mut meshes: Vec<MeshRow> = Vec::new();
     let mut vertices: Vec<u8> = Vec::new();
     let mut indices: Vec<u8> = Vec::new();
+    let mut bvh_nodes: Vec<BvhNodeRow> = Vec::new();
+    let mut bvh_tris: Vec<u32> = Vec::new();
     let lod_meshes = msft_lod(doc, &mut notes);
     for mesh in doc.meshes() {
         let first = prims.len() as u32;
@@ -1096,6 +1174,12 @@ pub fn cook(
                     c.row.index_offset = indices.len() as u32;
                     c.row.index_size = c.indices.len() as u32;
                     c.row.lod_first = lods.len() as u32;
+                    c.row.bvh_node_first = bvh_nodes.len() as u32;
+                    c.row.bvh_node_count = c.bvh_nodes.len() as u32;
+                    c.row.bvh_tri_first = bvh_tris.len() as u32;
+                    c.row.bvh_tri_count = c.bvh_tris.len() as u32;
+                    bvh_nodes.extend_from_slice(&c.bvh_nodes);
+                    bvh_tris.extend_from_slice(&c.bvh_tris);
                     vertices.extend_from_slice(&c.vertices);
                     indices.extend_from_slice(&c.indices);
                     lods.extend_from_slice(&c.lods);
@@ -1219,7 +1303,10 @@ pub fn cook(
         .table("roots", &roots, 0)
         .raw("strings", strings.0, 1)
         .raw("vertices", vertices, 16)
-        .raw("indices", indices, 16);
+        .raw("indices", indices, 16)
+        .raw("bvh_nodes", zlib(bytemuck::cast_slice(&bvh_nodes)), 4)
+        .raw("bvh_tris", zlib(bytemuck::cast_slice(&bvh_tris)), 4);
+    let bvh_bytes = w_len_of_bvh(&bvh_nodes, &bvh_tris);
     let tris: usize = prims
         .iter()
         .map(|p| lods[p.lod_first as usize].index_count as usize / 3)
@@ -1243,5 +1330,14 @@ pub fn cook(
         texture_refs.len(),
         nodes.len()
     ));
+    notes.push(if opts.raycast {
+        format!(
+            "raycast BVH: {} nodes, {bvh_bytes} bytes (`model {{ raycast false }}` leaves it out)",
+            bvh_nodes.len()
+        )
+    } else {
+        "raycast false: no BVH cooked; the first og.render.raycast that reaches it builds one"
+            .into()
+    });
     Ok((w.finish(), ModelNotes { notes }))
 }

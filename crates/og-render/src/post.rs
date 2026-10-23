@@ -1204,7 +1204,7 @@ impl Persistent {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: output_format,
-            usage: attach_bind | wgpu::TextureUsages::COPY_SRC,
+            usage: attach_bind | wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST,
             view_formats: linear_format.as_slice(),
         });
         let offscreen_view = offscreen.create_view(&Default::default());

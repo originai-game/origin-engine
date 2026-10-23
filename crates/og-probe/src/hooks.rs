@@ -73,8 +73,11 @@ pub trait Capture {
     }
     /// The frame the host's loop drew last, read back as it is in the render
     /// target: no second draw, no PNG, no JSON-RPC (`og render` records one
-    /// every frame, docs/design.md §2.9). `None` before a frame was drawn or
-    /// from a host that cannot read its target back synchronously (the web).
+    /// every frame, docs/design.md §2.9). `None` before a frame was drawn,
+    /// or (a [`Capture::deferred`] host: the web) until the readback of the
+    /// frame drawn last has landed: the first call there turns the keeping
+    /// of presented frames on, so the reader asks again before the next
+    /// frame, as a deferred `capture` is asked again.
     fn frame(&mut self) -> Option<RawFrame> {
         None
     }

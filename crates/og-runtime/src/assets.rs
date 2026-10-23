@@ -378,6 +378,14 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
     }
     let material_base = rs.scene.material_count();
     let parts = model.add_to_with(&mut rs.scene, &textures);
+    // Each primitive's raycast BVH, cooked into the blob: loaded with the
+    // mesh, so the first og.render.raycast builds nothing.
+    for (p, prim) in model.primitives.iter().enumerate() {
+        if let Some(h) = rs.scene.mesh_handle(base + p) {
+            super::geometry::adopt_cooked_bvh(&mut rs, h, prim)
+                .map_err(|e| format!("{source}: primitive {p}: {e}"))?;
+        }
+    }
     // The coarser levels of detail join the scene after the full meshes, so
     // the model's primitives stay consecutive from `base`. A streamed model
     // draws its proxy (one level) and then its full meshes without levels.
@@ -493,7 +501,8 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
 }
 
 /// After a hot reload (`og dev` cooks before it rebuilds the bundle): every
-/// open bundle's manifest is read again, and each glTF whose cooked outputs
+/// open bundle's manifest is read again (whatever is loaded: timelines
+/// refresh against it too), and each glTF whose cooked outputs
 /// changed (the model or its `#` textures, by hash) loads again into its own
 /// asset index, so Model components keep their handle and draw the edit.
 /// The old version's meshes and materials stay in the render scene, unused.
@@ -527,9 +536,8 @@ pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
             })
             .collect()
     };
-    if models.is_empty() {
-        return (Vec::new(), Vec::new());
-    }
+    // Every manifest is read again, models or not: timelines and the
+    // other assets read again after this compare against it.
     {
         let mut assets = eng.assets.borrow_mut();
         for entry in &mut assets.entries {

@@ -1836,8 +1836,11 @@ primitives keep their parameters and defaults: `cylinderGeometry`,
 `coneGeometry`, `capsuleGeometry` (an og.Collider capsule of the same
 radius and `height` matches it), `torusGeometry`, `ringGeometry`,
 `circleGeometry` and `tubeGeometry`. A tube follows a centripetal
-Catmull-Rom curve through `points`, for pipes, rails, cables and a path
-drawn as geometry. Rings and circles are one-sided, so use
+Catmull-Rom curve through `points`, for pipes, rails and cables; give it
+`path` instead (an og.path from `og.path.create`, or a scene's `path`
+block found by `og.path.find`) and it follows that path's own curve,
+Bezier or linear included, closed when the path is. Its rings are evenly
+spaced along the length, as three.js spaces them. Rings and circles are one-sided, so use
 `side: "double"` to see them from behind. `wireframe: true` on a
 standard material draws the triangle edges instead of the faces, one pixel
 wide on every tier.
@@ -1866,6 +1869,27 @@ nearest first; `first: true` answers only the nearest. Each hit has
 space), `uv` and `faceIndex`. Inside a system it reads the meshes as the
 tick started, as `og.physics.raycast` does. Use it for picking, decals on
 detailed meshes, and line of sight against geometry without colliders.
+
+A model's BVH is cooked: `og cook` builds each primitive's into the
+model's `.ogb` (about 6 to 9 bytes per triangle compressed, listed as
+`bvhBytes` in `og cook --report`), and it loads with the mesh, so the
+first raycast never stalls. A model no ray is cast at can leave it out
+with import settings; its first raycast then builds it:
+
+```
+type import
+version 1
+---
+model {
+  raycast false
+}
+```
+
+Leave it on for anything a player can click, aim at or stand a decal on.
+Turn it off for a large model that is only scenery (templates/game's
+16,512-triangle dropship gains 108 KB, 64 % of its blob). Geometries made
+at run time (`bufferGeometry`, the primitives) build theirs when made or
+updated.
 
 **Debug draw.** `og.debug.line`, `box`, `sphere`, `arrow`, `axes` and
 `text` (a label above a world point, in the UI's body font; every field is
@@ -1923,9 +1947,11 @@ picture stays with its sound): with a 30 Hz tick, tick 90 shows the
 frame 3 s in, the same in every run and after a restore. Write
 `VideoPlayer.time` to seek (the sound starts again there on the next
 tick), `playing` to pause, `speed` for slow motion (the pitch follows).
-`frame` and `finished` are written for you. Several players of one video
-show the same frame (the first player's); cook a second asset for a
-second moment of one clip. Every field and the loaders are in `reference/video.md`.
+`frame` and `finished` are written for you, and so is `texture`: each
+player of a video has a texture of its own (the first takes
+`info.texture`, each further one a texture made for it over the same
+frames), so two players at different times show different frames. With
+more than one player, draw each player's `VideoPlayer.texture`. Every field and the loaders are in `reference/video.md`.
 
 **Videos out.** `og render` plays a command script headless and makes a
 video of it: a frame every `tick / fps` ticks (the fps divides the tick

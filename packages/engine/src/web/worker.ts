@@ -176,6 +176,8 @@ export interface WebExtras {
   og_web_memory?(engine: number): string;
   /** Make one pipeline no frame used yet (og-render's Renderer::warm); false when none is left. */
   og_web_warm?(engine: number): boolean;
+  /** `og render`'s every-frame capture (development builds): the display frame drawn last as RGBA8 rows at the canvas's size; empty until its readback lands. */
+  og_web_render_frame?(engine: number): Uint8Array;
   /** The first Rust panic recorded (JSON: kind, message, location, tick, lane), or `null`. */
   og_web_panic?(): string;
   /** Test hook: the next item at a lanes site panics (in a lane when the call splits). */
@@ -800,6 +802,15 @@ export function startWorker(game: GameToken): void {
     hash: (e) => e.hash(),
     /** What the engine holds (ProbeMemory: the wasm linear memory, the counted heap, the world, streaming, audio), in every build. */
     memory: (e) => JSON.parse(glueRef?.og_web_memory?.(e.id) ?? "null"),
+    /**
+     * The display frame drawn last as RGBA8 rows (the probe's Capture::frame,
+     * `og render`'s every-frame capture), or null until its readback lands: the
+     * first call turns the keeping of frames on; ask again before the next frame.
+     */
+    renderFrame: (e) => {
+      const rgba = glueRef?.og_web_render_frame?.(e.id);
+      return rgba && rgba.length > 0 ? rgba : null;
+    },
     /** What the lanes did so far (crates/og-runtime/src/lanes.rs `report`). */
     lanes: () => JSON.parse(glueRef?.og_web_lanes?.() ?? "null"),
     /** Test hook: the next item at lanes site `site` panics (og_web_lanes_fault); false when the module has no such hook or site. */

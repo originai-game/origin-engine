@@ -1,0 +1,10 @@
+type sfx
+version 1
+---
+# The intro's music (timelines/intro.ogt's music track): a level-up
+# jingle looped under the drop, faded in and out by the timeline.
+preset "levelup"
+seed 0
+pitch 1
+length 1
+volume 1

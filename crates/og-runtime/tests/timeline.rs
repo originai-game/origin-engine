@@ -17,13 +17,19 @@
 //! retroactive one; the camera stays where the timeline left it after the
 //! end. Broken once by applying a Stop queued before a Play (what
 //! `timeline:play` queues) after it: the timeline never started.
+//!
+//! A hot reload (`og dev`: the `.ogt` edited and cooked, then the probe's
+//! `reload`) while a timeline plays: the playback continues from the same
+//! time with the edited keys, and the state block (the camera it owns, that
+//! it started) survives. Broken before: the loaded timeline was cached by
+//! id and never read again, so the old keys played on.
 
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_probe_commands,
-    og_engine_probe_dump, og_game_game, og_host_begin_bundle, og_load_timeline,
-    og_system_define_system, og_timeline_info, og_timeline_pause, og_timeline_play,
-    og_timeline_seek, og_world_events, og_world_find, og_world_get, og_world_get_tick,
-    og_world_insert, og_world_resource, og_world_spawn, set_hooks,
+    og_engine_probe_dump, og_engine_probe_reload, og_game_game, og_host_begin_bundle,
+    og_load_timeline, og_system_define_system, og_timeline_info, og_timeline_pause,
+    og_timeline_play, og_timeline_seek, og_world_events, og_world_find, og_world_get,
+    og_world_get_tick, og_world_insert, og_world_resource, og_world_spawn, set_hooks,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -93,17 +99,25 @@ track marker {
 
 fn project() -> &'static Path {
     static ROOT: OnceLock<PathBuf> = OnceLock::new();
-    ROOT.get_or_init(|| {
-        let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
-            .join(format!("og-runtime-timeline-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&root);
-        let p = root.join("assets/timelines/t.ogt");
-        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
-        std::fs::write(p, TIMELINE).unwrap();
-        let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
-        assert!(report.ok(), "{:?}", report.errors());
-        root
-    })
+    ROOT.get_or_init(|| fresh_project("og-runtime-timeline"))
+}
+
+/// A project of its own with `t.ogt`, cooked (`name` and the process id).
+fn fresh_project(name: &str) -> PathBuf {
+    let root =
+        PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    write_timeline(&root, TIMELINE);
+    root
+}
+
+/// Writes `timelines/t.ogt` and cooks the project (what `og dev` does on an edit).
+fn write_timeline(root: &Path, text: &str) {
+    let p = root.join("assets/timelines/t.ogt");
+    std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+    std::fs::write(p, text).unwrap();
+    let report = og_cook::cook_project(root, &og_cook::CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
 }
 
 #[derive(Default)]
@@ -161,7 +175,10 @@ struct Run {
 /// An engine with "box" and an entity whose og.Timeline holds `t.ogt`
 /// (stopped), one frame in.
 fn start() -> Run {
-    let root = project();
+    start_in(project())
+}
+
+fn start_in(root: &Path) -> Run {
     let seen = Rc::new(RefCell::new(Seen::default()));
     set_hooks(Rc::new(Game(seen.clone())));
     og_host_begin_bundle();
@@ -354,4 +371,63 @@ fn timeline_play_and_seek_from_the_command_channel() {
     assert!((5.0..=5.05).contains(&t), "{t}");
     // The start()'s own og.Timeline was never played.
     assert_eq!(state(&r).0["playing"], json!(false));
+}
+
+#[test]
+fn a_hot_reload_keeps_playing_from_the_same_time_with_the_edited_keys() {
+    let root = fresh_project("og-runtime-timeline-reload");
+    let r = start_in(&root);
+    value(og_timeline_play(r.engine, r.timeline));
+    // 2 s in: the box on its way to the key at 3 s (3 0 0), eased quadIn.
+    frame(r.engine, 121);
+    let (before, camera) = state(&r);
+    assert_eq!(before["time"], json!(2.0), "{before}");
+    let x = |p: &Value| p["position"]["x"].as_f64().unwrap();
+    let y = |p: &Value| p["position"]["y"].as_f64().unwrap();
+    let box_before = get(&r, "box");
+    assert!(y(&box_before).abs() < 1e-6, "{box_before}");
+
+    // The edit: the key at 3 s now lifts the box 4 m, and the camera's
+    // last key frames a wider view.
+    let edited = TIMELINE
+        .replace("key 3 {\n    position 3 0 0", "key 3 {\n    position 3 4 0")
+        .replace("fov 40", "fov 30");
+    assert_ne!(edited, TIMELINE);
+    write_timeline(&root, &edited);
+    let answer: Value = serde_json::from_str(&og_engine_probe_reload(r.engine)).unwrap();
+    assert!(answer.is_object(), "the reload swapped the world: {answer}");
+
+    // The state block survived: the same time, still playing, still
+    // holding the camera (its rail's position, not the one it found), and
+    // no second og.TimelineStarted.
+    let (after, camera_after) = state(&r);
+    assert_eq!(after["time"], before["time"], "{after}");
+    assert_eq!(after["playing"], json!(true), "{after}");
+    assert_eq!(camera_after["position"], camera["position"]);
+    frame(r.engine, 1);
+    // The next tick evaluates the edited keys at the time it reached: the
+    // quadIn ease of (0 0 0) to (3 4 0) at (2 + 1/60) / 3.
+    let s = (2.0 + 1.0 / 60.0) / 3.0;
+    let k = s * s;
+    let moved = get(&r, "box");
+    assert!((x(&moved) - 3.0 * k).abs() < 1e-4, "{moved}");
+    assert!(
+        (y(&moved) - 4.0 * k).abs() < 1e-4,
+        "edited key not played: {moved}"
+    );
+    let t = state(&r).0["time"].as_f64().unwrap();
+    assert!((t - (2.0 + 1.0 / 60.0)).abs() < 1e-5, "{t}");
+    // To the end: the edited camera key (fov 30) holds at 6 s, then the
+    // camera is handed back as it was found.
+    frame(r.engine, 238);
+    let (_, cam) = state(&r);
+    assert!((cam["fov"].as_f64().unwrap() - 30.0).abs() < 1e-3, "{cam}");
+    let started = r
+        .seen
+        .borrow()
+        .events
+        .iter()
+        .filter(|e| e.1 == "og.TimelineStarted")
+        .count();
+    assert_eq!(started, 1, "{:?}", r.seen.borrow().events);
 }

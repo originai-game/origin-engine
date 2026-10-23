@@ -252,6 +252,29 @@ fn bvh_of(g: &mut GeoState, scene: &og_render::RenderScene, mesh: MeshHandle) ->
     Some(b)
 }
 
+/// A loaded model's primitive takes the BVH its cook built (over the mesh
+/// the scene now holds at `mesh`), so no raycast builds one; a primitive
+/// cooked with `raycast false` keeps the lazy build.
+pub(crate) fn adopt_cooked_bvh(
+    rs: &mut RenderState,
+    mesh: MeshHandle,
+    prim: &og_cook::runtime::CookedPrimitive,
+) -> Result<(), String> {
+    let RenderState { geo: g, scene, .. } = rs;
+    let Some(data) = scene.mesh(mesh) else {
+        return Ok(());
+    };
+    let Some(bvh) = prim.bvh(data) else {
+        return Ok(());
+    };
+    let bvh = bvh?;
+    g.bvh.insert(
+        mesh.index(),
+        (scene.mesh_revision(mesh.index()), Rc::new(bvh)),
+    );
+    Ok(())
+}
+
 // ── geometry ────────────────────────────────────────────────────────────────
 
 /// Adds a made geometry: drawn, its BVH built, and (`physics`) a Collider.mesh.
@@ -452,6 +475,22 @@ pub fn og_render_circle_geometry(world: u32, desc: Option<String>) -> String {
 
 pub fn og_render_tube_geometry(world: u32, desc: Option<String>) -> String {
     primitive(world, desc, |d| {
+        let path = d["path"].as_f64().filter(|&h| h != 0.0);
+        if let Some(h) = path {
+            let p = super::timeline::path_of(world, h as u64).ok_or_else(|| {
+                format!("desc.path {h} is not a live path (og.path.create or og.path.find)")
+            })?;
+            return Ok(geo::primitives::tube_along(
+                |u| {
+                    let s = p.sample(u);
+                    (s.position, s.tangent)
+                },
+                uint(d, "tubularSegments", 64, 1),
+                size(d, "radius", 1.0)?,
+                uint(d, "radialSegments", 8, 3),
+                p.desc().closed,
+            ));
+        }
         let points = points_of(d, "points")?;
         if points.len() < 2 {
             return Err(format!(

@@ -1,5 +1,6 @@
 // The geometry station (depth S1): a procedural terrain rewritten every
-// tick, a tube along a spline, the new primitives, a point cloud, dashed
+// tick, a tube along a spline, a tube along a cooked path (the mint loop
+// around the point cloud: og.render.tubeGeometry's `path`), the new primitives, a point cloud, dashed
 // screen lines and the physics debug view. The probe's render raycast hits
 // the terrain under it; the dashed frame along the bottom edge is dashes,
 // not a solid line; the physics view draws the terrain's collider edges in
@@ -28,6 +29,17 @@ export default stationPlaytest("geometry", 1.5, ["geo"], ({ t, field, frame, bef
     }
   }
   t.ok(orange > 10000, `the physics view draws the terrain's collider (${orange} orange pixels)`);
+  // The tube along the scene's path "geo-rail": its mint loop around the
+  // point cloud (none of the frame's other surfaces is this colour).
+  let mint = 0;
+  for (let y = 200; y < 360; y++) {
+    for (let x = 900; x < 1180; x++) {
+      const i = (y * frame.width + x) * 4;
+      const [r, g, b] = [frame.rgba[i]!, frame.rgba[i + 1]!, frame.rgba[i + 2]!];
+      if (g > 190 && b > 150 && r < 140 && g > r + 60) mint++;
+    }
+  }
+  t.ok(mint > 800, `the tube along the cooked path circles the point cloud (${mint} mint pixels)`);
   const moving = changed(frame, before, 20);
   t.ok(moving > 2000, `the terrain is rewritten every tick (${moving} pixels changed in half a second)`);
 });

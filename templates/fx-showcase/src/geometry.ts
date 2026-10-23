@@ -8,7 +8,10 @@
 //             spline with its control polygon as a dashed og.Lines; the
 //             new primitives in a row (cylinder, cone, capsule, a
 //             wireframe torus, ring, circle); a point cloud kept as
-//             og.Points; bodies falling onto the terrain; dashed lines in
+//             og.Points, circled by a tube along a cooked path (the scene
+//             scenes/geo-rail.ogt's closed Bezier `path "geo-rail"`, found
+//             by og.path.find and made a tube by og.render.tubeGeometry's
+//             `path`); bodies falling onto the terrain; dashed lines in
 //             screen space framing the view; and a probe sweeping over the
 //             terrain whose og.render.raycast hit is marked with og.debug
 //             (arrow, sphere, label). The physics debug view is on.
@@ -201,6 +204,13 @@ function build(world: World): void {
   const points = must(og.render.bufferGeometry(world, { positions: new Float32Array(cloud), colors: new Float32Array(colors), physics: false }));
   const shell = must(world.spawn({ name: "geo-cloud", position: { x: x0 + 5, y: 1.3, z: -1 } }));
   world.insert(shell, og.Points, { geometry: points, size: 0.05 });
+
+  // A tube along a cooked path: the scene's closed Bezier loop around the
+  // cloud, in world coordinates, followed exactly (tubeGeometry's `path`).
+  must(world.instantiate(must(og.load.scene(world, "scenes/geo-rail.ogt"))));
+  const rail = must(og.path.find(world, "geo-rail"));
+  const loop = must(og.render.tubeGeometry(world, { path: rail, radius: 0.07, tubularSegments: 200, radialSegments: 10 }));
+  mesh("geo-rail", loop, k.mat({ color: { r: 0.2, g: 0.95, b: 0.75 }, emissive: { r: 0.05, g: 0.4, b: 0.3 }, roughness: 0.35 }), { x: 0, y: 0, z: 0 });
 
   // Bodies dropped onto the terrain (the physics view shows their shapes).
   const box = must(og.render.boxGeometry(world, { width: 0.4, height: 0.4, depth: 0.4 }));

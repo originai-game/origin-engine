@@ -226,10 +226,13 @@ Runtime geometry and debug draw (depth S1). Games can make geometry from
 attribute arrays (`og.render.bufferGeometry`, three.js BufferGeometry's
 attributes, with normals computed when they are missing) and from three.js's
 primitives: cylinder, cone, capsule, torus, ring, circle, and a tube along a
-centripetal Catmull-Rom curve. A dynamic geometry is rewritten in place
+centripetal Catmull-Rom curve or along an og.path (its rings evenly spaced
+by length, as three.js's). A dynamic geometry is rewritten in place
 each tick (`updateGeometry`). A made geometry is also a physics mesh
 under its handle, so an og.Collider can use it as its `mesh`. Each geometry
-has a BVH, built when it is made or updated and lazily for loaded ones;
+has a BVH, built when it is made or updated; a model's is cooked into its
+blob (`model { raycast false }` leaves it out, and the first raycast that
+reaches the model builds it);
 `og.render.raycast` uses it to test what is drawn rather than the
 colliders. Inside a system, the raycast reads the meshes as the probe
 recorded them at the tick's start.
@@ -691,7 +694,9 @@ video is a command script played headless and recorded (docs/depth.md §3).
   encodes them and makes one Texture of a frame's size (og-render's
   `FrameTexture`) whose contents become the frame shown, so a material
   map, an `og.Sprite` or a UI image draws footage as any texture, at one
-  frame's GPU memory. `og.VideoPlayer` (`video`, `playing`, `time`,
+  frame's GPU memory. Each further player of a video gets a view of its
+  own over the same decoded frames (`VideoPlayer.texture`), so players at
+  different times show different frames. `og.VideoPlayer` (`video`, `playing`, `time`,
   `speed`, `loop`) is played by the `og.video` system by the tick (not the
   time scale) and keeps the entity's `og.AudioSource` in step: its
   `startOffset` is the video's time, and a seek stops it for a tick and

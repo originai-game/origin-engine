@@ -18619,7 +18619,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "Written: the video's texture (VideoInfo.texture), for a material or sprite set up from the player.",
+                doc: "Written: this player's texture (VideoInfo.texture for the video's first player, a texture of its own for each further one), for a material, sprite or UI image set up from the player. It keeps it while it lives.",
                 variants: &[],
                 capacity: 0,
             },

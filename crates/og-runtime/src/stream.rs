@@ -729,8 +729,10 @@ fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                         None => textures.push(rs.scene.add_texture_source(d)),
                     }
                 }
-                for ((h, _), m) in meshes.iter().zip(full) {
+                for (((h, _), m), prim) in meshes.iter().zip(full).zip(&model.primitives) {
                     rs.scene.set_mesh(*h, m);
+                    // The full model's cooked BVH replaces the proxy's.
+                    super::geometry::adopt_cooked_bvh(&mut rs, *h, prim)?;
                 }
                 for (i, (h, _)) in materials.iter().enumerate().take(model.materials.len()) {
                     if model.materials[i].physical.present == 0 {

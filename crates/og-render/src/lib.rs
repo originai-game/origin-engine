@@ -1346,6 +1346,9 @@ pub struct Renderer {
     /// The offscreen target's sRGB view format ([`linear_view_format`]).
     offscreen_linear: Option<wgpu::TextureFormat>,
     surface: Option<(wgpu::Surface<'static>, wgpu::SurfaceConfiguration)>,
+    /// Copy each presented surface frame into the offscreen target, so
+    /// [`Renderer::begin_capture`] reads it ([`Renderer::set_keep_frame`]).
+    keep_frame: bool,
     samples: u32,
     persistent: post::Persistent,
     graph: post::FrameGraph,
@@ -2160,8 +2163,18 @@ impl Renderer {
                     ))
                 })?,
         };
+        // A surface frame can be copied out where the device allows it
+        // (frame capture on the web host: `set_keep_frame`).
+        let copy = surface
+            .get_capabilities(&adapter)
+            .usages
+            .contains(wgpu::TextureUsages::COPY_SRC);
         let config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            usage: if copy {
+                wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC
+            } else {
+                wgpu::TextureUsages::RENDER_ATTACHMENT
+            },
             format,
             color_space: wgpu::SurfaceColorSpace::Auto,
             width: desc.width.max(1),
@@ -2840,6 +2853,7 @@ impl Renderer {
             output_format,
             offscreen_linear,
             surface,
+            keep_frame: false,
             samples,
             persistent,
             graph: post::FrameGraph::default(),
@@ -8869,6 +8883,9 @@ impl Renderer {
         }
         if let (Some(g), Some(_)) = (&self.glass_targets, layered) {
             stats.draw_calls += self.glass.blit(&mut encoder, g, output);
+        }
+        if let Some((frame, ..)) = surface_frame.as_ref().filter(|_| self.keep_frame) {
+            self.keep_presented(&mut encoder, &frame.texture);
         }
         self.queue
             .submit(cull_commands.into_iter().chain(Some(encoder.finish())));

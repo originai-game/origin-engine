@@ -2,8 +2,10 @@
 //! cooked video's frames and makes the Texture that shows one of them
 //! (og-render's `FrameTexture`), and loads its sound; the `og.video` system
 //! (after the game's systems, before og.audio) plays every og.VideoPlayer by
-//! the tick and keeps the entity's og.AudioSource in step; extraction shows
-//! each video's frame (the first player's, in query order) in its texture.
+//! the tick, gives each player a texture of its own (the video's first, then
+//! a view of the same frames per further player: [`assign`]) and keeps the
+//! entity's og.AudioSource in step; extraction shows each player's frame in
+//! its texture.
 //!
 //! Playback is world state only: a player's time, frame and finished flag
 //! are its component's fields, and a seek is read from them (a time outside
@@ -32,7 +34,6 @@ struct Clip {
     frames: u32,
     seconds: f32,
     sound: u64,
-    texture: u64,
 }
 
 type Clips = Arc<Mutex<BTreeMap<u64, Clip>>>;
@@ -49,7 +50,11 @@ fn clips(engine: u32) -> Clips {
 /// A loaded video in the render state (by Video handle index).
 pub(crate) struct LoadedVideo {
     pub id: String,
-    pub frames: og_render::FrameTexture,
+    /// Its textures, each with its Texture handle: the first is
+    /// VideoInfo.texture, the others views of the same frames made as
+    /// further players claimed one. A view is never dropped (a snapshot
+    /// may name it).
+    pub views: Vec<(u64, og_render::FrameTexture)>,
     pub info: Value,
 }
 
@@ -86,7 +91,7 @@ pub(crate) fn install(
                     ..QueryDesc::default()
                 }],
             },
-            move |ctx| run(ctx, &shared, &player, &audio),
+            move |ctx| run(ctx, engine_id, &shared, &player, &audio),
         )
         .map_err(|e| e.reason().to_string())
 }
@@ -103,6 +108,7 @@ fn frame_at(time: f32, c: &Clip) -> u32 {
 
 fn run(
     ctx: &mut SystemContext<'_>,
+    engine_id: u32,
     shared: &Mutex<BTreeMap<u64, Clip>>,
     player: &(SchemaId, Layout),
     audio: &(SchemaId, Layout),
@@ -114,9 +120,16 @@ fn run(
     }
     let clips = shared.lock().unwrap_or_else(|e| e.into_inner()).clone();
     let bad = |e: String| og_core::Error::new(og_core::ErrorKind::Invalid, e);
-    for e in entities {
-        let bytes = ctx.get_bytes(e, player.0)?;
-        let mut v = player.1.decode(&bytes);
+    let decoded: Vec<(Entity, Vec<u8>, Value)> = entities
+        .into_iter()
+        .map(|e| {
+            let bytes = ctx.get_bytes(e, player.0)?;
+            let v = player.1.decode(&bytes);
+            Ok((e, bytes, v))
+        })
+        .collect::<og_core::Result<_>>()?;
+    let textures = assign(engine_id, &decoded).map_err(bad)?;
+    for ((e, bytes, mut v), texture) in decoded.into_iter().zip(textures) {
         let handle = v["video"].as_f64().unwrap_or(0.0) as u64;
         let Some(c) = clips.get(&handle).copied() else {
             continue;
@@ -147,7 +160,7 @@ fn run(
         v["time"] = json!(time);
         v["frame"] = json!(frame_at(time, &c));
         v["finished"] = json!(finished);
-        v["texture"] = json!(c.texture as f64);
+        v["texture"] = json!(texture as f64);
         let out = player.1.encode(Some(&bytes), Some(&v)).map_err(bad)?;
         ctx.set_bytes(e, player.0, &out)?;
         // The sound: started at the video's time, stopped for a tick on a
@@ -170,7 +183,66 @@ fn run(
     Ok(())
 }
 
-/// Extraction: each video's texture shows its first player's frame.
+/// Each player's texture (in `players`' order; 0 for one without a loaded
+/// video): the one its `texture` field names when that is a view of its
+/// video no earlier player kept, else the first view nobody keeps, else a
+/// new view of the video's frames. Kept textures go first, so a player that
+/// has one never loses it to a newcomer earlier in the query.
+fn assign(engine_id: u32, players: &[(Entity, Vec<u8>, Value)]) -> Result<Vec<u64>, String> {
+    let eng = super::engine::engine(engine_id)?;
+    let mut rs = eng
+        .render
+        .try_borrow_mut()
+        .map_err(|_| "og.video: the render state is busy".to_string())?;
+    let video = |v: &Value| v["video"].as_f64().and_then(assets::index_of);
+    let mut out = vec![0u64; players.len()];
+    let mut taken: std::collections::BTreeSet<u64> = Default::default();
+    // Kept: a view of its own video, the first player to name it.
+    for (k, (_, _, v)) in players.iter().enumerate() {
+        let (Some(i), Some(t)) = (video(v), v["texture"].as_f64().map(|t| t as u64)) else {
+            continue;
+        };
+        let is_view = rs
+            .videos
+            .get(i)
+            .is_some_and(|lv| lv.views.iter().any(|(h, _)| *h == t));
+        if is_view && taken.insert(t) {
+            out[k] = t;
+        }
+    }
+    // The others: a free view, or a new one.
+    for (k, (_, _, v)) in players.iter().enumerate() {
+        if out[k] != 0 {
+            continue;
+        }
+        let Some(i) = video(v) else {
+            continue;
+        };
+        let Some(lv) = rs.videos.get(i) else {
+            continue;
+        };
+        if let Some(&(h, _)) = lv.views.iter().find(|(h, _)| !taken.contains(h)) {
+            taken.insert(h);
+            out[k] = h;
+            continue;
+        }
+        let RenderState {
+            videos,
+            scene,
+            textures,
+            ..
+        } = &mut *rs;
+        let view = videos[i].views[0].1.view(scene);
+        textures.push(view.texture());
+        let h = assets::handle(textures.len() - 1);
+        videos[i].views.push((h, view));
+        taken.insert(h);
+        out[k] = h;
+    }
+    Ok(out)
+}
+
+/// Extraction: each player's texture shows its frame.
 pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     if rs.videos.is_empty() {
         return;
@@ -182,7 +254,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         read: vec![PLAYER.into()],
         ..QueryDesc::default()
     };
-    let mut want: BTreeMap<usize, u32> = BTreeMap::new();
+    // (video index, texture handle) -> the frame its player shows.
+    let mut want: BTreeMap<(usize, u64), u32> = BTreeMap::new();
     if let Ok(all) = world.query(&q) {
         for a in all {
             for e in a.entities() {
@@ -190,17 +263,23 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                     continue;
                 };
                 let v = layout.decode(&b);
-                if let Some(i) = v["video"].as_f64().and_then(assets::index_of) {
-                    want.entry(i)
+                if let (Some(i), Some(t)) = (
+                    v["video"].as_f64().and_then(assets::index_of),
+                    v["texture"].as_f64(),
+                ) {
+                    want.entry((i, t as u64))
                         .or_insert(v["frame"].as_u64().unwrap_or(0) as u32);
                 }
             }
         }
     }
     let RenderState { videos, scene, .. } = rs;
-    for (i, frame) in want {
-        if let Some(v) = videos.get_mut(i) {
-            v.frames.show(scene, frame as usize);
+    for ((i, t), frame) in want {
+        if let Some((_, view)) = videos
+            .get_mut(i)
+            .and_then(|v| v.views.iter_mut().find(|(h, _)| *h == t))
+        {
+            view.show(scene, frame as usize);
         }
     }
 }
@@ -239,7 +318,7 @@ fn load_video(eng: &Engine, path: &str) -> Result<Value, String> {
     });
     rs.videos.push(LoadedVideo {
         id,
-        frames,
+        views: vec![(texture, frames)],
         info: info.clone(),
     });
     rs.video_player = player;
@@ -253,7 +332,6 @@ fn load_video(eng: &Engine, path: &str) -> Result<Value, String> {
                 frames: meta.frames,
                 seconds: meta.frames as f32 / meta.fps as f32,
                 sound,
-                texture,
             },
         );
     Ok(info)

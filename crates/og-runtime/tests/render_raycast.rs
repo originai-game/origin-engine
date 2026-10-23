@@ -7,12 +7,17 @@
 //! distance not back out of it), the BVH misses or reorders triangles, the
 //! normal is not carried through the transform's inverse transpose, or an
 //! update leaves the old BVH (or the old physics mesh) in place.
+//!
+//! A cooked model (templates/game's dropship) raycasts without building a
+//! BVH: each primitive's was cooked into its blob and loaded with its mesh
+//! (before, the first raycast that reached it built it then).
 
+use og_render::geometry::Bvh;
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_game_game, og_host_begin_bundle,
-    og_physics_raycast, og_render_buffer_geometry, og_render_geometry_info, og_render_raycast,
-    og_render_standard_material, og_render_update_geometry, og_world_insert, og_world_spawn,
-    set_hooks,
+    og_load_gltf, og_physics_raycast, og_render_buffer_geometry, og_render_geometry_info,
+    og_render_raycast, og_render_standard_material, og_render_update_geometry, og_world_insert,
+    og_world_instantiate, og_world_spawn, set_hooks,
 };
 use serde_json::{Value, json};
 use std::path::PathBuf;
@@ -25,7 +30,10 @@ impl Hooks for Disk {
         Ok(String::new())
     }
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
-        Fetch::Failed(format!("{path}: no assets"))
+        match std::fs::read(path) {
+            Ok(bytes) => Fetch::Ready(bytes),
+            Err(e) => Fetch::Failed(format!("{path}: {e}")),
+        }
     }
 }
 
@@ -182,4 +190,66 @@ fn the_mesh_raycast_answers_the_collider_raycast() {
     ));
     answer(og_engine_frame(w, 1000.0 / 60.0));
     check("updated");
+}
+
+#[test]
+fn a_cooked_model_raycasts_without_building_a_bvh() {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("og-runtime-cooked-bvh-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("assets/models")).unwrap();
+    std::fs::copy(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../templates/game/assets/models/dropship.glb"),
+        root.join("assets/models/dropship.glb"),
+    )
+    .unwrap();
+    let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    set_hooks(Rc::new(Disk));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let options = json!({ "root": root.to_str().unwrap() }).to_string();
+    let w = answer(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    answer(og_engine_frame(w, 1000.0 / 60.0));
+
+    let builds = Bvh::builds();
+    let asset = answer(og_load_gltf(w, "models/dropship.glb".into(), None));
+    let e = answer(og_world_instantiate(w, asset.as_f64().unwrap(), None))
+        .as_f64()
+        .unwrap();
+    answer(og_engine_frame(w, 1000.0 / 60.0));
+    // Down through the model from above, and across it: both hit it.
+    let mut hits = 0;
+    for (o, d) in [
+        (
+            json!({ "x": 0, "y": 50, "z": 0 }),
+            json!({ "x": 0, "y": -1, "z": 0 }),
+        ),
+        (
+            json!({ "x": 50, "y": 0.5, "z": 0.2 }),
+            json!({ "x": -1, "y": 0, "z": 0 }),
+        ),
+        (
+            json!({ "x": 0.3, "y": 0.4, "z": 50 }),
+            json!({ "x": 0, "y": 0, "z": -1 }),
+        ),
+    ] {
+        let all = answer(og_render_raycast(
+            w,
+            json!({ "origin": o, "direction": d }).to_string(),
+            None,
+        ));
+        for h in all.as_array().unwrap() {
+            hits += 1;
+            assert!(h["distance"].as_f64().unwrap() > 0.0, "{h}");
+        }
+    }
+    assert!(hits >= 2, "the rays hit the dropship {hits} times");
+    let _ = e;
+    assert_eq!(
+        Bvh::builds(),
+        builds,
+        "loading and raycasting the cooked model built a BVH"
+    );
 }
