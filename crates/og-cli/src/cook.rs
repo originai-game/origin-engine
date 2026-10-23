@@ -1,12 +1,17 @@
-//! `og cook [project] [--threads N] [--report [out.md]] [--json] [--watch
+//! `og cook [project] [--threads N] [--report [out.md|out.json]] [--json] [--watch
 //! [--exit-after N]]`: assets/ into cooked/ through og-cook's
 //! `cook_project`, incrementally by stamp. `og run`, `og build`, `og dev` and
 //! `og test` cook first, so a run never reads stale blobs.
 //!
 //! `--report` prints the ten assets whose last cook took longest (each
 //! asset's time is recorded in `cooked/.cook-times.ogt`, so an up-to-date
-//! asset keeps the time of the cook that made it), and with a path ending in
-//! `.md` writes the whole report there. `--watch` cooks, then cooks again
+//! asset keeps the time of the cook that made it), with a path ending in
+//! `.md` writes the whole report there, and always writes the diagnostics
+//! as data: `cook-report.json` (og-cook's `cook::stats`: per asset its
+//! triangles, vertices and LODs, textures with sizes and formats, bones,
+//! clips, bytes cooked and the budget flags against project.ogt's `budgets
+//! { }`), at `og-out/cook-report.json` or the `.json` path given, which
+//! `og doctor --project` reads. `--watch` cooks, then cooks again
 //! whenever a file under assets/ changes, printing each cooked asset's time
 //! and the cook's against the 300 ms reload budget (`--exit-after N` stops
 //! after N of them; `--json` prints one JSON line per cook).
@@ -18,7 +23,35 @@ use std::path::Path;
 use std::process::ExitCode;
 use std::time::Duration;
 
-const USAGE: &str = "usage: og cook [project] [--threads N] [--report [out.md]] [--json] [--watch [--exit-after N]]";
+const USAGE: &str = "usage: og cook [project] [--threads N] [--report [out.md|out.json]] [--json] [--watch [--exit-after N]]";
+
+/// Where `og cook --report` writes the diagnostics by default, under the
+/// project (`og doctor --project` reads it there).
+pub const COOK_REPORT: &str = "og-out/cook-report.json";
+
+/// The budgets of the project at `root` (project.ogt's `budgets { }` over
+/// the defaults; the defaults without a manifest).
+pub fn budgets(root: &Path) -> Result<og_cook::cook::stats::Budgets, String> {
+    match std::fs::read_to_string(root.join("project.ogt")) {
+        Ok(text) => {
+            let doc =
+                og_core::ogt::Document::parse(&text).map_err(|e| format!("project.ogt: {e}"))?;
+            og_cook::cook::stats::Budgets::from_project(&doc.body)
+        }
+        Err(_) => Ok(og_cook::cook::stats::Budgets::default()),
+    }
+}
+
+/// Writes `cook-report.json` for a finished cook at `path`.
+pub fn write_cook_report(root: &Path, report: &Report, path: &Path) -> Result<(), String> {
+    let budgets = budgets(root)?;
+    let json = og_cook::cook::stats::cook_report_json(report, &root.join("cooked"), &budgets);
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    }
+    let text = serde_json::to_string_pretty(&json).map_err(|e| e.to_string())?;
+    std::fs::write(path, text + "\n").map_err(|e| format!("{}: {e}", path.display()))
+}
 
 /// The engine's own components as the cook packs scene tables with them
 /// (`Transform`, `Model`, the lights), by the names scenes use.
@@ -276,6 +309,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     let mut project = ".".to_string();
     let mut threads = 0;
     let mut report = None;
+    let mut report_json = None;
     let mut slowest = false;
     let mut json = false;
     let mut watching = false;
@@ -296,6 +330,9 @@ pub fn run(args: &[&str]) -> ExitCode {
                 // The path is optional: a file ending in .md.
                 if let Some(p) = args.get(i + 1).filter(|p| p.ends_with(".md")) {
                     report = Some(p.to_string());
+                    i += 1;
+                } else if let Some(p) = args.get(i + 1).filter(|p| p.ends_with(".json")) {
+                    report_json = Some(std::path::PathBuf::from(p));
                     i += 1;
                 }
             }
@@ -335,6 +372,16 @@ pub fn run(args: &[&str]) -> ExitCode {
             {
                 eprintln!("og cook: cannot write {path}: {e}");
                 return ExitCode::FAILURE;
+            }
+            if slowest {
+                let path = report_json.unwrap_or_else(|| p.root.join(COOK_REPORT));
+                if let Err(e) = write_cook_report(&p.root, &r, &path) {
+                    eprintln!("og cook: cook-report.json: {e}");
+                    return ExitCode::FAILURE;
+                }
+                if !json {
+                    println!("wrote {}", path.display());
+                }
             }
             if watching {
                 if !json {

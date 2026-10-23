@@ -24,6 +24,7 @@ pub mod look;
 mod model;
 mod scene;
 pub mod sfx;
+pub mod stats;
 mod stream;
 mod terrain;
 mod texture;

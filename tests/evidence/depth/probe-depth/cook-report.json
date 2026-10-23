@@ -1,0 +1,283 @@
+{
+  "assets": [
+    {
+      "cookMs": 0.707,
+      "cookedBytes": 1025,
+      "flags": [],
+      "kind": "behaviour",
+      "outputs": [
+        {
+          "bytes": 1025,
+          "id": "ai/guard.ogt",
+          "type": "og.Behaviour"
+        }
+      ],
+      "source": "ai/guard.ogt",
+      "sourceBytes": 833
+    },
+    {
+      "cookMs": 17.168,
+      "cookedBytes": 9160,
+      "flags": [],
+      "kind": "sound",
+      "outputs": [
+        {
+          "bytes": 9160,
+          "id": "audio/blip.wav",
+          "type": "og.Sound"
+        }
+      ],
+      "source": "audio/blip.wav",
+      "sourceBytes": 44144
+    },
+    {
+      "cookMs": 1.799,
+      "cookedBytes": 928,
+      "flags": [],
+      "kind": "sound",
+      "outputs": [
+        {
+          "bytes": 928,
+          "id": "audio/click.ogt",
+          "type": "og.Sound"
+        }
+      ],
+      "source": "audio/click.ogt",
+      "sourceBytes": 135
+    },
+    {
+      "cookMs": 323.14,
+      "cookedBytes": 592881,
+      "flags": [],
+      "kind": "font",
+      "outputs": [
+        {
+          "bytes": 592881,
+          "id": "fonts/NotoSansSC-Regular-subset.ttf",
+          "type": "og.Font"
+        }
+      ],
+      "source": "fonts/NotoSansSC-Regular-subset.ttf",
+      "sourceBytes": 2514063
+    },
+    {
+      "cookMs": 0.485,
+      "cookedBytes": 392,
+      "flags": [],
+      "kind": "look",
+      "outputs": [
+        {
+          "bytes": 392,
+          "id": "looks/origin-game.ogt",
+          "type": "og.Look"
+        }
+      ],
+      "source": "looks/origin-game.ogt",
+      "sourceBytes": 587
+    },
+    {
+      "cookMs": 40.564,
+      "cookedBytes": 169093,
+      "flags": [],
+      "kind": "model",
+      "model": {
+        "lods": [
+          16512,
+          8990,
+          5223
+        ],
+        "materials": 17,
+        "meshes": 26,
+        "nodes": 29,
+        "primitives": 36,
+        "triangles": 16512,
+        "vertices": 16870
+      },
+      "outputs": [
+        {
+          "bytes": 169093,
+          "id": "models/dropship.glb",
+          "type": "og.Model"
+        }
+      ],
+      "source": "models/dropship.glb",
+      "sourceBytes": 562864
+    },
+    {
+      "animation": {
+        "bones": 12,
+        "clips": [
+          "idle",
+          "walk",
+          "run",
+          "wave",
+          "turn",
+          "blink"
+        ],
+        "morphTargets": 1,
+        "nodes": 14,
+        "skins": 1
+      },
+      "cookMs": 6.217,
+      "cookedBytes": 12440,
+      "flags": [],
+      "kind": "model",
+      "model": {
+        "lods": [
+          108
+        ],
+        "materials": 2,
+        "meshes": 1,
+        "nodes": 14,
+        "primitives": 1,
+        "triangles": 108,
+        "vertices": 216
+      },
+      "outputs": [
+        {
+          "bytes": 3389,
+          "id": "models/walker.glb",
+          "type": "og.Model"
+        },
+        {
+          "bytes": 9051,
+          "id": "models/walker.glb#anim",
+          "type": "og.Animation"
+        }
+      ],
+      "source": "models/walker.glb",
+      "sourceBytes": 34296
+    },
+    {
+      "cookMs": 17.658,
+      "cookedBytes": 138800,
+      "flags": [],
+      "kind": "navmesh",
+      "outputs": [
+        {
+          "bytes": 138800,
+          "id": "nav/yard.ogt",
+          "type": "og.NavMesh"
+        }
+      ],
+      "source": "nav/yard.ogt",
+      "sourceBytes": 485
+    },
+    {
+      "cookMs": 0.349,
+      "cookedBytes": 1385,
+      "flags": [],
+      "kind": "scene",
+      "outputs": [
+        {
+          "bytes": 1385,
+          "id": "scenes/main.ogt",
+          "type": "og.Scene"
+        }
+      ],
+      "source": "scenes/main.ogt",
+      "sourceBytes": 527
+    },
+    {
+      "cookMs": 0.406,
+      "cookedBytes": 720,
+      "flags": [],
+      "kind": "strings",
+      "outputs": [
+        {
+          "bytes": 720,
+          "id": "strings/en.ogt",
+          "type": "og.Strings"
+        }
+      ],
+      "source": "strings/en.ogt",
+      "sourceBytes": 528
+    },
+    {
+      "cookMs": 787.835,
+      "cookedBytes": 22134,
+      "flags": [],
+      "kind": "texture",
+      "outputs": [
+        {
+          "bytes": 22134,
+          "id": "textures/stone.png",
+          "type": "og.Texture"
+        }
+      ],
+      "source": "textures/stone.png",
+      "sourceBytes": 112774,
+      "textures": [
+        {
+          "alpha": false,
+          "format": "etc1s",
+          "height": 512,
+          "id": "textures/stone.png",
+          "kind": "color",
+          "levels": 10,
+          "width": 512
+        }
+      ]
+    },
+    {
+      "cookMs": 6592.595,
+      "cookedBytes": 189501,
+      "flags": [],
+      "kind": "texture",
+      "outputs": [
+        {
+          "bytes": 189501,
+          "id": "textures/stone_n.png",
+          "type": "og.Texture"
+        }
+      ],
+      "source": "textures/stone_n.png",
+      "sourceBytes": 212771,
+      "textures": [
+        {
+          "alpha": true,
+          "format": "uastc",
+          "height": 512,
+          "id": "textures/stone_n.png",
+          "kind": "normal",
+          "levels": 10,
+          "width": 512
+        }
+      ]
+    },
+    {
+      "cookMs": 0.494,
+      "cookedBytes": 1668,
+      "flags": [],
+      "kind": "timeline",
+      "outputs": [
+        {
+          "bytes": 1668,
+          "id": "timelines/intro.ogt",
+          "type": "og.TimelineAsset"
+        }
+      ],
+      "source": "timelines/intro.ogt",
+      "sourceBytes": 1175
+    }
+  ],
+  "budgets": {
+    "assetBytes": 8388608,
+    "bones": 128,
+    "clips": 64,
+    "textureSize": 2048,
+    "totalBytes": 67108864,
+    "triangles": 100000,
+    "vertices": 65536
+  },
+  "cooker": "og-cook 0.2.0 r5",
+  "flags": [],
+  "totals": {
+    "assets": 13,
+    "cookedBytes": 1140127,
+    "flagged": 0,
+    "sourceBytes": 3485182,
+    "triangles": 16620
+  },
+  "version": 1
+}

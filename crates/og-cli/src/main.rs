@@ -14,6 +14,7 @@ mod cook;
 mod dev;
 mod device;
 mod doctor;
+mod doctor_project;
 mod polish;
 mod probe;
 mod project;
