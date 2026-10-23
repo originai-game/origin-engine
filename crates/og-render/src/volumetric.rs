@@ -194,13 +194,13 @@ pub(crate) fn source(tables: LightTables, full: bool) -> String {
         tables.wgsl(),
         crate::LIGHTING_WGSL,
         crate::AREA_WGSL,
-        wgsl!("volumetric.wgsl"),
+        wgsl3d!("volumetric.wgsl"),
         if full {
-            wgsl!("volumetric_froxel.wgsl").to_string()
+            wgsl3d!("volumetric_froxel.wgsl").to_string()
         } else {
             format!(
                 "const RAYMARCH_LIGHTS: u32 = {RAYMARCH_LIGHTS}u;\n{}",
-                wgsl!("volumetric_raymarch.wgsl")
+                wgsl3d!("volumetric_raymarch.wgsl")
             )
         }
     )

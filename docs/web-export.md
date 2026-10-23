@@ -294,7 +294,7 @@ other profile:
 |---|---|---|---|---|
 | 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,physics3d,shaping` | rapier3d | 3,055,713 B (72.9 %) |
 | 3D lanes | `dist/web-publish/origin-engine-lanes*`, `snippets/` | the same, wasm atomics (§Lanes) | rapier3d (`parallel`) | 3,095,052 B (73.8 %, the largest download) |
-| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,physics2d,shaping` | rapier2d | 2,894,396 B (69.0 %) |
+| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,physics2d,profile2d,shaping` | rapier2d | 2,894,396 B (69.0 %) |
 | 2D lanes | `dist/web-publish-2d/origin-engine-lanes*`, `snippets/` | the same, wasm atomics | rapier2d (`parallel`) | 2,928,498 B (69.8 %) |
 | dev | `dist/web/origin-engine*` | default features (both profiles) | both | not shipped |
 
@@ -319,9 +319,13 @@ A both-profile lanes module is no longer built: it cost a third lanes build
 per gate for no page (anything outside `og build` that took
 `dist/web-publish`'s lanes module for a 2D world takes
 `dist/web-publish-2d`'s now). Everything else is the same in
-every variant (the renderer, animation, UI, audio, navigation): only
-og-physics' `physics2d` and `physics3d` features differ, the one cargo
-switch that already existed. A world of the other profile is refused when
+every variant (animation, UI, audio, navigation) but two switches:
+og-physics' `physics2d` and `physics3d` features, and og-render's
+`profile2d` in the 2D modules, which leaves out the 3D world's renderer
+(terrain, planar water, the 3D fluids, scattered copies and volumetric
+fog: their shaders and their per-frame work; a scene's are not drawn,
+`RenderCapabilities.world3d` is false). The rest of the renderer, lit
+meshes included, is in both. A world of the other profile is refused when
 it is created ("og.Physics.profile 2: this engine was built without the
 physics2d feature"), which `og build` never ships; the lanes modules
 refuse it the same way (`packages/engine/tests/hosts.test.ts`, which also

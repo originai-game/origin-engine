@@ -588,8 +588,8 @@ impl Fluid3dRenderer {
 /// The 3D fluid's module after `shared` (the frame group, the light
 /// tables and the lighting), as the renderer compiles it.
 pub(crate) fn fluid_source(shared: &str) -> String {
-    format!("{shared}{}", wgsl!("fluid3d.wgsl"))
+    format!("{shared}{}", wgsl3d!("fluid3d.wgsl"))
 }
 
 /// The 3D fluid's blur module.
-pub(crate) const FLUID_BLUR_WGSL: &str = wgsl!("fluid3d_blur.wgsl");
+pub(crate) const FLUID_BLUR_WGSL: &str = wgsl3d!("fluid3d_blur.wgsl");

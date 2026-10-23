@@ -304,3 +304,53 @@ What the table says:
 - **Shared files.** og-cook `cook/stats.rs` (the report), og-cli `cook.rs`
   and `doctor_project.rs`; docs/design.md §3.4 (doctor) and the og-game
   skill §21.
+
+### 4. The 2D host without the 3D world's renderer (`profile2d`): the 3D WGSL and the subsystems that draw it
+
+The row's "3D WGSL sources in the 2D host" and its first per-profile
+render trim are one change: the text is only droppable where the code
+that compiles it never runs, so the subsystems go with it.
+
+- **Which subsystems.** Those no 2D game of the repository uses and that
+  draw only in a 3D world: terrain (`terrain.rs`, `terrain_tiles` draws),
+  planar water (`og.Water`; `og.Water2D`'s strips stay), the 3D fluids,
+  the scattered copies and volumetric fog (already off for an orthographic
+  camera). The lit mesh path (pbr, physical, shadows, area lights, IBL,
+  lightmaps, GPU culling) stays: a 2D game may draw meshes, and it is
+  most of the 3D WGSL (the 3D-only text I listed at first, 156,617 B,
+  is mostly that path).
+- **Change.** og-render feature `profile2d` (og-runtime's and
+  og-host-web's `profile2d` turn it on): `WORLD_3D` is false; the five
+  subsystems' own WGSL files come through `wgsl3d!`, empty there; the
+  frame takes no water (`scene_water`), no volumetric fog, no 3D fluids,
+  no terrain draws or bounds and no scatter batches from the scene, and
+  `warm` skips their pipelines; so their per-frame code is dead and their
+  shader text unreferenced. Every one of their pipelines was already
+  deferred (made on first use), so none is made from an empty module.
+  `RenderCapabilities.world3d` (new, api.ogt; `og api gen` run: the .d.ts,
+  the schema and the wiki, whose pages moved by one IDL line) says which.
+  The 2D publish and lanes variants are built with it
+  (`scripts/wasm-crates.txt`, `packages/engine/scripts/build.sh`).
+- **Measured** (2D publish, after item 2): 12,115,631 → 11,971,544 B
+  (−144,087 B), brotli 3,280,554 → 3,241,126 B (**−39,428 B**). Per crate:
+  og_render −106,523 B, data −48,763 B (12 WGSL files absent: 45,129 B of
+  shader text; 61 of 73 remain), og_runtime +10,749 B and og_cook
+  +4,853 B (inlining moved). The 3D publish module is unchanged in kind
+  (12,753,430 B, brotli 3,456,521 B: +255 B raw, −999 B brotli, inlining
+  noise from the constant branches).
+- **Test.** og-render `tests/profile2d.rs` (`--features profile2d`, on a
+  GPU: lavapipe here): a lit ball with planar water and volumetric fog
+  renders the same pixels as the ball alone. The same test without the
+  feature fails ("the water and the fog drew"), which is what it guards.
+- **Behaviour to judge.** A 2D game that puts `og.Water`, a terrain,
+  scattered copies or 3D fluids in its world draws them in `og dev` and the
+  native host (both have every subsystem) and not in its publish build.
+  No 2D project in the repository does; `RenderCapabilities.world3d` says
+  so at run time, but nothing warns at `og build --publish`. A check there
+  (the cooked scenes' components against the profile) would be the
+  platform-facing guard; it is not in this branch.
+- **Shared files.** og-render `lib.rs` (`wgsl3d!`, `WORLD_3D`, the frame's
+  gates, `warm`), `Cargo.toml` features of og-render, og-runtime and
+  og-host-web, `scripts/wasm-crates.txt`, `packages/engine/scripts/build.sh`,
+  og-runtime `api.rs` (the capability), docs/web-export.md §Variants,
+  docs/ci.md (the variants' feature lists).

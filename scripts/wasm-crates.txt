@@ -20,7 +20,8 @@
 # one lanes module per line, through scripts/wasm-lanes.sh, raw name
 # <crate>-NAME.wasm (NAME starts with `lanes`). og-host-web ships one of
 # each per game profile, each with only its profile's physics
-# (docs/web-export.md §Variants): `publish` and `lanes` are the 3D modules
+# (docs/web-export.md §Variants), and the 2D ones without the 3D world's
+# renderer (`profile2d`): `publish` and `lanes` are the 3D modules
 # (dist/web-publish), `publish2d` and `lanes2d` the 2D ones
 # (dist/web-publish-2d); `og build --publish` copies the pair of the game's
 # profile, so a page downloads one of them. All keep og-ui's `shaping`
@@ -29,6 +30,6 @@
 og-render   required
 og-host-web required publish lanes
 variant publish   og-host-web publish,physics3d,shaping
-variant publish2d og-host-web publish,physics2d,shaping
-lanes   lanes2d   og-host-web publish,physics2d,shaping
+variant publish2d og-host-web publish,physics2d,profile2d,shaping
+lanes   lanes2d   og-host-web publish,physics2d,profile2d,shaping
 lanes   lanes     og-host-web publish,physics3d,shaping

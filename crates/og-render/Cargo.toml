@@ -18,6 +18,11 @@ bake = []
 # timestamp queries, their resolves and readbacks are not built in
 # (timing.rs); the CPU's pass timings stay.
 publish = []
+# The 2D profile's renderer (og-host-web's 2D web modules): the 3D world
+# subsystems (terrain, planar water, 3D fluids, scattered copies,
+# volumetric fog) are not drawn and their shaders are not built in
+# (`WORLD_3D`, RenderCapabilities.world3d).
+profile2d = []
 
 [dependencies]
 # Reflection: StandardMaterial's schema is og-core's.

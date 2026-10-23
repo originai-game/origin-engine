@@ -36,6 +36,30 @@ macro_rules! wgsl {
     };
 }
 
+/// [`wgsl!`] for a 3D world subsystem's own file (terrain, water, the 3D
+/// fluids, the scattered copies, volumetric fog): empty in a `profile2d`
+/// build, which never draws them ([`WORLD_3D`]), so their text is not in
+/// the module.
+#[cfg(not(feature = "profile2d"))]
+macro_rules! wgsl3d {
+    ($file:literal) => {
+        wgsl!($file)
+    };
+}
+#[cfg(feature = "profile2d")]
+macro_rules! wgsl3d {
+    ($file:literal) => {
+        ""
+    };
+}
+
+/// Whether this renderer draws the 3D world subsystems: terrain, planar
+/// water, the 3D fluids, the scattered copies and volumetric fog. False in
+/// a `profile2d` build (the 2D profile's web modules), which leaves their
+/// shaders and their per-frame work out and draws a scene as if it had
+/// none of them (`RenderCapabilities.world3d`).
+pub const WORLD_3D: bool = cfg!(not(feature = "profile2d"));
+
 mod area;
 mod atmosphere;
 mod blue_noise;
@@ -328,8 +352,8 @@ fn scatter_lit_source(tables: clusters::LightTables) -> String {
         "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{AREA_WGSL}{INSTANCE_WGSL}{}{}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
-        wgsl!("scatter_common.wgsl"),
-        wgsl!("scatter.wgsl")
+        wgsl3d!("scatter_common.wgsl"),
+        wgsl3d!("scatter.wgsl")
     )
 }
 
@@ -338,8 +362,8 @@ fn scatter_shadow_source() -> String {
     format!(
         "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}",
         particles_gpu::NOISE_WGSL,
-        wgsl!("scatter_common.wgsl"),
-        wgsl!("scatter_shadow.wgsl")
+        wgsl3d!("scatter_common.wgsl"),
+        wgsl3d!("scatter_shadow.wgsl")
     )
 }
 
@@ -4956,6 +4980,9 @@ impl Renderer {
             self.ensure_full(scene, mesh);
         }
         let mut skinned = self.build_skinned(scene, &probe_boxes)?;
+        // The planar water this frame draws: none where the 3D world is
+        // not built in (WORLD_3D).
+        let scene_water: &[Water] = if WORLD_3D { &scene.water } else { &[] };
 
         // Camera (with the shake), jitter, culling.
         let aspect = self.width as f32 / self.height as f32;
@@ -4975,26 +5002,26 @@ impl Renderer {
         // Water: the surface the camera is under (its fog replaces the
         // frame's), and the one drawn with a planar reflection (the camera
         // mirrored in it, clipped at the surface by an oblique near plane).
-        let under = water::underwater(&scene.water, camera.position);
+        let under = water::underwater(scene_water, camera.position);
         // Volumetric fog replaces the plain fog (volumetric.rs): above
         // water, for a perspective camera.
         let volumetric_fog = scene
             .volumetric_fog
-            .filter(|_| under.is_none() && !cam.orthographic);
+            .filter(|_| WORLD_3D && under.is_none() && !cam.orthographic);
         let frame_fog = match under {
-            Some(i) => Some(water::underwater_fog(&scene.water[i])),
+            Some(i) => Some(water::underwater_fog(&scene_water[i])),
             None if volumetric_fog.is_some() => None,
             None => scene.fog,
         };
         let planar = match (under, cam.orthographic) {
-            (None, false) => scene.water.iter().position(|w| {
+            (None, false) => scene_water.iter().position(|w| {
                 let (n, at) = water::plane(w);
                 w.planar_reflection > 0.0 && (camera.position - at).dot(n) > 0.0
             }),
             _ => None,
         };
         let reflection = planar.map(|i| {
-            let w = &scene.water[i];
+            let w = &scene_water[i];
             let (n, at) = water::plane(w);
             let mirrored = water::mirrored_camera(&camera, n, at);
             let f = frame::camera_frame(&mirrored, aspect, Vec2::ZERO);
@@ -5062,7 +5089,7 @@ impl Renderer {
         let dof = post_fx.depth_of_field;
         let motion_blur = post_fx.motion_blur;
         let god_rays = post_fx.god_rays;
-        let fluids_3d = scene.fluids_3d.iter().any(|f| !f.particles.is_empty());
+        let fluids_3d = WORLD_3D && scene.fluids_3d.iter().any(|f| !f.particles.is_empty());
         let depth_bands = scene.stylise.depth_bands.filter(|b| b.count >= 2);
         // Ink or hatching on depth edges reads the prepass in the lines
         // pass, a canvas, hatching or halftone on surfaces in the paint or
@@ -5090,7 +5117,7 @@ impl Renderer {
             || god_rays.is_some()
             || particle_frame.needs_depth
             // Water and 3D fluids read the depth below them.
-            || !scene.water.is_empty()
+            || !scene_water.is_empty()
             || fluids_3d;
         // Decals and screen-space AO need the effect shader on every batch;
         // decals take screen derivatives (the lean pipelines keep the discard).
@@ -5707,27 +5734,33 @@ impl Renderer {
         let prev_view_proj = self.prev_view_proj.unwrap_or(cam.view_proj);
         let textures = &self.cache.textures;
         let arrays = &self.cache.texture_arrays;
-        let terrain_draws = self.terrain.prepare(
-            &self.device,
-            &self.queue,
-            scene,
-            camera.position,
-            camera.far,
-            self.height,
-            cam.view_proj,
-            prev_view_proj,
-            |h| textures.get(h.index()).map(|t| &t.view),
-            |h| {
-                arrays
-                    .get(h.index())
-                    .and_then(Option::as_ref)
-                    .filter(|a| a.generation == h.generation())
-                    .map(|a| &a.texture)
-            },
-        )?;
+        let terrain_draws = if !WORLD_3D {
+            Vec::new()
+        } else {
+            self.terrain.prepare(
+                &self.device,
+                &self.queue,
+                scene,
+                camera.position,
+                camera.far,
+                self.height,
+                cam.view_proj,
+                prev_view_proj,
+                |h| textures.get(h.index()).map(|t| &t.view),
+                |h| {
+                    arrays
+                        .get(h.index())
+                        .and_then(Option::as_ref)
+                        .filter(|a| a.generation == h.generation())
+                        .map(|a| &a.texture)
+                },
+            )?
+        };
         let terrain_casters = terrain_draws.iter().any(|d| d.cast_shadows);
         // Scattered copies: the chunks this frame needs built, what to draw.
-        let scatter_batches = {
+        let scatter_batches = if !WORLD_3D {
+            Vec::new()
+        } else {
             let materials = &self.cache.materials;
             let meshes = &self.cache.meshes;
             self.scatter.prepare(
@@ -5772,7 +5805,14 @@ impl Renderer {
                         (s.transform.w_axis.truncate(), r)
                     });
                     let all = instances::fold_box(sphere_box, skinned);
-                    Self::instance_bounds(instances::fold_box(all, self.terrain.bounds(scene)))
+                    Self::instance_bounds(instances::fold_box(
+                        all,
+                        if WORLD_3D {
+                            self.terrain.bounds(scene)
+                        } else {
+                            Vec::new()
+                        },
+                    ))
                 }
             };
             frame::fit_cascades(
@@ -6140,7 +6180,7 @@ impl Renderer {
                 scene.tick,
                 scene.tick_rate,
             ),
-            caustics: water::caustics(&scene.water),
+            caustics: water::caustics(scene_water),
             shadow: [
                 if cascades.is_empty() {
                     0.0
@@ -6761,7 +6801,7 @@ impl Renderer {
                         ((self.height as f32 * lightmap_scale) as u32).max(1),
                     ),
                     gtao,
-                    water: !scene.water.is_empty() || fluids_3d,
+                    water: !scene_water.is_empty() || fluids_3d,
                     transmission,
                     fluid_fields: fluids as u32,
                     reflection: reflection.as_ref().map(|r| r.4),
@@ -7055,10 +7095,10 @@ impl Renderer {
             .collect();
         let reflection_view = self.graph.try_view("reflection");
         let water_draws = match self.graph.try_view("scene-copy") {
-            Some(copy) if !scene.water.is_empty() => self.water.prepare(
+            Some(copy) if !scene_water.is_empty() => self.water.prepare(
                 &self.device,
                 &self.queue,
-                &scene.water,
+                scene_water,
                 (self.width, self.height),
                 self.info.tier == Tier::Full,
                 copy,
@@ -9016,10 +9056,10 @@ impl Renderer {
             ])
             || self.lights_2d.warm()
             || self.glass.warm()
-            || self.water.warm()
-            || self.terrain.warm()
+            || (WORLD_3D && self.water.warm())
+            || (WORLD_3D && self.terrain.warm())
             || self.metaballs.warm()
-            || self.fluid3d.warm()
+            || (WORLD_3D && self.fluid3d.warm())
             || self.lines.warm()
     }
 

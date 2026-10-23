@@ -1871,14 +1871,14 @@ fn terrain_passes(
     }
 }
 
-const TERRAIN_WGSL: &str = wgsl!("terrain.wgsl");
+const TERRAIN_WGSL: &str = wgsl3d!("terrain.wgsl");
 
 /// The terrain's lit module after the frame group, the light tables and the lighting.
 pub(crate) fn terrain_lit_source(frame: &str, tables: &str, lighting: &str) -> String {
     format!(
         "{frame}{tables}{lighting}{}{TERRAIN_WGSL}{}",
         crate::AREA_WGSL,
-        wgsl!("terrain_lit.wgsl")
+        wgsl3d!("terrain_lit.wgsl")
     )
 }
 
@@ -1949,7 +1949,7 @@ pub(crate) fn terrain_shadow_source() -> String {
     format!(
         "{TERRAIN_WGSL}{}{}",
         crate::SHADOW_PASS_WGSL,
-        wgsl!("terrain_shadow.wgsl")
+        wgsl3d!("terrain_shadow.wgsl")
     )
 }
 

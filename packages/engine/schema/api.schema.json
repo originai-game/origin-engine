@@ -17185,6 +17185,10 @@
         "gpuTimestamps": {
           "type": "boolean",
           "description": "Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2, and never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true."
+        },
+        "world3d": {
+          "type": "boolean",
+          "description": "Whether the renderer draws the 3D world subsystems: terrain, planar water (og.Water), the 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, which leave them out (a scene's are not drawn); true in the 3D modules, the dev module and the native host."
         }
       },
       "required": [
@@ -17205,7 +17209,8 @@
         "volumetricFog",
         "volumetricLights",
         "maxLightCookies",
-        "gpuTimestamps"
+        "gpuTimestamps",
+        "world3d"
       ],
       "additionalProperties": false
     },
