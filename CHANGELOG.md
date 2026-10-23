@@ -51,6 +51,30 @@ Debt round 2 (`docs/phase-1.md`, "Plan 2026-10-23, debt round 2").
   error (0 still draws the full mesh). The old rule decimated small props
   while they filled a few hundred pixels, which is where the reference
   drift of lantern-vale and meridian-loop came from.
+- `ui-aniso`: sprites and the UI's images sample anisotropically
+  (`anisotropy_clamp` 16) where the device filters so (Metal, Vulkan,
+  WebGPU, WebGL2 with `EXT_texture_filter_anisotropic`), reported as
+  `RenderCapabilities.spriteAnisotropy`. A nine-slice middle squeezed
+  along one axis now reads its mip level by the other axis, so the
+  outline through it is as crisp as the corners: the softness ui-prose's
+  2× bound left on short buttons such as Rumpus Isle's Pause is gone.
+  Text (MSDF), the decal atlas and the 2D light map keep a trilinear
+  sampler; a software rasterizer (lavapipe) stays at 1, where its
+  anisotropic filter softens even a 1:1 draw. The last eight "skin" lines
+  for a UI style (the tower-defense archetype, packages/engine's
+  `look.test.ts` and `base.ogt`) say style, and `create`'s test refuses
+  one in a shipped template.
+- `render-views-2`: views (`og.View`) draw everything the main pass
+  draws: trails, ribbons and beams facing the view's eye, 2D-lit sprite
+  layers from a light map per view, 2D fluids from metaball fields per
+  view, soft particles against the view's own depth (they vanished from
+  views before: their depth load went out of bounds) and sprite glow
+  through a per-view glow chain. A full `custom_lit.wgsl` lights rect
+  lights through `surface_local_light` with their shadow and cookies
+  (it lit them as a point before). Skinned instances pick their
+  reflection probe from their posed bounds. Probe captures draw
+  particles, lines, points, world sprites and water (as its deep colour:
+  a face has no depth). Left: 3D fluids and depth in probe faces.
 
 ## 0.3.0 (2026-10-23)
 
