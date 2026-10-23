@@ -1016,7 +1016,11 @@ arrive as `og.Skeleton2DEvent` (`entity`, `clip`, `name`); an
 constraint's own). The pose is a function of the component, the
 Transform and the targets, so a snapshot carries only the playback
 position and the boxes. `templates/game-2d`'s lamp keeper
-(`assets/rigs/keeper.ogt`, `spawnKeeper`, `Plant`) shows all of it.
+(`assets/rigs/keeper.ogt`, `spawnKeeper`, `Walk`, `Plant`) shows all of
+it. A walk is the walk clip played while a system moves the entity, with
+the feet's targets stepping in time: each planted for half the cycle
+(sliding back as fast as the body goes), then swung a stride ahead, so
+the feet stay on the ground the IK finds.
 
 ### Cutscenes: timelines and paths
 
