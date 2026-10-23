@@ -13,7 +13,7 @@
 //! or a Bézier `curve` is dropped or played as a line; a child armature
 //! plays the wrong clip or at its parent's frame rate.
 
-use og_anim::{AttachmentKind, Ease, Rig2dAsset};
+use og_anim::{AttachmentKind, Ease, Rig2dAsset, Turn};
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};
 use std::path::PathBuf;
@@ -210,7 +210,7 @@ fn a_dragonbones_export_becomes_a_rig_with_y_up() {
         (0.5, &Ease::Step)
     );
     assert_eq!(bone.translate[0].ease, Ease::Linear);
-    assert_eq!(bone.rotate[0].value, -15.0);
+    assert_eq!(bone.rotate[0].value.degrees, -15.0);
     assert_eq!(walk.slots[0].attachment, [(0.0, Some(0)), (0.5, Some(1))]);
     assert_eq!(
         walk.deforms[0].keys[0].value,
@@ -385,4 +385,92 @@ fn a_dragonbones_ik_chain_of_any_length_is_imported_root_first() {
         "{tip:?}"
     );
     assert!(p.ik_error[1] < 1e-3);
+}
+
+/// The notes of the rig at `rigs/hero.ogt` of a cooked project.
+fn notes_of(root: &std::path::Path) -> Vec<String> {
+    let report = cook_project(root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    report.assets.iter().flat_map(|a| a.notes.clone()).collect()
+}
+
+/// A one-bone export at 10 frames per second with `spin`'s rotate frames.
+fn spin_export(frames: &str) -> String {
+    format!(
+        r#"{{ "name": "spin", "version": "5.5", "frameRate": 10, "armature": [{{
+  "name": "spin",
+  "bone": [{{ "name": "root" }}, {{ "name": "spin", "parent": "root", "length": 10 }}],
+  "slot": [{{ "name": "s", "parent": "spin" }}],
+  "skin": [{{ "slot": [{{ "name": "s", "display": [{{ "name": "arm" }}] }}] }}],
+  "animation": [{{ "name": "go", "duration": 20, "bone": [{{ "name": "spin", "rotateFrame": {frames} }}] }}]
+}}] }}"#
+    )
+}
+
+fn spin_rig(name: &str, frames: &str) -> (Rig2dAsset, Vec<String>) {
+    let root = project(
+        name,
+        &[
+            ("rigs/hero_tex.png", png(32, 16)),
+            ("rigs/hero_ske.json", spin_export(frames).into_bytes()),
+            ("rigs/hero_tex.json", ATLAS.as_bytes().to_vec()),
+            ("rigs/hero.ogt", IMPORT.as_bytes().to_vec()),
+        ],
+    );
+    let notes = notes_of(&root);
+    (cooked(&root).load_rig2d("rigs/hero.ogt").unwrap(), notes)
+}
+
+/// The bone `spin`'s angle (degrees, counter-clockwise, y up) at `t`.
+fn spin_angle(rig: &Rig2dAsset, t: f32) -> f64 {
+    let p = rig.pose(Some(&rig.clips[0]), t, &[]);
+    f64::from(p.world[1].b)
+        .atan2(f64::from(p.world[1].a))
+        .to_degrees()
+}
+
+/// DragonBones' `clockwise` turns more than half a turn between frames;
+/// the old import played the shorter way and noted it.
+#[test]
+fn a_dragonbones_clockwise_turn_plays_its_whole_turns() {
+    // DragonBones (y down, clockwise positive): 0 with clockwise 2, then 30
+    // with clockwise -1, then -60. Its parser makes the second angle the
+    // first at or past 0 going up, plus one more turn: 390 (390 degrees
+    // clockwise on screen); the third the first at or below 390 going
+    // down: -60 (450 degrees counter-clockwise). Here (y up) the bone turns
+    // -390 in the first second and +450 in the next.
+    let (rig, notes) = spin_rig(
+        "dragonbones-clockwise",
+        r#"[{ "duration": 10, "tweenEasing": 0, "rotate": 0, "clockwise": 2 },
+            { "duration": 10, "tweenEasing": 0, "rotate": 30, "clockwise": -1 },
+            { "duration": 0, "rotate": -60 }]"#,
+    );
+    let keys = &rig.clips[0].bones[0].rotate;
+    assert_eq!(
+        keys.iter()
+            .map(|k| (k.value.degrees, k.value.turn))
+            .collect::<Vec<_>>(),
+        [
+            (0.0, Turn::Clockwise(1)),
+            (-30.0, Turn::Counterclockwise(1)),
+            (60.0, Turn::Shorter)
+        ]
+    );
+    let same = |a: f64, b: f64| (a - b).rem_euclid(360.0).min((b - a).rem_euclid(360.0)) < 1e-3;
+    for (t, want) in [
+        (0.25, -97.5),
+        (0.5, -195.0),
+        (0.9, -351.0),
+        (1.5, -390.0 + 225.0),
+        (1.8, -390.0 + 360.0),
+    ] {
+        let got = spin_angle(&rig, t);
+        assert!(same(got, want), "at {t}: {got}, not {want}");
+    }
+    assert!(
+        !notes
+            .iter()
+            .any(|n| n.contains("half a turn") || n.contains("clockwise")),
+        "{notes:?}"
+    );
 }

@@ -21,8 +21,10 @@
 //! `ik`'s `bone` with `chain` n is that bone and its n ancestors, root
 //! first, and `bendPositive` (clockwise on screen) is `bend clockwise`; an animation's `duration` and frame
 //! `duration`s are frames of `frameRate`, `playTimes` 0 loops,
-//! `translateFrame`, `rotateFrame` (`rotate` and `skew`) and `scaleFrame`
-//! become bone keys (relative to the setup pose, as there), `displayFrame`
+//! `translateFrame`, `rotateFrame` (`rotate` and `skew`, a frame's
+//! `clockwise` turns as the key's turn, accumulated as DragonBones' parser
+//! accumulates them) and `scaleFrame` become bone keys (relative to the
+//! setup pose, as there), `displayFrame`
 //! and `colorFrame` slot keys (multipliers and offsets), `ffd` (or
 //! `deform`) frames deform keys (`offset` and `vertices`, per influence),
 //! `zOrder` frames (slot and offset pairs) draw orders, `ik` frames
@@ -30,14 +32,14 @@
 //! type 10 and 11) events. A frame's `curve` is a Bézier key; a
 //! `tweenEasing` of 0 is linear, other numbers DragonBones' quadratic
 //! eases as Béziers; a frame with neither holds its value (DragonBones'
-//! no-tween). Path displays and `clockwise` turns are noted.
+//! no-tween). Path displays are noted.
 
 use super::{CookError, Source};
 use crate::format::{self, *};
 use og_anim::{
     Affine2, Armature2d, Attachment2d, AttachmentKind, Bone2d, BoneTimeline, Clip2d,
     DeformTimeline, Ease, Ik2d, IkKey, IkTimeline, Influence, Key, MeshVertex2d, Rig2dAsset,
-    SheetFilter, Slot2d, SlotTimeline,
+    Rotation, SheetFilter, Slot2d, SlotTimeline, Turn, turn_delta,
 };
 use og_blob::BlobWriter;
 use og_core::ogt::{Document, Entry, Value};
@@ -615,7 +617,6 @@ fn armature(
             weight: f(k, "weight", 1.0),
         });
     }
-    let mut clockwise = Vec::new();
     for a in arm["animation"].as_array().into_iter().flatten() {
         let n = name(a)?;
         let mut clip = Clip2d {
@@ -643,14 +644,16 @@ fn armature(
                     ease: ease(k, notes),
                 });
             }
-            for (time, k) in frames(&t["rotateFrame"], rate) {
-                if f(k, "clockwise", 0.0) != 0.0 {
-                    clockwise.push(format!("{n}.{}", rig.bones[bone].name));
-                }
+            let rotate_frames = frames(&t["rotateFrame"], rate);
+            let turns = turns(&rotate_frames);
+            for ((time, k), turn) in rotate_frames.into_iter().zip(turns) {
                 let e = ease(k, notes);
                 timeline.rotate.push(Key {
                     time,
-                    value: -f(k, "rotate", 0.0),
+                    value: Rotation {
+                        degrees: -f(k, "rotate", 0.0),
+                        turn,
+                    },
                     ease: e.clone(),
                 });
                 timeline.skew.push(Key {
@@ -817,13 +820,61 @@ fn armature(
         clip.events.sort_by(|a, b| a.0.total_cmp(&b.0));
         rig.clips.push(clip);
     }
-    if !clockwise.is_empty() {
-        notes.push(format!(
-            "rotations of more than half a turn (clockwise) play the shorter way: {}",
-            clockwise.join(", ")
-        ));
-    }
     Ok(rig)
+}
+
+/// Each rotate frame's turn to the next, as DragonBones' parser
+/// (`_parseBoneRotateFrame`) accumulates the angles: after a frame with
+/// `clockwise` 0 the next angle is the nearer one; after `clockwise` n > 0
+/// (n < 0) it is the next angle at or past this one in the increasing
+/// (decreasing) direction plus n - 1 whole turns (n + 1), or n whole turns
+/// when the raw angle is behind. With y down there, the increasing
+/// direction is clockwise on screen: here the turn's sign flips, and each
+/// turn is the one whose [`og_anim::turn_delta`] over the written angles
+/// is that difference.
+fn turns(list: &[(f32, &Json)]) -> Vec<Turn> {
+    let raw: Vec<f64> = list
+        .iter()
+        .map(|(_, k)| k.get("rotate").and_then(Json::as_f64).unwrap_or(0.0))
+        .collect();
+    let mut out = vec![Turn::Shorter; list.len()];
+    let (mut prev, mut prev_cw) = (0.0f64, 0i64);
+    for (i, (_, k)) in list.iter().enumerate() {
+        let mut r = raw[i];
+        if i > 0 {
+            if prev_cw == 0 {
+                // Transform.normalizeRadian in degrees: (-180, 180].
+                let mut d = (r - prev + 180.0) % 360.0;
+                d += if d > 0.0 { -180.0 } else { 180.0 };
+                r = prev + d;
+            } else {
+                let mut n = prev_cw;
+                if (n > 0 && r >= prev) || (n < 0 && r <= prev) {
+                    n -= n.signum();
+                }
+                r += 360.0 * n as f64;
+                // The written angles are y up: the turn here is -(r - prev).
+                let delta = -(r - prev) as f32;
+                let (a, b) = (-raw[i - 1] as f32, -raw[i] as f32);
+                let way = |n: u32| {
+                    if delta >= 0.0 {
+                        Turn::Counterclockwise(n)
+                    } else {
+                        Turn::Clockwise(n)
+                    }
+                };
+                let whole = ((delta.abs() - turn_delta(a, b, way(0)).abs()) / 360.0).round();
+                out[i - 1] = way(whole.max(0.0) as u32);
+            }
+        }
+        prev = r;
+        prev_cw = k
+            .get("clockwise")
+            .and_then(Json::as_f64)
+            .unwrap_or(0.0)
+            .round() as i64;
+    }
+    out
 }
 
 /// A DragonBones zOrder frame (pairs of a slot index in the setup order

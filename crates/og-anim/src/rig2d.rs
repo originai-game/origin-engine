@@ -34,7 +34,7 @@
 //! clip walk {
 //!   duration 0.8
 //!   loop true
-//!   bone thigh { rotate 0 20; rotate 0.4 -20 curve 0.25 0 0.75 1; skew 0 0; translate 0 0 0; scale 0.2 1 1.1 step }
+//!   bone thigh { rotate 0 20 counterclockwise 1 curve 0.25 0 0.75 1; rotate 0.4 -20; skew 0 0; translate 0 0 0; scale 0.2 1 1.1 step }
 //!   slot eye { attachment 0.5 eye-shut; attachment 0.6 eye-open; color 0 1 1 1 1; offset 0 0.2 0 0 0 }
 //!   deform cape { key 0 0 0 0 0; key 0.4 0 -3 0 -6 }
 //!   order 0.3 cape torso eye    # every slot, back to front; `order <time>` alone is the setup order
@@ -57,9 +57,13 @@
 //! apply to the child's result.
 //!
 //! **Keys.** A bone key is relative to the setup pose: `rotate` and `skew`
-//! add degrees, `translate` adds pixels, `scale` multiplies. Every key
-//! eases towards the next one: linearly (rotation the shorter way round)
-//! by default, `step` holds the value until the next key, and `curve x1 y1
+//! add degrees, `translate` adds pixels, `scale` multiplies. A `rotate`
+//! key turns to the next key's angle the shorter way round, unless its
+//! angle is followed by `clockwise <n>` or `counterclockwise <n>`: that
+//! way round, through n more whole turns (`clockwise 0` from 0 to 30 turns
+//! 330 degrees, `counterclockwise 2` from 0 to 30 turns 750). Every key
+//! eases towards the next one: linearly by default, `step` holds the value
+//! until the next key, and `curve x1 y1
 //! x2 y2` plays a cubic Bézier from (0, 0) through those control points to
 //! (1, 1), where x is the fraction of time between the keys and y the
 //! fraction of the value; more segments follow as `x y x1 y1 x2 y2` (an
@@ -414,10 +418,44 @@ pub struct Key<T> {
     pub ease: Ease,
 }
 
+/// Which way a `rotate` key turns to the next key's angle.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Turn {
+    /// The shorter way round (half a turn: clockwise).
+    #[default]
+    Shorter,
+    /// Clockwise (the angle decreasing), through this many more whole turns.
+    Clockwise(u32),
+    /// Counter-clockwise (the angle increasing), through this many more whole turns.
+    Counterclockwise(u32),
+}
+
+/// A `rotate` key's value: degrees and the way to the next key.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Rotation {
+    pub degrees: f32,
+    pub turn: Turn,
+}
+
+/// How far a rotation turns from `a` to `b` degrees the `turn` way: the
+/// shorter way in -180..180, else `b - a` brought into 0..360 the asked
+/// way (0 when they are equal) plus 360 per further whole turn.
+pub fn turn_delta(a: f32, b: f32, turn: Turn) -> f32 {
+    let around = |d: f32| d - 360.0 * (d / 360.0).floor();
+    match turn {
+        Turn::Shorter => {
+            let d = b - a;
+            d - 360.0 * ((d + 180.0) / 360.0).floor()
+        }
+        Turn::Counterclockwise(n) => around(b - a) + 360.0 * n as f32,
+        Turn::Clockwise(n) => -(around(a - b) + 360.0 * n as f32),
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct BoneTimeline {
     pub bone: usize,
-    pub rotate: Vec<Key<f32>>,
+    pub rotate: Vec<Key<Rotation>>,
     pub skew: Vec<Key<f32>>,
     pub translate: Vec<Key<[f32; 2]>>,
     pub scale: Vec<Key<[f32; 2]>>,
@@ -1209,10 +1247,15 @@ fn body_text(rig: Body<'_>, armatures: &[Armature2d]) -> String {
         for t in &c.bones {
             s += &format!("  bone {} {{\n", quote(&rig.bones[t.bone].name));
             for k in &t.rotate {
+                let turn = match k.value.turn {
+                    Turn::Shorter => String::new(),
+                    Turn::Clockwise(t) => format!(" clockwise {t}"),
+                    Turn::Counterclockwise(t) => format!(" counterclockwise {t}"),
+                };
                 s += &format!(
-                    "    rotate {} {}{}\n",
+                    "    rotate {} {}{turn}{}\n",
                     n(k.time),
-                    n(k.value),
+                    n(k.value.degrees),
                     ease_text(&k.ease)
                 );
             }
@@ -1557,12 +1600,11 @@ impl Rig2dAsset {
         if let Some(c) = clip {
             for t in &c.bones {
                 let l = &mut local[t.bone];
-                if let Some(r) = sample(&t.rotate, time, |a, b, f| {
-                    let mut d = b - a;
-                    d -= 360.0 * ((d + 180.0) / 360.0).floor();
-                    a + d * f
+                if let Some(r) = sample(&t.rotate, time, |a, b, f| Rotation {
+                    degrees: a.degrees + turn_delta(a.degrees, b.degrees, a.turn) * f,
+                    turn: a.turn,
                 }) {
-                    l[2] += r;
+                    l[2] += r.degrees;
                 }
                 if let Some(k) = sample(&t.skew, time, |a, b, f| a + (b - a) * f) {
                     l[5] += k;
@@ -2170,7 +2212,38 @@ fn parse_clip(e: &Entry, rig: &Armature2d, names: &Names<'_>) -> Result<Clip2d> 
                 };
                 for k in &block(c)?.entries {
                     match k.key.as_str() {
-                        "rotate" => t.rotate.push(key1(k)?),
+                        "rotate" => {
+                            // `clockwise <turns>` or `counterclockwise <turns>` may follow the angle.
+                            let (turn, ease_from) = match k.values.get(2).and_then(Value::as_word) {
+                                Some(w @ ("clockwise" | "counterclockwise")) => {
+                                    let n = num(k, 3)?;
+                                    if n < 0.0 || n.fract() != 0.0 || n > 1e6 {
+                                        return Err(parse_err(
+                                            k.line,
+                                            format!(
+                                                "rotate: {w} takes a whole number of further turns (0 the nearest {w} way)"
+                                            ),
+                                        ));
+                                    }
+                                    let n = n as u32;
+                                    let turn = if w == "clockwise" {
+                                        Turn::Clockwise(n)
+                                    } else {
+                                        Turn::Counterclockwise(n)
+                                    };
+                                    (turn, 4)
+                                }
+                                _ => (Turn::Shorter, 2),
+                            };
+                            t.rotate.push(Key {
+                                time: time(k)?,
+                                value: Rotation {
+                                    degrees: num(k, 1)?,
+                                    turn,
+                                },
+                                ease: ease_at(k, ease_from)?,
+                            });
+                        }
                         "skew" => t.skew.push(key1(k)?),
                         "translate" => t.translate.push(key2(k)?),
                         "scale" => t.scale.push(key2(k)?),
@@ -2731,6 +2804,49 @@ armature flame {
         assert!(bad("curve 0.5 0 1").contains("x1 y1 x2 y2"));
         assert!(bad("curve 1.5 0 1 1").contains("0..1"));
         assert!(bad("smooth").contains("step"));
+    }
+
+    #[test]
+    fn rotate_keys_turn_the_asked_way_through_whole_turns() {
+        // The bone's angle at `t` of a 1 s turn from 0 to 30 degrees; each
+        // expected angle is the turn's total (worked out by hand) times t.
+        let angle_at = |turn: &str, t: f32| -> f64 {
+            let text = ARM.replace(
+                "    rotate 0 0\n    rotate 1 90",
+                &format!("    rotate 0 0{turn}\n    rotate 1 30"),
+            );
+            let r = Rig2dAsset::parse(&text).expect(turn);
+            assert_eq!(Rig2dAsset::parse(&r.to_text()).expect("canonical"), r);
+            let p = r.pose(Some(&r.clips[0]), t, &[(0, [0.0, 0.0], 0.0)]);
+            f64::from(p.world[1].b)
+                .atan2(f64::from(p.world[1].a))
+                .to_degrees()
+        };
+        let same = |a: f64, b: f64| (a - b).rem_euclid(360.0).min((b - a).rem_euclid(360.0)) < 1e-3;
+        for (turn, total) in [
+            ("", 30.0),
+            (" counterclockwise 0", 30.0),
+            (" counterclockwise 2", 750.0),
+            (" clockwise 0", -330.0),
+            (" clockwise 1", -690.0),
+        ] {
+            for t in [0.1f32, 0.25, 0.6] {
+                let a = angle_at(turn, t);
+                assert!(
+                    same(a, total * f64::from(t)),
+                    "{turn} at {t}: {a}, not {}",
+                    total * f64::from(t)
+                );
+            }
+        }
+        // The turn's own arithmetic: equal angles turn 0 the nearest way, a whole turn per count.
+        assert_eq!(turn_delta(10.0, 10.0, Turn::Clockwise(0)), 0.0);
+        assert_eq!(turn_delta(10.0, 10.0, Turn::Counterclockwise(1)), 360.0);
+        assert_eq!(turn_delta(170.0, -170.0, Turn::Shorter), 20.0);
+        let bad =
+            Rig2dAsset::parse(&ARM.replace("    rotate 0 0\n", "    rotate 0 0 clockwise 1.5\n"))
+                .expect_err("a fraction of a turn");
+        assert!(bad.reason().contains("whole number"), "{}", bad.reason());
     }
 
     #[test]

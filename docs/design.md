@@ -584,13 +584,16 @@ Baked lighting, volumetrics and area lights (depth S7).
   chains are solved), and clips of bone (rotate, skew, translate, scale), slot
   (attachment, colour, offset), deform, draw-order (`order`) and IK
   (weight and bend) keys with events; keys ease linearly, hold (`step`)
-  or follow a cubic Bézier (`curve`, solved by bisection). A child
+  or follow a cubic Bézier (`curve`, solved by bisection), and a rotate
+  key turns the shorter way or, with `clockwise n` or `counterclockwise
+  n`, that way through n more whole turns. A child
   armature plays its parent's clip by name when it has one, else its own,
   at the parent's time. The cook stores the canonical text in an
   `og.Rig2D` blob, written by hand or imported from a DragonBones 5.5
   export with its atlas (`dragonbones "x_ske.json"`, `atlas
   "x_tex.json"`): skew, colour offsets, zOrder and IK timelines, armature
-  displays (as child armatures), bounding boxes and Bézier curves come
+  displays (as child armatures), bounding boxes, Bézier curves and
+  `clockwise` turns (accumulated as DragonBones' parser does) come
   across, and a frame without `tweenEasing` holds as DragonBones holds
   it. Spine's format is not imported (its licence); the module docs of
   `rig2d.rs` give the mapping a converter follows. `og.load.rig2d`

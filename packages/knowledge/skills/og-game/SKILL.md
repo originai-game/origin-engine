@@ -980,7 +980,9 @@ pixels then, per bone, `bone x y weight` in that bone's space (weights
 summing to 1), or plain `x y` in the slot's bone. A bone's or region's
 `skew` turns its y axis that many degrees past its x axis. A slot draws
 `texel × color + offset`. Bone keys add to the setup pose (`rotate` and
-`skew` degrees, `translate` pixels, `scale` multiplies); every key eases
+`skew` degrees, `translate` pixels, `scale` multiplies); a `rotate` key
+turns the shorter way to the next, or `rotate 0 0 clockwise 1` (or
+`counterclockwise n`) that way through n more whole turns; every key eases
 linearly to the next, holds with `step`, or follows `curve x1 y1 x2 y2`
 (a cubic Bézier from 0,0 to 1,1, x time and y value; more segments as
 `x y x1 y1 x2 y2`). A `deform` key offsets every influence in order, one
@@ -996,7 +998,7 @@ parent's clip by name when it has one, else its `clip`, at the parent's
 time. A DragonBones 5.5 export is imported instead of written: a rig2d
 `.ogt` with `dragonbones "hero_ske.json"` and `atlas "hero_tex.json"`
 (skew, colour offsets, zOrder and IK timelines, armature displays,
-bounding boxes and curves included; Spine's files are not read, convert
+bounding boxes, curves and `clockwise` turns included; Spine's files are not read, convert
 them to this text).
 
 ```ts
