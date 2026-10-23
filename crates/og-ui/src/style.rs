@@ -283,9 +283,9 @@ pub struct Theme {
     /// ([`Theme::to_reduced_transparency`]). A game reads it to flatten
     /// its own (IDL `UiTheme.reducedTransparency`).
     pub reduced_transparency: bool,
-    /// The style's art (`crate::skin`: frames, ornaments, fonts, motion,
+    /// The style's art (`crate::style_file`: frames, ornaments, fonts, motion,
     /// sounds); the default dresses nothing.
-    pub skin: crate::skin::Skin,
+    pub art: crate::style_file::Art,
 }
 
 impl Default for Theme {
@@ -322,7 +322,7 @@ impl Theme {
             outline: false,
             reduced_motion: false,
             reduced_transparency: false,
-            skin: crate::skin::Skin::default(),
+            art: crate::style_file::Art::default(),
         }
     }
 

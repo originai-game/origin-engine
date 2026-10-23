@@ -1,6 +1,6 @@
 // The browser tiers of og-ui's kit frames: templates/ui-kit's reference
 // playtests (tests/<playtest>.og.ts: frames-desktop, frames-phone, players,
-// locales and the skin-* style packs) each as the same fresh run in headless
+// locales and the style-* style packs) each as the same fresh run in headless
 // Chrome through reference.ts, on WebGPU (or WebGL2 with --webgl), compared
 // with crates/og-ui/references/<tier>/ (each frame on its own falling back
 // to metal's) under og-tests' rule: a channel off by more than 32/255 is an
@@ -12,7 +12,7 @@
 // and `dump_*`, and each screenshot at t seconds becomes a shot at tick
 // round(60 t) named <prefix><file>, the reference the playtest checks it
 // against (frames.ts `checkFrames`). A style pack's shots are compared with
-// their cells of kit-skin-<pack>[-phone].png, box-filtered as skins.ts does.
+// their cells of kit-style-<pack>[-phone].png, box-filtered as styles.ts does.
 //
 //   bun tests/web/reference-ui.ts [--webgl] [--record] [--only a,b] [--chrome <path>]
 //
@@ -49,14 +49,14 @@ const PREFIX: Record<string, string> = {
   players: "kit-desktop-",
   locales: "kit-locale-",
 };
-/** A style pack's sheet per surface (skins.ts SURFACES): the box filter and the cells a row. */
+/** A style pack's sheet per surface (styles.ts SURFACES): the box filter and the cells a row. */
 const SHEETS: Record<string, { factor: number; cols: number }> = {
   "1280x720": { factor: 2, cols: 7 },
   "1170x2532": { factor: 3, cols: 10 },
 };
 const PACKS = ["cartoon", "fantasy", "neon", "paper", "pixel", "scifi"];
 /** Every reference playtest of the kit. */
-const SET = [...Object.keys(PREFIX), ...PACKS.flatMap((p) => [`skin-${p}`, `skin-${p}-phone`])];
+const SET = [...Object.keys(PREFIX), ...PACKS.flatMap((p) => [`style-${p}`, `style-${p}-phone`])];
 
 const only = opt("--only")?.split(",") ?? SET;
 for (const p of only) if (!SET.includes(p)) throw new Error(`--only ${p}: not a reference playtest of the kit (${SET.join(", ")})`);
@@ -73,7 +73,7 @@ for (const name of only) {
   if (!b.ok) throw new Error(`${name}.og.ts does not bundle: ${b.reason}`);
   const { default: desc, referenceFiles }: { default: PlaytestDesc; referenceFiles?: readonly string[] } = await import(pathToFileURL(bundled).href);
   const size = desc.size ?? "1280x720";
-  const skin = /^skin-([a-z]+)(-phone)?$/.exec(name);
+  const pack = /^style-([a-z]+)(-phone)?$/.exec(name);
   const script: string[] = [];
   const shots: string[] = [];
   for (const step of desc.commands.split(";")) {
@@ -81,15 +81,15 @@ for (const name of only) {
     if (action === "screenshot") {
       if (referenceFiles && !referenceFiles.includes(rest[0]!)) continue;
       const file = rest[0]!.replace(/\.png$/, "");
-      // A style pack's sheet has no gallery (skins.ts).
-      if (skin && file === "gallery") continue;
-      shots.push(`${skin ? `kit-skin-${skin[1]}${skin[2] ?? ""}-` : PREFIX[name]}${file}@${Math.round(Number(at) * 60)}`);
+      // A style pack's sheet has no gallery (styles.ts).
+      if (pack && file === "gallery") continue;
+      shots.push(`${pack ? `kit-style-${pack[1]}${pack[2] ?? ""}-` : PREFIX[name]}${file}@${Math.round(Number(at) * 60)}`);
     } else if (action !== "quit" && !action!.startsWith("dump_")) script.push(step);
   }
-  const sheet = skin ? SHEETS[size] : undefined;
-  if (skin && !sheet) throw new Error(`${name}: no sheet layout for ${size}`);
+  const sheet = pack ? SHEETS[size] : undefined;
+  if (pack && !sheet) throw new Error(`${name}: no sheet layout for ${size}`);
   const cmd = ["bun", join(here, "reference.ts"), ...pass, "--project", "templates/ui-kit", "--references", "crates/og-ui/references", "--size", size, "--script", script.join(";"), "--shots", shots.join(","), "--out", out];
-  if (skin) cmd.push("--sheet", `kit-skin-${skin[1]}${skin[2] ?? ""}.png,${sheet!.factor},${sheet!.cols}`);
+  if (pack) cmd.push("--sheet", `kit-style-${pack[1]}${pack[2] ?? ""}.png,${sheet!.factor},${sheet!.cols}`);
   console.log(`---- ${name} (${tier}, ${size}, ${shots.length} frames)`);
   const r = Bun.spawnSync(cmd, { cwd: pkg, stdout: "inherit", stderr: "inherit" });
   if (r.exitCode !== 0) failed++;

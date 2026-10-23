@@ -72,7 +72,7 @@ pub(crate) struct Mounted {
 
 /// A UI with the theme and fonts of `previous` (a hot reload keeps them).
 pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> SharedUi {
-    let (theme, fonts, icons, skin) = match previous {
+    let (theme, fonts, icons, style_name) = match previous {
         Some(p) => {
             let ui = p.lock();
             (
@@ -95,7 +95,7 @@ pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> SharedUi {
         fonts,
     });
     ui.set_icons(icons);
-    ui.set_style_name(&skin);
+    ui.set_style_name(&style_name);
     SharedUi::new(ui)
 }
 
@@ -675,12 +675,12 @@ fn element(theme: &Theme, d: &Value) -> Element {
         interactive: d["interactive"].as_bool().unwrap_or(false),
         background: paint(theme, &d["background"]),
         radius: f(d, "radius", 0.0),
-        skin: skin_part(&d["frame"]),
+        frame: frame_part(&d["frame"]),
         aspect: f(d, "aspect", 0.0).max(0.0),
     }
 }
 
-fn skin_part(v: &Value) -> Option<StylePart> {
+fn frame_part(v: &Value) -> Option<StylePart> {
     StylePart::from_name(v.as_str()?)
 }
 
@@ -754,7 +754,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
         let eng = engine(world)?;
         let d = merged_ui_desc(&eng.state.borrow().ui_desc, parse(desc.as_deref())?)?;
-        let skin = match d["style"].as_f64() {
+        let style = match d["style"].as_f64() {
             Some(h) => {
                 let i = super::assets::index_of(h)
                     .ok_or_else(|| format!("style: {h} is not a UI style"))?;
@@ -771,7 +771,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             Some("light") => Scheme::Light,
             _ => Scheme::Dark,
         };
-        let mut theme = match &skin {
+        let mut theme = match &style {
             Some((file, atlas, _, _, sounds)) => file.theme(*atlas, *sounds),
             None => Theme::new(scheme),
         };
@@ -793,7 +793,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         if sounds.is_object() {
             for e in og_ui::UiSound::ALL {
                 if let Some(h) = sounds[e.name()].as_f64() {
-                    theme.skin.sounds[e as usize] = h as u64;
+                    theme.art.sounds[e as usize] = h as u64;
                 }
             }
         }
@@ -803,25 +803,25 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                 Some(h) => ui_font(&eng, h).map(Some),
             }
         };
-        let skin_font = |i: usize| -> Result<Option<UiFont>, String> {
-            match skin.as_ref().and_then(|s| s.2[i]) {
+        let style_font = |i: usize| -> Result<Option<UiFont>, String> {
+            match style.as_ref().and_then(|s| s.2[i]) {
                 None => Ok(None),
                 Some(h) => ui_font(&eng, h).map(Some),
             }
         };
         let body = match font("font")? {
             Some(f) => Some(f),
-            None => skin_font(0)?,
+            None => style_font(0)?,
         };
         let fonts = Fonts {
             body: body.unwrap_or_default(),
             display: match font("displayFont")? {
                 Some(f) => Some(f),
-                None => skin_font(1)?,
+                None => style_font(1)?,
             },
             mono: match font("monoFont")? {
                 Some(f) => Some(f),
-                None => skin_font(2)?,
+                None => style_font(2)?,
             },
             rounded: font("roundedFont")?,
             fallbacks: match d["fallbackFonts"].as_array() {
@@ -832,7 +832,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                     .collect::<Result<Vec<_>, _>>()?,
                 None => Vec::new(),
             },
-            fallback: skin_font(3)?,
+            fallback: style_font(3)?,
             // The locale's chain (og.i18n) stays.
             chain: Vec::new(),
         };
@@ -900,7 +900,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                     font: None,
                 },
             }
-        } else if let Some((file, _, _, Some(texture), _)) = &skin {
+        } else if let Some((file, _, _, Some(texture), _)) = &style {
             let (_, columns, rows, names) = file.icons.clone().unwrap_or_default();
             IconAtlas {
                 texture: Some(*texture),
@@ -925,7 +925,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             && fonts.chain.is_empty();
         ui.set_fonts(fonts);
         ui.set_icons(atlas);
-        ui.set_style_name(skin.as_ref().map_or("", |s| s.0.name.as_str()));
+        ui.set_style_name(style.as_ref().map_or("", |s| s.0.name.as_str()));
         ui.set_toast_anchor(anchor_of(&d["toastAnchor"]).unwrap_or(Anchor::Bottom));
         drop(ui);
         let mut st = eng.state.borrow_mut();
@@ -1056,7 +1056,7 @@ pub fn og_ui_viewport(world: u32) -> String {
 }
 
 pub fn og_ui_theme(world: u32) -> String {
-    let (theme, sizes, skin) = engine(world)
+    let (theme, sizes, style) = engine(world)
         .ok()
         .and_then(|e| e.state.borrow().ui.clone())
         .map(|ui| {
@@ -1068,7 +1068,7 @@ pub fn og_ui_theme(world: u32) -> String {
             let s = t.sizes(&Viewport::default());
             (t, s, String::new())
         });
-    theme_json(theme, sizes, &skin)
+    theme_json(theme, sizes, &style)
 }
 
 pub fn og_ui_frame_viewport() -> String {
@@ -1085,7 +1085,7 @@ pub fn og_ui_seconds() -> f64 {
 }
 
 pub fn og_ui_frame_theme() -> String {
-    let (theme, sizes, skin) = with_ui("og.ui.frameTheme", |ui| {
+    let (theme, sizes, style) = with_ui("og.ui.frameTheme", |ui| {
         (*ui.theme(), ui.sizes(), ui.style_name().to_string())
     })
     .unwrap_or_else(|| {
@@ -1102,17 +1102,17 @@ pub fn og_ui_frame_theme() -> String {
         if let Some((t, d, k, text)) = last.as_ref()
             && *t == theme
             && *d == sizes
-            && *k == skin
+            && *k == style
         {
             return text.clone();
         }
-        let text = theme_json(theme, sizes, &skin);
-        *last = Some((theme, sizes, skin, text.clone()));
+        let text = theme_json(theme, sizes, &style);
+        *last = Some((theme, sizes, style, text.clone()));
         text
     })
 }
 
-fn theme_json(theme: Theme, sizes: og_ui::Density, skin: &str) -> String {
+fn theme_json(theme: Theme, sizes: og_ui::Density, style: &str) -> String {
     let hex = |c: Srgba| {
         let [r, g, b] = c.rgb;
         if c.alpha >= 1.0 {
@@ -1150,7 +1150,7 @@ fn theme_json(theme: Theme, sizes: og_ui::Density, skin: &str) -> String {
         "typeRamp": ramp,
         "sizes": { "controlSm": sizes.control_sm, "controlMd": sizes.control_md, "controlLg": sizes.control_lg, "gutter": sizes.gutter, "header": sizes.header, "row": sizes.row, "section": sizes.section },
         "durationsMs": { "instant": d.instant, "fast": d.fast, "base": d.base, "slow": d.slow, "spring": d.spring, "bounce": d.bounce },
-        "style": skin,
+        "style": style,
         "contrast": if theme.contrast == og_ui::Contrast::High { "high" } else { "standard" },
         "reducedMotion": theme.reduced_motion,
         "reducedTransparency": theme.reduced_transparency,
@@ -1655,7 +1655,7 @@ pub fn og_ui_open_anchor(id: String, desc: Option<String>) {
             width: size_or(&d["width"], Size::fit()),
             height: size_or(&d["height"], Size::fit()),
             over: d["over"].as_bool().unwrap_or(false),
-            skin: skin_part(&d["frame"]),
+            frame: frame_part(&d["frame"]),
             instant: d["instant"].as_bool().unwrap_or(false),
         };
         ui.open_anchor(id.as_str(), a)

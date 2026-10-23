@@ -1,6 +1,6 @@
 //! UI styles: a game's whole look, one `.ogt` of `type style`. Its values
 //! (every palette role, the radii, the type ramp, durations) go into the
-//! [`Theme`] fields; its art is a [`Skin`], which dresses the
+//! [`Theme`] fields; its art is an [`Art`], which dresses the
 //! element classes ([`StylePart`]: panel, card, button and its states, field,
 //! slot, tooltip, hud, progress track and fill) in nine-slice frames from
 //! one atlas texture, adds ornaments (corners, divider, heading flourish), a
@@ -12,7 +12,7 @@
 //! A style is complete: it sets every palette role and every radius, so
 //! nothing of another look shows through it. There is no base to fall back
 //! on; before a game picks a style it has the engine's placeholder
-//! `prototype` ([`crate::theme`]). [`Skin::default`] dresses nothing and
+//! `prototype` ([`crate::theme`]). [`Art::default`] dresses nothing and
 //! moves nothing: every draw path checks for a slice, an ornament or a
 //! motion value first, so a style without art draws flat.
 //!
@@ -239,7 +239,7 @@ pub struct Glow {
 }
 
 /// What a press does to a button: its fill scales by `sx`, `sy` and the
-/// button moves down `dy` CSS px, on the skin's press spring
+/// button moves down `dy` CSS px, on the style's press spring
 /// (`motion.pressSpring`): in while held, back (past rest when the spring
 /// bounces) on release.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -249,7 +249,7 @@ pub struct Press {
     pub dy: f32,
 }
 
-/// What hovering does to a button, moving on the skin's hover spring
+/// What hovering does to a button, moving on the style's hover spring
 /// (`motion.hoverSpring`): it moves `dy` CSS px (negative lifts) and
 /// scales by `scale`.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -258,9 +258,9 @@ pub struct Hover {
     pub scale: f32,
 }
 
-/// The motion a skin chooses. The zero value is the token kit's motion.
+/// The motion a style chooses. The zero value is the token kit's motion.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct SkinMotion {
+pub struct StyleMotion {
     /// How dialogs and anchored panels enter (`None`: dialogs scale,
     /// anchored panels appear at once).
     pub enter: Option<TransitionKind>,
@@ -282,7 +282,7 @@ pub struct SkinMotion {
     pub press_spring: Option<crate::theme::Spring>,
 }
 
-/// The UI events a skin can sound.
+/// The UI events a style can sound.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UiSound {
     Hover,
@@ -319,10 +319,10 @@ impl UiSound {
     }
 }
 
-/// A game's look beyond the style (see the module docs). Copy: the theme
+/// A style's art (see the module docs). Copy: the theme
 /// carries it by value.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Skin {
+pub struct Art {
     /// The atlas the slices, ornaments and tiles cut from; `None` dresses nothing.
     pub atlas: Option<TextureHandle>,
     pub slices: [Option<Slice>; PARTS],
@@ -349,12 +349,12 @@ pub struct Skin {
     pub text_weights: [f32; 3],
     pub press: Option<Press>,
     pub hover: Option<Hover>,
-    pub motion: SkinMotion,
+    pub motion: StyleMotion,
     /// Sound handles by [`UiSound`] (0: silent).
     pub sounds: [u64; 6],
 }
 
-impl Skin {
+impl Art {
     /// The slice that draws `part`: its own, else the plain button's for a
     /// button state.
     pub fn slice(&self, part: StylePart) -> Option<Slice> {
@@ -426,15 +426,15 @@ impl StyleFile {
         out
     }
 
-    /// Resolves the asset ids the file names against the skin file's own
-    /// id (`skin_id`, such as `skins/fantasy/skin.ogt`), so a pack copied
+    /// Resolves the asset ids the file names against the style file's own
+    /// id (`style_id`, such as `styles/fantasy/style.ogt`), so a pack copied
     /// to another directory keeps working: an id is first read relative to
-    /// the skin's directory (`atlas.png` is `skins/fantasy/atlas.png`,
+    /// the style's directory (`atlas.png` is `styles/fantasy/atlas.png`,
     /// `../shared/rope.png` climbs one), and taken as written, from
     /// `assets/`, when no asset `exists` there. The cook and the runtime
     /// resolve the same way, so what the cook checked is what loads.
-    pub fn resolve(&mut self, skin_id: &str, exists: impl Fn(&str) -> bool) {
-        let at = |r: &mut String| *r = resolve_reference(skin_id, r, &exists);
+    pub fn resolve(&mut self, style_id: &str, exists: impl Fn(&str) -> bool) {
+        let at = |r: &mut String| *r = resolve_reference(style_id, r, &exists);
         if let Some(a) = self.atlas.as_mut() {
             at(a);
         }
@@ -452,17 +452,17 @@ impl StyleFile {
     /// The theme with the loaded atlas and sound handles.
     pub fn theme(&self, atlas: Option<TextureHandle>, sounds: [u64; 6]) -> Theme {
         let mut t = self.theme;
-        t.skin.atlas = atlas;
-        t.skin.sounds = sounds;
+        t.art.atlas = atlas;
+        t.art.sounds = sounds;
         t
     }
 }
 
-/// An asset id a skin file names, resolved against the skin's own id (see
+/// An asset id a style file names, resolved against the style's own id (see
 /// [`StyleFile::resolve`]): relative to its directory when that asset
 /// exists, else as written.
-pub fn resolve_reference(skin_id: &str, reference: &str, exists: impl Fn(&str) -> bool) -> String {
-    let dir = skin_id.rsplit_once('/').map_or("", |(d, _)| d);
+pub fn resolve_reference(style_id: &str, reference: &str, exists: impl Fn(&str) -> bool) -> String {
+    let dir = style_id.rsplit_once('/').map_or("", |(d, _)| d);
     let mut parts: Vec<&str> = dir.split('/').filter(|p| !p.is_empty()).collect();
     let mut inside = true;
     for p in reference.split('/') {
@@ -682,12 +682,12 @@ fn role_index(p: &P, w: &str) -> Result<usize, String> {
 ///   base 260
 /// }
 /// fonts {
-///   display "skins/fantasy/Cinzel-Bold.ttf"
-///   body "skins/fantasy/Newsreader.ttf"
-///   numeric "skins/fantasy/Newsreader.ttf"   # the mono role
+///   display "styles/fantasy/Cinzel-Bold.ttf"
+///   body "styles/fantasy/Newsreader.ttf"
+///   numeric "styles/fantasy/Newsreader.ttf"   # the mono role
 ///   fallback "fonts/NotoSansSC-Regular-subset.ttf"
 /// }
-/// icons "skins/fantasy/icons.png" 8 4 {
+/// icons "styles/fantasy/icons.png" 8 4 {
 ///   names "heart" "star"
 /// }
 /// slice panel 0 0 64 64 20 [20 20 20] [tint|authored] [stretch|repeat|round]
@@ -947,8 +947,8 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                     middle,
                 };
                 match part {
-                    Some(part) => theme.skin.slices[part.index()] = Some(s),
-                    None => theme.skin.soft = Some(s),
+                    Some(part) => theme.art.slices[part.index()] = Some(s),
+                    None => theme.art.soft = Some(s),
                 }
             }
             "corner" | "divider" | "flourish" => {
@@ -970,12 +970,12 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                     offset: p.num_or(7, 0.0)?,
                 };
                 match e.key.as_str() {
-                    "corner" => theme.skin.corner = Some(o),
-                    "divider" => theme.skin.divider = Some(o),
-                    _ => theme.skin.flourish = Some(o),
+                    "corner" => theme.art.corner = Some(o),
+                    "divider" => theme.art.divider = Some(o),
+                    _ => theme.art.flourish = Some(o),
                 }
             }
-            "corners" => theme.skin.corner_parts = parts_mask(&p, 0)?,
+            "corners" => theme.art.corner_parts = parts_mask(&p, 0)?,
             "tile" => {
                 needs_atlas()?;
                 let (uv, _) = region(&p, 0, size)?;
@@ -983,7 +983,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                     .iter()
                     .take_while(|v| v.as_number().is_some())
                     .count();
-                theme.skin.tile = Some(Tile {
+                theme.art.tile = Some(Tile {
                     uv,
                     w: p.num(4)?,
                     h: p.num(5)?,
@@ -1003,14 +1003,14 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                     spread: p.num(4)?,
                     color: p.color(5)?,
                 };
-                theme.skin.shadows[part.class().index()] = Some(s);
+                theme.art.shadows[part.class().index()] = Some(s);
             }
             "glow" => {
                 let w = p.word(0)?;
                 let part = StylePart::from_name(w)
                     .ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?;
                 let iw = p.word(2)?;
-                theme.skin.glows[part.class().index()] = Some(Glow {
+                theme.art.glows[part.class().index()] = Some(Glow {
                     size: p.num(1)?.max(0.0),
                     ink: Ink::parse(iw).ok_or_else(|| {
                         p.err(&format!("ink '{iw}' is accent, fg, muted, border or focus"))
@@ -1022,7 +1022,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 let w = p.word(0)?;
                 let part = StylePart::from_name(w)
                     .ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?;
-                theme.skin.glass[part.class().index()] = Some(Glass {
+                theme.art.glass[part.class().index()] = Some(Glass {
                     blur: p.num(1)?.max(0.0),
                     fill: p.num(2)?.clamp(0.0, 1.0),
                     tint: p.num_or(3, 0.25)?.clamp(0.0, 1.0),
@@ -1030,7 +1030,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
             }
             "textShadow" => {
                 let i = role_index(&p, p.word(0)?)?;
-                theme.skin.text_shadows[i] = Some(Shadow {
+                theme.art.text_shadows[i] = Some(Shadow {
                     dx: p.num(1)?,
                     dy: p.num(2)?,
                     blur: p.num(3)?.max(0.0),
@@ -1041,7 +1041,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
             "textGlow" => {
                 let i = role_index(&p, p.word(0)?)?;
                 let iw = p.word(2)?;
-                theme.skin.text_glows[i] = Some(Glow {
+                theme.art.text_glows[i] = Some(Glow {
                     size: p.num(1)?.max(0.0),
                     ink: Ink::parse(iw).ok_or_else(|| {
                         p.err(&format!("ink '{iw}' is accent, fg, muted, border or focus"))
@@ -1055,23 +1055,23 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 if !(0.0..=2.0).contains(&w) {
                     return Err(p.err("takes the thickening in device pixels, 0 to 2"));
                 }
-                theme.skin.text_weights[i] = w;
+                theme.art.text_weights[i] = w;
             }
             "press" => {
-                theme.skin.press = Some(Press {
+                theme.art.press = Some(Press {
                     sx: p.num(0)?,
                     sy: p.num(1)?,
                     dy: p.num_or(2, 0.0)?,
                 })
             }
             "hover" => {
-                theme.skin.hover = Some(Hover {
+                theme.art.hover = Some(Hover {
                     dy: p.num(0)?,
                     scale: p.num_or(1, 1.0)?,
                 })
             }
             "motion" => {
-                let m = &mut theme.skin.motion;
+                let m = &mut theme.art.motion;
                 for c in &p.block()?.entries {
                     let q = P { e: c };
                     match c.key.as_str() {
@@ -1114,15 +1114,15 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 })?;
                 file.sounds[s as usize] = Some(p.string(1)?.to_string());
             }
-            k => return Err(format!("line {}: unknown skin setting '{k}'", e.line)),
+            k => return Err(format!("line {}: unknown style setting '{k}'", e.line)),
         }
     }
-    if file.atlas.is_some() && theme.skin.slices.iter().all(Option::is_none) {
-        return Err("the skin has an atlas but no `slice` lines".into());
+    if file.atlas.is_some() && theme.art.slices.iter().all(Option::is_none) {
+        return Err("the style has an atlas but no `slice` lines".into());
     }
-    let needs_soft = theme.skin.shadows.iter().flatten().any(|s| s.blur > 0.0)
-        || theme.skin.glows.iter().any(Option::is_some);
-    if needs_soft && theme.skin.soft.is_none() {
+    let needs_soft = theme.art.shadows.iter().flatten().any(|s| s.blur > 0.0)
+        || theme.art.glows.iter().any(Option::is_some);
+    if needs_soft && theme.art.soft.is_none() {
         return Err(
             "a soft shadow or a glow needs a `soft` line (a blurred white rectangle in the atlas)"
                 .into(),

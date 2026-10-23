@@ -3,7 +3,7 @@
 // shakes (og.ui.shake: three decaying swings, then rest where it was),
 // plays the error sound on the ui bus, spends nothing and reports the
 // refusal (ShopResult.refused). Ways it could fail: the press is ignored
-// (a disabled button with no skin shake), the button never moves or never
+// (a disabled button with no style shake), the button never moves or never
 // comes back, the refusal is silent, or the price is taken anyway.
 import { playtest } from "@origingame/engine/playtest";
 import { SCREEN, demo, tap, ui } from "./lib.ts";

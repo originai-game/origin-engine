@@ -1,8 +1,8 @@
-// Rumpus Isle's screens on og.ui, dressed by the rumpus skin (the cartoon
+// Rumpus Isle's screens on og.ui, dressed by the rumpus style (the cartoon
 // pack recoloured; the look applies it): the title (Play, Settings, the
 // records), the lobby (four seats, the colours, Ready and Start, every pad
 // with a focus ring of its own: og.ui.setPlayers), the round's HUD (the
-// round and its clock at the top, a capsule per player at the bottom), its
+// round and its clock at the top, a box per player at the bottom), its
 // card and count-in, pause, the settings (og.ui.settingsScreen, every word
 // from the tables, English and French), the scoreboard between rounds and
 // the podium. The screens change through an iris (a fade with reduced
@@ -22,6 +22,8 @@ type GameV = Value<typeof Game>;
 type PrefsV = Value<typeof Prefs>;
 
 const S = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 } as const;
+/** The rumpus style's radius block (assets/styles/rumpus/style.ogt, the cartoon pack's). */
+const R = { control: 6, panel: 10 } as const;
 
 /** A colour's sRGB as a Paint (the players' own colours: not chrome, so not a token). */
 function ink(colour: number) {
@@ -64,7 +66,7 @@ function title(world: World, g: GameV): void {
 // ------------------------------------------------------------------ lobby
 
 function seatCard(world: World, g: GameV, k: number, s: Seat): void {
-  og.ui.column(og.ui.idi("Seat", k), { width: { kind: "grow" }, gap: S.xs, cross: "center", padding: { left: S.sm, top: S.md, right: S.sm, bottom: S.md }, background: { token: "well" }, radius: 18 }, () => {
+  og.ui.column(og.ui.idi("Seat", k), { width: { kind: "grow" }, gap: S.xs, cross: "center", padding: { left: S.sm, top: S.md, right: S.sm, bottom: S.md }, background: { token: "well" }, radius: R.panel }, () => {
     if (!s.joined) {
       og.ui.label("Name", `P${k + 1}`, { step: "lg", font: "display", color: { token: "inkInverse" }, nowrap: true });
       og.ui.label("Join", say(world, "lobby.join"), { color: { token: "inkInverse" }, align: "center", width: { kind: "grow" } });
@@ -152,7 +154,7 @@ function hud(world: World, g: GameV): boolean {
     });
     if (og.ui.button("Pause", say(world, "hud.pause"), { size: "small", variant: "secondary" }).clicked) paused = true;
   });
-  // The bottom: a capsule per player, in their colour.
+  // The bottom: a box per player, in their colour.
   og.ui.anchor("Players", { anchor: "bottom", direction: "row", gap: S.sm, cross: "center" }, () => {
     seats(g).forEach((s, k) => {
       if (!s.joined) return;
@@ -232,7 +234,7 @@ function table(world: World, g: GameV, total: boolean): void {
   og.ui.column("Table", { gap: S.xs, width: { kind: "grow" } }, () => {
     order.forEach((k, i) => {
       const s = all[k]!;
-      og.ui.row(og.ui.idi("Row", i), { gap: S.sm, cross: "center", width: { kind: "grow" }, padding: { left: S.md, top: S.xs, right: S.md, bottom: S.xs }, background: { token: "control" }, radius: 14 }, () => {
+      og.ui.row(og.ui.idi("Row", i), { gap: S.sm, cross: "center", width: { kind: "grow" }, padding: { left: S.md, top: S.xs, right: S.md, bottom: S.xs }, background: { token: "control" }, radius: R.control }, () => {
         const place = total ? 1 + order.filter((o) => all[o]!.points > s.points).length : s.place;
         og.ui.label("Place", place > 0 ? say(world, "place.short", { n: place }) : "–", { step: "lg", font: "display", color: { token: "inkMuted" }, width: { kind: "fixed", px: 52 } });
         og.ui.icon("Dot", "person", { size: 22, tint: ink(s.colour) });

@@ -199,7 +199,7 @@ fn a_scroll_container_clips_everything_it_draws() {
     );
 }
 
-/// A skin's text glow is one soft halo read from the font's distance field
+/// A style's text glow is one soft halo read from the font's distance field
 /// (og-render's MSDF shader), not offset copies of the text: the ink is the
 /// same with and without it, the pixels just outside the glyphs take the
 /// glow, it ends within the distance field's reach, each glyph costs two

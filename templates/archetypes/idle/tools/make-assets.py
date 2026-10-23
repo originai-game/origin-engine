@@ -275,7 +275,7 @@ render sprite 0
 # ── the skin's atlas ───────────────────────────────────────────────────────
 
 def read_png(path):
-    """An 8-bit RGBA, non-interlaced PNG's rows of pixels (what make-skins.py writes)."""
+    """An 8-bit RGBA, non-interlaced PNG's rows of pixels (what make-styles.py writes)."""
     data = open(path, "rb").read()
     at, idat, w, h = 8, b"", 0, 0
     while at < len(data):

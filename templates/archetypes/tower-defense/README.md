@@ -55,10 +55,10 @@ og build . --publish         # dist/: the play page as it ships
   doorstep is a red number, a 6-tick hit stop, trauma and a kick, the
   lantern flashing red and squashing. Plants pop up when set and squash
   when they shoot.
-- **Screens on og.ui with a skin** (og-ui §2–§6, og-taste §1–§7): the
+- **Screens on og.ui with a style** (og-ui §2–§6, og-taste §1–§7): the
   engine's cartoon pack recoloured as `assets/styles/pathguard` (cream
   panels on the night lawn, the lantern's orange as the one accent); the
-  title (`og.ui.mainMenu`), the HUD as capsules in the corners with
+  title (`og.ui.mainMenu`), the HUD as boxes in the corners with
   counting numbers (`og.ui.counter`), the plant tray (right on a wide
   screen, along the bottom on a phone), `og.ui.pauseMenu`, a settings
   dialog and the end card built from widgets (stars landing with
@@ -225,7 +225,7 @@ in the engine repository).
 give the same bytes): the tileset, the map, the sprite sheet, the glow and
 particle textures and emitters, the sounds and the music, the `og sfx`
 preset files of the UI's sounds, and the font subset. `LICENSES.md` lists
-them; the skin's are in `assets/styles/pathguard/LICENSES.md`.
+them; the style's are in `assets/styles/pathguard/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)
 

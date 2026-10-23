@@ -1,8 +1,8 @@
-// The style-pack gallery: every screen of the kit in one skin, composed into
-// one reference sheet per skin and surface, in FRAME_SCREENS order without
-// the gallery: on a desktop crates/og-ui/references/<tier>/kit-skin-<name>.png
+// The style-pack gallery: every screen of the kit in one style, composed into
+// one reference sheet per style and surface, in FRAME_SCREENS order without
+// the gallery: on a desktop crates/og-ui/references/<tier>/kit-style-<name>.png
 // (7 × 3 cells, each the 1280×720 frame box-filtered to 640×360), on a phone
-// in portrait kit-skin-<name>-phone.png (10 × 2 cells, each the 390×844@3
+// in portrait kit-style-<name>-phone.png (10 × 2 cells, each the 390×844@3
 // frame box-filtered to its 390×844 CSS pixels). Each screen is compared with
 // its cell of the sheet under og-tests' rule (frames.ts).
 // `OG_UI_CAPTURE=1 og test .` records the sheets instead.
@@ -101,15 +101,15 @@ export function encodePng(img: Image): Uint8Array {
 }
 
 /** The playtest of one style pack on a surface (desktop by default). */
-export function skinPlaytest(skin: string, on: "desktop" | "phone" = "desktop"): PlaytestDesc {
+export function stylePlaytest(style: string, on: "desktop" | "phone" = "desktop"): PlaytestDesc {
   const surface = SURFACES[on];
   const script = framesScript(0.5);
   const files = script.files.filter((f) => f !== "gallery.png");
-  const name = `kit-skin-${skin}${surface.suffix}.png`;
+  const name = `kit-style-${style}${surface.suffix}.png`;
   return playtest({
-    name: `every screen in the ${skin} style pack${on === "phone" ? " on a phone" : ""} matches its cell of ${name}`,
+    name: `every screen in the ${style} style pack${on === "phone" ? " on a phone" : ""} matches its cell of ${name}`,
     size: surface.size,
-    commands: `${surface.viewport}0.2:skin:${skin};${script.commands}`,
+    commands: `${surface.viewport}0.2:style:${style};${script.commands}`,
     check(run, t) {
       t.equal(run.warnings.join("; "), "", "the script ran without warnings");
       t.ok(run.quit, "the script reached quit");
@@ -136,7 +136,7 @@ export function skinPlaytest(skin: string, on: "desktop" | "phone" = "desktop"):
           return;
         }
         const dir = existsSync(join(own, name)) ? own : join(refs, "metal");
-        if (dir !== own) process.stdout.write(`  note: no ${run.tier} reference for ${skin}; comparing with metal\n`);
+        if (dir !== own) process.stdout.write(`  note: no ${run.tier} reference for ${style}; comparing with metal\n`);
         const refPath = join(dir, name);
         if (!existsSync(refPath)) {
           t.ok(false, `${refPath} is missing: record it with OG_UI_CAPTURE=1 og test templates/ui-kit`);
@@ -146,7 +146,7 @@ export function skinPlaytest(skin: string, on: "desktop" | "phone" = "desktop"):
         t.equal(`${ref.width}x${ref.height}`, `${sheet.width}x${sheet.height}`, "the sheet has every screen");
         files.forEach((f, i) => {
           const d = difference(cells[i]!, cell(ref, i, cols, cw, ch));
-          t.ok(d.outliers <= 0.005 && d.rmse <= 0.01, `${skin} ${f} matches its cell: ${(d.outliers * 100).toFixed(3)} % outliers (≤ 0.5 %), RMSE ${d.rmse.toFixed(5)} (≤ 0.01)`);
+          t.ok(d.outliers <= 0.005 && d.rmse <= 0.01, `${style} ${f} matches its cell: ${(d.outliers * 100).toFixed(3)} % outliers (≤ 0.5 %), RMSE ${d.rmse.toFixed(5)} (≤ 0.01)`);
         });
       });
     },

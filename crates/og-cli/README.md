@@ -2,7 +2,7 @@
 
 The `og` tool (design §2.1): `og run`, `og dev`, `og test`, `og polish`,
 `og build`, `og cook`, `og probe`, `og doctor`, `og api`, `og sfx`,
-`og skin`. Each command is a module of `src/`; the TypeScript halves run in
+`og style`. Each command is a module of `src/`; the TypeScript halves run in
 bun from the engine package (`packages/engine/src/node/`), found through
 `OG_ENGINE_PACKAGE`, the project's `node_modules/@origingame/engine` or the
 checkout's `packages/engine`. Its tests (`tests/cli.rs`) run the built

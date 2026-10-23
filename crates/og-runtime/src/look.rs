@@ -160,13 +160,13 @@ fn read(eng: &Engine, id: &str) -> Result<LookParts, String> {
         }
         values.push((block.resource.clone(), map));
     }
-    let skin = file
+    let style = file
         .ui
         .as_deref()
         .map(|s| super::modules::load_style(eng, s))
         .transpose()
         .map_err(|e| format!("{id}: ui style: {e}"))?;
-    Ok((file, values, skin))
+    Ok((file, values, style))
 }
 
 /// `og.load.look`: the look's load index, the assets it names loaded
@@ -176,14 +176,14 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<usize, String> {
     if let Some(&i) = eng.render.borrow().fx.look.by_path.get(&id) {
         return Ok(i);
     }
-    let (file, values, skin) = read(eng, &id)?;
+    let (file, values, style) = read(eng, &id)?;
     let mut rs = eng.render.borrow_mut();
     let state = &mut rs.fx.look;
     state.looks.push(LoadedLook {
         id: id.clone(),
         file,
         values,
-        style: skin,
+        style,
         resident: true,
     });
     let i = state.looks.len() - 1;
@@ -216,12 +216,12 @@ pub(crate) fn resolve(eng: &Engine) {
         }
     }
     for (i, id) in looks {
-        if let Ok((file, values, skin)) = read(eng, &id) {
+        if let Ok((file, values, style)) = read(eng, &id) {
             let mut rs = eng.render.borrow_mut();
             let look = &mut rs.fx.look.looks[i];
             look.file = file;
             look.values = values;
-            look.style = skin;
+            look.style = style;
             look.resident = true;
         }
     }
@@ -231,7 +231,7 @@ pub(crate) fn resolve(eng: &Engine) {
 /// (its fields from the look, the rest at their defaults, the animated ones
 /// kept), then its style given to the UI with the last UiDesc.
 pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
-    let (values, skin) = {
+    let (values, style) = {
         let rs = eng.render.borrow();
         let look = rs
             .fx
@@ -270,9 +270,9 @@ pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
         super::engine::write_resource_value(eng.id, &schema, &Value::Object(whole))
             .map_err(|e| format!("{resource}: {e}"))?;
     }
-    if let Some(skin) = skin {
+    if let Some(style) = style {
         // Every other field keeps the last UiDesc's value (og.ui.configure merges).
-        let desc = json!({ "style": handle_value(skin) });
+        let desc = json!({ "style": handle_value(style) });
         let answer = super::modules::og_ui_configure(eng.id, Some(desc.to_string()));
         if let Ok(Value::Object(o)) = serde_json::from_str::<Value>(&answer)
             && o.get("ok") == Some(&Value::Bool(false))

@@ -6,7 +6,7 @@
 //! `prototype` is deliberately a placeholder: greys, square corners, no
 //! glass, a single wireframe cyan for focus and highlights. A game that
 //! ships it looks unfinished, and `og polish` says so. A game's own look is
-//! a style (`crate::skin`, `type style`), usually the one its look names.
+//! a style (`crate::style_file`, `type style`), usually the one its look names.
 //!
 //! Lengths are CSS pixels, durations milliseconds, colours sRGB as authored
 //! (straight alpha); `crate::style` converts them for the renderer.

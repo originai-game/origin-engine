@@ -10,8 +10,8 @@
 //
 // Commands: show:<screen>, viewport:<desktop|tablet|phone|landscape>,
 // pad:<up|down|left|right|next|prev|activate|back>, toast:<text>,
-// damage:<hp>, heal:<hp>, skin:<prototype|pixel|cartoon|fantasy|scifi|paper|neon>
-// (a style pack from assets/skins), transition:<none|fade|wipe|iris|dissolve|slide>
+// damage:<hp>, heal:<hp>, style:<prototype|pixel|cartoon|fantasy|scifi|paper|neon>
+// (a built-in style pack, @styles/<name>), transition:<none|fade|wipe|iris|dissolve|slide>
 // (screen changes go through og.ui.screenTransition), sounds:<on|off> (on by default),
 // mixed:<on|off> (a label of CJK, Latin and Arabic under the locale screens),
 // offline:<on|off> (the leaderboard's rows fail to load: its error and Retry).
@@ -29,7 +29,7 @@ export type Screen = (typeof SCREENS)[number];
 /** The engine's built-in UI styles (templates/styles, in the bundle as
  * `@styles/<name>/` because assets/looks/kit-<name>.ogt names each);
  * "prototype" is the engine's placeholder. */
-export const SKINS = ["prototype", "pixel", "cartoon", "fantasy", "scifi", "paper", "neon"] as const;
+export const STYLES = ["prototype", "pixel", "cartoon", "fantasy", "scifi", "paper", "neon"] as const;
 const WIPES = ["none", "fade", "wipe", "iris", "dissolve", "slide"] as const;
 const UI_SOUNDS = ["hover", "press", "open", "close", "success", "error"] as const;
 
@@ -157,8 +157,8 @@ export const Demo = defineComponent("Demo", {
   // The last frame's accessibility tree (og.ui.a11y): its nodes and its focus order's length.
   a11yNodes: u32(0),
   a11yFocus: u32(0),
-  // Look: the style pack (SKINS index), the screen transition (WIPES index), UI sounds.
-  skin: u32(0),
+  // Look: the style pack (STYLES index), the screen transition (WIPES index), UI sounds.
+  style: u32(0),
   wipe: u32(0),
   sounds: bool(true),
   // `mixed:on`: a label mixing CJK, Latin and Arabic (menu.mixed) under the locale screens.
@@ -166,7 +166,7 @@ export const Demo = defineComponent("Demo", {
 });
 type DemoState = { -readonly [K in keyof ReturnType<typeof demoDefaults>]: ReturnType<typeof demoDefaults>[K] };
 function demoDefaults() {
-  return { screen: 0, paused: false, font: 0, displayFont: 0, roundedFont: 0, hebrewFont: 0, devanagariFont: 0, icons: 0, iconSet: 0, iconoir: false, zoom: 1, quests: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, settingsRequest: 0, loads: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, skin: 0, wipe: 0, sounds: true, mixed: false, offline: false };
+  return { screen: 0, paused: false, font: 0, displayFont: 0, roundedFont: 0, hebrewFont: 0, devanagariFont: 0, icons: 0, iconSet: 0, iconoir: false, zoom: 1, quests: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, settingsRequest: 0, loads: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, style: 0, wipe: 0, sounds: true, mixed: false, offline: false };
 }
 
 export const ICONS = [
@@ -381,10 +381,10 @@ function followSettings(world: World, tick: number, d: DemoState): void {
 /** Applies the theme-affecting settings (contrast, motion, the style pack,
  * sounds) with the demo's font and icons, or the pack's. */
 function applyTheme(world: World, d: DemoState): void {
-  const name = SKINS[d.skin] ?? "prototype";
+  const name = STYLES[d.style] ?? "prototype";
   const loaded = name === "prototype" ? null : og.load.style(world, `@styles/${name}/style.ogt`);
   if (loaded && !loaded.ok) throw new Error(loaded.reason);
-  const skin = loaded && loaded.ok ? loaded.value : null;
+  const style = loaded && loaded.ok ? loaded.value : null;
   const sounds: Record<string, unknown> = {};
   if (d.sounds) {
     for (const e of UI_SOUNDS) {
@@ -395,19 +395,19 @@ function applyTheme(world: World, d: DemoState): void {
   // Every field, each time: configure keeps a field left out, so a pack's
   // removal or the sounds turned off are said with null.
   og.ui.configure(world, {
-    font: d.font && !skin ? (d.font as never) : null,
-    displayFont: d.displayFont && !skin ? (d.displayFont as never) : null,
-    roundedFont: d.roundedFont && !skin ? (d.roundedFont as never) : null,
+    font: d.font && !style ? (d.font as never) : null,
+    displayFont: d.displayFont && !style ? (d.displayFont as never) : null,
+    roundedFont: d.roundedFont && !style ? (d.roundedFont as never) : null,
     // Scripts the locale tables' fonts do not cover (the text screen); under
     // a style, whose fonts are Latin-1, the demo's CJK body face too.
-    fallbackFonts: [skin ? d.font : 0, d.hebrewFont, d.devanagariFont].filter((h) => h !== 0) as never[],
+    fallbackFonts: [style ? d.font : 0, d.hebrewFont, d.devanagariFont].filter((h) => h !== 0) as never[],
     contrast: d.highContrast ? "high" : "standard",
     reducedMotion: d.reducedMotion,
-    style: skin,
+    style,
     // Every screen draws from the iconoir set (distance-field glyphs, named
     // as ICONS names them too); a style pack's own icons on its screens but
     // the materials one; the PNG grid only if the set did not load.
-    icons: d.iconSet && (d.iconoir || !skin) ? { font: d.iconSet as never } : skin ? null : d.icons ? { texture: d.icons as never, columns: 8, rows: 4, names: ICONS } : {},
+    icons: d.iconSet && (d.iconoir || !style) ? { font: d.iconSet as never } : style ? null : d.icons ? { texture: d.icons as never, columns: 8, rows: 4, names: ICONS } : {},
     sounds: d.sounds ? sounds : null,
   });
 }
@@ -1153,8 +1153,8 @@ export default og.game({
       hurt(world, d, Number(args[0] ?? 10));
       update(world, { hp: d.hp });
     },
-    skin: (world, args) => {
-      update(world, { skin: Math.max(0, SKINS.indexOf((args[0] ?? "prototype") as (typeof SKINS)[number])) });
+    style: (world, args) => {
+      update(world, { style: Math.max(0, STYLES.indexOf((args[0] ?? "prototype") as (typeof STYLES)[number])) });
       const d = current(world);
       if (d) applyTheme(world, d);
     },
@@ -1178,7 +1178,7 @@ export default og.game({
     toast: { usage: "<text>", doc: "Queue a toast." },
     damage: { usage: "<hp>", doc: "Take hit points off the HUDs' health." },
     heal: { usage: "<hp>", doc: "Give hit points back." },
-    skin: { usage: "<prototype|pixel|cartoon|fantasy|scifi|paper|neon>", doc: "Dress every screen in a style pack." },
+    style: { usage: "<prototype|pixel|cartoon|fantasy|scifi|paper|neon>", doc: "Dress every screen in a style pack." },
     transition: { usage: "<none|fade|wipe|iris|dissolve|slide>", doc: "Send screen changes through og.ui.screenTransition." },
     sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
     mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },
@@ -1186,6 +1186,6 @@ export default og.game({
   },
   facts: (world) => {
     const d = current(world);
-    return d ? { screen: SCREENS[d.screen] ?? "gallery", skin: SKINS[d.skin] ?? "prototype", hp: d.hp, balance: d.balance, saves: d.saves, loads: d.loads, language: LANGUAGES[d.language]?.code ?? "en", picks: [d.pick0, d.pick1, d.pick2, d.pick3], focus: [d.focus0, d.focus1, d.focus2, d.focus3] } : {};
+    return d ? { screen: SCREENS[d.screen] ?? "gallery", style: STYLES[d.style] ?? "prototype", hp: d.hp, balance: d.balance, saves: d.saves, loads: d.loads, language: LANGUAGES[d.language]?.code ?? "en", picks: [d.pick0, d.pick1, d.pick2, d.pick3], focus: [d.focus0, d.focus1, d.focus2, d.focus3] } : {};
   },
 });

@@ -35,12 +35,12 @@ fn project() -> &'static Path {
         let _ = std::fs::remove_dir_all(&root);
         let dir = root.join("assets/fonts");
         std::fs::create_dir_all(&dir).unwrap();
-        let skin = repo().join("templates/styles/neon");
+        let style = repo().join("templates/styles/neon");
         for f in [
             "ChakraPetch-BoldItalic.ttf",
             "ChakraPetch-BoldItalic.ttf.ogt",
         ] {
-            std::fs::copy(skin.join(f), dir.join(f)).unwrap();
+            std::fs::copy(style.join(f), dir.join(f)).unwrap();
         }
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());

@@ -8,8 +8,8 @@ use crate::layout::{
     Node, Rect, Shape, Size, TextAlign, TextContent, Widget, layout, preorder,
 };
 use crate::motion::Fx;
-use crate::skin::{Ink, Ornament, Slice, SliceFill, StylePart};
 use crate::style::{Breakpoint, Density, Srgba, Theme, TypeStep};
+use crate::style_file::{Ink, Ornament, Slice, SliceFill, StylePart};
 use crate::text::{FontMetrics, UiFont};
 use og_core::glam::Vec2;
 use og_probe::UiElement;
@@ -110,7 +110,7 @@ pub struct UiDesc {
 /// font cannot draw whole takes the first font of `chain` (the locale's,
 /// og.i18n) that can; a text mixing what the role's font draws with what it
 /// does not is laid out per run, each run from the first of the role's,
-/// `chain`, `fallbacks` (the game's) and `fallback` (a skin's Latin display
+/// `chain`, `fallbacks` (the game's) and `fallback` (a style's Latin display
 /// face and Chinese text) that has it ([`Fonts::for_text`]).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Fonts {
@@ -150,7 +150,7 @@ impl Fonts {
     /// first of the role's, `chain`, `fallbacks` and `fallback` that has it
     /// ([`FontMetrics::is_mixed`]; once [`Fonts::link`] made it, as
     /// [`crate::Ui`] does); else the first of `fallbacks` whose atlas has
-    /// every character; else the skin's `fallback` when it has a character
+    /// every character; else the style's `fallback` when it has a character
     /// the role's lacks; else the first font, in the same order, that can
     /// draw it with the characters its file renders at run time (`font {
     /// runtime true }`); else (no one font draws it all) the mixed font,
@@ -597,7 +597,7 @@ pub struct LabelDesc {
     pub nowrap: bool,
     pub width: Size,
     pub font: FontRole,
-    /// A heading: a skin with a flourish frames it.
+    /// A heading: a style with a flourish frames it.
     pub heading: bool,
     /// Cut with "…" where the text does not fit its width: on its one line
     /// (with `nowrap`; the label can then shrink in a row) or on its last
@@ -734,15 +734,15 @@ pub struct Ui {
     pub(crate) scopes: Vec<usize>,
     pub(crate) icons: IconAtlas,
     pub(crate) toast_anchor: Anchor,
-    /// UI events with a skin sound, not yet taken by the host.
-    pub(crate) sounds: Vec<crate::skin::UiSound>,
+    /// UI events with a style sound, not yet taken by the host.
+    pub(crate) sounds: Vec<crate::style_file::UiSound>,
     /// Text a copy or cut took, for the host's clipboard ([`Ui::take_clipboard`]).
     pub(crate) clipboard: Option<String>,
     /// The focused text control this frame (into [`UiFrame::text_input`]).
     pub(crate) text_target: Option<TextTarget>,
     /// This frame's screen-transition cover.
     pub(crate) cover: Option<crate::juice::Cover>,
-    /// The configured skin's name (empty: the style).
+    /// The configured style's name (empty: `prototype`).
     pub(crate) style_name: String,
     /// Two touches move a scroller or zoom view this tick: the primary
     /// pointer presses nothing.
@@ -776,7 +776,7 @@ fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
     t
 }
 
-/// A skin's `textGlow` size is how far the old four offset copies reached;
+/// A style's `textGlow` size is how far the old four offset copies reached;
 /// the distance-field glow fades to nothing over this many times it.
 const TEXT_GLOW_REACH: f32 = 2.0;
 
@@ -1022,7 +1022,7 @@ impl Ui {
         self.theme = effective_theme(theme, &self.viewport);
     }
 
-    /// The configured skin's name, for the theme the host reports (empty: the style).
+    /// The configured style's name, for the theme the host reports (empty: `prototype`).
     pub fn style_name(&self) -> &str {
         &self.style_name
     }
@@ -1130,10 +1130,10 @@ impl Ui {
             0
         };
         if hot != 0 && hot != self.state.hot && self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
-            self.sound(crate::skin::UiSound::Hover);
+            self.sound(crate::style_file::UiSound::Hover);
         }
         if input.pressed && grabbed.is_none() && self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
-            self.sound(crate::skin::UiSound::Press);
+            self.sound(crate::style_file::UiSound::Press);
         }
         self.state.hot = hot;
         self.state.focus_click = None;
@@ -1409,7 +1409,7 @@ impl Ui {
             cross: desc.cross,
             background: Some(desc.background.unwrap_or(t.palette.panel)),
             radius: t.radius.panel,
-            skin: Some(crate::skin::StylePart::Card),
+            frame: Some(crate::style_file::StylePart::Card),
             ..Element::default()
         };
         let id = id.into();
@@ -1509,15 +1509,15 @@ impl Ui {
                 width: desc.width.unwrap_or_default(),
                 height: Size::Fixed(h),
                 padding: Insets::xy(pad, 0.0),
-                // A skin that shakes a refused press hears presses on a disabled button.
-                interactive: !desc.disabled || t.skin.motion.shake > 0.0,
+                // A style that shakes a refused press hears presses on a disabled button.
+                interactive: !desc.disabled || t.art.motion.shake > 0.0,
                 radius: t.radius.control,
                 ..Element::default()
             },
         );
         self.nodes[i].disabled = desc.disabled;
         let refused =
-            desc.disabled && t.skin.motion.shake > 0.0 && self.respond(self.nodes[i].key).clicked;
+            desc.disabled && t.art.motion.shake > 0.0 && self.respond(self.nodes[i].key).clicked;
         let r = if desc.disabled {
             Response::default()
         } else {
@@ -1585,7 +1585,7 @@ impl Ui {
         let press = self.button_motion(i, r, refused);
         let n = &mut self.nodes[i];
         n.el.background = bg;
-        n.el.skin = Some(part);
+        n.el.frame = Some(part);
         n.content = Content::Text(content);
         n.widget = Widget::Button {
             pressed: r.pressed,
@@ -1633,7 +1633,7 @@ impl Ui {
         } else {
             0.0
         };
-        let ms = t.skin.motion.progress_ms;
+        let ms = t.art.motion.progress_ms;
         if ms > 0.0 && !t.reduced_motion {
             // Eases toward the value: a constant share of the gap per tick.
             let key = child_key(self.nodes[i].key, "ease");
@@ -1654,22 +1654,22 @@ impl Ui {
         self.nodes[i].widget = Widget::Progress { value: v };
     }
 
-    /// A button's skin motion: the hover lift and the press squash on the
-    /// skin's springs (`motion.hoverSpring`, `motion.pressSpring`), and the shake of a refused press (`motion.duration.slow`). Answers
+    /// A button's style motion: the hover lift and the press squash on the
+    /// style's springs (`motion.hoverSpring`, `motion.pressSpring`), and the shake of a refused press (`motion.duration.slow`). Answers
     /// how far in the press is (0 at rest, 1 held; past either while the
     /// spring overshoots).
     fn button_motion(&mut self, i: usize, r: Response, refused: bool) -> f32 {
         let t = self.theme;
-        let skin = t.skin;
-        if skin.hover.is_none() && skin.press.is_none() && skin.motion.shake <= 0.0 {
+        let art = t.art;
+        if art.hover.is_none() && art.press.is_none() && art.motion.shake <= 0.0 {
             return if r.pressed { 1.0 } else { 0.0 };
         }
         let key = self.nodes[i].key;
-        let hover_spring = skin
+        let hover_spring = art
             .motion
             .hover_spring
             .unwrap_or(crate::theme::SPRING_DEFAULT);
-        let press_spring = skin.motion.press_spring.unwrap_or(crate::theme::Spring {
+        let press_spring = art.motion.press_spring.unwrap_or(crate::theme::Spring {
             damping: 0.55,
             response_ms: t.durations_ms.instant,
         });
@@ -1719,18 +1719,18 @@ impl Ui {
         if refused {
             a.t = now;
             a.b = 1.0;
-            self.sound(crate::skin::UiSound::Error);
+            self.sound(crate::style_file::UiSound::Error);
         }
         self.set_anim(key, a);
         if t.reduced_motion {
             return if r.pressed { 1.0 } else { 0.0 };
         }
         let mut f = Fx::default();
-        if let Some(h) = skin.hover {
+        if let Some(h) = art.hover {
             f.dy += h.dy * hover;
             f.scale = 1.0 + (h.scale - 1.0) * hover;
         }
-        if let Some(p) = skin.press {
+        if let Some(p) = art.press {
             f.dy += p.dy * press;
         }
         if a.b > 0.0 {
@@ -1739,7 +1739,7 @@ impl Ui {
                 // Three decaying swings, arithmetic only (a triangle wave).
                 let x = k * 3.0;
                 let tri = 4.0 * (x - x.floor() - 0.5).abs() - 1.0;
-                f.dx = skin.motion.shake * (1.0 - k) * tri;
+                f.dx = art.motion.shake * (1.0 - k) * tri;
             }
         }
         if f != Fx::default() {
@@ -1748,9 +1748,9 @@ impl Ui {
         press
     }
 
-    /// Queues a UI event's sound when the skin has one for it.
-    pub(crate) fn sound(&mut self, event: crate::skin::UiSound) {
-        if self.theme.skin.sound(event) != 0 {
+    /// Queues a UI event's sound when the art has one for it.
+    pub(crate) fn sound(&mut self, event: crate::style_file::UiSound) {
+        if self.theme.art.sound(event) != 0 {
             self.sounds.push(event);
         }
     }
@@ -1762,13 +1762,13 @@ impl Ui {
         self.clipboard.take()
     }
 
-    /// The UI events of the last frames that have a sound in the skin,
+    /// The UI events of the last frames that have a sound in the art,
     /// oldest first; taking them empties the queue (the host plays them).
-    pub fn take_sounds(&mut self) -> Vec<(crate::skin::UiSound, u64)> {
-        let skin = self.theme.skin;
+    pub fn take_sounds(&mut self) -> Vec<(crate::style_file::UiSound, u64)> {
+        let art = self.theme.art;
         std::mem::take(&mut self.sounds)
             .into_iter()
-            .map(|e| (e, skin.sound(e)))
+            .map(|e| (e, art.sound(e)))
             .collect()
     }
 
@@ -1917,7 +1917,7 @@ impl Ui {
                 padding: Insets::xy(t.space.md, 0.0),
                 interactive: true,
                 radius: t.radius.control,
-                skin: Some(StylePart::Field),
+                frame: Some(StylePart::Field),
                 ..Element::default()
             },
         );
@@ -2014,7 +2014,7 @@ impl Ui {
                 padding: pad,
                 interactive: true,
                 radius: t.radius.control,
-                skin: Some(StylePart::Field),
+                frame: Some(StylePart::Field),
                 ..Element::default()
             },
         );
@@ -2152,7 +2152,7 @@ impl Ui {
                 padding: Insets::xy(t.space.sm, t.space.xs),
                 background: Some(t.palette.panel_raised),
                 radius: t.radius.control,
-                skin: Some(StylePart::Tooltip),
+                frame: Some(StylePart::Tooltip),
                 ..Element::default()
             },
         );
@@ -3082,7 +3082,7 @@ impl Ui {
                 t.space.xxs
             };
             cmds.push(quad(rect.outset(w + gap), n.el.radius + w + gap, color));
-            // Cut always: a field's skinned frame is not wholly opaque, and
+            // Cut always: a field's styled frame is not wholly opaque, and
             // the ring under it tinted its text's ground (the scifi pack's
             // focused placeholder read 3.5:1 on primary-tinted navy).
             cmds.push(quad(rect.outset(gap), n.el.radius + gap, behind));
@@ -3094,11 +3094,11 @@ impl Ui {
             };
             match n
                 .el
-                .skin
-                .and_then(|part| t.skin.slice(part).map(|s| (part, s)))
+                .frame
+                .and_then(|part| t.art.slice(part).map(|s| (part, s)))
             {
                 Some((part, slice)) => {
-                    let r = match (t.skin.press, pressed) {
+                    let r = match (t.art.press, pressed) {
                         // The squash follows the spring, in and back out.
                         (Some(pr), _) if press != 0.0 => scaled_xy(
                             rect,
@@ -3121,7 +3121,7 @@ impl Ui {
             }
         }
         if self.kinds[i].0 == "divider"
-            && let Some(o) = t.skin.divider.filter(|_| t.skin.atlas.is_some())
+            && let Some(o) = t.art.divider.filter(|_| t.art.atlas.is_some())
         {
             let (cx, cy) = rect.center();
             self.ornament(
@@ -3134,10 +3134,10 @@ impl Ui {
                 cmds,
             );
         }
-        let track = t.skin.slice(StylePart::Track);
+        let track = t.art.slice(StylePart::Track);
         match n.widget {
             Widget::Progress { value } if track.is_some() => {
-                let fill = t.skin.slice(StylePart::Fill);
+                let fill = t.art.slice(StylePart::Fill);
                 if let Some(s) = track {
                     self.dress(
                         StylePart::Track,
@@ -3294,13 +3294,13 @@ impl Ui {
                             crate::text::pieces(font, &line.text, self.direction, tc.tracking());
                         let baseline = m.baseline(&line.text, ly, lh, size);
                         let bounds = Rect::new(x, ly, line.width * sk, lh);
-                        let role = tc.font.skin_index();
+                        let role = tc.font.effect_index();
                         let tracking = tc.tracking();
-                        // The skin's thickening for the role (`textWeight`, device
+                        // The style's thickening for the role (`textWeight`, device
                         // pixels: what a stroke between two pixels lacks), shadow included.
-                        let weight = t.skin.text_weights[role] * sk / dpr;
-                        // A skin's text glow: the font's distance field, under the glyphs.
-                        let glow = t.skin.text_glows[role].map(|g| {
+                        let weight = t.art.text_weights[role] * sk / dpr;
+                        // A style's text glow: the font's distance field, under the glyphs.
+                        let glow = t.art.text_glows[role].map(|g| {
                             let c = g.ink.color(p).fade(g.alpha * tc.color.alpha * alpha);
                             (c.linear(), TEXT_GLOW_REACH * g.size * sk)
                         });
@@ -3331,7 +3331,7 @@ impl Ui {
                                     });
                                 }
                             };
-                        if let Some(sh) = t.skin.text_shadows[role] {
+                        if let Some(sh) = t.art.text_shadows[role] {
                             let c = sh.color.fade(tc.color.alpha);
                             text(sh.dx, sh.dy, c, None, cmds);
                             if sh.blur > 0.0 {
@@ -3347,7 +3347,7 @@ impl Ui {
                         text(0.0, 0.0, tc.color, glow, cmds);
                         if n.heading
                             && k == 0
-                            && let Some(o) = t.skin.flourish.filter(|_| t.skin.atlas.is_some())
+                            && let Some(o) = t.art.flourish.filter(|_| t.art.atlas.is_some())
                         {
                             let cy = ly + lh / 2.0;
                             let gap = o.offset + t.space.sm;
@@ -3568,7 +3568,7 @@ impl Ui {
                     bounds: Rect::new(x + ox, top, if one { w } else { pc.width * size }, lh),
                     clip,
                     tracking,
-                    weight: t.skin.text_weights[0] * sk / dpr,
+                    weight: t.art.text_weights[0] * sk / dpr,
                     glow: None,
                     placements: pc.placements,
                 });
@@ -3577,7 +3577,7 @@ impl Ui {
         }
     }
 
-    /// A skinned background: the part's shadow and glow, its nine-slice
+    /// A styled background: the part's shadow and glow, its nine-slice
     /// frame (tinted by `backdrop`), the tiled texture and the corner ornaments.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn dress(
@@ -3591,14 +3591,14 @@ impl Ui {
         clip: Rect,
         cmds: &mut Vec<DrawCmd>,
     ) {
-        let skin = &self.theme.skin;
-        let Some(atlas) = skin.atlas else { return };
+        let art = &self.theme.art;
+        let Some(atlas) = art.atlas else { return };
         let p = &self.theme.palette;
         let fade = alpha * if slice.tint { 1.0 } else { bg.alpha };
-        if let Some(sh) = skin.shadow(part) {
+        if let Some(sh) = art.shadow(part) {
             let r = rect.outset(sh.spread);
             let r = Rect::new(r.x + sh.dx, r.y + sh.dy, r.width, r.height);
-            match skin.soft.filter(|_| sh.blur > 0.0) {
+            match art.soft.filter(|_| sh.blur > 0.0) {
                 Some(soft) => nine(
                     atlas,
                     soft,
@@ -3615,15 +3615,15 @@ impl Ui {
                 }),
             }
         }
-        if let (Some(g), Some(soft)) = (skin.glow(part), skin.soft) {
+        if let (Some(g), Some(soft)) = (art.glow(part), art.soft) {
             let c = g.ink.color(p).fade(g.alpha * fade);
             nine(atlas, soft, rect.outset(g.size), c, clip, cmds);
         }
         // Glass: the blurred frame under the part, then its own frame
         // thinned to the glass's fill; under reduced transparency an opaque
         // surface instead, its frame whole.
-        let solid = self.theme.reduced_transparency && skin.glass(part).is_some();
-        let glass = skin.glass(part).filter(|_| !solid);
+        let solid = self.theme.reduced_transparency && art.glass(part).is_some();
+        let glass = art.glass(part).filter(|_| !solid);
         let (bg, fade) = if solid {
             (Srgba { alpha: 1.0, ..bg }, alpha)
         } else {
@@ -3648,7 +3648,7 @@ impl Ui {
             Srgba::WHITE.fade(fade * thin)
         };
         nine(atlas, slice, rect, tint, clip, cmds);
-        if let Some(tile) = skin.tile(part) {
+        if let Some(tile) = art.tile(part) {
             let inner = Rect::new(
                 rect.x + tile.inset,
                 rect.y + tile.inset,
@@ -3673,7 +3673,7 @@ impl Ui {
                 y += th;
             }
         }
-        if let Some(o) = skin.corners(part) {
+        if let Some(o) = art.corners(part) {
             let (w, h) = (o.w, o.h);
             let d = o.offset;
             let (l, t, r, b) = (
@@ -3705,7 +3705,7 @@ impl Ui {
         clip: Rect,
         cmds: &mut Vec<DrawCmd>,
     ) {
-        let Some(atlas) = self.theme.skin.atlas else {
+        let Some(atlas) = self.theme.art.atlas else {
             return;
         };
         let [u0, v0, u1, v1] = o.uv;

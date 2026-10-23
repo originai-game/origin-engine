@@ -9,7 +9,7 @@
 //! A text that mixes scripts no one font covers is laid out per run
 //! ([`FontMetrics::is_mixed`]): each grapheme cluster (a base and its
 //! marks) takes the first of the UI's fonts that has it whole (the role's,
-//! the locale's, the game's fallbacks, the skin's), neutral characters stay
+//! the locale's, the game's fallbacks, the style's), neutral characters stay
 //! with the run before them, and each run is measured, kerned, shaped and
 //! drawn with its own font.
 

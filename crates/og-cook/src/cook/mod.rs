@@ -931,7 +931,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     }
                     Ok(doc) if doc.ty == "scene" => Kind::Scene,
                     Ok(doc) if doc.ty == crate::fx::EMITTER_TYPE => Kind::Emitter,
-                    Ok(doc) if doc.ty == og_ui::skin::STYLE_TYPE => Kind::Style,
+                    Ok(doc) if doc.ty == og_ui::style_file::STYLE_TYPE => Kind::Style,
                     Ok(doc) if doc.ty == "tileset" => Kind::Tileset,
                     Ok(doc) if doc.ty == "tilemap" => Kind::Tilemap,
                     Ok(doc) if doc.ty == "flipbook" => Kind::Flipbook,
@@ -2078,7 +2078,7 @@ fn run(
                 format::row_hash::<format::StyleMeta>(),
             )
             .raw("text", text.as_bytes().to_vec(), 16);
-            let parts = file.theme.skin.slices.iter().flatten().count();
+            let parts = file.theme.art.slices.iter().flatten().count();
             Ok((
                 w.finish(),
                 vec![format!("style '{}', {parts} frame(s)", file.name)],

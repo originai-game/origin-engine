@@ -10,7 +10,7 @@
 //! | Tag | Does |
 //! |---|---|
 //! | `[b]…[/b]` | bold: the glyphs thickened in the MSDF shader (weight) |
-//! | `[color=<ThemeColor>]` / `[color=#rrggbb[aa]]` | the ink: a token (follows the skin) or a colour |
+//! | `[color=<ThemeColor>]` / `[color=#rrggbb[aa]]` | the ink: a token (follows the style) or a colour |
 //! | `[size=<TypeStepName>]` | the type step (`lg`, `xl`, `meta`, `displaySm`…) |
 //! | `[font=body\|display\|mono]` | the font role |
 //! | `[icon=<name>]` | an icon of the icon atlas, one em, inline (self-closing) |

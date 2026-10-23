@@ -11,14 +11,14 @@ og dev templates/ui-kit                       # the browser, reloading on save
 og test templates/ui-kit                      # the playtests below
 OG_UI_CAPTURE=1 og test templates/ui-kit      # re-record this tier's reference frames
 python3 templates/ui-kit/tools/make-assets.py templates/ui-kit/assets   # regenerate icons and backdrop
-python3 templates/ui-kit/tools/make-skins.py templates/ui-kit/assets    # regenerate the six built-in styles (templates/styles/) and UI blips
+python3 templates/ui-kit/tools/make-styles.py templates/ui-kit/assets    # regenerate the six built-in styles (templates/styles/) and UI blips
 ```
 
 Commands: `show:<screen>`, `viewport:<desktop|tablet|phone|landscape>`
 (lays the UI out for that surface through `og.ui.previewViewport`; render at
 `--size 1170x2532` for the 390×844@3 phone), `pad:<up|down|left|right|next|prev|activate|back>`
 (a gamepad, through `og.ui.navigate`), `toast:<text>`, `damage:<hp>`, `heal:<hp>`.
-`skin:<prototype|pixel|cartoon|fantasy|scifi|paper|neon>` dresses every screen
+`style:<prototype|pixel|cartoon|fantasy|scifi|paper|neon>` dresses every screen
 in the engine's placeholder or a built-in style (`assets/looks/kit-<style>.ogt`,
 whose `ui "<style>"` the cook resolves to `@styles/<style>/style.ogt`),
 `transition:<none|fade|wipe|iris|dissolve|slide>` sends screen changes through
@@ -64,7 +64,7 @@ and `kit-phone-<screen>.png` come from: `tests/frames-desktop.og.ts` and
 `tests/frames-phone.og.ts` show each screen, wait for its entrance, take its
 frame and compare it with the reference under og-tests' rule (a channel off
 by more than 32/255 is an outlier; fail above 0.5 % outliers or RMSE 0.01).
-Every frame, locale screen and skin sheet is committed for `metal`,
+Every frame, locale screen and style sheet is committed for `metal`,
 `vulkan-cpu`, `webgpu` and `webgl2`; a tier without its own references
 compares with `metal` and says so. The browser tiers run these same
 playtests through `packages/engine/tests/web/reference-ui.ts` (`docs/ci.md`
@@ -84,8 +84,8 @@ playtests through `packages/engine/tests/web/reference-ui.ts` (`docs/ci.md`
 | `drag` | a press on slot 0 dragged to slot 7 moves the potion; Use runs for it |
 | `phone` | on a phone the HUD corners sit in the safe area, every touch control is at least 44 CSS px, a tap on Jump answers once |
 | `tutorial` | the spotlight's hole contains each step's target, a press on the dimmed part changes nothing, Next walks to Done |
-| `skin-<pack>` (six) | every screen but the gallery, in that style pack at 1280×720, matches its 640×360 cell of `crates/og-ui/references/<tier>/kit-skin-<pack>.png` (7 × 3 cells in `FRAME_SCREENS` order) |
-| `skin-<pack>-phone` (six) | the same on a phone in portrait (390×844@3 with the notch and home indicator), each screen box-filtered to its 390×844 CSS pixels against its cell of `kit-skin-<pack>-phone.png` (10 × 2 cells) |
+| `style-<pack>` (six) | every screen but the gallery, in that style pack at 1280×720, matches its 640×360 cell of `crates/og-ui/references/<tier>/kit-style-<pack>.png` (7 × 3 cells in `FRAME_SCREENS` order) |
+| `style-<pack>-phone` (six) | the same on a phone in portrait (390×844@3 with the notch and home indicator), each screen box-filtered to its 390×844 CSS pixels against its cell of `kit-style-<pack>-phone.png` (10 × 2 cells) |
 | `juice` | an iris transition keeps the old screen until it has closed and builds the new one as it opens; the results score counts and lands on 12,840; a dialog's open, a hover and a press start voices on the ui bus |
 | `text` | the text screen draws every script without a missing glyph (no warning), matching `kit-desktop-text.png`; a tap on the name field and `type:Ada Lovelace` fill it once, Shift+← ×4 selects "lace" (`kit-desktop-text-select.png`); in the notes area Enter breaks the line, `compose:にほん` shows underlined at the caret (`kit-desktop-text-compose.png`) and `commit:日本` lands in the value |
 
@@ -93,7 +93,7 @@ playtests through `packages/engine/tests/web/reference-ui.ts` (`docs/ci.md`
 
 `templates/styles/<style>/` holds a style (`style.ogt`, complete: every
 palette role and radius), its atlas and icons (CC0, drawn by
-`tools/make-skins.py`) and its OFL fonts (`LICENSES.md`). A game names one
+`tools/make-styles.py`) and its OFL fonts (`LICENSES.md`). A game names one
 in its look (`ui "fantasy"`), or copies the directory into its own
 `assets/styles/<name>/` to change it and names that (`ui
 "styles/<name>/style.ogt"`); a game that shows CJK adds a `fallback` font.

@@ -15,11 +15,11 @@ use og_render::TextureHandle;
 /// three decaying swings, as a refused press shakes a button.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ShakeDesc {
-    /// The first swing, CSS px (0: the skin's `motion.shake`, else 6).
+    /// The first swing, CSS px (0: the style's `motion.shake`, else 6).
     pub amount: f32,
     /// 0: `motion.duration.slow`.
     pub duration_ms: f32,
-    /// Also queue the skin's error sound, as a refused press does.
+    /// Also queue the style's error sound, as a refused press does.
     pub sound: bool,
 }
 
@@ -179,7 +179,7 @@ fn scatter(x: u32, y: u32) -> f32 {
 impl Ui {
     /// A number that counts from where it was to `value` (ease-out cubic
     /// over `duration_ms`) each time `value` changes, and pops when it lands
-    /// if the skin says so. Returns the number shown this tick.
+    /// if the style says so. Returns the number shown this tick.
     pub fn counter(&mut self, id: impl Into<Id>, value: f64, desc: &CounterDesc) -> f64 {
         let t = self.theme;
         let value = if value.is_finite() { value } else { 0.0 };
@@ -254,7 +254,7 @@ impl Ui {
         });
         n.probe_text = text;
         // The landing pop: a bump of `pop` over `motion.duration.fast`.
-        let pop = t.skin.motion.pop;
+        let pop = t.art.motion.pop;
         if pop > 0.0 && !t.reduced_motion && f64::from_bits(from.h) != value {
             let end = from.t as f64 + secs * tps;
             let b = (now as f64 - end) / f64::from(self.ticks_for(t.durations_ms.fast));
@@ -347,8 +347,8 @@ impl Ui {
         let t = self.theme;
         let amount = if desc.amount > 0.0 {
             desc.amount
-        } else if t.skin.motion.shake > 0.0 {
-            t.skin.motion.shake
+        } else if t.art.motion.shake > 0.0 {
+            t.art.motion.shake
         } else {
             6.0
         };
@@ -369,7 +369,7 @@ impl Ui {
             },
         );
         if desc.sound {
-            self.sound(crate::skin::UiSound::Error);
+            self.sound(crate::style_file::UiSound::Error);
         }
     }
 
