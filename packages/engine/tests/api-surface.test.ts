@@ -35,7 +35,10 @@ const Every = defineComponent(
   Object.fromEntries(
     (bindings.columns as Array<{ name: string }>)
       .filter((c) => typeof factories[c.name] === "function")
-      .map((c) => [`f${c.name}`, c.name === "str" ? factories[c.name]!(8) : factories[c.name]!()]),
+      .map((c) => [
+        `f${c.name}`,
+        c.name === "str" ? factories[c.name]!(8) : c.name === "list" ? factories[c.name]!(factories.u32!(), 4) : factories[c.name]!(),
+      ]),
   ) as never,
 );
 const Noop = defineSystem("SurfaceNoop", { reads: [Marker] }, () => {});

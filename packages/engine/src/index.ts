@@ -54,6 +54,9 @@ export const Matrix4 = ((value = { elements: identity() }, options) => spec("Mat
 export const Color = ((value = { r: 0, g: 0, b: 0 }, options) => spec("Color", value, options)) as typeof Api.Color;
 // The capacity crosses with the spec; the engine refuses one outside 1 to 4096 at declaration.
 export const str = ((capacity, value = "", options) => Object.freeze({ ...spec("str", value, options), capacity })) as typeof Api.str;
+// A list of another factory's kind: the engine refuses a kind that is not a number or a handle, and a capacity outside 1 to 1024, at declaration.
+export const list = ((of, capacity, options) =>
+  Object.freeze({ kind: of.kind, default: Object.freeze([]), options: Object.freeze({ ...(options ?? {}) }), list: capacity })) as typeof Api.list;
 export const Entity = ((value = 0 as Api.Entity, options) => spec("Entity", value, options)) as typeof Api.Entity;
 export const Geometry = ((value = 0 as Api.Geometry, options) => spec("Geometry", value, options)) as typeof Api.Geometry;
 export const Material = ((value = 0 as Api.Material, options) => spec("Material", value, options)) as typeof Api.Material;
