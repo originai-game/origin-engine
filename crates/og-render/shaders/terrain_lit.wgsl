@@ -170,12 +170,15 @@ fn terrain_local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>
   return brdf(s, n, v, l) * light.color_kind.rgb * atten * local_shadow(light, p, n);
 }
 
-@fragment
-fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
+// The blended layers at a fragment: albedo, shading normal, roughness.
+struct TerrainLook {
+  albedo: vec3<f32>,
+  normal: vec3<f32>,
+  roughness: f32,
+};
+
+fn terrain_look(in: TerrainOut, point: TerrainPoint, dpx: vec3<f32>, dpy: vec3<f32>) -> TerrainLook {
   let p = in.world;
-  let dpx = dpdx(p);
-  let dpy = dpdy(p);
-  let point = terrain_point(in.local);
   let n_geo = point.normal;
   let count = u32(terrain.origin.w);
   // Each layer's colour and normal (layers of weight 0 skip their maps).
@@ -204,6 +207,20 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
     normal = n_geo;
     roughness = 0.9;
   }
+  return TerrainLook(albedo, normal, roughness);
+}
+
+@fragment
+fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
+  let p = in.world;
+  let dpx = dpdx(p);
+  let dpy = dpdy(p);
+  let point = terrain_point(in.local);
+  let n_geo = point.normal;
+  let look = terrain_look(in, point, dpx, dpy);
+  let albedo = look.albedo;
+  let normal = look.normal;
+  let roughness = look.roughness;
   var n = normalize(normal);
   var s: Surface;
   s.albedo = albedo;
@@ -230,9 +247,10 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = vec3<f32>(1.0) - f_ibl;
-  let irradiance = textureSample(irradiance_map, ibl_sampler, n).rgb;
+  // The environment, or the probe holding the tile blended with it (probes.rs).
+  let irradiance = ambient_light(n, p);
   let r = reflect(-v, n);
-  let prefiltered = textureSampleLevel(prefiltered_map, ibl_sampler, r, s.roughness * frame.params.y).rgb;
+  let prefiltered = reflected_light(r, p, s.roughness * frame.params.y);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   color += (kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * frame.params.x;
 

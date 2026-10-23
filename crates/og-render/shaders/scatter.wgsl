@@ -97,9 +97,10 @@ fn fs(in: ScatterOut) -> @location(0) vec4<f32> {
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  let irradiance = textureSample(irradiance_map, ibl_sampler, n).rgb;
+  // The environment, or the probe holding the chunk blended with it (probes.rs).
+  let irradiance = ambient_light(n, in.world);
   let r = reflect(-v, n);
-  let prefiltered = textureSampleLevel(prefiltered_map, ibl_sampler, r, s.roughness * frame.params.y).rgb;
+  let prefiltered = reflected_light(r, in.world, s.roughness * frame.params.y);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   var ibl_scale = frame.params.x * material.flags.z;
   if (material.flags.y >= 0.0) {

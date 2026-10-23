@@ -89,8 +89,9 @@ fn fs(in: CustomOut) -> @location(0) vec4<f32> {
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  let irradiance = textureSampleLevel(irradiance_map, ibl_sampler, n, 0.0).rgb;
-  let prefiltered = textureSampleLevel(prefiltered_map, ibl_sampler, reflect(-v, n), s.roughness * frame.params.y).rgb;
+  // The environment, or the batch's reflection probe blended with it (probes.rs).
+  let irradiance = ambient_light_level(n, in.world);
+  let prefiltered = reflected_light(reflect(-v, n), in.world, s.roughness * frame.params.y);
   let lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness), 0.0).rg;
   color += (kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * frame.params.x * material.flags.z;
   color += out.emissive;

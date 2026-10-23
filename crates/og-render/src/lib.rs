@@ -62,6 +62,7 @@ mod light2d;
 mod lightmap;
 mod lines;
 pub mod lod;
+mod probe_select;
 mod probes;
 mod ssr;
 pub use probes::{
@@ -1150,6 +1151,8 @@ struct Batch {
     cast: bool,
     /// Its instances' three.js layer mask (`views.rs`).
     layers: u32,
+    /// The reflection probe its instances sample (`probe_select.rs`).
+    probe: u8,
 }
 
 /// The effect bind groups and what they were made from.
@@ -4164,6 +4167,7 @@ impl Renderer {
                     array: r.array,
                     cast: r.cast,
                     layers: r.layers,
+                    probe: r.probe,
                 }
             })
             .collect();
@@ -4552,7 +4556,11 @@ impl Renderer {
     /// The skinned instances as (mesh, material) batches over the skinned
     /// instance buffer, their instance data, and the frame's joint matrices.
     #[allow(clippy::type_complexity)]
-    fn build_skinned(&self, scene: &RenderScene) -> Result<SkinnedFrame, RenderError> {
+    fn build_skinned(
+        &self,
+        scene: &RenderScene,
+        probes: &[(Vec3, Vec3)],
+    ) -> Result<SkinnedFrame, RenderError> {
         let mut offsets = Vec::with_capacity(scene.joint_palettes.len());
         let mut matrices = Vec::new();
         for p in &scene.joint_palettes {
@@ -4602,8 +4610,25 @@ impl Renderer {
         }
         let joint_base = self.palette.joint_base(self.cache.morph_data.len());
         let mut order: Vec<usize> = (0..scene.skinned_instances.len()).collect();
+        // Each instance's reflection probe: the one holding the centre of
+        // its bounds in the bind pose (probe_select.rs).
+        let probe_of: Vec<u8> = scene
+            .skinned_instances
+            .iter()
+            .map(|s| {
+                let centre = self
+                    .cache
+                    .meshes
+                    .get(s.mesh.index())
+                    .and_then(|m| m.bounds)
+                    .map_or(s.transform.w_axis.truncate(), |(c, _)| {
+                        s.transform.transform_point3(c)
+                    });
+                probe_select::pick(probes, centre)
+            })
+            .collect();
         // A (mesh, material)'s casters first, its non-casters a batch of
-        // their own (left out of the shadow passes).
+        // their own (left out of the shadow passes), then by probe.
         order.sort_by_key(|&i| {
             let s = &scene.skinned_instances[i];
             (
@@ -4611,6 +4636,7 @@ impl Renderer {
                 s.material,
                 !s.cast_shadows,
                 views::layer_of(&scene.skinned_layers, i),
+                probe_of[i],
             )
         });
         let mut batches: Vec<Batch> = Vec::new();
@@ -4620,6 +4646,7 @@ impl Renderer {
             let s = &scene.skinned_instances[i];
             let (mesh, material, cast) = (s.mesh.index(), s.material.index(), s.cast_shadows);
             let layers = views::layer_of(&scene.skinned_layers, i);
+            let probe = probe_of[i];
             if self.cache.meshes[mesh].index_count == 0 {
                 continue;
             }
@@ -4628,7 +4655,8 @@ impl Renderer {
                     if b.mesh == mesh
                         && b.material == material
                         && b.cast == cast
-                        && b.layers == layers =>
+                        && b.layers == layers
+                        && b.probe == probe =>
                 {
                     b.count += 1
                 }
@@ -4653,6 +4681,7 @@ impl Renderer {
                         array: m.array.is_some(),
                         cast,
                         layers,
+                        probe,
                     });
                 }
             }
@@ -4781,6 +4810,11 @@ impl Renderer {
         );
         self.lightmaps
             .prepare(&self.device, &self.queue, &scene.baked);
+        // Reflection probes: the frame's active ones, whose boxes key the
+        // instances' sort (probe_select.rs: a batch samples one probe).
+        let active_probes: Vec<ReflectionProbe> = probe_frame.active.iter().map(|a| a.0).collect();
+        let probe_boxes = probe_select::boxes(&active_probes);
+        self.sorted.set_probes(probe_boxes.clone());
         let (mut batches, sorted_instances) = self.build_batches(scene)?;
         let instances::Sorted {
             mut transforms,
@@ -4802,7 +4836,7 @@ impl Renderer {
         for mesh in full {
             self.ensure_full(scene, mesh);
         }
-        let mut skinned = self.build_skinned(scene)?;
+        let mut skinned = self.build_skinned(scene, &probe_boxes)?;
 
         // Camera (with the shake), jitter, culling.
         let aspect = self.width as f32 / self.height as f32;
@@ -4872,6 +4906,21 @@ impl Renderer {
                 Self::cull_skinned(&mut skinned, &f, p.layers).0
             })
             .collect();
+        // Reflection probes: the captures due this frame, each face's
+        // skinned instances in view in their pose (probes.rs).
+        let probe_faces: Vec<[frame::CameraFrame; 6]> = probe_frame
+            .due
+            .iter()
+            .map(|&(_, i)| probes::face_frames(&camera, active_probes[i].position, camera.far))
+            .collect();
+        let mut probe_skinned: Vec<Vec<Batch>> = probe_faces
+            .iter()
+            .flatten()
+            .map(|f| {
+                let frustum = Frustum::from_view_proj(f.view_proj);
+                Self::cull_skinned(&mut skinned, &frustum, u32::MAX).0
+            })
+            .collect();
         let (mut skinned_visible, skinned_culled) =
             Self::cull_skinned(&mut skinned, &view_frustum, scene.camera_layers);
         let mut skinned_batches = std::mem::take(&mut skinned.batches);
@@ -4939,6 +4988,7 @@ impl Renderer {
             for b in skinned_visible
                 .iter_mut()
                 .chain(view_skinned.iter_mut().flatten())
+                .chain(probe_skinned.iter_mut().flatten())
             {
                 b.effects = true;
                 b.derivatives |= decals;
@@ -4946,7 +4996,7 @@ impl Renderer {
         }
         self.ensure_pipelines(&batches, &skinned_batches, prepass);
         // A view may draw a skinned batch the main camera culled or hides.
-        for v in &view_skinned {
+        for v in view_skinned.iter().chain(&probe_skinned) {
             self.ensure_pipelines(&[], v, false);
         }
         for b in &batches {
@@ -5349,34 +5399,41 @@ impl Renderer {
                 .0
             }
         });
-        // Reflection probes: the batch each samples, and the captures due
-        // this frame, culled per face.
-        let active_probes: Vec<ReflectionProbe> = probe_frame.active.iter().map(|a| a.0).collect();
-        let batch_probes = probes::assign(
-            batches.iter().map(|b| (b.first, b.count)),
-            &spheres,
-            &active_probes,
-        );
-        let probe_faces: Vec<[frame::CameraFrame; 6]> = probe_frame
-            .due
-            .iter()
-            .map(|&(_, i)| probes::face_frames(&camera, active_probes[i].position, camera.far))
-            .collect();
+        // Reflection probes: each due capture's faces culled, their
+        // transparent meshes sorted back to front from the probe (probes.rs).
         let mut probe_lists: Vec<DrawList> = Vec::new();
-        for f in probe_faces.iter().flatten() {
-            let frustum = Frustum::from_view_proj(f.view_proj);
-            probe_lists.push(
-                self.cull(
-                    &batches,
-                    &spheres,
-                    &mut transforms,
-                    &mut origins,
-                    &mut cull_inside,
-                    &frustum,
-                    |b| !b.transparent,
-                )
-                .0,
-            );
+        let mut probe_blended: Vec<DrawList> = Vec::new();
+        for (d, cams) in probe_faces.iter().enumerate() {
+            let eye = active_probes[probe_frame.due[d].1].position;
+            for f in cams {
+                let frustum = Frustum::from_view_proj(f.view_proj);
+                probe_lists.push(
+                    self.cull(
+                        &batches,
+                        &spheres,
+                        &mut transforms,
+                        &mut origins,
+                        &mut cull_inside,
+                        &frustum,
+                        |b| !b.transparent,
+                    )
+                    .0,
+                );
+                probe_blended.push(
+                    self.sort_transparent(
+                        &batches,
+                        &spheres,
+                        &submission,
+                        &mut transforms,
+                        &mut origins,
+                        &frustum,
+                        eye,
+                        f.forward,
+                        u32::MAX,
+                    )
+                    .0,
+                );
+            }
         }
 
         // Each view's opaque meshes on its layers (CPU culled: a frame with
@@ -6689,11 +6746,11 @@ impl Renderer {
                 .collect();
             (probe_groups, face_groups)
         };
-        let probe_binding = (!probe_groups.is_empty()).then_some((
-            batch_probes.as_slice(),
-            probe_groups.as_slice(),
-            frame_bind_group,
-        ));
+        let probe_binding = (!probe_groups.is_empty()).then_some(probe_select::ProbeGroups {
+            boxes: &probe_boxes,
+            groups: &probe_groups,
+            frame: frame_bind_group,
+        });
         let groups = self.fx_groups.as_ref().expect("made above");
         let (fx_group, sprite_fx_group, glow_fx_group) = (&groups.fx, &groups.sprite, &groups.glow);
         // The physical pipelines' effect group: the same plus the scene copy
@@ -6754,6 +6811,16 @@ impl Renderer {
             ),
             _ => Vec::new(),
         };
+        // The 3D fluids' bounding sphere: the reflection probe their one
+        // composite draw samples.
+        let fluid_bounds = instances::fold_box(
+            None,
+            scene
+                .fluids_3d
+                .iter()
+                .flat_map(|f| f.particles.iter().map(move |&p| (p, f.radius))),
+        )
+        .map(|(lo, hi)| ((lo + hi) * 0.5, (hi - lo).length() * 0.5));
         let fluid_frame = match fluid3d::views(&self.graph, scene_depth) {
             Some(views) if fluids_3d => self.fluid3d.prepare(
                 &self.device,
@@ -6840,147 +6907,128 @@ impl Renderer {
         // bind each batch's material (and, between standard and physical,
         // the effect group: `physical_fx`); shadow passes switch on the
         // side and dissolve (with the material).
-        let draw_list =
-            |pass: &mut wgpu::RenderPass,
-             list: &DrawList,
-             lit: bool,
-             current: &mut Option<LitDrawKey>,
-             physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
-             probes: Option<(&[u8], &[wgpu::BindGroup], &wgpu::BindGroup)>| {
-                let mut shadow_key: Option<(ShadowKey, Option<usize>, bool, bool)> = None;
-                let mut physical_bound = false;
-                // The reflection probe whose frame group is bound (u8::MAX: the frame's).
-                let mut probe_bound = u8::MAX;
-                for &(b, first, count) in &list.ranges {
-                    let batch = &batches[b as usize];
-                    if let Some((of, groups, frame_group)) = probes {
-                        let want = of.get(b as usize).copied().unwrap_or(u8::MAX);
-                        if want != probe_bound {
-                            pass.set_bind_group(
-                                0,
-                                groups.get(want as usize).unwrap_or(frame_group),
-                                &[],
-                            );
-                            probe_bound = want;
-                        }
+        let draw_list = |pass: &mut wgpu::RenderPass,
+                         list: &DrawList,
+                         lit: bool,
+                         current: &mut Option<LitDrawKey>,
+                         physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
+                         probes: Option<probe_select::ProbeGroups>| {
+            let mut shadow_key: Option<(ShadowKey, Option<usize>, bool, bool)> = None;
+            let mut physical_bound = false;
+            // The batch's reflection probe's frame group (probe_select.rs).
+            let mut binder = probe_select::Binder::new(probes);
+            for &(b, first, count) in &list.ranges {
+                let batch = &batches[b as usize];
+                binder.bind(pass, batch.probe);
+                if lit {
+                    let physical = batch.physical && physical_fx.is_some();
+                    let key = (
+                        batch.side,
+                        batch.blend,
+                        batch.effects,
+                        batch.shader,
+                        physical,
+                        batch.lean,
+                        batch.derivatives,
+                        batch.compact,
+                        batch.array,
+                    );
+                    let lightmap = Self::lightmapped(&self.lightmaps, batch)
+                        .then(|| {
+                            self.lightmaps
+                                .pipeline((batch.side, batch.blend, batch.effects))
+                        })
+                        .flatten();
+                    if let Some(p) = lightmap {
+                        // Lightmapped (lightmap.rs): its pipeline, the
+                        // pages at group 3, its uvs below.
+                        pass.set_pipeline(p);
+                        pass.set_bind_group(3, self.lightmaps.group(), &[]);
+                        *current = None;
+                    } else if *current != Some(key) {
+                        pass.set_pipeline(self.lit_pipeline_of(batch, false, physical));
+                        *current = Some(key);
                     }
-                    if lit {
-                        let physical = batch.physical && physical_fx.is_some();
-                        let key = (
-                            batch.side,
-                            batch.blend,
-                            batch.effects,
-                            batch.shader,
-                            physical,
-                            batch.lean,
-                            batch.derivatives,
-                            batch.compact,
-                            batch.array,
-                        );
-                        let lightmap = Self::lightmapped(&self.lightmaps, batch)
-                            .then(|| {
-                                self.lightmaps
-                                    .pipeline((batch.side, batch.blend, batch.effects))
-                            })
-                            .flatten();
-                        if let Some(p) = lightmap {
-                            // Lightmapped (lightmap.rs): its pipeline, the
-                            // pages at group 3, its uvs below.
-                            pass.set_pipeline(p);
-                            pass.set_bind_group(3, self.lightmaps.group(), &[]);
-                            *current = None;
-                        } else if *current != Some(key) {
-                            pass.set_pipeline(self.lit_pipeline_of(batch, false, physical));
-                            *current = Some(key);
-                        }
-                        if let Some((fx, pfx)) = physical_fx
-                            && physical != physical_bound
-                        {
-                            pass.set_bind_group(2, if physical { pfx } else { fx }, &[]);
-                            physical_bound = physical;
-                        }
-                        let m = &self.cache.materials[batch.material];
+                    if let Some((fx, pfx)) = physical_fx
+                        && physical != physical_bound
+                    {
+                        pass.set_bind_group(2, if physical { pfx } else { fx }, &[]);
+                        physical_bound = physical;
+                    }
+                    let m = &self.cache.materials[batch.material];
+                    pass.set_bind_group(
+                        1,
+                        match (&m.physical, &m.array) {
+                            (Some(g), _) if physical => g,
+                            (_, Some(g)) => g,
+                            _ => &m.bind_group,
+                        },
+                        &[],
+                    );
+                } else {
+                    let key = (
+                        (batch.side, false, batch.dissolve),
+                        batch.shader,
+                        batch.compact,
+                        batch.array,
+                    );
+                    if shadow_key != Some(key) {
+                        pass.set_pipeline(match batch.shader {
+                            Some(sh) => &self.cache.hook_shadow_pipelines[&(sh, batch.side, false)],
+                            None if batch.array => {
+                                &self.array_maps.as_ref().expect("an array batch").shadow
+                                    [&(batch.side, batch.dissolve)]
+                            }
+                            None if batch.compact => &self.compact_shadow_pipelines[&batch.side],
+                            None => &self.shadow_pipelines[&key.0],
+                        });
+                        shadow_key = Some(key);
+                    }
+                    if batch.dissolve || batch.shader.is_some() {
                         pass.set_bind_group(
                             1,
-                            match (&m.physical, &m.array) {
-                                (Some(g), _) if physical => g,
-                                (_, Some(g)) => g,
-                                _ => &m.bind_group,
-                            },
+                            &self.cache.materials[batch.material].bind_group,
                             &[],
                         );
-                    } else {
-                        let key = (
-                            (batch.side, false, batch.dissolve),
-                            batch.shader,
-                            batch.compact,
-                            batch.array,
-                        );
-                        if shadow_key != Some(key) {
-                            pass.set_pipeline(match batch.shader {
-                                Some(sh) => {
-                                    &self.cache.hook_shadow_pipelines[&(sh, batch.side, false)]
-                                }
-                                None if batch.array => {
-                                    &self.array_maps.as_ref().expect("an array batch").shadow
-                                        [&(batch.side, batch.dissolve)]
-                                }
-                                None if batch.compact => {
-                                    &self.compact_shadow_pipelines[&batch.side]
-                                }
-                                None => &self.shadow_pipelines[&key.0],
-                            });
-                            shadow_key = Some(key);
-                        }
-                        if batch.dissolve || batch.shader.is_some() {
-                            pass.set_bind_group(
-                                1,
-                                &self.cache.materials[batch.material].bind_group,
-                                &[],
-                            );
-                        }
-                    }
-                    let mesh = &self.cache.meshes[batch.mesh];
-                    pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
-                    // A buffer slice, not first_instance: WebGL2 has no base instance.
-                    let start = first as u64 * INSTANCE_STRIDE;
-                    let instances = match (list.indirect, culled_gpu) {
-                        (Some(_), Some(gc)) => &gc.instances,
-                        _ => &self.instance_buffer,
-                    };
-                    pass.set_vertex_buffer(
-                        1,
-                        instances.slice(start..start + count as u64 * INSTANCE_STRIDE),
-                    );
-                    if lit
-                        && Self::lightmapped(&self.lightmaps, batch)
-                        && let Some(uvs) = self.lightmaps.uvs(batch.mesh)
-                        && self
-                            .lightmaps
-                            .pipeline((batch.side, batch.blend, batch.effects))
-                            .is_some()
-                    {
-                        pass.set_vertex_buffer(2, uvs.slice(..));
-                    }
-                    pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-                    match (list.indirect, culled_gpu) {
-                        (Some(g), Some(gc)) => {
-                            pass.draw_indexed_indirect(&gc.args, gc.draw_offset(g, b))
-                        }
-                        _ => pass.draw_indexed(0..mesh.index_count, 0, 0..count),
                     }
                 }
-                if let Some((fx, _)) = physical_fx
-                    && physical_bound
+                let mesh = &self.cache.meshes[batch.mesh];
+                pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
+                // A buffer slice, not first_instance: WebGL2 has no base instance.
+                let start = first as u64 * INSTANCE_STRIDE;
+                let instances = match (list.indirect, culled_gpu) {
+                    (Some(_), Some(gc)) => &gc.instances,
+                    _ => &self.instance_buffer,
+                };
+                pass.set_vertex_buffer(
+                    1,
+                    instances.slice(start..start + count as u64 * INSTANCE_STRIDE),
+                );
+                if lit
+                    && Self::lightmapped(&self.lightmaps, batch)
+                    && let Some(uvs) = self.lightmaps.uvs(batch.mesh)
+                    && self
+                        .lightmaps
+                        .pipeline((batch.side, batch.blend, batch.effects))
+                        .is_some()
                 {
-                    pass.set_bind_group(2, fx, &[]);
+                    pass.set_vertex_buffer(2, uvs.slice(..));
                 }
-                if let Some((_, _, frame_group)) = probes
-                    && probe_bound != u8::MAX
-                {
-                    pass.set_bind_group(0, frame_group, &[]);
+                pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+                match (list.indirect, culled_gpu) {
+                    (Some(g), Some(gc)) => {
+                        pass.draw_indexed_indirect(&gc.args, gc.draw_offset(g, b))
+                    }
+                    _ => pass.draw_indexed(0..mesh.index_count, 0, 0..count),
                 }
-            };
+            }
+            if let Some((fx, _)) = physical_fx
+                && physical_bound
+            {
+                pass.set_bind_group(2, fx, &[]);
+            }
+            binder.reset(pass);
+        };
         // The skinned batches (`transparent`: which of them) with the
         // pipelines `pipeline` picks; materials at group `material_group`.
         // `physical_fx` as in draw_list: the main pass's physical batches
@@ -6991,13 +7039,17 @@ impl Renderer {
                             material_group: u32,
                             palette_at: u32,
                             pipelines: &[&wgpu::RenderPipeline],
-                            physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>|
+                            physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
+                            probes: Option<probe_select::ProbeGroups>|
          -> u32 {
             let Some(palette) = palette_group else {
                 return 0;
             };
             let mut draws = 0;
             let mut physical_bound = false;
+            // Each batch's reflection probe (probe_select.rs), in its pose's
+            // bounds as the instance batches.
+            let mut binder = probe_select::Binder::new(probes);
             // The shadow layouts put the palette at 2: shadows draw an
             // array-map material with its standard group, and only casters.
             let shadow = palette_at == 2;
@@ -7006,6 +7058,7 @@ impl Renderer {
                     continue;
                 }
                 let physical = batch.physical && physical_fx.is_some();
+                binder.bind(pass, batch.probe);
                 pass.set_pipeline(pipeline);
                 if let Some((fx, pfx)) = physical_fx
                     && physical != physical_bound
@@ -7045,6 +7098,7 @@ impl Renderer {
             {
                 pass.set_bind_group(2, fx, &[]);
             }
+            binder.reset(pass);
             draws
         };
         // One shadow pass: a cascade or a local light's face.
@@ -7099,6 +7153,7 @@ impl Renderer {
                 2,
                 &shadow_skinned,
                 None,
+                None,
             );
             stats.draw_calls += n;
             stats.shadow_casters += skinned_batches
@@ -7111,10 +7166,14 @@ impl Renderer {
                 && terrain_casters
             {
                 let shadow = terrain::TerrainPass::Shadow;
-                let (n, _) =
-                    terrain::draw_levels(&mut pass, &terrain_draws, indices, shadow, |c, r| {
-                        frustum.intersects_sphere(c, r)
-                    });
+                let (n, _) = terrain::draw_levels(
+                    &mut pass,
+                    &terrain_draws,
+                    indices,
+                    shadow,
+                    |c, r| frustum.intersects_sphere(c, r),
+                    None,
+                );
                 stats.draw_calls += n;
                 stats.terrain_shadow_draws += n;
             }
@@ -7125,6 +7184,7 @@ impl Renderer {
                 scatter_material,
                 scatter_mesh,
                 |c, r| frustum.intersects_sphere(c, r),
+                None,
             );
             stats.draw_calls += n;
         };
@@ -7261,6 +7321,7 @@ impl Renderer {
                         3,
                         &prepass_skinned,
                         None,
+                        None,
                     );
                     if let Some(indices) = terrain_indices {
                         let prepass = terrain::TerrainPass::Prepass;
@@ -7270,6 +7331,7 @@ impl Renderer {
                             indices,
                             prepass,
                             |c, r| view_frustum.intersects_sphere(c, r),
+                            None,
                         );
                         stats.prepass_draws += n;
                     }
@@ -7280,6 +7342,7 @@ impl Renderer {
                         scatter_material,
                         scatter_mesh,
                         |c, r| view_frustum.intersects_sphere(c, r),
+                        None,
                     );
                     stats.prepass_draws += n;
                     stats.draw_calls += stats.prepass_draws;
@@ -7336,8 +7399,16 @@ impl Renderer {
                             .iter()
                             .map(|b| object.pipeline(b.side, true))
                             .collect();
-                        stats.draw_calls +=
-                            draw_skinned(&mut p, &skinned_visible, false, 1, 3, &skinned, None);
+                        stats.draw_calls += draw_skinned(
+                            &mut p,
+                            &skinned_visible,
+                            false,
+                            1,
+                            3,
+                            &skinned,
+                            None,
+                            None,
+                        );
                     }
                 }
                 FramePass::Particles => {
@@ -7451,12 +7522,69 @@ impl Renderer {
                                 None,
                             );
                             stats.draw_calls += list.ranges.len() as u32;
+                            // Skinned meshes in their pose, terrain and
+                            // scattered copies, as the main pass draws them.
+                            let k = 6 * d + face;
+                            let frustum = Frustum::from_view_proj(probe_faces[d][face].view_proj);
+                            let skinned: Vec<&wgpu::RenderPipeline> = probe_skinned[k]
+                                .iter()
+                                .map(|b| self.lit_pipeline_of(b, true, false))
+                                .collect();
+                            stats.draw_calls += draw_skinned(
+                                &mut pass,
+                                &probe_skinned[k],
+                                false,
+                                1,
+                                3,
+                                &skinned,
+                                None,
+                                None,
+                            );
+                            if let Some(indices) = terrain_indices {
+                                stats.draw_calls += terrain::draw_levels(
+                                    &mut pass,
+                                    &terrain_draws,
+                                    indices,
+                                    terrain::TerrainPass::Lit,
+                                    |c, r| frustum.intersects_sphere(c, r),
+                                    None,
+                                )
+                                .0;
+                            }
+                            let (n, _) = self.scatter.draw(
+                                &mut pass,
+                                scatter::ScatterPass::Lit,
+                                &scatter_batches,
+                                scatter_material,
+                                scatter_mesh,
+                                |c, r| frustum.intersects_sphere(c, r),
+                                None,
+                            );
+                            if n > 0 {
+                                pass.set_bind_group(2, fx_group, &[]);
+                            }
+                            stats.draw_calls += n;
                             if let Some(sky) = sky {
                                 pass.set_pipeline(sky);
                                 pass.set_bind_group(1, sky_group, &[]);
                                 pass.draw(0..3, 0..1);
                                 stats.draw_calls += 1;
                             }
+                            // Transparent meshes, back to front from the
+                            // probe, over the opaque capture.
+                            let blended = &probe_blended[k];
+                            draw_list(&mut pass, blended, true, &mut None, None, None);
+                            stats.draw_calls += blended.ranges.len() as u32;
+                            stats.draw_calls += draw_skinned(
+                                &mut pass,
+                                &probe_skinned[k],
+                                true,
+                                1,
+                                3,
+                                &skinned,
+                                None,
+                                None,
+                            );
                         }
                         self.ibl.record_probe_filter(&mut encoder, &s.filter);
                     }
@@ -7544,6 +7672,7 @@ impl Renderer {
                         3,
                         &lit_skinned_standard,
                         None,
+                        None,
                     );
                     stats.draw_calls += n;
                     stats.reflection_draws += n;
@@ -7555,6 +7684,7 @@ impl Renderer {
                             indices,
                             terrain::TerrainPass::Lit,
                             |c, rad| frustum.intersects_sphere(c, rad),
+                            None,
                         );
                         stats.draw_calls += n;
                         stats.reflection_draws += n;
@@ -7596,6 +7726,7 @@ impl Renderer {
                             3,
                             &pipelines,
                             None,
+                            None,
                         );
                         if let Some(indices) = terrain_indices {
                             stats.draw_calls += terrain::draw_levels(
@@ -7604,6 +7735,7 @@ impl Renderer {
                                 indices,
                                 terrain::TerrainPass::Lit,
                                 |c, rad| frustum.intersects_sphere(c, rad),
+                                None,
                             )
                             .0;
                         }
@@ -7775,6 +7907,7 @@ impl Renderer {
                         3,
                         &lit_skinned,
                         physical_fx,
+                        probe_binding,
                     );
                     if let Some(indices) = terrain_indices {
                         let (n, tris) = terrain::draw_levels(
@@ -7783,6 +7916,7 @@ impl Renderer {
                             indices,
                             terrain::TerrainPass::Lit,
                             |c, r| view_frustum.intersects_sphere(c, r),
+                            Some(&mut probe_select::Binder::new(probe_binding)),
                         );
                         stats.draw_calls += n;
                         stats.terrain_draws += n;
@@ -7796,6 +7930,7 @@ impl Renderer {
                         scatter_material,
                         scatter_mesh,
                         |c, r| view_frustum.intersects_sphere(c, r),
+                        Some(&mut probe_select::Binder::new(probe_binding)),
                     );
                     if n > 0 {
                         // The copies' group 2 is theirs: the effects' back for what follows.
@@ -7839,9 +7974,15 @@ impl Renderer {
                         }
                         pass = begin(&mut encoder, false);
                         pass.set_bind_group(0, frame_bind_group, &[]);
-                        stats.draw_calls += self.water.draw(&mut pass, &water_draws);
+                        // Each surface and the fluids with their reflection probe (probe_select.rs).
+                        let mut binder = probe_select::Binder::new(probe_binding);
+                        stats.draw_calls += self.water.draw(&mut pass, &water_draws, &mut binder);
                         if let Some(f) = &fluid_frame {
+                            if let Some((c, r)) = fluid_bounds {
+                                binder.at(&mut pass, c, r);
+                            }
                             stats.draw_calls += self.fluid3d.draw(&mut pass, f);
+                            binder.reset(&mut pass);
                         }
                     }
                     // Transparent meshes, back to front over the opaque scene.
@@ -7863,6 +8004,7 @@ impl Renderer {
                         3,
                         &lit_skinned,
                         physical_fx,
+                        probe_binding,
                     );
                     // Particles, far systems first.
                     if let Some(group) = &particle_group {

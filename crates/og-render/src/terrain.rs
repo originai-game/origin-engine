@@ -1680,13 +1680,15 @@ pub(crate) fn world_sphere(model: Mat4, lo: Vec3, hi: Vec3) -> (Vec3, f32) {
 }
 
 /// Draws the levels of `draws` that touch `visible` (group 1: the terrain;
-/// group 0 bound by the caller). Returns (draws, triangles).
+/// group 0 bound by the caller, or per level the reflection probe's frame
+/// group `probes` picks: probe_select.rs). Returns (draws, triangles).
 pub(crate) fn draw_levels(
     pass: &mut wgpu::RenderPass,
     draws: &[TerrainDraw],
     indices: &wgpu::Buffer,
     which: TerrainPass,
     visible: impl Fn(Vec3, f32) -> bool,
+    mut probes: Option<&mut crate::probe_select::Binder>,
 ) -> (u32, u64) {
     let mut calls = 0;
     let mut triangles = 0;
@@ -1706,11 +1708,17 @@ pub(crate) fn draw_levels(
             if !visible(l.center, l.radius) {
                 continue;
             }
+            if let Some(b) = probes.as_deref_mut() {
+                b.at(pass, l.center, l.radius);
+            }
             pass.set_bind_group(1, &d.group, &[l.offset]);
             pass.draw_indexed(l.indices.clone(), 0, 0..1);
             calls += 1;
             triangles += (l.indices.len() / 3) as u64;
         }
+    }
+    if let Some(b) = probes {
+        b.reset(pass);
     }
     (calls, triangles)
 }

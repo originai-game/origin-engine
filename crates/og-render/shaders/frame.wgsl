@@ -94,6 +94,16 @@ fn ambient_light(n: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
   return mix(env, probe, probe_weight(p));
 }
 
+// `ambient_light` without screen derivatives (level 0 of the irradiance
+// cube): for shaders that sample it after a fragment may have returned.
+fn ambient_light_level(n: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
+  if (frame.probe_min.w < 0.5) { return textureSampleLevel(irradiance_map, ibl_sampler, n, 0.0).rgb; }
+  let top = frame.params.y;
+  let env = textureSampleLevel(irradiance_map, ibl_sampler, n, top).rgb;
+  let probe = textureSampleLevel(prefiltered_map, ibl_sampler, n, top).rgb * frame.probe_max.w;
+  return mix(env, probe, probe_weight(p));
+}
+
 // The environment reflected along `r` at `p` at prefiltered level `mip`:
 // with a probe its box-projected capture blended with the environment.
 fn reflected_light(r: vec3<f32>, p: vec3<f32>, mip: f32) -> vec3<f32> {

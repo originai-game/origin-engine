@@ -224,6 +224,8 @@ pub(crate) struct WaterRenderer {
 pub(crate) struct WaterDraw {
     group: wgpu::BindGroup,
     vertices: u32,
+    /// The surface's world bounding sphere (its reflection probe: probe_select.rs).
+    bounds: (Vec3, f32),
 }
 
 impl WaterRenderer {
@@ -440,21 +442,32 @@ impl WaterRenderer {
                     },
                 ],
             });
+            let half = Vec3::new(water.size.x, 0.0, water.size.y) * 0.5;
+            let radius = water.transform.transform_vector3(half).length();
             draws.push(WaterDraw {
                 group,
                 vertices: segments * segments * 6,
+                bounds: (water.transform.transform_point3(Vec3::ZERO), radius),
             });
         }
         draws
     }
 
-    /// Draws the surfaces (group 0: the frame). Returns the draw calls.
-    pub(crate) fn draw(&self, pass: &mut wgpu::RenderPass, draws: &[WaterDraw]) -> u32 {
+    /// Draws the surfaces (group 0: the frame, or each surface's reflection
+    /// probe's: probe_select.rs). Returns the draw calls.
+    pub(crate) fn draw(
+        &self,
+        pass: &mut wgpu::RenderPass,
+        draws: &[WaterDraw],
+        probes: &mut crate::probe_select::Binder,
+    ) -> u32 {
         pass.set_pipeline(&self.pipeline);
         for d in draws {
+            probes.at(pass, d.bounds.0, d.bounds.1);
             pass.set_bind_group(1, &d.group, &[]);
             pass.draw(0..d.vertices, 0..1);
         }
+        probes.reset(pass);
         draws.len() as u32
     }
 }
