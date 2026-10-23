@@ -68,7 +68,7 @@ module anim {
 | [`Rig2D`](#type-Rig2D) | handle | A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d. |
 | [`Rig2D()`](#column-Rig2D) | column kind | A Rig2D handle field. |
 | [`og.Skeleton2D`](#record-Skeleton2D) | component | Plays a clip of a 2D rig at the entity: the og.skeleton2d system advances it by scaled time (Time.scaledDt) after the game's systems and fires its events as og.Skeleton2DEvent; extraction draws its slots, in their order, as textured triangles of the sprite batch at `layer` (region attachments as quads, mesh attachments weighted to bones and deformed by the clip), lit by og.Lighting2D when the layer is in its range, as a sprite there is. The rig's pixels are `unit` to a world unit and +y is up; the entity's og.Transform places, turns (about z) and scales it. |
-| [`og.Skeleton2DEvent`](#record-Skeleton2DEvent) | event | A 2D skeleton's clip passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass. |
+| [`og.Skeleton2DEvent`](#record-Skeleton2DEvent) | event | A 2D skeleton's clip, or the clip a child armature in one of its slots plays, passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass. |
 | [`og.IkTarget2D`](#record-IkTarget2D) | component | Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge, a tail's tip. A constraint is a chain of any length: one bone points at the target, two are solved exactly (bending the way the rig says), three or more by FABRIK from the animated pose, curling the way the rig says. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way. |
 | [`Rig2DClipInfo`](#type-Rig2DClipInfo) | struct | One clip of a loaded 2D rig. |
 | [`Rig2DInfo`](#type-Rig2DInfo) | struct | What og.load.rig2d registered, or og.anim.rig2dInfo reads back from a handle. |
@@ -289,7 +289,7 @@ fn rig2dInfo {
 }
 ```
 
-<sub>`api.ogt` line 7711</sub>
+<sub>`api.ogt` line 7712</sub>
 
 <a id="fn-skeleton2dBoxes"></a>
 
@@ -319,7 +319,7 @@ fn skeleton2dBoxes {
 }
 ```
 
-<sub>`api.ogt` line 7725</sub>
+<sub>`api.ogt` line 7726</sub>
 
 ## Components, resources and events
 
@@ -814,7 +814,7 @@ component Skeleton2D {
 
 ### `og.Skeleton2DEvent` (event)
 
-A 2D skeleton's clip passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.
+A 2D skeleton's clip, or the clip a child armature in one of its slots plays, passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.
 
 Token `og.Skeleton2DEvent`, registered under the schema name `og.Skeleton2DEvent`; its value type is `Skeleton2DEvent`.
 
@@ -824,16 +824,18 @@ Token `og.Skeleton2DEvent`, registered under the schema name `og.Skeleton2DEvent
 | `clip` | `number` | `0` | — | — | — | The clip index. |
 | `name` | `string` | `""` | — | — | — | The event's name (at most 63 bytes). |
 | `time` | `number` | `0` | — | `s` | — | The event's time in the clip. |
+| `armature` | `string` | `""` | — | — | — | Empty for the skeleton's own clip; for an event of a child armature shown in one of its slots, that armature's name (`clip` and `time` are then the child's clip and its time): a flame's crackle apart from the keeper's footsteps (at most 63 bytes). |
 
 ```ogt
 event Skeleton2DEvent {
-  doc "A 2D skeleton's clip passed one of its events (`event 0.2 \"step\"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass."
+  doc "A 2D skeleton's clip, or the clip a child armature in one of its slots plays, passed one of its events (`event 0.2 \"step\"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass."
   field entity Entity "The entity with the og.Skeleton2D."
   field clip u32 "The clip index."
   field name String "The event's name (at most 63 bytes)."
   field time f32 "The event's time in the clip." {
     unit s
   }
+  field armature String "Empty for the skeleton's own clip; for an event of a child armature shown in one of its slots, that armature's name (`clip` and `time` are then the child's clip and its time): a flame's crackle apart from the keeper's footsteps (at most 63 bytes)."
 }
 ```
 
@@ -888,7 +890,7 @@ component IkTarget2D {
 }
 ```
 
-<sub>`api.ogt` line 7659</sub>
+<sub>`api.ogt` line 7660</sub>
 
 ## Types
 
@@ -1362,7 +1364,7 @@ struct Rig2DClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 7688</sub>
+<sub>`api.ogt` line 7689</sub>
 
 <a id="type-Rig2DInfo"></a>
 
@@ -1395,7 +1397,7 @@ struct Rig2DInfo {
 }
 ```
 
-<sub>`api.ogt` line 7699</sub>
+<sub>`api.ogt` line 7700</sub>
 
 <a id="type-Skeleton2DBox"></a>
 
@@ -1418,7 +1420,7 @@ struct Skeleton2DBox {
 }
 ```
 
-<sub>`api.ogt` line 7718</sub>
+<sub>`api.ogt` line 7719</sub>
 
 ## Column kinds
 

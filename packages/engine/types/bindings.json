@@ -7753,6 +7753,11 @@
           "name": "time",
           "type": "f32",
           "default": 0
+        },
+        {
+          "name": "armature",
+          "type": "String",
+          "default": ""
         }
       ]
     },

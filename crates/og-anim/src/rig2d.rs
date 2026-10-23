@@ -100,7 +100,8 @@
 //! DragonBones' inherited animation does), else its `clip` line, else its
 //! first clip, at the parent's clip time (wrapped by its own duration when
 //! it loops, held at its end otherwise); its IK reaches its own target
-//! bones. An armature never shows itself, directly or through another.
+//! bones; its clip's events fire as og.Skeleton2DEvent tagged with the
+//! armature's name. An armature never shows itself, directly or through another.
 //!
 //! **Transform and path constraints**, applied after the IK, each in
 //! file order, to the world transforms (a constrained bone's children
@@ -2295,11 +2296,7 @@ impl Rig2dAsset {
                 continue;
             };
             let arm = &self.armatures[*armature];
-            let by_name = |n: &str| arm.clips.iter().find(|c| c.name == n);
-            let played = clip
-                .and_then(|c| by_name(&c.name))
-                .or_else(|| own.as_deref().and_then(by_name))
-                .or(arm.clips.first());
+            let played = child_clip(arm, clip, own.as_deref());
             let t = match played {
                 Some(c) if c.looping => time - c.duration * (time / c.duration).floor(),
                 Some(c) => time.clamp(0.0, c.duration),
@@ -2316,6 +2313,65 @@ impl Rig2dAsset {
             deforms,
             ik_error: ik,
             children,
+        }
+    }
+
+    /// The events the child armatures shown in `pose` (the pose at the end
+    /// of the stretch, nested ones included) pass while their parent's
+    /// clip `clip` plays forward over `spans` of its time (each `(from,
+    /// to]`, a `from` below 0 taking the events at 0 too): (the child
+    /// armature's name, its clip's index, the event's time in it, its
+    /// name), in the order the spans pass them. A child plays at its
+    /// parent's time, wrapped by its own clip's duration when that loops
+    /// and held at its end otherwise, so a span splits where it wraps.
+    pub fn child_events(
+        &self,
+        clip: Option<&Clip2d>,
+        spans: &[(f32, f32)],
+        pose: &Pose2d,
+    ) -> Vec<(String, u32, f32, String)> {
+        let mut out = Vec::new();
+        self.collect_child_events(self.body(), clip, spans, pose, &mut out);
+        out
+    }
+
+    fn collect_child_events(
+        &self,
+        body: Body<'_>,
+        clip: Option<&Clip2d>,
+        spans: &[(f32, f32)],
+        pose: &Pose2d,
+        out: &mut Vec<(String, u32, f32, String)>,
+    ) {
+        for (s, child) in &pose.children {
+            let Some(a) = pose.slots[*s] else { continue };
+            let AttachmentKind::Child {
+                armature,
+                clip: own,
+                ..
+            } = &body.attachments[a].kind
+            else {
+                continue;
+            };
+            let arm = &self.armatures[*armature];
+            let Some(played) = child_clip(arm, clip, own.as_deref()) else {
+                continue;
+            };
+            let index = arm
+                .clips
+                .iter()
+                .position(|c| std::ptr::eq(c, played))
+                .unwrap_or(0) as u32;
+            let inner: Vec<(f32, f32)> = spans
+                .iter()
+                .flat_map(|&(lo, hi)| wrap_span(lo, hi, played))
+                .collect();
+            for &(lo, hi) in &inner {
+                for (t, name) in played.events.iter().filter(|(t, _)| *t > lo && *t <= hi) {
+                    out.push((arm.name.clone(), index, *t, name.clone()));
+                }
+            }
+            self.collect_child_events(arm.body(), Some(played), &inner, child, out);
         }
     }
 
@@ -2445,6 +2501,13 @@ impl Rig2dAsset {
         }
     }
 
+    /// Whether a child armature has clip events (og.skeleton2d fires them).
+    pub fn has_children(&self) -> bool {
+        self.armatures
+            .iter()
+            .any(|a| a.clips.iter().any(|c| !c.events.is_empty()))
+    }
+
     /// Whether any attachment (of the rig or a child armature) is a box.
     pub fn has_boxes(&self) -> bool {
         let any = |a: &[Attachment2d]| {
@@ -2507,6 +2570,46 @@ impl Rig2dAsset {
             }
         }
     }
+}
+
+/// The clip a child armature plays under its parent's `clip`: the one of
+/// the same name, else its `clip` line's, else its first.
+fn child_clip<'a>(
+    arm: &'a Armature2d,
+    clip: Option<&Clip2d>,
+    own: Option<&str>,
+) -> Option<&'a Clip2d> {
+    let by_name = |n: &str| arm.clips.iter().find(|c| c.name == n);
+    clip.and_then(|c| by_name(&c.name))
+        .or_else(|| own.and_then(by_name))
+        .or(arm.clips.first())
+}
+
+/// A span `(lo, hi]` of a parent's time as spans of a child clip's time:
+/// split where a looping clip wraps (each later piece taking the events
+/// at 0, as og.skeleton2d's own wrap does), clamped to a one-shot's length.
+fn wrap_span(lo: f32, hi: f32, c: &Clip2d) -> Vec<(f32, f32)> {
+    let d = c.duration;
+    if !c.looping {
+        let l = if lo < 0.0 { -1.0 } else { lo.min(d) };
+        let h = hi.clamp(0.0, d);
+        return if h > l { vec![(l, h)] } else { Vec::new() };
+    }
+    let mut out = Vec::new();
+    let mut base = d * (lo.max(0.0) / d).floor();
+    let mut l = if lo < 0.0 { -1.0 } else { lo - base };
+    for _ in 0..64 {
+        let h = (hi - base).min(d);
+        if h > l {
+            out.push((l, h));
+        }
+        if hi - base < d {
+            break;
+        }
+        base += d;
+        l = -1.0;
+    }
+    out
 }
 
 /// FABRIK's passes over a chain of three or more bones: at most this many.
@@ -3402,7 +3505,7 @@ fn num_text(v: f32) -> String {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     const ARM: &str = r#"type rig2d
@@ -3580,7 +3683,7 @@ clip wave {
     /// A rig of every DragonBones feature the text carries beyond the
     /// arm: a child armature in a slot (with a box of its own), a box,
     /// colour offsets, a draw-order key.
-    const NEST: &str = r#"type rig2d
+    pub(crate) const NEST: &str = r#"type rig2d
 version 1
 ---
 texture "parts.png"

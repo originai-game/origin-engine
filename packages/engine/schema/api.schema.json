@@ -23396,7 +23396,7 @@
     "Skeleton2DEvent": {
       "x-og-kind": "event",
       "x-og-module": "anim",
-      "description": "A 2D skeleton's clip passed one of its events (`event 0.2 \"step\"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.",
+      "description": "A 2D skeleton's clip, or the clip a child armature in one of its slots plays, passed one of its events (`event 0.2 \"step\"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.",
       "type": "object",
       "properties": {
         "entity": {
@@ -23417,13 +23417,18 @@
           "type": "number",
           "description": "The event's time in the clip.",
           "x-og-unit": "s"
+        },
+        "armature": {
+          "type": "string",
+          "description": "Empty for the skeleton's own clip; for an event of a child armature shown in one of its slots, that armature's name (`clip` and `time` are then the child's clip and its time): a flame's crackle apart from the keeper's footsteps (at most 63 bytes)."
         }
       },
       "required": [
         "entity",
         "clip",
         "name",
-        "time"
+        "time",
+        "armature"
       ],
       "additionalProperties": false
     },

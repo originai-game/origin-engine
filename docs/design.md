@@ -607,7 +607,8 @@ Baked lighting, volumetrics and area lights (depth S7).
   `og.anim.clip` finds a clip by name). `og.Skeleton2D` (`rig`, `clip`,
   `time`, `speed`, `loop`, `flipX`, `layer`, `skin`, `finished`) plays it through
   the `og.skeleton2d` system, run with the tweens and flipbooks after the
-  game's systems; clip events arrive as `og.Skeleton2DEvent`;
+  game's systems; clip events arrive as `og.Skeleton2DEvent` (a child
+  armature's tagged with its name);
   `og.IkTarget2D` moves a constraint's target (its weight multiplies the
   constraint's) and reads back `reached` and `error`;
   `og.anim.skeleton2dBoxes` answers the bounding boxes the last pose

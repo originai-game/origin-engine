@@ -80,6 +80,9 @@ pub struct Skeleton2DEvent {
     /// The event's time in the clip.
     #[reflect(unit = "s")]
     pub time: f32,
+    /// Empty for the skeleton's own clip; a child armature's name for its
+    /// events (`clip` and `time` are then the child's).
+    pub armature: Str64,
 }
 
 /// Moves one IK constraint's target of a 2D skeleton (a foot to the
@@ -273,6 +276,8 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
         let d = clip.duration;
         let step = dt * s.speed.clamp(-10.0, 10.0);
         let mut fired = Vec::new();
+        // The stretches of the clip's time played forward this tick, for child armatures' events.
+        let mut spans: Vec<(f32, f32)> = Vec::new();
         if !s.finished {
             let to = s.time + step;
             if s.looping {
@@ -286,6 +291,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
                                 .iter()
                                 .filter(|(t, _)| *t > lo && *t <= hi.min(d)),
                         );
+                        spans.push((lo, hi.min(d)));
                         if hi < d {
                             break;
                         }
@@ -313,6 +319,9 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
                 let to = to.clamp(0.0, d);
                 let (lo, hi) = if step >= 0.0 { (from, to) } else { (to, from) };
                 fired.extend(clip.events.iter().filter(|(t, _)| *t > lo && *t <= hi));
+                if step >= 0.0 {
+                    spans.push((lo, hi));
+                }
                 s.time = to;
                 s.finished = (step > 0.0 && to >= d) || (step < 0.0 && to <= 0.0);
             }
@@ -324,7 +333,26 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
                     clip: s.clip,
                     name,
                     time: *t,
+                    armature: Str64::default(),
                 });
+            }
+        }
+        if rig.has_children() && spans.iter().any(|(lo, hi)| hi > lo) {
+            let pose = rig.pose_in_skin(Some(clip), s.time, &[], s.skin);
+            for (arm, c, t, name) in rig
+                .child_events(Some(clip), &spans, &pose)
+                .into_iter()
+                .take(MAX_EVENTS)
+            {
+                if let (Ok(name), Ok(armature)) = (Str64::new(&name), Str64::new(&arm)) {
+                    events.push(Skeleton2DEvent {
+                        entity: key,
+                        clip: c,
+                        name,
+                        time: t,
+                        armature,
+                    });
+                }
             }
         }
         ctx.set(e, s)?;
@@ -516,5 +544,77 @@ impl StateBlock for SkeletonState {
         let mut sh = lock(&self.0);
         sh.playback = playback;
         sh.boxes = boxes;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// rig2d's nested-armature fixture, its flame's `burn` (1 s, looping)
+    /// given events at 0 and 0.5 and the parent's `idle` (4 s) one at 1.
+    fn nest() -> Rig2dAsset {
+        let text = crate::rig2d::tests::NEST
+            .replace(
+                "  clip burn {\n    duration 1\n",
+                "  clip burn {\n    duration 1\n    event 0 \"spark\"\n    event 0.5 \"flick\"\n",
+            )
+            .replace(
+                "clip idle {\n  duration 4\n",
+                "clip idle {\n  duration 4\n  event 1 \"beat\"\n",
+            );
+        Rig2dAsset::parse(&text).expect("the fixture with events")
+    }
+
+    #[test]
+    fn a_child_armatures_events_fire_tagged_with_its_name() {
+        let mut w = World::new(&og_ecs::WorldDesc {
+            tick_rate: 64,
+            seed: 1,
+        })
+        .unwrap();
+        let sys = install_skeleton2d(&mut w).unwrap();
+        sys.add_rig(1, nest()).unwrap();
+        let e = w
+            .spawn((
+                Transform::default(),
+                Skeleton2D {
+                    rig: 1,
+                    clip: 1,
+                    ..Default::default()
+                },
+            ))
+            .unwrap();
+        let mut log = Vec::new();
+        for tick in 1..=128 {
+            w.step().unwrap();
+            for ev in w.pending_events::<Skeleton2DEvent>().unwrap() {
+                assert_eq!(ev.entity, e.to_bits());
+                log.push((
+                    tick,
+                    ev.armature.as_str().to_string(),
+                    ev.clip,
+                    ev.name.as_str().to_string(),
+                    ev.time,
+                ));
+            }
+        }
+        // 64 ticks a second: the flame plays burn (idle has no clip of its
+        // name there) at the parent's time wrapped by 1 s, so its spark
+        // fires at 0, 1 and 2 s (ticks 1, 64, 128) and its flick at 0.5
+        // and 1.5 s (ticks 32, 96), each tagged `flame`, clip 0 (burn), at
+        // the flame's own clip time; the parent's beat at 1 s is untagged.
+        let f = |tick: u32, n: &str, t: f32| (tick, "flame".to_string(), 0u32, n.to_string(), t);
+        assert_eq!(
+            log,
+            [
+                f(1, "spark", 0.0),
+                f(32, "flick", 0.5),
+                (64, String::new(), 1, "beat".to_string(), 1.0),
+                f(64, "spark", 0.0),
+                f(96, "flick", 0.5),
+                f(128, "spark", 0.0),
+            ]
+        );
     }
 }

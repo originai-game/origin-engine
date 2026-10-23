@@ -1004,7 +1004,8 @@ answers its polygon (in the Transform's frame) while its slot shows it,
 for hit and hurt boxes a clip switches. A `child` shows an `armature`
 block (a rig of its own on the same texture) in its slot; it plays the
 parent's clip by name when it has one, else its `clip`, at the parent's
-time. A DragonBones 5.5 export is imported instead of written: a rig2d
+time; its events arrive as og.Skeleton2DEvent with `armature` its name
+(empty for the skeleton's own clip). A DragonBones 5.5 export is imported instead of written: a rig2d
 `.ogt` with `dragonbones "hero_ske.json"` and `atlas "hero_tex.json"`
 (skew, colour offsets, zOrder and IK timelines, armature displays,
 bounding boxes, path displays and constraints, every skin, curves and `clockwise`

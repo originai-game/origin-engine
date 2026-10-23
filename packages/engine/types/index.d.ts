@@ -11768,7 +11768,7 @@ export interface Skeleton2D {
 }
 
 /**
- * A 2D skeleton's clip passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.
+ * A 2D skeleton's clip, or the clip a child armature in one of its slots plays, passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.
  *
  * The payload of the `Skeleton2DEvent` event (token `og.Skeleton2DEvent`).
  */
@@ -11785,6 +11785,10 @@ export interface Skeleton2DEvent {
    * @unit s (seconds of simulation time)
    */
   readonly time: number;
+  /**
+   * Empty for the skeleton's own clip; for an event of a child armature shown in one of its slots, that armature's name (`clip` and `time` are then the child's clip and its time): a flame's crackle apart from the keeper's footsteps (at most 63 bytes).
+   */
+  readonly armature: string;
 }
 
 /**
@@ -22372,7 +22376,7 @@ export declare namespace og {
    */
   const Skeleton2D: ComponentType<{ readonly rig: FieldSpec<"Rig2D">; readonly clip: FieldSpec<"u32">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly flipX: FieldSpec<"bool">; readonly layer: FieldSpec<"i32">; readonly skin: FieldSpec<"u32">; readonly finished: FieldSpec<"bool"> }, Skeleton2D>;
   /**
-   * A 2D skeleton's clip passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.
+   * A 2D skeleton's clip, or the clip a child armature in one of its slots plays, passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.
    */
   const Skeleton2DEvent: EventType<Skeleton2DEvent>;
   /**
