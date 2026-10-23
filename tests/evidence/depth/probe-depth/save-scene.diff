@@ -1,0 +1,40 @@
+tick 360 save_scene: wrote /tmp/sv/saved.ogt
+INFO tick 360: save_scene: assets/scenes/main.ogt (5 line(s) changed; not written: Run.chimed: a resource; scene text has no resources)
+tick 420 save_scene: wrote /tmp/sv/again.ogt
+INFO tick 420: save_scene: assets/scenes/main.ogt (5 line(s) changed; not written: Run.chimed: a resource; scene text has no resources)
+
+--- assets/scenes/main.ogt	2026-10-22 14:29:10.444418116 +0000
++++ /tmp/sv/saved.ogt	2026-10-23 02:24:35.227400777 +0000
+@@ -4,9 +4,9 @@
+ name "Main"
+ entity "ground" {
+   Transform {
+-    position 0 0 0
++    position 0 -0.1 0
+     quaternion 0 0 0 1
+-    scale 1 1 1
++    scale 4 1 4
+   }
+ }
+ entity "dropship" {
+@@ -20,15 +20,15 @@
+ entity "trickster" {
+   model "models/walker.glb"
+   Transform {
+-    position 2 0 0
+-    quaternion 0 0.7071068 0 0.7071068
++    position 3.5 0 -1.25
++    quaternion 0 0.70710677 0 0.70710677
+     scale 1 1 1
+   }
+   entity "marker" {
+     Transform {
+       position 0 2.2 0
+       quaternion 0 0 0 1
+-      scale 0.25 0.25 0.25
++      scale 0.5 0.5 0.5
+     }
+   }
+ }
+--- again vs saved:
+identical
