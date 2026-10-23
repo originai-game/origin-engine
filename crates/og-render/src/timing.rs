@@ -438,7 +438,9 @@ impl GpuTimer {
 
     /// The frames read back since the last take, oldest first. With `wait`
     /// (native), every frame in flight is waited for first: once for its
-    /// work, once for the resolve of its timestamps.
+    /// work, once for the resolve of its timestamps. On the web nothing
+    /// waits: a frame is read back when its map has resolved.
+    #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
     pub fn take(
         &mut self,
         device: &wgpu::Device,
