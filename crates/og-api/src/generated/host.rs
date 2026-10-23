@@ -452,6 +452,8 @@ pub trait AnimApi: Wire {
     fn og_anim_retarget(&self, world: u32, desc: Option<String>) -> String;
     /// `og.anim.rig2dInfo`
     fn og_anim_rig2d_info(&self, world: u32, rig: f64) -> String;
+    /// `og.anim.skeleton2dBoxes`
+    fn og_anim_skeleton2d_boxes(&self, world: u32, entity: f64) -> String;
 }
 
 /// `tween`: packages/knowledge/wiki/tween.md.
@@ -1087,6 +1089,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_anim_humanoid",
     "og_anim_retarget",
     "og_anim_rig2d_info",
+    "og_anim_skeleton2d_boxes",
     "og_tween_to",
     "og_tween_sequence",
     "og_tween_parallel",
@@ -15572,7 +15575,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: "How much of the solve applies (0 is the animated pose, 1 fully solved).",
+                doc: "How much of the solve applies (0 is the animated pose, 1 fully solved), times the constraint's own weight (its `weight` line, or its clip's IK keys).",
                 variants: &[],
                 capacity: 0,
             },

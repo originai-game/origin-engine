@@ -1113,6 +1113,12 @@ pub fn og_anim_rig2d_info(env: Env, world: u32, rig: f64) -> String {
     <Host as AnimApi>::og_anim_rig2d_info(&Host, world, rig)
 }
 
+#[napi(js_name = "og_anim_skeleton2d_boxes")]
+pub fn og_anim_skeleton2d_boxes(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AnimApi>::og_anim_skeleton2d_boxes(&Host, world, entity)
+}
+
 #[napi(js_name = "og_tween_to")]
 pub fn og_tween_to(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

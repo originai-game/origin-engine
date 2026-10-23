@@ -929,6 +929,11 @@ pub fn og_anim_rig2d_info(world: u32, rig: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_anim_skeleton2d_boxes(world: u32, entity: f64) -> String {
+    <Host as AnimApi>::og_anim_skeleton2d_boxes(&Host, world, entity)
+}
+
+#[wasm_bindgen]
 pub fn og_tween_to(world: u32, desc: Option<String>) -> String {
     <Host as TweenApi>::og_tween_to(&Host, world, desc)
 }

@@ -5093,7 +5093,8 @@
         "Skeleton2DEvent",
         "IkTarget2D",
         "Rig2DClipInfo",
-        "Rig2DInfo"
+        "Rig2DInfo",
+        "Skeleton2DBox"
       ],
       "consts": [],
       "functions": [
@@ -5242,6 +5243,27 @@
           ],
           "returns": "Result<Rig2DInfo>",
           "returnsDoc": "Refused for a handle og.load.rig2d did not answer.",
+          "publish": true
+        },
+        {
+          "name": "skeleton2dBoxes",
+          "doc": "The bounding boxes an og.Skeleton2D's pose showed when og.skeleton2d last ran (after the game's systems, so a system reads the previous tick's): hurt and hit boxes a clip switches on and off with its slots' attachments, to test against points or other shapes. Empty for a rig without boxes or when no slot shows one. They are part of the og.skeleton2d state block, so a restored snapshot answers what it saved.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation poses the skeleton."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The entity with the og.Skeleton2D."
+            }
+          ],
+          "returns": "Result<List<Skeleton2DBox>>",
+          "returnsDoc": "Refused for an entity og.skeleton2d has not posed: no og.Skeleton2D with a loaded rig, or before its first tick.",
           "publish": true
         }
       ],
@@ -23311,7 +23333,7 @@
     "Rig2D": {
       "x-og-kind": "handle",
       "x-og-module": "anim",
-      "description": "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region and mesh attachments, IK constraints and clips, from og.load.rig2d.",
+      "description": "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d.",
       "type": "integer",
       "minimum": 0
     },
@@ -23439,7 +23461,7 @@
         },
         "weight": {
           "type": "number",
-          "description": "How much of the solve applies (0 is the animated pose, 1 fully solved).",
+          "description": "How much of the solve applies (0 is the animated pose, 1 fully solved), times the constraint's own weight (its `weight` line, or its clip's IK keys).",
           "default": 1,
           "minimum": 0,
           "maximum": 1,
@@ -23565,6 +23587,35 @@
         "slots",
         "constraints",
         "clips"
+      ],
+      "additionalProperties": false
+    },
+    "Skeleton2DBox": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "A bounding box a 2D skeleton's pose shows: a `box` attachment of its rig (or of a child armature in one of its slots) while its slot shows it.",
+      "type": "object",
+      "properties": {
+        "slot": {
+          "type": "string",
+          "description": "The slot showing it (`slot/child-slot` inside a child armature)."
+        },
+        "name": {
+          "type": "string",
+          "description": "The box's name in the rig."
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector2"
+          },
+          "description": "Its polygon, moved by its bones (IK included), in the frame the skeleton entity's og.Transform is written in (the world for an entity without a parent)."
+        }
+      },
+      "required": [
+        "slot",
+        "name",
+        "points"
       ],
       "additionalProperties": false
     },

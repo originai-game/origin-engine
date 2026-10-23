@@ -5,29 +5,39 @@
 //! with the texture's id and size filled in.
 //!
 //! The DragonBones 5.5 mapping: y runs down there and up here, so every y
-//! and every angle changes sign (`skY` is the rotation; a skew, `skX` other
-//! than `skY`, is dropped with a note); a bone keeps `length`; a slot's
-//! `displayIndex` is its setup attachment and its colour multipliers its
-//! colour (offsets are dropped); the first skin's `image` displays become
-//! regions (their atlas sub-texture, transform and pivot) and its `mesh`
-//! displays meshes (`uvs` within the sub-texture, `triangles`, unweighted
-//! `vertices` in the slot's bone, weighted ones through `slotPose` into the
-//! setup pose and from there into each bone of `weights`); an `ik`'s `bone`
-//! with `chain` 1 is two bones, `bendPositive` (clockwise on screen) is
-//! `bend clockwise`; an animation's `duration` and frame `duration`s are
-//! frames of `frameRate`, `playTimes` 0 loops, `translateFrame`,
-//! `rotateFrame` and `scaleFrame` become bone keys (relative to the setup
-//! pose, as there), `tweenEasing: null` a `step` key and a `curve` linear,
-//! `displayFrame` and `colorFrame` slot keys, `ffd` (or `deform`) frames
-//! deform keys (`offset` and `vertices`, per influence), and frame `events`
-//! (or `actions` of type 10 and 11) events. Nested armatures, bounding
-//! boxes, z-order and IK timelines have no line here and are noted.
+//! and every angle changes sign; a transform's `skY` (or `rotate`) is the
+//! rotation and `skX` minus `skY` (or `skew`) the skew, negated; a bone
+//! keeps `length`; a slot's `displayIndex` is its setup attachment and its
+//! colour's multipliers (percent) and offsets (-255..255) its `color` and
+//! `offset`; the first skin's `image` displays become regions (their atlas
+//! sub-texture, transform and pivot), its `mesh` displays meshes (`uvs`
+//! within the sub-texture, `triangles`, unweighted `vertices` in the slot's
+//! bone, weighted ones through `slotPose` into the setup pose and from
+//! there into each bone of `weights`), its `boundingBox` displays boxes
+//! (a rectangle's corners, a polygon's `vertices`, an ellipse as 32 sides,
+//! through the display's transform) and its `armature` displays child
+//! attachments (the armature of that name in the same export, imported as
+//! a child armature, playing the display's or the slot's `actions`); an
+//! `ik`'s `bone` with `chain` 1 is two bones, `bendPositive` (clockwise on
+//! screen) is `bend clockwise`; an animation's `duration` and frame
+//! `duration`s are frames of `frameRate`, `playTimes` 0 loops,
+//! `translateFrame`, `rotateFrame` (`rotate` and `skew`) and `scaleFrame`
+//! become bone keys (relative to the setup pose, as there), `displayFrame`
+//! and `colorFrame` slot keys (multipliers and offsets), `ffd` (or
+//! `deform`) frames deform keys (`offset` and `vertices`, per influence),
+//! `zOrder` frames (slot and offset pairs) draw orders, `ik` frames
+//! (`weight`, `bendPositive`) IK keys, and frame `events` (or `actions` of
+//! type 10 and 11) events. A frame's `curve` is a Bézier key; a
+//! `tweenEasing` of 0 is linear, other numbers DragonBones' quadratic
+//! eases as Béziers; a frame with neither holds its value (DragonBones'
+//! no-tween). Path displays and `clockwise` turns are noted.
 
 use super::{CookError, Source};
 use crate::format::{self, *};
 use og_anim::{
-    Affine2, Attachment2d, AttachmentKind, Bone2d, BoneTimeline, Clip2d, DeformTimeline, Ik2d,
-    Influence, Key, MeshVertex2d, Rig2dAsset, SheetFilter, Slot2d, SlotTimeline,
+    Affine2, Armature2d, Attachment2d, AttachmentKind, Bone2d, BoneTimeline, Clip2d,
+    DeformTimeline, Ease, Ik2d, IkKey, IkTimeline, Influence, Key, MeshVertex2d, Rig2dAsset,
+    SheetFilter, Slot2d, SlotTimeline,
 };
 use og_blob::BlobWriter;
 use og_core::ogt::{Document, Entry, Value};
@@ -78,7 +88,7 @@ pub(super) fn rig(s: &Source) -> Result<(Rig2dAsset, Vec<String>), String> {
         if let Some(e) = doc.body.entries.iter().find(|e| {
             matches!(
                 e.key.as_str(),
-                "bone" | "slot" | "region" | "mesh" | "ik" | "clip"
+                "bone" | "slot" | "region" | "mesh" | "box" | "child" | "ik" | "clip" | "armature"
             )
         }) {
             return Err(format!(
@@ -146,11 +156,12 @@ pub(super) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), Coo
     notes.insert(
         0,
         format!(
-            "{} bones, {} slots, {} attachments, {} IK, {} clips ({}) over {} ({}x{})",
+            "{} bones, {} slots, {} attachments, {} IK, {} child armatures, {} clips ({}) over {} ({}x{})",
             rig.bones.len(),
             rig.slots.len(),
             rig.attachments.len(),
             rig.iks.len(),
+            rig.armatures.len(),
             rig.clips.len(),
             rig.clips
                 .iter()
@@ -191,63 +202,146 @@ fn name(v: &Json) -> Result<String, String> {
         .ok_or_else(|| "an entry without a name".into())
 }
 
-/// Converts a DragonBones 5.5 skeleton export (its first armature) with
-/// its texture atlas; `notes` collects what has no equivalent.
+/// A DragonBones transform here: x, y (up), rotation and skew (degrees,
+/// counter-clockwise), scale. DragonBones' x axis turns by `skY` (or
+/// `rotate`) and its y axis by `skX` (or `rotate + skew`), both clockwise
+/// with y down; mirroring y negates every angle.
+struct Place {
+    x: f32,
+    y: f32,
+    rotation: f32,
+    skew: f32,
+    scale: [f32; 2],
+}
+
+fn place(t: &Json) -> Place {
+    let (rotation, skew) = if t.get("rotate").is_some() || t.get("skew").is_some() {
+        (-f(t, "rotate", 0.0), -f(t, "skew", 0.0))
+    } else {
+        let (skx, sky) = (f(t, "skX", 0.0), f(t, "skY", 0.0));
+        (-sky, sky - skx)
+    };
+    Place {
+        x: f(t, "x", 0.0),
+        y: -f(t, "y", 0.0),
+        rotation,
+        skew,
+        scale: [f(t, "scX", 1.0), f(t, "scY", 1.0)],
+    }
+}
+
+impl Place {
+    fn affine(&self) -> Affine2 {
+        Affine2::trsk(
+            self.x,
+            self.y,
+            self.rotation,
+            self.skew,
+            self.scale[0],
+            self.scale[1],
+        )
+    }
+}
+
+/// A DragonBones colour transform: multipliers (percent) and offsets
+/// (-255..255) as linear 0..1 multipliers and offsets.
+fn color(c: &Json) -> ([f32; 4], [f32; 4]) {
+    (
+        ["rM", "gM", "bM", "aM"].map(|k| f(c, k, 100.0) / 100.0),
+        ["rO", "gO", "bO", "aO"].map(|k| f(c, k, 0.0) / 255.0),
+    )
+}
+
+/// What a frame's tween is: a `curve` (Bézier control points), a
+/// `tweenEasing` number (0 linear; below 0 quadratic in, to 1 quadratic
+/// out, above 1 sine in-out, blended with the line by its amount), or
+/// neither (or null): no tween, the value holds until the next frame.
+fn ease(k: &Json, notes: &mut Vec<String>) -> Ease {
+    if let Some(curve) = k["curve"].as_array() {
+        let mut c: Vec<f32> = curve
+            .iter()
+            .map(|v| v.as_f64().unwrap_or(0.0) as f32)
+            .collect();
+        // The long form includes the end points (0, 0) and (1, 1).
+        if c.len() % 3 != 1 && c.len() >= 8 {
+            c = c[2..c.len() - 2].to_vec();
+        }
+        return match og_anim::check_curve(&c) {
+            Ok(()) => Ease::Bezier(c),
+            Err(e) => {
+                notes.push(format!("a curve played linearly: {e}"));
+                Ease::Linear
+            }
+        };
+    }
+    let Some(e) = k.get("tweenEasing").and_then(Json::as_f64) else {
+        return Ease::Step;
+    };
+    let e = e as f32;
+    let third = 1.0 / 3.0;
+    if e == 0.0 {
+        Ease::Linear
+    } else if e < 0.0 {
+        // s² is the cubic (0, 0) (1/3, 0) (2/3, 1/3) (1, 1); blended with the line by -e.
+        let a = (-e).min(1.0);
+        Ease::Bezier(vec![
+            third,
+            third * (1.0 - a),
+            2.0 * third,
+            third * (2.0 - a),
+        ])
+    } else if e <= 1.0 {
+        // 2s - s²: (1/3, 2/3) (2/3, 1).
+        Ease::Bezier(vec![
+            third,
+            third * (1.0 + e),
+            2.0 * third,
+            third * (2.0 + e),
+        ])
+    } else {
+        // Sine in-out has no cubic; smoothstep (1/3, 0) (2/3, 1) is within 0.011 of it.
+        let a = (e - 1.0).min(1.0);
+        if !notes.iter().any(|n| n.starts_with("tweenEasing above 1")) {
+            notes.push(
+                "tweenEasing above 1 (sine in-out) is played as smoothstep, within 0.011 of it"
+                    .into(),
+            );
+        }
+        Ease::Bezier(vec![
+            third,
+            third * (1.0 - a),
+            2.0 * third,
+            third * (2.0 + a),
+        ])
+    }
+}
+
+/// The animation a DragonBones `actions` list (a name, or `gotoAndPlay`
+/// or a `play` action) starts on a child armature.
+fn play_action(actions: &Json) -> Option<String> {
+    if let Some(s) = actions.as_str() {
+        return Some(s.to_string());
+    }
+    actions.as_array()?.iter().find_map(|a| {
+        a["gotoAndPlay"].as_str().map(str::to_string).or_else(|| {
+            let play = matches!(a["type"].as_str(), Some("play")) || a["type"].as_i64() == Some(0);
+            play.then(|| a["name"].as_str().map(str::to_string))
+                .flatten()
+        })
+    })
+}
+
+/// Converts a DragonBones 5.5 skeleton export with its texture atlas: the
+/// first armature is the rig, and every armature an armature display shows
+/// (directly or through another) becomes one of its child armatures;
+/// `notes` collects what has no equivalent.
 pub fn dragonbones(
     ske: &Json,
     atlas: &Json,
     notes: &mut Vec<String>,
 ) -> Result<Rig2dAsset, String> {
-    let arm = ske["armature"].get(0).ok_or("no armature")?;
-    if ske["armature"].as_array().is_some_and(|a| a.len() > 1) {
-        notes.push("only the first armature is imported".into());
-    }
-    let rate = arm["frameRate"]
-        .as_f64()
-        .or(ske["frameRate"].as_f64())
-        .unwrap_or(24.0) as f32;
-    let mut rig = Rig2dAsset {
-        texture: String::new(),
-        size: [0, 0],
-        filter: SheetFilter::Linear,
-        unit: 1.0,
-        bones: Vec::new(),
-        slots: Vec::new(),
-        attachments: Vec::new(),
-        iks: Vec::new(),
-        clips: Vec::new(),
-    };
-    let mut skewed = Vec::new();
-    for b in arm["bone"].as_array().into_iter().flatten() {
-        let n = name(b)?;
-        let parent = match b["parent"].as_str() {
-            Some(p) => Some(
-                rig.bone(p)
-                    .ok_or(format!("bone {n}: parent {p} comes after it"))?,
-            ),
-            None => None,
-        };
-        let t = &b["transform"];
-        if (f(t, "skX", 0.0) - f(t, "skY", 0.0)).abs() > 1e-3 {
-            skewed.push(n.clone());
-        }
-        rig.bones.push(Bone2d {
-            name: n,
-            parent,
-            x: f(t, "x", 0.0),
-            y: -f(t, "y", 0.0),
-            rotation: -f(t, "skY", 0.0),
-            scale: [f(t, "scX", 1.0), f(t, "scY", 1.0)],
-            length: f(b, "length", 0.0),
-        });
-    }
-    if !skewed.is_empty() {
-        notes.push(format!("skew dropped on bones {}", skewed.join(", ")));
-    }
-    if rig.bones.is_empty() {
-        return Err("the armature has no bones".into());
-    }
-    let setup = rig.pose(None, 0.0, &[]).world;
+    let list = ske["armature"].as_array().ok_or("no armature")?;
+    let first = list.first().ok_or("no armature")?;
     // Sub-textures by name.
     let subs: Vec<(String, [f32; 4])> = atlas["SubTexture"]
         .as_array()
@@ -265,6 +359,110 @@ pub fn dragonbones(
             ))
         })
         .collect::<Result<_, String>>()?;
+    // Child armatures in the order displays first name them.
+    let mut children: Vec<String> = Vec::new();
+    let top = armature(first, ske, &subs, &mut children, notes)?;
+    let mut armatures = Vec::new();
+    let mut i = 0;
+    while i < children.len() {
+        let n = children[i].clone();
+        let raw = list
+            .iter()
+            .find(|a| a["name"].as_str() == Some(n.as_str()))
+            .ok_or(format!(
+                "an armature display shows `{n}`, not an armature of the export"
+            ))?;
+        let mut a = armature(raw, ske, &subs, &mut children, notes)
+            .map_err(|e| format!("armature {n}: {e}"))?;
+        a.name = n;
+        armatures.push(a);
+        i += 1;
+    }
+    let unused: Vec<String> = list
+        .iter()
+        .skip(1)
+        .filter_map(|a| a["name"].as_str())
+        .filter(|n| !children.iter().any(|c| c == n))
+        .map(str::to_string)
+        .collect();
+    if !unused.is_empty() {
+        notes.push(format!(
+            "armatures no display of the first shows are not imported: {}",
+            unused.join(", ")
+        ));
+    }
+    let rig = Rig2dAsset {
+        texture: String::new(),
+        size: [0, 0],
+        filter: SheetFilter::Linear,
+        unit: 1.0,
+        bones: top.bones,
+        slots: top.slots,
+        attachments: top.attachments,
+        iks: top.iks,
+        clips: top.clips,
+        armatures,
+    };
+    // What the runtime reads back: refused here (a display showing its own armature) rather than there.
+    let mut probe = rig.clone();
+    probe.texture = "probe".into();
+    Rig2dAsset::parse(&probe.to_text()).map_err(|e| e.reason().to_string())?;
+    Ok(rig)
+}
+
+/// One DragonBones armature's bones, slots, displays, constraints and
+/// animations; `children` collects the armatures its displays show.
+fn armature(
+    arm: &Json,
+    ske: &Json,
+    subs: &[(String, [f32; 4])],
+    children: &mut Vec<String>,
+    notes: &mut Vec<String>,
+) -> Result<Armature2d, String> {
+    let rate = arm["frameRate"]
+        .as_f64()
+        .or(ske["frameRate"].as_f64())
+        .unwrap_or(24.0) as f32;
+    let mut rig = Armature2d::default();
+    let bone_of = |rig: &Armature2d, n: &str| rig.bones.iter().position(|b| b.name == n);
+    for b in arm["bone"].as_array().into_iter().flatten() {
+        let n = name(b)?;
+        let parent = match b["parent"].as_str() {
+            Some(p) => {
+                Some(bone_of(&rig, p).ok_or(format!("bone {n}: parent {p} comes after it"))?)
+            }
+            None => None,
+        };
+        let t = place(&b["transform"]);
+        rig.bones.push(Bone2d {
+            name: n,
+            parent,
+            x: t.x,
+            y: t.y,
+            rotation: t.rotation,
+            skew: t.skew,
+            scale: t.scale,
+            length: f(b, "length", 0.0),
+        });
+    }
+    if rig.bones.is_empty() {
+        return Err("the armature has no bones".into());
+    }
+    let setup = {
+        let probe = Rig2dAsset {
+            texture: String::new(),
+            size: [0, 0],
+            filter: SheetFilter::Linear,
+            unit: 1.0,
+            bones: rig.bones.clone(),
+            slots: Vec::new(),
+            attachments: Vec::new(),
+            iks: Vec::new(),
+            clips: Vec::new(),
+            armatures: Vec::new(),
+        };
+        probe.pose(None, 0.0, &[]).world
+    };
     let sub = |n: &str| -> Result<[f32; 4], String> {
         subs.iter()
             .find(|(s, _)| s == n)
@@ -280,20 +478,14 @@ pub fn dragonbones(
         let bone_name = sl["parent"]
             .as_str()
             .ok_or(format!("slot {n} has no parent bone"))?;
-        let bone = rig
-            .bone(bone_name)
-            .ok_or(format!("slot {n}: no bone {bone_name}"))?;
-        let c = &sl["color"];
+        let bone = bone_of(&rig, bone_name).ok_or(format!("slot {n}: no bone {bone_name}"))?;
+        let (color, offset) = color(&sl["color"]);
         rig.slots.push(Slot2d {
             name: n.clone(),
             bone,
             attachment: None,
-            color: [
-                f(c, "rM", 100.0) / 100.0,
-                f(c, "gM", 100.0) / 100.0,
-                f(c, "bM", 100.0) / 100.0,
-                f(c, "aM", 100.0) / 100.0,
-            ],
+            color,
+            offset,
         });
         let list = skin
             .and_then(|k| k["slot"].as_array())
@@ -301,31 +493,84 @@ pub fn dragonbones(
             .and_then(|s| s["display"].as_array());
         let mut ids = Vec::new();
         for d in list.into_iter().flatten() {
+            if d.is_null() {
+                ids.push(None);
+                continue;
+            }
             let dn = name(d)?;
             let path = d["path"].as_str().unwrap_or(&dn).to_string();
             let mut an = dn.clone();
             if rig.attachments.iter().any(|a| a.name == an) {
                 an = format!("{n}/{dn}");
             }
+            let t = place(&d["transform"]);
             let kind = match d["type"].as_str().unwrap_or("image") {
                 "image" => {
                     let rect = sub(&path)?;
-                    let t = &d["transform"];
-                    let (sx, sy) = (f(t, "scX", 1.0), f(t, "scY", 1.0));
-                    let rotation = -f(t, "skY", 0.0);
-                    let size = [rect[2] * sx, rect[3] * sy];
+                    let size = [rect[2] * t.scale[0], rect[3] * t.scale[1]];
                     // The pivot (0.5 the centre) moves the centre off the display's origin.
                     let (px, py) = (f(&d["pivot"], "x", 0.5), f(&d["pivot"], "y", 0.5));
-                    let shift = Affine2::trs(0.0, 0.0, rotation, 1.0, 1.0)
+                    let shift = Affine2::trsk(0.0, 0.0, t.rotation, t.skew, 1.0, 1.0)
                         .apply((0.5 - px) * size[0], -(0.5 - py) * size[1]);
                     AttachmentKind::Region {
                         rect,
-                        at: [f(t, "x", 0.0) + shift[0], -f(t, "y", 0.0) + shift[1]],
-                        rotation,
+                        at: [t.x + shift[0], t.y + shift[1]],
+                        rotation: t.rotation,
+                        skew: t.skew,
                         size,
                     }
                 }
                 "mesh" => mesh(d, &dn, &sub(&path)?, bone, &setup)?,
+                "boundingBox" => {
+                    let m = t.affine();
+                    let (w, h) = (f(d, "width", 0.0) / 2.0, f(d, "height", 0.0) / 2.0);
+                    let local: Vec<[f32; 2]> = match d["subType"].as_str().unwrap_or("rectangle") {
+                        "rectangle" => vec![[-w, -h], [w, -h], [w, h], [-w, h]],
+                        "ellipse" => {
+                            notes.push(format!("box {an}: the ellipse is a 32-sided polygon"));
+                            (0..32)
+                                .map(|i| {
+                                    let (s, c) =
+                                        og_anim::sincos(f64::from(i) * std::f64::consts::PI / 16.0);
+                                    [w * c as f32, h * s as f32]
+                                })
+                                .collect()
+                        }
+                        "polygon" => {
+                            let v: Vec<f32> = d["vertices"]
+                                .as_array()
+                                .into_iter()
+                                .flatten()
+                                .map(|v| v.as_f64().unwrap_or(0.0) as f32)
+                                .collect();
+                            v.as_chunks::<2>().0.iter().map(|p| [p[0], -p[1]]).collect()
+                        }
+                        other => return Err(format!("box {an}: subType {other}")),
+                    };
+                    if local.len() < 3 {
+                        return Err(format!("box {an}: fewer than three points"));
+                    }
+                    AttachmentKind::Box {
+                        polygon: local.into_iter().map(|p| m.apply_to(p)).collect(),
+                    }
+                }
+                "armature" => {
+                    let index = match children.iter().position(|c| *c == path) {
+                        Some(i) => i,
+                        None => {
+                            children.push(path.clone());
+                            children.len() - 1
+                        }
+                    };
+                    AttachmentKind::Child {
+                        armature: index,
+                        clip: play_action(&d["actions"]).or_else(|| play_action(&sl["actions"])),
+                        at: [t.x, t.y],
+                        rotation: t.rotation,
+                        skew: t.skew,
+                        scale: t.scale,
+                    }
+                }
                 other => {
                     skipped.push(format!("{n}/{dn} ({other})"));
                     ids.push(None);
@@ -350,11 +595,9 @@ pub fn dragonbones(
     }
     for k in arm["ik"].as_array().into_iter().flatten() {
         let n = name(k)?;
-        let bone = rig
-            .bone(k["bone"].as_str().unwrap_or(""))
-            .ok_or(format!("ik {n}: no bone"))?;
-        let target = rig
-            .bone(k["target"].as_str().unwrap_or(""))
+        let bone =
+            bone_of(&rig, k["bone"].as_str().unwrap_or("")).ok_or(format!("ik {n}: no bone"))?;
+        let target = bone_of(&rig, k["target"].as_str().unwrap_or(""))
             .ok_or(format!("ik {n}: no target"))?;
         let bones = match k["chain"].as_u64().unwrap_or(0) {
             0 => vec![bone],
@@ -374,10 +617,9 @@ pub fn dragonbones(
             weight: f(k, "weight", 1.0),
         });
     }
-    let mut dropped = Vec::new();
+    let mut clockwise = Vec::new();
     for a in arm["animation"].as_array().into_iter().flatten() {
         let n = name(a)?;
-        let step = |k: &Json| k.get("tweenEasing").is_some_and(Json::is_null);
         let mut clip = Clip2d {
             name: n.clone(),
             duration: f(a, "duration", 1.0).max(1.0) / rate,
@@ -385,39 +627,51 @@ pub fn dragonbones(
             bones: Vec::new(),
             slots: Vec::new(),
             deforms: Vec::new(),
+            order: Vec::new(),
+            iks: Vec::new(),
             events: Vec::new(),
         };
         for t in a["bone"].as_array().into_iter().flatten() {
-            let bone = rig
-                .bone(t["name"].as_str().unwrap_or(""))
+            let bone = bone_of(&rig, t["name"].as_str().unwrap_or(""))
                 .ok_or(format!("animation {n}: no bone {}", t["name"]))?;
-            clip.bones.push(BoneTimeline {
+            let mut timeline = BoneTimeline {
                 bone,
-                translate: frames(&t["translateFrame"], rate)
-                    .into_iter()
-                    .map(|(time, k)| Key {
-                        time,
-                        value: [f(k, "x", 0.0), -f(k, "y", 0.0)],
-                        step: step(k),
-                    })
-                    .collect(),
-                rotate: frames(&t["rotateFrame"], rate)
-                    .into_iter()
-                    .map(|(time, k)| Key {
-                        time,
-                        value: -f(k, "rotate", 0.0),
-                        step: step(k),
-                    })
-                    .collect(),
-                scale: frames(&t["scaleFrame"], rate)
-                    .into_iter()
-                    .map(|(time, k)| Key {
-                        time,
-                        value: [f(k, "x", 1.0), f(k, "y", 1.0)],
-                        step: step(k),
-                    })
-                    .collect(),
-            });
+                ..Default::default()
+            };
+            for (time, k) in frames(&t["translateFrame"], rate) {
+                timeline.translate.push(Key {
+                    time,
+                    value: [f(k, "x", 0.0), -f(k, "y", 0.0)],
+                    ease: ease(k, notes),
+                });
+            }
+            for (time, k) in frames(&t["rotateFrame"], rate) {
+                if f(k, "clockwise", 0.0) != 0.0 {
+                    clockwise.push(format!("{n}.{}", rig.bones[bone].name));
+                }
+                let e = ease(k, notes);
+                timeline.rotate.push(Key {
+                    time,
+                    value: -f(k, "rotate", 0.0),
+                    ease: e.clone(),
+                });
+                timeline.skew.push(Key {
+                    time,
+                    value: -f(k, "skew", 0.0),
+                    ease: e,
+                });
+            }
+            if timeline.skew.iter().all(|k| k.value == 0.0) {
+                timeline.skew.clear();
+            }
+            for (time, k) in frames(&t["scaleFrame"], rate) {
+                timeline.scale.push(Key {
+                    time,
+                    value: [f(k, "x", 1.0), f(k, "y", 1.0)],
+                    ease: ease(k, notes),
+                });
+            }
+            clip.bones.push(timeline);
         }
         for t in a["slot"].as_array().into_iter().flatten() {
             let slot = rig
@@ -425,12 +679,15 @@ pub fn dragonbones(
                 .iter()
                 .position(|s| Some(s.name.as_str()) == t["name"].as_str());
             let slot = slot.ok_or(format!("animation {n}: no slot {}", t["name"]))?;
-            clip.slots.push(SlotTimeline {
+            let mut timeline = SlotTimeline {
                 slot,
                 attachment: frames(&t["displayFrame"], rate)
                     .into_iter()
                     .map(|(time, k)| {
-                        let i = k["value"].as_i64().unwrap_or(0);
+                        let i = k["value"]
+                            .as_i64()
+                            .or(k["displayIndex"].as_i64())
+                            .unwrap_or(0);
                         (
                             time,
                             usize::try_from(i)
@@ -439,23 +696,33 @@ pub fn dragonbones(
                         )
                     })
                     .collect(),
-                color: frames(&t["colorFrame"], rate)
-                    .into_iter()
-                    .map(|(time, k)| {
-                        let c = &k["color"];
-                        Key {
-                            time,
-                            value: [
-                                f(c, "rM", 100.0) / 100.0,
-                                f(c, "gM", 100.0) / 100.0,
-                                f(c, "bM", 100.0) / 100.0,
-                                f(c, "aM", 100.0) / 100.0,
-                            ],
-                            step: step(k),
-                        }
-                    })
-                    .collect(),
-            });
+                ..Default::default()
+            };
+            for (time, k) in frames(&t["colorFrame"], rate) {
+                let raw = if k.get("value").is_some() {
+                    &k["value"]
+                } else {
+                    &k["color"]
+                };
+                let (mul, add) = color(raw);
+                let e = ease(k, notes);
+                timeline.color.push(Key {
+                    time,
+                    value: mul,
+                    ease: e.clone(),
+                });
+                timeline.offset.push(Key {
+                    time,
+                    value: add,
+                    ease: e,
+                });
+            }
+            if timeline.offset.iter().all(|k| k.value == [0.0; 4])
+                && rig.slots[slot].offset == [0.0; 4]
+            {
+                timeline.offset.clear();
+            }
+            clip.slots.push(timeline);
         }
         for t in a["ffd"]
             .as_array()
@@ -480,26 +747,56 @@ pub fn dragonbones(
                     t["name"], t["slot"]
                 ))?;
             let len = 2 * rig.attachments[attachment].influences();
-            let keys = frames(&t["frame"], rate)
-                .into_iter()
-                .map(|(time, k)| {
-                    let mut v = vec![0.0f32; len];
-                    let off = k["offset"].as_u64().unwrap_or(0) as usize;
-                    for (i, d) in k["vertices"].as_array().into_iter().flatten().enumerate() {
-                        if let Some(slot) = v.get_mut(off + i) {
-                            // Every odd entry is a y: down there, up here.
-                            let s = if (off + i) % 2 == 1 { -1.0 } else { 1.0 };
-                            *slot = s * d.as_f64().unwrap_or(0.0) as f32;
-                        }
+            let mut keys = Vec::new();
+            for (time, k) in frames(&t["frame"], rate) {
+                let mut v = vec![0.0f32; len];
+                let off = k["offset"].as_u64().unwrap_or(0) as usize;
+                for (i, d) in k["vertices"].as_array().into_iter().flatten().enumerate() {
+                    if let Some(slot) = v.get_mut(off + i) {
+                        // Every odd entry is a y: down there, up here.
+                        let s = if (off + i) % 2 == 1 { -1.0 } else { 1.0 };
+                        *slot = s * d.as_f64().unwrap_or(0.0) as f32;
                     }
-                    Key {
-                        time,
-                        value: v,
-                        step: step(k),
-                    }
-                })
-                .collect();
+                }
+                keys.push(Key {
+                    time,
+                    value: v,
+                    ease: ease(k, notes),
+                });
+            }
             clip.deforms.push(DeformTimeline { attachment, keys });
+        }
+        // zOrder: each frame moves slots (index, offset pairs) from the setup order.
+        for (time, k) in frames(&a["zOrder"]["frame"], rate) {
+            let pairs: Vec<i64> = k["zOrder"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|v| v.as_i64().unwrap_or(0))
+                .collect();
+            let order = z_order(&pairs, rig.slots.len()).ok_or(format!(
+                "animation {n}: a zOrder frame moves a slot out of range"
+            ))?;
+            clip.order.push((time, order));
+        }
+        for t in a["ik"].as_array().into_iter().flatten() {
+            let ik = rig
+                .iks
+                .iter()
+                .position(|k| Some(k.name.as_str()) == t["name"].as_str())
+                .ok_or(format!("animation {n}: no ik {}", t["name"]))?;
+            let mut keys = Vec::new();
+            for (time, k) in frames(&t["frame"], rate) {
+                keys.push(Key {
+                    time,
+                    value: IkKey {
+                        weight: f(k, "weight", 1.0).clamp(0.0, 1.0),
+                        counterclockwise: !k["bendPositive"].as_bool().unwrap_or(true),
+                    },
+                    ease: ease(k, notes),
+                });
+            }
+            clip.iks.push(IkTimeline { ik, keys });
         }
         for (time, k) in frames(&a["frame"], rate) {
             let mut push = |e: &str| clip.events.push((time, e.chars().take(63).collect()));
@@ -519,18 +816,47 @@ pub fn dragonbones(
                 }
             }
         }
-        for key in ["zOrder", "ik"] {
-            if a.get(key).is_some() {
-                dropped.push(format!("{n}.{key}"));
-            }
-        }
         clip.events.sort_by(|a, b| a.0.total_cmp(&b.0));
         rig.clips.push(clip);
     }
-    if !dropped.is_empty() {
-        notes.push(format!("timelines not imported: {}", dropped.join(", ")));
+    if !clockwise.is_empty() {
+        notes.push(format!(
+            "rotations of more than half a turn (clockwise) play the shorter way: {}",
+            clockwise.join(", ")
+        ));
     }
     Ok(rig)
+}
+
+/// A DragonBones zOrder frame (pairs of a slot index in the setup order
+/// and how far it moves) as a draw order of every slot; empty for none.
+fn z_order(pairs: &[i64], count: usize) -> Option<Vec<usize>> {
+    if pairs.is_empty() {
+        return Some(Vec::new());
+    }
+    let mut order: Vec<Option<usize>> = vec![None; count];
+    let mut unchanged = Vec::new();
+    let mut original = 0usize;
+    for p in pairs.as_chunks::<2>().0 {
+        let slot = usize::try_from(p[0]).ok().filter(|s| *s < count)?;
+        while original < slot {
+            unchanged.push(original);
+            original += 1;
+        }
+        let to = usize::try_from(original as i64 + p[1])
+            .ok()
+            .filter(|t| *t < count)?;
+        *order.get_mut(to)? = Some(original);
+        original += 1;
+    }
+    unchanged.extend(original..count);
+    // The slots not moved fill the places left, last first.
+    for o in order.iter_mut().rev() {
+        if o.is_none() {
+            *o = Some(unchanged.pop()?);
+        }
+    }
+    order.into_iter().collect()
 }
 
 /// Keyframes with their times: each frame's `duration` is frames of `rate`.

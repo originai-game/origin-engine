@@ -7,10 +7,13 @@
 //! weighted vertex is left in the setup pose's space instead of each
 //! bone's (the mesh flies off when a bone moves); frame durations are read
 //! as seconds; a deform's offset or its y signs are ignored; a stepped key
-//! (`tweenEasing: null`) interpolates; events in `events` or `actions` are
-//! lost.
+//! (`tweenEasing: null`, or none at all) interpolates; events in `events`
+//! or `actions` are lost; skew is folded into the rotation; a colour's
+//! offsets, a zOrder or IK timeline, an armature or bounding-box display,
+//! or a Bézier `curve` is dropped or played as a line; a child armature
+//! plays the wrong clip or at its parent's frame rate.
 
-use og_anim::{AttachmentKind, Rig2dAsset};
+use og_anim::{AttachmentKind, Ease, Rig2dAsset};
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};
 use std::path::PathBuf;
@@ -66,27 +69,55 @@ const SKE: &str = r#"{ "name": "hero", "version": "5.5", "frameRate": 10, "armat
   "name": "hero",
   "bone": [
     { "name": "root" },
-    { "name": "arm", "parent": "root", "length": 40, "transform": { "x": 10, "y": -20, "skX": 30, "skY": 30 } }
+    { "name": "arm", "parent": "root", "length": 40, "transform": { "x": 10, "y": -20, "skX": 30, "skY": 30 } },
+    { "name": "lean", "parent": "root", "transform": { "skX": 40, "skY": 10, "scX": 2 } }
   ],
-  "slot": [ { "name": "s-arm", "parent": "arm", "color": { "aM": 50 } } ],
-  "skin": [{ "slot": [{ "name": "s-arm", "display": [
-    { "name": "arm", "transform": { "x": 20 } },
-    { "name": "cloth", "type": "mesh",
-      "vertices": [0, 0, 40, 0, 40, 10], "uvs": [0, 0, 1, 0, 1, 1], "triangles": [0, 1, 2],
-      "weights": [1, 0, 1, 2, 0, 0.5, 1, 0.5, 1, 1, 1], "slotPose": [1, 0, 0, 1, 0, 0] },
-    { "name": "box", "type": "boundingBox" }
-  ] }] }],
+  "slot": [
+    { "name": "s-arm", "parent": "arm", "color": { "aM": 50, "rO": 51, "bO": -255 } },
+    { "name": "s-hat", "parent": "lean", "actions": [{ "gotoAndPlay": "spin" }] }
+  ],
+  "skin": [{ "slot": [
+    { "name": "s-arm", "display": [
+      { "name": "arm", "transform": { "x": 20 } },
+      { "name": "cloth", "type": "mesh",
+        "vertices": [0, 0, 40, 0, 40, 10], "uvs": [0, 0, 1, 0, 1, 1], "triangles": [0, 1, 2],
+        "weights": [1, 0, 1, 2, 0, 0.5, 1, 0.5, 1, 1, 1], "slotPose": [1, 0, 0, 1, 0, 0] },
+      { "name": "box", "type": "boundingBox", "subType": "polygon", "vertices": [0, 0, 10, 0, 10, -5] },
+      { "name": "frame", "type": "boundingBox", "subType": "rectangle", "width": 4, "height": 2, "transform": { "x": 1, "skX": 90, "skY": 90 } },
+      { "name": "trail", "type": "path" }
+    ] },
+    { "name": "s-hat", "display": [
+      { "name": "hat", "type": "armature", "transform": { "x": 5, "y": -6 } }
+    ] }
+  ] }],
   "ik": [{ "name": "aim", "bone": "arm", "target": "root", "bendPositive": false }],
   "animation": [{ "name": "walk", "duration": 10, "playTimes": 0,
     "frame": [{ "duration": 3 }, { "duration": 7, "events": [{ "name": "step" }] }],
-    "bone": [{ "name": "arm",
-      "translateFrame": [{ "duration": 5, "x": 2, "y": 4 }, { "duration": 5, "tweenEasing": null, "x": 0, "y": 0 }],
-      "rotateFrame": [{ "duration": 10, "rotate": 15 }] }],
-    "slot": [{ "name": "s-arm", "displayFrame": [{ "duration": 5, "value": 0 }, { "duration": 5, "value": 1 }] }],
+    "bone": [
+      { "name": "arm",
+        "translateFrame": [{ "duration": 5, "tweenEasing": 0, "x": 2, "y": 4 }, { "duration": 5, "tweenEasing": null, "x": 0, "y": 0 }],
+        "rotateFrame": [{ "duration": 5, "tweenEasing": 0, "rotate": 15, "skew": 5, "curve": [0.42, 0, 1, 1] }, { "duration": 5, "rotate": 25, "skew": 0 }],
+        "scaleFrame": [{ "duration": 5, "x": 2 }, { "duration": 5, "x": 1 }] }
+    ],
+    "slot": [{ "name": "s-arm",
+      "displayFrame": [{ "duration": 5, "value": 0 }, { "duration": 5, "value": 1 }],
+      "colorFrame": [{ "duration": 5, "tweenEasing": -1, "color": { "rM": 50, "gO": 102 } }, { "duration": 5, "color": {} }] }],
     "ffd": [{ "name": "cloth", "slot": "s-arm", "frame": [{ "duration": 10, "offset": 1, "vertices": [3, 4] }] }],
-    "zOrder": { "frame": [] }
+    "zOrder": { "frame": [{ "duration": 5 }, { "duration": 5, "zOrder": [0, 1] }] },
+    "ik": [{ "name": "aim", "frame": [
+      { "duration": 5, "tweenEasing": 0, "weight": 1, "bendPositive": false },
+      { "duration": 5, "weight": 0.25, "bendPositive": true } ] }]
   }]
-}] }"#;
+}, {
+  "name": "hat", "frameRate": 20,
+  "bone": [{ "name": "crown" }],
+  "slot": [{ "name": "s-crown", "parent": "crown" }],
+  "skin": [{ "slot": [{ "name": "s-crown", "display": [{ "name": "arm" }] }] }],
+  "animation": [
+    { "name": "spin", "duration": 20, "playTimes": 0, "bone": [{ "name": "crown", "rotateFrame": [{ "duration": 20, "tweenEasing": 0, "rotate": 0 }, { "duration": 0, "rotate": 90 }] }] },
+    { "name": "walk", "duration": 10 }
+  ]
+}, { "name": "spare", "bone": [{ "name": "b" }] }] }"#;
 
 const ATLAS: &str = r#"{ "imagePath": "hero_tex.png", "width": 32, "height": 16, "SubTexture": [
   { "name": "arm", "x": 0, "y": 0, "width": 16, "height": 8 },
@@ -131,12 +162,11 @@ fn a_dragonbones_export_becomes_a_rig_with_y_up() {
     // y and angles change sign.
     let arm = &rig.bones[1];
     assert_eq!(
-        (arm.x, arm.y, arm.rotation, arm.length),
-        (10.0, 20.0, -30.0, 40.0)
+        (arm.x, arm.y, arm.rotation, arm.skew, arm.length),
+        (10.0, 20.0, -30.0, 0.0, 40.0)
     );
     assert_eq!(rig.slots[0].color, [1.0, 1.0, 1.0, 0.5]);
     assert_eq!(rig.slots[0].attachment, Some(0), "displayIndex 0");
-    assert_eq!(rig.attachments.len(), 2, "the bounding box is not imported");
     match &rig.attachments[0].kind {
         AttachmentKind::Region { rect, at, .. } => {
             assert_eq!(*rect, [0.0, 0.0, 16.0, 8.0]);
@@ -170,10 +200,10 @@ fn a_dragonbones_export_becomes_a_rig_with_y_up() {
     let bone = &walk.bones[0];
     assert_eq!(bone.translate[0].value, [2.0, -4.0]);
     assert_eq!(
-        (bone.translate[1].time, bone.translate[1].step),
-        (0.5, true)
+        (bone.translate[1].time, &bone.translate[1].ease),
+        (0.5, &Ease::Step)
     );
-    assert!(!bone.translate[0].step);
+    assert_eq!(bone.translate[0].ease, Ease::Linear);
     assert_eq!(bone.rotate[0].value, -15.0);
     assert_eq!(walk.slots[0].attachment, [(0.0, Some(0)), (0.5, Some(1))]);
     assert_eq!(
@@ -181,4 +211,138 @@ fn a_dragonbones_export_becomes_a_rig_with_y_up() {
         [0.0, -3.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     );
     assert_eq!(walk.events, [(0.3, "step".to_string())]);
+}
+
+/// What the import used to drop (the notes said "skew dropped", "timelines
+/// not imported: walk.zOrder, walk.ik", "displays not imported", Bézier
+/// curves played linearly): every one of them is in the rig now.
+#[test]
+fn a_dragonbones_export_keeps_skew_offsets_order_ik_keys_children_boxes_and_curves() {
+    let root = project(
+        "dragonbones-full",
+        &[
+            ("rigs/hero_tex.png", png(32, 16)),
+            ("rigs/hero_ske.json", SKE.as_bytes().to_vec()),
+            ("rigs/hero_tex.json", ATLAS.as_bytes().to_vec()),
+            ("rigs/hero.ogt", IMPORT.as_bytes().to_vec()),
+        ],
+    );
+    let rig = cooked(&root).load_rig2d("rigs/hero.ogt").unwrap();
+    // Skew: skY 10 is the rotation (-10 here), skX 40 turns the y axis 30
+    // further clockwise with y down: -30 here.
+    let lean = &rig.bones[2];
+    assert_eq!(
+        (lean.rotation, lean.skew, lean.scale),
+        (-10.0, -30.0, [2.0, 1.0])
+    );
+    let m = rig.pose(None, 0.0, &[(0, [0.0, 0.0], 0.0)]).world[2];
+    // The y axis turned -40 here: (-sin -40, cos -40) = (sin 40, cos 40).
+    let (s40, c40) = (40f32.to_radians().sin(), 40f32.to_radians().cos());
+    assert!(
+        (m.c - s40).abs() < 1e-5 && (m.d - c40).abs() < 1e-5,
+        "{m:?}"
+    );
+    // Colour offsets: rO 51 and bO -255 of 255.
+    assert_eq!(rig.slots[0].offset, [0.2, 0.0, -1.0, 0.0]);
+    // Boxes: the polygon (y flipped), the rectangle turned 90 (clockwise on
+    // screen, -90 here) about its display's origin at x 1.
+    let shape = |n: &str| match &rig.attachments.iter().find(|a| a.name == n).unwrap().kind {
+        AttachmentKind::Box { polygon } => polygon.clone(),
+        k => panic!("{n}: {k:?}"),
+    };
+    assert_eq!(shape("box"), [[0.0, 0.0], [10.0, 0.0], [10.0, 5.0]]);
+    let frame = shape("frame");
+    for (got, want) in frame
+        .iter()
+        .zip([[0.0, 2.0], [0.0, -2.0], [2.0, -2.0], [2.0, 2.0]])
+    {
+        assert!(
+            (got[0] - want[0]).abs() < 1e-5 && (got[1] - want[1]).abs() < 1e-5,
+            "{frame:?}"
+        );
+    }
+    // The armature display: the hat armature imported as a child, placed
+    // at (5, 6), playing the slot's action `spin`; the unused armature is not.
+    assert_eq!(rig.armatures.len(), 1);
+    let hat = &rig.armatures[0];
+    assert_eq!((hat.name.as_str(), hat.clips.len()), ("hat", 2));
+    assert_eq!(
+        hat.clips[0].duration, 1.0,
+        "20 frames at the hat's own 20 per second"
+    );
+    let lamp = rig.attachments.iter().find(|a| a.name == "hat").unwrap();
+    match &lamp.kind {
+        AttachmentKind::Child {
+            armature, clip, at, ..
+        } => {
+            assert_eq!(
+                (*armature, clip.as_deref(), *at),
+                (0, Some("spin"), [5.0, 6.0])
+            );
+        }
+        k => panic!("{k:?}"),
+    }
+    assert_eq!(
+        rig.slots[1].attachment,
+        Some(
+            rig.attachments
+                .iter()
+                .position(|a| a.name == "hat")
+                .unwrap()
+        )
+    );
+    let walk = &rig.clips[0];
+    // The parent plays walk: the hat has a walk of its own and plays it
+    // (DragonBones' inherited animation), held at its start.
+    let p = rig.pose(Some(walk), 0.5, &[(0, [0.0, 0.0], 0.0)]);
+    let crown = &p.children[0].1.world[0];
+    assert!((crown.a - 1.0).abs() < 1e-6, "{crown:?}");
+    // Without a clip of the parent's name it plays spin: 0.5 s of 1 s, 45 degrees.
+    let p = rig.pose(None, 0.5, &[(0, [0.0, 0.0], 0.0)]);
+    let crown = &p.children[0].1.world[0];
+    assert!(
+        (crown.b + 45f32.to_radians().sin()).abs() < 1e-5,
+        "{crown:?}"
+    );
+    // zOrder: the setup order until 0.5, then slot 0 (the arm) moved one
+    // place up: the hat first, the arm drawn over it.
+    assert_eq!(walk.order, [(0.0, vec![]), (0.5, vec![1, 0])]);
+    // IK keys: weight 1 counter-clockwise eased linearly to 0.25 clockwise.
+    let ik = &walk.iks[0];
+    assert_eq!(
+        (ik.keys[0].value.weight, ik.keys[0].value.counterclockwise),
+        (1.0, true)
+    );
+    assert_eq!(
+        (
+            ik.keys[1].time,
+            ik.keys[1].value.weight,
+            ik.keys[1].value.counterclockwise
+        ),
+        (0.5, 0.25, false)
+    );
+    assert_eq!(
+        ik.keys[1].ease,
+        Ease::Step,
+        "the last frame has no tweenEasing"
+    );
+    // Rotation keys carry the skew; the curve is a Bézier; no tweenEasing is a step.
+    let arm = &walk.bones[0];
+    assert_eq!(arm.rotate[0].ease, Ease::Bezier(vec![0.42, 0.0, 1.0, 1.0]));
+    assert_eq!((arm.skew[0].value, arm.skew[1].value), (-5.0, 0.0));
+    assert_eq!(arm.scale[0].ease, Ease::Step);
+    let p = rig.pose(Some(walk), 0.25, &[(0, [0.0, 0.0], 0.0)]);
+    let turned = f64::from(p.world[1].b)
+        .atan2(f64::from(p.world[1].a))
+        .to_degrees();
+    // -30 setup, then -15 eased in to -25: half time is 0.3153568 of the way.
+    let want = -30.0 - 15.0 - 10.0 * 0.315_356_81;
+    assert!((turned - want).abs() < 1e-3, "{turned} {want}");
+    // Colour keys: multipliers and offsets, eased by tweenEasing -1 (quadratic in).
+    let slot = &walk.slots[0];
+    assert_eq!(slot.color[0].value, [0.5, 1.0, 1.0, 1.0]);
+    assert_eq!(slot.offset[0].value, [0.0, 0.4, 0.0, 0.0]);
+    let p = rig.pose(Some(walk), 0.25, &[(0, [0.0, 0.0], 0.0)]);
+    // s² at half: a quarter of the way from 0.4 to 0.
+    assert!((p.offsets[0][1] - 0.3).abs() < 1e-4, "{:?}", p.offsets[0]);
 }

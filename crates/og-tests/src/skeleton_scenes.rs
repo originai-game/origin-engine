@@ -99,6 +99,7 @@ pub fn skeleton_scene() -> Result<RenderScene, String> {
                     position: w.truncate(),
                     uv: Vec2::from(c.uv),
                     color: c.color,
+                    offset: c.offset,
                 }
             })
             .collect();

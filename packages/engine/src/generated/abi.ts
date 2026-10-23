@@ -375,6 +375,8 @@ export interface HostAbi<A, V> {
   og_anim_retarget(world: number, desc: string | undefined): string;
   /** `og.anim.rig2dInfo` */
   og_anim_rig2d_info(world: number, rig: number): string;
+  /** `og.anim.skeleton2dBoxes` */
+  og_anim_skeleton2d_boxes(world: number, entity: number): string;
   /** `og.tween.to` */
   og_tween_to(world: number, desc: string | undefined): string;
   /** `og.tween.sequence` */
@@ -941,6 +943,7 @@ export const SYMBOLS: readonly string[] = [
   "og_anim_humanoid",
   "og_anim_retarget",
   "og_anim_rig2d_info",
+  "og_anim_skeleton2d_boxes",
   "og_tween_to",
   "og_tween_sequence",
   "og_tween_parallel",

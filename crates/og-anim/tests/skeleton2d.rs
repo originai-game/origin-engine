@@ -203,3 +203,61 @@ fn a_restored_snapshot_continues_without_replaying_events() {
     w.step().unwrap();
     assert_eq!(events(&w), first);
 }
+
+#[test]
+fn bounding_boxes_follow_the_pose_in_the_entitys_frame_and_restore_with_snapshots() {
+    // The leg's IK off (weight 0), so the thigh hangs as set up.
+    let text = RIG.replace("bend counterclockwise", "bend counterclockwise\n  weight 0").replace(
+        "clip walk {",
+        "slot hurt {\n  bone thigh\n  attachment hurt\n}\nbox hurt {\n  slot hurt\n  polygon 0 -2 10 -2 10 2\n}\nclip walk {",
+    );
+    let rig = Rig2dAsset::parse(&text).unwrap();
+    let mut w = World::new(&WorldDesc {
+        tick_rate: 64,
+        seed: 1,
+    })
+    .unwrap();
+    let sys = install_skeleton2d(&mut w).unwrap();
+    sys.add_rig(9, rig.clone()).unwrap();
+    let place = Transform {
+        position: Vec3::new(3.0, 1.0, 0.0),
+        ..Default::default()
+    };
+    let e = w
+        .spawn((
+            place,
+            Skeleton2D {
+                rig: 9,
+                ..Default::default()
+            },
+        ))
+        .unwrap();
+    assert_eq!(
+        sys.boxes(e.to_bits()),
+        None,
+        "not posed before the first tick"
+    );
+    w.step().unwrap();
+    let b = sys.boxes(e.to_bits()).unwrap();
+    assert_eq!(
+        (b.len(), b[0].slot.as_str(), b[0].name.as_str()),
+        (1, "hurt", "hurt")
+    );
+    let near = |p: Vec2, x: f32, y: f32| (p.x - x).abs() < 1e-5 && (p.y - y).abs() < 1e-5;
+    // The thigh's x axis points down (-90): (10, -2) in it is (-2, -10) px
+    // from the hip, (-0.2, -1) units.
+    assert!(near(b[0].points[1], 2.8, 0.0), "{b:?}");
+    // Flipped about the entity's x.
+    let s = w.get::<Skeleton2D>(e).unwrap();
+    w.insert(e, Skeleton2D { flip_x: true, ..s }).unwrap();
+    w.step().unwrap();
+    let flipped = sys.boxes(e.to_bits()).unwrap();
+    assert!(near(flipped[0].points[1], 3.2, 0.0), "{flipped:?}");
+    // The boxes are state-block state: a restore answers what was saved.
+    let snap = w.snapshot();
+    w.insert(e, Skeleton2D { flip_x: false, ..s }).unwrap();
+    w.step().unwrap();
+    assert!(near(sys.boxes(e.to_bits()).unwrap()[0].points[1], 2.8, 0.0));
+    w.restore(&snap).unwrap();
+    assert_eq!(sys.boxes(e.to_bits()).unwrap(), flipped);
+}

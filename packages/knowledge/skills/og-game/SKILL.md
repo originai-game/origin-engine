@@ -914,6 +914,8 @@ bone hip {
 slot torso {
   bone hip
   attachment torso
+  color 1 1 1 1
+  offset 0 0 0 0
 }
 region torso {
   slot torso
@@ -928,21 +930,46 @@ mesh cape {
   vertex 6 40 hip 8 4 0.4 cape-1 7 0 0.6
   triangles 0 1 2
 }
+box hurt {
+  slot torso
+  polygon -6 0 6 0 6 20 -6 20
+}
+child flame {
+  slot lantern
+  armature fire
+  clip burn
+  at 15 0
+}
 ik leg {
   bones thigh shin
   target foot
   bend clockwise
 }
+armature fire {
+  bone base {
+  }
+  # slots, regions, meshes, boxes, ik and clips, as at the top
+}
 clip idle {
   duration 2
   loop true
   bone hip {
-    translate 0 0 0
+    translate 0 0 0 curve 0.42 0 0.58 1
     translate 1 0 -1.5
+    skew 0 0
+  }
+  slot torso {
+    offset 0 0 0 0 0
+    offset 1 0.2 0.1 0 0
   }
   deform cape {
     key 0 0 0 0 0
     key 1 0 -3 0 -6
+  }
+  order 1.5 cape torso
+  ik leg {
+    key 0 1 clockwise
+    key 1 0.5 clockwise
   }
   event 0 "inhale"
 }
@@ -950,13 +977,25 @@ clip idle {
 
 `rect` is pixels from the image's top left; a mesh `vertex` is `u v` in
 pixels then, per bone, `bone x y weight` in that bone's space (weights
-summing to 1), or plain `x y` in the slot's bone. Bone keys add to the
-setup pose (`rotate` degrees, `translate` pixels, `scale` multiplies),
-linear unless they end in `step`; a `deform` key offsets every influence
-in order, one `x y` pair each. A DragonBones 5.5 export is imported
-instead of written: a rig2d `.ogt` with `dragonbones "hero_ske.json"` and
-`atlas "hero_tex.json"` (Spine's files are not read; convert them to this
-text).
+summing to 1), or plain `x y` in the slot's bone. A bone's or region's
+`skew` turns its y axis that many degrees past its x axis. A slot draws
+`texel × color + offset`. Bone keys add to the setup pose (`rotate` and
+`skew` degrees, `translate` pixels, `scale` multiplies); every key eases
+linearly to the next, holds with `step`, or follows `curve x1 y1 x2 y2`
+(a cubic Bézier from 0,0 to 1,1, x time and y value; more segments as
+`x y x1 y1 x2 y2`). A `deform` key offsets every influence in order, one
+`x y` pair each; `order <time> <every slot>` redraws back to front from
+then (alone, the file's order); an `ik` key sets the constraint's weight
+and bend. A `box` draws nothing: `og.anim.skeleton2dBoxes(world, hero)`
+answers its polygon (in the Transform's frame) while its slot shows it,
+for hit and hurt boxes a clip switches. A `child` shows an `armature`
+block (a rig of its own on the same texture) in its slot; it plays the
+parent's clip by name when it has one, else its `clip`, at the parent's
+time. A DragonBones 5.5 export is imported instead of written: a rig2d
+`.ogt` with `dragonbones "hero_ske.json"` and `atlas "hero_tex.json"`
+(skew, colour offsets, zOrder and IK timelines, armature displays,
+bounding boxes and curves included; Spine's files are not read, convert
+them to this text).
 
 ```ts
 const rig = must(og.load.rig2d(world, "rigs/hero.ogt"));
@@ -971,9 +1010,10 @@ must(world.insert(foot, og.IkTarget2D, { skeleton: hero, constraint: rig.constra
 setting it seeks), wraps when `loop`, mirrors with `flipX` and draws at
 sprite `layer`, lit by `og.Lighting2D` like a sprite there. Clip events
 arrive as `og.Skeleton2DEvent` (`entity`, `clip`, `name`); an
-`og.IkTarget2D` writes `reached` and `error`. The pose is a function of
-the component, the Transform and the targets, so a snapshot carries only
-the playback position. `templates/game-2d`'s lamp keeper
+`og.IkTarget2D` writes `reached` and `error` (its `weight` multiplies the
+constraint's own). The pose is a function of the component, the
+Transform and the targets, so a snapshot carries only the playback
+position and the boxes. `templates/game-2d`'s lamp keeper
 (`assets/rigs/keeper.ogt`, `spawnKeeper`, `Plant`) shows all of it.
 
 ### Cutscenes: timelines and paths
