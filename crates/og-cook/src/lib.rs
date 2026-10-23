@@ -28,6 +28,8 @@ pub mod fx;
 #[cfg(feature = "runtime")]
 pub mod ktx2;
 #[cfg(feature = "runtime")]
+pub mod lightmap;
+#[cfg(feature = "runtime")]
 pub mod look;
 #[cfg(feature = "runtime")]
 pub mod meshopt_codec;

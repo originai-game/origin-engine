@@ -29,6 +29,7 @@ import { ai, i18n, nav, net, platform } from "./e6.ts";
 import { path, stream, terrain, timeline } from "./p2.ts";
 import { debug, depthRender } from "./depth.ts";
 import { targetsLoad, targetsRender } from "./targets.ts";
+import { lightRender } from "./light.ts";
 import { uiKit } from "./ui-kit/index.ts";
 
 // The math layer (IDL `math`): three.js's methods as pure functions over the plain structs.
@@ -188,7 +189,7 @@ export const og: typeof Api.og = Object.freeze({
   ...BUILTINS,
   game: (desc?: Api.GameDesc) => defineGame(desc as never),
   transform,
-  render: Object.freeze({ ...render, ...depthRender, ...targetsRender }),
+  render: Object.freeze({ ...render, ...depthRender, ...targetsRender, ...lightRender }),
   load: Object.freeze({ ...load, ...targetsLoad }),
   commands,
   physics,

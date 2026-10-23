@@ -1124,5 +1124,6 @@ pub(crate) fn spawn_scene(
             dropped.join("; ")
         ));
     }
+    super::baked::scene_spawned(eng, scene, &spawned);
     Ok(spawned)
 }

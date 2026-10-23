@@ -18,7 +18,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 4734</sub>
+<sub>`api.ogt` line 4806</sub>
 
 ## Contents
 
@@ -104,7 +104,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 4872</sub>
+<sub>`api.ogt` line 4945</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -134,7 +134,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 4879</sub>
+<sub>`api.ogt` line 4952</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -162,7 +162,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 4886</sub>
+<sub>`api.ogt` line 4959</sub>
 
 <a id="fn-gltf"></a>
 
@@ -197,7 +197,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 4892</sub>
+<sub>`api.ogt` line 4965</sub>
 
 <a id="fn-scene"></a>
 
@@ -227,7 +227,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 4901</sub>
+<sub>`api.ogt` line 4974</sub>
 
 <a id="fn-font"></a>
 
@@ -257,7 +257,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 4908</sub>
+<sub>`api.ogt` line 4981</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -287,7 +287,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 4915</sub>
+<sub>`api.ogt` line 4988</sub>
 
 <a id="fn-sound"></a>
 
@@ -320,7 +320,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 4922</sub>
+<sub>`api.ogt` line 4995</sub>
 
 <a id="fn-lut"></a>
 
@@ -350,7 +350,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 4930</sub>
+<sub>`api.ogt` line 5003</sub>
 
 <a id="fn-environment"></a>
 
@@ -380,7 +380,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 4937</sub>
+<sub>`api.ogt` line 5010</sub>
 
 <a id="fn-emitter"></a>
 
@@ -410,7 +410,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 4944</sub>
+<sub>`api.ogt` line 5017</sub>
 
 <a id="fn-shader"></a>
 
@@ -440,7 +440,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 4951</sub>
+<sub>`api.ogt` line 5024</sub>
 
 <a id="fn-post"></a>
 
@@ -470,7 +470,7 @@ fn post {
 }
 ```
 
-<sub>`api.ogt` line 4958</sub>
+<sub>`api.ogt` line 5031</sub>
 
 <a id="fn-texture"></a>
 
@@ -503,7 +503,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 4965</sub>
+<sub>`api.ogt` line 5038</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -536,7 +536,7 @@ fn textureArray {
 }
 ```
 
-<sub>`api.ogt` line 4973</sub>
+<sub>`api.ogt` line 5046</sub>
 
 <a id="fn-style"></a>
 
@@ -566,7 +566,7 @@ fn style {
 }
 ```
 
-<sub>`api.ogt` line 4981</sub>
+<sub>`api.ogt` line 5054</sub>
 
 <a id="fn-look"></a>
 
@@ -596,7 +596,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 4988</sub>
+<sub>`api.ogt` line 5061</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -626,7 +626,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 4995</sub>
+<sub>`api.ogt` line 5068</sub>
 
 <a id="fn-palette"></a>
 
@@ -656,7 +656,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 5002</sub>
+<sub>`api.ogt` line 5075</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -686,7 +686,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 5009</sub>
+<sub>`api.ogt` line 5082</sub>
 
 <a id="fn-status"></a>
 
@@ -716,7 +716,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 5016</sub>
+<sub>`api.ogt` line 5089</sub>
 
 <a id="fn-error"></a>
 
@@ -746,7 +746,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 5023</sub>
+<sub>`api.ogt` line 5096</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -776,7 +776,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 5030</sub>
+<sub>`api.ogt` line 5103</sub>
 
 <a id="fn-animation"></a>
 
@@ -809,7 +809,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 5037</sub>
+<sub>`api.ogt` line 5110</sub>
 
 <a id="fn-rig"></a>
 
@@ -839,7 +839,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 5045</sub>
+<sub>`api.ogt` line 5118</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -869,7 +869,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 5052</sub>
+<sub>`api.ogt` line 5125</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -899,7 +899,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 5059</sub>
+<sub>`api.ogt` line 5132</sub>
 
 <a id="fn-video"></a>
 
@@ -929,7 +929,7 @@ fn video {
 }
 ```
 
-<sub>`api.ogt` line 5066</sub>
+<sub>`api.ogt` line 5139</sub>
 
 <a id="fn-videoInfo"></a>
 
@@ -959,7 +959,7 @@ fn videoInfo {
 }
 ```
 
-<sub>`api.ogt` line 5073</sub>
+<sub>`api.ogt` line 5146</sub>
 
 <a id="fn-timeline"></a>
 
@@ -989,7 +989,7 @@ fn timeline {
 }
 ```
 
-<sub>`api.ogt` line 5080</sub>
+<sub>`api.ogt` line 5153</sub>
 
 <a id="fn-rig2d"></a>
 
@@ -1019,7 +1019,7 @@ fn rig2d {
 }
 ```
 
-<sub>`api.ogt` line 5087</sub>
+<sub>`api.ogt` line 5160</sub>
 
 ## Components, resources and events
 
@@ -1044,6 +1044,7 @@ Token `og.Model`, registered under the schema name `og.Model`; its value type is
 | `visible` | `boolean` | `true` | — | — | — | Whether it is drawn, as Mesh.visible: false skips every draw of this instance (its meshes, its shadows) while it keeps its transform, its animation and its physics, so a ghost car or a pickup waiting to respawn is hidden without moving it away. |
 | `lodBias` | `number` | `1` | 0 … 16 | — | tunable | This instance's level of detail bias, multiplied with RenderSettings.lodBias: the cook simplifies every mesh into levels (a model's import settings, `model { lods 1 0.5 0.25 }` by default, the triangle fraction of each level; a glTF with MSFT_lod keeps its own levels), and the renderer draws the level its projected size calls for, with hysteresis so it does not flicker at the boundary. Above 1 keeps detail farther (a hero), below 1 drops it sooner (a crowd); 0 always draws the full mesh. dump_entity shows the level drawn. |
 | `layers` | `number` | `1` | — | — | — | Three.js layers of every mesh of the model, as Mesh.layers. |
+| `static` | `boolean` | `false` | — | — | — | Part of its scene's baked lighting: og bake lightmaps gives a static model lightmap UVs (xatlas, over its world-space triangles) and traces the light arriving at its surfaces from the scene into the scene's lightmap (`<scene>.lightmap.ogt` and `.ktx2` beside the scene). Once baked, the model draws with it (its ambient light from the lightmap instead of the sky; its lights' direct light, shadows and highlights still drawn every frame) for as long as the bake matches the scene. A scene entity says `static true` beside its `model` line; an unbaked static model draws as any model, and og doctor --project names the scene. |
 
 ```ogt
 component Model {
@@ -1079,10 +1080,11 @@ component Model {
   field layers u32 "Three.js layers of every mesh of the model, as Mesh.layers." {
     default 1
   }
+  field static bool "Part of its scene's baked lighting: og bake lightmaps gives a static model lightmap UVs (xatlas, over its world-space triangles) and traces the light arriving at its surfaces from the scene into the scene's lightmap (`<scene>.lightmap.ogt` and `.ktx2` beside the scene). Once baked, the model draws with it (its ambient light from the lightmap instead of the sky; its lights' direct light, shadows and highlights still drawn every frame) for as long as the bake matches the scene. A scene entity says `static true` beside its `model` line; an unbaked static model draws as any model, and og doctor --project names the scene."
 }
 ```
 
-<sub>`api.ogt` line 4837</sub>
+<sub>`api.ogt` line 4909</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -1105,7 +1107,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 5094</sub>
+<sub>`api.ogt` line 5167</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1130,7 +1132,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 5100</sub>
+<sub>`api.ogt` line 5173</sub>
 
 ## Types
 
@@ -1146,7 +1148,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 4740</sub>
+<sub>`api.ogt` line 4812</sub>
 
 <a id="type-Font"></a>
 
@@ -1160,7 +1162,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 4741</sub>
+<sub>`api.ogt` line 4813</sub>
 
 <a id="type-Sound"></a>
 
@@ -1174,7 +1176,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 4742</sub>
+<sub>`api.ogt` line 4814</sub>
 
 <a id="type-Style"></a>
 
@@ -1188,7 +1190,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Style "A cooked UI style: its values, atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 4743</sub>
+<sub>`api.ogt` line 4815</sub>
 
 <a id="type-TextureArray"></a>
 
@@ -1202,7 +1204,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
 ```
 
-<sub>`api.ogt` line 4744</sub>
+<sub>`api.ogt` line 4816</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -1227,7 +1229,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 4767</sub>
+<sub>`api.ogt` line 4839</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -1257,7 +1259,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 4774</sub>
+<sub>`api.ogt` line 4846</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -1282,7 +1284,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 4786</sub>
+<sub>`api.ogt` line 4858</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -1305,7 +1307,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 4794</sub>
+<sub>`api.ogt` line 4866</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -1338,7 +1340,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 4801</sub>
+<sub>`api.ogt` line 4873</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1369,7 +1371,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 4813</sub>
+<sub>`api.ogt` line 4885</sub>
 
 <a id="type-TextureArrayInfo"></a>
 
@@ -1400,7 +1402,7 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 4826</sub>
+<sub>`api.ogt` line 4898</sub>
 
 ## Column kinds
 
@@ -1421,7 +1423,7 @@ column TextureArray {
 }
 ```
 
-<sub>`api.ogt` line 4746</sub>
+<sub>`api.ogt` line 4818</sub>
 
 ```ogt
 column Asset {
@@ -1432,7 +1434,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 4753</sub>
+<sub>`api.ogt` line 4825</sub>
 
 ```ogt
 column Sound {
@@ -1443,4 +1445,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 4760</sub>
+<sub>`api.ogt` line 4832</sub>

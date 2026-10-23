@@ -370,6 +370,8 @@ fn toon_light(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, shadow: f32)
 // `receives`: the instance is darkened by the light's shadow map
 // (look_receives).
 fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, receives: bool) -> vec3<f32> {
+  // A rect light (area.wgsl): linearly transformed cosines, no shadow map.
+  if (light.color_kind.w < -0.5) { return area_light(light, s, p, n, v); }
   let to_light = light.position_range.xyz - p;
   let d2 = max(dot(to_light, to_light), 1e-4);
   let range = light.position_range.w;
@@ -387,10 +389,12 @@ fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec
   if (dot(n, l) <= 0.0) { return vec3<f32>(0.0); }
   var shadow = 1.0;
   if (receives) { shadow = local_shadow(light, p, n); }
+  // Its cookie (area.wgsl; white without).
+  let radiance = light.color_kind.rgb * light_cookie(light, -l);
   if (EFFECTS && material.toon.x > 0.5) {
-    return toon_light(s, n, v, l, shadow) * light.color_kind.rgb * atten;
+    return toon_light(s, n, v, l, shadow) * radiance * atten;
   }
-  return brdf(s, n, v, l) * light.color_kind.rgb * atten * shadow;
+  return brdf(s, n, v, l) * radiance * atten * shadow;
 }
 
 struct DecalResult {

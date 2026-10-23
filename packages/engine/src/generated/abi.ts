@@ -265,6 +265,8 @@ export interface HostAbi<A, V> {
   og_render_set_post_param(world: number, post: number, name: string, value: string): string;
   /** `og.render.postErrors` */
   og_render_post_errors(world: number): string;
+  /** `og.render.bakedLighting` */
+  og_render_baked_lighting(world: number): string;
   /** `og.load.bundle` */
   og_load_bundle(world: number, path: string): string;
   /** `og.load.bundleInfo` */
@@ -884,6 +886,7 @@ export const SYMBOLS: readonly string[] = [
   "og_render_render_target",
   "og_render_set_post_param",
   "og_render_post_errors",
+  "og_render_baked_lighting",
   "og_load_bundle",
   "og_load_bundle_info",
   "og_load_default_bundle",

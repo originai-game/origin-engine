@@ -156,6 +156,11 @@ module render {
 | [`og.render.setPostParam`](#fn-setPostParam) | function | Set a parameter of a custom post pass, by the name its asset declares: a number for float, two to four for vec2, vec3, vec4 and color. Every frame it runs in reads it. |
 | [`PostError`](#type-PostError) | struct | A custom post pass the device failed to compile. |
 | [`og.render.postErrors`](#fn-postErrors) | function | The custom post passes PostEffects.custom1 to custom4 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal. |
+| [`VolumetricFog`](#type-VolumetricFog) | enum | How the device draws Fog.volumetric (RenderCapabilities.volumetricFog). |
+| [`og.RectLight`](#record-RectLight) | component | A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light. |
+| [`og.LightVolume`](#record-LightVolume) | component | A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (bounced off its static models, from the sky, from emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every mesh, model, skinned character and particle-lit surface drawn inside it that has no lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing: a ball rolling past a red wall turns red on that side. |
+| [`BakedScene`](#type-BakedScene) | struct | One instantiated scene's baked lighting, as og.render.bakedLighting reports it. |
+| [`og.render.bakedLighting`](#fn-bakedLighting) | function | The baked lighting of every scene instantiated in the world, in instantiation order: whether it is drawn, and why not. A scene with no static model and no LightVolume is not listed. |
 
 ## Functions
 
@@ -187,7 +192,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 3520</sub>
+<sub>`api.ogt` line 3525</sub>
 
 <a id="fn-sprite"></a>
 
@@ -217,7 +222,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 3648</sub>
+<sub>`api.ogt` line 3653</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -247,7 +252,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3828</sub>
+<sub>`api.ogt` line 3833</sub>
 
 <a id="fn-measureText"></a>
 
@@ -277,7 +282,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3835</sub>
+<sub>`api.ogt` line 3840</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -307,7 +312,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3904</sub>
+<sub>`api.ogt` line 3909</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -337,7 +342,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3911</sub>
+<sub>`api.ogt` line 3916</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -367,7 +372,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3918</sub>
+<sub>`api.ogt` line 3923</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -397,7 +402,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3994</sub>
+<sub>`api.ogt` line 4000</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -429,7 +434,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4001</sub>
+<sub>`api.ogt` line 4007</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -461,7 +466,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4011</sub>
+<sub>`api.ogt` line 4017</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -493,7 +498,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 4019</sub>
+<sub>`api.ogt` line 4025</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -527,7 +532,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 4027</sub>
+<sub>`api.ogt` line 4033</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -557,7 +562,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 4036</sub>
+<sub>`api.ogt` line 4042</sub>
 
 <a id="fn-look"></a>
 
@@ -585,7 +590,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 4043</sub>
+<sub>`api.ogt` line 4049</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -613,7 +618,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 4049</sub>
+<sub>`api.ogt` line 4055</sub>
 
 <a id="fn-text"></a>
 
@@ -643,7 +648,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 4055</sub>
+<sub>`api.ogt` line 4061</sub>
 
 <a id="fn-bufferGeometry"></a>
 
@@ -673,7 +678,7 @@ fn bufferGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4093</sub>
+<sub>`api.ogt` line 4099</sub>
 
 <a id="fn-updateGeometry"></a>
 
@@ -705,7 +710,7 @@ fn updateGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4100</sub>
+<sub>`api.ogt` line 4106</sub>
 
 <a id="fn-geometryInfo"></a>
 
@@ -735,7 +740,7 @@ fn geometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 4108</sub>
+<sub>`api.ogt` line 4114</sub>
 
 <a id="fn-cylinderGeometry"></a>
 
@@ -765,7 +770,7 @@ fn cylinderGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4302</sub>
+<sub>`api.ogt` line 4308</sub>
 
 <a id="fn-coneGeometry"></a>
 
@@ -795,7 +800,7 @@ fn coneGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4309</sub>
+<sub>`api.ogt` line 4315</sub>
 
 <a id="fn-capsuleGeometry"></a>
 
@@ -825,7 +830,7 @@ fn capsuleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4316</sub>
+<sub>`api.ogt` line 4322</sub>
 
 <a id="fn-torusGeometry"></a>
 
@@ -855,7 +860,7 @@ fn torusGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4323</sub>
+<sub>`api.ogt` line 4329</sub>
 
 <a id="fn-ringGeometry"></a>
 
@@ -885,7 +890,7 @@ fn ringGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4330</sub>
+<sub>`api.ogt` line 4336</sub>
 
 <a id="fn-circleGeometry"></a>
 
@@ -915,7 +920,7 @@ fn circleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4337</sub>
+<sub>`api.ogt` line 4343</sub>
 
 <a id="fn-tubeGeometry"></a>
 
@@ -945,7 +950,7 @@ fn tubeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4344</sub>
+<sub>`api.ogt` line 4350</sub>
 
 <a id="fn-lines"></a>
 
@@ -975,7 +980,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 4402</sub>
+<sub>`api.ogt` line 4408</sub>
 
 <a id="fn-points"></a>
 
@@ -1005,7 +1010,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 4437</sub>
+<sub>`api.ogt` line 4443</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1037,7 +1042,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 4541</sub>
+<sub>`api.ogt` line 4547</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1067,7 +1072,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4597</sub>
+<sub>`api.ogt` line 4603</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1101,7 +1106,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 4709</sub>
+<sub>`api.ogt` line 4715</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1129,7 +1134,35 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 4724</sub>
+<sub>`api.ogt` line 4730</sub>
+
+<a id="fn-bakedLighting"></a>
+
+### `og.render.bakedLighting`
+
+The baked lighting of every scene instantiated in the world, in instantiation order: whether it is drawn, and why not. A scene with no static model and no LightVolume is not listed.
+
+```ts
+og.render.bakedLighting(world: World): readonly BakedScene[]
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world asked. |
+
+**Returns** `readonly BakedScene[]`.
+
+Binding symbol `og_render_baked_lighting` · publish builds: kept
+
+```ogt
+fn bakedLighting {
+  doc "The baked lighting of every scene instantiated in the world, in instantiation order: whether it is drawn, and why not. A scene with no static model and no LightVolume is not listed."
+  param world World "The world asked."
+  returns List.BakedScene
+}
+```
+
+<sub>`api.ogt` line 4797</sub>
 
 ## Components, resources and events
 
@@ -1260,6 +1293,7 @@ Token `og.PointLight`, registered under the schema name `og.PointLight`; its val
 | `intensity` | `number` | `10` | ≥ 0 | — | tunable | The radiance at one metre. |
 | `distance` | `number` | `10` | ≥ 0.01 | `m` | tunable | Where the light reaches zero, as three.js PointLight.distance (never infinite here). |
 | `castShadow` | `boolean` | `false` | — | — | — | Cast shadows: six cube faces or two paraboloid hemispheres (RenderOptions.pointShadows). |
+| `cookie` | `Texture` | `0` | — | — | — | A light cookie projected all around the light: a cube of six square faces in one texture, stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z (a KTX2 cube's face order and a cube map's orientation, world axes; the texture is six times as tall as it is wide). The light's colour is multiplied by the texel its direction meets, so a lamp behind a pierced shade throws its pattern on the walls. 0 is none. |
 
 ```ogt
 component PointLight {
@@ -1280,6 +1314,7 @@ component PointLight {
     tunable true
   }
   field castShadow bool "Cast shadows: six cube faces or two paraboloid hemispheres (RenderOptions.pointShadows)."
+  field cookie Texture "A light cookie projected all around the light: a cube of six square faces in one texture, stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z (a KTX2 cube's face order and a cube map's orientation, world axes; the texture is six times as tall as it is wide). The light's colour is multiplied by the texel its direction meets, so a lamp behind a pierced shade throws its pattern on the walls. 0 is none."
 }
 ```
 
@@ -1301,6 +1336,7 @@ Token `og.SpotLight`, registered under the schema name `og.SpotLight`; its value
 | `angle` | `number` | `0.5236` | 0 … 1.5708 | `rad` | tunable | The half-angle of the outer cone, as three.js SpotLight.angle. |
 | `penumbra` | `number` | `0` | 0 … 1 | `ratio` | — | The fraction of the cone over which the light fades out, as three.js SpotLight.penumbra. |
 | `castShadow` | `boolean` | `false` | — | — | — | Cast a shadow map. |
+| `cookie` | `Texture` | `0` | — | — | — | A light cookie, as three.js SpotLight.map: the texture projected along the cone (its centre on the axis, its edges at the outer angle, its top towards world up), multiplying the light's colour, so a spot throws a window's bars or a stained-glass pattern. 0 is none. A shadowed spot keeps its shadow over the pattern. |
 
 ```ogt
 component SpotLight {
@@ -1332,10 +1368,11 @@ component SpotLight {
     unit ratio
   }
   field castShadow bool "Cast a shadow map."
+  field cookie Texture "A light cookie, as three.js SpotLight.map: the texture projected along the cone (its centre on the axis, its edges at the outer angle, its top towards world up), multiplying the light's colour, so a spot throws a window's bars or a stained-glass pattern. 0 is none. A shadowed spot keeps its shadow over the pattern."
 }
 ```
 
-<sub>`api.ogt` line 2587</sub>
+<sub>`api.ogt` line 2588</sub>
 
 <a id="record-RenderSettings"></a>
 
@@ -1361,6 +1398,7 @@ Token `og.RenderSettings`, registered under the schema name `og.RenderSettings`;
 | `exposure` | `number` | `1` | 0 … 16 | — | tunable | A multiplier on every camera's Camera.exposure, as three.js renderer.toneMappingExposure is one for the whole frame: a look's brightness without touching the cameras; 1 leaves them as they are. |
 | `decalAtlas` | `Texture` | `0` | — | — | — | The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour. |
 | `lodBias` | `number` | `1` | 0 … 16 | — | tunable | A multiplier on every model's projected size when its level of detail is picked (og.Model.lodBias multiplies it again): 1 is the engine's choice, 2 keeps full meshes twice as far, 0.5 simplifies sooner; 0 draws every model at its full mesh. |
+| `bakedLighting` | `boolean` | `true` | — | — | — | Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map: to compare, or to see the realtime lights alone. |
 
 ```ogt
 resource RenderSettings {
@@ -1416,10 +1454,13 @@ resource RenderSettings {
     max 16
     tunable true
   }
+  field bakedLighting bool "Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map: to compare, or to see the realtime lights alone." {
+    default true
+  }
 }
 ```
 
-<sub>`api.ogt` line 2632</sub>
+<sub>`api.ogt` line 2634</sub>
 
 <a id="record-Environment"></a>
 
@@ -1459,7 +1500,7 @@ resource Environment {
 }
 ```
 
-<sub>`api.ogt` line 2714</sub>
+<sub>`api.ogt` line 2719</sub>
 
 <a id="record-PostEffects"></a>
 
@@ -1740,7 +1781,7 @@ resource PostEffects {
 }
 ```
 
-<sub>`api.ogt` line 2794</sub>
+<sub>`api.ogt` line 2799</sub>
 
 <a id="record-Stylise"></a>
 
@@ -1995,7 +2036,7 @@ resource Stylise {
 }
 ```
 
-<sub>`api.ogt` line 3046</sub>
+<sub>`api.ogt` line 3051</sub>
 
 <a id="record-MaterialStyle"></a>
 
@@ -2060,7 +2101,7 @@ resource MaterialStyle {
 }
 ```
 
-<sub>`api.ogt` line 3239</sub>
+<sub>`api.ogt` line 3244</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -2099,7 +2140,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 3289</sub>
+<sub>`api.ogt` line 3294</sub>
 
 <a id="record-Light2D"></a>
 
@@ -2150,7 +2191,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 3308</sub>
+<sub>`api.ogt` line 3313</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -2181,7 +2222,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 3338</sub>
+<sub>`api.ogt` line 3343</sub>
 
 <a id="record-Decal"></a>
 
@@ -2236,7 +2277,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 3352</sub>
+<sub>`api.ogt` line 3357</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -2269,7 +2310,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 3386</sub>
+<sub>`api.ogt` line 3391</sub>
 
 <a id="record-Trail"></a>
 
@@ -2345,7 +2386,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 3399</sub>
+<sub>`api.ogt` line 3404</sub>
 
 <a id="record-Beam"></a>
 
@@ -2411,7 +2452,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 3447</sub>
+<sub>`api.ogt` line 3452</sub>
 
 <a id="record-Sprite"></a>
 
@@ -2546,7 +2587,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 3655</sub>
+<sub>`api.ogt` line 3660</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -2594,7 +2635,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 3743</sub>
+<sub>`api.ogt` line 3748</sub>
 
 <a id="record-ReflectionProbe"></a>
 
@@ -2647,7 +2688,7 @@ component ReflectionProbe {
 }
 ```
 
-<sub>`api.ogt` line 3962</sub>
+<sub>`api.ogt` line 3968</sub>
 
 <a id="record-Lines"></a>
 
@@ -2710,7 +2751,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 4444</sub>
+<sub>`api.ogt` line 4450</sub>
 
 <a id="record-Points"></a>
 
@@ -2764,7 +2805,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 4481</sub>
+<sub>`api.ogt` line 4487</sub>
 
 <a id="record-CameraView"></a>
 
@@ -2871,7 +2912,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 4604</sub>
+<sub>`api.ogt` line 4610</sub>
 
 <a id="record-Mirror"></a>
 
@@ -2916,7 +2957,89 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 4676</sub>
+<sub>`api.ogt` line 4682</sub>
+
+<a id="record-RectLight"></a>
+
+### `og.RectLight` (component)
+
+A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light.
+
+Area lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches as far as its brightness carries (where it would light a white surface facing it at one hundredth of one), and fades smoothly to zero there.
+
+Token `og.RectLight`, registered under the schema name `og.RectLight`; its value type is `RectLight`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The light's linear colour. |
+| `intensity` | `number` | `1` | ≥ 0 | — | tunable | The emitted radiance (luminance), as three.js RectAreaLight.intensity. |
+| `width` | `number` | `10` | ≥ 0 | `m` | tunable | Its size along the entity's local x, as RectAreaLight.width. |
+| `height` | `number` | `10` | ≥ 0 | `m` | tunable | Its size along the entity's local y, as RectAreaLight.height. |
+| `twoSided` | `boolean` | `false` | — | — | — | Emit from the back face as well (a hanging panel lit both ways). |
+
+```ogt
+component RectLight {
+  doc "A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light."
+  doc "Area lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches as far as its brightness carries (where it would light a white surface facing it at one hundredth of one), and fades smoothly to zero there."
+  field color Color "The light's linear colour." {
+    default 1 1 1
+  }
+  field intensity f32 "The emitted radiance (luminance), as three.js RectAreaLight.intensity." {
+    default 1
+    min 0
+    tunable true
+  }
+  field width f32 "Its size along the entity's local x, as RectAreaLight.width." {
+    default 10
+    min 0
+    unit m
+    tunable true
+  }
+  field height f32 "Its size along the entity's local y, as RectAreaLight.height." {
+    default 10
+    min 0
+    unit m
+    tunable true
+  }
+  field twoSided bool "Emit from the back face as well (a hanging panel lit both ways)."
+}
+```
+
+<sub>`api.ogt` line 4744</sub>
+
+<a id="record-LightVolume"></a>
+
+### `og.LightVolume` (component)
+
+A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (bounced off its static models, from the sky, from emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every mesh, model, skinned character and particle-lit surface drawn inside it that has no lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing: a ball rolling past a red wall turns red on that side.
+
+The box is size metres centred on the entity, axis-aligned in world space (its rotation and scale are ignored). Its probes are the scene's: unbaked (no bake since the volume was added, moved or resized) it lights nothing and og doctor --project names the scene.
+
+Token `og.LightVolume`, registered under the schema name `og.LightVolume`; its value type is `LightVolume`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `size` | `Vector3` | `{ x: 4, y: 4, z: 4 }` | — | `m` | — | The box's extent along world x, y and z. |
+| `spacing` | `number` | `1` | 0.1 … 16 | `m` | — | The most distance between neighbouring probes (the box is divided evenly, with probes on its faces; at most 64 a side). |
+
+```ogt
+component LightVolume {
+  doc "A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (bounced off its static models, from the sky, from emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every mesh, model, skinned character and particle-lit surface drawn inside it that has no lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing: a ball rolling past a red wall turns red on that side."
+  doc "The box is size metres centred on the entity, axis-aligned in world space (its rotation and scale are ignored). Its probes are the scene's: unbaked (no bake since the volume was added, moved or resized) it lights nothing and og doctor --project names the scene."
+  field size Vector3 "The box's extent along world x, y and z." {
+    default 4 4 4
+    unit m
+  }
+  field spacing f32 "The most distance between neighbouring probes (the box is divided evenly, with probes on its faces; at most 64 a side)." {
+    default 1
+    min 0.1
+    max 16
+    unit m
+  }
+}
+```
+
+<sub>`api.ogt` line 4770</sub>
 
 ## Types
 
@@ -3457,7 +3580,7 @@ enum ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 2618</sub>
+<sub>`api.ogt` line 2620</sub>
 
 <a id="type-Lut"></a>
 
@@ -3471,7 +3594,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
 ```
 
-<sub>`api.ogt` line 2689</sub>
+<sub>`api.ogt` line 2694</sub>
 
 <a id="type-EnvironmentMap"></a>
 
@@ -3485,7 +3608,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle EnvironmentMap "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`, a KTX2 cube map, or six face images)."
 ```
 
-<sub>`api.ogt` line 2690</sub>
+<sub>`api.ogt` line 2695</sub>
 
 <a id="type-ParticleEmitter"></a>
 
@@ -3499,7 +3622,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
 ```
 
-<sub>`api.ogt` line 2691</sub>
+<sub>`api.ogt` line 2696</sub>
 
 <a id="type-AoMethod"></a>
 
@@ -3524,7 +3647,7 @@ enum AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 2741</sub>
+<sub>`api.ogt` line 2746</sub>
 
 <a id="type-DofQuality"></a>
 
@@ -3547,7 +3670,7 @@ enum DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2755</sub>
+<sub>`api.ogt` line 2760</sub>
 
 <a id="type-SpriteBlend"></a>
 
@@ -3570,7 +3693,7 @@ enum SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2768</sub>
+<sub>`api.ogt` line 2773</sub>
 
 <a id="type-StripBlend"></a>
 
@@ -3593,7 +3716,7 @@ enum StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2781</sub>
+<sub>`api.ogt` line 2786</sub>
 
 <a id="type-Palette"></a>
 
@@ -3607,7 +3730,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Palette "A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours)."
 ```
 
-<sub>`api.ogt` line 3005</sub>
+<sub>`api.ogt` line 3010</sub>
 
 <a id="type-Look"></a>
 
@@ -3621,7 +3744,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Look "A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook."
 ```
 
-<sub>`api.ogt` line 3006</sub>
+<sub>`api.ogt` line 3011</sub>
 
 <a id="type-DitherPattern"></a>
 
@@ -3652,7 +3775,7 @@ enum DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 3015</sub>
+<sub>`api.ogt` line 3020</sub>
 
 <a id="type-StyliseSpace"></a>
 
@@ -3677,7 +3800,7 @@ enum StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 3032</sub>
+<sub>`api.ogt` line 3037</sub>
 
 <a id="type-LookInfo"></a>
 
@@ -3708,7 +3831,7 @@ struct LookInfo {
 }
 ```
 
-<sub>`api.ogt` line 3278</sub>
+<sub>`api.ogt` line 3283</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -3748,7 +3871,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 3487</sub>
+<sub>`api.ogt` line 3492</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -3779,7 +3902,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 3508</sub>
+<sub>`api.ogt` line 3513</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -3841,7 +3964,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3527</sub>
+<sub>`api.ogt` line 3532</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -3870,7 +3993,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 3561</sub>
+<sub>`api.ogt` line 3566</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -3893,7 +4016,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 3572</sub>
+<sub>`api.ogt` line 3577</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -4004,7 +4127,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 3579</sub>
+<sub>`api.ogt` line 3584</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -4092,7 +4215,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3770</sub>
+<sub>`api.ogt` line 3775</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -4134,7 +4257,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3842</sub>
+<sub>`api.ogt` line 3847</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -4170,7 +4293,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3865</sub>
+<sub>`api.ogt` line 3870</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -4210,7 +4333,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3883</sub>
+<sub>`api.ogt` line 3888</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -4234,6 +4357,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 | `renderTargetDepth` | `boolean` | `false` | — | — | — | Whether a render target made with `depth` gets its view's depth drawn (the full tier). WebGL2 cannot read a depth buffer in a shader: there the depth texture stays cleared to 0, and every other part of the target draws. |
 | `maxRenderTargetSize` | `number` | `0` | — | — | — | The largest side of a render target (the device's largest 2D texture). |
 | `maxCustomPosts` | `number` | `0` | — | — | — | The most custom post passes a frame runs (PostEffects.custom1 to custom4 on every tier). |
+| `volumetricFog` | `VolumetricFog` | `"froxel"` | — | — | — | How Fog.volumetric is drawn on this device: a froxel grid lit by the sun and the clustered point, spot and rect lights (the full tier), or a raymarch of the sun alone along each pixel's view ray (WebGL2). |
 
 ```ogt
 struct RenderCapabilities {
@@ -4252,10 +4376,11 @@ struct RenderCapabilities {
   field renderTargetDepth bool "Whether a render target made with `depth` gets its view's depth drawn (the full tier). WebGL2 cannot read a depth buffer in a shader: there the depth texture stays cleared to 0, and every other part of the target draws."
   field maxRenderTargetSize u32 "The largest side of a render target (the device's largest 2D texture)."
   field maxCustomPosts u32 "The most custom post passes a frame runs (PostEffects.custom1 to custom4 on every tier)."
+  field volumetricFog VolumetricFog "How Fog.volumetric is drawn on this device: a froxel grid lit by the sun and the clustered point, spot and rect lights (the full tier), or a raymarch of the sun alone along each pixel's view ray (WebGL2)."
 }
 ```
 
-<sub>`api.ogt` line 3929</sub>
+<sub>`api.ogt` line 3934</sub>
 
 <a id="type-ReflectionProbeMode"></a>
 
@@ -4278,7 +4403,7 @@ enum ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 3949</sub>
+<sub>`api.ogt` line 3955</sub>
 
 <a id="type-Shader"></a>
 
@@ -4292,7 +4417,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read."
 ```
 
-<sub>`api.ogt` line 4009</sub>
+<sub>`api.ogt` line 4015</sub>
 
 <a id="type-BufferGeometryDesc"></a>
 
@@ -4333,7 +4458,7 @@ struct BufferGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4064</sub>
+<sub>`api.ogt` line 4070</sub>
 
 <a id="type-GeometryInfo"></a>
 
@@ -4364,7 +4489,7 @@ struct GeometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 4080</sub>
+<sub>`api.ogt` line 4086</sub>
 
 <a id="type-CylinderGeometryDesc"></a>
 
@@ -4423,7 +4548,7 @@ struct CylinderGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4115</sub>
+<sub>`api.ogt` line 4121</sub>
 
 <a id="type-ConeGeometryDesc"></a>
 
@@ -4467,7 +4592,7 @@ struct ConeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4151</sub>
+<sub>`api.ogt` line 4157</sub>
 
 <a id="type-CapsuleGeometryDesc"></a>
 
@@ -4514,7 +4639,7 @@ struct CapsuleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4175</sub>
+<sub>`api.ogt` line 4181</sub>
 
 <a id="type-TorusGeometryDesc"></a>
 
@@ -4561,7 +4686,7 @@ struct TorusGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4202</sub>
+<sub>`api.ogt` line 4208</sub>
 
 <a id="type-RingGeometryDesc"></a>
 
@@ -4612,7 +4737,7 @@ struct RingGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4229</sub>
+<sub>`api.ogt` line 4235</sub>
 
 <a id="type-CircleGeometryDesc"></a>
 
@@ -4652,7 +4777,7 @@ struct CircleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4259</sub>
+<sub>`api.ogt` line 4265</sub>
 
 <a id="type-TubeGeometryDesc"></a>
 
@@ -4694,7 +4819,7 @@ struct TubeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4280</sub>
+<sub>`api.ogt` line 4286</sub>
 
 <a id="type-LineMode"></a>
 
@@ -4719,7 +4844,7 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4351</sub>
+<sub>`api.ogt` line 4357</sub>
 
 <a id="type-LinesDesc"></a>
 
@@ -4785,7 +4910,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 4365</sub>
+<sub>`api.ogt` line 4371</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -4836,7 +4961,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 4409</sub>
+<sub>`api.ogt` line 4415</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -4869,7 +4994,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4512</sub>
+<sub>`api.ogt` line 4518</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -4904,7 +5029,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 4526</sub>
+<sub>`api.ogt` line 4532</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -4927,7 +5052,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4551</sub>
+<sub>`api.ogt` line 4557</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -4941,7 +5066,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 4564</sub>
+<sub>`api.ogt` line 4570</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -4975,7 +5100,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 4573</sub>
+<sub>`api.ogt` line 4579</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -5002,7 +5127,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 4588</sub>
+<sub>`api.ogt` line 4594</sub>
 
 <a id="type-Post"></a>
 
@@ -5016,7 +5141,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 4700</sub>
+<sub>`api.ogt` line 4706</sub>
 
 <a id="type-PostError"></a>
 
@@ -5037,7 +5162,63 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 4718</sub>
+<sub>`api.ogt` line 4724</sub>
+
+<a id="type-VolumetricFog"></a>
+
+### `VolumetricFog` (enum)
+
+How the device draws Fog.volumetric (RenderCapabilities.volumetricFog).
+
+A string: one of the variants below. The zero value is `"froxel"`.
+
+| Variant | Doc |
+|---|---|
+| `"froxel"` | A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows, then integrated front to back: the full tier. |
+| `"raymarch"` | Each pixel's view ray marched through the fog in 24 steps, lit by the sun through its cascades alone: WebGL2, which has no compute. |
+
+```ogt
+enum VolumetricFog {
+  doc "How the device draws Fog.volumetric (RenderCapabilities.volumetricFog)."
+  variant froxel "A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows, then integrated front to back: the full tier."
+  variant raymarch "Each pixel's view ray marched through the fog in 24 steps, lit by the sun through its cascades alone: WebGL2, which has no compute."
+}
+```
+
+<sub>`api.ogt` line 4738</sub>
+
+<a id="type-BakedScene"></a>
+
+### `BakedScene` (struct)
+
+One instantiated scene's baked lighting, as og.render.bakedLighting reports it.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `scene` | `string` | `""` | — | — | — | The scene's asset id, such as `scenes/cornell.ogt`. |
+| `baked` | `boolean` | `false` | — | — | — | Its lightmap and probes are loaded and drawn. |
+| `reason` | `string` | `""` | — | — | — | Why not, when not: the scene has no bake (`og bake lightmaps` writes `<scene>.lightmap.ogt`), its bake is stale (a static model or the scene changed since; the reason names which), or RenderSettings.bakedLighting is off. Empty when baked. |
+| `models` | `number` | `0` | — | — | — | Static model instances drawn with the lightmap. |
+| `pages` | `number` | `0` | — | — | — | Lightmap pages (RGBA16F texture array layers). |
+| `texels` | `number` | `0` | — | — | — | The pages' side in texels. |
+| `volumes` | `number` | `0` | — | — | — | LightVolume grids its dynamic objects sample. |
+| `probes` | `number` | `0` | — | — | — | Probes in those volumes. |
+
+```ogt
+struct BakedScene {
+  doc "One instantiated scene's baked lighting, as og.render.bakedLighting reports it."
+  field scene String "The scene's asset id, such as `scenes/cornell.ogt`."
+  field baked bool "Its lightmap and probes are loaded and drawn."
+  field reason String "Why not, when not: the scene has no bake (`og bake lightmaps` writes `<scene>.lightmap.ogt`), its bake is stale (a static model or the scene changed since; the reason names which), or RenderSettings.bakedLighting is off. Empty when baked."
+  field models u32 "Static model instances drawn with the lightmap."
+  field pages u32 "Lightmap pages (RGBA16F texture array layers)."
+  field texels u32 "The pages' side in texels."
+  field volumes u32 "LightVolume grids its dynamic objects sample."
+  field probes u32 "Probes in those volumes."
+}
+```
+
+<sub>`api.ogt` line 4785</sub>
 
 ## Column kinds
 
@@ -5096,7 +5277,7 @@ column ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 2625</sub>
+<sub>`api.ogt` line 2627</sub>
 
 ```ogt
 column Texture {
@@ -5107,7 +5288,7 @@ column Texture {
 }
 ```
 
-<sub>`api.ogt` line 2693</sub>
+<sub>`api.ogt` line 2698</sub>
 
 ```ogt
 column Lut {
@@ -5118,7 +5299,7 @@ column Lut {
 }
 ```
 
-<sub>`api.ogt` line 2700</sub>
+<sub>`api.ogt` line 2705</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -5129,7 +5310,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>`api.ogt` line 2707</sub>
+<sub>`api.ogt` line 2712</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -5140,7 +5321,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>`api.ogt` line 2734</sub>
+<sub>`api.ogt` line 2739</sub>
 
 ```ogt
 column AoMethod {
@@ -5151,7 +5332,7 @@ column AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 2748</sub>
+<sub>`api.ogt` line 2753</sub>
 
 ```ogt
 column DofQuality {
@@ -5162,7 +5343,7 @@ column DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2761</sub>
+<sub>`api.ogt` line 2766</sub>
 
 ```ogt
 column SpriteBlend {
@@ -5173,7 +5354,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2774</sub>
+<sub>`api.ogt` line 2779</sub>
 
 ```ogt
 column StripBlend {
@@ -5184,7 +5365,7 @@ column StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2787</sub>
+<sub>`api.ogt` line 2792</sub>
 
 ```ogt
 column Palette {
@@ -5195,7 +5376,7 @@ column Palette {
 }
 ```
 
-<sub>`api.ogt` line 3008</sub>
+<sub>`api.ogt` line 3013</sub>
 
 ```ogt
 column DitherPattern {
@@ -5206,7 +5387,7 @@ column DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 3025</sub>
+<sub>`api.ogt` line 3030</sub>
 
 ```ogt
 column StyliseSpace {
@@ -5217,7 +5398,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 3039</sub>
+<sub>`api.ogt` line 3044</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -5228,7 +5409,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 3955</sub>
+<sub>`api.ogt` line 3961</sub>
 
 ```ogt
 column LineMode {
@@ -5239,7 +5420,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4358</sub>
+<sub>`api.ogt` line 4364</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -5250,7 +5431,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4557</sub>
+<sub>`api.ogt` line 4563</sub>
 
 ```ogt
 column RenderTarget {
@@ -5261,7 +5442,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4566</sub>
+<sub>`api.ogt` line 4572</sub>
 
 ```ogt
 column Post {
@@ -5272,7 +5453,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 4702</sub>
+<sub>`api.ogt` line 4708</sub>
 
 ## Constants
 
@@ -5288,28 +5469,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>`api.ogt` line 3384</sub>
+<sub>`api.ogt` line 3389</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3925</sub>
+<sub>`api.ogt` line 3930</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3926</sub>
+<sub>`api.ogt` line 3931</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
 ```
 
-<sub>`api.ogt` line 3927</sub>
+<sub>`api.ogt` line 3932</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>`api.ogt` line 3947</sub>
+<sub>`api.ogt` line 3953</sub>

@@ -392,7 +392,11 @@ pub(crate) fn local_lights(
     budget: LocalShadowBudget,
 ) -> (Vec<LightGpu>, Vec<LocalShadow>, u32) {
     let shadowed: Vec<usize> = (0..kept.len())
-        .filter(|&k| lights[kept[k]].cast_shadows)
+        .filter(|&k| {
+            let l = &lights[kept[k]];
+            // Rect lights cast no shadow map (area.rs).
+            l.cast_shadows && !matches!(l.kind, LightKind::Rect { .. })
+        })
         .collect();
     let mut chosen = vec![false; kept.len()];
     if shadowed.len() > budget.max_shadowed {
@@ -471,6 +475,7 @@ pub(crate) fn local_lights(
                     let vp = proj * view;
                     vec![(vp, Frustum::from_view_proj(vp))]
                 }
+                LightKind::Rect { .. } => unreachable!("rect lights are never chosen"),
             };
             shadows.push(LocalShadow {
                 layer: next_layer,
@@ -481,7 +486,24 @@ pub(crate) fn local_lights(
             });
             next_layer += shadows.last().map_or(0, |s| s.faces.len());
         }
+        if let LightKind::Rect {
+            half_width,
+            half_height,
+            two_sided,
+        } = light.kind
+        {
+            gpu.push(crate::area::rect_record(
+                light.position,
+                range,
+                radiance,
+                half_width,
+                half_height,
+                two_sided,
+            ));
+            continue;
+        }
         let (kind, direction, cone) = match light.kind {
+            LightKind::Rect { .. } => unreachable!("recorded above"),
             LightKind::Point => (0.0, Vec3::NEG_Y, [-1.0, 1.0]),
             LightKind::Spot {
                 direction,

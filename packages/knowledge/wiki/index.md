@@ -119,7 +119,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1151 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1156 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -155,6 +155,7 @@ Field units the docs and Tune use.
 | [`Asset()`](load.md#column-Asset) | column kind | load | — |
 | [`AudioBus`](audio.md#type-AudioBus) | enum | audio | — |
 | [`AudioBus()`](audio.md#column-AudioBus) | column kind | audio | — |
+| [`BakedScene`](render.md#type-BakedScene) | struct | render | — |
 | [`Behaviour`](ai.md#type-Behaviour) | handle | ai | — |
 | [`Behaviour()`](ai.md#column-Behaviour) | column kind | ai | — |
 | [`BehaviourInfo`](ai.md#type-BehaviourInfo) | struct | ai | — |
@@ -546,6 +547,7 @@ Field units the docs and Tune use.
 | [`og.KeyUp`](input.md#record-KeyUp) | event | input | — |
 | [`og.Light2D`](render.md#record-Light2D) | component | render | — |
 | [`og.Lighting2D`](render.md#record-Lighting2D) | resource | render | — |
+| [`og.LightVolume`](render.md#record-LightVolume) | component | render | — |
 | [`og.Lines`](render.md#record-Lines) | component | render | — |
 | [`og.load.animation`](load.md#fn-animation) | function | load | `og_load_animation` |
 | [`og.load.bundle`](load.md#fn-bundle) | function | load | `og_load_bundle` |
@@ -668,8 +670,10 @@ Field units the docs and Tune use.
 | [`og.Points`](render.md#record-Points) | component | render | — |
 | [`og.PostEffects`](render.md#record-PostEffects) | resource | render | — |
 | [`og.Ragdoll`](physics.md#record-Ragdoll) | component | physics | — |
+| [`og.RectLight`](render.md#record-RectLight) | component | render | — |
 | [`og.ReflectionProbe`](render.md#record-ReflectionProbe) | component | render | — |
 | [`og.render.applyLook`](render.md#fn-applyLook) | function | render | `og_render_apply_look` |
+| [`og.render.bakedLighting`](render.md#fn-bakedLighting) | function | render | `og_render_baked_lighting` |
 | [`og.render.boxGeometry`](render.md#fn-boxGeometry) | function | render | `og_render_box_geometry` |
 | [`og.render.bufferGeometry`](render.md#fn-bufferGeometry) | function | render | `og_render_buffer_geometry` |
 | [`og.render.capabilities`](render.md#fn-capabilities) | function | render | `og_render_capabilities` |
@@ -1244,6 +1248,7 @@ Field units the docs and Tune use.
 | [`Video()`](video.md#column-Video) | column kind | video | — |
 | [`VideoInfo`](video.md#type-VideoInfo) | struct | video | — |
 | [`Viewport`](ui.md#type-Viewport) | struct | ui | — |
+| [`VolumetricFog`](render.md#type-VolumetricFog) | enum | render | — |
 | [`WEATHER_DUST`](atmosphere.md#const-WEATHER_DUST) | constant | atmosphere | — |
 | [`WEATHER_MIST`](atmosphere.md#const-WEATHER_MIST) | constant | atmosphere | — |
 | [`WEATHER_NONE`](atmosphere.md#const-WEATHER_NONE) | constant | atmosphere | — |

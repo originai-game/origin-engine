@@ -190,7 +190,8 @@ lighting falls back to a forward tile table built on the CPU).
   tier and 4 on WebGL2, the brightest at the camera first (cube on the full
   tier and paraboloid on WebGL2 by default; `RenderOptions.pointShadows`).
 - IBL from an environment map prefiltered at cook time; sky model with
-  exposure; height fog.
+  exposure; height fog, lit as a medium when volumetric; baked lightmaps
+  and light volumes (below).
 - Post: bloom, tonemap (ACES or AgX), colour grading LUT, SSAO (GTAO on
   WebGPU), antialiasing by tier: TAA on the full tier (optional
   Catmull-Rom history and sharpening), 4× MSAA on WebGL2, FXAA on any tier
@@ -375,6 +376,63 @@ the lit image, the prepass's depth and normals, and its parameters.
 tone curve. Each pass compiles in an error scope. One the device refuses
 is skipped and reported (`og.render.postErrors`); the frame draws as if
 the pass were absent.
+
+Baked lighting, volumetrics and area lights (depth S7).
+
+- **Baked lighting** (`og bake lightmaps [project]`, the og-bake crate).
+  The bake is a native CPU tool with no GPU: a progressive path tracer
+  over the scene's models and its directional, point, spot and rect
+  lights, with a BVH and a fixed seed, so a bake with a given `--samples`
+  is repeatable. Entities marked `static true` in a scene get lightmap
+  UVs from xatlas, charted over their world-space triangles at one texel
+  density (`--texels-per-metre`). Each texel stores the light arriving
+  there: bounces off the scene, the sky and emissive surfaces. A light's
+  direct term is never baked, because the renderer draws it every frame
+  with its shadows; the bake adds only what forward shading cannot. Each
+  `og.LightVolume` box gets a grid of L1 spherical-harmonic probes from
+  the same tracer. The bake writes `<scene>.lightmap.ogt` (the remapped
+  parts, the probes, and the scene and model hashes) and
+  `<scene>.lightmap.ktx2` (RGBA16F array layers) beside the scene. The
+  cook turns them into an `og.Lightmap` blob, listed in `cook --report`.
+  When a scene is instantiated, the runtime loads its bake if the hashes
+  match. Static models then draw lightmapped copies of their parts: a
+  second vertex stream, with the pages at group 3 (`lightmap.rs`,
+  `lightmap.wgsl`). Every other lit fragment inside a volume takes its
+  ambient light from the probes, trilinear between eight and faded over
+  one spacing (frame binding 10, `ambient_irradiance`). Without a bake, or
+  with a stale one, the scene renders unbaked with the environment's
+  ambient; `og.render.bakedLighting` gives the reason and `og doctor
+  --project` warns `unbaked`. `RenderSettings.bakedLighting` false draws
+  every scene unbaked. One scene's lightmap is drawn at a time (the newest
+  instantiated), and physical, texture-array, material-shader and compact
+  batches use the probes instead of the lightmap.
+- **Volumetric fog** (`og.Fog.volumetric`, `volumetric.rs`). The fog's
+  density, height fog, `scattering` and `anisotropy` (Henyey–Greenstein)
+  define a participating medium up to `volumetricDistance`. On the full
+  tier the medium is a froxel grid (160 × 90 × 64, slices deepening
+  quadratically), handled by a named `volumetric` compute pass. The pass
+  lights each cell by the sun through its cascades and by the cluster's
+  point, spot and rect lights through their shadows and cookies, then
+  integrates front to back. On WebGL2, which has no compute, each pixel's
+  ray is marched in 24 steps lit by the sun alone.
+  `RenderCapabilities.volumetricFog` reports which method the device uses.
+  Both methods blend over the lit image after the main pass as
+  colour × transmittance plus in-scattered light, reading the prepass's
+  linear depth.
+- **Area lights** (`og.RectLight`: width, height, colour, intensity,
+  `twoSided`; `area.rs`). They are clustered with the point and spot
+  lights and shaded with linearly transformed cosines (Heitz et al.'s GGX
+  fit, `third_party/ltc`, resampled to 32 × 32 half floats in one 16 KiB
+  uniform). Their highlight on a glossy surface is the rectangle's shape.
+  They cast no shadows. Shaders that do not know rect lights (terrain,
+  scattered copies, 3D fluids) light them as a point at their centre.
+- **Light cookies** (`SpotLight.cookie`, `PointLight.cookie`, a cube of
+  six faces stacked in one texture). A small pass draws each cookie from
+  its uploaded texture, in whatever format was cooked, into layers of the
+  local shadow array past the shadow layers. Each texel is packed as an
+  8:8:8 integer in the R32Float array, so a cookie takes no texture slot
+  on either tier. At most 24 layers are used: one per spot cookie, six per
+  point cookie.
 
 ### 2.7 Animation, physics, navigation, audio, UI **(D)**
 

@@ -3953,6 +3953,10 @@ export interface PointLight {
    * Cast shadows: six cube faces or two paraboloid hemispheres (RenderOptions.pointShadows).
    */
   castShadow: boolean;
+  /**
+   * A light cookie projected all around the light: a cube of six square faces in one texture, stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z (a KTX2 cube's face order and a cube map's orientation, world axes; the texture is six times as tall as it is wide). The light's colour is multiplied by the texel its direction meets, so a lamp behind a pierced shade throws its pattern on the walls. 0 is none.
+   */
+  cookie: Texture;
 }
 
 /**
@@ -4002,6 +4006,10 @@ export interface SpotLight {
   penumbra: number;
   /** Cast a shadow map. */
   castShadow: boolean;
+  /**
+   * A light cookie, as three.js SpotLight.map: the texture projected along the cone (its centre on the axis, its edges at the outer angle, its top towards world up), multiplying the light's colour, so a spot throws a window's bars or a stained-glass pattern. 0 is none. A shadowed spot keeps its shadow over the pattern.
+   */
+  cookie: Texture;
 }
 
 /**
@@ -4114,6 +4122,12 @@ export interface RenderSettings {
    * @tunable
    */
   lodBias: number;
+  /**
+   * Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map: to compare, or to see the realtime lights alone.
+   *
+   * @default true
+   */
+  bakedLighting: boolean;
 }
 
 /**
@@ -6298,6 +6312,10 @@ export interface RenderCapabilities {
    * The most custom post passes a frame runs (PostEffects.custom1 to custom4 on every tier).
    */
   readonly maxCustomPosts: number;
+  /**
+   * How Fog.volumetric is drawn on this device: a froxel grid lit by the sun and the clustered point, spot and rect lights (the full tier), or a raymarch of the sun alone along each pixel's view ray (WebGL2).
+   */
+  readonly volumetricFog: VolumetricFog;
 }
 
 /**
@@ -7427,6 +7445,103 @@ export interface PostError {
 }
 
 
+/**
+ * How the device draws Fog.volumetric (RenderCapabilities.volumetricFog).
+ * - `"froxel"`: A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows, then integrated front to back: the full tier.
+ * - `"raymarch"`: Each pixel's view ray marched through the fog in 24 steps, lit by the sun through its cascades alone: WebGL2, which has no compute.
+ */
+export type VolumetricFog = "froxel" | "raymarch";
+
+/**
+ * A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light.
+ * Area lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches as far as its brightness carries (where it would light a white surface facing it at one hundredth of one), and fades smoothly to zero there.
+ *
+ * The value of the `RectLight` component (token `og.RectLight`).
+ */
+export interface RectLight {
+  /**
+   * The light's linear colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  color: Color;
+  /**
+   * The emitted radiance (luminance), as three.js RectAreaLight.intensity.
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  intensity: number;
+  /**
+   * Its size along the entity's local x, as RectAreaLight.width.
+   *
+   * @default 10
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  width: number;
+  /**
+   * Its size along the entity's local y, as RectAreaLight.height.
+   *
+   * @default 10
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  height: number;
+  /** Emit from the back face as well (a hanging panel lit both ways). */
+  twoSided: boolean;
+}
+
+/**
+ * A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (bounced off its static models, from the sky, from emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every mesh, model, skinned character and particle-lit surface drawn inside it that has no lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing: a ball rolling past a red wall turns red on that side.
+ * The box is size metres centred on the entity, axis-aligned in world space (its rotation and scale are ignored). Its probes are the scene's: unbaked (no bake since the volume was added, moved or resized) it lights nothing and og doctor --project names the scene.
+ *
+ * The value of the `LightVolume` component (token `og.LightVolume`).
+ */
+export interface LightVolume {
+  /**
+   * The box's extent along world x, y and z.
+   *
+   * @default { x: 4, y: 4, z: 4 }
+   * @unit m (metres)
+   */
+  size: Vector3;
+  /**
+   * The most distance between neighbouring probes (the box is divided evenly, with probes on its faces; at most 64 a side).
+   *
+   * @default 1
+   * @range 0.1..16
+   * @unit m (metres)
+   */
+  spacing: number;
+}
+
+/** One instantiated scene's baked lighting, as og.render.bakedLighting reports it. */
+export interface BakedScene {
+  /** The scene's asset id, such as `scenes/cornell.ogt`. */
+  readonly scene: string;
+  /** Its lightmap and probes are loaded and drawn. */
+  readonly baked: boolean;
+  /**
+   * Why not, when not: the scene has no bake (`og bake lightmaps` writes `<scene>.lightmap.ogt`), its bake is stale (a static model or the scene changed since; the reason names which), or RenderSettings.bakedLighting is off. Empty when baked.
+   */
+  readonly reason: string;
+  /** Static model instances drawn with the lightmap. */
+  readonly models: number;
+  /** Lightmap pages (RGBA16F texture array layers). */
+  readonly pages: number;
+  /** The pages' side in texels. */
+  readonly texels: number;
+  /** LightVolume grids its dynamic objects sample. */
+  readonly volumes: number;
+  /** Probes in those volumes. */
+  readonly probes: number;
+}
+
+
 // ── load ────────────────────────────────────────────────────────
 // Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/.
 // Paths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp.
@@ -7680,6 +7795,10 @@ export interface Model {
    * @default 1
    */
   layers: number;
+  /**
+   * Part of its scene's baked lighting: og bake lightmaps gives a static model lightmap UVs (xatlas, over its world-space triangles) and traces the light arriving at its surfaces from the scene into the scene's lightmap (`<scene>.lightmap.ogt` and `.ktx2` beside the scene). Once baked, the model draws with it (its ambient light from the lightmap instead of the sky; its lights' direct light, shadows and highlights still drawn every frame) for as long as the bake matches the scene. A scene entity says `static true` beside its `model` line; an unbaked static model draws as any model, and og doctor --project names the scene.
+   */
+  static: boolean;
 }
 
 
@@ -10264,6 +10383,34 @@ export interface Fog {
    * @tunable
    */
   sky: number;
+  /**
+   * Light the fog as a participating medium: within volumetricDistance of the camera the fog (density per metre, thickened below height by heightDensity and falloff, as above) scatters the sun through its shadow cascades, so light shafts fall through windows and between trees and move with the sun, and on the full tier every point, spot and rect light it is lit by; it dims what lies behind it by the same amounts. RenderCapabilities.volumetricFog names the method (a froxel grid on the full tier, a raymarch of the sun on WebGL2). Opaque surfaces and the sky are seen through the volume; blended surfaces, particles and sprites take the plain distance and height fog of the same medium. Past volumetricDistance nothing more is added.
+   */
+  volumetric: boolean;
+  /**
+   * How much of the light the fog takes from a ray it scatters (its albedo, tinted by color): 0 dims without glowing, 1 sends all of it on, above 1 brightens the shafts for effect.
+   *
+   * @default 0.8
+   * @range 0..4
+   * @tunable
+   */
+  scattering: number;
+  /**
+   * Which way the fog scatters (Henyey–Greenstein g): 0 evenly, towards 1 forward (bright looking into the light: shafts against the sun), below 0 back towards the light.
+   *
+   * @default 0.6
+   * @range -0.95..0.95
+   * @tunable
+   */
+  anisotropy: number;
+  /**
+   * How far from the camera the volume reaches.
+   *
+   * @default 48
+   * @range 4..400
+   * @unit m (metres)
+   */
+  volumetricDistance: number;
 }
 
 /**
@@ -21150,13 +21297,13 @@ export declare namespace og {
    * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
    * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (8 on the full tier, 4 on WebGL2) get shadows, the brightest at the camera first.
    */
-  const PointLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool"> }, PointLight>;
+  const PointLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture"> }, PointLight>;
   /** A cone of light along the entity's local -Z, as three.js SpotLight. */
-  const SpotLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly angle: FieldSpec<"f32">; readonly penumbra: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool"> }, SpotLight>;
+  const SpotLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly angle: FieldSpec<"f32">; readonly penumbra: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture"> }, SpotLight>;
   /**
    * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    */
-  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32"> }, RenderSettings>;
+  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool"> }, RenderSettings>;
   /**
    * Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.
    */
@@ -21233,6 +21380,16 @@ export declare namespace og {
    * A planar mirror: the main camera reflected in the entity's xy plane (its local +Z the mirror's facing side), drawn into target fitted to a width by height rect centred on the entity, as a mirrored og.CameraView. Give the mirror's mesh (an og.render.planeGeometry of the same size) a material that reads the target: an hdr target as emissiveMap with color black, or an ldr target as an unlit map. Nothing behind the glass is drawn; seen from behind, it draws nothing.
    */
   const Mirror: ComponentType<{ readonly target: FieldSpec<"RenderTarget">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly every: FieldSpec<"u32">; readonly active: FieldSpec<"bool"> }, Mirror>;
+  /**
+   * A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light.
+   * Area lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches as far as its brightness carries (where it would light a white surface facing it at one hundredth of one), and fades smoothly to zero there.
+   */
+  const RectLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly twoSided: FieldSpec<"bool"> }, RectLight>;
+  /**
+   * A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (bounced off its static models, from the sky, from emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every mesh, model, skinned character and particle-lit surface drawn inside it that has no lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing: a ball rolling past a red wall turns red on that side.
+   * The box is size metres centred on the entity, axis-aligned in world space (its rotation and scale are ignored). Its probes are the scene's: unbaked (no bake since the volume was added, moved or resized) it lights nothing and og doctor --project names the scene.
+   */
+  const LightVolume: ComponentType<{ readonly size: FieldSpec<"Vector3">; readonly spacing: FieldSpec<"f32"> }, LightVolume>;
   /**
    * What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call.
    */
@@ -21486,12 +21643,18 @@ export declare namespace og {
      * @param world The world asked.
      */
     function postErrors(world: World): readonly PostError[];
+    /**
+     * The baked lighting of every scene instantiated in the world, in instantiation order: whether it is drawn, and why not. A scene with no static model and no LightVolume is not listed.
+     *
+     * @param world The world asked.
+     */
+    function bakedLighting(world: World): readonly BakedScene[];
   }
   /**
    * Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
    * The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck.
    */
-  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly lodBias: FieldSpec<"f32">; readonly layers: FieldSpec<"u32"> }, Model>;
+  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly lodBias: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly static: FieldSpec<"bool"> }, Model>;
   /** A load completed. */
   const AssetReady: EventType<AssetReady>;
   /** A load failed. */
@@ -21996,7 +22159,7 @@ export declare namespace og {
   /**
    * Distance and height fog over the 3D scene and world sprites: distance fog thickens exponentially by density from start (or linearly from start to end when end > start), height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.
    */
-  const Fog: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly color: FieldSpec<"Color">; readonly density: FieldSpec<"f32">; readonly start: FieldSpec<"f32">; readonly end: FieldSpec<"f32">; readonly heightDensity: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly falloff: FieldSpec<"f32">; readonly sunColor: FieldSpec<"Color">; readonly sunPower: FieldSpec<"f32">; readonly maxOpacity: FieldSpec<"f32">; readonly sky: FieldSpec<"f32"> }, Fog>;
+  const Fog: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly color: FieldSpec<"Color">; readonly density: FieldSpec<"f32">; readonly start: FieldSpec<"f32">; readonly end: FieldSpec<"f32">; readonly heightDensity: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly falloff: FieldSpec<"f32">; readonly sunColor: FieldSpec<"Color">; readonly sunPower: FieldSpec<"f32">; readonly maxOpacity: FieldSpec<"f32">; readonly sky: FieldSpec<"f32">; readonly volumetric: FieldSpec<"bool">; readonly scattering: FieldSpec<"f32">; readonly anisotropy: FieldSpec<"f32">; readonly volumetricDistance: FieldSpec<"f32"> }, Fog>;
   /**
    * A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it (the image-based light follows it). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.
    */

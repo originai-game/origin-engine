@@ -20,6 +20,8 @@ image = { workspace = true, features = ["hdr"] }
 # loads it (the cook is native only; the scene is not in the browser's set).
 og-cook = { path = "../og-cook" }
 og-anim = { path = "../og-anim" }
+# light_scenes: the Cornell box baked by og-bake as the scene is built.
+og-bake = { path = "../og-bake" }
 
 [[bin]]
 name = "og-gfx"

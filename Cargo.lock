@@ -1723,6 +1723,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-bake"
+version = "0.2.0"
+dependencies = [
+ "cc",
+ "glam 0.34.1",
+]
+
+[[package]]
 name = "og-blob"
 version = "0.2.0"
 dependencies = [
@@ -1733,13 +1741,16 @@ dependencies = [
 name = "og-cli"
 version = "0.2.0"
 dependencies = [
+ "glam 0.34.1",
  "image",
  "libc",
  "og-api",
+ "og-bake",
  "og-cook",
  "og-core",
  "og-idl",
  "og-net",
+ "og-render",
  "og-ui",
  "serde_json",
  "tungstenite",
@@ -1979,6 +1990,7 @@ dependencies = [
  "glam 0.34.1",
  "image",
  "og-anim",
+ "og-bake",
  "og-cook",
  "og-core",
  "og-render",

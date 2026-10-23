@@ -32,6 +32,7 @@ mod anim;
 mod api;
 mod assets;
 mod atmosphere;
+mod baked;
 mod codec;
 mod describe;
 mod e6;
@@ -78,6 +79,7 @@ pub use atmosphere::{
     og_atmosphere_time_of_day, og_load_shader, og_render_set_material_shader,
     og_render_set_shader_param, og_render_shader_material,
 };
+pub use baked::og_render_baked_lighting;
 pub use codec::{Kind, Layout, RecordKind};
 pub use engine::{
     ColumnPtr, Dispatch, Hooks, RenderBackend, advance, answer_call, antialias_name, begin_bundle,

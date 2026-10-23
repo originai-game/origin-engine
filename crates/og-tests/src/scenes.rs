@@ -110,6 +110,9 @@ pub const SCENES: &[&str] = &[
     "views-split",
     "shader-full-dissolve",
     "post-crt",
+    "rect-lights",
+    "light-cookies",
+    "volumetric-fog",
 ];
 
 /// Scenes rendered natively only, beside [`SCENES`] (`og-gfx --all` takes
@@ -122,6 +125,7 @@ pub const NATIVE_SCENES: &[&str] = &[
     "lod-levels",
     "probe-interior",
     "ssr-wet-floor",
+    "baked-cornell",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -529,6 +533,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             let crt = g.scene.add_post(og_render::example_crt());
             g.scene.custom_post.push(crt);
         }
+        // The depth wave's light (docs/depth.md §7, light_scenes.rs): rect
+        // lights (LTC), light cookies, volumetric fog, and natively a
+        // Cornell box baked by og-bake with a light volume.
+        "rect-lights" => g.scene = crate::light_scenes::rect_lights_scene(),
+        "light-cookies" => g.scene = crate::light_scenes::light_cookies_scene(),
+        "volumetric-fog" => g.scene = crate::light_scenes::volumetric_fog_scene(),
+        #[cfg(not(target_arch = "wasm32"))]
+        "baked-cornell" => g.scene = crate::light_scenes::baked_cornell_scene(true)?,
         // Materials sampling texture arrays: eight cubes of one tile
         // material (colour and normal arrays), each on its own layer or the
         // material's, one batch; a cube of layer 1 as plain 2D textures;

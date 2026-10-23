@@ -340,9 +340,22 @@ pub fn cook(
         };
         let block = e.block.as_ref().unwrap_or(&empty);
         let mut children = Vec::new();
+        // `static true` beside the model line: og.Model's `static` field
+        // (baked lighting, og bake lightmaps), merged into its Model block.
+        let mut static_flag: Option<(Given, usize)> = None;
         for c in &block.entries {
             match (c.key.as_str(), &c.block) {
                 ("entity", _) => children.push(c),
+                ("static", None) => {
+                    let given = lanes(&c.values, c.line, "Model", "static")?;
+                    if !matches!(&given, Given::Lanes(v) if v.len() == 1) {
+                        return Err(CookError(format!(
+                            "line {}: static is true or false",
+                            c.line
+                        )));
+                    }
+                    static_flag = Some((given, c.line));
+                }
                 ("model", None) => {
                     let id = crate::runtime::asset_id(
                         c.string(0)
@@ -404,6 +417,25 @@ pub fn cook(
                         c.line
                     )));
                 }
+            }
+        }
+        if let Some((given, line)) = static_flag {
+            if entity.instance == NONE {
+                return Err(CookError(format!(
+                    "line {line}: static marks a model for baked lighting: the entity has no model line"
+                )));
+            }
+            let rows = tables.entry("Model".to_string()).or_default();
+            match rows.iter_mut().find(|r| r.entity == index) {
+                Some(r) if r.fields.iter().any(|(n, ..)| n == "static") => {
+                    return Err(CookError(format!("line {line}: Model.static is set twice")));
+                }
+                Some(r) => r.fields.push(("static".into(), given, line)),
+                None => rows.push(Pending {
+                    entity: index,
+                    line,
+                    fields: vec![("static".into(), given, line)],
+                }),
             }
         }
         entities.push(entity);

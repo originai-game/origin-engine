@@ -11,7 +11,7 @@ use crate::scene::{Exposure, PostEffects, Tonemap};
 use crate::{Antialias, DEPTH_FORMAT, HDR_FORMAT, TaaHistory, target_texture};
 use std::collections::HashMap;
 
-const FULLSCREEN_WGSL: &str = wgsl!("fullscreen.wgsl");
+pub(crate) const FULLSCREEN_WGSL: &str = wgsl!("fullscreen.wgsl");
 const POST_WGSL: &str = wgsl!("post.wgsl");
 const TAA_WGSL: &str = wgsl!("taa.wgsl");
 const LUMINANCE_WGSL: &str = wgsl!("luminance.wgsl");
@@ -1346,6 +1346,8 @@ pub(crate) enum FramePass {
     /// pass and its resolve into a render target (a viewport view resolves
     /// after the post chain).
     View(u32),
+    /// Volumetric fog's froxel grid lit and summed (compute; full tier).
+    Volumetric,
     /// Opaque meshes, sky, transparent meshes, particles, strips, sprites
     /// and text into the HDR target.
     Main,
@@ -1426,6 +1428,7 @@ impl FramePass {
             FramePass::Probes => "reflection-probes".into(),
             FramePass::Reflection => "reflection".into(),
             FramePass::View(i) => format!("view-{i}"),
+            FramePass::Volumetric => "volumetric".into(),
             FramePass::Main => "main".into(),
             FramePass::Ssr => "ssr".into(),
             FramePass::Glow => "glow".into(),
@@ -1594,6 +1597,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         .import("views")
         .import("output")
         .import("particles")
+        .import("froxels")
         .transient(
             "hdr",
             desc(
@@ -1845,10 +1849,14 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             // imported "views" orders them before the main pass, whose
             // materials may sample them.
             FramePass::View(_) => g.pass(name, &["cascades", "local-shadows"], &["views"]),
+            FramePass::Volumetric => g.pass(name, &["cascades", "local-shadows"], &["froxels"]),
             FramePass::Main => {
                 let mut reads = vec!["cascades", "local-shadows"];
                 if passes.iter().any(|p| matches!(p, FramePass::View(_))) {
                     reads.push("views");
+                }
+                if has(FramePass::Volumetric) {
+                    reads.push("froxels");
                 }
                 if has(FramePass::AoBlur) {
                     reads.push("ao");
@@ -2636,6 +2644,7 @@ impl FrameGraph {
             | FramePass::Probes
             | FramePass::Reflection
             | FramePass::View(_)
+            | FramePass::Volumetric
             | FramePass::Main
             | FramePass::DepthBands
             | FramePass::Ssr

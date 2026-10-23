@@ -654,6 +654,11 @@ pub fn og_render_post_errors(world: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_render_baked_lighting(world: u32) -> String {
+    <Host as RenderApi>::og_render_baked_lighting(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_load_bundle(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_bundle(&Host, world, path)
 }

@@ -2243,7 +2243,66 @@ The cook compiles it for every back end. A pass that a device still fails
 to compile is skipped and listed by `og.render.postErrors(world)`.
 `templates/fx-showcase/assets/post/crt.*` is a CRT example.
 
-## 24. Where to look things up
+## 24. Baked lighting, volumetric fog, area lights and cookies
+
+**Baked lighting.** Use it for light that bounces around a static space,
+such as a red wall tinting the floor beside it or a room lit through its
+door. Mark the scene's unmoving models `static true` and put an
+`og.LightVolume` box over the space where dynamic objects move:
+
+```
+entity "hall" {
+  model "models/hall.glb"
+  static true
+  Transform { position 0 0 0 quaternion 0 0 0 1 scale 1 1 1 }
+}
+entity "hall-probes" {
+  Transform { position 0 2 0 quaternion 0 0 0 1 scale 1 1 1 }
+  LightVolume { size 12 4 12 spacing 1 }
+}
+```
+
+Then run `og bake lightmaps` in the project. Its options are
+`--samples 256`, `--bounces 3`, `--texels-per-metre 16`, `--max-size 1024`,
+`--sky r,g,b`, `--seconds S` and `--scene <id>`; the fx-showcase Cornell
+box takes 1.4 s at 512 samples. The bake is a CPU path tracer and needs
+no GPU. It writes `<scene>.lightmap.ogt` and `.ktx2` beside the scene;
+commit both.
+
+A static entity needs a name. The bake holds the light that bounces, the
+sky and emissive surfaces; lights still shine and cast shadows live on
+top. Static models draw with their lightmap, and everything else inside a
+LightVolume takes its ambient light from the probes. After you change the
+scene or a static model, the bake is stale and the scene renders unbaked
+until you bake again. `og doctor --project` warns `unbaked`, and
+`og.render.bakedLighting(world)` lists each scene with `baked` and a
+`reason`. `RenderSettings.bakedLighting = false` draws everything unbaked,
+which is useful to compare. Only the newest instantiated scene's lightmap
+is drawn.
+
+**Volumetric fog.** Set `Fog.volumetric = true` to light the fog as a
+medium, which gives shafts through windows and the cones of spots. Tune it
+with `density`, `heightDensity` and `falloff` (thicker low down),
+`scattering` (how bright) and `anisotropy` (towards 1, bright looking into
+the light), up to `volumetricDistance`. Fog of 0.03 to 0.1 per metre reads
+well indoors. With `og.DayNight`, the shafts move with the sun.
+`RenderCapabilities.volumetricFog` is `froxel` on the full tier, where
+spots, points and rect lights light the fog too, or `raymarch` on WebGL2,
+where only the sun does.
+
+**Area lights.** `og.RectLight { width, height, color, intensity,
+twoSided }` emits from a rectangle facing the entity's -Z. Aim it with
+`og.transform.lookAt`, as you would a spot. A glossy floor shows the
+rectangle's shape in its highlight. Rect lights cast no shadows, so pair
+one with an emissive slab for the fixture.
+
+**Cookies.** `SpotLight.cookie` is a texture projected along the cone,
+like a window's lattice or stained glass. `PointLight.cookie` is six
+square faces stacked top to bottom (+X, -X, +Y, -Y, +Z, -Z), like a
+pierced lantern. A cookie multiplies the light and its colour. At most 24
+cookie layers are drawn: one per spot cookie, six per point cookie.
+
+## 25. Where to look things up
 
 `reference/index.md` (the generated wiki shipped with this skill) maps every
 module (grouped by skill, as in §1), type and function to its page, with the IDL text, defaults, ranges
