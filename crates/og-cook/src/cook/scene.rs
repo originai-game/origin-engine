@@ -24,7 +24,9 @@
 //! instantiates a cooked glTF under the entity, and any other key with a
 //! block is a component whose entries are its fields (numbers, the words
 //! `true`/`false`, or one quoted string for a `strN` field: `name "Mei"`,
-//! packed as its UTF-8 then zeros, refused over the capacity). With the
+//! packed as its UTF-8 then zeros, refused over the capacity). A list field
+//! (`u64[8]`) is its elements on its one line, `weights 0.5 1 2`, and the
+//! key alone is the empty list; a list over the capacity is refused. With the
 //! component's schema (`CookOptions::schemas`) the fields are checked,
 //! ordered and defaulted from it; without one the cook infers a layout from
 //! the text (f32 lanes; a string needs the schema for its capacity) and
@@ -154,6 +156,33 @@ fn pack(schema: &Schema, row: &Pending, out: &mut Vec<u8>) -> Result<(), CookErr
     }
     for fs in &schema.fields {
         let given = row.fields.iter().find(|(n, ..)| n == &fs.name);
+        if let Some((element, capacity)) = fs.ty.list_of() {
+            let values: &[f64] = match given {
+                Some((_, Given::Lanes(v), _)) => v,
+                Some((_, Given::Text(_), line)) => {
+                    return Err(CookError(format!(
+                        "line {line}: {comp}.{} is a {}: give it up to {capacity} number(s) on its line, or none for an empty list",
+                        fs.name,
+                        fs.ty.name()
+                    )));
+                }
+                None => &[],
+            };
+            let line = given.map_or(row.line, |g| g.2);
+            let mut lanes = Vec::with_capacity(values.len());
+            for &v in values {
+                let mut lane = Vec::with_capacity(element.size());
+                pack_lane(element.field_type(), v, &mut lane)
+                    .map_err(|e| CookError(format!("line {line}: {comp}.{}: {e}", fs.name)))?;
+                lanes.push(lane);
+            }
+            let refs: Vec<&[u8]> = lanes.iter().map(Vec::as_slice).collect();
+            out.extend_from_slice(
+                &og_core::pack_list(fs.ty, &refs)
+                    .map_err(|e| CookError(format!("line {line}: {comp}.{}: {e}", fs.name)))?,
+            );
+            continue;
+        }
         if fs.ty.is_string() {
             match given {
                 Some((_, Given::Text(text), line)) => out.extend_from_slice(
@@ -199,40 +228,38 @@ fn pack(schema: &Schema, row: &Pending, out: &mut Vec<u8>) -> Result<(), CookErr
         };
         let line = given.map_or(row.line, |g| g.2);
         for v in values {
-            let int = |lo: f64, hi: f64| -> Result<f64, CookError> {
-                if v.fract() != 0.0 || v < lo || v > hi {
-                    Err(CookError(format!(
-                        "line {line}: {comp}.{}: {v} is not a {}",
-                        fs.name,
-                        fs.ty.name()
-                    )))
-                } else {
-                    Ok(v)
-                }
-            };
-            match fs.ty {
-                FieldType::F64 => out.extend_from_slice(&v.to_le_bytes()),
-                FieldType::I32 => out.extend_from_slice(
-                    &(int(i32::MIN as f64, i32::MAX as f64)? as i32).to_le_bytes(),
-                ),
-                FieldType::U32 => {
-                    out.extend_from_slice(&(int(0.0, u32::MAX as f64)? as u32).to_le_bytes())
-                }
-                FieldType::I64 => {
-                    out.extend_from_slice(&(int(-9.007e15, 9.007e15)? as i64).to_le_bytes())
-                }
-                FieldType::U64 => {
-                    out.extend_from_slice(&(int(0.0, 9.007e15)? as u64).to_le_bytes())
-                }
-                // og-core packs a bool in one byte and an enum as its u32
-                // variant index; four f32 bytes would break the row stride.
-                FieldType::Bool => out.push(int(0.0, 1.0)? as u8),
-                FieldType::Enum => {
-                    out.extend_from_slice(&(int(0.0, u32::MAX as f64)? as u32).to_le_bytes())
-                }
-                _ => out.extend_from_slice(&(v as f32).to_le_bytes()),
-            }
+            pack_lane(fs.ty, v, out)
+                .map_err(|e| CookError(format!("line {line}: {comp}.{}: {e}", fs.name)))?;
         }
+    }
+    Ok(())
+}
+
+/// One lane of a field of type `ty` (an element's type, for a list): `v`
+/// refused when it is not a value of the lane's number type.
+fn pack_lane(ty: FieldType, v: f64, out: &mut Vec<u8>) -> Result<(), String> {
+    let int = |lo: f64, hi: f64| -> Result<f64, String> {
+        if v.fract() != 0.0 || v < lo || v > hi {
+            Err(format!("{v} is not a {}", ty.name()))
+        } else {
+            Ok(v)
+        }
+    };
+    match ty {
+        FieldType::F64 => out.extend_from_slice(&v.to_le_bytes()),
+        FieldType::I32 => {
+            out.extend_from_slice(&(int(i32::MIN as f64, i32::MAX as f64)? as i32).to_le_bytes())
+        }
+        FieldType::U32 => out.extend_from_slice(&(int(0.0, u32::MAX as f64)? as u32).to_le_bytes()),
+        FieldType::I64 => out.extend_from_slice(&(int(-9.007e15, 9.007e15)? as i64).to_le_bytes()),
+        FieldType::U64 => out.extend_from_slice(&(int(0.0, 9.007e15)? as u64).to_le_bytes()),
+        // og-core packs a bool in one byte and an enum as its u32
+        // variant index; four f32 bytes would break the row stride.
+        FieldType::Bool => out.push(int(0.0, 1.0)? as u8),
+        FieldType::Enum => {
+            out.extend_from_slice(&(int(0.0, u32::MAX as f64)? as u32).to_le_bytes())
+        }
+        _ => out.extend_from_slice(&(v as f32).to_le_bytes()),
     }
     Ok(())
 }
