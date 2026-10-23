@@ -264,8 +264,9 @@ fn every_thread_count_cooks_the_same_bytes() {
         files(&dir.join("cooked"))
     };
     let reference = cook(&base.join("reference"), 1);
-    // Thirteen outputs, the manifest and the cook times.
-    assert_eq!(reference.len(), 15, "{:?}", reference.keys());
+    // Fourteen outputs (timelines/intro.ogt with its .srt among them), the
+    // manifest and the cook times.
+    assert_eq!(reference.len(), 16, "{:?}", reference.keys());
     let failures: Vec<String> = std::thread::scope(|s| {
         let series: Vec<_> = [1usize, 2, 8]
             .into_iter()

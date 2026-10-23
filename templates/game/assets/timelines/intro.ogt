@@ -2,7 +2,7 @@ type timeline
 version 1
 ---
 name "Intro"
-duration 8
+duration 10
 # The camera's rail: a slow arc in front of the yard, from the left to the right.
 path "flyby" {
   kind catmullRom
@@ -18,7 +18,7 @@ track camera {
     target 0 1 0
     fov 50
   }
-  key 7.5 {
+  key 9.5 {
     at 1
     target 1.5 1 0
     fov 42
@@ -75,7 +75,7 @@ track transition {
     mode in
     duration 1
   }
-  key 7 {
+  key 9 {
     kind fade
     mode out
     duration 1
