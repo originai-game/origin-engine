@@ -328,6 +328,18 @@ idle-machine tables and follow-ups; branch `perf-2`). Each is taken up as
 the product needs it, measured at a wave's end, and never holds a merge
 or a release.
 
+One of them is the next round's first stream: row 99, the size stream.
+The depth and debt rounds took the publish wasm from 63 % to 83 and 84 %
+of the 4 MiB budget (`docs/web-export.md`'s table), so another feature
+round would cross it. In order: the platform serves one content-addressed
+engine wasm URL per version, shared by every game (a browser downloads
+the engine once; the platform's `plan.md` row 44); then the `publish`
+trims (GPU timestamp queries, the describe and views id pass, the BVH
+loader where nothing raycasts, 3D WGSL sources in the 2D host), each
+measured per crate with twiggy first; then per-profile trimming beyond
+physics. Still a number read at a wave's end: it holds neither a merge
+nor the 0.2.x releases.
+
 ## 5. The author's and the agent's loop, after this
 
 ```sh

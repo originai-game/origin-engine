@@ -6007,6 +6007,7 @@ resource only the owner can give.
 | 96 | The template's `trickster.glb` and `dropship.glb` (from `origingame-examples`, licence unnamed) replaced by engine-owned or CC0 models, or the owner's leave to redistribute; every binary in every template and archetype with a named licence | release R6 | S | engine, release (owner for the leave) | done for the packages, 3f914f69: `dropship.glb` is MIT (core-business's LICENSE, named); `trickster.glb` (edg-king-match, no licence) left the template, the `trickster` entity is the CC0 walker; the repository's test copy (`crates/og-tests/assets/`, fx-showcase) is the owner's call before the repository goes public |
 | 97 | Package metadata: `repository.url` naming the repository the packages are built from, `homepage`, `bugs`; the README's install section | release R7 | S | engine, release | done, 3f914f69 (`repository` fran0220/origin-engine with `directory`, `homepage`, `bugs`; the README's Install section; the package is `@origingame/create-game` since `npm create @origingame/game` maps to it) |
 | 98 | Publish `0.1.0` (`npm login`, the `@origingame` scope: owner), `release.sh verify --registry`, tag `v0.1.0`, `tests/evidence/release/0.1.0.md` | release R8 | S | owner, then engine | done 2026-10-22: `@origingame/engine`, `engine-darwin-arm64`, `engine-linux-x64`, `create-game` at 0.1.0 on npm (packed from 53c3629e), `verify --registry` passing on both platforms, tag `v0.1.0`; `tests/evidence/release/0.1.0.md` |
+| 99 | The publish wasm after the depth and debt rounds: 3D publish 3,519,278 B brotli (83 % of the 4 MiB per-download budget), 3D lanes 3,559,972 B (84 %), 2D publish 3,344,401 B (79 %), 2D lanes 3,380,705 B (80 %), +20 points in one wave from E5's 63 %; one more feature round crosses the budget (the budget's meaning stays the owner's, row 44; accepted by the owner 2026-10-23 as the price of the depth wave). The next round's size stream, in this order: (1) the platform serves one content-addressed engine wasm URL shared by every game of a version, so a browser downloads the engine once across games and a game's own download is its cooked assets (0.5 to 10 MB measured on the test exports; platform work, `goals/origin-engine/plan.md` row 44); (2) trim `publish`: the GPU timestamp queries, the describe and views id pass, the BVH loader where no model raycasts, the 3D subsystems' WGSL sources in the 2D host, each measured per crate with twiggy before it is cut; (3) per-profile trimming beyond physics (a 2D host without the 3D render subsystems). Measured at the wave's end, never holding a merge | debt round | M | engine (web export) and platform | open: the next round's size stream (`docs/release.md` §P) |
 
 ## 0. Rules that shape the plan
 
@@ -6191,7 +6192,10 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
 - Left for a later round: a list column in records (og-core; eight
   custom post slots until then), the raycast's per-tick hierarchy
   refresh, rollback and the platform's ask #16, og-ui's nine-slice band
-  on buttons shorter than their corners, the games' "skin" prose.
+  on buttons shorter than their corners, the games' "skin" prose, and
+  the size stream (row 99: the publish wasm at 83 to 84 % of the
+  budget, +20 points in this wave; a shared engine URL on the platform
+  first, then the `publish` trims, then per-profile trimming).
 
 ### Status 2026-10-19, E5 round
 
