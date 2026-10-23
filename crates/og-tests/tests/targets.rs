@@ -99,3 +99,41 @@ fn a_full_shaders_shadow_follows_its_cut() {
         "shadowed pixels whole {whole}, dissolved {cut}"
     );
 }
+
+#[test]
+fn post_crt_matches_its_reference() {
+    check("post-crt");
+}
+
+/// A post pass that does not compile is reported and skipped: the frame
+/// is the frame without it, and the CRT after it still runs.
+#[test]
+fn a_failing_post_pass_is_reported_and_skipped() {
+    use og_render::{PostShader, RenderTarget, Renderer};
+    let plain = frame(&og_tests::target_scenes::room());
+    let mut scene = og_tests::target_scenes::room();
+    let broken = scene.add_post(PostShader {
+        name: "broken".into(),
+        code: "fn post(f: PostInput, p: Params) -> vec4<f32> { return nowhere(f.uv); }".into(),
+        params: Vec::new(),
+    });
+    scene.custom_post.push(broken);
+    let mut r = Renderer::new_blocking(&og_tests::scenes::base_desc()).expect("renderer");
+    r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    let skipped = r.read_offscreen().expect("capture");
+    let errors = r.post_errors(&scene);
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert_eq!(errors[0].0, broken);
+    assert!(errors[0].1.contains("nowhere"), "{}", errors[0].1);
+    assert_eq!(
+        skipped.pixels, plain.pixels,
+        "the skipped pass changed the frame"
+    );
+    // The CRT after it runs: its corners are black.
+    let crt = scene.add_post(og_render::example_crt());
+    scene.custom_post.push(crt);
+    r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    let bent = r.read_offscreen().expect("capture");
+    assert_eq!(&bent.pixels[..3], &[0, 0, 0]);
+    assert_ne!(&plain.pixels[..3], &[0, 0, 0]);
+}

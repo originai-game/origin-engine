@@ -90,6 +90,10 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
         );
     }
     add("view resolve", crate::views::resolve_color_source());
+    add(
+        "custom post (crt)",
+        crate::post_custom::post_module_source(&crate::post_custom::example_crt()),
+    );
     // A target's depth texture is the full tier's (RenderCapabilities
     // reports it): GLSL ES 3.0 cannot load from a depth texture.
     if full {

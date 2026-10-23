@@ -70,6 +70,7 @@ pub use pipeline_cache::set_pipeline_cache_dir;
 mod physical;
 mod points;
 mod post;
+mod post_custom;
 mod ribbons;
 mod scatter;
 mod scene;
@@ -129,6 +130,7 @@ pub use particles::{
     SpriteSheet,
 };
 pub use points::Points;
+pub use post_custom::{MAX_CUSTOM_POSTS, PostHandle, PostShader, example_crt, post_module_source};
 pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailStyleHandle};
 pub use scatter::ScatterDraw;
 pub use scene::*;
@@ -1304,6 +1306,8 @@ pub struct Renderer {
     sorted: instances::SortedInstances,
     /// The secondary cameras' GPU state (`views.rs`).
     views: views::Views,
+    /// The custom post passes on the device (`post_custom.rs`).
+    custom_posts: post_custom::CustomPosts,
     cull_inside: Vec<bool>,
     post: post::PostPasses,
     cascade_map: ShadowMap,
@@ -2018,6 +2022,13 @@ impl Renderer {
     /// milliseconds their encoding took; empty without a clock.
     pub fn pass_timings(&self) -> &[(String, f64)] {
         &self.pass_ms
+    }
+
+    /// The custom post passes of `scene` that failed to compile on this
+    /// device, with the device's message: they are skipped
+    /// (`post_custom.rs`).
+    pub fn post_errors(&self, scene: &RenderScene) -> Vec<(PostHandle, String)> {
+        self.custom_posts.errors(scene.id())
     }
 
     /// A headless renderer (draws to [`RenderTarget::Offscreen`] or caller views).
@@ -2752,6 +2763,7 @@ impl Renderer {
             cull_inside: Vec::new(),
             sorted: instances::SortedInstances::default(),
             views: views::Views::default(),
+            custom_posts: post_custom::CustomPosts::default(),
             post,
             cascade_map,
             local_map,
@@ -4789,7 +4801,11 @@ impl Renderer {
         // pass, a canvas, hatching or halftone on surfaces in the paint or
         // lines pass.
         let ink_depth = scene.stylise.depth_edges();
-        let prepass = ao.is_some()
+        // Custom post passes (post_custom.rs) that compiled; they read the
+        // prepass's depth and normals.
+        let custom_posts = self.custom_posts.prepare(&self.device, scene);
+        let prepass = !custom_posts.is_empty()
+            || ao.is_some()
             || depth_bands.is_some()
             || ink_depth
             || scene.stylise.on_surfaces()
@@ -5956,6 +5972,7 @@ impl Renderer {
         if motion_blur.is_some() {
             passes.push(FramePass::MotionBlur);
         }
+        passes.extend((0..custom_posts.len() as u32).map(FramePass::CustomPost));
         if god_rays.is_some() {
             passes.extend([FramePass::GodRaysMask, FramePass::GodRaysBlur]);
         }
@@ -7678,6 +7695,25 @@ impl Renderer {
                         pass.draw(0..6, 0..run.count);
                         stats.draw_calls += 1;
                     }
+                }
+                FramePass::CustomPost(i) => {
+                    let (read, write) = self.graph.custom_post_views(&self.persistent, i, slot);
+                    let lit = self.graph.custom_post_views(&self.persistent, 0, slot).0;
+                    stats.draw_calls += self.custom_posts.encode(
+                        &self.device,
+                        &self.queue,
+                        &mut encoder,
+                        scene,
+                        custom_posts[i as usize],
+                        [
+                            read,
+                            lit,
+                            self.graph.view("lindepth"),
+                            self.graph.view("gbuffer"),
+                            write,
+                        ],
+                        (self.width, self.height),
+                    );
                 }
                 post_pass => {
                     let post_output = match (&self.glass_targets, glass_on) {

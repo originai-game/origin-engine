@@ -1336,6 +1336,14 @@ pub struct RenderScene {
     /// Secondary cameras drawn into render targets or viewports of the
     /// frame, before it in [`crate::View::order`] (`views.rs`).
     pub views: Vec<crate::View>,
+    /// Custom post passes ([`RenderScene::add_post`], `post_custom.rs`) and
+    /// their parameters, by handle.
+    pub posts: Vec<crate::PostShader>,
+    pub post_params: Vec<[[f32; 4]; crate::MAX_SHADER_PARAMS]>,
+    /// The custom post passes the frame runs, in order (at most
+    /// [`crate::MAX_CUSTOM_POSTS`]), after the built-in effects and before
+    /// exposure, bloom and the tone curve (`PostEffects.custom` in the API).
+    pub custom_post: Vec<crate::PostHandle>,
     /// How each texture is sampled by sprites, tiles and text (by texture index).
     texture_filters: Vec<TextureFilter>,
     /// Live slots and generations of the removable kinds.
@@ -1400,6 +1408,9 @@ impl RenderScene {
             instance_layers: Vec::new(),
             skinned_layers: Vec::new(),
             camera_layers: 1,
+            posts: Vec::new(),
+            post_params: Vec::new(),
+            custom_post: Vec::new(),
             views: Vec::new(),
             tick: 0,
             tick_rate: 60.0,

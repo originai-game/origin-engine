@@ -1351,6 +1351,9 @@ pub(crate) enum FramePass {
     DofBlur,
     DofComposite,
     MotionBlur,
+    /// Custom post pass `i` of the frame (`post_custom.rs`): a game's WGSL
+    /// over the lit image, after motion blur, before exposure and bloom.
+    CustomPost(u32),
     GodRaysMask,
     GodRaysBlur,
     Meter,
@@ -1421,6 +1424,7 @@ impl FramePass {
             FramePass::DofBlur => "dof-blur".into(),
             FramePass::DofComposite => "dof-composite".into(),
             FramePass::MotionBlur => "motion-blur".into(),
+            FramePass::CustomPost(i) => format!("custom-post.{i}"),
             FramePass::GodRaysMask => "god-rays-mask".into(),
             FramePass::GodRaysBlur => "god-rays-blur".into(),
             FramePass::Meter => "meter".into(),
@@ -1490,8 +1494,22 @@ struct LitNames {
     /// `None` when TAA writes the history and nothing sharpens it.
     aa: Option<&'static str>,
     after_dof: Option<&'static str>,
+    /// The lit image the first custom post pass reads (after motion blur).
+    before_custom: Option<&'static str>,
     last: Option<&'static str>,
 }
+
+/// The targets the custom post passes write, in order (`post_custom.rs`).
+pub(crate) const CUSTOM_POST_NAMES: [&str; crate::post_custom::MAX_CUSTOM_POSTS] = [
+    "hdr.post.0",
+    "hdr.post.1",
+    "hdr.post.2",
+    "hdr.post.3",
+    "hdr.post.4",
+    "hdr.post.5",
+    "hdr.post.6",
+    "hdr.post.7",
+];
 
 fn lit_names(passes: &[FramePass]) -> LitNames {
     let has = |p| passes.contains(&p);
@@ -1515,16 +1533,25 @@ fn lit_names(passes: &[FramePass]) -> LitNames {
     } else {
         aa
     };
-    let last = if has(FramePass::MotionBlur) {
+    let before_custom = if has(FramePass::MotionBlur) {
         Some("hdr.mb")
     } else {
         after_dof
+    };
+    let customs = passes
+        .iter()
+        .filter(|p| matches!(p, FramePass::CustomPost(_)))
+        .count();
+    let last = match customs {
+        0 => before_custom,
+        n => Some(CUSTOM_POST_NAMES[n - 1]),
     };
     LitNames {
         lit,
         main,
         aa,
         after_dof,
+        before_custom,
         last,
     }
 }
@@ -1696,6 +1723,13 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         g.transient("dof.coc", desc(hw, hh, HDR_FORMAT, 1, attach_bind))
             .transient("dof.blur", desc(hw, hh, HDR_FORMAT, 1, attach_bind));
     }
+    for i in 0..passes
+        .iter()
+        .filter(|p| matches!(p, FramePass::CustomPost(_)))
+        .count()
+    {
+        g.transient(CUSTOM_POST_NAMES[i], desc(w, h, HDR_FORMAT, 1, attach_bind));
+    }
     if has(FramePass::GodRaysMask) {
         g.transient("god.mask", desc(hw, hh, HDR_FORMAT, 1, attach_bind))
             .transient("god.blur", desc(hw, hh, HDR_FORMAT, 1, attach_bind));
@@ -1843,6 +1877,17 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 g.pass(name, &[aa, "dof.blur", "lindepth", "gbuffer"], &["hdr.dof"])
             }
             FramePass::MotionBlur => g.pass(name, &[after_dof, "gbuffer", "lindepth"], &["hdr.mb"]),
+            FramePass::CustomPost(i) => {
+                let read = match i {
+                    0 => names.before_custom.unwrap_or("history-write"),
+                    i => CUSTOM_POST_NAMES[i as usize - 1],
+                };
+                g.pass(
+                    name,
+                    &[read, "lindepth", "gbuffer"],
+                    &[CUSTOM_POST_NAMES[i as usize]],
+                )
+            }
             FramePass::GodRaysMask => g.pass(name, &[lit, "lindepth", "gbuffer"], &["god.mask"]),
             FramePass::GodRaysBlur => {
                 g.pass(name, &["god.mask", "lindepth", "gbuffer"], &["god.blur"])
@@ -1972,6 +2017,25 @@ impl FrameGraph {
         self.views
             .get(name)
             .unwrap_or_else(|| panic!("render graph target '{name}' is not realized"))
+    }
+
+    /// What custom post pass `i` reads and writes (`post_custom.rs`): the
+    /// lit image before it (the TAA history of `slot` when TAA wrote it
+    /// last) and its own target.
+    pub fn custom_post_views<'a>(
+        &'a self,
+        persistent: &'a Persistent,
+        i: u32,
+        slot: usize,
+    ) -> (&'a wgpu::TextureView, &'a wgpu::TextureView) {
+        let read = match i {
+            0 => match lit_names(&self.passes).before_custom {
+                Some(n) => self.view(n),
+                None => &persistent.history.as_ref().expect("TAA history")[slot],
+            },
+            i => self.view(CUSTOM_POST_NAMES[i as usize - 1]),
+        };
+        (read, self.view(CUSTOM_POST_NAMES[i as usize]))
     }
 
     /// The view of `name` when the current graph has it.
@@ -2531,6 +2595,7 @@ impl FrameGraph {
             | FramePass::DofBlur
             | FramePass::DofComposite
             | FramePass::MotionBlur
+            | FramePass::CustomPost(_)
             | FramePass::GodRaysMask
             | FramePass::GodRaysBlur
             | FramePass::Cascade(_)
@@ -2593,6 +2658,7 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
         "god.blur",
     ]
     .iter()
+    .chain(CUSTOM_POST_NAMES.iter())
     .map(|s| s.to_string())
     .collect();
     names.extend((0..meter_levels()).map(luminance_name));
