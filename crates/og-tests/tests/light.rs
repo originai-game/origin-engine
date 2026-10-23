@@ -156,7 +156,7 @@ fn every_batch_kind_draws_its_lightmap() {
 /// for byte.
 #[test]
 fn a_renderer_restore_keeps_the_baked_frame() {
-    use og_render::{BakedLighting, RenderTarget, Renderer};
+    use og_render::{RenderTarget, Renderer};
     let built = og_tests::scenes::build("baked-cornell").expect("build");
     let mut r = Renderer::new_blocking(&built.desc).expect("renderer");
     let frames = built.frames.max(1);
@@ -170,7 +170,7 @@ fn a_renderer_restore_keeps_the_baked_frame() {
     };
     let first = draw(&mut r, &scene);
     let saved = r.save_state();
-    let baked = std::mem::replace(&mut scene.baked, BakedLighting::default());
+    let baked = std::mem::take(&mut scene.baked);
     let unbaked = draw(&mut r, &scene);
     assert_ne!(unbaked.pixels, first.pixels, "unbaked draws otherwise");
     scene.camera.position.x += 0.4;
