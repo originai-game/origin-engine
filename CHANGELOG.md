@@ -75,6 +75,20 @@ Debt round 2 (`docs/phase-1.md`, "Plan 2026-10-23, debt round 2").
   reflection probe from their posed bounds. Probe captures draw
   particles, lines, points, world sprites and water (as its deep colour:
   a face has no depth). Left: 3D fluids and depth in probe faces.
+- `size`: the publish wasm leaves out GPU timestamp queries and the
+  probe's tool members (describe and the views' id pass, `save_scene`,
+  `reload`, `get`, the dumps, the command channel's tool actions: a
+  timeline event or `og.ai` command naming one logs a refusal there);
+  the 2D profile's web modules leave out terrain, planar water, the 3D
+  fluids, scattered copies and volumetric fog and their WGSL
+  (`RenderCapabilities.world3d` says so; a 2D scene holding them draws
+  them in `og dev` and natively, not in its 2D publish build). Shipping
+  `wasm` profile, brotli: 3D publish 3,532,992 → 3,456,521 B (82.4 %), 2D
+  publish 3,357,559 → 3,241,126 B (77.3 %). `og cook --report` and `og
+  doctor --project` warn when a model's raycast BVH is past
+  `budgets.bvhShare` (30 %, at least 16 KiB); the BVH stays cooked by
+  default (dropship 38.6 %, fx-showcase's tree and trickster,
+  meridian-loop's track warn and keep it).
 
 ## 0.3.0 (2026-10-23)
 
