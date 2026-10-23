@@ -818,3 +818,97 @@ fn text_fields_match_their_reference_frame() {
         ),
     }
 }
+
+/// A nine-slice's middle row squeezed along one axis keeps its outline as
+/// dark as the art's own (debt2/ui-aniso, the root of ui-prose's band): the
+/// sprite sampler the UI draws through filters anisotropically, so a piece
+/// squeezed 6× in y and shown 1:1 in x reads its mip level by the x axis
+/// (level 0), where trilinear filtering reads it by the larger axis (level
+/// 2 to 3) and blurs the outline into the fill. The art is an edge column
+/// of a mipmapped atlas: a 4-texel dark outline on a cream fill, uniform
+/// down its 48 rows. It is drawn twice, 1:1 (the art's level-0 value) and
+/// 48 rows into 8 px, and the outline's darkest pixel of each is compared.
+/// A tier without anisotropic filtering (`RenderInfo::sprite_anisotropy`
+/// 1, RenderCapabilities.spriteAnisotropy) is skipped: there og-ui's 2×
+/// bound on a middle's squeeze is what keeps the band away.
+///
+/// Ways it could fail: the sampler reads the mip level by the larger axis
+/// (the Linear-mip sampler: the outline lightens to the fill's side), or
+/// the squeezed piece is drawn from another level than the 1:1 one.
+#[test]
+fn a_middle_squeezed_six_times_keeps_its_outline_as_dark_as_the_art() {
+    use og_render::{ColorSpace, Mips, Sprite, TextureData};
+    let (w, h) = (64u32, 64u32);
+    let (cream, ink) = ([240u8, 225, 190, 255], [40u8, 30, 30, 255]);
+    let rgba = (0..w * h)
+        .flat_map(|i| {
+            if (8..12).contains(&(i % w)) {
+                ink
+            } else {
+                cream
+            }
+        })
+        .collect();
+    let mut scene = RenderScene::new();
+    let art = scene.add_texture(TextureData {
+        width: w,
+        height: h,
+        rgba,
+        color_space: ColorSpace::Srgb,
+        mips: Mips::Generate,
+    });
+    let piece = |x: f32, height: f32| Sprite {
+        texture: Some(art),
+        position: Vec3::new(x, 16.0, 0.0),
+        size: Vec2::new(32.0, height),
+        anchor: Vec2::ZERO,
+        // 32 × 48 texels of the column, the outline at its texels 8 to 12.
+        uv_rect: [0.0, 8.0 / 64.0, 0.5, 56.0 / 64.0],
+        ..Default::default()
+    };
+    let mut overlay = og_render::Overlay::new(128.0, 80.0, 1.0);
+    overlay.sprites.push(piece(16.0, 48.0));
+    overlay.sprites.push(piece(80.0, 8.0));
+    scene.overlay = Some(overlay);
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.post.tonemap = Tonemap::None;
+    let desc = RenderDesc {
+        width: 128,
+        height: 80,
+        ..RenderDesc::default()
+    };
+    let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
+    let aniso = renderer.info().sprite_anisotropy;
+    let tier = renderer.info().backend_tier();
+    if aniso == 1 {
+        println!("{tier}: sprite anisotropy {aniso}, skipped (the 2× bound holds there)");
+        return;
+    }
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("render");
+    let image = renderer.read_offscreen().expect("read back");
+    // The darkest red across the outline's columns, on the piece's middle row.
+    let darkest = |x0: u32, y: u32| {
+        (x0 + 6..x0 + 14)
+            .map(|x| image.pixels[((y * image.width + x) * 4) as usize])
+            .min()
+            .expect("columns")
+    };
+    let level0 = darkest(16, 40);
+    let squeezed = darkest(80, 20);
+    let fill = image.pixels[((20 * image.width + 80 + 24) * 4) as usize];
+    println!(
+        "{tier} (anisotropy {aniso}): outline 1:1 {level0}, squeezed 6× {squeezed}, fill {fill}"
+    );
+    assert!(
+        level0 <= ink[0] + 4,
+        "the 1:1 piece reads the art's outline ({level0}, the art's {})",
+        ink[0]
+    );
+    assert!(
+        squeezed <= level0 + 6,
+        "the outline through a 6× squeezed middle reads {squeezed}, the art's level 0 {level0} (fill {fill}): \
+         the sampler picked the mip level by the squeezed axis"
+    );
+}

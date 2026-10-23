@@ -402,7 +402,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4009</sub>
+<sub>`api.ogt` line 4010</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -434,7 +434,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4016</sub>
+<sub>`api.ogt` line 4017</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -466,7 +466,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4026</sub>
+<sub>`api.ogt` line 4027</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -498,7 +498,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 4034</sub>
+<sub>`api.ogt` line 4035</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -532,7 +532,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 4042</sub>
+<sub>`api.ogt` line 4043</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -562,7 +562,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 4051</sub>
+<sub>`api.ogt` line 4052</sub>
 
 <a id="fn-look"></a>
 
@@ -590,7 +590,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 4058</sub>
+<sub>`api.ogt` line 4059</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -618,7 +618,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 4064</sub>
+<sub>`api.ogt` line 4065</sub>
 
 <a id="fn-text"></a>
 
@@ -648,7 +648,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 4070</sub>
+<sub>`api.ogt` line 4071</sub>
 
 <a id="fn-bufferGeometry"></a>
 
@@ -678,7 +678,7 @@ fn bufferGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4108</sub>
+<sub>`api.ogt` line 4109</sub>
 
 <a id="fn-updateGeometry"></a>
 
@@ -710,7 +710,7 @@ fn updateGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4115</sub>
+<sub>`api.ogt` line 4116</sub>
 
 <a id="fn-geometryInfo"></a>
 
@@ -740,7 +740,7 @@ fn geometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 4123</sub>
+<sub>`api.ogt` line 4124</sub>
 
 <a id="fn-cylinderGeometry"></a>
 
@@ -770,7 +770,7 @@ fn cylinderGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4318</sub>
+<sub>`api.ogt` line 4319</sub>
 
 <a id="fn-coneGeometry"></a>
 
@@ -800,7 +800,7 @@ fn coneGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4325</sub>
+<sub>`api.ogt` line 4326</sub>
 
 <a id="fn-capsuleGeometry"></a>
 
@@ -830,7 +830,7 @@ fn capsuleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4332</sub>
+<sub>`api.ogt` line 4333</sub>
 
 <a id="fn-torusGeometry"></a>
 
@@ -860,7 +860,7 @@ fn torusGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4339</sub>
+<sub>`api.ogt` line 4340</sub>
 
 <a id="fn-ringGeometry"></a>
 
@@ -890,7 +890,7 @@ fn ringGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4346</sub>
+<sub>`api.ogt` line 4347</sub>
 
 <a id="fn-circleGeometry"></a>
 
@@ -920,7 +920,7 @@ fn circleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4353</sub>
+<sub>`api.ogt` line 4354</sub>
 
 <a id="fn-tubeGeometry"></a>
 
@@ -950,7 +950,7 @@ fn tubeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4360</sub>
+<sub>`api.ogt` line 4361</sub>
 
 <a id="fn-lines"></a>
 
@@ -980,7 +980,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 4418</sub>
+<sub>`api.ogt` line 4419</sub>
 
 <a id="fn-points"></a>
 
@@ -1010,7 +1010,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 4453</sub>
+<sub>`api.ogt` line 4454</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1042,7 +1042,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 4557</sub>
+<sub>`api.ogt` line 4558</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1072,7 +1072,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4613</sub>
+<sub>`api.ogt` line 4614</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1106,7 +1106,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 4725</sub>
+<sub>`api.ogt` line 4726</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1134,7 +1134,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 4740</sub>
+<sub>`api.ogt` line 4741</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1162,7 +1162,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 4808</sub>
+<sub>`api.ogt` line 4809</sub>
 
 ## Components, resources and events
 
@@ -2686,7 +2686,7 @@ component ReflectionProbe {
 }
 ```
 
-<sub>`api.ogt` line 3977</sub>
+<sub>`api.ogt` line 3978</sub>
 
 <a id="record-Lines"></a>
 
@@ -2749,7 +2749,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 4460</sub>
+<sub>`api.ogt` line 4461</sub>
 
 <a id="record-Points"></a>
 
@@ -2803,7 +2803,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 4497</sub>
+<sub>`api.ogt` line 4498</sub>
 
 <a id="record-CameraView"></a>
 
@@ -2910,7 +2910,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 4620</sub>
+<sub>`api.ogt` line 4621</sub>
 
 <a id="record-Mirror"></a>
 
@@ -2955,7 +2955,7 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 4692</sub>
+<sub>`api.ogt` line 4693</sub>
 
 <a id="record-RectLight"></a>
 
@@ -3005,7 +3005,7 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 4754</sub>
+<sub>`api.ogt` line 4755</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -3039,7 +3039,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 4781</sub>
+<sub>`api.ogt` line 4782</sub>
 
 ## Types
 
@@ -4361,6 +4361,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 | `volumetricLights` | `number` | `0` | — | — | — | The most point, spot and rect lights that light one sample of Fog.volumetric: those of its screen cluster, MAX_CLUSTER_LIGHTS (64) in the froxel grid, 8 in WebGL2's raymarch, the brightest at the camera first. |
 | `maxLightCookies` | `number` | `0` | — | — | — | The most light cookie layers one frame draws (24 on every tier): a SpotLight.cookie takes one, a PointLight.cookie six (its cube's faces), and a texture several lights of one kind share takes its layers once. Cookies past it, in the order of their lights' entities, are not drawn: those lights shine without them, and the log names them in a warning. |
 | `gpuTimestamps` | `boolean` | `false` | — | — | — | Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true. |
+| `spriteAnisotropy` | `number` | `0` | — | — | — | The anisotropic filtering of sprites and og.ui's images (text is not filtered anisotropically: its distance field would lose its edge): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, WebGL2 with EXT_texture_filter_anisotropic), 1 where it has none (0 without a renderer). Above 1, an image squeezed along one axis keeps the other axis's detail: a style's nine-slice middle squeezed into a short button keeps its outline as crisp as the corners. At 1 the squeezed piece reads a smaller mip level and blurs; og.ui bounds a middle's squeeze at twice its art, so the outline there is one mip level softer than the corners. |
 
 ```ogt
 struct RenderCapabilities {
@@ -4383,6 +4384,7 @@ struct RenderCapabilities {
   field volumetricLights u32 "The most point, spot and rect lights that light one sample of Fog.volumetric: those of its screen cluster, MAX_CLUSTER_LIGHTS (64) in the froxel grid, 8 in WebGL2's raymarch, the brightest at the camera first."
   field maxLightCookies u32 "The most light cookie layers one frame draws (24 on every tier): a SpotLight.cookie takes one, a PointLight.cookie six (its cube's faces), and a texture several lights of one kind share takes its layers once. Cookies past it, in the order of their lights' entities, are not drawn: those lights shine without them, and the log names them in a warning."
   field gpuTimestamps bool "Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true."
+  field spriteAnisotropy u32 "The anisotropic filtering of sprites and og.ui's images (text is not filtered anisotropically: its distance field would lose its edge): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, WebGL2 with EXT_texture_filter_anisotropic), 1 where it has none (0 without a renderer). Above 1, an image squeezed along one axis keeps the other axis's detail: a style's nine-slice middle squeezed into a short button keeps its outline as crisp as the corners. At 1 the squeezed piece reads a smaller mip level and blurs; og.ui bounds a middle's squeeze at twice its art, so the outline there is one mip level softer than the corners."
 }
 ```
 
@@ -4409,7 +4411,7 @@ enum ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 3964</sub>
+<sub>`api.ogt` line 3965</sub>
 
 <a id="type-Shader"></a>
 
@@ -4423,7 +4425,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read."
 ```
 
-<sub>`api.ogt` line 4024</sub>
+<sub>`api.ogt` line 4025</sub>
 
 <a id="type-BufferGeometryDesc"></a>
 
@@ -4464,7 +4466,7 @@ struct BufferGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4079</sub>
+<sub>`api.ogt` line 4080</sub>
 
 <a id="type-GeometryInfo"></a>
 
@@ -4495,7 +4497,7 @@ struct GeometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 4095</sub>
+<sub>`api.ogt` line 4096</sub>
 
 <a id="type-CylinderGeometryDesc"></a>
 
@@ -4554,7 +4556,7 @@ struct CylinderGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4130</sub>
+<sub>`api.ogt` line 4131</sub>
 
 <a id="type-ConeGeometryDesc"></a>
 
@@ -4598,7 +4600,7 @@ struct ConeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4166</sub>
+<sub>`api.ogt` line 4167</sub>
 
 <a id="type-CapsuleGeometryDesc"></a>
 
@@ -4645,7 +4647,7 @@ struct CapsuleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4190</sub>
+<sub>`api.ogt` line 4191</sub>
 
 <a id="type-TorusGeometryDesc"></a>
 
@@ -4692,7 +4694,7 @@ struct TorusGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4217</sub>
+<sub>`api.ogt` line 4218</sub>
 
 <a id="type-RingGeometryDesc"></a>
 
@@ -4743,7 +4745,7 @@ struct RingGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4244</sub>
+<sub>`api.ogt` line 4245</sub>
 
 <a id="type-CircleGeometryDesc"></a>
 
@@ -4783,7 +4785,7 @@ struct CircleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4274</sub>
+<sub>`api.ogt` line 4275</sub>
 
 <a id="type-TubeGeometryDesc"></a>
 
@@ -4827,7 +4829,7 @@ struct TubeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4295</sub>
+<sub>`api.ogt` line 4296</sub>
 
 <a id="type-LineMode"></a>
 
@@ -4852,7 +4854,7 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4367</sub>
+<sub>`api.ogt` line 4368</sub>
 
 <a id="type-LinesDesc"></a>
 
@@ -4918,7 +4920,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 4381</sub>
+<sub>`api.ogt` line 4382</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -4969,7 +4971,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 4425</sub>
+<sub>`api.ogt` line 4426</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -5002,7 +5004,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4528</sub>
+<sub>`api.ogt` line 4529</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -5037,7 +5039,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 4542</sub>
+<sub>`api.ogt` line 4543</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -5060,7 +5062,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4567</sub>
+<sub>`api.ogt` line 4568</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -5074,7 +5076,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 4580</sub>
+<sub>`api.ogt` line 4581</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -5108,7 +5110,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 4589</sub>
+<sub>`api.ogt` line 4590</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -5135,7 +5137,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 4604</sub>
+<sub>`api.ogt` line 4605</sub>
 
 <a id="type-Post"></a>
 
@@ -5149,7 +5151,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 4716</sub>
+<sub>`api.ogt` line 4717</sub>
 
 <a id="type-PostError"></a>
 
@@ -5170,7 +5172,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 4734</sub>
+<sub>`api.ogt` line 4735</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -5193,7 +5195,7 @@ enum VolumetricFog {
 }
 ```
 
-<sub>`api.ogt` line 4748</sub>
+<sub>`api.ogt` line 4749</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -5226,7 +5228,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 4796</sub>
+<sub>`api.ogt` line 4797</sub>
 
 ## Column kinds
 
@@ -5417,7 +5419,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 3970</sub>
+<sub>`api.ogt` line 3971</sub>
 
 ```ogt
 column LineMode {
@@ -5428,7 +5430,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4374</sub>
+<sub>`api.ogt` line 4375</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -5439,7 +5441,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4573</sub>
+<sub>`api.ogt` line 4574</sub>
 
 ```ogt
 column RenderTarget {
@@ -5450,7 +5452,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4582</sub>
+<sub>`api.ogt` line 4583</sub>
 
 ```ogt
 column Post {
@@ -5461,7 +5463,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 4718</sub>
+<sub>`api.ogt` line 4719</sub>
 
 ## Constants
 
@@ -5501,4 +5503,4 @@ const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (Sp
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>`api.ogt` line 3962</sub>
+<sub>`api.ogt` line 3963</sub>

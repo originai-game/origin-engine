@@ -646,7 +646,22 @@ pub struct RenderInfo {
     /// volumetric fog: the cluster's ([`MAX_CLUSTER_LIGHTS`]) in the froxel
     /// grid, [`RAYMARCH_LIGHTS`] in the raymarch.
     pub volumetric_lights: u32,
+    /// The anisotropic filtering of the sampler sprites and the UI's images
+    /// draw through (text keeps a trilinear one: its distance field): [`SPRITE_ANISOTROPY`] where the device filters
+    /// anisotropically (wgpu's `ANISOTROPIC_FILTERING`: Vulkan with
+    /// `samplerAnisotropy`, Metal, WebGPU, WebGL2 with
+    /// `EXT_texture_filter_anisotropic`), 1 where it has none. Above 1, an
+    /// image squeezed along one axis reads its mip level by the other axis
+    /// (a nine-slice's middle row stays as crisp as its corners); at 1 it
+    /// reads it by the squeezed axis and blurs, which og-ui's 2× bound on a
+    /// middle's squeeze keeps slight.
+    pub sprite_anisotropy: u16,
 }
+
+/// The anisotropy clamp of the sprite sampler where the device filters
+/// anisotropically ([`RenderInfo::sprite_anisotropy`]): wgpu's largest, so a
+/// sprite squeezed up to 16× along one axis keeps the other's detail.
+pub const SPRITE_ANISOTROPY: u16 = 16;
 
 impl RenderInfo {
     /// Whether the adapter is a software rasterizer (lavapipe, llvmpipe,
@@ -1378,6 +1393,9 @@ pub struct Renderer {
     material_sampler: wgpu::Sampler,
     sprite_sampler: wgpu::Sampler,
     sprite_sampler_nearest: wgpu::Sampler,
+    /// The font atlases', the decal atlas's and the 2D lightmap's:
+    /// trilinear, clamped, never anisotropic.
+    trilinear_sampler: wgpu::Sampler,
     frame_layout: wgpu::BindGroupLayout,
     sky_layout: wgpu::BindGroupLayout,
     material_layout: wgpu::BindGroupLayout,
@@ -2312,6 +2330,15 @@ impl Renderer {
                 VolumetricMethod::Raymarch
             },
             volumetric_lights: 0,
+            sprite_anisotropy: if adapter
+                .get_downlevel_capabilities()
+                .flags
+                .contains(wgpu::DownlevelFlags::ANISOTROPIC_FILTERING)
+            {
+                SPRITE_ANISOTROPY
+            } else {
+                1
+            },
         };
         info.volumetric_lights = volumetric::lights(info.volumetric);
         log::info!(
@@ -2452,8 +2479,25 @@ impl Renderer {
             mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
+        // Sprites and the UI's images filter anisotropically where the
+        // device can (RenderInfo::sprite_anisotropy): a nine-slice's middle
+        // squeezed along one axis reads its mip level by the other one.
         let sprite_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("sprite"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
+            anisotropy_clamp: info.sprite_anisotropy,
+            ..Default::default()
+        });
+        // Trilinear and clamped: the font atlases (an MSDF distance field
+        // averaged along a squeezed axis loses its edge: the ink spreads and
+        // thins), the decal atlas and the 2D lightmap (sampled as the
+        // surfaces under them are, by the material sampler's filter).
+        let trilinear_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("trilinear"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Linear,
@@ -2905,6 +2949,7 @@ impl Renderer {
             material_sampler,
             sprite_sampler,
             sprite_sampler_nearest,
+            trilinear_sampler,
             frame_layout,
             sky_layout,
             material_layout,
@@ -3555,7 +3600,7 @@ impl Renderer {
                 &self.device,
                 &self.sprite_layout,
                 &gpu.view,
-                &self.sprite_sampler,
+                &self.trilinear_sampler,
                 [font.distance_range, atlas_size.x, atlas_size.y, 0.0],
             );
             self.cache.fonts.push(GpuFont {
@@ -6920,7 +6965,7 @@ impl Renderer {
                     &self.sprite_fx_layout,
                     &[
                         wgpu::BindingResource::TextureView(light),
-                        wgpu::BindingResource::Sampler(&self.sprite_sampler),
+                        wgpu::BindingResource::Sampler(&self.trilinear_sampler),
                         self.sprite_fx_buffer.as_entire_binding(),
                     ],
                 )
@@ -6935,7 +6980,7 @@ impl Renderer {
                         self.fx_buffer.as_entire_binding(),
                         wgpu::BindingResource::TextureView(ao_view),
                         wgpu::BindingResource::TextureView(atlas_view),
-                        wgpu::BindingResource::Sampler(&self.sprite_sampler),
+                        wgpu::BindingResource::Sampler(&self.trilinear_sampler),
                     ],
                 ),
                 sprite: sprite_group(lightmap_view, "sprite fx"),
@@ -7031,7 +7076,7 @@ impl Renderer {
                             self.fx_buffer.as_entire_binding(),
                             wgpu::BindingResource::TextureView(ao_view),
                             wgpu::BindingResource::TextureView(atlas_view),
-                            wgpu::BindingResource::Sampler(&self.sprite_sampler),
+                            wgpu::BindingResource::Sampler(&self.trilinear_sampler),
                             wgpu::BindingResource::TextureView(
                                 transmission_view.as_ref().unwrap_or(&self.post.white),
                             ),
@@ -7103,7 +7148,7 @@ impl Renderer {
                     self.reflection_fx_buffer.as_entire_binding(),
                     wgpu::BindingResource::TextureView(&self.post.white),
                     wgpu::BindingResource::TextureView(atlas_view),
-                    wgpu::BindingResource::Sampler(&self.sprite_sampler),
+                    wgpu::BindingResource::Sampler(&self.trilinear_sampler),
                 ],
             )
         });

@@ -380,7 +380,13 @@ else ignores it. The stamp is world state, so a replay reproduces it.
   `flipX`, `flash`, `shadow`, nine-slice `sliceX`/`sliceY`) is drawn every
   frame at its transform, its scale multiplying the size (so squash and
   stretch is a tween of `og.Transform.scale`). `og.render.sprite` stays for
-  one-tick, immediate drawing (HUDs, debug).
+  one-tick, immediate drawing (HUDs, debug). Sprites and og.ui's frames
+  are filtered anisotropically where the device can
+  (`og.render.capabilities(world).spriteAnisotropy`: 16, or 1 on a WebGL2
+  without `EXT_texture_filter_anisotropic`), so a sprite or a nine-slice
+  squeezed along one axis keeps the other axis's detail (a button's
+  outline stays sharp); at 1 it blurs, and og.ui bounds a frame's middle
+  at twice its art for that reason.
 - **Pixel sprites in a 3D set** stand on the ground with `og.Sprite.dropShadow`
   (or `SpriteDesc.dropShadow`): 0.5 casts the sprite's shape, darkened and
   flattened onto the ground plane (y 0) along the sun, the first

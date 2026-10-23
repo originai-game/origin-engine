@@ -900,7 +900,7 @@ impl crate::Renderer {
                         slot.fx_buffer.as_entire_binding(),
                         wgpu::BindingResource::TextureView(&self.post.white),
                         wgpu::BindingResource::TextureView(atlas_view),
-                        wgpu::BindingResource::Sampler(&self.sprite_sampler),
+                        wgpu::BindingResource::Sampler(&self.trilinear_sampler),
                     ],
                 );
                 (frame, fx)
