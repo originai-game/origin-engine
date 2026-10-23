@@ -20,6 +20,7 @@ mod flipbook;
 mod font;
 pub mod icons;
 pub mod ktx2_source;
+mod lightmap;
 pub mod look;
 mod model;
 mod rig2d;
@@ -548,6 +549,7 @@ enum Kind {
     Rig,
     Terrain,
     Timeline,
+    Lightmap,
     Environment,
     Icons,
     Look,
@@ -578,6 +580,7 @@ impl Kind {
             Kind::Rig => "rig",
             Kind::Terrain => "terrain",
             Kind::Timeline => "timeline",
+            Kind::Lightmap => "lightmap",
             Kind::Environment => "environment",
             Kind::Icons => "icons",
             Kind::Look => "look",
@@ -639,6 +642,7 @@ enum Work<'a> {
     Rig(&'a Source),
     Terrain(&'a Source),
     Timeline(&'a Source),
+    Lightmap(&'a Source),
     Environment(&'a Source),
     Icons(&'a Source),
     Look(&'a Source),
@@ -853,6 +857,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == anim::RIG_TYPE => Kind::Rig,
                     Ok(doc) if doc.ty == terrain::TERRAIN_TYPE => Kind::Terrain,
                     Ok(doc) if doc.ty == timeline::TIMELINE_TYPE => Kind::Timeline,
+                    Ok(doc) if doc.ty == lightmap::LIGHTMAP_TYPE => Kind::Lightmap,
                     Ok(doc) if doc.ty == environment::ENVIRONMENT_TYPE => Kind::Environment,
                     Ok(doc) if doc.ty == icons::ICONS_TYPE => Kind::Icons,
                     Ok(doc) if doc.ty == crate::look::LOOK_TYPE => Kind::Look,
@@ -863,7 +868,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, icons, tileset, tilemap, flipbook, rig2d, shader, behaviour, navmesh, terrain, timeline, environment, texture-array, video, look, sfx, strings, rig or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, icons, tileset, tilemap, flipbook, rig2d, shader, behaviour, navmesh, terrain, timeline, lightmap, environment, texture-array, video, look, sfx, strings, rig or import)",
                                 doc.ty
                             ),
                         ));
@@ -981,6 +986,11 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 &assets_dir,
                 &String::from_utf8_lossy(&s.bytes),
             ));
+        }
+        if s.kind == Kind::Lightmap
+            && let Some(p) = lightmap::pages_file(&s.rel, &String::from_utf8_lossy(&s.bytes))
+        {
+            consumed.insert(p);
         }
         if s.kind == Kind::Timeline {
             consumed.extend(timeline::caption_files(
@@ -1282,6 +1292,12 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 let deps = terrain::terrain_dependencies(s, &|id| known.contains(id));
                 let st = stamp(&[b"terrain 2", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::Terrain::NAME, st, Work::Terrain(s)));
+            }
+            Kind::Lightmap => {
+                // The stamp covers its pages file.
+                let deps = lightmap::dependencies(s);
+                let st = stamp(&[b"lightmap 1", &hash, deps.as_bytes()]);
+                outs.push((s.rel.clone(), format::Lightmap::NAME, st, Work::Lightmap(s)));
             }
             Kind::Timeline => {
                 // The stamp covers every caption file it imports.
@@ -1975,6 +1991,7 @@ fn run(
         Work::NavMesh(s) => e6::cook_navmesh(s, p.stamp),
         Work::Terrain(s) => terrain::cook_terrain(s, &|id| known.contains(id), p.stamp),
         Work::Timeline(s) => timeline::cook_timeline(s, &|id| known.contains(id), p.stamp),
+        Work::Lightmap(s) => lightmap::cook_lightmap(s, p.stamp),
         Work::Environment(s) => environment::cook_environment(s, p.stamp),
         Work::Look(s) => look::cook_look(s, &assets_root(s), &|id| known.contains(id), p.stamp),
         Work::Palette(s) => look::cook_palette(s, p.stamp),

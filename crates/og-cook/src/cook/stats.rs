@@ -164,6 +164,7 @@ fn asset_stats(bundle: &Bundle, outputs: &[(String, String, u64)]) -> Value {
     let mut model = Value::Null;
     let mut textures = Vec::new();
     let mut animation = Value::Null;
+    let mut lightmap = Value::Null;
     let mut unread = Vec::new();
     for (id, ty, _) in outputs {
         let read = match ty.as_str() {
@@ -214,6 +215,20 @@ fn asset_stats(bundle: &Bundle, outputs: &[(String, String, u64)]) -> Value {
                     "morphTargets": a.morphs.len(),
                 });
             }),
+            "og.Lightmap" => bundle.load_lightmap(id).map(|l| {
+                lightmap = json!({
+                    "scene": l.file.scene,
+                    "models": l.file.models.len(),
+                    "pages": l.pages.len(),
+                    "width": l.width,
+                    "height": l.height,
+                    "format": "rgba16f",
+                    "volumes": l.file.volumes.len(),
+                    "probes": l.file.volumes.iter().map(|v| v.probes.len()).sum::<usize>(),
+                    "samples": l.file.samples,
+                    "bakeSeconds": l.file.seconds,
+                });
+            }),
             _ => Ok(()),
         };
         if let Err(e) = read {
@@ -229,6 +244,9 @@ fn asset_stats(bundle: &Bundle, outputs: &[(String, String, u64)]) -> Value {
     }
     if !animation.is_null() {
         out.insert("animation".into(), animation);
+    }
+    if !lightmap.is_null() {
+        out.insert("lightmap".into(), lightmap);
     }
     if !unread.is_empty() {
         out.insert("unread".into(), json!(unread));

@@ -404,6 +404,52 @@ pub fn write_rgba8_zlib(
     })
 }
 
+fn rgba16f_dfd() -> Vec<u8> {
+    // Basic DFD block for R16G16B16A16_SFLOAT: RGBSDA, linear, four signed
+    // float 16-bit samples.
+    let mut words: Vec<u32> = vec![0, 0, 2 | (88 << 16), 1 | (1 << 8) | (1 << 16), 0, 8, 0];
+    for (i, channel) in [0u32, 1, 2, 15].iter().enumerate() {
+        // KHR_DF_SAMPLE_DATATYPE_FLOAT | SIGNED.
+        words.push(((i as u32) * 16) | (15 << 16) | ((*channel | 0x80 | 0x40) << 24));
+        words.push(0);
+        words.push(0xBF80_0000);
+        words.push(0x3F80_0000);
+    }
+    words[0] = (words.len() * 4) as u32;
+    words.iter().flat_map(|w| w.to_le_bytes()).collect()
+}
+
+/// An RGBA16F 2D array (`layers` of `f16` bits, RGBA, rows top to bottom),
+/// one level, zlib-compressed (deterministic: miniz level 9).
+pub fn write_layers_rgba16f(width: u32, height: u32, layers: &[Vec<u16>], writer: &str) -> Vec<u8> {
+    let raw: Vec<u8> = layers
+        .iter()
+        .flat_map(|l| {
+            assert_eq!(l.len(), (width * height * 4) as usize);
+            l.iter().flat_map(|h| h.to_le_bytes())
+        })
+        .collect();
+    let mut out = assemble(Parts {
+        vk_format: 97,
+        type_size: 2,
+        width,
+        height,
+        supercompression: SS_ZLIB,
+        dfd: rgba16f_dfd(),
+        sgd: Vec::new(),
+        levels: vec![(
+            miniz_oxide::deflate::compress_to_vec_zlib(&raw, 9),
+            raw.len(),
+        )],
+        level_align: 1,
+        writer,
+        extra: Vec::new(),
+    });
+    // layerCount (header word 5).
+    out[32..36].copy_from_slice(&(layers.len() as u32).to_le_bytes());
+    out
+}
+
 /// Level `level` of an RGBA8 KTX2 file (supercompression none or zlib).
 pub fn decode_rgba8(bytes: &[u8], level: usize) -> Result<(u32, u32, Vec<u8>), String> {
     let info = parse(bytes)?;

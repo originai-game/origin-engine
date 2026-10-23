@@ -1654,6 +1654,16 @@ impl ComponentTable {
     }
 }
 
+/// A scene's baked lighting as cooked (`Bundle::lightmap`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedLightmap {
+    pub file: crate::lightmap::LightmapFile,
+    pub width: u32,
+    pub height: u32,
+    /// Per page, RGBA f16 bits, rows top to bottom.
+    pub pages: Vec<Vec<u16>>,
+}
+
 /// A decoded scene: plain data for the host to spawn.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SceneDesc {
@@ -2265,6 +2275,35 @@ impl Bundle {
             .and_then(|t| std::str::from_utf8(t).ok())
             .ok_or_else(|| invalid(&blob, "the rig text is cut short or not UTF-8"))?;
         og_anim::RigAsset::parse(text).map_err(|e| invalid(&blob, e.reason().to_string()))
+    }
+
+    /// Decodes a lightmap blob (`og.Lightmap`): the lightmap text and its
+    /// pages (RGBA f16 bits per page).
+    pub fn lightmap(&self, id: &str, bytes: &[u8]) -> Result<CookedLightmap, LoadError> {
+        let blob = self.blob::<format::Lightmap>(id, bytes)?;
+        let meta = one::<format::LightmapMeta>(&blob)?;
+        let text = blob
+            .raw("text")?
+            .get(..meta.text_bytes as usize)
+            .and_then(|t| std::str::from_utf8(t).ok())
+            .ok_or_else(|| invalid(&blob, "the lightmap text is cut short or not UTF-8"))?;
+        let file = crate::lightmap::LightmapFile::parse(text).map_err(|e| invalid(&blob, e))?;
+        let pages = blob
+            .raw("pages")?
+            .get(..meta.pages_bytes as usize)
+            .ok_or_else(|| invalid(&blob, "the lightmap pages are cut short"))?;
+        let (width, height, pages) =
+            crate::lightmap::pages_from_ktx2(pages).map_err(|e| invalid(&blob, e))?;
+        Ok(CookedLightmap {
+            file,
+            width,
+            height,
+            pages,
+        })
+    }
+
+    pub fn load_lightmap(&self, id: &str) -> Result<CookedLightmap, LoadError> {
+        self.lightmap(id, &self.read(id)?)
     }
 
     /// Decodes a timeline blob (`og.TimelineAsset`): the canonical text

@@ -115,6 +115,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
         NavMesh,
         Strings,
         Timeline,
+        Lightmap,
         Terrain,
         EnvironmentMap,
         StreamPack,
@@ -1285,6 +1286,38 @@ impl BlobKind for Timeline {
     const NAME: &'static str = "og.TimelineAsset";
     fn schemas() -> Vec<Schema> {
         vec![TimelineMeta::schema()]
+    }
+}
+
+// ── depth S7: baked lighting ─────────────────────────────────────────────
+
+row!(
+    /// The root of a lightmap blob (an `.ogt` of `type lightmap`).
+    LightmapMeta, "og.LightmapAsset", 1 {
+        /// Bytes of the canonical lightmap text in `text`.
+        text_bytes: u32,
+        /// Bytes of the pages' KTX2 file in `pages`.
+        pages_bytes: u32,
+        /// Static model entities drawn with it.
+        models: u32,
+        /// Lightmap pages (array layers).
+        pages: u32,
+        /// The pages' side in texels.
+        texels: u32,
+        /// Light volumes and their probes.
+        volumes: u32,
+        probes: u32,
+    }
+);
+
+/// The lightmap blob: `text` holds the canonical lightmap file
+/// (`crate::lightmap::LightmapFile::to_text`), `pages` its pages (KTX2,
+/// RGBA16F array layers).
+pub struct Lightmap;
+impl BlobKind for Lightmap {
+    const NAME: &'static str = "og.Lightmap";
+    fn schemas() -> Vec<Schema> {
+        vec![LightmapMeta::schema()]
     }
 }
 
