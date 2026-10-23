@@ -31,12 +31,32 @@ export interface FieldSpec<K extends ColumnKind = ColumnKind> {
   readonly capacity?: number;
 }
 
-/** A reflected layout: field names to field specs. */
-export type Fields = { readonly [field: string]: FieldSpec };
+/** The column kinds a list holds: one number (`f32`, `f64`, `u32`, `i32`) or a handle. */
+export type ListKind = {
+  [K in ColumnKind]: ColumnKinds[K]["value"] extends number ? K : never;
+}[ColumnKind];
 
-/** The value of a layout: each field as its column's value type. */
+/**
+ * A list field, made by `list(of, capacity)`: at most `list` values of the
+ * element's kind, starting empty. Its value is a frozen array: read it as a
+ * copy, write it whole (`post.custom = [...post.custom, h]`).
+ */
+export interface ListSpec<K extends ListKind = ListKind> {
+  readonly kind: K;
+  readonly default: readonly ColumnKinds[K]["value"][];
+  readonly options: FieldOptions;
+  /** The capacity in elements, 1 to 1024. */
+  readonly list: number;
+}
+
+/** A reflected layout: field names to field specs. */
+export type Fields = { readonly [field: string]: FieldSpec | ListSpec };
+
+/** The value of a layout: each field as its column's value type, a list as a read-only array of it. */
 export type FieldValues<F extends Fields> = {
-  -readonly [K in keyof F]: ColumnKinds[F[K]["kind"]]["value"];
+  -readonly [K in keyof F]: F[K] extends { readonly list: number }
+    ? readonly ColumnKinds[F[K]["kind"]]["value"][]
+    : ColumnKinds[F[K]["kind"]]["value"];
 };
 
 /** The typed views of a layout: each field as its column's typed array. */
@@ -901,7 +921,7 @@ export declare const color: ColorMath;
 // ── reflect ─────────────────────────────────────────────────────
 // Reflection: components and resources are declared once with their field layout and metadata, and registered by name.
 // The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field.
-// A field holds one value: there is no array or list column. A few values are numbered fields (`p0` to `p7`, as og.CameraRail does); a list of things is an entity each, with its own component, looped over by a query (a ring of skid marks, the laps of a race); a long record (a lap's taped inputs) is text in `str` fields of at most 4,096 bytes each, chunked over entities. Keep none of it in module variables: they are not world state, so a snapshot, a replay and a hot reload lose them.
+// A field holds one value, or a list of at most a fixed number of one number type or handle: `list(u32(), 8)`, `list(Asset(), 4)` (the list factory below). A list is read as a frozen copy (`push` throws) and written whole (`chain.passes = [...chain.passes, h]`); one over its capacity is refused, never truncated. A few vectors are numbered fields (`p0` to `p7`, as og.CameraRail does); a list of things with fields of their own is an entity each, with its own component, looped over by a query (a ring of skid marks, the laps of a race); a long record (a lap's taped inputs) is text in `str` fields of at most 4,096 bytes each, chunked over entities. Keep none of it in module variables: they are not world state, so a snapshot, a replay and a hot reload lose them.
 // A handle (an og.load answer, a texture, a sound, a geometry, a material, an entity) is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Sound()`, `Geometry()`, `Material()`, `Entity()`, the factories of the API's handle types), in a component or a resource. A `u32` field refuses one (handles pass 2^32: `4294967298 is not a u32`); an `f64` holds the number but loses its type.
 
 /**
@@ -1054,6 +1074,17 @@ export declare function Color(value?: Color, options?: FieldOptions): FieldSpec<
  * @param options Label and docs (a string has no range and is not tunable).
  */
 export declare function str(capacity: number, value?: string, options?: FieldOptions): FieldSpec<"str">;
+
+/**
+ * A list of at most `capacity` values of one number column (`f32`, `f64`, `u32`, `i32`) or handle column (`Asset`, `Entity`, `Post`, ...), stored inline: a count, then the elements, zeros past the count, so `[]` and `[0]` differ and the list is world state like a number. The capacity is 1 to 1,024 elements; it starts empty and is never tunable.
+ * Reading it answers a frozen array, a copy: `push`, `splice` and index writes throw, so change it by writing a whole array (`v.passes = [...v.passes, h]`, `v.passes = []`). A list over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Scene text and looks give it on one line, its elements in order (`passes 3 5`), the key alone for the empty list. Its view is the element's typed array with a stride of (capacity + 1) elements, the count first.
+ *
+ * A list field: stored in the element's typed array, (capacity + 1) of its lanes per entity, the count first.
+ * @param of The element's column factory, called for its kind: `u32()`, `Asset()`, `Post()` (its default and options are not used).
+ * @param capacity The most elements it holds, 1 to 1024.
+ * @param options Label and docs (a list has no range and is not tunable).
+ */
+export declare function list<K extends ListKind>(of: FieldSpec<K>, capacity: number, options?: FieldOptions): ListSpec<K>;
 
 /**
  * Declare a component: plain data stored per entity in engine memory, one column per field.
@@ -4617,23 +4648,11 @@ export interface PostEffects {
    */
   ssrIntensity: number;
   /**
-   * The first custom post pass (og.load.post, a `type post` asset; 0 is none). PostEffects.custom1 to custom8 are an ordered list, as many as og-render runs (RenderCapabilities.maxCustomPosts): each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (it turns the prepass on). Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped.
+   * The custom post passes, in order (og.load.post, `type post` assets): at most RenderCapabilities.maxCustomPosts (8, og-render's MAX_CUSTOM_POSTS). Each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (any pass turns the prepass on). Write the whole list: `post.custom = [grade, crt]`, `post.custom = []`; a look gives it on one line (`custom "post/tint.ogt" "post/crt.ogt"`). A 0 in it is skipped. Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped.
+   *
+   * @capacity 8 elements (List.Post.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
    */
-  custom1: Post;
-  /** The second custom post pass, over the first's output (0 skips the slot). */
-  custom2: Post;
-  /** The third custom post pass. */
-  custom3: Post;
-  /** The fourth custom post pass. */
-  custom4: Post;
-  /** The fifth custom post pass. */
-  custom5: Post;
-  /** The sixth custom post pass. */
-  custom6: Post;
-  /** The seventh custom post pass. */
-  custom7: Post;
-  /** The eighth and last custom post pass, over every one before it. */
-  custom8: Post;
+  custom: readonly Post[];
 }
 
 /**
@@ -6323,7 +6342,7 @@ export interface RenderCapabilities {
   /** The largest side of a render target (the device's largest 2D texture). */
   readonly maxRenderTargetSize: number;
   /**
-   * The most custom post passes a frame runs: 8 on every tier, PostEffects.custom1 to custom8 (numbered fields, as a reflected record has no list field).
+   * The most custom post passes a frame runs: 8 on every tier, PostEffects.custom's capacity.
    */
   readonly maxCustomPosts: number;
   /**
@@ -21424,7 +21443,7 @@ export declare namespace og {
    * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.
    * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.
    */
-  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly ssr: FieldSpec<"bool">; readonly ssrMaxDistance: FieldSpec<"f32">; readonly ssrThickness: FieldSpec<"f32">; readonly ssrSteps: FieldSpec<"u32">; readonly ssrFade: FieldSpec<"f32">; readonly ssrIntensity: FieldSpec<"f32">; readonly custom1: FieldSpec<"Post">; readonly custom2: FieldSpec<"Post">; readonly custom3: FieldSpec<"Post">; readonly custom4: FieldSpec<"Post">; readonly custom5: FieldSpec<"Post">; readonly custom6: FieldSpec<"Post">; readonly custom7: FieldSpec<"Post">; readonly custom8: FieldSpec<"Post"> }, PostEffects>;
+  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly ssr: FieldSpec<"bool">; readonly ssrMaxDistance: FieldSpec<"f32">; readonly ssrThickness: FieldSpec<"f32">; readonly ssrSteps: FieldSpec<"u32">; readonly ssrFade: FieldSpec<"f32">; readonly ssrIntensity: FieldSpec<"f32">; readonly custom: ListSpec<"Post"> }, PostEffects>;
   /**
    * Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.
    * Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised.
@@ -21750,7 +21769,7 @@ export declare namespace og {
      */
     function setPostParam(world: World, post: Post, name: string, value: readonly number[]): Result<void>;
     /**
-     * The custom post passes PostEffects.custom1 to custom8 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal.
+     * The custom post passes PostEffects.custom names that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal.
      *
      * @param world The world asked.
      */
@@ -21873,7 +21892,7 @@ export declare namespace og {
      */
     function shader(world: World, path: string): Result<Shader>;
     /**
-     * A custom post pass for PostEffects.custom1 to custom8, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.
+     * A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.
      *
      * @param world The world whose renderer owns it.
      * @param path The asset id, such as `post/crt.ogt`.

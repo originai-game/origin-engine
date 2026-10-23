@@ -119,7 +119,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1160 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1161 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -395,6 +395,7 @@ Field units the docs and Tune use.
 | [`LineMode`](render.md#type-LineMode) | enum | render | — |
 | [`LineMode()`](render.md#column-LineMode) | column kind | render | — |
 | [`LinesDesc`](render.md#type-LinesDesc) | desc struct | render | — |
+| [`list()`](reflect.md#column-list) | column kind | reflect | — |
 | [`ListDesc`](ui.md#type-ListDesc) | desc struct | ui | — |
 | [`ListRange`](ui.md#type-ListRange) | struct | ui | — |
 | [`ListResult`](ui.md#type-ListResult) | struct | ui | — |

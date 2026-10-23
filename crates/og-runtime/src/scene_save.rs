@@ -33,6 +33,22 @@ fn field_value(layout: &Layout, bytes: &[u8], field: &str) -> Option<FieldValue>
     let (i, f) = layout.field(field)?;
     let at = layout.offset(i);
     let b = bytes.get(at..at + f.ty.size())?;
+    if f.ty.is_list() {
+        // Its elements on its line; a list of handles is the engine's.
+        if is_handle(f.kind) {
+            return None;
+        }
+        let element = f.ty.scalar();
+        let lanes = og_core::list_elements(f.ty, b)
+            .map(|e| match element {
+                og_core::Scalar::F32 => f32::from_le_bytes(e.try_into().expect("4 bytes")) as f64,
+                og_core::Scalar::F64 => f64::from_le_bytes(e.try_into().expect("8 bytes")),
+                og_core::Scalar::I32 => i32::from_le_bytes(e.try_into().expect("4 bytes")) as f64,
+                _ => u32::from_le_bytes(e[..4].try_into().expect("4 bytes")) as f64,
+            })
+            .collect();
+        return Some(FieldValue::Lanes(lanes));
+    }
     let f32s = |n: usize| -> Vec<f64> {
         (0..n)
             .map(|k| f32::from_le_bytes(b[4 * k..4 * k + 4].try_into().expect("4 bytes")) as f64)

@@ -1614,7 +1614,7 @@
     },
     {
       "name": "reflect",
-      "doc": "Reflection: components and resources are declared once with their field layout and metadata, and registered by name.\nThe inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field.\nA field holds one value: there is no array or list column. A few values are numbered fields (`p0` to `p7`, as og.CameraRail does); a list of things is an entity each, with its own component, looped over by a query (a ring of skid marks, the laps of a race); a long record (a lap's taped inputs) is text in `str` fields of at most 4,096 bytes each, chunked over entities. Keep none of it in module variables: they are not world state, so a snapshot, a replay and a hot reload lose them.\nA handle (an og.load answer, a texture, a sound, a geometry, a material, an entity) is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Sound()`, `Geometry()`, `Material()`, `Entity()`, the factories of the API's handle types), in a component or a resource. A `u32` field refuses one (handles pass 2^32: `4294967298 is not a u32`); an `f64` holds the number but loses its type.",
+      "doc": "Reflection: components and resources are declared once with their field layout and metadata, and registered by name.\nThe inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field.\nA field holds one value, or a list of at most a fixed number of one number type or handle: `list(u32(), 8)`, `list(Asset(), 4)` (the list factory below). A list is read as a frozen copy (`push` throws) and written whole (`chain.passes = [...chain.passes, h]`); one over its capacity is refused, never truncated. A few vectors are numbered fields (`p0` to `p7`, as og.CameraRail does); a list of things with fields of their own is an entity each, with its own component, looped over by a query (a ring of skid marks, the laps of a race); a long record (a lap's taped inputs) is text in `str` fields of at most 4,096 bytes each, chunked over entities. Keep none of it in module variables: they are not world state, so a snapshot, a replay and a hot reload lose them.\nA handle (an og.load answer, a texture, a sound, a geometry, a material, an entity) is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Sound()`, `Geometry()`, `Material()`, `Entity()`, the factories of the API's handle types), in a component or a resource. A `u32` field refuses one (handles pass 2^32: `4294967298 is not a u32`); an `f64` holds the number but loses its type.",
       "place": "top",
       "publish": true,
       "types": [
@@ -1629,7 +1629,8 @@
         "Quaternion",
         "Matrix4",
         "Color",
-        "str"
+        "str",
+        "list"
       ],
       "consts": [],
       "functions": [
@@ -3554,7 +3555,7 @@
         },
         {
           "name": "postErrors",
-          "doc": "The custom post passes PostEffects.custom1 to custom8 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal.",
+          "doc": "The custom post passes PostEffects.custom names that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal.",
           "params": [
             {
               "name": "world",
@@ -3862,7 +3863,7 @@
         },
         {
           "name": "post",
-          "doc": "A custom post pass for PostEffects.custom1 to custom8, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.",
+          "doc": "A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.",
           "params": [
             {
               "name": "world",
@@ -15107,45 +15108,14 @@
           "maximum": 1,
           "x-og-tunable": true
         },
-        "custom1": {
-          "$ref": "#/$defs/Post",
-          "description": "The first custom post pass (og.load.post, a `type post` asset; 0 is none). PostEffects.custom1 to custom8 are an ordered list, as many as og-render runs (RenderCapabilities.maxCustomPosts): each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (it turns the prepass on). Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped.",
-          "default": 0
-        },
-        "custom2": {
-          "$ref": "#/$defs/Post",
-          "description": "The second custom post pass, over the first's output (0 skips the slot).",
-          "default": 0
-        },
-        "custom3": {
-          "$ref": "#/$defs/Post",
-          "description": "The third custom post pass.",
-          "default": 0
-        },
-        "custom4": {
-          "$ref": "#/$defs/Post",
-          "description": "The fourth custom post pass.",
-          "default": 0
-        },
-        "custom5": {
-          "$ref": "#/$defs/Post",
-          "description": "The fifth custom post pass.",
-          "default": 0
-        },
-        "custom6": {
-          "$ref": "#/$defs/Post",
-          "description": "The sixth custom post pass.",
-          "default": 0
-        },
-        "custom7": {
-          "$ref": "#/$defs/Post",
-          "description": "The seventh custom post pass.",
-          "default": 0
-        },
-        "custom8": {
-          "$ref": "#/$defs/Post",
-          "description": "The eighth and last custom post pass, over every one before it.",
-          "default": 0
+        "custom": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Post"
+          },
+          "maxItems": 8,
+          "description": "The custom post passes, in order (og.load.post, `type post` assets): at most RenderCapabilities.maxCustomPosts (8, og-render's MAX_CUSTOM_POSTS). Each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (any pass turns the prepass on). Write the whole list: `post.custom = [grade, crt]`, `post.custom = []`; a look gives it on one line (`custom \"post/tint.ogt\" \"post/crt.ogt\"`). A 0 in it is skipped. Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped.",
+          "default": []
         }
       },
       "additionalProperties": false
@@ -17194,7 +17164,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The most custom post passes a frame runs: 8 on every tier, PostEffects.custom1 to custom8 (numbered fields, as a reflected record has no list field)."
+          "description": "The most custom post passes a frame runs: 8 on every tier, PostEffects.custom's capacity."
         },
         "volumetricFog": {
           "$ref": "#/$defs/VolumetricFog",

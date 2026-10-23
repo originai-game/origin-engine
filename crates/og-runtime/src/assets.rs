@@ -930,6 +930,15 @@ fn field_json(ty: FieldType, bytes: &[u8], target: &super::codec::FieldLayout) -
     if ty.is_string() {
         return json!(og_core::unpack_str(bytes));
     }
+    if let Some((element, _)) = ty.list_of() {
+        // A list moves by its elements; the codec refuses more than fit.
+        let one = element.field_type();
+        return Value::Array(
+            og_core::list_elements(ty, bytes)
+                .map(|e| field_json(one, e, target))
+                .collect(),
+        );
+    }
     let lanes: Vec<f64> = (0..ty.lanes())
         .map(|i| {
             let at = i * ty.scalar().size();
@@ -980,9 +989,11 @@ fn migrate(schema: &Schema, row: &[u8], layout: &Layout, dropped: &mut Vec<Strin
             continue;
         };
         let range = packed.range(i);
-        // A string moves by its text; the codec refuses one over the capacity.
+        // A string moves by its text and a list by its elements; the codec
+        // refuses one over the capacity.
         let strings = f.ty.is_string() && target.ty.is_string();
-        if !strings && f.ty.lanes() != target.ty.lanes() {
+        let lists = f.ty.is_list() && target.ty.is_list();
+        if !strings && !lists && f.ty.lanes() != target.ty.lanes() {
             dropped.push(format!(
                 "{}.{} ({} lanes in the scene, {} registered)",
                 layout.schema,

@@ -664,6 +664,7 @@ fn handle_extensions(column: &str) -> Option<&'static [&'static str]> {
         "Lut" => &["cube"],
         "Palette" => &["hex", "gpl"],
         "EnvironmentMap" => &["ogt"],
+        "Post" => &["ogt"],
         _ => return None,
     })
 }
@@ -677,6 +678,46 @@ fn word(v: &[Value]) -> Option<&str> {
 
 fn number(n: f64) -> Value {
     Value::Number(Number::from_f64(n).expect("a finite number"))
+}
+
+/// The asset id a handle field's value names: a string under `assets/`,
+/// or one of the engine's built-ins (`"@canvas/paper"`), of the column's
+/// kinds by extension.
+fn handle_path(at: &str, column: &str, exts: &[&str], values: &[Value]) -> Result<String, String> {
+    let path = match values {
+        [Value::String(s)] if s.starts_with('@') => match builtin(s) {
+            Some((id, _)) => id.to_string(),
+            None => {
+                let kinds: Vec<&str> = BUILTINS
+                    .iter()
+                    .map(|(id, _)| *id)
+                    .filter(|id| id.rsplit_once('.').is_some_and(|(_, e)| exts.contains(&e)))
+                    .map(|id| id.rsplit_once('.').map_or(id, |(stem, _)| stem))
+                    .collect();
+                return Err(format!(
+                    "{at}: \"{s}\" is not one of the engine's built-in {column}s ({})",
+                    kinds.join(", ")
+                ));
+            }
+        },
+        [Value::String(s)] => crate::runtime::asset_id(s).to_string(),
+        _ => {
+            return Err(format!(
+                "{at} names a {column} by its asset id, as a string"
+            ));
+        }
+    };
+    let ext = path
+        .rsplit_once('.')
+        .map_or("", |(_, e)| e)
+        .to_ascii_lowercase();
+    if !exts.contains(&ext.as_str()) {
+        return Err(format!(
+            "{at}: \"{path}\" is not a {column} (.{})",
+            exts.join(", .")
+        ));
+    }
+    Ok(path)
 }
 
 /// Checks the flattened look against the records and writes colours
@@ -719,6 +760,9 @@ fn check(look: &mut LookFile, known: &dyn Fn(&str) -> bool) -> Result<(), String
             if decl.readonly {
                 return Err(format!("{at} is read only"));
             }
+            if values.is_empty() && decl.list == 0 {
+                return Err(format!("{at} has no value"));
+            }
             let range = |n: f64| -> Result<(), String> {
                 if decl.min.is_some_and(|m| n < m) || decl.max.is_some_and(|m| n > m) {
                     return Err(format!(
@@ -752,45 +796,43 @@ fn check(look: &mut LookFile, known: &dyn Fn(&str) -> bool) -> Result<(), String
                 }
                 continue;
             }
-            if let Some(exts) = handle_extensions(decl.column) {
-                let path = match values.as_slice() {
-                    [Value::String(s)] if s.starts_with('@') => match builtin(s) {
-                        Some((id, _)) => id.to_string(),
-                        None => {
-                            let kinds: Vec<&str> = BUILTINS
-                                .iter()
-                                .map(|(id, _)| *id)
-                                .filter(|id| {
-                                    id.rsplit_once('.').is_some_and(|(_, e)| exts.contains(&e))
-                                })
-                                .map(|id| id.rsplit_once('.').map_or(id, |(stem, _)| stem))
-                                .collect();
-                            return Err(format!(
-                                "{at}: \"{s}\" is not one of the engine's built-in {}s ({})",
-                                decl.column,
-                                kinds.join(", ")
-                            ));
-                        }
-                    },
-                    [Value::String(s)] => crate::runtime::asset_id(s).to_string(),
-                    _ => {
-                        return Err(format!(
-                            "{at} names a {} by its asset id, as a string",
-                            decl.column
-                        ));
-                    }
-                };
-                let ext = path
-                    .rsplit_once('.')
-                    .map_or("", |(_, e)| e)
-                    .to_ascii_lowercase();
-                if !exts.contains(&ext.as_str()) {
+            if decl.list > 0 {
+                // A list on its one line: up to its capacity of numbers, or
+                // of asset ids for a list of handles.
+                let n = decl.list as usize;
+                if values.len() > n {
                     return Err(format!(
-                        "{at}: \"{path}\" is not a {} (.{})",
-                        decl.column,
-                        exts.join(", .")
+                        "{at} holds at most {n}, got {}: a list is never truncated",
+                        values.len()
                     ));
                 }
+                if let Some(exts) = handle_extensions(decl.column) {
+                    let mut paths = Vec::with_capacity(values.len());
+                    for v in values.iter() {
+                        let path = handle_path(&at, decl.column, exts, std::slice::from_ref(v))?;
+                        if !known(&path) {
+                            missing.push(path.clone());
+                        }
+                        paths.push(Value::String(path));
+                    }
+                    *values = paths;
+                    continue;
+                }
+                for v in values.iter() {
+                    let x = v
+                        .as_number()
+                        .map(Number::as_f64)
+                        .filter(|x| x.is_finite())
+                        .ok_or_else(|| format!("{at} is a list of {} numbers", decl.column))?;
+                    let whole = matches!(decl.column, "u32" | "i32");
+                    if whole && (x.fract() != 0.0 || (decl.column == "u32" && x < 0.0)) {
+                        return Err(format!("{at}: {x} is not a {}", decl.column));
+                    }
+                }
+                continue;
+            }
+            if let Some(exts) = handle_extensions(decl.column) {
+                let path = handle_path(&at, decl.column, exts, values)?;
                 if !known(&path) {
                     missing.push(path.clone());
                 }
@@ -1079,6 +1121,11 @@ mod tests {
             .unwrap();
         assert_eq!(p.get("outlineColor").unwrap().len(), 3);
         assert!(
+            one("Stylise {\n  posterize\n}\n", &[])
+                .unwrap_err()
+                .contains("line 5: Stylise.posterize has no value")
+        );
+        assert!(
             one("Stylise {\n  posterise 4\n}\n", &[])
                 .unwrap_err()
                 .contains("Stylise has no field 'posterise'")
@@ -1107,6 +1154,41 @@ mod tests {
             one("Stylise {\n  palette \"palettes/p.hex\"\n}\n", &[])
                 .unwrap_err()
                 .contains("not under assets/: palettes/p.hex")
+        );
+        // A list on its one line: a handle per element by its asset id,
+        // at most the capacity, the key alone for the empty list.
+        let l = one(
+            "PostEffects {\n  custom \"post/tint.ogt\" \"post/crt.ogt\"\n}\n",
+            &["post/tint.ogt", "post/crt.ogt"],
+        )
+        .unwrap();
+        let p = l
+            .blocks
+            .iter()
+            .find(|b| b.resource == "PostEffects")
+            .unwrap();
+        let ids: Vec<&str> = p
+            .get("custom")
+            .unwrap()
+            .iter()
+            .filter_map(Value::as_str)
+            .collect();
+        assert_eq!(ids, ["post/tint.ogt", "post/crt.ogt"]);
+        let empty = one("PostEffects {\n  custom\n}\n", &[]);
+        assert!(empty.is_ok(), "{:?}", empty.err());
+        let nine = format!(
+            "PostEffects {{\n  custom{}\n}}\n",
+            " \"post/a.ogt\"".repeat(9)
+        );
+        assert!(
+            one(&nine, &["post/a.ogt"])
+                .unwrap_err()
+                .contains("PostEffects.custom holds at most 8, got 9")
+        );
+        assert!(
+            one("PostEffects {\n  custom \"post/a.png\"\n}\n", &[])
+                .unwrap_err()
+                .contains("not a Post (.ogt)")
         );
         assert!(
             one("PostEffects {\n  outline 1\n}\n", &[])

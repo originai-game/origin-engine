@@ -2045,6 +2045,13 @@ pub fn resource_layout(world: u32, resource: &str) -> String {
                     "name": f.name, "kind": kind_name(f), "offset": offset, "size": size,
                     "readonly": f.readonly,
                 });
+                // A list: its element's kind and its capacity in elements;
+                // the count lane comes first, each lane the element's size.
+                if let Some((_, capacity)) = f.ty.list_of() {
+                    v["kind"] = json!("list");
+                    v["element"] = json!(kind_name(f));
+                    v["capacity"] = json!(capacity);
+                }
                 if !f.variants.is_empty() {
                     v["variants"] = json!(f.variants);
                 }

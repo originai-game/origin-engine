@@ -1,7 +1,7 @@
 //! Render targets, secondary cameras, layers and custom post passes (depth
 //! S8): `og.render.renderTarget`, `og.CameraView`, `og.Mirror`, the
 //! `layers` masks of og.Mesh, og.Model and og.Camera, `og.load.post`,
-//! `PostEffects.custom1..8`, `og.render.setPostParam` and
+//! `PostEffects.custom`, `og.render.setPostParam` and
 //! `og.render.postErrors`, onto og-render's `targets.rs`, `views.rs` and
 //! `post_custom.rs`.
 //!
@@ -20,8 +20,8 @@ use og_ecs::{Entity, QueryDesc, World};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, HashMap};
 
-/// The custom post slots of PostEffects (custom1 to custom8): every pass
-/// og-render runs.
+/// The capacity of PostEffects.custom (`List.Post.8` in the IDL): every
+/// pass og-render runs.
 pub(crate) const POST_SLOTS: usize = og_render::MAX_CUSTOM_POSTS;
 
 /// The records extraction reads here.
@@ -127,25 +127,31 @@ pub(crate) fn capabilities(rs: &RenderState) -> Value {
 
 // ── og.load.post, og.render.setPostParam, og.render.postErrors ─────────────
 
+/// A cooked post pass added to the scene once per path: its load index
+/// (`og.load.post`, a look's PostEffects.custom).
+pub(crate) fn load_post(eng: &super::engine::Engine, path: &str) -> Result<usize, String> {
+    let id = og_cook::runtime::asset_id(path).to_string();
+    if let Some(&i) = eng.render.borrow().views.post_paths.get(&id) {
+        return Ok(i);
+    }
+    let post = {
+        let assets = eng.assets.borrow();
+        let (bytes, bundle) = assets.blob(&id)?;
+        bundle.post(&id, bytes.bytes()).map_err(|e| e.to_string())?
+    };
+    let mut rs = eng.render.borrow_mut();
+    let h = rs.scene.add_post(post);
+    rs.views.posts.push(h);
+    let i = rs.views.posts.len() - 1;
+    rs.views.post_paths.insert(id, i);
+    Ok(i)
+}
+
 /// `og.load.post`: a cooked post pass, added to the scene once per path.
 pub fn og_load_post(world: u32, path: String) -> String {
     let r = (|| -> Result<Value, String> {
         let eng = engine(world)?;
-        let id = og_cook::runtime::asset_id(&path).to_string();
-        if let Some(&i) = eng.render.borrow().views.post_paths.get(&id) {
-            return Ok(json!(handle(i)));
-        }
-        let post = {
-            let assets = eng.assets.borrow();
-            let (bytes, bundle) = assets.blob(&id)?;
-            bundle.post(&id, bytes.bytes()).map_err(|e| e.to_string())?
-        };
-        let mut rs = eng.render.borrow_mut();
-        let h = rs.scene.add_post(post);
-        rs.views.posts.push(h);
-        let i = rs.views.posts.len() - 1;
-        rs.views.post_paths.insert(id, i);
-        Ok(json!(handle(i)))
+        Ok(json!(handle(load_post(&eng, &path)?)))
     })();
     match r {
         Ok(v) => ok(v),
@@ -352,13 +358,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
         rs.views.entities.push(e);
     }
 
-    // PostEffects.custom1..8, in order, the slots left 0 skipped.
+    // PostEffects.custom, in order, a 0 (or a pass not loaded) skipped.
     scene.custom_post.clear();
     if let Some(p) = resource(world, rs.draw.fx.post.as_ref()) {
-        for k in 1..=POST_SLOTS {
-            if let Some(h) = index(&p[format!("custom{k}").as_str()])
-                .and_then(|i| rs.views.posts.get(i).copied())
-            {
+        let passes = p["custom"].as_array().map_or(&[][..], Vec::as_slice);
+        for v in passes.iter().take(POST_SLOTS) {
+            if let Some(h) = index(v).and_then(|i| rs.views.posts.get(i).copied()) {
                 scene.custom_post.push(h);
             }
         }

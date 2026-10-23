@@ -71,6 +71,10 @@
       "capacity": true
     },
     {
+      "name": "list",
+      "list": true
+    },
+    {
       "name": "Entity",
       "array": "Uint32Array",
       "stride": 2,
@@ -6347,44 +6351,10 @@
           "tunable": true
         },
         {
-          "name": "custom1",
+          "name": "custom",
           "column": "Post",
-          "default": 0
-        },
-        {
-          "name": "custom2",
-          "column": "Post",
-          "default": 0
-        },
-        {
-          "name": "custom3",
-          "column": "Post",
-          "default": 0
-        },
-        {
-          "name": "custom4",
-          "column": "Post",
-          "default": 0
-        },
-        {
-          "name": "custom5",
-          "column": "Post",
-          "default": 0
-        },
-        {
-          "name": "custom6",
-          "column": "Post",
-          "default": 0
-        },
-        {
-          "name": "custom7",
-          "column": "Post",
-          "default": 0
-        },
-        {
-          "name": "custom8",
-          "column": "Post",
-          "default": 0
+          "list": 8,
+          "default": []
         }
       ]
     },

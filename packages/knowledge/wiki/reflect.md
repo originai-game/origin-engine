@@ -6,7 +6,7 @@ Reflection: components and resources are declared once with their field layout a
 
 The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field.
 
-A field holds one value: there is no array or list column. A few values are numbered fields (`p0` to `p7`, as og.CameraRail does); a list of things is an entity each, with its own component, looped over by a query (a ring of skid marks, the laps of a race); a long record (a lap's taped inputs) is text in `str` fields of at most 4,096 bytes each, chunked over entities. Keep none of it in module variables: they are not world state, so a snapshot, a replay and a hot reload lose them.
+A field holds one value, or a list of at most a fixed number of one number type or handle: `list(u32(), 8)`, `list(Asset(), 4)` (the list factory below). A list is read as a frozen copy (`push` throws) and written whole (`chain.passes = [...chain.passes, h]`); one over its capacity is refused, never truncated. A few vectors are numbered fields (`p0` to `p7`, as og.CameraRail does); a list of things with fields of their own is an entity each, with its own component, looped over by a query (a ring of skid marks, the laps of a race); a long record (a lap's taped inputs) is text in `str` fields of at most 4,096 bytes each, chunked over entities. Keep none of it in module variables: they are not world state, so a snapshot, a replay and a hot reload lose them.
 
 A handle (an og.load answer, a texture, a sound, a geometry, a material, an entity) is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Sound()`, `Geometry()`, `Material()`, `Entity()`, the factories of the API's handle types), in a component or a resource. A `u32` field refuses one (handles pass 2^32: `4294967298 is not a u32`); an `f64` holds the number but loses its type.
 
@@ -38,6 +38,7 @@ module reflect {
 | [`Matrix4()`](#column-Matrix4) | column kind | A Matrix4 field: sixteen column-major elements per entity. |
 | [`Color()`](#column-Color) | column kind | A Color field: r, g, b interleaved. |
 | [`str()`](#column-str) | column kind | Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script). The capacity is 1 to 4,096 bytes: a larger one is refused when the game starts (`a string field holds 1 to 4096 bytes`), so longer text goes in chunks, an entity each. |
+| [`list()`](#column-list) | column kind | A list of at most `capacity` values of one number column (`f32`, `f64`, `u32`, `i32`) or handle column (`Asset`, `Entity`, `Post`, ...), stored inline: a count, then the elements, zeros past the count, so `[]` and `[0]` differ and the list is world state like a number. The capacity is 1 to 1,024 elements; it starts empty and is never tunable. |
 | [`defineComponent`](#fn-defineComponent) | function | Declare a component: plain data stored per entity in engine memory, one column per field. |
 | [`defineResource`](#fn-defineResource) | function | Declare a resource: a reflected singleton, such as a tuning table. Its fields start at their defaults. |
 
@@ -75,7 +76,7 @@ fn defineComponent {
 }
 ```
 
-<sub>`api.ogt` line 758</sub>
+<sub>`api.ogt` line 764</sub>
 
 <a id="fn-defineResource"></a>
 
@@ -106,7 +107,7 @@ fn defineResource {
 }
 ```
 
-<sub>`api.ogt` line 767</sub>
+<sub>`api.ogt` line 773</sub>
 
 ## Types
 
@@ -146,7 +147,7 @@ struct FieldOptions {
 
 ## Column kinds
 
-Each is a factory, `f32(value?, options?)`, that makes one field of a component or resource layout; `str(capacity, value?, options?)` takes its capacity in bytes first.
+Each is a factory, `f32(value?, options?)`, that makes one field of a component or resource layout; `str(capacity, value?, options?)` takes its capacity in bytes first; `list(of, capacity, options?)` takes another factory's field (`u32()`, `Asset()`) and a capacity in elements.
 
 | Column | Value | Typed array | Stride | Doc |
 |---|---|---|---|---|
@@ -161,6 +162,7 @@ Each is a factory, `f32(value?, options?)`, that makes one field of a component 
 | <a id="column-Matrix4"></a>`Matrix4` | `Matrix4` | `Float32Array` | 16 | A Matrix4 field: sixteen column-major elements per entity. |
 | <a id="column-Color"></a>`Color` | `Color` | `Float32Array` | 3 | A Color field: r, g, b interleaved. |
 | <a id="column-str"></a>`str` | `string` | `Uint8Array` | the capacity | Text of at most `capacity` bytes of UTF-8, stored inline and zero-padded, so it is world state like a number: a player's name, a label. `str(48)` holds any 12 characters (four bytes covers every script). The capacity is 1 to 4,096 bytes: a larger one is refused when the game starts (`a string field holds 1 to 4096 bytes`), so longer text goes in chunks, an entity each. Get and set it as a JavaScript string; text over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Its view is the raw bytes. |
+| <a id="column-list"></a>`list` | an array of the element's | the element's | the element's × (capacity + 1) | A list of at most `capacity` values of one number column (`f32`, `f64`, `u32`, `i32`) or handle column (`Asset`, `Entity`, `Post`, ...), stored inline: a count, then the elements, zeros past the count, so `[]` and `[0]` differ and the list is world state like a number. The capacity is 1 to 1,024 elements; it starts empty and is never tunable. Reading it answers a frozen array, a copy: `push`, `splice` and index writes throw, so change it by writing a whole array (`v.passes = [...v.passes, h]`, `v.passes = []`). A list over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Scene text and looks give it on one line, its elements in order (`passes 3 5`), the key alone for the empty list. Its view is the element's typed array with a stride of (capacity + 1) elements, the count first. |
 
 ```ogt
 column f32 {
@@ -283,3 +285,13 @@ column str {
 ```
 
 <sub>`api.ogt` line 750</sub>
+
+```ogt
+column list {
+  doc "A list of at most `capacity` values of one number column (`f32`, `f64`, `u32`, `i32`) or handle column (`Asset`, `Entity`, `Post`, ...), stored inline: a count, then the elements, zeros past the count, so `[]` and `[0]` differ and the list is world state like a number. The capacity is 1 to 1,024 elements; it starts empty and is never tunable."
+  doc "Reading it answers a frozen array, a copy: `push`, `splice` and index writes throw, so change it by writing a whole array (`v.passes = [...v.passes, h]`, `v.passes = []`). A list over the capacity is refused with the fix named (an error value from world.insert/world.set, a throw from a resource's setter), never truncated. Scene text and looks give it on one line, its elements in order (`passes 3 5`), the key alone for the empty list. Its view is the element's typed array with a stride of (capacity + 1) elements, the count first."
+  list true
+}
+```
+
+<sub>`api.ogt` line 758</sub>

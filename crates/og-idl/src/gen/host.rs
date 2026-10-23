@@ -251,7 +251,7 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "og_engine_resource_layout",
         &[("world", "u32", "number"), ("resource", "String", "string")],
         "String",
-        "A resource's packed layout, how the runtime reads and writes its fields as bytes: a Result of `{ epoch, size, fields: [{ name, kind, offset, size, readonly, capacity, variants }] }` (`kind`: f32, f64, u32, i32, bool, Vector2, Vector3, Quaternion, Color, Matrix4, handle, str, enum). Refused for og.Time, og.Rng and og.Input, whose handles are computed, and for what is not a registered resource.",
+        "A resource's packed layout, how the runtime reads and writes its fields as bytes: a Result of `{ epoch, size, fields: [{ name, kind, offset, size, readonly, capacity, variants, element }] }` (`kind`: f32, f64, u32, i32, bool, Vector2, Vector3, Quaternion, Color, Matrix4, handle, str, enum, or list: `element` one of f32, f64, u32, i32, handle and `capacity` its elements, a count lane first, each lane the element's size). Refused for og.Time, og.Rng and og.Input, whose handles are computed, and for what is not a registered resource.",
     ),
     (
         "og_engine_read_resource",
