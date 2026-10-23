@@ -100,7 +100,7 @@ interface RuntimeProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 12757</sub>
+<sub>`api.ogt` line 12759</sub>
 
 <a id="member-RuntimeProbe-version"></a>
 
@@ -120,7 +120,7 @@ prop version u32 "PROBE_VERSION." {
 }
 ```
 
-<sub>`api.ogt` line 12761</sub>
+<sub>`api.ogt` line 12763</sub>
 
 <a id="member-RuntimeProbe-tick"></a>
 
@@ -144,7 +144,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 12764</sub>
+<sub>`api.ogt` line 12766</sub>
 
 <a id="member-RuntimeProbe-state"></a>
 
@@ -168,7 +168,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 12769</sub>
+<sub>`api.ogt` line 12771</sub>
 
 <a id="member-RuntimeProbe-advance"></a>
 
@@ -196,7 +196,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 12774</sub>
+<sub>`api.ogt` line 12776</sub>
 
 <a id="member-RuntimeProbe-pause"></a>
 
@@ -219,7 +219,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 12779</sub>
+<sub>`api.ogt` line 12781</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -242,7 +242,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 12783</sub>
+<sub>`api.ogt` line 12785</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -271,7 +271,7 @@ fn input {
 }
 ```
 
-<sub>`api.ogt` line 12787</sub>
+<sub>`api.ogt` line 12789</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -294,7 +294,7 @@ fn accepted {
 }
 ```
 
-<sub>`api.ogt` line 12793</sub>
+<sub>`api.ogt` line 12795</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
@@ -325,7 +325,7 @@ fn pick {
 }
 ```
 
-<sub>`api.ogt` line 12797</sub>
+<sub>`api.ogt` line 12799</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -354,7 +354,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 12804</sub>
+<sub>`api.ogt` line 12806</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
@@ -382,7 +382,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 12810</sub>
+<sub>`api.ogt` line 12812</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -414,7 +414,7 @@ fn patch {
 }
 ```
 
-<sub>`api.ogt` line 12815</sub>
+<sub>`api.ogt` line 12817</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -442,7 +442,7 @@ fn run {
 }
 ```
 
-<sub>`api.ogt` line 12822</sub>
+<sub>`api.ogt` line 12824</sub>
 
 <a id="type-EngineProbe"></a>
 
@@ -460,7 +460,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 12829</sub>
+<sub>`api.ogt` line 12831</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -484,7 +484,7 @@ fn hello {
 }
 ```
 
-<sub>`api.ogt` line 12834</sub>
+<sub>`api.ogt` line 12836</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -525,7 +525,7 @@ fn capture {
 }
 ```
 
-<sub>`api.ogt` line 12839</sub>
+<sub>`api.ogt` line 12841</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -555,7 +555,7 @@ fn sweep {
 }
 ```
 
-<sub>`api.ogt` line 12852</sub>
+<sub>`api.ogt` line 12854</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -578,7 +578,7 @@ fn reload {
 }
 ```
 
-<sub>`api.ogt` line 12859</sub>
+<sub>`api.ogt` line 12861</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -601,7 +601,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 12863</sub>
+<sub>`api.ogt` line 12865</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -629,7 +629,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 12867</sub>
+<sub>`api.ogt` line 12869</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -659,7 +659,7 @@ fn dump {
 }
 ```
 
-<sub>`api.ogt` line 12872</sub>
+<sub>`api.ogt` line 12874</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -687,7 +687,7 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 12879</sub>
+<sub>`api.ogt` line 12881</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -717,7 +717,7 @@ fn listen {
 }
 ```
 
-<sub>`api.ogt` line 12884</sub>
+<sub>`api.ogt` line 12886</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -740,7 +740,7 @@ fn memory {
 }
 ```
 
-<sub>`api.ogt` line 12891</sub>
+<sub>`api.ogt` line 12893</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -763,7 +763,7 @@ fn describe {
 }
 ```
 
-<sub>`api.ogt` line 12895</sub>
+<sub>`api.ogt` line 12897</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -791,7 +791,7 @@ fn expect {
 }
 ```
 
-<sub>`api.ogt` line 12899</sub>
+<sub>`api.ogt` line 12901</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -814,7 +814,7 @@ fn expectations {
 }
 ```
 
-<sub>`api.ogt` line 12904</sub>
+<sub>`api.ogt` line 12906</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -848,7 +848,7 @@ fn saveScene {
 }
 ```
 
-<sub>`api.ogt` line 12908</sub>
+<sub>`api.ogt` line 12910</sub>
 
 ## Types
 
@@ -1711,6 +1711,7 @@ One UI element with its bounds.
 | `name` | `string` | `""` | — | — | — | Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id. |
 | `value` | `string` | `""` | — | — | — | Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none. |
 | `states` | `readonly string[]` | `[]` | — | — | — | Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy. |
+| `opaque` | `boolean` | `false` | — | — | — | It draws an opaque background over its whole box (its fill's alpha times its opacity is 1), hiding the scene under it. |
 | `x` | `number` | `0` | — | `cssPx` | — | Left edge. |
 | `y` | `number` | `0` | — | `cssPx` | — | Top edge. |
 | `width` | `number` | `0` | — | `cssPx` | — | Width. |
@@ -1729,6 +1730,7 @@ struct UiElement {
   field name String "Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id."
   field value String "Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none."
   field states List.String "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy."
+  field opaque bool "It draws an opaque background over its whole box (its fill's alpha times its opacity is 1), hiding the scene under it."
   field x f32 "Left edge." {
     unit cssPx
   }
@@ -1773,7 +1775,7 @@ struct UiSurface {
 }
 ```
 
-<sub>`api.ogt` line 12564</sub>
+<sub>`api.ogt` line 12565</sub>
 
 <a id="type-UiDump"></a>
 
@@ -1796,7 +1798,7 @@ struct UiDump {
 }
 ```
 
-<sub>`api.ogt` line 12577</sub>
+<sub>`api.ogt` line 12578</sub>
 
 <a id="type-DesyncDump"></a>
 
@@ -1823,7 +1825,7 @@ struct DesyncDump {
 }
 ```
 
-<sub>`api.ogt` line 12584</sub>
+<sub>`api.ogt` line 12585</sub>
 
 <a id="type-DumpResult"></a>
 
@@ -1851,7 +1853,7 @@ union DumpResult {
 }
 ```
 
-<sub>`api.ogt` line 12593</sub>
+<sub>`api.ogt` line 12594</sub>
 
 <a id="type-ScreenBox"></a>
 
@@ -1884,7 +1886,7 @@ struct ScreenBox {
 }
 ```
 
-<sub>`api.ogt` line 12602</sub>
+<sub>`api.ogt` line 12603</sub>
 
 <a id="type-ScreenPoint"></a>
 
@@ -1909,7 +1911,7 @@ struct ScreenPoint {
 }
 ```
 
-<sub>`api.ogt` line 12618</sub>
+<sub>`api.ogt` line 12619</sub>
 
 <a id="type-DescribedEntity"></a>
 
@@ -1929,7 +1931,7 @@ One entity the frame shows, from the entity-id pass (a CPU rasterisation of the 
 | `point` | `ScreenPoint` | `{ x: 0, y: 0 }` | — | — | — | A visible point nearest the box's centre: pick answers this entity there. |
 | `depth` | `number` | `0` | — | `m` | — | From the camera to its nearest visible point, along the view. |
 | `coverage` | `number` | `0` | — | `ratio` | — | Its visible share of the surface. |
-| `occlusion` | `number` | `0` | — | `ratio` | — | The share of what it covers alone that something else hides. |
+| `occlusion` | `number` | `0` | — | `ratio` | — | The share of what it covers alone that something else hides: another object in front, or a UI element drawn opaque over it (DescribedUi.opaque); on a secondary camera's image, objects only. |
 | `views` | `readonly string[]` | `[]` | — | — | — | The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty). |
 
 ```ogt
@@ -1949,14 +1951,14 @@ struct DescribedEntity {
   field coverage f32 "Its visible share of the surface." {
     unit ratio
   }
-  field occlusion f32 "The share of what it covers alone that something else hides." {
+  field occlusion f32 "The share of what it covers alone that something else hides: another object in front, or a UI element drawn opaque over it (DescribedUi.opaque); on a secondary camera's image, objects only." {
     unit ratio
   }
   field views List.String "The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty)."
 }
 ```
 
-<sub>`api.ogt` line 12628</sub>
+<sub>`api.ogt` line 12629</sub>
 
 <a id="type-DescribedView"></a>
 
@@ -1983,7 +1985,7 @@ struct DescribedView {
 }
 ```
 
-<sub>`api.ogt` line 12650</sub>
+<sub>`api.ogt` line 12651</sub>
 
 <a id="type-DescribedUi"></a>
 
@@ -2000,6 +2002,7 @@ One UI element as describe lists it (the tree dump_ui writes).
 | `text` | `string` | `""` | — | — | — | The text it shows. |
 | `value` | `string` | `""` | — | — | — | Its value as text. |
 | `states` | `readonly string[]` | `[]` | — | — | — | Its states. |
+| `opaque` | `boolean` | `false` | — | — | — | It draws an opaque background over its whole box: the entities under it count it in their occlusion. |
 | `box` | `ScreenBox` | `{ x: 0, y: 0, width: 0, height: 0 }` | — | — | — | Its rect. |
 
 ```ogt
@@ -2012,11 +2015,12 @@ struct DescribedUi {
   field text String "The text it shows."
   field value String "Its value as text."
   field states List.String "Its states."
+  field opaque bool "It draws an opaque background over its whole box: the entities under it count it in their occlusion."
   field box ScreenBox "Its rect."
 }
 ```
 
-<sub>`api.ogt` line 12659</sub>
+<sub>`api.ogt` line 12660</sub>
 
 <a id="type-DescribedCamera"></a>
 
@@ -2057,7 +2061,7 @@ struct DescribedCamera {
 }
 ```
 
-<sub>`api.ogt` line 12671</sub>
+<sub>`api.ogt` line 12673</sub>
 
 <a id="type-PassSize"></a>
 
@@ -2078,7 +2082,7 @@ struct PassSize {
 }
 ```
 
-<sub>`api.ogt` line 12691</sub>
+<sub>`api.ogt` line 12693</sub>
 
 <a id="type-Description"></a>
 
@@ -2109,7 +2113,7 @@ struct Description {
 }
 ```
 
-<sub>`api.ogt` line 12697</sub>
+<sub>`api.ogt` line 12699</sub>
 
 <a id="type-ExpectStatus"></a>
 
@@ -2134,7 +2138,7 @@ enum ExpectStatus {
 }
 ```
 
-<sub>`api.ogt` line 12708</sub>
+<sub>`api.ogt` line 12710</sub>
 
 <a id="type-ExpectResult"></a>
 
@@ -2169,7 +2173,7 @@ struct ExpectResult {
 }
 ```
 
-<sub>`api.ogt` line 12715</sub>
+<sub>`api.ogt` line 12717</sub>
 
 <a id="type-ExpectReport"></a>
 
@@ -2194,7 +2198,7 @@ struct ExpectReport {
 }
 ```
 
-<sub>`api.ogt` line 12729</sub>
+<sub>`api.ogt` line 12731</sub>
 
 <a id="type-SavedScene"></a>
 
@@ -2227,7 +2231,7 @@ struct SavedScene {
 }
 ```
 
-<sub>`api.ogt` line 12737</sub>
+<sub>`api.ogt` line 12739</sub>
 
 <a id="type-SavedSceneFile"></a>
 
@@ -2252,7 +2256,7 @@ struct SavedSceneFile {
 }
 ```
 
-<sub>`api.ogt` line 12749</sub>
+<sub>`api.ogt` line 12751</sub>
 
 ## Constants
 

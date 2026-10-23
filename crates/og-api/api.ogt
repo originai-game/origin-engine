@@ -12547,6 +12547,7 @@ module probe {
     field name String "Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id."
     field value String "Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none."
     field states List.String "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy."
+    field opaque bool "It draws an opaque background over its whole box (its fill's alpha times its opacity is 1), hiding the scene under it."
     field x f32 "Left edge." {
       unit cssPx
     }
@@ -12641,7 +12642,7 @@ module probe {
     field coverage f32 "Its visible share of the surface." {
       unit ratio
     }
-    field occlusion f32 "The share of what it covers alone that something else hides." {
+    field occlusion f32 "The share of what it covers alone that something else hides: another object in front, or a UI element drawn opaque over it (DescribedUi.opaque); on a secondary camera's image, objects only." {
       unit ratio
     }
     field views List.String "The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty)."
@@ -12665,6 +12666,7 @@ module probe {
     field text String "The text it shows."
     field value String "Its value as text."
     field states List.String "Its states."
+    field opaque bool "It draws an opaque background over its whole box: the entities under it count it in their occlusion."
     field box ScreenBox "Its rect."
   }
 

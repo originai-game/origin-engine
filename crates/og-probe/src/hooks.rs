@@ -148,8 +148,10 @@ pub struct SeenView {
 /// answers in a host without a renderer too.
 pub trait SceneView {
     /// What the frame shows at the current tick; `None` when the host has
-    /// no scene to describe.
-    fn seen(&mut self, world: &World) -> Option<Seen>;
+    /// no scene to describe. `cover` are the rects the UI draws opaque over
+    /// the main camera's frame (`[x, y, width, height]`, CSS pixels): what
+    /// lies under them is hidden, as another object in front would hide it.
+    fn seen(&mut self, world: &World, cover: &[[f32; 4]]) -> Option<Seen>;
     /// What is under a point of the play surface, in CSS pixels.
     fn pick(&mut self, world: &World, x: f32, y: f32) -> Option<Pick>;
 }
@@ -231,6 +233,10 @@ pub struct UiElement {
     /// Its states: `disabled`, `focused`, `focusable` (keys and pads can
     /// reach it now), `checked`, `selected`, `expanded`, `pressed`, `busy`.
     pub states: Vec<String>,
+    /// It draws an opaque background over its whole box (its fill's alpha
+    /// times its opacity is 1): what is under it does not show, so
+    /// `describe` counts it as hiding the scene there.
+    pub opaque: bool,
     pub x: f32,
     pub y: f32,
     pub width: f32,
@@ -246,7 +252,7 @@ impl UiElement {
         json!({
             "id": self.id, "parent": self.parent, "kind": self.kind, "disabled": self.disabled, "clipped": self.clipped, "text": self.text,
             "role": self.role, "name": self.name, "value": self.value, "states": self.states,
-            "x": self.x, "y": self.y, "width": self.width, "height": self.height,
+            "opaque": self.opaque, "x": self.x, "y": self.y, "width": self.width, "height": self.height,
         })
     }
 }

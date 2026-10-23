@@ -831,7 +831,9 @@ reading pixels:
   `describe[:path]` action) answers the current tick's frame as JSON,
   deterministic for the same world: the visible entities nearest first, each
   with its name, archetype, label, screen-space box and pick point (CSS
-  pixels), depth and the fraction of it that others hide; the UI elements
+  pixels), depth and the fraction of it that others hide (objects in
+  front, and UI elements drawn with an opaque background over it: the id
+  pass's pixels under them show the UI); the UI elements
   with their rects and text (from `dump_ui`); the camera. The entities come
   from an entity-id pass: og-render's `id_pass.rs` renders the extracted
   frame (meshes, skinned meshes posed on the CPU, world sprites) at half

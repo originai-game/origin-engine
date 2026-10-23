@@ -592,7 +592,7 @@ impl Probe {
                     fail(&mut r, format!("no live entity '{id}'"));
                     return Ok(self.record(r));
                 };
-                let seen = self.scene_view.as_mut().and_then(|v| v.seen(world));
+                let seen = self.seen_now(world);
                 let Some(seen) = seen else {
                     r.status = Status::Unchecked;
                     r.reason = "this host has no scene view to describe the frame".into();

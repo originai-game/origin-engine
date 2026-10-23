@@ -479,7 +479,7 @@ fn every_member_answers_as_protocol_5_says() {
     assert_eq!(ui["elements"].as_array().unwrap().len(), 5);
     assert_eq!(
         ui["elements"][1],
-        json!({"id": "Start", "parent": "Menu", "kind": "", "disabled": false, "clipped": false, "text": "Start game", "role": "", "name": "", "value": "", "states": [], "x": 10.0, "y": 10.0, "width": 100.0, "height": 40.0})
+        json!({"id": "Start", "parent": "Menu", "kind": "", "disabled": false, "clipped": false, "text": "Start game", "role": "", "name": "", "value": "", "states": [], "opaque": false, "x": 10.0, "y": 10.0, "width": 100.0, "height": 40.0})
     );
     t.err("dump", json!({"what": "entity"}), INVALID_PARAMS);
     t.err("dump", json!({"what": "scene"}), INVALID_PARAMS);

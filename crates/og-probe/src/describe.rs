@@ -23,8 +23,28 @@ impl Probe {
     /// (IDL `probe.Description`). Entities are nearest first (`order` 0),
     /// then by id; without a scene view the entity list is empty and
     /// `pass` and `camera` are null.
+    /// The rects the UI draws opaque over the frame (`UiElement::opaque`).
+    pub(crate) fn ui_cover(&self, world: &World) -> Vec<[f32; 4]> {
+        self.ui
+            .as_ref()
+            .map(|ui| {
+                ui.elements(world)
+                    .iter()
+                    .filter(|e| e.opaque && e.width > 0.0 && e.height > 0.0)
+                    .map(|e| [e.x, e.y, e.width, e.height])
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// The scene view's frame with the UI's opaque rects hiding what they cover.
+    pub(crate) fn seen_now(&mut self, world: &World) -> Option<crate::Seen> {
+        let cover = self.ui_cover(world);
+        self.scene_view.as_mut().and_then(|v| v.seen(world, &cover))
+    }
+
     pub fn describe(&mut self, world: &World) -> Value {
-        let seen = self.scene_view.as_mut().and_then(|v| v.seen(world));
+        let seen = self.seen_now(world);
         let mut entities = Vec::new();
         let mut views = Vec::new();
         if let Some(seen) = &seen {
@@ -56,7 +76,7 @@ impl Probe {
                         json!({
                             "id": e.id, "parent": e.parent, "kind": e.kind, "role": e.role,
                             "text": e.text, "value": e.value, "states": e.states,
-                            "box": rect([e.x, e.y, e.width, e.height]),
+                            "opaque": e.opaque, "box": rect([e.x, e.y, e.width, e.height]),
                         })
                     })
                     .collect()

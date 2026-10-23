@@ -2636,6 +2636,9 @@ impl Ui {
                 name: name.clone(),
                 value: value.clone(),
                 states: states.clone(),
+                // Its fill, solid and at full opacity, covers its box (a
+                // rounded corner's few pixels aside).
+                opaque: n.el.background.is_some_and(|bg| bg.alpha >= 0.999) && n.alpha >= 0.999,
                 x: visible.x,
                 y: visible.y,
                 width: visible.width,
@@ -2697,6 +2700,7 @@ impl Ui {
                         role: "link".into(),
                         value: String::new(),
                         states: Vec::new(),
+                        opaque: false,
                         x: shown.x,
                         y: shown.y,
                         width: shown.width,

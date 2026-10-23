@@ -19450,6 +19450,10 @@ export interface UiElement {
    */
   readonly states: readonly string[];
   /**
+   * It draws an opaque background over its whole box (its fill's alpha times its opacity is 1), hiding the scene under it.
+   */
+  readonly opaque: boolean;
+  /**
    * Left edge.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
@@ -19611,7 +19615,7 @@ export interface DescribedEntity {
    */
   readonly coverage: number;
   /**
-   * The share of what it covers alone that something else hides.
+   * The share of what it covers alone that something else hides: another object in front, or a UI element drawn opaque over it (DescribedUi.opaque); on a secondary camera's image, objects only.
    *
    * @unit ratio (a fraction between 0 and 1)
    */
@@ -19654,6 +19658,10 @@ export interface DescribedUi {
   readonly value: string;
   /** Its states. */
   readonly states: readonly string[];
+  /**
+   * It draws an opaque background over its whole box: the entities under it count it in their occlusion.
+   */
+  readonly opaque: boolean;
   /** Its rect. */
   readonly box: ScreenBox;
 }

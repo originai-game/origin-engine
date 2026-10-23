@@ -34101,6 +34101,10 @@
           },
           "description": "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy."
         },
+        "opaque": {
+          "type": "boolean",
+          "description": "It draws an opaque background over its whole box (its fill's alpha times its opacity is 1), hiding the scene under it."
+        },
         "x": {
           "type": "number",
           "description": "Left edge.",
@@ -34133,6 +34137,7 @@
         "name",
         "value",
         "states",
+        "opaque",
         "x",
         "y",
         "width",
@@ -34560,7 +34565,7 @@
         },
         "occlusion": {
           "type": "number",
-          "description": "The share of what it covers alone that something else hides.",
+          "description": "The share of what it covers alone that something else hides: another object in front, or a UI element drawn opaque over it (DescribedUi.opaque); on a secondary camera's image, objects only.",
           "x-og-unit": "ratio"
         },
         "views": {
@@ -34670,6 +34675,10 @@
           },
           "description": "Its states."
         },
+        "opaque": {
+          "type": "boolean",
+          "description": "It draws an opaque background over its whole box: the entities under it count it in their occlusion."
+        },
         "box": {
           "$ref": "#/$defs/ScreenBox",
           "description": "Its rect."
@@ -34683,6 +34692,7 @@
         "text",
         "value",
         "states",
+        "opaque",
         "box"
       ],
       "additionalProperties": false
