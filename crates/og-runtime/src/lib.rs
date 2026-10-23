@@ -77,6 +77,7 @@ pub use atmosphere::{
     og_atmosphere_time_of_day, og_load_shader, og_render_set_material_shader,
     og_render_set_shader_param, og_render_shader_material,
 };
+pub use baked::og_render_baked_lighting;
 pub use codec::{Kind, Layout, RecordKind};
 pub use engine::{
     ColumnPtr, Dispatch, Hooks, RenderBackend, advance, answer_call, antialias_name, begin_bundle,
@@ -84,7 +85,6 @@ pub use engine::{
     set_render_backend, take_log, take_outputs, view_columns, view_entities, warm_renderer,
     write_resource,
 };
-pub use baked::og_render_baked_lighting;
 pub use feel::{
     og_camera_kick, og_camera_punch, og_camera_shake, og_load_flipbook, og_load_tilemap,
     og_render_floating_text, og_tilemap_cell_at, og_tilemap_cell_center, og_tilemap_get_tile,

@@ -280,16 +280,16 @@ pub(crate) struct Lightmaps {
     pipeline_layout: wgpu::PipelineLayout,
     sampler: wgpu::Sampler,
     /// The pages bound (by the scene's Arc) and their group.
-    pages: Option<(*const LightmapPages, wgpu::BindGroup)>,
+    pages: Option<(usize, wgpu::BindGroup)>,
     /// A one-texel page for frames whose lightmapped meshes outlived theirs.
     empty: wgpu::BindGroup,
     /// Per lightmapped mesh index: its uvs (by Arc) and their buffer.
-    uvs: HashMap<usize, (*const LightmapUvs, wgpu::Buffer)>,
+    uvs: HashMap<usize, (usize, wgpu::Buffer)>,
     /// The lit pipelines of lightmapped batches: (side, blended, effects).
     pipelines: HashMap<(Side, bool, bool), wgpu::RenderPipeline>,
     /// Frame binding 10, and what was last written to it.
     pub probe_buffer: wgpu::Buffer,
-    probes_key: Vec<(Vec3, Vec3, [u32; 3], *const Vec<Probe>)>,
+    probes_key: Vec<(Vec3, Vec3, [u32; 3], usize)>,
 }
 
 /// The lightmap uvs' vertex stream.
@@ -424,17 +424,21 @@ impl Lightmaps {
 
     /// Uploads what changed in `baked` since the last frame.
     pub fn prepare(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, baked: &BakedLighting) {
-        let key = baked.pages.as_ref().map(Arc::as_ptr);
+        let key = baked.pages.as_ref().map(|p| Arc::as_ptr(p) as usize);
         if self.pages.as_ref().map(|(k, _)| *k) != key {
             self.pages = baked.pages.as_ref().map(|p| {
                 (
-                    Arc::as_ptr(p),
+                    Arc::as_ptr(p) as usize,
                     Self::page_group(device, queue, &self.layout, &self.sampler, p),
                 )
             });
         }
-        self.uvs
-            .retain(|mesh, (k, _)| baked.meshes.get(mesh).is_some_and(|u| Arc::as_ptr(u) == *k));
+        self.uvs.retain(|mesh, (k, _)| {
+            baked
+                .meshes
+                .get(mesh)
+                .is_some_and(|u| Arc::as_ptr(u) as usize == *k)
+        });
         for (&mesh, uvs) in &baked.meshes {
             if self.uvs.contains_key(&mesh) {
                 continue;
@@ -451,13 +455,13 @@ impl Lightmaps {
                     usage: wgpu::BufferUsages::VERTEX,
                 },
             );
-            self.uvs.insert(mesh, (Arc::as_ptr(uvs), buffer));
+            self.uvs.insert(mesh, (Arc::as_ptr(uvs) as usize, buffer));
         }
         let probes_key: Vec<_> = baked
             .volumes
             .iter()
             .take(PROBE_VOLUMES)
-            .map(|v| (v.min, v.max, v.counts, Arc::as_ptr(&v.probes)))
+            .map(|v| (v.min, v.max, v.counts, Arc::as_ptr(&v.probes) as usize))
             .collect();
         if probes_key != self.probes_key {
             let data = pack_probes(&baked.volumes, probe_capacity(self.tables));

@@ -193,6 +193,8 @@ pub(crate) struct RenderState {
     pub geo: super::geometry::GeoState,
     /// The entity of each drawable of the last extraction (`super::describe`).
     pub ids: super::describe::DrawIds,
+    /// Baked lighting of the scenes instantiated (`super::baked`).
+    pub baked: super::baked::BakedState,
 }
 
 impl RenderState {
@@ -230,6 +232,7 @@ impl RenderState {
             hierarchy: Hierarchy::default(),
             geo: Default::default(),
             ids: Default::default(),
+            baked: Default::default(),
         }
     }
 }
@@ -581,6 +584,8 @@ pub(crate) struct DrawLayouts {
     pub directional: Option<Layout>,
     pub point: Option<Layout>,
     pub spot: Option<Layout>,
+    /// og.RectLight (area lights).
+    pub rect: Option<Layout>,
     /// The effect records (`super::fx`).
     pub fx: super::fx::FxLayouts,
     /// The atmosphere's and the physics extras' records (`super::atmosphere`).
@@ -715,6 +720,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         scene.camera.exposure = og_render::Exposure::linear(exposure);
     }
 
+    // Baked lighting (RenderSettings.bakedLighting, on by default).
+    let baked = settings
+        .as_ref()
+        .is_none_or(|s| on(s, "bakedLighting", true));
+    super::baked::apply(&mut rs.scene, &mut rs.baked, baked);
     // Models: posed by og-anim when the entity has a Skeleton.
     let posed = super::fx::skeletons(world, rs);
     let mut keys: Vec<(u64, u32)> = Vec::new();
@@ -741,7 +751,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 cast: on(&v, "castShadow", true),
                 receive: on(&v, "receiveShadow", true),
             };
-            models.get(&asset).map(|p| (e, asset, p.clone(), look))
+            // A static model with a bake draws its lightmapped parts.
+            let lightmapped = (baked && on(&v, "static", false))
+                .then(|| rs.baked.overrides.get(&e))
+                .flatten();
+            lightmapped
+                .or_else(|| models.get(&asset))
+                .map(|p| (e, asset, p.clone(), look))
         })
         .collect();
     let mesh_rows = layouts
@@ -821,10 +837,19 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         light.cascade_blend = f(&v, "cascadeBlend", 0.0);
         scene.environment.sky.sun_direction = light.direction_to_light.normalize_or_zero();
     }
-    let mut locals: Vec<(u64, og_render::Light)> = Vec::new();
+    // Each light with its cookie (PointLight.cookie, SpotLight.cookie).
+    let textures = &rs.textures;
+    let cookie = |v: &Value| {
+        v["cookie"]
+            .as_f64()
+            .and_then(super::assets::index_of)
+            .and_then(|i| textures.get(i).copied())
+    };
+    let mut locals: Vec<(u64, og_render::Light, Option<og_render::TextureHandle>)> = Vec::new();
     if let Some(pl) = &layouts.point {
         for (e, v) in rows(world, pl) {
             let m = h.world_of(e);
+            let c = cookie(&v);
             locals.push((
                 e,
                 og_render::Light {
@@ -835,12 +860,14 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                     range: f(&v, "distance", 10.0),
                     cast_shadows: on(&v, "castShadow", false),
                 },
+                c,
             ));
         }
     }
     if let Some(sl) = &layouts.spot {
         for (e, v) in rows(world, sl) {
             let m = h.world_of(e);
+            let c = cookie(&v);
             locals.push((
                 e,
                 og_render::Light {
@@ -855,11 +882,24 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                     range: f(&v, "distance", 10.0),
                     cast_shadows: on(&v, "castShadow", false),
                 },
+                c,
             ));
         }
     }
-    locals.sort_by_key(|(e, _)| Entity::from_bits(*e).index());
-    scene.lights = locals.into_iter().map(|(_, l)| l).collect();
+    if let Some(rl) = &layouts.rect {
+        for (e, v) in rows(world, rl) {
+            let m = h.world_of(e);
+            let light = super::baked::rect_light(m, &v);
+            locals.push((e, light, None));
+        }
+    }
+    locals.sort_by_key(|(e, ..)| Entity::from_bits(*e).index());
+    scene.light_cookies = locals
+        .iter()
+        .enumerate()
+        .filter_map(|(i, (_, _, c))| c.map(|texture| og_render::LightCookie { light: i, texture }))
+        .collect();
+    scene.lights = locals.into_iter().map(|(_, l, _)| l).collect();
 
     // The effects games declare: the post stack, shake and 2D lighting,
     // then the effect components.

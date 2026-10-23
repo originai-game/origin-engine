@@ -197,6 +197,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     } = rs;
     let layouts = &draw.atmo;
     scene.fog = None;
+    scene.volumetric_fog = None;
     scene.water.clear();
     scene.water_2d.clear();
     scene.metaballs.clear();
@@ -291,6 +292,20 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         };
         if let Some(t) = fog_tint {
             fog.color = fog.color.lerp(t, 0.75);
+        }
+        // Fog.volumetric: the same medium lit (og-render's volumetric.rs),
+        // which replaces the plain fog where the renderer draws it.
+        if on(&v, "volumetric", false) {
+            scene.volumetric_fog = Some(og_render::VolumetricFog {
+                color: fog.color,
+                density: fog.density,
+                height: fog.height,
+                height_density: fog.height_density,
+                falloff: fog.falloff,
+                scattering: f(&v, "scattering", 0.8),
+                anisotropy: f(&v, "anisotropy", 0.6),
+                distance: f(&v, "volumetricDistance", 48.0),
+            });
         }
         scene.fog = Some(fog);
     }

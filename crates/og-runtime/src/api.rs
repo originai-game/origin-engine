@@ -1601,10 +1601,11 @@ pub fn og_render_capabilities(world: u32) -> String {
                 "pointShadows": info.as_ref().map_or("cube", |i| crate::point_shadows_name(i.point_shadows)),
                 "width": w, "height": h,
                 "stylise": og_render::STYLISE_DRAWN,
+                "volumetricFog": if tier == "webgl2" { "raymarch" } else { "froxel" },
             })
         })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [] }))
+    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "volumetricFog": "raymarch" }))
         .to_string()
 }
 
