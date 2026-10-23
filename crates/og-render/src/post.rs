@@ -1334,6 +1334,10 @@ pub(crate) enum FramePass {
     Fluid3d,
     /// The scene mirrored in a water surface (its planar reflection).
     Reflection,
+    /// Secondary camera `i` of the frame's views (`views.rs`): its lit
+    /// pass and its resolve into a render target (a viewport view resolves
+    /// after the post chain).
+    View(u32),
     /// Opaque meshes, sky, transparent meshes, particles, strips, sprites
     /// and text into the HDR target.
     Main,
@@ -1407,6 +1411,7 @@ impl FramePass {
             FramePass::Metaballs => "metaballs".into(),
             FramePass::Fluid3d => "fluid-3d".into(),
             FramePass::Reflection => "reflection".into(),
+            FramePass::View(i) => format!("view-{i}"),
             FramePass::Main => "main".into(),
             FramePass::Glow => "glow".into(),
             FramePass::Outline => "outline".into(),
@@ -1539,6 +1544,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     let mut g = RenderGraph::new();
     g.import("cascades")
         .import("local-shadows")
+        .import("views")
         .import("output")
         .import("particles")
         .transient(
@@ -1776,8 +1782,15 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 }
                 g.pass(name, &["cascades", "local-shadows"], &writes)
             }
+            // Views write their own targets (outside the graph); the
+            // imported "views" orders them before the main pass, whose
+            // materials may sample them.
+            FramePass::View(_) => g.pass(name, &["cascades", "local-shadows"], &["views"]),
             FramePass::Main => {
                 let mut reads = vec!["cascades", "local-shadows"];
+                if passes.iter().any(|p| matches!(p, FramePass::View(_))) {
+                    reads.push("views");
+                }
                 if has(FramePass::AoBlur) {
                     reads.push("ao");
                 }
@@ -2528,6 +2541,7 @@ impl FrameGraph {
             | FramePass::Metaballs
             | FramePass::Fluid3d
             | FramePass::Reflection
+            | FramePass::View(_)
             | FramePass::Main
             | FramePass::DepthBands
             | FramePass::Glow => 0,

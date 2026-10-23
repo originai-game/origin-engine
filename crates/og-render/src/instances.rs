@@ -94,6 +94,9 @@ pub(crate) struct Run {
     /// Its instances cast shadows ([`Instance::cast_shadows`]): a run that
     /// does not is left out of the shadow passes.
     pub cast: bool,
+    /// Its instances' three.js layer mask ([`RenderScene::instance_layers`]):
+    /// a camera draws the run when the masks share a bit (`views.rs`).
+    pub layers: u32,
     pub first: u32,
     pub count: u32,
     /// The run draws its mesh's compact vertices (`compact.rs`): this
@@ -131,8 +134,9 @@ fn run_layer(inst: &Instance, run: &Run) -> f32 {
 pub(crate) struct SortedInstances {
     /// The scene they came from (a cache is per scene).
     scene: u64,
-    /// Per submitted instance, its (mesh, material) indices and caster flag.
-    keys: Vec<(u32, u32, bool)>,
+    /// Per submitted instance, its (mesh, material) indices, caster flag
+    /// and layer mask.
+    keys: Vec<(u32, u32, bool, u32)>,
     /// Per drawn mesh the runs were built with: its index, local bounds
     /// and whether it was empty (an empty mesh's instances are dropped).
     meshes: Vec<(usize, MeshInfo)>,
@@ -228,7 +232,7 @@ impl SortedInstances {
         let mut same = self.scene == scene.id() && self.keys.len() == instances.len();
         self.scene = scene.id();
         self.keys
-            .resize(instances.len(), (u32::MAX, u32::MAX, true));
+            .resize(instances.len(), (u32::MAX, u32::MAX, true, 1));
         for (i, (key, inst)) in self.keys.iter_mut().zip(instances).enumerate() {
             let k = (inst.mesh.index(), inst.material.index());
             if k.0 >= meshes || k.1 >= materials {
@@ -240,7 +244,12 @@ impl SortedInstances {
                     format!("instance {i}: material {}", k.1)
                 }));
             }
-            let k = (k.0 as u32, k.1 as u32, inst.cast_shadows);
+            let k = (
+                k.0 as u32,
+                k.1 as u32,
+                inst.cast_shadows,
+                crate::views::layer_of(&scene.instance_layers, i),
+            );
             if *key != k {
                 *key = k;
                 same = false;
@@ -297,10 +306,12 @@ impl SortedInstances {
         let instances = &scene.instances;
         let mut order: Vec<usize> = (0..instances.len()).collect();
         // Stable: instances of one batch keep their submission order. A
-        // (mesh, material) pair's casters come first.
+        // (mesh, material) pair's casters come first, then each layer mask
+        // a run of its own (a camera draws or skips a run whole).
+        let layers = |i: usize| crate::views::layer_of(&scene.instance_layers, i);
         order.sort_by_key(|&i| {
             let inst = &instances[i];
-            (inst.mesh, inst.material, !inst.cast_shadows)
+            (inst.mesh, inst.material, !inst.cast_shadows, layers(i))
         });
         self.order.clear();
         self.matrices.clear();
@@ -310,8 +321,12 @@ impl SortedInstances {
         self.meshes.clear();
         for &i in &order {
             let inst = &instances[i];
-            let (mesh, material, cast) =
-                (inst.mesh.index(), inst.material.index(), inst.cast_shadows);
+            let (mesh, material, cast, mask) = (
+                inst.mesh.index(),
+                inst.material.index(),
+                inst.cast_shadows,
+                layers(i),
+            );
             let (bounds, empty) = mesh_info(mesh);
             // Sorted by mesh: a mesh's instances are together.
             if self.meshes.last().is_none_or(|&(m, _)| m != mesh) {
@@ -321,13 +336,19 @@ impl SortedInstances {
                 continue;
             }
             match self.runs.last_mut() {
-                Some(r) if r.mesh == mesh && r.material == material && r.cast == cast => {
+                Some(r)
+                    if r.mesh == mesh
+                        && r.material == material
+                        && r.cast == cast
+                        && r.layers == mask =>
+                {
                     r.count += 1
                 }
                 _ => self.runs.push(Run {
                     mesh,
                     material,
                     cast,
+                    layers: mask,
                     first: self.order.len() as u32,
                     count: 1,
                     dequant: dequant(mesh, material),

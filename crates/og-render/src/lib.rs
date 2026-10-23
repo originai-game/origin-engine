@@ -88,6 +88,8 @@ mod texture;
 mod texture_array;
 mod upload;
 mod video;
+mod targets;
+mod views;
 mod water;
 mod weather;
 
@@ -138,6 +140,8 @@ pub use stylise::{
     MAX_PALETTE_COLORS, MaterialStyle, Paint, Palette, PaletteHandle, PixelFit, PixelScale,
     Quantize, Retro3d, STYLISE_DRAWN, Stylise, StyliseSpace,
 };
+pub use targets::{RenderTargetDesc, RenderTargetHandle, TargetFormat, TargetKind, TargetTexture};
+pub use views::{MirrorQuad, View, ViewTarget};
 pub use terrain::{
     DEFAULT_TERRAIN_BUDGET, MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain,
     TerrainControl, TerrainData, TerrainLayer, TerrainLayerArrays, TerrainLod, TerrainSampler,
@@ -1118,6 +1122,8 @@ struct Batch {
     /// Drawn into the shadow maps ([`Instance::cast_shadows`],
     /// [`SkinnedInstance::cast_shadows`]).
     cast: bool,
+    /// Its instances' three.js layer mask (`views.rs`).
+    layers: u32,
 }
 
 /// The effect bind groups and what they were made from.
@@ -1294,6 +1300,8 @@ pub struct Renderer {
     /// between frames so no pass allocates it.
     /// The sorted instances, kept across frames (`instances.rs`).
     sorted: instances::SortedInstances,
+    /// The secondary cameras' GPU state (`views.rs`).
+    views: views::Views,
     cull_inside: Vec<bool>,
     post: post::PostPasses,
     cascade_map: ShadowMap,
@@ -1681,6 +1689,19 @@ fn supports_msaa(adapter: &wgpu::Adapter) -> bool {
 /// Instances per lane task in the frustum tests: a test is a few
 /// nanoseconds, so only thousands of instances are worth a second thread.
 const CULL_GRAIN: usize = 1024;
+
+/// The clear colour of a pass for the scene's background (black under a sky).
+fn background_clear(background: &Background) -> wgpu::Color {
+    match background {
+        Background::Color(c) => wgpu::Color {
+            r: c.x as f64,
+            g: c.y as f64,
+            b: c.z as f64,
+            a: 1.0,
+        },
+        Background::Sky | Background::Procedural { .. } => wgpu::Color::BLACK,
+    }
+}
 
 fn cull_mode(side: Side) -> Option<wgpu::Face> {
     match side {
@@ -2728,6 +2749,7 @@ impl Renderer {
             pass_ms: Vec::new(),
             cull_inside: Vec::new(),
             sorted: instances::SortedInstances::default(),
+            views: views::Views::default(),
             post,
             cascade_map,
             local_map,
@@ -3560,6 +3582,7 @@ impl Renderer {
                     )));
                 }
             }
+            TextureSource::Target(_) => {}
         }
         let (width, height) = source.size();
         let max = self.device.limits().max_texture_dimension_2d;
@@ -3584,6 +3607,11 @@ impl Renderer {
                 bytes: rgba_texture_bytes(texture),
             },
             TextureSource::Encoded(upload) => self.upload_encoded(upload),
+            TextureSource::Target(t) => GpuTexture {
+                view: targets::create(&self.device, *t).create_view(&Default::default()),
+                format: TextureFormat::Rgba8,
+                bytes: t.bytes(),
+            },
         }
     }
 
@@ -4052,6 +4080,7 @@ impl Renderer {
                     compact: r.dequant.is_some(),
                     array: r.array,
                     cast: r.cast,
+                    layers: r.layers,
                 }
             })
             .collect();
@@ -4151,10 +4180,12 @@ impl Renderer {
         frustum: &Frustum,
         eye: Vec3,
         forward: Vec3,
+        layers: u32,
     ) -> (DrawList, u32) {
         let mut keyed: Vec<(f32, u32, usize, u32)> = Vec::new();
         let mut culled = 0;
-        for (b_index, b) in batches.iter().enumerate().filter(|(_, b)| b.transparent) {
+        let drawn = |b: &Batch| b.transparent && b.layers & layers != 0;
+        for (b_index, b) in batches.iter().enumerate().filter(|(_, b)| drawn(b)) {
             for k in b.first as usize..(b.first + b.count) as usize {
                 let (c, r) = spheres[k];
                 if frustum.intersects_sphere(c, r) {
@@ -4481,7 +4512,12 @@ impl Renderer {
         // their own (left out of the shadow passes).
         order.sort_by_key(|&i| {
             let s = &scene.skinned_instances[i];
-            (s.mesh, s.material, !s.cast_shadows)
+            (
+                s.mesh,
+                s.material,
+                !s.cast_shadows,
+                views::layer_of(&scene.skinned_layers, i),
+            )
         });
         let mut batches: Vec<Batch> = Vec::new();
         let mut data = Vec::with_capacity(order.len());
@@ -4489,11 +4525,17 @@ impl Renderer {
         for &i in &order {
             let s = &scene.skinned_instances[i];
             let (mesh, material, cast) = (s.mesh.index(), s.material.index(), s.cast_shadows);
+            let layers = views::layer_of(&scene.skinned_layers, i);
             if self.cache.meshes[mesh].index_count == 0 {
                 continue;
             }
             match batches.last_mut() {
-                Some(b) if b.mesh == mesh && b.material == material && b.cast == cast => {
+                Some(b)
+                    if b.mesh == mesh
+                        && b.material == material
+                        && b.cast == cast
+                        && b.layers == layers =>
+                {
                     b.count += 1
                 }
                 _ => {
@@ -4516,6 +4558,7 @@ impl Renderer {
                         compact: false,
                         array: m.array.is_some(),
                         cast,
+                        layers,
                     });
                 }
             }
@@ -4568,10 +4611,11 @@ impl Renderer {
 
     /// The skinned batches the camera sees: instances whose widened bounds
     /// touch `frustum`, appended to `frame.data` as new runs.
-    fn cull_skinned(frame: &mut SkinnedFrame, frustum: &Frustum) -> (Vec<Batch>, u32) {
+    /// Only the batches on a layer of `layers` (`views.rs`).
+    fn cull_skinned(frame: &mut SkinnedFrame, frustum: &Frustum, layers: u32) -> (Vec<Batch>, u32) {
         let mut visible = Vec::new();
         let mut culled = 0;
-        for b in &frame.batches {
+        for b in frame.batches.iter().filter(|b| b.layers & layers != 0) {
             let first = frame.data.len() as u32;
             for k in b.first as usize..(b.first + b.count) as usize {
                 let (c, r) = frame.spheres[k];
@@ -4694,7 +4738,19 @@ impl Renderer {
             );
             (i, mirrored, f, view_proj, size)
         });
-        let (mut skinned_visible, skinned_culled) = Self::cull_skinned(&mut skinned, &view_frustum);
+        // Secondary cameras (views.rs): the views due this frame, each
+        // with its skinned instances in view on its layers.
+        let view_plans = views::plan(scene, &camera, (self.out_width, self.out_height));
+        self.views.retain(scene.views.len());
+        let view_skinned: Vec<Vec<Batch>> = view_plans
+            .iter()
+            .map(|p| {
+                let f = Frustum::from_view_proj(p.frame.view_proj);
+                Self::cull_skinned(&mut skinned, &f, p.layers).0
+            })
+            .collect();
+        let (mut skinned_visible, skinned_culled) =
+            Self::cull_skinned(&mut skinned, &view_frustum, scene.camera_layers);
         let mut skinned_batches = std::mem::take(&mut skinned.batches);
         let skinned_data = std::mem::take(&mut skinned.data);
         let joint_matrices = std::mem::take(&mut skinned.matrices);
@@ -5051,6 +5107,8 @@ impl Renderer {
                 Culling::Cpu => false,
             }
             && !object_motion
+            // A view's CPU-culled lists index the sorted instances.
+            && view_plans.is_empty()
             && !batches.is_empty()
             && {
                 let limits = self.device.limits();
@@ -5082,12 +5140,14 @@ impl Renderer {
             && batches
                 .iter()
                 .any(|b| self.cache.materials[b.material].occluder);
+        // The main camera's layers (views.rs).
+        let mask = scene.camera_layers;
         let (main_list, mut culled) = if gpu_cull {
             let g = gpu_pass(cull_gpu::PassKind::Main, &view_frustum);
             if occlusion {
                 gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum);
             }
-            (indirect_list(&batches, sorted, g, |b| !b.transparent), 0)
+            (indirect_list(&batches, sorted, g, |b| !b.transparent && b.layers & mask != 0), 0)
         } else {
             self.cull(
                 &batches,
@@ -5096,7 +5156,7 @@ impl Renderer {
                 &mut origins,
                 &mut cull_inside,
                 &view_frustum,
-                |b| !b.transparent,
+                |b| !b.transparent && b.layers & mask != 0,
             )
         };
         let (mut blended_list, blended_culled) = self.sort_transparent(
@@ -5108,13 +5168,14 @@ impl Renderer {
             &view_frustum,
             camera.position,
             cam.forward,
+            mask,
         );
         culled += blended_culled + skinned_culled;
         let reflection_list = reflection.as_ref().map(|r| {
             let frustum = Frustum::from_view_proj(r.3);
             if gpu_cull {
                 let g = gpu_pass(cull_gpu::PassKind::Reflection, &frustum);
-                indirect_list(&batches, sorted, g, |b| !b.transparent)
+                indirect_list(&batches, sorted, g, |b| !b.transparent && b.layers & mask != 0)
             } else {
                 self.cull(
                     &batches,
@@ -5123,11 +5184,29 @@ impl Renderer {
                     &mut origins,
                     &mut cull_inside,
                     &frustum,
-                    |b| !b.transparent,
+                    |b| !b.transparent && b.layers & mask != 0,
                 )
                 .0
             }
         });
+
+        // Each view's opaque meshes on its layers (CPU culled: a frame with
+        // views culls on the CPU).
+        let view_lists: Vec<DrawList> = view_plans
+            .iter()
+            .map(|p| {
+                self.cull(
+                    &batches,
+                    &spheres,
+                    &mut transforms,
+                    &mut origins,
+                    &mut cull_inside,
+                    &Frustum::from_view_proj(p.frame.view_proj),
+                    |b| !b.transparent && b.layers & p.layers != 0,
+                )
+                .0
+            })
+            .collect();
 
         // Terrains: new or edited data uploaded, this frame's clipmap levels.
         let prev_view_proj = self.prev_view_proj.unwrap_or(cam.view_proj);
@@ -5667,6 +5746,19 @@ impl Renderer {
             self.queue
                 .write_buffer(&self.reflection_fx_buffer, 0, bytemuck::bytes_of(&u));
         }
+        let viewport_format = self.viewport_format(target);
+        self.views.write(
+            &self.device,
+            &self.queue,
+            (self.light_tables, self.samples),
+            &self.clusters.kept,
+            scene,
+            &view_plans,
+            &uniform,
+            &fx_uniform,
+            !lights_gpu.is_empty(),
+            viewport_format,
+        );
         let proj = cam.view_proj * cam.view.inverse();
         let global_outline = post_fx.outline;
         let fxp = post::FxPostUniform {
@@ -5822,6 +5914,7 @@ impl Renderer {
         if reflection.is_some() {
             passes.push(FramePass::Reflection);
         }
+        passes.extend((0..view_plans.len() as u32).map(FramePass::View));
         passes.push(FramePass::Main);
         if depth_bands.is_some() {
             passes.push(FramePass::DepthBands);
@@ -6395,6 +6488,7 @@ impl Renderer {
                 ],
             )
         });
+        let view_groups = self.view_groups(scene, &view_plans);
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -7050,6 +7144,65 @@ impl Renderer {
                         stats.reflection_draws += 1;
                     }
                 }
+                FramePass::View(i) => {
+                    // A secondary camera (views.rs): opaque meshes,
+                    // terrain and sky, then its resolve into its target.
+                    let (i, clear) = (i as usize, background_clear(&scene.environment.background));
+                    let p = &view_plans[i];
+                    let frustum = Frustum::from_view_proj(p.frame.view_proj);
+                    {
+                        let mut pass = self.views.begin(&mut encoder, p, clear);
+                        pass.set_bind_group(0, &view_groups[i].0, &[]);
+                        pass.set_bind_group(2, &view_groups[i].1, &[]);
+                        draw_list(&mut pass, &view_lists[i], true, &mut None, None);
+                        stats.draw_calls += view_lists[i].ranges.len() as u32;
+                        let pipelines: Vec<&wgpu::RenderPipeline> = view_skinned[i]
+                            .iter()
+                            .map(|b| self.lit_pipeline_of(b, true, false))
+                            .collect();
+                        stats.draw_calls +=
+                            draw_skinned(&mut pass, &view_skinned[i], false, 1, 3, &pipelines, None);
+                        if let Some(indices) = terrain_indices {
+                            stats.draw_calls += terrain::draw_levels(
+                                &mut pass,
+                                &terrain_draws,
+                                indices,
+                                terrain::TerrainPass::Lit,
+                                |c, rad| frustum.intersects_sphere(c, rad),
+                            )
+                            .0;
+                        }
+                        let sky = match scene.environment.background {
+                            Background::Sky => Some(&self.sky_pipeline),
+                            Background::Procedural { .. } => Some(&self.sky_look_pipeline),
+                            Background::Color(_) => None,
+                        };
+                        if let (Some(sky), None) = (sky, p.clear) {
+                            pass.set_pipeline(sky);
+                            pass.set_bind_group(1, sky_group, &[]);
+                            pass.draw(0..3, 0..1);
+                            stats.draw_calls += 1;
+                        }
+                    }
+                    if let views::Dest::Texture { color, format, depth } = p.dest {
+                        let tonemap = post_fx.tonemap;
+                        let (device, queue) = (&self.device, &self.queue);
+                        let view = &self.cache.textures[color].view;
+                        self.views.resolve(
+                            device, queue, &mut encoder, p, tonemap, view, format.wgpu(), false,
+                            self.samples,
+                        );
+                        if let Some(d) = depth {
+                            let view = &self.cache.textures[d].view;
+                            let f = wgpu::TextureFormat::Rgba16Float;
+                            self.views.resolve(
+                                device, queue, &mut encoder, p, tonemap, view, f, true,
+                                self.samples,
+                            );
+                        }
+                        stats.draw_calls += 1 + depth.is_some() as u32;
+                    }
+                }
                 FramePass::Main => {
                     let clear = match scene.environment.background {
                         Background::Color(c) => wgpu::Color {
@@ -7506,6 +7659,26 @@ impl Renderer {
             }
         }
         self.pass_ms = pass_ms;
+        // Viewport views (split-screen, views.rs) over the finished frame,
+        // under the lines and the overlay.
+        for p in view_plans
+            .iter()
+            .filter(|p| matches!(p.dest, views::Dest::Viewport(_)))
+        {
+            let dest = overlay_view.unwrap_or(output);
+            self.views.resolve(
+                &self.device,
+                &self.queue,
+                &mut encoder,
+                p,
+                post_fx.tonemap,
+                dest,
+                viewport_format,
+                false,
+                self.samples,
+            );
+            stats.draw_calls += 1;
+        }
         // Glass over overlay content (src/glass.rs): when overlay runs come
         // before a glass run, the overlay draws into the glass source, the
         // pyramid is rebuilt before each such glass run, and the source is

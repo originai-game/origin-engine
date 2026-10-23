@@ -1317,19 +1317,21 @@ pub struct RenderScene {
     /// on the ground plane y = 0 cast along [`RenderScene::light`], drawn
     /// before every sprite of its layer.
     pub sprite_shadows: Vec<SpriteShadow>,
-    /// Three.js layer masks of single instances, by instance index (the
-    /// last entry for an index wins): an instance without one is on layer
-    /// 0 (mask 1). A camera draws the instances whose mask shares a bit
-    /// with its own ([`RenderScene::camera_layers`], [`crate::View::layers`]).
-    pub instance_layers: Vec<crate::LayerMask>,
-    /// The same for skinned instances, by index in `skinned_instances`.
-    pub skinned_layers: Vec<crate::LayerMask>,
-    /// The same for world sprites, by index in `sprites`.
-    pub sprite_layers: Vec<crate::LayerMask>,
+    /// Three.js layer masks of the instances, by index in `instances`
+    /// (bit `n` set: on layer `n`): an index past the end is on layer 0
+    /// alone (mask 1), as every object is in three.js. A camera draws the
+    /// instances whose mask shares a bit with its own
+    /// ([`RenderScene::camera_layers`], [`crate::View::layers`]); the shadow
+    /// maps take every caster whatever its layers, so a body hidden from a
+    /// first-person camera still casts its shadow.
+    pub instance_layers: Vec<u32>,
+    /// The same for `skinned_instances`.
+    pub skinned_layers: Vec<u32>,
     /// The main camera's layer mask (three.js `Camera.layers`): it draws the
-    /// instances, skinned instances and world sprites whose masks share a
-    /// bit with it. 1 by default; 0 draws none of them (the sky, terrain,
-    /// water, particles and text are on every layer).
+    /// instances and skinned instances whose masks share a bit with it. 1
+    /// by default; 0 draws none of them (the sky, terrain, water,
+    /// particles, sprites and text are on every layer: a host filters its
+    /// sprites and lines by their own masks before it submits them).
     pub camera_layers: u32,
     /// Secondary cameras drawn into render targets or viewports of the
     /// frame, before it in [`crate::View::order`] (`views.rs`).
@@ -1397,7 +1399,6 @@ impl RenderScene {
             terrain_revisions: Vec::new(),
             instance_layers: Vec::new(),
             skinned_layers: Vec::new(),
-            sprite_layers: Vec::new(),
             camera_layers: 1,
             views: Vec::new(),
             tick: 0,
