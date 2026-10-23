@@ -30,9 +30,10 @@
 //! `zOrder` frames (slot and offset pairs) draw orders, `ik` frames
 //! (`weight`, `bendPositive`) IK keys, and frame `events` (or `actions` of
 //! type 10 and 11) events. A frame's `curve` is a Bézier key; a
-//! `tweenEasing` of 0 is linear, other numbers DragonBones' quadratic
-//! eases as Béziers; a frame with neither holds its value (DragonBones'
-//! no-tween). Path displays are noted.
+//! `tweenEasing` of 0 is linear, up to 1 DragonBones' quadratic eases as
+//! Béziers (exact: a quadratic is a cubic), above 1 its sine in-out as a
+//! Bézier of Hermite segments within 1e-7 of it; a frame with neither
+//! holds its value (DragonBones' no-tween). Path displays are noted.
 
 use super::{CookError, Source};
 use crate::format::{self, *};
@@ -301,21 +302,43 @@ fn ease(k: &Json, notes: &mut Vec<String>) -> Ease {
             third * (2.0 + e),
         ])
     } else {
-        // Sine in-out has no cubic; smoothstep (1/3, 0) (2/3, 1) is within 0.011 of it.
-        let a = (e - 1.0).min(1.0);
-        if !notes.iter().any(|n| n.starts_with("tweenEasing above 1")) {
-            notes.push(
-                "tweenEasing above 1 (sine in-out) is played as smoothstep, within 0.011 of it"
-                    .into(),
-            );
-        }
-        Ease::Bezier(vec![
-            third,
-            third * (1.0 - a),
-            2.0 * third,
-            third * (2.0 + a),
-        ])
+        // DragonBones keeps (e - 1) in hundredths, unclamped (_parseTweenFrame).
+        Ease::Bezier(sine_curve((f64::from(e) * 100.0 - 100.0).round() * 0.01))
     }
+}
+
+/// DragonBones' sine in-out blended with the line by `a` (its
+/// `_getEasingValue`: `s + a (0.5 (1 - cos πs) - s)`), which has no cubic
+/// form, as a Bézier of equal segments: each the cubic Hermite through
+/// the curve's values and slopes at its ends (control points a third of
+/// the segment along the tangents). Its error is at most `max |y''''|
+/// h⁴ / 384` with `y'''' = a π⁴ / 2`; the segments are enough to keep it
+/// under 1e-7 of the key's change.
+fn sine_curve(a: f64) -> Vec<f32> {
+    const PI: f64 = std::f64::consts::PI;
+    const ERROR: f64 = 1e-7;
+    let y = |s: f64| s + a * (0.5 * (1.0 - og_anim::sincos(PI * s).1) - s);
+    let slope = |s: f64| 1.0 + a * (0.5 * PI * og_anim::sincos(PI * s).0 - 1.0);
+    let bound = a.abs() * PI.powi(4) / 2.0 / 384.0;
+    let mut n = 1usize;
+    while n < 256 && bound / (n as f64).powi(4) > ERROR {
+        n += 1;
+    }
+    let h = 1.0 / n as f64;
+    let mut c = Vec::with_capacity(6 * n - 2);
+    for k in 0..n {
+        let (x0, x1) = (k as f64 * h, (k + 1) as f64 * h);
+        if k > 0 {
+            c.extend([x0, y(x0)]);
+        }
+        c.extend([
+            x0 + h / 3.0,
+            y(x0) + h / 3.0 * slope(x0),
+            x1 - h / 3.0,
+            y(x1) - h / 3.0 * slope(x1),
+        ]);
+    }
+    c.into_iter().map(|v| v as f32).collect()
 }
 
 /// The animation a DragonBones `actions` list (a name, or `gotoAndPlay`

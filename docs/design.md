@@ -592,9 +592,10 @@ Baked lighting, volumetrics and area lights (depth S7).
   `og.Rig2D` blob, written by hand or imported from a DragonBones 5.5
   export with its atlas (`dragonbones "x_ske.json"`, `atlas
   "x_tex.json"`): skew, colour offsets, zOrder and IK timelines, armature
-  displays (as child armatures), bounding boxes, Bézier curves and
-  `clockwise` turns (accumulated as DragonBones' parser does) come
-  across, and a frame without `tweenEasing` holds as DragonBones holds
+  displays (as child armatures), bounding boxes, Bézier curves,
+  `clockwise` turns (accumulated as DragonBones' parser does) and the
+  sine `tweenEasing` (above 1: Hermite segments of a `curve`, within 1e-7
+  of the sine) come across, and a frame without `tweenEasing` holds as DragonBones holds
   it. Spine's format is not imported (its licence); the module docs of
   `rig2d.rs` give the mapping a converter follows. `og.load.rig2d`
   registers a rig and its texture (`og.anim.rig2dInfo` reads it back;

@@ -474,3 +474,33 @@ fn a_dragonbones_clockwise_turn_plays_its_whole_turns() {
         "{notes:?}"
     );
 }
+
+/// `tweenEasing` above 1 is DragonBones' sine in-out blended with the line
+/// by `tweenEasing - 1`; the old import played smoothstep (within 0.011 of
+/// it, a degree of a 90-degree turn) and noted it.
+#[test]
+fn a_dragonbones_sine_ease_plays_the_sine_at_every_tick() {
+    let (rig, notes) = spin_rig(
+        "dragonbones-sine",
+        r#"[{ "duration": 10, "tweenEasing": 2, "rotate": 0 }, { "duration": 10, "tweenEasing": 2.5, "rotate": 90 }, { "duration": 0, "rotate": 100 }]"#,
+    );
+    // DragonBones' _getEasingValue for QuadInOut, written out here.
+    let sine = |s: f64, a: f64| s + a * (0.5 * (1.0 - (std::f64::consts::PI * s).cos()) - s);
+    let mut worst = 0.0f64;
+    for tick in 0..=120 {
+        let t = tick as f64 / 60.0;
+        // Clockwise on screen with y down is negative here.
+        let want = if t <= 1.0 {
+            -90.0 * sine(t, 1.0)
+        } else {
+            -90.0 - 10.0 * sine(t - 1.0, 1.5)
+        };
+        let got = spin_angle(&rig, t as f32);
+        worst = worst.max((got - want).abs());
+    }
+    assert!(worst < 1e-4, "the sine is missed by {worst} degrees");
+    assert!(
+        !notes.iter().any(|n| n.contains("tweenEasing")),
+        "{notes:?}"
+    );
+}
