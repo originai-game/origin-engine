@@ -1,0 +1,6 @@
+{
+  "scene": "raycast-record-20k-moving",
+  "cpu": "apple-m4-pro",
+  "meshes": 20000,
+  "read_ms": 1.153
+}
