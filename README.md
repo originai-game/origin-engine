@@ -56,7 +56,7 @@ crates/           Rust workspace: the engine core and its backends
   og-physics      rapier3d integration, character controller
   og-nav          navmesh build and query
   og-audio        mixer, buses, spatialisation (AudioWorklet on web)
-  og-ui           immediate-mode UI on the OriginGame design tokens
+  og-ui           immediate-mode UI dressed by each game's own style
   og-cook         asset cook: glTF, textures (KTX2/Basis), audio, fonts (MSDF), scenes
   og-probe        command channel, probe RPC, dumps, capture, sweep
   og-host-web     wasm-bindgen bindings and the Worker/OffscreenCanvas host

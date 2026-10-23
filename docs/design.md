@@ -270,14 +270,22 @@ tick, and the `debug` module is left out of publish builds.
 - **Audio**: the mixer runs in wasm; on the web the engine Worker feeds an
   AudioWorklet through a SharedArrayBuffer ring, on native through cpal.
   Buses, spatialisation, QOA streaming, one-shot and looped sources.
-- **UI**: immediate-mode (Clay-like layout) rendered by the engine, themed by
-  the platform's design tokens so a game's menus and the platform read as one
-  system; element ids are stable strings so the command channel can target
-  them (`touch_move_to`, `move_to_text`, `dump_ui`). A game replaces the
-  token look with a **skin** (`og.load.skin`: nine-slice frames per element
-  class, ornaments, palette, type ramp, fonts, icons, motion and sounds),
-  so games do not all share the platform's chrome; screen transitions,
-  count-ups and bursts run by the tick in the UI state.
+- **UI**: immediate-mode (Clay-like layout) rendered by the engine; element
+  ids are stable strings so the command channel can target them
+  (`touch_move_to`, `move_to_text`, `dump_ui`). A game's UI is the game's,
+  never the platform's: the engine owns its values (`crates/og-ui/src/theme.rs`,
+  no platform token reaches it) and every game dresses its UI in a **style**
+  (`type style`, `og.load.style`), one complete asset: the scheme, every
+  palette role, the four radii (small, control, bar, panel), the type ramp,
+  fonts, icons, nine-slice frames per element class, ornaments, motion and
+  sounds. A look's `ui` line names it: a built-in by slug
+  (`templates/styles/<slug>/`, cooked under `@styles/`; every catalogue
+  preset names one) or the game's own `styles/<name>/style.ogt`. Without
+  one the UI draws in `prototype`, the engine's placeholder (greys,
+  near-square corners, a cyan focus ring), which `dump_ui` reports as an
+  empty `style` and `og polish` flags. Contrast and accessibility bars hold
+  for every style (`pack_contrast.rs`). Screen transitions, count-ups and
+  bursts run by the tick in the UI state.
 - **Timeline and paths** (depth S2, `crates/og-timeline`): a path is a
   curve through or controlled by points (`catmullRom`, `bezier`,
   `linear`, open or closed), measured by an arc-length table so a
@@ -779,9 +787,11 @@ Windows package. Host validation is recorded in
   core. Geometry lives in
   `packages/ui-svelte/src/lib/brand/product-marks.ts`, never redrawn
   elsewhere.
-- **Game skins are not brand**: a game's UI skin (og-ui, `og.load.skin`)
-  styles that game's own screens; the engine's marks, the boot splash, the
-  loading state and the player shell stay the platform ink and tokens.
+- **Game UI is not brand, and brand is not game UI**: a game's UI style
+  (og-ui, a look's `ui` line) styles that game's own screens, and nothing of
+  the platform's design language reaches them: no token, no radius, no
+  palette. Only the engine's marks, the boot splash, the loading state and
+  the player shell (Back, "Made with") stay the platform ink and tokens.
 - **Voice**: documentation, the wiki and `og` output use the platform's
   editorial voice (`origingame/goals/editorial-design`): plain sentences, no
   exclamation marks, every error names the fix.
@@ -839,7 +849,7 @@ the engine pulls ahead on CPU-bound content further.
 |---|---|---|---|
 | 0 Spike | 0.75 | §10 | the four numbers, published in the platform goal |
 | 1 Core | 3 | ECS + reflection, tick + determinism, snapshot, `.ogt`/`.ogb`, cook (glTF, textures, scenes), forward+ PBR with shadows and IBL, input, camera, audio, command channel, probe, hot reload, `og`, the IDL pipeline (d.ts + wiki), project template, two archetype games | gfx references, the probe conformance suite from `origin/packages/contracts`, a Discover prototype rebuilt and played through `og run --commands` |
-| 2 Mid-size 3D | 4 | skeletal animation + blend trees + IK, rapier + character controller, navmesh, particles, post stack, terrain, decals, UI toolkit on tokens, MSDF text, Tune | all six Discover archetypes rebuilt; one mid-size 3D showcase; perf baselines in CI |
+| 2 Mid-size 3D | 4 | skeletal animation + blend trees + IK, rapier + character controller, navmesh, particles, post stack, terrain, decals, UI toolkit with game styles, MSDF text, Tune | all six Discover archetypes rebuilt; one mid-size 3D showcase; perf baselines in CI |
 | 3 Scale | 3 | lanes, GPU-driven culling, streaming, `og run --device`, splats (optional) | the §7 budgets held on the reference scene with lanes on |
 | Platform migration | overlaps 1–2 | §5 executor classes; Player top-level for desktop and creator; `@origingame/engine` in the knowledge pack; Wizard deploys the new artifact; Godot distribution and Three.js substrate retired after the last Game migrates or is archived | `bun deploy/ovh/state.ts` drift closed; `verify-production.sh`; image sizes |
 | Release (2026-10-22, `docs/release.md`) | after the features | the five packages published at one version; the install test on darwin-arm64, linux-x64 and in an InstaBox machine; the platform's local stack and the M7 acceptance on the published version; the development sandbox on InstaBox (the platform's `instabox` provider and per-class snapshots of the version); E2B images that install the version, production only and last | `release.sh verify --registry --instabox` passes; `pin-<version>.md` on the platform; a development thread in an InstaBox machine, then a production thread on the `engine` class |
@@ -911,4 +921,5 @@ Observed shapes, not code: the HZ engine's AI-native workflow (command
 channel, evidence loop, wiki-as-map, reflection to blobs, one build tool);
 wgpu, naga, rapier, meshoptimizer, KTX2/Basis, QOA, MSDF, Clay layout;
 the platform's probe protocol 5, play-surface decisions D1–D12, agent-system
-decisions D12–D19 and D23, and `docs/design-language.md`.
+decisions D12–D19 and D23, and the platform's design language for the
+player shell and the marks only (§9).

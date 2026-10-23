@@ -114,7 +114,7 @@ Mistakes the games made, or would have, before reading the right page:
 | **og-game** (this one) | the project, scenes, assets and loading, input, 2D, animation, effects, atmosphere, terrain, shaders, physics, performance, looks, light and shadows | game, transform, input, load, stream, render, physics, atmosphere, anim, tilemap, terrain |
 | **og-build** | the loop: cook, run with a script, read frames and dumps, hot reload, playtests, `og polish` (§5 there: the one list of what it scores), shipping | commands, probe |
 | **og-feel** | how much: hit stop, shake, squash, easing, floating text, the camera, frame rates, sorting, parallax, controller tunables | time, tween, camera, systems |
-| **og-ui** | screens and HUDs: templates, widgets, focus, phones, skins and motion | ui |
+| **og-ui** | screens and HUDs: templates, widgets, focus, phones, UI styles and motion | ui |
 | **og-taste** | the look: a style from the premise, composition, colour, type, motion, feedback, atmosphere by intent, the done checklist | — (it uses ui and atmosphere) |
 | **og-ai** | enemies and NPCs: navigation and minds as data | nav, ai |
 | **og-audio** | sound: events, presets, UI sounds, the mix, music, space | audio |
@@ -1582,7 +1582,7 @@ cloth's points (about 1 ms per 1,000) are the ones to count (§13).
 A **look** is an `.ogt` of `type look` under `assets/looks/` that sets the
 whole treatment of the frame at once: the resources `RenderSettings`,
 `PostEffects`, `Stylise`, `MaterialStyle`, `Fog`, `Sky` and `Environment`
-(one block each, fields by name), the UI `skin` and the `antialias`.
+(one block each, fields by name), the UI style (`ui`) and the `antialias`.
 Choosing one for a premise is og-taste §1 and §12; this is the mechanism.
 
 ```text
@@ -1591,7 +1591,7 @@ version 1
 ---
 name "Harbour"
 extends "anime-cel-3d"           # a built-in preset (templates/looks/<slug>.ogt) or another look's id
-skin "skins/harbour/skin.ogt"
+ui "styles/harbour/style.ogt"     # the game's own UI style, or a built-in by slug (ui "fantasy")
 Stylise {
   ink true
   inkWidth 1.5
@@ -1613,14 +1613,14 @@ og.render.look(world)?.name;                                              // the
 - Applying a look replaces each resource it names **whole** (the fields it
   sets, the rest their defaults; `PostEffects.flash` and `shakeTrauma`
   keep theirs) and leaves the others alone, then configures the UI with
-  its skin. Write per-game tweaks in `start` after it, or in the look. A
+  its style. Write per-game tweaks in `start` after it, or in the look. A
   system that applies one declares those resources among its writes.
 - `extends` flattens at cook time, field by field (a field written wins);
   `assets/looks/<slug>.ogt` of the game's own replaces the preset of that
   slug for every look that extends it. The cook refuses an unknown field,
   a value out of range and an asset not in the bundle, naming the line.
 - `og.load.lookInfo` (and `og.render.look`) answer `LookInfo`: `name`,
-  `extends`, `resources`, `skin`, `antialias`. A look's `antialias` (tier,
+  `extends`, `resources`, `style`, `antialias`. A look's `antialias` (tier,
   off, msaa4 or taa) is the renderer's when `GameDesc.render` names none.
 - **`og.Stylise`** moves the frame away from the photographic, every
   primitive off at zero: the pixel grid (`pixelHeight`, `pixelUpscale`,

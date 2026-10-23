@@ -11,15 +11,16 @@ og dev templates/ui-kit                       # the browser, reloading on save
 og test templates/ui-kit                      # the playtests below
 OG_UI_CAPTURE=1 og test templates/ui-kit      # re-record this tier's reference frames
 python3 templates/ui-kit/tools/make-assets.py templates/ui-kit/assets   # regenerate icons and backdrop
-python3 templates/ui-kit/tools/make-skins.py templates/ui-kit/assets    # regenerate the six style packs and UI blips
+python3 templates/ui-kit/tools/make-skins.py templates/ui-kit/assets    # regenerate the six built-in styles (templates/styles/) and UI blips
 ```
 
 Commands: `show:<screen>`, `viewport:<desktop|tablet|phone|landscape>`
 (lays the UI out for that surface through `og.ui.previewViewport`; render at
 `--size 1170x2532` for the 390×844@3 phone), `pad:<up|down|left|right|next|prev|activate|back>`
 (a gamepad, through `og.ui.navigate`), `toast:<text>`, `damage:<hp>`, `heal:<hp>`.
-`skin:<tokens|pixel|cartoon|fantasy|scifi|paper|neon>` dresses every screen
-in a style pack (`assets/styles/<pack>/style.ogt` through `og.load.style`),
+`skin:<prototype|pixel|cartoon|fantasy|scifi|paper|neon>` dresses every screen
+in the engine's placeholder or a built-in style (`assets/looks/kit-<style>.ogt`,
+whose `ui "<style>"` the cook resolves to `@styles/<style>/style.ogt`),
 `transition:<none|fade|wipe|iris|dissolve|slide>` sends screen changes through
 `og.ui.screenTransition`, `sounds:<on|off>` (on by default) hands `assets/audio/ui-*.wav` to
 the UI's event sounds, `offline:<on|off>` makes the leaderboard's rows fail
@@ -88,21 +89,23 @@ playtests through `packages/engine/tests/web/reference-ui.ts` (`docs/ci.md`
 | `juice` | an iris transition keeps the old screen until it has closed and builds the new one as it opens; the results score counts and lands on 12,840; a dialog's open, a hover and a press start voices on the ui bus |
 | `text` | the text screen draws every script without a missing glyph (no warning), matching `kit-desktop-text.png`; a tap on the name field and `type:Ada Lovelace` fill it once, Shift+← ×4 selects "lace" (`kit-desktop-text-select.png`); in the notes area Enter breaks the line, `compose:にほん` shows underlined at the caret (`kit-desktop-text-compose.png`) and `commit:日本` lands in the value |
 
-## Style packs
+## Built-in styles
 
-`assets/styles/<pack>/` holds a skin (`style.ogt`), its atlas and icons (CC0,
-drawn by `tools/make-skins.py`) and its OFL fonts (`LICENSES.md`). Copy a
-pack's directory into a game's `assets/styles/`, keep
-`fonts/NotoSansSC-Regular-subset.ttf` for the CJK fallback, and configure:
-`og.ui.configure(world, { skin: og.load.style(world, "skins/fantasy/style.ogt").value })`.
+`templates/styles/<style>/` holds a style (`style.ogt`, complete: every
+palette role and radius), its atlas and icons (CC0, drawn by
+`tools/make-skins.py`) and its OFL fonts (`LICENSES.md`). A game names one
+in its look (`ui "fantasy"`), or copies the directory into its own
+`assets/styles/<name>/` to change it and names that (`ui
+"styles/<name>/style.ogt"`); a game that shows CJK adds a `fallback` font.
+Without one, a game's UI draws in `prototype`, the engine's placeholder.
 
-| Pack | Look |
+| Style | Look |
 |---|---|
 | `pixel` | retro: square frames with cut corners, 2 px outlines and bevels, hard drop shadows, DotGothic16 |
-| `cartoon` | casual: cream panels, thick dark outlines, glossy capsules, squash on press, pops, Lilita One and Fredoka |
+| `cartoon` | casual: cream panels, thick dark outlines, glossy buttons with modest corners, squash on press, pops, Lilita One and Fredoka |
 | `fantasy` | parchment panels, gold filigree corners and flourishes, Cinzel display over Newsreader |
 | `scifi` | HUD: hairline frames with cut corners, corner brackets, scanlines, cyan glow, Orbitron, Chakra Petch, JetBrains Mono numerals |
-| `paper` | minimal: off-white sheets, hand-drawn ink outlines, soft shadows, a vermilion accent, Newsreader and Instrument Sans |
+| `paper` | minimal: off-white sheets, hand-drawn ink outlines, soft shadows, a vermilion primary, Newsreader and Instrument Sans |
 | `neon` | arcade: dark glass, glowing magenta and cyan tubes, italic Chakra Petch display, Orbitron numerals |
 
 ## Locales

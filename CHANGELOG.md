@@ -23,6 +23,33 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
   win32-x64 package; the engine's `optionalDependencies` pin it from this
   commit on.
 
+UI styles (branch `ui/style`): a game's UI is the game's own, never the
+platform's. API changes (a minor bump; breaking before 1.0.0):
+
+- og-ui owns its values (`crates/og-ui/src/theme.rs`); the vendored
+  platform `tokens.json` and its generator are gone. Without a style the UI
+  draws in `prototype`, a placeholder (greys, radii 1/2/1/3, a cyan focus).
+- Palette roles renamed to the engine's 33 (`ThemeColor`: `backdrop`,
+  `panel`, `ink`, `inkMuted`, `inkFaint`, `primary`, `onPrimary`,
+  `primarySoft`, `control`, `line`, `hud`, ...); `accent` is `primary`
+  (`Tone`, `MeterKind`, `Ink`); `UiDesc.primaryColor` replaces the accent
+  and hue (`HueName` removed); `DensityMode` is `auto`, `mouse`, `pad`,
+  `touch`; radii are `small`, `control`, `bar`, `panel`.
+- The skin is a **style**: `og.load.style` (was `og.load.skin`),
+  `UiDesc.style`, `UiTheme.style`, `LookInfo.style`, the `Style` handle,
+  `StylePart` with `hud` (was `capsule`), blob `og.UiStyle`, `type style`
+  files that name every palette role and radius (`type skin` and `base`
+  are refused with the fix), `og style pack` (was `og skin pack`).
+- A look's `ui` line names the style: a built-in by slug
+  (`templates/styles/{pixel,cartoon,fantasy,scifi,paper,neon}`, cooked
+  under `@styles/`) or the game's own; every catalogue preset names one
+  (`looks/catalogue.json`'s `ui`), so a game extending a preset is dressed.
+- `og.ui.actionButton` is square, cornered by `radius.control` (was a
+  circle); the cartoon style's corners drop from 10/18 to 6/10 and its
+  primary deepens to `#8c360f` (7:1 as drawn).
+- `dump_ui` carries `style` ("" for prototype); `og polish` lists a UI
+  style finding for a game left in prototype.
+
 Depth wave 1 (`docs/depth.md` §1–§3, merged 2026-10-23), API additions (a
 minor bump, §3), by stream:
 

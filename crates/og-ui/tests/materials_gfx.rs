@@ -1,7 +1,6 @@
 //! og-ui's materials frame (`references/<tier>/materials.png`), rendered
 //! headless and compared under og-tests' tolerance (`OG_UI_CAPTURE=1`
-//! records this tier's): a card in the dark prototype style with its edge light
-//! (a 0.5 px highlight along the top and a hairline inside), a row of the
+//! records this tier's): a card in the dark prototype style, a row of the
 //! UI kit's iconoir icons cooked by og-cook's icon cook (a distance-field
 //! set drawn as glyphs, at 24 and 48 px, in two inks) and one inline in
 //! rich text, a picture keeping 16:9 across a growing column, a zoom view
@@ -11,7 +10,7 @@
 //!
 //! Ways it could fail: an icon missing or drawn as a box (a missing glyph,
 //! asserted 0), the icons blurred or cut (the field's range or the em
-//! square wrong), the edge light absent or outside the card, the picture
+//! square wrong), the picture
 //! out of proportion, the pinch or the two-finger scroll not applied.
 
 mod support;

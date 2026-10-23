@@ -383,18 +383,18 @@ def pixel_pack():
 def cartoon_pack():
     outline = grey(0.16)
     p = {}
-    p["panel"] = frame(96, 96, r=28, outline=5, outline_c=outline, fill=(grey(1.0), grey(0.94)), highlight=0, inner=0, shade=7)
-    p["card"] = frame(64, 64, r=18, outline=4, outline_c=outline, fill=(grey(1.0), grey(0.93)), shade=5)
-    p["button"] = frame(48, 48, r=18, outline=4, outline_c=outline, fill=(grey(1.0), grey(0.84)), highlight=8, shade=7)
-    p["buttonHover"] = frame(48, 48, r=18, outline=4, outline_c=outline, fill=(grey(1.0), grey(0.92)), highlight=9, shade=7)
-    p["buttonPressed"] = frame(48, 48, r=18, outline=4, outline_c=outline, fill=(grey(0.82), grey(0.9)), highlight=0, shade=0)
-    p["buttonDisabled"] = frame(48, 48, r=18, outline=4, outline_c=grey(0.45), fill=(grey(0.9), grey(0.82)), shade=4)
-    p["field"] = frame(48, 48, r=14, outline=3, outline_c=outline, fill=(grey(0.9), grey(1.0)))
-    p["slot"] = frame(48, 48, r=14, outline=3, outline_c=outline, fill=(grey(0.86), grey(0.98)), shade=0)
-    p["tooltip"] = frame(32, 32, r=12, outline=3, outline_c=outline, fill=(grey(1.0), grey(0.95)))
-    p["hud"] = frame(32, 32, r=16, outline=3, outline_c=outline, fill=(grey(1.0), grey(0.9)), shade=3)
-    p["track"] = frame(32, 16, r=8, outline=3, outline_c=outline, fill=(grey(0.8), grey(0.95)))
-    p["fill"] = frame(32, 16, r=8, outline=3, outline_c=outline, fill=(grey(1.0), grey(0.85)), highlight=3)
+    p["panel"] = frame(96, 96, r=14, outline=5, outline_c=outline, fill=(grey(1.0), grey(0.94)), highlight=0, inner=0, shade=7)
+    p["card"] = frame(64, 64, r=12, outline=4, outline_c=outline, fill=(grey(1.0), grey(0.93)), shade=5)
+    p["button"] = frame(48, 48, r=10, outline=4, outline_c=outline, fill=(grey(1.0), grey(0.84)), highlight=8, shade=7)
+    p["buttonHover"] = frame(48, 48, r=10, outline=4, outline_c=outline, fill=(grey(1.0), grey(0.92)), highlight=9, shade=7)
+    p["buttonPressed"] = frame(48, 48, r=10, outline=4, outline_c=outline, fill=(grey(0.82), grey(0.9)), highlight=0, shade=0)
+    p["buttonDisabled"] = frame(48, 48, r=10, outline=4, outline_c=grey(0.45), fill=(grey(0.9), grey(0.82)), shade=4)
+    p["field"] = frame(48, 48, r=8, outline=3, outline_c=outline, fill=(grey(0.9), grey(1.0)))
+    p["slot"] = frame(48, 48, r=8, outline=3, outline_c=outline, fill=(grey(0.86), grey(0.98)), shade=0)
+    p["tooltip"] = frame(32, 32, r=8, outline=3, outline_c=outline, fill=(grey(1.0), grey(0.95)))
+    p["hud"] = frame(32, 32, r=8, outline=3, outline_c=outline, fill=(grey(1.0), grey(0.9)), shade=3)
+    p["track"] = frame(32, 16, r=5, outline=3, outline_c=outline, fill=(grey(0.8), grey(0.95)))
+    p["fill"] = frame(32, 16, r=5, outline=3, outline_c=outline, fill=(grey(1.0), grey(0.85)), highlight=3)
     p["soft"] = soft_rect(64, 64, 20)
 
     def divider(cv):
@@ -416,18 +416,18 @@ def cartoon_pack():
         palette=dict(
             backdrop="#2a1d5c", well="#33246e", panel="#fff4dc", panelHover="#ffe9bd", panelRaised="#fff4dc", line="#2b1a4a",
             lineStrong="#2b1a4a", ink="#2b1a4a", inkMuted="#5a4880", inkFaint="#61527c", inkInverse="#fff4dc", control="#fff3cc",
-            controlStrong="#ffecb5", primary="#a24112", primaryHover="#a94414", primaryActive="#8c370e", onPrimary="#fff4dc",
-            primarySoft="#a2411240", highlight="#9b3a09", focus="#3fa7ff", knob="#ffffff", hud="#fff4dcf5", scrim="#1a0f3ccc",
+            controlStrong="#ffecb5", primary="#8c360f", primaryHover="#933a10", primaryActive="#772d0b", onPrimary="#fff4dc",
+            primarySoft="#8c360f40", highlight="#9b3a09", focus="#3fa7ff", knob="#ffffff", hud="#fff4dcf5", scrim="#1a0f3ccc",
             shadow="#2b1a4a99", sheen="#ffffff52", success="#06681b", warn="#7b5102", danger="#6a0a16", info="#2256af",
             health="#06681b", mana="#007aff", xp="#af52de", gold="#a24112",
         ),
-        radius=dict(small=10, control=10, bar=10, panel=18),
+        radius=dict(small=6, control=6, bar=6, panel=10),
         ramp=dict(body=(15, 20), meta=(13, 18), caption=(13, 18), lg=(19, 26), xl=(22, 28), xl2=(26, 30), xl3=(30, 34),
                   displaySm=(32, 36), displayMd=(40, 44), displayLg=(52, 56)),
         durations=dict(instant=110, fast=160, base=280, slow=420),
         fonts=dict(body="Fredoka-SemiBold.ttf", display="LilitaOne-Regular.ttf", numeric="LilitaOne-Regular.ttf"),
-        slices=dict(panel=(30,), card=(20,), button=(20,), buttonHover=(20,), buttonPressed=(20,), buttonDisabled=(20,),
-                    field=(16,), slot=(16,), tooltip=(13,), hud=(15,), track=(7,), fill=(7,)),
+        slices=dict(panel=(16,), card=(14,), button=(12,), buttonHover=(12,), buttonPressed=(12,), buttonDisabled=(12,),
+                    field=(10,), slot=(10,), tooltip=(10,), hud=(10,), track=(7,), fill=(7,)),
         scale=1, divider=(48, 16, "primary"), flourish=(22, 10, "primary", 2),
         tile=None,
         shadows=dict(panel=(0, 8, 0, 0, "#2b1a4acc"), card=(0, 5, 0, 0, "#2b1a4a99"), button=(0, 5, 0, 0, "#2b1a4acc"),

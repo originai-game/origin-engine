@@ -3,8 +3,9 @@
 Normative design: `docs/design.md`. Platform contracts this engine implements:
 `origingame/docs/game-workflow.md` (the production contract),
 `origingame/origin/packages/contracts/src/probe.ts` (the probe, protocol 5),
-`origingame/docs/design-language.md` (tokens and components for the UI toolkit
-and the player shell). The execution package during the build-out is
+`origingame/docs/design-language.md` (tokens and components for the player
+shell and the marks only: a game's UI is the game's own style, og-ui never
+reads the platform's tokens). The execution package during the build-out is
 `origingame/goals/origin-engine/plan.md`; the release path and the plan of
 what remains to launch, `docs/release.md`.
 
@@ -60,6 +61,10 @@ what remains to launch, `docs/release.md`.
 - **Brand is one ink.** The boot splash, loading state and "made with" mark
   use `packages/brand` of the platform (`genesis`, `progress` motions) and the
   design tokens; the engine never introduces a second palette or mark.
+- **Game UI is not brand.** og-ui owns its values (`crates/og-ui/src/theme.rs`)
+  and a game's UI wears a style (`type style`, a look's `ui` line), never
+  the platform's tokens, radii or palette; without one it draws in the
+  engine's placeholder `prototype`.
 
 ## Build and gate discipline
 
