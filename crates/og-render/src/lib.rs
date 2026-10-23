@@ -5134,11 +5134,13 @@ impl Renderer {
                 b.derivatives |= decals;
             }
         }
-        // A target's depth texture is drawn by the view's own prepass
-        // (views.rs): its pipelines are the main prepass's.
-        let view_depth = view_plans
-            .iter()
-            .any(|p| matches!(p.dest, views::Dest::Texture { depth: Some(_), .. }));
+        // A target's depth texture, and the depth a view's soft particles
+        // fade against, are drawn by the view's own prepass (views.rs):
+        // its pipelines are the main prepass's.
+        let view_depth = particle_frame.soft
+            || view_plans
+                .iter()
+                .any(|p| matches!(p.dest, views::Dest::Texture { depth: Some(_), .. }));
         self.ensure_pipelines(&batches, &skinned_batches, prepass || view_depth);
         // A view may draw a skinned batch the main camera culled or hides.
         for v in &view_skinned {
@@ -6362,6 +6364,7 @@ impl Renderer {
             viewport_format,
             scene.lighting_2d.map(|l| l.resolution.clamp(0.25, 1.0)),
             fluids,
+            particle_frame.soft,
         );
         if scene.lighting_2d.is_some() {
             for (k, p) in view_plans.iter().enumerate() {
@@ -7210,18 +7213,19 @@ impl Renderer {
             })
             .collect();
         // Each view's particle and line groups over its own camera's
-        // uniforms (views.rs). A view has no linear depth of its own: its
-        // soft particles do not fade into the scene.
+        // uniforms (views.rs).
         let view_particle_groups: Vec<Option<wgpu::BindGroup>> = view_plans
             .iter()
             .map(|p| {
                 let slot = self.views.slots[p.index].as_ref().expect("written");
+                // Soft particles fade against the view's own depth.
+                let depth = slot
+                    .prepass
+                    .as_ref()
+                    .map_or(&self.post.far_depth, |pre| &pre.lindepth);
                 (!particle_frame.systems.is_empty()).then(|| {
-                    self.particles.draw_group_of(
-                        &self.device,
-                        &slot.particle_buffer,
-                        &self.post.far_depth,
-                    )
+                    self.particles
+                        .draw_group_of(&self.device, &slot.particle_buffer, depth)
                 })
             })
             .collect();
@@ -8301,6 +8305,99 @@ impl Renderer {
                             .encode_field(&mut encoder, &fields, &view_groups[i].0);
                         stats.draw_calls += fields.len() as u32;
                     }
+                    // Its linear depth, for a target's depth texture (the
+                    // resolve normalises it) and for its soft particles:
+                    // the view's opaque meshes through the prepass
+                    // pipelines (views.rs), before its pass reads it.
+                    if let Some(pre) = self.views.slots[p.index]
+                        .as_ref()
+                        .and_then(|s| s.prepass.as_ref())
+                    {
+                        let attachment = |view, clear: f64| {
+                            Some(wgpu::RenderPassColorAttachment {
+                                view,
+                                depth_slice: None,
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                                        r: clear,
+                                        g: 0.0,
+                                        b: 0.0,
+                                        a: 0.0,
+                                    }),
+                                    store: wgpu::StoreOp::Store,
+                                },
+                            })
+                        };
+                        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                            label: Some("view depth"),
+                            color_attachments: &[
+                                attachment(&pre.gbuffer, 0.0),
+                                attachment(&pre.lindepth, post::FAR_DEPTH as f64),
+                                attachment(&pre.outline, 0.0),
+                            ],
+                            depth_stencil_attachment: Some(
+                                wgpu::RenderPassDepthStencilAttachment {
+                                    view: &pre.depth,
+                                    depth_ops: Some(wgpu::Operations {
+                                        load: wgpu::LoadOp::Clear(1.0),
+                                        store: wgpu::StoreOp::Discard,
+                                    }),
+                                    stencil_ops: None,
+                                },
+                            ),
+                            timestamp_writes: None,
+                            occlusion_query_set: None,
+                            multiview_mask: None,
+                        });
+                        pass.set_bind_group(0, &view_groups[i].0, &[]);
+                        pass.set_bind_group(2, &view_groups[i].1, &[]);
+                        for &(b, first, count) in &view_lists[i].ranges {
+                            let batch = &batches[b as usize];
+                            let Some(pipeline) = self.prepass_pipeline_of(batch, false) else {
+                                continue;
+                            };
+                            pass.set_pipeline(pipeline);
+                            let m = &self.cache.materials[batch.material];
+                            pass.set_bind_group(1, m.array.as_ref().unwrap_or(&m.bind_group), &[]);
+                            let mesh = &self.cache.meshes[batch.mesh];
+                            let start = first as u64 * INSTANCE_STRIDE;
+                            let range = start..start + count as u64 * INSTANCE_STRIDE;
+                            pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
+                            pass.set_vertex_buffer(1, self.instance_buffer.slice(range.clone()));
+                            pass.set_vertex_buffer(2, self.instance_buffer.slice(range));
+                            pass.set_index_buffer(
+                                mesh.indices.slice(..),
+                                wgpu::IndexFormat::Uint32,
+                            );
+                            pass.draw_indexed(0..mesh.index_count, 0, 0..count);
+                            stats.draw_calls += 1;
+                        }
+                        let opaque: Vec<Batch> = view_skinned[i]
+                            .iter()
+                            .filter(|b| {
+                                !b.transparent && self.prepass_pipeline_of(b, true).is_some()
+                            })
+                            .map(|b| Batch { ..*b })
+                            .collect();
+                        let pipelines: Vec<&wgpu::RenderPipeline> = opaque
+                            .iter()
+                            .filter_map(|b| self.prepass_pipeline_of(b, true))
+                            .collect();
+                        stats.draw_calls +=
+                            draw_skinned(&mut pass, &opaque, false, 1, 3, &pipelines, None, None);
+                        if let Some(indices) = terrain_indices {
+                            stats.draw_calls += terrain::draw_levels(
+                                &mut pass,
+                                &terrain_draws,
+                                indices,
+                                terrain::TerrainPass::Prepass,
+                                |c, rad| frustum.intersects_sphere(c, rad),
+                                None,
+                            )
+                            .0;
+                        }
+                    }
                     {
                         let mut pass = self.views.begin(&mut encoder, p, clear);
                         pass.set_bind_group(0, &view_groups[i].0, &[]);
@@ -8398,99 +8495,6 @@ impl Renderer {
                             &view_fields[i],
                             true,
                         );
-                    }
-                    // A target's depth texture: the view's opaque meshes
-                    // again through the prepass pipelines into its linear
-                    // depth (views.rs), which the resolve normalises.
-                    if let views::Dest::Texture { depth: Some(_), .. } = p.dest {
-                        let pre = self.views.slots[p.index]
-                            .as_ref()
-                            .and_then(|s| s.prepass.as_ref())
-                            .expect("made for its depth");
-                        let attachment = |view, clear: f64| {
-                            Some(wgpu::RenderPassColorAttachment {
-                                view,
-                                depth_slice: None,
-                                resolve_target: None,
-                                ops: wgpu::Operations {
-                                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                                        r: clear,
-                                        g: 0.0,
-                                        b: 0.0,
-                                        a: 0.0,
-                                    }),
-                                    store: wgpu::StoreOp::Store,
-                                },
-                            })
-                        };
-                        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                            label: Some("view depth"),
-                            color_attachments: &[
-                                attachment(&pre.gbuffer, 0.0),
-                                attachment(&pre.lindepth, post::FAR_DEPTH as f64),
-                                attachment(&pre.outline, 0.0),
-                            ],
-                            depth_stencil_attachment: Some(
-                                wgpu::RenderPassDepthStencilAttachment {
-                                    view: &pre.depth,
-                                    depth_ops: Some(wgpu::Operations {
-                                        load: wgpu::LoadOp::Clear(1.0),
-                                        store: wgpu::StoreOp::Discard,
-                                    }),
-                                    stencil_ops: None,
-                                },
-                            ),
-                            timestamp_writes: None,
-                            occlusion_query_set: None,
-                            multiview_mask: None,
-                        });
-                        pass.set_bind_group(0, &view_groups[i].0, &[]);
-                        pass.set_bind_group(2, &view_groups[i].1, &[]);
-                        for &(b, first, count) in &view_lists[i].ranges {
-                            let batch = &batches[b as usize];
-                            let Some(pipeline) = self.prepass_pipeline_of(batch, false) else {
-                                continue;
-                            };
-                            pass.set_pipeline(pipeline);
-                            let m = &self.cache.materials[batch.material];
-                            pass.set_bind_group(1, m.array.as_ref().unwrap_or(&m.bind_group), &[]);
-                            let mesh = &self.cache.meshes[batch.mesh];
-                            let start = first as u64 * INSTANCE_STRIDE;
-                            let range = start..start + count as u64 * INSTANCE_STRIDE;
-                            pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
-                            pass.set_vertex_buffer(1, self.instance_buffer.slice(range.clone()));
-                            pass.set_vertex_buffer(2, self.instance_buffer.slice(range));
-                            pass.set_index_buffer(
-                                mesh.indices.slice(..),
-                                wgpu::IndexFormat::Uint32,
-                            );
-                            pass.draw_indexed(0..mesh.index_count, 0, 0..count);
-                            stats.draw_calls += 1;
-                        }
-                        let opaque: Vec<Batch> = view_skinned[i]
-                            .iter()
-                            .filter(|b| {
-                                !b.transparent && self.prepass_pipeline_of(b, true).is_some()
-                            })
-                            .map(|b| Batch { ..*b })
-                            .collect();
-                        let pipelines: Vec<&wgpu::RenderPipeline> = opaque
-                            .iter()
-                            .filter_map(|b| self.prepass_pipeline_of(b, true))
-                            .collect();
-                        stats.draw_calls +=
-                            draw_skinned(&mut pass, &opaque, false, 1, 3, &pipelines, None, None);
-                        if let Some(indices) = terrain_indices {
-                            stats.draw_calls += terrain::draw_levels(
-                                &mut pass,
-                                &terrain_draws,
-                                indices,
-                                terrain::TerrainPass::Prepass,
-                                |c, rad| frustum.intersects_sphere(c, rad),
-                                None,
-                            )
-                            .0;
-                        }
                     }
                     if let views::Dest::Texture {
                         color,

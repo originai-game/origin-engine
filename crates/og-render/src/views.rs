@@ -28,7 +28,8 @@
 //! transparent meshes, particles, trails, ribbons and beams (facing its
 //! eye), lines and points, world sprites and text, its lit sprite layers
 //! through its own 2D light map and its 2D fluids from its own fields
-//! (`lib.rs`'s view pass); the post effects are the main camera's.
+//! (`lib.rs`'s view pass), its soft particles against its own depth
+//! prepass; the post effects are the main camera's.
 //!
 //! Layers: bit `n` of a mask is three.js layer `n`; every object and camera
 //! is on layer 0 (mask 1) unless set. A camera draws an object when their
@@ -559,9 +560,11 @@ impl Views {
         viewport_format: wgpu::TextureFormat,
         light_map_scale: Option<f32>,
         fields: usize,
+        soft: bool,
     ) {
         for p in plans {
-            let depth_drawn = matches!(p.dest, Dest::Texture { depth: Some(_), .. });
+            // A depth texture, or soft particles to fade against it.
+            let depth_drawn = soft || matches!(p.dest, Dest::Texture { depth: Some(_), .. });
             let slot = self.slot(
                 device,
                 tables,

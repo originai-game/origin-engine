@@ -378,10 +378,12 @@ lit sprite layers multiply with its own 2D light map, the frame's 2D
 lights drawn through its camera into a target of its size times
 `Lighting2d.resolution` (`Light2dRenderer::write_view`), and its 2D
 fluids are composited in its sprite order from field targets of its own
-size, the frame's kernels drawn through its camera. The main camera's
-other screen-space inputs stay its own: a view's sprites do not glow, its
-soft particles do not fade into depth, and screen sprites, the UI and the
-post chain are the main frame's. Of the post chain an `ldr` target or
+size, the frame's kernels drawn through its camera. In a frame with soft
+particles every view runs its depth prepass (the one a target's depth
+texture takes) before its pass, and its particles fade against it. The
+main camera's other screen-space inputs stay its own: a view's sprites do
+not glow, and screen sprites, the UI and the post chain are the main
+frame's. Of the post chain an `ldr` target or
 a viewport carries exposure and the tone curve (the resolve); an `hdr`
 target carries linear radiance for the frame that shows it to expose.
 The cost is explicit: a view draws everything its mask admits, so its

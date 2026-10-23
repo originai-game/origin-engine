@@ -467,10 +467,20 @@ pub enum ViewFx {
     Lit2d,
     /// A blue 2D fluid: a blob of metaball particles.
     Fluid2d,
+    /// Large green particles against the wall, soft over 0.8 m.
+    SoftParticles,
+    /// The same particles, hard (what the soft ones are compared with; not
+    /// in [`ViewFx::ALL`]).
+    HardParticles,
 }
 
 impl ViewFx {
-    pub const ALL: [ViewFx; 3] = [ViewFx::Ribbon, ViewFx::Lit2d, ViewFx::Fluid2d];
+    pub const ALL: [ViewFx; 4] = [
+        ViewFx::Ribbon,
+        ViewFx::Lit2d,
+        ViewFx::Fluid2d,
+        ViewFx::SoftParticles,
+    ];
 }
 
 /// A dark grey wall at z = -1 and the effect `fx` (`on` false: the scene
@@ -546,6 +556,30 @@ pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
                     radius: 0.45,
                     ..Default::default()
                 });
+            }
+            ViewFx::SoftParticles | ViewFx::HardParticles => {
+                let e = scene.add_emitter(og_render::ParticleEmitter {
+                    rate: 40.0,
+                    lifetime: [1.8, 2.0],
+                    speed: [0.2, 0.3],
+                    size: [1.2, 1.4],
+                    gravity: Vec3::ZERO,
+                    color: [0.2, 0.9, 0.3, 0.9],
+                    blend: og_render::ParticleBlend::Alpha,
+                    soft_distance: if fx == ViewFx::SoftParticles {
+                        0.8
+                    } else {
+                        0.0
+                    },
+                    ..Default::default()
+                });
+                scene.particles.push(og_render::ParticleSystem::new(
+                    9,
+                    e,
+                    Mat4::from_translation(Vec3::new(0.0, 0.0, -0.9)),
+                    0x5f7,
+                    0,
+                ));
             }
         }
     }

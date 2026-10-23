@@ -189,7 +189,9 @@ fn a_view_draws_transparents_sprites_particles_and_lines_on_its_layers() {
 /// A view draws the main pass's effects from its own eye: each effect in
 /// front of the viewport view's camera moves its half of the frame (x
 /// 640..1280) and leaves the main camera's half alone. Before the debt
-/// round 2 a view drew none of them (ribbons, trails and beams).
+/// round 2 a view drew none of them (ribbons, trails and beams; 2D
+/// lighting; 2D fluids), and its soft particles read a placeholder depth
+/// and vanished.
 #[test]
 fn a_view_draws_the_main_passs_effects() {
     use og_tests::target_scenes::{ViewFx, view_fx_scene};
@@ -232,6 +234,20 @@ fn a_view_draws_the_main_passs_effects() {
         }
         if main > 0 {
             failures.push(format!("{fx:?}: the main frame moved on {main} pixels"));
+        }
+        // Soft particles fade where they meet the wall: they differ from
+        // the same particles drawn hard.
+        if fx == ViewFx::SoftParticles {
+            let hard = frame(&view_fx_scene(ViewFx::HardParticles, true));
+            let faded = (0..(on.width * on.height) as usize)
+                .filter(|&i| {
+                    (0..3).any(|c| on.pixels[i * 4 + c].abs_diff(hard.pixels[i * 4 + c]) > 12)
+                })
+                .count();
+            println!("SoftParticles: {faded} pixels differ from the hard ones");
+            if faded < 400 {
+                failures.push(format!("SoftParticles: {faded} pixels faded"));
+            }
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
