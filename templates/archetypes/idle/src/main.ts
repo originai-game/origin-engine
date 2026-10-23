@@ -9,7 +9,7 @@
 // the rate.
 //
 // The look (GameDesc.look, a file under assets/looks/) sets the frame's
-// treatment and the UI skin before start runs. `start` loads the strings,
+// treatment and the UI style before start runs. `start` loads the strings,
 // the sounds and the orb's art and spawns the rows: the orb and its glow,
 // 48 motes (12 per generator), the burst pools, a voice per sound and the
 // music. The systems are in
@@ -35,11 +35,11 @@ function must<T>(r: { ok: true; value?: T } | { ok: false; reason: string }): T 
 
 function start(world: World): void {
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
-  // GameDesc.look set the frame and loaded the skin before start; the UI
-  // keeps that skin and adds the sounds.
-  const skin = og.render.look(world)?.style ?? null;
+  // GameDesc.look set the frame and loaded the style before start; the UI
+  // keeps that style and adds the sounds.
+  const style = og.render.look(world)?.style ?? null;
   const sound = (path: string) => must(og.load.sound(world, path));
-  must(og.ui.configure(world, { style: skin, sounds: { press: sound("audio/ui-press.ogt"), open: sound("audio/ui-open.ogt"), close: sound("audio/ui-close.ogt"), error: sound("audio/ui-error.ogt"), success: sound("audio/ui-success.ogt") } }));
+  must(og.ui.configure(world, { style, sounds: { press: sound("audio/ui-press.ogt"), open: sound("audio/ui-open.ogt"), close: sound("audio/ui-close.ogt"), error: sound("audio/ui-error.ogt"), success: sound("audio/ui-success.ogt") } }));
 
   const camera = must(world.resource(og.Camera));
   camera.orthographic = true;

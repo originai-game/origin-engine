@@ -12,7 +12,7 @@
 // a shove by how fast they met.
 //
 // The look (GameDesc.look, assets/looks/rumpus-isle.ogt: the miniature
-// diorama preset with the rumpus skin) sets the frame before `start`; the
+// diorama preset with the rumpus style) sets the frame before `start`; the
 // scene (assets/scenes/main.ogt) is the island, the islets and the sun;
 // `start` builds the rest (src/arena.ts), the voices and the music
 // (src/sound.ts), and the string tables.

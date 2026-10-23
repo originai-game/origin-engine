@@ -10,5 +10,5 @@
 | `Orbitron-Bold.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Orbitron Bold (github.com/theleagueof/orbitron); unmodified. Copyright 2018 The Orbitron Project Authors (https://github.com/theleagueof/orbitron), with Reserved Font Name: "Orbitron". |
 
 Characters these fonts lack (Chinese, Japanese, Korean) are drawn with the
-skin's `fallback` font, `fonts/NotoSansSC-Regular-subset.ttf` (the platform's
+style's `fallback` font, `fonts/NotoSansSC-Regular-subset.ttf` (the platform's
 subset, OFL 1.1, `assets/fonts/OFL.txt`).

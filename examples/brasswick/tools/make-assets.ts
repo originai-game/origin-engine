@@ -25,7 +25,7 @@
 //   About 10 MB, so it is not committed (.gitignore).
 // - styles/brasswick/: the engine's fantasy style pack copied from
 //   templates/ui-kit (its atlas, icons and fonts are not committed:
-//   .gitignore) with the game's skin.ogt, recoloured brass and soot.
+//   .gitignore) with the game's style.ogt, recoloured brass and soot.
 
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -1274,15 +1274,15 @@ function music(): Uint8Array {
   return wav(RATE, 2, inter);
 }
 
-// -------------------------------------------------------------------- skin
+// -------------------------------------------------------------------- style
 
 /**
- * The fantasy style pack (the catalogue's skin for detailed-pixel) copied
+ * The fantasy style pack (the UI style the catalogue pairs with detailed-pixel) copied
  * from the engine's templates/ui-kit as og-taste §1 says, recoloured: a
  * parchment pack under a brass accent and soot ground. Its CJK `fallback`
  * line is dropped (the game shows only Latin-1: English and Spanish).
  */
-function skin(): void {
+function style(): void {
   const from = join(ENGINE, "templates", "styles", "fantasy");
   const to = join(ASSETS, "styles", "brasswick");
   mkdirSync(to, { recursive: true });
@@ -1299,7 +1299,7 @@ function skin(): void {
   };
   for (const [k, v] of Object.entries(colours)) text = text.replace(new RegExp(`^(  ${k}) "#[0-9a-fA-F]+"`, "m"), `$1 "${v}"`);
   text = text.replace(/^name "fantasy"$/m, 'name "brasswick"');
-  text = text.replace(/^# The fantasy style pack.*$/m, "# Brasswick's skin: the engine's fantasy style pack (templates/ui-kit, CC0 art, OFL fonts:\n# LICENSES.md), copied by tools/make-assets.ts, its ground soot and its accent brass; the CJK\n# fallback line dropped, the game shows Latin-1 only.");
+  text = text.replace(/^# The fantasy style pack.*$/m, "# Brasswick's style: the engine's fantasy style pack (templates/ui-kit, CC0 art, OFL fonts:\n# LICENSES.md), copied by tools/make-assets.ts, its ground soot and its accent brass; the CJK\n# fallback line dropped, the game shows Latin-1 only.");
   text = text.replace(/^  fallback .*\n/m, "");
   writeFileSync(join(to, "style.ogt"), text);
 }
@@ -1311,7 +1311,7 @@ maps();
 sprites();
 fx();
 sfx();
-skin();
+style();
 write("music/vault.wav.ogt", "type import\nversion 1\n---\n# The music (tools/make-assets.ts): cooked in 4-second chunks and\n# streamed, never resident whole (og-audio §5).\nsound {\n  stream true\n  chunk 4\n}\n");
 if (!process.argv.includes("--no-music")) write("music/vault.wav", music());
 console.log(`made Brasswick's assets under ${ASSETS}`);

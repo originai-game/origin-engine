@@ -17,7 +17,7 @@ Arabic or other large face (og-i18n §3).
                     Regular TTC: 0 Japanese, 1 Korean, 2 Simplified Chinese,
                     3 Traditional Chinese, 4 Hong Kong)
     --cjk-only      keep only CJK characters and punctuation, so a label that
-                    mixes scripts draws its Latin in the skin's face, run by
+                    mixes scripts draws its Latin in the style's face, run by
                     run (og-ui §7); without it printable ASCII is kept and the
                     whole label stays in this face
     --charset SETS  the import settings' charset (default "cjk-punct" with

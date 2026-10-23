@@ -1,4 +1,4 @@
-// Ember Vale's screens on og.ui and the skin in assets/styles/ember (the
+// Ember Vale's screens on og.ui and the style in assets/styles/ember (the
 // engine's fantasy pack): the title over an orbit of the vale, the HUD
 // (hearts and beacons top-left, the dusk clock and pause top-right, the
 // kindling prompt and its progress at the bottom; on a touch screen a
@@ -421,7 +421,7 @@ export const Ui = defineSystem("Ui", { reads: [Tuning, og.Gamepad, og.Pointers],
       ],
       footer: say(world, og.ui.frameViewport().coarsePointer ? "title.footer.touch" : "title.footer"),
       // The title the game opens on is built settled: the web draws it behind the play gate, where
-      // the skin's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
+      // the style's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
       instant: !g.leftTitle,
     });
     if (!g.settingsOpen && r.selected === "play" && g.phase === Phase.Title) startRun(world, g);

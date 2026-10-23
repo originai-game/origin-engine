@@ -5,7 +5,7 @@
 Reads every string of assets/strings/*.ogt (and EXTRA: what the playtests
 type into the name field), subsets the engine's project-template font
 (templates/game/assets/fonts/NotoSansSC-Regular-subset.ttf, OFL) to those
-characters (no Latin: the skin's faces draw it), and writes assets/fonts/NotoSansSC-subset.ttf with
+characters (no Latin: the style's faces draw it), and writes assets/fonts/NotoSansSC-subset.ttf with
 its import settings (`chars` naming every CJK character, so the cook's
 atlas holds them all). Needs fontTools (pip install fonttools): bun has no
 font subsetter, which is why this one tool is Python (FINDINGS.md).
@@ -41,7 +41,7 @@ def main():
     chars = strings()
     cjk = sorted(c for c in chars if ord(c) > 0x2E7F)
     # CJK only (with the CJK punctuation and the space): the Latin of a
-    # label mixing scripts then stays in the skin's face, run by run.
+    # label mixing scripts then stays in the style's face, run by run.
     text = "".join(cjk) + " \u3001\u3002\uff0c\uff1f\uff01\uff1a\u300c\u300d"
     out = os.path.join(ASSETS, "fonts", "NotoSansSC-subset.ttf")
     os.makedirs(os.path.dirname(out), exist_ok=True)

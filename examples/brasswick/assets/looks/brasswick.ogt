@@ -3,7 +3,7 @@ version 1
 ---
 # The look of Brasswick (og-taste §1, §12): the detailed-pixel preset (a 270-line
 # grid, twelve tones a channel, a fine Bayer dither, no tone curve), the fantasy
-# skin recoloured brass (styles/brasswick, written by tools/make-assets.ts) and
+# style recoloured brass (styles/brasswick, written by tools/make-assets.ts) and
 # the 2D glow for the lamps, gears and the hatch.
 name "Brasswick"
 extends "detailed-pixel"

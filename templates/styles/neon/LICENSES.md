@@ -10,5 +10,5 @@
 | `Rajdhani-Bold.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Rajdhani Bold (Indian Type Foundry, Google Fonts); subset to Latin-1 with fontTools. Copyright (c) 2014 Indian Type Foundry (info@indiantypefoundry.com) |
 
 Characters these fonts lack (Chinese, Japanese, Korean) are drawn with the
-skin's `fallback` font, `fonts/NotoSansSC-Regular-subset.ttf` (the platform's
+style's `fallback` font, `fonts/NotoSansSC-Regular-subset.ttf` (the platform's
 subset, OFL 1.1, `assets/fonts/OFL.txt`).

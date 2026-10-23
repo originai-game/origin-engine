@@ -1,4 +1,4 @@
-// The Kestrel Stair's screens, on og.ui with the paper skin
+// The Kestrel Stair's screens, on og.ui with the paper style
 // (assets/styles/kestrel, brought by the look):
 //
 // - the title (og.ui.mainMenu): Continue with the save slot's place and
@@ -52,7 +52,7 @@ type PrefsV = Value<typeof Prefs>;
 const BAG_SLOTS = 12;
 const ITEMS = ["letter", "sigil0", "sigil1", "sigil2", "herb"] as const;
 
-/** The UI's sounds and the player's motion and contrast: og.ui.configure keeps the look's skin. */
+/** The UI's sounds and the player's motion and contrast: og.ui.configure keeps the look's style. */
 export function configureUi(world: World, p: PrefsV): void {
   const sounds: UiSounds = uiSounds(world);
   must(og.ui.configure(world, { reducedMotion: p.reducedMotion, contrast: p.highContrast ? "high" : "standard", sounds, toastAnchor: "top" }));
@@ -518,7 +518,7 @@ export const Ui = defineSystem(
             { id: "settings", label: say(world, "title.settings") },
           ];
           // The title the game opens on is built settled: the web draws it behind the play gate, where the
-          // skin's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
+          // style's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
           const r = og.ui.mainMenu("Title", { title: say(world, "title.name"), subtitle: say(world, "title.tagline"), items, footer: say(world, "title.footer"), instant: !g.leftTitle });
           // FINDINGS #14 is fixed: the menu's first item takes the focus as it appears, so Enter,
           // Space and the pad's A answer at once (the game put it there itself before).

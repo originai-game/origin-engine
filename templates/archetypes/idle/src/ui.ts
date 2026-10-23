@@ -1,4 +1,4 @@
-// Spark Orb's screens on og.ui and the skin in assets/styles/sparkorb (the
+// Spark Orb's screens on og.ui and the style in assets/styles/sparkorb (the
 // engine's neon pack in the orb's gold on night violet): the title, the
 // HUD (the sparks and their rate top left, stardust and pause top right,
 // the four generators along the bottom, the supernova's progress), the
@@ -25,7 +25,7 @@ export const LANGUAGES = [
   { code: "zh-CN", key: "lang.zh" },
 ] as const;
 
-/** The generators' icons in the skin's atlas. */
+/** The generators' icons in the style's atlas. */
 const ICONS = ["fire", "bolt", "gem", "star"] as const;
 
 /** The tokens' spacing scale in CSS px (og.ui.frameTheme answers it too, but builds the whole theme each call). */
@@ -373,7 +373,7 @@ export const Ui = defineSystem("Ui", { reads: [Tuning, og.Input, og.Gamepad], wr
       ],
       footer: say(world, "title.footer"),
       // The title the game opens on is built settled: the web draws it behind the play gate, where
-      // the skin's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
+      // the style's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
       instant: !g.leftTitle,
     });
     if (!g.settingsOpen && r.selected === "play") {

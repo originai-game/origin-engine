@@ -9,7 +9,7 @@
 //
 // The song is its stems, started on bar lines through og.Music (src/
 // systems.ts's Band); the chart is a scene (assets/charts/neon-pulse.ogt)
-// of a Song row and a Note row per note. `start` loads them, the skin, the
+// of a Song row and a Note row per note. `start` loads them, the style, the
 // strings and the sounds, and spawns the clock, the stems, the receptors
 // and the voices. The systems are in src/systems.ts, the screens in
 // src/ui.ts and the state in src/components.ts.
@@ -32,9 +32,9 @@ function must<T>(r: { ok: true; value?: T } | { ok: false; reason: string }): T 
 
 function start(world: World): void {
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
-  const skin = must(og.load.style(world, "styles/lanebeat/style.ogt"));
+  const style = must(og.load.style(world, "styles/lanebeat/style.ogt"));
   const sound = (path: string) => must(og.load.sound(world, path));
-  must(og.ui.configure(world, { style: skin, sounds: { press: sound("audio/ui-press.ogt"), open: sound("audio/ui-open.ogt"), close: sound("audio/ui-close.ogt"), error: sound("audio/ui-error.ogt"), success: sound("audio/ui-success.ogt") } }));
+  must(og.ui.configure(world, { style, sounds: { press: sound("audio/ui-press.ogt"), open: sound("audio/ui-open.ogt"), close: sound("audio/ui-close.ogt"), error: sound("audio/ui-error.ogt"), success: sound("audio/ui-success.ogt") } }));
 
   const settings = must(world.resource(og.RenderSettings));
   settings.environmentIntensity = 0;

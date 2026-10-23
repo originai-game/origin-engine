@@ -7,7 +7,7 @@ version 1
 # game's own 32 colours through a Bayer dither, so the 2D light's warm
 # pools and the dark caves land on the palette the art was drawn in. Sprites with a glow
 # (the torches' flames, the chimes, the sparks) bloom softly in the 2D
-# glow buffer; a light vignette closes the caves in. The skin is the
+# glow buffer; a light vignette closes the caves in. The style is the
 # game's copy of the pixel style pack.
 name "Hollowbell"
 extends "16bit-pixel"

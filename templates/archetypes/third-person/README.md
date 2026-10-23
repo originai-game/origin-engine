@@ -180,7 +180,7 @@ stages.
 2. **The pressure**: `duskSeconds`, the sentinels' speeds and sight, their
    minds in `assets/ai/`, `HEARTS` in `src/components.ts`.
 3. **The look**: the post stack, fog and sky in `buildVale`, the water's
-   colours, the skin's palette in `assets/styles/ember/style.ogt`.
+   colours, the style's palette in `assets/styles/ember/style.ogt`.
 4. **The characters**: another CC0 humanoid in `assets/models/` with the
    clip library retargeted onto it (`src/anim.ts`), the graphs' thresholds.
 5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs the script
@@ -230,7 +230,7 @@ Nothing here is downloaded. `tools/make-assets.py` regenerates the vale's
 heightmap and control map, the sounds and music, the `og sfx` presets, the
 sentinels' minds and the font subset byte for byte; the characters, the
 clip library, the textures and the beacon's effects are the engine's own
-CC0 assets. `LICENSES.md` lists every file; the skin's are in
+CC0 assets. `LICENSES.md` lists every file; the style's are in
 `assets/styles/ember/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)

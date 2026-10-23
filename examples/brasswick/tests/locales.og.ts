@@ -1,7 +1,7 @@
 // Spanish, everywhere the game shows text: the title, the level select, the
 // HUD, pause, the settings (every tab), and the results, each dumped after
 // `language:es`. Every text is from es.ogt, none of the templates' English
-// defaults is left on screen, accents and ¿¡ñ draw from the skin's Latin-1
+// defaults is left on screen, accents and ¿¡ñ draw from the style's Latin-1
 // faces, and every focusable control has a name. What a screen reader hears
 // is Spanish too (FINDINGS.md #11, #12, fixed): the settings' tab row and
 // language list are named from the table, and a level card by its level and

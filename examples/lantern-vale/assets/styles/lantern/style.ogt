@@ -1,7 +1,7 @@
 type style
 version 1
 ---
-# Lantern Vale's skin: a copy of the engine's fantasy style pack (templates/styles/fantasy; CC0 art, OFL fonts; LICENSES.md), its fallback the game's Chinese subset.
+# Lantern Vale's style: a copy of the engine's fantasy style pack (templates/styles/fantasy; CC0 art, OFL fonts; LICENSES.md), its fallback the game's Chinese subset.
 name "lantern"
 scheme dark
 atlas "styles/lantern/atlas.png" 384 256

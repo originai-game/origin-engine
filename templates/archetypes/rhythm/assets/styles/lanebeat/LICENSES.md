@@ -1,4 +1,4 @@
-# Three-Lane Beat's skin (the engine's sci-fi style pack, recoloured): licences
+# Three-Lane Beat's style (the engine's sci-fi style pack, recoloured): licences
 
 The palette, the body sizes and the fallback font in `style.ogt` are this
 game's edits by hand; the rest is the pack as `templates/styles/scifi` ships it.
@@ -13,5 +13,5 @@ game's edits by hand; the rest is the pack as `templates/styles/scifi` ships it.
 | `Orbitron-Bold.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Orbitron Bold (github.com/theleagueof/orbitron); unmodified. Copyright 2018 The Orbitron Project Authors (https://github.com/theleagueof/orbitron), with Reserved Font Name: "Orbitron". |
 
 Characters these fonts lack (Chinese, Japanese, Korean) are drawn with the
-skin's `fallback` font, `fonts/NotoSansSC-subset.ttf` (Noto Sans SC subset to
+style's `fallback` font, `fonts/NotoSansSC-subset.ttf` (Noto Sans SC subset to
 this game's Chinese strings, OFL 1.1, `assets/fonts/OFL.txt`).

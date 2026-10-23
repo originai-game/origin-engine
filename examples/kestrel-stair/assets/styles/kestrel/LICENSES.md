@@ -1,4 +1,4 @@
-# The Kestrel Stair's skin (the engine's paper style pack, retinted): licences
+# The Kestrel Stair's style (the engine's paper style pack, retinted): licences
 
 | File | Licence | Origin |
 |---|---|---|
@@ -10,5 +10,5 @@
 | `PTMono-Regular.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | PT Mono (ParaType); unmodified. Copyright © 2010 ParaType Inc., ParaType Ltd. All rights reserved. |
 
 Characters these fonts lack (the Japanese table's) are drawn with the
-skin's `fallback` font, `fonts/NotoSansJP-kestrel.otf` (Noto Sans JP subset
+style's `fallback` font, `fonts/NotoSansJP-kestrel.otf` (Noto Sans JP subset
 to the string tables, OFL 1.1, `assets/fonts/OFL.txt`).

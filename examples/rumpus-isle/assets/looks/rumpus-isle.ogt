@@ -7,7 +7,7 @@ version 1
 # It extends the style catalogue's miniature-diorama preset (a tabletop
 # model: tilt-shift focus, soft sun and occlusion, a high camera), chosen
 # over the rubber-hose-animation `create --premise` matched (a 2D flipbook
-# style: FINDINGS.md #1). Its UI skin pack is cartoon, copied and recoloured
+# style: FINDINGS.md #1). Its UI style pack is cartoon, copied and recoloured
 # by tools/make-assets.ts into styles/rumpus/.
 name "Rumpus Isle"
 extends "miniature-diorama"

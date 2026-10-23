@@ -1,7 +1,7 @@
 type style
 version 1
 ---
-# The Kestrel Stair's skin: the engine's paper style pack (templates/styles/paper), copied and retinted by tools/make-assets.ts.
+# The Kestrel Stair's style: the engine's paper style pack (templates/styles/paper), copied and retinted by tools/make-assets.ts.
 name "kestrel"
 scheme light
 atlas "atlas.png" 384 256

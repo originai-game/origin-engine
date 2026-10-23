@@ -465,7 +465,7 @@ function music(): Uint8Array {
   return wav(inter, RATE, 2);
 }
 
-// --------------------------------------------------------------------- skin
+// --------------------------------------------------------------------- style
 
 /**
  * The paper style pack (templates/styles/paper), copied as
@@ -473,7 +473,7 @@ function music(): Uint8Array {
  * cape red, the ground a warmer paper, and the CJK fallback pointed at the
  * game's own Japanese subset (og-taste §1).
  */
-function skin(): void {
+function style(): void {
   const from = join(ENGINE, "templates", "styles", "paper");
   const to = join(ASSETS, "styles", "kestrel");
   mkdirSync(to, { recursive: true });
@@ -481,11 +481,11 @@ function skin(): void {
   let text = readFileSync(join(from, "style.ogt"), "utf8");
   const swap = (line: string, value: string) => {
     const re = new RegExp(`^(\\s*${line}\\s+)"[^"]*"`, "m");
-    if (!re.test(text)) throw new Error(`skin.ogt has no ${line} line`);
+    if (!re.test(text)) throw new Error(`style.ogt has no ${line} line`);
     text = text.replace(re, `$1"${value}"`);
   };
   text = text.replace(/^name "paper"/m, 'name "kestrel"');
-  text = text.replace(/^# The paper style pack.*$/m, "# The Kestrel Stair's skin: the engine's paper style pack (templates/styles/paper), copied and retinted by tools/make-assets.ts.");
+  text = text.replace(/^# The paper style pack.*$/m, "# The Kestrel Stair's style: the engine's paper style pack (templates/styles/paper), copied and retinted by tools/make-assets.ts.");
   swap("backdrop", "#efe6d2");
   swap("well", "#e4d9c1");
   swap("primary", "#9c2a1d");
@@ -498,8 +498,8 @@ function skin(): void {
   writeFileSync(join(to, "style.ogt"), text);
   // The copy's licences: the pack's, its fallback named as this game's.
   let lic = readFileSync(join(from, "LICENSES.md"), "utf8");
-  lic = lic.replace("# The paper style pack: licences", "# The Kestrel Stair's skin (the engine's paper style pack, retinted): licences");
-  lic = lic.replace(/Characters these fonts lack[\s\S]*$/, "Characters these fonts lack (the Japanese table's) are drawn with the\nskin's `fallback` font, `fonts/NotoSansJP-kestrel.otf` (Noto Sans JP subset\nto the string tables, OFL 1.1, `assets/fonts/OFL.txt`).\n");
+  lic = lic.replace("# The paper style pack: licences", "# The Kestrel Stair's style (the engine's paper style pack, retinted): licences");
+  lic = lic.replace(/Characters these fonts lack[\s\S]*$/, "Characters these fonts lack (the Japanese table's) are drawn with the\nstyle's `fallback` font, `fonts/NotoSansJP-kestrel.otf` (Noto Sans JP subset\nto the string tables, OFL 1.1, `assets/fonts/OFL.txt`).\n");
   writeFileSync(join(to, "LICENSES.md"), lic);
 }
 
@@ -520,7 +520,7 @@ environment();
 effects();
 presets();
 synthSounds();
-skin();
+style();
 if (!process.argv.includes("--no-music")) write("music/stair.wav", music());
 write("music/stair.wav.ogt", `type import\nversion 1\n---\n# "The Kestrel Stair" (tools/make-assets.ts): cooked in 4-second chunks and\n# streamed, never resident whole (og-audio §5).\nsound {\n  stream true\n  chunk 4\n}\n`);
 console.log(`made The Kestrel Stair's assets under ${ASSETS}`);

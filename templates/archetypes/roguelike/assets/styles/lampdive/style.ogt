@@ -1,7 +1,7 @@
 type style
 version 1
 ---
-# Lamp Dive's skin: the engine's pixel style pack (templates/ui-kit/tools/make-styles.py; CC0 art, OFL
+# Lamp Dive's style: the engine's pixel style pack (templates/ui-kit/tools/make-styles.py; CC0 art, OFL
 # fonts; LICENSES.md) in tomb colours: plum stone panels, the lamp's amber as the one accent.
 name "lampdive"
 scheme dark

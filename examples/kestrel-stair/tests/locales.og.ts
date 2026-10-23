@@ -1,6 +1,6 @@
 // Japanese (og-i18n): every screen's words come from assets/strings/ja.ogt
 // in Noto Sans JP, subset to the table's characters by tools/subset-font.py
-// (CJK only, so the footer's key names keep the skin's Latin face, run by
+// (CJK only, so the footer's key names keep the style's Latin face, run by
 // run). The title, the intro, the HUD, the bag, the pause menu, the
 // settings (og.ui.settingsScreen, every word passed from the table) and the
 // results read in Japanese, the templates' own words too (the cutscene's

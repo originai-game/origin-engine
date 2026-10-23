@@ -1,4 +1,4 @@
-// Lamp Dive's screens on og.ui and the skin in assets/styles/lampdive (the
+// Lamp Dive's screens on og.ui and the style in assets/styles/lampdive (the
 // engine's pixel pack in tomb colours): the title, the HUD (health, strike,
 // armour and gold in the top-left corner, the floor and pause in the
 // top-right, the draught and, on a touch screen, Wait and a d-pad along the
@@ -317,7 +317,7 @@ export const Ui = defineSystem("Ui", { reads: [Tuning], writes: [Game, Prefs, og
       ],
       footer: say(world, "title.footer"),
       // The title the game opens on is built settled: the web draws it behind the play gate, where
-      // the skin's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
+      // the style's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
       instant: !g.leftTitle,
     });
     if (!g.settingsOpen && r.selected === "play") startDive(world, g);
