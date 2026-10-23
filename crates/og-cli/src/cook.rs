@@ -10,8 +10,9 @@
 //! as data: `cook-report.json` (og-cook's `cook::stats`: per asset its
 //! triangles, vertices and LODs, textures with sizes and formats, bones,
 //! clips, bytes cooked and the budget flags against project.ogt's `budgets
-//! { }`), at `og-out/cook-report.json` or the `.json` path given, which
-//! `og doctor --project` reads. `--watch` cooks, then cooks again
+//! { }`, and the warnings: a model whose raycast BVH is past `bvhShare`
+//! of its blob, also printed), at `og-out/cook-report.json` or the `.json`
+//! path given, which `og doctor --project` reads. `--watch` cooks, then cooks again
 //! whenever a file under assets/ changes, printing each cooked asset's time
 //! and the cook's against the 300 ms reload budget (`--exit-after N` stops
 //! after N of them; `--json` prints one JSON line per cook).
@@ -42,15 +43,23 @@ pub fn budgets(root: &Path) -> Result<og_cook::cook::stats::Budgets, String> {
     }
 }
 
-/// Writes `cook-report.json` for a finished cook at `path`.
-pub fn write_cook_report(root: &Path, report: &Report, path: &Path) -> Result<(), String> {
+/// Writes `cook-report.json` for a finished cook at `path`; returns its
+/// assets' warnings (a model's raycast BVH past `budgets.bvhShare`).
+pub fn write_cook_report(root: &Path, report: &Report, path: &Path) -> Result<Vec<String>, String> {
     let budgets = budgets(root)?;
     let json = og_cook::cook::stats::cook_report_json(report, &root.join("cooked"), &budgets);
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     }
     let text = serde_json::to_string_pretty(&json).map_err(|e| e.to_string())?;
-    std::fs::write(path, text + "\n").map_err(|e| format!("{}: {e}", path.display()))
+    std::fs::write(path, text + "\n").map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok(json["assets"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .flat_map(|a| a["warnings"].as_array().into_iter().flatten())
+        .filter_map(|w| w["message"].as_str().map(str::to_owned))
+        .collect())
 }
 
 /// The engine's own components as the cook packs scene tables with them
@@ -385,9 +394,16 @@ pub fn run(args: &[&str]) -> ExitCode {
             }
             if slowest {
                 let path = report_json.unwrap_or_else(|| p.root.join(COOK_REPORT));
-                if let Err(e) = write_cook_report(&p.root, &r, &path) {
-                    eprintln!("og cook: cook-report.json: {e}");
-                    return ExitCode::FAILURE;
+                match write_cook_report(&p.root, &r, &path) {
+                    Ok(warnings) => {
+                        for w in warnings {
+                            eprintln!("og cook: warning: {w}");
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("og cook: cook-report.json: {e}");
+                        return ExitCode::FAILURE;
+                    }
                 }
                 if !json {
                     println!("wrote {}", path.display());

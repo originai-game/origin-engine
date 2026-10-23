@@ -205,3 +205,102 @@ What the table says:
 - **Shared files.** og-runtime `probe.rs`, `engine.rs` (the reloader's
   registration), `lib.rs` (`mod scene_save` gated); docs/design.md §3.4
   and crates/og-probe/README.md §Builds.
+
+### 3. `og cook --report` warns past a share of the model: `bvhShare`, 30 %
+
+- **The share, read from the models.** Every model the repository cooks
+  (the templates and examples with a 3D model; the examples cooked from a
+  copy with their missing LFS sources' import settings removed), its blob
+  and its cooked BVH (`bvhBytes`):
+
+| project | model | LOD 0 triangles | model blob B | BVH B | BVH share of the blob | asset cooked B |
+|---|---|---:|---:|---:|---:|---:|
+| fx-after | models/tree.glb | 3,160 | 53,758 | 26,486 | 49.3 % | 53,758 |
+| templates/fx-showcase | models/tree.glb | 3,160 | 53,758 | 26,486 | 49.3 % | 53,758 |
+| examples/rumpus-isle | models/island.glb | 1,920 | 31,296 | 14,404 | 46.0 % | 31,296 |
+| ru-after | models/island.glb | 1,920 | 31,296 | 14,404 | 46.0 % | 31,296 |
+| game-after | models/dropship.glb | 16,512 | 280,686 | 108,384 | 38.6 % | 280,686 |
+| templates/game | models/dropship.glb | 16,512 | 280,686 | 108,384 | 38.6 % | 280,686 |
+| examples/lantern-vale | models/slime.glb | 800 | 11,662 | 4,340 | 37.2 % | 15,397 |
+| examples/lantern-vale | models/tree.vox | 1,448 | 25,980 | 8,920 | 34.3 % | 25,980 |
+| examples/meridian-loop | models/ground.glb | 512 | 6,101 | 2,042 | 33.5 % | 7,931 |
+| me-after | models/ground.glb | 512 | 6,101 | 2,042 | 33.5 % | 7,931 |
+| fx-after | models/trickster.glb | 18,641 | 560,433 | 172,765 | 30.8 % | 1,098,746 |
+| templates/fx-showcase | models/trickster.glb | 18,641 | 560,433 | 172,765 | 30.8 % | 1,098,746 |
+| examples/meridian-loop | models/track.glb | 6,674 | 182,701 | 55,190 | 30.2 % | 194,143 |
+| me-after | models/track.glb | 6,674 | 182,701 | 55,190 | 30.2 % | 194,143 |
+| examples/rumpus-isle | models/palm.glb | 240 | 5,881 | 1,705 | 29.0 % | 5,881 |
+| ru-after | models/palm.glb | 240 | 5,881 | 1,705 | 29.0 % | 5,881 |
+| examples/meridian-loop | models/scenery.glb | 4,478 | 127,343 | 33,846 | 26.6 % | 134,168 |
+| me-after | models/scenery.glb | 4,478 | 127,343 | 33,846 | 26.6 % | 134,168 |
+| examples/rumpus-isle | models/berry.glb | 264 | 5,760 | 1,528 | 26.5 % | 5,760 |
+| ru-after | models/berry.glb | 264 | 5,760 | 1,528 | 26.5 % | 5,760 |
+| examples/kestrel-stair | models/stair.glb | 1,196 | 30,701 | 7,605 | 24.8 % | 59,493 |
+| examples/lantern-vale | models/rock.vox | 254 | 5,767 | 1,374 | 23.8 % | 5,767 |
+| examples/rumpus-isle | models/islet.glb | 192 | 5,342 | 1,269 | 23.8 % | 5,342 |
+| ru-after | models/islet.glb | 192 | 5,342 | 1,269 | 23.8 % | 5,342 |
+| examples/kestrel-stair | models/imp.glb | 360 | 11,204 | 2,540 | 22.7 % | 15,479 |
+| examples/lantern-vale | models/lantern.vox | 188 | 4,660 | 1,046 | 22.4 % | 4,660 |
+| examples/kestrel-stair | models/courier.glb | 312 | 10,175 | 2,214 | 21.8 % | 76,907 |
+| fx-after | models/strider.glb | 252 | 7,965 | 1,621 | 20.4 % | 28,466 |
+| templates/archetypes/third-person | models/strider.glb | 252 | 7,965 | 1,621 | 20.4 % | 28,466 |
+| templates/fx-showcase | models/strider.glb | 252 | 7,965 | 1,621 | 20.4 % | 28,466 |
+| fx-after | models/stout.glb | 252 | 7,865 | 1,585 | 20.2 % | 12,065 |
+| templates/archetypes/third-person | models/stout.glb | 252 | 7,865 | 1,585 | 20.2 % | 12,065 |
+| templates/fx-showcase | models/stout.glb | 252 | 7,865 | 1,585 | 20.2 % | 12,065 |
+| examples/kestrel-stair | models/warden.glb | 264 | 8,558 | 1,718 | 20.1 % | 12,795 |
+| examples/lantern-vale | models/hero.vox | 132 | 3,790 | 718 | 18.9 % | 3,790 |
+| fx-after | models/puppet2d.glb | 180 | 5,989 | 1,010 | 16.9 % | 14,592 |
+| templates/fx-showcase | models/puppet2d.glb | 180 | 5,989 | 1,010 | 16.9 % | 14,592 |
+| examples/meridian-loop | models/ghost.glb | 124 | 5,228 | 834 | 16.0 % | 5,228 |
+| me-after | models/ghost.glb | 124 | 5,228 | 834 | 16.0 % | 5,228 |
+| fx-after | models/walker.glb | 108 | 4,422 | 672 | 15.2 % | 13,473 |
+| game-after | models/walker.glb | 108 | 4,422 | 672 | 15.2 % | 13,473 |
+| templates/fx-showcase | models/walker.glb | 108 | 4,422 | 672 | 15.2 % | 13,473 |
+| templates/game | models/walker.glb | 108 | 4,422 | 672 | 15.2 % | 13,473 |
+| examples/meridian-loop | models/wheel.glb | 144 | 4,524 | 687 | 15.2 % | 4,524 |
+| me-after | models/wheel.glb | 144 | 4,524 | 687 | 15.2 % | 4,524 |
+| examples/meridian-loop | models/ghost-wheel.glb | 144 | 4,540 | 687 | 15.1 % | 4,540 |
+| me-after | models/ghost-wheel.glb | 144 | 4,540 | 687 | 15.1 % | 4,540 |
+| examples/meridian-loop | models/car.glb | 196 | 8,416 | 1,089 | 12.9 % | 8,416 |
+| me-after | models/car.glb | 196 | 8,416 | 1,089 | 12.9 % | 8,416 |
+| examples/rumpus-isle | models/tile.glb | 72 | 3,177 | 383 | 12.1 % | 3,177 |
+| ru-after | models/tile.glb | 72 | 3,177 | 383 | 12.1 % | 3,177 |
+| fx-after | models/window-room.glb | 96 | 3,556 | 416 | 11.7 % | 3,556 |
+| templates/fx-showcase | models/window-room.glb | 96 | 3,556 | 416 | 11.7 % | 3,556 |
+| examples/rumpus-isle | models/podium.glb | 108 | 3,811 | 424 | 11.1 % | 3,811 |
+| ru-after | models/podium.glb | 108 | 3,811 | 424 | 11.1 % | 3,811 |
+| examples/lantern-vale | models/pine.vox | 288 | 24,572 | 1,915 | 7.8 % | 24,572 |
+| examples/lantern-vale | models/ruins.vox | 162 | 13,611 | 979 | 7.2 % | 13,611 |
+| fx-after | models/cornell.glb | 30 | 3,245 | 211 | 6.5 % | 3,245 |
+| templates/fx-showcase | models/cornell.glb | 30 | 3,245 | 211 | 6.5 % | 3,245 |
+| examples/kestrel-stair | anims/humanoid.glb | 0 | 2,528 | 16 | 0.6 % | 56,462 |
+| fx-after | anims/humanoid-clips.glb | 0 | 2,544 | 16 | 0.6 % | 15,120 |
+| templates/archetypes/third-person | anims/humanoid-clips.glb | 0 | 2,544 | 16 | 0.6 % | 15,120 |
+| templates/fx-showcase | anims/humanoid-clips.glb | 0 | 2,544 | 16 | 0.6 % | 15,120 |
+
+  Small models sit at 6 to 25 % of their blob and cost a few kB; the ones
+  that cost a download (the dropship 108,384 B, the trickster 172,765 B,
+  meridian's track 55,190 B) are 30 to 49 %. A share alone would warn on
+  rumpus's 31 kB island (46 %, 14 kB of BVH), so the warning needs both:
+  over **30 %** of the blob and at least **16 KiB** (`BVH_WARN_BYTES`).
+  Four models warn: dropship (38.6 %), fx-showcase's tree (49.3 %) and
+  trickster (30.8 %), meridian-loop's track (30.2 %). The BVH stays on by
+  default, as decided.
+- **Change.** og-cook `cook::stats`: `budgets.bvhShare` (default 30, a
+  project moves it in `budgets { }`), the model entry gains `bytes` and
+  `bvhShare` (percent, a tenth), `asset_warnings` and each asset's
+  `warnings` with `totals.warned`; `og cook --report` prints each warning
+  ("og cook: warning: models/dropship.glb: its raycast BVH is 108384 B,
+  38.6 % of the model's 280686 B (warned past 30 %); `model { raycast
+  false }` ..."); `og doctor --project` reports it as a `bvh-share`
+  warning (it does not fail the doctor: it is not a budget flag).
+- **Test.** og-cook `stats::tests::a_model_warns_when_its_bvh_passes_the_share_and_the_floor`
+  (the dropship's numbers warn at 38.6 %, 30.0 % and under do not, the
+  floor holds a small model, a project's share moves it); it does not
+  compile on the old code. Read by hand: `og cook templates/game --report`
+  prints the dropship's warning, `og doctor --project templates/game
+  --json` has it as a `bvh-share` finding.
+- **Shared files.** og-cook `cook/stats.rs` (the report), og-cli `cook.rs`
+  and `doctor_project.rs`; docs/design.md §3.4 (doctor) and the og-game
+  skill §21.

@@ -987,7 +987,12 @@ reading pixels:
   triangles vertices textureSize bones clips assetBytes totalBytes
   soundSeconds videoSeconds fontGlyphs navPolygons sceneEntities
   emitterParticles }`, each with a default) and prints findings with
-  severity, asset, budget, limit, value and fix.
+  severity, asset, budget, limit, value and fix. One more key,
+  `bvhShare` (30), is a warning, not a limit: a model whose cooked
+  raycast BVH is over that percent of its blob and at least 16 KiB is
+  named by `og cook --report` and `og doctor --project`, with
+  `model { raycast false }` as the fix (the 30 % read from the
+  repository's models, tests/evidence/debt2/size/NOTES.md).
 
 ### 3.5 Hot reload **(D)**
 

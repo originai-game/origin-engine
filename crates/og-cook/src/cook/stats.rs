@@ -21,8 +21,18 @@
 //!   navPolygons 65536    # polygons of one navmesh
 //!   sceneEntities 10000  # entities one scene spawns
 //!   emitterParticles 16384 # max particles of one emitter
+//!   bvhShare 30          # percent of a model's blob its raycast BVH may be
 //! }
 //! ```
+//!
+//! Every budget but `bvhShare` is a limit: an asset over it is flagged
+//! (`flags`, an error for `og doctor --project`). `bvhShare` is a warning
+//! (`warnings`): a model whose cooked raycast BVH is over that share of its
+//! blob, and at least [`BVH_WARN_BYTES`], pays for a BVH a game that never
+//! raycasts against it can drop with `model { raycast false }`. The 30 %
+//! default is read from the repository's models (tests/evidence/debt2/size/
+//! NOTES.md): the small ones sit at 6 to 25 %, the large ones that cost a
+//! download at 26 to 49 % (the dropship 38.6 %, 108,384 B).
 //!
 //! Every output type has its own figures in the report: a sound its
 //! seconds, channels, rate and chunks; a font its glyphs, kerning pairs and
@@ -70,7 +80,14 @@ pub struct Budgets {
     pub scene_entities: u64,
     /// `max_particles` of one emitter.
     pub emitter_particles: u64,
+    /// The percent of a model's blob its raycast BVH may take before the
+    /// report warns (a warning, not a flag; the module's documentation).
+    pub bvh_share: u64,
 }
+
+/// The smallest BVH the report warns about, whatever its share: below it
+/// a model's BVH costs less than a 64×64 RGBA texture.
+pub const BVH_WARN_BYTES: u64 = 16 * 1024;
 
 impl Default for Budgets {
     fn default() -> Budgets {
@@ -88,11 +105,12 @@ impl Default for Budgets {
             nav_polygons: 65_536,
             scene_entities: 10_000,
             emitter_particles: 16_384,
+            bvh_share: 30,
         }
     }
 }
 
-const KEYS: [&str; 13] = [
+const KEYS: [&str; 14] = [
     "triangles",
     "vertices",
     "textureSize",
@@ -106,6 +124,7 @@ const KEYS: [&str; 13] = [
     "navPolygons",
     "sceneEntities",
     "emitterParticles",
+    "bvhShare",
 ];
 
 impl Budgets {
@@ -142,6 +161,7 @@ impl Budgets {
                 "navPolygons" => b.nav_polygons = v,
                 "sceneEntities" => b.scene_entities = v,
                 "emitterParticles" => b.emitter_particles = v,
+                "bvhShare" => b.bvh_share = v,
                 k => {
                     return Err(format!(
                         "project.ogt line {}: unknown budget '{k}' (expected {})",
@@ -169,6 +189,7 @@ impl Budgets {
             "navPolygons": self.nav_polygons,
             "sceneEntities": self.scene_entities,
             "emitterParticles": self.emitter_particles,
+            "bvhShare": self.bvh_share,
         })
     }
 
@@ -191,6 +212,7 @@ impl Budgets {
             nav_polygons: n("navPolygons", d.nav_polygons),
             scene_entities: n("sceneEntities", d.scene_entities),
             emitter_particles: n("emitterParticles", d.emitter_particles),
+            bvh_share: n("bvhShare", d.bvh_share),
         }
     }
 }
@@ -223,10 +245,21 @@ fn asset_stats(bundle: &Bundle, outputs: &[(String, String, u64)]) -> Value {
     let mut lightmap = Value::Null;
     let mut others = serde_json::Map::new();
     let mut unread = Vec::new();
-    for (id, ty, _) in outputs {
+    for (id, ty, bytes) in outputs {
         let read = match ty.as_str() {
             "og.Model" => bundle.load_model(id).map(|m| {
                 let lods = m.primitives.iter().map(|p| p.lods.len()).max().unwrap_or(0);
+                // The raycast BVHs' sections in the blob, compressed
+                // (`model { raycast false }`: a few bytes).
+                let bvh = bundle
+                    .read(id)
+                    .ok()
+                    .and_then(|b| {
+                        let blob = og_blob::Blob::parse(b.as_slice(), id).ok()?;
+                        let n = blob.raw_opt("bvh_nodes")?.len() + blob.raw_opt("bvh_tris")?.len();
+                        Some(n as u64)
+                    })
+                    .unwrap_or(0);
                 let per_lod: Vec<u64> = (0..lods)
                     .map(|l| {
                         m.primitives
@@ -243,13 +276,10 @@ fn asset_stats(bundle: &Bundle, outputs: &[(String, String, u64)]) -> Value {
                     "primitives": m.primitives.len(),
                     "materials": m.materials.len(),
                     "nodes": m.nodes.len(),
-                    // The raycast BVHs' sections in the blob, compressed
-                    // (`model { raycast false }`: a few bytes).
-                    "bvhBytes": bundle.read(id).ok().and_then(|b| {
-                        let blob = og_blob::Blob::parse(b.as_slice(), id).ok()?;
-                        let n = blob.raw_opt("bvh_nodes")?.len() + blob.raw_opt("bvh_tris")?.len();
-                        Some(n as u64)
-                    }).unwrap_or(0),
+                    "bytes": bytes,
+                    "bvhBytes": bvh,
+                    // Percent of the model's blob, to a tenth.
+                    "bvhShare": (bvh as f64 * 1000.0 / (*bytes).max(1) as f64).round() / 10.0,
                 });
             }),
             "og.Texture" => bundle.load_texture(id).map(|t| {
@@ -746,6 +776,29 @@ pub fn asset_flags(asset: &Value, b: &Budgets) -> Vec<Value> {
     out
 }
 
+/// The warnings of one asset entry of a report: a model whose raycast BVH
+/// is over `bvhShare` percent of its blob and at least [`BVH_WARN_BYTES`].
+pub fn asset_warnings(asset: &Value, b: &Budgets) -> Vec<Value> {
+    let source = asset["source"].as_str().unwrap_or("");
+    let m = &asset["model"];
+    let (Some(bvh), Some(share)) = (m["bvhBytes"].as_u64(), m["bvhShare"].as_f64()) else {
+        return Vec::new();
+    };
+    if bvh < BVH_WARN_BYTES || share <= b.bvh_share as f64 {
+        return Vec::new();
+    }
+    vec![json!({
+        "budget": "bvhShare",
+        "limit": b.bvh_share,
+        "value": share,
+        "message": format!(
+            "{source}: its raycast BVH is {bvh} B, {share} % of the model's {} B (warned past {} %); `model {{ raycast false }}` in its .ogt drops it if nothing raycasts against the model",
+            m["bytes"].as_u64().unwrap_or(0),
+            b.bvh_share
+        ),
+    })]
+}
+
 /// The project-wide flags of a report (its `totals`).
 pub fn total_flags(report: &Value, b: &Budgets) -> Vec<Value> {
     let bytes = report["totals"]["cookedBytes"].as_u64().unwrap_or(0);
@@ -797,6 +850,7 @@ pub fn cook_report_json(report: &Report, cooked: &Path, budgets: &Budgets) -> Va
         }
         triangles += entry["model"]["triangles"].as_u64().unwrap_or(0);
         entry["flags"] = Value::Array(asset_flags(&entry, budgets));
+        entry["warnings"] = Value::Array(asset_warnings(&entry, budgets));
         assets.push(entry);
     }
     let mut out = json!({
@@ -809,6 +863,7 @@ pub fn cook_report_json(report: &Report, cooked: &Path, budgets: &Budgets) -> Va
             "cookedBytes": cooked_bytes,
             "triangles": triangles,
             "flagged": assets.iter().filter(|a| a["flags"].as_array().is_some_and(|f| !f.is_empty())).count(),
+            "warned": assets.iter().filter(|a| a["warnings"].as_array().is_some_and(|w| !w.is_empty())).count(),
         },
         "assets": assets,
     });
@@ -839,6 +894,44 @@ mod tests {
                 .unwrap_err()
                 .contains("unknown budget 'polygons'")
         );
+    }
+
+    #[test]
+    fn a_model_warns_when_its_bvh_passes_the_share_and_the_floor() {
+        let b = Budgets::default();
+        let model = |bytes: u64, bvh: u64| {
+            json!({
+                "source": "models/dropship.glb",
+                "model": {
+                    "bytes": bytes,
+                    "bvhBytes": bvh,
+                    "bvhShare": (bvh as f64 * 1000.0 / bytes as f64).round() / 10.0,
+                },
+            })
+        };
+        // The dropship as cooked: 108,384 B of BVH in a 280,686 B blob.
+        let w = asset_warnings(&model(280_686, 108_384), &b);
+        assert_eq!(w.len(), 1);
+        assert_eq!(w[0]["budget"], "bvhShare");
+        assert_eq!(w[0]["value"], 38.6);
+        assert_eq!(
+            w[0]["message"],
+            "models/dropship.glb: its raycast BVH is 108384 B, 38.6 % of the model's 280686 B (warned past 30 %); `model { raycast false }` in its .ogt drops it if nothing raycasts against the model"
+        );
+        // At the share (30.0 %, not over) and under it: no warning.
+        assert!(asset_warnings(&model(300_000, 90_000), &b).is_empty());
+        assert!(asset_warnings(&model(300_000, 60_000), &b).is_empty());
+        // Over the share but under the floor (a small model's few kB).
+        assert!(asset_warnings(&model(31_296, 14_404), &b).is_empty());
+        // A project that moves the share moves the warning.
+        let strict = Budgets {
+            bvh_share: 20,
+            ..Budgets::default()
+        };
+        assert_eq!(asset_warnings(&model(300_000, 66_000), &strict).len(), 1);
+        // No model, no warning; `raycast false` cooks a few bytes.
+        assert!(asset_warnings(&json!({"source": "a.png"}), &b).is_empty());
+        assert!(asset_warnings(&model(280_686, 16), &b).is_empty());
     }
 
     #[test]
