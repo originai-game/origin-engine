@@ -89,7 +89,7 @@ test("Math.random() in a system is a desync: og.Desync names tick 101 and dump_d
       expect(dump.tick).toBe(101);
       expect(dump.local.hash).not.toBe(dump.remote.hash);
       expect(dump.diff.resources).toEqual([]);
-      expect(dump.diff.components).toHaveLength(1);
+      expect(dump.diff.components.length).toBe(1);
       expect(dump.diff.components[0].component).toBe("Wobble");
       expect(dump.diff.components[0].entity).toBe("wobbler");
       expect(dump.diff.components[0].fields.map((f: { field: string }) => f.field)).toEqual(["offset"]);
