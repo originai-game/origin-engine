@@ -336,8 +336,12 @@ main pass in `order`, so a target shows this frame's image. Each view has:
 
 A view draws the opaque instances, skinned instances, terrain and sky,
 with the frame's shadow maps. Transparents, sprites, particles, text and
-post effects belong to the main camera. A frame with views culls on the
-CPU, because GPU culling builds one camera's draw list.
+post effects belong to the main camera. Views cull on the CPU while the
+main camera, its shadow maps and the planar reflection keep GPU culling
+(`cull_gpu.rs`): under it a view's list appends every instance it draws
+to the instance buffer, since the sorted instances live in the culling's
+buffer, and the GPU passes test each batch's layer mask as the CPU lists
+do.
 - `every` skips ticks.
 - A mirror reflects the main eye in its plane. It draws through an
   off-axis frustum fitted to the quad's corners (Kooima), with the near

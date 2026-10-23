@@ -4186,11 +4186,15 @@ impl Renderer {
     }
 
     /// The draw ranges of one pass: per batch (`include`d), every instance
-    /// whose sphere touches `frustum`. A batch that loses less than a tenth
-    /// of its instances is drawn whole (cheaper than copying its
-    /// transforms); otherwise its visible instances are appended to
-    /// `transforms`. `inside` is the caller's scratch, reused across the
-    /// frame's passes.
+    /// whose sphere touches `frustum`. With `whole`, a batch that loses
+    /// less than a tenth of its instances is drawn whole from the sorted
+    /// instances (cheaper than copying its transforms); otherwise, and
+    /// always without `whole`, its visible instances are appended to
+    /// `transforms`. A frame under GPU culling passes `whole` false: its
+    /// sorted instances live in the culling's buffer, and the CPU lists
+    /// (views, probe faces) draw only what they appended, from the
+    /// instance buffer. `inside` is the caller's scratch, reused across
+    /// the frame's passes.
     #[allow(clippy::too_many_arguments)]
     fn cull(
         &self,
@@ -4200,6 +4204,7 @@ impl Renderer {
         origins: &mut Vec<u32>,
         inside: &mut Vec<bool>,
         frustum: &Frustum,
+        whole: bool,
         include: impl Fn(&Batch) -> bool,
     ) -> (DrawList, u32) {
         let mut list = DrawList::default();
@@ -4231,7 +4236,7 @@ impl Renderer {
             list.in_view_triangles += (index_count / 3) as u64 * visible.len() as u64;
             let (first, count) = if visible.is_empty() {
                 continue;
-            } else if visible.len() as u32 * 10 >= b.count * 9 {
+            } else if whole && visible.len() as u32 * 10 >= b.count * 9 {
                 (b.first, b.count)
             } else {
                 let first = transforms.len() as u32;
@@ -5260,8 +5265,6 @@ impl Renderer {
                 Culling::Cpu => false,
             }
             && !object_motion
-            // A view's CPU-culled lists index the sorted instances.
-            && view_plans.is_empty()
             && !batches.is_empty()
             && {
                 let limits = self.device.limits();
@@ -5280,6 +5283,12 @@ impl Renderer {
             cull_passes.push(cull_gpu::CullPass {
                 kind,
                 planes: frustum.planes().to_vec(),
+                // Shadow maps take every caster; the camera's passes its
+                // layers (views.rs), as the CPU lists' `include`.
+                layers: match kind {
+                    cull_gpu::PassKind::Shadow => u32::MAX,
+                    _ => scene.camera_layers,
+                },
             });
             cull_passes.len() as u32 - 1
         };
@@ -5314,6 +5323,7 @@ impl Renderer {
                 &mut origins,
                 &mut cull_inside,
                 &view_frustum,
+                true,
                 |b| !b.transparent && b.layers & mask != 0,
             )
         };
@@ -5344,6 +5354,7 @@ impl Renderer {
                     &mut origins,
                     &mut cull_inside,
                     &frustum,
+                    true,
                     |b| !b.transparent && b.layers & mask != 0,
                 )
                 .0
@@ -5373,15 +5384,17 @@ impl Renderer {
                     &mut origins,
                     &mut cull_inside,
                     &frustum,
+                    !gpu_cull,
                     |b| !b.transparent,
                 )
                 .0,
             );
         }
 
-        // Each view's opaque meshes on its layers (CPU culled: a frame with
-        // views culls on the CPU).
-        let view_lists: Vec<DrawList> = view_plans
+        // Each view's opaque meshes on its layers, culled on the CPU (the
+        // main camera, its shadows and reflection keep GPU culling: under
+        // it these lists append every instance they draw).
+        let mut view_lists: Vec<DrawList> = view_plans
             .iter()
             .map(|p| {
                 self.cull(
@@ -5391,6 +5404,7 @@ impl Renderer {
                     &mut origins,
                     &mut cull_inside,
                     &Frustum::from_view_proj(p.frame.view_proj),
+                    !gpu_cull,
                     |b| !b.transparent && b.layers & p.layers != 0,
                 )
                 .0
@@ -5497,6 +5511,7 @@ impl Renderer {
                         &mut origins,
                         &mut cull_inside,
                         &c.frustum,
+                        true,
                         |b| b.cast,
                     )
                     .0
@@ -5621,6 +5636,7 @@ impl Renderer {
                         &mut origins,
                         &mut cull_inside,
                         f,
+                        true,
                         |b| b.cast,
                     )
                     .0
@@ -5663,7 +5679,11 @@ impl Renderer {
             for r in &mut blended_list.ranges {
                 r.1 -= sorted;
             }
-            for r in probe_lists.iter_mut().flat_map(|l| &mut l.ranges) {
+            for r in probe_lists
+                .iter_mut()
+                .chain(view_lists.iter_mut())
+                .flat_map(|l| &mut l.ranges)
+            {
                 r.1 -= sorted;
             }
             Some(commands)

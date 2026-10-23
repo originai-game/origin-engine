@@ -61,8 +61,9 @@ fn render(name: &str, culling: Culling, frames: u32) -> Run {
 /// Scenes covering every culled pass: the city (40,000 instances, the
 /// street walking so the occluders change each frame), glTF models with
 /// cascades, local lights' shadow faces, the planar reflection, MSAA (the
-/// multisampled occluder depth), material vertex hooks (never occluded)
-/// and the showcase's mix.
+/// multisampled occluder depth), material vertex hooks (never occluded),
+/// the showcase's mix, and the CPU lists drawn beside the GPU's: views (a
+/// monitor's target, a mirror, split-screen) and reflection probe faces.
 const SCENES: &[(&str, u32)] = &[
     ("city-street", 8),
     ("city-aerial", 3),
@@ -72,6 +73,12 @@ const SCENES: &[(&str, u32)] = &[
     ("msaa", 4),
     ("shader-hooks", 4),
     ("showcase", 4),
+    // Secondary cameras and probe faces cull on the CPU beside the GPU's
+    // passes (their lists append what they draw).
+    ("views-monitor", 2),
+    ("views-mirror", 2),
+    ("views-split", 2),
+    ("probe-interior", 2),
 ];
 
 #[test]

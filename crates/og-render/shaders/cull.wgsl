@@ -30,7 +30,7 @@ const OCCLUDABLE: u32 = 4u;
 
 struct PassGpu {
   planes: array<vec4<f32>, 12>,
-  // x: kind, y: planes, z: the pass's global index, w: unused
+  // x: kind, y: planes, z: the pass's global index, w: its layer mask
   info: vec4<u32>,
 };
 
@@ -50,8 +50,10 @@ struct BatchGpu {
   flags: u32,
   // xyz: the mesh's local bounds centre, w: its half extent's length
   bounds: vec4<f32>,
-  // xyz: the local half extent
-  extent: vec4<f32>,
+  // The local half extent.
+  extent: vec3<f32>,
+  // Its three.js layer mask: a pass draws it when they share a bit.
+  layers: u32,
 };
 
 @group(0) @binding(0) var<uniform> params: Params;
@@ -205,7 +207,8 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
     let scale = max(length(m[0].xyz), max(length(m[1].xyz), length(m[2].xyz)));
     // The CPU path's sphere, widened by its rounding.
     let radius = b.bounds.w * scale * (1.0 + 1e-5);
-    var inside = kind == FRUSTUM_ALL || (b.flags & TRANSPARENT) == 0u;
+    var inside = (kind == FRUSTUM_ALL || (b.flags & TRANSPARENT) == 0u)
+      && (b.layers & pass_info.w) != 0u;
     for (var p = 0u; p < pass_info.y && inside; p++) {
       let plane = params.passes[wid.y].planes[p];
       inside = dot(plane.xyz, center) + plane.w >= -radius;

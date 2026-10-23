@@ -83,6 +83,9 @@ impl PassKind {
 pub(crate) struct CullPass {
     pub kind: PassKind,
     pub planes: Vec<Vec4>,
+    /// The three.js layer mask it draws: a batch whose mask shares no bit
+    /// with it draws nothing and counts as neither inside nor culled.
+    pub layers: u32,
 }
 
 /// `struct PassGpu` in cull.wgsl.
@@ -112,7 +115,9 @@ struct BatchGpu {
     index_count: u32,
     flags: u32,
     bounds: [f32; 4],
-    extent: [f32; 4],
+    extent: [f32; 3],
+    /// The batch's three.js layer mask.
+    layers: u32,
 }
 
 /// The GPU's counts for one frame (see the module docs). They are
@@ -964,7 +969,8 @@ impl GpuCulling {
                         | (m.occluder as u32 * OCCLUDER)
                         | (x.shader.is_none() as u32 * OCCLUDABLE),
                     bounds: [c.x, c.y, c.z, r],
-                    extent: [e.x, e.y, e.z, 0.0],
+                    extent: [e.x, e.y, e.z],
+                    layers: x.layers,
                 }
             })
             .collect();
@@ -990,7 +996,8 @@ impl GpuCulling {
                 for (i, plane) in planes.iter().enumerate() {
                     params.passes[slot].planes[i] = plane.to_array();
                 }
-                params.passes[slot].info = [pass.kind.code(), planes.len() as u32, g as u32, 0];
+                params.passes[slot].info =
+                    [pass.kind.code(), planes.len() as u32, g as u32, pass.layers];
             }
             params
         };
@@ -1165,9 +1172,16 @@ impl GpuCulling {
                 .iter()
                 .map(|x| (meshes[x.mesh].index_count / 3) as u64)
                 .collect(),
+            // The camera pass's opaque instances on its layers.
             opaque: batches
                 .iter()
-                .filter(|x| !x.transparent)
+                .filter(|x| {
+                    !x.transparent
+                        && passes
+                            .iter()
+                            .find(|p| p.kind == PassKind::Main)
+                            .is_some_and(|p| x.layers & p.layers != 0)
+                })
                 .map(|x| x.count)
                 .sum(),
         };
