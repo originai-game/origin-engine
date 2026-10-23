@@ -52,6 +52,7 @@ fn engine_schema(name: &str) -> og_core::Schema {
             let (ty, lanes) = match f.column {
                 "f32" => (FieldType::F32, 1),
                 "i32" => (FieldType::I32, 1),
+                "u32" => (FieldType::U32, 1),
                 "bool" => (FieldType::Bool, 1),
                 "Color" => (FieldType::Vec3, 3),
                 "Asset" | "Geometry" | "Material" => (FieldType::U64, 1),
