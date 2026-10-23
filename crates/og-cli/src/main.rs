@@ -7,8 +7,8 @@
 //! (the play page), `og cook`, `og doctor` and `og api` (the IDL outputs).
 
 mod api;
-mod bake_probes;
 mod bake_lightmaps;
+mod bake_probes;
 mod bundle;
 mod check;
 mod contact_sheet;
