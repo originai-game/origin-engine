@@ -15,8 +15,10 @@ export function cutscene(id: string, desc: Api.CutsceneDesc = {}): Api.CutsceneR
   kit.setNavigation(true);
   const letterbox = desc.letterbox ?? true;
   if (letterbox) {
+    // Cinematic bars are black in every style: not a token, which a light
+    // style (kestrel's paper) would turn into cream panels.
     for (const [name, anchor] of [["Top", "top"], ["Bottom", "bottom"]] as const) {
-      kit.anchor(`${id}.${name}`, { anchor, margin: 0, width: grow(), height: pct(0.1), background: token("backdrop") }, () => {});
+      kit.anchor(`${id}.${name}`, { anchor, margin: 0, width: grow(), height: pct(0.1), background: { color: { r: 0, g: 0, b: 0 } } }, () => {});
     }
   }
   const line = lines[index]!;
