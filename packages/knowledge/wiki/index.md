@@ -118,7 +118,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1081 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1091 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -455,9 +455,11 @@ Field units the docs and Tune use.
 | [`og.AiChanged`](ai.md#record-AiChanged) | event | ai | — |
 | [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
 | [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
+| [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
 | [`og.anim.graph`](anim.md#fn-graph) | function | anim | `og_anim_graph` |
 | [`og.anim.humanoid`](anim.md#fn-humanoid) | function | anim | `og_anim_humanoid` |
 | [`og.anim.retarget`](anim.md#fn-retarget) | function | anim | `og_anim_retarget` |
+| [`og.anim.rig2dInfo`](anim.md#fn-rig2dInfo) | function | anim | `og_anim_rig2d_info` |
 | [`og.AnimationEvent`](anim.md#record-AnimationEvent) | event | anim | — |
 | [`og.AnimationGraph`](anim.md#record-AnimationGraph) | component | anim | — |
 | [`og.AnimationPlayer`](anim.md#record-AnimationPlayer) | component | anim | — |
@@ -518,6 +520,7 @@ Field units the docs and Tune use.
 | [`og.i18n.setLocale`](i18n.md#fn-setLocale) | function | i18n | `og_i18n_set_locale` |
 | [`og.i18n.t`](i18n.md#fn-t) | function | i18n | `og_i18n_t` |
 | [`og.IkChain`](anim.md#record-IkChain) | component | anim | — |
+| [`og.IkTarget2D`](anim.md#record-IkTarget2D) | component | anim | — |
 | [`og.Input`](input.md#record-Input) | resource | input | — |
 | [`og.Joint`](physics.md#record-Joint) | component | physics | — |
 | [`og.KeyDown`](input.md#record-KeyDown) | event | input | — |
@@ -542,6 +545,7 @@ Field units the docs and Tune use.
 | [`og.load.lut`](load.md#fn-lut) | function | load | `og_load_lut` |
 | [`og.load.palette`](load.md#fn-palette) | function | load | `og_load_palette` |
 | [`og.load.rig`](load.md#fn-rig) | function | load | `og_load_rig` |
+| [`og.load.rig2d`](load.md#fn-rig2d) | function | load | `og_load_rig2d` |
 | [`og.load.scene`](load.md#fn-scene) | function | load | `og_load_scene` |
 | [`og.load.shader`](load.md#fn-shader) | function | load | `og_load_shader` |
 | [`og.load.skin`](load.md#fn-skin) | function | load | `og_load_skin` |
@@ -668,6 +672,8 @@ Field units the docs and Tune use.
 | [`og.SensorEntered`](physics.md#record-SensorEntered) | event | physics | — |
 | [`og.SensorExited`](physics.md#record-SensorExited) | event | physics | — |
 | [`og.Skeleton`](anim.md#record-Skeleton) | component | anim | — |
+| [`og.Skeleton2D`](anim.md#record-Skeleton2D) | component | anim | — |
+| [`og.Skeleton2DEvent`](anim.md#record-Skeleton2DEvent) | event | anim | — |
 | [`og.Sky`](atmosphere.md#record-Sky) | resource | atmosphere | — |
 | [`og.SoundEnded`](audio.md#record-SoundEnded) | event | audio | — |
 | [`og.SoundStarted`](audio.md#record-SoundStarted) | event | audio | — |
@@ -952,6 +958,10 @@ Field units the docs and Tune use.
 | [`RichTextDesc`](ui.md#type-RichTextDesc) | desc struct | ui | — |
 | [`RichTextResult`](ui.md#type-RichTextResult) | struct | ui | — |
 | [`Rig`](anim.md#type-Rig) | handle | anim | — |
+| [`Rig2D`](anim.md#type-Rig2D) | handle | anim | — |
+| [`Rig2D()`](anim.md#column-Rig2D) | column kind | anim | — |
+| [`Rig2DClipInfo`](anim.md#type-Rig2DClipInfo) | struct | anim | — |
+| [`Rig2DInfo`](anim.md#type-Rig2DInfo) | struct | anim | — |
 | [`RingGeometryDesc`](render.md#type-RingGeometryDesc) | desc struct | render | — |
 | [`Rng.chance`](rng.md#member-Rng-chance) | method | rng | `og_rng_chance` |
 | [`Rng.fork`](rng.md#member-Rng-fork) | method | rng | `og_rng_fork` |

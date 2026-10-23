@@ -163,6 +163,8 @@ export interface ColumnKinds {
   IkSpace: { readonly array: Uint32Array; readonly stride: 1; readonly value: IkSpace };
   /** A FlipbookSheet handle field. */
   FlipbookSheet: { readonly array: Uint32Array; readonly stride: 2; readonly value: FlipbookSheet };
+  /** A Rig2D handle field. */
+  Rig2D: { readonly array: Uint32Array; readonly stride: 2; readonly value: Rig2D };
   /** A Tween handle field. */
   Tween: { readonly array: Uint32Array; readonly stride: 2; readonly value: Tween };
   /** A TilemapAsset handle field. */
@@ -7229,6 +7231,7 @@ export interface Model {
 
 
 
+
 /**
  * A load completed.
  *
@@ -11006,6 +11009,183 @@ export interface FlipbookInfo {
   readonly frameHeight: number;
 }
 
+
+
+
+/**
+ * A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region and mesh attachments, IK constraints and clips, from og.load.rig2d.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type Rig2D = number & { readonly [handleType]: "Rig2D" };
+
+/**
+ * A Rig2D handle field.
+ *
+ * A `Rig2D` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Rig2D(value?: Rig2D, options?: FieldOptions): FieldSpec<"Rig2D">;
+
+/**
+ * Plays a clip of a 2D rig at the entity: the og.skeleton2d system advances it by scaled time (Time.scaledDt) after the game's systems and fires its events as og.Skeleton2DEvent; extraction draws its slots, in their order, as textured triangles of the sprite batch at `layer` (region attachments as quads, mesh attachments weighted to bones and deformed by the clip), lit by og.Lighting2D when the layer is in its range, as a sprite there is. The rig's pixels are `unit` to a world unit and +y is up; the entity's og.Transform places, turns (about z) and scales it.
+ * Changing `clip` restarts at 0 (or at `time`, written in the same tick); writing a different time is a seek and fires no events. The pose is a function of these fields, the Transform and the og.IkTarget2D on it; the playback position is world state (the og.skeleton2d state block).
+ *
+ * The value of the `Skeleton2D` component (token `og.Skeleton2D`).
+ */
+export interface Skeleton2D {
+  /** The rig (og.load.rig2d's `rig`); 0 is none. */
+  rig: Rig2D;
+  /**
+   * The clip: an index into Rig2DInfo.clips (og.anim.clip finds one by name).
+   *
+   * @range 0..
+   */
+  clip: number;
+  /**
+   * Seconds into the clip; written every tick, set it to seek.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  time: number;
+  /**
+   * The playback rate: 1 as authored, 2 twice as fast, negative backwards.
+   *
+   * @default 1
+   * @range -10..10
+   * @tunable
+   */
+  speed: number;
+  /**
+   * Wrap at the clip's end; otherwise hold the last pose and set `finished`. Rig2DInfo.clips says what the rig's author meant.
+   *
+   * @default true
+   */
+  loop: boolean;
+  /** Mirror the rig left to right about the entity's position (a character facing left). */
+  flipX: boolean;
+  /**
+   * The sprite layer it draws in, sorted with the sprites there (after them when they share the layer).
+   */
+  layer: number;
+  /**
+   * Written: a clip that does not loop reached its end (or its start, played backwards).
+   *
+   * @readonly written by the engine
+   */
+  readonly finished: boolean;
+}
+
+/**
+ * A 2D skeleton's clip passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.
+ *
+ * The payload of the `Skeleton2DEvent` event (token `og.Skeleton2DEvent`).
+ */
+export interface Skeleton2DEvent {
+  /** The entity with the og.Skeleton2D. */
+  readonly entity: Entity;
+  /** The clip index. */
+  readonly clip: number;
+  /** The event's name (at most 63 bytes). */
+  readonly name: string;
+  /**
+   * The event's time in the clip.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly time: number;
+}
+
+/**
+ * Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way.
+ *
+ * The value of the `IkTarget2D` component (token `og.IkTarget2D`).
+ */
+export interface IkTarget2D {
+  /** The entity with the og.Skeleton2D. */
+  skeleton: Entity;
+  /**
+   * The constraint: an index into Rig2DInfo.constraints.
+   *
+   * @range 0..
+   */
+  constraint: number;
+  /**
+   * Where the chain's tip should be, in the frame the skeleton entity's og.Transform is written in (the world for an entity without a parent).
+   *
+   * @unit m (metres)
+   */
+  target: Vector2;
+  /**
+   * How much of the solve applies (0 is the animated pose, 1 fully solved).
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  weight: number;
+  /**
+   * The distance at which the target counts as reached.
+   *
+   * @default 0.01
+   * @range 0..
+   * @unit m (metres)
+   */
+  tolerance: number;
+  /**
+   * Written: the tip is within `tolerance` of the target after solving.
+   *
+   * @readonly written by the engine
+   */
+  readonly reached: boolean;
+  /**
+   * Written: the tip's distance from the target after solving (for a one-bone constraint, how far the target lies off the bone's line).
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly error: number;
+}
+
+/** One clip of a loaded 2D rig. */
+export interface Rig2DClipInfo {
+  /** Its index, what Skeleton2D.clip takes. */
+  readonly clip: number;
+  /** Its name in the rig. */
+  readonly name: string;
+  /**
+   * Its length.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration: number;
+  /**
+   * Whether the rig's author meant it to loop (its `loop` line): copy it into Skeleton2D.loop.
+   */
+  readonly loop: boolean;
+  /** Its events' names, in time order. */
+  readonly events: readonly string[];
+}
+
+/** What og.load.rig2d registered, or og.anim.rig2dInfo reads back from a handle. */
+export interface Rig2DInfo {
+  /** What Skeleton2D.rig takes. */
+  readonly rig: Rig2D;
+  /** The rig's texture (loaded with it). */
+  readonly texture: Texture;
+  /** Pixels of the rig per world unit. */
+  readonly unit: number;
+  /** The bones' names, parents first. */
+  readonly bones: readonly string[];
+  /** The slots' names, in draw order. */
+  readonly slots: readonly string[];
+  /** The IK constraints' names: an index here is IkTarget2D.constraint. */
+  readonly constraints: readonly string[];
+  /** Its clips, in file order. */
+  readonly clips: readonly Rig2DClipInfo[];
+}
 
 
 // ── tween ───────────────────────────────────────────────────────
@@ -20447,6 +20627,14 @@ export declare namespace og {
      * @returns Refused for a path not in the bundle (run og cook) or a file that is not a timeline.
      */
     function timeline(world: World, path: string): Result<TimelineAsset>;
+    /**
+     * Load a cooked 2D rig (an `.ogt` of `type rig2d`, written by hand or imported by the cook from DragonBones JSON) and its texture, and register it with og.skeleton2d. Loading the same path again answers the same handles.
+     *
+     * @param world The world whose animation and renderer own it.
+     * @param path The rig's asset id, such as `rigs/hero.ogt`.
+     * @returns Refused for a path not in the bundle (run og cook) or a texture it cannot load.
+     */
+    function rig2d(world: World, path: string): Result<Rig2DInfo>;
   }
   /**
    * A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one.
@@ -20760,6 +20948,19 @@ export declare namespace og {
    */
   const FlipbookEvent: EventType<FlipbookEvent>;
   /**
+   * Plays a clip of a 2D rig at the entity: the og.skeleton2d system advances it by scaled time (Time.scaledDt) after the game's systems and fires its events as og.Skeleton2DEvent; extraction draws its slots, in their order, as textured triangles of the sprite batch at `layer` (region attachments as quads, mesh attachments weighted to bones and deformed by the clip), lit by og.Lighting2D when the layer is in its range, as a sprite there is. The rig's pixels are `unit` to a world unit and +y is up; the entity's og.Transform places, turns (about z) and scales it.
+   * Changing `clip` restarts at 0 (or at `time`, written in the same tick); writing a different time is a seek and fires no events. The pose is a function of these fields, the Transform and the og.IkTarget2D on it; the playback position is world state (the og.skeleton2d state block).
+   */
+  const Skeleton2D: ComponentType<{ readonly rig: FieldSpec<"Rig2D">; readonly clip: FieldSpec<"u32">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly flipX: FieldSpec<"bool">; readonly layer: FieldSpec<"i32">; readonly finished: FieldSpec<"bool"> }, Skeleton2D>;
+  /**
+   * A 2D skeleton's clip passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.
+   */
+  const Skeleton2DEvent: EventType<Skeleton2DEvent>;
+  /**
+   * Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way.
+   */
+  const IkTarget2D: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly constraint: FieldSpec<"u32">; readonly target: FieldSpec<"Vector2">; readonly weight: FieldSpec<"f32">; readonly tolerance: FieldSpec<"f32">; readonly reached: FieldSpec<"bool">; readonly error: FieldSpec<"f32"> }, IkTarget2D>;
+  /**
    * Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.
    * Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.
    * Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again.
@@ -20803,6 +21004,21 @@ export declare namespace og {
      * @param name The clip's name.
      */
     function clip(info: Animation, name: string): ClipAsset;
+    /**
+     * The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, "rigs/hero.ogt").value, "walk")`. -1 when the rig has no such clip.
+     *
+     * @param info What og.load.rig2d or og.anim.rig2dInfo answered.
+     * @param name The clip's name.
+     */
+    function clip(info: Rig2DInfo, name: string): number;
+    /**
+     * What a loaded 2D rig holds: its bones, slots, IK constraints and clips, by the handle Skeleton2D.rig keeps (og.load.rig2d answers the same on load).
+     *
+     * @param world The world whose animation owns the rig.
+     * @param rig The rig.
+     * @returns Refused for a handle og.load.rig2d did not answer.
+     */
+    function rig2dInfo(world: World, rig: Rig2D): Result<Rig2DInfo>;
   }
   /** A tween or group ended on its own (read in the tick after). */
   const TweenCompleted: EventType<TweenCompleted>;

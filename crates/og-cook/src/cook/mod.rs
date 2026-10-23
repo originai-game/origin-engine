@@ -22,6 +22,7 @@ pub mod icons;
 pub mod ktx2_source;
 pub mod look;
 mod model;
+mod rig2d;
 mod scene;
 pub mod sfx;
 mod stream;
@@ -538,6 +539,7 @@ enum Kind {
     Tileset,
     Tilemap,
     Flipbook,
+    Rig2d,
     Shader,
     Behaviour,
     NavMesh,
@@ -567,6 +569,7 @@ impl Kind {
             Kind::Tileset => "tileset",
             Kind::Tilemap => "tilemap",
             Kind::Flipbook => "flipbook",
+            Kind::Rig2d => "rig2d",
             Kind::Shader => "shader",
             Kind::Behaviour => "behaviour",
             Kind::NavMesh => "navmesh",
@@ -627,6 +630,7 @@ enum Work<'a> {
     /// An `array true` sheet's texture array blob, and its layer `n`.
     FlipbookArray(&'a Source, Box<og_anim::FlipbookSheet>),
     FlipbookLayer(&'a Source, Box<og_anim::FlipbookSheet>, usize),
+    Rig2d(&'a Source),
     Shader(&'a Source),
     Behaviour(&'a Source),
     NavMesh(&'a Source),
@@ -839,6 +843,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == "tileset" => Kind::Tileset,
                     Ok(doc) if doc.ty == "tilemap" => Kind::Tilemap,
                     Ok(doc) if doc.ty == "flipbook" => Kind::Flipbook,
+                    Ok(doc) if doc.ty == og_anim::RIG2D_TYPE => Kind::Rig2d,
                     Ok(doc) if doc.ty == crate::shader::SHADER_TYPE => Kind::Shader,
                     Ok(doc) if doc.ty == sfx::SFX_TYPE => Kind::Sound,
                     Ok(doc) if doc.ty == e6::BEHAVIOUR_TYPE => Kind::Behaviour,
@@ -857,7 +862,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, icons, tileset, tilemap, flipbook, shader, behaviour, navmesh, terrain, timeline, environment, texture-array, video, look, sfx, strings, rig or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, icons, tileset, tilemap, flipbook, rig2d, shader, behaviour, navmesh, terrain, timeline, environment, texture-array, video, look, sfx, strings, rig or import)",
                                 doc.ty
                             ),
                         ));
@@ -1212,6 +1217,11 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 }
                 Err(e) => early_errors.push((s.rel.clone(), "tilemap", e)),
             },
+            Kind::Rig2d => {
+                let deps = rig2d::dependency_hashes(s);
+                let st = stamp(&[b"rig2d", &hash, deps.as_bytes()]);
+                outs.push((s.rel.clone(), format::Rig2D::NAME, st, Work::Rig2d(s)));
+            }
             Kind::Flipbook => {
                 let deps = flipbook::dependency_hashes(s);
                 let st = stamp(&[b"flipbook", &hash, deps.as_bytes()]);
@@ -1952,6 +1962,7 @@ fn run(
             tilemap::cook_tilemap(&s.rel, &s.bytes, m, &|id| known.contains(id), p.stamp)
         }
         Work::Flipbook(s) => flipbook::cook(s, p.stamp),
+        Work::Rig2d(s) => rig2d::cook(s, p.stamp),
         Work::FlipbookArray(s, sheet) => flipbook::cook_array(s, sheet, &options.texture, p.stamp),
         Work::FlipbookLayer(s, sheet, n) => {
             flipbook::cook_layer(s, sheet, *n, &options.texture, p.stamp).map(|b| (b, Vec::new()))

@@ -69,6 +69,7 @@ module load {
 | [`og.load.video`](#fn-video) | function | Load cooked footage (an `.ogt` of `type video`: `source` an .mp4, .webm or .mov beside it or under assets/, `fps`, `maxSeconds`, `size W H`, `kind color\|pixel`, `audio`), which og cook turns with ffmpeg into a texture array of its frames and its sound track. Uploads the frames as one 2D-array texture and makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at: a material map, an og.Sprite or a UI image draws it like any texture. Load it in GameDesc.start (every process of an og render --jobs run loads it the same way, so its handles agree). Loading the same path again answers the same handles. |
 | [`og.load.videoInfo`](#fn-videoInfo) | function | A loaded video's size, frames, rate, length, texture and sound. |
 | [`og.load.timeline`](#fn-timeline) | function | Load a timeline: an `.ogt` of `type timeline` (the og.timeline module's file: duration, paths and tracks of keys), cooked with its caption files imported. Loaded once per path; play it with an og.Timeline whose asset is the handle, or `timeline:play:<name>` on the command channel. |
+| [`og.load.rig2d`](#fn-rig2d) | function | Load a cooked 2D rig (an `.ogt` of `type rig2d`, written by hand or imported by the cook from DragonBones JSON) and its texture, and register it with og.skeleton2d. Loading the same path again answers the same handles. |
 | [`og.AssetReady`](#record-AssetReady) | event | A load completed. |
 | [`og.AssetFailed`](#record-AssetFailed) | event | A load failed. |
 
@@ -959,6 +960,36 @@ fn timeline {
 
 <sub>`api.ogt` line 4774</sub>
 
+<a id="fn-rig2d"></a>
+
+### `og.load.rig2d`
+
+Load a cooked 2D rig (an `.ogt` of `type rig2d`, written by hand or imported by the cook from DragonBones JSON) and its texture, and register it with og.skeleton2d. Loading the same path again answers the same handles.
+
+```ts
+og.load.rig2d(world: World, path: string): Result<Rig2DInfo>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose animation and renderer own it. |
+| `path` | `string` | no | The rig's asset id, such as `rigs/hero.ogt`. |
+
+**Returns** `Result<Rig2DInfo>`: Refused for a path not in the bundle (run og cook) or a texture it cannot load.
+
+Binding symbol `og_load_rig2d` · publish builds: kept
+
+```ogt
+fn rig2d {
+  doc "Load a cooked 2D rig (an `.ogt` of `type rig2d`, written by hand or imported by the cook from DragonBones JSON) and its texture, and register it with og.skeleton2d. Loading the same path again answers the same handles."
+  param world World "The world whose animation and renderer own it."
+  param path String "The rig's asset id, such as `rigs/hero.ogt`."
+  returns Result.Rig2DInfo "Refused for a path not in the bundle (run og cook) or a texture it cannot load."
+}
+```
+
+<sub>`api.ogt` line 4781</sub>
+
 ## Components, resources and events
 
 <a id="record-Model"></a>
@@ -1032,7 +1063,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 4781</sub>
+<sub>`api.ogt` line 4788</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1057,7 +1088,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 4787</sub>
+<sub>`api.ogt` line 4794</sub>
 
 ## Types
 

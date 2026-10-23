@@ -769,6 +769,11 @@ pub fn og_load_timeline(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_rig2d(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_rig2d(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_physics_raycast(world: u32, desc: Option<String>) -> String {
     <Host as PhysicsApi>::og_physics_raycast(&Host, world, desc)
 }
@@ -876,6 +881,11 @@ pub fn og_anim_humanoid(world: u32, desc: Option<String>) -> String {
 #[wasm_bindgen]
 pub fn og_anim_retarget(world: u32, desc: Option<String>) -> String {
     <Host as AnimApi>::og_anim_retarget(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_anim_rig2d_info(world: u32, rig: f64) -> String {
+    <Host as AnimApi>::og_anim_rig2d_info(&Host, world, rig)
 }
 
 #[wasm_bindgen]

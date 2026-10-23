@@ -23,6 +23,7 @@
 //! | particle emitter (`og.ParticleEmitter`, an `.ogt` of `type particles`) | [`EmitterMeta`] | `text` (the validated emitter file) |
 //! | UI skin (`og.UiSkin`, an `.ogt` of `type skin`) | [`SkinMeta`] | `text` (the validated skin file) |
 //! | material shader (`og.MaterialShader`, an `.ogt` of `type shader`) | [`ShaderMeta`] | `text` (the canonical shader file, code inlined) |
+//! | 2D rig (`og.Skeleton2D`, an `.ogt` of `type rig2d`) | [`Rig2DMeta`] | `text` (the canonical rig: a DragonBones export converted, the texture's id and size) |
 //! | flipbook sheet (`og.Flipbook`, an `.ogt` of `type flipbook`) | [`FlipbookMeta`] | `text` (the canonical sheet: frames resolved from the grid and an Aseprite or TexturePacker atlas, clips with frame indices and durations, the texture's size) |
 //! | animation (`og.Animation`, a glTF's `#anim`) | [`AnimMeta`] | `nodes` [`NodeRow`], `skins` [`SkinRow`], `joints` (u32 node indices), `inverse_binds` (16 f32 per joint, column-major), `clips` [`ClipRow`], `channels` [`ChannelRow`], `samples` (f32), `packed` (u16: quantised keys, `crate::anim_codec`), `events` [`EventRow`], `skin_streams` [`SkinStreamRow`], `skin_data` (meshopt streams), `morphs` [`MorphRow`], `targets` [`TargetRow`], `morph_data` (meshopt streams of the moved vertices' deltas and indices), `strings` |
 //! | tileset (`og.Tileset`, an `.ogt` of `type tileset`) | [`TilesetMeta`] | `text` (the canonical tileset text) |
@@ -106,6 +107,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
         Tileset,
         Tilemap,
         Flipbook,
+        Rig2D,
         Behaviour,
         Rig,
         Look,
@@ -1054,6 +1056,27 @@ impl BlobKind for Flipbook {
     const NAME: &'static str = "og.Flipbook";
     fn schemas() -> Vec<Schema> {
         vec![FlipbookMeta::schema()]
+    }
+}
+
+// ── 2D rigs ──────────────────────────────────────────────────────────────
+
+row!(
+    /// The root of a 2D rig blob (an `.ogt` of `type rig2d`).
+    Rig2DMeta, "og.Rig2D", 1 {
+        /// Bytes of the canonical rig text in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The 2D rig blob: `text` holds the canonical rig
+/// (`og_anim::Rig2dAsset::to_text`, a DragonBones export already
+/// converted), parsed again at load.
+pub struct Rig2D;
+impl BlobKind for Rig2D {
+    const NAME: &'static str = "og.Rig2D";
+    fn schemas() -> Vec<Schema> {
+        vec![Rig2DMeta::schema()]
     }
 }
 

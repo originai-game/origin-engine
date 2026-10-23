@@ -4108,6 +4108,27 @@
           "returns": "Result<TimelineAsset>",
           "returnsDoc": "Refused for a path not in the bundle (run og cook) or a file that is not a timeline.",
           "publish": true
+        },
+        {
+          "name": "rig2d",
+          "doc": "Load a cooked 2D rig (an `.ogt` of `type rig2d`, written by hand or imported by the cook from DragonBones JSON) and its texture, and register it with og.skeleton2d. Loading the same path again answers the same handles.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation and renderer own it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The rig's asset id, such as `rigs/hero.ogt`."
+            }
+          ],
+          "returns": "Result<Rig2DInfo>",
+          "returnsDoc": "Refused for a path not in the bundle (run og cook) or a texture it cannot load.",
+          "publish": true
         }
       ],
       "interfaces": [],
@@ -4938,7 +4959,14 @@
         "Flipbook",
         "FlipbookEvent",
         "FlipbookClipInfo",
-        "FlipbookInfo"
+        "FlipbookInfo",
+        "Rig2D",
+        "Rig2D",
+        "Skeleton2D",
+        "Skeleton2DEvent",
+        "IkTarget2D",
+        "Rig2DClipInfo",
+        "Rig2DInfo"
       ],
       "consts": [],
       "functions": [
@@ -5046,6 +5074,48 @@
           "returns": "ClipAsset",
           "publish": true,
           "host": false
+        },
+        {
+          "name": "clip",
+          "doc": "The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, \"rigs/hero.ogt\").value, \"walk\")`. -1 when the rig has no such clip.",
+          "params": [
+            {
+              "name": "info",
+              "type": "Rig2DInfo",
+              "optional": false,
+              "doc": "What og.load.rig2d or og.anim.rig2dInfo answered."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The clip's name."
+            }
+          ],
+          "returns": "i32",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "rig2dInfo",
+          "doc": "What a loaded 2D rig holds: its bones, slots, IK constraints and clips, by the handle Skeleton2D.rig keeps (og.load.rig2d answers the same on load).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation owns the rig."
+            },
+            {
+              "name": "rig",
+              "type": "Rig2D",
+              "optional": false,
+              "doc": "The rig."
+            }
+          ],
+          "returns": "Result<Rig2DInfo>",
+          "returnsDoc": "Refused for a handle og.load.rig2d did not answer.",
+          "publish": true
         }
       ],
       "interfaces": [],
@@ -22058,6 +22128,266 @@
         "frames",
         "frameWidth",
         "frameHeight"
+      ],
+      "additionalProperties": false
+    },
+    "Rig2D": {
+      "x-og-kind": "handle",
+      "x-og-module": "anim",
+      "description": "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region and mesh attachments, IK constraints and clips, from og.load.rig2d.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "Skeleton2D": {
+      "x-og-kind": "component",
+      "x-og-module": "anim",
+      "description": "Plays a clip of a 2D rig at the entity: the og.skeleton2d system advances it by scaled time (Time.scaledDt) after the game's systems and fires its events as og.Skeleton2DEvent; extraction draws its slots, in their order, as textured triangles of the sprite batch at `layer` (region attachments as quads, mesh attachments weighted to bones and deformed by the clip), lit by og.Lighting2D when the layer is in its range, as a sprite there is. The rig's pixels are `unit` to a world unit and +y is up; the entity's og.Transform places, turns (about z) and scales it.\nChanging `clip` restarts at 0 (or at `time`, written in the same tick); writing a different time is a seek and fires no events. The pose is a function of these fields, the Transform and the og.IkTarget2D on it; the playback position is world state (the og.skeleton2d state block).",
+      "type": "object",
+      "properties": {
+        "rig": {
+          "$ref": "#/$defs/Rig2D",
+          "description": "The rig (og.load.rig2d's `rig`); 0 is none.",
+          "default": 0
+        },
+        "clip": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The clip: an index into Rig2DInfo.clips (og.anim.clip finds one by name).",
+          "default": 0,
+          "minimum": 0
+        },
+        "time": {
+          "type": "number",
+          "description": "Seconds into the clip; written every tick, set it to seek.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "speed": {
+          "type": "number",
+          "description": "The playback rate: 1 as authored, 2 twice as fast, negative backwards.",
+          "default": 1,
+          "minimum": -10,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "loop": {
+          "type": "boolean",
+          "description": "Wrap at the clip's end; otherwise hold the last pose and set `finished`. Rig2DInfo.clips says what the rig's author meant.",
+          "default": true
+        },
+        "flipX": {
+          "type": "boolean",
+          "description": "Mirror the rig left to right about the entity's position (a character facing left).",
+          "default": false
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The sprite layer it draws in, sorted with the sprites there (after them when they share the layer).",
+          "default": 0
+        },
+        "finished": {
+          "type": "boolean",
+          "description": "Written: a clip that does not loop reached its end (or its start, played backwards).",
+          "default": false,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Skeleton2DEvent": {
+      "x-og-kind": "event",
+      "x-og-module": "anim",
+      "description": "A 2D skeleton's clip passed one of its events (`event 0.2 \"step\"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity with the og.Skeleton2D."
+        },
+        "clip": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The clip index."
+        },
+        "name": {
+          "type": "string",
+          "description": "The event's name (at most 63 bytes)."
+        },
+        "time": {
+          "type": "number",
+          "description": "The event's time in the clip.",
+          "x-og-unit": "s"
+        }
+      },
+      "required": [
+        "entity",
+        "clip",
+        "name",
+        "time"
+      ],
+      "additionalProperties": false
+    },
+    "IkTarget2D": {
+      "x-og-kind": "component",
+      "x-og-module": "anim",
+      "description": "Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way.",
+      "type": "object",
+      "properties": {
+        "skeleton": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity with the og.Skeleton2D.",
+          "default": 0
+        },
+        "constraint": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The constraint: an index into Rig2DInfo.constraints.",
+          "default": 0,
+          "minimum": 0
+        },
+        "target": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Where the chain's tip should be, in the frame the skeleton entity's og.Transform is written in (the world for an entity without a parent).",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "m"
+        },
+        "weight": {
+          "type": "number",
+          "description": "How much of the solve applies (0 is the animated pose, 1 fully solved).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "tolerance": {
+          "type": "number",
+          "description": "The distance at which the target counts as reached.",
+          "default": 0.01,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "reached": {
+          "type": "boolean",
+          "description": "Written: the tip is within `tolerance` of the target after solving.",
+          "default": false,
+          "readOnly": true
+        },
+        "error": {
+          "type": "number",
+          "description": "Written: the tip's distance from the target after solving (for a one-bone constraint, how far the target lies off the bone's line).",
+          "default": 0,
+          "x-og-unit": "m",
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Rig2DClipInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "One clip of a loaded 2D rig.",
+      "type": "object",
+      "properties": {
+        "clip": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its index, what Skeleton2D.clip takes."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name in the rig."
+        },
+        "duration": {
+          "type": "number",
+          "description": "Its length.",
+          "x-og-unit": "s"
+        },
+        "loop": {
+          "type": "boolean",
+          "description": "Whether the rig's author meant it to loop (its `loop` line): copy it into Skeleton2D.loop."
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its events' names, in time order."
+        }
+      },
+      "required": [
+        "clip",
+        "name",
+        "duration",
+        "loop",
+        "events"
+      ],
+      "additionalProperties": false
+    },
+    "Rig2DInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "anim",
+      "description": "What og.load.rig2d registered, or og.anim.rig2dInfo reads back from a handle.",
+      "type": "object",
+      "properties": {
+        "rig": {
+          "$ref": "#/$defs/Rig2D",
+          "description": "What Skeleton2D.rig takes."
+        },
+        "texture": {
+          "$ref": "#/$defs/Texture",
+          "description": "The rig's texture (loaded with it)."
+        },
+        "unit": {
+          "type": "number",
+          "description": "Pixels of the rig per world unit."
+        },
+        "bones": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The bones' names, parents first."
+        },
+        "slots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The slots' names, in draw order."
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The IK constraints' names: an index here is IkTarget2D.constraint."
+        },
+        "clips": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Rig2DClipInfo"
+          },
+          "description": "Its clips, in file order."
+        }
+      },
+      "required": [
+        "rig",
+        "texture",
+        "unit",
+        "bones",
+        "slots",
+        "constraints",
+        "clips"
       ],
       "additionalProperties": false
     },
