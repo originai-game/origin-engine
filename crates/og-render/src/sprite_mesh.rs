@@ -75,7 +75,10 @@ pub(crate) const MESH_STRIDE: u64 = std::mem::size_of::<MeshVertex>() as u64;
 
 /// Each mesh's `(first, count)` corners in [`vertices`]' buffer, in scene
 /// order, checked against its vertices and the scene's textures.
-pub(crate) fn ranges(scene: &RenderScene, texture_count: usize) -> Result<Vec<(u32, u32)>, RenderError> {
+pub(crate) fn ranges(
+    scene: &RenderScene,
+    texture_count: usize,
+) -> Result<Vec<(u32, u32)>, RenderError> {
     let mut out = Vec::with_capacity(scene.sprite_meshes.len());
     let mut first = 0u32;
     for (i, m) in scene.sprite_meshes.iter().enumerate() {
@@ -193,13 +196,22 @@ impl SpriteMeshRenderer {
 
     /// Draws `count` corners from `first` with `blend`; the pass has the
     /// frame (0), the mesh's texture group (1) and the light map (2) set.
-    pub fn draw(&self, pass: &mut wgpu::RenderPass<'_>, blend: SpriteBlend, first: u32, count: u32) {
+    pub fn draw(
+        &self,
+        pass: &mut wgpu::RenderPass<'_>,
+        blend: SpriteBlend,
+        first: u32,
+        count: u32,
+    ) {
         pass.set_pipeline(match blend {
             SpriteBlend::Alpha => &self.alpha,
             SpriteBlend::Additive => &self.additive,
         });
         let start = first as u64 * MESH_STRIDE;
-        pass.set_vertex_buffer(0, self.buffer.slice(start..start + count as u64 * MESH_STRIDE));
+        pass.set_vertex_buffer(
+            0,
+            self.buffer.slice(start..start + count as u64 * MESH_STRIDE),
+        );
         pass.draw(0..count, 0..1);
     }
 }

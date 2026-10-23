@@ -126,11 +126,11 @@ pub use points::Points;
 pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailStyleHandle};
 pub use scatter::ScatterDraw;
 pub use scene::*;
-pub use sprite_mesh::{SpriteMesh, SpriteMeshVertex};
 pub use shadows::PointShadows;
 pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
 };
+pub use sprite_mesh::{SpriteMesh, SpriteMeshVertex};
 pub use stylise::{
     DEFAULT_CANVAS_WORLD_SCALE, DepthBands, DitherPattern, Halftone, Hatching, Ink,
     MAX_PALETTE_COLORS, MaterialStyle, Paint, Palette, PaletteHandle, PixelFit, PixelScale,
@@ -4947,7 +4947,11 @@ impl Renderer {
             let meshes = self.sprite_meshes.get_or_insert_with(|| {
                 sprite_mesh::SpriteMeshRenderer::new(
                     &self.device,
-                    [&self.frame_layout, &self.sprite_layout, &self.sprite_fx_layout],
+                    [
+                        &self.frame_layout,
+                        &self.sprite_layout,
+                        &self.sprite_fx_layout,
+                    ],
                     self.samples,
                 )
             });

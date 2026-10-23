@@ -579,7 +579,8 @@ pub(crate) fn build<'a>(
     let mesh_count = scene.sprite_meshes.len() as u32;
     for (i, m) in scene.sprite_meshes.iter().enumerate() {
         let key = if m.key.is_finite() { m.key } else { 0.0 };
-        let placeholder = sprite_instance(&Sprite::default(), [1.0, 1.0, 1.0, 0.0], 0.0, false, false);
+        let placeholder =
+            sprite_instance(&Sprite::default(), [1.0, 1.0, 1.0, 0.0], 0.0, false, false);
         keyed.push((m.layer, key, RunSource::Mesh(i as u32), false, placeholder));
     }
     let sprites = keyed.len() as u32 - shadow_count - mesh_count;
@@ -983,10 +984,20 @@ mod tests {
         let f = frame(&scene);
         assert_eq!(f.sprites, 3, "a mesh is not a sprite");
         assert_eq!(f.instances.len(), 3, "nor an instance");
+        // Layers 0 and 1's sprites share a texture and batch into one run;
+        // the mesh follows them and breaks the run before layer 2's sprite.
         let kinds: Vec<_> = f.runs.iter().map(|r| r.source).collect();
-        assert_eq!(kinds.len(), 4);
-        assert_eq!(kinds[2], RunSource::Mesh(0), "between layer 1's sprite and layer 2's");
-        assert_eq!((f.runs[2].first, f.runs[2].count), (0, 6));
+        assert_eq!(kinds.len(), 3, "{kinds:?}");
+        assert_eq!((f.runs[0].first, f.runs[0].count), (0, 2));
+        let xs: Vec<f32> = f.instances.iter().map(|i| i.position_rotation[0]).collect();
+        assert_eq!(xs, [1.0, 2.0, 0.0]);
+        assert_eq!(
+            kinds[1],
+            RunSource::Mesh(0),
+            "between layer 1's sprite and layer 2's"
+        );
+        assert_eq!((f.runs[1].first, f.runs[1].count), (0, 6));
+        assert_eq!((f.runs[2].first, f.runs[2].count), (2, 1));
         // An index past its vertices is refused.
         scene.sprite_meshes[0].indices[5] = 9;
         assert!(build(&scene, |_| None, 0, |_| None, &[], |_| false, None, &[]).is_err());
