@@ -10,7 +10,8 @@
 //               with og.render.setShaderParam), wind-swayed grass, a slab
 //               drawn by a full custom shader (`mode full lit`) whose shadow
 //               has the same holes as its cut, all under a CRT custom post
-//               pass (og.load.post, PostEffects.custom1)
+//               pass (og.load.post, PostEffects.custom8) after a warm
+//               grade (custom5)
 //   controller  og.CharacterController walking up a slope and stairs, onto
 //               a moving platform that carries it, and jumping
 //   joints      a motorised hinge, a chain of ball joints, a spring, and the
@@ -59,9 +60,10 @@ export const E5 = defineComponent("E5", {
   /** Ticks since the station was shown. */
   shown: u32(0),
   dissolve: f64(0),
-  /** The full-shader slab's material and the CRT post pass. */
+  /** The full-shader slab's material, the CRT post pass and the warm grade before it. */
   fullDissolve: f64(0),
   crt: f64(0),
+  tint: f64(0),
   crate: f64(0),
   pondCrate: f64(0),
   hero: f64(0),
@@ -249,8 +251,13 @@ export function showE5(world: World, station: E5Station): void {
     case "shaders":
       look({ x: x, y: 2.2, z: 6.5 }, { x: x, y: 0.9, z: -1 });
       sunAt({ x: -0.45, y: -0.8, z: -0.35 }, 3);
-      // The CRT over the whole station (main.ts' show clears it elsewhere).
-      if (e !== null) must(world.resource(og.PostEffects)).custom1 = must(world.get(e, E5)).crt as never;
+      // A chain over the whole station (main.ts' show clears it
+      // elsewhere): a warm grade in slot 5, then the CRT in the last slot,
+      // 8, the slots between them left 0.
+      if (e !== null) {
+        const h = must(world.get(e, E5));
+        Object.assign(must(world.resource(og.PostEffects)), { custom5: h.tint as never, custom8: h.crt as never });
+      }
       break;
     case "controller":
       look({ x: x + 2.5, y: 3.5, z: 11 }, { x: x + 2.5, y: 1.2, z: 0 });
@@ -373,6 +380,7 @@ export function buildE5(world: World, k: Kit, walkerModel: Asset, walkerRig: { s
     const panel = must(og.render.planeGeometry(world, { width: 2.2, height: 1.9 }));
     mesh(world, "full-dissolve", panel, fullDissolve, { x: x + 1.9, y: 2.1, z: -1.4 }, { quaternion: axisAngle({ x: 0, y: 1, z: 0 }, 0.9) });
     const crt = must(og.load.post(world, "post/crt.ogt"));
+    const tint = must(og.load.post(world, "post/tint.ogt"));
     const blade = must(og.render.boxGeometry(world, { width: 0.06, height: 0.7, depth: 0.01 }));
     const bladeMat = must(og.render.shaderMaterial(world, grassShader, { color: { r: 0.3, g: 0.55, b: 0.16 }, roughness: 0.8, side: "double" }));
     must(og.render.setShaderParam(world, bladeMat, "base", [-0.35]));
@@ -384,7 +392,7 @@ export function buildE5(world: World, k: Kit, walkerModel: Asset, walkerRig: { s
       const s = 0.7 + rnd() * 0.6;
       mesh(world, `blade-${i}`, blade, bladeMat, { x: bx, y: 0.35 * s, z: bz }, { quaternion: axisAngle({ x: 0, y: 1, z: 0 }, (rnd() - 0.5) * 1.6), scale: { x: s, y: s, z: s } });
     }
-    world.set(world.find("e5")!, E5, { dissolve, fullDissolve, crt });
+    world.set(world.find("e5")!, E5, { dissolve, fullDissolve, crt, tint });
     },
   // controller: a slope, stairs, a moving platform, and the character.
     controller: (world: World) => {

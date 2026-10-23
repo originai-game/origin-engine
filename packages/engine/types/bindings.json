@@ -6360,6 +6360,26 @@
           "name": "custom4",
           "column": "Post",
           "default": 0
+        },
+        {
+          "name": "custom5",
+          "column": "Post",
+          "default": 0
+        },
+        {
+          "name": "custom6",
+          "column": "Post",
+          "default": 0
+        },
+        {
+          "name": "custom7",
+          "column": "Post",
+          "default": 0
+        },
+        {
+          "name": "custom8",
+          "column": "Post",
+          "default": 0
         }
       ]
     },

@@ -396,8 +396,10 @@ entry, and cut by its alpha. The cook validates each tier's modules
 **Custom post passes.** A `type post` asset (`post_custom.rs`, an
 og.PostPass blob) is a WGSL `post` function. It reads the previous pass,
 the lit image, the prepass's depth and normals, and its parameters.
-`PostEffects.custom1..4` names up to four passes, which run as
-`custom-post.<i>` after motion blur and before exposure, bloom and the
+`PostEffects.custom1..8` names up to eight passes (og-render's
+`MAX_CUSTOM_POSTS`, `RenderCapabilities.maxCustomPosts`; numbered fields,
+as a reflected record holds one value per field), which run in slot
+order, a slot left 0 skipped, as `custom-post.<i>` after motion blur and before exposure, bloom and the
 tone curve. Each pass compiles in an error scope. One the device refuses
 is skipped and reported (`og.render.postErrors`); the frame draws as if
 the pass were absent.

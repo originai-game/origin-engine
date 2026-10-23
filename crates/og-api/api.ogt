@@ -2999,10 +2999,14 @@ module render {
       max 1
       tunable true
     }
-    field custom1 Post "The first custom post pass (og.load.post, a `type post` asset; 0 is none). PostEffects.custom1 to custom4 are an ordered list: each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (it turns the prepass on). Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped."
+    field custom1 Post "The first custom post pass (og.load.post, a `type post` asset; 0 is none). PostEffects.custom1 to custom8 are an ordered list, as many as og-render runs (RenderCapabilities.maxCustomPosts): each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (it turns the prepass on). Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped."
     field custom2 Post "The second custom post pass, over the first's output (0 skips the slot)."
     field custom3 Post "The third custom post pass."
     field custom4 Post "The fourth custom post pass."
+    field custom5 Post "The fifth custom post pass."
+    field custom6 Post "The sixth custom post pass."
+    field custom7 Post "The seventh custom post pass."
+    field custom8 Post "The eighth and last custom post pass, over every one before it."
   }
 
   # ── stylisation and looks ─────────────────────────────────────────────
@@ -3949,7 +3953,7 @@ module render {
     field reflectionProbes u32 "How many og.ReflectionProbe components one frame samples (MAX_REFLECTION_PROBES on every tier)."
     field renderTargetDepth bool "Whether a render target made with `depth` gets its view's depth drawn: true on every tier with a renderer (WebGPU, Vulkan, Metal and WebGL2 alike), false without one. The depth comes from the view's own depth prepass of its opaque meshes into a linear-depth colour target, never from its depth buffer, which WebGL2 cannot read in a shader."
     field maxRenderTargetSize u32 "The largest side of a render target (the device's largest 2D texture)."
-    field maxCustomPosts u32 "The most custom post passes a frame runs (PostEffects.custom1 to custom4 on every tier)."
+    field maxCustomPosts u32 "The most custom post passes a frame runs: 8 on every tier, PostEffects.custom1 to custom8 (numbered fields, as a reflected record has no list field)."
     field volumetricFog VolumetricFog "How Fog.volumetric is drawn on this device: a froxel grid lit by the sun and the clustered point, spot and rect lights (the full tier), or a raymarch of the sun alone along each pixel's view ray (WebGL2)."
   }
 
@@ -4731,7 +4735,7 @@ module render {
   }
 
   fn postErrors {
-    doc "The custom post passes PostEffects.custom1 to custom4 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal."
+    doc "The custom post passes PostEffects.custom1 to custom8 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal."
     param world World "The world asked."
     returns List.PostError
   }
@@ -5032,7 +5036,7 @@ module load {
   }
 
   fn post {
-    doc "A custom post pass for PostEffects.custom1 to custom4, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path."
+    doc "A custom post pass for PostEffects.custom1 to custom8, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path."
     param world World "The world whose renderer owns it."
     param path String "The asset id, such as `post/crt.ogt`."
     returns Result.Post "Refused for a path not in the bundle or not a post pass."

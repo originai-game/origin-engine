@@ -3554,7 +3554,7 @@
         },
         {
           "name": "postErrors",
-          "doc": "The custom post passes PostEffects.custom1 to custom4 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal.",
+          "doc": "The custom post passes PostEffects.custom1 to custom8 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal.",
           "params": [
             {
               "name": "world",
@@ -3862,7 +3862,7 @@
         },
         {
           "name": "post",
-          "doc": "A custom post pass for PostEffects.custom1 to custom4, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.",
+          "doc": "A custom post pass for PostEffects.custom1 to custom8, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.",
           "params": [
             {
               "name": "world",
@@ -15079,7 +15079,7 @@
         },
         "custom1": {
           "$ref": "#/$defs/Post",
-          "description": "The first custom post pass (og.load.post, a `type post` asset; 0 is none). PostEffects.custom1 to custom4 are an ordered list: each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (it turns the prepass on). Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped.",
+          "description": "The first custom post pass (og.load.post, a `type post` asset; 0 is none). PostEffects.custom1 to custom8 are an ordered list, as many as og-render runs (RenderCapabilities.maxCustomPosts): each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (it turns the prepass on). Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped.",
           "default": 0
         },
         "custom2": {
@@ -15095,6 +15095,26 @@
         "custom4": {
           "$ref": "#/$defs/Post",
           "description": "The fourth custom post pass.",
+          "default": 0
+        },
+        "custom5": {
+          "$ref": "#/$defs/Post",
+          "description": "The fifth custom post pass.",
+          "default": 0
+        },
+        "custom6": {
+          "$ref": "#/$defs/Post",
+          "description": "The sixth custom post pass.",
+          "default": 0
+        },
+        "custom7": {
+          "$ref": "#/$defs/Post",
+          "description": "The seventh custom post pass.",
+          "default": 0
+        },
+        "custom8": {
+          "$ref": "#/$defs/Post",
+          "description": "The eighth and last custom post pass, over every one before it.",
           "default": 0
         }
       },
@@ -17144,7 +17164,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The most custom post passes a frame runs (PostEffects.custom1 to custom4 on every tier)."
+          "description": "The most custom post passes a frame runs: 8 on every tier, PostEffects.custom1 to custom8 (numbered fields, as a reflected record has no list field)."
         },
         "volumetricFog": {
           "$ref": "#/$defs/VolumetricFog",
