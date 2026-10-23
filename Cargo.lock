@@ -1772,6 +1772,7 @@ dependencies = [
  "og-render",
  "og-tests",
  "og-tilemap",
+ "og-timeline",
  "og-ui",
  "ruzstd",
  "serde_json",
@@ -1951,6 +1952,7 @@ dependencies = [
  "og-probe",
  "og-render",
  "og-tilemap",
+ "og-timeline",
  "og-tween",
  "og-ui",
  "serde_json",
@@ -1992,6 +1994,15 @@ version = "0.2.0"
 dependencies = [
  "glam 0.34.1",
  "og-core",
+]
+
+[[package]]
+name = "og-timeline"
+version = "0.2.0"
+dependencies = [
+ "og-core",
+ "og-tween",
+ "serde_json",
 ]
 
 [[package]]

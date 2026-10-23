@@ -108,7 +108,7 @@ fn wire(r: Result<Value, String>) -> String {
     }
 }
 
-fn load_animation(eng: &Engine, path: &str) -> Result<Value, String> {
+pub(crate) fn load_animation(eng: &Engine, path: &str) -> Result<Value, String> {
     let id = og_cook::runtime::anim_id(path);
     if let Some(v) = eng.state.borrow().anim_assets.loaded.get(&id) {
         return Ok(v.clone());

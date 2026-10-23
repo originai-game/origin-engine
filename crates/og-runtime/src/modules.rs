@@ -677,7 +677,7 @@ pub const THEME_COLORS: &[&str] = &[
 ];
 
 /// A type step by its TypeStepName.
-fn step(theme: &Theme, name: &str) -> Option<TypeStep> {
+pub(crate) fn step(theme: &Theme, name: &str) -> Option<TypeStep> {
     let r = &theme.type_ramp;
     Some(match name {
         "body" => r.body,
@@ -1669,7 +1669,7 @@ fn tone(v: &Value) -> Tone {
     }
 }
 
-fn anchor_of(v: &Value) -> Option<Anchor> {
+pub(crate) fn anchor_of(v: &Value) -> Option<Anchor> {
     Some(match v.as_str()? {
         "topLeft" => Anchor::TopLeft,
         "top" => Anchor::Top,

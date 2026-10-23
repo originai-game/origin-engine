@@ -915,6 +915,12 @@ pub fn og_load_video_info(env: Env, world: u32, video: f64) -> String {
     <Host as LoadApi>::og_load_video_info(&Host, world, video)
 }
 
+#[napi(js_name = "og_load_timeline")]
+pub fn og_load_timeline(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_timeline(&Host, world, path)
+}
+
 #[napi(js_name = "og_physics_raycast")]
 pub fn og_physics_raycast(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -2125,4 +2131,64 @@ pub fn og_debug_set_enabled(env: Env, world: u32, enabled: bool) {
 pub fn og_debug_enabled(env: Env, world: u32) -> bool {
     let _env = crate::EnvScope::enter(&env);
     <Host as DebugApi>::og_debug_enabled(&Host, world)
+}
+
+#[napi(js_name = "og_path_create")]
+pub fn og_path_create(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PathApi>::og_path_create(&Host, world, desc)
+}
+
+#[napi(js_name = "og_path_find")]
+pub fn og_path_find(env: Env, world: u32, name: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PathApi>::og_path_find(&Host, world, name)
+}
+
+#[napi(js_name = "og_path_sample")]
+pub fn og_path_sample(env: Env, world: u32, path: f64, t: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PathApi>::og_path_sample(&Host, world, path, t)
+}
+
+#[napi(js_name = "og_path_length")]
+pub fn og_path_length(env: Env, world: u32, path: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PathApi>::og_path_length(&Host, world, path)
+}
+
+#[napi(js_name = "og_path_nearest")]
+pub fn og_path_nearest(env: Env, world: u32, path: f64, point: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PathApi>::og_path_nearest(&Host, world, path, point)
+}
+
+#[napi(js_name = "og_timeline_info")]
+pub fn og_timeline_info(env: Env, world: u32, asset: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TimelineApi>::og_timeline_info(&Host, world, asset)
+}
+
+#[napi(js_name = "og_timeline_play")]
+pub fn og_timeline_play(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TimelineApi>::og_timeline_play(&Host, world, entity)
+}
+
+#[napi(js_name = "og_timeline_pause")]
+pub fn og_timeline_pause(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TimelineApi>::og_timeline_pause(&Host, world, entity)
+}
+
+#[napi(js_name = "og_timeline_seek")]
+pub fn og_timeline_seek(env: Env, world: u32, entity: f64, time: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TimelineApi>::og_timeline_seek(&Host, world, entity, time)
+}
+
+#[napi(js_name = "og_timeline_stop")]
+pub fn og_timeline_stop(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TimelineApi>::og_timeline_stop(&Host, world, entity)
 }

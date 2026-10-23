@@ -764,6 +764,11 @@ pub fn og_load_video_info(world: u32, video: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_timeline(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_timeline(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_physics_raycast(world: u32, desc: Option<String>) -> String {
     <Host as PhysicsApi>::og_physics_raycast(&Host, world, desc)
 }
@@ -1776,4 +1781,54 @@ pub fn og_debug_set_enabled(world: u32, enabled: bool) {
 #[wasm_bindgen]
 pub fn og_debug_enabled(world: u32) -> bool {
     <Host as DebugApi>::og_debug_enabled(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_path_create(world: u32, desc: Option<String>) -> String {
+    <Host as PathApi>::og_path_create(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_path_find(world: u32, name: String) -> String {
+    <Host as PathApi>::og_path_find(&Host, world, name)
+}
+
+#[wasm_bindgen]
+pub fn og_path_sample(world: u32, path: f64, t: f64) -> String {
+    <Host as PathApi>::og_path_sample(&Host, world, path, t)
+}
+
+#[wasm_bindgen]
+pub fn og_path_length(world: u32, path: f64) -> String {
+    <Host as PathApi>::og_path_length(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_path_nearest(world: u32, path: f64, point: String) -> String {
+    <Host as PathApi>::og_path_nearest(&Host, world, path, point)
+}
+
+#[wasm_bindgen]
+pub fn og_timeline_info(world: u32, asset: f64) -> String {
+    <Host as TimelineApi>::og_timeline_info(&Host, world, asset)
+}
+
+#[wasm_bindgen]
+pub fn og_timeline_play(world: u32, entity: f64) -> String {
+    <Host as TimelineApi>::og_timeline_play(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_timeline_pause(world: u32, entity: f64) -> String {
+    <Host as TimelineApi>::og_timeline_pause(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_timeline_seek(world: u32, entity: f64, time: f64) -> String {
+    <Host as TimelineApi>::og_timeline_seek(&Host, world, entity, time)
+}
+
+#[wasm_bindgen]
+pub fn og_timeline_stop(world: u32, entity: f64) -> String {
+    <Host as TimelineApi>::og_timeline_stop(&Host, world, entity)
 }

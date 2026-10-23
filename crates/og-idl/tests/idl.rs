@@ -133,7 +133,10 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "animation",
             "rig",
             "flipbook",
-            "tilemap"
+            "tilemap",
+            "video",
+            "videoInfo",
+            "timeline"
         ]
     );
     // og.anim.clip twice: a flipbook's clip and a model's (TypeScript overloads).

@@ -277,6 +277,30 @@ tick, and the `debug` module is left out of publish builds.
   class, ornaments, palette, type ramp, fonts, icons, motion and sounds),
   so games do not all share the platform's chrome; screen transitions,
   count-ups and bursts run by the tick in the UI state.
+- **Timeline and paths** (depth S2, `crates/og-timeline`): a path is a
+  curve through or controlled by points (`catmullRom`, `bezier`,
+  `linear`, open or closed), measured by an arc-length table so a
+  parameter 0..1 moves at an even speed; `og.path.create` makes one, a
+  scene declares named ones (`path "<name>" { point x y z ... }`), and
+  `og.PathFollower`, `og.CameraRail.path` and a timeline's camera ride
+  them. A **timeline** is a `type timeline` `.ogt` asset, cooked to an
+  `og.TimelineAsset` blob with its caption files (`.srt`, word-timestamp
+  `.json`) imported: a `duration` and tracks of keys at times (camera on
+  keys, a rail or following an entity; transform; animation clip; audio;
+  music with fades; caption; event, a command-channel action; transition
+  over og.ui's screen cover; marker). The `og.Timeline` component plays
+  one through the `og.timeline` system, after the game's systems and
+  tweens and before og.anim and physics. Every value is a function of the
+  timeline's time alone, and that time is a whole number of thousandths
+  of a tick (a tick adds `round(speed × 1000)`, a seek sets `round(t ×
+  rate × 1000)`), so seeking to t and playing to t give the same world
+  hash: the video producer (S3) starts at any frame. Playback state (the
+  time, the camera it took, its voices) is a state block, carried by
+  snapshots and the hash; a camera track owns `og.Camera` while it plays
+  and hands back the camera it found when it stops or ends. The command
+  channel drives it: `timeline:play:<name>` (`timelines/<name>.ogt`, on an
+  entity `timeline-<name>`), `timeline:seek:<s>`, `pause`, `resume`,
+  `stop`.
 
 ### 2.8 Platform SDK as host ABI **(D)**
 

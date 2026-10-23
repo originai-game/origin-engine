@@ -309,6 +309,8 @@ export interface HostAbi<A, V> {
   og_load_video(world: number, path: string): string;
   /** `og.load.videoInfo` */
   og_load_video_info(world: number, video: number): string;
+  /** `og.load.timeline` */
+  og_load_timeline(world: number, path: string): string;
   /** `og.physics.raycast` */
   og_physics_raycast(world: number, desc: string | undefined): string;
   /** `og.physics.shapeCast` */
@@ -703,6 +705,26 @@ export interface HostAbi<A, V> {
   og_debug_set_enabled(world: number, enabled: boolean): void;
   /** `og.debug.enabled` */
   og_debug_enabled(world: number): boolean;
+  /** `og.path.create` */
+  og_path_create(world: number, desc: string | undefined): string;
+  /** `og.path.find` */
+  og_path_find(world: number, name: string): string;
+  /** `og.path.sample` */
+  og_path_sample(world: number, path: number, t: number): string;
+  /** `og.path.length` */
+  og_path_length(world: number, path: number): string;
+  /** `og.path.nearest` */
+  og_path_nearest(world: number, path: number, point: string): string;
+  /** `og.timeline.info` */
+  og_timeline_info(world: number, asset: number): string;
+  /** `og.timeline.play` */
+  og_timeline_play(world: number, entity: number): string;
+  /** `og.timeline.pause` */
+  og_timeline_pause(world: number, entity: number): string;
+  /** `og.timeline.seek` */
+  og_timeline_seek(world: number, entity: number, time: number): string;
+  /** `og.timeline.stop` */
+  og_timeline_stop(world: number, entity: number): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle members. */
@@ -841,6 +863,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_tilemap",
   "og_load_video",
   "og_load_video_info",
+  "og_load_timeline",
   "og_physics_raycast",
   "og_physics_shape_cast",
   "og_physics_overlap",
@@ -1038,6 +1061,16 @@ export const SYMBOLS: readonly string[] = [
   "og_debug_view",
   "og_debug_set_enabled",
   "og_debug_enabled",
+  "og_path_create",
+  "og_path_find",
+  "og_path_sample",
+  "og_path_length",
+  "og_path_nearest",
+  "og_timeline_info",
+  "og_timeline_play",
+  "og_timeline_pause",
+  "og_timeline_seek",
+  "og_timeline_stop",
   "og_host_set_dispatcher",
   "og_engine_create",
   "og_engine_destroy",

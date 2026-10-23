@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/og-core", "crates/og-core-derive", "crates/og-ecs", "crates/og-lanes", "crates/og-api", "crates/og-idl", "crates/og-runtime", "crates/og-render", "crates/og-cook", "crates/og-blob", "crates/og-probe", "crates/og-input", "crates/og-physics", "crates/og-anim", "crates/og-tween", "crates/og-tilemap", "crates/og-audio", "crates/og-nav", "crates/og-ai", "crates/og-i18n", "crates/og-ui", "crates/og-host-web", "crates/og-host-node", "crates/og-cli", "crates/og-tests", "crates/og-tests-web"]
+members = ["crates/og-core", "crates/og-core-derive", "crates/og-ecs", "crates/og-lanes", "crates/og-api", "crates/og-idl", "crates/og-runtime", "crates/og-render", "crates/og-cook", "crates/og-blob", "crates/og-probe", "crates/og-input", "crates/og-physics", "crates/og-anim", "crates/og-tween", "crates/og-timeline", "crates/og-tilemap", "crates/og-audio", "crates/og-nav", "crates/og-ai", "crates/og-i18n", "crates/og-ui", "crates/og-host-web", "crates/og-host-node", "crates/og-cli", "crates/og-tests", "crates/og-tests-web"]
 
 # A vendored dependency, patched in below; not a member (no fmt, clippy or tests of ours).
 exclude = ["third_party"]
@@ -202,6 +202,8 @@ codegen-units = 16
 [profile.dev.package.og-ai]
 codegen-units = 16
 [profile.dev.package.og-tween]
+codegen-units = 16
+[profile.dev.package.og-timeline]
 codegen-units = 16
 [profile.dev.package.og-tilemap]
 codegen-units = 16

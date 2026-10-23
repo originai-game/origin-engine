@@ -481,6 +481,31 @@ impl Ui {
         answer
     }
 
+    /// Covers the whole frame by `amount` (0 clear to 1 covered) this frame,
+    /// drawn as [`Ui::screen_transition`]'s cover is, with no screen state:
+    /// for a caller that times the cover itself (a timeline's transition
+    /// track, a function of its time). `revealing` draws the second half's
+    /// shape (a wipe leaving past the far side). Reduced motion fades.
+    pub fn cover(&mut self, desc: &ScreenTransitionDesc, amount: f32, revealing: bool) {
+        let amount = if amount.is_nan() { 0.0 } else { amount.clamp(0.0, 1.0) };
+        if amount <= 0.0 {
+            return;
+        }
+        let t = self.theme;
+        self.cover = Some(Cover {
+            kind: if t.reduced_motion {
+                ScreenWipe::Fade
+            } else {
+                desc.kind
+            },
+            from: desc.from,
+            e: smooth(amount),
+            revealing,
+            color: desc.color.unwrap_or(t.palette.bg),
+            texture: desc.texture,
+        });
+    }
+
     /// The cover's draw commands over the whole surface.
     pub(crate) fn cover_commands(&self, c: &Cover, cmds: &mut Vec<DrawCmd>) {
         let vp = self.viewport;

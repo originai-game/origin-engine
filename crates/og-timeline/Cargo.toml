@@ -1,0 +1,17 @@
+[package]
+name = "og-timeline"
+version = "0.2.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine timelines and paths: arc-length splines (Catmull-Rom, Bezier, linear) and the `type timeline` sequencer as data, evaluated at a time, never accumulated"
+
+[features]
+# The cook's caption importers: `.srt` and word-timestamp `.json` into a
+# caption track (serde_json). The runtime reads cooked text and leaves it out.
+import = ["dep:serde_json"]
+
+[dependencies]
+og-core = { path = "../og-core" }
+og-tween = { path = "../og-tween" }
+serde_json = { version = "1", optional = true }

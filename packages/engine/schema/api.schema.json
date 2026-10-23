@@ -2520,6 +2520,27 @@
           "returns": "Result<VideoInfo>",
           "returnsDoc": "Refused for a handle og.load.video did not answer.",
           "publish": true
+        },
+        {
+          "name": "timeline",
+          "doc": "Load a timeline: an `.ogt` of `type timeline` (the og.timeline module's file: duration, paths and tracks of keys), cooked with its caption files imported. Loaded once per path; play it with an og.Timeline whose asset is the handle, or `timeline:play:<name>` on the command channel.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The timeline's asset id, such as `timelines/intro.ogt`."
+            }
+          ],
+          "returns": "Result<TimelineAsset>",
+          "returnsDoc": "Refused for a path not in the bundle (run og cook) or a file that is not a timeline.",
+          "publish": true
         }
       ],
       "interfaces": [],
@@ -8384,6 +8405,276 @@
       ],
       "interfaces": [],
       "callbacks": []
+    },
+    {
+      "name": "path",
+      "doc": "Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t.\nMake one with og.path.create, or declare it in a scene (`path \"<name>\" { kind catmullRom; closed false; point x y z ... }`) and find it by name with og.path.find; a timeline's camera rides one with `rail \"<name>\"`. og.PathFollower moves an entity along one, og.CameraRail.path moves the camera along one, og.render's tube geometry can take its og.path.sample points. Paths are assets: they are not world state, and a hot reload registers them again.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Path",
+        "Path",
+        "PathKind",
+        "PathKind",
+        "CurveDesc",
+        "PathSample",
+        "PathNearest",
+        "PathFollower"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "create",
+          "doc": "Make a path from points.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "CurveDesc",
+              "optional": true,
+              "doc": "The points, kind, closed and tension."
+            }
+          ],
+          "returns": "Result<Path>",
+          "returnsDoc": "Refused for too few points for the kind (bezier needs 3n + 1 open, 3n closed) or a point that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "find",
+          "doc": "A path a loaded scene declares (`path \"<name>\" { ... }`), by name.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The path's name in its scene."
+            }
+          ],
+          "returns": "Result<Path>",
+          "returnsDoc": "Refused for a name no spawned scene declares; the reason lists the names.",
+          "publish": true
+        },
+        {
+          "name": "sample",
+          "doc": "The point at arc-length parameter t: 0 the start, 1 the end (a closed path wraps, an open one clamps). Equal steps of t are equal lengths along the curve.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "path",
+              "type": "Path",
+              "optional": false,
+              "doc": "The path."
+            },
+            {
+              "name": "t",
+              "type": "f32",
+              "optional": false,
+              "doc": "The parameter, 0 to 1."
+            }
+          ],
+          "returns": "Result<PathSample>",
+          "returnsDoc": "Refused for a dead path.",
+          "publish": true
+        },
+        {
+          "name": "length",
+          "doc": "Its length along the curve.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "path",
+              "type": "Path",
+              "optional": false,
+              "doc": "The path."
+            }
+          ],
+          "returns": "Result<f32>",
+          "returnsDoc": "Metres; refused for a dead path.",
+          "publish": true
+        },
+        {
+          "name": "nearest",
+          "doc": "The point of the path nearest a point, with its parameter: snapping to a track, projecting a pointer onto a rail.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "path",
+              "type": "Path",
+              "optional": false,
+              "doc": "The path."
+            },
+            {
+              "name": "point",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "The point."
+            }
+          ],
+          "returns": "Result<PathNearest>",
+          "returnsDoc": "Refused for a dead path.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "timeline",
+      "doc": "Timelines: cutscenes and sequences as data, Unity's Timeline and Godot's AnimationPlayer as an `.ogt` the agent reads and diffs. A `type timeline` file has a `duration` in seconds, `path \"<name>\" { ... }` blocks (as og.path's) and `track <kind> [\"<entity>\"] { key <seconds> { ... } }` blocks; `og cook` cooks it (importing caption files) and og.load.timeline loads it. Tracks: `camera` (position and target keys, or `rail \"<path>\"` with `at` 0..1 along it, or `follow \"<entity>\"` with offsets; fov; eased), `transform \"<entity>\"` (position, rotation in degrees or quaternion, scale; eased), `animation \"<entity>\"` (clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model), `audio` (sound, volume, pitch, bus), `music` (sound, volume, fadeIn, fadeOut, end, loop, bus), `caption` (text from `key` to `end` with a UI type step `style` and an `anchor`; `captions \"narration.srt\" [offset]` imports a SubRip file or word timestamps `.json`), `event` (`do \"<command-channel action>\"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it), `transition` (kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from, over og.ui's screen cover) and `marker` (`name`, sending og.TimelineMarker when played past).\nBetween two keys that set a value the later key's `ease` (og.tween's Ease names, linear when it gives none) mixes them; before the first and after the last the value is held. Every value is evaluated at the timeline's time, never accumulated over ticks, and that time is kept exactly (in steps of a thousandth of a tick), so seeking to a time and playing to it give the same world: a seek is how a video render starts at any frame.\nAn og.Timeline component plays one on its entity, run by the engine's og.timeline system after the game's systems (and tweens) and before og.anim and physics, so what it sets is what animation, physics and the frame see that tick. While one with a camera track plays (or is paused) it owns og.Camera, and hands back the camera it found when it stops or ends. Its event keys' actions run at the start of the next tick, as og.ai's commands do. The command channel plays them too: `timeline:play:<name>` (`timelines/<name>.ogt`, or an asset id), `timeline:seek:<seconds>[:<name>]`, `timeline:pause[:<name>]`, `timeline:resume[:<name>]`, `timeline:stop[:<name>]`.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "TimelineAsset",
+        "TimelineAsset",
+        "Timeline",
+        "TimelineStarted",
+        "TimelineMarker",
+        "TimelineEnded",
+        "TimelineTrackInfo",
+        "TimelineInfo"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "info",
+          "doc": "What a loaded timeline holds.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "asset",
+              "type": "TimelineAsset",
+              "optional": false,
+              "doc": "The timeline."
+            }
+          ],
+          "returns": "Result<TimelineInfo>",
+          "returnsDoc": "Refused for a timeline not loaded in this world.",
+          "publish": true
+        },
+        {
+          "name": "play",
+          "doc": "Play the entity's og.Timeline from its time (0 after a stop or an end); systems may call it, it takes effect at this tick's og.timeline.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The entity with the og.Timeline."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity without og.Timeline, or one whose asset is not loaded.",
+          "publish": true
+        },
+        {
+          "name": "pause",
+          "doc": "Hold the entity's og.Timeline where it is (it keeps the camera).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The entity with the og.Timeline."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity without og.Timeline.",
+          "publish": true
+        },
+        {
+          "name": "seek",
+          "doc": "Jump to a time: this tick evaluates every track there exactly as playing to it would, without sending the markers or running the events passed (except `retroactive` ones).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The entity with the og.Timeline."
+            },
+            {
+              "name": "time",
+              "type": "f32",
+              "optional": false,
+              "doc": "Seconds, 0 to the duration."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity without og.Timeline or a time outside 0 to its duration.",
+          "publish": true
+        },
+        {
+          "name": "stop",
+          "doc": "Stop at 0: the camera is handed back, its sounds and music stop, its caption and cover go.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The entity with the og.Timeline."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity without og.Timeline.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
     }
   ],
   "$defs": {
@@ -11080,6 +11371,11 @@
           "minimum": 0,
           "x-og-unit": "s",
           "x-og-tunable": true
+        },
+        "path": {
+          "$ref": "#/$defs/Path",
+          "description": "A path (og.path.create, or a scene's `path` by og.path.find) the rail follows instead of p0 to p(points - 1): any number of points, catmullRom, bezier or linear, closed or not. 0 uses the points.",
+          "default": 0
         }
       },
       "additionalProperties": false
@@ -31489,6 +31785,376 @@
           }
         }
       },
+      "additionalProperties": false
+    },
+    "Path": {
+      "x-og-kind": "handle",
+      "x-og-module": "path",
+      "description": "A path: its points, kind and arc-length table.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "PathKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "path",
+      "description": "How the points make the curve.",
+      "type": "string",
+      "enum": [
+        "catmullRom",
+        "bezier",
+        "linear"
+      ],
+      "x-og-variants": {
+        "catmullRom": "Through every point, as three.js CatmullRomCurve3: tension scales the tangents (0.5 is Catmull-Rom).",
+        "bezier": "Cubic Bezier segments: anchor, two controls, anchor, ... (3n + 1 points open, 3n closed).",
+        "linear": "Straight segments between the points."
+      }
+    },
+    "CurveDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "path",
+      "description": "What makes a path (three.js's Curve; PathDesc is og.nav's path query).",
+      "type": "object",
+      "properties": {
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector3"
+          },
+          "description": "The points, in order: at least 2 (catmullRom, linear), 3n + 1 open or 3n closed (bezier).",
+          "default": []
+        },
+        "closed": {
+          "type": "boolean",
+          "description": "Join the last point to the first; t wraps.",
+          "default": false
+        },
+        "kind": {
+          "$ref": "#/$defs/PathKind",
+          "description": "How the points make the curve.",
+          "default": "catmullRom"
+        },
+        "tension": {
+          "type": "number",
+          "description": "catmullRom's tangent scale, as three.js's tension.",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "PathSample": {
+      "x-og-kind": "struct",
+      "x-og-module": "path",
+      "description": "A point of a path.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it is.",
+          "x-og-unit": "m"
+        },
+        "tangent": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The unit direction of travel."
+        },
+        "up": {
+          "$ref": "#/$defs/Vector3",
+          "description": "A unit up perpendicular to the tangent: world +Y made perpendicular (world +Z where the path runs straight up or down)."
+        }
+      },
+      "required": [
+        "position",
+        "tangent",
+        "up"
+      ],
+      "additionalProperties": false
+    },
+    "PathNearest": {
+      "x-og-kind": "struct",
+      "x-og-module": "path",
+      "description": "The point of a path nearest another point.",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "number",
+          "description": "Its arc-length parameter, 0 to 1.",
+          "x-og-unit": "ratio"
+        },
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it is.",
+          "x-og-unit": "m"
+        },
+        "distance": {
+          "type": "number",
+          "description": "How far it is from the point asked about.",
+          "x-og-unit": "m"
+        }
+      },
+      "required": [
+        "t",
+        "position",
+        "distance"
+      ],
+      "additionalProperties": false
+    },
+    "PathFollower": {
+      "x-og-kind": "component",
+      "x-og-module": "path",
+      "description": "Moves the entity along a path at `speed`, by the engine's og.path system after the game's systems and before physics: og.Transform.position is the path's point at `distance` plus `offset` (in the path's frame with align, else in world axes). Advanced by scaled time (slow motion, hit stop). The distance is the component's own field, so a snapshot, a restore and the world hash carry it, and writing it moves the entity there.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/Path",
+          "description": "The path (og.path.create or og.path.find); 0 does nothing.",
+          "default": 0
+        },
+        "speed": {
+          "type": "number",
+          "description": "Metres per second along the path; negative goes backwards.",
+          "default": 1,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "distance": {
+          "type": "number",
+          "description": "How far along the path it is, from its start; written every tick, set it to place the entity.",
+          "default": 0,
+          "x-og-unit": "m"
+        },
+        "loop": {
+          "type": "boolean",
+          "description": "Wrap at the end (and the start, going backwards); otherwise stop there and set `finished`.",
+          "default": true
+        },
+        "align": {
+          "type": "boolean",
+          "description": "Turn og.Transform.quaternion to face along the tangent (local -Z forward, +Y the path's up).",
+          "default": false
+        },
+        "offset": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Added to the path's point: along the path's right, up and backward axes with align, else world x, y and z.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "playing": {
+          "type": "boolean",
+          "description": "Moves while true.",
+          "default": true
+        },
+        "finished": {
+          "type": "boolean",
+          "description": "Written: a path without loop reached its end.",
+          "default": false,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "TimelineAsset": {
+      "x-og-kind": "handle",
+      "x-og-module": "timeline",
+      "description": "A loaded timeline: its tracks, paths, sounds and clips.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "Timeline": {
+      "x-og-kind": "component",
+      "x-og-module": "timeline",
+      "description": "Plays a loaded timeline. Set `playing` (or call og.timeline.play) to run it from `time`; write `time` (or call og.timeline.seek) to jump; og.timeline.stop goes back to 0 and lets go of what it owns.",
+      "type": "object",
+      "properties": {
+        "asset": {
+          "$ref": "#/$defs/TimelineAsset",
+          "description": "The timeline (og.load.timeline); 0 plays nothing.",
+          "default": 0
+        },
+        "playing": {
+          "type": "boolean",
+          "description": "Advances while true.",
+          "default": false
+        },
+        "time": {
+          "type": "number",
+          "description": "Where it is, in seconds; written every tick it plays, set it to seek.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "speed": {
+          "type": "number",
+          "description": "Playback rate: 1 as authored, 0.5 half speed (0 holds the time while playing).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 16,
+          "x-og-tunable": true
+        },
+        "loop": {
+          "type": "boolean",
+          "description": "Start over at the end; otherwise stop playing there, hand the camera back and send og.TimelineEnded.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "TimelineStarted": {
+      "x-og-kind": "event",
+      "x-og-module": "timeline",
+      "description": "A timeline started playing from stopped or ended (not on a resume from pause, nor on a loop).",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.Timeline's entity."
+        },
+        "asset": {
+          "$ref": "#/$defs/TimelineAsset",
+          "description": "The timeline."
+        }
+      },
+      "required": [
+        "entity",
+        "asset"
+      ],
+      "additionalProperties": false
+    },
+    "TimelineMarker": {
+      "x-og-kind": "event",
+      "x-og-module": "timeline",
+      "description": "Playback passed a marker key (a seek over one does not send it).",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.Timeline's entity."
+        },
+        "asset": {
+          "$ref": "#/$defs/TimelineAsset",
+          "description": "The timeline."
+        },
+        "name": {
+          "type": "string",
+          "description": "The marker's name (at most 63 bytes)."
+        },
+        "time": {
+          "type": "number",
+          "description": "The marker's time.",
+          "x-og-unit": "s"
+        }
+      },
+      "required": [
+        "entity",
+        "asset",
+        "name",
+        "time"
+      ],
+      "additionalProperties": false
+    },
+    "TimelineEnded": {
+      "x-og-kind": "event",
+      "x-og-module": "timeline",
+      "description": "A timeline without loop reached its duration and stopped playing.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.Timeline's entity."
+        },
+        "asset": {
+          "$ref": "#/$defs/TimelineAsset",
+          "description": "The timeline."
+        }
+      },
+      "required": [
+        "entity",
+        "asset"
+      ],
+      "additionalProperties": false
+    },
+    "TimelineTrackInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "timeline",
+      "description": "One track of a loaded timeline.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "camera, transform, animation, audio, music, caption, event, transition or marker."
+        },
+        "target": {
+          "type": "string",
+          "description": "The entity a transform or animation track drives, the path a rail rides, the entity a camera follows; empty otherwise."
+        },
+        "keys": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its keys."
+        }
+      },
+      "required": [
+        "kind",
+        "target",
+        "keys"
+      ],
+      "additionalProperties": false
+    },
+    "TimelineInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "timeline",
+      "description": "A loaded timeline.",
+      "type": "object",
+      "properties": {
+        "asset": {
+          "$ref": "#/$defs/TimelineAsset",
+          "description": "Its handle."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its `name`."
+        },
+        "duration": {
+          "type": "number",
+          "description": "Its length.",
+          "x-og-unit": "s"
+        },
+        "tracks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TimelineTrackInfo"
+          },
+          "description": "Its tracks, in file order."
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The paths it declares."
+        },
+        "markers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its markers' names, in time order."
+        }
+      },
+      "required": [
+        "asset",
+        "name",
+        "duration",
+        "tracks",
+        "paths",
+        "markers"
+      ],
       "additionalProperties": false
     }
   }

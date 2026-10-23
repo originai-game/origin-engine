@@ -18,7 +18,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 3870</sub>
+<sub>`api.ogt` line 3871</sub>
 
 ## Contents
 
@@ -68,6 +68,7 @@ module load {
 | [`og.load.tilemap`](#fn-tilemap) | function | Load a cooked map (a tilemap `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`), its tilesets and their textures. Loading the same path again answers the same handles. |
 | [`og.load.video`](#fn-video) | function | Load cooked footage (an `.ogt` of `type video`: `source` an .mp4, .webm or .mov beside it or under assets/, `fps`, `maxSeconds`, `size W H`, `kind color\|pixel`, `audio`), which og cook turns with ffmpeg into a texture array of its frames and its sound track. Uploads the frames as one 2D-array texture and makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at: a material map, an og.Sprite or a UI image draws it like any texture. Load it in GameDesc.start (every process of an og render --jobs run loads it the same way, so its handles agree). Loading the same path again answers the same handles. |
 | [`og.load.videoInfo`](#fn-videoInfo) | function | A loaded video's size, frames, rate, length, texture and sound. |
+| [`og.load.timeline`](#fn-timeline) | function | Load a timeline: an `.ogt` of `type timeline` (the og.timeline module's file: duration, paths and tracks of keys), cooked with its caption files imported. Loaded once per path; play it with an og.Timeline whose asset is the handle, or `timeline:play:<name>` on the command channel. |
 | [`og.AssetReady`](#record-AssetReady) | event | A load completed. |
 | [`og.AssetFailed`](#record-AssetFailed) | event | A load failed. |
 
@@ -101,7 +102,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 3999</sub>
+<sub>`api.ogt` line 4000</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -131,7 +132,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 4006</sub>
+<sub>`api.ogt` line 4007</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -159,7 +160,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 4013</sub>
+<sub>`api.ogt` line 4014</sub>
 
 <a id="fn-gltf"></a>
 
@@ -194,7 +195,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 4019</sub>
+<sub>`api.ogt` line 4020</sub>
 
 <a id="fn-scene"></a>
 
@@ -224,7 +225,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 4028</sub>
+<sub>`api.ogt` line 4029</sub>
 
 <a id="fn-font"></a>
 
@@ -254,7 +255,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 4035</sub>
+<sub>`api.ogt` line 4036</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -284,7 +285,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 4042</sub>
+<sub>`api.ogt` line 4043</sub>
 
 <a id="fn-sound"></a>
 
@@ -317,7 +318,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 4049</sub>
+<sub>`api.ogt` line 4050</sub>
 
 <a id="fn-lut"></a>
 
@@ -347,7 +348,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 4057</sub>
+<sub>`api.ogt` line 4058</sub>
 
 <a id="fn-environment"></a>
 
@@ -377,7 +378,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 4064</sub>
+<sub>`api.ogt` line 4065</sub>
 
 <a id="fn-emitter"></a>
 
@@ -407,7 +408,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 4071</sub>
+<sub>`api.ogt` line 4072</sub>
 
 <a id="fn-shader"></a>
 
@@ -437,7 +438,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 4078</sub>
+<sub>`api.ogt` line 4079</sub>
 
 <a id="fn-texture"></a>
 
@@ -470,7 +471,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 4085</sub>
+<sub>`api.ogt` line 4086</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -503,7 +504,7 @@ fn textureArray {
 }
 ```
 
-<sub>`api.ogt` line 4093</sub>
+<sub>`api.ogt` line 4094</sub>
 
 <a id="fn-skin"></a>
 
@@ -533,7 +534,7 @@ fn skin {
 }
 ```
 
-<sub>`api.ogt` line 4101</sub>
+<sub>`api.ogt` line 4102</sub>
 
 <a id="fn-look"></a>
 
@@ -563,7 +564,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 4108</sub>
+<sub>`api.ogt` line 4109</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -593,7 +594,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 4115</sub>
+<sub>`api.ogt` line 4116</sub>
 
 <a id="fn-palette"></a>
 
@@ -623,7 +624,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 4122</sub>
+<sub>`api.ogt` line 4123</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -653,7 +654,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 4129</sub>
+<sub>`api.ogt` line 4130</sub>
 
 <a id="fn-status"></a>
 
@@ -683,7 +684,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 4136</sub>
+<sub>`api.ogt` line 4137</sub>
 
 <a id="fn-error"></a>
 
@@ -713,7 +714,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 4143</sub>
+<sub>`api.ogt` line 4144</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -743,7 +744,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 4150</sub>
+<sub>`api.ogt` line 4151</sub>
 
 <a id="fn-animation"></a>
 
@@ -776,7 +777,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 4157</sub>
+<sub>`api.ogt` line 4158</sub>
 
 <a id="fn-rig"></a>
 
@@ -806,7 +807,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 4165</sub>
+<sub>`api.ogt` line 4166</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -836,7 +837,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 4172</sub>
+<sub>`api.ogt` line 4173</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -866,7 +867,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 4179</sub>
+<sub>`api.ogt` line 4180</sub>
 
 <a id="fn-video"></a>
 
@@ -896,7 +897,7 @@ fn video {
 }
 ```
 
-<sub>`api.ogt` line 4186</sub>
+<sub>`api.ogt` line 4187</sub>
 
 <a id="fn-videoInfo"></a>
 
@@ -926,7 +927,37 @@ fn videoInfo {
 }
 ```
 
-<sub>`api.ogt` line 4193</sub>
+<sub>`api.ogt` line 4194</sub>
+
+<a id="fn-timeline"></a>
+
+### `og.load.timeline`
+
+Load a timeline: an `.ogt` of `type timeline` (the og.timeline module's file: duration, paths and tracks of keys), cooked with its caption files imported. Loaded once per path; play it with an og.Timeline whose asset is the handle, or `timeline:play:<name>` on the command channel.
+
+```ts
+og.load.timeline(world: World, path: string): Result<TimelineAsset>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `path` | `string` | no | The timeline's asset id, such as `timelines/intro.ogt`. |
+
+**Returns** `Result<TimelineAsset>`: Refused for a path not in the bundle (run og cook) or a file that is not a timeline.
+
+Binding symbol `og_load_timeline` · publish builds: kept
+
+```ogt
+fn timeline {
+  doc "Load a timeline: an `.ogt` of `type timeline` (the og.timeline module's file: duration, paths and tracks of keys), cooked with its caption files imported. Loaded once per path; play it with an og.Timeline whose asset is the handle, or `timeline:play:<name>` on the command channel."
+  param world World "The world."
+  param path String "The timeline's asset id, such as `timelines/intro.ogt`."
+  returns Result.TimelineAsset "Refused for a path not in the bundle (run og cook) or a file that is not a timeline."
+}
+```
+
+<sub>`api.ogt` line 4201</sub>
 
 ## Components, resources and events
 
@@ -978,7 +1009,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 3973</sub>
+<sub>`api.ogt` line 3974</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -1001,7 +1032,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 4200</sub>
+<sub>`api.ogt` line 4208</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1026,7 +1057,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 4206</sub>
+<sub>`api.ogt` line 4214</sub>
 
 ## Types
 
@@ -1042,7 +1073,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 3876</sub>
+<sub>`api.ogt` line 3877</sub>
 
 <a id="type-Font"></a>
 
@@ -1056,7 +1087,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 3877</sub>
+<sub>`api.ogt` line 3878</sub>
 
 <a id="type-Sound"></a>
 
@@ -1070,7 +1101,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 3878</sub>
+<sub>`api.ogt` line 3879</sub>
 
 <a id="type-Skin"></a>
 
@@ -1084,7 +1115,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 3879</sub>
+<sub>`api.ogt` line 3880</sub>
 
 <a id="type-TextureArray"></a>
 
@@ -1098,7 +1129,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
 ```
 
-<sub>`api.ogt` line 3880</sub>
+<sub>`api.ogt` line 3881</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -1123,7 +1154,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 3903</sub>
+<sub>`api.ogt` line 3904</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -1153,7 +1184,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 3910</sub>
+<sub>`api.ogt` line 3911</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -1178,7 +1209,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 3922</sub>
+<sub>`api.ogt` line 3923</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -1201,7 +1232,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 3930</sub>
+<sub>`api.ogt` line 3931</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -1234,7 +1265,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 3937</sub>
+<sub>`api.ogt` line 3938</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1265,7 +1296,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 3949</sub>
+<sub>`api.ogt` line 3950</sub>
 
 <a id="type-TextureArrayInfo"></a>
 
@@ -1296,7 +1327,7 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 3962</sub>
+<sub>`api.ogt` line 3963</sub>
 
 ## Column kinds
 
@@ -1317,7 +1348,7 @@ column TextureArray {
 }
 ```
 
-<sub>`api.ogt` line 3882</sub>
+<sub>`api.ogt` line 3883</sub>
 
 ```ogt
 column Asset {
@@ -1328,7 +1359,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 3889</sub>
+<sub>`api.ogt` line 3890</sub>
 
 ```ogt
 column Sound {
@@ -1339,4 +1370,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 3896</sub>
+<sub>`api.ogt` line 3897</sub>

@@ -18,7 +18,7 @@ module platform {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 8026</sub>
+<sub>`api.ogt` line 8034</sub>
 
 ## Contents
 
@@ -83,7 +83,7 @@ fn storeGet {
 }
 ```
 
-<sub>`api.ogt` line 8141</sub>
+<sub>`api.ogt` line 8149</sub>
 
 <a id="fn-storeSet"></a>
 
@@ -113,7 +113,7 @@ fn storeSet {
 }
 ```
 
-<sub>`api.ogt` line 8148</sub>
+<sub>`api.ogt` line 8156</sub>
 
 <a id="fn-storeList"></a>
 
@@ -141,7 +141,7 @@ fn storeList {
 }
 ```
 
-<sub>`api.ogt` line 8155</sub>
+<sub>`api.ogt` line 8163</sub>
 
 <a id="fn-leaderboardSubmit"></a>
 
@@ -171,7 +171,7 @@ fn leaderboardSubmit {
 }
 ```
 
-<sub>`api.ogt` line 8161</sub>
+<sub>`api.ogt` line 8169</sub>
 
 <a id="fn-leaderboardTop"></a>
 
@@ -201,7 +201,7 @@ fn leaderboardTop {
 }
 ```
 
-<sub>`api.ogt` line 8168</sub>
+<sub>`api.ogt` line 8176</sub>
 
 <a id="fn-leaderboardAround"></a>
 
@@ -231,7 +231,7 @@ fn leaderboardAround {
 }
 ```
 
-<sub>`api.ogt` line 8175</sub>
+<sub>`api.ogt` line 8183</sub>
 
 <a id="fn-telemetry"></a>
 
@@ -265,7 +265,7 @@ fn telemetry {
 }
 ```
 
-<sub>`api.ogt` line 8182</sub>
+<sub>`api.ogt` line 8190</sub>
 
 <a id="fn-point"></a>
 
@@ -295,7 +295,7 @@ fn point {
 }
 ```
 
-<sub>`api.ogt` line 8192</sub>
+<sub>`api.ogt` line 8200</sub>
 
 <a id="fn-aiMark"></a>
 
@@ -325,7 +325,7 @@ fn aiMark {
 }
 ```
 
-<sub>`api.ogt` line 8199</sub>
+<sub>`api.ogt` line 8207</sub>
 
 <a id="fn-loadSettings"></a>
 
@@ -353,7 +353,7 @@ fn loadSettings {
 }
 ```
 
-<sub>`api.ogt` line 8206</sub>
+<sub>`api.ogt` line 8214</sub>
 
 <a id="fn-saveSettings"></a>
 
@@ -383,7 +383,7 @@ fn saveSettings {
 }
 ```
 
-<sub>`api.ogt` line 8212</sub>
+<sub>`api.ogt` line 8220</sub>
 
 <a id="fn-saveSlot"></a>
 
@@ -413,7 +413,7 @@ fn saveSlot {
 }
 ```
 
-<sub>`api.ogt` line 8219</sub>
+<sub>`api.ogt` line 8227</sub>
 
 <a id="fn-loadSlot"></a>
 
@@ -443,7 +443,7 @@ fn loadSlot {
 }
 ```
 
-<sub>`api.ogt` line 8226</sub>
+<sub>`api.ogt` line 8234</sub>
 
 <a id="fn-result"></a>
 
@@ -473,7 +473,7 @@ fn result {
 }
 ```
 
-<sub>`api.ogt` line 8233</sub>
+<sub>`api.ogt` line 8241</sub>
 
 <a id="fn-info"></a>
 
@@ -501,7 +501,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 8240</sub>
+<sub>`api.ogt` line 8248</sub>
 
 <a id="fn-now"></a>
 
@@ -529,7 +529,7 @@ fn now {
 }
 ```
 
-<sub>`api.ogt` line 8246</sub>
+<sub>`api.ogt` line 8254</sub>
 
 ## Components, resources and events
 
@@ -554,7 +554,7 @@ event PlatformAnswered {
 }
 ```
 
-<sub>`api.ogt` line 8038</sub>
+<sub>`api.ogt` line 8046</sub>
 
 ## Types
 
@@ -579,7 +579,7 @@ enum PlatformOrder {
 }
 ```
 
-<sub>`api.ogt` line 8032</sub>
+<sub>`api.ogt` line 8040</sub>
 
 <a id="type-StoreSetDesc"></a>
 
@@ -607,7 +607,7 @@ struct StoreSetDesc {
 }
 ```
 
-<sub>`api.ogt` line 8044</sub>
+<sub>`api.ogt` line 8052</sub>
 
 <a id="type-LeaderboardSubmitDesc"></a>
 
@@ -635,7 +635,7 @@ struct LeaderboardSubmitDesc {
 }
 ```
 
-<sub>`api.ogt` line 8053</sub>
+<sub>`api.ogt` line 8061</sub>
 
 <a id="type-LeaderboardQueryDesc"></a>
 
@@ -665,7 +665,7 @@ struct LeaderboardQueryDesc {
 }
 ```
 
-<sub>`api.ogt` line 8063</sub>
+<sub>`api.ogt` line 8071</sub>
 
 <a id="type-PointDesc"></a>
 
@@ -693,7 +693,7 @@ struct PointDesc {
 }
 ```
 
-<sub>`api.ogt` line 8076</sub>
+<sub>`api.ogt` line 8084</sub>
 
 <a id="type-AiMarkDesc"></a>
 
@@ -719,7 +719,7 @@ struct AiMarkDesc {
 }
 ```
 
-<sub>`api.ogt` line 8087</sub>
+<sub>`api.ogt` line 8095</sub>
 
 <a id="type-SaveSlotDesc"></a>
 
@@ -745,7 +745,7 @@ struct SaveSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 8095</sub>
+<sub>`api.ogt` line 8103</sub>
 
 <a id="type-LoadSlotDesc"></a>
 
@@ -769,7 +769,7 @@ struct LoadSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 8103</sub>
+<sub>`api.ogt` line 8111</sub>
 
 <a id="type-PlatformError"></a>
 
@@ -794,7 +794,7 @@ struct PlatformError {
 }
 ```
 
-<sub>`api.ogt` line 8110</sub>
+<sub>`api.ogt` line 8118</sub>
 
 <a id="type-PlatformResult"></a>
 
@@ -829,7 +829,7 @@ struct PlatformResult {
 }
 ```
 
-<sub>`api.ogt` line 8118</sub>
+<sub>`api.ogt` line 8126</sub>
 
 <a id="type-PlatformInfo"></a>
 
@@ -854,4 +854,4 @@ struct PlatformInfo {
 }
 ```
 
-<sub>`api.ogt` line 8133</sub>
+<sub>`api.ogt` line 8141</sub>

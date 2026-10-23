@@ -987,6 +987,7 @@ pub(crate) fn spawn_scene(
             }
         }
     }
+    super::timeline::register_scene_paths(eng.id, &scene.paths);
     let layouts = eng.state.borrow().layouts.clone();
     let transform = resolve(&layouts, "Transform").cloned();
     let parent_layout = resolve(&layouts, "Parent").cloned();

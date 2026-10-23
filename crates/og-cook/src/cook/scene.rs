@@ -284,6 +284,7 @@ pub fn cook(
     let mut refs: Vec<String> = Vec::new();
     let mut tables: BTreeMap<String, Vec<Pending>> = BTreeMap::new();
     let mut name = String::new();
+    let mut paths: Vec<(String, og_timeline::PathDesc)> = Vec::new();
     for e in &doc.body.entries {
         match e.key.as_str() {
             "name" => {
@@ -295,9 +296,21 @@ pub fn cook(
             "entity" => {}
             // Streaming groups: read by the cook's planner (cook/stream.rs).
             "stream" => {}
+            // Named paths (og.path.find, a timeline's `rail`), made when
+            // the scene is instantiated.
+            "path" => {
+                let (n, desc) = og_timeline::path_entry(e).map_err(CookError)?;
+                if paths.iter().any(|(m, _)| *m == n) {
+                    return Err(CookError(format!(
+                        "line {}: path '{n}' is declared twice",
+                        e.line
+                    )));
+                }
+                paths.push((n, desc));
+            }
             k => {
                 return Err(CookError(format!(
-                    "line {}: unknown scene entry '{k}' (expected name, entity or stream)",
+                    "line {}: unknown scene entry '{k}' (expected name, entity, stream or path)",
                     e.line
                 )));
             }
@@ -470,6 +483,10 @@ pub fn cook(
     for (comp, bytes, stride, hash, json) in payloads {
         w.rows(&format!("c.{comp}"), bytes, stride, hash);
         w.raw(&format!("s.{comp}"), json.into_bytes(), 1);
+    }
+    if !paths.is_empty() {
+        w.raw("paths", og_timeline::paths_to_text(&paths).into_bytes(), 1);
+        notes.push(format!("{} path(s)", paths.len()));
     }
     notes.push(format!(
         "{} entities, {} component table(s), {} model reference(s)",

@@ -62,7 +62,7 @@ fn shake {
 }
 ```
 
-<sub>`api.ogt` line 1635</sub>
+<sub>`api.ogt` line 1636</sub>
 
 <a id="fn-punch"></a>
 
@@ -92,7 +92,7 @@ fn punch {
 }
 ```
 
-<sub>`api.ogt` line 1642</sub>
+<sub>`api.ogt` line 1643</sub>
 
 <a id="fn-kick"></a>
 
@@ -124,7 +124,7 @@ fn kick {
 }
 ```
 
-<sub>`api.ogt` line 1649</sub>
+<sub>`api.ogt` line 1650</sub>
 
 ## Components, resources and events
 
@@ -665,6 +665,7 @@ Token `og.CameraRail`, registered under the schema name `og.CameraRail`; its val
 | `p6` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Rail point 6. |
 | `p7` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Rail point 7. |
 | `smoothTime` | `number` | `0.2` | ≥ 0 | `s` | tunable | Roughly how long the camera takes to catch up along the rail; 0 snaps. |
+| `path` | `Path` | `0` | — | — | — | A path (og.path.create, or a scene's `path` by og.path.find) the rail follows instead of p0 to p(points - 1): any number of points, catmullRom, bezier or linear, closed or not. 0 uses the points. |
 
 ```ogt
 component CameraRail {
@@ -705,6 +706,7 @@ component CameraRail {
     unit s
     tunable true
   }
+  field path Path "A path (og.path.create, or a scene's `path` by og.path.find) the rail follows instead of p0 to p(points - 1): any number of points, catmullRom, bezier or linear, closed or not. 0 uses the points."
 }
 ```
 
