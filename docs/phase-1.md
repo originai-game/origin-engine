@@ -211,6 +211,59 @@ changes are the CHANGELOG's `## Unreleased` depth wave 2 entry.
   nested armatures, Bézier curves played as linear, IK of more than two
   bones, and a walk cycle for the keeper (S9).
 
+## UI styles: og-ui decoupled from the platform's design language (2026-10-23)
+
+The stream `ui/style` (an orb, Linux, so every Metal reference was
+owed) landed between depth waves 2 and 3: the vendored platform
+`tokens.json` and its generator gone, og-ui's own palette of 33 roles,
+the theme and the skin one **style** asset a look's `ui` line names,
+`prototype` as the placeholder a game without a style draws in, and
+square action and pause buttons. Its seven commits fast-forwarded onto
+main c5aa7ff1 at 07fab232; CHANGELOG's Unreleased entry lists the API
+changes.
+
+- **Integration fixes** on main: the arena archetype's HUD still named
+  `fgMuted` (6dfacd51, `inkMuted`); the knowledge scaffold's distribution
+  digests follow templates/game's intro references (5dce0c28); the
+  examples' generated style binaries (gitignored, `tools/make-assets.ts`)
+  moved with their `.ogt` from `assets/skins/` to `assets/styles/`
+  (25da2bde), without which brasswick, meridian-loop and rumpus-isle did
+  not cook.
+- **One defect found by a frame.** Kestrel Stair's intro moved 16.5 % of
+  its pixels, far past a restyle: the kit's cutscene letterbox bars took
+  the `backdrop` role (black in the platform theme, cream `#efe6d2` in
+  kestrel's paper style) and drew as two textured panels with rounded
+  corners and outlines. Cinematic bars are black in every style
+  (9771f711); the intro then matched its reference at 0.015 % outliers,
+  so it was not re-recorded.
+- **References re-recorded on Metal**, each pair read before recording:
+  og-ui's sample-screen, widget-set, materials and six text sheets
+  (9e697f6b; prototype greys and cyan, square or modest corners; the
+  clipped "Item 0" row and the blocky octagons in materials are in the old
+  references too); templates/game intro-4 and intro-8 (the caption panel
+  charcoal, was slate); all 75 kit sheets (95a6a459, `OG_UI_CAPTURE=1 og
+  test templates/ui-kit`, 34 suites); and the 86 playtest frames the
+  styles moved (0ce8c7be): fx-showcase's 34 looks frames, idle, rhythm,
+  roguelike, third-person and tower-defense, and every example but none
+  of match3, topdown, runner or the fx-showcase stations, which passed
+  unchanged. Read: hollowbell's talk (the line cut at "bell-keepe" is the
+  typing effect at the same point as before), tower-defense's wave and
+  rumpus-isle's podium (their rounded capsules, pills and offset text
+  shadows are the games' own `pathguard` and `rumpus` styles, radius
+  10/18, unchanged from the old frames), the kit's cutscene (black bars,
+  charcoal box, a quiet Skip).
+- **Not UI, noted as owed.** lantern-vale's physics playtest fails on
+  this machine: rock-4 moves 0.085 m against the 0.2 m check (rockMoved
+  0.52 passes). It fails the same way on the measure lane at da1d3ea3,
+  before 0.2.0 and every depth merge, so it predates this round; nothing
+  was re-recorded for it.
+- **Owed**, from the stream's list: internal Rust names (`skin.rs`,
+  `Theme::skin`, `SkinFile`), ui-kit's `skin:` command and the
+  `kit-skin-*` file names, rumpus-isle's and pathguard's own copies of
+  the old cartoon art, the browser web-reference tiers of every frame
+  above (the wave's end), `og doctor` tests failing in the orb (looks
+  environmental).
+
 ## Main gate, wave 13 (2026-10-21)
 
 Wave 13 started as wave 12's streams merged, on the web dogfood's twelve

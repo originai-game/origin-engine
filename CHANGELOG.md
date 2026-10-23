@@ -49,6 +49,9 @@ platform's. API changes (a minor bump; breaking before 1.0.0):
   primary deepens to `#8c360f` (7:1 as drawn).
 - `dump_ui` carries `style` ("" for prototype); `og polish` lists a UI
   style finding for a game left in prototype.
+- The kit's cutscene draws its letterbox bars black in every style (at
+  the merge they took the `backdrop` role, which a paper style turned
+  into cream panels over Kestrel Stair's intro).
 
 Depth wave 1 (`docs/depth.md` §1–§3, merged 2026-10-23), API additions (a
 minor bump, §3), by stream:
