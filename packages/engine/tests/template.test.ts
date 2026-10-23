@@ -38,7 +38,8 @@ test("a scaffolded game cooks, passes its playtest and leaves the frame and dump
   if (tested.code !== 0) throw new Error(tested.out);
   expect(tested.out).toMatch(/PASS smoke \(8 checks/);
   expect(tested.out).toMatch(/PASS guard \(16 checks/);
-  expect(tested.out).toContain("2 suite(s) passed");
+  expect(tested.out).toMatch(/PASS intro \(17 checks/);
+  expect(tested.out).toContain("3 suite(s) passed");
 
   const out = join(game, "og-out", "test", "smoke");
   const png = readFileSync(join(out, "smoke.png"));

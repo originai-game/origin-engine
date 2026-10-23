@@ -468,6 +468,40 @@ pub fn host_rs(ix: &Index<'_>) -> String {
         }
     }
     out.push_str("];\n");
+
+    // Every column kind the IDL declares, so the runtime accepts a game's
+    // field of a kind no engine record happens to use (an enum column's
+    // variants come from here, not from the records that use it).
+    out.push_str(
+        "\n/// A column kind the IDL declares (`column X`): a kind a game's component or resource field may have.\n\
+         #[derive(Clone, Copy, Debug, PartialEq)]\n\
+         pub struct ColumnDecl {\n\
+         \x20   pub name: &'static str,\n\
+         \x20   /// An enum column's variants in index order; empty otherwise.\n\
+         \x20   pub variants: &'static [&'static str],\n\
+         }\n\n\
+         /// Every declared column kind, in declaration order.\n\
+         pub const COLUMNS: &[ColumnDecl] = &[\n",
+    );
+    for m in &ix.api.modules {
+        for item in &m.items {
+            let Item::Column(c) = item else { continue };
+            let variants = match ix.decl(c.value.name()) {
+                Some(crate::index::TypeDecl::Enum(e)) => e
+                    .variants
+                    .iter()
+                    .map(|v| format!("{:?}", v.name))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                _ => String::new(),
+            };
+            out.push_str(&format!(
+                "    ColumnDecl {{ name: \"{}\", variants: &[{}] }},\n",
+                c.name, variants
+            ));
+        }
+    }
+    out.push_str("];\n");
     out
 }
 

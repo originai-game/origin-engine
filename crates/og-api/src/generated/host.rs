@@ -17304,3 +17304,63 @@ pub const RECORDS: &[RecordDecl] = &[
         ],
     },
 ];
+
+/// A column kind the IDL declares (`column X`): a kind a game's component or resource field may have.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ColumnDecl {
+    pub name: &'static str,
+    /// An enum column's variants in index order; empty otherwise.
+    pub variants: &'static [&'static str],
+}
+
+/// Every declared column kind, in declaration order.
+pub const COLUMNS: &[ColumnDecl] = &[
+    ColumnDecl { name: "f32", variants: &[] },
+    ColumnDecl { name: "f64", variants: &[] },
+    ColumnDecl { name: "u32", variants: &[] },
+    ColumnDecl { name: "i32", variants: &[] },
+    ColumnDecl { name: "bool", variants: &[] },
+    ColumnDecl { name: "Vector2", variants: &[] },
+    ColumnDecl { name: "Vector3", variants: &[] },
+    ColumnDecl { name: "Quaternion", variants: &[] },
+    ColumnDecl { name: "Matrix4", variants: &[] },
+    ColumnDecl { name: "Color", variants: &[] },
+    ColumnDecl { name: "str", variants: &[] },
+    ColumnDecl { name: "Entity", variants: &[] },
+    ColumnDecl { name: "Geometry", variants: &[] },
+    ColumnDecl { name: "Material", variants: &[] },
+    ColumnDecl { name: "ToneMapping", variants: &["aces", "agx", "none"] },
+    ColumnDecl { name: "Texture", variants: &[] },
+    ColumnDecl { name: "Lut", variants: &[] },
+    ColumnDecl { name: "EnvironmentMap", variants: &[] },
+    ColumnDecl { name: "ParticleEmitter", variants: &[] },
+    ColumnDecl { name: "AoMethod", variants: &["auto", "gtao", "ssao"] },
+    ColumnDecl { name: "DofQuality", variants: &["low", "high"] },
+    ColumnDecl { name: "SpriteBlend", variants: &["alpha", "additive"] },
+    ColumnDecl { name: "StripBlend", variants: &["additive", "alpha"] },
+    ColumnDecl { name: "Palette", variants: &[] },
+    ColumnDecl { name: "DitherPattern", variants: &["none", "bayer2", "bayer4", "bayer8", "blueNoise", "interleavedGradient"] },
+    ColumnDecl { name: "StyliseSpace", variants: &["screen", "surface", "object"] },
+    ColumnDecl { name: "LineMode", variants: &["strip", "segments", "loop"] },
+    ColumnDecl { name: "TextureArray", variants: &[] },
+    ColumnDecl { name: "Asset", variants: &[] },
+    ColumnDecl { name: "Sound", variants: &[] },
+    ColumnDecl { name: "SkeletonAsset", variants: &[] },
+    ColumnDecl { name: "ClipAsset", variants: &[] },
+    ColumnDecl { name: "GraphAsset", variants: &[] },
+    ColumnDecl { name: "RootMotion", variants: &["off", "planar", "full"] },
+    ColumnDecl { name: "BlendshapeSource", variants: &["component", "clips"] },
+    ColumnDecl { name: "IkSolver", variants: &["twoBone", "fabrik"] },
+    ColumnDecl { name: "IkSpace", variants: &["world", "model"] },
+    ColumnDecl { name: "FlipbookSheet", variants: &[] },
+    ColumnDecl { name: "Tween", variants: &[] },
+    ColumnDecl { name: "TilemapAsset", variants: &[] },
+    ColumnDecl { name: "AudioBus", variants: &["master", "music", "sfx", "ui"] },
+    ColumnDecl { name: "Navigation", variants: &[] },
+    ColumnDecl { name: "Behaviour", variants: &[] },
+    ColumnDecl { name: "TerrainData", variants: &[] },
+    ColumnDecl { name: "Video", variants: &[] },
+    ColumnDecl { name: "Path", variants: &[] },
+    ColumnDecl { name: "PathKind", variants: &["catmullRom", "bezier", "linear"] },
+    ColumnDecl { name: "TimelineAsset", variants: &[] },
+];

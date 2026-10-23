@@ -112,14 +112,16 @@ test("og test without a renderer passes, counts its unchecked frames and runs th
   expect(text.stdout).toMatch(/PASS smoke \(\d+ checks, 1 frame unchecked/);
   expect(text.stdout).toContain("  ~ smoke.png: no renderer, frame unchecked\n");
   expect(text.stdout).toContain("  ~ surface.png: no renderer, frame unchecked\n");
-  expect(text.stdout).toContain("og test: 3 suite(s) passed; 2 frame(s) unchecked: no renderer here");
+  // smoke, guard, intro (two frames) and the surface suite written above.
+  expect(text.stdout).toMatch(/PASS intro \(\d+ checks, 2 frames unchecked/);
+  expect(text.stdout).toContain("og test: 4 suite(s) passed; 4 frame(s) unchecked: no renderer here");
   expect(existsSync(join(game, "og-out", "test", "smoke", "smoke.png"))).toBeFalse();
 
   // And as JSON, with the dumps kept for the comparison below.
   const none = run([ogBin(), "test", game, "--json"], false);
   if (none.code !== 0) throw new Error(none.out);
   const blind = results(none.stdout);
-  expect([...blind.keys()].sort()).toEqual(["guard", "smoke", "surface"]);
+  expect([...blind.keys()].sort()).toEqual(["guard", "intro", "smoke", "surface"]);
   for (const r of blind.values()) {
     expect(r.tier).toBe("none");
     expect(r.failures).toEqual([]);
@@ -130,6 +132,7 @@ test("og test without a renderer passes, counts its unchecked frames and runs th
   expect(blind.get("smoke")!.unchecked).toEqual(["smoke.png"]);
   expect(blind.get("surface")!.unchecked).toEqual(["surface.png"]);
   expect(blind.get("guard")!.unchecked).toEqual([]);
+  expect(blind.get("intro")!.unchecked).toEqual(["intro-4.png", "intro-8.png"]);
   const smokeOut = join(game, "og-out", "test", "smoke");
   const surfaceOut = join(game, "og-out", "test", "surface");
   const blindDumps = {
@@ -140,7 +143,7 @@ test("og test without a renderer passes, counts its unchecked frames and runs th
   // With a renderer (where this machine has one): the same hashes and dumps,
   // and the same checks plus the frame checks.
   const lit = results(run([ogBin(), "test", game, "--json"], true).stdout);
-  expect([...lit.keys()].sort()).toEqual(["guard", "smoke", "surface"]);
+  expect([...lit.keys()].sort()).toEqual(["guard", "intro", "smoke", "surface"]);
   for (const [name, r] of lit) {
     const b = blind.get(name)!;
     expect(r.failures).toEqual([]);

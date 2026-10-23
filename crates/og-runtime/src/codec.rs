@@ -180,13 +180,13 @@ pub struct Layout {
     pub(crate) by_name: std::sync::Arc<std::sync::OnceLock<Vec<(usize, usize)>>>,
 }
 
-/// The variants of an IDL enum column (`AudioBus`), from the engine's records.
+/// The variants of an IDL enum column (`AudioBus`), from the declared
+/// columns: a game's field may be of an enum column no engine record uses.
 fn enum_variants(column: &str) -> Option<Vec<String>> {
-    og_api::host::RECORDS
+    og_api::host::COLUMNS
         .iter()
-        .flat_map(|r| r.fields.iter())
-        .find(|f| f.column == column && !f.variants.is_empty())
-        .map(|f| f.variants.iter().map(|v| v.to_string()).collect())
+        .find(|c| c.name == column && !c.variants.is_empty())
+        .map(|c| c.variants.iter().map(|v| v.to_string()).collect())
 }
 
 fn number(v: &Value, what: &str) -> Result<f64, String> {
