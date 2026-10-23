@@ -7,7 +7,11 @@ One version across `@origingame/engine` (the knowledge inside it as
 bump carries API additions or changes, one line each, written at the merge
 that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
-## Unreleased
+## 0.3.0 (2026-10-23)
+
+The depth wave (`docs/depth.md`, nine streams), its debt round and the
+UI styles branch; a minor bump for the API changes below, breaking before
+1.0.0 where a member was renamed (`og.load.skin` is `og.load.style`).
 
 - Windows x64 (F7, merged after 0.2.0 was published, so the package first
   ships with the next version): build and pack the MSVC `og.exe` and napi

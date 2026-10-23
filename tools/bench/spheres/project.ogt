@@ -5,7 +5,7 @@ version 1
 # per-object scene of tools/bench/threejs-compare.ts (docs/design.md §7).
 name "Sphere field"
 id "sphere-field"
-engine "0.2.0"
+engine "0.3.0"
 entry "src/main.ts"
 profile "3d"
 tick 60
