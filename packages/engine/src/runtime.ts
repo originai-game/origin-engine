@@ -1314,7 +1314,7 @@ function makeProbe(id: number) {
     describe: () => parse(a().og_engine_probe_describe(id)),
     expect: (what: string) => parse(a().og_engine_probe_expect(id, what)),
     expectations: () => parse(a().og_engine_probe_expectations(id)),
-    saveScene: (write?: boolean) => parse(a().og_engine_probe_save_scene(id, write)),
+    saveScene: (write?: boolean, spawned?: boolean) => parse(a().og_engine_probe_save_scene(id, write, spawned)),
   });
 }
 

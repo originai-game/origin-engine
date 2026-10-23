@@ -702,7 +702,7 @@ export interface HostAbi<A, V> {
   /** `EngineProbe.expectations` */
   og_engine_probe_expectations(engine_probe: number): string;
   /** `EngineProbe.saveScene` */
-  og_engine_probe_save_scene(engine_probe: number, write: boolean | undefined): string;
+  og_engine_probe_save_scene(engine_probe: number, write: boolean | undefined, spawned: boolean | undefined): string;
   /** `og.terrain.load` */
   og_terrain_load(world: number, path: string): string;
   /** `og.terrain.sample` */

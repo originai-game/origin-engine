@@ -12155,7 +12155,7 @@ module commands {
     variant quit "`quit`: exit."
     variant describe "`describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera."
     variant expect "`expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=), `entity:<id>:<path>==<value>` (a field of its dump_entity: `render.lod==2`, `og.Transform.position.y>0`), `timings:<path>==<value>` (state().timings: `triangles<=1500000`). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked, as are an entity's `render.*` fields and the renderer's timings (`triangles`, `render`, `passes`)."
-    variant save_scene "`save_scene[:path]`: write the boot scene's `.ogt` back from the world, only the lines whose values changed (comments and order kept) and the fields set or patch tuned; to the scene's source, or with a path to that file under the output directory."
+    variant save_scene "`save_scene[:path][:spawned]`: write every scene the world was assembled from back from the world (the boot scene's, then each og.world.instantiate made, each to its own `.ogt`): only the lines whose values changed (comments and order kept), the fields set or patch tuned, and resources as `resource <Name> { }` blocks; with `spawned`, the entities the game spawned at run time under the boot scene's marked section. To each scene's source, or with a path the boot scene's to that file under the output directory and the others beside it."
     variant help "`help`: list every action the channel knows, core and registered."
   }
 
@@ -12735,13 +12735,23 @@ module probe {
   }
 
   struct SavedScene {
-    doc "A scene written back from the world."
+    doc "The scenes written back from the world: the head is the boot scene's (or the first instantiated one's), `scenes` lists every one."
     field tick u32 "The tick of the world it was written from."
-    field source String "The scene's source, project-relative."
+    field source String "The first scene's source, project-relative."
     field written String "Where it was written; empty when only returned."
-    field lines List.u32 "The 1-based lines of the new text that changed or were added."
-    field skipped List.String "Tuned fields that were not written, each with its reason: a resource, or an entity the scene did not make."
-    field text String "The new text."
+    field lines List.u32 "The 1-based lines of the first scene's new text that changed or were added."
+    field skipped List.String "Tuned fields that were not written, each with its reason: an entity no scene made (without `spawned`), a resource no scene sets where no boot scene takes it."
+    field text String "The first scene's new text."
+    field spawned u32 "Entities written under the boot scene's spawned section (0 without `spawned`)."
+    field scenes List.SavedSceneFile "Every scene written back: the boot scene's first, then each og.world.instantiate made, once each."
+  }
+
+  struct SavedSceneFile {
+    doc "One scene file written back."
+    field source String "Its source, project-relative."
+    field written String "Where it was written; empty when only returned."
+    field lines List.u32 "The 1-based lines of its new text that changed or were added."
+    field text String "Its new text."
   }
 
   interface RuntimeProbe {
@@ -12896,8 +12906,11 @@ module probe {
       returns ExpectReport
     }
     fn saveScene {
-      doc "Write the boot scene back from the world: its entities' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order. The probe writes the file only with write; otherwise the text is returned."
-      param write bool "Replace the scene's source file." {
+      doc "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned."
+      param write bool "Replace each scene's source file." {
+        default false
+      }
+      param spawned bool "Write the entities the game spawned at run time under the boot scene's marked section." {
         default false
       }
       returns Option.SavedScene "Null without a scene to write back (the reason is in the log)."

@@ -819,7 +819,7 @@ pub trait ProbeApi: Wire {
     /// `EngineProbe.expectations`
     fn og_engine_probe_expectations(&self, engine_probe: u32) -> String;
     /// `EngineProbe.saveScene`
-    fn og_engine_probe_save_scene(&self, engine_probe: u32, write: Option<bool>) -> String;
+    fn og_engine_probe_save_scene(&self, engine_probe: u32, write: Option<bool>, spawned: Option<bool>) -> String;
 }
 
 /// `terrain`: packages/knowledge/wiki/terrain.md.

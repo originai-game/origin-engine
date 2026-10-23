@@ -15144,6 +15144,12 @@
           "type": "bool",
           "optional": true,
           "default": false
+        },
+        {
+          "name": "spawned",
+          "type": "bool",
+          "optional": true,
+          "default": false
         }
       ],
       "returns": "Option<SavedScene>",

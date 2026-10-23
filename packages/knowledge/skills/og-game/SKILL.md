@@ -2043,14 +2043,20 @@ These are the checks to use before opening frames. All of them run from
   (physics, cull, anim, extract). The probe's `state().timings.systems`,
   `.passes` and `.gpuPasses` give the last tick's and frame's numbers
   live.
-- **`save_scene[:path]`** (probe `saveScene(write)`) writes the boot
-  scene back after `teleport`, `set` or the Tune panel moved things. Only
-  the lines whose values changed are rewritten; comments and order stay,
-  and a tuned field the text lacks gets a line. With a path, the text goes
-  under `--out` to diff first; without one, it replaces
-  `assets/<scene>.ogt`. `set` names engine components by their registered
-  name (`set:marker.og.Transform.scale=0.5,0.5,0.5`). Resources are not
-  scene text, so a tuned resource is reported as not written.
+- **`save_scene[:path][:spawned]`** (probe `saveScene(write, spawned)`)
+  writes the scenes back after `teleport`, `set` or the Tune panel moved
+  things: the boot scene and every scene `world.instantiate` made, each
+  to its own `.ogt`. Only the lines whose values changed are rewritten;
+  comments and order stay, and a tuned field the text lacks gets a line.
+  Resources are scene text (`resource Run { chimed true }` at the top
+  level of a scene); a tuned resource no scene sets gets a block in the
+  boot scene. `spawned` also writes the entities your code spawned under
+  `# ── spawned at run time ──` at the end of the boot scene; if you keep
+  them, guard their spawn (`if (world.find("bolt") === null)`) so the next
+  run does not make them twice. With a path, the texts go under `--out`
+  to diff first; without one, they replace `assets/<scene>.ogt`. `set`
+  names engine components by their registered name
+  (`set:marker.og.Transform.scale=0.5,0.5,0.5`).
 - **`og cook --report`** writes `og-out/cook-report.json`: per asset its
   triangles per LOD, vertices, textures (size, format), bones, clips,
   bytes cooked and flags. **`og doctor --project . [--json]`** checks it

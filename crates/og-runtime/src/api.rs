@@ -227,6 +227,7 @@ fn spawn(eng: &Engine, desc: &Value) -> Result<Entity, String> {
     if !name.is_empty() {
         set_name(eng, e, &name);
     }
+    eng.state.borrow_mut().game_spawned.insert(e.to_bits());
     Ok(e)
 }
 
@@ -259,6 +260,7 @@ fn spawn_in_system(eng: &Engine, f: &super::engine::Frame, desc: &Value) -> Resu
     if !name.is_empty() {
         set_name(eng, e, &name);
     }
+    eng.state.borrow_mut().game_spawned.insert(e.to_bits());
     Ok(e)
 }
 
@@ -2511,11 +2513,15 @@ pub fn og_engine_probe_expectations(probe: u32) -> String {
     member(probe, "expectations", json!({})).to_string()
 }
 
-pub fn og_engine_probe_save_scene(probe: u32, write: Option<bool>) -> String {
+pub fn og_engine_probe_save_scene(
+    probe: u32,
+    write: Option<bool>,
+    spawned: Option<bool>,
+) -> String {
     member(
         probe,
         "save_scene",
-        json!({ "write": write.unwrap_or(false) }),
+        json!({ "write": write.unwrap_or(false), "spawned": spawned.unwrap_or(false) }),
     )
     .to_string()
 }

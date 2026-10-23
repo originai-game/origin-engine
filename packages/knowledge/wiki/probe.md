@@ -80,7 +80,8 @@ module probe {
 | [`ExpectStatus`](#type-ExpectStatus) | enum | How an expectation came out. |
 | [`ExpectResult`](#type-ExpectResult) | struct | One evaluated expectation. |
 | [`ExpectReport`](#type-ExpectReport) | struct | The expectations evaluated since the last call. |
-| [`SavedScene`](#type-SavedScene) | struct | A scene written back from the world. |
+| [`SavedScene`](#type-SavedScene) | struct | The scenes written back from the world: the head is the boot scene's (or the first instantiated one's), `scenes` lists every one. |
+| [`SavedSceneFile`](#type-SavedSceneFile) | struct | One scene file written back. |
 | [`RuntimeProbe`](#type-RuntimeProbe) | interface | RuntimeProbe protocol 5, member for member. Every member answers synchronously with JSON-serialisable values. |
 | [`EngineProbe`](#type-EngineProbe) | interface | The engine's probe: protocol 5 plus the wire members of the loopback WebSocket and the in-page request ring. |
 
@@ -99,7 +100,7 @@ interface RuntimeProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 12747</sub>
+<sub>`api.ogt` line 12757</sub>
 
 <a id="member-RuntimeProbe-version"></a>
 
@@ -119,7 +120,7 @@ prop version u32 "PROBE_VERSION." {
 }
 ```
 
-<sub>`api.ogt` line 12751</sub>
+<sub>`api.ogt` line 12761</sub>
 
 <a id="member-RuntimeProbe-tick"></a>
 
@@ -143,7 +144,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 12754</sub>
+<sub>`api.ogt` line 12764</sub>
 
 <a id="member-RuntimeProbe-state"></a>
 
@@ -167,7 +168,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 12759</sub>
+<sub>`api.ogt` line 12769</sub>
 
 <a id="member-RuntimeProbe-advance"></a>
 
@@ -195,7 +196,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 12764</sub>
+<sub>`api.ogt` line 12774</sub>
 
 <a id="member-RuntimeProbe-pause"></a>
 
@@ -218,7 +219,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 12769</sub>
+<sub>`api.ogt` line 12779</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -241,7 +242,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 12773</sub>
+<sub>`api.ogt` line 12783</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -270,7 +271,7 @@ fn input {
 }
 ```
 
-<sub>`api.ogt` line 12777</sub>
+<sub>`api.ogt` line 12787</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -293,7 +294,7 @@ fn accepted {
 }
 ```
 
-<sub>`api.ogt` line 12783</sub>
+<sub>`api.ogt` line 12793</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
@@ -324,7 +325,7 @@ fn pick {
 }
 ```
 
-<sub>`api.ogt` line 12787</sub>
+<sub>`api.ogt` line 12797</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -353,7 +354,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 12794</sub>
+<sub>`api.ogt` line 12804</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
@@ -381,7 +382,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 12800</sub>
+<sub>`api.ogt` line 12810</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -413,7 +414,7 @@ fn patch {
 }
 ```
 
-<sub>`api.ogt` line 12805</sub>
+<sub>`api.ogt` line 12815</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -441,7 +442,7 @@ fn run {
 }
 ```
 
-<sub>`api.ogt` line 12812</sub>
+<sub>`api.ogt` line 12822</sub>
 
 <a id="type-EngineProbe"></a>
 
@@ -459,7 +460,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 12819</sub>
+<sub>`api.ogt` line 12829</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -483,7 +484,7 @@ fn hello {
 }
 ```
 
-<sub>`api.ogt` line 12824</sub>
+<sub>`api.ogt` line 12834</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -524,7 +525,7 @@ fn capture {
 }
 ```
 
-<sub>`api.ogt` line 12829</sub>
+<sub>`api.ogt` line 12839</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -554,7 +555,7 @@ fn sweep {
 }
 ```
 
-<sub>`api.ogt` line 12842</sub>
+<sub>`api.ogt` line 12852</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -577,7 +578,7 @@ fn reload {
 }
 ```
 
-<sub>`api.ogt` line 12849</sub>
+<sub>`api.ogt` line 12859</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -600,7 +601,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 12853</sub>
+<sub>`api.ogt` line 12863</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -628,7 +629,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 12857</sub>
+<sub>`api.ogt` line 12867</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -658,7 +659,7 @@ fn dump {
 }
 ```
 
-<sub>`api.ogt` line 12862</sub>
+<sub>`api.ogt` line 12872</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -686,7 +687,7 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 12869</sub>
+<sub>`api.ogt` line 12879</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -716,7 +717,7 @@ fn listen {
 }
 ```
 
-<sub>`api.ogt` line 12874</sub>
+<sub>`api.ogt` line 12884</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -739,7 +740,7 @@ fn memory {
 }
 ```
 
-<sub>`api.ogt` line 12881</sub>
+<sub>`api.ogt` line 12891</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -762,7 +763,7 @@ fn describe {
 }
 ```
 
-<sub>`api.ogt` line 12885</sub>
+<sub>`api.ogt` line 12895</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -790,7 +791,7 @@ fn expect {
 }
 ```
 
-<sub>`api.ogt` line 12889</sub>
+<sub>`api.ogt` line 12899</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -813,21 +814,22 @@ fn expectations {
 }
 ```
 
-<sub>`api.ogt` line 12894</sub>
+<sub>`api.ogt` line 12904</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
 #### `EngineProbe.saveScene`
 
-Write the boot scene back from the world: its entities' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order. The probe writes the file only with write; otherwise the text is returned.
+Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned.
 
 ```ts
-EngineProbe.saveScene(write?: boolean): SavedScene | null
+EngineProbe.saveScene(write?: boolean, spawned?: boolean): SavedScene | null
 ```
 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
-| `write` | `boolean` | yes | Replace the scene's source file. Default `false`. |
+| `write` | `boolean` | yes | Replace each scene's source file. Default `false`. |
+| `spawned` | `boolean` | yes | Write the entities the game spawned at run time under the boot scene's marked section. Default `false`. |
 
 **Returns** `SavedScene | null`: Null without a scene to write back (the reason is in the log).
 
@@ -835,15 +837,18 @@ Binding symbol `og_engine_probe_save_scene` · publish builds: dropped
 
 ```ogt
 fn saveScene {
-  doc "Write the boot scene back from the world: its entities' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order. The probe writes the file only with write; otherwise the text is returned."
-  param write bool "Replace the scene's source file." {
+  doc "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned."
+  param write bool "Replace each scene's source file." {
+    default false
+  }
+  param spawned bool "Write the entities the game spawned at run time under the boot scene's marked section." {
     default false
   }
   returns Option.SavedScene "Null without a scene to write back (the reason is in the log)."
 }
 ```
 
-<sub>`api.ogt` line 12898</sub>
+<sub>`api.ogt` line 12908</sub>
 
 ## Types
 
@@ -2195,30 +2200,59 @@ struct ExpectReport {
 
 ### `SavedScene` (struct)
 
-A scene written back from the world.
+The scenes written back from the world: the head is the boot scene's (or the first instantiated one's), `scenes` lists every one.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `tick` | `number` | `0` | — | — | — | The tick of the world it was written from. |
-| `source` | `string` | `""` | — | — | — | The scene's source, project-relative. |
+| `source` | `string` | `""` | — | — | — | The first scene's source, project-relative. |
 | `written` | `string` | `""` | — | — | — | Where it was written; empty when only returned. |
-| `lines` | `readonly number[]` | `[]` | — | — | — | The 1-based lines of the new text that changed or were added. |
-| `skipped` | `readonly string[]` | `[]` | — | — | — | Tuned fields that were not written, each with its reason: a resource, or an entity the scene did not make. |
-| `text` | `string` | `""` | — | — | — | The new text. |
+| `lines` | `readonly number[]` | `[]` | — | — | — | The 1-based lines of the first scene's new text that changed or were added. |
+| `skipped` | `readonly string[]` | `[]` | — | — | — | Tuned fields that were not written, each with its reason: an entity no scene made (without `spawned`), a resource no scene sets where no boot scene takes it. |
+| `text` | `string` | `""` | — | — | — | The first scene's new text. |
+| `spawned` | `number` | `0` | — | — | — | Entities written under the boot scene's spawned section (0 without `spawned`). |
+| `scenes` | `readonly SavedSceneFile[]` | `[]` | — | — | — | Every scene written back: the boot scene's first, then each og.world.instantiate made, once each. |
 
 ```ogt
 struct SavedScene {
-  doc "A scene written back from the world."
+  doc "The scenes written back from the world: the head is the boot scene's (or the first instantiated one's), `scenes` lists every one."
   field tick u32 "The tick of the world it was written from."
-  field source String "The scene's source, project-relative."
+  field source String "The first scene's source, project-relative."
   field written String "Where it was written; empty when only returned."
-  field lines List.u32 "The 1-based lines of the new text that changed or were added."
-  field skipped List.String "Tuned fields that were not written, each with its reason: a resource, or an entity the scene did not make."
-  field text String "The new text."
+  field lines List.u32 "The 1-based lines of the first scene's new text that changed or were added."
+  field skipped List.String "Tuned fields that were not written, each with its reason: an entity no scene made (without `spawned`), a resource no scene sets where no boot scene takes it."
+  field text String "The first scene's new text."
+  field spawned u32 "Entities written under the boot scene's spawned section (0 without `spawned`)."
+  field scenes List.SavedSceneFile "Every scene written back: the boot scene's first, then each og.world.instantiate made, once each."
 }
 ```
 
 <sub>`api.ogt` line 12737</sub>
+
+<a id="type-SavedSceneFile"></a>
+
+### `SavedSceneFile` (struct)
+
+One scene file written back.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `source` | `string` | `""` | — | — | — | Its source, project-relative. |
+| `written` | `string` | `""` | — | — | — | Where it was written; empty when only returned. |
+| `lines` | `readonly number[]` | `[]` | — | — | — | The 1-based lines of its new text that changed or were added. |
+| `text` | `string` | `""` | — | — | — | Its new text. |
+
+```ogt
+struct SavedSceneFile {
+  doc "One scene file written back."
+  field source String "Its source, project-relative."
+  field written String "Where it was written; empty when only returned."
+  field lines List.u32 "The 1-based lines of its new text that changed or were added."
+  field text String "Its new text."
+}
+```
+
+<sub>`api.ogt` line 12749</sub>
 
 ## Constants
 

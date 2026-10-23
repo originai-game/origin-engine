@@ -810,7 +810,7 @@ a game registers more (`commands:` above). Unknown actions warn and continue.
 | `seed:<n>` / `pause` / `resume` / `advance:<ticks>` | determinism controls |
 | `describe[:path]` | the frame as data (§3.4): visible entities with screen boxes, depth order and occlusion; UI elements with rects and text; the camera |
 | `expect:<operation>` | an assertion at this tick (§3.4); a failure fails the run |
-| `save_scene[:path]` | the boot scene's `.ogt` rewritten from the world (§3.4) |
+| `save_scene[:path][:spawned]` | every scene's `.ogt` rewritten from the world, resources included; with `spawned`, the run-time entities under a marked section (§3.4) |
 | `quit` | exit |
 
 ### 3.4 Probe **(D)**
@@ -879,13 +879,25 @@ reading pixels:
   document (the play page's `?trace` from the boot, or the probe's
   `trace("start")`) and the shell reads it (`trace()`, `saveTrace()`
   downloads it).
-- **Scene write-back.** `save_scene` (member, and `save_scene[:path]`)
-  rewrites the boot scene's `.ogt` from the world, line by line: a field
-  line changes only when its value, rounded as the cook rounds it, differs;
-  a field `set` or `patch` tuned that the text lacks gets a line (or a
-  component block); comments, order and spelling stay. Cooking the result
-  loads the same world, and saving again changes nothing. Resources are
-  not scene text: a tuned resource is reported as skipped.
+- **Scene write-back.** `save_scene` (member, and
+  `save_scene[:path][:spawned]`) rewrites every scene the world was
+  assembled from, each to its own `.ogt` (the boot scene's, then each
+  `og.world.instantiate` made), line by line: a field line changes only
+  when its value, rounded as the cook rounds it, differs; a field `set` or
+  `patch` tuned that the text lacks gets a line (or a component block);
+  comments, order and spelling stay. Resources are scene text too
+  (`resource <Name> { field value }` at the top level sets those fields
+  when the scene is instantiated, the others keep the world's values): a
+  scene's resource lines are rewritten, and a tuned resource no scene sets
+  gets a block in the boot scene. With `spawned`, the entities the game
+  spawned at run time are written at the end of the boot scene under the
+  line `# ── spawned at run time ──`, regenerated whole on every save,
+  nested by og.Parent, each with every component whose fields scene text
+  can give (a model's `model` line; a component holding a geometry,
+  material, sound or entity handle is named in a comment, not written; an
+  instance's root, which the instantiating code makes again, is left
+  out). Cooking the result loads the same world, and saving again changes
+  nothing (`packages/engine/tests/scene-write-back.test.ts`).
 - **Diagnostics as data.** `og cook --report` writes
   `og-out/cook-report.json`. For each asset it records triangles,
   vertices and LODs, textures with sizes and formats, bones, clips, bytes

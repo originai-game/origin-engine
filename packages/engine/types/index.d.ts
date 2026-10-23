@@ -18822,7 +18822,7 @@ export interface AlertDesc {
  * - `"quit"`: `quit`: exit.
  * - `"describe"`: `describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera.
  * - `"expect"`: `expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=), `entity:<id>:<path>==<value>` (a field of its dump_entity: `render.lod==2`, `og.Transform.position.y>0`), `timings:<path>==<value>` (state().timings: `triangles<=1500000`). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked, as are an entity's `render.*` fields and the renderer's timings (`triangles`, `render`, `passes`).
- * - `"save_scene"`: `save_scene[:path]`: write the boot scene's `.ogt` back from the world, only the lines whose values changed (comments and order kept) and the fields set or patch tuned; to the scene's source, or with a path to that file under the output directory.
+ * - `"save_scene"`: `save_scene[:path][:spawned]`: write every scene the world was assembled from back from the world (the boot scene's, then each og.world.instantiate made, each to its own `.ogt`): only the lines whose values changed (comments and order kept), the fields set or patch tuned, and resources as `resource <Name> { }` blocks; with `spawned`, the entities the game spawned at run time under the boot scene's marked section. To each scene's source, or with a path the boot scene's to that file under the output directory and the others beside it.
  * - `"help"`: `help`: list every action the channel knows, core and registered.
  */
 export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "compose" | "commit" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "describe" | "expect" | "save_scene" | "help";
@@ -19768,21 +19768,41 @@ export interface ExpectReport {
   readonly results: readonly ExpectResult[];
 }
 
-/** A scene written back from the world. */
+/**
+ * The scenes written back from the world: the head is the boot scene's (or the first instantiated one's), `scenes` lists every one.
+ */
 export interface SavedScene {
   /** The tick of the world it was written from. */
   readonly tick: number;
-  /** The scene's source, project-relative. */
+  /** The first scene's source, project-relative. */
   readonly source: string;
   /** Where it was written; empty when only returned. */
   readonly written: string;
-  /** The 1-based lines of the new text that changed or were added. */
+  /** The 1-based lines of the first scene's new text that changed or were added. */
   readonly lines: readonly number[];
   /**
-   * Tuned fields that were not written, each with its reason: a resource, or an entity the scene did not make.
+   * Tuned fields that were not written, each with its reason: an entity no scene made (without `spawned`), a resource no scene sets where no boot scene takes it.
    */
   readonly skipped: readonly string[];
-  /** The new text. */
+  /** The first scene's new text. */
+  readonly text: string;
+  /** Entities written under the boot scene's spawned section (0 without `spawned`). */
+  readonly spawned: number;
+  /**
+   * Every scene written back: the boot scene's first, then each og.world.instantiate made, once each.
+   */
+  readonly scenes: readonly SavedSceneFile[];
+}
+
+/** One scene file written back. */
+export interface SavedSceneFile {
+  /** Its source, project-relative. */
+  readonly source: string;
+  /** Where it was written; empty when only returned. */
+  readonly written: string;
+  /** The 1-based lines of its new text that changed or were added. */
+  readonly lines: readonly number[];
+  /** Its new text. */
   readonly text: string;
 }
 
@@ -19936,12 +19956,13 @@ export interface EngineProbe extends RuntimeProbe {
    */
   expectations(): ExpectReport;
   /**
-   * Write the boot scene back from the world: its entities' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order. The probe writes the file only with write; otherwise the text is returned.
+   * Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned.
    *
-   * @param write Replace the scene's source file. Default `false`.
+   * @param write Replace each scene's source file. Default `false`.
+   * @param spawned Write the entities the game spawned at run time under the boot scene's marked section. Default `false`.
    * @returns Null without a scene to write back (the reason is in the log).
    */
-  saveScene(write?: boolean): SavedScene | null;
+  saveScene(write?: boolean, spawned?: boolean): SavedScene | null;
 }
 
 // ── terrain ─────────────────────────────────────────────────────

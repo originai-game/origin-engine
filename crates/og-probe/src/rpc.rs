@@ -331,7 +331,8 @@ impl Probe {
             }
             "save_scene" => {
                 let write = p.get("write").and_then(Value::as_bool).unwrap_or(false);
-                match self.save_scene(world, write) {
+                let spawned = p.get("spawned").and_then(Value::as_bool).unwrap_or(false);
+                match self.save_scene(world, write, spawned) {
                     Ok(v) => v,
                     Err(reason) => {
                         self.note(world.time().tick, true, format!("save_scene: {reason}"));

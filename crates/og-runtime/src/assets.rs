@@ -1117,6 +1117,7 @@ pub(crate) fn spawn_scene(
         }
         spawned.push(entity);
     }
+    apply_resources(eng, scene, &layouts, &mut dropped)?;
     if !dropped.is_empty() {
         eng.assets.borrow_mut().warnings.push(format!(
             "{}: dropped {}",
@@ -1125,5 +1126,48 @@ pub(crate) fn spawn_scene(
         ));
     }
     super::baked::scene_spawned(eng, scene, &spawned);
+    eng.state
+        .borrow_mut()
+        .scene_instances
+        .push(super::engine::SceneInstance {
+            id: scene.id.clone(),
+            root: root.map(Entity::to_bits),
+            entities: spawned.iter().map(|e| e.to_bits()).collect(),
+        });
     Ok(spawned)
+}
+
+/// A scene's `resource` blocks: each field it lists set on the world's
+/// resource of that name (the others keep their values), migrated by field
+/// name to the registered layout.
+fn apply_resources(
+    eng: &Engine,
+    scene: &SceneDesc,
+    layouts: &BTreeMap<String, Layout>,
+    dropped: &mut Vec<String>,
+) -> Result<(), String> {
+    for r in &scene.resources {
+        let Some(layout) = layouts
+            .get(&r.name)
+            .or_else(|| layouts.get(&format!("og.{}", r.name)))
+            .filter(|l| l.kind == super::codec::RecordKind::Resource)
+        else {
+            dropped.push(format!(
+                "resource {} (no registered resource of that name; list it in GameDesc.resources)",
+                r.name
+            ));
+            continue;
+        };
+        let value = migrate(&r.schema, &r.bytes, layout, dropped);
+        let world = eng.world()?;
+        let id = world
+            .id_by_name(&layout.schema)
+            .map_err(|e| e.reason().to_string())?;
+        let base = world.resource_bytes(id).ok();
+        let bytes = layout.encode(base.as_deref(), Some(&value))?;
+        world
+            .insert_resource_bytes(id, &bytes)
+            .map_err(|e| e.reason().to_string())?;
+    }
+    Ok(())
 }

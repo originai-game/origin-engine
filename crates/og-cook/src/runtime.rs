@@ -1731,6 +1731,20 @@ pub struct SceneDesc {
     pub components: Vec<ComponentTable>,
     /// Its named paths (`path "<name>" { ... }`), in file order.
     pub paths: Vec<(String, og_timeline::PathDesc)>,
+    /// The resource fields it sets when instantiated (`resource <Name> {
+    /// ... }`), sorted by name.
+    pub resources: Vec<ResourceTable>,
+}
+
+/// One resource's fields in a scene: `schema` holds only the fields the
+/// text lists (the others keep the world's values) and `bytes` their
+/// packed values.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ResourceTable {
+    pub name: String,
+    pub schema: og_core::Schema,
+    pub inferred: bool,
+    pub bytes: Vec<u8>,
 }
 
 impl SceneDesc {
@@ -1812,12 +1826,44 @@ impl SceneDesc {
                 .map_err(|_| bad("the paths text is not UTF-8".into()))
                 .and_then(|t| og_timeline::parse_paths(t).map_err(bad))?,
         };
+        // Older blobs and scenes without resources have no `resources` table.
+        let mut resources = Vec::new();
+        if blob.section("resources").is_some() {
+            for r in table::<ComponentRow>(blob, "resources")? {
+                let name = s(r.name_offset, r.name_len)?;
+                let json = std::str::from_utf8(blob.raw(&format!("rs.{name}"))?)
+                    .map_err(|_| bad(format!("schema of resource {name} is not UTF-8")))?;
+                let schema = og_core::Schema::from_json(json)
+                    .map_err(|e| bad(format!("schema of resource {name}: {e}")))?;
+                let hash = (r.layout_hash_hi as u64) << 32 | r.layout_hash_lo as u64;
+                if schema.layout_hash() != hash {
+                    return Err(bad(format!(
+                        "schema of resource {name} does not match its layout hash"
+                    )));
+                }
+                let (bytes, _) = blob.rows(&format!("r.{name}"), hash)?;
+                let size = og_core::Layout::of(&schema).size();
+                if bytes.len() < size {
+                    return Err(bad(format!(
+                        "resource {name}: {} bytes for a {size}-byte layout",
+                        bytes.len()
+                    )));
+                }
+                resources.push(ResourceTable {
+                    name,
+                    schema,
+                    inferred: r.inferred != 0,
+                    bytes: bytes[..size].to_vec(),
+                });
+            }
+        }
         Ok(SceneDesc {
             id: id.to_string(),
             name: s(meta.name_offset, meta.name_len)?,
             entities: out,
             components,
             paths,
+            resources,
         })
     }
 }

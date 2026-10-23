@@ -1048,7 +1048,12 @@ impl ProbeApi for NodeHost {
         rt::og_engine_probe_expectations(engine_probe)
     }
 
-    fn og_engine_probe_save_scene(&self, engine_probe: u32, write: Option<bool>) -> String {
-        rt::og_engine_probe_save_scene(engine_probe, write)
+    fn og_engine_probe_save_scene(
+        &self,
+        engine_probe: u32,
+        write: Option<bool>,
+        spawned: Option<bool>,
+    ) -> String {
+        rt::og_engine_probe_save_scene(engine_probe, write, spawned)
     }
 }

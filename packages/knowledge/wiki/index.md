@@ -119,7 +119,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1157 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1158 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1055,6 +1055,7 @@ Field units the docs and Tune use.
 | [`RuntimeProbe.tick`](probe.md#member-RuntimeProbe-tick) | method | probe | `og_runtime_probe_tick` |
 | [`RuntimeProbe.version`](probe.md#member-RuntimeProbe-version) | property | probe | `og_runtime_probe_get_version` |
 | [`SavedScene`](probe.md#type-SavedScene) | struct | probe | — |
+| [`SavedSceneFile`](probe.md#type-SavedSceneFile) | struct | probe | — |
 | [`SaveSlotDesc`](platform.md#type-SaveSlotDesc) | desc struct | platform | — |
 | [`Scheme`](ui.md#type-Scheme) | enum | ui | — |
 | [`ScoreFormat`](ui.md#type-ScoreFormat) | enum | ui | — |

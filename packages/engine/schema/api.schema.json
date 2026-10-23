@@ -9329,7 +9329,8 @@
         "ExpectStatus",
         "ExpectResult",
         "ExpectReport",
-        "SavedScene"
+        "SavedScene",
+        "SavedSceneFile"
       ],
       "consts": [
         {
@@ -9707,14 +9708,21 @@
             },
             {
               "name": "saveScene",
-              "doc": "Write the boot scene back from the world: its entities' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order. The probe writes the file only with write; otherwise the text is returned.",
+              "doc": "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned.",
               "params": [
                 {
                   "name": "write",
                   "type": "bool",
                   "optional": true,
                   "default": false,
-                  "doc": "Replace the scene's source file."
+                  "doc": "Replace each scene's source file."
+                },
+                {
+                  "name": "spawned",
+                  "type": "bool",
+                  "optional": true,
+                  "default": false,
+                  "doc": "Write the entities the game spawned at run time under the boot scene's marked section."
                 }
               ],
               "returns": "Option<SavedScene>",
@@ -32680,7 +32688,7 @@
         "quit": "`quit`: exit.",
         "describe": "`describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera.",
         "expect": "`expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=), `entity:<id>:<path>==<value>` (a field of its dump_entity: `render.lod==2`, `og.Transform.position.y>0`), `timings:<path>==<value>` (state().timings: `triangles<=1500000`). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked, as are an entity's `render.*` fields and the renderer's timings (`triangles`, `render`, `passes`).",
-        "save_scene": "`save_scene[:path]`: write the boot scene's `.ogt` back from the world, only the lines whose values changed (comments and order kept) and the fields set or patch tuned; to the scene's source, or with a path to that file under the output directory.",
+        "save_scene": "`save_scene[:path][:spawned]`: write every scene the world was assembled from back from the world (the boot scene's, then each og.world.instantiate made, each to its own `.ogt`): only the lines whose values changed (comments and order kept), the fields set or patch tuned, and resources as `resource <Name> { }` blocks; with `spawned`, the entities the game spawned at run time under the boot scene's marked section. To each scene's source, or with a path the boot scene's to that file under the output directory and the others beside it.",
         "help": "`help`: list every action the channel knows, core and registered."
       }
     },
@@ -34984,7 +34992,7 @@
     "SavedScene": {
       "x-og-kind": "struct",
       "x-og-module": "probe",
-      "description": "A scene written back from the world.",
+      "description": "The scenes written back from the world: the head is the boot scene's (or the first instantiated one's), `scenes` lists every one.",
       "type": "object",
       "properties": {
         "tick": {
@@ -34995,7 +35003,7 @@
         },
         "source": {
           "type": "string",
-          "description": "The scene's source, project-relative."
+          "description": "The first scene's source, project-relative."
         },
         "written": {
           "type": "string",
@@ -35008,18 +35016,31 @@
             "minimum": 0,
             "maximum": 4294967295
           },
-          "description": "The 1-based lines of the new text that changed or were added."
+          "description": "The 1-based lines of the first scene's new text that changed or were added."
         },
         "skipped": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Tuned fields that were not written, each with its reason: a resource, or an entity the scene did not make."
+          "description": "Tuned fields that were not written, each with its reason: an entity no scene made (without `spawned`), a resource no scene sets where no boot scene takes it."
         },
         "text": {
           "type": "string",
-          "description": "The new text."
+          "description": "The first scene's new text."
+        },
+        "spawned": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Entities written under the boot scene's spawned section (0 without `spawned`)."
+        },
+        "scenes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SavedSceneFile"
+          },
+          "description": "Every scene written back: the boot scene's first, then each og.world.instantiate made, once each."
         }
       },
       "required": [
@@ -35028,6 +35049,44 @@
         "written",
         "lines",
         "skipped",
+        "text",
+        "spawned",
+        "scenes"
+      ],
+      "additionalProperties": false
+    },
+    "SavedSceneFile": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One scene file written back.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Its source, project-relative."
+        },
+        "written": {
+          "type": "string",
+          "description": "Where it was written; empty when only returned."
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "The 1-based lines of its new text that changed or were added."
+        },
+        "text": {
+          "type": "string",
+          "description": "Its new text."
+        }
+      },
+      "required": [
+        "source",
+        "written",
+        "lines",
         "text"
       ],
       "additionalProperties": false
