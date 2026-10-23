@@ -2056,7 +2056,85 @@ These are the checks to use before opening frames. All of them run from
   `clips` 64, `assetBytes` 8 MiB and `totalBytes` 64 MiB, each a default
   a project may move.
 
-## 22. Where to look things up
+## 22. Levels of detail, reflection probes and screen-space reflections
+
+**Levels of detail.** Every model the cook reads is simplified into
+levels: by default `lods 1 0.5 0.25`, each level a fraction of the full
+mesh's triangles. A glTF's own `MSFT_lod` levels are kept instead. Import
+settings change them per model, and `lods 1` keeps only the full mesh:
+
+```
+type import
+version 1
+---
+model {
+  lods 1 0.4 0.15
+  lodError 0.08
+}
+```
+
+`og cook --report` lists each model's triangles per level. The renderer
+draws each `og.Model` entity at the level its size on screen calls for,
+with hysteresis, so nothing flickers at a boundary. `og.Model.lodBias`
+(per entity) and `RenderSettings.lodBias` (the frame) scale that choice:
+2 keeps the full mesh twice as far, and 0 always draws it. Check the
+choice with `debug:lod`, which tints models green, yellow, orange and red
+by level, with `dump_entity:<name>` (`render.lod`), and with the
+triangles in `ProbeTimings.triangles` or `dump_render`. A field of 2,000
+trees draws about 4× fewer triangles with LOD on.
+
+**Reflection probes.** Smooth surfaces reflect the environment map, which
+is the sky. Indoors that is wrong: a chrome sphere in a room would show
+the sky. Put an `og.ReflectionProbe` in the room, and lit surfaces inside
+its box reflect a cube captured from its position instead, box-projected
+so the walls reflect where they are:
+
+```ts
+const probe = must(world.spawn({ name: "hall-probe", position: { x: 0, y: 1.6, z: 0 } }));
+world.insert(probe, og.ReflectionProbe, {
+  size: { x: 10, y: 4.2, z: 10 }, // the room's extents, centred on the entity
+  resolution: 128,                // texels per cube face
+  mode: "baked",                  // or "realtime", every `interval` ticks
+  blendDistance: 0.5,             // fade into the environment at the box's faces
+});
+```
+
+- Choose the probe's mode by what moves in the room:
+  - A `baked` probe is captured once, on its first frame. For a static
+    room, run `og bake probes [project] --commands "0:station:hall"` (the
+    commands reach the scene). It writes the captures into
+    `cooked/probes/`, and runs then load them instead of drawing them.
+    Moving or resizing a probe needs a new bake: until then it draws its
+    own capture.
+  - A `realtime` probe redraws six faces every `interval` ticks. Keep
+    the interval high.
+- Size the box to the room. Where boxes overlap, the smallest one holding
+  an object wins. At most 8 probes (`MAX_REFLECTION_PROBES`) are used,
+  nearest the camera first.
+- `dump_render` lists the frame's probes and whether each was loaded from
+  the cache.
+
+**Screen-space reflections.** On the full tier, `PostEffects.ssr` adds the
+frame's own reflections to smooth surfaces: a wet street, a polished
+floor. They show what is on screen, including moving things:
+
+```ts
+const post = must(world.resource(og.PostEffects));
+post.ssr = true;
+post.ssrMaxDistance = 12; // metres a ray travels
+post.ssrSteps = 48;       // more for long, thin reflections
+post.ssrThickness = 0.3;  // how far behind a surface a ray still hits it
+post.ssrFade = 0.15;      // fade at the screen's edges
+```
+
+SSR is weighted by roughness (`roughness` 0.05 reflects sharply; above
+0.75 it reflects nothing) and by Fresnel. What it misses (off screen,
+behind objects) falls back to the probes and the environment, so use SSR
+together with a probe. WebGL2 draws no SSR: check
+`og.render.capabilities(world).ssr`, and on that tier the probe is the
+whole reflection.
+
+## 23. Where to look things up
 
 `reference/index.md` (the generated wiki shipped with this skill) maps every
 module (grouped by skill, as in §1), type and function to its page, with the IDL text, defaults, ranges
