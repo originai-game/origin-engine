@@ -7,8 +7,8 @@
 // 128,127,125 against 48,44,42, at 640 × 360).
 import { mean, stationPlaytest } from "./station.ts";
 
-export default stationPlaytest("baked", 1, ["light"], ({ t, field, frame }) => {
-  t.equal(field<number>("light", "LightStage", "baked"), 1, "the station draws its baked lighting");
+export default stationPlaytest("baked", 1, ["render-light"], ({ t, field, frame }) => {
+  t.equal(field<number>("render-light", "LightStage", "baked"), 1, "the station draws its baked lighting");
   const [r, g, b] = mean(frame, 472, 340, 488, 580);
   t.ok(r > 1.3 * g && r > 1.3 * b, `the tall block's side takes red from the wall beside it (${r.toFixed(0)},${g.toFixed(0)},${b.toFixed(0)})`);
   const ceiling = mean(frame, 480, 16, 800, 40);

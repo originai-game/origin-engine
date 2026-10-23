@@ -28,7 +28,7 @@ export type LightStation = (typeof LIGHT_STATIONS)[number];
 /** Where each station lives along x. */
 export const LIGHT_ORIGIN: Record<LightStation, number> = { baked: 4000, volumetric: 4100 };
 
-/** The stations' state, on the entity "light". */
+/** The stations' state, on the entity "render-light". */
 export const LightStage = defineComponent("LightStage", {
   /** 1 baked, 2 volumetric, 0 neither (the ball rolls only on 1). */
   active: u32(0),
@@ -47,7 +47,7 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
 
 /** The ball rolls across the Cornell box, side to side. */
 export const LightShow = defineSystem("LightShow", { writes: [LightStage] }, (_q, _time, world) => {
-  const e = world.find("light");
+  const e = world.find("render-light");
   if (e === null) return;
   const s = must(world.get(e, LightStage));
   if (s.active === 0) return;
@@ -63,7 +63,7 @@ let mat: (d: Parameters<typeof og.render.standardMaterial>[1]) => Material;
 /** Prepares the stations; each is built when first shown (showLight). */
 export function buildLight(world: World, k: { mat: typeof mat }): void {
   mat = k.mat;
-  world.insert(must(world.spawn({ name: "light" })), LightStage);
+  world.insert(must(world.spawn({ name: "render-light" })), LightStage);
 }
 
 function buildBaked(world: World): void {
@@ -72,7 +72,7 @@ function buildBaked(world: World): void {
   const sphere = must(og.render.sphereGeometry(world, { radius: 0.2 }));
   const ball = must(world.spawn({ name: "cornell-ball", position: { x: LIGHT_ORIGIN.baked, y: 0.2, z: 0.62 } }));
   world.insert(ball, og.Mesh, { geometry: sphere, material: mat({ color: { r: 0.85, g: 0.85, b: 0.85 }, roughness: 0.7 }), castShadow: true, receiveShadow: true });
-  world.set(world.find("light")!, LightStage, { ball: ball as unknown as number });
+  world.set(world.find("render-light")!, LightStage, { ball: ball as unknown as number });
 }
 
 function buildVolumetric(world: World): void {
@@ -98,7 +98,7 @@ function buildVolumetric(world: World): void {
 }
 
 export function resetLight(world: World): void {
-  const e = world.find("light");
+  const e = world.find("render-light");
   if (e !== null) world.set(e, LightStage, { active: 0 });
   const fog = world.resource(og.Fog);
   if (fog.ok) fog.value.volumetric = false;
@@ -111,7 +111,7 @@ export function resetLight(world: World): void {
 /** `baked:on|off`: the baked lighting drawn, or every scene as if unbaked. */
 export function setBaked(world: World, on: boolean): void {
   must(world.resource(og.RenderSettings)).bakedLighting = on;
-  const e = world.find("light");
+  const e = world.find("render-light");
   if (e !== null) world.set(e, LightStage, { baked: on ? 1 : 0 });
 }
 
@@ -122,7 +122,7 @@ export function showLight(world: World, station: LightStation): void {
     else buildVolumetric(world);
     must(world.spawn({ name: `light-${station}` }));
   }
-  const e = world.find("light")!;
+  const e = world.find("render-light")!;
   world.set(e, LightStage, { active: station === "baked" ? 1 : 2, shown: 0 });
   const cam = must(world.resource(og.Camera));
   const settings = must(world.resource(og.RenderSettings));
