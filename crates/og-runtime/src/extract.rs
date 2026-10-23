@@ -1004,7 +1004,28 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         .enumerate()
         .filter_map(|(i, (_, _, c))| c.map(|texture| og_render::LightCookie { light: i, texture }))
         .collect();
-    scene.lights = locals.into_iter().map(|(_, l, _)| l).collect();
+    scene.lights = locals.iter().map(|(_, l, _)| *l).collect();
+    // Cookies past RenderCapabilities.maxLightCookies layers are not drawn:
+    // the log says which lights shine without theirs.
+    let cookies = og_render::cookie_layers(scene);
+    if !cookies.left_out.is_empty() {
+        let lights: Vec<String> = cookies
+            .left_out
+            .iter()
+            .map(|&i| Entity::from_bits(locals[i].0).to_string())
+            .collect();
+        rs.notes.push(format!(
+            "light cookies: the frame's cookies take {} layers, past RenderCapabilities.maxLightCookies ({}; a SpotLight.cookie takes 1, a PointLight.cookie 6, a texture shared by lights of one kind once); {}: {}",
+            cookies.asked,
+            og_render::MAX_COOKIE_LAYERS,
+            if lights.len() == 1 {
+                "this light shines without its cookie"
+            } else {
+                "these lights shine without theirs"
+            },
+            lights.join(", ")
+        ));
+    }
 
     // The effects games declare: the post stack, shake and 2D lighting,
     // then the effect components.

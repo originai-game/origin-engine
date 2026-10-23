@@ -436,8 +436,12 @@ Baked lighting, volumetrics and area lights (depth S7).
   its uploaded texture, in whatever format was cooked, into layers of the
   local shadow array past the shadow layers. Each texel is packed as an
   8:8:8 integer in the R32Float array, so a cookie takes no texture slot
-  on either tier. At most 24 layers are used: one per spot cookie, six per
-  point cookie.
+  on either tier. At most 24 layers are used (`MAX_COOKIE_LAYERS`,
+  reported as `RenderCapabilities.maxLightCookies`): one per spot cookie,
+  six per point cookie, a texture shared by lights of one kind once.
+  Cookies past them, in their lights' entity order, are not drawn; the
+  frame warns once in the log, naming the lights that shine without
+  theirs (`og_render::cookie_layers`).
 
 ### 2.7 Animation, physics, navigation, audio, UI **(D)**
 

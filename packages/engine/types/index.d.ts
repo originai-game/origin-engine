@@ -6316,6 +6316,10 @@ export interface RenderCapabilities {
    * How Fog.volumetric is drawn on this device: a froxel grid lit by the sun and the clustered point, spot and rect lights (the full tier), or a raymarch of the sun alone along each pixel's view ray (WebGL2).
    */
   readonly volumetricFog: VolumetricFog;
+  /**
+   * The most light cookie layers one frame draws (24 on every tier): a SpotLight.cookie takes one, a PointLight.cookie six (its cube's faces), and a texture several lights of one kind share takes its layers once. Cookies past it, in the order of their lights' entities, are not drawn: those lights shine without them, and the log names them in a warning.
+   */
+  readonly maxLightCookies: number;
 }
 
 /**

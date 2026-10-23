@@ -2300,8 +2300,12 @@ one with an emissive slab for the fixture.
 **Cookies.** `SpotLight.cookie` is a texture projected along the cone,
 like a window's lattice or stained glass. `PointLight.cookie` is six
 square faces stacked top to bottom (+X, -X, +Y, -Y, +Z, -Z), like a
-pierced lantern. A cookie multiplies the light and its colour. At most 24
-cookie layers are drawn: one per spot cookie, six per point cookie.
+pierced lantern. A cookie multiplies the light and its colour. A frame
+draws at most `og.render.capabilities(world).maxLightCookies` (24) cookie
+layers: a spot cookie takes one, a point cookie six, and a texture shared
+by lights of one kind counts once. Past that, the later lights shine
+without their cookies and the log warns, naming them; share cookie
+textures between lanterns to stay under it.
 
 ## 25. Where to look things up
 

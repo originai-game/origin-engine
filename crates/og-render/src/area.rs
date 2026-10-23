@@ -98,26 +98,57 @@ pub(crate) fn cookie_source() -> String {
     format!("{}{}", crate::post::FULLSCREEN_WGSL, wgsl!("cookie.wgsl"))
 }
 
+/// What a scene's cookies take of the [`MAX_COOKIE_LAYERS`] layers
+/// ([`cookie_layers`]): one per distinct spot cookie texture, six per
+/// distinct point cookie texture, in the order of
+/// [`RenderScene::light_cookies`].
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct CookieLayers {
+    /// The layers drawn (at most [`MAX_COOKIE_LAYERS`]).
+    pub drawn: u32,
+    /// The layers every cookie would take.
+    pub asked: u32,
+    /// The lights (by index into [`RenderScene::lights`]) whose cookie did
+    /// not fit: they shine without it.
+    pub left_out: Vec<usize>,
+}
+
+/// The layers this scene's cookies take and the lights whose cookie is left
+/// out past [`MAX_COOKIE_LAYERS`] (a cookie shared by several lights takes
+/// its layers once).
+pub fn cookie_layers(scene: &RenderScene) -> CookieLayers {
+    let mut seen: Vec<(TextureHandle, bool, bool)> = Vec::new();
+    let mut out = CookieLayers::default();
+    for c in &scene.light_cookies {
+        let Some(need) = faces(scene, c) else {
+            continue;
+        };
+        if c.texture.index() >= scene.textures().len() {
+            continue;
+        }
+        let point = need == 6;
+        if let Some(&(.., fits)) = seen.iter().find(|s| s.0 == c.texture && s.1 == point) {
+            if !fits {
+                out.left_out.push(c.light);
+            }
+            continue;
+        }
+        out.asked += need;
+        let fits = out.drawn + need <= MAX_COOKIE_LAYERS as u32;
+        if fits {
+            out.drawn += need;
+        } else {
+            out.left_out.push(c.light);
+        }
+        seen.push((c.texture, point, fits));
+    }
+    out
+}
+
 impl Cookies {
     /// The layers this frame's cookies need.
     pub fn layers(scene: &RenderScene) -> u32 {
-        let mut seen: Vec<(TextureHandle, bool)> = Vec::new();
-        let mut layers = 0u32;
-        for c in &scene.light_cookies {
-            let Some(need) = faces(scene, c) else {
-                continue;
-            };
-            let key = (c.texture, need == 6);
-            if seen.contains(&key) || c.texture.index() >= scene.textures().len() {
-                continue;
-            }
-            if layers + need > MAX_COOKIE_LAYERS as u32 {
-                continue;
-            }
-            seen.push(key);
-            layers += need;
-        }
-        layers
+        cookie_layers(scene).drawn
     }
 
     fn ensure(&mut self, device: &wgpu::Device) {
@@ -367,5 +398,63 @@ mod tests {
         // The first texel of ltc_1 is (1, 0, 0, 2e-5): a, b = 1, 0.
         let a = u16::from_le_bytes([LTC[0], LTC[1]]);
         assert_eq!(a, 0x3c00);
+    }
+
+    /// Four point cookies take 24 layers; a fifth would make 30 and is
+    /// left out, as is a second light sharing its texture; a spot sharing
+    /// a drawn point cookie's texture takes a layer of its own (a spot's
+    /// cookie is one face, a point's six), and fits only before the cap.
+    #[test]
+    fn cookies_past_the_cap_are_counted_and_named() {
+        use crate::scene::{Light, TextureData};
+        let mut scene = RenderScene::new();
+        let texture = |scene: &mut RenderScene| {
+            scene.add_texture(TextureData {
+                width: 2,
+                height: 12,
+                rgba: vec![255; 2 * 12 * 4],
+                ..Default::default()
+            })
+        };
+        let light = |kind| Light {
+            kind,
+            position: glam::Vec3::ZERO,
+            color: glam::Vec3::ONE,
+            intensity: 1.0,
+            range: 5.0,
+            cast_shadows: false,
+        };
+        let point = || light(LightKind::Point);
+        let spot = || {
+            light(LightKind::Spot {
+                direction: glam::Vec3::NEG_Y,
+                angle_degrees: 30.0,
+                penumbra: 0.0,
+            })
+        };
+        let textures: Vec<_> = (0..5).map(|_| texture(&mut scene)).collect();
+        // Lights 0..5 points on textures 0..5, light 5 a point on texture 4,
+        // light 6 a spot on texture 0.
+        for (i, &t) in textures
+            .iter()
+            .chain([&textures[4], &textures[0]])
+            .enumerate()
+        {
+            scene.lights.push(if i == 6 { spot() } else { point() });
+            scene.light_cookies.push(LightCookie {
+                light: i,
+                texture: t,
+            });
+        }
+        let used = cookie_layers(&scene);
+        assert_eq!(
+            used,
+            CookieLayers {
+                drawn: 24,
+                asked: 31,
+                left_out: vec![4, 5, 6],
+            }
+        );
+        assert_eq!(Cookies::layers(&scene), 24);
     }
 }

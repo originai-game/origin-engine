@@ -111,7 +111,7 @@ pub mod gltf;
 #[cfg(not(target_arch = "wasm32"))]
 mod headless;
 
-pub use area::{LightCookie, MAX_COOKIE_LAYERS};
+pub use area::{CookieLayers, LightCookie, MAX_COOKIE_LAYERS, cookie_layers};
 pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
 pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
 pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS, UNIFORM_LIGHT_REFS};
