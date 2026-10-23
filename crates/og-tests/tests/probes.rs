@@ -7,7 +7,8 @@
 use og_render::{RenderDesc, RenderTarget, Renderer, RgbaImage};
 use og_tests::gfx;
 use og_tests::probe_scenes::{
-    Outdoor, SsrFloor, outdoor_scene, posed_figure_scene, ssr_floor_scene, two_rooms_scene,
+    Outdoor, SsrFloor, outdoor_scene, posed_figure_scene, probe_effects_scene, ssr_floor_scene,
+    two_rooms_scene,
 };
 use og_tests::scenes;
 use std::path::PathBuf;
@@ -224,6 +225,35 @@ fn a_capture_draws_skinned_meshes_terrain_grass_and_glass() {
         nz[0] / nz[2].max(1e-3) > 1.5 * nz0[0] / nz0[2].max(1e-3),
         "the red pane over -z: {nz:?} against {nz0:?}"
     );
+}
+
+/// A capture draws what the main pass draws over its opaque scene: the
+/// red world sprite on the probe's -z face, the yellow line loop on its +x
+/// face and the green particles on its -x face. Before the debt round 2 a
+/// capture drew none of them: each face would match the bare meadow's.
+#[test]
+fn a_capture_draws_particles_sprites_and_lines() {
+    let desc = scenes::base_desc();
+    let (_, with) = render(&desc, &probe_effects_scene(true), Some(7));
+    let (_, bare) = render(&desc, &probe_effects_scene(false), Some(7));
+    let (with, bare) = (with.unwrap(), bare.unwrap());
+    let f = |c: &(u32, Vec<f32>), face| face_mean(c, face);
+    let (nz, nz0) = (f(&with, 5), f(&bare, 5));
+    let (px, px0) = (f(&with, 0), f(&bare, 0));
+    let (nx, nx0) = (f(&with, 1), f(&bare, 1));
+    println!("-z {nz:?} / {nz0:?}; +x {px:?} / {px0:?}; -x {nx:?} / {nx0:?}");
+    let share = |c: [f32; 3], k: usize| c[k] / (c[0] + c[1] + c[2]).max(1e-4);
+    let mut failures = Vec::new();
+    if share(nz, 0) < share(nz0, 0) + 0.15 {
+        failures.push(format!("the red sprite on -z: {nz:?} against {nz0:?}"));
+    }
+    if share(px, 2) > share(px0, 2) - 0.08 {
+        failures.push(format!("the yellow lines on +x: {px:?} against {px0:?}"));
+    }
+    if share(nx, 1) < share(nx0, 1) + 0.08 {
+        failures.push(format!("the green particles on -x: {nx:?} against {nx0:?}"));
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
 /// Terrain and grass inside the probe's box are lit by it: with the

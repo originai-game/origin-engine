@@ -392,3 +392,56 @@ pub fn posed_figure_scene(posed: bool) -> RenderScene {
     ));
     scene
 }
+
+/// `probe-outdoor` without its figures and pane, and with (`on`) what the
+/// main pass draws over the opaque scene around the probe: a red world
+/// sprite facing it on its -z side, a yellow line loop on its +x side and a
+/// green particle fountain on its -x side.
+pub fn probe_effects_scene(on: bool) -> RenderScene {
+    let mut scene = outdoor_scene(Outdoor {
+        content: false,
+        probe: Some(1.0),
+    });
+    let p = outdoor_probe();
+    if on {
+        scene.add_sprite(og_render::Sprite {
+            position: p + Vec3::new(0.0, 0.0, -2.5),
+            size: Vec2::new(2.4, 2.4),
+            color: [1.0, 0.08, 0.06, 1.0],
+            ..Default::default()
+        });
+        let c = p + Vec3::new(2.5, 0.0, 0.0);
+        scene.lines.push(og_render::Lines {
+            points: vec![
+                c + Vec3::new(0.0, -0.9, -0.9),
+                c + Vec3::new(0.0, -0.9, 0.9),
+                c + Vec3::new(0.0, 0.9, 0.9),
+                c + Vec3::new(0.0, 0.9, -0.9),
+            ],
+            color: [1.0, 0.9, 0.05, 1.0],
+            mode: og_render::LineMode::Loop,
+            width: 0.35,
+            world_width: true,
+            ..Default::default()
+        });
+        let e = scene.add_emitter(og_render::ParticleEmitter {
+            rate: 200.0,
+            lifetime: [1.4, 1.6],
+            speed: [0.4, 0.6],
+            size: [1.2, 1.5],
+            gravity: Vec3::ZERO,
+            color: [0.1, 0.95, 0.15, 1.0],
+            blend: og_render::ParticleBlend::Alpha,
+            ..Default::default()
+        });
+        scene.particles.push(og_render::ParticleSystem::new(
+            11,
+            e,
+            Mat4::from_translation(p + Vec3::new(-2.5, -0.6, 0.0)),
+            0x7a11,
+            0,
+        ));
+    }
+    crate::fx_scenes::tick_all(&mut scene, 60);
+    scene
+}

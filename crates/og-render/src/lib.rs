@@ -5483,6 +5483,38 @@ impl Renderer {
                     .collect(),
             );
         }
+        // The due probe faces' world sprites, 2D particles and text (every
+        // layer, unlit, without glow: probes.rs), after the views' in the
+        // sprite buffer; built once, as no camera moves them.
+        let face_sprites: Vec<sprites::SpriteRun> = if probe_faces.is_empty() {
+            Vec::new()
+        } else {
+            let f = sprites::build(
+                scene,
+                font,
+                self.cache.textures.len(),
+                array_layers,
+                &particle_frame.sprites,
+                |_| false,
+                None,
+                &[],
+                u32::MAX,
+            )?;
+            let base = sprite_frame.instances.len() as u32;
+            sprite_frame.instances.extend_from_slice(&f.instances);
+            f.runs
+                .into_iter()
+                .map(|mut r| {
+                    if !matches!(
+                        r.source,
+                        RunSource::Strip(..) | RunSource::Mesh(_) | RunSource::Metaballs(_)
+                    ) {
+                        r.first += base;
+                    }
+                    r
+                })
+                .collect()
+        };
         let sprite_frame = sprite_frame;
         for run in sprite_frame
             .runs
@@ -5490,6 +5522,7 @@ impl Renderer {
             .chain(&sprite_frame.glow_runs)
             .chain(view_sprites.iter().flatten())
             .chain(view_glow_runs.iter().flatten())
+            .chain(&face_sprites)
         {
             match run.source {
                 RunSource::Sprite(_, t) => {
@@ -7238,6 +7271,39 @@ impl Renderer {
                 })
             })
             .collect();
+        // Each due probe face's particle and line groups over its own
+        // camera's uniforms (probes.rs); no depth of its own to soften
+        // particles against.
+        let (face_particle_groups, face_line_groups): (Vec<_>, Vec<_>) = probe_faces
+            .iter()
+            .enumerate()
+            .flat_map(|(d, cams)| {
+                let size = active_probes[probe_frame.due[d].1].face_size();
+                let position = active_probes[probe_frame.due[d].1].position;
+                cams.iter().map(move |f| (f, position, size))
+            })
+            .map(|(f, position, size)| {
+                let (particles, lines) =
+                    views::camera_gpu(f, position, (size, size), scene.css_height);
+                let buffer = |label, contents: &[u8]| {
+                    self.device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some(label),
+                            contents,
+                            usage: wgpu::BufferUsages::UNIFORM,
+                        })
+                };
+                let pb = buffer("probe face particles", bytemuck::bytes_of(&particles));
+                let lb = buffer("probe face lines", bytemuck::bytes_of(&lines));
+                (
+                    (!particle_frame.systems.is_empty()).then(|| {
+                        self.particles
+                            .draw_group_of(&self.device, &pb, &self.post.far_depth)
+                    }),
+                    self.lines.view_group(&self.device, &lb),
+                )
+            })
+            .unzip();
         let view_line_groups: Vec<wgpu::BindGroup> = view_plans
             .iter()
             .map(|p| {
@@ -8217,6 +8283,38 @@ impl Renderer {
                                 None,
                                 None,
                             );
+                            // Particles, lines and points, world sprites and
+                            // text, as the main pass draws them over its
+                            // scene (every layer; sprites unlit).
+                            if let Some(group) = &face_particle_groups[k] {
+                                let groups = &self.cache.sprite_groups;
+                                let white = &self.white_sprite_group;
+                                stats.draw_calls += self.particles.draw(
+                                    &mut pass,
+                                    &particle_frame,
+                                    self.samples,
+                                    group,
+                                    u32::MAX,
+                                    |t: Option<TextureHandle>| match t {
+                                        None => white,
+                                        Some(t) => groups[t.index()]
+                                            .as_ref()
+                                            .expect("made before the pass"),
+                                    },
+                                );
+                            }
+                            let n = self.lines.draw_scene_with(
+                                &mut pass,
+                                &line_frame,
+                                &face_line_groups[k],
+                                u32::MAX,
+                            );
+                            if n > 0 {
+                                stats.draw_calls += n;
+                                pass.set_bind_group(0, &face_groups[k], &[]);
+                            }
+                            stats.draw_calls +=
+                                draw_sprites(&mut pass, &face_sprites, glow_fx_group, &[], true);
                         }
                         self.ibl.record_probe_filter(&mut encoder, &s.filter);
                     }

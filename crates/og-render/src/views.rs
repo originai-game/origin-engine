@@ -340,6 +340,39 @@ pub(crate) fn resolve_entry(format: wgpu::TextureFormat, depth: bool) -> &'stati
     }
 }
 
+/// A secondary camera's billboard and line uniforms (a view's, a probe
+/// face's): billboards face it; lines keep their width as a share of the
+/// image (CSS pixels of a frame of its height).
+pub(crate) fn camera_gpu(
+    frame: &CameraFrame,
+    position: Vec3,
+    size: (u32, u32),
+    css_height: f32,
+) -> (
+    crate::particles_gpu::ParticleViewGpu,
+    crate::lines::LineUniform,
+) {
+    let view_t = frame.view.transpose();
+    let (w, h) = (size.0 as f32, size.1 as f32);
+    let particles = crate::particles_gpu::ParticleViewGpu {
+        view_proj: frame.view_proj.to_cols_array_2d(),
+        cam_pos: position.extend(frame.orthographic as u32 as f32).to_array(),
+        cam_forward: frame.forward.extend(0.0).to_array(),
+        cam_right: view_t.x_axis.truncate().extend(0.0).to_array(),
+        cam_up: view_t.y_axis.truncate().extend(0.0).to_array(),
+        screen: [w, h, 1.0 / w, 1.0 / h],
+    };
+    let lines = crate::lines::LineUniform::new(
+        frame.view_proj,
+        frame.proj,
+        size.0,
+        size.1,
+        css_height,
+        false,
+    );
+    (particles, lines)
+}
+
 /// One view's GPU state, kept across frames while the view exists.
 pub(crate) struct ViewSlot {
     pub frame_buffer: wgpu::Buffer,
@@ -691,29 +724,8 @@ impl Views {
                     Some(g)
                 }
             };
-            // Billboards face the view's camera; lines keep their width as a
-            // share of the image (CSS pixels of a frame of the view's height).
-            let view_t = p.frame.view.transpose();
-            let particles = crate::particles_gpu::ParticleViewGpu {
-                view_proj: vp,
-                cam_pos: p
-                    .position
-                    .extend(p.frame.orthographic as u32 as f32)
-                    .to_array(),
-                cam_forward: p.frame.forward.extend(0.0).to_array(),
-                cam_right: view_t.x_axis.truncate().extend(0.0).to_array(),
-                cam_up: view_t.y_axis.truncate().extend(0.0).to_array(),
-                screen: f.screen,
-            };
+            let (particles, lines) = camera_gpu(&p.frame, p.position, p.size, scene.css_height);
             queue.write_buffer(&slot.particle_buffer, 0, bytemuck::bytes_of(&particles));
-            let lines = crate::lines::LineUniform::new(
-                p.frame.view_proj,
-                p.frame.proj,
-                p.size.0,
-                p.size.1,
-                scene.css_height,
-                false,
-            );
             queue.write_buffer(&slot.line_buffer, 0, bytemuck::bytes_of(&lines));
         }
         self.glow_add = add;

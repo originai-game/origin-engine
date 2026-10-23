@@ -284,7 +284,11 @@ S6).
   graph pass before the main pass: the opaque meshes, skinned meshes in
   their current pose, terrain, scattered copies within the box's half
   extent of it, the sky, then transparent meshes sorted back to front from
-  the probe; lit by the sun and every local light, its own reflections
+  the probe, the particle systems (billboards facing each face, through
+  its own `ParticleViewGpu`), scene lines and points and world sprites and
+  text, on every layer (sprites unlit by 2D lights and without glow, soft
+  particles at full strength: a face has no depth to fade against); lit
+  by the sun and every local light, its own reflections
   the environment's (one bounce). It is then copied and GGX-prefiltered like the
   environment (`ibl.rs`). The lit shaders box-project the reflected ray
   onto the probe's box, so a room's walls reflect where they stand, and

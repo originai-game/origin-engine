@@ -4,8 +4,10 @@
 //!
 //! A probe's capture is six 90° views of the scene from its position, drawn
 //! with the lit pipelines into a cube (the sun, the environment, every
-//! local light and the sky; no transparent meshes, skinned meshes or
-//! effects), copied into a radiance cube with mips and GGX-prefiltered into
+//! local light and the sky over the opaque, skinned and transparent
+//! meshes, terrain and scattered copies, then particles, lines and points
+//! and world sprites and text on every layer; `lib.rs`'s probe pass),
+//! copied into a radiance cube with mips and GGX-prefiltered into
 //! [`crate::ENVIRONMENT_MAP_LEVELS`] levels like the environment's own
 //! (`ibl.rs`). A baked probe draws its capture once, the first frame it is
 //! in a scene, unless it brings one ([`ReflectionProbe::baked`], an
