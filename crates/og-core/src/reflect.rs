@@ -82,6 +82,21 @@ impl Scalar {
         }
     }
 
+    /// The single-lane field type of this scalar: a list element read alone
+    /// (`u64` for a handle). A UTF-8 byte is a `str1`.
+    pub const fn field_type(self) -> FieldType {
+        match self {
+            Scalar::F32 => FieldType::F32,
+            Scalar::F64 => FieldType::F64,
+            Scalar::I32 => FieldType::I32,
+            Scalar::U32 => FieldType::U32,
+            Scalar::I64 => FieldType::I64,
+            Scalar::U64 => FieldType::U64,
+            Scalar::Bool => FieldType::Bool,
+            Scalar::Utf8 => FieldType::Str(1),
+        }
+    }
+
     /// Whether a list may hold it: the six number types (a handle is a `u64`).
     pub const fn is_list_element(self) -> bool {
         !matches!(self, Scalar::Bool | Scalar::Utf8)

@@ -403,7 +403,8 @@ fn num(x: f32) -> Value {
 }
 
 /// A field's packed bytes as JSON: numbers, vectors as lists, a bool, an
-/// enum's variant name, text up to its first zero byte.
+/// enum's variant name, text up to its first zero byte, a list field's
+/// elements up to its length.
 pub fn field_json(f: &FieldSchema, b: &[u8]) -> Value {
     match f.ty {
         FieldType::F32 => num(f32_at(b, 0)),
@@ -434,6 +435,12 @@ pub fn field_json(f: &FieldSchema, b: &[u8]) -> Value {
             let end = b.iter().position(|&c| c == 0).unwrap_or(b.len());
             json!(String::from_utf8_lossy(&b[..end]))
         }
+        // The elements up to its length, each as its number type alone.
+        FieldType::List(element, _) => Value::Array(
+            og_core::list_elements(f.ty, b)
+                .map(|e| field_json(&FieldSchema::new("", element.field_type()), e))
+                .collect(),
+        ),
     }
 }
 
@@ -612,4 +619,24 @@ pub fn diff(local: &Snapshot, remote: &Snapshot) -> Value {
         "allocator": allocator,
         "truncated": truncated,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_list_field_reads_as_its_elements_up_to_its_length() {
+        let ty = FieldType::list(og_core::Scalar::U64, 4).unwrap();
+        let f = FieldSchema::new("passes", ty);
+        let (seven, zero) = (7u64.to_le_bytes(), 0u64.to_le_bytes());
+        let two = og_core::pack_list(ty, &[&seven, &zero]).unwrap();
+        assert_eq!(field_json(&f, &two), json!([7, 0]));
+        let none = og_core::pack_list(ty, &[]).unwrap();
+        assert_eq!(field_json(&f, &none), json!([]));
+        let ty = FieldType::list(og_core::Scalar::F32, 2).unwrap();
+        let half = 0.5f32.to_le_bytes();
+        let one = og_core::pack_list(ty, &[&half]).unwrap();
+        assert_eq!(field_json(&FieldSchema::new("w", ty), &one), json!([0.5]));
+    }
 }
