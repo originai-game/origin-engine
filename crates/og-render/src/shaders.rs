@@ -124,6 +124,7 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
         crate::fluid3d::fluid_source(&crate::fluid_shared_source(tables)),
     );
     add("fluid 3d blur", crate::fluid3d::FLUID_BLUR_WGSL.to_string());
+    add("volumetric", crate::volumetric::source(tables, full));
     add(
         "particles",
         crate::particles_gpu::draw_source(crate::FRAME_WGSL),

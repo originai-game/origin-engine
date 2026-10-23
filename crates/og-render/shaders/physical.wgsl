@@ -232,6 +232,13 @@ fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3
   var o: Shade;
   o.diffuse = vec3<f32>(0.0);
   o.specular = vec3<f32>(0.0);
+  if (light.color_kind.w < -0.5) {
+    // A rect light (area.wgsl) on the base lobes.
+    let a = area_shade(light, s, p, n, v);
+    o.diffuse = a.diffuse;
+    o.specular = a.specular;
+    return o;
+  }
   let to_light = light.position_range.xyz - p;
   let d2 = max(dot(to_light, to_light), 1e-4);
   let range = light.position_range.w;
@@ -245,7 +252,7 @@ fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3
     atten *= t * t;
   }
   if (atten <= 0.0 || dot(n, l) <= 0.0) { return o; }
-  var radiance = light.color_kind.rgb * atten;
+  var radiance = light.color_kind.rgb * light_cookie(light, -l) * atten;
   if (receives) { radiance *= local_shadow(light, p, n); }
   let b = physical_brdf(s, k, n, v, l);
   o.diffuse = b.diffuse * radiance;
@@ -425,7 +432,7 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
   // its bent normal (as three.js).
   let f_ibl = f_schlick_roughness(n_dot_v, f0_ibl, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  let irradiance = textureSample(irradiance_map, ibl_sampler, n).rgb;
+  let irradiance = ambient_irradiance(textureSample(irradiance_map, ibl_sampler, n).rgb, in.world_pos, n);
   var bent = n;
   if (physical.anisotropy.x > 0.0) {
     let across = normalize(cross(cross(k.aniso_b, v), k.aniso_b));

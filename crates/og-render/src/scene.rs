@@ -689,6 +689,18 @@ pub enum LightKind {
         angle_degrees: f32,
         penumbra: f32,
     },
+    /// A rectangle of light (three.js `RectAreaLight`, `area.rs`): centred
+    /// on `position`, spanning `±half_width` and `±half_height` (world
+    /// vectors along its sides), emitting `color * intensity` as radiance
+    /// along `-(half_width × half_height)`, and from its back as well when
+    /// `two_sided`. Shaded with linearly transformed cosines; it never
+    /// casts a shadow map (`cast_shadows` is ignored) and fades to zero at
+    /// `range` as the other lights do.
+    Rect {
+        half_width: Vec3,
+        half_height: Vec3,
+        two_sided: bool,
+    },
 }
 
 /// A point or spot light. Its radiance at distance `d` is
@@ -1276,6 +1288,15 @@ pub struct RenderScene {
     pub overlay: Option<Overlay>,
     /// Fog over the main pass (`None`: none).
     pub fog: Option<crate::Fog>,
+    /// Fog lit as a participating medium (`volumetric.rs`; `None`: none).
+    /// It replaces [`RenderScene::fog`] over the frame while it is set.
+    pub volumetric_fog: Option<crate::VolumetricFog>,
+    /// Baked lighting: lightmap pages, the lightmap uvs of the meshes drawn
+    /// with them, light volumes (`lightmap.rs`). Empty by default.
+    pub baked: crate::BakedLighting,
+    /// Light cookies of point and spot lights, by index into
+    /// [`RenderScene::lights`] (`area.rs`).
+    pub light_cookies: Vec<crate::LightCookie>,
     /// Planar 3D water surfaces, drawn after the opaque scene and the sky.
     pub water: Vec<crate::Water>,
     /// Terrains drawn this frame (clipmaps of [`RenderScene::add_terrain`] data).
@@ -1397,6 +1418,9 @@ impl RenderScene {
             skinned_instances: Vec::new(),
             overlay: None,
             fog: None,
+            volumetric_fog: None,
+            baked: crate::BakedLighting::default(),
+            light_cookies: Vec::new(),
             water: Vec::new(),
             terrains: Vec::new(),
             scatters: Vec::new(),

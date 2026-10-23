@@ -36,6 +36,7 @@ macro_rules! wgsl {
     };
 }
 
+mod area;
 mod atmosphere;
 mod blue_noise;
 mod capture;
@@ -57,6 +58,7 @@ mod ibl;
 mod id_pass;
 mod instances;
 mod light2d;
+mod lightmap;
 mod lines;
 mod material;
 mod metaballs;
@@ -88,6 +90,7 @@ mod texture;
 mod texture_array;
 mod upload;
 mod video;
+mod volumetric;
 mod water;
 mod weather;
 
@@ -96,6 +99,7 @@ pub mod gltf;
 #[cfg(not(target_arch = "wasm32"))]
 mod headless;
 
+pub use area::{LightCookie, MAX_COOKIE_LAYERS};
 pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
 pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
 pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS, UNIFORM_LIGHT_REFS};
@@ -115,6 +119,7 @@ pub use hooks::{
     physical_module_source, shadow_module_source,
 };
 pub use id_pass::{IdFrame, IdObject, IdSources, id_pass_size, projection_name, render_ids};
+pub use lightmap::{BakedLighting, LightmapPages, LightmapUvs, PROBE_VOLUMES, Probe, ProbeVolume};
 pub use lines::{LineLayer, LineMode, Lines, wire_edges};
 pub use material::{PhysicalExtensions, Side, StandardMaterial};
 pub use metaballs::{FIELDS, MAX_FLUIDS, Metaballs};
@@ -150,6 +155,7 @@ pub use terrain_tiles::{
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use texture_array::{TextureArrayData, TextureArrayHandle, TextureArrayInfo};
 pub use video::FrameTexture;
+pub use volumetric::{FROXELS, RAYMARCH_STEPS, VolumetricFog, VolumetricMethod};
 pub use water::{Water, Water2d, WaterHeights};
 pub use weather::{
     WEATHER_DUST, WEATHER_MIST, WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW, WeatherLook, weather,
@@ -200,6 +206,10 @@ const PHYSICAL_WGSL: &str = wgsl!("physical.wgsl");
 pub(crate) const INSTANCE_WGSL: &str = wgsl!("instance.wgsl");
 /// The BRDF and the shadow lookups the lit passes share (pbr, terrain, water).
 pub(crate) const LIGHTING_WGSL: &str = wgsl!("lighting.wgsl");
+/// Rect lights and cookies (area.rs), after lighting.wgsl.
+pub(crate) const AREA_WGSL: &str = wgsl!("area.wgsl");
+/// The lightmapped entry points (lightmap.rs), after the standard lit shader.
+const LIGHTMAP_WGSL: &str = wgsl!("lightmap.wgsl");
 
 /// The lit shader's source with `hooks` (`hooks.rs`), the joint palette
 /// read as `palette` and the light tables as `tables`.
@@ -209,10 +219,11 @@ fn lit_source_with(
     tables: clusters::LightTables,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
-        palette.wgsl(3)
+        palette.wgsl(3),
+        lightmap::probe_wgsl(tables)
     )
 }
 
@@ -224,10 +235,11 @@ fn physical_source_with(
     tables: clusters::LightTables,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PHYSICAL_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PHYSICAL_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
-        palette.wgsl(3)
+        palette.wgsl(3),
+        lightmap::probe_wgsl(tables)
     )
 }
 
@@ -1212,6 +1224,8 @@ pub(crate) fn gl_safe_array_layers(layers: u32) -> u32 {
 /// A shadow map: one R32Float array the lit shaders read, a view per layer,
 /// and the depth buffer its passes test against.
 struct ShadowMap {
+    /// The array itself: area.rs writes cookies into its last layers.
+    texture: wgpu::Texture,
     array_view: wgpu::TextureView,
     layers: Vec<wgpu::TextureView>,
     depth: wgpu::TextureView,
@@ -1233,7 +1247,9 @@ impl ShadowMap {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::R32Float,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
         ShadowMap {
@@ -1262,6 +1278,7 @@ impl ShadowMap {
                 wgpu::TextureUsages::RENDER_ATTACHMENT,
             )
             .create_view(&Default::default()),
+            texture,
         }
     }
 }
@@ -1309,6 +1326,15 @@ pub struct Renderer {
     /// The local lights, the cluster table and its light references (`clusters.rs`).
     light_tables: clusters::LightTables,
     light_buffers: [wgpu::Buffer; 3],
+    /// Baked lighting: lightmap pages and uvs, the light volumes' buffer
+    /// (frame binding 10).
+    lightmaps: lightmap::Lightmaps,
+    /// The rect lights' LTC table (frame binding 11).
+    ltc: wgpu::Buffer,
+    /// Light cookies in the local shadow array's last layers.
+    cookies: area::Cookies,
+    /// Volumetric fog (made on first use).
+    volumetric: volumetric::Volumetric,
     clusters: clusters::ClusterBuilder,
     /// The frame uniform of the planar reflection's mirrored camera.
     reflection_buffer: wgpu::Buffer,
@@ -2216,6 +2242,10 @@ impl Renderer {
                 lights_entry,
                 table_entry,
                 refs_entry,
+                // Baked light volumes and the rect lights' LTC table
+                // (lightmap.rs, area.rs): buffers, as the light tables.
+                lightmap::probe_layout_entry(light_tables),
+                area::ltc_layout_entry(),
             ],
         });
         // The sky cube, bound by the sky pass alone: in the frame group it
@@ -2335,6 +2365,12 @@ impl Renderer {
             mapped_at_creation: false,
         });
         let light_buffers = light_tables.buffers(&device);
+        let ltc = area::ltc_buffer(&device);
+        let volumetric = volumetric::Volumetric::new(
+            &device,
+            light_tables,
+            light_tables == clusters::LightTables::Storage,
+        );
         let reflection_light_buffers = light_tables.buffers(&device);
         let reflection_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("frame (planar reflection)"),
@@ -2396,6 +2432,12 @@ impl Renderer {
             })
         };
         let pbr_layout = pipeline_layout("pbr", &[&frame_layout, &material_layout, &fx_layout]);
+        let lightmaps = lightmap::Lightmaps::new(
+            &device,
+            &queue,
+            [&frame_layout, &material_layout, &fx_layout],
+            light_tables,
+        );
         let pbr_skinned_layout = pipeline_layout(
             "pbr skinned",
             &[&frame_layout, &material_layout, &fx_layout, &palette_layout],
@@ -2741,6 +2783,10 @@ impl Renderer {
             frame_buffer,
             light_tables,
             light_buffers,
+            lightmaps,
+            ltc,
+            cookies: area::Cookies::default(),
+            volumetric,
             clusters: clusters::ClusterBuilder::default(),
             reflection_buffer,
             reflection_fx_buffer,
@@ -3908,20 +3954,28 @@ impl Renderer {
     fn grow_local_shadows(&mut self, scene: &RenderScene) {
         let capacity =
             shadows::capacity(self.info.shadowed_lights as usize, self.info.point_shadows);
-        if self.local_map.layers.len() >= capacity {
+        // Cookies take layers past every shadow layer the tier can have
+        // (area.rs), so the array grows to the full capacity with them.
+        let cookies = area::Cookies::layers(scene) as usize;
+        if self.local_map.layers.len() >= capacity + cookies {
             return;
         }
         // At most every shadowed light of the scene's, and the tier's capacity.
-        let needed = scene
-            .lights
-            .iter()
-            .filter(|l| l.cast_shadows)
-            .map(|l| match l.kind {
-                LightKind::Point => self.info.point_shadows.layers(),
-                LightKind::Spot { .. } => 1,
-            })
-            .sum::<usize>()
-            .min(capacity);
+        let needed = if cookies > 0 {
+            capacity + cookies
+        } else {
+            scene
+                .lights
+                .iter()
+                .filter(|l| l.cast_shadows)
+                .map(|l| match l.kind {
+                    LightKind::Point => self.info.point_shadows.layers(),
+                    LightKind::Spot { .. } => 1,
+                    LightKind::Rect { .. } => 0,
+                })
+                .sum::<usize>()
+                .min(capacity)
+        };
         if needed <= self.local_map.layers.len() {
             return;
         }
@@ -3929,7 +3983,7 @@ impl Renderer {
             &self.device,
             "local shadows",
             LOCAL_SHADOW_SIZE,
-            capacity as u32,
+            if cookies > 0 { needed } else { capacity } as u32,
         );
         self.environment = None;
     }
@@ -3989,6 +4043,8 @@ impl Renderer {
             self.light_buffers[0].as_entire_binding(),
             self.light_buffers[1].as_entire_binding(),
             self.light_buffers[2].as_entire_binding(),
+            self.lightmaps.probe_buffer.as_entire_binding(),
+            self.ltc.as_entire_binding(),
         ];
         let group = bind_group(&self.device, "frame", &self.frame_layout, &entries);
         let mut reflected = entries.clone();
@@ -4213,6 +4269,17 @@ impl Renderer {
 
     /// The lit pipeline of a batch (made by [`Renderer::ensure_pipelines`]):
     /// its material shader's or the built-in one, physical or standard.
+    /// Whether a batch draws with its mesh's lightmap (lightmap.rs): a
+    /// lightmapped mesh drawn by a standard material without a material
+    /// shader or array maps, from its f32 vertices.
+    fn lightmapped(lightmaps: &lightmap::Lightmaps, b: &Batch) -> bool {
+        !b.physical
+            && b.shader.is_none()
+            && !b.array
+            && !b.compact
+            && lightmaps.uvs(b.mesh).is_some()
+    }
+
     fn lit_pipeline_of(&self, b: &Batch, skinned: bool, physical: bool) -> &wgpu::RenderPipeline {
         if b.lean && !skinned {
             return &self.lean_pipelines[&(b.side, b.effects, b.derivatives, b.compact)];
@@ -4627,6 +4694,8 @@ impl Renderer {
         self.scene_size(grid.0, grid.1);
         self.grow_local_shadows(scene);
         self.ensure_environment(scene);
+        self.lightmaps
+            .prepare(&self.device, &self.queue, &scene.baked);
         let (mut batches, sorted_instances) = self.build_batches(scene)?;
         let instances::Sorted {
             mut transforms,
@@ -4669,8 +4738,14 @@ impl Renderer {
         // frame's), and the one drawn with a planar reflection (the camera
         // mirrored in it, clipped at the surface by an oblique near plane).
         let under = water::underwater(&scene.water, camera.position);
+        // Volumetric fog replaces the plain fog (volumetric.rs): above
+        // water, for a perspective camera.
+        let volumetric_fog = scene
+            .volumetric_fog
+            .filter(|_| under.is_none() && !cam.orthographic);
         let frame_fog = match under {
             Some(i) => Some(water::underwater_fog(&scene.water[i])),
+            None if volumetric_fog.is_some() => None,
             None => scene.fog,
         };
         let planar = match (under, cam.orthographic) {
@@ -4726,6 +4801,8 @@ impl Renderer {
         // lines pass.
         let ink_depth = scene.stylise.depth_edges();
         let prepass = ao.is_some()
+            // Volumetric fog reads each pixel's depth.
+            || volumetric_fog.is_some()
             || depth_bands.is_some()
             || ink_depth
             || scene.stylise.on_surfaces()
@@ -4751,6 +4828,16 @@ impl Renderer {
             }
         }
         self.ensure_pipelines(&batches, &skinned_batches, prepass);
+        for b in &batches {
+            if Self::lightmapped(&self.lightmaps, b) {
+                self.lightmaps.ensure_pipeline(
+                    &self.device,
+                    &self.pbr_shader,
+                    (b.side, b.blend, b.effects),
+                    self.samples,
+                );
+            }
+        }
         // A pattern in object space: the object pass after the prepass.
         let object_space = prepass && scene.stylise.in_object_space();
         if object_space {
@@ -5038,6 +5125,7 @@ impl Renderer {
                 .map(|l| match l.kind {
                     LightKind::Point => self.info.point_shadows.layers(),
                     LightKind::Spot { .. } => 1,
+                    LightKind::Rect { .. } => 0,
                 })
                 .sum::<usize>()
                 .min(shadows::capacity(
@@ -5250,7 +5338,7 @@ impl Renderer {
             },
             self.light_tables.ref_capacity(),
         );
-        let (lights_gpu, local_shadows, shadowed_dropped) = frame::local_lights(
+        let (mut lights_gpu, local_shadows, shadowed_dropped) = frame::local_lights(
             &scene.lights,
             &self.clusters.kept,
             camera.position,
@@ -5265,6 +5353,30 @@ impl Renderer {
                 .last()
                 .is_none_or(|ls| ls.layer + ls.faces.len() <= self.local_map.layers.len())
         );
+        // Cookies in the local shadow array past its shadow layers (area.rs).
+        let cookie_base =
+            shadows::capacity(self.info.shadowed_lights as usize, self.info.point_shadows) as u32;
+        if !scene.light_cookies.is_empty() && self.local_map.layers.len() as u32 > cookie_base {
+            self.cookies.prepare(
+                &self.queue,
+                scene,
+                &self.local_map.texture,
+                cookie_base,
+                LOCAL_SHADOW_SIZE,
+            );
+            self.cookies
+                .patch(scene, &self.clusters.kept, &mut lights_gpu, cookie_base);
+        }
+        if let Some(fog) = &volumetric_fog {
+            self.volumetric.prepare(
+                &self.device,
+                &self.queue,
+                &self.frame_layout,
+                fog,
+                (self.width, self.height),
+                scene.tick,
+            );
+        }
         if !lights_gpu.is_empty() {
             self.queue
                 .write_buffer(&self.light_buffers[0], 0, bytemuck::cast_slice(&lights_gpu));
@@ -5821,6 +5933,9 @@ impl Renderer {
         }
         if reflection.is_some() {
             passes.push(FramePass::Reflection);
+        }
+        if volumetric_fog.is_some() && self.volumetric.method == VolumetricMethod::Froxel {
+            passes.push(FramePass::Volumetric);
         }
         passes.push(FramePass::Main);
         if depth_bands.is_some() {
@@ -6471,7 +6586,19 @@ impl Renderer {
                             batch.compact,
                             batch.array,
                         );
-                        if *current != Some(key) {
+                        let lightmap = Self::lightmapped(&self.lightmaps, batch)
+                            .then(|| {
+                                self.lightmaps
+                                    .pipeline((batch.side, batch.blend, batch.effects))
+                            })
+                            .flatten();
+                        if let Some(p) = lightmap {
+                            // Lightmapped (lightmap.rs): its pipeline, the
+                            // pages at group 3, its uvs below.
+                            pass.set_pipeline(p);
+                            pass.set_bind_group(3, self.lightmaps.group(), &[]);
+                            *current = None;
+                        } else if *current != Some(key) {
                             pass.set_pipeline(self.lit_pipeline_of(batch, false, physical));
                             *current = Some(key);
                         }
@@ -6534,6 +6661,16 @@ impl Renderer {
                         1,
                         instances.slice(start..start + count as u64 * INSTANCE_STRIDE),
                     );
+                    if lit
+                        && Self::lightmapped(&self.lightmaps, batch)
+                        && let Some(uvs) = self.lightmaps.uvs(batch.mesh)
+                        && self
+                            .lightmaps
+                            .pipeline((batch.side, batch.blend, batch.effects))
+                            .is_some()
+                    {
+                        pass.set_vertex_buffer(2, uvs.slice(..));
+                    }
                     pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
                     match (list.indirect, culled_gpu) {
                         (Some(g), Some(gc)) => {
@@ -7050,6 +7187,18 @@ impl Renderer {
                         stats.reflection_draws += 1;
                     }
                 }
+                FramePass::Volumetric => self.volumetric.encode_froxels(
+                    &self.device,
+                    &mut encoder,
+                    &self.frame_buffer,
+                    &self.cascade_map.array_view,
+                    &self.local_map.array_view,
+                    [
+                        &self.light_buffers[0],
+                        &self.light_buffers[1],
+                        &self.light_buffers[2],
+                    ],
+                ),
                 FramePass::Main => {
                     let clear = match scene.environment.background {
                         Background::Color(c) => wgpu::Color {
@@ -7424,6 +7573,17 @@ impl Renderer {
                         );
                         pass.draw(0..6, 0..run.count);
                         stats.draw_calls += 1;
+                    }
+                    drop(pass);
+                    // Volumetric fog over everything drawn (volumetric.rs).
+                    if volumetric_fog.is_some() {
+                        self.volumetric.encode_apply(
+                            &self.device,
+                            &mut encoder,
+                            frame_bind_group,
+                            self.graph.view("hdr"),
+                            self.graph.view("lindepth"),
+                        );
                     }
                 }
                 FramePass::Glow => {

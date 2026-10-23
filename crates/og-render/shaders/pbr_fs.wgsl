@@ -135,7 +135,8 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  let irradiance = textureSample(irradiance_map, ibl_sampler, n).rgb;
+  // The baked lightmap or light volumes where there are (lightmap.rs).
+  let irradiance = ambient_irradiance(textureSample(irradiance_map, ibl_sampler, n).rgb, in.world_pos, n);
   let diffuse_ibl = irradiance * s.albedo;
   let r = reflect(-v, n);
   let mip = s.roughness * frame.params.y;

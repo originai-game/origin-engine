@@ -1334,6 +1334,8 @@ pub(crate) enum FramePass {
     Fluid3d,
     /// The scene mirrored in a water surface (its planar reflection).
     Reflection,
+    /// Volumetric fog's froxel grid lit and summed (compute; full tier).
+    Volumetric,
     /// Opaque meshes, sky, transparent meshes, particles, strips, sprites
     /// and text into the HDR target.
     Main,
@@ -1407,6 +1409,7 @@ impl FramePass {
             FramePass::Metaballs => "metaballs".into(),
             FramePass::Fluid3d => "fluid-3d".into(),
             FramePass::Reflection => "reflection".into(),
+            FramePass::Volumetric => "volumetric".into(),
             FramePass::Main => "main".into(),
             FramePass::Glow => "glow".into(),
             FramePass::Outline => "outline".into(),
@@ -1541,6 +1544,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         .import("local-shadows")
         .import("output")
         .import("particles")
+        .import("froxels")
         .transient(
             "hdr",
             desc(
@@ -1776,8 +1780,12 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 }
                 g.pass(name, &["cascades", "local-shadows"], &writes)
             }
+            FramePass::Volumetric => g.pass(name, &["cascades", "local-shadows"], &["froxels"]),
             FramePass::Main => {
                 let mut reads = vec!["cascades", "local-shadows"];
+                if has(FramePass::Volumetric) {
+                    reads.push("froxels");
+                }
                 if has(FramePass::AoBlur) {
                     reads.push("ao");
                 }
@@ -2528,6 +2536,7 @@ impl FrameGraph {
             | FramePass::Metaballs
             | FramePass::Fluid3d
             | FramePass::Reflection
+            | FramePass::Volumetric
             | FramePass::Main
             | FramePass::DepthBands
             | FramePass::Glow => 0,
