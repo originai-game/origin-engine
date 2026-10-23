@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 28 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 29 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -37,6 +37,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`tilemap`](tilemap.md) | `og.tilemap.*` | kept | Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component. |
 | [`terrain`](terrain.md) | `og.terrain.*` | kept | Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry. |
 | [`stream`](stream.md) | `og.stream.*` | kept | Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] \| volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures, texture arrays, flipbooks (an `array true` sheet brings its array), sounds, environment maps, palettes, looks and colour LUTs (`.cube`) that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads. |
+| [`debug`](debug.md) | `og.debug.*` | dropped | Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI) so they read in every capture and never hide behind geometry; and the debug views (physics, navigation, bounds) the command channel's `debug:` actions switch. |
 
 ### `og-feel`
 
@@ -114,7 +115,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-910 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+953 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -162,6 +163,7 @@ Field units the docs and Tune use.
 | [`bool()`](reflect.md#column-bool) | column kind | reflect | — |
 | [`BoxGeometryDesc`](render.md#type-BoxGeometryDesc) | desc struct | render | — |
 | [`Breakpoint`](ui.md#type-Breakpoint) | enum | ui | — |
+| [`BufferGeometryDesc`](render.md#type-BufferGeometryDesc) | desc struct | render | — |
 | [`BuildProfile`](probe.md#type-BuildProfile) | enum | probe | — |
 | [`BundleInfo`](load.md#type-BundleInfo) | struct | load | — |
 | [`BurstDesc`](ui.md#type-BurstDesc) | desc struct | ui | — |
@@ -170,6 +172,7 @@ Field units the docs and Tune use.
 | [`Camera.lookAt`](camera.md#member-Camera-lookAt) | method | camera | `og_camera_look_at` |
 | [`Camera.screenToRay`](camera.md#member-Camera-screenToRay) | method | camera | `og_camera_screen_to_ray` |
 | [`Camera.worldToScreen`](camera.md#member-Camera-worldToScreen) | method | camera | `og_camera_world_to_screen` |
+| [`CapsuleGeometryDesc`](render.md#type-CapsuleGeometryDesc) | desc struct | render | — |
 | [`Capture`](probe.md#type-Capture) | struct | probe | — |
 | [`CHARACTER_AIR_JUMPED`](physics.md#const-CHARACTER_AIR_JUMPED) | constant | physics | — |
 | [`CHARACTER_BUMPED`](physics.md#const-CHARACTER_BUMPED) | constant | physics | — |
@@ -180,6 +183,7 @@ Field units the docs and Tune use.
 | [`CheckListResult`](ui.md#type-CheckListResult) | struct | ui | — |
 | [`ChipDesc`](ui.md#type-ChipDesc) | desc struct | ui | — |
 | [`ChoiceResult`](ui.md#type-ChoiceResult) | struct | ui | — |
+| [`CircleGeometryDesc`](render.md#type-CircleGeometryDesc) | desc struct | render | — |
 | [`ClipAsset`](anim.md#type-ClipAsset) | handle | anim | — |
 | [`ClipAsset()`](anim.md#column-ClipAsset) | column kind | anim | — |
 | [`ClipInfo`](anim.md#type-ClipInfo) | struct | anim | — |
@@ -190,6 +194,7 @@ Field units the docs and Tune use.
 | [`CommandInfo`](commands.md#type-CommandInfo) | struct | commands | — |
 | [`CommandsReport`](commands.md#type-CommandsReport) | struct | commands | — |
 | [`CommandStep`](commands.md#type-CommandStep) | struct | commands | — |
+| [`ConeGeometryDesc`](render.md#type-ConeGeometryDesc) | desc struct | render | — |
 | [`ConfirmDesc`](ui.md#type-ConfirmDesc) | desc struct | ui | — |
 | [`ConfirmResult`](ui.md#type-ConfirmResult) | struct | ui | — |
 | [`Contrast`](ui.md#type-Contrast) | enum | ui | — |
@@ -202,6 +207,9 @@ Field units the docs and Tune use.
 | [`Currency`](ui.md#type-Currency) | desc struct | ui | — |
 | [`CutsceneDesc`](ui.md#type-CutsceneDesc) | desc struct | ui | — |
 | [`CutsceneResult`](ui.md#type-CutsceneResult) | struct | ui | — |
+| [`CylinderGeometryDesc`](render.md#type-CylinderGeometryDesc) | desc struct | render | — |
+| [`DebugDrawDesc`](debug.md#type-DebugDrawDesc) | desc struct | debug | — |
+| [`DebugView`](render.md#type-DebugView) | enum | render | — |
 | [`defineComponent`](reflect.md#fn-defineComponent) | function | reflect | `og_reflect_define_component` |
 | [`defineResource`](reflect.md#fn-defineResource) | function | reflect | `og_reflect_define_resource` |
 | [`defineSystem`](system.md#fn-defineSystem) | function | system | `og_system_define_system` |
@@ -275,6 +283,8 @@ Field units the docs and Tune use.
 | [`Generator`](ui.md#type-Generator) | desc struct | ui | — |
 | [`Geometry`](render.md#type-Geometry) | handle | render | — |
 | [`Geometry()`](render.md#column-Geometry) | column kind | render | — |
+| [`GeometryHit`](render.md#type-GeometryHit) | struct | render | — |
+| [`GeometryInfo`](render.md#type-GeometryInfo) | struct | render | — |
 | [`GltfDesc`](load.md#type-GltfDesc) | desc struct | load | — |
 | [`GltfInfo`](load.md#type-GltfInfo) | struct | load | — |
 | [`GraphAsset`](anim.md#type-GraphAsset) | handle | anim | — |
@@ -333,6 +343,9 @@ Field units the docs and Tune use.
 | [`LevelInfo`](ui.md#type-LevelInfo) | desc struct | ui | — |
 | [`LevelSelectDesc`](ui.md#type-LevelSelectDesc) | desc struct | ui | — |
 | [`LevelSelectResult`](ui.md#type-LevelSelectResult) | struct | ui | — |
+| [`LineMode`](render.md#type-LineMode) | enum | render | — |
+| [`LineMode()`](render.md#column-LineMode) | column kind | render | — |
+| [`LinesDesc`](render.md#type-LinesDesc) | desc struct | render | — |
 | [`ListDesc`](ui.md#type-ListDesc) | desc struct | ui | — |
 | [`ListRange`](ui.md#type-ListRange) | struct | ui | — |
 | [`ListResult`](ui.md#type-ListResult) | struct | ui | — |
@@ -436,6 +449,17 @@ Field units the docs and Tune use.
 | [`og.commands.schedule`](commands.md#fn-schedule) | function | commands | `og_commands_schedule` |
 | [`og.Contact`](physics.md#record-Contact) | event | physics | — |
 | [`og.DayNight`](atmosphere.md#record-DayNight) | resource | atmosphere | — |
+| [`og.debug.arrow`](debug.md#fn-arrow) | function | debug | `og_debug_arrow` |
+| [`og.debug.axes`](debug.md#fn-axes) | function | debug | `og_debug_axes` |
+| [`og.debug.box`](debug.md#fn-box) | function | debug | `og_debug_box` |
+| [`og.debug.clear`](debug.md#fn-clear) | function | debug | `og_debug_clear` |
+| [`og.debug.enabled`](debug.md#fn-enabled) | function | debug | `og_debug_enabled` |
+| [`og.debug.line`](debug.md#fn-line) | function | debug | `og_debug_line` |
+| [`og.debug.setEnabled`](debug.md#fn-setEnabled) | function | debug | `og_debug_set_enabled` |
+| [`og.debug.setView`](debug.md#fn-setView) | function | debug | `og_debug_set_view` |
+| [`og.debug.sphere`](debug.md#fn-sphere) | function | debug | `og_debug_sphere` |
+| [`og.debug.text`](debug.md#fn-text) | function | debug | `og_debug_text` |
+| [`og.debug.view`](debug.md#fn-view) | function | debug | `og_debug_view` |
 | [`og.Decal`](render.md#record-Decal) | component | render | — |
 | [`og.DirectionalLight`](render.md#record-DirectionalLight) | component | render | — |
 | [`og.Environment`](render.md#record-Environment) | resource | render | — |
@@ -460,6 +484,7 @@ Field units the docs and Tune use.
 | [`og.KeyUp`](input.md#record-KeyUp) | event | input | — |
 | [`og.Light2D`](render.md#record-Light2D) | component | render | — |
 | [`og.Lighting2D`](render.md#record-Lighting2D) | resource | render | — |
+| [`og.Lines`](render.md#record-Lines) | component | render | — |
 | [`og.load.animation`](load.md#fn-animation) | function | load | `og_load_animation` |
 | [`og.load.bundle`](load.md#fn-bundle) | function | load | `og_load_bundle` |
 | [`og.load.bundleInfo`](load.md#fn-bundleInfo) | function | load | `og_load_bundle_info` |
@@ -554,16 +579,27 @@ Field units the docs and Tune use.
 | [`og.Pointers`](input.md#record-Pointers) | resource | input | — |
 | [`og.PointerUp`](input.md#record-PointerUp) | event | input | — |
 | [`og.PointLight`](render.md#record-PointLight) | component | render | — |
+| [`og.Points`](render.md#record-Points) | component | render | — |
 | [`og.PostEffects`](render.md#record-PostEffects) | resource | render | — |
 | [`og.Ragdoll`](physics.md#record-Ragdoll) | component | physics | — |
 | [`og.render.applyLook`](render.md#fn-applyLook) | function | render | `og_render_apply_look` |
 | [`og.render.boxGeometry`](render.md#fn-boxGeometry) | function | render | `og_render_box_geometry` |
+| [`og.render.bufferGeometry`](render.md#fn-bufferGeometry) | function | render | `og_render_buffer_geometry` |
 | [`og.render.capabilities`](render.md#fn-capabilities) | function | render | `og_render_capabilities` |
+| [`og.render.capsuleGeometry`](render.md#fn-capsuleGeometry) | function | render | `og_render_capsule_geometry` |
+| [`og.render.circleGeometry`](render.md#fn-circleGeometry) | function | render | `og_render_circle_geometry` |
+| [`og.render.coneGeometry`](render.md#fn-coneGeometry) | function | render | `og_render_cone_geometry` |
+| [`og.render.cylinderGeometry`](render.md#fn-cylinderGeometry) | function | render | `og_render_cylinder_geometry` |
 | [`og.render.floatingText`](render.md#fn-floatingText) | function | render | `og_render_floating_text` |
+| [`og.render.geometryInfo`](render.md#fn-geometryInfo) | function | render | `og_render_geometry_info` |
+| [`og.render.lines`](render.md#fn-lines) | function | render | `og_render_lines` |
 | [`og.render.look`](render.md#fn-look) | function | render | `og_render_look` |
 | [`og.render.measureText`](render.md#fn-measureText) | function | render | `og_render_measure_text` |
 | [`og.render.planeGeometry`](render.md#fn-planeGeometry) | function | render | `og_render_plane_geometry` |
+| [`og.render.points`](render.md#fn-points) | function | render | `og_render_points` |
+| [`og.render.raycast`](render.md#fn-raycast) | function | render | `og_render_raycast` |
 | [`og.render.ribbon`](render.md#fn-ribbon) | function | render | `og_render_ribbon` |
+| [`og.render.ringGeometry`](render.md#fn-ringGeometry) | function | render | `og_render_ring_geometry` |
 | [`og.render.setMaterialShader`](render.md#fn-setMaterialShader) | function | render | `og_render_set_material_shader` |
 | [`og.render.setShaderParam`](render.md#fn-setShaderParam) | function | render | `og_render_set_shader_param` |
 | [`og.render.shaderMaterial`](render.md#fn-shaderMaterial) | function | render | `og_render_shader_material` |
@@ -571,6 +607,9 @@ Field units the docs and Tune use.
 | [`og.render.sprite`](render.md#fn-sprite) | function | render | `og_render_sprite` |
 | [`og.render.standardMaterial`](render.md#fn-standardMaterial) | function | render | `og_render_standard_material` |
 | [`og.render.text`](render.md#fn-text) | function | render | `og_render_text` |
+| [`og.render.torusGeometry`](render.md#fn-torusGeometry) | function | render | `og_render_torus_geometry` |
+| [`og.render.tubeGeometry`](render.md#fn-tubeGeometry) | function | render | `og_render_tube_geometry` |
+| [`og.render.updateGeometry`](render.md#fn-updateGeometry) | function | render | `og_render_update_geometry` |
 | [`og.render.updateMaterial`](render.md#fn-updateMaterial) | function | render | `og_render_update_material` |
 | [`og.RenderSettings`](render.md#record-RenderSettings) | resource | render | — |
 | [`og.ReverbZone`](audio.md#record-ReverbZone) | component | audio | — |
@@ -772,6 +811,7 @@ Field units the docs and Tune use.
 | [`Pointers.pressed`](input.md#member-Pointers-pressed) | method | input | `og_pointers_pressed` |
 | [`Pointers.released`](input.md#member-Pointers-released) | method | input | `og_pointers_released` |
 | [`Pointers.start`](input.md#member-Pointers-start) | method | input | `og_pointers_start` |
+| [`PointsDesc`](render.md#type-PointsDesc) | desc struct | render | — |
 | [`PointShadows`](render.md#type-PointShadows) | enum | render | — |
 | [`Presence`](ui.md#type-Presence) | struct | ui | — |
 | [`PROBE_GLOBAL`](probe.md#const-PROBE_GLOBAL) | constant | probe | — |
@@ -806,6 +846,7 @@ Field units the docs and Tune use.
 | [`RagdollRigDesc`](physics.md#type-RagdollRigDesc) | desc struct | physics | — |
 | [`Ray`](math.md#type-Ray) | struct | math | — |
 | [`RaycastDesc`](physics.md#type-RaycastDesc) | desc struct | physics | — |
+| [`RaycastGeometryDesc`](render.md#type-RaycastGeometryDesc) | desc struct | render | — |
 | [`RaycastHit`](physics.md#type-RaycastHit) | struct | physics | — |
 | [`ReloadReport`](probe.md#type-ReloadReport) | struct | probe | — |
 | [`RenderCapabilities`](render.md#type-RenderCapabilities) | struct | render | — |
@@ -821,6 +862,7 @@ Field units the docs and Tune use.
 | [`RichTextDesc`](ui.md#type-RichTextDesc) | desc struct | ui | — |
 | [`RichTextResult`](ui.md#type-RichTextResult) | struct | ui | — |
 | [`Rig`](anim.md#type-Rig) | handle | anim | — |
+| [`RingGeometryDesc`](render.md#type-RingGeometryDesc) | desc struct | render | — |
 | [`Rng.chance`](rng.md#member-Rng-chance) | method | rng | `og_rng_chance` |
 | [`Rng.fork`](rng.md#member-Rng-fork) | method | rng | `og_rng_fork` |
 | [`Rng.integer`](rng.md#member-Rng-integer) | method | rng | `og_rng_integer` |
@@ -970,8 +1012,10 @@ Field units the docs and Tune use.
 | [`Tone`](ui.md#type-Tone) | enum | ui | — |
 | [`ToneMapping`](render.md#type-ToneMapping) | enum | render | — |
 | [`ToneMapping()`](render.md#column-ToneMapping) | column kind | render | — |
+| [`TorusGeometryDesc`](render.md#type-TorusGeometryDesc) | desc struct | render | — |
 | [`TransitionDesc`](ui.md#type-TransitionDesc) | desc struct | ui | — |
 | [`TransitionKind`](ui.md#type-TransitionKind) | enum | ui | — |
+| [`TubeGeometryDesc`](render.md#type-TubeGeometryDesc) | desc struct | render | — |
 | [`TutorialDesc`](ui.md#type-TutorialDesc) | desc struct | ui | — |
 | [`TutorialResult`](ui.md#type-TutorialResult) | struct | ui | — |
 | [`TutorialStep`](ui.md#type-TutorialStep) | desc struct | ui | — |

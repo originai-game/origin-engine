@@ -669,6 +669,84 @@ pub fn og_render_text(env: Env, world: u32, desc: Option<String>) -> String {
     <Host as RenderApi>::og_render_text(&Host, world, desc)
 }
 
+#[napi(js_name = "og_render_buffer_geometry")]
+pub fn og_render_buffer_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_buffer_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_update_geometry")]
+pub fn og_render_update_geometry(env: Env, world: u32, geometry: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_update_geometry(&Host, world, geometry, desc)
+}
+
+#[napi(js_name = "og_render_geometry_info")]
+pub fn og_render_geometry_info(env: Env, world: u32, geometry: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_geometry_info(&Host, world, geometry)
+}
+
+#[napi(js_name = "og_render_cylinder_geometry")]
+pub fn og_render_cylinder_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_cylinder_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_cone_geometry")]
+pub fn og_render_cone_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_cone_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_capsule_geometry")]
+pub fn og_render_capsule_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_capsule_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_torus_geometry")]
+pub fn og_render_torus_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_torus_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_ring_geometry")]
+pub fn og_render_ring_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_ring_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_circle_geometry")]
+pub fn og_render_circle_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_circle_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_tube_geometry")]
+pub fn og_render_tube_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_tube_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_lines")]
+pub fn og_render_lines(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_lines(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_points")]
+pub fn og_render_points(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_points(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_raycast")]
+pub fn og_render_raycast(env: Env, world: u32, ray: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_raycast(&Host, world, ray, desc)
+}
+
 #[napi(js_name = "og_load_bundle")]
 pub fn og_load_bundle(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -1958,4 +2036,81 @@ pub fn og_stream_budget(env: Env, world: u32) -> String {
 pub fn og_stream_set_budget(env: Env, world: u32, bytes: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as StreamApi>::og_stream_set_budget(&Host, world, bytes)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_debug_line")]
+pub fn og_debug_line(env: Env, world: u32, from: String, to: String, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DebugApi>::og_debug_line(&Host, world, from, to, desc)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_debug_box")]
+pub fn og_debug_box(env: Env, world: u32, center: String, size: String, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DebugApi>::og_debug_box(&Host, world, center, size, desc)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_debug_sphere")]
+pub fn og_debug_sphere(env: Env, world: u32, center: String, radius: f64, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DebugApi>::og_debug_sphere(&Host, world, center, radius, desc)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_debug_arrow")]
+pub fn og_debug_arrow(env: Env, world: u32, from: String, to: String, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DebugApi>::og_debug_arrow(&Host, world, from, to, desc)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_debug_axes")]
+pub fn og_debug_axes(env: Env, world: u32, position: String, size: f64, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DebugApi>::og_debug_axes(&Host, world, position, size, desc)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_debug_text")]
+pub fn og_debug_text(env: Env, world: u32, position: String, text: String, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DebugApi>::og_debug_text(&Host, world, position, text, desc)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_debug_clear")]
+pub fn og_debug_clear(env: Env, world: u32) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DebugApi>::og_debug_clear(&Host, world)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_debug_set_view")]
+pub fn og_debug_set_view(env: Env, world: u32, view: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DebugApi>::og_debug_set_view(&Host, world, view)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_debug_view")]
+pub fn og_debug_view(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DebugApi>::og_debug_view(&Host, world)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_debug_set_enabled")]
+pub fn og_debug_set_enabled(env: Env, world: u32, enabled: bool) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DebugApi>::og_debug_set_enabled(&Host, world, enabled)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_debug_enabled")]
+pub fn og_debug_enabled(env: Env, world: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DebugApi>::og_debug_enabled(&Host, world)
 }

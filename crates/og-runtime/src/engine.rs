@@ -1085,6 +1085,10 @@ pub(crate) fn extract_layouts(eng: &Engine) -> (Option<Layout>, Option<Layout>, 
             terrain: get("og.Terrain"),
             scatter: get("og.TerrainScatter"),
             collider: get("og.Collider"),
+            lines: get("og.Lines"),
+            points: get("og.Points"),
+            physics: st.physics.clone(),
+            engine: eng.id,
         },
     )
 }

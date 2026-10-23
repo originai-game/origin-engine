@@ -221,6 +221,7 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
     probe.set_before_tick(Box::new(move |world| {
         if let Ok(eng) = engine(id) {
             super::save::before_tick(&eng, world);
+            super::geometry::before_tick(&eng, world);
         }
     }));
     if let Some(ui) = eng.state.borrow().ui.as_ref() {

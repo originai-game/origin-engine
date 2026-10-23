@@ -172,6 +172,8 @@ pub(crate) struct RenderState {
     pub terrain: super::terrain::TerrainState,
     /// The last frame's hierarchy, kept for its allocations.
     pub hierarchy: Hierarchy,
+    /// Runtime geometry, lines, points, debug draw (`super::geometry`).
+    pub geo: super::geometry::GeoState,
 }
 
 impl RenderState {
@@ -205,6 +207,7 @@ impl RenderState {
             env: Default::default(),
             terrain: Default::default(),
             hierarchy: Hierarchy::default(),
+            geo: Default::default(),
         }
     }
 }
@@ -439,12 +442,12 @@ fn rows(world: &World, layout: &Layout) -> Vec<(u64, Value)> {
 }
 
 /// One `og.Mesh` as extraction reads it.
-struct MeshRow {
-    entity: u64,
+pub(crate) struct MeshRow {
+    pub entity: u64,
     /// Indices into `RenderState::geometries` and `::materials`.
-    geometry: usize,
+    pub geometry: usize,
     material: usize,
-    visible: bool,
+    pub visible: bool,
     flash: f32,
     flash_color: Vec3,
     /// `materialLayer`: the texture-array layer its material reads (-1:
@@ -466,7 +469,7 @@ fn handle_index(bits: u64) -> usize {
 /// mesh field decoded to JSON per row cost about a microsecond natively and
 /// several on wasm: owed row 50); the JSON rows when the columns are not
 /// the IDL's.
-fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
+pub(crate) fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
     let columnar = || -> Option<Vec<MeshRow>> {
         let id = world.id_by_name(&layout.schema).ok()?;
         let field = |n: &str| world.field_by_id(id, n).ok();
@@ -559,6 +562,12 @@ pub(crate) struct DrawLayouts {
     pub scatter: Option<Layout>,
     /// og.Collider: what CPU-simulated particles bounce off.
     pub collider: Option<Layout>,
+    /// og.Lines and og.Points (`super::geometry`).
+    pub lines: Option<Layout>,
+    pub points: Option<Layout>,
+    /// The engine's physics, for the debug view (`super::geometry`).
+    pub physics: Option<og_physics::PhysicsSystem>,
+    pub engine: u32,
 }
 
 /// Rebuild the per-frame part of `rs.scene` from the world as of its tick.
@@ -585,6 +594,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.text_outlines.clear();
     scene.tile_layers.clear();
     scene.trail_layers.clear();
+    scene.lines.clear();
+    scene.points.clear();
     let time = world.time();
     scene.tick = time.tick;
     scene.tick_rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
@@ -893,6 +904,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
 
     // Sprites and ribbons queued this tick.
     super::fx::queued(rs, fresh, vp);
+    // Lines, points and debug draw (after every instance is in, for the
+    // bounds view).
+    super::geometry::extract(world, rs, &mut h, vp);
     super::fx::motion(rs, &keys, tick);
     // Drop shadows over the terrain under their sprites.
     super::terrain::ground_drop_shadows(rs);

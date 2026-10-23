@@ -34,6 +34,7 @@
 pub mod glue;
 mod audio;
 mod host;
+mod host_depth;
 mod host_e6;
 mod host_p2;
 

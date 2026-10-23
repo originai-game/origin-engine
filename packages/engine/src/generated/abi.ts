@@ -227,6 +227,32 @@ export interface HostAbi<A, V> {
   og_render_capabilities(world: number): string;
   /** `og.render.text` */
   og_render_text(world: number, desc: string | undefined): string;
+  /** `og.render.bufferGeometry` */
+  og_render_buffer_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.updateGeometry` */
+  og_render_update_geometry(world: number, geometry: number, desc: string | undefined): string;
+  /** `og.render.geometryInfo` */
+  og_render_geometry_info(world: number, geometry: number): string;
+  /** `og.render.cylinderGeometry` */
+  og_render_cylinder_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.coneGeometry` */
+  og_render_cone_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.capsuleGeometry` */
+  og_render_capsule_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.torusGeometry` */
+  og_render_torus_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.ringGeometry` */
+  og_render_ring_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.circleGeometry` */
+  og_render_circle_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.tubeGeometry` */
+  og_render_tube_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.lines` */
+  og_render_lines(world: number, desc: string | undefined): string;
+  /** `og.render.points` */
+  og_render_points(world: number, desc: string | undefined): string;
+  /** `og.render.raycast` */
+  og_render_raycast(world: number, ray: string, desc: string | undefined): string;
   /** `og.load.bundle` */
   og_load_bundle(world: number, path: string): string;
   /** `og.load.bundleInfo` */
@@ -651,6 +677,28 @@ export interface HostAbi<A, V> {
   og_stream_budget(world: number): string;
   /** `og.stream.setBudget` */
   og_stream_set_budget(world: number, bytes: number): string;
+  /** `og.debug.line` */
+  og_debug_line(world: number, from: string, to: string, desc: string | undefined): void;
+  /** `og.debug.box` */
+  og_debug_box(world: number, center: string, size: string, desc: string | undefined): void;
+  /** `og.debug.sphere` */
+  og_debug_sphere(world: number, center: string, radius: number, desc: string | undefined): void;
+  /** `og.debug.arrow` */
+  og_debug_arrow(world: number, from: string, to: string, desc: string | undefined): void;
+  /** `og.debug.axes` */
+  og_debug_axes(world: number, position: string, size: number, desc: string | undefined): void;
+  /** `og.debug.text` */
+  og_debug_text(world: number, position: string, text: string, desc: string | undefined): void;
+  /** `og.debug.clear` */
+  og_debug_clear(world: number): void;
+  /** `og.debug.setView` */
+  og_debug_set_view(world: number, view: string): void;
+  /** `og.debug.view` */
+  og_debug_view(world: number): string;
+  /** `og.debug.setEnabled` */
+  og_debug_set_enabled(world: number, enabled: boolean): void;
+  /** `og.debug.enabled` */
+  og_debug_enabled(world: number): boolean;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle members. */
@@ -748,6 +796,19 @@ export const SYMBOLS: readonly string[] = [
   "og_render_look",
   "og_render_capabilities",
   "og_render_text",
+  "og_render_buffer_geometry",
+  "og_render_update_geometry",
+  "og_render_geometry_info",
+  "og_render_cylinder_geometry",
+  "og_render_cone_geometry",
+  "og_render_capsule_geometry",
+  "og_render_torus_geometry",
+  "og_render_ring_geometry",
+  "og_render_circle_geometry",
+  "og_render_tube_geometry",
+  "og_render_lines",
+  "og_render_points",
+  "og_render_raycast",
   "og_load_bundle",
   "og_load_bundle_info",
   "og_load_default_bundle",
@@ -960,6 +1021,17 @@ export const SYMBOLS: readonly string[] = [
   "og_stream_release",
   "og_stream_budget",
   "og_stream_set_budget",
+  "og_debug_line",
+  "og_debug_box",
+  "og_debug_sphere",
+  "og_debug_arrow",
+  "og_debug_axes",
+  "og_debug_text",
+  "og_debug_clear",
+  "og_debug_set_view",
+  "og_debug_view",
+  "og_debug_set_enabled",
+  "og_debug_enabled",
   "og_host_set_dispatcher",
   "og_engine_create",
   "og_engine_destroy",

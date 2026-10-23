@@ -1718,6 +1718,14 @@ module render {
     variant catmullRom "A Catmull-Rom filter over 4x4 texels (9 taps): the history stays sharp under camera motion."
   }
 
+  enum DebugView {
+    doc "What the debug overlay shows besides og.debug's draws (og.debug.setView, RenderOptions.debugView, `debug:<view>`), drawn over the finished frame. Streams add views as they add what to show."
+    variant none "Only og.debug's draws."
+    variant physics "The colliders' shapes, joints and contacts as the last physics step left them."
+    variant nav "The navigation grids (blocked cells) and navmeshes (polygon edges), and every og.NavAgent's path."
+    variant bounds "Every drawn mesh's bounds (its geometry's box at its transform)."
+  }
+
   struct RenderOptions {
     doc "How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer."
     desc true
@@ -1734,6 +1742,7 @@ module render {
       max 1
       unit ratio
     }
+    field debugView DebugView "A debug overlay from the first frame (og.debug.setView, the command channel's `debug:<view>`): none in a game, a view while building one. Not in publish builds."
   }
 
   struct StandardMaterialDesc {
@@ -1912,6 +1921,7 @@ module render {
     field mapLayer u32 "The layer of mapArray drawn where the Mesh does not pick one (past the array's last layer: the last)."
     field normalMapArray Option.TextureArray "A tangent-space normal map from layer normalMapLayer of a texture array (linear: cook it with `kind normal`), the counterpart of mapArray."
     field normalMapLayer u32 "The layer of normalMapArray read where the Mesh does not pick one."
+    field wireframe bool "Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in color plus the emissive light, unlit, depth tested; on every tier (lines, not a polygon mode WebGL2 lacks). Its meshes cast no shadow."
   }
 
   component Mesh {
@@ -3371,6 +3381,487 @@ module render {
     param world World "The world whose renderer draws it."
     param desc TextDesc "The font, text, placement and colour."
     returns Result.Void "Refused for a dead font."
+  }
+
+  # ── depth S1: runtime geometry, lines, points, mesh raycast ──────────────
+
+  struct BufferGeometryDesc {
+    doc "Geometry from attribute arrays, as three.js BufferGeometry with its attributes set: one item per vertex in each array, triangles three indices each (or, with no indices, every three vertices)."
+    doc "Missing normals are computed, as three.js computeVertexNormals (each vertex the area-weighted sum of its triangles' normals: shared vertices shade smooth, an unindexed geometry flat); missing tangents are generated when a normal map needs them. An unindexed geometry whose vertex count is not a multiple of three has no triangles: it draws nothing as an og.Mesh and is a vertex set for og.Lines and og.Points."
+    desc true
+    field positions Float32Array "The vertex positions, x y z per vertex (three.js `position`); at least one vertex."
+    field normals Option.Float32Array "Unit normals, x y z per vertex; null computes them."
+    field uvs Option.Float32Array "Texture coordinates, u v per vertex, v down the image (glTF's, as og-render's); null is 0 0."
+    field colors Option.Float32Array "Linear vertex colours, r g b or r g b a per vertex, multiplied into the material's colour (three.js `color` with vertexColors); null is white."
+    field tangents Option.Float32Array "Tangents, x y z w per vertex (glTF's: w the bitangent's sign); null generates them."
+    field indices Option.Uint32Array "Triangles, three vertex indices each, counter-clockwise seen from the front; null takes every three vertices as one."
+    field dynamic bool "Whether og.render.updateGeometry may rewrite it (a mesh made each tick: water, a deforming terrain, a trail of geometry). A static geometry is refused there."
+    field physics bool "Register it as a physics mesh too, so an og.Collider with it as `mesh` (SHAPE_MESH or SHAPE_CONVEX) collides with what is drawn; equivalent to og.physics.setMesh with its positions and indices. An update re-registers it." {
+      default true
+    }
+  }
+
+  struct GeometryInfo {
+    doc "What a geometry holds (og.render.geometryInfo)."
+    field vertices u32 "Vertices."
+    field triangles u32 "Triangles."
+    field min Vector3 "The bounds' least corner in the geometry's own space, as three.js boundingBox.min." {
+      unit m
+    }
+    field max Vector3 "The bounds' greatest corner." {
+      unit m
+    }
+    field dynamic bool "Whether og.render.updateGeometry may rewrite it."
+  }
+
+  fn bufferGeometry {
+    doc "Make a geometry from attribute arrays (three.js BufferGeometry): procedural levels, 2D polygons, meshes a tool made. It draws as any geometry (og.Mesh), its BVH is built for og.render.raycast, and (desc.physics) it is a Collider.mesh at once."
+    param world World "The world whose renderer owns the geometry."
+    param desc BufferGeometryDesc "The attributes."
+    returns Result.Geometry "Refused for an attribute whose length does not fit the vertex count, an index past the vertices, or a number that is not finite (the reason names the attribute)."
+  }
+
+  fn updateGeometry {
+    doc "Rewrite a dynamic geometry's attributes in place (desc as og.render.bufferGeometry's, every attribute given again; `dynamic` and `physics` keep their values from when it was made). The same vertex and index counts rewrite its GPU buffers in place; other counts reallocate them, which costs more and is fine now and then. Its BVH is rebuilt, and its physics mesh re-registered (colliders made from it are rebuilt at the next step). Every og.Mesh, og.Lines and og.Points showing it changes."
+    param world World "The world whose renderer owns the geometry."
+    param geometry Geometry "A geometry og.render.bufferGeometry made with dynamic true."
+    param desc BufferGeometryDesc "The new attributes."
+    returns Result.Void "Refused for a dead or static geometry, or attributes og.render.bufferGeometry refuses."
+  }
+
+  fn geometryInfo {
+    doc "A geometry's counts and bounds."
+    param world World "The world whose renderer owns the geometry."
+    param geometry Geometry "Any geometry: made, a primitive or a loaded glTF's."
+    returns Result.GeometryInfo "Refused for a dead geometry."
+  }
+
+  struct CylinderGeometryDesc {
+    doc "A cylinder (or a truncated cone) along +Y centred at the origin, as three.js CylinderGeometry(radiusTop, radiusBottom, height, radialSegments, heightSegments, openEnded, thetaStart, thetaLength)."
+    desc true
+    field radiusTop f32 "The radius at the top." {
+      default 1
+      min 0
+      unit m
+    }
+    field radiusBottom f32 "The radius at the bottom." {
+      default 1
+      min 0
+      unit m
+    }
+    field height f32 "Its extent along y." {
+      default 1
+      min 0
+      unit m
+    }
+    field radialSegments u32 "Segments around." {
+      default 32
+      min 3
+    }
+    field heightSegments u32 "Rows along the height." {
+      default 1
+      min 1
+    }
+    field openEnded bool "Leave the ends open (no caps)."
+    field thetaStart f32 "Where the side starts around y, from +Z towards +X." {
+      unit rad
+    }
+    field thetaLength f32 "How far around the side goes; 2 pi is whole." {
+      default 6.283185307179586
+      unit rad
+    }
+  }
+
+  struct ConeGeometryDesc {
+    doc "A cone along +Y centred at the origin, its tip up, as three.js ConeGeometry(radius, height, radialSegments, heightSegments, openEnded)."
+    desc true
+    field radius f32 "The base's radius." {
+      default 1
+      min 0
+      unit m
+    }
+    field height f32 "Its extent along y." {
+      default 1
+      min 0
+      unit m
+    }
+    field radialSegments u32 "Segments around." {
+      default 32
+      min 3
+    }
+    field heightSegments u32 "Rows along the height." {
+      default 1
+      min 1
+    }
+    field openEnded bool "Leave the base open."
+  }
+
+  struct CapsuleGeometryDesc {
+    doc "A capsule along +Y centred at the origin, as three.js CapsuleGeometry(radius, height, capSegments, radialSegments, heightSegments): a cylinder of `height` between two hemispheres, `height + 2 radius` long in all (an og.Collider capsule of halfHeight height / 2 and that radius matches it)."
+    desc true
+    field radius f32 "The radius." {
+      default 1
+      min 0
+      unit m
+    }
+    field height f32 "The straight middle's length." {
+      default 1
+      min 0
+      unit m
+    }
+    field capSegments u32 "Rows in each hemisphere." {
+      default 4
+      min 1
+    }
+    field radialSegments u32 "Segments around." {
+      default 8
+      min 3
+    }
+    field heightSegments u32 "Rows along the middle." {
+      default 1
+      min 1
+    }
+  }
+
+  struct TorusGeometryDesc {
+    doc "A torus in the xy plane around +Z, as three.js TorusGeometry(radius, tube, radialSegments, tubularSegments, arc)."
+    desc true
+    field radius f32 "From the centre to the tube's centre." {
+      default 1
+      min 0
+      unit m
+    }
+    field tube f32 "The tube's radius." {
+      default 0.4
+      min 0
+      unit m
+    }
+    field radialSegments u32 "Segments around the tube." {
+      default 12
+      min 2
+    }
+    field tubularSegments u32 "Segments around the ring." {
+      default 48
+      min 3
+    }
+    field arc f32 "How far around the ring goes." {
+      default 6.283185307179586
+      unit rad
+    }
+  }
+
+  struct RingGeometryDesc {
+    doc "A flat ring in the xy plane facing +Z, as three.js RingGeometry(innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength)."
+    desc true
+    field innerRadius f32 "The hole's radius." {
+      default 0.5
+      min 0
+      unit m
+    }
+    field outerRadius f32 "The ring's radius." {
+      default 1
+      min 0
+      unit m
+    }
+    field thetaSegments u32 "Segments around." {
+      default 32
+      min 3
+    }
+    field phiSegments u32 "Rings from the inside out." {
+      default 1
+      min 1
+    }
+    field thetaStart f32 "Where it starts, from +X towards +Y." {
+      unit rad
+    }
+    field thetaLength f32 "How far around it goes." {
+      default 6.283185307179586
+      unit rad
+    }
+  }
+
+  struct CircleGeometryDesc {
+    doc "A disc (or a sector) in the xy plane facing +Z, as three.js CircleGeometry(radius, segments, thetaStart, thetaLength): a 2D polygon's simplest shape."
+    desc true
+    field radius f32 "The radius." {
+      default 1
+      min 0
+      unit m
+    }
+    field segments u32 "Segments around." {
+      default 32
+      min 3
+    }
+    field thetaStart f32 "Where it starts, from +X towards +Y." {
+      unit rad
+    }
+    field thetaLength f32 "How far around it goes." {
+      default 6.283185307179586
+      unit rad
+    }
+  }
+
+  struct TubeGeometryDesc {
+    doc "A tube along a curve through points, as three.js TubeGeometry(new CatmullRomCurve3(points, closed, 'centripetal'), tubularSegments, radius, radialSegments, closed): u runs along it, v around. The points may come from anywhere: a path's samples, a rope's points, a spline a tool made."
+    desc true
+    field points List.Vector3 "The points the curve passes through, in order (at least two)." {
+      unit m
+    }
+    field tubularSegments u32 "Segments along the tube." {
+      default 64
+      min 1
+    }
+    field radius f32 "The tube's radius." {
+      default 1
+      min 0
+      unit m
+    }
+    field radialSegments u32 "Segments around it." {
+      default 8
+      min 3
+    }
+    field closed bool "Join the last point back to the first."
+  }
+
+  fn cylinderGeometry {
+    doc "Make a cylinder geometry for og.Mesh (give its body a cylinder-like Collider: a capsule, a convex Collider.mesh of it, or the geometry itself)."
+    param world World "The world whose renderer owns the geometry."
+    param desc CylinderGeometryDesc "Its radii, height and tessellation."
+    returns Result.Geometry
+  }
+
+  fn coneGeometry {
+    doc "Make a cone geometry for og.Mesh. Physics can use it as a convex Collider.mesh."
+    param world World "The world whose renderer owns the geometry."
+    param desc ConeGeometryDesc "Its radius, height and tessellation."
+    returns Result.Geometry
+  }
+
+  fn capsuleGeometry {
+    doc "Make a capsule geometry for og.Mesh (its body's Collider is a capsule of the same radius and half the height)."
+    param world World "The world whose renderer owns the geometry."
+    param desc CapsuleGeometryDesc "Its radius, length and tessellation."
+    returns Result.Geometry
+  }
+
+  fn torusGeometry {
+    doc "Make a torus geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh."
+    param world World "The world whose renderer owns the geometry."
+    param desc TorusGeometryDesc "Its radii and tessellation."
+    returns Result.Geometry
+  }
+
+  fn ringGeometry {
+    doc "Make a ring geometry for og.Mesh (one-sided: give it a double-sided material to see it from behind)."
+    param world World "The world whose renderer owns the geometry."
+    param desc RingGeometryDesc "Its radii and tessellation."
+    returns Result.Geometry
+  }
+
+  fn circleGeometry {
+    doc "Make a circle geometry for og.Mesh (one-sided, as ringGeometry)."
+    param world World "The world whose renderer owns the geometry."
+    param desc CircleGeometryDesc "Its radius and tessellation."
+    returns Result.Geometry
+  }
+
+  fn tubeGeometry {
+    doc "Make a tube along a curve through points for og.Mesh: pipes, cables, rails, a path shown as a ribbon of geometry. Physics can use it as a triangle-mesh Collider.mesh."
+    param world World "The world whose renderer owns the geometry."
+    param desc TubeGeometryDesc "The points, radius and tessellation."
+    returns Result.Geometry "Refused for fewer than two points or a point that is not finite."
+  }
+
+  enum LineMode {
+    doc "How a line set's points join, as three.js's three line objects."
+    variant strip "One polyline through every point, as three.js Line."
+    variant segments "Pairs of points, each its own segment, as three.js LineSegments."
+    variant loop "A polyline closed back to its first point, as three.js LineLoop."
+  }
+
+  column LineMode {
+    doc "A LineMode field: the variant's index."
+    array Uint32Array
+    stride 1
+    value LineMode
+  }
+
+  struct LinesDesc {
+    doc "Lines through points, drawn this frame only (immediate mode, as og.render.sprite): submit them every tick they should show. three.js Line, LineSegments and LineLoop with a LineBasicMaterial or LineDashedMaterial, but any width on every tier (each segment is a quad in screen space with a feathered edge, so WebGL2's one-pixel lines do not apply)."
+    doc "World lines are drawn in the scene after the transparent meshes and particles, exposed, bloomed and tone mapped with it; screen lines over the finished frame, after every post effect and under the UI."
+    desc true
+    field points List.Vector3 "The points, in order: world positions, or with screen CSS pixels from the top left of the play surface with y down (z ignored)." {
+      unit m
+    }
+    field colors List.Color "Per point linear colours, blended along each segment (three.js vertexColors); empty is `color` for all."
+    field color Color "The linear colour." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+    }
+    field mode LineMode "How the points join."
+    field width f32 "The width: CSS pixels, or world units with worldUnits." {
+      default 1
+      min 0
+    }
+    field worldUnits bool "Measure width in world units (a line that thins with distance) instead of CSS pixels (as wide at any distance)."
+    field depthTest bool "Hidden behind nearer geometry, as three.js Material.depthTest; false draws it over the scene. Screen lines are never depth tested." {
+      default true
+    }
+    field screen bool "Draw in screen space over the finished frame: points in CSS pixels, width in CSS pixels."
+    field dashed bool "Dashes, as three.js LineDashedMaterial: dashSize on, gapSize off, along the line from its first point."
+    field dashSize f32 "A dash's length: world units (CSS pixels for screen lines)." {
+      default 3
+      min 0
+    }
+    field gapSize f32 "A gap's length." {
+      default 1
+      min 0
+    }
+  }
+
+  fn lines {
+    doc "Draw lines this frame. Systems and commands may call it; the list is cleared at every tick, so submit them every tick they should show (og.Lines keeps a static set)."
+    param world World "The world whose renderer draws them."
+    param desc LinesDesc "The points and the look."
+    returns Result.Void "Refused for fewer than two points or a colours list whose length is not the points'."
+  }
+
+  struct PointsDesc {
+    doc "A point cloud drawn this frame only (immediate mode), as three.js Points with a PointsMaterial: a square per point facing the camera. Submit it every tick it should show (og.Points keeps a static set)."
+    desc true
+    field points List.Vector3 "The positions: world, or with screen CSS pixels from the top left, y down." {
+      unit m
+    }
+    field colors List.Color "Per point linear colours; empty is `color` for all."
+    field color Color "The linear colour." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+    }
+    field size f32 "The side of each square: world units with sizeAttenuation, else CSS pixels." {
+      default 1
+      min 0
+    }
+    field sizeAttenuation bool "Size in world units, smaller with distance, as three.js PointsMaterial.sizeAttenuation; false keeps every point `size` CSS pixels." {
+      default true
+    }
+    field depthTest bool "Hidden behind nearer geometry; false draws them over the scene." {
+      default true
+    }
+    field screen bool "Draw in screen space over the finished frame, positions and size in CSS pixels."
+  }
+
+  fn points {
+    doc "Draw a point cloud this frame. Systems and commands may call it; the list is cleared at every tick."
+    param world World "The world whose renderer draws it."
+    param desc PointsDesc "The positions and the look."
+    returns Result.Void "Refused for a colours list whose length is not the points'."
+  }
+
+  component Lines {
+    doc "Draws a geometry's vertices as lines at the entity's MatrixWorld, every frame (three.js Line, LineSegments or LineLoop over a BufferGeometry): a static set of lines kept as data, a level's outline, a track, a constellation. The vertices are taken in order (the geometry's indices are not read), with its vertex colours times color."
+    field geometry Geometry "The vertices (og.render.bufferGeometry: an unindexed one of any count)."
+    field mode LineMode "How the vertices join."
+    field color Color "The linear colour, times the vertex colours." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+      tunable true
+    }
+    field width f32 "CSS pixels, or world units with worldUnits." {
+      default 1
+      min 0
+      tunable true
+    }
+    field worldUnits bool "Width in world units."
+    field depthTest bool "Hidden behind nearer geometry." {
+      default true
+    }
+    field dashSize f32 "Dashes' length in world units along the line; 0 is solid (three.js LineDashedMaterial.dashSize)." {
+      min 0
+    }
+    field gapSize f32 "Gaps' length between dashes." {
+      default 1
+      min 0
+    }
+    field visible bool "Whether it is drawn." {
+      default true
+    }
+  }
+
+  component Points {
+    doc "Draws a geometry's vertices as a point cloud at the entity's MatrixWorld, every frame (three.js Points over a BufferGeometry): star fields, scanned surfaces, sparse markers kept as data. Vertex colours times color."
+    field geometry Geometry "The vertices."
+    field color Color "The linear colour, times the vertex colours." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha." {
+      default 1
+      min 0
+      max 1
+      tunable true
+    }
+    field size f32 "World units with sizeAttenuation, else CSS pixels." {
+      default 1
+      min 0
+      tunable true
+    }
+    field sizeAttenuation bool "Size in world units, smaller with distance." {
+      default true
+    }
+    field depthTest bool "Hidden behind nearer geometry." {
+      default true
+    }
+    field visible bool "Whether it is drawn." {
+      default true
+    }
+  }
+
+  struct RaycastGeometryDesc {
+    doc "Which meshes og.render.raycast tests, as three.js Raycaster's near, far and layers."
+    desc true
+    field maxDistance f32 "How far the ray reaches (three.js Raycaster.far); 0 is unbounded." {
+      min 0
+      unit m
+    }
+    field first bool "Answer only the nearest hit (cheaper: the BVH stops early)."
+    field layers u32 "A bit mask of the layers tested, as three.js Raycaster.layers: an entity's meshes are tested when its layers share a bit with it. Every mesh is on layer 1 (bit 0) until per-object layers land, so the default tests them all." {
+      default 1
+    }
+    field invisible bool "Test meshes whose visible is false too."
+  }
+
+  struct GeometryHit {
+    doc "Where a ray meets a drawn triangle, as three.js Raycaster's intersection."
+    field entity Entity "The og.Mesh's or og.Model's entity."
+    field geometry Geometry "The geometry hit."
+    field distance f32 "From the ray's origin along its normalised direction." {
+      unit m
+    }
+    field point Vector3 "Where, in world space." {
+      unit m
+    }
+    field normal Vector3 "The triangle's face normal in world space (its front side, counter-clockwise), unit length."
+    field uv Vector2 "The texture coordinates there, interpolated."
+    field faceIndex u32 "The triangle's index in the geometry, as three.js faceIndex."
+  }
+
+  fn raycast {
+    doc "Every drawn triangle a ray crosses, nearest first, as three.js Raycaster.intersectObjects: what is drawn, not the colliders (og.physics.raycast answers those). It tests og.Mesh and og.Model entities at their world transforms through a BVH per geometry (built when the geometry is made, loaded or updated), both faces of each triangle, skinned models in their bind pose. Read the world as of the call; inside a system, its transforms as earlier systems left them."
+    param world World "The world asked."
+    param ray Ray "The ray; its direction need not be normalised and must not be zero."
+    param desc RaycastGeometryDesc "Reach, nearest only and layers."
+    returns Result.List.GeometryHit "Refused for a zero or non-finite direction."
   }
 }
 
@@ -11421,5 +11912,107 @@ module stream {
     param world World "The world."
     param bytes f64 "The bytes resident groups may take."
     returns Result.Void "Refused for a negative or non-finite size."
+  }
+}
+
+# ── debug ─────────────────────────────────────────────────────────────────
+
+module debug {
+  skill og-game
+  doc "Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI) so they read in every capture and never hide behind geometry; and the debug views (physics, navigation, bounds) the command channel's `debug:` actions switch."
+  doc "Development only: not in publish builds, where every member does nothing and answers its default, so a game may leave its debug draws in. Debug draw is rendering: it never feeds back into the simulation, and its draws are not world state (a snapshot or a replay does not carry them)."
+  publish false
+
+  struct DebugDrawDesc {
+    doc "How a debug shape looks and how long it lasts."
+    desc true
+    field color Color "The linear colour." {
+      default 1 1 0
+    }
+    field width f32 "Line width in CSS pixels." {
+      default 2
+      min 0
+    }
+    field duration u32 "How many ticks after this one it stays; 0 is this frame only (draw it every tick it should show)." {
+      unit ticks
+    }
+    field rotation Quaternion "The shape's rotation: a box's or a sphere's circles', the axes' frame."
+  }
+
+  fn line {
+    doc "A line from one point to another."
+    param world World "The world drawn in."
+    param from Vector3 "Where it starts."
+    param to Vector3 "Where it ends."
+    param desc DebugDrawDesc "Colour, width, duration."
+  }
+
+  fn box {
+    doc "A box's twelve edges, as three.js Box3Helper (turned by desc.rotation)."
+    param world World "The world drawn in."
+    param center Vector3 "Its centre."
+    param size Vector3 "Its extent along each axis."
+    param desc DebugDrawDesc "Colour, width, duration, rotation."
+  }
+
+  fn sphere {
+    doc "A sphere as its three great circles."
+    param world World "The world drawn in."
+    param center Vector3 "Its centre."
+    param radius f32 "Its radius."
+    param desc DebugDrawDesc "Colour, width, duration, rotation."
+  }
+
+  fn arrow {
+    doc "An arrow from one point to another, its head a fifth of its length (three.js ArrowHelper): a velocity, a force, a direction to a target."
+    param world World "The world drawn in."
+    param from Vector3 "Its tail."
+    param to Vector3 "Its tip."
+    param desc DebugDrawDesc "Colour, width, duration."
+  }
+
+  fn axes {
+    doc "A frame's three axes, as three.js AxesHelper: +x red, +y green, +z blue (desc.color is not read)."
+    param world World "The world drawn in."
+    param position Vector3 "The frame's origin."
+    param size f32 "Each axis's length."
+    param desc DebugDrawDesc "Width, duration and the frame's rotation."
+  }
+
+  fn text {
+    doc "A label anchored at a world point, drawn in screen space at a constant size in the UI's body font (a world with no UI font draws none), centred above the point: an entity's state, a counter, a name."
+    param world World "The world drawn in."
+    param position Vector3 "The point the label sits above."
+    param text String "The label."
+    param desc DebugDrawDesc "Colour and duration (width is the text's size in CSS pixels, 14 where it is 2 or less)."
+  }
+
+  fn clear {
+    doc "Remove every debug draw that is still showing."
+    param world World "The world drawn in."
+  }
+
+  fn setView {
+    doc "Show a debug view besides og.debug's draws (the command channel's `debug:<view>`); none shows the draws alone."
+    param world World "The world drawn in."
+    param view DebugView "The view."
+  }
+
+  fn view {
+    doc "The debug view shown."
+    param world World "The world asked."
+    returns DebugView
+  }
+
+  fn setEnabled {
+    doc "Show or hide every debug draw and view (`debug:on`, `debug:off`); on by default outside publish builds."
+    param world World "The world drawn in."
+    param enabled bool "Whether they show."
+  }
+
+  fn enabled {
+    doc "Whether debug draws and views show."
+    param world World "The world asked."
+    returns bool
   }
 }

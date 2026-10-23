@@ -496,6 +496,15 @@ impl NavSystem {
     pub fn path_of(&self, e: Entity) -> Option<PathState> {
         lock(&self.state).paths.get(&e.to_bits()).cloned()
     }
+
+    /// Every agent's path now, by entity bits (the debug view's `nav`).
+    pub fn paths(&self) -> Vec<(u64, PathState)> {
+        lock(&self.state)
+            .paths
+            .iter()
+            .map(|(e, p)| (*e, p.clone()))
+            .collect()
+    }
 }
 
 /// Registers the records, adds `og.nav` to the schedule (after the game's

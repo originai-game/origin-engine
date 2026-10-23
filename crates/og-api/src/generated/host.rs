@@ -288,6 +288,32 @@ pub trait RenderApi: Wire {
     fn og_render_capabilities(&self, world: u32) -> String;
     /// `og.render.text`
     fn og_render_text(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.bufferGeometry`
+    fn og_render_buffer_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.updateGeometry`
+    fn og_render_update_geometry(&self, world: u32, geometry: f64, desc: Option<String>) -> String;
+    /// `og.render.geometryInfo`
+    fn og_render_geometry_info(&self, world: u32, geometry: f64) -> String;
+    /// `og.render.cylinderGeometry`
+    fn og_render_cylinder_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.coneGeometry`
+    fn og_render_cone_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.capsuleGeometry`
+    fn og_render_capsule_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.torusGeometry`
+    fn og_render_torus_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.ringGeometry`
+    fn og_render_ring_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.circleGeometry`
+    fn og_render_circle_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.tubeGeometry`
+    fn og_render_tube_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.lines`
+    fn og_render_lines(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.points`
+    fn og_render_points(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.raycast`
+    fn og_render_raycast(&self, world: u32, ray: String, desc: Option<String>) -> String;
 }
 
 /// `load`: packages/knowledge/wiki/load.md.
@@ -778,10 +804,36 @@ pub trait StreamApi: Wire {
     fn og_stream_set_budget(&self, world: u32, bytes: f64) -> String;
 }
 
-/// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi {}
+/// `debug`: packages/knowledge/wiki/debug.md.
+pub trait DebugApi: Wire {
+    /// `og.debug.line`
+    fn og_debug_line(&self, world: u32, from: String, to: String, desc: Option<String>);
+    /// `og.debug.box`
+    fn og_debug_box(&self, world: u32, center: String, size: String, desc: Option<String>);
+    /// `og.debug.sphere`
+    fn og_debug_sphere(&self, world: u32, center: String, radius: f64, desc: Option<String>);
+    /// `og.debug.arrow`
+    fn og_debug_arrow(&self, world: u32, from: String, to: String, desc: Option<String>);
+    /// `og.debug.axes`
+    fn og_debug_axes(&self, world: u32, position: String, size: f64, desc: Option<String>);
+    /// `og.debug.text`
+    fn og_debug_text(&self, world: u32, position: String, text: String, desc: Option<String>);
+    /// `og.debug.clear`
+    fn og_debug_clear(&self, world: u32);
+    /// `og.debug.setView`
+    fn og_debug_set_view(&self, world: u32, view: String);
+    /// `og.debug.view`
+    fn og_debug_view(&self, world: u32) -> String;
+    /// `og.debug.setEnabled`
+    fn og_debug_set_enabled(&self, world: u32, enabled: bool);
+    /// `og.debug.enabled`
+    fn og_debug_enabled(&self, world: u32) -> bool;
+}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi> Host for T {}
+/// Every trait: a host is a type that implements all of them.
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + DebugApi {}
+
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + DebugApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -878,6 +930,19 @@ pub const SYMBOLS: &[&str] = &[
     "og_render_look",
     "og_render_capabilities",
     "og_render_text",
+    "og_render_buffer_geometry",
+    "og_render_update_geometry",
+    "og_render_geometry_info",
+    "og_render_cylinder_geometry",
+    "og_render_cone_geometry",
+    "og_render_capsule_geometry",
+    "og_render_torus_geometry",
+    "og_render_ring_geometry",
+    "og_render_circle_geometry",
+    "og_render_tube_geometry",
+    "og_render_lines",
+    "og_render_points",
+    "og_render_raycast",
     "og_load_bundle",
     "og_load_bundle_info",
     "og_load_default_bundle",
@@ -1090,6 +1155,17 @@ pub const SYMBOLS: &[&str] = &[
     "og_stream_release",
     "og_stream_budget",
     "og_stream_set_budget",
+    "og_debug_line",
+    "og_debug_box",
+    "og_debug_sphere",
+    "og_debug_arrow",
+    "og_debug_axes",
+    "og_debug_text",
+    "og_debug_clear",
+    "og_debug_set_view",
+    "og_debug_view",
+    "og_debug_set_enabled",
+    "og_debug_enabled",
 ];
 
 /// One field of an engine-owned record.
@@ -7474,6 +7550,275 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 label: "",
                 doc: "Record new ghosts; false lets the existing ones fade out.",
+                variants: &[],
+                capacity: 0,
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
+        name: "Lines",
+        schema: "og.Lines",
+        fields: &[
+            FieldDecl {
+                name: "geometry",
+                column: "Geometry",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The vertices (og.render.bufferGeometry: an unindexed one of any count).",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "mode",
+                column: "LineMode",
+                default: "\"strip\"",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "How the vertices join.",
+                variants: &["strip", "segments", "loop"],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "color",
+                column: "Color",
+                default: "{\"r\":1,\"g\":1,\"b\":1}",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The linear colour, times the vertex colours.",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "opacity",
+                column: "f32",
+                default: "1",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The alpha.",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "width",
+                column: "f32",
+                default: "1",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "CSS pixels, or world units with worldUnits.",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "worldUnits",
+                column: "bool",
+                default: "false",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Width in world units.",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "depthTest",
+                column: "bool",
+                default: "true",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Hidden behind nearer geometry.",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "dashSize",
+                column: "f32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Dashes' length in world units along the line; 0 is solid (three.js LineDashedMaterial.dashSize).",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "gapSize",
+                column: "f32",
+                default: "1",
+                readonly: false,
+                tunable: false,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Gaps' length between dashes.",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "visible",
+                column: "bool",
+                default: "true",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Whether it is drawn.",
+                variants: &[],
+                capacity: 0,
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
+        name: "Points",
+        schema: "og.Points",
+        fields: &[
+            FieldDecl {
+                name: "geometry",
+                column: "Geometry",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The vertices.",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "color",
+                column: "Color",
+                default: "{\"r\":1,\"g\":1,\"b\":1}",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The linear colour, times the vertex colours.",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "opacity",
+                column: "f32",
+                default: "1",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: Some(1.0),
+                step: None,
+                unit: "",
+                label: "",
+                doc: "The alpha.",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "size",
+                column: "f32",
+                default: "1",
+                readonly: false,
+                tunable: true,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "World units with sizeAttenuation, else CSS pixels.",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "sizeAttenuation",
+                column: "bool",
+                default: "true",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Size in world units, smaller with distance.",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "depthTest",
+                column: "bool",
+                default: "true",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Hidden behind nearer geometry.",
+                variants: &[],
+                capacity: 0,
+            },
+            FieldDecl {
+                name: "visible",
+                column: "bool",
+                default: "true",
+                readonly: false,
+                tunable: false,
+                min: None,
+                max: None,
+                step: None,
+                unit: "",
+                label: "",
+                doc: "Whether it is drawn.",
                 variants: &[],
                 capacity: 0,
             },

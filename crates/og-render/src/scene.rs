@@ -2439,7 +2439,8 @@ impl RenderScene {
     }
 
     /// How many times the mesh at `index` was replaced (or removed).
-    pub(crate) fn mesh_revision(&self, index: usize) -> u64 {
+    /// Bumped by every [`Self::set_mesh`] of the mesh at `index`.
+    pub fn mesh_revision(&self, index: usize) -> u64 {
         self.mesh_revisions.get(index).copied().unwrap_or(0)
     }
 
