@@ -43,7 +43,13 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   let velocity = (cur - prev) * vec2<f32>(0.5, -0.5);
   var o: PrepassTargets;
   o.gbuffer = vec4<f32>(oct_encode(n), velocity);
-  o.depth = vec4<f32>(dot(in.world_pos - frame.view_pos.xyz, frame.view_forward.xyz), 0.0, 0.0, 1.0);
+  // y: the reflectivity screen-space reflections read (ssr.rs): the gloss
+  // and metalness factors in 255ths, the metalness times 256 above; none
+  // for an unlit material (mode bit 2).
+  let unlit = (u32(material.flags.w) & 2u) != 0u;
+  let gloss = select(round((1.0 - clamp(material.mr.y, 0.0, 1.0)) * 255.0), 0.0, unlit);
+  let reflectivity = gloss + 256.0 * round(clamp(material.mr.x, 0.0, 1.0) * 255.0);
+  o.depth = vec4<f32>(dot(in.world_pos - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
   // The material style's outline distance: nearer than it the line grows,
   // up to four times its width (a ground a metre under the camera is not
   // lined 30 px wide), farther it thins in proportion (never for an

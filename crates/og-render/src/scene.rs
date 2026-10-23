@@ -844,6 +844,9 @@ pub struct PostEffects {
     pub film_grain: Option<FilmGrain>,
     /// A full-screen hit flash.
     pub flash: Option<ScreenFlash>,
+    /// Screen-space reflections (the full tier; `None`: off, and WebGL2
+    /// draws none).
+    pub ssr: Option<crate::ScreenSpaceReflections>,
 }
 
 /// A diagnostic view in place of the lit image.

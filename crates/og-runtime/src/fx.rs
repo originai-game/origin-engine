@@ -244,6 +244,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     post.depth_of_field = None;
     post.motion_blur = None;
     post.god_rays = None;
+    post.ssr = None;
     post.glow = None;
     post.color_grading = None;
     post.vignette = None;
@@ -298,6 +299,15 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
                 tint: color(&p["godRaysTint"], Vec3::ONE),
                 samples: u(&p, "godRaysSamples", 48),
                 threshold: f(&p, "godRaysThreshold", 2.0),
+            });
+        }
+        if on(&p, "ssr", false) {
+            post.ssr = Some(og_render::ScreenSpaceReflections {
+                max_distance: f(&p, "ssrMaxDistance", 20.0),
+                thickness: f(&p, "ssrThickness", 0.3),
+                steps: u(&p, "ssrSteps", 32),
+                fade: f(&p, "ssrFade", 0.15),
+                intensity: f(&p, "ssrIntensity", 1.0),
             });
         }
         if on(&p, "glow", false) {

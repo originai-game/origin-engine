@@ -16,7 +16,8 @@ const POST_WGSL: &str = wgsl!("post.wgsl");
 const TAA_WGSL: &str = wgsl!("taa.wgsl");
 const LUMINANCE_WGSL: &str = wgsl!("luminance.wgsl");
 const EXPOSURE_WGSL: &str = wgsl!("exposure.wgsl");
-const FXPOST_WGSL: &str = wgsl!("fxpost.wgsl");
+// Screen-space reflections (ssr.rs) are one more effect pass of the module.
+const FXPOST_WGSL: &str = concat!(wgsl!("fxpost.wgsl"), wgsl!("ssr.wgsl"));
 const FXAA_WGSL: &str = wgsl!("fxaa.wgsl");
 const STYLISE_WGSL: &str = wgsl!("stylise.wgsl");
 
@@ -34,7 +35,9 @@ pub(crate) struct AaOptions {
 
 /// The prepass targets: world normal and velocity, view depth, outline ids.
 pub(crate) const GBUFFER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-pub(crate) const LINDEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+/// r: view depth; g: the surface's reflectivity for screen-space
+/// reflections (`ssr.rs`; the prepass's own, 0 elsewhere).
+pub(crate) const LINDEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Float;
 pub(crate) const OUTLINE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 pub(crate) const AO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 /// The view depth the prepass clears to (sky).
@@ -121,6 +124,8 @@ pub(crate) struct FxPostUniform {
     pub bands: [f32; 4],
     pub bands_near: [f32; 4],
     pub bands_far: [f32; 4],
+    /// Screen-space reflections (`ssr.rs`): `ScreenSpaceReflections::rows`.
+    pub ssr: [[f32; 4]; 2],
 }
 
 /// `struct Stylise` in stylise.wgsl: the post-tonemap stylisation passes'
@@ -445,6 +450,7 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_godrays_mask", HDR_FORMAT),
     ("fs_godrays_blur", HDR_FORMAT),
     ("fs_depth_bands", HDR_FORMAT),
+    ("fs_ssr", HDR_FORMAT),
 ];
 
 impl PostPasses {
@@ -807,7 +813,7 @@ impl PostPasses {
             device,
             queue,
             LINDEPTH_FORMAT,
-            bytemuck::bytes_of(&FAR_DEPTH),
+            bytemuck::bytes_of(&[FAR_DEPTH, 0.0]),
         );
         let white = one_texel(device, queue, AO_FORMAT, &[255]);
         let no_object = one_texel(
@@ -1339,6 +1345,8 @@ pub(crate) enum FramePass {
     /// Opaque meshes, sky, transparent meshes, particles, strips, sprites
     /// and text into the HDR target.
     Main,
+    /// Screen-space reflections over the lit image (`ssr.rs`; the full tier).
+    Ssr,
     /// Glowing sprites into the glow buffer.
     Glow,
     Outline,
@@ -1411,6 +1419,7 @@ impl FramePass {
             FramePass::Probes => "reflection-probes".into(),
             FramePass::Reflection => "reflection".into(),
             FramePass::Main => "main".into(),
+            FramePass::Ssr => "ssr".into(),
             FramePass::Glow => "glow".into(),
             FramePass::Outline => "outline".into(),
             FramePass::Taa => "taa".into(),
@@ -1482,7 +1491,9 @@ fn bloom_name(i: u32) -> String {
 /// pass (and outlines), after TAA (`None`: the history; its sharpening:
 /// `hdr.sharp`), after depth of field and motion blur.
 struct LitNames {
-    /// The lit image after the main pass and the depth bands.
+    /// The lit image after the main pass and screen-space reflections.
+    base: &'static str,
+    /// The lit image after the main pass, reflections and the depth bands.
     lit: &'static str,
     main: &'static str,
     /// `None` when TAA writes the history and nothing sharpens it.
@@ -1493,10 +1504,15 @@ struct LitNames {
 
 fn lit_names(passes: &[FramePass]) -> LitNames {
     let has = |p| passes.contains(&p);
+    let base = if has(FramePass::Ssr) {
+        "hdr.ssr"
+    } else {
+        "hdr"
+    };
     let lit = if has(FramePass::DepthBands) {
         "hdr.bands"
     } else {
-        "hdr"
+        base
     };
     let main = if has(FramePass::Outline) {
         "hdr.outline"
@@ -1519,6 +1535,7 @@ fn lit_names(passes: &[FramePass]) -> LitNames {
         after_dof
     };
     LitNames {
+        base,
         lit,
         main,
         aa,
@@ -1679,6 +1696,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     if has(FramePass::DepthBands) {
         g.transient("hdr.bands", desc(w, h, HDR_FORMAT, 1, attach_bind));
     }
+    if has(FramePass::Ssr) {
+        g.transient("hdr.ssr", desc(w, h, HDR_FORMAT, 1, attach_bind));
+    }
     for (pass, name) in [
         (FramePass::Outline, "hdr.outline"),
         (FramePass::TaaSharpen, "hdr.sharp"),
@@ -1814,7 +1834,8 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 g.pass(name, &reads, &writes)
             }
             FramePass::Glow => g.pass(name, &[], &["glow"]),
-            FramePass::DepthBands => g.pass(name, &["hdr", "lindepth"], &["hdr.bands"]),
+            FramePass::Ssr => g.pass(name, &["hdr", "lindepth", "gbuffer"], &["hdr.ssr"]),
+            FramePass::DepthBands => g.pass(name, &[names.base, "lindepth"], &["hdr.bands"]),
             FramePass::Outline => g.pass(
                 name,
                 &[names.lit, "gbuffer", "lindepth", "outline-id"],
@@ -2301,7 +2322,8 @@ impl FrameGraph {
             let groups = match p {
                 FramePass::Ao => pair(&|_| fx_group(black, black)),
                 FramePass::AoBlur => pair(&|_| fx_group(black, self.view("ao.raw"))),
-                FramePass::DepthBands => pair(&|_| fx_group(self.view("hdr"), black)),
+                FramePass::Ssr => pair(&|_| fx_group(self.view("hdr"), black)),
+                FramePass::DepthBands => pair(&|_| fx_group(self.view(names.base), black)),
                 FramePass::Outline => {
                     pair(&|_| fx_group(self.view(names.lit), self.view("outline-id")))
                 }
@@ -2360,6 +2382,7 @@ impl FrameGraph {
             FramePass::GodRaysMask => Some(("fs_godrays_mask", "god.mask")),
             FramePass::GodRaysBlur => Some(("fs_godrays_blur", "god.blur")),
             FramePass::DepthBands => Some(("fs_depth_bands", "hdr.bands")),
+            FramePass::Ssr => Some(("fs_ssr", "hdr.ssr")),
             _ => None,
         };
         if let Some((entry, target)) = effect {
@@ -2536,6 +2559,7 @@ impl FrameGraph {
             | FramePass::Reflection
             | FramePass::Main
             | FramePass::DepthBands
+            | FramePass::Ssr
             | FramePass::Glow => 0,
         }
     }
@@ -2575,6 +2599,7 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
         "ldr.3",
         "ldr.4",
         "hdr.bands",
+        "hdr.ssr",
         "hdr.sharp",
         "hdr.outline",
         "hdr.dof",

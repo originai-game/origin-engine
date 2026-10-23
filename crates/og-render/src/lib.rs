@@ -60,9 +60,11 @@ mod light2d;
 mod lines;
 pub mod lod;
 mod probes;
+mod ssr;
 pub use probes::{
     MAX_REFLECTION_PROBES, PROBE_MAX_RESOLUTION, PROBE_MIN_RESOLUTION, ProbeMode, ReflectionProbe,
 };
+pub use ssr::ScreenSpaceReflections;
 mod material;
 mod metaballs;
 mod mips;
@@ -4747,7 +4749,13 @@ impl Renderer {
         // pass, a canvas, hatching or halftone on surfaces in the paint or
         // lines pass.
         let ink_depth = scene.stylise.depth_edges();
+        // Screen-space reflections: the full tier's (WebGL2 shows the
+        // probes and the environment), read from the prepass (ssr.rs).
+        let ssr = post_fx
+            .ssr
+            .filter(|s| s.intensity > 0.0 && self.info.tier == Tier::Full);
         let prepass = ao.is_some()
+            || ssr.is_some()
             || depth_bands.is_some()
             || ink_depth
             || scene.stylise.on_surfaces()
@@ -5808,6 +5816,7 @@ impl Renderer {
             bands_far: depth_bands.map_or([0.0; 4], |b| {
                 [b.far_color[0], b.far_color[1], b.far_color[2], 1.0]
             }),
+            ssr: ssr::ScreenSpaceReflections::rows(ssr.as_ref()),
         };
         self.queue
             .write_buffer(&self.post.fx_buffer, 0, bytemuck::bytes_of(&fxp));
@@ -5893,6 +5902,9 @@ impl Renderer {
             passes.push(FramePass::Reflection);
         }
         passes.push(FramePass::Main);
+        if ssr.is_some() {
+            passes.push(FramePass::Ssr);
+        }
         if depth_bands.is_some() {
             passes.push(FramePass::DepthBands);
         }
