@@ -425,7 +425,7 @@ dependencies = [
 
 [[package]]
 name = "og-anim"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "glam 0.34.1",
  "og-core",
@@ -435,7 +435,7 @@ dependencies = [
 
 [[package]]
 name = "og-core"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "bytemuck",
  "glam 0.34.1",
@@ -447,7 +447,7 @@ dependencies = [
 
 [[package]]
 name = "og-core-derive"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -456,7 +456,7 @@ dependencies = [
 
 [[package]]
 name = "og-ecs"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "bytemuck",
  "og-core",
@@ -464,7 +464,7 @@ dependencies = [
 
 [[package]]
 name = "og-lanes"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "rayon",
  "wasm-bindgen",
@@ -473,7 +473,7 @@ dependencies = [
 
 [[package]]
 name = "og-physics"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "bincode",
  "glam 0.34.1",

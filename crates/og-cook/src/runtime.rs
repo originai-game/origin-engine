@@ -2358,6 +2358,7 @@ impl Bundle {
         })
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn load_lightmap(&self, id: &str) -> Result<CookedLightmap, LoadError> {
         self.lightmap(id, &self.read(id)?)
     }

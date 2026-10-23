@@ -320,8 +320,14 @@ pub fn pages_from_ktx2(bytes: &[u8]) -> Result<(u32, u32, Vec<Vec<u16>>), String
     let (width, height) = (word(20)?, word(24)?);
     let layers = word(32)?.max(1);
     let supercompression = word(44)?;
-    let offset = word(80)? as usize | (word(84)? as usize) << 32;
-    let length = word(88)? as usize | (word(92)? as usize) << 32;
+    // Level 0's byte offset and length are u64 in the file; a usize on
+    // wasm32 is 32 bits, so they are read as u64 and then fitted.
+    let u64_at = |at: usize| -> Result<usize, String> {
+        let v = u64::from(word(at)?) | u64::from(word(at + 4)?) << 32;
+        usize::try_from(v).map_err(|_| "the level does not fit in memory".to_string())
+    };
+    let offset = u64_at(80)?;
+    let length = u64_at(88)?;
     let stored = bytes
         .get(offset..offset + length)
         .ok_or("the level is cut short")?;
