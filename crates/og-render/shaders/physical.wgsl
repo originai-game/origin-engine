@@ -410,12 +410,19 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
     diffuse += (1.0 - shadow) * frame.shadow_tint.rgb * frame.shadow_tint.w * s.albedo * frame.light_color.rgb * n_dot_l;
   }
 
-  if (frame.params.z > 0.5) {
+  if (frame.params.z > 0.5 && frame.cluster.x > 0.0) {
     let word = cluster_word(cluster_at(in.clip.xy, in.world_pos));
     let first = word & 0xffffffu;
     let count = word >> 24u;
     for (var c = 0u; c < count; c++) {
       let o = physical_local(light_list[cluster_ref(first + c)], s, k, in.world_pos, n, v, receives);
+      diffuse += o.diffuse;
+      specular += o.specular;
+    }
+  } else if (frame.params.z > 0.5) {
+    // A reflection probe's capture (probes.rs) has no clusters: every light.
+    for (var c = 0u; c < u32(frame.params.z); c++) {
+      let o = physical_local(light_list[c], s, k, in.world_pos, n, v, receives);
       diffuse += o.diffuse;
       specular += o.specular;
     }
@@ -425,7 +432,7 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
   // its bent normal (as three.js).
   let f_ibl = f_schlick_roughness(n_dot_v, f0_ibl, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  let irradiance = textureSample(irradiance_map, ibl_sampler, n).rgb;
+  let irradiance = ambient_light(n, in.world_pos);
   var bent = n;
   if (physical.anisotropy.x > 0.0) {
     let across = normalize(cross(cross(k.aniso_b, v), k.aniso_b));
@@ -433,7 +440,7 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
     bent = normalize(mix(across, n, w * w * w * w));
   }
   let r = reflect(-v, bent);
-  let prefiltered = textureSampleLevel(prefiltered_map, ibl_sampler, r, s.roughness * frame.params.y).rgb;
+  let prefiltered = reflected_light(r, in.world_pos, s.roughness * frame.params.y);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let env_brdf = f_ibl * lut.x + lut.y;
   let ao_sample = maps.b;
@@ -453,7 +460,7 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
     let c_dot_v = max(dot(s.coat_normal, v), 1e-4);
     let fc = f_schlick(c_dot_v, vec3<f32>(0.04)).x * s.coat;
     let rc = reflect(-v, s.coat_normal);
-    let coat_env = textureSampleLevel(prefiltered_map, ibl_sampler, rc, s.coat_roughness * frame.params.y).rgb;
+    let coat_env = reflected_light(rc, in.world_pos, s.coat_roughness * frame.params.y);
     let coat_lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness), 0.0).rg;
     coat_keep = 1.0 - fc;
     coat_ibl = coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat;

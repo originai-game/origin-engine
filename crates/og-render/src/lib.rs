@@ -59,6 +59,10 @@ mod instances;
 mod light2d;
 mod lines;
 pub mod lod;
+mod probes;
+pub use probes::{
+    MAX_REFLECTION_PROBES, PROBE_MAX_RESOLUTION, PROBE_MIN_RESOLUTION, ProbeMode, ReflectionProbe,
+};
 mod material;
 mod metaballs;
 mod mips;
@@ -1351,6 +1355,8 @@ pub struct Renderer {
     metaballs: metaballs::MetaballRenderer,
     /// The image-based light, regenerated into the same textures for a new sky.
     ibl: ibl::IblGenerator,
+    /// Reflection probes' cubes and frame uniforms (`probes.rs`).
+    probes: probes::Probes,
     sprite_pipeline: Deferred<wgpu::RenderPipeline>,
     sprite_additive_pipeline: Deferred<wgpu::RenderPipeline>,
     /// Alpha-blended sprites kept out of the tone curve, and the cover
@@ -2728,6 +2734,7 @@ impl Renderer {
             clock: None,
             pass_ms: Vec::new(),
             cull_inside: Vec::new(),
+            probes: probes::Probes::default(),
             sorted: instances::SortedInstances::default(),
             post,
             cascade_map,
@@ -4628,6 +4635,20 @@ impl Renderer {
         self.scene_size(grid.0, grid.1);
         self.grow_local_shadows(scene);
         self.ensure_environment(scene);
+        let probe_frame = self.probes.prepare(
+            &self.device,
+            &self.queue,
+            &self.ibl,
+            &scene.reflection_probes,
+            scene.tick,
+            self.samples,
+            |h| {
+                self.cache
+                    .environment_maps
+                    .get(h.index())
+                    .is_some_and(Option::is_some)
+            },
+        );
         let (mut batches, sorted_instances) = self.build_batches(scene)?;
         let instances::Sorted {
             mut transforms,
@@ -5129,6 +5150,35 @@ impl Renderer {
                 .0
             }
         });
+        // Reflection probes: the batch each samples, and the captures due
+        // this frame, culled per face.
+        let active_probes: Vec<ReflectionProbe> = probe_frame.active.iter().map(|a| a.0).collect();
+        let batch_probes = probes::assign(
+            batches.iter().map(|b| (b.first, b.count)),
+            &spheres,
+            &active_probes,
+        );
+        let probe_faces: Vec<[frame::CameraFrame; 6]> = probe_frame
+            .due
+            .iter()
+            .map(|&(_, i)| probes::face_frames(&camera, active_probes[i].position, camera.far))
+            .collect();
+        let mut probe_lists: Vec<DrawList> = Vec::new();
+        for f in probe_faces.iter().flatten() {
+            let frustum = Frustum::from_view_proj(f.view_proj);
+            probe_lists.push(
+                self.cull(
+                    &batches,
+                    &spheres,
+                    &mut transforms,
+                    &mut origins,
+                    &mut cull_inside,
+                    &frustum,
+                    |b| !b.transparent,
+                )
+                .0,
+            );
+        }
 
         // Terrains: new or edited data uploaded, this frame's clipmap levels.
         let prev_view_proj = self.prev_view_proj.unwrap_or(cam.view_proj);
@@ -5370,6 +5420,9 @@ impl Renderer {
             for r in &mut blended_list.ranges {
                 r.1 -= sorted;
             }
+            for r in probe_lists.iter_mut().flat_map(|l| &mut l.ranges) {
+                r.1 -= sorted;
+            }
             Some(commands)
         } else {
             None
@@ -5569,6 +5622,7 @@ impl Renderer {
                 0.0,
                 0.0,
             ],
+            probe: [[0.0; 4]; 3],
         };
         let mut shadow_slots = vec![bytemuck::Zeroable::zeroed(); SHADOW_SLOTS];
         for (i, c) in cascades.iter().enumerate() {
@@ -5607,6 +5661,18 @@ impl Renderer {
         }
         self.queue
             .write_buffer(&self.frame_buffer, 0, bytemuck::bytes_of(&uniform));
+        let probe_positions: Vec<Vec3> = probe_frame
+            .due
+            .iter()
+            .map(|&(_, i)| active_probes[i].position)
+            .collect();
+        self.probes.write(
+            &self.queue,
+            &uniform,
+            &probe_frame,
+            &probe_faces,
+            &probe_positions,
+        );
         if let Some((_, mirrored, f, view_proj, _)) = &reflection {
             let mut u = uniform;
             u.view_proj = view_proj.to_cols_array_2d();
@@ -5819,6 +5885,9 @@ impl Renderer {
         }
         if fluids_3d {
             passes.push(FramePass::Fluid3d);
+        }
+        if !probe_frame.due.is_empty() {
+            passes.push(FramePass::Probes);
         }
         if reflection.is_some() {
             passes.push(FramePass::Reflection);
@@ -6304,6 +6373,57 @@ impl Renderer {
             .environment
             .as_ref()
             .expect("environment generated above");
+        // The probes' frame groups (`probes.rs`): per active probe, the
+        // environment's prefiltered cube and the probe's in place of the
+        // irradiance and prefiltered cubes; per due capture face, the
+        // frame's own cubes under the face camera's uniform.
+        let (probe_groups, face_groups) = {
+            let ibl = self.ibl.views();
+            let group = |k: usize, a: &wgpu::TextureView, b: &wgpu::TextureView| {
+                bind_group(
+                    &self.device,
+                    "frame (reflection probe)",
+                    &self.frame_layout,
+                    &[
+                        self.probes.binding(k),
+                        wgpu::BindingResource::TextureView(&self.cascade_map.array_view),
+                        wgpu::BindingResource::TextureView(&self.local_map.array_view),
+                        wgpu::BindingResource::TextureView(a),
+                        wgpu::BindingResource::TextureView(b),
+                        wgpu::BindingResource::TextureView(&ibl.brdf_lut),
+                        wgpu::BindingResource::Sampler(&ibl.sampler),
+                        self.light_buffers[0].as_entire_binding(),
+                        self.light_buffers[1].as_entire_binding(),
+                        self.light_buffers[2].as_entire_binding(),
+                    ],
+                )
+            };
+            let probe_groups: Vec<wgpu::BindGroup> = probe_frame
+                .active
+                .iter()
+                .enumerate()
+                .map(|(k, (p, slot))| {
+                    let view = match (slot, p.baked) {
+                        (Some(s), _) => &self.probes.slots[*s].view,
+                        (None, Some(h)) => {
+                            &self.cache.environment_maps[h.index()]
+                                .as_ref()
+                                .expect("a loaded map (Probes::prepare)")
+                                .view
+                        }
+                        (None, None) => unreachable!("a probe without a slot is baked"),
+                    };
+                    group(k, &ibl.prefiltered, view)
+                })
+                .collect();
+            let first = probe_frame.active.len();
+            let face_groups: Vec<wgpu::BindGroup> = (0..6 * probe_frame.due.len())
+                .map(|j| group(first + j, &ibl.irradiance, &ibl.prefiltered))
+                .collect();
+            (probe_groups, face_groups)
+        };
+        let probe_binding = (!probe_groups.is_empty())
+            .then_some((batch_probes.as_slice(), probe_groups.as_slice(), frame_bind_group));
         let groups = self.fx_groups.as_ref().expect("made above");
         let (fx_group, sprite_fx_group, glow_fx_group) = (&groups.fx, &groups.sprite, &groups.glow);
         // The physical pipelines' effect group: the same plus the scene copy
@@ -6454,11 +6574,21 @@ impl Renderer {
              list: &DrawList,
              lit: bool,
              current: &mut Option<LitDrawKey>,
-             physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>| {
+             physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
+             probes: Option<(&[u8], &[wgpu::BindGroup], &wgpu::BindGroup)>| {
                 let mut shadow_key: Option<(ShadowKey, Option<usize>, bool, bool)> = None;
                 let mut physical_bound = false;
+                // The reflection probe whose frame group is bound (u8::MAX: the frame's).
+                let mut probe_bound = u8::MAX;
                 for &(b, first, count) in &list.ranges {
                     let batch = &batches[b as usize];
+                    if let Some((of, groups, frame_group)) = probes {
+                        let want = of.get(b as usize).copied().unwrap_or(u8::MAX);
+                        if want != probe_bound {
+                            pass.set_bind_group(0, groups.get(want as usize).unwrap_or(frame_group), &[]);
+                            probe_bound = want;
+                        }
+                    }
                     if lit {
                         let physical = batch.physical && physical_fx.is_some();
                         let key = (
@@ -6547,6 +6677,11 @@ impl Renderer {
                     && physical_bound
                 {
                     pass.set_bind_group(2, fx, &[]);
+                }
+                if let Some((_, _, frame_group)) = probes
+                    && probe_bound != u8::MAX
+                {
+                    pass.set_bind_group(0, frame_group, &[]);
                 }
             };
         // The skinned batches (`transparent`: which of them) with the
@@ -6654,7 +6789,7 @@ impl Renderer {
                 &self.shadow_bind_group,
                 &[(slot as u64 * SHADOW_SLOT_STRIDE) as u32],
             );
-            draw_list(&mut pass, list, false, &mut None, None);
+            draw_list(&mut pass, list, false, &mut None, None, None);
             stats.draw_calls += list.ranges.len() as u32;
             stats.shadow_casters += list.instances;
             stats.shadow_passes += 1;
@@ -6941,6 +7076,94 @@ impl Renderer {
                         .encode(&mut encoder, self.graph.view("lightmap"), ambient);
                     stats.draw_calls += (lights_2d > 0) as u32;
                 }
+                FramePass::Probes => {
+                    // Each due probe's six faces from its position, then
+                    // its filtering (`probes.rs`).
+                    let clear = match scene.environment.background {
+                        Background::Color(c) => wgpu::Color {
+                            r: c.x as f64,
+                            g: c.y as f64,
+                            b: c.z as f64,
+                            a: 1.0,
+                        },
+                        Background::Sky | Background::Procedural { .. } => wgpu::Color::BLACK,
+                    };
+                    let sky = match scene.environment.background {
+                        Background::Sky => Some(&self.sky_pipeline),
+                        Background::Procedural { .. } => Some(&self.sky_look_pipeline),
+                        Background::Color(_) => None,
+                    };
+                    for (d, &(slot, _)) in probe_frame.due.iter().enumerate() {
+                        let s = &self.probes.slots[slot];
+                        for face in 0..6 {
+                            let (view, resolve_target) = match &s.msaa {
+                                Some(m) => (m, Some(&s.faces[face])),
+                                None => (&s.faces[face], None),
+                            };
+                            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                                label: Some("reflection probe face"),
+                                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                    view,
+                                    depth_slice: None,
+                                    resolve_target,
+                                    ops: wgpu::Operations {
+                                        load: wgpu::LoadOp::Clear(clear),
+                                        store: if resolve_target.is_some() {
+                                            wgpu::StoreOp::Discard
+                                        } else {
+                                            wgpu::StoreOp::Store
+                                        },
+                                    },
+                                })],
+                                depth_stencil_attachment: Some(
+                                    wgpu::RenderPassDepthStencilAttachment {
+                                        view: &s.depth,
+                                        depth_ops: Some(wgpu::Operations {
+                                            load: wgpu::LoadOp::Clear(1.0),
+                                            store: wgpu::StoreOp::Discard,
+                                        }),
+                                        stencil_ops: None,
+                                    },
+                                ),
+                                timestamp_writes: None,
+                                occlusion_query_set: None,
+                                multiview_mask: None,
+                            });
+                            pass.set_pipeline(
+                                &self.pbr_pipelines[&(Side::Front, false, false, false)],
+                            );
+                            pass.set_bind_group(0, &face_groups[6 * d + face], &[]);
+                            pass.set_bind_group(2, fx_group, &[]);
+                            let list = &probe_lists[6 * d + face];
+                            draw_list(
+                                &mut pass,
+                                list,
+                                true,
+                                &mut Some((
+                                    Side::Front,
+                                    false,
+                                    false,
+                                    None,
+                                    false,
+                                    false,
+                                    false,
+                                    false,
+                                    false,
+                                )),
+                                None,
+                                None,
+                            );
+                            stats.draw_calls += list.ranges.len() as u32;
+                            if let Some(sky) = sky {
+                                pass.set_pipeline(sky);
+                                pass.set_bind_group(1, sky_group, &[]);
+                                pass.draw(0..3, 0..1);
+                                stats.draw_calls += 1;
+                            }
+                        }
+                        self.ibl.record_probe_filter(&mut encoder, &s.filter);
+                    }
+                }
                 FramePass::Reflection => {
                     let clear = match scene.environment.background {
                         Background::Color(c) => wgpu::Color {
@@ -7011,6 +7234,7 @@ impl Renderer {
                             false,
                             false,
                         )),
+                        None,
                         None,
                     );
                     stats.draw_calls += list.ranges.len() as u32;
@@ -7146,6 +7370,7 @@ impl Renderer {
                             false,
                         )),
                         physical_fx,
+                        probe_binding,
                     );
                     stats.draw_calls += main_list.ranges.len() as u32;
                     stats.draw_calls += draw_skinned(
@@ -7227,7 +7452,14 @@ impl Renderer {
                     }
                     // Transparent meshes, back to front over the opaque scene.
                     pass.set_bind_group(2, fx_group, &[]);
-                    draw_list(&mut pass, &blended_list, true, &mut None, physical_fx);
+                    draw_list(
+                        &mut pass,
+                        &blended_list,
+                        true,
+                        &mut None,
+                        physical_fx,
+                        probe_binding,
+                    );
                     stats.draw_calls += blended_list.ranges.len() as u32;
                     stats.draw_calls += draw_skinned(
                         &mut pass,
@@ -7507,6 +7739,9 @@ impl Renderer {
             }
         }
         self.pass_ms = pass_ms;
+        for &(slot, _) in &probe_frame.due {
+            self.probes.slots[slot].captured = Some(scene.tick);
+        }
         // Glass over overlay content (src/glass.rs): when overlay runs come
         // before a glass run, the overlay draws into the glass source, the
         // pyramid is rebuilt before each such glass run, and the source is
@@ -7776,6 +8011,19 @@ impl Renderer {
                 .is_some_and(|(_, config)| !config.view_formats.is_empty()),
             RenderTarget::View(_) => false,
         }
+    }
+
+    /// Reads back the capture of reflection probe `id` (blocking): `None`
+    /// before its first capture (or for a probe sampling a baked map),
+    /// else its face size and [`ENVIRONMENT_MAP_LEVELS`] prefiltered
+    /// levels, each six faces of linear RGB floats (`og bake probes`).
+    pub fn read_reflection_probe(&self, id: u64) -> Option<Result<(u32, Vec<Vec<f32>>), String>> {
+        let slot = self
+            .probes
+            .slots
+            .iter()
+            .find(|s| s.id == id && s.captured.is_some())?;
+        Some(probes::read_back(&self.device, &self.queue, slot).map(|l| (slot.size, l)))
     }
 
     /// Forgets the TAA history: the next frame starts from its own samples

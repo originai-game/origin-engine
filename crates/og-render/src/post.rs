@@ -1332,6 +1332,8 @@ pub(crate) enum FramePass {
     Metaballs,
     /// The 3D fluids' depth, thickness and smoothing (fluid3d.rs).
     Fluid3d,
+    /// The reflection probes' captures due this frame (`probes.rs`).
+    Probes,
     /// The scene mirrored in a water surface (its planar reflection).
     Reflection,
     /// Opaque meshes, sky, transparent meshes, particles, strips, sprites
@@ -1406,6 +1408,7 @@ impl FramePass {
             FramePass::Light2d => "lights-2d".into(),
             FramePass::Metaballs => "metaballs".into(),
             FramePass::Fluid3d => "fluid-3d".into(),
+            FramePass::Probes => "reflection-probes".into(),
             FramePass::Reflection => "reflection".into(),
             FramePass::Main => "main".into(),
             FramePass::Glow => "glow".into(),
@@ -1769,6 +1772,8 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                     "fluid.smooth",
                 ],
             ),
+            // Into the probes' own cubes, not graph targets.
+            FramePass::Probes => g.pass(name, &["cascades", "local-shadows"], &[]),
             FramePass::Reflection => {
                 let mut writes = vec!["reflection", "reflection-depth"];
                 if msaa {
@@ -2527,6 +2532,7 @@ impl FrameGraph {
             | FramePass::Light2d
             | FramePass::Metaballs
             | FramePass::Fluid3d
+            | FramePass::Probes
             | FramePass::Reflection
             | FramePass::Main
             | FramePass::DepthBands

@@ -49,6 +49,12 @@ struct Frame {
   stylise: vec4<f32>,         // xy: the vertex snap grid in cells (0: none), z: affine texturing, w: depth bits (0: full)
   shadow_tint: vec4<f32>,     // rgb: the tint shadowed light moves towards, w: amount (0: off)
   outline_style: vec4<f32>,   // x: the distance at which outlines are their width (0: constant)
+  // A reflection probe (probes.rs): set in the frame group bound for a
+  // draw inside the probe's box, whose irradiance_map is then the
+  // environment's prefiltered cube and prefiltered_map the probe's.
+  probe_min: vec4<f32>,       // xyz: the box's min corner, w: 1 with a probe
+  probe_max: vec4<f32>,       // xyz: the box's max corner, w: the probe's intensity
+  probe_pos: vec4<f32>,       // xyz: the capture point, w: the blend distance
 };
 
 @group(0) @binding(0) var<uniform> frame: Frame;
@@ -60,6 +66,42 @@ struct Frame {
 @group(0) @binding(4) var prefiltered_map: texture_cube<f32>;
 @group(0) @binding(5) var brdf_lut: texture_2d<f32>;
 @group(0) @binding(6) var ibl_sampler: sampler;
+
+// How much of the probe's light reaches `p`: 1 inside its box farther
+// than the blend distance from every face, falling to 0 at the faces.
+fn probe_weight(p: vec3<f32>) -> f32 {
+  let d = min(p - frame.probe_min.xyz, frame.probe_max.xyz - p);
+  return clamp(min(d.x, min(d.y, d.z)) / max(frame.probe_pos.w, 1e-3), 0.0, 1.0);
+}
+
+// The probe's cube direction for a ray from `p` along `r`: where the ray
+// leaves the box, seen from the capture point (box projection).
+fn probe_direction(r: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
+  let safe = select(r, vec3<f32>(1e-6), abs(r) < vec3<f32>(1e-6));
+  let f = max((frame.probe_max.xyz - p) / safe, (frame.probe_min.xyz - p) / safe);
+  let t = max(min(f.x, min(f.y, f.z)), 0.0);
+  return p + r * t - frame.probe_pos.xyz;
+}
+
+// The environment's diffuse light along `n` at `p`: the irradiance cube,
+// or with a probe the roughest prefiltered level of the environment and of
+// the probe, blended by `probe_weight`.
+fn ambient_light(n: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
+  if (frame.probe_min.w < 0.5) { return textureSample(irradiance_map, ibl_sampler, n).rgb; }
+  let top = frame.params.y;
+  let env = textureSampleLevel(irradiance_map, ibl_sampler, n, top).rgb;
+  let probe = textureSampleLevel(prefiltered_map, ibl_sampler, n, top).rgb * frame.probe_max.w;
+  return mix(env, probe, probe_weight(p));
+}
+
+// The environment reflected along `r` at `p` at prefiltered level `mip`:
+// with a probe its box-projected capture blended with the environment.
+fn reflected_light(r: vec3<f32>, p: vec3<f32>, mip: f32) -> vec3<f32> {
+  if (frame.probe_min.w < 0.5) { return textureSampleLevel(prefiltered_map, ibl_sampler, r, mip).rgb; }
+  let env = textureSampleLevel(irradiance_map, ibl_sampler, r, mip).rgb;
+  let probe = textureSampleLevel(prefiltered_map, ibl_sampler, probe_direction(r, p), mip).rgb * frame.probe_max.w;
+  return mix(env, probe, probe_weight(p));
+}
 
 // Fog: distance (exponential from start, or a linear ramp start..end) and
 // exponential height fog integrated along the view ray, mixed towards the

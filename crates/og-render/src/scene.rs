@@ -1265,6 +1265,9 @@ pub struct RenderScene {
     pub sprite_meshes: Vec<crate::SpriteMesh>,
     /// Screen shake applied to the camera.
     pub shake: CameraShake,
+    /// Reflection probes: boxes reflecting a cube captured inside them
+    /// instead of the environment (the first [`crate::MAX_REFLECTION_PROBES`]).
+    pub reflection_probes: Vec<crate::ReflectionProbe>,
     /// Each instance's transform in the previous frame (same order as
     /// `instances`), for per-object motion blur. Ignored unless its length
     /// equals `instances`'; then only the camera's motion blurs.
@@ -1391,6 +1394,7 @@ impl RenderScene {
             occluders_2d: Vec::new(),
             sprite_fx: Vec::new(),
             sprite_meshes: Vec::new(),
+            reflection_probes: Vec::new(),
             shake: CameraShake::default(),
             previous_transforms: Vec::new(),
             joint_palettes: Vec::new(),
