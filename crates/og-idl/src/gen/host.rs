@@ -291,6 +291,24 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "()",
         "Say what answers this engine's platform calls: JSON `{ host, capabilities }` (`player`, `local` or `none`; the methods it answers), as og.platform.info reports.",
     ),
+    (
+        "og_room_take",
+        &[("engine", "u32", "number")],
+        "String",
+        "The room ops (IDL `platform` rooms, og.net's lockstep) made since the last call, oldest first, as JSON `[op]`: `{ op: \"create\", name, capacity }`, `{ op: \"join\", room, name }`, `{ op: \"leave\" }`, `{ op: \"send\", to?, channel?, data? | bytes? }` (bytes base64; a channel starting `og.` is the engine's own). The host carries each in order (docs/design.md §2.8).",
+    ),
+    (
+        "og_room_deliver",
+        &[("engine", "u32", "number"), ("event", "String", "string")],
+        "bool",
+        "One room event from the host, JSON: `{ type: \"joined\", room, peer, peers: [{ peer, name }] }`, `{ type: \"peer_joined\", peer, name }`, `{ type: \"peer_left\", peer }`, `{ type: \"message\", from, channel?, data? | bytes? }`, `{ type: \"left\", reason }` or `{ type: \"error\", op, code, message }`. Lockstep's messages act between ticks at once; the game's events are sent at the start of the next tick. False for a malformed event.",
+    ),
+    (
+        "og_room_set_host",
+        &[("engine", "u32", "number"), ("info", "String", "string")],
+        "()",
+        "Say what carries this engine's rooms: JSON `{ host }` (`relay`, `player` or `none`), as og.platform.roomInfo reports; with `none` roomCreate and roomJoin are refused.",
+    ),
 ];
 
 /// `crates/og-api/src/generated/host.rs`.

@@ -47,7 +47,7 @@ export interface CreateOptions {
   readonly name?: string;
   readonly id?: string;
   readonly force?: boolean;
-  /** Start from an archetype (`runner`, `match3`, `topdown`, `tower-defense`, `roguelike`, `idle`, `rhythm`, `third-person`: templates/archetypes/README.md) instead of the project template. */
+  /** Start from an archetype (`runner`, `match3`, `topdown`, `tower-defense`, `roguelike`, `idle`, `rhythm`, `third-person`, `arena`: templates/archetypes/README.md) instead of the project template. */
   readonly archetype?: string;
   /** The template's profile: `2d` writes the 2D starter (templates/game-2d), `3d` the 3D template (templates/game). Unset, a premise that says 2D picks `2d`; else `3d`. Not for an archetype, which has its own. */
   readonly profile?: Profile;
@@ -484,7 +484,7 @@ Scaffolds an Origin Engine game into dir (default: ./origin-game).
   --name   the game's display name (default: from the id or the directory)
   --id     the game's id, lowercase-hyphen (default: from the name)
   --profile    2d writes the 2D starter (a platformer: sprites, tilemap, 2D physics), 3d the 3D template (default: 2d for a premise that says 2D, platformer, side-scroller, metroidvania or pixel art without saying 3D; else 3d)
-  --archetype  start from a complete archetype game (runner, match3, topdown, tower-defense, roguelike, idle, rhythm, third-person) instead of the template; it has its own profile
+  --archetype  start from a complete archetype game (runner, match3, topdown, tower-defense, roguelike, idle, rhythm, third-person, arena) instead of the template; it has its own profile
   --premise    the game in one line (genre, mood, setting, audience): its look extends the style catalogue's best match (asked for on a terminal when neither this nor --look is given)
   --look   the style catalogue slug the look extends (og-taste §12), such as anime-cel-3d or 16bit-pixel
   --no-prompt  never ask for the premise

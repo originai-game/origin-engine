@@ -236,7 +236,11 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         if let Ok(eng) = engine(id) {
             super::save::after_tick(&eng, world);
         }
+        // og.net's lockstep: this peer's input and the world's hash.
+        super::net::after_tick(id, world);
     }));
+    // og.net's lockstep holds a tick until every player's input for it is in.
+    probe.set_gate(Box::new(move |world| super::net::gate(id, world)));
     // og.WorldRestored, the tick after a restore.
     probe.set_before_tick(Box::new(move |world| {
         super::trace::before_tick(id);

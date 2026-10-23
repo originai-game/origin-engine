@@ -6125,7 +6125,7 @@
     },
     {
       "name": "platform",
-      "doc": "Platform services as host capabilities (docs/design.md §2.8): cloud store, leaderboards, telemetry, Origin Point and AI marks. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them. On the web the shell forwards each call to the Player through origin-checked postMessage (Player protocol 2, docs/web-export.md); natively the host answers from a local JSON store (`og run --platform-store`, default `<project>/.og/platform.json`).\nCalls are asynchronous: each returns a request number at once, and the answer arrives at the start of a later tick, when og.platform sends PlatformAnswered; read it with og.platform.result. Answers are host input, like key presses: the probe's `dump_platform` lists every call, its arguments, its answer and the ticks.\nErrors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed; retryable is true for offline, timeout, unavailable and rate_limited.",
+      "doc": "Platform services as host capabilities (docs/design.md §2.8): cloud store, leaderboards, telemetry, Origin Point and AI marks. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them. On the web the shell forwards each call to the Player through origin-checked postMessage (Player protocol 2, docs/web-export.md); natively the host answers from a local JSON store (`og run --platform-store`, default `<project>/.og/platform.json`).\nCalls are asynchronous: each returns a request number at once, and the answer arrives at the start of a later tick, when og.platform sends PlatformAnswered; read it with og.platform.result. Answers are host input, like key presses: the probe's `dump_platform` lists every call, its arguments, its answer and the ticks.\nErrors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed; retryable is true for offline, timeout, unavailable and rate_limited.\nRooms (roomCreate, roomJoin, roomSend, ...) put this engine with other players' engines: the host carries them (natively `og relay` with `og run --room`, on the web the platform's rooms through the shell, docs/platform-asks.md) and its answers and the other peers' messages arrive as events at the start of a tick (og.RoomJoined, og.RoomPeerJoined, og.RoomPeerLeft, og.RoomMessage), host input like key presses. Deterministic play over a room is og.net's lockstep.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -6140,7 +6140,15 @@
         "LoadSlotDesc",
         "PlatformError",
         "PlatformResult",
-        "PlatformInfo"
+        "PlatformInfo",
+        "RoomDesc",
+        "RoomPeer",
+        "RoomInfo",
+        "RoomMessageData",
+        "RoomJoined",
+        "RoomPeerJoined",
+        "RoomPeerLeft",
+        "RoomMessage"
       ],
       "consts": [],
       "functions": [
@@ -6459,6 +6467,139 @@
           ],
           "returns": "f64",
           "returnsDoc": "UTC milliseconds; 0 until a host has told the time (`none`).",
+          "publish": true
+        },
+        {
+          "name": "roomCreate",
+          "doc": "Create a room and join it. The answer is og.RoomJoined, with the room's id to share (natively the relay names it `room-N`; on the web the platform does).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "RoomDesc",
+              "optional": true,
+              "doc": "Its name and capacity."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused with no room host (og.platform.roomInfo's host `none`), while in or joining a room (roomLeave first), or for a malformed name.",
+          "publish": true
+        },
+        {
+          "name": "roomJoin",
+          "doc": "Join a room by its id. The answer is og.RoomJoined (with ok false and `not_found` or `full` when it cannot); then og.RoomPeerJoined and og.RoomPeerLeft as others come and go.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "room",
+              "type": "String",
+              "optional": false,
+              "doc": "The room's id: 1 to 64 of letters, digits, `.`, `_` and `-`."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused with no room host, while in or joining a room, or for a malformed id.",
+          "publish": true
+        },
+        {
+          "name": "roomLeave",
+          "doc": "Leave the room: og.RoomPeerLeft with this engine's own peer number answers, and the other peers hear it leave after its last message.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused when in no room.",
+          "publish": true
+        },
+        {
+          "name": "roomSend",
+          "doc": "Send a message to every other peer in the room, or to one: a JSON value, or bytes (a Uint8Array). It arrives as og.RoomMessage, after every earlier message of this peer.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "data",
+              "type": "OneOf<Bytes,Json>",
+              "optional": false,
+              "doc": "What to send: a Uint8Array, or any JSON value; at most 64 KiB encoded."
+            },
+            {
+              "name": "to",
+              "type": "u32",
+              "optional": true,
+              "doc": "The one peer to send it to; omitted is every other peer."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused when in no room, for a message over 64 KiB, or a peer not in the room.",
+          "publish": true
+        },
+        {
+          "name": "roomPeers",
+          "doc": "The peers in this engine's room, this one included, by number; empty in none.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "List<RoomPeer>",
+          "publish": true
+        },
+        {
+          "name": "roomInfo",
+          "doc": "The room this engine is in, and what carries rooms here.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "RoomInfo",
+          "publish": true
+        },
+        {
+          "name": "roomMessage",
+          "doc": "A message og.RoomMessage announced: who sent it and what it carries. The engine keeps the last 256.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "message",
+              "type": "u32",
+              "optional": false,
+              "doc": "og.RoomMessage.message."
+            }
+          ],
+          "returns": "Option<RoomMessageData>",
+          "returnsDoc": "Null for a number never given, or a message older than the last 256.",
           "publish": true
         }
       ],
@@ -9049,6 +9190,7 @@
         "UiElement",
         "UiSurface",
         "UiDump",
+        "DesyncDump",
         "DumpResult",
         "ScreenBox",
         "ScreenPoint",
@@ -10365,6 +10507,74 @@
           ],
           "returns": "Result<Void>",
           "returnsDoc": "Refused for an entity without og.Timeline.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "net",
+      "doc": "Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it.\nInputs are og.PlayerInput: one entity per player carries it with `player` set to its seat; the engine writes every other field at the start of each tick from that seat's input for the tick. A system reads the inputs from og.PlayerInput, never from og.Input, and gives this peer's own with og.net.submit (from a system that reads og.Input: what the local player holds now, sent for the tick inputDelay ticks on). Without a room, or with lockstep off, og.net.submit drives the local player's og.PlayerInput the next tick, so the same game plays alone.\nEvery tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.Audio, og.Camera, og.Lockstep, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input).",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Lockstep",
+        "PlayerInput",
+        "Desync",
+        "InputDesc",
+        "LockstepSeat",
+        "LockstepStatus"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "submit",
+          "doc": "Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call, so a game calls it once a tick from a system that reads og.Input (or og.Gamepad, or the UI's touch controls). Callable from a system.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "input",
+              "type": "InputDesc",
+              "optional": true,
+              "doc": "The buttons and axes."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an axis that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "status",
+          "doc": "Lockstep on this peer: running, the seats and who it waits for.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "LockstepStatus",
+          "publish": true
+        },
+        {
+          "name": "hash",
+          "doc": "The world's shared hash now, hex: the hash lockstep compares, which leaves this peer's session out (og.Input, og.Lockstep, input and room events, the UI's focus; module docs). Two peers at the same tick agree on it exactly when their simulations agree; the world dump's `hash` covers everything and differs between peers.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "String",
           "publish": true
         }
       ],
@@ -25164,6 +25374,267 @@
       ],
       "additionalProperties": false
     },
+    "RoomDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "platform",
+      "description": "A room to create.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "What the room is called (at most 64 of letters, digits, `.`, `_` and `-`); empty for none. The host gives the room its id.",
+          "default": ""
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most peers it takes.",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 16
+        }
+      },
+      "additionalProperties": false
+    },
+    "RoomPeer": {
+      "x-og-kind": "struct",
+      "x-og-module": "platform",
+      "description": "One peer in the room.",
+      "type": "object",
+      "properties": {
+        "peer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its number: the room numbers peers in join order from 0 and never gives one twice."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name, as its host gave it; empty for none."
+        },
+        "local": {
+          "type": "boolean",
+          "description": "Whether it is this engine."
+        }
+      },
+      "required": [
+        "peer",
+        "name",
+        "local"
+      ],
+      "additionalProperties": false
+    },
+    "RoomInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "platform",
+      "description": "The room this engine is in.",
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "description": "`none` (in no room), `joining` (roomCreate or roomJoin asked, not answered yet) or `in`."
+        },
+        "room": {
+          "type": "string",
+          "description": "The room's id; empty in none."
+        },
+        "host": {
+          "type": "string",
+          "description": "What carries rooms here: `relay` (natively, `og run --room` through `og relay`), `player` (the platform's rooms through the Player, on the web) or `none` (roomCreate and roomJoin are refused)."
+        },
+        "peer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "This engine's peer number; 0 in none."
+        },
+        "peers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RoomPeer"
+          },
+          "description": "Every peer present, this one included, by number."
+        }
+      },
+      "required": [
+        "state",
+        "room",
+        "host",
+        "peer",
+        "peers"
+      ],
+      "additionalProperties": false
+    },
+    "RoomMessageData": {
+      "x-og-kind": "struct",
+      "x-og-module": "platform",
+      "description": "A message another peer sent: what og.RoomMessage announced.",
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its number (og.RoomMessage.message): 1 for the first message this engine received, counting up."
+        },
+        "from": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The sender's peer number."
+        },
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick it was delivered at."
+        },
+        "data": {
+          "description": "What it carries, when it was sent as a JSON value; null when it was sent as bytes."
+        },
+        "bytes": {
+          "anyOf": [
+            {
+              "type": "string",
+              "contentEncoding": "base64"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What it carries, when it was sent as bytes."
+        }
+      },
+      "required": [
+        "message",
+        "from",
+        "tick",
+        "data",
+        "bytes"
+      ],
+      "additionalProperties": false
+    },
+    "RoomJoined": {
+      "x-og-kind": "event",
+      "x-og-module": "platform",
+      "description": "roomCreate or roomJoin finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why.",
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "description": "Whether this engine is in the room now."
+        },
+        "room": {
+          "type": "string",
+          "description": "The room's id (at most 63 bytes); empty when not ok."
+        },
+        "peer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "This engine's peer number."
+        },
+        "peers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many peers are in the room, this one included."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why it failed: `unavailable` (no rooms here), `not_found`, `full`, `invalid` or `offline`, then a colon and the host's words; empty when ok."
+        }
+      },
+      "required": [
+        "ok",
+        "room",
+        "peer",
+        "peers",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "RoomPeerJoined": {
+      "x-og-kind": "event",
+      "x-og-module": "platform",
+      "description": "Another peer joined this engine's room.",
+      "type": "object",
+      "properties": {
+        "peer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its peer number."
+        },
+        "peers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many peers are in the room now."
+        }
+      },
+      "required": [
+        "peer",
+        "peers"
+      ],
+      "additionalProperties": false
+    },
+    "RoomPeerLeft": {
+      "x-og-kind": "event",
+      "x-og-module": "platform",
+      "description": "A peer left this engine's room (it left, closed, or lost its connection), after every message it sent; or, with peer equal to this engine's own number, this engine is in no room any more (roomLeave, or the host lost the room).",
+      "type": "object",
+      "properties": {
+        "peer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its peer number."
+        },
+        "peers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many peers are in the room now (0 once this engine left)."
+        }
+      },
+      "required": [
+        "peer",
+        "peers"
+      ],
+      "additionalProperties": false
+    },
+    "RoomMessage": {
+      "x-og-kind": "event",
+      "x-og-module": "platform",
+      "description": "Another peer's message arrived; read it with og.platform.roomMessage. Messages from one peer arrive in the order it sent them. While lockstep runs (og.Lockstep) a message is this peer's host input alone: a system that changes the world from one makes it differ from the other peers' (og.Desync); carry what all must see in og.PlayerInput.",
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The sender's peer number."
+        },
+        "message": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The message's number, for og.platform.roomMessage."
+        },
+        "binary": {
+          "type": "boolean",
+          "description": "Whether it was sent as bytes (else as a JSON value)."
+        }
+      },
+      "required": [
+        "from",
+        "message",
+        "binary"
+      ],
+      "additionalProperties": false
+    },
     "LocaleInfo": {
       "x-og-kind": "struct",
       "x-og-module": "i18n",
@@ -32517,12 +32988,14 @@
       "enum": [
         "world",
         "entity",
-        "ui"
+        "ui",
+        "desync"
       ],
       "x-og-variants": {
         "world": "Archetype tables, systems and their matched counts.",
         "entity": "One entity's components and transform.",
-        "ui": "The UI tree with bounds."
+        "ui": "The UI tree with bounds.",
+        "desync": "The first desync of a lockstep session (og.net): its tick, both hashes and the component-level diff of the two peers' snapshots."
       }
     },
     "DumpDesc": {
@@ -32886,6 +33359,48 @@
       ],
       "additionalProperties": false
     },
+    "DesyncDump": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The first desync of this peer's lockstep session (og.net), as `dump_desync` writes it.",
+      "type": "object",
+      "properties": {
+        "desync": {
+          "type": "boolean",
+          "description": "Whether a desync happened; false lists the ticks compared with each peer so far."
+        },
+        "tick": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The first divergent tick: og.Time.tick of the two worlds that differ."
+        },
+        "local": {
+          "description": "This peer: `{ peer, player, hash }`."
+        },
+        "remote": {
+          "description": "The other peer: `{ peer, player, hash }`."
+        },
+        "diff": {
+          "description": "What differs: `{ components: [{ entity, component, fields: [{ field, local, remote }] }], entities: { onlyLocal, onlyRemote }, resources, events, blocks, allocator }`, in the local world's entity order (the first entry is the first difference in storage order); `{ pending }` until the other peer's snapshot arrived."
+        }
+      },
+      "required": [
+        "desync",
+        "tick",
+        "local",
+        "remote",
+        "diff"
+      ],
+      "additionalProperties": false
+    },
     "DumpResult": {
       "x-og-kind": "union",
       "x-og-module": "probe",
@@ -33026,6 +33541,51 @@
           ],
           "additionalProperties": false,
           "x-og-payload": "UiDump"
+        },
+        {
+          "description": "The desync dump.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "desync"
+            },
+            "desync": {
+              "type": "boolean",
+              "description": "Whether a desync happened; false lists the ticks compared with each peer so far."
+            },
+            "tick": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The first divergent tick: og.Time.tick of the two worlds that differ."
+            },
+            "local": {
+              "description": "This peer: `{ peer, player, hash }`."
+            },
+            "remote": {
+              "description": "The other peer: `{ peer, player, hash }`."
+            },
+            "diff": {
+              "description": "What differs: `{ components: [{ entity, component, fields: [{ field, local, remote }] }], entities: { onlyLocal, onlyRemote }, resources, events, blocks, allocator }`, in the local world's entity order (the first entry is the first difference in storage order); `{ pending }` until the other peer's snapshot arrived."
+            }
+          },
+          "required": [
+            "kind",
+            "desync",
+            "tick",
+            "local",
+            "remote",
+            "diff"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "DesyncDump"
         }
       ]
     },
@@ -34826,6 +35386,344 @@
         "tracks",
         "paths",
         "markers"
+      ],
+      "additionalProperties": false
+    },
+    "Lockstep": {
+      "x-og-kind": "resource",
+      "x-og-module": "net",
+      "description": "Lockstep's settings and this peer's place. The game sets enabled, players, inputDelay and hashEvery (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the world takes its ticks in lockstep when in a room.",
+          "default": false
+        },
+        "players": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The seats: the peers lockstep waits for before it starts, and whose inputs each tick waits for.",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 16
+        },
+        "localPlayer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "This peer's seat, the og.PlayerInput.player its input drives; `players` while it watches (a peer beyond the seats). 0 before the start.",
+          "default": 0,
+          "readOnly": true
+        },
+        "inputDelay": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ticks between a player's input and the tick it acts on: the time the input has to cross the room. 2 (33 ms at 60 Hz) on a LAN, 4 to 6 over the internet.",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 30,
+          "x-og-unit": "ticks"
+        },
+        "hashEvery": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How often the peers exchange their world hashes, in ticks (every tick is hashed, so the first divergent tick is exact); 0 compares nothing.",
+          "default": 10,
+          "minimum": 0,
+          "maximum": 600,
+          "x-og-unit": "ticks"
+        },
+        "running": {
+          "type": "boolean",
+          "description": "Whether lockstep runs: the room filled the seats and the authority started (until this peer leaves the room or turns it off).",
+          "default": false,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlayerInput": {
+      "x-og-kind": "component",
+      "x-og-module": "net",
+      "description": "One player's input for this tick, the same on every peer: the engine writes every field but `player` at the start of each tick from the seat's input (zero for a seat nobody holds, and before its holder's first input). Its packed bytes are what crosses the room, read through this layout.",
+      "type": "object",
+      "properties": {
+        "player": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The seat whose input this entity carries (0 to og.Lockstep.players - 1); the game sets it when it spawns the player.",
+          "default": 0
+        },
+        "buttons": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The buttons held, one bit each, as the game numbers them (bit 0 fire, bit 1 dash, ...).",
+          "default": 0
+        },
+        "x": {
+          "type": "number",
+          "description": "The move axis, left -1 to right 1.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 1
+        },
+        "y": {
+          "type": "number",
+          "description": "The move axis, back -1 to forward 1.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 1
+        },
+        "aimX": {
+          "type": "number",
+          "description": "A second axis (aim, a cursor's world x), as the game uses it.",
+          "default": 0
+        },
+        "aimY": {
+          "type": "number",
+          "description": "A second axis (aim, a cursor's world y), as the game uses it.",
+          "default": 0
+        },
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick these values are for: the tick now, once the engine wrote them.",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Desync": {
+      "x-og-kind": "event",
+      "x-og-module": "net",
+      "description": "This peer's world and another's differ: sent once, at the start of the tick after the hashes showed it. The probe's `desync` dump (`dump_desync`) names the component and field that differ, once the other peer's snapshot of that tick arrived.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The first divergent tick: the world after it differs (og.Time.tick of the snapshots compared)."
+        },
+        "peer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The first peer whose world differs from this one."
+        },
+        "peers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many peers' worlds differ from this one."
+        }
+      },
+      "required": [
+        "tick",
+        "peer",
+        "peers"
+      ],
+      "additionalProperties": false
+    },
+    "InputDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "net",
+      "description": "This peer's player's input: og.PlayerInput's fields but `player` and `tick`.",
+      "type": "object",
+      "properties": {
+        "buttons": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The buttons held, one bit each.",
+          "default": 0
+        },
+        "x": {
+          "type": "number",
+          "description": "The move axis, -1 to 1.",
+          "default": 0
+        },
+        "y": {
+          "type": "number",
+          "description": "The move axis, -1 to 1.",
+          "default": 0
+        },
+        "aimX": {
+          "type": "number",
+          "description": "A second axis.",
+          "default": 0
+        },
+        "aimY": {
+          "type": "number",
+          "description": "A second axis.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "LockstepSeat": {
+      "x-og-kind": "struct",
+      "x-og-module": "net",
+      "description": "One peer's hold on a seat.",
+      "type": "object",
+      "properties": {
+        "seat": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The seat."
+        },
+        "peer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The peer that holds (or held) it."
+        },
+        "since": {
+          "type": "number",
+          "description": "The first tick of its input.",
+          "x-og-unit": "ticks"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The last tick of its input, once it left.",
+          "x-og-unit": "ticks"
+        }
+      },
+      "required": [
+        "seat",
+        "peer",
+        "since",
+        "until"
+      ],
+      "additionalProperties": false
+    },
+    "LockstepStatus": {
+      "x-og-kind": "struct",
+      "x-og-module": "net",
+      "description": "Lockstep on this peer, as the probe and a HUD read it.",
+      "type": "object",
+      "properties": {
+        "running": {
+          "type": "boolean",
+          "description": "Whether lockstep runs."
+        },
+        "peer": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "This peer's number; null in no room."
+        },
+        "peers": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "The peers present, by number."
+        },
+        "startTick": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The tick lockstep started (or this peer joined it) at.",
+          "x-og-unit": "ticks"
+        },
+        "players": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The seats, while running."
+        },
+        "seats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LockstepSeat"
+          },
+          "description": "Every seat's holds, in order."
+        },
+        "spectators": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "The running peers without a seat."
+        },
+        "waitingFor": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "The seats whose input for the next tick has not arrived."
+        },
+        "waits": {
+          "type": "number",
+          "description": "Tick boundaries this peer waited at for an input."
+        },
+        "desync": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The first divergent tick, once og.Desync was sent."
+        }
+      },
+      "required": [
+        "running",
+        "peer",
+        "peers",
+        "startTick",
+        "players",
+        "seats",
+        "spectators",
+        "waitingFor",
+        "waits",
+        "desync"
       ],
       "additionalProperties": false
     }

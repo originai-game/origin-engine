@@ -1,4 +1,4 @@
-//! The E6 modules' trait implementations (NavApi, AiApi, PlatformApi, I18nApi): every
+//! The E6 modules' trait implementations (NavApi, AiApi, PlatformApi, I18nApi, NetApi): every
 //! member is the host-neutral runtime's.
 
 use crate::NodeHost;
@@ -132,6 +132,27 @@ impl PlatformApi for NodeHost {
     fn og_platform_now(&self, world: u32) -> f64 {
         rt::og_platform_now(world)
     }
+    fn og_platform_room_create(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_platform_room_create(world, desc)
+    }
+    fn og_platform_room_join(&self, world: u32, room: String) -> String {
+        rt::og_platform_room_join(world, room)
+    }
+    fn og_platform_room_leave(&self, world: u32) -> String {
+        rt::og_platform_room_leave(world)
+    }
+    fn og_platform_room_send(&self, world: u32, data: String, to: Option<u32>) -> String {
+        rt::og_platform_room_send(world, data, to)
+    }
+    fn og_platform_room_peers(&self, world: u32) -> String {
+        rt::og_platform_room_peers(world)
+    }
+    fn og_platform_room_info(&self, world: u32) -> String {
+        rt::og_platform_room_info(world)
+    }
+    fn og_platform_room_message(&self, world: u32, message: u32) -> String {
+        rt::og_platform_room_message(world, message)
+    }
 }
 
 impl I18nApi for NodeHost {
@@ -149,5 +170,17 @@ impl I18nApi for NodeHost {
     }
     fn og_i18n_has(&self, world: u32, key: String) -> bool {
         rt::og_i18n_has(world, key)
+    }
+}
+
+impl NetApi for NodeHost {
+    fn og_net_submit(&self, world: u32, input: Option<String>) -> String {
+        rt::og_net_submit(world, input)
+    }
+    fn og_net_status(&self, world: u32) -> String {
+        rt::og_net_status(world)
+    }
+    fn og_net_hash(&self, world: u32) -> String {
+        rt::og_net_hash(world)
     }
 }

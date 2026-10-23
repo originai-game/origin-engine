@@ -280,7 +280,12 @@ impl Probe {
                     "world" => DumpKind::World,
                     "entity" => DumpKind::Entity,
                     "ui" => DumpKind::Ui,
-                    _ => return Err(RpcError::invalid("what must be world, entity or ui")),
+                    "desync" => DumpKind::Desync,
+                    _ => {
+                        return Err(RpcError::invalid(
+                            "what must be world, entity, ui or desync",
+                        ));
+                    }
                 };
                 let id = if kind == DumpKind::Entity {
                     string(p, "id")?

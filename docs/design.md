@@ -336,6 +336,43 @@ save), `og_leaderboard_*`, `og_room_*` (rooms/RTC via the shell), `og_telemetry`
 `og.platform.*`. Nothing in game code can reach cookies, the DOM or arbitrary
 origins; the shell owns every credential.
 
+**Rooms.** `og.platform.roomCreate`, `roomJoin`, `roomLeave`, `roomSend`,
+`roomPeers`, `roomInfo` and `roomMessage` put this engine with other
+players' engines. The engine never opens a socket: it queues ops and its
+host carries them. Three host ABI functions do the carrying:
+`og_room_take` (the queued ops, JSON), `og_room_deliver` (one event in)
+and `og_room_set_host` (`relay`, `player` or `none`). The wire shapes are
+og-net's protocol (`crates/og-net/src/protocol.rs`). The ops are `create`,
+`join`, `leave` and `send`. The events are `joined`, `peer_joined`,
+`peer_left`, `message`, `left` and `error`.
+
+- **Peers.** A room numbers its peers in join order from 0 and never
+  reuses a number.
+- **Ordering.** Messages from one sender arrive in the order it sent them,
+  and its departure arrives after its last message. Lockstep's agreement
+  on a leaver's last input rests on this.
+- **Events in the tick.** Events arrive at the start of a tick, like host
+  input, as og.RoomJoined, og.RoomPeerJoined, og.RoomPeerLeft and
+  og.RoomMessage.
+- **The engine's own channel.** A channel that starts with `og.` belongs
+  to the engine (lockstep's `og.lockstep`), and its messages never reach
+  the game.
+- **Limits.** A game message is at most 64 KiB; an engine message is at
+  most 16 MiB (a snapshot for a late joiner).
+
+Each host carries rooms its own way:
+
+- **Natively.** `og relay [--port P] [--host <ip>]` (og-net's relay; the
+  default port is 47900) serves rooms by URL path. `og run --room
+  ws://127.0.0.1:P/<room>` connects through og-net's client on a thread of
+  its own and joins `<room>` before the first tick. The run pumps the link
+  around every frame.
+- **On the web.** The Worker posts the engine's ops to the page and
+  delivers the page's events. The shell's `RoomHost` maps them onto the
+  Player's `room.*` (docs/platform-asks.md #16, open). A Player whose
+  hello does not list `room.join` leaves the host as `none`, and
+  roomCreate and roomJoin are refused.
+
 ### 2.9 The video producer
 
 The engine already has what "video is code" pipelines bolt on (a fixed
@@ -404,6 +441,56 @@ video is a command script played headless and recorded (docs/depth.md §3).
   iterate at 640×360 and review the contact sheet, rendering full size
   once. `og render` and its capture members are development members:
   absent from `publish` builds.
+
+### 2.10 Lockstep
+
+Deterministic play over a room (IDL module `net`, crate `og-net`). Every
+peer runs the whole world; only the players' inputs and the world's hash
+cross the room. Lockstep rests on §1's determinism and snapshot.
+
+- **Settings.** `og.Lockstep` holds `enabled`, `players`, `inputDelay` and
+  `hashEvery`, which the game sets. The engine sets `localPlayer` and
+  `running`. The resource belongs to this peer's session: it is never
+  hashed or compared.
+- **Inputs.** `og.PlayerInput` is a reflected component: `player` (the
+  seat), `buttons`, `x`, `y`, `aimX`, `aimY` and `tick`. One entity per
+  player carries it. At the start of each tick the engine writes every
+  field except `player` from that seat's input for the tick, and zero for
+  a seat with no input. The input's packed bytes, read through the
+  component's layout, are what crosses the room. A game hands over its
+  own input with `og.net.submit`, called from the only system that reads
+  `og.Input`; it acts `inputDelay` ticks later. Every other system reads
+  `og.PlayerInput`. Without a room, or with lockstep off, a submit drives
+  the local player on the next tick, so the same game plays alone.
+- **Start.** Until the room holds `players` peers, each world runs freely
+  (the lobby). Then the authority starts lockstep: the authority is the
+  lowest peer number, and its settings become the room's. Every other
+  peer restores the authority's snapshot, and the seats go to the peers
+  in number order.
+- **The tick gate.** Tick t runs only when every seated player's input for
+  t is in. The gate is og-probe's (`set_gate`, consulted by step, frame
+  and advance), so the tick itself is unchanged and a frame that cannot
+  run a tick simply runs none.
+- **Late join.** A peer that joins a running room asks for a snapshot. A
+  running peer sends one, and the new peer takes a free seat (or watches)
+  from the tick named in the `admit` message.
+- **Hashes.** Every tick, each peer hashes its world without its own
+  session: the input resources, `og.Lockstep`, input, room, platform,
+  asset and stream events, and the UI's focus. This is `og.net.hash` and
+  `og run --json`'s `netHash`. Every `hashEvery` ticks a peer sends the
+  hashes since its last batch, so the first divergent tick is exact. On a
+  mismatch, `og.Desync { tick, peer, peers }` is sent once, and both peers
+  exchange their snapshots of that tick.
+- **The desync dump.** The probe's `desync` dump (`dump_desync`) names the
+  tick, both hashes and the component-level diff: per entity (by name),
+  component and field, the local and remote values, plus resources,
+  events, blocks and entities present on one side only. A system that
+  reads `Math.random()` shows up as exactly its field
+  (`packages/engine/tests/rooms.test.ts`).
+- **The proof.** `templates/archetypes/arena` (Coin Duel) is two players in
+  lockstep. Its playtest `tests/duel.og.ts` (`PlaytestDesc.room`) runs two
+  native processes through a relay that the playtest starts, and both hash
+  the same at tick 600.
 
 ## 3. API surface
 

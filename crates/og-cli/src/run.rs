@@ -19,7 +19,10 @@
 //! or with `--clock <UTC ms>` a clock that starts there and moves with the
 //! ticks (reproducible, as playtests run). `--trace out.json` writes the
 //! run in the Chrome trace format (`trace.rs`): the cook, each tick with its
-//! systems, each frame with its render passes, each load. `--locale ja` is the locale og.i18n is
+//! systems, each frame with its render passes, each load. `--room
+//! ws://127.0.0.1:P/<room>` joins that room through `og relay` (og.platform's
+//! rooms, og.net's lockstep; a run in a room keeps going until `quit` or
+//! --ticks, waiting for the other players). `--locale ja` is the locale og.i18n is
 //! asked for (default: none, the base table). Native runs
 //! are always headless: `--headless` is accepted, and without it the run is
 //! paced by the wall clock instead of as fast as it can go.
@@ -34,7 +37,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--json] [--no-check]\n       og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--room ws://127.0.0.1:P/<room>] [--json] [--no-check]\n       og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -115,7 +118,7 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
             }
             flag @ ("--ticks" | "--seed" | "--setup" | "--commands" | "--size" | "--out"
             | "--port" | "--audio" | "--platform-store" | "--clock" | "--locale"
-            | "--trace") => {
+            | "--trace" | "--room") => {
                 let Some(v) = args.get(i + 1) else {
                     return Err(format!("{flag} needs a value. {USAGE}"));
                 };

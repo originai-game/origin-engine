@@ -73,6 +73,15 @@ impl Lifecycle for WebHost {
     fn og_platform_set_host(&self, engine: u32, info: String) {
         rt::og_platform_set_host(engine, info)
     }
+    fn og_room_take(&self, engine: u32) -> String {
+        rt::og_room_take(engine)
+    }
+    fn og_room_deliver(&self, engine: u32, event: String) -> bool {
+        rt::og_room_deliver(engine, event)
+    }
+    fn og_room_set_host(&self, engine: u32, info: String) {
+        rt::og_room_set_host(engine, info)
+    }
     fn og_engine_take_log(&self, engine: u32) -> String {
         rt::og_engine_take_log(engine)
     }

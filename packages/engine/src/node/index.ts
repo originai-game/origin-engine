@@ -50,6 +50,13 @@ export interface NativeExtras {
   og_node_probe_listen(engine: number, port: number): string;
   og_node_probe_serve(engine: number): number;
   og_node_probe_close(engine: number): boolean;
+  /** Connect an engine's rooms to `og relay` (`ws://host:port/<room>` joins that room). A Result. */
+  og_node_room_connect(engine: number, url: string): string;
+  /** Carry room ops to the relay and its events to the engine; the events delivered. */
+  og_node_room_pump(engine: number): number;
+  og_node_room_close(engine: number): boolean;
+  /** Start a relay in this process on 127.0.0.1 (0 a free port) for as long as it lives. A Result with the port. */
+  og_node_relay_start(port: number): string;
   /** `og render`: the frame the loop drew last, RGBA8 rows at the offscreen size (empty without one). Not in publish builds. */
   og_node_render_frame(engine: number): Uint8Array;
   /** `og render --jobs`: the world as a render snapshot (empty when refused). */

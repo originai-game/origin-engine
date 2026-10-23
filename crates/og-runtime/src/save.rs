@@ -242,9 +242,37 @@ const RESTORED: &str = "og.WorldRestored";
 /// own view of the world (names, views, the platform clock, the renderer's
 /// history) along.
 fn apply(eng: &Engine, world: &mut World, pending: &Pending) -> Result<(), String> {
+    apply_keeping(eng, world, pending, &[])
+}
+
+/// A peer's world snapshot (og.net's lockstep start or late join), restored
+/// as a save is, keeping the session and the resources `keep` names too.
+pub(crate) fn restore_session(
+    eng: &Engine,
+    world: &mut World,
+    snapshot: &[u8],
+    keep: &[&str],
+) -> Result<(), String> {
+    world
+        .check_snapshot(snapshot, false)
+        .map_err(|e| refusal(e, false))?;
+    let pending = Pending {
+        snapshot: snapshot.to_vec(),
+        migrate: false,
+    };
+    apply_keeping(eng, world, &pending, keep)
+}
+
+fn apply_keeping(
+    eng: &Engine,
+    world: &mut World,
+    pending: &Pending,
+    keep: &[&str],
+) -> Result<(), String> {
     let from = world.time().tick;
     let kept: Vec<(og_ecs::SchemaId, Vec<u8>)> = SESSION
         .iter()
+        .chain(keep.iter())
         .filter_map(|name| {
             let id = world.id_by_name(name).ok()?;
             Some((id, world.resource_bytes(id).ok()?))

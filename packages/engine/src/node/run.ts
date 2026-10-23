@@ -6,7 +6,7 @@
 //       [--setup action[:arg...]]... [--commands "t:action[:args];..."] [--out <dir>]
 //       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render]
 //       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>]
-//       [--trace <out.json> [--trace-append]] [--json]
+//       [--trace <out.json> [--trace-append]] [--room ws://127.0.0.1:P/<room>] [--json]
 //
 // - Without --commands, --port or --watch: advance --ticks N at once and print
 //   the world hash (M2's hello world).
@@ -20,6 +20,10 @@
 //   through the probe's `reload` (snapshot, swap, restore), printing one JSON
 //   line per reload with the latency from the file write to the first frame
 //   of the new bundle.
+// - With --room: the engine joins that room through `og relay` (og.platform's
+//   rooms, og.net's lockstep), the link pumped around every frame, and the run
+//   takes frames (never one big advance), so a tick lockstep holds waits for
+//   the other players' inputs; it ends at `quit`, --ticks or the script's end.
 // - Without a renderer (no usable adapter, as in the platform's engine and
 //   probe sandboxes, or OG_RENDERER=none) the run is the same run: the play
 //   surface keeps --size, a `screenshot` writes no PNG and is listed in
@@ -37,7 +41,7 @@ import { pathToFileURL } from "node:url";
 import { loadNativeHost, native } from "./index.ts";
 import { openAudio, type AudioSink } from "./audio.ts";
 import { nativePlatform } from "./platform.ts";
-import { beginBundle, createEngine, fixedClock, type Engine, type GameToken } from "../runtime.ts";
+import { beginBundle, boundHost, createEngine, fixedClock, type Engine, type GameToken } from "../runtime.ts";
 
 const argv = process.argv.slice(2);
 let entry = "";
@@ -58,6 +62,7 @@ let locale: string | undefined;
 let clock: number | undefined;
 let tracePath: string | undefined;
 let traceAppend = false;
+let room: string | undefined;
 const setup: string[] = [];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i]!;
@@ -88,6 +93,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--clock") clock = Number(next());
   else if (a === "--trace") tracePath = resolve(next());
   else if (a === "--trace-append") traceAppend = true;
+  else if (a === "--room") room = next();
   else if (a === "--headless") {
     // Native runs are always headless; accepted for `og run --headless`.
   } else fail(`unknown argument '${a}'`);
@@ -184,7 +190,7 @@ const BEFORE_ENGINE = 0xffffffff;
 if (tracePath) extras.og_node_trace(BEFORE_ENGINE, true);
 const project = projectText(root);
 const profile = projectProfile(project);
-const probing = commands !== undefined || port !== undefined || watchFile !== undefined;
+const probing = commands !== undefined || port !== undefined || watchFile !== undefined || room !== undefined;
 // With a renderer, GameDesc.start runs once it is attached (as the web Worker
 // does), so og.render.capabilities reports the play surface's size there.
 const deferStart = probing && render;
@@ -271,6 +277,23 @@ if (port !== undefined) {
   process.stdout.write(`probe: ws://127.0.0.1:${listening}/probe\n`);
 }
 
+if (room !== undefined) {
+  const linked = JSON.parse(extras.og_node_room_connect(engine.id, room)) as { ok: boolean; reason?: string };
+  if (!linked.ok) fail(`--room ${room}: ${linked.reason}`);
+  // The relay joins the room the URL names: wait for its answer before the first tick.
+  for (let i = 0; i < 2000 && (JSON.parse(abiRoomInfo()) as { state: string }).state !== "in"; i++) {
+    extras.og_node_room_pump(engine.id);
+    await new Promise((r) => setTimeout(r, 1));
+  }
+}
+
+function abiRoomInfo(): string {
+  return boundHost()!.abi.og_platform_room_info(engine.id);
+}
+
+type NetStatus = { running: boolean; startTick: number | null; waits: number; desync: number | null };
+const netStatus = (): NetStatus => JSON.parse(boundHost()!.abi.og_net_status(engine.id)) as NetStatus;
+
 let untilTick = -1;
 if (commands !== undefined) {
   const report = engine.probe.commands(commands) as { scheduled: number; untilTick: number; warnings: string[] } | null;
@@ -341,7 +364,9 @@ if (!probing) {
     }
     const elapsed = realtime ? performance.now() - last : tickMs;
     last = performance.now();
+    if (room !== undefined) extras.og_node_room_pump(engine.id);
     const answer = engine.frame(elapsed);
+    if (room !== undefined) extras.og_node_room_pump(engine.id);
     if (!answer.ok) {
       frameFailed = answer.reason ?? "the frame failed";
       break;
@@ -366,6 +391,12 @@ if (!probing) {
     const left = answer.pending ?? (tick > untilTick ? 0 : 1);
     if (ticks === undefined && commands !== undefined && listening === undefined && !watchFile && left === 0) break;
     if (realtime || listening !== undefined || watchFile) await sleep(Math.max(0, tickMs - (performance.now() - last)));
+    // In a room a frame that took no tick waits for the other players' inputs,
+    // and outside lockstep (its lobby, or a game that leaves it off) the run
+    // keeps the tick's pace with the other peers: an unpaced lobby would
+    // spend the run's --ticks before they arrive.
+    else if (room !== undefined && (answer.ticks ?? 0) === 0) await sleep(1);
+    else if (room !== undefined && !netStatus().running) await sleep(Math.max(0, tickMs - (performance.now() - last)));
   }
 }
 const ms = performance.now() - t0;
@@ -424,6 +455,10 @@ const summary = {
   ticks: ticks ?? dump.tick,
   tick: dump.tick,
   hash: dump.hash,
+  // og.net's shared hash: the world without this peer's session, what lockstep peers compare.
+  netHash: JSON.parse(boundHost()!.abi.og_net_hash(engine.id)) as string,
+  // With --room: lockstep's state at the end (the tick it started, the waits, the first divergent tick).
+  ...(room !== undefined ? { lockstep: netStatus() } : {}),
   entities: dump.entities,
   advanceMs: +ms.toFixed(2),
   frames,
@@ -443,4 +478,5 @@ else {
   if (expectations.results.length > 0) process.stdout.write(`expectations: ${expectations.passed} passed, ${expectations.failed} failed, ${expectations.unchecked} unchecked\n`);
 }
 if (listening !== undefined) extras.og_node_probe_close(engine.id);
+if (room !== undefined) extras.og_node_room_close(engine.id);
 process.exit(frameFailed || expectations.failed > 0 ? 1 : 0);

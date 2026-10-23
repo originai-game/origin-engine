@@ -43,8 +43,8 @@ pub use hooks::{
 pub use input::{InjectedInput, Input, InputSink, WorldInput};
 pub use names::Names;
 pub use probe::{
-    AfterTickFn, BUILD, DeriveFn, DumpKind, ENGINE_VERSION, FRAME_UNCHECKED, Heard, ListenFn,
-    MAX_CAPTURE_EDGE, MAX_SNAPSHOTS, MAX_SWEEP_VALUES, MEMBERS, PLAYTEST_MAX_TICKS,
+    AfterTickFn, BUILD, DeriveFn, DumpKind, ENGINE_VERSION, FRAME_UNCHECKED, GateFn, Heard,
+    ListenFn, MAX_CAPTURE_EDGE, MAX_SNAPSHOTS, MAX_SWEEP_VALUES, MEMBERS, PLAYTEST_MAX_TICKS,
     PROBE_PROGRAM_MAX_OPERATIONS, PROBE_VERSION, PROBE_WIRE_VERSION, PUBLISH_MEMBERS, Probe,
     ReaderFn, SweepDesc, served_members, time_json,
 };

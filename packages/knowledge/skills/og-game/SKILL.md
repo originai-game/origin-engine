@@ -1953,7 +1953,54 @@ use `--commands`. On a CPU-only machine (lavapipe) a 1280×720 frame of the
 3D template takes about 0.4 s in one job, 2.6× less with `--jobs 4`:
 render at 640×360 (about 0.1 s) to iterate, full size once.
 
-## 20. Where to look things up
+## 20. Two players over a room: lockstep
+
+To play together, every peer runs the whole world and only inputs cross
+the room (`reference/net.md`; the rooms themselves are og.platform's, taught by
+the og-platform-sdk skill). Follow three rules:
+
+1. In `start`, set `og.Lockstep`: `enabled = true`, `players`,
+   `inputDelay` (2 on a LAN, 4 to 6 over the internet) and `hashEvery`
+   (10). Spawn one entity per player with `og.PlayerInput { player: seat }`.
+2. Read `og.Input`, `og.Gamepad` and the UI's touch controls in **one**
+   system, and hand them over with
+   `og.net.submit(world, { x, y, buttons, aimX, aimY })` every tick.
+3. Every system that changes the world reads `og.PlayerInput` (its `x`,
+   `y` and `buttons` bits), the world and `og.Rng`, and nothing else: no
+   `Math.random()`, no `Date.now()`, no module variables, no
+   `og.RoomMessage`. Draw per-peer things (whose turn it is, "waiting")
+   with og.ui only, and keep them out of the world.
+
+```ts
+const Submit = defineSystem("Submit", { reads: [og.Input] }, (_q, _t, world) => {
+  const input = must(world.resource(og.Input));
+  must(og.net.submit(world, { x: input.axis("KeyA", "KeyD"), y: input.axis("KeyS", "KeyW"), buttons: input.down("Space") ? 1 : 0 }));
+});
+const Move = defineSystem("Move", { reads: [og.PlayerInput], writes: [og.Transform] }, (q, time) => {
+  for (const a of q.archetypes()) {
+    const pin = a.column(og.PlayerInput);
+    const p = a.column(og.Transform).position;
+    for (let i = 0; i < a.count; i++) p[i * 3] += pin.x[i]! * 6 * time.dt;
+  }
+});
+```
+
+Alone, or with lockstep off, `submit` drives the local player on the next
+tick, so the same code plays single-player. Natively, run `og relay` and
+then `og run . --room ws://127.0.0.1:47900/<room>` in two terminals; on
+the web the shell carries the platform's rooms. A playtest plays itself in
+a room with `room: { players: 2, ticks: 600, commands: [...] }`: its runs
+are `run` and `run.peers`, and each has `netHash` and `lockstep`. Equal
+`netHash` values at the same tick mean the peers stayed in step.
+
+When the worlds part, `og.Desync { tick, peer }` fires once and
+`og.net.status(world).desync` holds the tick. Then
+`--commands "...:dump_desync:d.json"` names the first divergent tick and
+the entity, component and field that differ, with both values: fix the
+system that writes that field. The archetype `templates/archetypes/arena`
+(Coin Duel) is the worked example.
+
+## 21. Where to look things up
 
 `reference/index.md` (the generated wiki shipped with this skill) maps every
 module (grouped by skill, as in §1), type and function to its page, with the IDL text, defaults, ranges

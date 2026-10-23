@@ -6,7 +6,7 @@
 // answers og.platform gets. An older Player with save.* alone keeps the store
 // in the save, and a Player with neither leaves it to the browser's storage.
 import { expect, test } from "bun:test";
-import { playerPlatform, type PlayerLink } from "../shell/platform.ts";
+import { playerPlatform, playerRooms, type PlayerLink } from "../shell/platform.ts";
 import type { PlayerResult } from "../shell/player.ts";
 import { memoryPersistence, type PlatformAnswer, type PlatformCall } from "../src/platform-local.ts";
 
@@ -148,4 +148,24 @@ test("an older Player keeps the store in the save at its revision; with neither,
   const b = await run(none, [["store.set", { key: "k", value: 1 }], ["store.get", { key: "k" }]]);
   expect(none.wire).toEqual([]);
   expect(b[1]).toEqual({ ok: true, data: { key: "k", value: 1, revision: 1 } });
+});
+
+test("a Player's rooms (platform-asks #16): ops map to room.*, a refusal is an error event, pushed events pass through", async () => {
+  expect(playerRooms(standIn(ALL))).toBeNull();
+  const rooms = ["room.create", "room.join", "room.leave", "room.send"];
+  const p = standIn([...ALL, ...rooms]);
+  const host = playerRooms(p)!;
+  expect(host.host).toBe("player");
+  const got: unknown[] = [];
+  host.handle([{ op: "join", room: "duel" }, { op: "send", channel: "og.lockstep", data: { t: 1 } }], (e) => got.push(...e));
+  for (let i = 0; i < 20 && p.wire.length < 2; i++) await new Promise((r) => setTimeout(r, 1));
+  expect(p.wire).toEqual([{ method: "room.join", args: { room: "duel" } }, { method: "room.send", args: { channel: "og.lockstep", data: { t: 1 } } }]);
+  // The stand-in answers no room.* call: each becomes the engine's error event, named by its op.
+  for (let i = 0; i < 20 && got.length < 2; i++) await new Promise((r) => setTimeout(r, 1));
+  expect(got).toEqual([
+    { type: "error", op: "join", code: "unavailable", message: "no room.join" },
+    { type: "error", op: "send", code: "unavailable", message: "no room.send" },
+  ]);
+  host.push({ type: "peer_joined", peer: 1, name: "" });
+  expect(got[2]).toEqual({ type: "peer_joined", peer: 1, name: "" });
 });

@@ -39,6 +39,8 @@ export interface PlayerEvents {
   gesture?(): void;
   pause?(): void;
   resume?(): void;
+  /** A room event the Player pushed (`kind: "room"`, docs/platform-asks.md #16): the engine's own shape. */
+  room?(event: Record<string, unknown>): void;
 }
 
 /** A short fingerprint of an error message: `[a-z0-9-]{1,64}` (FNV-1a of the first line, hex). */
@@ -156,6 +158,11 @@ export function connectPlayer(events: PlayerEvents) {
         paused = false;
         events.resume?.();
         break;
+      case "room": {
+        const event = m["event"];
+        if (event && typeof event === "object" && !Array.isArray(event)) events.room?.(event as Record<string, unknown>);
+        break;
+      }
     }
   };
   if (peer) addEventListener("message", onMessage);

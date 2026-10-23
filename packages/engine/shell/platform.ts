@@ -24,10 +24,19 @@
 //   telemetry            an `event` named game.custom.<name>
 //   point                point.award { reason, amount } → { granted, balance }
 //   ai.mark              ai.mark { kind, label, model? } → { marked }
+//   rooms                room.create { name?, capacity? }, room.join { room, name? },
+//                        room.leave {}, room.send { to?, channel?, data? | bytes? }
+//                        (docs/platform-asks.md #16): a result only acknowledges
+//                        (a failed one becomes the engine's `error` event); every
+//                        room event arrives as a pushed `room` message in the
+//                        engine's own shape (joined, peer_joined, peer_left,
+//                        message, left), in order. A Player without room.join
+//                        carries no rooms: roomInfo's host is `none`.
 
 import { answerLocally, fail, localPlatform, type LocalDocument, type LocalPersistence, type PlatformAnswer, type PlatformCall, type PlatformHost } from "../src/platform-local.ts";
 export { storagePersistence } from "../src/platform-local.ts";
 import type { PlayerResult } from "./player.ts";
+import type { RoomHost } from "../src/web/shell.ts";
 
 /** The part of the Player link this needs (connectPlayer's answer). */
 export interface PlayerLink {
@@ -201,3 +210,40 @@ export function deferredPlatform(ready: Promise<PlatformHost>, capabilities: rea
 
 /** How long a framed page waits for a Player's hello before the browser's storage answers. */
 export const HELLO_WAIT_MS = 1500;
+
+/** The room ops the Player answers, by the engine's op name. */
+const ROOM_OPS: Record<string, string> = { create: "room.create", join: "room.join", leave: "room.leave", send: "room.send" };
+
+/**
+ * The Player's rooms (docs/platform-asks.md #16), or null for a Player that has none. Ops go
+ * to it in order without waiting (a send never waits for a join's answer: the Player queues
+ * them); `push` takes the events it pushes. A refused op becomes an `error` event naming it.
+ */
+export function playerRooms(player: PlayerLink): (RoomHost & { push(event: Record<string, unknown>): void }) | null {
+  if (!player.capabilities.includes("room.join")) return null;
+  let deliver: ((events: unknown[]) => void) | null = null;
+  return {
+    host: "player",
+    handle(ops, to) {
+      deliver = to;
+      for (const op of ops) {
+        const name = String(op["op"]);
+        const method = ROOM_OPS[name];
+        const { op: _op, ...args } = op;
+        if (!method || !player.capabilities.includes(method)) {
+          to([{ type: "error", op: name, code: "unavailable", message: `this Player answers no ${method ?? name}` }]);
+          continue;
+        }
+        void player.request(method, args).then(
+          (r) => {
+            if (!r.ok) deliver?.([{ type: "error", op: name, code: r.error.code, message: r.error.message }]);
+          },
+          (e: unknown) => deliver?.([{ type: "error", op: name, code: "offline", message: e instanceof Error ? e.message : String(e) }]),
+        );
+      }
+    },
+    push(event) {
+      deliver?.([event]);
+    },
+  };
+}

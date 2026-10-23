@@ -86,6 +86,7 @@ if (answer.ok && typeof answer.data.value === "number") run.best[i] = Math.max(r
 | Analytics | `telemetry(world, "round.over", { score, coins })` | one-way; a name of 1–64 letters, digits, `.` and `_` (the Player files it as `game.custom.<name>`), at most 16 scalar attributes; never personal data |
 | Origin Point | `point(world, { reason, amount })` | the platform decides what it grants (today nothing under a Player: `{ granted: 0, balance: null }` until an approved point policy; show nothing that depends on it) |
 | AI-generated content shown | `aiMark(world, { kind, label })` | disclosure, not permission |
+| Play with others in one room | `roomCreate(world, { name })`, `roomJoin(world, room)`, `roomLeave`, `roomSend(world, data, to?)`, `roomPeers`, `roomInfo`; the answers as `og.RoomJoined`, `og.RoomPeerJoined`, `og.RoomPeerLeft`, `og.RoomMessage` (read one with `roomMessage`) | natively `og relay` with `og run --room ws://127.0.0.1:P/<room>`; on the web the Player's rooms, when its hello lists `room.join` (`roomInfo(world).host` is `none` otherwise and joins are refused). A message is this peer's host input only: for a game both peers simulate, use og.net's lockstep (`og.Lockstep`, `og.PlayerInput`, og-game §20) and send nothing yourself |
 
 `og.platform.info(world)` says what answers here (`player`, `local` or
 `none`) and the methods it answers (`capabilities`): check it rather than

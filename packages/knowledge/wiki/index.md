@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 32 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 33 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -41,6 +41,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`debug`](debug.md) | `og.debug.*` | dropped | Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI) so they read in every capture and never hide behind geometry; and the debug views (physics, navigation, bounds) the command channel's `debug:` actions switch. |
 | [`path`](path.md) | `og.path.*` | kept | Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t. |
 | [`timeline`](timeline.md) | `og.timeline.*` | kept | Timelines: cutscenes and sequences as data, Unity's Timeline and Godot's AnimationPlayer as an `.ogt` the agent reads and diffs. A `type timeline` file has a `duration` in seconds, `path "<name>" { ... }` blocks (as og.path's) and `track <kind> ["<entity>"] { key <seconds> { ... } }` blocks; `og cook` cooks it (importing caption files) and og.load.timeline loads it. Tracks: `camera` (position and target keys, or `rail "<path>"` with `at` 0..1 along it, or `follow "<entity>"` with offsets; fov; eased), `transform "<entity>"` (position, rotation in degrees or quaternion, scale; eased), `animation "<entity>"` (clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model), `audio` (sound, volume, pitch, bus), `music` (sound, volume, fadeIn, fadeOut, end, loop, bus), `caption` (text from `key` to `end` with a UI type step `style` and an `anchor`; `captions "narration.srt" [offset]` imports a SubRip file or word timestamps `.json`), `event` (`do "<command-channel action>"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it), `transition` (kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from, over og.ui's screen cover) and `marker` (`name`, sending og.TimelineMarker when played past). |
+| [`net`](net.md) | `og.net.*` | kept | Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it. |
 
 ### `og-feel`
 
@@ -118,7 +119,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1108 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1133 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -243,6 +244,7 @@ Field units the docs and Tune use.
 | [`DescribedEntity`](probe.md#type-DescribedEntity) | struct | probe | — |
 | [`DescribedUi`](probe.md#type-DescribedUi) | struct | probe | — |
 | [`Description`](probe.md#type-Description) | struct | probe | — |
+| [`DesyncDump`](probe.md#type-DesyncDump) | struct | probe | — |
 | [`DialogueDesc`](ui.md#type-DialogueDesc) | desc struct | ui | — |
 | [`DialogueLine`](ui.md#type-DialogueLine) | desc struct | ui | — |
 | [`DialogueResult`](ui.md#type-DialogueResult) | struct | ui | — |
@@ -362,6 +364,7 @@ Field units the docs and Tune use.
 | [`Input.down`](input.md#member-Input-down) | method | input | `og_input_down` |
 | [`Input.pressed`](input.md#member-Input-pressed) | method | input | `og_input_pressed` |
 | [`Input.released`](input.md#member-Input-released) | method | input | `og_input_released` |
+| [`InputDesc`](net.md#type-InputDesc) | desc struct | net | — |
 | [`InputOperation`](probe.md#type-InputOperation) | struct | probe | — |
 | [`Insets`](ui.md#type-Insets) | struct | ui | — |
 | [`InventoryDesc`](ui.md#type-InventoryDesc) | desc struct | ui | — |
@@ -404,6 +407,8 @@ Field units the docs and Tune use.
 | [`LOCK_TRANSLATION_X`](physics.md#const-LOCK_TRANSLATION_X) | constant | physics | — |
 | [`LOCK_TRANSLATION_Y`](physics.md#const-LOCK_TRANSLATION_Y) | constant | physics | — |
 | [`LOCK_TRANSLATION_Z`](physics.md#const-LOCK_TRANSLATION_Z) | constant | physics | — |
+| [`LockstepSeat`](net.md#type-LockstepSeat) | struct | net | — |
+| [`LockstepStatus`](net.md#type-LockstepStatus) | struct | net | — |
 | [`Look`](render.md#type-Look) | handle | render | — |
 | [`LookInfo`](render.md#type-LookInfo) | struct | render | — |
 | [`Lut`](render.md#type-Lut) | handle | render | — |
@@ -515,6 +520,7 @@ Field units the docs and Tune use.
 | [`og.debug.text`](debug.md#fn-text) | function | debug | `og_debug_text` |
 | [`og.debug.view`](debug.md#fn-view) | function | debug | `og_debug_view` |
 | [`og.Decal`](render.md#record-Decal) | component | render | — |
+| [`og.Desync`](net.md#record-Desync) | event | net | — |
 | [`og.DirectionalLight`](render.md#record-DirectionalLight) | component | render | — |
 | [`og.Environment`](render.md#record-Environment) | resource | render | — |
 | [`og.Flipbook`](anim.md#record-Flipbook) | component | anim | — |
@@ -570,6 +576,7 @@ Field units the docs and Tune use.
 | [`og.load.timeline`](load.md#fn-timeline) | function | load | `og_load_timeline` |
 | [`og.load.video`](load.md#fn-video) | function | load | `og_load_video` |
 | [`og.load.videoInfo`](load.md#fn-videoInfo) | function | load | `og_load_video_info` |
+| [`og.Lockstep`](net.md#record-Lockstep) | resource | net | — |
 | [`og.MaterialStyle`](render.md#record-MaterialStyle) | resource | render | — |
 | [`og.MatrixWorld`](transform.md#record-MatrixWorld) | component | transform | — |
 | [`og.Mesh`](render.md#record-Mesh) | component | render | — |
@@ -590,6 +597,9 @@ Field units the docs and Tune use.
 | [`og.nav.setFlowTargets`](nav.md#fn-setFlowTargets) | function | nav | `og_nav_set_flow_targets` |
 | [`og.nav.setObstacle`](nav.md#fn-setObstacle) | function | nav | `og_nav_set_obstacle` |
 | [`og.NavAgent`](nav.md#record-NavAgent) | component | nav | — |
+| [`og.net.hash`](net.md#fn-hash) | function | net | `og_net_hash` |
+| [`og.net.status`](net.md#fn-status) | function | net | `og_net_status` |
+| [`og.net.submit`](net.md#fn-submit) | function | net | `og_net_submit` |
 | [`og.Occluder2D`](render.md#record-Occluder2D) | component | render | — |
 | [`og.OrbitCamera`](camera.md#record-OrbitCamera) | component | camera | — |
 | [`og.Parent`](transform.md#record-Parent) | component | transform | — |
@@ -631,6 +641,13 @@ Field units the docs and Tune use.
 | [`og.platform.now`](platform.md#fn-now) | function | platform | `og_platform_now` |
 | [`og.platform.point`](platform.md#fn-point) | function | platform | `og_platform_point` |
 | [`og.platform.result`](platform.md#fn-result) | function | platform | `og_platform_result` |
+| [`og.platform.roomCreate`](platform.md#fn-roomCreate) | function | platform | `og_platform_room_create` |
+| [`og.platform.roomInfo`](platform.md#fn-roomInfo) | function | platform | `og_platform_room_info` |
+| [`og.platform.roomJoin`](platform.md#fn-roomJoin) | function | platform | `og_platform_room_join` |
+| [`og.platform.roomLeave`](platform.md#fn-roomLeave) | function | platform | `og_platform_room_leave` |
+| [`og.platform.roomMessage`](platform.md#fn-roomMessage) | function | platform | `og_platform_room_message` |
+| [`og.platform.roomPeers`](platform.md#fn-roomPeers) | function | platform | `og_platform_room_peers` |
+| [`og.platform.roomSend`](platform.md#fn-roomSend) | function | platform | `og_platform_room_send` |
 | [`og.platform.saveSettings`](platform.md#fn-saveSettings) | function | platform | `og_platform_save_settings` |
 | [`og.platform.saveSlot`](platform.md#fn-saveSlot) | function | platform | `og_platform_save_slot` |
 | [`og.platform.storeGet`](platform.md#fn-storeGet) | function | platform | `og_platform_store_get` |
@@ -639,6 +656,7 @@ Field units the docs and Tune use.
 | [`og.platform.telemetry`](platform.md#fn-telemetry) | function | platform | `og_platform_telemetry` |
 | [`og.PlatformAnswered`](platform.md#record-PlatformAnswered) | event | platform | — |
 | [`og.PlatformerController`](physics.md#record-PlatformerController) | component | physics | — |
+| [`og.PlayerInput`](net.md#record-PlayerInput) | component | net | — |
 | [`og.PointerDown`](input.md#record-PointerDown) | event | input | — |
 | [`og.PointerMove`](input.md#record-PointerMove) | event | input | — |
 | [`og.Pointers`](input.md#record-Pointers) | resource | input | — |
@@ -680,6 +698,10 @@ Field units the docs and Tune use.
 | [`og.ReverbZone`](audio.md#record-ReverbZone) | component | audio | — |
 | [`og.RigidBody`](physics.md#record-RigidBody) | component | physics | — |
 | [`og.Rng`](rng.md#record-Rng) | resource | rng | — |
+| [`og.RoomJoined`](platform.md#record-RoomJoined) | event | platform | — |
+| [`og.RoomMessage`](platform.md#record-RoomMessage) | event | platform | — |
+| [`og.RoomPeerJoined`](platform.md#record-RoomPeerJoined) | event | platform | — |
+| [`og.RoomPeerLeft`](platform.md#record-RoomPeerLeft) | event | platform | — |
 | [`og.Rope`](physics.md#record-Rope) | component | physics | — |
 | [`og.SensorEntered`](physics.md#record-SensorEntered) | event | physics | — |
 | [`og.SensorExited`](physics.md#record-SensorExited) | event | physics | — |
@@ -989,6 +1011,10 @@ Field units the docs and Tune use.
 | [`RngStream.next`](rng.md#member-RngStream-next) | method | rng | `og_rng_stream_next` |
 | [`RngStream.range`](rng.md#member-RngStream-range) | method | rng | `og_rng_stream_range` |
 | [`RngStream.seed`](rng.md#member-RngStream-seed) | property | rng | `og_rng_stream_get_seed` |
+| [`RoomDesc`](platform.md#type-RoomDesc) | desc struct | platform | — |
+| [`RoomInfo`](platform.md#type-RoomInfo) | struct | platform | — |
+| [`RoomMessageData`](platform.md#type-RoomMessageData) | struct | platform | — |
+| [`RoomPeer`](platform.md#type-RoomPeer) | struct | platform | — |
 | [`RootMotion`](anim.md#type-RootMotion) | enum | anim | — |
 | [`RootMotion()`](anim.md#column-RootMotion) | column kind | anim | — |
 | [`RuntimeProbe`](probe.md#type-RuntimeProbe) | interface | probe | — |

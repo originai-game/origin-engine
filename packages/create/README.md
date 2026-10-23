@@ -21,7 +21,7 @@ sprites or tiles without saying 3D gets the 2D starter, anything else the
 3D template. The output's `Profile:` line says which and why.
 `--archetype` starts from a complete game of `templates/archetypes/`
 instead of either template: `runner`, `match3`, `topdown`, `tower-defense`,
-`roguelike`, `idle`, `rhythm` or `third-person` (the published package carries them under
+`roguelike`, `idle`, `rhythm`, `third-person` or `arena` (the published package carries them under
 `archetypes/`); an archetype has its own profile, so `--profile` beside it
 is refused.
 

@@ -108,6 +108,8 @@ pub enum DumpKind {
     World,
     Entity,
     Ui,
+    /// The host's `dump_desync` (og.net's lockstep), when it registered one.
+    Desync,
 }
 
 /// A parameter sweep (IDL `SweepDesc`): for each value, restore the snapshot
@@ -252,7 +254,15 @@ pub struct Probe {
     after_tick: Option<AfterTickFn>,
     /// The host's start-of-tick work ([`Probe::set_before_tick`]).
     before_tick: Option<AfterTickFn>,
+    /// The host's tick gate ([`Probe::set_gate`]).
+    gate: Option<GateFn>,
 }
+
+/// The host's tick gate: asked before every tick the clock takes (a frame's
+/// ticks, `advance`), with the world between ticks; false holds the tick
+/// (og.net's lockstep waiting for a player's input). It may restore the
+/// world (a lockstep start or late join hands a peer's snapshot over).
+pub type GateFn = Box<dyn FnMut(&mut World) -> bool>;
 
 /// The host's end-of-tick hook: called after every tick the probe takes,
 /// with the world between ticks (a game's deferred restore lands here).
@@ -454,6 +464,7 @@ impl Probe {
             written: BTreeMap::new(),
             after_tick: None,
             before_tick: None,
+            gate: None,
         })
     }
 
@@ -514,6 +525,27 @@ impl Probe {
     /// restore's og.WorldRestored).
     pub fn set_before_tick(&mut self, before: AfterTickFn) {
         self.before_tick = Some(before);
+    }
+
+    /// The host's tick gate ([`GateFn`]): a frame takes no further tick, and
+    /// `advance` stops, while it holds.
+    pub fn set_gate(&mut self, gate: GateFn) {
+        self.gate = Some(gate);
+    }
+
+    /// Whether the gate holds the next tick. A gate that moved `Time` (it
+    /// restored a peer's snapshot) moves the scheduled steps with it.
+    fn held(&mut self, world: &mut World) -> bool {
+        let Some(gate) = self.gate.as_mut() else {
+            return false;
+        };
+        let before = world.time().tick;
+        let go = gate(world);
+        let now = world.time().tick;
+        if now != before {
+            self.shift_schedule(before, now);
+        }
+        !go
     }
 
     /// The world's clock jumped from `from` to `to` outside a tick (a game
@@ -846,7 +878,7 @@ impl Probe {
     /// its frame, it takes no tick.
     pub fn step(&mut self, world: &mut World) -> og_core::Result<()> {
         self.pump(world);
-        if self.quit || self.shot.is_some() {
+        if self.quit || self.shot.is_some() || self.held(world) {
             return Ok(());
         }
         self.tick_once(world)
@@ -859,7 +891,11 @@ impl Probe {
         self.pump(world);
         let mut taken = 0;
         while taken < due && !self.paused && !self.quit && self.shot.is_none() {
-            self.step(world)?;
+            self.pump(world);
+            if self.quit || self.shot.is_some() || self.held(world) {
+                break;
+            }
+            self.tick_once(world)?;
             taken += 1;
         }
         Ok(taken)
@@ -1898,7 +1934,7 @@ impl Probe {
             if self.shot.is_none() {
                 self.pump(world);
             }
-            if self.quit {
+            if self.quit || self.held(world) {
                 break;
             }
             self.tick_once(world)?;
@@ -2344,6 +2380,14 @@ impl Probe {
         match kind {
             DumpKind::World => Some(self.dump_world(world)),
             DumpKind::Ui => Some(self.dump_ui(world)),
+            DumpKind::Desync => match self.commands.get("dump_desync").map(|r| &r.handler) {
+                Some(Handler::Dump(handler, _)) => {
+                    let mut v = handler.clone()(world, &[]).ok()?;
+                    v["kind"] = json!("desync");
+                    Some(v)
+                }
+                _ => None,
+            },
             DumpKind::Entity => {
                 let e = self.names.resolve(world, id)?;
                 Some(self.dump_entity(world, e))

@@ -44,7 +44,7 @@
 // Worker's animation frames while the clock played, so isolated pages never
 // answered.
 
-import { createEngine, systemClock, type Engine, type GameToken } from "../runtime.ts";
+import { boundHost, createEngine, systemClock, type Engine, type GameToken } from "../runtime.ts";
 import type { PlatformAnswer, PlatformHost } from "../platform-local.ts";
 import { loadWebHost, type WebGlue } from "./host.ts";
 import { drainRing, stampAt, type InjectedInput } from "./input.ts";
@@ -113,8 +113,25 @@ type Message =
   | { type: "resize"; width: number; height: number; viewport: Viewport }
   | { type: "platform-answer"; request: number; answer: PlatformAnswer }
   | { type: "platform-host"; host: string; capabilities: string[] }
+  | { type: "room-events"; events: unknown[] }
+  | { type: "room-host"; host: string }
   | AudioMessage
   | AudioLatencyMessage;
+
+/**
+ * Rooms (docs/design.md §2.8): the engine's room ops (og_room_take) go to the
+ * page as `room` messages, which the shell's room host carries (the Player's
+ * room.*, docs/platform-asks.md #16); the page's `room-events` come back
+ * through og_room_deliver, in order, and `room-host` names what carries them.
+ * Ops are taken after every frame and after events are delivered, so
+ * lockstep's inputs leave on the frame that made them.
+ */
+function pumpRoom(engine: Engine): void {
+  const host = boundHost();
+  if (!host) return;
+  const ops = JSON.parse(host.abi.og_room_take(engine.id)) as unknown[];
+  if (ops.length > 0) self.postMessage({ type: "room", ops });
+}
 
 /** og.platform's host in the Worker: the calls go to the page (counted), whose answers come back as `platform-answer`. */
 function toPage(host: string, capabilities: readonly string[], counter: PlatformCounter): PlatformHost {
@@ -676,6 +693,7 @@ export function startWorker(game: GameToken): void {
         }
         behind = answered.behind ?? 0;
         relay(answered);
+        pumpRoom(engine);
         if (typeof answered.tick === "number") lastTick = answered.tick;
         if (!firstFrame && answered.rendered !== false) {
           firstFrame = true;
@@ -983,6 +1001,12 @@ export function startWorker(game: GameToken): void {
       platformCounter.answered();
     }
     if (data.type === "platform-host") engine.attachPlatform(toPage(data.host, data.capabilities, platformCounter));
+    if (data.type === "room-host") boundHost()?.abi.og_room_set_host(engine.id, JSON.stringify({ host: data.host }));
+    if (data.type === "room-events") {
+      const abi = boundHost()?.abi;
+      for (const event of data.events) abi?.og_room_deliver(engine.id, JSON.stringify(event));
+      pumpRoom(engine);
+    }
     if (data.type === "play") {
       playing = data.on;
       last = 0;
