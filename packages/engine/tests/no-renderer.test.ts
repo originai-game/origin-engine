@@ -91,11 +91,14 @@ export default playtest({
 
 /** A dump with the systems' wall-clock timings left out. */
 const dump = (dir: string, file: string): unknown => {
-  const v = JSON.parse(readFileSync(join(dir, file), "utf8")) as { systems?: Array<Record<string, unknown>> };
+  const v = JSON.parse(readFileSync(join(dir, file), "utf8")) as { systems?: Array<Record<string, unknown>>; render?: unknown };
   for (const s of v.systems ?? []) {
     delete s["totalMs"];
     delete s["ms"];
   }
+  // An entity's `render` block (the level of detail drawn) is what the
+  // renderer did, not the game: without one there is nothing to report.
+  delete v.render;
   return v;
 };
 
