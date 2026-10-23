@@ -77,6 +77,7 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
             crate::stylise_object::object_source(palette, tables),
         );
     }
+    add("lines", crate::lines::LINES_WGSL.to_string());
     add("sky", format!("{}{}", crate::FRAME_WGSL, crate::SKY_WGSL));
     add(
         "sprite",

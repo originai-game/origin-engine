@@ -369,6 +369,45 @@ impl RenderApi for WebHost {
     fn og_render_sphere_geometry(&self, world: u32, desc: Option<String>) -> String {
         rt::og_render_sphere_geometry(world, desc)
     }
+    fn og_render_buffer_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_buffer_geometry(world, desc)
+    }
+    fn og_render_update_geometry(&self, world: u32, geometry: f64, desc: Option<String>) -> String {
+        rt::og_render_update_geometry(world, geometry, desc)
+    }
+    fn og_render_geometry_info(&self, world: u32, geometry: f64) -> String {
+        rt::og_render_geometry_info(world, geometry)
+    }
+    fn og_render_cylinder_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_cylinder_geometry(world, desc)
+    }
+    fn og_render_cone_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_cone_geometry(world, desc)
+    }
+    fn og_render_capsule_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_capsule_geometry(world, desc)
+    }
+    fn og_render_torus_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_torus_geometry(world, desc)
+    }
+    fn og_render_ring_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_ring_geometry(world, desc)
+    }
+    fn og_render_circle_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_circle_geometry(world, desc)
+    }
+    fn og_render_tube_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_tube_geometry(world, desc)
+    }
+    fn og_render_lines(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_lines(world, desc)
+    }
+    fn og_render_points(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_points(world, desc)
+    }
+    fn og_render_raycast(&self, world: u32, ray: String, desc: Option<String>) -> String {
+        rt::og_render_raycast(world, ray, desc)
+    }
     fn og_render_sprite(&self, world: u32, desc: Option<String>) -> String {
         rt::og_render_sprite(world, desc)
     }

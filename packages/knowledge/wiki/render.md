@@ -30,6 +30,7 @@ module render {
 | [`Antialias`](#type-Antialias) | enum | Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved. |
 | [`PointShadows`](#type-PointShadows) | enum | How a point light's shadow map is stored, as og-render's PointShadows. RenderCapabilities.pointShadows reports what the device resolved. |
 | [`TaaHistory`](#type-TaaHistory) | enum | How TAA resamples its history each frame, as og-render's TaaHistory. |
+| [`DebugView`](#type-DebugView) | enum | What the debug overlay shows besides og.debug's draws (og.debug.setView, RenderOptions.debugView, `debug:<view>`), drawn over the finished frame. Streams add views as they add what to show. |
 | [`RenderOptions`](#type-RenderOptions) | desc struct | How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer. |
 | [`StandardMaterialDesc`](#type-StandardMaterialDesc) | desc struct | A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names. |
 | [`og.Mesh`](#record-Mesh) | component | Draws a geometry with a material at the entity's MatrixWorld, as a three.js Mesh. |
@@ -107,6 +108,36 @@ module render {
 | [`og.render.look`](#fn-look) | function | The look last applied (by og.render.applyLook or GameDesc.look), as og.load.lookInfo describes it; null before any. |
 | [`og.render.capabilities`](#fn-capabilities) | function | The renderer's tier and limits on this device. |
 | [`og.render.text`](#fn-text) | function | Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout. |
+| [`BufferGeometryDesc`](#type-BufferGeometryDesc) | desc struct | Geometry from attribute arrays, as three.js BufferGeometry with its attributes set: one item per vertex in each array, triangles three indices each (or, with no indices, every three vertices). |
+| [`GeometryInfo`](#type-GeometryInfo) | struct | What a geometry holds (og.render.geometryInfo). |
+| [`og.render.bufferGeometry`](#fn-bufferGeometry) | function | Make a geometry from attribute arrays (three.js BufferGeometry): procedural levels, 2D polygons, meshes a tool made. It draws as any geometry (og.Mesh), its BVH is built for og.render.raycast, and (desc.physics) it is a Collider.mesh at once. |
+| [`og.render.updateGeometry`](#fn-updateGeometry) | function | Rewrite a dynamic geometry's attributes in place (desc as og.render.bufferGeometry's, every attribute given again; `dynamic` and `physics` keep their values from when it was made). The same vertex and index counts rewrite its GPU buffers in place; other counts reallocate them, which costs more and is fine now and then. Its BVH is rebuilt, and its physics mesh re-registered (colliders made from it are rebuilt at the next step). Every og.Mesh, og.Lines and og.Points showing it changes. |
+| [`og.render.geometryInfo`](#fn-geometryInfo) | function | A geometry's counts and bounds. |
+| [`CylinderGeometryDesc`](#type-CylinderGeometryDesc) | desc struct | A cylinder (or a truncated cone) along +Y centred at the origin, as three.js CylinderGeometry(radiusTop, radiusBottom, height, radialSegments, heightSegments, openEnded, thetaStart, thetaLength). |
+| [`ConeGeometryDesc`](#type-ConeGeometryDesc) | desc struct | A cone along +Y centred at the origin, its tip up, as three.js ConeGeometry(radius, height, radialSegments, heightSegments, openEnded). |
+| [`CapsuleGeometryDesc`](#type-CapsuleGeometryDesc) | desc struct | A capsule along +Y centred at the origin, as three.js CapsuleGeometry(radius, height, capSegments, radialSegments, heightSegments): a cylinder of `height` between two hemispheres, `height + 2 radius` long in all (an og.Collider capsule of halfHeight height / 2 and that radius matches it). |
+| [`TorusGeometryDesc`](#type-TorusGeometryDesc) | desc struct | A torus in the xy plane around +Z, as three.js TorusGeometry(radius, tube, radialSegments, tubularSegments, arc). |
+| [`RingGeometryDesc`](#type-RingGeometryDesc) | desc struct | A flat ring in the xy plane facing +Z, as three.js RingGeometry(innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength). |
+| [`CircleGeometryDesc`](#type-CircleGeometryDesc) | desc struct | A disc (or a sector) in the xy plane facing +Z, as three.js CircleGeometry(radius, segments, thetaStart, thetaLength): a 2D polygon's simplest shape. |
+| [`TubeGeometryDesc`](#type-TubeGeometryDesc) | desc struct | A tube along a curve through points, as three.js TubeGeometry(new CatmullRomCurve3(points, closed, 'centripetal'), tubularSegments, radius, radialSegments, closed): u runs along it, v around. The points may come from anywhere: a path's samples, a rope's points, a spline a tool made. |
+| [`og.render.cylinderGeometry`](#fn-cylinderGeometry) | function | Make a cylinder geometry for og.Mesh (give its body a cylinder-like Collider: a capsule, a convex Collider.mesh of it, or the geometry itself). |
+| [`og.render.coneGeometry`](#fn-coneGeometry) | function | Make a cone geometry for og.Mesh. Physics can use it as a convex Collider.mesh. |
+| [`og.render.capsuleGeometry`](#fn-capsuleGeometry) | function | Make a capsule geometry for og.Mesh (its body's Collider is a capsule of the same radius and half the height). |
+| [`og.render.torusGeometry`](#fn-torusGeometry) | function | Make a torus geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh. |
+| [`og.render.ringGeometry`](#fn-ringGeometry) | function | Make a ring geometry for og.Mesh (one-sided: give it a double-sided material to see it from behind). |
+| [`og.render.circleGeometry`](#fn-circleGeometry) | function | Make a circle geometry for og.Mesh (one-sided, as ringGeometry). |
+| [`og.render.tubeGeometry`](#fn-tubeGeometry) | function | Make a tube along a curve through points for og.Mesh: pipes, cables, rails, a path shown as a ribbon of geometry. Physics can use it as a triangle-mesh Collider.mesh. |
+| [`LineMode`](#type-LineMode) | enum | How a line set's points join, as three.js's three line objects. |
+| [`LineMode()`](#column-LineMode) | column kind | A LineMode field: the variant's index. |
+| [`LinesDesc`](#type-LinesDesc) | desc struct | Lines through points, drawn this frame only (immediate mode, as og.render.sprite): submit them every tick they should show. three.js Line, LineSegments and LineLoop with a LineBasicMaterial or LineDashedMaterial, but any width on every tier (each segment is a quad in screen space with a feathered edge, so WebGL2's one-pixel lines do not apply). |
+| [`og.render.lines`](#fn-lines) | function | Draw lines this frame. Systems and commands may call it; the list is cleared at every tick, so submit them every tick they should show (og.Lines keeps a static set). |
+| [`PointsDesc`](#type-PointsDesc) | desc struct | A point cloud drawn this frame only (immediate mode), as three.js Points with a PointsMaterial: a square per point facing the camera. Submit it every tick it should show (og.Points keeps a static set). |
+| [`og.render.points`](#fn-points) | function | Draw a point cloud this frame. Systems and commands may call it; the list is cleared at every tick. |
+| [`og.Lines`](#record-Lines) | component | Draws a geometry's vertices as lines at the entity's MatrixWorld, every frame (three.js Line, LineSegments or LineLoop over a BufferGeometry): a static set of lines kept as data, a level's outline, a track, a constellation. The vertices are taken in order (the geometry's indices are not read), with its vertex colours times color. |
+| [`og.Points`](#record-Points) | component | Draws a geometry's vertices as a point cloud at the entity's MatrixWorld, every frame (three.js Points over a BufferGeometry): star fields, scanned surfaces, sparse markers kept as data. Vertex colours times color. |
+| [`RaycastGeometryDesc`](#type-RaycastGeometryDesc) | desc struct | Which meshes og.render.raycast tests, as three.js Raycaster's near, far and layers. |
+| [`GeometryHit`](#type-GeometryHit) | struct | Where a ray meets a drawn triangle, as three.js Raycaster's intersection. |
+| [`og.render.raycast`](#fn-raycast) | function | Every drawn triangle a ray crosses, nearest first, as three.js Raycaster.intersectObjects: what is drawn, not the colliders (og.physics.raycast answers those). It tests og.Mesh and og.Model entities at their world transforms through a BVH per geometry (built when the geometry is made, loaded or updated), both faces of each triangle, skinned models in their bind pose. Read the world as of the call; inside a system, its transforms as earlier systems left them. |
 
 ## Functions
 
@@ -138,7 +169,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 2889</sub>
+<sub>`api.ogt` line 2899</sub>
 
 <a id="fn-sprite"></a>
 
@@ -168,7 +199,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 3017</sub>
+<sub>`api.ogt` line 3027</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -198,7 +229,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3194</sub>
+<sub>`api.ogt` line 3204</sub>
 
 <a id="fn-measureText"></a>
 
@@ -228,7 +259,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3201</sub>
+<sub>`api.ogt` line 3211</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -258,7 +289,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3270</sub>
+<sub>`api.ogt` line 3280</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -288,7 +319,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3277</sub>
+<sub>`api.ogt` line 3287</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -318,7 +349,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3284</sub>
+<sub>`api.ogt` line 3294</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -348,7 +379,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3308</sub>
+<sub>`api.ogt` line 3318</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -380,7 +411,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3315</sub>
+<sub>`api.ogt` line 3325</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -412,7 +443,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 3325</sub>
+<sub>`api.ogt` line 3335</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -444,7 +475,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 3333</sub>
+<sub>`api.ogt` line 3343</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -478,7 +509,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 3341</sub>
+<sub>`api.ogt` line 3351</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -508,7 +539,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 3350</sub>
+<sub>`api.ogt` line 3360</sub>
 
 <a id="fn-look"></a>
 
@@ -536,7 +567,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 3357</sub>
+<sub>`api.ogt` line 3367</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -564,7 +595,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 3363</sub>
+<sub>`api.ogt` line 3373</sub>
 
 <a id="fn-text"></a>
 
@@ -594,7 +625,401 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 3369</sub>
+<sub>`api.ogt` line 3379</sub>
+
+<a id="fn-bufferGeometry"></a>
+
+### `og.render.bufferGeometry`
+
+Make a geometry from attribute arrays (three.js BufferGeometry): procedural levels, 2D polygons, meshes a tool made. It draws as any geometry (og.Mesh), its BVH is built for og.render.raycast, and (desc.physics) it is a Collider.mesh at once.
+
+```ts
+og.render.bufferGeometry(world: World, desc?: BufferGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `BufferGeometryDesc` | yes | The attributes. |
+
+**Returns** `Result<Geometry>`: Refused for an attribute whose length does not fit the vertex count, an index past the vertices, or a number that is not finite (the reason names the attribute).
+
+Binding symbol `og_render_buffer_geometry` · publish builds: kept
+
+```ogt
+fn bufferGeometry {
+  doc "Make a geometry from attribute arrays (three.js BufferGeometry): procedural levels, 2D polygons, meshes a tool made. It draws as any geometry (og.Mesh), its BVH is built for og.render.raycast, and (desc.physics) it is a Collider.mesh at once."
+  param world World "The world whose renderer owns the geometry."
+  param desc BufferGeometryDesc "The attributes."
+  returns Result.Geometry "Refused for an attribute whose length does not fit the vertex count, an index past the vertices, or a number that is not finite (the reason names the attribute)."
+}
+```
+
+<sub>`api.ogt` line 3417</sub>
+
+<a id="fn-updateGeometry"></a>
+
+### `og.render.updateGeometry`
+
+Rewrite a dynamic geometry's attributes in place (desc as og.render.bufferGeometry's, every attribute given again; `dynamic` and `physics` keep their values from when it was made). The same vertex and index counts rewrite its GPU buffers in place; other counts reallocate them, which costs more and is fine now and then. Its BVH is rebuilt, and its physics mesh re-registered (colliders made from it are rebuilt at the next step). Every og.Mesh, og.Lines and og.Points showing it changes.
+
+```ts
+og.render.updateGeometry(world: World, geometry: Geometry, desc?: BufferGeometryDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `geometry` | `Geometry` | no | A geometry og.render.bufferGeometry made with dynamic true. |
+| `desc` | `BufferGeometryDesc` | yes | The new attributes. |
+
+**Returns** `Result<void>`: Refused for a dead or static geometry, or attributes og.render.bufferGeometry refuses.
+
+Binding symbol `og_render_update_geometry` · publish builds: kept
+
+```ogt
+fn updateGeometry {
+  doc "Rewrite a dynamic geometry's attributes in place (desc as og.render.bufferGeometry's, every attribute given again; `dynamic` and `physics` keep their values from when it was made). The same vertex and index counts rewrite its GPU buffers in place; other counts reallocate them, which costs more and is fine now and then. Its BVH is rebuilt, and its physics mesh re-registered (colliders made from it are rebuilt at the next step). Every og.Mesh, og.Lines and og.Points showing it changes."
+  param world World "The world whose renderer owns the geometry."
+  param geometry Geometry "A geometry og.render.bufferGeometry made with dynamic true."
+  param desc BufferGeometryDesc "The new attributes."
+  returns Result.Void "Refused for a dead or static geometry, or attributes og.render.bufferGeometry refuses."
+}
+```
+
+<sub>`api.ogt` line 3424</sub>
+
+<a id="fn-geometryInfo"></a>
+
+### `og.render.geometryInfo`
+
+A geometry's counts and bounds.
+
+```ts
+og.render.geometryInfo(world: World, geometry: Geometry): Result<GeometryInfo>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `geometry` | `Geometry` | no | Any geometry: made, a primitive or a loaded glTF's. |
+
+**Returns** `Result<GeometryInfo>`: Refused for a dead geometry.
+
+Binding symbol `og_render_geometry_info` · publish builds: kept
+
+```ogt
+fn geometryInfo {
+  doc "A geometry's counts and bounds."
+  param world World "The world whose renderer owns the geometry."
+  param geometry Geometry "Any geometry: made, a primitive or a loaded glTF's."
+  returns Result.GeometryInfo "Refused for a dead geometry."
+}
+```
+
+<sub>`api.ogt` line 3432</sub>
+
+<a id="fn-cylinderGeometry"></a>
+
+### `og.render.cylinderGeometry`
+
+Make a cylinder geometry for og.Mesh (give its body a cylinder-like Collider: a capsule, a convex Collider.mesh of it, or the geometry itself).
+
+```ts
+og.render.cylinderGeometry(world: World, desc?: CylinderGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `CylinderGeometryDesc` | yes | Its radii, height and tessellation. |
+
+**Returns** `Result<Geometry>`.
+
+Binding symbol `og_render_cylinder_geometry` · publish builds: kept
+
+```ogt
+fn cylinderGeometry {
+  doc "Make a cylinder geometry for og.Mesh (give its body a cylinder-like Collider: a capsule, a convex Collider.mesh of it, or the geometry itself)."
+  param world World "The world whose renderer owns the geometry."
+  param desc CylinderGeometryDesc "Its radii, height and tessellation."
+  returns Result.Geometry
+}
+```
+
+<sub>`api.ogt` line 3626</sub>
+
+<a id="fn-coneGeometry"></a>
+
+### `og.render.coneGeometry`
+
+Make a cone geometry for og.Mesh. Physics can use it as a convex Collider.mesh.
+
+```ts
+og.render.coneGeometry(world: World, desc?: ConeGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `ConeGeometryDesc` | yes | Its radius, height and tessellation. |
+
+**Returns** `Result<Geometry>`.
+
+Binding symbol `og_render_cone_geometry` · publish builds: kept
+
+```ogt
+fn coneGeometry {
+  doc "Make a cone geometry for og.Mesh. Physics can use it as a convex Collider.mesh."
+  param world World "The world whose renderer owns the geometry."
+  param desc ConeGeometryDesc "Its radius, height and tessellation."
+  returns Result.Geometry
+}
+```
+
+<sub>`api.ogt` line 3633</sub>
+
+<a id="fn-capsuleGeometry"></a>
+
+### `og.render.capsuleGeometry`
+
+Make a capsule geometry for og.Mesh (its body's Collider is a capsule of the same radius and half the height).
+
+```ts
+og.render.capsuleGeometry(world: World, desc?: CapsuleGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `CapsuleGeometryDesc` | yes | Its radius, length and tessellation. |
+
+**Returns** `Result<Geometry>`.
+
+Binding symbol `og_render_capsule_geometry` · publish builds: kept
+
+```ogt
+fn capsuleGeometry {
+  doc "Make a capsule geometry for og.Mesh (its body's Collider is a capsule of the same radius and half the height)."
+  param world World "The world whose renderer owns the geometry."
+  param desc CapsuleGeometryDesc "Its radius, length and tessellation."
+  returns Result.Geometry
+}
+```
+
+<sub>`api.ogt` line 3640</sub>
+
+<a id="fn-torusGeometry"></a>
+
+### `og.render.torusGeometry`
+
+Make a torus geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh.
+
+```ts
+og.render.torusGeometry(world: World, desc?: TorusGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `TorusGeometryDesc` | yes | Its radii and tessellation. |
+
+**Returns** `Result<Geometry>`.
+
+Binding symbol `og_render_torus_geometry` · publish builds: kept
+
+```ogt
+fn torusGeometry {
+  doc "Make a torus geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh."
+  param world World "The world whose renderer owns the geometry."
+  param desc TorusGeometryDesc "Its radii and tessellation."
+  returns Result.Geometry
+}
+```
+
+<sub>`api.ogt` line 3647</sub>
+
+<a id="fn-ringGeometry"></a>
+
+### `og.render.ringGeometry`
+
+Make a ring geometry for og.Mesh (one-sided: give it a double-sided material to see it from behind).
+
+```ts
+og.render.ringGeometry(world: World, desc?: RingGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `RingGeometryDesc` | yes | Its radii and tessellation. |
+
+**Returns** `Result<Geometry>`.
+
+Binding symbol `og_render_ring_geometry` · publish builds: kept
+
+```ogt
+fn ringGeometry {
+  doc "Make a ring geometry for og.Mesh (one-sided: give it a double-sided material to see it from behind)."
+  param world World "The world whose renderer owns the geometry."
+  param desc RingGeometryDesc "Its radii and tessellation."
+  returns Result.Geometry
+}
+```
+
+<sub>`api.ogt` line 3654</sub>
+
+<a id="fn-circleGeometry"></a>
+
+### `og.render.circleGeometry`
+
+Make a circle geometry for og.Mesh (one-sided, as ringGeometry).
+
+```ts
+og.render.circleGeometry(world: World, desc?: CircleGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `CircleGeometryDesc` | yes | Its radius and tessellation. |
+
+**Returns** `Result<Geometry>`.
+
+Binding symbol `og_render_circle_geometry` · publish builds: kept
+
+```ogt
+fn circleGeometry {
+  doc "Make a circle geometry for og.Mesh (one-sided, as ringGeometry)."
+  param world World "The world whose renderer owns the geometry."
+  param desc CircleGeometryDesc "Its radius and tessellation."
+  returns Result.Geometry
+}
+```
+
+<sub>`api.ogt` line 3661</sub>
+
+<a id="fn-tubeGeometry"></a>
+
+### `og.render.tubeGeometry`
+
+Make a tube along a curve through points for og.Mesh: pipes, cables, rails, a path shown as a ribbon of geometry. Physics can use it as a triangle-mesh Collider.mesh.
+
+```ts
+og.render.tubeGeometry(world: World, desc?: TubeGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `TubeGeometryDesc` | yes | The points, radius and tessellation. |
+
+**Returns** `Result<Geometry>`: Refused for fewer than two points or a point that is not finite.
+
+Binding symbol `og_render_tube_geometry` · publish builds: kept
+
+```ogt
+fn tubeGeometry {
+  doc "Make a tube along a curve through points for og.Mesh: pipes, cables, rails, a path shown as a ribbon of geometry. Physics can use it as a triangle-mesh Collider.mesh."
+  param world World "The world whose renderer owns the geometry."
+  param desc TubeGeometryDesc "The points, radius and tessellation."
+  returns Result.Geometry "Refused for fewer than two points or a point that is not finite."
+}
+```
+
+<sub>`api.ogt` line 3668</sub>
+
+<a id="fn-lines"></a>
+
+### `og.render.lines`
+
+Draw lines this frame. Systems and commands may call it; the list is cleared at every tick, so submit them every tick they should show (og.Lines keeps a static set).
+
+```ts
+og.render.lines(world: World, desc?: LinesDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer draws them. |
+| `desc` | `LinesDesc` | yes | The points and the look. |
+
+**Returns** `Result<void>`: Refused for fewer than two points or a colours list whose length is not the points'.
+
+Binding symbol `og_render_lines` · publish builds: kept
+
+```ogt
+fn lines {
+  doc "Draw lines this frame. Systems and commands may call it; the list is cleared at every tick, so submit them every tick they should show (og.Lines keeps a static set)."
+  param world World "The world whose renderer draws them."
+  param desc LinesDesc "The points and the look."
+  returns Result.Void "Refused for fewer than two points or a colours list whose length is not the points'."
+}
+```
+
+<sub>`api.ogt` line 3726</sub>
+
+<a id="fn-points"></a>
+
+### `og.render.points`
+
+Draw a point cloud this frame. Systems and commands may call it; the list is cleared at every tick.
+
+```ts
+og.render.points(world: World, desc?: PointsDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer draws it. |
+| `desc` | `PointsDesc` | yes | The positions and the look. |
+
+**Returns** `Result<void>`: Refused for a colours list whose length is not the points'.
+
+Binding symbol `og_render_points` · publish builds: kept
+
+```ogt
+fn points {
+  doc "Draw a point cloud this frame. Systems and commands may call it; the list is cleared at every tick."
+  param world World "The world whose renderer draws it."
+  param desc PointsDesc "The positions and the look."
+  returns Result.Void "Refused for a colours list whose length is not the points'."
+}
+```
+
+<sub>`api.ogt` line 3761</sub>
+
+<a id="fn-raycast"></a>
+
+### `og.render.raycast`
+
+Every drawn triangle a ray crosses, nearest first, as three.js Raycaster.intersectObjects: what is drawn, not the colliders (og.physics.raycast answers those). It tests og.Mesh and og.Model entities at their world transforms through a BVH per geometry (built when the geometry is made, loaded or updated), both faces of each triangle, skinned models in their bind pose. Read the world as of the call; inside a system, its transforms as earlier systems left them.
+
+```ts
+og.render.raycast(world: World, ray: Ray, desc?: RaycastGeometryDesc): Result<readonly GeometryHit[]>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world asked. |
+| `ray` | `Ray` | no | The ray; its direction need not be normalised and must not be zero. |
+| `desc` | `RaycastGeometryDesc` | yes | Reach, nearest only and layers. |
+
+**Returns** `Result<readonly GeometryHit[]>`: Refused for a zero or non-finite direction.
+
+Binding symbol `og_render_raycast` · publish builds: kept
+
+```ogt
+fn raycast {
+  doc "Every drawn triangle a ray crosses, nearest first, as three.js Raycaster.intersectObjects: what is drawn, not the colliders (og.physics.raycast answers those). It tests og.Mesh and og.Model entities at their world transforms through a BVH per geometry (built when the geometry is made, loaded or updated), both faces of each triangle, skinned models in their bind pose. Read the world as of the call; inside a system, its transforms as earlier systems left them."
+  param world World "The world asked."
+  param ray Ray "The ray; its direction need not be normalised and must not be zero."
+  param desc RaycastGeometryDesc "Reach, nearest only and layers."
+  returns Result.List.GeometryHit "Refused for a zero or non-finite direction."
+}
+```
+
+<sub>`api.ogt` line 3859</sub>
 
 ## Components, resources and events
 
@@ -648,7 +1073,7 @@ component Mesh {
 }
 ```
 
-<sub>`api.ogt` line 1917</sub>
+<sub>`api.ogt` line 1927</sub>
 
 <a id="record-DirectionalLight"></a>
 
@@ -703,7 +1128,7 @@ component DirectionalLight {
 }
 ```
 
-<sub>`api.ogt` line 1944</sub>
+<sub>`api.ogt` line 1954</sub>
 
 <a id="record-PointLight"></a>
 
@@ -744,7 +1169,7 @@ component PointLight {
 }
 ```
 
-<sub>`api.ogt` line 1976</sub>
+<sub>`api.ogt` line 1986</sub>
 
 <a id="record-SpotLight"></a>
 
@@ -796,7 +1221,7 @@ component SpotLight {
 }
 ```
 
-<sub>`api.ogt` line 1996</sub>
+<sub>`api.ogt` line 2006</sub>
 
 <a id="record-RenderSettings"></a>
 
@@ -873,7 +1298,7 @@ resource RenderSettings {
 }
 ```
 
-<sub>`api.ogt` line 2041</sub>
+<sub>`api.ogt` line 2051</sub>
 
 <a id="record-Environment"></a>
 
@@ -913,7 +1338,7 @@ resource Environment {
 }
 ```
 
-<sub>`api.ogt` line 2117</sub>
+<sub>`api.ogt` line 2127</sub>
 
 <a id="record-PostEffects"></a>
 
@@ -1150,7 +1575,7 @@ resource PostEffects {
 }
 ```
 
-<sub>`api.ogt` line 2197</sub>
+<sub>`api.ogt` line 2207</sub>
 
 <a id="record-Stylise"></a>
 
@@ -1405,7 +1830,7 @@ resource Stylise {
 }
 ```
 
-<sub>`api.ogt` line 2415</sub>
+<sub>`api.ogt` line 2425</sub>
 
 <a id="record-MaterialStyle"></a>
 
@@ -1470,7 +1895,7 @@ resource MaterialStyle {
 }
 ```
 
-<sub>`api.ogt` line 2608</sub>
+<sub>`api.ogt` line 2618</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -1509,7 +1934,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 2658</sub>
+<sub>`api.ogt` line 2668</sub>
 
 <a id="record-Light2D"></a>
 
@@ -1560,7 +1985,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 2677</sub>
+<sub>`api.ogt` line 2687</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -1591,7 +2016,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 2707</sub>
+<sub>`api.ogt` line 2717</sub>
 
 <a id="record-Decal"></a>
 
@@ -1646,7 +2071,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 2721</sub>
+<sub>`api.ogt` line 2731</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -1679,7 +2104,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 2755</sub>
+<sub>`api.ogt` line 2765</sub>
 
 <a id="record-Trail"></a>
 
@@ -1755,7 +2180,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 2768</sub>
+<sub>`api.ogt` line 2778</sub>
 
 <a id="record-Beam"></a>
 
@@ -1821,7 +2246,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 2816</sub>
+<sub>`api.ogt` line 2826</sub>
 
 <a id="record-Sprite"></a>
 
@@ -1952,7 +2377,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 3024</sub>
+<sub>`api.ogt` line 3034</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -2000,7 +2425,116 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 3109</sub>
+<sub>`api.ogt` line 3119</sub>
+
+<a id="record-Lines"></a>
+
+### `og.Lines` (component)
+
+Draws a geometry's vertices as lines at the entity's MatrixWorld, every frame (three.js Line, LineSegments or LineLoop over a BufferGeometry): a static set of lines kept as data, a level's outline, a track, a constellation. The vertices are taken in order (the geometry's indices are not read), with its vertex colours times color.
+
+Token `og.Lines`, registered under the schema name `og.Lines`; its value type is `Lines`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `geometry` | `Geometry` | `0` | — | — | — | The vertices (og.render.bufferGeometry: an unindexed one of any count). |
+| `mode` | `LineMode` | `"strip"` | — | — | — | How the vertices join. |
+| `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The linear colour, times the vertex colours. |
+| `opacity` | `number` | `1` | 0 … 1 | — | tunable | The alpha. |
+| `width` | `number` | `1` | ≥ 0 | — | tunable | CSS pixels, or world units with worldUnits. |
+| `worldUnits` | `boolean` | `false` | — | — | — | Width in world units. |
+| `depthTest` | `boolean` | `true` | — | — | — | Hidden behind nearer geometry. |
+| `dashSize` | `number` | `0` | ≥ 0 | — | — | Dashes' length in world units along the line; 0 is solid (three.js LineDashedMaterial.dashSize). |
+| `gapSize` | `number` | `1` | ≥ 0 | — | — | Gaps' length between dashes. |
+| `visible` | `boolean` | `true` | — | — | — | Whether it is drawn. |
+
+```ogt
+component Lines {
+  doc "Draws a geometry's vertices as lines at the entity's MatrixWorld, every frame (three.js Line, LineSegments or LineLoop over a BufferGeometry): a static set of lines kept as data, a level's outline, a track, a constellation. The vertices are taken in order (the geometry's indices are not read), with its vertex colours times color."
+  field geometry Geometry "The vertices (og.render.bufferGeometry: an unindexed one of any count)."
+  field mode LineMode "How the vertices join."
+  field color Color "The linear colour, times the vertex colours." {
+    default 1 1 1
+  }
+  field opacity f32 "The alpha." {
+    default 1
+    min 0
+    max 1
+    tunable true
+  }
+  field width f32 "CSS pixels, or world units with worldUnits." {
+    default 1
+    min 0
+    tunable true
+  }
+  field worldUnits bool "Width in world units."
+  field depthTest bool "Hidden behind nearer geometry." {
+    default true
+  }
+  field dashSize f32 "Dashes' length in world units along the line; 0 is solid (three.js LineDashedMaterial.dashSize)." {
+    min 0
+  }
+  field gapSize f32 "Gaps' length between dashes." {
+    default 1
+    min 0
+  }
+  field visible bool "Whether it is drawn." {
+    default true
+  }
+}
+```
+
+<sub>`api.ogt` line 3768</sub>
+
+<a id="record-Points"></a>
+
+### `og.Points` (component)
+
+Draws a geometry's vertices as a point cloud at the entity's MatrixWorld, every frame (three.js Points over a BufferGeometry): star fields, scanned surfaces, sparse markers kept as data. Vertex colours times color.
+
+Token `og.Points`, registered under the schema name `og.Points`; its value type is `Points`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `geometry` | `Geometry` | `0` | — | — | — | The vertices. |
+| `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The linear colour, times the vertex colours. |
+| `opacity` | `number` | `1` | 0 … 1 | — | tunable | The alpha. |
+| `size` | `number` | `1` | ≥ 0 | — | tunable | World units with sizeAttenuation, else CSS pixels. |
+| `sizeAttenuation` | `boolean` | `true` | — | — | — | Size in world units, smaller with distance. |
+| `depthTest` | `boolean` | `true` | — | — | — | Hidden behind nearer geometry. |
+| `visible` | `boolean` | `true` | — | — | — | Whether it is drawn. |
+
+```ogt
+component Points {
+  doc "Draws a geometry's vertices as a point cloud at the entity's MatrixWorld, every frame (three.js Points over a BufferGeometry): star fields, scanned surfaces, sparse markers kept as data. Vertex colours times color."
+  field geometry Geometry "The vertices."
+  field color Color "The linear colour, times the vertex colours." {
+    default 1 1 1
+  }
+  field opacity f32 "The alpha." {
+    default 1
+    min 0
+    max 1
+    tunable true
+  }
+  field size f32 "World units with sizeAttenuation, else CSS pixels." {
+    default 1
+    min 0
+    tunable true
+  }
+  field sizeAttenuation bool "Size in world units, smaller with distance." {
+    default true
+  }
+  field depthTest bool "Hidden behind nearer geometry." {
+    default true
+  }
+  field visible bool "Whether it is drawn." {
+    default true
+  }
+}
+```
+
+<sub>`api.ogt` line 3802</sub>
 
 ## Types
 
@@ -2179,6 +2713,33 @@ enum TaaHistory {
 
 <sub>`api.ogt` line 1715</sub>
 
+<a id="type-DebugView"></a>
+
+### `DebugView` (enum)
+
+What the debug overlay shows besides og.debug's draws (og.debug.setView, RenderOptions.debugView, `debug:<view>`), drawn over the finished frame. Streams add views as they add what to show.
+
+A string: one of the variants below. The zero value is `"none"`.
+
+| Variant | Doc |
+|---|---|
+| `"none"` | Only og.debug's draws. |
+| `"physics"` | The colliders' shapes, joints and contacts as the last physics step left them. |
+| `"nav"` | The navigation grids (blocked cells) and navmeshes (polygon edges), and every og.NavAgent's path. |
+| `"bounds"` | Every drawn mesh's bounds (its geometry's box at its transform). |
+
+```ogt
+enum DebugView {
+  doc "What the debug overlay shows besides og.debug's draws (og.debug.setView, RenderOptions.debugView, `debug:<view>`), drawn over the finished frame. Streams add views as they add what to show."
+  variant none "Only og.debug's draws."
+  variant physics "The colliders' shapes, joints and contacts as the last physics step left them."
+  variant nav "The navigation grids (blocked cells) and navmeshes (polygon edges), and every og.NavAgent's path."
+  variant bounds "Every drawn mesh's bounds (its geometry's box at its transform)."
+}
+```
+
+<sub>`api.ogt` line 1721</sub>
+
 <a id="type-RenderOptions"></a>
 
 ### `RenderOptions` (desc struct)
@@ -2194,6 +2755,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `pointShadows` | `PointShadows` | `"auto"` | — | — | — | How point lights' shadows are stored: cube faces, or two paraboloid hemispheres (fewer passes, coarser). |
 | `taaHistory` | `TaaHistory` | `"bilinear"` | — | — | — | With TAA: how the history is resampled. |
 | `taaSharpen` | `number` | `0` | 0 … 1 | `ratio` | — | With TAA: a sharpening pass after it, 0 (none) to 1; it never pushes a pixel past its neighbours' range. |
+| `debugView` | `DebugView` | `"none"` | — | — | — | A debug overlay from the first frame (og.debug.setView, the command channel's `debug:<view>`): none in a game, a view while building one. Not in publish builds. |
 
 ```ogt
 struct RenderOptions {
@@ -2212,10 +2774,11 @@ struct RenderOptions {
     max 1
     unit ratio
   }
+  field debugView DebugView "A debug overlay from the first frame (og.debug.setView, the command channel's `debug:<view>`): none in a game, a view while building one. Not in publish builds."
 }
 ```
 
-<sub>`api.ogt` line 1721</sub>
+<sub>`api.ogt` line 1729</sub>
 
 <a id="type-StandardMaterialDesc"></a>
 
@@ -2302,6 +2865,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `mapLayer` | `number` | `0` | — | — | — | The layer of mapArray drawn where the Mesh does not pick one (past the array's last layer: the last). |
 | `normalMapArray` | `TextureArray \| null` | `null` | — | — | — | A tangent-space normal map from layer normalMapLayer of a texture array (linear: cook it with `kind normal`), the counterpart of mapArray. |
 | `normalMapLayer` | `number` | `0` | — | — | — | The layer of normalMapArray read where the Mesh does not pick one. |
+| `wireframe` | `boolean` | `false` | — | — | — | Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in color plus the emissive light, unlit, depth tested; on every tier (lines, not a polygon mode WebGL2 lacks). Its meshes cast no shadow. |
 
 ```ogt
 struct StandardMaterialDesc {
@@ -2480,10 +3044,11 @@ struct StandardMaterialDesc {
   field mapLayer u32 "The layer of mapArray drawn where the Mesh does not pick one (past the array's last layer: the last)."
   field normalMapArray Option.TextureArray "A tangent-space normal map from layer normalMapLayer of a texture array (linear: cook it with `kind normal`), the counterpart of mapArray."
   field normalMapLayer u32 "The layer of normalMapArray read where the Mesh does not pick one."
+  field wireframe bool "Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in color plus the emissive light, unlit, depth tested; on every tier (lines, not a polygon mode WebGL2 lacks). Its meshes cast no shadow."
 }
 ```
 
-<sub>`api.ogt` line 1739</sub>
+<sub>`api.ogt` line 1748</sub>
 
 <a id="type-ToneMapping"></a>
 
@@ -2508,7 +3073,7 @@ enum ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 2027</sub>
+<sub>`api.ogt` line 2037</sub>
 
 <a id="type-Lut"></a>
 
@@ -2522,7 +3087,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
 ```
 
-<sub>`api.ogt` line 2092</sub>
+<sub>`api.ogt` line 2102</sub>
 
 <a id="type-EnvironmentMap"></a>
 
@@ -2536,7 +3101,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle EnvironmentMap "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`, a KTX2 cube map, or six face images)."
 ```
 
-<sub>`api.ogt` line 2093</sub>
+<sub>`api.ogt` line 2103</sub>
 
 <a id="type-ParticleEmitter"></a>
 
@@ -2550,7 +3115,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
 ```
 
-<sub>`api.ogt` line 2094</sub>
+<sub>`api.ogt` line 2104</sub>
 
 <a id="type-AoMethod"></a>
 
@@ -2575,7 +3140,7 @@ enum AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 2144</sub>
+<sub>`api.ogt` line 2154</sub>
 
 <a id="type-DofQuality"></a>
 
@@ -2598,7 +3163,7 @@ enum DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2158</sub>
+<sub>`api.ogt` line 2168</sub>
 
 <a id="type-SpriteBlend"></a>
 
@@ -2621,7 +3186,7 @@ enum SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2171</sub>
+<sub>`api.ogt` line 2181</sub>
 
 <a id="type-StripBlend"></a>
 
@@ -2644,7 +3209,7 @@ enum StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2184</sub>
+<sub>`api.ogt` line 2194</sub>
 
 <a id="type-Palette"></a>
 
@@ -2658,7 +3223,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Palette "A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours)."
 ```
 
-<sub>`api.ogt` line 2374</sub>
+<sub>`api.ogt` line 2384</sub>
 
 <a id="type-Look"></a>
 
@@ -2672,7 +3237,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Look "A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook."
 ```
 
-<sub>`api.ogt` line 2375</sub>
+<sub>`api.ogt` line 2385</sub>
 
 <a id="type-DitherPattern"></a>
 
@@ -2703,7 +3268,7 @@ enum DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 2384</sub>
+<sub>`api.ogt` line 2394</sub>
 
 <a id="type-StyliseSpace"></a>
 
@@ -2728,7 +3293,7 @@ enum StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 2401</sub>
+<sub>`api.ogt` line 2411</sub>
 
 <a id="type-LookInfo"></a>
 
@@ -2759,7 +3324,7 @@ struct LookInfo {
 }
 ```
 
-<sub>`api.ogt` line 2647</sub>
+<sub>`api.ogt` line 2657</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -2799,7 +3364,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 2856</sub>
+<sub>`api.ogt` line 2866</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -2830,7 +3395,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 2877</sub>
+<sub>`api.ogt` line 2887</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -2892,7 +3457,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 2896</sub>
+<sub>`api.ogt` line 2906</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -2921,7 +3486,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 2930</sub>
+<sub>`api.ogt` line 2940</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -2944,7 +3509,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 2941</sub>
+<sub>`api.ogt` line 2951</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -3055,7 +3620,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 2948</sub>
+<sub>`api.ogt` line 2958</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -3143,7 +3708,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3136</sub>
+<sub>`api.ogt` line 3146</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -3185,7 +3750,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3208</sub>
+<sub>`api.ogt` line 3218</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -3221,7 +3786,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3231</sub>
+<sub>`api.ogt` line 3241</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -3261,7 +3826,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3249</sub>
+<sub>`api.ogt` line 3259</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -3296,7 +3861,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 3295</sub>
+<sub>`api.ogt` line 3305</sub>
 
 <a id="type-Shader"></a>
 
@@ -3310,7 +3875,619 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read."
 ```
 
-<sub>`api.ogt` line 3323</sub>
+<sub>`api.ogt` line 3333</sub>
+
+<a id="type-BufferGeometryDesc"></a>
+
+### `BufferGeometryDesc` (desc struct)
+
+Geometry from attribute arrays, as three.js BufferGeometry with its attributes set: one item per vertex in each array, triangles three indices each (or, with no indices, every three vertices).
+
+Missing normals are computed, as three.js computeVertexNormals (each vertex the area-weighted sum of its triangles' normals: shared vertices shade smooth, an unindexed geometry flat); missing tangents are generated when a normal map needs them. An unindexed geometry whose vertex count is not a multiple of three has no triangles: it draws nothing as an og.Mesh and is a vertex set for og.Lines and og.Points.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `positions` | `Float32Array` | — | — | — | — | The vertex positions, x y z per vertex (three.js `position`); at least one vertex. |
+| `normals` | `Float32Array \| null` | `null` | — | — | — | Unit normals, x y z per vertex; null computes them. |
+| `uvs` | `Float32Array \| null` | `null` | — | — | — | Texture coordinates, u v per vertex, v down the image (glTF's, as og-render's); null is 0 0. |
+| `colors` | `Float32Array \| null` | `null` | — | — | — | Linear vertex colours, r g b or r g b a per vertex, multiplied into the material's colour (three.js `color` with vertexColors); null is white. |
+| `tangents` | `Float32Array \| null` | `null` | — | — | — | Tangents, x y z w per vertex (glTF's: w the bitangent's sign); null generates them. |
+| `indices` | `Uint32Array \| null` | `null` | — | — | — | Triangles, three vertex indices each, counter-clockwise seen from the front; null takes every three vertices as one. |
+| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it (a mesh made each tick: water, a deforming terrain, a trail of geometry). A static geometry is refused there. |
+| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too, so an og.Collider with it as `mesh` (SHAPE_MESH or SHAPE_CONVEX) collides with what is drawn; equivalent to og.physics.setMesh with its positions and indices. An update re-registers it. |
+
+```ogt
+struct BufferGeometryDesc {
+  doc "Geometry from attribute arrays, as three.js BufferGeometry with its attributes set: one item per vertex in each array, triangles three indices each (or, with no indices, every three vertices)."
+  doc "Missing normals are computed, as three.js computeVertexNormals (each vertex the area-weighted sum of its triangles' normals: shared vertices shade smooth, an unindexed geometry flat); missing tangents are generated when a normal map needs them. An unindexed geometry whose vertex count is not a multiple of three has no triangles: it draws nothing as an og.Mesh and is a vertex set for og.Lines and og.Points."
+  desc true
+  field positions Float32Array "The vertex positions, x y z per vertex (three.js `position`); at least one vertex."
+  field normals Option.Float32Array "Unit normals, x y z per vertex; null computes them."
+  field uvs Option.Float32Array "Texture coordinates, u v per vertex, v down the image (glTF's, as og-render's); null is 0 0."
+  field colors Option.Float32Array "Linear vertex colours, r g b or r g b a per vertex, multiplied into the material's colour (three.js `color` with vertexColors); null is white."
+  field tangents Option.Float32Array "Tangents, x y z w per vertex (glTF's: w the bitangent's sign); null generates them."
+  field indices Option.Uint32Array "Triangles, three vertex indices each, counter-clockwise seen from the front; null takes every three vertices as one."
+  field dynamic bool "Whether og.render.updateGeometry may rewrite it (a mesh made each tick: water, a deforming terrain, a trail of geometry). A static geometry is refused there."
+  field physics bool "Register it as a physics mesh too, so an og.Collider with it as `mesh` (SHAPE_MESH or SHAPE_CONVEX) collides with what is drawn; equivalent to og.physics.setMesh with its positions and indices. An update re-registers it." {
+    default true
+  }
+}
+```
+
+<sub>`api.ogt` line 3388</sub>
+
+<a id="type-GeometryInfo"></a>
+
+### `GeometryInfo` (struct)
+
+What a geometry holds (og.render.geometryInfo).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `vertices` | `number` | `0` | — | — | — | Vertices. |
+| `triangles` | `number` | `0` | — | — | — | Triangles. |
+| `min` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The bounds' least corner in the geometry's own space, as three.js boundingBox.min. |
+| `max` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The bounds' greatest corner. |
+| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it. |
+
+```ogt
+struct GeometryInfo {
+  doc "What a geometry holds (og.render.geometryInfo)."
+  field vertices u32 "Vertices."
+  field triangles u32 "Triangles."
+  field min Vector3 "The bounds' least corner in the geometry's own space, as three.js boundingBox.min." {
+    unit m
+  }
+  field max Vector3 "The bounds' greatest corner." {
+    unit m
+  }
+  field dynamic bool "Whether og.render.updateGeometry may rewrite it."
+}
+```
+
+<sub>`api.ogt` line 3404</sub>
+
+<a id="type-CylinderGeometryDesc"></a>
+
+### `CylinderGeometryDesc` (desc struct)
+
+A cylinder (or a truncated cone) along +Y centred at the origin, as three.js CylinderGeometry(radiusTop, radiusBottom, height, radialSegments, heightSegments, openEnded, thetaStart, thetaLength).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `radiusTop` | `number` | `1` | ≥ 0 | `m` | — | The radius at the top. |
+| `radiusBottom` | `number` | `1` | ≥ 0 | `m` | — | The radius at the bottom. |
+| `height` | `number` | `1` | ≥ 0 | `m` | — | Its extent along y. |
+| `radialSegments` | `number` | `32` | ≥ 3 | — | — | Segments around. |
+| `heightSegments` | `number` | `1` | ≥ 1 | — | — | Rows along the height. |
+| `openEnded` | `boolean` | `false` | — | — | — | Leave the ends open (no caps). |
+| `thetaStart` | `number` | `0` | — | `rad` | — | Where the side starts around y, from +Z towards +X. |
+| `thetaLength` | `number` | `6.283185307179586` | — | `rad` | — | How far around the side goes; 2 pi is whole. |
+
+```ogt
+struct CylinderGeometryDesc {
+  doc "A cylinder (or a truncated cone) along +Y centred at the origin, as three.js CylinderGeometry(radiusTop, radiusBottom, height, radialSegments, heightSegments, openEnded, thetaStart, thetaLength)."
+  desc true
+  field radiusTop f32 "The radius at the top." {
+    default 1
+    min 0
+    unit m
+  }
+  field radiusBottom f32 "The radius at the bottom." {
+    default 1
+    min 0
+    unit m
+  }
+  field height f32 "Its extent along y." {
+    default 1
+    min 0
+    unit m
+  }
+  field radialSegments u32 "Segments around." {
+    default 32
+    min 3
+  }
+  field heightSegments u32 "Rows along the height." {
+    default 1
+    min 1
+  }
+  field openEnded bool "Leave the ends open (no caps)."
+  field thetaStart f32 "Where the side starts around y, from +Z towards +X." {
+    unit rad
+  }
+  field thetaLength f32 "How far around the side goes; 2 pi is whole." {
+    default 6.283185307179586
+    unit rad
+  }
+}
+```
+
+<sub>`api.ogt` line 3439</sub>
+
+<a id="type-ConeGeometryDesc"></a>
+
+### `ConeGeometryDesc` (desc struct)
+
+A cone along +Y centred at the origin, its tip up, as three.js ConeGeometry(radius, height, radialSegments, heightSegments, openEnded).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `radius` | `number` | `1` | ≥ 0 | `m` | — | The base's radius. |
+| `height` | `number` | `1` | ≥ 0 | `m` | — | Its extent along y. |
+| `radialSegments` | `number` | `32` | ≥ 3 | — | — | Segments around. |
+| `heightSegments` | `number` | `1` | ≥ 1 | — | — | Rows along the height. |
+| `openEnded` | `boolean` | `false` | — | — | — | Leave the base open. |
+
+```ogt
+struct ConeGeometryDesc {
+  doc "A cone along +Y centred at the origin, its tip up, as three.js ConeGeometry(radius, height, radialSegments, heightSegments, openEnded)."
+  desc true
+  field radius f32 "The base's radius." {
+    default 1
+    min 0
+    unit m
+  }
+  field height f32 "Its extent along y." {
+    default 1
+    min 0
+    unit m
+  }
+  field radialSegments u32 "Segments around." {
+    default 32
+    min 3
+  }
+  field heightSegments u32 "Rows along the height." {
+    default 1
+    min 1
+  }
+  field openEnded bool "Leave the base open."
+}
+```
+
+<sub>`api.ogt` line 3475</sub>
+
+<a id="type-CapsuleGeometryDesc"></a>
+
+### `CapsuleGeometryDesc` (desc struct)
+
+A capsule along +Y centred at the origin, as three.js CapsuleGeometry(radius, height, capSegments, radialSegments, heightSegments): a cylinder of `height` between two hemispheres, `height + 2 radius` long in all (an og.Collider capsule of halfHeight height / 2 and that radius matches it).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `radius` | `number` | `1` | ≥ 0 | `m` | — | The radius. |
+| `height` | `number` | `1` | ≥ 0 | `m` | — | The straight middle's length. |
+| `capSegments` | `number` | `4` | ≥ 1 | — | — | Rows in each hemisphere. |
+| `radialSegments` | `number` | `8` | ≥ 3 | — | — | Segments around. |
+| `heightSegments` | `number` | `1` | ≥ 1 | — | — | Rows along the middle. |
+
+```ogt
+struct CapsuleGeometryDesc {
+  doc "A capsule along +Y centred at the origin, as three.js CapsuleGeometry(radius, height, capSegments, radialSegments, heightSegments): a cylinder of `height` between two hemispheres, `height + 2 radius` long in all (an og.Collider capsule of halfHeight height / 2 and that radius matches it)."
+  desc true
+  field radius f32 "The radius." {
+    default 1
+    min 0
+    unit m
+  }
+  field height f32 "The straight middle's length." {
+    default 1
+    min 0
+    unit m
+  }
+  field capSegments u32 "Rows in each hemisphere." {
+    default 4
+    min 1
+  }
+  field radialSegments u32 "Segments around." {
+    default 8
+    min 3
+  }
+  field heightSegments u32 "Rows along the middle." {
+    default 1
+    min 1
+  }
+}
+```
+
+<sub>`api.ogt` line 3499</sub>
+
+<a id="type-TorusGeometryDesc"></a>
+
+### `TorusGeometryDesc` (desc struct)
+
+A torus in the xy plane around +Z, as three.js TorusGeometry(radius, tube, radialSegments, tubularSegments, arc).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `radius` | `number` | `1` | ≥ 0 | `m` | — | From the centre to the tube's centre. |
+| `tube` | `number` | `0.4` | ≥ 0 | `m` | — | The tube's radius. |
+| `radialSegments` | `number` | `12` | ≥ 2 | — | — | Segments around the tube. |
+| `tubularSegments` | `number` | `48` | ≥ 3 | — | — | Segments around the ring. |
+| `arc` | `number` | `6.283185307179586` | — | `rad` | — | How far around the ring goes. |
+
+```ogt
+struct TorusGeometryDesc {
+  doc "A torus in the xy plane around +Z, as three.js TorusGeometry(radius, tube, radialSegments, tubularSegments, arc)."
+  desc true
+  field radius f32 "From the centre to the tube's centre." {
+    default 1
+    min 0
+    unit m
+  }
+  field tube f32 "The tube's radius." {
+    default 0.4
+    min 0
+    unit m
+  }
+  field radialSegments u32 "Segments around the tube." {
+    default 12
+    min 2
+  }
+  field tubularSegments u32 "Segments around the ring." {
+    default 48
+    min 3
+  }
+  field arc f32 "How far around the ring goes." {
+    default 6.283185307179586
+    unit rad
+  }
+}
+```
+
+<sub>`api.ogt` line 3526</sub>
+
+<a id="type-RingGeometryDesc"></a>
+
+### `RingGeometryDesc` (desc struct)
+
+A flat ring in the xy plane facing +Z, as three.js RingGeometry(innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `innerRadius` | `number` | `0.5` | ≥ 0 | `m` | — | The hole's radius. |
+| `outerRadius` | `number` | `1` | ≥ 0 | `m` | — | The ring's radius. |
+| `thetaSegments` | `number` | `32` | ≥ 3 | — | — | Segments around. |
+| `phiSegments` | `number` | `1` | ≥ 1 | — | — | Rings from the inside out. |
+| `thetaStart` | `number` | `0` | — | `rad` | — | Where it starts, from +X towards +Y. |
+| `thetaLength` | `number` | `6.283185307179586` | — | `rad` | — | How far around it goes. |
+
+```ogt
+struct RingGeometryDesc {
+  doc "A flat ring in the xy plane facing +Z, as three.js RingGeometry(innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength)."
+  desc true
+  field innerRadius f32 "The hole's radius." {
+    default 0.5
+    min 0
+    unit m
+  }
+  field outerRadius f32 "The ring's radius." {
+    default 1
+    min 0
+    unit m
+  }
+  field thetaSegments u32 "Segments around." {
+    default 32
+    min 3
+  }
+  field phiSegments u32 "Rings from the inside out." {
+    default 1
+    min 1
+  }
+  field thetaStart f32 "Where it starts, from +X towards +Y." {
+    unit rad
+  }
+  field thetaLength f32 "How far around it goes." {
+    default 6.283185307179586
+    unit rad
+  }
+}
+```
+
+<sub>`api.ogt` line 3553</sub>
+
+<a id="type-CircleGeometryDesc"></a>
+
+### `CircleGeometryDesc` (desc struct)
+
+A disc (or a sector) in the xy plane facing +Z, as three.js CircleGeometry(radius, segments, thetaStart, thetaLength): a 2D polygon's simplest shape.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `radius` | `number` | `1` | ≥ 0 | `m` | — | The radius. |
+| `segments` | `number` | `32` | ≥ 3 | — | — | Segments around. |
+| `thetaStart` | `number` | `0` | — | `rad` | — | Where it starts, from +X towards +Y. |
+| `thetaLength` | `number` | `6.283185307179586` | — | `rad` | — | How far around it goes. |
+
+```ogt
+struct CircleGeometryDesc {
+  doc "A disc (or a sector) in the xy plane facing +Z, as three.js CircleGeometry(radius, segments, thetaStart, thetaLength): a 2D polygon's simplest shape."
+  desc true
+  field radius f32 "The radius." {
+    default 1
+    min 0
+    unit m
+  }
+  field segments u32 "Segments around." {
+    default 32
+    min 3
+  }
+  field thetaStart f32 "Where it starts, from +X towards +Y." {
+    unit rad
+  }
+  field thetaLength f32 "How far around it goes." {
+    default 6.283185307179586
+    unit rad
+  }
+}
+```
+
+<sub>`api.ogt` line 3583</sub>
+
+<a id="type-TubeGeometryDesc"></a>
+
+### `TubeGeometryDesc` (desc struct)
+
+A tube along a curve through points, as three.js TubeGeometry(new CatmullRomCurve3(points, closed, 'centripetal'), tubularSegments, radius, radialSegments, closed): u runs along it, v around. The points may come from anywhere: a path's samples, a rope's points, a spline a tool made.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `points` | `readonly Vector3[]` | `[]` | — | `m` | — | The points the curve passes through, in order (at least two). |
+| `tubularSegments` | `number` | `64` | ≥ 1 | — | — | Segments along the tube. |
+| `radius` | `number` | `1` | ≥ 0 | `m` | — | The tube's radius. |
+| `radialSegments` | `number` | `8` | ≥ 3 | — | — | Segments around it. |
+| `closed` | `boolean` | `false` | — | — | — | Join the last point back to the first. |
+
+```ogt
+struct TubeGeometryDesc {
+  doc "A tube along a curve through points, as three.js TubeGeometry(new CatmullRomCurve3(points, closed, 'centripetal'), tubularSegments, radius, radialSegments, closed): u runs along it, v around. The points may come from anywhere: a path's samples, a rope's points, a spline a tool made."
+  desc true
+  field points List.Vector3 "The points the curve passes through, in order (at least two)." {
+    unit m
+  }
+  field tubularSegments u32 "Segments along the tube." {
+    default 64
+    min 1
+  }
+  field radius f32 "The tube's radius." {
+    default 1
+    min 0
+    unit m
+  }
+  field radialSegments u32 "Segments around it." {
+    default 8
+    min 3
+  }
+  field closed bool "Join the last point back to the first."
+}
+```
+
+<sub>`api.ogt` line 3604</sub>
+
+<a id="type-LineMode"></a>
+
+### `LineMode` (enum)
+
+How a line set's points join, as three.js's three line objects.
+
+A string: one of the variants below. The zero value is `"strip"`.
+
+| Variant | Doc |
+|---|---|
+| `"strip"` | One polyline through every point, as three.js Line. |
+| `"segments"` | Pairs of points, each its own segment, as three.js LineSegments. |
+| `"loop"` | A polyline closed back to its first point, as three.js LineLoop. |
+
+```ogt
+enum LineMode {
+  doc "How a line set's points join, as three.js's three line objects."
+  variant strip "One polyline through every point, as three.js Line."
+  variant segments "Pairs of points, each its own segment, as three.js LineSegments."
+  variant loop "A polyline closed back to its first point, as three.js LineLoop."
+}
+```
+
+<sub>`api.ogt` line 3675</sub>
+
+<a id="type-LinesDesc"></a>
+
+### `LinesDesc` (desc struct)
+
+Lines through points, drawn this frame only (immediate mode, as og.render.sprite): submit them every tick they should show. three.js Line, LineSegments and LineLoop with a LineBasicMaterial or LineDashedMaterial, but any width on every tier (each segment is a quad in screen space with a feathered edge, so WebGL2's one-pixel lines do not apply).
+
+World lines are drawn in the scene after the transparent meshes and particles, exposed, bloomed and tone mapped with it; screen lines over the finished frame, after every post effect and under the UI.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `points` | `readonly Vector3[]` | `[]` | — | `m` | — | The points, in order: world positions, or with screen CSS pixels from the top left of the play surface with y down (z ignored). |
+| `colors` | `readonly Color[]` | `[]` | — | — | — | Per point linear colours, blended along each segment (three.js vertexColors); empty is `color` for all. |
+| `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The linear colour. |
+| `opacity` | `number` | `1` | 0 … 1 | — | — | The alpha. |
+| `mode` | `LineMode` | `"strip"` | — | — | — | How the points join. |
+| `width` | `number` | `1` | ≥ 0 | — | — | The width: CSS pixels, or world units with worldUnits. |
+| `worldUnits` | `boolean` | `false` | — | — | — | Measure width in world units (a line that thins with distance) instead of CSS pixels (as wide at any distance). |
+| `depthTest` | `boolean` | `true` | — | — | — | Hidden behind nearer geometry, as three.js Material.depthTest; false draws it over the scene. Screen lines are never depth tested. |
+| `screen` | `boolean` | `false` | — | — | — | Draw in screen space over the finished frame: points in CSS pixels, width in CSS pixels. |
+| `dashed` | `boolean` | `false` | — | — | — | Dashes, as three.js LineDashedMaterial: dashSize on, gapSize off, along the line from its first point. |
+| `dashSize` | `number` | `3` | ≥ 0 | — | — | A dash's length: world units (CSS pixels for screen lines). |
+| `gapSize` | `number` | `1` | ≥ 0 | — | — | A gap's length. |
+
+```ogt
+struct LinesDesc {
+  doc "Lines through points, drawn this frame only (immediate mode, as og.render.sprite): submit them every tick they should show. three.js Line, LineSegments and LineLoop with a LineBasicMaterial or LineDashedMaterial, but any width on every tier (each segment is a quad in screen space with a feathered edge, so WebGL2's one-pixel lines do not apply)."
+  doc "World lines are drawn in the scene after the transparent meshes and particles, exposed, bloomed and tone mapped with it; screen lines over the finished frame, after every post effect and under the UI."
+  desc true
+  field points List.Vector3 "The points, in order: world positions, or with screen CSS pixels from the top left of the play surface with y down (z ignored)." {
+    unit m
+  }
+  field colors List.Color "Per point linear colours, blended along each segment (three.js vertexColors); empty is `color` for all."
+  field color Color "The linear colour." {
+    default 1 1 1
+  }
+  field opacity f32 "The alpha." {
+    default 1
+    min 0
+    max 1
+  }
+  field mode LineMode "How the points join."
+  field width f32 "The width: CSS pixels, or world units with worldUnits." {
+    default 1
+    min 0
+  }
+  field worldUnits bool "Measure width in world units (a line that thins with distance) instead of CSS pixels (as wide at any distance)."
+  field depthTest bool "Hidden behind nearer geometry, as three.js Material.depthTest; false draws it over the scene. Screen lines are never depth tested." {
+    default true
+  }
+  field screen bool "Draw in screen space over the finished frame: points in CSS pixels, width in CSS pixels."
+  field dashed bool "Dashes, as three.js LineDashedMaterial: dashSize on, gapSize off, along the line from its first point."
+  field dashSize f32 "A dash's length: world units (CSS pixels for screen lines)." {
+    default 3
+    min 0
+  }
+  field gapSize f32 "A gap's length." {
+    default 1
+    min 0
+  }
+}
+```
+
+<sub>`api.ogt` line 3689</sub>
+
+<a id="type-PointsDesc"></a>
+
+### `PointsDesc` (desc struct)
+
+A point cloud drawn this frame only (immediate mode), as three.js Points with a PointsMaterial: a square per point facing the camera. Submit it every tick it should show (og.Points keeps a static set).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `points` | `readonly Vector3[]` | `[]` | — | `m` | — | The positions: world, or with screen CSS pixels from the top left, y down. |
+| `colors` | `readonly Color[]` | `[]` | — | — | — | Per point linear colours; empty is `color` for all. |
+| `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The linear colour. |
+| `opacity` | `number` | `1` | 0 … 1 | — | — | The alpha. |
+| `size` | `number` | `1` | ≥ 0 | — | — | The side of each square: world units with sizeAttenuation, else CSS pixels. |
+| `sizeAttenuation` | `boolean` | `true` | — | — | — | Size in world units, smaller with distance, as three.js PointsMaterial.sizeAttenuation; false keeps every point `size` CSS pixels. |
+| `depthTest` | `boolean` | `true` | — | — | — | Hidden behind nearer geometry; false draws them over the scene. |
+| `screen` | `boolean` | `false` | — | — | — | Draw in screen space over the finished frame, positions and size in CSS pixels. |
+
+```ogt
+struct PointsDesc {
+  doc "A point cloud drawn this frame only (immediate mode), as three.js Points with a PointsMaterial: a square per point facing the camera. Submit it every tick it should show (og.Points keeps a static set)."
+  desc true
+  field points List.Vector3 "The positions: world, or with screen CSS pixels from the top left, y down." {
+    unit m
+  }
+  field colors List.Color "Per point linear colours; empty is `color` for all."
+  field color Color "The linear colour." {
+    default 1 1 1
+  }
+  field opacity f32 "The alpha." {
+    default 1
+    min 0
+    max 1
+  }
+  field size f32 "The side of each square: world units with sizeAttenuation, else CSS pixels." {
+    default 1
+    min 0
+  }
+  field sizeAttenuation bool "Size in world units, smaller with distance, as three.js PointsMaterial.sizeAttenuation; false keeps every point `size` CSS pixels." {
+    default true
+  }
+  field depthTest bool "Hidden behind nearer geometry; false draws them over the scene." {
+    default true
+  }
+  field screen bool "Draw in screen space over the finished frame, positions and size in CSS pixels."
+}
+```
+
+<sub>`api.ogt` line 3733</sub>
+
+<a id="type-RaycastGeometryDesc"></a>
+
+### `RaycastGeometryDesc` (desc struct)
+
+Which meshes og.render.raycast tests, as three.js Raycaster's near, far and layers.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `maxDistance` | `number` | `0` | ≥ 0 | `m` | — | How far the ray reaches (three.js Raycaster.far); 0 is unbounded. |
+| `first` | `boolean` | `false` | — | — | — | Answer only the nearest hit (cheaper: the BVH stops early). |
+| `layers` | `number` | `1` | — | — | — | A bit mask of the layers tested, as three.js Raycaster.layers: an entity's meshes are tested when its layers share a bit with it. Every mesh is on layer 1 (bit 0) until per-object layers land, so the default tests them all. |
+| `invisible` | `boolean` | `false` | — | — | — | Test meshes whose visible is false too. |
+
+```ogt
+struct RaycastGeometryDesc {
+  doc "Which meshes og.render.raycast tests, as three.js Raycaster's near, far and layers."
+  desc true
+  field maxDistance f32 "How far the ray reaches (three.js Raycaster.far); 0 is unbounded." {
+    min 0
+    unit m
+  }
+  field first bool "Answer only the nearest hit (cheaper: the BVH stops early)."
+  field layers u32 "A bit mask of the layers tested, as three.js Raycaster.layers: an entity's meshes are tested when its layers share a bit with it. Every mesh is on layer 1 (bit 0) until per-object layers land, so the default tests them all." {
+    default 1
+  }
+  field invisible bool "Test meshes whose visible is false too."
+}
+```
+
+<sub>`api.ogt` line 3830</sub>
+
+<a id="type-GeometryHit"></a>
+
+### `GeometryHit` (struct)
+
+Where a ray meets a drawn triangle, as three.js Raycaster's intersection.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entity` | `Entity` | `0` | — | — | — | The og.Mesh's or og.Model's entity. |
+| `geometry` | `Geometry` | `0` | — | — | — | The geometry hit. |
+| `distance` | `number` | `0` | — | `m` | — | From the ray's origin along its normalised direction. |
+| `point` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where, in world space. |
+| `normal` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | The triangle's face normal in world space (its front side, counter-clockwise), unit length. |
+| `uv` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The texture coordinates there, interpolated. |
+| `faceIndex` | `number` | `0` | — | — | — | The triangle's index in the geometry, as three.js faceIndex. |
+
+```ogt
+struct GeometryHit {
+  doc "Where a ray meets a drawn triangle, as three.js Raycaster's intersection."
+  field entity Entity "The og.Mesh's or og.Model's entity."
+  field geometry Geometry "The geometry hit."
+  field distance f32 "From the ray's origin along its normalised direction." {
+    unit m
+  }
+  field point Vector3 "Where, in world space." {
+    unit m
+  }
+  field normal Vector3 "The triangle's face normal in world space (its front side, counter-clockwise), unit length."
+  field uv Vector2 "The texture coordinates there, interpolated."
+  field faceIndex u32 "The triangle's index in the geometry, as three.js faceIndex."
+}
+```
+
+<sub>`api.ogt` line 3844</sub>
 
 ## Column kinds
 
@@ -3332,6 +4509,7 @@ Each is a factory, `Geometry(value?, options?)`, that makes one field of a compo
 | <a id="column-Palette"></a>`Palette` | `Palette` | `Uint32Array` | 2 | A Palette handle field (0 is none). |
 | <a id="column-DitherPattern"></a>`DitherPattern` | `DitherPattern` | `Uint32Array` | 1 | A DitherPattern field: the variant's index. |
 | <a id="column-StyliseSpace"></a>`StyliseSpace` | `StyliseSpace` | `Uint32Array` | 1 | A StyliseSpace field: the variant's index. |
+| <a id="column-LineMode"></a>`LineMode` | `LineMode` | `Uint32Array` | 1 | A LineMode field: the variant's index. |
 
 ```ogt
 column Geometry {
@@ -3364,7 +4542,7 @@ column ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 2034</sub>
+<sub>`api.ogt` line 2044</sub>
 
 ```ogt
 column Texture {
@@ -3375,7 +4553,7 @@ column Texture {
 }
 ```
 
-<sub>`api.ogt` line 2096</sub>
+<sub>`api.ogt` line 2106</sub>
 
 ```ogt
 column Lut {
@@ -3386,7 +4564,7 @@ column Lut {
 }
 ```
 
-<sub>`api.ogt` line 2103</sub>
+<sub>`api.ogt` line 2113</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -3397,7 +4575,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>`api.ogt` line 2110</sub>
+<sub>`api.ogt` line 2120</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -3408,7 +4586,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>`api.ogt` line 2137</sub>
+<sub>`api.ogt` line 2147</sub>
 
 ```ogt
 column AoMethod {
@@ -3419,7 +4597,7 @@ column AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 2151</sub>
+<sub>`api.ogt` line 2161</sub>
 
 ```ogt
 column DofQuality {
@@ -3430,7 +4608,7 @@ column DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2164</sub>
+<sub>`api.ogt` line 2174</sub>
 
 ```ogt
 column SpriteBlend {
@@ -3441,7 +4619,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2177</sub>
+<sub>`api.ogt` line 2187</sub>
 
 ```ogt
 column StripBlend {
@@ -3452,7 +4630,7 @@ column StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2190</sub>
+<sub>`api.ogt` line 2200</sub>
 
 ```ogt
 column Palette {
@@ -3463,7 +4641,7 @@ column Palette {
 }
 ```
 
-<sub>`api.ogt` line 2377</sub>
+<sub>`api.ogt` line 2387</sub>
 
 ```ogt
 column DitherPattern {
@@ -3474,7 +4652,7 @@ column DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 2394</sub>
+<sub>`api.ogt` line 2404</sub>
 
 ```ogt
 column StyliseSpace {
@@ -3485,7 +4663,18 @@ column StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 2408</sub>
+<sub>`api.ogt` line 2418</sub>
+
+```ogt
+column LineMode {
+  doc "A LineMode field: the variant's index."
+  array Uint32Array
+  stride 1
+  value LineMode
+}
+```
+
+<sub>`api.ogt` line 3682</sub>
 
 ## Constants
 
@@ -3500,22 +4689,22 @@ column StyliseSpace {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>`api.ogt` line 2753</sub>
+<sub>`api.ogt` line 2763</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3291</sub>
+<sub>`api.ogt` line 3301</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3292</sub>
+<sub>`api.ogt` line 3302</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
 ```
 
-<sub>`api.ogt` line 3293</sub>
+<sub>`api.ogt` line 3303</sub>

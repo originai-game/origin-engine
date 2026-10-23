@@ -210,6 +210,7 @@ pub(crate) fn retire(engine: u32) {
 pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
     super::polish::register(probe, engine);
     super::lanes::register(probe, engine);
+    super::geometry::register(probe, engine);
     probe.set_memory(move |world| super::memory::report(engine, world));
     probe.set_listen(move |seconds| {
         let link = og_audio::link(engine)?;

@@ -27,6 +27,7 @@ import {
 import { cameras } from "./systems/cameras.ts";
 import { ai, i18n, nav, platform } from "./e6.ts";
 import { stream, terrain } from "./p2.ts";
+import { debug, depthRender } from "./depth.ts";
 import { uiKit } from "./ui-kit/index.ts";
 
 const spec = (kind: string, value: unknown, options: unknown): FieldSpec =>
@@ -57,6 +58,7 @@ export const Lut = ((value = 0 as Api.Lut, options) => spec("Lut", value, option
 export const EnvironmentMap = ((value = 0 as Api.EnvironmentMap, options) => spec("EnvironmentMap", value, options)) as typeof Api.EnvironmentMap;
 export const ParticleEmitter = ((value = 0 as Api.ParticleEmitter, options) => spec("ParticleEmitter", value, options)) as typeof Api.ParticleEmitter;
 export const AoMethod = ((value = "auto" as Api.AoMethod, options) => spec("AoMethod", value, options)) as typeof Api.AoMethod;
+export const LineMode = ((value = "strip" as Api.LineMode, options) => spec("LineMode", value, options)) as typeof Api.LineMode;
 export const DofQuality = ((value = "low" as Api.DofQuality, options) => spec("DofQuality", value, options)) as typeof Api.DofQuality;
 export const SpriteBlend = ((value = "alpha" as Api.SpriteBlend, options) => spec("SpriteBlend", value, options)) as typeof Api.SpriteBlend;
 export const StripBlend = ((value = "additive" as Api.StripBlend, options) => spec("StripBlend", value, options)) as typeof Api.StripBlend;
@@ -173,7 +175,7 @@ export const og: typeof Api.og = Object.freeze({
   ...BUILTINS,
   game: (desc?: Api.GameDesc) => defineGame(desc as never),
   transform,
-  render,
+  render: Object.freeze({ ...render, ...depthRender }),
   load,
   commands,
   physics,
@@ -190,6 +192,7 @@ export const og: typeof Api.og = Object.freeze({
   i18n,
   terrain,
   stream,
+  debug,
   ui: Object.freeze({ ...ui, ...uiKit }),
   systems: Object.freeze({ cameras }),
 }) as unknown as typeof Api.og;

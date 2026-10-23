@@ -1456,6 +1456,7 @@ pub(crate) fn material(
         })
     );
     set!(flatShading, flag("flatShading"));
+    set!(wireframe, flag("wireframe"));
     set!(envMapIntensity, num("envMapIntensity"));
     let vec2 = |k: &str, fallback: glam::Vec2| {
         let v = &desc[k];
@@ -1703,7 +1704,11 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
 
 /// Adds a generated geometry; `physics` also registers it as a physics mesh
 /// under its handle.
-fn add_geometry(world: u32, mesh: og_render::MeshData, physics: bool) -> Result<Value, String> {
+pub(crate) fn add_geometry(
+    world: u32,
+    mesh: og_render::MeshData,
+    physics: bool,
+) -> Result<Value, String> {
     let eng = engine(world)?;
     let handle = {
         let mut rs = eng.render.borrow_mut();
@@ -1718,7 +1723,7 @@ fn add_geometry(world: u32, mesh: og_render::MeshData, physics: bool) -> Result<
 }
 
 /// A geometry desc's `uvRepeat` applied (og_render::shapes::repeat_uv).
-fn uv_repeat(d: &Value, mesh: &mut og_render::MeshData) -> Result<(), String> {
+pub(crate) fn uv_repeat(d: &Value, mesh: &mut og_render::MeshData) -> Result<(), String> {
     let r = &d["uvRepeat"];
     let axis = |k: &str| -> Result<f32, String> {
         let v = r[k].as_f64().unwrap_or(1.0);

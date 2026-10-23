@@ -46,7 +46,7 @@ impl Side {
 /// metalness 0, roughness 1, opaque, front side.
 #[allow(non_snake_case)]
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.StandardMaterial", version = 6)]
+#[reflect(name = "og.StandardMaterial", version = 7)]
 pub struct StandardMaterial {
     /// The base colour (linear RGB), multiplied with `map` and vertex colours.
     #[reflect(default = [1.0, 1.0, 1.0], min = 0.0, tunable)]
@@ -259,6 +259,12 @@ pub struct StandardMaterial {
     /// outline, flat facets, shadow tint or outline distance from it).
     #[reflect(min = 0.0, max = 1.0, default = 1.0)]
     pub styled: u32,
+    /// 1: drawn as the edges of its triangles, one CSS pixel wide, in its
+    /// colour plus its emissive light, depth tested and unlit (three.js
+    /// `wireframe`, on every tier: lines, not a polygon mode). Its instances
+    /// cast no shadow.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0)]
+    pub wireframe: u32,
 }
 
 impl Default for StandardMaterial {
@@ -329,6 +335,7 @@ impl Default for StandardMaterial {
             normalMapArray: 0,
             normalMapLayer: 0,
             styled: 1,
+            wireframe: 0,
         }
     }
 }

@@ -148,6 +148,9 @@ pub(crate) struct SortedInstances {
     transforms: Vec<GpuTransform>,
     /// The spheres' box (min and max), `None` when there are none.
     sphere_box: Option<(Vec3, Vec3)>,
+    /// The materials whose instances the last rebuild left out (wireframe
+    /// materials, drawn by the lines pass).
+    skipped: Vec<u32>,
 }
 
 /// What [`SortedInstances::update`] lends a frame.
@@ -206,7 +209,9 @@ impl SortedInstances {
     /// `meshes` / `materials` (the renderer's copies of the scene's);
     /// `mesh` describes the mesh at an index below `meshes`, `dequant` a
     /// (mesh, material) run's [`Run::dequant`], `array` whether a material
-    /// samples texture arrays ([`Run::array`]).
+    /// samples texture arrays ([`Run::array`]), `skip` whether a material's
+    /// instances are left out (a wireframe material, `lines.rs`).
+    #[allow(clippy::too_many_arguments)]
     pub fn update(
         &mut self,
         scene: &RenderScene,
@@ -215,6 +220,7 @@ impl SortedInstances {
         materials: usize,
         dequant: impl Fn(usize, usize) -> Option<Mat4>,
         array: impl Fn(usize) -> bool,
+        skip: impl Fn(usize) -> bool,
     ) -> Result<Sorted, RenderError> {
         let instances = &scene.instances;
         // The submission's keys against the last frame's (and kept for the
@@ -251,6 +257,12 @@ impl SortedInstances {
             })
             && self.transforms.len() == self.order.len()
             && self.spheres.len() == self.order.len();
+        // The materials left out are the same ones.
+        let skipped: Vec<u32> = (0..materials as u32)
+            .filter(|&m| skip(m as usize))
+            .collect();
+        same = same && skipped == self.skipped;
+        self.skipped = skipped;
         if same {
             self.refresh(scene, &mesh);
         } else {
@@ -305,7 +317,7 @@ impl SortedInstances {
             if self.meshes.last().is_none_or(|&(m, _)| m != mesh) {
                 self.meshes.push((mesh, (bounds, empty)));
             }
-            if empty {
+            if empty || self.skipped.binary_search(&(material as u32)).is_ok() {
                 continue;
             }
             match self.runs.last_mut() {
@@ -394,7 +406,7 @@ mod tests {
 
     fn fresh(scene: &RenderScene) -> Sorted {
         SortedInstances::default()
-            .update(scene, 3, info, 2, |_, _| None, |_| false)
+            .update(scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap()
     }
 
@@ -421,7 +433,7 @@ mod tests {
         let mut scene = scene();
         let mut kept = SortedInstances::default();
         let first = kept
-            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
         assert_same(&first, &fresh(&scene));
         // The empty mesh's instances are dropped.
@@ -436,7 +448,7 @@ mod tests {
         // Unchanged: nothing computed.
         assert_eq!(kept.refresh(&scene, &info), 0);
         let still = kept
-            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
         assert_same(&still, &fresh(&scene));
         let mut culled = still.transforms;
@@ -453,7 +465,7 @@ mod tests {
         assert_eq!(kept.refresh(&scene, &info), 3);
         kept.refresh(&scene, &info);
         let moved = kept
-            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
         assert_same(&moved, &fresh(&scene));
         kept.restore(moved.transforms, moved.spheres);
@@ -461,12 +473,12 @@ mod tests {
         scene.instances.swap(0, 1);
         scene.instances[5].material = scene.instances[6].material;
         let resorted = kept
-            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
         assert_same(&resorted, &fresh(&scene));
         // Not given back: rebuilt.
         let rebuilt = kept
-            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
         assert_same(&rebuilt, &fresh(&scene));
         // A mesh's bounds changed: rebuilt with the new ones.
@@ -479,16 +491,16 @@ mod tests {
             }
         };
         let after = kept
-            .update(&scene, 3, grown, 2, |_, _| None, |_| false)
+            .update(&scene, 3, grown, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
         assert_same(
             &after,
             &SortedInstances::default()
-                .update(&scene, 3, grown, 2, |_, _| None, |_| false)
+                .update(&scene, 3, grown, 2, |_, _| None, |_| false, |_| false)
                 .unwrap(),
         );
         assert!(matches!(
-            kept.update(&scene, 2, info, 2, |_, _| None, |_| false),
+            kept.update(&scene, 2, info, 2, |_, _| None, |_| false, |_| false),
             Err(RenderError::InvalidHandle(_))
         ));
     }
@@ -504,7 +516,7 @@ mod tests {
         }
         let mut kept = SortedInstances::default();
         let sorted = kept
-            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
         assert_same(&sorted, &fresh(&scene));
         let mut seen = std::collections::HashSet::new();
@@ -524,7 +536,7 @@ mod tests {
         kept.restore(sorted.transforms, sorted.spheres);
         scene.instances[1].cast_shadows = false;
         let again = kept
-            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
         assert_same(&again, &fresh(&scene));
     }
@@ -549,7 +561,8 @@ mod tests {
         // Material 1 samples arrays.
         let array = |m: usize| m == 1;
         let update = |kept: &mut SortedInstances, scene: &RenderScene| {
-            kept.update(scene, 3, info, 2, |_, _| None, array).unwrap()
+            kept.update(scene, 3, info, 2, |_, _| None, array, |_| false)
+                .unwrap()
         };
         let mut kept = SortedInstances::default();
         let before = update(&mut kept, &scene);
@@ -587,10 +600,12 @@ mod tests {
         let compact = |mesh: usize, material: usize| (mesh == 1 && material == 0).then_some(d);
         let mut kept = SortedInstances::default();
         let plain = kept
-            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
         kept.restore(plain.transforms.clone(), plain.spheres.clone());
-        let with = kept.update(&scene, 3, info, 2, compact, |_| false).unwrap();
+        let with = kept
+            .update(&scene, 3, info, 2, compact, |_| false, |_| false)
+            .unwrap();
         for r in &with.runs {
             assert_eq!(r.dequant.is_some(), r.mesh == 1 && r.material == 0);
             for k in r.first as usize..(r.first + r.count) as usize {
@@ -603,7 +618,7 @@ mod tests {
         assert_eq!(with.spheres, plain.spheres);
         kept.restore(with.transforms, with.spheres);
         let back = kept
-            .update(&scene, 3, info, 2, |_, _| None, |_| false)
+            .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
         assert_same(&back, &plain);
     }

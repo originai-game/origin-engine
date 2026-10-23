@@ -1,6 +1,6 @@
 #!/bin/sh
 # Renders the template's opening to a video with its sound, a contact sheet
-# and frames.json (docs/design.md §2.9, og-game §18):
+# and frames.json (docs/design.md §2.9, og-game §19):
 #
 #   sh templates/tools/render.sh [project] [out.mp4]
 #

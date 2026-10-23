@@ -858,6 +858,13 @@ macro_rules! with_sim {
 /// What physics keeps beyond the components, read for drawing and by game
 /// code (`og.physics.ropePoints` and friends): as the last step left it.
 impl PhysicsSystem {
+    /// The physics overlay's segments with their RGBA colours: collider
+    /// shapes, joints and contacts as the last step left them (rapier's
+    /// debug render). For drawing only; `None` before the first step.
+    pub fn debug_lines(&self) -> Option<Vec<(Vec3, Vec3, [f32; 4])>> {
+        with_sim!(self.shared, |s| Some(s.debug_lines()))
+    }
+
     /// The points of the og.Rope on `entity`, start to end.
     pub fn rope_points(&self, entity: Entity) -> Option<Vec<Vec3>> {
         with_sim!(self.shared, |s| s

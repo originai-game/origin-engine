@@ -1177,6 +1177,7 @@
         "Antialias",
         "PointShadows",
         "TaaHistory",
+        "DebugView",
         "RenderOptions",
         "StandardMaterialDesc",
         "Mesh",
@@ -1233,7 +1234,24 @@
         "PlaneGeometryDesc",
         "SphereGeometryDesc",
         "RenderCapabilities",
-        "Shader"
+        "Shader",
+        "BufferGeometryDesc",
+        "GeometryInfo",
+        "CylinderGeometryDesc",
+        "ConeGeometryDesc",
+        "CapsuleGeometryDesc",
+        "TorusGeometryDesc",
+        "RingGeometryDesc",
+        "CircleGeometryDesc",
+        "TubeGeometryDesc",
+        "LineMode",
+        "LineMode",
+        "LinesDesc",
+        "PointsDesc",
+        "Lines",
+        "Points",
+        "RaycastGeometryDesc",
+        "GeometryHit"
       ],
       "consts": [
         {
@@ -1608,6 +1626,285 @@
           ],
           "returns": "Result<Void>",
           "returnsDoc": "Refused for a dead font.",
+          "publish": true
+        },
+        {
+          "name": "bufferGeometry",
+          "doc": "Make a geometry from attribute arrays (three.js BufferGeometry): procedural levels, 2D polygons, meshes a tool made. It draws as any geometry (og.Mesh), its BVH is built for og.render.raycast, and (desc.physics) it is a Collider.mesh at once.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "BufferGeometryDesc",
+              "optional": true,
+              "doc": "The attributes."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "returnsDoc": "Refused for an attribute whose length does not fit the vertex count, an index past the vertices, or a number that is not finite (the reason names the attribute).",
+          "publish": true
+        },
+        {
+          "name": "updateGeometry",
+          "doc": "Rewrite a dynamic geometry's attributes in place (desc as og.render.bufferGeometry's, every attribute given again; `dynamic` and `physics` keep their values from when it was made). The same vertex and index counts rewrite its GPU buffers in place; other counts reallocate them, which costs more and is fine now and then. Its BVH is rebuilt, and its physics mesh re-registered (colliders made from it are rebuilt at the next step). Every og.Mesh, og.Lines and og.Points showing it changes.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "geometry",
+              "type": "Geometry",
+              "optional": false,
+              "doc": "A geometry og.render.bufferGeometry made with dynamic true."
+            },
+            {
+              "name": "desc",
+              "type": "BufferGeometryDesc",
+              "optional": true,
+              "doc": "The new attributes."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a dead or static geometry, or attributes og.render.bufferGeometry refuses.",
+          "publish": true
+        },
+        {
+          "name": "geometryInfo",
+          "doc": "A geometry's counts and bounds.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "geometry",
+              "type": "Geometry",
+              "optional": false,
+              "doc": "Any geometry: made, a primitive or a loaded glTF's."
+            }
+          ],
+          "returns": "Result<GeometryInfo>",
+          "returnsDoc": "Refused for a dead geometry.",
+          "publish": true
+        },
+        {
+          "name": "cylinderGeometry",
+          "doc": "Make a cylinder geometry for og.Mesh (give its body a cylinder-like Collider: a capsule, a convex Collider.mesh of it, or the geometry itself).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "CylinderGeometryDesc",
+              "optional": true,
+              "doc": "Its radii, height and tessellation."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "publish": true
+        },
+        {
+          "name": "coneGeometry",
+          "doc": "Make a cone geometry for og.Mesh. Physics can use it as a convex Collider.mesh.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "ConeGeometryDesc",
+              "optional": true,
+              "doc": "Its radius, height and tessellation."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "publish": true
+        },
+        {
+          "name": "capsuleGeometry",
+          "doc": "Make a capsule geometry for og.Mesh (its body's Collider is a capsule of the same radius and half the height).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "CapsuleGeometryDesc",
+              "optional": true,
+              "doc": "Its radius, length and tessellation."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "publish": true
+        },
+        {
+          "name": "torusGeometry",
+          "doc": "Make a torus geometry for og.Mesh. Physics can use it as a triangle-mesh Collider.mesh.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "TorusGeometryDesc",
+              "optional": true,
+              "doc": "Its radii and tessellation."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "publish": true
+        },
+        {
+          "name": "ringGeometry",
+          "doc": "Make a ring geometry for og.Mesh (one-sided: give it a double-sided material to see it from behind).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "RingGeometryDesc",
+              "optional": true,
+              "doc": "Its radii and tessellation."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "publish": true
+        },
+        {
+          "name": "circleGeometry",
+          "doc": "Make a circle geometry for og.Mesh (one-sided, as ringGeometry).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "CircleGeometryDesc",
+              "optional": true,
+              "doc": "Its radius and tessellation."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "publish": true
+        },
+        {
+          "name": "tubeGeometry",
+          "doc": "Make a tube along a curve through points for og.Mesh: pipes, cables, rails, a path shown as a ribbon of geometry. Physics can use it as a triangle-mesh Collider.mesh.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "TubeGeometryDesc",
+              "optional": true,
+              "doc": "The points, radius and tessellation."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "returnsDoc": "Refused for fewer than two points or a point that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "lines",
+          "doc": "Draw lines this frame. Systems and commands may call it; the list is cleared at every tick, so submit them every tick they should show (og.Lines keeps a static set).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer draws them."
+            },
+            {
+              "name": "desc",
+              "type": "LinesDesc",
+              "optional": true,
+              "doc": "The points and the look."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for fewer than two points or a colours list whose length is not the points'.",
+          "publish": true
+        },
+        {
+          "name": "points",
+          "doc": "Draw a point cloud this frame. Systems and commands may call it; the list is cleared at every tick.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer draws it."
+            },
+            {
+              "name": "desc",
+              "type": "PointsDesc",
+              "optional": true,
+              "doc": "The positions and the look."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a colours list whose length is not the points'.",
+          "publish": true
+        },
+        {
+          "name": "raycast",
+          "doc": "Every drawn triangle a ray crosses, nearest first, as three.js Raycaster.intersectObjects: what is drawn, not the colliders (og.physics.raycast answers those). It tests og.Mesh and og.Model entities at their world transforms through a BVH per geometry (built when the geometry is made, loaded or updated), both faces of each triangle, skinned models in their bind pose. Read the world as of the call; inside a system, its transforms as earlier systems left them.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world asked."
+            },
+            {
+              "name": "ray",
+              "type": "Ray",
+              "optional": false,
+              "doc": "The ray; its direction need not be normalised and must not be zero."
+            },
+            {
+              "name": "desc",
+              "type": "RaycastGeometryDesc",
+              "optional": true,
+              "doc": "Reach, nearest only and layers."
+            }
+          ],
+          "returns": "Result<List<GeometryHit>>",
+          "returnsDoc": "Refused for a zero or non-finite direction.",
           "publish": true
         }
       ],
@@ -7799,6 +8096,294 @@
       "functions": [],
       "interfaces": [],
       "callbacks": []
+    },
+    {
+      "name": "debug",
+      "doc": "Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI) so they read in every capture and never hide behind geometry; and the debug views (physics, navigation, bounds) the command channel's `debug:` actions switch.\nDevelopment only: not in publish builds, where every member does nothing and answers its default, so a game may leave its debug draws in. Debug draw is rendering: it never feeds back into the simulation, and its draws are not world state (a snapshot or a replay does not carry them).",
+      "place": "namespace",
+      "publish": false,
+      "types": [
+        "DebugDrawDesc"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "line",
+          "doc": "A line from one point to another.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world drawn in."
+            },
+            {
+              "name": "from",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "Where it starts."
+            },
+            {
+              "name": "to",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "Where it ends."
+            },
+            {
+              "name": "desc",
+              "type": "DebugDrawDesc",
+              "optional": true,
+              "doc": "Colour, width, duration."
+            }
+          ],
+          "returns": "Void",
+          "publish": false
+        },
+        {
+          "name": "box",
+          "doc": "A box's twelve edges, as three.js Box3Helper (turned by desc.rotation).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world drawn in."
+            },
+            {
+              "name": "center",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "Its centre."
+            },
+            {
+              "name": "size",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "Its extent along each axis."
+            },
+            {
+              "name": "desc",
+              "type": "DebugDrawDesc",
+              "optional": true,
+              "doc": "Colour, width, duration, rotation."
+            }
+          ],
+          "returns": "Void",
+          "publish": false
+        },
+        {
+          "name": "sphere",
+          "doc": "A sphere as its three great circles.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world drawn in."
+            },
+            {
+              "name": "center",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "Its centre."
+            },
+            {
+              "name": "radius",
+              "type": "f32",
+              "optional": false,
+              "doc": "Its radius."
+            },
+            {
+              "name": "desc",
+              "type": "DebugDrawDesc",
+              "optional": true,
+              "doc": "Colour, width, duration, rotation."
+            }
+          ],
+          "returns": "Void",
+          "publish": false
+        },
+        {
+          "name": "arrow",
+          "doc": "An arrow from one point to another, its head a fifth of its length (three.js ArrowHelper): a velocity, a force, a direction to a target.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world drawn in."
+            },
+            {
+              "name": "from",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "Its tail."
+            },
+            {
+              "name": "to",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "Its tip."
+            },
+            {
+              "name": "desc",
+              "type": "DebugDrawDesc",
+              "optional": true,
+              "doc": "Colour, width, duration."
+            }
+          ],
+          "returns": "Void",
+          "publish": false
+        },
+        {
+          "name": "axes",
+          "doc": "A frame's three axes, as three.js AxesHelper: +x red, +y green, +z blue (desc.color is not read).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world drawn in."
+            },
+            {
+              "name": "position",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "The frame's origin."
+            },
+            {
+              "name": "size",
+              "type": "f32",
+              "optional": false,
+              "doc": "Each axis's length."
+            },
+            {
+              "name": "desc",
+              "type": "DebugDrawDesc",
+              "optional": true,
+              "doc": "Width, duration and the frame's rotation."
+            }
+          ],
+          "returns": "Void",
+          "publish": false
+        },
+        {
+          "name": "text",
+          "doc": "A label anchored at a world point, drawn in screen space at a constant size in the UI's body font (a world with no UI font draws none), centred above the point: an entity's state, a counter, a name.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world drawn in."
+            },
+            {
+              "name": "position",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "The point the label sits above."
+            },
+            {
+              "name": "text",
+              "type": "String",
+              "optional": false,
+              "doc": "The label."
+            },
+            {
+              "name": "desc",
+              "type": "DebugDrawDesc",
+              "optional": true,
+              "doc": "Colour and duration (width is the text's size in CSS pixels, 14 where it is 2 or less)."
+            }
+          ],
+          "returns": "Void",
+          "publish": false
+        },
+        {
+          "name": "clear",
+          "doc": "Remove every debug draw that is still showing.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world drawn in."
+            }
+          ],
+          "returns": "Void",
+          "publish": false
+        },
+        {
+          "name": "setView",
+          "doc": "Show a debug view besides og.debug's draws (the command channel's `debug:<view>`); none shows the draws alone.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world drawn in."
+            },
+            {
+              "name": "view",
+              "type": "DebugView",
+              "optional": false,
+              "doc": "The view."
+            }
+          ],
+          "returns": "Void",
+          "publish": false
+        },
+        {
+          "name": "view",
+          "doc": "The debug view shown.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world asked."
+            }
+          ],
+          "returns": "DebugView",
+          "publish": false
+        },
+        {
+          "name": "setEnabled",
+          "doc": "Show or hide every debug draw and view (`debug:on`, `debug:off`); on by default outside publish builds.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world drawn in."
+            },
+            {
+              "name": "enabled",
+              "type": "bool",
+              "optional": false,
+              "doc": "Whether they show."
+            }
+          ],
+          "returns": "Void",
+          "publish": false
+        },
+        {
+          "name": "enabled",
+          "doc": "Whether debug draws and views show.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world asked."
+            }
+          ],
+          "returns": "bool",
+          "publish": false
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
     }
   ],
   "$defs": {
@@ -10608,6 +11193,24 @@
         "catmullRom": "A Catmull-Rom filter over 4x4 texels (9 taps): the history stays sharp under camera motion."
       }
     },
+    "DebugView": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "What the debug overlay shows besides og.debug's draws (og.debug.setView, RenderOptions.debugView, `debug:<view>`), drawn over the finished frame. Streams add views as they add what to show.",
+      "type": "string",
+      "enum": [
+        "none",
+        "physics",
+        "nav",
+        "bounds"
+      ],
+      "x-og-variants": {
+        "none": "Only og.debug's draws.",
+        "physics": "The colliders' shapes, joints and contacts as the last physics step left them.",
+        "nav": "The navigation grids (blocked cells) and navmeshes (polygon edges), and every og.NavAgent's path.",
+        "bounds": "Every drawn mesh's bounds (its geometry's box at its transform)."
+      }
+    },
     "RenderOptions": {
       "x-og-kind": "desc",
       "x-og-module": "render",
@@ -10645,6 +11248,11 @@
           "minimum": 0,
           "maximum": 1,
           "x-og-unit": "ratio"
+        },
+        "debugView": {
+          "$ref": "#/$defs/DebugView",
+          "description": "A debug overlay from the first frame (og.debug.setView, the command channel's `debug:<view>`): none in a game, a view while building one. Not in publish builds.",
+          "default": "none"
         }
       },
       "additionalProperties": false
@@ -11213,6 +11821,11 @@
           "maximum": 4294967295,
           "description": "The layer of normalMapArray read where the Mesh does not pick one.",
           "default": 0
+        },
+        "wireframe": {
+          "type": "boolean",
+          "description": "Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in color plus the emissive light, unlit, depth tested; on every tier (lines, not a polygon mode WebGL2 lacks). Its meshes cast no shadow.",
+          "default": false
         }
       },
       "additionalProperties": false
@@ -13996,6 +14609,851 @@
       "description": "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read.",
       "type": "integer",
       "minimum": 0
+    },
+    "BufferGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "Geometry from attribute arrays, as three.js BufferGeometry with its attributes set: one item per vertex in each array, triangles three indices each (or, with no indices, every three vertices).\nMissing normals are computed, as three.js computeVertexNormals (each vertex the area-weighted sum of its triangles' normals: shared vertices shade smooth, an unindexed geometry flat); missing tangents are generated when a normal map needs them. An unindexed geometry whose vertex count is not a multiple of three has no triangles: it draws nothing as an og.Mesh and is a vertex set for og.Lines and og.Points.",
+      "type": "object",
+      "properties": {
+        "positions": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "The vertex positions, x y z per vertex (three.js `position`); at least one vertex."
+        },
+        "normals": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Unit normals, x y z per vertex; null computes them.",
+          "default": null
+        },
+        "uvs": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Texture coordinates, u v per vertex, v down the image (glTF's, as og-render's); null is 0 0.",
+          "default": null
+        },
+        "colors": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Linear vertex colours, r g b or r g b a per vertex, multiplied into the material's colour (three.js `color` with vertexColors); null is white.",
+          "default": null
+        },
+        "tangents": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Tangents, x y z w per vertex (glTF's: w the bitangent's sign); null generates them.",
+          "default": null
+        },
+        "indices": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Triangles, three vertex indices each, counter-clockwise seen from the front; null takes every three vertices as one.",
+          "default": null
+        },
+        "dynamic": {
+          "type": "boolean",
+          "description": "Whether og.render.updateGeometry may rewrite it (a mesh made each tick: water, a deforming terrain, a trail of geometry). A static geometry is refused there.",
+          "default": false
+        },
+        "physics": {
+          "type": "boolean",
+          "description": "Register it as a physics mesh too, so an og.Collider with it as `mesh` (SHAPE_MESH or SHAPE_CONVEX) collides with what is drawn; equivalent to og.physics.setMesh with its positions and indices. An update re-registers it.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "GeometryInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "render",
+      "description": "What a geometry holds (og.render.geometryInfo).",
+      "type": "object",
+      "properties": {
+        "vertices": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Vertices."
+        },
+        "triangles": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Triangles."
+        },
+        "min": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The bounds' least corner in the geometry's own space, as three.js boundingBox.min.",
+          "x-og-unit": "m"
+        },
+        "max": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The bounds' greatest corner.",
+          "x-og-unit": "m"
+        },
+        "dynamic": {
+          "type": "boolean",
+          "description": "Whether og.render.updateGeometry may rewrite it."
+        }
+      },
+      "required": [
+        "vertices",
+        "triangles",
+        "min",
+        "max",
+        "dynamic"
+      ],
+      "additionalProperties": false
+    },
+    "CylinderGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A cylinder (or a truncated cone) along +Y centred at the origin, as three.js CylinderGeometry(radiusTop, radiusBottom, height, radialSegments, heightSegments, openEnded, thetaStart, thetaLength).",
+      "type": "object",
+      "properties": {
+        "radiusTop": {
+          "type": "number",
+          "description": "The radius at the top.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "radiusBottom": {
+          "type": "number",
+          "description": "The radius at the bottom.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "height": {
+          "type": "number",
+          "description": "Its extent along y.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "radialSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Segments around.",
+          "default": 32,
+          "minimum": 3
+        },
+        "heightSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rows along the height.",
+          "default": 1,
+          "minimum": 1
+        },
+        "openEnded": {
+          "type": "boolean",
+          "description": "Leave the ends open (no caps).",
+          "default": false
+        },
+        "thetaStart": {
+          "type": "number",
+          "description": "Where the side starts around y, from +Z towards +X.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "thetaLength": {
+          "type": "number",
+          "description": "How far around the side goes; 2 pi is whole.",
+          "default": 6.283185307179586,
+          "x-og-unit": "rad"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConeGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A cone along +Y centred at the origin, its tip up, as three.js ConeGeometry(radius, height, radialSegments, heightSegments, openEnded).",
+      "type": "object",
+      "properties": {
+        "radius": {
+          "type": "number",
+          "description": "The base's radius.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "height": {
+          "type": "number",
+          "description": "Its extent along y.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "radialSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Segments around.",
+          "default": 32,
+          "minimum": 3
+        },
+        "heightSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rows along the height.",
+          "default": 1,
+          "minimum": 1
+        },
+        "openEnded": {
+          "type": "boolean",
+          "description": "Leave the base open.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "CapsuleGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A capsule along +Y centred at the origin, as three.js CapsuleGeometry(radius, height, capSegments, radialSegments, heightSegments): a cylinder of `height` between two hemispheres, `height + 2 radius` long in all (an og.Collider capsule of halfHeight height / 2 and that radius matches it).",
+      "type": "object",
+      "properties": {
+        "radius": {
+          "type": "number",
+          "description": "The radius.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "height": {
+          "type": "number",
+          "description": "The straight middle's length.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "capSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rows in each hemisphere.",
+          "default": 4,
+          "minimum": 1
+        },
+        "radialSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Segments around.",
+          "default": 8,
+          "minimum": 3
+        },
+        "heightSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rows along the middle.",
+          "default": 1,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "TorusGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A torus in the xy plane around +Z, as three.js TorusGeometry(radius, tube, radialSegments, tubularSegments, arc).",
+      "type": "object",
+      "properties": {
+        "radius": {
+          "type": "number",
+          "description": "From the centre to the tube's centre.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "tube": {
+          "type": "number",
+          "description": "The tube's radius.",
+          "default": 0.4,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "radialSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Segments around the tube.",
+          "default": 12,
+          "minimum": 2
+        },
+        "tubularSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Segments around the ring.",
+          "default": 48,
+          "minimum": 3
+        },
+        "arc": {
+          "type": "number",
+          "description": "How far around the ring goes.",
+          "default": 6.283185307179586,
+          "x-og-unit": "rad"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RingGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A flat ring in the xy plane facing +Z, as three.js RingGeometry(innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength).",
+      "type": "object",
+      "properties": {
+        "innerRadius": {
+          "type": "number",
+          "description": "The hole's radius.",
+          "default": 0.5,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "outerRadius": {
+          "type": "number",
+          "description": "The ring's radius.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "thetaSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Segments around.",
+          "default": 32,
+          "minimum": 3
+        },
+        "phiSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rings from the inside out.",
+          "default": 1,
+          "minimum": 1
+        },
+        "thetaStart": {
+          "type": "number",
+          "description": "Where it starts, from +X towards +Y.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "thetaLength": {
+          "type": "number",
+          "description": "How far around it goes.",
+          "default": 6.283185307179586,
+          "x-og-unit": "rad"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CircleGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A disc (or a sector) in the xy plane facing +Z, as three.js CircleGeometry(radius, segments, thetaStart, thetaLength): a 2D polygon's simplest shape.",
+      "type": "object",
+      "properties": {
+        "radius": {
+          "type": "number",
+          "description": "The radius.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Segments around.",
+          "default": 32,
+          "minimum": 3
+        },
+        "thetaStart": {
+          "type": "number",
+          "description": "Where it starts, from +X towards +Y.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "thetaLength": {
+          "type": "number",
+          "description": "How far around it goes.",
+          "default": 6.283185307179586,
+          "x-og-unit": "rad"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TubeGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A tube along a curve through points, as three.js TubeGeometry(new CatmullRomCurve3(points, closed, 'centripetal'), tubularSegments, radius, radialSegments, closed): u runs along it, v around. The points may come from anywhere: a path's samples, a rope's points, a spline a tool made.",
+      "type": "object",
+      "properties": {
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector3"
+          },
+          "description": "The points the curve passes through, in order (at least two).",
+          "default": [],
+          "x-og-unit": "m"
+        },
+        "tubularSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Segments along the tube.",
+          "default": 64,
+          "minimum": 1
+        },
+        "radius": {
+          "type": "number",
+          "description": "The tube's radius.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "radialSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Segments around it.",
+          "default": 8,
+          "minimum": 3
+        },
+        "closed": {
+          "type": "boolean",
+          "description": "Join the last point back to the first.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "LineMode": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "How a line set's points join, as three.js's three line objects.",
+      "type": "string",
+      "enum": [
+        "strip",
+        "segments",
+        "loop"
+      ],
+      "x-og-variants": {
+        "strip": "One polyline through every point, as three.js Line.",
+        "segments": "Pairs of points, each its own segment, as three.js LineSegments.",
+        "loop": "A polyline closed back to its first point, as three.js LineLoop."
+      }
+    },
+    "LinesDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "Lines through points, drawn this frame only (immediate mode, as og.render.sprite): submit them every tick they should show. three.js Line, LineSegments and LineLoop with a LineBasicMaterial or LineDashedMaterial, but any width on every tier (each segment is a quad in screen space with a feathered edge, so WebGL2's one-pixel lines do not apply).\nWorld lines are drawn in the scene after the transparent meshes and particles, exposed, bloomed and tone mapped with it; screen lines over the finished frame, after every post effect and under the UI.",
+      "type": "object",
+      "properties": {
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector3"
+          },
+          "description": "The points, in order: world positions, or with screen CSS pixels from the top left of the play surface with y down (z ignored).",
+          "default": [],
+          "x-og-unit": "m"
+        },
+        "colors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Color"
+          },
+          "description": "Per point linear colours, blended along each segment (three.js vertexColors); empty is `color` for all.",
+          "default": []
+        },
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The linear colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "opacity": {
+          "type": "number",
+          "description": "The alpha.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "mode": {
+          "$ref": "#/$defs/LineMode",
+          "description": "How the points join.",
+          "default": "strip"
+        },
+        "width": {
+          "type": "number",
+          "description": "The width: CSS pixels, or world units with worldUnits.",
+          "default": 1,
+          "minimum": 0
+        },
+        "worldUnits": {
+          "type": "boolean",
+          "description": "Measure width in world units (a line that thins with distance) instead of CSS pixels (as wide at any distance).",
+          "default": false
+        },
+        "depthTest": {
+          "type": "boolean",
+          "description": "Hidden behind nearer geometry, as three.js Material.depthTest; false draws it over the scene. Screen lines are never depth tested.",
+          "default": true
+        },
+        "screen": {
+          "type": "boolean",
+          "description": "Draw in screen space over the finished frame: points in CSS pixels, width in CSS pixels.",
+          "default": false
+        },
+        "dashed": {
+          "type": "boolean",
+          "description": "Dashes, as three.js LineDashedMaterial: dashSize on, gapSize off, along the line from its first point.",
+          "default": false
+        },
+        "dashSize": {
+          "type": "number",
+          "description": "A dash's length: world units (CSS pixels for screen lines).",
+          "default": 3,
+          "minimum": 0
+        },
+        "gapSize": {
+          "type": "number",
+          "description": "A gap's length.",
+          "default": 1,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "PointsDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A point cloud drawn this frame only (immediate mode), as three.js Points with a PointsMaterial: a square per point facing the camera. Submit it every tick it should show (og.Points keeps a static set).",
+      "type": "object",
+      "properties": {
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector3"
+          },
+          "description": "The positions: world, or with screen CSS pixels from the top left, y down.",
+          "default": [],
+          "x-og-unit": "m"
+        },
+        "colors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Color"
+          },
+          "description": "Per point linear colours; empty is `color` for all.",
+          "default": []
+        },
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The linear colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "opacity": {
+          "type": "number",
+          "description": "The alpha.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "size": {
+          "type": "number",
+          "description": "The side of each square: world units with sizeAttenuation, else CSS pixels.",
+          "default": 1,
+          "minimum": 0
+        },
+        "sizeAttenuation": {
+          "type": "boolean",
+          "description": "Size in world units, smaller with distance, as three.js PointsMaterial.sizeAttenuation; false keeps every point `size` CSS pixels.",
+          "default": true
+        },
+        "depthTest": {
+          "type": "boolean",
+          "description": "Hidden behind nearer geometry; false draws them over the scene.",
+          "default": true
+        },
+        "screen": {
+          "type": "boolean",
+          "description": "Draw in screen space over the finished frame, positions and size in CSS pixels.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Lines": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "Draws a geometry's vertices as lines at the entity's MatrixWorld, every frame (three.js Line, LineSegments or LineLoop over a BufferGeometry): a static set of lines kept as data, a level's outline, a track, a constellation. The vertices are taken in order (the geometry's indices are not read), with its vertex colours times color.",
+      "type": "object",
+      "properties": {
+        "geometry": {
+          "$ref": "#/$defs/Geometry",
+          "description": "The vertices (og.render.bufferGeometry: an unindexed one of any count).",
+          "default": 0
+        },
+        "mode": {
+          "$ref": "#/$defs/LineMode",
+          "description": "How the vertices join.",
+          "default": "strip"
+        },
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The linear colour, times the vertex colours.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "opacity": {
+          "type": "number",
+          "description": "The alpha.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "width": {
+          "type": "number",
+          "description": "CSS pixels, or world units with worldUnits.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "worldUnits": {
+          "type": "boolean",
+          "description": "Width in world units.",
+          "default": false
+        },
+        "depthTest": {
+          "type": "boolean",
+          "description": "Hidden behind nearer geometry.",
+          "default": true
+        },
+        "dashSize": {
+          "type": "number",
+          "description": "Dashes' length in world units along the line; 0 is solid (three.js LineDashedMaterial.dashSize).",
+          "default": 0,
+          "minimum": 0
+        },
+        "gapSize": {
+          "type": "number",
+          "description": "Gaps' length between dashes.",
+          "default": 1,
+          "minimum": 0
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Whether it is drawn.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Points": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "Draws a geometry's vertices as a point cloud at the entity's MatrixWorld, every frame (three.js Points over a BufferGeometry): star fields, scanned surfaces, sparse markers kept as data. Vertex colours times color.",
+      "type": "object",
+      "properties": {
+        "geometry": {
+          "$ref": "#/$defs/Geometry",
+          "description": "The vertices.",
+          "default": 0
+        },
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The linear colour, times the vertex colours.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "opacity": {
+          "type": "number",
+          "description": "The alpha.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "size": {
+          "type": "number",
+          "description": "World units with sizeAttenuation, else CSS pixels.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "sizeAttenuation": {
+          "type": "boolean",
+          "description": "Size in world units, smaller with distance.",
+          "default": true
+        },
+        "depthTest": {
+          "type": "boolean",
+          "description": "Hidden behind nearer geometry.",
+          "default": true
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Whether it is drawn.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "RaycastGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "Which meshes og.render.raycast tests, as three.js Raycaster's near, far and layers.",
+      "type": "object",
+      "properties": {
+        "maxDistance": {
+          "type": "number",
+          "description": "How far the ray reaches (three.js Raycaster.far); 0 is unbounded.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "first": {
+          "type": "boolean",
+          "description": "Answer only the nearest hit (cheaper: the BVH stops early).",
+          "default": false
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "A bit mask of the layers tested, as three.js Raycaster.layers: an entity's meshes are tested when its layers share a bit with it. Every mesh is on layer 1 (bit 0) until per-object layers land, so the default tests them all.",
+          "default": 1
+        },
+        "invisible": {
+          "type": "boolean",
+          "description": "Test meshes whose visible is false too.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "GeometryHit": {
+      "x-og-kind": "struct",
+      "x-og-module": "render",
+      "description": "Where a ray meets a drawn triangle, as three.js Raycaster's intersection.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.Mesh's or og.Model's entity."
+        },
+        "geometry": {
+          "$ref": "#/$defs/Geometry",
+          "description": "The geometry hit."
+        },
+        "distance": {
+          "type": "number",
+          "description": "From the ray's origin along its normalised direction.",
+          "x-og-unit": "m"
+        },
+        "point": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where, in world space.",
+          "x-og-unit": "m"
+        },
+        "normal": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The triangle's face normal in world space (its front side, counter-clockwise), unit length."
+        },
+        "uv": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The texture coordinates there, interpolated."
+        },
+        "faceIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The triangle's index in the geometry, as three.js faceIndex."
+        }
+      },
+      "required": [
+        "entity",
+        "geometry",
+        "distance",
+        "point",
+        "normal",
+        "uv",
+        "faceIndex"
+      ],
+      "additionalProperties": false
     },
     "Asset": {
       "x-og-kind": "handle",
@@ -29987,6 +31445,48 @@
           "description": "Written: the video's texture (VideoInfo.texture), for a material or sprite set up from the player.",
           "default": 0,
           "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "DebugDrawDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "debug",
+      "description": "How a debug shape looks and how long it lasts.",
+      "type": "object",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The linear colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 0
+          }
+        },
+        "width": {
+          "type": "number",
+          "description": "Line width in CSS pixels.",
+          "default": 2,
+          "minimum": 0
+        },
+        "duration": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many ticks after this one it stays; 0 is this frame only (draw it every tick it should show).",
+          "default": 0,
+          "x-og-unit": "ticks"
+        },
+        "rotation": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "The shape's rotation: a box's or a sphere's circles', the axes' frame.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
         }
       },
       "additionalProperties": false

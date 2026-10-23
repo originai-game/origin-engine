@@ -559,6 +559,71 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_render_buffer_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_buffer_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_update_geometry(world: u32, geometry: f64, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_update_geometry(&Host, world, geometry, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_geometry_info(world: u32, geometry: f64) -> String {
+    <Host as RenderApi>::og_render_geometry_info(&Host, world, geometry)
+}
+
+#[wasm_bindgen]
+pub fn og_render_cylinder_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_cylinder_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_cone_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_cone_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_capsule_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_capsule_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_torus_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_torus_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_ring_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_ring_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_circle_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_circle_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_tube_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_tube_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_lines(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_lines(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_points(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_points(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_raycast(world: u32, ray: String, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_raycast(&Host, world, ray, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_load_bundle(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_bundle(&Host, world, path)
 }
@@ -1645,4 +1710,70 @@ pub fn og_stream_budget(world: u32) -> String {
 #[wasm_bindgen]
 pub fn og_stream_set_budget(world: u32, bytes: f64) -> String {
     <Host as StreamApi>::og_stream_set_budget(&Host, world, bytes)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_debug_line(world: u32, from: String, to: String, desc: Option<String>) {
+    <Host as DebugApi>::og_debug_line(&Host, world, from, to, desc)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_debug_box(world: u32, center: String, size: String, desc: Option<String>) {
+    <Host as DebugApi>::og_debug_box(&Host, world, center, size, desc)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_debug_sphere(world: u32, center: String, radius: f64, desc: Option<String>) {
+    <Host as DebugApi>::og_debug_sphere(&Host, world, center, radius, desc)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_debug_arrow(world: u32, from: String, to: String, desc: Option<String>) {
+    <Host as DebugApi>::og_debug_arrow(&Host, world, from, to, desc)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_debug_axes(world: u32, position: String, size: f64, desc: Option<String>) {
+    <Host as DebugApi>::og_debug_axes(&Host, world, position, size, desc)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_debug_text(world: u32, position: String, text: String, desc: Option<String>) {
+    <Host as DebugApi>::og_debug_text(&Host, world, position, text, desc)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_debug_clear(world: u32) {
+    <Host as DebugApi>::og_debug_clear(&Host, world)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_debug_set_view(world: u32, view: String) {
+    <Host as DebugApi>::og_debug_set_view(&Host, world, view)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_debug_view(world: u32) -> String {
+    <Host as DebugApi>::og_debug_view(&Host, world)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_debug_set_enabled(world: u32, enabled: bool) {
+    <Host as DebugApi>::og_debug_set_enabled(&Host, world, enabled)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_debug_enabled(world: u32) -> bool {
+    <Host as DebugApi>::og_debug_enabled(&Host, world)
 }
