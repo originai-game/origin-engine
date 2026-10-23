@@ -8,7 +8,7 @@ through the wall, raises the alarm, chases, searches and goes back.
 
 ```sh
 og run .     # headless with the probe; og dev . reloads on save
-og test .    # tests/smoke.og.ts and tests/guard.og.ts
+og test .    # tests/smoke.og.ts, tests/guard.og.ts and tests/intro.og.ts
 og polish .  # the taste and feel scores of those playtests
 og build .   # the play page
 ```
@@ -25,6 +25,7 @@ og build .   # the play page
 | Every word the menu shows from a string table, the base one in the source language | `assets/strings/en.ogt`, `Menu` | og-i18n §1, §2 |
 | A guard as data: a state machine on og.ai, a navmesh cooked from the yard, sight cones against the wall | `assets/ai/guard.ogt`, `assets/nav/yard.ogt` | og-ai §1–§5 |
 | Commands with their usage in `help`, facts for playtests | `commands`, `commandHelp`, `facts` | og-game §3; og-build §1 |
+| A cutscene as data: a camera on a rail, the trickster's clips and walk, narration from an `.srt`, sounds, an event key running `spawn_wave`, fades and markers, played by `timeline:play:intro` | `assets/timelines/intro.ogt`, `narration.srt`, `tests/intro.og.ts` | og-game §9 "Cutscenes" |
 | Playtests that assert on dumps and facts, never on the code | `tests/` | og-build §3, §4 |
 
 `og polish .` (2026-10-19): taste 100, feel 87 (tests/evidence/E7/polish/

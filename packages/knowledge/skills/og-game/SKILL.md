@@ -883,6 +883,142 @@ world.insert(body, og.AnimationGraph, { asset: graph });
 // every tick: world.set(body, og.AnimationGraph, { p0: groundSpeed, p1: airborne ? 1 : 0 });
 ```
 
+### Cutscenes: timelines and paths
+
+A cutscene, an intro, a scripted beat or a fly-through is a `type timeline`
+file, not code (`reference/timeline.md`, `reference/path.md`;
+`templates/game`'s `assets/timelines/intro.ogt` and `tests/intro.og.ts`
+are the pattern). Tracks of keys at seconds: between two keys the later
+key's `ease` (og.tween's names: `cubicInOut`, `quadIn`, ...) mixes them,
+outside them the value is held. Every value is evaluated at the
+timeline's time, never accumulated, so a seek lands exactly where playing
+would (a playtest or a video can start at any second).
+
+```text
+type timeline
+version 1
+---
+name "Intro"
+duration 10
+path "flyby" {
+  kind catmullRom          # or bezier (p0 c0 c1 p1 ...) or linear; closed true wraps
+  point -5 3.2 9
+  point -1.5 2.4 7.5
+  point 2 2 7
+  point 5 2.8 8.5
+}
+track camera {
+  rail "flyby"             # or position/target keys, or follow "<entity>"
+  key 0 {
+    at 0
+    target 0 1 0
+    fov 50
+  }
+  key 9.5 {
+    at 1
+    target 1.5 1 0
+    fov 42
+    ease cubicInOut
+  }
+}
+track transform "trickster" {
+  key 2 {
+    position 2 0 0
+  }
+  key 5 {
+    position 0.5 0 1.5
+    rotation 0 90 0
+    ease cubicInOut
+  }
+}
+track animation "trickster" {     # the entity's og.Model's clips (or `model "<glb>"`)
+  key 0 {
+    clip "idle"
+    loop true
+  }
+  key 2 {
+    clip "walk"
+    loop true
+    blendIn 0.3
+  }
+}
+track caption {
+  captions "narration.srt"   # beside the timeline; or word timestamps .json
+  style lg                   # a UI type step
+  anchor bottom
+}
+track audio {
+  key 1 {
+    sound "audio/blip.wav"
+    volume 0.6
+    bus sfx
+  }
+}
+track music {
+  key 0 {
+    sound "audio/theme.ogg"
+    fadeIn 1
+    fadeOut 2
+    end 9
+  }
+}
+track event {
+  key 5.5 {
+    do "spawn_wave:2"
+    retroactive true
+  }
+}
+track transition {
+  key 0 {   # cut, fade, wipe, dissolve, iris, slide
+    kind fade
+    mode in
+    duration 1
+  }
+  key 9 {
+    kind fade
+    mode out
+    duration 1
+  }
+}
+track marker {
+  key 5.5 {
+    name "drop"
+  }
+}
+```
+
+The cook checks
+the sounds and models it names and imports the captions, so an `.srt`
+edit recooks the timeline. Play it from code or from the command channel:
+
+```ts
+const intro = must(og.load.timeline(world, "timelines/intro.ogt"));
+const e = world.spawn({ name: "intro" });
+world.insert(e, og.Timeline, { asset: intro });
+og.timeline.play(world, e);         // pause, seek(world, e, 4), stop
+// a system reading og.TimelineMarker (name "drop") or og.TimelineEnded reacts to it
+```
+
+`og run . --commands "0:timeline:play:intro;4:screenshot;8:screenshot"`
+plays `timelines/intro.ogt` on an entity named `timeline-intro`;
+`timeline:seek:4`, `timeline:pause`, `timeline:resume`, `timeline:stop`
+take an optional `:<name>`. While a timeline with a camera track plays
+(or is paused) it owns `og.Camera`; it hands back the camera it found
+when it stops or ends. Event keys run their action at the start of the
+next tick; a seek skips the events it passes unless they are
+`retroactive`, and markers are sent only by playing past them. A capture
+at `t:` shows the world after the ticks before t: the play's first tick
+is the timeline's time 0, so the frame at `4:` shows 3.983 s at 60 Hz.
+
+Paths on their own: `og.path.create(world, { points, kind, closed,
+tension })` or `og.path.find(world, "<name>")` for one a scene declares
+(the same `path` block in a `type scene`); `og.path.sample(world, p, t)`
+gives position, tangent and up at arc-length t 0..1, `length` and
+`nearest` the rest. `og.PathFollower { path, speed, loop, align, offset }`
+moves an entity along one each tick (`distance` is its own field, so a
+snapshot keeps it); `og.CameraRail { path }` rides one instead of its
+inline points.
+
 ## 10. Effects
 
 Every effect is off until the game turns it on, as data:
