@@ -319,7 +319,7 @@ fn skeleton2dBoxes {
 }
 ```
 
-<sub>`api.ogt` line 7720</sub>
+<sub>`api.ogt` line 7721</sub>
 
 ## Components, resources and events
 
@@ -1412,7 +1412,7 @@ struct Skeleton2DBox {
 }
 ```
 
-<sub>`api.ogt` line 7713</sub>
+<sub>`api.ogt` line 7714</sub>
 
 ## Column kinds
 

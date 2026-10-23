@@ -16,7 +16,7 @@ module video {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 13342</sub>
+<sub>`api.ogt` line 13343</sub>
 
 ## Contents
 
@@ -25,7 +25,7 @@ module video {
 | [`Video`](#type-Video) | handle | Cooked footage: its frames as a texture array, its sound (og.load.video). |
 | [`Video()`](#column-Video) | column kind | A Video handle field (0 is none). |
 | [`VideoInfo`](#type-VideoInfo) | struct | What og.load.video loaded. |
-| [`og.VideoPlayer`](#record-VideoPlayer) | component | Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Several players of one video share its texture, which shows the first player's frame in query order; cook a second asset to show two moments of one clip. |
+| [`og.VideoPlayer`](#record-VideoPlayer) | component | Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Each player has a texture of its own (written to `texture`): the first player of a video takes VideoInfo.texture, each further one a texture the og.video system makes for it over the same decoded frames (one frame of GPU memory each), so two players at different times show different frames. Show a player's `texture`, not VideoInfo.texture, once a video has more than one player. |
 
 ## Components, resources and events
 
@@ -33,7 +33,7 @@ module video {
 
 ### `og.VideoPlayer` (component)
 
-Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Several players of one video share its texture, which shows the first player's frame in query order; cook a second asset to show two moments of one clip.
+Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Each player has a texture of its own (written to `texture`): the first player of a video takes VideoInfo.texture, each further one a texture the og.video system makes for it over the same decoded frames (one frame of GPU memory each), so two players at different times show different frames. Show a player's `texture`, not VideoInfo.texture, once a video has more than one player.
 
 Token `og.VideoPlayer`, registered under the schema name `og.VideoPlayer`; its value type is `VideoPlayer`.
 
@@ -46,11 +46,11 @@ Token `og.VideoPlayer`, registered under the schema name `og.VideoPlayer`; its v
 | `loop` | `boolean` | `false` | — | — | — | Start again at 0 past the end; otherwise hold the last frame and set finished. |
 | `frame` | `number` | `0` | — | — | read only | Written: the frame shown, floor(time * fps). |
 | `finished` | `boolean` | `false` | — | — | read only | Written: a player without loop reached the end. |
-| `texture` | `Texture` | `0` | — | — | read only | Written: the video's texture (VideoInfo.texture), for a material or sprite set up from the player. |
+| `texture` | `Texture` | `0` | — | — | read only | Written: this player's texture (VideoInfo.texture for the video's first player, a texture of its own for each further one), for a material, sprite or UI image set up from the player. It keeps it while it lives. |
 
 ```ogt
 component VideoPlayer {
-  doc "Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Several players of one video share its texture, which shows the first player's frame in query order; cook a second asset to show two moments of one clip."
+  doc "Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Each player has a texture of its own (written to `texture`): the first player of a video takes VideoInfo.texture, each further one a texture the og.video system makes for it over the same decoded frames (one frame of GPU memory each), so two players at different times show different frames. Show a player's `texture`, not VideoInfo.texture, once a video has more than one player."
   field video Video "The video (og.load.video's `video`); 0 plays nothing."
   field playing bool "Whether time advances." {
     default true
@@ -72,13 +72,13 @@ component VideoPlayer {
   field finished bool "Written: a player without loop reached the end." {
     readonly true
   }
-  field texture Texture "Written: the video's texture (VideoInfo.texture), for a material or sprite set up from the player." {
+  field texture Texture "Written: this player's texture (VideoInfo.texture for the video's first player, a texture of its own for each further one), for a material, sprite or UI image set up from the player. It keeps it while it lives." {
     readonly true
   }
 }
 ```
 
-<sub>`api.ogt` line 13374</sub>
+<sub>`api.ogt` line 13375</sub>
 
 ## Types
 
@@ -94,7 +94,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Video "Cooked footage: its frames as a texture array, its sound (og.load.video)."
 ```
 
-<sub>`api.ogt` line 13347</sub>
+<sub>`api.ogt` line 13348</sub>
 
 <a id="type-VideoInfo"></a>
 
@@ -135,7 +135,7 @@ struct VideoInfo {
 }
 ```
 
-<sub>`api.ogt` line 13356</sub>
+<sub>`api.ogt` line 13357</sub>
 
 ## Column kinds
 
@@ -154,4 +154,4 @@ column Video {
 }
 ```
 
-<sub>`api.ogt` line 13349</sub>
+<sub>`api.ogt` line 13350</sub>
