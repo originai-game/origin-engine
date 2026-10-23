@@ -62,7 +62,8 @@ pub mod lod;
 mod probes;
 mod ssr;
 pub use probes::{
-    MAX_REFLECTION_PROBES, PROBE_MAX_RESOLUTION, PROBE_MIN_RESOLUTION, ProbeMode, ReflectionProbe,
+    MAX_REFLECTION_PROBES, PROBE_MAX_RESOLUTION, PROBE_MIN_RESOLUTION, ProbeCapture, ProbeMode,
+    ReflectionProbe,
 };
 pub use ssr::ScreenSpaceReflections;
 mod material;
@@ -8036,7 +8037,7 @@ impl Renderer {
     /// before its first capture (or for a probe sampling a baked map),
     /// else its face size and [`ENVIRONMENT_MAP_LEVELS`] prefiltered
     /// levels, each six faces of linear RGB floats (`og bake probes`).
-    pub fn read_reflection_probe(&self, id: u64) -> Option<Result<(u32, Vec<Vec<f32>>), String>> {
+    pub fn read_reflection_probe(&self, id: u64) -> Option<Result<ProbeCapture, String>> {
         let slot = self
             .probes
             .slots

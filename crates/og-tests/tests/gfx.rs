@@ -1453,8 +1453,8 @@ fn region_mean(img: &RgbaImage, x: std::ops::Range<u32>, y: std::ops::Range<u32>
     for py in y {
         for px in x.clone() {
             let i = ((py * img.width + px) * 4) as usize;
-            for c in 0..3 {
-                sum[c] += f64::from(img.pixels[i + c]);
+            for (c, s) in sum.iter_mut().enumerate() {
+                *s += f64::from(img.pixels[i + c]);
             }
             n += 1.0;
         }

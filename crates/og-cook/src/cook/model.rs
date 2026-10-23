@@ -601,7 +601,9 @@ pub(super) fn cook_primitive(
         // vertices welded by position alone (a shadow index buffer) and
         // given its own corners with face normals below.
         let flat = flat_source || q.len() as f64 >= 0.9 * lod0.len() as f64;
-        let mut shadow: Option<(Vec<u32>, Vec<u32>, Vec<[f32; 3]>)> = None;
+        // (the welded index buffer, each vertex's welded index, the welded positions)
+        type Welded = (Vec<u32>, Vec<u32>, Vec<[f32; 3]>);
+        let mut shadow: Option<Welded> = None;
         let mut refaceted: Vec<bool> = vec![false];
         for fraction in opts.fractions().into_iter().skip(1) {
             let target = ((lod0.len() as f64 * fraction as f64) as usize) / 3 * 3;
@@ -667,8 +669,8 @@ pub(super) fn cook_primitive(
                 continue;
             }
             let mut out = Vec::with_capacity(l.0.len());
-            for tri in l.0.chunks_exact(3) {
-                let [a, b, c] = [tri[0], tri[1], tri[2]].map(|i| Vec3::from(pos[i as usize]));
+            for tri in l.0.as_chunks::<3>().0 {
+                let [a, b, c] = tri.map(|i| Vec3::from(pos[i as usize]));
                 let n = oct_encode((b - a).cross(c - a).normalize_or(Vec3::Y));
                 for &i in tri {
                     let mut v = q[i as usize];

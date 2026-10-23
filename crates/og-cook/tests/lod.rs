@@ -146,7 +146,7 @@ fn a_model_names_its_own_levels_and_bad_ones_are_refused() {
     let root = project(
         "og-cook-lod-settings",
         &[
-            ("models/field.glb", &glb(&[g.clone()], false)),
+            ("models/field.glb", &glb(std::slice::from_ref(&g), false)),
             (
                 "models/field.glb.ogt",
                 b"type import\nversion 1\n---\nmodel {\n  lods 1 0.2\n  lodError 0.2\n}\n",

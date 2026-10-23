@@ -69,7 +69,7 @@ pub trait RenderBackend {
     }
     /// Reflection probe `id`'s capture read back (og-render's
     /// `Renderer::read_reflection_probe`): native hosts, for `og bake probes`.
-    fn read_reflection_probe(&self, _id: u64) -> Option<Result<(u32, Vec<Vec<f32>>), String>> {
+    fn read_reflection_probe(&self, _id: u64) -> Option<Result<og_render::ProbeCapture, String>> {
         None
     }
     /// Draw the scene offscreen at `width`×`height` (0×0: the target's size)

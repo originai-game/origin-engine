@@ -64,7 +64,10 @@ fn lod_camera() -> Camera {
 
 /// `lod-levels` (module docs), with the level each tree draws and the
 /// triangles of the three trees at those levels and at level 0.
-pub fn lod_scene() -> Result<(RenderScene, [usize; 3], (usize, usize)), String> {
+pub type LodScene = (RenderScene, [usize; 3], (usize, usize));
+
+/// `lod-levels`: [`LodScene`].
+pub fn lod_scene() -> Result<LodScene, String> {
     let root = cooked()?;
     let bundle = Bundle::open(&root.join("cooked")).map_err(|e| e.to_string())?;
     let model = bundle

@@ -29,6 +29,11 @@ use glam::{Vec2, Vec3};
 
 /// Probes sampled in one frame: the first ones of [`crate::RenderScene::reflection_probes`].
 pub const MAX_REFLECTION_PROBES: usize = 8;
+/// A probe's capture read back: its face size and its
+/// [`crate::ENVIRONMENT_MAP_LEVELS`] prefiltered levels, each six faces of
+/// linear RGB floats (`environment::bake::PrefilteredCube`'s layout).
+pub type ProbeCapture = (u32, Vec<Vec<f32>>);
+
 /// The face sizes a probe captures at (powers of two).
 pub const PROBE_MIN_RESOLUTION: u32 = crate::ENVIRONMENT_MAP_MIN_SIZE;
 pub const PROBE_MAX_RESOLUTION: u32 = 1024;
@@ -195,6 +200,7 @@ pub(crate) struct ProbeSlot {
     _textures: Vec<wgpu::Texture>,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn texture(
     device: &wgpu::Device,
     label: &str,
@@ -333,6 +339,7 @@ impl Probes {
     /// face size or sample count), dropped for those gone, and the
     /// captures due at `tick`. `baked` tells whether a baked probe's
     /// environment map is loaded.
+    #[allow(clippy::too_many_arguments)]
     pub fn prepare(
         &mut self,
         device: &wgpu::Device,
@@ -544,7 +551,7 @@ pub(crate) fn read_back(
         let mut rgb = Vec::with_capacity((n * n * 18) as usize);
         for y in 0..n * 6 {
             let line = &data[(y * row) as usize..(y * row + n * 8) as usize];
-            for px in line.chunks_exact(8) {
+            for px in line.as_chunks::<8>().0 {
                 for c in 0..3 {
                     rgb.push(f16_to_f32(u16::from_le_bytes([px[2 * c], px[2 * c + 1]])).max(0.0));
                 }
