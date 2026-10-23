@@ -875,7 +875,10 @@ reading pixels:
   `lane N` (each job og-lanes ran on pool thread N, with its site). The
   live probe's `state().timings` carries the last tick's `systems[]`, the
   last frame's `passes[]` and the GPU's `gpuPasses[]` of the newest frame
-  read back (name, ms).
+  read back (name, ms). On the web the engine Worker records the same
+  document (the play page's `?trace` from the boot, or the probe's
+  `trace("start")`) and the shell reads it (`trace()`, `saveTrace()`
+  downloads it).
 - **Scene write-back.** `save_scene` (member, and `save_scene[:path]`)
   rewrites the boot scene's `.ogt` from the world, line by line: a field
   line changes only when its value, rounded as the cook rounds it, differs;

@@ -30,6 +30,7 @@ import { laneChoice } from "./lanes.ts";
 import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
 import { localPlatform, storagePersistence, type PlatformCall, type PlatformHost } from "../platform-local.ts";
 import type { BootPhases } from "./worker.ts";
+import type { TraceDocument } from "../trace.ts";
 
 export interface ShellOptions {
   /** The play surface. Its pixel size is set from its CSS size and the device pixel ratio. */
@@ -78,6 +79,8 @@ export interface ShellOptions {
   readonly locale?: string;
   /** What answers og.platform's calls; default: the browser's own storage (`setPlatform` changes it, a Player bridge for instance). */
   readonly platform?: PlatformHost;
+  /** Record the run's trace from the boot on, the boot scene's loads included (`trace()` reads it; `trace("start")` begins one later). */
+  readonly trace?: boolean;
 }
 
 /** The pixel size of a canvas laid out at `cssWidth`×`cssHeight` on this display, with the DPR cap. */
@@ -367,6 +370,7 @@ export class Shell {
         locale: options.locale ?? globalThis.navigator?.language,
         ...(options.expect ? { expect: options.expect } : {}),
         ...(options.prime ? { prime: true } : {}),
+        ...(options.trace ? { trace: true } : {}),
         viewport: { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false, ...pagePreferences() },
       },
       [offscreen],
@@ -436,6 +440,27 @@ export class Shell {
   }
 
   /** Call the engine in the Worker: `advance`, `command`, `hash`, `frame`, or `probe` with a member name. */
+  /**
+   * The run's trace in the Chrome trace format, as `og run --trace` writes it natively (src/trace.ts):
+   * buffered in the engine Worker, taken here. `take` (the default) answers the document so far (null
+   * when no trace is recorded), `start` begins one (`ShellOptions.trace` starts one at the boot),
+   * `stop` ends it.
+   */
+  trace(action: "take" | "start" | "stop" = "take"): Promise<TraceDocument | null | boolean> {
+    return this.call("trace", action) as Promise<TraceDocument | null | boolean>;
+  }
+
+  /** Saves the trace so far as a JSON file the browser downloads (`name`, default `trace.json`): open it in Perfetto. False when none is recorded. */
+  async saveTrace(name = "trace.json"): Promise<boolean> {
+    const doc = await this.trace("take");
+    if (!doc || typeof doc !== "object") return false;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(doc)], { type: "application/json" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: name });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  }
+
   call(method: string, ...args: unknown[]): Promise<unknown> {
     if (this.#stopped) return Promise.reject(this.#stopped);
     const id = this.#next++;
