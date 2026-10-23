@@ -794,6 +794,8 @@ impl crate::Renderer {
                         self.light_buffers[0].as_entire_binding(),
                         slot.light_buffers[1].as_entire_binding(),
                         slot.light_buffers[2].as_entire_binding(),
+                        self.lightmaps.probe_buffer.as_entire_binding(),
+                        self.ltc.as_entire_binding(),
                     ],
                 );
                 let fx = crate::bind_group(

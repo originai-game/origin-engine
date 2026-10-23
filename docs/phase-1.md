@@ -379,7 +379,18 @@ the IDL changes are the CHANGELOG's `## Unreleased` depth wave 3 entry.
   lesson for the wave's end: a bake goes stale with every engine change
   that moves a scene's cooked bytes, so every project's bakes are
   re-baked after a merge that touches the scene schema, and `og doctor
-  --project` is the check.
+  --project` is the check. **The functional gate then failed six og-tests**
+  (`a_reflection_probe_puts_the_room_in_the_chrome_sphere`,
+  `probe_interior`, `views-monitor`, `views-mirror`, `views-split` and
+  `a_layer_the_main_camera_lacks_shows_only_on_the_monitor`) with a wgpu
+  validation error, "10 bindings against a layout of 12": S7 added the
+  light-volume probes and the LTC table to the frame layout, and S6's
+  reflection-probe frame groups (`lib.rs`) and S8's view frame groups
+  (`views.rs`), written against the old layout, were not in any of the
+  three branches' conflicts. Both groups now carry the two buffers; the
+  six tests pass against their Metal references unchanged (no probe or
+  view scene has a lightmap or a rect light), and rustfmt's order of
+  og-cli's `mod bake_*` lines, which the gate's fmt step caught first.
 - **Owed to the wave's end**, S7: one scene's lightmap drawn at a time;
   the physical, texture-array, material-shader and compact batches use
   the probes, not the lightmap; rect lights cast no shadows and terrain,
