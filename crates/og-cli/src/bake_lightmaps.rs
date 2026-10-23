@@ -14,9 +14,11 @@
 //! `<scene>.lightmap.ogt` and `<scene>.lightmap.ktx2`. The project is cooked
 //! again so the bundle holds them.
 //!
-//! The bake names the cooked scene's and models' hashes; a scene or model
+//! The bake names the scene source's hash and each static model's geometry
+//! hash (`og_cook::lightmap::geometry_hash`); a scene or a model's geometry
 //! changed since reads as stale at run time (`og.render.bakedLighting`) and
-//! in `og doctor --project` ([`status`]).
+//! in `og doctor --project` ([`status`]). A re-cook that leaves them alone
+//! (a cooker revision, the raycast BVH, a texture option) keeps the bake.
 
 use glam::{Mat4, Quat, Vec2, Vec3};
 use og_bake::{Light, Material, Mesh, PackSettings, Scene, TraceSettings, UnwrapMesh, VolumeDesc};
@@ -279,14 +281,13 @@ pub fn status(root: &Path) -> Vec<(String, String)> {
                 "{id} has static models or light volumes and no bake"
             )),
             Ok(lm) => {
-                let hash = |a: &str| bundle.output(a).map(|o| o.hash).unwrap_or(0);
-                if lm.file.scene_hash != hash(&id) {
+                if lm.file.scene_hash != scene_hash(&bundle, &id) {
                     Some(format!("{id} changed since its bake"))
                 } else {
                     lm.file
                         .models
                         .iter()
-                        .find(|m| m.hash != hash(&m.asset))
+                        .find(|m| bundle.model_geometry_hash(&m.asset).ok() != Some(m.hash))
                         .map(|m| {
                             format!("{id}: its static model {} changed since its bake", m.asset)
                         })
@@ -298,6 +299,12 @@ pub fn status(root: &Path) -> Vec<(String, String)> {
         }
     }
     out
+}
+
+/// The hash the bake keys the scene on: its source's (the text the author
+/// edits), so a re-cook alone never stales it.
+fn scene_hash(bundle: &Bundle, id: &str) -> u64 {
+    bundle.asset(id).map(|a| a.source_hash).unwrap_or(0)
 }
 
 fn bake(o: &Options) -> Result<(), String> {
@@ -330,9 +337,9 @@ fn bake(o: &Options) -> Result<(), String> {
     Ok(())
 }
 
-/// A static model entity: its index, its asset and per part its og-bake
-/// mesh and its vertex count.
-type StaticModel = (usize, String, Vec<(usize, usize)>);
+/// A static model entity: its index, its asset, the asset's geometry hash
+/// and per part its og-bake mesh and its vertex count.
+type StaticModel = (usize, String, u64, Vec<(usize, usize)>);
 
 fn bake_scene(
     o: &Options,
@@ -354,6 +361,9 @@ fn bake_scene(
     for (e, ent) in s.entities.iter().enumerate() {
         let Some(asset) = &ent.instance else { continue };
         let (rscene, parts) = model_parts(bundle, asset)?;
+        let geometry = og_cook::lightmap::geometry_hash(
+            parts.parts.iter().filter_map(|&(m, _, _)| rscene.mesh(m)),
+        );
         let lightmapped = statics.contains(&e);
         let mut entry = Vec::new();
         for &(mesh, material, local) in &parts.parts {
@@ -399,16 +409,16 @@ fn bake_scene(
             entry.push((scene.meshes.len() - 1, data.vertices.len()));
         }
         if lightmapped {
-            baked_models.push((e, asset.clone(), entry));
+            baked_models.push((e, asset.clone(), geometry, entry));
         }
     }
     let lit: Vec<usize> = baked_models
         .iter()
-        .flat_map(|(_, _, p)| p.iter().map(|(m, _)| *m))
+        .flat_map(|(_, _, _, p)| p.iter().map(|(m, _)| *m))
         .collect();
     let mut file = LightmapFile {
         scene: id.to_string(),
-        scene_hash: bundle.output(id).map(|o| o.hash).unwrap_or(0),
+        scene_hash: scene_hash(bundle, id),
         pages: og_cook::lightmap::pages_name(id),
         ..Default::default()
     };
@@ -464,11 +474,11 @@ fn bake_scene(
             })
             .collect();
         let mut k = 0;
-        for (e, asset, parts) in &baked_models {
+        for (e, asset, geometry, parts) in &baked_models {
             let mut m = BakedModel {
                 entity: s.entities[*e].name.clone(),
                 asset: asset.clone(),
-                hash: bundle.output(asset).map(|o| o.hash).unwrap_or(0),
+                hash: *geometry,
                 parts: Vec::new(),
             };
             if m.entity.is_empty() {

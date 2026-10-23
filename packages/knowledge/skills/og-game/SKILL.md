@@ -2403,8 +2403,10 @@ A static entity needs a name. The bake holds the light that bounces, the
 sky and emissive surfaces; lights still shine and cast shadows live on
 top. Static models draw with their lightmap, and everything else inside a
 LightVolume takes its ambient light from the probes. After you change the
-scene or a static model, the bake is stale and the scene renders unbaked
-until you bake again. `og doctor --project` warns `unbaked`, and
+scene's text or a static model's geometry, the bake is stale and the scene
+renders unbaked until you bake again; a re-cook that keeps the geometry
+(a cooker update, a texture or raycast option) keeps the bake. `og doctor
+--project` warns `unbaked`, and
 `og.render.bakedLighting(world)` lists each scene with `baked` and a
 `reason`. `RenderSettings.bakedLighting = false` draws everything unbaked,
 which is useful to compare. Every instantiated scene draws its own bake,

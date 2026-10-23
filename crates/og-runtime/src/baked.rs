@@ -155,21 +155,13 @@ pub(crate) fn scene_spawned(
         let lm = bundle
             .lightmap(&lightmap_id, bytes.bytes())
             .map_err(|e| e.to_string())?;
-        let scene_hash = bundle.output(&scene.id).map(|o| o.hash).unwrap_or(0);
+        // The scene's source hash: a re-cook alone never stales a bake.
+        let scene_hash = bundle.asset(&scene.id).map(|a| a.source_hash).unwrap_or(0);
         if lm.file.scene_hash != scene_hash {
             return Err(format!(
                 "its bake is stale: {} changed since og bake lightmaps (run it again)",
                 scene.id
             ));
-        }
-        for m in &lm.file.models {
-            let hash = bundle.output(&m.asset).map(|o| o.hash).unwrap_or(0);
-            if hash != m.hash {
-                return Err(format!(
-                    "its bake is stale: the static model {} changed since og bake lightmaps (run it again)",
-                    m.asset
-                ));
-            }
         }
         Ok(Some(lm))
     })();
@@ -225,6 +217,18 @@ pub(crate) fn scene_spawned(
     let mut overrides = Vec::new();
     let mut meshes = std::collections::HashMap::new();
     for (entity, parts, m) in &models {
+        // The model's geometry as loaded, against what the bake read.
+        let geometry = og_cook::lightmap::geometry_hash(
+            parts.iter().filter_map(|&(mesh, _, _)| rs.scene.mesh(mesh)),
+        );
+        if geometry != m.hash {
+            report.reason = format!(
+                "its bake is stale: the static model {} changed since og bake lightmaps (run it again)",
+                m.asset
+            );
+            rs.baked.scenes.push(report);
+            return;
+        }
         if parts.len() != m.parts.len() {
             report.reason = format!(
                 "its bake is stale: {} has {} parts, the bake {}",

@@ -455,7 +455,9 @@ Baked lighting, volumetrics and area lights (depth S7).
   stops drawing while its static models are all despawned. Every other lit fragment inside a volume takes its
   ambient light from the probes, trilinear between eight and faded over
   one spacing (frame binding 10, `ambient_irradiance`). Without a bake, or
-  with a stale one, the scene renders unbaked with the environment's
+  with a stale one (the scene's source text or a static model's geometry
+  changed since the bake; a re-cook that keeps the geometry keeps the
+  bake), the scene renders unbaked with the environment's
   ambient; `og.render.bakedLighting` gives the reason and `og doctor
   --project` warns `unbaked`. `RenderSettings.bakedLighting` false draws
   every scene unbaked. A static mesh draws its bake in every lit batch:

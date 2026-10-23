@@ -482,6 +482,19 @@ impl Bundle {
         &self.manifest.streams
     }
 
+    /// The manifest entry of a source asset (`scenes/hall.ogt`; the
+    /// `assets/` prefix optional): its source hash and its outputs.
+    pub fn asset(&self, source: &str) -> Result<&ManifestAsset, LoadError> {
+        let source = asset_id(source);
+        self.manifest
+            .assets
+            .iter()
+            .find(|a| a.source == source)
+            .ok_or_else(|| LoadError::NotCooked {
+                id: source.to_string(),
+            })
+    }
+
     /// The manifest entry of an asset id.
     pub fn output(&self, id: &str) -> Result<&ManifestOutput, LoadError> {
         let id = asset_id(id);
@@ -793,6 +806,20 @@ impl Bundle {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn load_scene(&self, id: &str) -> Result<SceneDesc, LoadError> {
         self.scene(id, &self.read(id)?)
+    }
+
+    /// The hash a bake keys the static model `id` on:
+    /// [`crate::lightmap::geometry_hash`] of the LOD-0 parts
+    /// [`CookedModel::add_to`] adds, read from the blob (its textures are
+    /// not decoded: the geometry does not depend on them).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn model_geometry_hash(&self, id: &str) -> Result<u64, LoadError> {
+        let model = self.load_model(id)?;
+        let mut scene = RenderScene::new();
+        let parts = model.add_to_with(&mut scene, &[]);
+        Ok(crate::lightmap::geometry_hash(
+            parts.parts.iter().filter_map(|&(m, _, _)| scene.mesh(m)),
+        ))
     }
 
     /// Reads a model and transcodes its textures to RGBA8 (native, feature

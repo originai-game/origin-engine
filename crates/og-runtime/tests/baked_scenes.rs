@@ -3,10 +3,10 @@
 //! drawn with its lightmapped parts and the pages of its own scene, and a
 //! bake whose static models are all despawned stops drawing.
 //!
-//! The project is cooked here twice: once to learn the scenes' and the
-//! model's output hashes, then with a lightmap beside each scene (the
-//! fx-showcase Cornell box's bake, its hashes set to this project's), as
-//! `og bake lightmaps` would have written them.
+//! The project is cooked here twice: once to learn the scenes' source
+//! hashes and the model's geometry hash, then with a lightmap beside each
+//! scene (the fx-showcase Cornell box's bake, its hashes set to this
+//! project's), as `og bake lightmaps` would have written them.
 //!
 //! Ways this could fail: the second scene's bake replaces the first's (the
 //! old runtime drew "one scene's lightmap at a time": the first box's
@@ -109,36 +109,38 @@ fn project() -> &'static Path {
                 scene_text(name, entity).as_bytes(),
             );
         }
-        let options = og_cook::CookOptions {
-            threads: 1,
-            schemas: vec![model_schema()],
-            ..og_cook::CookOptions::default()
-        };
-        let report = og_cook::cook_project(&root, &options).unwrap();
+        let report = og_cook::cook_project(&root, &cook_options()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
-        let hash = |id: &str| bundle.output(id).unwrap().hash;
         let text = std::fs::read_to_string(showcase.join("scenes/cornell.lightmap.ogt")).unwrap();
         let pages = std::fs::read(showcase.join("scenes/cornell.lightmap.ktx2")).unwrap();
         for (name, entity) in scenes {
             let id = format!("scenes/{name}.ogt");
             let mut file = og_cook::lightmap::LightmapFile::parse(&text).unwrap();
             file.scene = id.clone();
-            file.scene_hash = hash(&id);
+            file.scene_hash = bundle.asset(&id).unwrap().source_hash;
             file.pages = og_cook::lightmap::pages_name(&id);
             assert_eq!(file.models.len(), 1, "the box is one static model");
             file.models[0].entity = entity.into();
-            file.models[0].hash = hash("models/cornell.glb");
+            file.models[0].hash = bundle.model_geometry_hash("models/cornell.glb").unwrap();
             write(
                 &og_cook::lightmap::lightmap_id(&id),
                 file.to_text().as_bytes(),
             );
             write(&format!("scenes/{}", file.pages), &pages);
         }
-        let report = og_cook::cook_project(&root, &options).unwrap();
+        let report = og_cook::cook_project(&root, &cook_options()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
     })
+}
+
+fn cook_options() -> og_cook::CookOptions {
+    og_cook::CookOptions {
+        threads: 1,
+        schemas: vec![model_schema()],
+        ..og_cook::CookOptions::default()
+    }
 }
 
 struct Disk;
@@ -288,6 +290,41 @@ fn two_baked_scenes_both_draw_their_bakes() {
         (false, "its static models were despawned")
     );
     assert!(r[1].1, "{r:?}");
+}
+
+/// A re-cook that changes the model's blob but not its geometry keeps the
+/// bake: the box's import settings leave its raycast BVH out, the project
+/// is cooked again (the blob's hash moves, its vertices do not) and the
+/// hall still draws baked. The old key was the blob's hash, so every
+/// cooker revision staled every bake of every project.
+#[test]
+fn a_recook_that_keeps_the_geometry_keeps_the_bake() {
+    let root = project();
+    let bundle = || og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    let before = bundle().output("models/cornell.glb").unwrap().hash;
+    std::fs::write(
+        root.join("assets/models/cornell.glb.ogt"),
+        "type import\nversion 1\n---\nmodel {\n  raycast false\n}\n",
+    )
+    .unwrap();
+    let report = og_cook::cook_project(root, &cook_options()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    assert_ne!(
+        bundle().output("models/cornell.glb").unwrap().hash,
+        before,
+        "the re-cook changed the model's blob"
+    );
+    let (engine, seen) = engine();
+    instantiate(engine, "scenes/hall.ogt");
+    frame(engine);
+    assert_eq!(
+        reported(engine),
+        vec![("scenes/hall.ogt".into(), true, String::new())]
+    );
+    assert!(
+        !seen.borrow().lightmapped.is_empty(),
+        "the hall's box draws its bake after the re-cook"
+    );
 }
 
 /// A render snapshot keeps the baked lighting with the world it restores

@@ -8,13 +8,13 @@
 //! version 1
 //! ---
 //! scene "scenes/cornell.ogt"
-//! scene-hash "0123456789abcdef"   # the cooked scene's hash the bake read
+//! scene-hash "0123456789abcdef"   # the scene source's hash the bake read
 //! pages "cornell.lightmap.ktx2"   # beside this file
 //! samples 256
 //! seconds 12.5
 //! model "box" {                   # a static model entity, by name
 //!   asset "models/box.glb"
-//!   hash "…"                      # the cooked model's hash the bake read
+//!   hash "…"                      # the model's geometry hash the bake read
 //!   part {                        # per model part, in the model's order
 //!     vertices 24                 # the part's own vertex count
 //!     xref 0 1 2 …                # per lightmap vertex: the part's vertex
@@ -33,8 +33,43 @@
 //! The cook packs the text and the pages into one `og.Lightmap` blob, so
 //! the runtime reads both from the bundle; the `.ktx2` is consumed by it
 //! (never cooked as a texture of its own).
+//!
+//! The hashes name what the bake read, never the cooked blobs: the scene's
+//! source (its text, the manifest's `source` hash) and each static model's
+//! geometry ([`geometry_hash`]). A changed scene or a changed static model
+//! stales the bake; a re-cook that leaves both alone (a cooker revision,
+//! the raycast BVH cooked or left out, a texture option) keeps it.
 
 use og_core::ogt::{Block, Document, Value};
+
+/// The hash a bake keys a static model on: the geometry of its parts as
+/// the runtime loads them (per part, in its order: the vertex count, every
+/// vertex's position, normal, uv and colour, then the indices). It moves
+/// exactly when the lightmapped geometry moves; the blob around it (a
+/// cooker revision, the raycast BVH, the textures) is not read. Tangents
+/// are left out: the renderer generates them.
+pub fn geometry_hash<'a>(parts: impl IntoIterator<Item = &'a og_render::MeshData>) -> u64 {
+    let mut h = og_core::hash::StableHasher::new();
+    for data in parts {
+        h.write_u64(data.vertices.len() as u64);
+        for v in &data.vertices {
+            for x in v
+                .position
+                .iter()
+                .chain(&v.normal)
+                .chain(&v.uv)
+                .chain(&v.color)
+            {
+                h.write(&x.to_bits().to_le_bytes());
+            }
+        }
+        h.write_u64(data.indices.len() as u64);
+        for i in &data.indices {
+            h.write(&i.to_le_bytes());
+        }
+    }
+    h.finish()
+}
 
 /// The `.ogt` type of a lightmap file.
 pub const LIGHTMAP_TYPE: &str = "lightmap";
@@ -56,7 +91,7 @@ pub struct BakedModel {
     /// The scene entity's name.
     pub entity: String,
     pub asset: String,
-    /// The cooked model's hash when baked.
+    /// The model's [`geometry_hash`] when baked.
     pub hash: u64,
     pub parts: Vec<BakedPart>,
 }
@@ -74,7 +109,8 @@ pub struct BakedVolume {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LightmapFile {
     pub scene: String,
-    /// The cooked scene's hash when baked.
+    /// The scene source's hash when baked (the manifest's
+    /// [`ManifestAsset::source_hash`](crate::runtime::ManifestAsset)).
     pub scene_hash: u64,
     /// The pages file, relative to this one.
     pub pages: String,
@@ -113,7 +149,7 @@ fn quote(s: &str) -> String {
 impl LightmapFile {
     pub fn to_text(&self) -> String {
         let mut o = String::from("type lightmap\nversion 1\n---\n");
-        o.push_str("# Written by og bake lightmaps: the scene's baked lighting. Bake again\n# after changing the scene or its static models.\n");
+        o.push_str("# Written by og bake lightmaps: the scene's baked lighting. Bake again\n# after changing the scene or a static model's geometry (a re-cook alone\n# keeps it).\n");
         o.push_str(&format!("scene {}\n", quote(&self.scene)));
         o.push_str(&format!("scene-hash {}\n", quote(&hex(self.scene_hash))));
         o.push_str(&format!("pages {}\n", quote(&self.pages)));
