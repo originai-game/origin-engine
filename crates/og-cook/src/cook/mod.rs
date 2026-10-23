@@ -29,8 +29,8 @@ mod terrain;
 mod texture;
 pub mod texture_array;
 pub mod tilemap;
-pub mod video;
 mod timeline;
+pub mod video;
 pub mod vox;
 
 use crate::format::{self, BlobKind, COOKER_VERSION};

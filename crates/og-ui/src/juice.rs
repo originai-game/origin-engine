@@ -487,7 +487,11 @@ impl Ui {
     /// track, a function of its time). `revealing` draws the second half's
     /// shape (a wipe leaving past the far side). Reduced motion fades.
     pub fn cover(&mut self, desc: &ScreenTransitionDesc, amount: f32, revealing: bool) {
-        let amount = if amount.is_nan() { 0.0 } else { amount.clamp(0.0, 1.0) };
+        let amount = if amount.is_nan() {
+            0.0
+        } else {
+            amount.clamp(0.0, 1.0)
+        };
         if amount <= 0.0 {
             return;
         }
