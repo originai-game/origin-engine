@@ -22,6 +22,7 @@ filter = '''
 test(one_second_of_a_busy_mix_renders_in_bounded_time)
 | test(run_reports_a_dead_game_process_at_once)
 | test(capture_is_bounded_and_cancellable)
+| test(extraction_is_linear_and_never_decodes_meshes_on_the_lanes)
 '''
 threads-required = 'num-cpus'
 # Each waits for every slot to drain and holds back the tests queued behind
