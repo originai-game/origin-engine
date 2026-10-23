@@ -1,6 +1,6 @@
 ---
 name: og-game
-description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/ (glTF and MagicaVoxel models), the og.load loaders, streaming groups, sprites, texture arrays and drop shadows, skeletal and stepped animation, effects and physical materials, looks (the frame's art direction as data: og.Stylise, og.MaterialStyle, presets), tone mapping, exposure, environment maps, shadows and antialiasing, fog, sky, day and night, weather and water, terrain, material shaders in WGSL, physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D and 3D fluids, ragdolls) and its queries, and the performance budget; the entry point, with the map of the other nine skills and the modules each teaches. Use first, and when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
+description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/ (glTF and MagicaVoxel models), the og.load loaders, streaming groups, sprites, texture arrays and drop shadows, skeletal and stepped animation, effects and physical materials, looks (the frame's art direction as data: og.Stylise, og.MaterialStyle, presets), tone mapping, exposure, environment maps, shadows and antialiasing, fog, sky, day and night, weather and water, terrain, material shaders in WGSL, physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D and 3D fluids, ragdolls) and its queries, footage and og render's videos, and the performance budget; the entry point, with the map of the other nine skills and the modules each teaches. Use first, and when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
 ---
 
 An Origin Engine project is plain files: TypeScript in `src/`, source assets
@@ -1576,7 +1576,74 @@ Test either across a relaunch with a playtest's `store: "keep"` and
 tape of inputs) and a ghost (a tape of poses) are og-core §2's
 "Recording, replaying and ghosts".
 
-## 18. Where to look things up
+## 18. Video: footage in, videos out
+
+**Footage in.** An `.ogt` of `type video` names an `.mp4`, `.webm` or
+`.mov`; `og cook` turns it with ffmpeg (`og doctor` says whether ffmpeg
+and ffprobe are there) into a texture array of its frames and its sound:
+
+```text
+type video
+version 1
+---
+source "clips/intro.mp4"   # beside this file, or under assets/
+fps 30                     # frames kept per second (default 30)
+maxSeconds 8               # what is kept from the start (default 8)
+size 320 180               # each frame's size (default the source's, at most 1024 wide)
+kind color                 # or pixel: nearest, lossless
+audio true                 # its sound track (default true)
+```
+
+At most 256 frames (fps × seconds): the cook refuses more, naming the
+`maxSeconds` that fits, and warns past 64 MiB of cooked frames. Keep
+footage small: a 320×180 clip of 8 s at 30 fps is about 2 MiB cooked.
+Load it in `start`, then play it with `og.VideoPlayer`; its frame is a
+plain `Texture`, so a sprite, a material map or a UI image shows it:
+
+```ts
+const info = must(og.load.video(world, "clips/intro.ogt"));
+const screen = must(world.spawn({ name: "screen", position: { x: 0, y: 0, z: 0 } }));
+must(world.insert(screen, og.Sprite, { texture: info.texture, width: 16, height: 9 }));
+must(world.insert(screen, og.VideoPlayer, { video: info.video, loop: true }));
+must(world.insert(screen, og.AudioSource, {})); // its sound, kept in step
+```
+
+The `og.video` system plays it by the tick (not the time scale, so the
+picture stays with its sound): with a 30 Hz tick, tick 90 shows the
+frame 3 s in, the same in every run and after a restore. Write
+`VideoPlayer.time` to seek (the sound starts again there on the next
+tick), `playing` to pause, `speed` for slow motion (the pitch follows).
+`frame` and `finished` are written for you. Several players of one video
+show the same frame (the first player's); cook a second asset for a
+second moment of one clip. Every field and the loaders are in `reference/video.md`.
+
+**Videos out.** `og render` plays a command script headless and makes a
+video of it: a frame every `tick / fps` ticks (the fps divides the tick
+rate; the error names the nearest that do), read back without the
+probe's round trip.
+
+```sh
+og render . --commands "0.5:type:s;2:key_down:Space" --fps 30 --to 8 \
+  --size 1280x720 --out og-out/intro.mp4 --audio --contact-sheet 6 --jobs 4
+```
+
+It writes `intro.mp4` (H.264; `.webm` is VP9) with the run's audio,
+`intro.frames.json` (each frame's tick, time and SHA-256, and the
+audio's), and `intro.contact-sheet.png`: a grid of frames over the range,
+each labelled with its time and tick. **Review the contact sheet first**:
+one image shows whether the scene moves as the script meant, without
+playing anything. `--out <dir>` (or `--frames png|jpg`) writes the
+frames too; without ffmpeg the frames are what you get. Two runs of one
+script give the same SHA-256s, so a frame that changed is a change you
+made. `--jobs N` splits the range over processes (each starts from a
+snapshot of the world) and gives the same frames, faster.
+`--timeline <name>` renders a timeline (`type timeline`) over its
+duration once timelines exist (stream S2 of docs/depth.md); until then
+use `--commands`. On a CPU-only machine (lavapipe) a 1280×720 frame of the
+3D template takes about 0.4 s in one job, 2.6× less with `--jobs 4`:
+render at 640×360 (about 0.1 s) to iterate, full size once.
+
+## 19. Where to look things up
 
 `reference/index.md` (the generated wiki shipped with this skill) maps every
 module (grouped by skill, as in §1), type and function to its page, with the IDL text, defaults, ranges
