@@ -6197,6 +6197,35 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   budget, +20 points in this wave; a shared engine URL on the platform
   first, then the `publish` trims, then per-profile trimming).
 
+### Plan 2026-10-23, debt round 2 (after 0.3.0)
+
+What the debt round and the streams' NOTES (`tests/evidence/debt/*/NOTES.md`)
+left, taken up on branches `debt2/<stream>` from main at 17a29a86 or
+later, two or three Claude Code threads on Opus 5.5 high at a time,
+merged serially through the functional lane with the Metal references
+re-recorded per merge; the round's end measured once (`wave-end.sh`).
+
+| Stream | Pays | Batch |
+|---|---|---|
+| `records-list` | A list column in records: `FieldType::List` through og-core, og-ecs snapshots, og-net, og-probe, og-cook, the codec, the TS runtime and og-idl (the account in render-targets' NOTES item 4); `PostEffects.custom` becomes the one list field and `custom1..custom8` are deleted with their callers migrated (fx-showcase's shaders station, the og-game skill §22, design §2.6); `maxCustomPosts` stays the bound | 1 (alone beside the release threads) |
+| `physics-push` | S1's raycast hierarchy refresh measured as a cost of its own (a perf test with a baseline) and made incremental where it costs; `ext::push` splits a tick's budget across the bodies hit instead of giving it to the first; brasswick's `hero.ts` comment and `pushSpeed` workaround from before 8f226ceb removed; lantern-vale's pile laid so it does not slump on its own (bottom rocks touching) and `replay.og.ts`'s shove check made to fail without a shove; the Metal frames the layout moves are the coordinator's | 2 |
+| `ui-prose` | og-ui's nine-slice on a button shorter than its corners (the corners scaled to fit, Rumpus Isle's `Pause` the case and its band the test); the games' "skin" prose swept (READMEs, LICENSES, comments, `skins/` paths of brasswick, hollowbell, lantern-vale, kestrel-stair, meridian-loop and the idle, rhythm, roguelike and third-person archetypes) | 2 |
+| `anim-2d-2` | DragonBones `clockwise` multi-turn rotations, sine `tweenEasing` played exactly (sampled curve keys), path displays and path and transform constraints, every skin, a child armature's events as `og.Skeleton2DEvent`; the lamp keeper's turn over a few ticks and its feet settling on arrival instead of snapping | 2 |
+| `render-views-2` | Views draw trails, 2D fluids, sprite glow, 2D lighting and soft particles; `custom_lit.wgsl` lights rect lights through `surface_local_light` with their shadow; probe captures draw particles, sprites, lines, water and 3D fluids; skinned instances pick their probe from posed bounds. Decided here: `RAYMARCH_LIGHTS` stays 8 on WebGL2 (the bound is in the capabilities), rect shadows stay on WebGL2 and the low quality preset turns them off | 3 |
+| `size` | The engine's side of row 99: a per-crate twiggy table of the publish wasm first, then the `publish` trims (GPU timestamp queries, the describe and views id pass, the BVH loader where no model raycasts, the 3D WGSL sources in the 2D host) and per-profile trimming beyond physics, each measured; the BVH in the cook stays on by default and `cook --report` warns past a share of the model, the share read from the table | 3 |
+
+Platform work, not engine threads (`goals/origin-engine/plan.md`): the
+pin moved to 0.3.0, `?room=` on the Play links (ask #16), the shared
+engine wasm URL (row 44's update).
+
+Closed by the coordinator without a stream: rollback stays outside the
+room ABI (depth S4 NOTES: lockstep waits for the inputs, `inputDelay`
+hides the latency; prediction is a product decision when a game needs
+it); a lockstep gate's restore keeps its scheduled steps while a game's
+own restore still shifts them (nothing relied on the old shift); the
+lavapipe GPU-frame slowdown of CPU-culled views (render-targets item 2)
+is read on Metal at the round's end by the coordinator.
+
 ### Status 2026-10-19, E5 round
 
 - **Atmosphere, water, material shaders and physics beyond rigid bodies**
