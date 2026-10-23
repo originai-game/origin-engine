@@ -396,8 +396,59 @@ pub fn volumetric_fog_scene() -> RenderScene {
 /// alone. `baked: false` builds it unbaked (the environment's ambient).
 #[cfg(not(target_arch = "wasm32"))]
 pub fn baked_cornell_scene(baked: bool) -> Result<RenderScene, String> {
-    use og_render::{BakedLighting, LightmapPages, LightmapUvs, ProbeVolume};
-    use std::collections::HashMap;
+    let mut scene = RenderScene::new();
+    dark(&mut scene, 0.35);
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 1.0, 3.7),
+        target: Vec3::new(0.0, 0.95, 0.0),
+        projection: og_render::Projection::Perspective {
+            fov_y_degrees: 40.0,
+        },
+        exposure: Exposure::linear(0.85),
+        ..Default::default()
+    };
+    cornell_box(&mut scene, Vec3::ZERO, false, baked)?;
+    Ok(scene)
+}
+
+/// Two of [`baked_cornell_scene`]'s boxes side by side, 2.4 m apart, the
+/// right one with its red and green walls swapped, each baked on its own:
+/// its own pages and light volume, as two baked scenes loaded together hand
+/// them over (`og.load.scene` twice, or one scene streamed in beside
+/// another). The left box's short block is green on the side facing its
+/// green wall, the right box's tall block green on the side facing its
+/// green wall, only when each box draws its own pages: the other's are red
+/// there.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn baked_cornell_pair_scene() -> Result<RenderScene, String> {
+    let mut scene = RenderScene::new();
+    dark(&mut scene, 0.35);
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 1.0, 5.6),
+        target: Vec3::new(0.0, 0.95, 0.0),
+        projection: og_render::Projection::Perspective {
+            fov_y_degrees: 40.0,
+        },
+        exposure: Exposure::linear(0.85),
+        ..Default::default()
+    };
+    cornell_box(&mut scene, Vec3::new(-1.2, 0.0, 0.0), false, true)?;
+    cornell_box(&mut scene, Vec3::new(1.2, 0.0, 0.0), true, true)?;
+    Ok(scene)
+}
+
+/// One Cornell box at `at` (red wall on the left, green on the right, or
+/// the other way round when `swapped`): its spot, its ball and its walls
+/// and blocks, baked by og-bake on their own when `baked` (its pages and
+/// its light volume added to the scene's bake).
+#[cfg(not(target_arch = "wasm32"))]
+fn cornell_box(
+    scene: &mut RenderScene,
+    at: Vec3,
+    swapped: bool,
+    baked: bool,
+) -> Result<(), String> {
+    use og_render::{BakedMesh, LightmapPages, LightmapUvs, ProbeVolume};
     use std::sync::Arc;
 
     let (white, red, green) = (
@@ -405,7 +456,8 @@ pub fn baked_cornell_scene(baked: bool) -> Result<RenderScene, String> {
         Vec3::new(0.63, 0.065, 0.05),
         Vec3::new(0.14, 0.45, 0.09),
     );
-    let p = |x: f32, y: f32, z: f32| Vec3::new(x, y, z);
+    let (red, green) = if swapped { (green, red) } else { (red, green) };
+    let p = |x: f32, y: f32, z: f32| at + Vec3::new(x, y, z);
     let block = |size: Vec3, at: Vec3, turn: f32| {
         transformed(
             shapes::cuboid(size),
@@ -453,8 +505,11 @@ pub fn baked_cornell_scene(baked: bool) -> Result<RenderScene, String> {
             quad(p(1., 0., -1.), p(1., 0., 1.), p(1., 2., 1.), p(1., 2., -1.)),
             green,
         ),
-        (block(p(0.6, 1.2, 0.6), p(-0.35, 0.6, -0.3), 18.0), white),
-        (block(p(0.6, 0.6, 0.6), p(0.38, 0.3, 0.3), -18.0), white),
+        (
+            block(Vec3::new(0.6, 1.2, 0.6), p(-0.35, 0.6, -0.3), 18.0),
+            white,
+        ),
+        (block(Vec3::splat(0.6), p(0.38, 0.3, 0.3), -18.0), white),
     ];
     let spot = Light {
         kind: LightKind::Spot {
@@ -470,29 +525,18 @@ pub fn baked_cornell_scene(baked: bool) -> Result<RenderScene, String> {
     };
     let ball = (p(-0.55, 0.22, 0.55), 0.22);
 
-    let mut scene = RenderScene::new();
-    dark(&mut scene, 0.35);
-    scene.lights = vec![spot];
-    scene.camera = Camera {
-        position: p(0.0, 1.0, 3.7),
-        target: p(0.0, 0.95, 0.0),
-        projection: og_render::Projection::Perspective {
-            fov_y_degrees: 40.0,
-        },
-        exposure: Exposure::linear(0.85),
-        ..Default::default()
-    };
+    scene.lights.push(spot);
     put(
-        &mut scene,
+        scene,
         shapes::sphere(32, 16),
         matte(Vec3::splat(0.85), 0.7),
         Mat4::from_scale_rotation_translation(Vec3::splat(ball.1), Quat::IDENTITY, ball.0),
     );
     if !baked {
         for (mesh, color) in parts {
-            put(&mut scene, mesh, matte(color, 0.9), Mat4::IDENTITY);
+            put(scene, mesh, matte(color, 0.9), Mat4::IDENTITY);
         }
-        return Ok(scene);
+        return Ok(());
     }
 
     let mut bake = og_bake::Scene {
@@ -573,7 +617,11 @@ pub fn baked_cornell_scene(baked: bool) -> Result<RenderScene, String> {
         1,
         1,
     );
-    let mut meshes = HashMap::new();
+    let pages = Arc::new(LightmapPages {
+        width: lightmap.width,
+        height: lightmap.height,
+        pages: lightmap.pages,
+    });
     for ((mesh, color), a) in parts.into_iter().zip(&atlas.meshes) {
         let lit = MeshData {
             vertices: a
@@ -595,23 +643,21 @@ pub fn baked_cornell_scene(baked: bool) -> Result<RenderScene, String> {
             })
             .collect();
         let handle = scene.add_mesh(lit);
-        meshes.insert(handle.index(), Arc::new(LightmapUvs { uvs }));
+        scene.baked.meshes.insert(
+            handle.index(),
+            BakedMesh {
+                pages: pages.clone(),
+                uvs: Arc::new(LightmapUvs { uvs }),
+            },
+        );
         let material = scene.add_standard_material(matte(color, 0.9));
         scene.add_instance(handle, material, Mat4::IDENTITY);
     }
-    scene.baked = BakedLighting {
-        pages: Some(Arc::new(LightmapPages {
-            width: lightmap.width,
-            height: lightmap.height,
-            pages: lightmap.pages,
-        })),
-        meshes,
-        volumes: vec![ProbeVolume {
-            min: volume.min,
-            max: volume.max,
-            counts: volume.counts,
-            probes: Arc::new(volume.probes),
-        }],
-    };
-    Ok(scene)
+    scene.baked.volumes.push(ProbeVolume {
+        min: volume.min,
+        max: volume.max,
+        counts: volume.counts,
+        probes: Arc::new(volume.probes),
+    });
+    Ok(())
 }

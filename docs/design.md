@@ -396,16 +396,19 @@ Baked lighting, volumetrics and area lights (depth S7).
   cook turns them into an `og.Lightmap` blob, listed in `cook --report`.
   When a scene is instantiated, the runtime loads its bake if the hashes
   match. Static models then draw lightmapped copies of their parts: a
-  second vertex stream, with the pages at group 3 (`lightmap.rs`,
-  `lightmap.wgsl`). Every other lit fragment inside a volume takes its
+  second vertex stream, with their own scene's pages at group 3
+  (`lightmap.rs`, `lightmap.wgsl`). Every instantiated scene's bake draws
+  at once: each scene's pages are one texture array with its own bind
+  group, and each lightmapped batch binds its scene's, so scenes loaded
+  together or streamed in beside each other all keep their bakes. A bake
+  stops drawing while its static models are all despawned. Every other lit fragment inside a volume takes its
   ambient light from the probes, trilinear between eight and faded over
   one spacing (frame binding 10, `ambient_irradiance`). Without a bake, or
   with a stale one, the scene renders unbaked with the environment's
   ambient; `og.render.bakedLighting` gives the reason and `og doctor
   --project` warns `unbaked`. `RenderSettings.bakedLighting` false draws
-  every scene unbaked. One scene's lightmap is drawn at a time (the newest
-  instantiated), and physical, texture-array, material-shader and compact
-  batches use the probes instead of the lightmap.
+  every scene unbaked. Physical, texture-array, material-shader and
+  compact batches use the probes instead of the lightmap.
 - **Volumetric fog** (`og.Fog.volumetric`, `volumetric.rs`). The fog's
   density, height fog, `scattering` and `anisotropy` (Henyey–Greenstein)
   define a participating medium up to `volumetricDistance`. On the full

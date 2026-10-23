@@ -2277,8 +2277,9 @@ scene or a static model, the bake is stale and the scene renders unbaked
 until you bake again. `og doctor --project` warns `unbaked`, and
 `og.render.bakedLighting(world)` lists each scene with `baked` and a
 `reason`. `RenderSettings.bakedLighting = false` draws everything unbaked,
-which is useful to compare. Only the newest instantiated scene's lightmap
-is drawn.
+which is useful to compare. Every instantiated scene draws its own bake,
+so baked scenes loaded together or streamed in side by side all keep
+their light.
 
 **Volumetric fog.** Set `Fog.volumetric = true` to light the fog as a
 medium, which gives shafts through windows and the cones of spots. Tune it

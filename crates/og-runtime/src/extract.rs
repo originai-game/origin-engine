@@ -781,7 +781,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let baked = settings
         .as_ref()
         .is_none_or(|s| on(s, "bakedLighting", true));
-    super::baked::apply(&mut rs.scene, &mut rs.baked, baked);
+    super::baked::apply(world, &mut rs.scene, &mut rs.baked, baked);
     // Models: posed by og-anim when the entity has a Skeleton.
     let posed = super::fx::skeletons(world, rs);
     let mut keys: Vec<(u64, u32)> = Vec::new();

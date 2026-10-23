@@ -83,3 +83,28 @@ fn the_bake_bleeds_colour_and_lights_the_ceiling() {
         "the ceiling is lit by bounces ({on:.0} against {off:.0})"
     );
 }
+
+/// Two boxes each baked on its own, as two baked scenes loaded together
+/// (the right one's red and green walls swapped): each box draws its own
+/// pages (lightmap.rs binds a batch's own at group 3), so the left box's
+/// short block and the right box's tall block are green on the sides
+/// facing their green walls. Drawn with one set of pages for both, as the
+/// old renderer did, the right box samples the left's texels: red there.
+#[test]
+fn two_baked_scenes_draw_their_own_pages() {
+    let mut built = og_tests::scenes::build("baked-cornell").expect("build");
+    built.scene = og_tests::light_scenes::baked_cornell_pair_scene().expect("pair");
+    let img = gfx::render_built(&mut built).expect("render").image;
+    let left = mean(&img, 522, 440, 552, 530);
+    let right = mean(&img, 724, 340, 750, 500);
+    println!("left block side {left:?}, right block side {right:?}");
+    for (c, which) in [
+        (left, "the left box's short block"),
+        (right, "the right box's tall block"),
+    ] {
+        assert!(
+            c[1] > 1.3 * c[0] && c[1] > 1.3 * c[2],
+            "{which} takes green from the wall beside it ({c:?})"
+        );
+    }
+}

@@ -9,12 +9,15 @@
 //!
 //! - [`LightmapPages`]: RGBA16F array layers of irradiance over π, linear,
 //!   the convention of the environment's irradiance cube, so the shader
-//!   swaps one for the other ([`BakedLighting::meshes`] names the meshes
-//!   drawn with them and their per-vertex lightmap uvs, a second vertex
-//!   stream at location 9). A lightmapped mesh is drawn by the standard lit
-//!   pipeline's `vs_lightmap`/`fs_lightmap` (lightmap.wgsl) with the pages
-//!   at group 3; physical, array-map and material-shader batches keep the
-//!   probes or the sky.
+//!   swaps one for the other. Every baked scene brings its own pages:
+//!   [`BakedLighting::meshes`] names each lightmapped mesh with the pages
+//!   of the scene it was baked in and its per-vertex lightmap uvs (a second
+//!   vertex stream at location 9), and each set of pages is one texture
+//!   array with its own group, bound at group 3 for the batches of its
+//!   meshes, so any number of scenes loaded together draw their bakes. A
+//!   lightmapped mesh is drawn by the standard lit pipeline's
+//!   `vs_lightmap`/`fs_lightmap` (lightmap.wgsl); physical, array-map and
+//!   material-shader batches keep the probes or the sky.
 //! - [`ProbeVolume`]s: one buffer at frame binding 10 (storage on the full
 //!   tier, a 16 KiB uniform on WebGL2, where a volume larger than the
 //!   uniform holds is resampled to fit), read by `ambient_irradiance` for
@@ -60,14 +63,23 @@ pub struct ProbeVolume {
 /// One probe: the irradiance harmonics of red, green and blue.
 pub type Probe = [[f32; 4]; 3];
 
-/// The baked lighting a scene draws with ([`crate::RenderScene::baked`]).
+/// A lightmapped mesh: the pages of the scene it was baked in and its
+/// lightmap uvs on them (one per vertex of the mesh).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct BakedMesh {
+    pub pages: Arc<LightmapPages>,
+    pub uvs: Arc<LightmapUvs>,
+}
+
+/// The baked lighting a scene draws with ([`crate::RenderScene::baked`]):
+/// every loaded scene's bake at once.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct BakedLighting {
-    pub pages: Option<Arc<LightmapPages>>,
-    /// Lightmapped meshes, by mesh index ([`crate::MeshHandle::index`]):
-    /// one entry per vertex of the mesh.
-    pub meshes: HashMap<usize, Arc<LightmapUvs>>,
-    /// The first [`PROBE_VOLUMES`] are drawn.
+    /// Lightmapped meshes, by mesh index ([`crate::MeshHandle::index`]),
+    /// each with its scene's pages (meshes of one scene share the Arc: one
+    /// texture array and group per distinct Arc).
+    pub meshes: HashMap<usize, BakedMesh>,
+    /// Every scene's light volumes; the first [`PROBE_VOLUMES`] are drawn.
     pub volumes: Vec<ProbeVolume>,
 }
 
@@ -279,17 +291,30 @@ pub(crate) struct Lightmaps {
     layout: wgpu::BindGroupLayout,
     pipeline_layout: wgpu::PipelineLayout,
     sampler: wgpu::Sampler,
-    /// The pages bound (by the scene's Arc) and their group.
-    pages: Option<(usize, wgpu::BindGroup)>,
-    /// A one-texel page for frames whose lightmapped meshes outlived theirs.
-    empty: wgpu::BindGroup,
-    /// Per lightmapped mesh index: its uvs (by Arc) and their buffer.
-    uvs: HashMap<usize, (usize, wgpu::Buffer)>,
+    /// Each set of pages a lightmapped mesh names, by its Arc (held, so the
+    /// address is not reused while it keys the group), and its group.
+    pages: HashMap<usize, (Arc<LightmapPages>, wgpu::BindGroup)>,
+    /// Per lightmapped mesh index: its uvs and pages (by Arc) and the uvs'
+    /// buffer.
+    uvs: HashMap<usize, MeshUvs>,
     /// The lit pipelines of lightmapped batches: (side, blended, effects).
     pipelines: HashMap<(Side, bool, bool), wgpu::RenderPipeline>,
     /// Frame binding 10, and what was last written to it.
     pub probe_buffer: wgpu::Buffer,
     probes_key: Vec<(Vec3, Vec3, [u32; 3], usize)>,
+}
+
+/// A lightmapped mesh on the GPU.
+struct MeshUvs {
+    /// Held as the pages are.
+    uvs: Arc<LightmapUvs>,
+    pages: usize,
+    buffer: wgpu::Buffer,
+}
+
+/// The identity of an Arc's contents.
+fn key<T>(a: &Arc<T>) -> usize {
+    Arc::as_ptr(a) as usize
 }
 
 /// The lightmap uvs' vertex stream.
@@ -325,12 +350,6 @@ impl Lightmaps {
             min_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
-        let empty_pages = LightmapPages {
-            width: 1,
-            height: 1,
-            pages: vec![vec![[0.0; 4]]],
-        };
-        let empty = Self::page_group(device, queue, &layout, &sampler, &empty_pages);
         let capacity = probe_capacity(tables);
         let probe_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("light volumes"),
@@ -351,8 +370,7 @@ impl Lightmaps {
             layout,
             pipeline_layout,
             sampler,
-            pages: None,
-            empty,
+            pages: HashMap::new(),
             uvs: HashMap::new(),
             pipelines: HashMap::new(),
             probe_buffer,
@@ -422,24 +440,25 @@ impl Lightmaps {
         )
     }
 
-    /// Uploads what changed in `baked` since the last frame.
+    /// Uploads what changed in `baked` since the last frame: the pages of
+    /// every scene a lightmapped mesh names (each set once), the meshes'
+    /// uvs; what no mesh names any more is let go.
     pub fn prepare(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, baked: &BakedLighting) {
-        let key = baked.pages.as_ref().map(|p| Arc::as_ptr(p) as usize);
-        if self.pages.as_ref().map(|(k, _)| *k) != key {
-            self.pages = baked.pages.as_ref().map(|p| {
-                (
-                    Arc::as_ptr(p) as usize,
-                    Self::page_group(device, queue, &self.layout, &self.sampler, p),
-                )
-            });
-        }
-        self.uvs.retain(|mesh, (k, _)| {
+        self.uvs.retain(|mesh, m| {
             baked
                 .meshes
                 .get(mesh)
-                .is_some_and(|u| Arc::as_ptr(u) as usize == *k)
+                .is_some_and(|b| Arc::ptr_eq(&b.uvs, &m.uvs) && key(&b.pages) == m.pages)
         });
-        for (&mesh, uvs) in &baked.meshes {
+        let named: std::collections::HashSet<usize> =
+            baked.meshes.values().map(|b| key(&b.pages)).collect();
+        self.pages.retain(|k, _| named.contains(k));
+        for (&mesh, b) in &baked.meshes {
+            let pages = key(&b.pages);
+            if !self.pages.contains_key(&pages) {
+                let group = Self::page_group(device, queue, &self.layout, &self.sampler, &b.pages);
+                self.pages.insert(pages, (b.pages.clone(), group));
+            }
             if self.uvs.contains_key(&mesh) {
                 continue;
             }
@@ -447,15 +466,16 @@ impl Lightmaps {
                 device,
                 &wgpu::util::BufferInitDescriptor {
                     label: Some("lightmap uvs"),
-                    contents: bytemuck::cast_slice(if uvs.uvs.is_empty() {
+                    contents: bytemuck::cast_slice(if b.uvs.uvs.is_empty() {
                         &[[0.0f32; 3]]
                     } else {
-                        &uvs.uvs[..]
+                        &b.uvs.uvs[..]
                     }),
                     usage: wgpu::BufferUsages::VERTEX,
                 },
             );
-            self.uvs.insert(mesh, (Arc::as_ptr(uvs) as usize, buffer));
+            let uvs = b.uvs.clone();
+            self.uvs.insert(mesh, MeshUvs { uvs, pages, buffer });
         }
         let probes_key: Vec<_> = baked
             .volumes
@@ -472,12 +492,14 @@ impl Lightmaps {
 
     /// The lightmap uv stream of a mesh drawn with its lightmap.
     pub fn uvs(&self, mesh: usize) -> Option<&wgpu::Buffer> {
-        self.uvs.get(&mesh).map(|(_, b)| b)
+        self.uvs.get(&mesh).map(|m| &m.buffer)
     }
 
-    /// The pages' group (a black page when the scene has none).
-    pub fn group(&self) -> &wgpu::BindGroup {
-        self.pages.as_ref().map_or(&self.empty, |(_, g)| g)
+    /// The group of a lightmapped mesh's pages, and their identity (a pass
+    /// binds it again only when the next batch's pages differ).
+    pub fn group(&self, mesh: usize) -> Option<(usize, &wgpu::BindGroup)> {
+        let m = self.uvs.get(&mesh)?;
+        Some((m.pages, &self.pages.get(&m.pages)?.1))
     }
 
     /// Makes the lightmapped pipeline for (side, blended, effects).

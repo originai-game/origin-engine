@@ -132,7 +132,9 @@ pub use hooks::{
     lit_module_source, physical_module_source, shadow_module_source,
 };
 pub use id_pass::{IdFrame, IdObject, IdSources, id_pass_size, projection_name, render_ids};
-pub use lightmap::{BakedLighting, LightmapPages, LightmapUvs, PROBE_VOLUMES, Probe, ProbeVolume};
+pub use lightmap::{
+    BakedLighting, BakedMesh, LightmapPages, LightmapUvs, PROBE_VOLUMES, Probe, ProbeVolume,
+};
 pub use lines::{LineLayer, LineMode, Lines, wire_edges};
 pub use material::{PhysicalExtensions, Side, StandardMaterial};
 pub use metaballs::{FIELDS, MAX_FLUIDS, Metaballs};
@@ -6851,6 +6853,9 @@ impl Renderer {
                 let mut physical_bound = false;
                 // The reflection probe whose frame group is bound (u8::MAX: the frame's).
                 let mut probe_bound = u8::MAX;
+                // The lightmap pages bound at group 3 (lightmap.rs: one
+                // group per baked scene).
+                let mut pages_bound: Option<usize> = None;
                 for &(b, first, count) in &list.ranges {
                     let batch = &batches[b as usize];
                     if let Some((of, groups, frame_group)) = probes {
@@ -6881,13 +6886,17 @@ impl Renderer {
                             .then(|| {
                                 self.lightmaps
                                     .pipeline((batch.side, batch.blend, batch.effects))
+                                    .zip(self.lightmaps.group(batch.mesh))
                             })
                             .flatten();
-                        if let Some(p) = lightmap {
-                            // Lightmapped (lightmap.rs): its pipeline, the
-                            // pages at group 3, its uvs below.
+                        if let Some((p, (pages, group))) = lightmap {
+                            // Lightmapped (lightmap.rs): its pipeline, its
+                            // scene's pages at group 3, its uvs below.
                             pass.set_pipeline(p);
-                            pass.set_bind_group(3, self.lightmaps.group(), &[]);
+                            if pages_bound != Some(pages) {
+                                pass.set_bind_group(3, group, &[]);
+                                pages_bound = Some(pages);
+                            }
                             *current = None;
                         } else if *current != Some(key) {
                             pass.set_pipeline(self.lit_pipeline_of(batch, false, physical));

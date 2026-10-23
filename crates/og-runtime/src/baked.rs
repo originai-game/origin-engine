@@ -10,13 +10,15 @@
 //! lightmap's vertices, each with its lightmap uvs) and hands the pages and
 //! the volumes to the renderer; a missing or stale one is reported by
 //! `og.render.bakedLighting` with its reason, and the scene draws unbaked.
-//! One scene's pages are drawn at a time: the last baked scene instantiated.
+//! Every instantiated scene's bake is drawn at once, each static model with
+//! its own scene's pages (og-render binds them per batch); a bake is let go
+//! when its static models are all despawned.
 
 use super::extract::Parts;
 use super::fx::{color, f, on};
 use glam::{Mat4, Vec3};
 use og_cook::runtime::SceneDesc;
-use og_render::{BakedLighting, LightmapPages, LightmapUvs, MeshData, ProbeVolume};
+use og_render::{BakedLighting, BakedMesh, LightmapPages, LightmapUvs, MeshData, ProbeVolume};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -32,6 +34,20 @@ pub(crate) struct SceneBake {
     pub texels: u32,
     pub volumes: u32,
     pub probes: u32,
+    /// What the scene's bake draws (`None`: it draws unbaked).
+    pub drawn: Option<DrawnBake>,
+}
+
+/// A drawn bake: the static model entities it lightmaps, their meshes with
+/// the scene's pages, and the scene's light volumes.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct DrawnBake {
+    pub entities: Vec<u64>,
+    pub meshes: std::collections::HashMap<usize, BakedMesh>,
+    pub volumes: Vec<ProbeVolume>,
+    /// Whether one of its static models is alive (a bake without static
+    /// models, only light volumes, always is).
+    pub live: bool,
 }
 
 /// The baked lighting of the scenes instantiated so far.
@@ -40,10 +56,31 @@ pub(crate) struct BakedState {
     pub scenes: Vec<SceneBake>,
     /// Static model entities drawn with their lightmap: their parts.
     pub overrides: BTreeMap<u64, Parts>,
-    /// What the renderer draws.
+    /// What the renderer draws: every drawn bake's meshes and volumes.
     pub lighting: BakedLighting,
     /// Whether RenderSettings.bakedLighting was on in the last frame.
     pub enabled: bool,
+}
+
+impl BakedState {
+    /// The renderer's [`BakedLighting`] again from the live drawn bakes, in
+    /// the order their scenes were instantiated (their volumes in that
+    /// order).
+    fn gather(&mut self) {
+        let mut lighting = BakedLighting::default();
+        for d in self
+            .scenes
+            .iter()
+            .filter_map(|s| s.drawn.as_ref())
+            .filter(|d| d.live)
+        {
+            lighting
+                .meshes
+                .extend(d.meshes.iter().map(|(&k, v)| (k, v.clone())));
+            lighting.volumes.extend(d.volumes.iter().cloned());
+        }
+        self.lighting = lighting;
+    }
 }
 
 /// og.RectLight at world transform `m`: width and height along its local
@@ -255,27 +292,51 @@ pub(crate) fn scene_spawned(
     report.texels = lm.width.max(lm.height);
     report.volumes = volumes.len() as u32;
     report.probes = volumes.iter().map(|v| v.probes.len() as u32).sum();
-    let state = &mut rs.baked;
-    // The newest baked scene's pages are the ones drawn.
-    for s in state.scenes.iter_mut().filter(|s| s.reason.is_empty()) {
-        s.reason = format!(
-            "{} was instantiated after it: one scene's lightmap is drawn at a time",
-            scene.id
-        );
-    }
-    state.overrides.clear();
-    state.overrides.extend(overrides);
-    state.lighting = BakedLighting {
-        pages: Some(pages),
-        meshes,
+    report.drawn = Some(DrawnBake {
+        entities: overrides.iter().map(|(e, _)| *e).collect(),
+        meshes: meshes
+            .into_iter()
+            .map(|(k, uvs)| {
+                (
+                    k,
+                    BakedMesh {
+                        pages: pages.clone(),
+                        uvs,
+                    },
+                )
+            })
+            .collect(),
         volumes,
-    };
+        live: true,
+    });
+    let state = &mut rs.baked;
+    state.overrides.extend(overrides);
     state.scenes.push(report);
+    state.gather();
 }
 
 /// The frame's baked lighting (extract): what the renderer draws, and the
-/// static models' parts when RenderSettings.bakedLighting is on.
-pub(crate) fn apply(scene: &mut og_render::RenderScene, state: &mut BakedState, enabled: bool) {
+/// static models' parts when RenderSettings.bakedLighting is on. A bake
+/// whose static models are all despawned stops drawing (the renderer lets
+/// its pages go) and draws again if they come back (a world restore).
+pub(crate) fn apply(
+    world: &og_ecs::World,
+    scene: &mut og_render::RenderScene,
+    state: &mut BakedState,
+    enabled: bool,
+) {
+    let mut changed = false;
+    for d in state.scenes.iter_mut().filter_map(|s| s.drawn.as_mut()) {
+        let live = d.entities.is_empty()
+            || d.entities
+                .iter()
+                .any(|&e| world.is_alive(og_ecs::Entity::from_bits(e)));
+        changed |= live != d.live;
+        d.live = live;
+    }
+    if changed {
+        state.gather();
+    }
     state.enabled = enabled;
     scene.baked = if enabled {
         state.lighting.clone()
@@ -295,10 +356,14 @@ pub fn og_render_baked_lighting(world: u32) -> String {
         .scenes
         .iter()
         .map(|s| {
-            let reason = if s.reason.is_empty() && !rs.baked.enabled {
+            let reason = if !s.reason.is_empty() {
+                s.reason.clone()
+            } else if s.drawn.as_ref().is_some_and(|d| !d.live) {
+                "its static models were despawned".to_string()
+            } else if !rs.baked.enabled {
                 "RenderSettings.bakedLighting is off".to_string()
             } else {
-                s.reason.clone()
+                String::new()
             };
             json!({
                 "scene": s.scene,
