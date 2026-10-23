@@ -46,9 +46,9 @@ pub struct AnchorDesc {
     pub height: Size,
     /// Draws over dialogs and spotlights (a tutorial callout, a dragged item).
     pub over: bool,
-    /// The skin frame its background takes (`None`: the panel's).
-    pub skin: Option<crate::skin::StylePart>,
-    /// Shown settled the first time it is built: no skin entrance or
+    /// The frame its background takes (`None`: the panel's).
+    pub frame: Option<crate::style_file::StylePart>,
+    /// Shown settled the first time it is built: no style entrance or
     /// stagger (the screen a game opens on, which the web draws behind its
     /// play gate).
     pub instant: bool,
@@ -454,7 +454,7 @@ impl Ui {
             cross: desc.cross,
             background: desc.background,
             radius: desc.radius,
-            skin: desc.skin.or(Some(crate::skin::StylePart::Panel)),
+            frame: desc.frame.or(Some(crate::style_file::StylePart::Panel)),
             ..Element::default()
         };
         let i = self.open_layer(
@@ -470,9 +470,9 @@ impl Ui {
             },
             NONE,
         );
-        // A skin's entrance and stagger for a screen panel, from the tick it
+        // A style's entrance and stagger for a screen panel, from the tick it
         // first appears; an instant panel is settled from there (`h` 1).
-        let m = self.theme.skin.motion;
+        let m = self.theme.art.motion;
         if desc.background.is_some() && (m.enter.is_some() || m.stagger_ms > 0.0) {
             let key = crate::id::child_key(self.nodes[i].key, "enter");
             let fresh = !self.has_anim(key);
@@ -488,7 +488,7 @@ impl Ui {
         }
     }
 
-    /// Plays a skin entrance on layer `i` from tick `since`: its own
+    /// Plays a style entrance on layer `i` from tick `since`: its own
     /// transition (`kind`) and its controls' stagger.
     fn enter(&mut self, i: usize, since: u64, kind: Option<TransitionKind>) {
         let t = self.theme;
@@ -501,7 +501,7 @@ impl Ui {
             f.inert = true;
             self.nodes[i].fx = Some(f);
         }
-        let stagger = t.skin.motion.stagger_ms;
+        let stagger = t.art.motion.stagger_ms;
         if stagger > 0.0 && !t.reduced_motion {
             self.nodes[i].stagger = Some(crate::layout::Stagger {
                 since,
@@ -634,16 +634,16 @@ impl Ui {
         let key = self.nodes[backdrop].key;
         let (pr, e) = self.presence(key, open, t.durations_ms.base, false);
         if pr.entering && pr.progress <= 1.0 / self.ticks_for(t.durations_ms.base) as f32 + 1e-6 {
-            self.sound(crate::skin::UiSound::Open);
+            self.sound(crate::style_file::UiSound::Open);
         }
         if pr.leaving
             && pr.progress >= 1.0 - 1.0 / self.ticks_for(t.durations_ms.base) as f32 - 1e-6
         {
-            self.sound(crate::skin::UiSound::Close);
+            self.sound(crate::style_file::UiSound::Close);
         }
         let kind = desc
             .transition
-            .or(t.skin.motion.enter)
+            .or(t.art.motion.enter)
             .unwrap_or(TransitionKind::Scale);
         let mut r = ModalResponse {
             visible: pr.visible,
@@ -689,7 +689,7 @@ impl Ui {
                 gap: t.space.md,
                 background: (!desc.bare).then_some(t.palette.panel_raised),
                 radius: t.radius.panel,
-                skin: Some(crate::skin::StylePart::Panel),
+                frame: Some(crate::style_file::StylePart::Panel),
                 interactive: !desc.bare,
                 cross: if desc.bare {
                     Cross::Center
@@ -702,7 +702,7 @@ impl Ui {
         self.stack.push(panel);
         self.nodes[panel].a11y.role = Some("dialog");
         self.nodes[panel].a11y.name = Some(desc.title.clone());
-        if open && t.skin.motion.stagger_ms > 0.0 {
+        if open && t.art.motion.stagger_ms > 0.0 {
             let since = self.since(crate::id::child_key(key, "enter"));
             self.enter(panel, since, None);
         }
@@ -764,8 +764,8 @@ impl Ui {
         let born = self.state.tick + u64::from(!self.building);
         let ticks = self.ticks_for(ms);
         match desc.tone {
-            Tone::Success => self.sound(crate::skin::UiSound::Success),
-            Tone::Danger => self.sound(crate::skin::UiSound::Error),
+            Tone::Success => self.sound(crate::style_file::UiSound::Success),
+            Tone::Danger => self.sound(crate::style_file::UiSound::Error),
             _ => {}
         }
         self.state.toasts.push(Toast {
@@ -859,7 +859,7 @@ impl Ui {
             } else {
                 ease_out(p)
             };
-            let kind = t.skin.motion.toast.unwrap_or(if top {
+            let kind = t.art.motion.toast.unwrap_or(if top {
                 TransitionKind::SlideDown
             } else {
                 TransitionKind::SlideUp
@@ -880,7 +880,7 @@ impl Ui {
                     background: Some(t.palette.panel_raised),
                     radius: t.radius.control,
                     interactive: true,
-                    skin: Some(crate::skin::StylePart::Hud),
+                    frame: Some(crate::style_file::StylePart::Hud),
                     ..Element::default()
                 },
             );
@@ -1354,7 +1354,7 @@ impl Ui {
                 padding: Insets::all(t.space.xs),
                 interactive: true,
                 radius: t.radius.small,
-                skin: Some(crate::skin::StylePart::Slot),
+                frame: Some(crate::style_file::StylePart::Slot),
                 ..Element::default()
             },
         );

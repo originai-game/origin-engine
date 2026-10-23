@@ -1,14 +1,14 @@
-//! Skins, motion and screen transitions, driven tick by tick.
+//! Styles, motion and screen transitions, driven tick by tick.
 //!
 //! Ways these could fail, each covered below:
 //! - a glass part stays see-through when the page prefers reduced
 //!   transparency (`a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice`);
-//! - a skin's slices never reach the frame (the background stays a plain
+//! - a style's slices never reach the frame (the background stays a plain
 //!   quad), or the nine pieces leave gaps or overlap the element's edges;
-//! - the default theme starts emitting skin pieces (it must stay the token
+//! - the default theme starts emitting atlas pieces (it must stay the token
 //!   look; the reference frames in tests/gfx.rs and tests/kit_gfx.rs prove
 //!   the pixels);
-//! - a skin file with a typo, a region outside its atlas or a glow without
+//! - a style file with a typo, a region outside its atlas or a glow without
 //!   a soft slice loads anyway instead of naming the line;
 //! - a screen transition switches the screen before the cover closes,
 //!   never switches, never ends, or draws movement under reduced motion;
@@ -27,12 +27,12 @@ use og_render::{ColorSpace, Mips, RenderScene, TextureData, TextureHandle};
 use og_ui::*;
 use support::*;
 
-const SKIN: &str = r##"type style
+const STYLE: &str = r##"type style
 version 1
 ---
 name "test"
 scheme dark
-atlas "skins/test/atlas.png" 128 64
+atlas "styles/test/atlas.png" 128 64
 palette {
   backdrop "#000000"
   well "#111113"
@@ -105,8 +105,8 @@ fn atlas() -> TextureHandle {
     })
 }
 
-fn skinned_ui() -> (Ui, TextureHandle) {
-    let file = parse_style(SKIN).expect("the test skin parses");
+fn styled_ui() -> (Ui, TextureHandle) {
+    let file = parse_style(STYLE).expect("the test style parses");
     let tex = atlas();
     let mut ui = ui_with_font(test_font_metrics());
     let mut sounds = [0u64; 6];
@@ -152,8 +152,8 @@ fn images(ui: &Ui, tex: TextureHandle) -> Vec<Rect> {
 }
 
 #[test]
-fn a_skinned_panel_is_nine_pieces_of_the_atlas_that_tile_its_rectangle() {
-    let (mut ui, tex) = skinned_ui();
+fn a_styled_panel_is_nine_pieces_of_the_atlas_that_tile_its_rectangle() {
+    let (mut ui, tex) = styled_ui();
     for _ in 0..30 {
         step(&mut ui, InputFrame::default(), false);
     }
@@ -196,7 +196,7 @@ fn a_skinned_panel_is_nine_pieces_of_the_atlas_that_tile_its_rectangle() {
 }
 
 #[test]
-fn the_default_theme_draws_no_skin_pieces() {
+fn the_default_theme_draws_no_atlas_pieces() {
     let tex = atlas();
     let mut ui = ui_with_font(test_font_metrics());
     for _ in 0..30 {
@@ -216,75 +216,81 @@ fn the_default_theme_draws_no_skin_pieces() {
 }
 
 #[test]
-fn a_skin_file_names_the_line_that_is_wrong() {
-    let typo = SKIN.replace("slice fill", "slise fill");
+fn a_style_file_names_the_line_that_is_wrong() {
+    let typo = STYLE.replace("slice fill", "slise fill");
     let e = parse_style(&typo).unwrap_err();
     assert!(e.contains("unknown skin setting 'slise'"), "{e}");
-    let outside = SKIN.replace("slice track 80 0 16 16 4", "slice track 120 0 16 16 4");
+    let outside = STYLE.replace("slice track 80 0 16 16 4", "slice track 120 0 16 16 4");
     let e = parse_style(&outside).unwrap_err();
     assert!(e.contains("not inside the 128×64 atlas"), "{e}");
-    let no_soft = SKIN.replace("soft 96 0 32 32 12\n", "");
+    let no_soft = STYLE.replace("soft 96 0 32 32 12\n", "");
     let e = parse_style(&no_soft).unwrap_err();
     assert!(e.contains("needs a `soft` line"), "{e}");
-    let colour = SKIN.replace("\"#203040\"", "\"203040\"");
+    let colour = STYLE.replace("\"#203040\"", "\"203040\"");
     let e = parse_style(&colour).unwrap_err();
     assert!(e.contains("#rrggbb"), "{e}");
     // A style is complete: no base to fall back on, every role and radius.
-    let e = parse_style(&SKIN.replace("  gold \"#ffb224\"\n", "")).unwrap_err();
+    let e = parse_style(&STYLE.replace("  gold \"#ffb224\"\n", "")).unwrap_err();
     assert!(e.contains("leaves out gold"), "{e}");
-    let e = parse_style(&SKIN.replace("  bar 4\n", "")).unwrap_err();
+    let e = parse_style(&STYLE.replace("  bar 4\n", "")).unwrap_err();
     assert!(e.contains("leaves out bar"), "{e}");
-    let e = parse_style(&SKIN.replace("type style", "type skin")).unwrap_err();
+    let e = parse_style(&STYLE.replace("type style", "type skin")).unwrap_err();
     assert!(e.contains("now `type style`"), "{e}");
-    let e = parse_style(&SKIN.replace("scheme dark", "base dark")).unwrap_err();
+    let e = parse_style(&STYLE.replace("scheme dark", "base dark")).unwrap_err();
     assert!(e.contains("`base` is gone"), "{e}");
-    let file = parse_style(SKIN).unwrap();
+    let file = parse_style(STYLE).unwrap();
     assert_eq!(file.theme.palette.panel, Srgba::rgb(0x20, 0x30, 0x40));
     assert_eq!(file.theme.radius.panel, 4.0);
-    assert_eq!(file.references(), vec!["skins/test/atlas.png".to_string()]);
+    assert_eq!(file.references(), vec!["styles/test/atlas.png".to_string()]);
 }
 
-/// Ids in a skin file resolve relative to the file first, then from
+/// Ids in a style file resolve relative to the file first, then from
 /// assets/ (lantern-vale FINDINGS #6: a copied pack named
-/// `skins/fantasy/...` and had to be rewritten). Fails if a relative id is
+/// `styles/fantasy/...` and had to be rewritten). Fails if a relative id is
 /// read from the root, an absolute one is rewritten, `..` escapes the
 /// assets, or the cook and the runtime could disagree (one function).
 #[test]
-fn a_skin_resolves_its_ids_beside_itself_then_from_assets() {
+fn a_style_resolves_its_ids_beside_itself_then_from_assets() {
     let assets = [
-        "skins/mine/atlas.png",
-        "skins/mine/Body.ttf",
-        "skins/shared/rope.png",
+        "styles/mine/atlas.png",
+        "styles/mine/Body.ttf",
+        "styles/shared/rope.png",
         "fonts/Noto.ttf",
-        "skins/fantasy/atlas.png",
+        "styles/fantasy/atlas.png",
     ];
     let exists = |id: &str| assets.contains(&id);
-    let r = |skin: &str, id: &str| og_ui::skin::resolve_reference(skin, id, exists);
+    let r = |style: &str, id: &str| og_ui::style_file::resolve_reference(style, id, exists);
     assert_eq!(
-        r("skins/mine/skin.ogt", "atlas.png"),
-        "skins/mine/atlas.png"
+        r("styles/mine/style.ogt", "atlas.png"),
+        "styles/mine/atlas.png"
     );
     assert_eq!(
-        r("skins/mine/skin.ogt", "./Body.ttf"),
-        "skins/mine/Body.ttf"
+        r("styles/mine/style.ogt", "./Body.ttf"),
+        "styles/mine/Body.ttf"
     );
     assert_eq!(
-        r("skins/mine/skin.ogt", "../shared/rope.png"),
-        "skins/shared/rope.png"
+        r("styles/mine/style.ogt", "../shared/rope.png"),
+        "styles/shared/rope.png"
     );
     // Absolute ids still work, also from a copy whose own directory lacks them.
-    assert_eq!(r("skins/mine/skin.ogt", "fonts/Noto.ttf"), "fonts/Noto.ttf");
     assert_eq!(
-        r("skins/mine/skin.ogt", "skins/fantasy/atlas.png"),
-        "skins/fantasy/atlas.png"
+        r("styles/mine/style.ogt", "fonts/Noto.ttf"),
+        "fonts/Noto.ttf"
+    );
+    assert_eq!(
+        r("styles/mine/style.ogt", "styles/fantasy/atlas.png"),
+        "styles/fantasy/atlas.png"
     );
     // Nothing there: left as written, for the cook to name as missing.
-    assert_eq!(r("skins/mine/skin.ogt", "nope.png"), "nope.png");
-    assert_eq!(r("skins/mine/skin.ogt", "../../../x.png"), "../../../x.png");
-    let text = SKIN.replace("\"skins/test/atlas.png\"", "\"atlas.png\"");
+    assert_eq!(r("styles/mine/style.ogt", "nope.png"), "nope.png");
+    assert_eq!(
+        r("styles/mine/style.ogt", "../../../x.png"),
+        "../../../x.png"
+    );
+    let text = STYLE.replace("\"styles/test/atlas.png\"", "\"atlas.png\"");
     let mut file = parse_style(&text).unwrap();
-    file.resolve("skins/test/skin.ogt", |id| id == "skins/test/atlas.png");
-    assert_eq!(file.references(), vec!["skins/test/atlas.png".to_string()]);
+    file.resolve("styles/test/style.ogt", |id| id == "styles/test/atlas.png");
+    assert_eq!(file.references(), vec!["styles/test/atlas.png".to_string()]);
 }
 
 /// Builds the screen the transition answers; returns (shown, cover pieces).
@@ -398,7 +404,7 @@ fn a_counter_counts_by_the_tick_and_replays_after_a_restore() {
 
 #[test]
 fn a_refused_press_shakes_the_button_and_queues_the_error_sound() {
-    let (mut ui, _) = skinned_ui();
+    let (mut ui, _) = styled_ui();
     for _ in 0..30 {
         step(&mut ui, InputFrame::default(), true);
     }
@@ -440,7 +446,7 @@ fn a_refused_press_shakes_the_button_and_queues_the_error_sound() {
         "and comes to rest where it was"
     );
     // An enabled press sounds once.
-    let (mut ui, _) = skinned_ui();
+    let (mut ui, _) = styled_ui();
     for _ in 0..30 {
         step(&mut ui, InputFrame::default(), false);
     }
@@ -455,7 +461,7 @@ fn keyboard_and_gamepad_focus_moves_sound_as_the_pointer_does() {
     // Ways it could fail: a focus move by key or pad is silent (only the
     // pointer reaching a control sounded), activation by Enter or A makes
     // no press sound, or a move that lands where focus already was sounds.
-    let file = parse_style(SKIN).expect("the test skin parses");
+    let file = parse_style(STYLE).expect("the test style parses");
     let mut ui = ui_with_font(test_font_metrics());
     let mut sounds = [0u64; 6];
     sounds[UiSound::Hover as usize] = 5;
@@ -529,7 +535,7 @@ fn keyboard_and_gamepad_focus_moves_sound_as_the_pointer_does() {
     );
 }
 
-/// The `Go` button's top edge over `n` ticks of `input` under `skin`.
+/// The `Go` button's top edge over `n` ticks of `input` under `style`.
 fn tops(ui: &mut Ui, input: &InputFrame, n: usize) -> Vec<f32> {
     (0..n)
         .map(|_| {
@@ -542,13 +548,13 @@ fn tops(ui: &mut Ui, input: &InputFrame, n: usize) -> Vec<f32> {
 #[test]
 fn the_hover_lift_and_the_press_move_on_springs() {
     // Ways it could fail: the lift jumps to its end in a tick (no motion),
-    // eases on a curve that ignores the skin's spring (no overshoot at a
+    // eases on a curve that ignores the style's spring (no overshoot at a
     // low damping), never settles exactly, settles somewhere else, or
     // differs after a restore; the press squash does not spring back past
     // rest on release.
-    let springy = SKIN.replace("  pop 0.12\n", "  pop 0.12\n  hoverSpring 0.3 300\n");
-    for (text, bounces) in [(SKIN.to_string(), false), (springy, true)] {
-        let file = parse_style(&text).expect("the skin parses");
+    let springy = STYLE.replace("  pop 0.12\n", "  pop 0.12\n  hoverSpring 0.3 300\n");
+    for (text, bounces) in [(STYLE.to_string(), false), (springy, true)] {
+        let file = parse_style(&text).expect("the style parses");
         let mut ui = ui_with_font(test_font_metrics());
         ui.set_theme(file.theme(Some(atlas()), [0; 6]));
         for _ in 0..30 {
@@ -561,7 +567,7 @@ fn the_hover_lift_and_the_press_move_on_springs() {
         let end = ys[149];
         assert!(
             end < rest.y - 1.5,
-            "it lifts by the skin's 2 px: {} to {end}",
+            "it lifts by the style's 2 px: {} to {end}",
             rest.y
         );
         assert_eq!(ys[148], end, "and settles exactly: {ys:?}");
@@ -588,7 +594,7 @@ fn the_hover_lift_and_the_press_move_on_springs() {
     }
     // The press: held, the frame squashes towards sy 0.92; released, it
     // springs back past its rest height before settling.
-    let file = parse_style(SKIN).unwrap();
+    let file = parse_style(STYLE).unwrap();
     let mut ui = ui_with_font(test_font_metrics());
     let tex = atlas();
     ui.set_theme(file.theme(Some(tex), [0; 6]));
@@ -693,7 +699,7 @@ fn answer(ui: &mut Ui, shake: Option<ShakeDesc>, reduced: bool) -> f32 {
 
 #[test]
 fn game_code_shakes_an_element_once_and_it_comes_to_rest_by_itself() {
-    let (mut ui, _) = skinned_ui();
+    let (mut ui, _) = styled_ui();
     let rest = answer(&mut ui, None, false);
     let mut xs = vec![answer(&mut ui, Some(ShakeDesc::default()), false)];
     for _ in 0..40 {
@@ -702,14 +708,14 @@ fn game_code_shakes_an_element_once_and_it_comes_to_rest_by_itself() {
     let far = xs.iter().map(|x| (x - rest).abs()).fold(0.0, f32::max);
     assert!(
         far > 2.0 && far <= 6.01,
-        "it swings by up to the skin's 6 px with no further call: {xs:?}"
+        "it swings by up to the style's 6 px with no further call: {xs:?}"
     );
     assert!(
         xs[xs.len() - 1] == rest && ui.take_sounds().is_empty(),
         "it comes to rest where it was, silently by default"
     );
     // A snapshot mid-shake replays the same swings.
-    let mut a = skinned_ui().0;
+    let mut a = styled_ui().0;
     answer(&mut a, None, false);
     answer(
         &mut a,
@@ -723,7 +729,7 @@ fn game_code_shakes_an_element_once_and_it_comes_to_rest_by_itself() {
     answer(&mut a, None, false);
     let saved = a.save_state();
     let tail: Vec<f32> = (0..10).map(|_| answer(&mut a, None, false)).collect();
-    let mut b = skinned_ui().0;
+    let mut b = styled_ui().0;
     b.restore_state(&saved).unwrap();
     let again: Vec<f32> = (0..10).map(|_| answer(&mut b, None, false)).collect();
     assert_eq!(tail, again, "the shake is UI state");
@@ -740,7 +746,7 @@ fn game_code_shakes_an_element_once_and_it_comes_to_rest_by_itself() {
         "sound: true queues the error sound"
     );
     // Reduced motion keeps it still; no element before it warns.
-    let mut c = skinned_ui().0;
+    let mut c = styled_ui().0;
     answer(&mut c, None, true);
     let still: Vec<f32> = std::iter::once(answer(&mut c, Some(ShakeDesc::default()), true))
         .chain((0..10).map(|_| answer(&mut c, None, true)))
@@ -756,16 +762,16 @@ fn game_code_shakes_an_element_once_and_it_comes_to_rest_by_itself() {
     );
 }
 
-/// The atlas pieces a 100×60 panel draws in a skin whose panel slice
+/// The atlas pieces a 100×60 panel draws in a style whose panel slice
 /// fills its edges with `fill` (a 32×32 region with 8 px corners: a 16 px
 /// middle), as (rect, uv), only those inside the panel.
 fn panel_pieces(fill: &str) -> (Rect, Vec<(Rect, [f32; 4])>) {
     // The test style's palette and radius blocks.
-    let values = &SKIN[SKIN.find("palette {").unwrap()..SKIN.find("slice ").unwrap()];
+    let values = &STYLE[STYLE.find("palette {").unwrap()..STYLE.find("slice ").unwrap()];
     let text = format!(
         "type style\nversion 1\n---\nname \"tiles\"\natlas \"a.png\" 128 64\n{values}slice panel 0 0 32 32 8 tint {fill}\nslice card 0 0 32 32 8 {fill}\n"
     );
-    let file = parse_style(&text).expect("the skin parses");
+    let file = parse_style(&text).expect("the style parses");
     let tex = atlas();
     let mut ui = ui_with_font(test_font_metrics());
     ui.set_theme(file.theme(Some(tex), [0; 6]));
@@ -806,7 +812,7 @@ fn panel_pieces(fill: &str) -> (Rect, Vec<(Rect, [f32; 4])>) {
 }
 
 #[test]
-fn a_slice_tiles_its_edges_and_centre_when_the_skin_says_repeat_or_round() {
+fn a_slice_tiles_its_edges_and_centre_when_the_style_says_repeat_or_round() {
     let texel = 1.0 / 128.0;
     for fill in ["stretch", "repeat", "round"] {
         let (r, pieces) = panel_pieces(fill);
@@ -859,7 +865,7 @@ fn a_slice_tiles_its_edges_and_centre_when_the_skin_says_repeat_or_round() {
 
 #[test]
 fn the_probe_names_each_elements_kind_and_a_disabled_control() {
-    let (mut ui, _) = skinned_ui();
+    let (mut ui, _) = styled_ui();
     ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
     screen(&mut ui, true);
     ui.icon("Heart", "heart", IconDesc::default());
@@ -874,19 +880,19 @@ fn the_probe_names_each_elements_kind_and_a_disabled_control() {
     assert_eq!(f.element("Heart").unwrap().kind, "icon");
 }
 
-/// A skin's `glass <part> <blur> <fill> <tint>` line (here the card a
+/// A style's `glass <part> <blur> <fill> <tint>` line (here the card a
 /// panel is dressed as): the part draws a
 /// glass panel (og-render's blurred frame) of its own rectangle and
 /// radius under its nine-slice, tinted by its fill colour, and its
-/// nine-slice at `control` of its opacity; a skin without it draws no glass.
+/// nine-slice at `control` of its opacity; a style without it draws no glass.
 ///
 /// Ways it could fail: the line is not read, the glass is drawn over the
 /// panel's frame (a later painter level) or at another rectangle, or the
 /// frame keeps its full opacity and hides the glass.
 #[test]
 fn a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice() {
-    let frame_of = |skin: &str, reduced_transparency: bool| {
-        let file = parse_style(skin).expect("the skin parses");
+    let frame_of = |style: &str, reduced_transparency: bool| {
+        let file = parse_style(style).expect("the style parses");
         let tex = atlas();
         let mut ui = ui_with_font(test_font_metrics());
         ui.set_theme(file.theme(Some(tex), [0; 6]));
@@ -943,9 +949,9 @@ fn a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice() {
             .expect("the panel's centre piece");
         (menu, glass, centre, ui.theme().radius.panel)
     };
-    let (_, none, (_, solid), _) = frame_of(SKIN, false);
+    let (_, none, (_, solid), _) = frame_of(STYLE, false);
     assert!(none.is_empty(), "no glass without the line");
-    let glassy = SKIN.replace("glow button", "glass card 16 0.5 0.2\nglow button");
+    let glassy = STYLE.replace("glow button", "glass card 16 0.5 0.2\nglow button");
     let (menu, glass, (level, thin), card_radius) = frame_of(&glassy, false);
     assert_eq!(glass.len(), 1, "one glass panel: {glass:?}");
     let (glevel, rect, radius, blur, tint) = glass[0];
@@ -977,7 +983,7 @@ fn a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice() {
     );
 }
 
-/// One tick of a skinned screen panel: a title and four buttons. Answers
+/// One tick of a styled screen panel: a title and four buttons. Answers
 /// whether `Last` was clicked.
 fn menu_step(ui: &mut Ui, input: InputFrame) -> bool {
     menu_step_as(ui, input, false)
@@ -1020,14 +1026,14 @@ fn a_staggered_panels_controls_take_presses_once_the_panel_has_arrived() {
     // own place in the cascade has played (the last button of a title
     // screen ignores taps for twice the entrance), or no control is
     // inert even while the panel pops in.
-    let (mut settled, _) = skinned_ui();
+    let (mut settled, _) = styled_ui();
     for _ in 0..120 {
         menu_step(&mut settled, InputFrame::default());
     }
     let (panel_end, last_end) = (rect_of(&settled, "Menu"), rect_of(&settled, "Last"));
     // The first tick the panel stands where it ends while `Last` is still
     // moving into place: the cascade outlasts the panel's own entrance.
-    let (mut ui, _) = skinned_ui();
+    let (mut ui, _) = styled_ui();
     let mut arrived = None;
     for tick in 0..120 {
         menu_step(&mut ui, InputFrame::default());
@@ -1054,7 +1060,7 @@ fn a_staggered_panels_controls_take_presses_once_the_panel_has_arrived() {
         "a press on Last right after the panel arrived (tick {tick}) clicks it"
     );
     // While the panel itself pops in, the same press is refused.
-    let (mut early, _) = skinned_ui();
+    let (mut early, _) = styled_ui();
     menu_step(&mut early, InputFrame::default());
     let r = rect_of(&early, "Last");
     let (x, y) = (r.0 + r.2 / 2.0, r.1 + r.3 / 2.0);
@@ -1077,16 +1083,16 @@ fn a_staggered_panels_controls_take_presses_once_the_panel_has_arrived() {
 #[test]
 fn an_instant_panel_is_settled_and_answering_on_its_first_tick_and_enters_when_it_comes_back() {
     // Ways it could fail: `instant` is ignored (the opening title behind the
-    // web's play gate stays part-way through the skin's entrance and
+    // web's play gate stays part-way through the style's entrance and
     // stagger, examples/WEB-FINDINGS.md #1), it only skips the panel's own
     // entrance and leaves the cascade, or it sticks to the panel so a title
     // the player comes back to never enters again.
-    let (mut settled, _) = skinned_ui();
+    let (mut settled, _) = styled_ui();
     for _ in 0..120 {
         menu_step(&mut settled, InputFrame::default());
     }
     let (panel_end, last_end) = (rect_of(&settled, "Menu"), rect_of(&settled, "Last"));
-    let (mut ui, _) = skinned_ui();
+    let (mut ui, _) = styled_ui();
     menu_step_as(&mut ui, InputFrame::default(), true);
     assert_eq!(
         (rect_of(&ui, "Menu"), rect_of(&ui, "Last")),
@@ -1105,17 +1111,17 @@ fn an_instant_panel_is_settled_and_answering_on_its_first_tick_and_enters_when_i
         "Last clicks on the ticks right after it appeared"
     );
     // Gone for a tick (the player left the title), then back without
-    // `instant`: the skin's entrance plays again.
+    // `instant`: the style's entrance plays again.
     ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
     ui.end();
     menu_step_as(&mut ui, InputFrame::default(), false);
     assert_ne!(
         rect_of(&ui, "Menu"),
         panel_end,
-        "a panel that comes back enters with the skin"
+        "a panel that comes back enters with the style"
     );
     // Without `instant` the first tick is the entrance's first (the old behaviour).
-    let (mut plain, _) = skinned_ui();
+    let (mut plain, _) = styled_ui();
     menu_step(&mut plain, InputFrame::default());
     assert_ne!(rect_of(&plain, "Last"), last_end, "a plain panel enters");
 }

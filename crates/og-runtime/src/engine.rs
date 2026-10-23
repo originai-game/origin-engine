@@ -432,7 +432,7 @@ pub(crate) struct State {
     /// GameDesc.look, until it has been applied (just before start).
     pub boot_look: Option<String>,
     /// The last UiDesc given to og.ui.configure, which applying a look's
-    /// skin keeps.
+    /// style keeps.
     pub ui_desc: Value,
     pub step_ms: f64,
     pub render_ms: f64,

@@ -184,7 +184,7 @@ impl Ui {
                 continue;
             };
             if self.state.focus != key {
-                self.sound(crate::skin::UiSound::Hover);
+                self.sound(crate::style_file::UiSound::Hover);
             }
             self.state.focus = key;
             self.state.focus_visible = true;
@@ -192,7 +192,7 @@ impl Ui {
                 A11yAct::Focus => {}
                 A11yAct::Activate if hit.has(HIT_NAV) => {
                     self.nav.activate = key;
-                    self.sound(crate::skin::UiSound::Press);
+                    self.sound(crate::style_file::UiSound::Press);
                 }
                 // A text control's activation is its focus: it edits.
                 A11yAct::Activate => {}
@@ -222,7 +222,7 @@ impl Ui {
                         self.nav.activate = self.state.focus;
                         self.state.focus_visible = true;
                         // A key or the pad's A presses as a pointer does, and sounds the same.
-                        self.sound(crate::skin::UiSound::Press);
+                        self.sound(crate::style_file::UiSound::Press);
                     }
                     continue;
                 }
@@ -261,7 +261,7 @@ impl Ui {
                 moved = true;
                 if k != before {
                     // Focus reaching a control by key or pad sounds as the pointer reaching it.
-                    self.sound(crate::skin::UiSound::Hover);
+                    self.sound(crate::style_file::UiSound::Hover);
                 }
             }
         }
@@ -329,7 +329,7 @@ impl Ui {
                     Nav::Activate => {
                         if self.hit(focus).is_some_and(|h| h.has(HIT_NAV)) {
                             self.nav.pad_activate[k - 1] = focus;
-                            self.sound(crate::skin::UiSound::Press);
+                            self.sound(crate::style_file::UiSound::Press);
                         }
                         continue;
                     }
@@ -368,7 +368,7 @@ impl Ui {
                 };
                 if let Some(next) = next.filter(|&n| n != focus) {
                     self.state.pad_focus[k - 1] = next;
-                    self.sound(crate::skin::UiSound::Hover);
+                    self.sound(crate::style_file::UiSound::Hover);
                     self.scroll_into_view(next);
                 }
             }

@@ -36,8 +36,8 @@ mod probe;
 mod rich;
 mod scroll;
 pub mod shape;
-pub mod skin;
 mod style;
+pub mod style_file;
 mod text;
 #[rustfmt::skip]
 pub mod theme;
@@ -58,11 +58,11 @@ pub use layout::{
 pub use motion::{TransitionKind, cubic_bezier, ease_exit, ease_out};
 pub use probe::{SharedUi, UiProbe};
 pub use rich::{RichTextDesc, RichTextResponse};
-pub use skin::{Skin, Slice, SliceFill, StyleFile, StylePart, UiSound, parse_style};
 pub use style::{
     Breakpoint, Contrast, Density, DensityMode, Durations, Palette, READABLE, Radius, Scheme,
     Space, Spring, Srgba, Theme, TypeRamp, TypeStep,
 };
+pub use style_file::{Art, Slice, SliceFill, StyleFile, StylePart, UiSound, parse_style};
 pub use text::{FontMetrics, UiFont, VisualGlyph, bidi_runs, needs_visual};
 pub use ui::{
     ButtonDesc, ButtonVariant, ControlSize, FieldDesc, Fonts, IconAtlas, ImageDesc, LabelDesc,

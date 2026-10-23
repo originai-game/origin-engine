@@ -937,7 +937,7 @@ pub fn mixed_runs_ui(fonts: Fonts, vp: Viewport) -> Ui {
     ui
 }
 
-/// A dark card of display-size labels, with or without a skin's text
+/// A dark card of display-size labels, with or without a style's text
 /// glow, as a scene ready to render.
 pub fn glow_scene(font: &FontFiles, glow: bool, labels: usize) -> (RenderScene, RenderDesc) {
     let vp = Viewport {
@@ -952,9 +952,9 @@ pub fn glow_scene(font: &FontFiles, glow: bool, labels: usize) -> (RenderScene, 
     // Tight tracking: glyph quads overlap their neighbours.
     theme.type_ramp.display_md.tracking_em = -0.1;
     if glow {
-        theme.skin.text_glows[0] = Some(og_ui::skin::Glow {
+        theme.art.text_glows[0] = Some(og_ui::style_file::Glow {
             size: 2.0,
-            ink: og_ui::skin::Ink::Primary,
+            ink: og_ui::style_file::Ink::Primary,
             alpha: 0.8,
         });
     }

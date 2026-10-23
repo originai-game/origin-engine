@@ -1,20 +1,20 @@
 //! og.ui.configure takes a partial UiDesc: a field left out keeps the last
-//! call's value (or a look's skin), `null` clears one, and a desc that
+//! call's value (or a look's style), `null` clears one, and a desc that
 //! leaves the UI no font at all warns that it draws no text (lantern-vale
-//! FINDINGS #11: configuring sounds after a look's skin dropped the skin,
+//! FINDINGS #11: configuring sounds after a look's style dropped the style,
 //! and with no font every glyph vanished silently).
 //!
-//! A skin names its assets relative to its own file first (FINDINGS #6: a
-//! copied pack had to be rewritten): `copied/skin.ogt` names `Body.ttf`
-//! beside it, `../mini/Body.ttf` up a directory and `skins/mini/Body.ttf`
-//! from assets/, and both the cook and og.load.skin find all three.
+//! A style names its assets relative to its own file first (FINDINGS #6: a
+//! copied pack had to be rewritten): `copied/style.ogt` names `Body.ttf`
+//! beside it, `../mini/Body.ttf` up a directory and `styles/mini/Body.ttf`
+//! from assets/, and both the cook and og.load.style find all three.
 //!
-//! A project with two skins (`skins/mini/skin.ogt`, a light base whose body
-//! font is named from assets/; `skins/copied/skin.ogt`, relative ids) is
+//! A project with two styles (`styles/mini/style.ogt`, a light scheme whose body
+//! font is named from assets/; `styles/copied/style.ogt`, relative ids) is
 //! cooked once.
 //!
 //! Ways this could fail: a later call that sets only `reducedMotion` or
-//! `contrast` drops the skin (the theme's skin name goes empty) or resets
+//! `contrast` drops the style (the theme's style name goes empty) or resets
 //! the fields the earlier call set; `null` does not clear; a fontless UI
 //! says nothing; a UI with a font warns anyway; the cook refuses the
 //! relative ids ("names asset(s) not under assets/") or the runtime looks
@@ -141,18 +141,18 @@ fn warnings(engine: u32) -> Vec<String> {
 #[test]
 fn configure_keeps_the_fields_a_call_leaves_out() {
     let e = engine();
-    let skin = value(og_load_style(e, "styles/mini/style.ogt".into()));
-    configure(e, json!({ "style": skin, "contrast": "high" }));
+    let style = value(og_load_style(e, "styles/mini/style.ogt".into()));
+    configure(e, json!({ "style": style, "contrast": "high" }));
     let t = theme(e);
     assert_eq!(
         (t["style"].as_str(), t["contrast"].as_str()),
         (Some("mini"), Some("high"))
     );
-    // Sounds and reduced motion later, as a settings screen does: the skin
+    // Sounds and reduced motion later, as a settings screen does: the style
     // and the contrast stay.
     configure(e, json!({ "reducedMotion": true }));
     let t = theme(e);
-    assert_eq!(t["style"].as_str(), Some("mini"), "the skin stays: {t}");
+    assert_eq!(t["style"].as_str(), Some("mini"), "the style stays: {t}");
     assert_eq!(t["contrast"].as_str(), Some("high"), "the contrast stays");
     assert_eq!(t["reducedMotion"], json!(true));
     assert_eq!(t["scheme"].as_str(), Some("light"), "the style's scheme");
@@ -169,9 +169,9 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
     assert_eq!(t["reducedMotion"], json!(true), "still reduced");
     assert!(
         warnings(e).iter().all(|w| !w.contains("no font")),
-        "the skin's body font draws"
+        "the style's body font draws"
     );
-    // Without the skin the UI has no font at all: a warning names the fix.
+    // Without the style the UI has no font at all: a warning names the fix.
     configure(e, json!({ "style": null }));
     assert_eq!(theme(e)["style"].as_str(), Some(""));
     let w = warnings(e);
@@ -186,10 +186,10 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
 }
 
 #[test]
-fn a_skin_names_its_assets_relative_to_itself_or_from_assets() {
+fn a_style_names_its_assets_relative_to_itself_or_from_assets() {
     let e = engine();
-    let skin = value(og_load_style(e, "styles/copied/style.ogt".into()));
-    configure(e, json!({ "style": skin }));
+    let style = value(og_load_style(e, "styles/copied/style.ogt".into()));
+    configure(e, json!({ "style": style }));
     assert_eq!(theme(e)["style"].as_str(), Some("copied"));
     assert!(
         warnings(e).iter().all(|w| !w.contains("no font")),

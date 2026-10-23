@@ -1,12 +1,12 @@
-//! button_contrast.rs for the style packs and the games' skins: every
+//! button_contrast.rs for the style packs and the games' styles: every
 //! button role's label, in every state, the three label inks (`ink`,
 //! `inkMuted`, `inkFaint`), a text field's placeholder (`inkFaint` on the
 //! field's frame) and typed text, at rest and focused, a stack's count on
 //! a bag slot, a meter's label over each kind's fill and over its track,
-//! and a badge in every tone, as og-ui draws them with a skin, read against
+//! and a badge in every tone, as og-ui draws them with a style, read against
 //! what is really under them: the frame's draw commands composited in
-//! linear light, a skinned piece as the mean of its atlas texels (the
-//! skin's `atlas.png`) times its tint. Skins: the six packs of
+//! linear light, a styled piece as the mean of its atlas texels (the
+//! style's `atlas.png`) times its tint. Styles: the six packs of
 //! templates/ui-kit, Ember Vale's copy of the fantasy pack
 //! (templates/archetypes/third-person, `ember`), the archetypes' sparkorb,
 //! lampdive, lanebeat and pathguard and the examples' hollowbell, lantern
@@ -16,8 +16,8 @@
 //! Vale's success, warn and info badges 3.15, 2.72 and 4.07:1, before
 //! their palettes moved).
 //!
-//! A third test draws every skin's primary and secondary buttons through
-//! og-render with the skin's own cooked fonts and reads each label, in
+//! A third test draws every style's primary and secondary buttons through
+//! og-render with the style's own cooked fonts and reads each label, in
 //! every state, from the frame as og polish does: the colours above can be
 //! right while the strokes never take them (the pixel pack's primary
 //! labels, hollowbell FINDINGS #20, fixed).
@@ -82,14 +82,14 @@ fn packs() -> Vec<(String, PathBuf)> {
     out
 }
 
-/// The games' own skins: the archetypes' (each a pack recoloured by hand
+/// The games' own styles: the archetypes' (each a pack recoloured by hand
 /// for its game; ember is in [`packs`]) and the three examples' (Hollowbell's
 /// and Lantern Vale's by hand, the Kestrel Stair's written by its
 /// tools/make-assets.ts from the paper pack). Held to every bar the packs
 /// are, the frame reading included (lampdive's DotGothic16 took the pixel
 /// pack's `textWeight body 0.5` and `px_range 8` for it: its pressed
 /// primary label read 3.91:1 in the frame without them).
-fn game_skins() -> Vec<(String, PathBuf)> {
+fn game_styles() -> Vec<(String, PathBuf)> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     [
         (
@@ -117,9 +117,9 @@ fn game_skins() -> Vec<(String, PathBuf)> {
     .collect()
 }
 
-/// The packs and the games' skins.
-fn skins() -> Vec<(String, PathBuf)> {
-    packs().into_iter().chain(game_skins()).collect()
+/// The packs and the games' styles.
+fn styles() -> Vec<(String, PathBuf)> {
+    packs().into_iter().chain(game_styles()).collect()
 }
 
 fn lin(c: f32) -> f32 {
@@ -271,7 +271,7 @@ fn atlas_handle() -> TextureHandle {
 fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
     let mut rows = Vec::new();
     let mut failing = Vec::new();
-    for (name, dir) in skins() {
+    for (name, dir) in styles() {
         let text = std::fs::read_to_string(dir.join("style.ogt"))
             .unwrap_or_else(|e| panic!("{name}: style.ogt: {e}"));
         let file = parse_style(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
@@ -646,7 +646,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
 }
 
 /// A badge in every tone (its tint, its tone's ink), on the screen and in
-/// a panel, for every pack and the games' skins, every row printed. Every
+/// a panel, for every pack and the games' styles, every row printed. Every
 /// tone holds 4.5:1 on both grounds. In a panel (where a pack's badges
 /// sit) the status tones and the accent hold it with the palette's own
 /// ink: the tones are the colours meters, toasts and status dots share, so
@@ -661,10 +661,10 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
 /// fills made 2.15:1 and 2.81:1 (scifi's moves its fill: no ink reaches
 /// 4.5:1 on it from the light side).
 #[test]
-fn every_skin_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel() {
+fn every_style_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel() {
     let mut rows = Vec::new();
     let mut failing = Vec::new();
-    for (name, dir) in skins() {
+    for (name, dir) in styles() {
         let text = std::fs::read_to_string(dir.join("style.ogt"))
             .unwrap_or_else(|e| panic!("{name}: style.ogt: {e}"));
         let file = parse_style(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
@@ -774,7 +774,7 @@ fn cooked_fonts() -> Vec<(String, [CookedFont; 2])> {
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-ui-pack-fonts");
     let _ = std::fs::remove_dir_all(&root);
     let mut wanted = Vec::new();
-    for (name, dir) in skins() {
+    for (name, dir) in styles() {
         let file = parse_style(&std::fs::read_to_string(dir.join("style.ogt")).expect("style.ogt"))
             .expect("parses");
         let base = |i: usize| {
@@ -932,7 +932,7 @@ fn every_pack_draws_its_primary_and_secondary_labels_at_4_5_to_1_in_the_frame() 
     let fonts = cooked_fonts();
     let mut rows = Vec::new();
     let mut failing = Vec::new();
-    for ((name, dir), (fname, [body, display])) in skins().into_iter().zip(&fonts) {
+    for ((name, dir), (fname, [body, display])) in styles().into_iter().zip(&fonts) {
         assert_eq!(&name, fname);
         let file = parse_style(&std::fs::read_to_string(dir.join("style.ogt")).expect("style.ogt"))
             .expect("parses");
@@ -943,7 +943,7 @@ fn every_pack_draws_its_primary_and_secondary_labels_at_4_5_to_1_in_the_frame() 
         for state in ["rest", "hovered", "pressed"] {
             for (id, _) in labels {
                 let mut scene = RenderScene::new();
-                let skin_atlas = scene.add_texture(TextureData {
+                let style_atlas = scene.add_texture(TextureData {
                     width: img.width(),
                     height: img.height(),
                     rgba: img.as_raw().clone(),
@@ -959,7 +959,7 @@ fn every_pack_draws_its_primary_and_secondary_labels_at_4_5_to_1_in_the_frame() 
                     },
                     ..UiDesc::default()
                 });
-                ui.set_theme(file.theme(Some(skin_atlas), [0; 6]));
+                ui.set_theme(file.theme(Some(style_atlas), [0; 6]));
                 let vp = Viewport::new(640.0, 360.0);
                 let step = |ui: &mut Ui, input: InputFrame| {
                     ui.begin(input, vp);

@@ -1,6 +1,6 @@
 //! The engine's built-in UI styles (templates/styles/<name>/style.ogt
 //! and atlas.png) parse, and every pack keeps body text legible: each ink a
-//! template puts on a skinned surface reaches WCAG's 4.5:1 against what is
+//! template puts on a styled surface reaches WCAG's 4.5:1 against what is
 //! really drawn there (the frame's art multiplied by its tint, composited
 //! over the pack's `backdrop`, measured over the frame's middle).
 //!
@@ -9,7 +9,7 @@
 //! panel whose ink only reads over one backdrop; a selected tab (`knob`)
 //! in the same tone as its text; a pack missing, or a typo in its file.
 
-use og_ui::skin::{Slice, StylePart};
+use og_ui::style_file::{Slice, StylePart};
 use og_ui::*;
 use std::path::PathBuf;
 
@@ -108,10 +108,10 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
         let t = file.theme;
         let p = t.palette;
         let bg = linear(p.backdrop);
-        let skin = t.skin;
+        let style = t.art;
         let slice = |part: StylePart| {
-            skin.slices[part.index()]
-                .or(skin.slices[StylePart::Button.index()]
+            style.slices[part.index()]
+                .or(style.slices[StylePart::Button.index()]
                     .filter(|_| part.class() == StylePart::Button))
                 .unwrap_or_else(|| panic!("{name} has no {} slice", part.name()))
         };

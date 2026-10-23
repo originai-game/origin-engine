@@ -272,9 +272,9 @@ pub struct Element {
     pub background: Option<Srgba>,
     /// Corner radius in CSS pixels (clamped to half the shorter side).
     pub radius: f32,
-    /// The skin frame its background takes (`None`: a plain fill). Without
-    /// a skin, or a skin without that part, the background is the fill.
-    pub skin: Option<crate::skin::StylePart>,
+    /// The frame its background takes (`None`: a plain fill). Without
+    /// a style, or a style without that part, the background is the fill.
+    pub frame: Option<crate::style_file::StylePart>,
     /// Width over height (0: none). With the height left to fit, the
     /// element is as tall as its laid-out width over this; with a fixed
     /// height and the width left to fit, as wide as the height times it
@@ -491,9 +491,9 @@ pub enum FontRole {
 }
 
 impl FontRole {
-    /// The role a skin's text effects are keyed by (`body`, `display`,
+    /// The role a style's text effects are keyed by (`body`, `display`,
     /// `numeric`): a rounded text takes the display role's.
-    pub fn skin_index(self) -> usize {
+    pub fn effect_index(self) -> usize {
         match self {
             FontRole::Body => 0,
             FontRole::Display | FontRole::Rounded => 1,
@@ -608,7 +608,7 @@ pub(crate) enum Widget {
     None,
     Button {
         pressed: bool,
-        /// How far in the press is on the skin's spring (0 rest, 1 held).
+        /// How far in the press is on the style's spring (0 rest, 1 held).
         press: f32,
     },
     Progress {
@@ -705,11 +705,11 @@ pub(crate) struct Node {
     pub shapes: Vec<Shape>,
     /// Widget data its children read (a list's row height, a grid's cell size).
     pub aux: [f32; 3],
-    /// A heading label: the skin's flourish frames it.
+    /// A heading label: the style's flourish frames it.
     pub heading: bool,
     /// What it tells the accessibility tree beyond its kind.
     pub a11y: crate::a11y::A11y,
-    /// Its descendants enter one after another (a skin's stagger).
+    /// Its descendants enter one after another (a style's stagger).
     pub stagger: Option<Stagger>,
     // Computed by the frame.
     pub alpha: f32,

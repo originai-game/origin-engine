@@ -417,7 +417,7 @@ impl Ui {
             let mut step = base_step;
             if let Some(name) = &s.size {
                 let mut ramp = t.type_ramp;
-                match crate::skin::ramp_step(&mut ramp, name) {
+                match crate::style_file::ramp_step(&mut ramp, name) {
                     Some(st) => step = *st,
                     None => self
                         .warnings
@@ -432,8 +432,8 @@ impl Ui {
             if let Some(name) = &s.color {
                 let mut palette = t.palette;
                 match (
-                    crate::skin::parse_color(name),
-                    crate::skin::palette_color(&mut palette, name),
+                    crate::style_file::parse_color(name),
+                    crate::style_file::palette_color(&mut palette, name),
                 ) {
                     (Some(c), _) => color = c,
                     (None, Some(c)) => color = *c,
