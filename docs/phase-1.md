@@ -291,7 +291,15 @@ the IDL changes are the CHANGELOG's `## Unreleased` depth wave 3 entry.
   black floor, the panel's reflection grainy at its foot on both tiers;
   the dark wedge left of the panel is its shadow, present on both tiers
   too). The `lod` and `reflections` stations have no playtest, so no
-  station frame is a reference.
+  station frame is a reference. The gate then found two tests the
+  stream could not run: `no-renderer.test.ts` compares every dump with
+  and without a renderer, and an entity's new `render.lod` exists only
+  with one, so the comparison leaves the `render` block out (it is the
+  renderer's observation, not the game's); og-probe's conformance test
+  spelled `state.timings` without `triangles` and now sets and checks
+  it. One flake beside them: og-cli's `dev_reports_the_check_of_each_save`
+  once saw the watcher reload twice (`n: 2`) under the gate's load and
+  passes alone three times running; it is not S6's.
 - **Owed to the wave's end**, S6: probe captures skip skinned, terrain,
   scatter and transparent meshes; one probe per batch, not per instance;
   SSR reads material factors, not maps; no expect-step station playtest;
