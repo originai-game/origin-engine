@@ -6135,8 +6135,19 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   is submitted on `on_submitted_work_done`. The trace fixture's 20
   frames all time on an M-series (main 0.2 ms, taa 0.2 ms, tonemap
   0.04 ms); the 60 gfx references are unmoved.
-- Every stream is merged. The wave's end (`scripts/wave-end.sh`) once
-  after the functional gate of this batch.
+- Functional gate of the second batch, four runs to green on main:
+  the LFS sweep test in packages/create crossed bun's 5 s default
+  beside the gate's cargo step (11036862 gives it 60 s); og-idl's anim
+  list and the og-ui layout golden lacked `skeleton2dBoxes` and
+  `opaque`, two integration misses of the merges (39e8fe31); a GPU pass
+  ended a microsecond past its frame in the trace because the pass's
+  end and the frame's were rounded from two differently associated sums
+  (91064b19: `GpuPass` carries `start` and `end`, the frame ends where
+  its last pass does, one `span_to` rounds both). At 91064b19: PASS
+  (fmt 1 s, clippy 10 s, test 202 s with 1154 tests, bun-functional
+  149 s, drift skipped on unchanged inputs).
+- Every stream is merged. The wave's end (`scripts/wave-end.sh`) runs
+  next, once.
 - Left for a later round: a list column in records (og-core; eight
   custom post slots until then), the raycast's per-tick hierarchy
   refresh, rollback and the platform's ask #16, og-ui's nine-slice band
