@@ -1390,6 +1390,7 @@ export const anim = Object.freeze({
   humanoid: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_humanoid(world.id, json(desc))),
   retarget: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_retarget(world.id, json(desc))),
   rig2dInfo: (world: WorldImpl, rig: number) => parse(abi().og_anim_rig2d_info(world.id, rig)),
+  skeleton2dBoxes: (world: WorldImpl, entity: number) => parse(abi().og_anim_skeleton2d_boxes(world.id, entity)),
   // One lookup for a flipbook's or a 2D rig's clips (an index, -1 when
   // missing) and a loaded model's (og.load.animation: a ClipAsset, 0 when missing).
   clip: (info: { clips?: ReadonlyArray<{ clip: number; name: string }>; skeleton?: number }, name: string): number =>

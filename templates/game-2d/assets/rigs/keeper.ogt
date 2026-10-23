@@ -5,7 +5,11 @@ version 1
 # Bones are pixels with +y up, unit 20 pixels to a world unit; the legs are
 # two-bone IK chains planted on the ramp by og.IkTarget2D (src/main.ts, Plant),
 # the cape a weighted mesh over the hip and two cape bones, fluttered by the
-# idle clip's deform keys. Written by hand (og-game §8, the rig2d grammar).
+# idle clip's deform keys. The walk clip bobs the hip on Bézier keys, swings
+# the arm and trails the cape; its "step" events mark each foot's contact,
+# and src/main.ts's Plant moves the feet's IK targets in step with it (a
+# 0.8 s cycle of a 0.4 m stride: the keeper walks 0.5 m/s). Written by hand
+# (og-game §8, the rig2d grammar).
 texture "keeper.png"
 filter nearest
 unit 20
@@ -248,4 +252,41 @@ clip idle {
     key 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
   }
   event 0 "inhale"
+}
+clip walk {
+  duration 0.8
+  loop true
+  bone hip {
+    translate 0 0 -1 curve 0.3 0 0.6 1
+    translate 0.2 0 0.6 curve 0.4 0 0.7 1
+    translate 0.4 0 -1 curve 0.3 0 0.6 1
+    translate 0.6 0 0.6 curve 0.4 0 0.7 1
+    translate 0.8 0 -1
+  }
+  bone head {
+    rotate 0 -2
+    rotate 0.4 2
+    rotate 0.8 -2
+  }
+  bone arm {
+    rotate 0 16 curve 0.42 0 0.58 1
+    rotate 0.4 -12 curve 0.42 0 0.58 1
+    rotate 0.8 16
+  }
+  bone cape-1 {
+    rotate 0 -10
+    rotate 0.2 -14
+    rotate 0.4 -10
+    rotate 0.6 -14
+    rotate 0.8 -10
+  }
+  bone cape-2 {
+    rotate 0 -12
+    rotate 0.3 -20
+    rotate 0.5 -12
+    rotate 0.7 -20
+    rotate 0.8 -12
+  }
+  event 0 "step"
+  event 0.4 "step"
 }

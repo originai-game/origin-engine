@@ -1,4 +1,5 @@
-//! og.load.rig2d, og.anim.rig2dInfo and the drawing of og.Skeleton2D.
+//! og.load.rig2d, og.anim.rig2dInfo, og.anim.skeleton2dBoxes and the
+//! drawing of og.Skeleton2D.
 //!
 //! og-anim's `og.skeleton2d` (installed with the feel modules, after the
 //! game's systems) plays the clips and solves the IK targets; the rigs live
@@ -95,6 +96,34 @@ pub fn og_anim_rig2d_info(world: u32, rig: f64) -> String {
     }))
 }
 
+/// og.anim.skeleton2dBoxes: what og.skeleton2d kept for the entity at its
+/// last run (it needs no world, so a system may ask).
+pub fn og_anim_skeleton2d_boxes(world: u32, entity: f64) -> String {
+    wire(engine(world).and_then(|eng| {
+        if entity.fract() != 0.0 || !(0.0..9_007_199_254_740_992.0).contains(&entity) {
+            return Err(format!("{entity} is not an entity"));
+        }
+        let boxes = feel_of(&eng)?
+            .skeletons
+            .boxes(entity as u64)
+            .ok_or_else(|| {
+                format!(
+                    "entity {entity} has not been posed by og.skeleton2d (no og.Skeleton2D with a loaded rig, or before its first tick)"
+                )
+            })?;
+        Ok(json!(
+            boxes
+                .into_iter()
+                .map(|b| json!({
+                    "slot": b.slot,
+                    "name": b.name,
+                    "points": b.points.iter().map(|p| json!({ "x": p.x, "y": p.y })).collect::<Vec<_>>(),
+                }))
+                .collect::<Vec<_>>()
+        ))
+    }))
+}
+
 fn entities_with<T: og_core::Reflect>(world: &World) -> Vec<Entity> {
     let Ok(id) = world.id_by_name(T::NAME) else {
         return Vec::new();
@@ -165,6 +194,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     position: Vec3::new(w.x, w.y, w.z),
                     uv: Vec2::from(c.uv),
                     color: c.color,
+                    offset: c.offset,
                 }
             })
             .collect();

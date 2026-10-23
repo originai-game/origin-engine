@@ -54,12 +54,13 @@ pub use retarget::{
     human_bone, retarget,
 };
 pub use rig2d::{
-    Affine2, Attachment2d, AttachmentKind, Bone2d, BoneTimeline, Clip2d, DeformTimeline, Ik2d,
-    Influence, Key, MeshVertex2d, Pose2d, RIG2D_TYPE, Rig2dAsset, RigVertex, Slot2d, SlotTimeline,
+    Affine2, Armature2d, Attachment2d, AttachmentKind, Bone2d, BoneTimeline, BoundingBox2d, Clip2d,
+    DeformTimeline, Ease, Ik2d, IkKey, IkTimeline, Influence, Key, MeshVertex2d, Pose2d,
+    RIG2D_TYPE, Rig2dAsset, RigVertex, Slot2d, SlotTimeline, check_curve, sincos,
 };
 pub use schema::*;
 pub use skeleton2d::{
-    IkTarget2D, SKELETON2D_SYSTEM, Skeleton2D, Skeleton2DEvent, Skeleton2dSystem,
+    IkTarget2D, SKELETON2D_SYSTEM, Skeleton2D, Skeleton2DEvent, Skeleton2dBox, Skeleton2dSystem,
     install_skeleton2d, skeleton_frame, skeleton_pose,
 };
 pub use system::{AnimOutput, AnimationSystem, JointPalette, PaletteSink, SYSTEM_NAME, install};

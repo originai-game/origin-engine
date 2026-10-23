@@ -11673,7 +11673,7 @@ export interface FlipbookInfo {
 
 
 /**
- * A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region and mesh attachments, IK constraints and clips, from og.load.rig2d.
+ * A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
@@ -11759,7 +11759,7 @@ export interface Skeleton2DEvent {
 }
 
 /**
- * Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way.
+ * Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge, a tail's tip. A constraint is a chain of any length: one bone points at the target, two are solved exactly (bending the way the rig says), three or more by FABRIK from the animated pose, curling the way the rig says. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way.
  *
  * The value of the `IkTarget2D` component (token `og.IkTarget2D`).
  */
@@ -11779,7 +11779,7 @@ export interface IkTarget2D {
    */
   target: Vector2;
   /**
-   * How much of the solve applies (0 is the animated pose, 1 fully solved).
+   * How much of the solve applies (0 is the animated pose, 1 fully solved), times the constraint's own weight (its `weight` line, or its clip's IK keys).
    *
    * @default 1
    * @range 0..1
@@ -11845,6 +11845,21 @@ export interface Rig2DInfo {
   readonly constraints: readonly string[];
   /** Its clips, in file order. */
   readonly clips: readonly Rig2DClipInfo[];
+}
+
+
+/**
+ * A bounding box a 2D skeleton's pose shows: a `box` attachment of its rig (or of a child armature in one of its slots) while its slot shows it.
+ */
+export interface Skeleton2DBox {
+  /** The slot showing it (`slot/child-slot` inside a child armature). */
+  readonly slot: string;
+  /** The box's name in the rig. */
+  readonly name: string;
+  /**
+   * Its polygon, moved by its bones (IK included), in the frame the skeleton entity's og.Transform is written in (the world for an entity without a parent).
+   */
+  readonly points: readonly Vector2[];
 }
 
 
@@ -22291,7 +22306,7 @@ export declare namespace og {
    */
   const Skeleton2DEvent: EventType<Skeleton2DEvent>;
   /**
-   * Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way.
+   * Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge, a tail's tip. A constraint is a chain of any length: one bone points at the target, two are solved exactly (bending the way the rig says), three or more by FABRIK from the animated pose, curling the way the rig says. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way.
    */
   const IkTarget2D: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly constraint: FieldSpec<"u32">; readonly target: FieldSpec<"Vector2">; readonly weight: FieldSpec<"f32">; readonly tolerance: FieldSpec<"f32">; readonly reached: FieldSpec<"bool">; readonly error: FieldSpec<"f32"> }, IkTarget2D>;
   /**
@@ -22353,6 +22368,14 @@ export declare namespace og {
      * @returns Refused for a handle og.load.rig2d did not answer.
      */
     function rig2dInfo(world: World, rig: Rig2D): Result<Rig2DInfo>;
+    /**
+     * The bounding boxes an og.Skeleton2D's pose showed when og.skeleton2d last ran (after the game's systems, so a system reads the previous tick's): hurt and hit boxes a clip switches on and off with its slots' attachments, to test against points or other shapes. Empty for a rig without boxes or when no slot shows one. They are part of the og.skeleton2d state block, so a restored snapshot answers what it saved.
+     *
+     * @param world The world whose animation poses the skeleton.
+     * @param entity The entity with the og.Skeleton2D.
+     * @returns Refused for an entity og.skeleton2d has not posed: no og.Skeleton2D with a loaded rig, or before its first tick.
+     */
+    function skeleton2dBoxes(world: World, entity: Entity): Result<readonly Skeleton2DBox[]>;
   }
   /** A tween or group ended on its own (read in the tick after). */
   const TweenCompleted: EventType<TweenCompleted>;

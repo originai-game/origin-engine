@@ -15,7 +15,10 @@
 // (assets/rigs/keeper.ogt, og.Skeleton2D) whose cape is a weighted mesh the
 // idle clip deforms, whose feet two-bone IK planted on the slope
 // (og.IkTarget2D, the Plant system), and whose lantern lights the sprite
-// layers through og.Lighting2D (og-game §8; og-anim's 2D skeletons).
+// layers through og.Lighting2D (og-game §8; og-anim's 2D skeletons). Sent
+// along the ramp (`keeper:<x>`), it plays its walk clip there, each foot
+// planted while it carries the keeper and lifted while it swings, and
+// breathes again when it arrives (the Walk and Plant systems).
 //
 // The frame's look is data: GameDesc.look names a file under assets/looks/
 // that extends a preset of the style catalogue, applied before start runs.
@@ -42,6 +45,8 @@ const rampY = (x: number): number => RAMP.y0 + RAMP.slope * (x - RAMP.x0);
 const ANKLE = 0.12;
 const LIFT = 0.08;
 const LANTERN = { x: 0.25, y: 1.0 } as const;
+/** The keeper's gait: the walk clip's 0.8 s cycle carries it a stride of 0.4 m (a step per foot), each foot lifted at most `lift` mid-swing. */
+const WALK = { speed: 0.5, stride: 0.4, lift: 0.08 } as const;
 
 /** The courier. */
 export const Hero = defineComponent("Hero", { spawnX: f32(0, { unit: "m" }), spawnY: f32(0, { unit: "m" }) });
@@ -49,8 +54,8 @@ export const Hero = defineComponent("Hero", { spawnX: f32(0, { unit: "m" }), spa
 /** A coin of the map's `coin` objects; taken once. */
 export const Coin = defineComponent("Coin", { taken: bool() });
 
-/** One of the keeper's feet: its IK target stays on the ramp `dx` from the keeper. */
-export const Plant = defineComponent("Plant", { dx: f32(0, { unit: "m" }) });
+/** One of the keeper's feet: its IK target stays on the ramp `dx` ahead of the keeper (behind when negative), `lag` of a gait cycle after the front foot. */
+export const Plant = defineComponent("Plant", { dx: f32(0, { unit: "m" }), lag: f32(0, { min: 0, max: 1 }) });
 
 /** A voice: the sound bit (Sound) it plays when Game.sfx asks for it. */
 export const Voice = defineComponent("Voice", { bit: u32() });
@@ -77,6 +82,19 @@ export const Game = defineResource("Game", {
   touchJump: bool(),
   /** The keeper's breaths: og.Skeleton2DEvent "inhale" (the idle clip's event at 0). */
   inhales: u32(),
+  /** The keeper's footfalls: og.Skeleton2DEvent "step" (the walk clip's, one per foot). */
+  steps: u32(),
+});
+
+/** Where the keeper walks (`keeper:<x>`), how far it has walked since it set off (its gait's phase), and its clips. */
+export const KeeperWalk = defineResource("KeeperWalk", {
+  goal: f32(6, { unit: "m" }),
+  walked: f32(0, { unit: "m" }),
+  walking: bool(),
+  /** -1 facing left (towards the spawn), 1 right. */
+  facing: f32(-1),
+  idle: u32(),
+  walk: u32(),
 });
 
 function must<T>(r: Result<T>): T {
@@ -181,27 +199,77 @@ export const Animate = defineSystem("Animate", { reads: [Hero, og.PlatformerCont
 });
 
 /**
- * Plants the keeper's feet on the ramp under them (og.IkTarget2D: the legs'
- * two-bone IK reaches the target, the knees bend as the hip bobs), keeps the
- * lantern's light at its hand, and counts the idle clip's breaths.
+ * Walks the keeper towards KeeperWalk.goal along the ramp at the gait's
+ * speed (by scaled time, as the clip plays: paused, both hold), facing the
+ * way it goes, with the walk clip; on arrival it faces the spawn again with
+ * the idle clip (which starts over, breathing in).
  */
-export const Plant2D = defineSystem("Plant", { reads: [Plant, og.Skeleton2DEvent], writes: [Game, og.IkTarget2D, og.Transform], after: ["Control"] }, (q, _time, world) => {
+export const Walk = defineSystem("Walk", { writes: [KeeperWalk, og.Skeleton2D, og.Transform], after: ["Control"] }, (_q, time, world) => {
+  const keeper = world.find("keeper");
+  if (keeper === null) return;
+  const w = must(world.resource(KeeperWalk));
+  const x = must(world.get(keeper, og.Transform)).position.x;
+  const left = w.goal - x;
+  if (left === 0 && !w.walking) return;
+  const step = WALK.speed * time.scaledDt;
+  const arrived = Math.abs(left) <= step;
+  const nx = arrived ? w.goal : x + Math.sign(left) * step;
+  w.walked = arrived ? 0 : (w.walking ? w.walked : 0) + Math.abs(nx - x);
+  w.walking = !arrived;
+  w.facing = arrived ? -1 : Math.sign(left);
+  must(world.set(keeper, og.Transform, { position: { x: nx, y: rampY(nx) + LIFT, z: 0 } }));
+  const s = must(world.get(keeper, og.Skeleton2D));
+  const clip = arrived ? w.idle : w.walk;
+  const flipX = w.facing < 0;
+  // Only what changed: a new clip starts at 0 (the idle clip's breath, the walk's first step).
+  if (s.clip !== clip || s.flipX !== flipX) must(world.set(keeper, og.Skeleton2D, { clip, flipX }));
+});
+
+/**
+ * Puts the keeper's feet on the ramp (og.IkTarget2D: the legs' two-bone IK
+ * reaches each target, the knees bend as the hip bobs). Standing, each foot
+ * is `dx` from the keeper; walking, the front foot's gait phase is the
+ * distance walked over the stride and the back foot's half a cycle later:
+ * for half a cycle a foot stays where it is on the plank while the keeper
+ * passes over it, for the other half it swings a stride forward, lifted on
+ * a parabola. Keeps the lantern's light at its hand, and counts the
+ * clips' breaths and footfalls.
+ */
+export const Plant2D = defineSystem("Plant", { reads: [Plant, KeeperWalk, og.Skeleton2DEvent], writes: [Game, og.IkTarget2D, og.Transform], after: ["Walk"] }, (q, _time, world) => {
   const keeper = world.find("keeper");
   if (keeper === null) return;
   const at = must(world.get(keeper, og.Transform)).position;
+  const w = must(world.resource(KeeperWalk));
   for (const a of q.archetypes()) {
     const plant = a.column(Plant);
     const target = a.column(og.IkTarget2D).target;
     for (let i = 0; i < a.count; i++) {
-      const x = at.x + plant.dx[i]!;
+      let ahead = plant.dx[i]!;
+      let lift = 0;
+      if (w.walking) {
+        const phase = w.walked / WALK.stride + plant.lag[i]!;
+        const p = phase - Math.floor(phase);
+        if (p < 0.5) {
+          // Planted: it slides back under the keeper as fast as the keeper walks.
+          ahead += WALK.stride * (0.25 - p);
+        } else {
+          const s = (p - 0.5) * 2;
+          ahead += WALK.stride * (s - 0.5) * 0.5;
+          lift = WALK.lift * 4 * s * (1 - s);
+        }
+      }
+      const x = at.x + w.facing * ahead;
       target[i * 2] = x;
-      target[i * 2 + 1] = rampY(x) + ANKLE;
+      target[i * 2 + 1] = rampY(x) + ANKLE + lift;
     }
   }
   const lantern = world.find("lantern");
-  if (lantern !== null) must(world.set(lantern, og.Transform, { position: { x: at.x + LANTERN.x, y: at.y + LANTERN.y, z: 0 } }));
+  if (lantern !== null) must(world.set(lantern, og.Transform, { position: { x: at.x - w.facing * LANTERN.x, y: at.y + LANTERN.y, z: 0 } }));
   const g = must(world.resource(Game));
-  for (const e of world.events(og.Skeleton2DEvent)) if (e.name === "inhale") g.inhales += 1;
+  for (const e of world.events(og.Skeleton2DEvent)) {
+    if (e.name === "inhale") g.inhales += 1;
+    else if (e.name === "step") g.steps += 1;
+  }
 });
 
 /** Plays each sound asked for once: a voice still playing is stopped this tick and played again the next. */
@@ -262,7 +330,8 @@ export const Hud = defineSystem("Hud", { writes: [Game] }, (_q, _time, world) =>
  */
 function spawnKeeper(world: World, rig: Rig2DInfo): void {
   const idle = og.anim.clip(rig, "idle");
-  if (idle < 0) throw new Error("rigs/keeper.ogt has no clip idle");
+  const walk = og.anim.clip(rig, "walk");
+  if (idle < 0 || walk < 0) throw new Error("rigs/keeper.ogt needs clips idle and walk");
   const mid = (RAMP.x0 + RAMP.x1) / 2;
   const plank = must(world.spawn({ name: "ramp", position: { x: mid, y: rampY(mid) - 0.2, z: 0 }, quaternion: { x: 0, y: 0, z: RAMP.sinHalf, w: RAMP.cosHalf } }));
   // The plank is a region of the keeper's texture (pixels 24..64 x 32..40 of 64 x 64).
@@ -270,12 +339,16 @@ function spawnKeeper(world: World, rig: Rig2DInfo): void {
   const x = 6;
   const keeper = must(world.spawn({ name: "keeper", position: { x, y: rampY(x) + LIFT, z: 0 } }));
   must(world.insert(keeper, og.Skeleton2D, { rig: rig.rig, clip: idle, flipX: true, layer: 1 }));
-  for (const [name, side] of [["leg-f", -0.15], ["leg-b", 0.15]] as const) {
+  const w = must(world.resource(KeeperWalk));
+  Object.assign(w, { goal: x, walked: 0, walking: false, facing: -1, idle, walk });
+  // Facing left, the front foot is the left one; the back foot steps half a cycle later.
+  for (const [name, ahead, lag] of [["leg-f", 0.15, 0], ["leg-b", -0.15, 0.5]] as const) {
     const constraint = rig.constraints.indexOf(name);
     if (constraint < 0) throw new Error(`rigs/keeper.ogt has no ik ${name}`);
+    const fx = x - ahead;
     const foot = must(world.spawn({ name: `keeper-${name}` }));
-    must(world.insert(foot, og.IkTarget2D, { skeleton: keeper, constraint, target: { x: x + side, y: rampY(x + side) + ANKLE }, tolerance: 0.02 }));
-    must(world.insert(foot, Plant, { dx: side }));
+    must(world.insert(foot, og.IkTarget2D, { skeleton: keeper, constraint, target: { x: fx, y: rampY(fx) + ANKLE }, tolerance: 0.02 }));
+    must(world.insert(foot, Plant, { dx: ahead, lag }));
   }
   const light = must(world.spawn({ name: "lantern", position: { x: x + LANTERN.x, y: rampY(x) + LIFT + LANTERN.y, z: 0 } }));
   must(world.insert(light, og.Light2D, { color: { r: 1, g: 0.72, b: 0.35 }, intensity: 1.6, radius: 4, castShadows: false }));
@@ -303,8 +376,8 @@ export default og.game({
   look: "looks/origin-game-2d.ogt",
   tick: 60,
   seed: 1,
-  resources: [Game],
-  systems: [Hud, Control, Pickups, Animate, Plant2D, Voices],
+  resources: [Game, KeeperWalk],
+  systems: [Hud, Control, Pickups, Animate, Walk, Plant2D, Voices],
   start(world) {
     const map = must(og.load.tilemap(world, "maps/level.ogt"));
     const courier = must(og.load.flipbook(world, "sprites/courier.ogt"));
@@ -368,21 +441,20 @@ export default og.game({
       if (hero === null || !Number.isFinite(x) || !Number.isFinite(y)) throw new Error("write warp:<x>:<y>");
       must(world.set(hero, og.Transform, { position: { x, y, z: 0 } }));
     },
-    /** `keeper:<x>`: walk the keeper along the ramp (its feet stay planted on it). */
+    /** `keeper:<x>`: send the keeper walking along the ramp to x (the Walk system moves it; its feet step on the plank). */
     keeper: (world, args) => {
-      const keeper = world.find("keeper");
       const x = Math.max(RAMP.x0 + 0.4, Math.min(RAMP.x1 - 0.4, Number(args[0])));
-      if (keeper === null || !Number.isFinite(x)) throw new Error("write keeper:<x>");
-      must(world.set(keeper, og.Transform, { position: { x, y: rampY(x) + LIFT, z: 0 } }));
+      if (world.find("keeper") === null || !Number.isFinite(x)) throw new Error("write keeper:<x>");
+      must(world.resource(KeeperWalk)).goal = x;
     },
   },
   commandHelp: {
     warp: { usage: "<x>:<y>", doc: "Put the courier's feet at a world point." },
-    keeper: { usage: "<x>", doc: "Move the lamp keeper along its ramp." },
+    keeper: { usage: "<x>", doc: "Send the lamp keeper walking along its ramp to x." },
   },
   facts: (world) => {
     const g = world.resource(Game);
     if (!g.ok) return {};
-    return { coins: g.value.coins, total: g.value.total, lives: g.value.lives, won: g.value.won, inhales: g.value.inhales, x: g.value.heroX, y: g.value.heroY };
+    return { coins: g.value.coins, total: g.value.total, lives: g.value.lives, won: g.value.won, inhales: g.value.inhales, steps: g.value.steps, x: g.value.heroX, y: g.value.heroY };
   },
 });

@@ -1,10 +1,12 @@
 //! The `og.skeleton2d` system: plays 2D rigs ([`crate::Rig2dAsset`]) on
 //! `og.Skeleton2D` components by the scaled tick, fires their clip events
 //! as `og.Skeleton2DEvent`, and solves each `og.IkTarget2D` against its
-//! skeleton's pose to write `reached` and `error`. The pose itself is a
-//! function of the component (rig, clip, time, flipX), its og.Transform and
-//! its IK targets ([`skeleton_pose`]), so extraction draws it from the same
-//! inputs and nothing visual is kept as state.
+//! skeleton's pose to write `reached` and `error`, and keeps the bounding
+//! boxes each pose shows ([`Skeleton2dSystem::boxes`], part of its state
+//! block) for og.anim.skeleton2dBoxes. The pose itself is a function of the
+//! component (rig, clip, time, flipX), its og.Transform and its IK targets
+//! ([`skeleton_pose`]), so extraction draws it from the same inputs and
+//! nothing visual is kept as state.
 
 use crate::rig2d::{Affine2, Pose2d, Rig2dAsset, atan2};
 use crate::schema::Transform;
@@ -89,7 +91,8 @@ pub struct IkTarget2D {
     /// Where the chain should reach, in the frame the skeleton's og.Transform is written in.
     #[reflect(unit = "m")]
     pub target: Vec2,
-    /// How much of the solve applies (0 the animated pose, 1 solved).
+    /// How much of the solve applies (0 the animated pose, 1 solved), times
+    /// the constraint's own weight (its `weight` line or its clip's IK keys).
     #[reflect(min = 0, max = 1, default = 1, tunable)]
     pub weight: f32,
     /// The distance at which the target counts as reached.
@@ -144,6 +147,16 @@ pub fn skeleton_pose(
     rig.pose(rig.clips.get(s.clip as usize), s.time, &t)
 }
 
+/// A bounding box a skeleton's pose showed: its slot (`slot/child-slot`
+/// inside a child armature), its attachment's name and its polygon in the
+/// frame the skeleton's og.Transform is written in.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Skeleton2dBox {
+    pub slot: String,
+    pub name: String,
+    pub points: Vec<Vec2>,
+}
+
 /// Per entity: what it played last tick, to tell a new clip or a seek.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 struct Playback {
@@ -156,6 +169,8 @@ struct Playback {
 struct Shared {
     rigs: BTreeMap<u64, Arc<Rig2dAsset>>,
     playback: BTreeMap<u64, Playback>,
+    /// Per skeleton whose rig has boxes: the boxes its last pose showed.
+    boxes: BTreeMap<u64, Vec<Skeleton2dBox>>,
 }
 
 fn lock(m: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
@@ -180,6 +195,13 @@ impl Skeleton2dSystem {
 
     pub fn rig(&self, handle: u64) -> Option<Arc<Rig2dAsset>> {
         lock(&self.shared).rigs.get(&handle).cloned()
+    }
+
+    /// The bounding boxes skeleton `entity` (its bits) showed when
+    /// og.skeleton2d last posed it; `None` before that, or when it has no
+    /// og.Skeleton2D with a loaded rig.
+    pub fn boxes(&self, entity: u64) -> Option<Vec<Skeleton2dBox>> {
+        lock(&self.shared).boxes.get(&entity).cloned()
     }
 }
 
@@ -220,7 +242,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     let mut sh = lock(shared);
     let mut events = Vec::new();
     let mut seen = std::collections::BTreeSet::new();
-    for e in skeletons {
+    for &e in &skeletons {
         let key = e.to_bits();
         let mut s: Skeleton2D = ctx.get(e)?;
         let Some(rig) = sh.rigs.get(&s.rig).cloned() else {
@@ -312,21 +334,26 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
         );
     }
     sh.playback.retain(|k, _| seen.contains(k));
-    // Each IK target against its skeleton's pose at the new time.
+    // Each skeleton with IK targets or boxes posed at the new time: the
+    // targets' `reached` and `error`, and the boxes the pose shows.
     let mut by_skeleton: BTreeMap<u64, Vec<(Entity, IkTarget2D)>> = BTreeMap::new();
     for e in targets {
         let t: IkTarget2D = ctx.get(e)?;
         by_skeleton.entry(t.skeleton).or_default().push((e, t));
     }
-    for (skel, list) in by_skeleton {
-        let entity = Entity::from_bits(skel);
-        let Ok(s) = ctx.get::<Skeleton2D>(entity) else {
-            continue;
-        };
+    let mut boxes = BTreeMap::new();
+    for e in skeletons {
+        let key = e.to_bits();
+        let list = by_skeleton.remove(&key).unwrap_or_default();
+        let s: Skeleton2D = ctx.get(e)?;
         let Some(rig) = sh.rigs.get(&s.rig).cloned() else {
             continue;
         };
-        let place = ctx.get::<Transform>(entity).unwrap_or_default();
+        let has_boxes = rig.has_boxes();
+        if list.is_empty() && !has_boxes {
+            continue;
+        }
+        let place = ctx.get::<Transform>(e).unwrap_or_default();
         let frame = skeleton_frame(&rig, &place, s.flip_x);
         let goals: Vec<(u32, Vec2, f32)> = list
             .iter()
@@ -343,7 +370,24 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
             t.reached = t.error <= t.tolerance;
             ctx.set(e, t)?;
         }
+        if has_boxes {
+            let shown = rig
+                .boxes(&pose)
+                .into_iter()
+                .map(|b| Skeleton2dBox {
+                    slot: b.slot,
+                    name: b.name,
+                    points: b
+                        .points
+                        .iter()
+                        .map(|p| Vec2::from(frame.apply_to(*p)))
+                        .collect(),
+                })
+                .collect();
+            boxes.insert(key, shown);
+        }
     }
+    sh.boxes = boxes;
     drop(sh);
     for ev in events {
         ctx.send(ev)?;
@@ -352,6 +396,43 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
 }
 
 struct SkeletonState(Arc<Mutex<Shared>>);
+
+/// Reads the state block's little-endian fields in order.
+struct Reader<'a> {
+    bytes: &'a [u8],
+    at: usize,
+}
+
+impl Reader<'_> {
+    fn bad() -> Error {
+        Error::new(ErrorKind::Parse, "og.skeleton2d state block: truncated")
+    }
+
+    fn take(&mut self, n: usize) -> Result<&[u8]> {
+        let b = self
+            .bytes
+            .get(self.at..self.at + n)
+            .ok_or_else(Reader::bad)?;
+        self.at += n;
+        Ok(b)
+    }
+
+    fn u32(&mut self) -> Result<u32> {
+        Ok(u32::from_le_bytes(self.take(4)?.try_into().expect("4")))
+    }
+
+    fn u64(&mut self) -> Result<u64> {
+        Ok(u64::from_le_bytes(self.take(8)?.try_into().expect("8")))
+    }
+
+    fn text(&mut self) -> Result<String> {
+        let len = self.u32()? as usize;
+        String::from_utf8(self.take(len)?.to_vec()).map_err(|_| Reader::bad())
+    }
+}
+
+/// The state block's contents: the playback and the boxes.
+type Saved = (BTreeMap<u64, Playback>, BTreeMap<u64, Vec<Skeleton2dBox>>);
 
 impl StateBlock for SkeletonState {
     fn save(&self, out: &mut Vec<u8>) {
@@ -363,36 +444,73 @@ impl StateBlock for SkeletonState {
             out.extend_from_slice(&p.clip.to_le_bytes());
             out.extend_from_slice(&p.time.to_le_bytes());
         }
+        out.extend_from_slice(&(sh.boxes.len() as u32).to_le_bytes());
+        let text = |out: &mut Vec<u8>, s: &str| {
+            out.extend_from_slice(&(s.len() as u32).to_le_bytes());
+            out.extend_from_slice(s.as_bytes());
+        };
+        for (k, list) in &sh.boxes {
+            out.extend_from_slice(&k.to_le_bytes());
+            out.extend_from_slice(&(list.len() as u32).to_le_bytes());
+            for b in list {
+                text(out, &b.slot);
+                text(out, &b.name);
+                out.extend_from_slice(&(b.points.len() as u32).to_le_bytes());
+                for p in &b.points {
+                    out.extend_from_slice(&p.x.to_le_bytes());
+                    out.extend_from_slice(&p.y.to_le_bytes());
+                }
+            }
+        }
     }
 
     fn decode(&self, bytes: &[u8]) -> Result<Box<dyn Any + Send>> {
-        let bad = || Error::new(ErrorKind::Parse, "og.skeleton2d state block: truncated");
-        let n =
-            u32::from_le_bytes(bytes.get(0..4).ok_or_else(bad)?.try_into().expect("4")) as usize;
-        if bytes.len() != 4 + n * 24 {
-            return Err(bad());
-        }
-        let mut map = BTreeMap::new();
-        for i in 0..n {
-            let b = &bytes[4 + i * 24..4 + (i + 1) * 24];
-            map.insert(
-                u64::from_le_bytes(b[0..8].try_into().expect("8")),
+        let mut r = Reader { bytes, at: 0 };
+        let n = r.u32()?;
+        let mut playback = BTreeMap::new();
+        for _ in 0..n {
+            let key = r.u64()?;
+            playback.insert(
+                key,
                 Playback {
-                    rig: u64::from_le_bytes(b[8..16].try_into().expect("8")),
-                    clip: u32::from_le_bytes(b[16..20].try_into().expect("4")),
-                    time: f32::from_le_bytes(b[20..24].try_into().expect("4")),
+                    rig: r.u64()?,
+                    clip: r.u32()?,
+                    time: f32::from_bits(r.u32()?),
                 },
             );
         }
-        Ok(Box::new(map))
+        let mut boxes = BTreeMap::new();
+        for _ in 0..r.u32()? {
+            let key = r.u64()?;
+            let mut list = Vec::new();
+            for _ in 0..r.u32()? {
+                let slot = r.text()?;
+                let name = r.text()?;
+                let points = (0..r.u32()?)
+                    .map(|_| {
+                        Ok(Vec2::new(
+                            f32::from_bits(r.u32()?),
+                            f32::from_bits(r.u32()?),
+                        ))
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                list.push(Skeleton2dBox { slot, name, points });
+            }
+            boxes.insert(key, list);
+        }
+        if r.at != bytes.len() {
+            return Err(Reader::bad());
+        }
+        let saved: Saved = (playback, boxes);
+        Ok(Box::new(saved))
     }
 
     fn apply(&mut self, decoded: Option<Box<dyn Any + Send>>) {
-        lock(&self.0).playback = decoded
-            .map(|d| {
-                *d.downcast::<BTreeMap<u64, Playback>>()
-                    .expect("decoded by SkeletonState")
-            })
+        let (playback, boxes) = decoded
+            .map(|d| *d.downcast::<Saved>().expect("decoded by SkeletonState"))
             .unwrap_or_default();
+        let mut sh = lock(&self.0);
+        sh.playback = playback;
+        sh.boxes = boxes;
     }
 }

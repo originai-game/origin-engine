@@ -630,6 +630,10 @@ impl AnimApi for WebHost {
         rt::og_anim_rig2d_info(world, rig)
     }
 
+    fn og_anim_skeleton2d_boxes(&self, world: u32, entity: f64) -> String {
+        rt::og_anim_skeleton2d_boxes(world, entity)
+    }
+
     fn og_anim_retarget(&self, world: u32, desc: Option<String>) -> String {
         rt::og_anim_retarget(world, desc)
     }

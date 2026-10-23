@@ -978,9 +978,8 @@ mod tests {
         };
         scene.sprites = vec![at(0.0, 2), at(1.0, 0), at(2.0, 1)];
         let corner = SpriteMeshVertex {
-            position: Vec3::ZERO,
-            uv: glam::Vec2::ZERO,
             color: [1.0; 4],
+            ..Default::default()
         };
         // Layer 1, after the layer's sprites (key 1 > their 0); two triangles.
         scene.sprite_meshes = vec![SpriteMesh {

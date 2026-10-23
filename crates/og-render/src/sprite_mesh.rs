@@ -5,8 +5,9 @@
 //! sprite order (`RunSource::Mesh`, keyed by its layer and sort key as a
 //! sprite is), drawn from one vertex buffer of triangle corners through
 //! pipeline variants of the sprite module (`shaders/sprite_mesh.wgsl`'s
-//! `vs_mesh` with sprite.wgsl's `fs`), so 2D lighting, fog and the sprite
-//! texture groups and samplers are the sprites' own. Made on the first
+//! `vs_mesh` and `fs_mesh`, which colours a texel as sprite.wgsl's `fs`
+//! does and adds the corner's colour offset), so 2D lighting, fog and the
+//! sprite texture groups and samplers are the sprites' own. Made on the first
 //! frame that draws one, so a renderer that never does pays nothing.
 
 use crate::RenderError;
@@ -17,13 +18,15 @@ use glam::{Vec2, Vec3};
 pub(crate) const SPRITE_MESH_WGSL: &str = wgsl!("sprite_mesh.wgsl");
 
 /// One corner of a [`SpriteMesh`]: a world position, its uv in the mesh's
-/// texture (v down, the image's first row is v = 0) and its linear RGBA,
-/// multiplied with the texel.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// texture (v down, the image's first row is v = 0), its linear RGBA
+/// multiplied with the texel and its RGBA `offset` added after that (a 2D
+/// skeleton slot's colour offset; zero leaves the texel as multiplied).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct SpriteMeshVertex {
     pub position: Vec3,
     pub uv: Vec2,
     pub color: [f32; 4],
+    pub offset: [f32; 4],
 }
 
 /// Textured triangles drawn in the sprite order: at `layer` (lit by 2D
@@ -63,12 +66,13 @@ pub(crate) struct MeshVertex {
     uv: [f32; 2],
     color: [f32; 4],
     lit: f32,
+    offset: [f32; 4],
 }
 
 const MESH_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: std::mem::size_of::<MeshVertex>() as u64,
     step_mode: wgpu::VertexStepMode::Vertex,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32],
+    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32, 4 => Float32x4],
 };
 
 pub(crate) const MESH_STRIDE: u64 = std::mem::size_of::<MeshVertex>() as u64;
@@ -121,6 +125,7 @@ pub(crate) fn vertices(scene: &RenderScene, lit: impl Fn(i32) -> bool) -> Vec<Me
                 uv: v.uv.to_array(),
                 color: v.color,
                 lit,
+                offset: v.offset,
             }
         }));
     }
@@ -160,7 +165,7 @@ impl SpriteMeshRenderer {
                     layout: &pl,
                     module: &module,
                     vs: "vs_mesh",
-                    fs: "fs",
+                    fs: "fs_mesh",
                     buffers: &buffers,
                     cull: None,
                     depth_write: false,
@@ -234,9 +239,8 @@ mod tests {
         SpriteMesh {
             vertices: vec![
                 SpriteMeshVertex {
-                    position: Vec3::ZERO,
-                    uv: Vec2::ZERO,
                     color: [1.0; 4],
+                    ..Default::default()
                 };
                 3
             ],
