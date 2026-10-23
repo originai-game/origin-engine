@@ -803,3 +803,79 @@ fn capture_is_bounded_and_cancellable() {
         .expect("within the bound");
     assert_eq!(center(&image), [0, 255, 0]);
 }
+
+/// A frame presented elsewhere (the web host's canvas) reaches the
+/// offscreen target a capture reads (`Renderer::keep_texture`, what
+/// `set_keep_frame` does to each presented frame): a capture after it
+/// answers that frame, not the last offscreen draw. Without the copy (the
+/// web host before) `Capture::frame` had nothing to read.
+#[test]
+fn a_kept_frame_is_what_a_capture_reads() {
+    let desc = RenderDesc {
+        width: 64,
+        height: 32,
+        ..scenes::base_desc()
+    };
+    let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+    renderer
+        .render(&RenderScene::new(), &RenderTarget::Offscreen)
+        .expect("render");
+    let drawn = renderer.read_offscreen().expect("capture");
+    // The "presented" frame: a gradient no scene draws.
+    let (w, h) = renderer.size();
+    let format = renderer.output_format();
+    let swizzle = matches!(
+        format,
+        og_render::wgpu::TextureFormat::Bgra8Unorm | og_render::wgpu::TextureFormat::Bgra8UnormSrgb
+    );
+    let mut rgba = Vec::new();
+    for y in 0..h {
+        for x in 0..w {
+            rgba.extend([(x * 4) as u8, (y * 8) as u8, 200, 255]);
+        }
+    }
+    let texels: Vec<u8> = if swizzle {
+        rgba.chunks(4)
+            .flat_map(|p| [p[2], p[1], p[0], p[3]])
+            .collect()
+    } else {
+        rgba.clone()
+    };
+    let texture = renderer
+        .device()
+        .create_texture(&og_render::wgpu::TextureDescriptor {
+            label: Some("presented"),
+            size: og_render::wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: og_render::wgpu::TextureDimension::D2,
+            format,
+            usage: og_render::wgpu::TextureUsages::COPY_SRC
+                | og_render::wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+    renderer.queue().write_texture(
+        texture.as_image_copy(),
+        &texels,
+        og_render::wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(w * 4),
+            rows_per_image: Some(h),
+        },
+        texture.size(),
+    );
+    renderer.keep_texture(&texture);
+    let kept = renderer.read_offscreen().expect("capture");
+    assert_ne!(
+        kept.pixels, drawn.pixels,
+        "the capture still reads the last offscreen draw"
+    );
+    assert_eq!((kept.width, kept.height), (w, h));
+    assert_eq!(kept.pixels, rgba, "the kept frame, row for row");
+    // A renderer without a surface draws offscreen already: refused.
+    assert!(renderer.set_keep_frame(true).is_err());
+}

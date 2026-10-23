@@ -49,6 +49,18 @@ try {
   const engineTickMs = (performance.now() - tb) / 2000;
   const frames: unknown[] = [];
   for (let i = 0; i < 3; i++) frames.push(await shell.call("frame", 0));
+  // og render's every-frame capture on the web (the probe's Capture::frame):
+  // the first ask turns it on, the next frame is kept, its readback lands.
+  await shell.call("renderFrame");
+  await shell.call("frame", 0);
+  let kept: Uint8Array | null = null;
+  for (let i = 0; i < 100 && !kept; i++) {
+    kept = (await shell.call("renderFrame")) as Uint8Array | null;
+    if (!kept) await new Promise((r) => setTimeout(r, 10));
+  }
+  let lit = 0;
+  for (let i = 0; kept && i < kept.length; i += 4) if (kept[i]! + kept[i + 1]! + kept[i + 2]! > 24) lit++;
+  const renderFrame = { bytes: kept?.length ?? 0, expected: canvas.width * canvas.height * 4, lit };
   await post({
     host: "web",
     userAgent: navigator.userAgent,
@@ -66,6 +78,10 @@ try {
     inputAccepted: after - before,
     views: { rawLoopMs: +rawLoopMs.toFixed(4), engineTickMs: +engineTickMs.toFixed(4), ratio: +(engineTickMs / rawLoopMs).toFixed(2) },
     frames,
+    renderFrame,
+    ...(renderFrame.bytes !== renderFrame.expected || renderFrame.lit === 0
+      ? { error: `renderFrame: ${renderFrame.bytes} bytes for ${renderFrame.expected}, ${renderFrame.lit} lit pixels` }
+      : {}),
   });
 } catch (e) {
   await post({ host: "web", error: e instanceof Error ? `${e.message}\n${e.stack}` : String(e) });

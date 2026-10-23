@@ -559,6 +559,21 @@ pub fn og_web_warm(engine: u32) -> bool {
     og_runtime::warm_renderer(engine)
 }
 
+/// `og render`'s every-frame capture on the web, as the native host's
+/// `og_node_render_frame` (development only): the display frame drawn last
+/// as RGBA8 rows at the canvas's size, read back without drawing it again
+/// (the probe's `Capture::frame`). Empty until its readback lands: the
+/// first call turns the keeping of presented frames on, and a later one
+/// answers once that frame's copy has landed, so the Worker asks again
+/// before it draws the next frame.
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_web_render_frame(engine: u32) -> Vec<u8> {
+    og_runtime::render_frame(engine)
+        .map(|f| f.rgba)
+        .unwrap_or_default()
+}
+
 /// The lanes the module got, as JSON (og-runtime's `lanes_report`: on,
 /// threads, pool, why, parallelCalls, parallelItems, sites): the engine Worker's
 /// `lanes` call, so a publish page without the probe's commands can see them.
@@ -629,6 +644,20 @@ mod canvas {
         missing: u32,
         /// The last frame's `FrameStats::triangles`.
         triangles: u64,
+        /// Display frames drawn so far.
+        drawn: u64,
+        /// The readback of the last display frame (`og render`'s
+        /// every-frame capture, `Capture::frame`): started by the frame
+        /// once a reader has asked (the renderer keeps each presented frame
+        /// offscreen from then on), answered once it lands.
+        kept: Option<Kept>,
+    }
+
+    struct Kept {
+        /// The display frame it reads.
+        drawn: u64,
+        req: Option<og_render::CaptureRequest>,
+        image: Option<RgbaImage>,
     }
 
     struct Pending {
@@ -677,7 +706,37 @@ mod canvas {
                     self.missing = s.missing_glyphs;
                     self.triangles = s.triangles;
                 })
-                .map_err(|e| e.to_string())
+                .map_err(|e| e.to_string())?;
+            self.drawn += 1;
+            // A reader of every frame: this one's readback starts now (the
+            // renderer copied it offscreen before presenting it).
+            if self.renderer.keeps_frame() {
+                self.kept = Some(Kept {
+                    drawn: self.drawn,
+                    req: self.renderer.begin_capture().ok(),
+                    image: None,
+                });
+            }
+            Ok(())
+        }
+        /// The display frame drawn last, once its readback has landed: the
+        /// first call turns keeping on (and answers none: that frame was
+        /// not kept), each later frame starts its own readback, and a call
+        /// before it lands answers none (the reader asks again before the
+        /// next frame, as a deferred capture does).
+        fn read_frame(&mut self) -> Option<RgbaImage> {
+            if !self.renderer.keeps_frame() {
+                let _ = self.renderer.set_keep_frame(true);
+                return None;
+            }
+            let k = self.kept.as_mut().filter(|k| k.drawn == self.drawn)?;
+            if let Some(image) = &k.image {
+                return Some(image.clone());
+            }
+            let image = k.req.as_mut()?.try_finish(&self.renderer).ok()??;
+            k.req = None;
+            k.image = Some(image.clone());
+            Some(image)
         }
         fn missing_glyphs(&self) -> u32 {
             self.missing
@@ -798,6 +857,8 @@ mod canvas {
                 renderer,
                 tier: tier.clone(),
                 pending: Vec::new(),
+                drawn: 0,
+                kept: None,
                 missing: 0,
                 triangles: 0,
             })),

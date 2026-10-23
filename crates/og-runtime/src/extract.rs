@@ -107,8 +107,10 @@ pub trait RenderBackend {
         false
     }
     /// The last frame `render` drew, read back without drawing it again
-    /// (`og render`'s every-frame capture); `None` where the readback cannot
-    /// block (the web) or nothing was drawn.
+    /// (`og render`'s every-frame capture); `None` when nothing was drawn,
+    /// or on the web until that frame's readback has landed (the canvas's
+    /// frames are kept offscreen once a reader asked; ask again before the
+    /// next frame).
     fn read_frame(&mut self) -> Option<og_render::RgbaImage> {
         None
     }

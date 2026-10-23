@@ -10,6 +10,12 @@
 //! [`Renderer::capture`] future) cancels it and frees the buffer. In the
 //! browser the mapping completes from the event loop (WebGPU's `mapAsync`)
 //! or on the next submit or [`Renderer::poll`] (WebGL2).
+//!
+//! A renderer that presents to a surface (the web host's canvas) draws its
+//! frames there, not offscreen: [`Renderer::set_keep_frame`] has each
+//! presented frame copied into the offscreen target as well, so a capture
+//! started after it reads the frame the loop drew (`og render`'s
+//! every-frame capture on the web, through the probe's `Capture::frame`).
 
 use crate::{RenderError, Renderer, RgbaImage};
 use std::future::Future;
@@ -165,6 +171,60 @@ impl Renderer {
     /// captures on WebGL2 when no frame is being submitted.
     pub fn poll(&self) {
         let _ = self.device.poll(wgpu::PollType::Poll);
+    }
+
+    /// Keep each frame presented to the surface in the offscreen target too
+    /// (one copy per frame), so [`Renderer::begin_capture`] reads the frame
+    /// the loop drew. Refused when the surface cannot be copied from (its
+    /// device lacks `COPY_SRC` on surfaces) or there is no surface (a
+    /// headless renderer draws offscreen already).
+    pub fn set_keep_frame(&mut self, on: bool) -> Result<(), RenderError> {
+        let Some((_, config)) = &self.surface else {
+            return Err(RenderError::Unsupported(
+                "keep_frame on a renderer without a surface (it draws offscreen)".into(),
+            ));
+        };
+        if on && !config.usage.contains(wgpu::TextureUsages::COPY_SRC) {
+            return Err(RenderError::Unsupported(
+                "this device's surface frames cannot be copied (no COPY_SRC)".into(),
+            ));
+        }
+        self.keep_frame = on;
+        Ok(())
+    }
+
+    /// Whether presented frames are kept offscreen ([`Renderer::set_keep_frame`]).
+    pub fn keeps_frame(&self) -> bool {
+        self.keep_frame
+    }
+
+    /// Copies `frame` (a texture of the output's size and format, with
+    /// `COPY_SRC`) into the offscreen target now: what each presented frame
+    /// goes through with [`Renderer::set_keep_frame`], for a host that
+    /// draws its frames elsewhere.
+    pub fn keep_texture(&self, frame: &wgpu::Texture) {
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("keep frame"),
+            });
+        self.keep_presented(&mut encoder, frame);
+        self.queue.submit(Some(encoder.finish()));
+    }
+
+    /// Encodes the copy of a presented surface frame into the offscreen
+    /// target (the same size and format: both follow the output).
+    pub(crate) fn keep_presented(&self, encoder: &mut wgpu::CommandEncoder, frame: &wgpu::Texture) {
+        let size = wgpu::Extent3d {
+            width: self.out_width.min(frame.width()),
+            height: self.out_height.min(frame.height()),
+            depth_or_array_layers: 1,
+        };
+        encoder.copy_texture_to_texture(
+            frame.as_image_copy(),
+            self.persistent.offscreen.as_image_copy(),
+            size,
+        );
     }
 
     /// Starts a capture of the last frame drawn to

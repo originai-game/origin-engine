@@ -20,7 +20,7 @@ pub fn render_frame(id: u32) -> Result<og_probe::RawFrame, String> {
         .try_borrow_mut()
         .map_err(|_| "the probe is busy; read the frame between frames".to_string())?;
     probe.frame_rgba().ok_or_else(|| {
-        "no frame to read: the engine has no renderer that reads back, or no frame was drawn yet"
+        "no frame to read: the engine has no renderer, no frame was drawn yet, or (the web) the last frame's readback has not landed: ask again before the next frame"
             .to_string()
     })
 }
