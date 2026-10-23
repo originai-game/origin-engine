@@ -245,6 +245,42 @@ changes by stream:
 - `geometry-video` (first item): the `debug-overlay` gfx scene draws two
   `og.debug.text` labels. The og-cli doctor tests clear `OG_TSRS` and
   `OG_ENGINE_PACKAGE` themselves and skip an installed tsrs.
+- `render-light`: every loaded scene's bake draws (each mesh binds its
+  own scene's pages); the physical, array, material-shader and compact
+  batches draw lightmaps and light volumes; rect lights light terrain,
+  scatter and fluids through LTC and cast shadows (`RectLight.castShadow`,
+  a 150° view from the centre read as PCSS); `RenderCapabilities.
+  maxLightCookies` (24) with a warning naming the lights left without;
+  the WebGL2 raymarch is lit by point, spot and rect lights
+  (`RenderCapabilities.volumetricLights`, 8); froxels take eight jittered
+  depth samples (no column streaks). Gfx scene `baked-batches`.
+- `geometry-video`: the cook builds each model's raycast BVH (`model {
+  raycast false }` opts out; `og cook --report` shows `bvhBytes`); tubes
+  along an `og.path` space their rings by arc length; timelines hot
+  reload; music voices loop (`looping`); per-player video textures; web
+  frame capture; video on a mesh's material map and an `og.ui` image.
+- `two-d-math`: the DragonBones import carries skew, colour offsets,
+  zOrder, IK timelines, nested armatures, bounding boxes
+  (`og.anim.skeleton2dBoxes`) and Bézier curves; IK over chains of any
+  length (one and two bones keep their exact solvers, longer chains
+  FABRIK). Behaviour change: `og.IkTarget2D.weight` multiplies the
+  constraint's own weight; it used to replace it. The game-2d template's
+  lamp keeper walks (`keeper:<x>`, feet planted by IK).
+- `probe-rooms`: trace spans carry their real starts (systems, passes,
+  og-lanes jobs on their lane threads, cook outputs); GPU pass timing
+  through timestamp queries (`ProbeTimings.gpuPasses`, the trace's gpu
+  thread, `RenderCapabilities.gpuTimestamps`; every pass writes its own
+  pair, resolved once the frame is done, so Metal reads real numbers);
+  the web trace (the shell's `trace()`/`saveTrace()`, the play page's
+  `?trace`); scene write-back to each instantiated scene's own `.ogt`
+  with spawned entities under a marked section (`resource <Name> { }`
+  scene entries); opaque UI backgrounds count in `describe`'s occlusion;
+  `cook --report` figures for every asset type with new budgets
+  (`soundSeconds`, `videoSeconds`, `fontGlyphs`, `navPolygons`,
+  `sceneEntities`, `emitterParticles`); room playtests take `then` and
+  `quit` (a lockstep gate's restore no longer moves scheduled steps);
+  `?room=<id>` Play links (`RoomInfo.link`); the arena archetype polished
+  to taste 100 / feel 66.
 
 ## 0.2.0 (2026-10-23)
 

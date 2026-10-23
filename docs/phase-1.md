@@ -6118,9 +6118,25 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   re-recorded per merge (89af43d4, 7f5d7bd9, 50f1dafd), each frame read.
 - Functional gate at 50f1dafd: PASS 5/5 in 200 s (fmt 2 s, clippy 13 s,
   test 196 s, drift 71 s, bun-functional 99 s).
-- Running: `render-light`, `geometry-video`, `probe-rooms`; then
-  `two-d-math`. The wave's end (`scripts/wave-end.sh`) once after the
-  last merge.
+- Second batch merged: `render-light` (941f01d1), `geometry-video`
+  (001f1818), `two-d-math` (b0b8c4ee; `IkTarget2D.weight` now multiplies
+  the constraint's weight, kept as a behaviour change), `probe-rooms`
+  (c373e511; api.ogt and og-runtime's api.rs resolved by hand,
+  `gpuTimestamps` beside render-light's capabilities). Metal references
+  re-recorded and read per merge; the cook_report test takes the intro's
+  ninth track (05ac0003).
+- Found on Metal after the probe-rooms merge: every GPU pass read 0 ms.
+  Apple GPUs sample counters only at an encoder's own stage boundaries
+  (the empty marker pass sampled nothing, a working one measured
+  itself) and the samples complete only with the command buffer (a
+  resolve encoded in the frame read zeros and stale values). Fixed in
+  0d2d92d2: the frame's encoder is `timing::Encoder`, every pass writes
+  its own pair, a graph pass is reported in queue order, and the resolve
+  is submitted on `on_submitted_work_done`. The trace fixture's 20
+  frames all time on an M-series (main 0.2 ms, taa 0.2 ms, tonemap
+  0.04 ms); the 60 gfx references are unmoved.
+- Every stream is merged. The wave's end (`scripts/wave-end.sh`) once
+  after the functional gate of this batch.
 - Left for a later round: a list column in records (og-core; eight
   custom post slots until then), the raycast's per-tick hierarchy
   refresh, rollback and the platform's ask #16, og-ui's nine-slice band
