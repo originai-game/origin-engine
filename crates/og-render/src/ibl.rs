@@ -51,7 +51,12 @@ pub struct Ibl {
     pub sampler: wgpu::Sampler,
 }
 
-pub(crate) fn cube_texture(device: &wgpu::Device, label: &str, size: u32, mips: u32) -> wgpu::Texture {
+pub(crate) fn cube_texture(
+    device: &wgpu::Device,
+    label: &str,
+    size: u32,
+    mips: u32,
+) -> wgpu::Texture {
     device.create_texture(&wgpu::TextureDescriptor {
         label: Some(label),
         size: wgpu::Extent3d {
@@ -625,12 +630,22 @@ impl IblGenerator {
         };
         let captured = cube_view(capture, "probe capture");
         for face in 0..6 {
-            push(face_view(radiance, face, 0), COPY, &captured, Params { face, ..base });
+            push(
+                face_view(radiance, face, 0),
+                COPY,
+                &captured,
+                Params { face, ..base },
+            );
         }
         for mip in 1..mips {
             let above = cube_view_mips(radiance, "probe above", mip - 1, 1);
             for face in 0..6 {
-                push(face_view(radiance, face, mip), DOWN, &above, Params { face, ..base });
+                push(
+                    face_view(radiance, face, mip),
+                    DOWN,
+                    &above,
+                    Params { face, ..base },
+                );
             }
         }
         let full = cube_view(radiance, "probe radiance");
@@ -658,7 +673,11 @@ impl IblGenerator {
     }
 
     /// Records `filter`'s passes (after the capture's).
-    pub(crate) fn record_probe_filter(&self, encoder: &mut wgpu::CommandEncoder, filter: &ProbeFilter) {
+    pub(crate) fn record_probe_filter(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        filter: &ProbeFilter,
+    ) {
         for (target, pipeline, group) in &filter.draws {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("probe filter"),

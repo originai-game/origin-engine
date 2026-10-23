@@ -115,7 +115,9 @@ impl ReflectionProbe {
         [
             lo.extend(1.0).to_array(),
             hi.extend(self.intensity.max(0.0)).to_array(),
-            self.position.extend(self.blend_distance.max(0.0)).to_array(),
+            self.position
+                .extend(self.blend_distance.max(0.0))
+                .to_array(),
         ]
     }
 }
@@ -348,9 +350,13 @@ impl Probes {
             .take(MAX_REFLECTION_PROBES)
             .copied()
             .collect();
-        let own = |p: &ReflectionProbe| !(p.mode == ProbeMode::Baked && p.baked.is_some_and(&baked));
-        self.slots
-            .retain(|s| active.iter().any(|p| p.id == s.id && own(p) && p.face_size() == s.size && samples == s.samples));
+        let own =
+            |p: &ReflectionProbe| !(p.mode == ProbeMode::Baked && p.baked.is_some_and(&baked));
+        self.slots.retain(|s| {
+            active
+                .iter()
+                .any(|p| p.id == s.id && own(p) && p.face_size() == s.size && samples == s.samples)
+        });
         for (i, p) in active.iter().enumerate() {
             if !own(p) {
                 frame.active.push((*p, None));
@@ -359,15 +365,23 @@ impl Probes {
             let slot = match self.slots.iter().position(|s| s.id == p.id) {
                 Some(s) => s,
                 None => {
-                    self.slots
-                        .push(ProbeSlot::new(device, queue, ibl, p.id, p.face_size(), samples));
+                    self.slots.push(ProbeSlot::new(
+                        device,
+                        queue,
+                        ibl,
+                        p.id,
+                        p.face_size(),
+                        samples,
+                    ));
                     self.slots.len() - 1
                 }
             };
             let due = match (p.mode, self.slots[slot].captured) {
                 (_, None) => true,
                 (ProbeMode::Baked, Some(_)) => false,
-                (ProbeMode::Realtime, Some(at)) => tick.saturating_sub(at) >= p.interval as u64 || tick < at,
+                (ProbeMode::Realtime, Some(at)) => {
+                    tick.saturating_sub(at) >= p.interval as u64 || tick < at
+                }
             };
             if due {
                 frame.due.push((slot, i));
@@ -375,10 +389,14 @@ impl Probes {
             frame.active.push((*p, Some(slot)));
         }
         let slots = frame.active.len() + 6 * frame.due.len();
-        let stride = (std::mem::size_of::<FrameUniform>() as u64).next_multiple_of(
-            device.limits().min_uniform_buffer_offset_alignment as u64,
-        );
-        if slots > 0 && self.uniforms.as_ref().is_none_or(|(b, _)| b.size() < stride * slots as u64) {
+        let stride = (std::mem::size_of::<FrameUniform>() as u64)
+            .next_multiple_of(device.limits().min_uniform_buffer_offset_alignment as u64);
+        if slots > 0
+            && self
+                .uniforms
+                .as_ref()
+                .is_none_or(|(b, _)| b.size() < stride * slots as u64)
+        {
             self.uniforms = Some((
                 device.create_buffer(&wgpu::BufferDescriptor {
                     label: Some("probe frames"),
@@ -450,7 +468,9 @@ impl Probes {
 
 /// The face cameras of a capture at `at` (their matrices, unjittered).
 pub(crate) fn face_frames(base: &Camera, at: Vec3, far: f32) -> [crate::frame::CameraFrame; 6] {
-    std::array::from_fn(|face| crate::frame::camera_frame(&face_camera(base, at, face as u32, far), 1.0, Vec2::ZERO))
+    std::array::from_fn(|face| {
+        crate::frame::camera_frame(&face_camera(base, at, face as u32, far), 1.0, Vec2::ZERO)
+    })
 }
 
 /// IEEE half to f32 (the prefiltered cube's texels, read back).

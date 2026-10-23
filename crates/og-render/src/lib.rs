@@ -6422,8 +6422,11 @@ impl Renderer {
                 .collect();
             (probe_groups, face_groups)
         };
-        let probe_binding = (!probe_groups.is_empty())
-            .then_some((batch_probes.as_slice(), probe_groups.as_slice(), frame_bind_group));
+        let probe_binding = (!probe_groups.is_empty()).then_some((
+            batch_probes.as_slice(),
+            probe_groups.as_slice(),
+            frame_bind_group,
+        ));
         let groups = self.fx_groups.as_ref().expect("made above");
         let (fx_group, sprite_fx_group, glow_fx_group) = (&groups.fx, &groups.sprite, &groups.glow);
         // The physical pipelines' effect group: the same plus the scene copy
@@ -6585,7 +6588,11 @@ impl Renderer {
                     if let Some((of, groups, frame_group)) = probes {
                         let want = of.get(b as usize).copied().unwrap_or(u8::MAX);
                         if want != probe_bound {
-                            pass.set_bind_group(0, groups.get(want as usize).unwrap_or(frame_group), &[]);
+                            pass.set_bind_group(
+                                0,
+                                groups.get(want as usize).unwrap_or(frame_group),
+                                &[],
+                            );
                             probe_bound = want;
                         }
                     }
