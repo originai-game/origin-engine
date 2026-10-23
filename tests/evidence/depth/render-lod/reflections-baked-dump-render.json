@@ -1,0 +1,18 @@
+{
+  "debugView": "none",
+  "kind": "render",
+  "lodLevels": [
+    0,
+    0,
+    2
+  ],
+  "reflectionProbes": [
+    {
+      "bakedFromCache": true,
+      "entity": 4294967356,
+      "mode": "baked"
+    }
+  ],
+  "renderMs": 313.741,
+  "triangles": 2156
+}

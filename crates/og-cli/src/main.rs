@@ -7,6 +7,7 @@
 //! (the play page), `og cook`, `og doctor` and `og api` (the IDL outputs).
 
 mod api;
+mod bake_probes;
 mod bundle;
 mod check;
 mod contact_sheet;
@@ -101,6 +102,9 @@ commands:
                       the knowledge wiki); --wiki writes only the wiki
   api check [--root <dir>]
                       exit 1 when a generated file differs from crates/og-api/api.ogt
+  bake probes [project] [--commands \"t:action[:args];...\"] [--at S] [--size WxH]
+                      render the baked og.ReflectionProbe captures on the native host into
+                      cooked/probes/ (loaded instead of drawn on first use)
 
 options:
   --version           print the og version
@@ -129,6 +133,7 @@ fn main() -> ExitCode {
         ["polish", rest @ ..] => polish::run(rest),
         ["build", rest @ ..] => bundle::run(rest),
         ["cook", rest @ ..] => cook::run(rest),
+        ["bake", "probes", rest @ ..] => bake_probes::run(rest),
         ["api", rest @ ..] => api::run(rest),
         ["sfx", rest @ ..] => sfx::run(rest),
         ["skin", rest @ ..] => skin::run(rest),

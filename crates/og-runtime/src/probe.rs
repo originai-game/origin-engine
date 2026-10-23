@@ -124,6 +124,13 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
                 "renderMs": (st.render_ms * 1000.0).round() / 1000.0,
                 "debugView": super::geometry::current_view(&rs),
                 "lodLevels": &levels[..last],
+                // The frame's reflection probes: baked ones sampling a capture
+                // `og bake probes` wrote (`bakedFromCache`) or drawing their own.
+                "reflectionProbes": rs.scene.reflection_probes.iter().map(|p| json!({
+                    "entity": p.id,
+                    "mode": if p.mode == og_render::ProbeMode::Realtime { "realtime" } else { "baked" },
+                    "bakedFromCache": p.baked.is_some(),
+                })).collect::<Vec<_>>(),
             }))
         },
     );
