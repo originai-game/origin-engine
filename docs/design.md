@@ -297,7 +297,10 @@ S6).
   centre of its bounds. The instance sort keys on it, so one mesh and
   material in two rooms is two batches, each binding its room's probe (a
   per-instance index would need every cube bound at once: a cube array,
-  which WebGL2 lacks). Skinned instances choose by their bind-pose bounds;
+  which WebGL2 lacks). Skinned instances choose by their posed bounds:
+  each joint's bind-pose box of the vertices it moves (made once per
+  mesh, `skin.rs`) through the frame's joint matrices, so a figure whose
+  root joint walks it into the next room takes that room's probe;
   terrain levels, scatter chunks, water surfaces and the 3D fluids per
   draw, by the box holding their centre or else the smallest box their
   bounds reach. Every lit shader (standard, physical, custom, terrain,

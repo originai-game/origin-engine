@@ -352,3 +352,43 @@ pub fn ssr_floor_scene(floor: SsrFloor, ssr: bool) -> RenderScene {
     }
     scene
 }
+
+/// `probe-two-rooms` with a chrome skinned cylinder whose instance stands
+/// in the left (red) room and whose palette moves every joint
+/// [`ROOMS`]'s span along +x, so its pose stands in the right (blue)
+/// room, left of that room's sphere; `posed` false places the same
+/// cylinder there by its transform instead, in its bind pose.
+pub fn posed_figure_scene(posed: bool) -> RenderScene {
+    let mut scene = two_rooms_scene(true);
+    let (mesh, skin) = skinned_cylinder(0.35, 24, 32);
+    let cylinder = scene.add_skinned_mesh(mesh, skin);
+    let chrome = scene.add_material(Material {
+        base_color: [0.95, 0.95, 0.95, 1.0],
+        metallic: 1.0,
+        roughness: 0.05,
+        ..Default::default()
+    });
+    let span = ROOMS[1] - ROOMS[0];
+    let shift = Mat4::from_translation(Vec3::X * span);
+    let (transform, joint) = if posed {
+        (
+            Mat4::from_translation(Vec3::new(ROOMS[0] - 1.7, 0.0, 1.0)),
+            shift,
+        )
+    } else {
+        (
+            Mat4::from_translation(Vec3::new(ROOMS[1] - 1.7, 0.0, 1.0)),
+            Mat4::IDENTITY,
+        )
+    };
+    scene.joint_palettes.push(og_render::JointPalette {
+        matrices: vec![joint; crate::fx_scenes::CYLINDER_BONES],
+    });
+    scene.skinned_instances.push(SkinnedInstance::new(
+        cylinder,
+        chrome,
+        transform,
+        scene.joint_palettes.len() as u32 - 1,
+    ));
+    scene
+}

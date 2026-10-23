@@ -6,7 +6,9 @@
 
 use og_render::{RenderDesc, RenderTarget, Renderer, RgbaImage};
 use og_tests::gfx;
-use og_tests::probe_scenes::{Outdoor, SsrFloor, outdoor_scene, ssr_floor_scene, two_rooms_scene};
+use og_tests::probe_scenes::{
+    Outdoor, SsrFloor, outdoor_scene, posed_figure_scene, ssr_floor_scene, two_rooms_scene,
+};
 use og_tests::scenes;
 use std::path::PathBuf;
 
@@ -109,6 +111,65 @@ fn each_of_two_rooms_reflects_its_own_room() {
     assert!(
         (0..3).all(|k| (l0[k] - r0[k]).abs() < 8.0) && l0[2] > l0[0],
         "without probes both reflect the same sky: {l0:?} {r0:?}"
+    );
+}
+
+/// A skinned figure takes the probe of the room its pose stands in: a
+/// chrome cylinder whose instance stands in the red room and whose joints
+/// carry it into the blue one reflects the blue room, as the same cylinder
+/// placed there by its transform does. Picked by its bind pose's bounds,
+/// as before the debt round 2, it reflected the red room it is not in.
+#[test]
+fn a_skinned_instance_takes_the_probe_of_its_pose() {
+    let desc = scenes::base_desc();
+    let frame = |posed: Option<bool>| {
+        let scene = posed.map_or_else(|| two_rooms_scene(true), posed_figure_scene);
+        let (img, _) = render(&desc, &scene, None);
+        if let (Ok(dir), Some(posed)) = (std::env::var("OG_PROBE_OUT"), posed) {
+            gfx::save_png(
+                std::path::Path::new(&format!("{dir}/posed-figure-{posed}.png")),
+                &img,
+            )
+            .expect("save");
+        }
+        img
+    };
+    let (bare, posed, placed) = (frame(None), frame(Some(true)), frame(Some(false)));
+    // The cylinder's pixels: where the placed one changed the room.
+    let px = |i: usize| &bare.pixels[i * 4..i * 4 + 3];
+    let cylinder: Vec<usize> = (0..(bare.width * bare.height) as usize)
+        .filter(|&i| {
+            let q = &placed.pixels[i * 4..i * 4 + 3];
+            px(i)
+                .iter()
+                .zip(q)
+                .map(|(a, b)| a.abs_diff(*b) as u32)
+                .sum::<u32>()
+                > 60
+        })
+        .collect();
+    let mean = |img: &RgbaImage| {
+        let mut s = [0.0f32; 3];
+        for &i in &cylinder {
+            for (k, v) in s.iter_mut().enumerate() {
+                *v += img.pixels[i * 4 + k] as f32 / cylinder.len() as f32;
+            }
+        }
+        s
+    };
+    let (posed, placed) = (mean(&posed), mean(&placed));
+    println!(
+        "the cylinder ({} px): posed {posed:?}, placed {placed:?}",
+        cylinder.len()
+    );
+    assert!(cylinder.len() > 2000, "the cylinder is in view");
+    assert!(
+        placed[2] > placed[0] + 6.0,
+        "placed in the blue room its sides reflect blue: {placed:?}"
+    );
+    assert!(
+        (0..3).all(|k| (posed[k] - placed[k]).abs() < 3.0),
+        "posed into the blue room it reflects the blue room: {posed:?} against {placed:?}"
     );
 }
 

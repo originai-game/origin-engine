@@ -1089,6 +1089,9 @@ struct SceneCache {
     fonts: Vec<GpuFont>,
     /// Joints and weights of skinned (or morphed) meshes, by mesh.
     skins: Vec<Option<wgpu::Buffer>>,
+    /// Each skinned mesh's joint boxes (`skin::joint_boxes`): its posed
+    /// bounds, which pick its instances' reflection probes. By mesh.
+    joint_boxes: Vec<Vec<skin::JointBox>>,
     /// Per mesh: (first delta, targets) in `morph_data`.
     morph_ranges: Vec<(u32, u32)>,
     /// Every mesh's morph deltas: per vertex, per target, position then normal.
@@ -3342,6 +3345,16 @@ impl Renderer {
                 }
             };
             self.cache.skins.push(skin);
+            self.cache.joint_boxes.push(
+                scene.skins()[index]
+                    .as_ref()
+                    .map(|k| {
+                        let positions: Vec<[f32; 3]> =
+                            mesh.vertices.iter().map(|v| v.position).collect();
+                        skin::joint_boxes(&positions, k)
+                    })
+                    .unwrap_or_default(),
+            );
         }
         self.sync_assets(scene)?;
         let revisions = scene.lut_revisions();
@@ -3654,6 +3667,10 @@ impl Renderer {
                 continue;
             }
             let source = &scene.meshes()[i];
+            if let Some(k) = &scene.skins()[i] {
+                let positions: Vec<[f32; 3]> = source.vertices.iter().map(|v| v.position).collect();
+                self.cache.joint_boxes[i] = skin::joint_boxes(&positions, k);
+            }
             let compact = scene.mesh_encodings()[i] == VertexEncoding::Compact
                 && scene.skins()[i].is_none()
                 && scene.morphs()[i].is_none();
@@ -4727,19 +4744,30 @@ impl Renderer {
         let joint_base = self.palette.joint_base(self.cache.morph_data.len());
         let mut order: Vec<usize> = (0..scene.skinned_instances.len()).collect();
         // Each instance's reflection probe: the one holding the centre of
-        // its bounds in the bind pose (probe_select.rs).
+        // its posed bounds, its joints' boxes moved by its palette
+        // (skin.rs; a morphed mesh without a skin: its bind pose's), so a
+        // figure walked out of a room by its root joint takes the room it
+        // is in (probe_select.rs).
         let probe_of: Vec<u8> = scene
             .skinned_instances
             .iter()
             .map(|s| {
-                let centre = self
+                let mesh = s.mesh.index();
+                let palette = &scene.joint_palettes[s.palette as usize].matrices;
+                let posed = self
                     .cache
-                    .meshes
-                    .get(s.mesh.index())
-                    .and_then(|m| m.bounds)
-                    .map_or(s.transform.w_axis.truncate(), |(c, _)| {
-                        s.transform.transform_point3(c)
-                    });
+                    .joint_boxes
+                    .get(mesh)
+                    .and_then(|b| skin::posed_centre(b, palette, &s.transform));
+                let centre = posed.unwrap_or_else(|| {
+                    self.cache
+                        .meshes
+                        .get(mesh)
+                        .and_then(|m| m.bounds)
+                        .map_or(s.transform.w_axis.truncate(), |(c, _)| {
+                            s.transform.transform_point3(c)
+                        })
+                });
                 probe_select::pick(probes, centre)
             })
             .collect();
