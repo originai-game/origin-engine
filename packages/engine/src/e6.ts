@@ -1,4 +1,4 @@
-// The E6 modules' namespaces (IDL `nav`, `ai`, `platform`, `i18n`): thin calls into the host's
+// The E6 modules' namespaces (IDL `nav`, `ai`, `platform`, `i18n`) and the depth wave's `net`: thin calls into the host's
 // binding symbols, typed by the generated declarations through index.ts.
 
 import type { HostAbi } from "./generated/abi.ts";
@@ -58,7 +58,38 @@ export const platform = Object.freeze({
   result: (world: W, request: number) => parse(abi().og_platform_result(world.id, request)),
   info: (world: W) => parse(abi().og_platform_info(world.id)),
   now: (world: W) => abi().og_platform_now(world.id),
+  roomCreate: (world: W, desc?: unknown) => parse(abi().og_platform_room_create(world.id, json(desc))),
+  roomJoin: (world: W, room: string) => parse(abi().og_platform_room_join(world.id, room)),
+  roomLeave: (world: W) => parse(abi().og_platform_room_leave(world.id)),
+  // Bytes cross as { "$og.bytes": base64 } (og-runtime net.rs BYTES_KEY).
+  roomSend: (world: W, data: unknown, to?: number) =>
+    parse(abi().og_platform_room_send(world.id, JSON.stringify(data instanceof Uint8Array ? { "$og.bytes": toBase64(data) } : (data ?? null)), to)),
+  roomPeers: (world: W) => parse(abi().og_platform_room_peers(world.id)),
+  roomInfo: (world: W) => parse(abi().og_platform_room_info(world.id)),
+  roomMessage: (world: W, message: number) => {
+    const m = parse<{ bytes: string | null } | null>(abi().og_platform_room_message(world.id, message));
+    return m && { ...m, bytes: typeof m.bytes === "string" ? fromBase64(m.bytes) : null };
+  },
 });
+
+export const net = Object.freeze({
+  submit: (world: W, input?: unknown) => parse(abi().og_net_submit(world.id, json(input))),
+  status: (world: W) => parse(abi().og_net_status(world.id)),
+  hash: (world: W) => parse<string>(abi().og_net_hash(world.id)),
+});
+
+function toBase64(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);
+  return btoa(bin);
+}
+
+function fromBase64(text: string): Uint8Array {
+  const bin = atob(text);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
 
 export const i18n = Object.freeze({
   load: (world: W, path: string) => parse(abi().og_i18n_load(world.id, path)),

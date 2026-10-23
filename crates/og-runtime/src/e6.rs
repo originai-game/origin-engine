@@ -121,6 +121,7 @@ pub(crate) fn mount_front(
     });
     super::platform::mount(world, engine)?;
     super::stream::mount(world, engine)?;
+    super::net::mount(world, engine)?;
     let ai = og_ai::install(
         world,
         records,
@@ -200,6 +201,7 @@ pub(crate) fn take_warnings(engine: u32) -> Vec<String> {
 pub(crate) fn retire(engine: u32) {
     MODULES.with(|m| m.borrow_mut().remove(&engine));
     super::platform::retire(engine);
+    super::net::retire(engine);
     super::stream::retire(engine);
     super::terrain::retire(engine);
     super::i18n::retire(engine);
@@ -210,6 +212,7 @@ pub(crate) fn retire(engine: u32) {
 pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
     super::polish::register(probe, engine);
     super::lanes::register(probe, engine);
+    super::net::register(probe, engine);
     super::geometry::register(probe, engine);
     probe.set_memory(move |world| super::memory::report(engine, world));
     probe.set_listen(move |seconds| {

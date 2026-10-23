@@ -21,6 +21,7 @@ mod publish;
 mod relay;
 mod render;
 mod run;
+mod serve_relay;
 mod sfx;
 mod skin;
 mod test;
@@ -38,7 +39,8 @@ usage: og <command> [options]
 commands:
   run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P]
       [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio <out.wav>]
-      [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json] [--no-check]
+      [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--room <ws url>]
+      [--json] [--no-check]
                       cook, type-check, bundle and run the game on the native host with the probe;
                       outputs of screenshot/dump_* land in --out (default <project>/og-out)
   run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR]
@@ -87,6 +89,9 @@ commands:
   skin pack <dir> [--out <dir>]
                       pack a skin drawn by hand (<part>.9.png nine-patches, other PNGs) into
                       atlas.png and the skin file's atlas, slice and ornament lines
+  relay [--port P] [--host <ip>]
+                      a local WebSocket relay for rooms: `og run --room ws://127.0.0.1:P/<room>`
+                      processes join <room> and play together (og.net's lockstep)
   doctor              check bun, the engine package, the native addon, the wasm, a headless
                       renderer, and (in the engine repository) the build toolchain, naming each fix
   api gen [--wiki] [--root <dir>]
@@ -114,6 +119,7 @@ fn main() -> ExitCode {
         ["doctor", rest @ ..] => doctor::run(rest),
         ["run", rest @ ..] => run::run(rest),
         ["render", rest @ ..] => render::run(rest),
+        ["relay", rest @ ..] => serve_relay::run(rest),
         ["probe", rest @ ..] => probe::run(rest),
         ["dev", rest @ ..] => dev::run(rest),
         ["check", rest @ ..] => check::run(rest),

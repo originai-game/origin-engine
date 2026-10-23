@@ -1,0 +1,67 @@
+//! Rooms on the native host: `og run --room ws://127.0.0.1:P/<room>`
+//! connects an engine to `og relay` (og-net's client on a thread of its
+//! own). Between frames the run pumps the link: the engine's room ops go to
+//! the relay, the relay's events to the engine (og_room_deliver), in order.
+
+use napi_derive::napi;
+use og_net::client::RelayClient;
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+
+thread_local! {
+    static LINKS: RefCell<BTreeMap<u32, RelayClient>> = const { RefCell::new(BTreeMap::new()) };
+}
+
+fn json_str(s: &str) -> String {
+    serde_json::Value::String(s.to_string()).to_string()
+}
+
+/// Connect an engine's rooms to a relay (`ws://host:port/<room>` joins that
+/// room at once). A Result.
+#[napi(js_name = "og_node_room_connect")]
+pub fn og_node_room_connect(engine: u32, url: String) -> String {
+    match RelayClient::connect(&url) {
+        Ok(client) => {
+            og_runtime::og_room_set_host(engine, r#"{"host":"relay"}"#.into());
+            LINKS.with(|l| l.borrow_mut().insert(engine, client));
+            r#"{"ok":true,"value":null}"#.to_string()
+        }
+        Err(e) => format!(r#"{{"ok":false,"reason":{}}}"#, json_str(&e)),
+    }
+}
+
+/// Carry the engine's room ops to the relay and the relay's events to the
+/// engine. Returns the events delivered (0 without a link).
+#[napi(js_name = "og_node_room_pump")]
+pub fn og_node_room_pump(engine: u32) -> u32 {
+    LINKS.with(|l| {
+        let links = l.borrow();
+        let Some(client) = links.get(&engine) else {
+            return 0;
+        };
+        let ops: Vec<serde_json::Value> =
+            serde_json::from_str(&og_runtime::og_room_take(engine)).unwrap_or_default();
+        for op in &ops {
+            client.send(op);
+        }
+        let mut n = 0;
+        for event in client.poll() {
+            og_runtime::og_room_deliver(engine, event.to_string());
+            n += 1;
+        }
+        // What the events made lockstep send goes now, not a frame later.
+        let ops: Vec<serde_json::Value> =
+            serde_json::from_str(&og_runtime::og_room_take(engine)).unwrap_or_default();
+        for op in &ops {
+            client.send(op);
+        }
+        n
+    })
+}
+
+/// Close an engine's relay link (its last ops are sent first).
+#[napi(js_name = "og_node_room_close")]
+pub fn og_node_room_close(engine: u32) -> bool {
+    og_node_room_pump(engine);
+    LINKS.with(|l| l.borrow_mut().remove(&engine).is_some())
+}

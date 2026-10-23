@@ -48,6 +48,7 @@ mod memory;
 pub use lanes::{panic_report, record_panic, report as lanes_report};
 mod modules;
 mod nav;
+mod net;
 mod physics_ext;
 mod platform;
 mod polish;
@@ -116,6 +117,11 @@ pub use nav::{
     og_nav_build, og_nav_cell_at, og_nav_find_path, og_nav_flow_at, og_nav_flow_field, og_nav_grid,
     og_nav_grid_from_tilemap, og_nav_load, og_nav_nearest, og_nav_path_of, og_nav_set_cost,
     og_nav_set_flow_targets, og_nav_set_obstacle,
+};
+pub use net::{
+    og_net_hash, og_net_status, og_net_submit, og_platform_room_create, og_platform_room_info,
+    og_platform_room_join, og_platform_room_leave, og_platform_room_message,
+    og_platform_room_peers, og_platform_room_send, og_room_deliver, og_room_set_host, og_room_take,
 };
 /// The counting allocator the hosts install (`#[global_allocator]`), for the probe's `memory`.
 pub use og_core::alloc::Counting as CountingAlloc;
