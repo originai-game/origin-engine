@@ -428,9 +428,7 @@ pub fn cook(
             let rows = tables.entry("Model".to_string()).or_default();
             match rows.iter_mut().find(|r| r.entity == index) {
                 Some(r) if r.fields.iter().any(|(n, ..)| n == "static") => {
-                    return Err(CookError(format!(
-                        "line {line}: Model.static is set twice"
-                    )));
+                    return Err(CookError(format!("line {line}: Model.static is set twice")));
                 }
                 Some(r) => r.fields.push(("static".into(), given, line)),
                 None => rows.push(Pending {

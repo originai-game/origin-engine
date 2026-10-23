@@ -361,6 +361,30 @@ pub fn pages_from_ktx2(bytes: &[u8]) -> Result<(u32, u32, Vec<Vec<u16>>), String
     ))
 }
 
+/// An f32 as an IEEE half (round to nearest; overflow to infinity).
+pub fn f32_to_f16(x: f32) -> u16 {
+    let b = x.to_bits();
+    let sign = ((b >> 16) & 0x8000) as u16;
+    let exp = ((b >> 23) & 0xff) as i32;
+    let mant = b & 0x7f_ffff;
+    if exp == 0xff {
+        return sign | 0x7c00 | if mant != 0 { 0x200 } else { 0 };
+    }
+    let e = exp - 127 + 15;
+    if e >= 0x1f {
+        return sign | 0x7c00;
+    }
+    if e <= 0 {
+        if e < -10 {
+            return sign;
+        }
+        let m = (mant | 0x80_0000) >> (1 - e);
+        return sign | ((m >> 13) + ((m >> 12) & 1)) as u16;
+    }
+    let half = sign as u32 | ((e as u32) << 10) | (mant >> 13);
+    (half + ((mant >> 12) & 1)) as u16
+}
+
 /// An IEEE half as an f32.
 pub fn f16_to_f32(h: u16) -> f32 {
     let sign = if h & 0x8000 != 0 { -1.0 } else { 1.0 };
@@ -414,6 +438,12 @@ mod tests {
         assert_eq!(pages_from_ktx2(&bytes).unwrap(), (4, 4, pages));
         assert_eq!(f16_to_f32(0x3c00), 1.0);
         assert_eq!(f16_to_f32(0xc000), -2.0);
+        for x in [0.0f32, 1.0, -2.5, 0.333, 1000.0, 1e-5] {
+            assert!(
+                (f16_to_f32(f32_to_f16(x)) - x).abs() <= x.abs() * 1e-3 + 1e-7,
+                "{x}"
+            );
+        }
     }
 
     #[test]

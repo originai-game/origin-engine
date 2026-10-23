@@ -1740,13 +1740,16 @@ dependencies = [
 name = "og-cli"
 version = "0.2.0"
 dependencies = [
+ "glam 0.34.1",
  "image",
  "libc",
  "og-api",
+ "og-bake",
  "og-cook",
  "og-core",
  "og-idl",
  "og-net",
+ "og-render",
  "og-ui",
  "serde_json",
  "tungstenite",

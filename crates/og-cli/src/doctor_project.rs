@@ -112,6 +112,18 @@ pub fn findings(root: &Path) -> Vec<Value> {
             out.push(f);
         }
     }
+    // Scenes that draw unbaked (static models or light volumes without a
+    // matching bake).
+    for (scene, reason) in crate::bake_lightmaps::status(root) {
+        let mut f = finding(
+            "warning",
+            "unbaked",
+            format!("{reason}: it renders unbaked"),
+            "run `og bake lightmaps` in the project",
+        );
+        f["asset"] = json!(scene);
+        out.push(f);
+    }
     for fl in stats::total_flags(&report, &budgets) {
         let mut f = finding(
             "error",
