@@ -475,6 +475,22 @@ pub fn og_render_circle_geometry(world: u32, desc: Option<String>) -> String {
 
 pub fn og_render_tube_geometry(world: u32, desc: Option<String>) -> String {
     primitive(world, desc, |d| {
+        let path = d["path"].as_f64().filter(|&h| h != 0.0);
+        if let Some(h) = path {
+            let p = super::timeline::path_of(world, h as u64).ok_or_else(|| {
+                format!("desc.path {h} is not a live path (og.path.create or og.path.find)")
+            })?;
+            return Ok(geo::primitives::tube_along(
+                |u| {
+                    let s = p.sample(u);
+                    (s.position, s.tangent)
+                },
+                uint(d, "tubularSegments", 64, 1),
+                size(d, "radius", 1.0)?,
+                uint(d, "radialSegments", 8, 3),
+                p.desc().closed,
+            ));
+        }
         let points = points_of(d, "points")?;
         if points.len() < 2 {
             return Err(format!(

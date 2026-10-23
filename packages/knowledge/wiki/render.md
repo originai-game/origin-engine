@@ -123,7 +123,7 @@ module render {
 | [`TorusGeometryDesc`](#type-TorusGeometryDesc) | desc struct | A torus in the xy plane around +Z, as three.js TorusGeometry(radius, tube, radialSegments, tubularSegments, arc). |
 | [`RingGeometryDesc`](#type-RingGeometryDesc) | desc struct | A flat ring in the xy plane facing +Z, as three.js RingGeometry(innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength). |
 | [`CircleGeometryDesc`](#type-CircleGeometryDesc) | desc struct | A disc (or a sector) in the xy plane facing +Z, as three.js CircleGeometry(radius, segments, thetaStart, thetaLength): a 2D polygon's simplest shape. |
-| [`TubeGeometryDesc`](#type-TubeGeometryDesc) | desc struct | A tube along a curve through points, as three.js TubeGeometry(new CatmullRomCurve3(points, closed, 'centripetal'), tubularSegments, radius, radialSegments, closed): u runs along it, v around. The points may come from anywhere: a path's samples, a rope's points, a spline a tool made. |
+| [`TubeGeometryDesc`](#type-TubeGeometryDesc) | desc struct | A tube along a curve, as three.js TubeGeometry(curve, tubularSegments, radius, radialSegments, closed): its rings are evenly spaced along the curve's length (three.js getPointAt), u runs along it, v around. The curve is `path` when set (an og.path, whatever its kind, followed exactly: a scene's or a timeline's path becomes a tube), otherwise new CatmullRomCurve3(points, closed, 'centripetal') through `points`, which may come from anywhere: a rope's points, a spline a tool made. |
 | [`og.render.cylinderGeometry`](#fn-cylinderGeometry) | function | Make a cylinder geometry for og.Mesh (give its body a cylinder-like Collider: a capsule, a convex Collider.mesh of it, or the geometry itself). |
 | [`og.render.coneGeometry`](#fn-coneGeometry) | function | Make a cone geometry for og.Mesh. Physics can use it as a convex Collider.mesh. |
 | [`og.render.capsuleGeometry`](#fn-capsuleGeometry) | function | Make a capsule geometry for og.Mesh (its body's Collider is a capsule of the same radius and half the height). |
@@ -770,7 +770,7 @@ fn cylinderGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4315</sub>
+<sub>`api.ogt` line 4316</sub>
 
 <a id="fn-coneGeometry"></a>
 
@@ -800,7 +800,7 @@ fn coneGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4322</sub>
+<sub>`api.ogt` line 4323</sub>
 
 <a id="fn-capsuleGeometry"></a>
 
@@ -830,7 +830,7 @@ fn capsuleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4329</sub>
+<sub>`api.ogt` line 4330</sub>
 
 <a id="fn-torusGeometry"></a>
 
@@ -860,7 +860,7 @@ fn torusGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4336</sub>
+<sub>`api.ogt` line 4337</sub>
 
 <a id="fn-ringGeometry"></a>
 
@@ -890,7 +890,7 @@ fn ringGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4343</sub>
+<sub>`api.ogt` line 4344</sub>
 
 <a id="fn-circleGeometry"></a>
 
@@ -920,7 +920,7 @@ fn circleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4350</sub>
+<sub>`api.ogt` line 4351</sub>
 
 <a id="fn-tubeGeometry"></a>
 
@@ -937,7 +937,7 @@ og.render.tubeGeometry(world: World, desc?: TubeGeometryDesc): Result<Geometry>
 | `world` | `World` | no | The world whose renderer owns the geometry. |
 | `desc` | `TubeGeometryDesc` | yes | The points, radius and tessellation. |
 
-**Returns** `Result<Geometry>`: Refused for fewer than two points or a point that is not finite.
+**Returns** `Result<Geometry>`: Refused for fewer than two points or a point that is not finite (without a path), or a path that is not alive.
 
 Binding symbol `og_render_tube_geometry` · publish builds: kept
 
@@ -946,11 +946,11 @@ fn tubeGeometry {
   doc "Make a tube along a curve through points for og.Mesh: pipes, cables, rails, a path shown as a ribbon of geometry. Physics can use it as a triangle-mesh Collider.mesh."
   param world World "The world whose renderer owns the geometry."
   param desc TubeGeometryDesc "The points, radius and tessellation."
-  returns Result.Geometry "Refused for fewer than two points or a point that is not finite."
+  returns Result.Geometry "Refused for fewer than two points or a point that is not finite (without a path), or a path that is not alive."
 }
 ```
 
-<sub>`api.ogt` line 4357</sub>
+<sub>`api.ogt` line 4358</sub>
 
 <a id="fn-lines"></a>
 
@@ -980,7 +980,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 4415</sub>
+<sub>`api.ogt` line 4416</sub>
 
 <a id="fn-points"></a>
 
@@ -1010,7 +1010,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 4450</sub>
+<sub>`api.ogt` line 4451</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1042,7 +1042,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 4554</sub>
+<sub>`api.ogt` line 4555</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1072,7 +1072,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4610</sub>
+<sub>`api.ogt` line 4611</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1106,7 +1106,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 4722</sub>
+<sub>`api.ogt` line 4723</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1134,7 +1134,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 4737</sub>
+<sub>`api.ogt` line 4738</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1162,7 +1162,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 4804</sub>
+<sub>`api.ogt` line 4805</sub>
 
 ## Components, resources and events
 
@@ -2763,7 +2763,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 4457</sub>
+<sub>`api.ogt` line 4458</sub>
 
 <a id="record-Points"></a>
 
@@ -2817,7 +2817,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 4494</sub>
+<sub>`api.ogt` line 4495</sub>
 
 <a id="record-CameraView"></a>
 
@@ -2924,7 +2924,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 4617</sub>
+<sub>`api.ogt` line 4618</sub>
 
 <a id="record-Mirror"></a>
 
@@ -2969,7 +2969,7 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 4689</sub>
+<sub>`api.ogt` line 4690</sub>
 
 <a id="record-RectLight"></a>
 
@@ -3017,7 +3017,7 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 4751</sub>
+<sub>`api.ogt` line 4752</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -3051,7 +3051,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 4777</sub>
+<sub>`api.ogt` line 4778</sub>
 
 ## Types
 
@@ -4795,13 +4795,14 @@ struct CircleGeometryDesc {
 
 ### `TubeGeometryDesc` (desc struct)
 
-A tube along a curve through points, as three.js TubeGeometry(new CatmullRomCurve3(points, closed, 'centripetal'), tubularSegments, radius, radialSegments, closed): u runs along it, v around. The points may come from anywhere: a path's samples, a rope's points, a spline a tool made.
+A tube along a curve, as three.js TubeGeometry(curve, tubularSegments, radius, radialSegments, closed): its rings are evenly spaced along the curve's length (three.js getPointAt), u runs along it, v around. The curve is `path` when set (an og.path, whatever its kind, followed exactly: a scene's or a timeline's path becomes a tube), otherwise new CatmullRomCurve3(points, closed, 'centripetal') through `points`, which may come from anywhere: a rope's points, a spline a tool made.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `points` | `readonly Vector3[]` | `[]` | — | `m` | — | The points the curve passes through, in order (at least two). |
+| `points` | `readonly Vector3[]` | `[]` | — | `m` | — | The points the curve passes through, in order (at least two), when `path` is 0. |
+| `path` | `Path` | `0` | — | — | — | A path (og.path.create, or a scene's `path` by og.path.find) the tube follows instead of the points: its own curve, kind and closed flag (`closed` is the path's then). 0 uses the points. |
 | `tubularSegments` | `number` | `64` | ≥ 1 | — | — | Segments along the tube. |
 | `radius` | `number` | `1` | ≥ 0 | `m` | — | The tube's radius. |
 | `radialSegments` | `number` | `8` | ≥ 3 | — | — | Segments around it. |
@@ -4809,11 +4810,12 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct TubeGeometryDesc {
-  doc "A tube along a curve through points, as three.js TubeGeometry(new CatmullRomCurve3(points, closed, 'centripetal'), tubularSegments, radius, radialSegments, closed): u runs along it, v around. The points may come from anywhere: a path's samples, a rope's points, a spline a tool made."
+  doc "A tube along a curve, as three.js TubeGeometry(curve, tubularSegments, radius, radialSegments, closed): its rings are evenly spaced along the curve's length (three.js getPointAt), u runs along it, v around. The curve is `path` when set (an og.path, whatever its kind, followed exactly: a scene's or a timeline's path becomes a tube), otherwise new CatmullRomCurve3(points, closed, 'centripetal') through `points`, which may come from anywhere: a rope's points, a spline a tool made."
   desc true
-  field points List.Vector3 "The points the curve passes through, in order (at least two)." {
+  field points List.Vector3 "The points the curve passes through, in order (at least two), when `path` is 0." {
     unit m
   }
+  field path Path "A path (og.path.create, or a scene's `path` by og.path.find) the tube follows instead of the points: its own curve, kind and closed flag (`closed` is the path's then). 0 uses the points."
   field tubularSegments u32 "Segments along the tube." {
     default 64
     min 1
@@ -4856,7 +4858,7 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4364</sub>
+<sub>`api.ogt` line 4365</sub>
 
 <a id="type-LinesDesc"></a>
 
@@ -4922,7 +4924,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 4378</sub>
+<sub>`api.ogt` line 4379</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -4973,7 +4975,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 4422</sub>
+<sub>`api.ogt` line 4423</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -5006,7 +5008,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4525</sub>
+<sub>`api.ogt` line 4526</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -5041,7 +5043,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 4539</sub>
+<sub>`api.ogt` line 4540</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -5064,7 +5066,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4564</sub>
+<sub>`api.ogt` line 4565</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -5078,7 +5080,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 4577</sub>
+<sub>`api.ogt` line 4578</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -5112,7 +5114,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 4586</sub>
+<sub>`api.ogt` line 4587</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -5139,7 +5141,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 4601</sub>
+<sub>`api.ogt` line 4602</sub>
 
 <a id="type-Post"></a>
 
@@ -5153,7 +5155,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 4713</sub>
+<sub>`api.ogt` line 4714</sub>
 
 <a id="type-PostError"></a>
 
@@ -5174,7 +5176,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 4731</sub>
+<sub>`api.ogt` line 4732</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -5197,7 +5199,7 @@ enum VolumetricFog {
 }
 ```
 
-<sub>`api.ogt` line 4745</sub>
+<sub>`api.ogt` line 4746</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -5230,7 +5232,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 4792</sub>
+<sub>`api.ogt` line 4793</sub>
 
 ## Column kinds
 
@@ -5432,7 +5434,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4371</sub>
+<sub>`api.ogt` line 4372</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -5443,7 +5445,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4570</sub>
+<sub>`api.ogt` line 4571</sub>
 
 ```ogt
 column RenderTarget {
@@ -5454,7 +5456,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4579</sub>
+<sub>`api.ogt` line 4580</sub>
 
 ```ogt
 column Post {
@@ -5465,7 +5467,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 4715</sub>
+<sub>`api.ogt` line 4716</sub>
 
 ## Constants
 

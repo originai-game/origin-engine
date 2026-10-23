@@ -3,7 +3,8 @@
 //! uvs: `CylinderGeometry`, `ConeGeometry`, `CapsuleGeometry`,
 //! `TorusGeometry`, `RingGeometry`, `CircleGeometry` and `TubeGeometry`
 //! (along points, a centripetal Catmull-Rom curve through them, as three.js
-//! `CatmullRomCurve3`). Every mesh is counter-clockwise seen from outside
+//! `CatmullRomCurve3`; or along any curve sampled by arc length,
+//! [`tube_along`]: an og.path). Every mesh is counter-clockwise seen from outside
 //! (front faces), +Y up, centred as three.js centres it.
 
 use crate::scene::{MeshData, Vertex};
@@ -377,22 +378,99 @@ impl CatmullRom<'_> {
         let (a, b) = ((t - d).max(0.0), (t + d).min(1.0));
         (self.point(b) - self.point(a)).normalize_or(Vec3::Z)
     }
+
+    /// The cumulative chord lengths at `divisions + 1` even steps of t
+    /// (three.js `getLengths`, 200 divisions by default).
+    pub fn lengths(&self, divisions: usize) -> Vec<f32> {
+        let mut out = Vec::with_capacity(divisions + 1);
+        let mut last = self.point(0.0);
+        let mut sum = 0.0;
+        out.push(0.0);
+        for k in 1..=divisions {
+            let p = self.point(k as f32 / divisions as f32);
+            sum += p.distance(last);
+            out.push(sum);
+            last = p;
+        }
+        out
+    }
+}
+
+/// three.js `getUtoTmapping`: the curve parameter t at which a share `u`
+/// of the length (`lengths` from [`CatmullRom::lengths`]) is reached.
+pub fn u_to_t(lengths: &[f32], u: f32) -> f32 {
+    let n = lengths.len();
+    if n < 2 {
+        return u;
+    }
+    let target = u * lengths[n - 1];
+    // The last sample below the target (a binary search, as three.js's).
+    let (mut lo, mut hi) = (0isize, n as isize - 1);
+    while lo <= hi {
+        let i = lo + (hi - lo) / 2;
+        let c = lengths[i as usize] - target;
+        if c < 0.0 {
+            lo = i + 1;
+        } else if c > 0.0 {
+            hi = i - 1;
+        } else {
+            hi = i;
+            break;
+        }
+    }
+    let i = hi.max(0) as usize;
+    if lengths[i] == target || i + 1 >= n {
+        return i as f32 / (n - 1) as f32;
+    }
+    let (before, after) = (lengths[i], lengths[i + 1]);
+    let fraction = if after > before {
+        (target - before) / (after - before)
+    } else {
+        0.0
+    };
+    (i as f32 + fraction) / (n - 1) as f32
 }
 
 /// three.js `TubeGeometry(path, tubularSegments, radius, radialSegments,
-/// closed)` along a Catmull-Rom curve through `points`: rings of
-/// `radial` vertices oriented by parallel-transported frames (three.js
-/// `computeFrenetFrames`), u along the tube and v around it. Fewer than two
-/// points is an empty mesh.
+/// closed)` along a centripetal Catmull-Rom curve through `points`, sampled
+/// by arc length as three.js samples it (`getPointAt`, `getTangentAt`).
+/// Fewer than two points is an empty mesh.
 pub fn tube(points: &[Vec3], tubular: u32, radius: f32, radial: u32, closed: bool) -> MeshData {
     if points.len() < 2 {
         return MeshData::default();
     }
     let curve = CatmullRom { points, closed };
+    let lengths = curve.lengths(200);
+    tube_along(
+        |u| {
+            let t = u_to_t(&lengths, u);
+            (curve.point(t), curve.tangent(t))
+        },
+        tubular,
+        radius,
+        radial,
+        closed,
+    )
+}
+
+/// A tube along any curve: `at(u)` answers the point and its unit tangent
+/// at a share u (0 to 1) of the curve's length (an og.path's `sample`, a
+/// curve's `getPointAt` and `getTangentAt`). Rings of `radial` vertices
+/// oriented by parallel-transported frames (three.js
+/// `computeFrenetFrames`), u along the tube and v around it; `closed`
+/// joins the last ring to the first (the curve's end is its start).
+pub fn tube_along(
+    at: impl Fn(f32) -> (Vec3, Vec3),
+    tubular: u32,
+    radius: f32,
+    radial: u32,
+    closed: bool,
+) -> MeshData {
     let segs = tubular.max(1);
     let radial = radial.max(3);
     let ts: Vec<f32> = (0..=segs).map(|i| i as f32 / segs as f32).collect();
-    let tangents: Vec<Vec3> = ts.iter().map(|&t| curve.tangent(t)).collect();
+    let samples: Vec<(Vec3, Vec3)> = ts.iter().map(|&u| at(u)).collect();
+    let tangents: Vec<Vec3> = samples.iter().map(|s| s.1.normalize_or(Vec3::Z)).collect();
     // The first normal: across the tangent's smallest component (three.js).
     let t0 = tangents[0];
     let a = t0.abs();
@@ -427,10 +505,9 @@ pub fn tube(points: &[Vec3], tubular: u32, radius: f32, radial: u32, closed: boo
     }
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
-    for (i, &t) in ts.iter().enumerate() {
+    for i in 0..ts.len() {
         // A closed tube's last ring is its first again (three.js).
-        let t = if closed && i == segs as usize { 0.0 } else { t };
-        let p = curve.point(t);
+        let p = samples[if closed && i == segs as usize { 0 } else { i }].0;
         let (n, b) = {
             let k = if closed && i == segs as usize { 0 } else { i };
             let n = normals[k];
@@ -563,13 +640,38 @@ mod tests {
             points: &pts,
             closed: false,
         };
+        let lengths = c.lengths(200);
         for (i, ring) in m.vertices.chunks(9).enumerate() {
-            let centre = c.point(i as f32 / 32.0);
+            let centre = c.point(u_to_t(&lengths, i as f32 / 32.0));
             for v in ring {
                 let d = Vec3::from(v.position).distance(centre);
                 assert!((d - 0.25).abs() < 1e-3, "ring {i}: {d}");
             }
         }
         faces_out(&m);
+        // Rings by arc length (three.js getPointAt): the gaps between ring
+        // centres are even, though the points' spacing is not.
+        let centres: Vec<Vec3> = m
+            .vertices
+            .chunks(9)
+            .map(|r| r[..8].iter().map(|v| Vec3::from(v.position)).sum::<Vec3>() / 8.0)
+            .collect();
+        let gaps: Vec<f32> = centres.windows(2).map(|w| w[0].distance(w[1])).collect();
+        let (lo, hi) = gaps
+            .iter()
+            .fold((f32::MAX, 0.0f32), |(a, b), &g| (a.min(g), b.max(g)));
+        assert!(hi / lo < 1.02, "ring gaps {lo} to {hi}");
+    }
+
+    #[test]
+    fn u_to_t_inverts_the_length_table() {
+        let lengths = [0.0, 1.0, 3.0, 4.0];
+        assert_eq!(u_to_t(&lengths, 0.0), 0.0);
+        assert_eq!(u_to_t(&lengths, 1.0), 1.0);
+        // Half the length (2) is half way through the second step.
+        assert!((u_to_t(&lengths, 0.5) - 0.5).abs() < 1e-6);
+        // A quarter (1) is the end of the first step exactly.
+        assert!((u_to_t(&lengths, 0.25) - 1.0 / 3.0).abs() < 1e-6);
+        assert!((u_to_t(&lengths, 0.125) - 1.0 / 6.0).abs() < 1e-6);
     }
 }

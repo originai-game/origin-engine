@@ -226,7 +226,8 @@ Runtime geometry and debug draw (depth S1). Games can make geometry from
 attribute arrays (`og.render.bufferGeometry`, three.js BufferGeometry's
 attributes, with normals computed when they are missing) and from three.js's
 primitives: cylinder, cone, capsule, torus, ring, circle, and a tube along a
-centripetal Catmull-Rom curve. A dynamic geometry is rewritten in place
+centripetal Catmull-Rom curve or along an og.path (its rings evenly spaced
+by length, as three.js's). A dynamic geometry is rewritten in place
 each tick (`updateGeometry`). A made geometry is also a physics mesh
 under its handle, so an og.Collider can use it as its `mesh`. Each geometry
 has a BVH, built when it is made or updated; a model's is cooked into its

@@ -3426,7 +3426,7 @@
             }
           ],
           "returns": "Result<Geometry>",
-          "returnsDoc": "Refused for fewer than two points or a point that is not finite.",
+          "returnsDoc": "Refused for fewer than two points or a point that is not finite (without a path), or a path that is not alive.",
           "publish": true
         },
         {
@@ -10372,7 +10372,7 @@
     },
     {
       "name": "path",
-      "doc": "Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t.\nMake one with og.path.create, or declare it in a scene (`path \"<name>\" { kind catmullRom; closed false; point x y z ... }`) and find it by name with og.path.find; a timeline's camera rides one with `rail \"<name>\"`. og.PathFollower moves an entity along one, og.CameraRail.path moves the camera along one, og.render's tube geometry can take its og.path.sample points. Paths are assets: they are not world state, and a hot reload registers them again.",
+      "doc": "Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t.\nMake one with og.path.create, or declare it in a scene (`path \"<name>\" { kind catmullRom; closed false; point x y z ... }`) and find it by name with og.path.find; a timeline's camera rides one with `rail \"<name>\"`. og.PathFollower moves an entity along one, og.CameraRail.path moves the camera along one, og.render.tubeGeometry makes a tube along one (TubeGeometryDesc.path). Paths are assets: they are not world state, and a hot reload registers them again.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -17703,7 +17703,7 @@
     "TubeGeometryDesc": {
       "x-og-kind": "desc",
       "x-og-module": "render",
-      "description": "A tube along a curve through points, as three.js TubeGeometry(new CatmullRomCurve3(points, closed, 'centripetal'), tubularSegments, radius, radialSegments, closed): u runs along it, v around. The points may come from anywhere: a path's samples, a rope's points, a spline a tool made.",
+      "description": "A tube along a curve, as three.js TubeGeometry(curve, tubularSegments, radius, radialSegments, closed): its rings are evenly spaced along the curve's length (three.js getPointAt), u runs along it, v around. The curve is `path` when set (an og.path, whatever its kind, followed exactly: a scene's or a timeline's path becomes a tube), otherwise new CatmullRomCurve3(points, closed, 'centripetal') through `points`, which may come from anywhere: a rope's points, a spline a tool made.",
       "type": "object",
       "properties": {
         "points": {
@@ -17711,9 +17711,14 @@
           "items": {
             "$ref": "#/$defs/Vector3"
           },
-          "description": "The points the curve passes through, in order (at least two).",
+          "description": "The points the curve passes through, in order (at least two), when `path` is 0.",
           "default": [],
           "x-og-unit": "m"
+        },
+        "path": {
+          "$ref": "#/$defs/Path",
+          "description": "A path (og.path.create, or a scene's `path` by og.path.find) the tube follows instead of the points: its own curve, kind and closed flag (`closed` is the path's then). 0 uses the points.",
+          "default": 0
         },
         "tubularSegments": {
           "type": "integer",

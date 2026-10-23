@@ -1836,8 +1836,11 @@ primitives keep their parameters and defaults: `cylinderGeometry`,
 `coneGeometry`, `capsuleGeometry` (an og.Collider capsule of the same
 radius and `height` matches it), `torusGeometry`, `ringGeometry`,
 `circleGeometry` and `tubeGeometry`. A tube follows a centripetal
-Catmull-Rom curve through `points`, for pipes, rails, cables and a path
-drawn as geometry. Rings and circles are one-sided, so use
+Catmull-Rom curve through `points`, for pipes, rails and cables; give it
+`path` instead (an og.path from `og.path.create`, or a scene's `path`
+block found by `og.path.find`) and it follows that path's own curve,
+Bezier or linear included, closed when the path is. Its rings are evenly
+spaced along the length, as three.js spaces them. Rings and circles are one-sided, so use
 `side: "double"` to see them from behind. `wireframe: true` on a
 standard material draws the triangle edges instead of the faces, one pixel
 wide on every tier.
