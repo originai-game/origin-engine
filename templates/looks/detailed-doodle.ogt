@@ -3,6 +3,7 @@ version 1
 ---
 # Thin ink on every edge, light hatching in the shadows, six tones.
 name "Fine-line doodle worlds"
+ui "paper"
 Stylise {
   ink true
   inkThreshold 0.1

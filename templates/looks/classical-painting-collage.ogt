@@ -3,6 +3,7 @@ version 1
 ---
 # Smoothed strokes with pooled edges, AgX, a dark vignette and grain: varnished canvas.
 name "Old-master painting collage"
+ui "paper"
 Stylise {
   paintRadius 3
   paintEdgeDarkening 0.5

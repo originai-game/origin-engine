@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "about": "Origin Engine's style catalogue: 37 art styles in the engine's own words, each with what a critic checks on a rendered frame, the premises it fits, the look preset it maps to (an .ogt of type look; `extends \"<slug>\"` in a game's own look builds on it), the UI skin pack, palette and asset specs, and an art-bible direction the agent expands per project. `look.support` says how faithfully the engine renders the style today: full (every primitive draws), partial or planned (the primitives in `missing` are still to land), content (the look lives in authored art; the engine frames it). og-taste §12 explains how to use it. The descriptions are original; no game or studio is the reference for a style.",
+  "about": "Origin Engine's style catalogue: 37 art styles in the engine's own words, each with what a critic checks on a rendered frame, the premises it fits, the look preset it maps to (an .ogt of type look; `extends \"<slug>\"` in a game's own look builds on it), the built-in UI style its look's `ui` line names, palette and asset specs, and an art-bible direction the agent expands per project. `look.support` says how faithfully the engine renders the style today: full (every primitive draws), partial or planned (the primitives in `missing` are still to land), content (the look lives in authored art; the engine frames it). og-taste §12 explains how to use it. The descriptions are original; no game or studio is the reference for a style.",
   "categories": {
     "pixel": "Pixel and retro",
     "paint": "Paint and line",
     "shape": "Shape and material",
     "render": "3D rendering"
   },
-  "skins": [
+  "ui": [
     "pixel",
     "cartoon",
     "fantasy",
@@ -15,7 +15,7 @@
     "paper",
     "neon"
   ],
-  "artBibleTemplate": "Art bible for {title}. Premise: {premise}. Camera: {camera}; platform and display size: {platform}. Style: {name} ({descriptor}) Direction: {direction} Palette: {palette}. Asset specs: {assets}. UI: the {skin} skin pack, re-coloured to this palette (og-taste §1). Avoid: {avoid}. Proof: the game's look is assets/looks/{game}.ogt, extending \"{slug}\"; capture the title, play and results screens with og run and check each against: {checks}. Every later asset is made inside this bible; a request for one asset never redesigns the style.",
+  "artBibleTemplate": "Art bible for {title}. Premise: {premise}. Camera: {camera}; platform and display size: {platform}. Style: {name} ({descriptor}) Direction: {direction} Palette: {palette}. Asset specs: {assets}. UI: the {ui} style the preset names (a `ui` line in the game's look picks another, or the game's own styles/<name>/style.ogt), re-coloured to this palette (og-taste §1). Avoid: {avoid}. Proof: the game's look is assets/looks/{game}.ogt, extending \"{slug}\"; capture the title, play and results screens with og run and check each against: {checks}. Every later asset is made inside this bible; a request for one asset never redesigns the style.",
   "styles": [
     {
       "slug": "expressionist-painting",
@@ -47,7 +47,7 @@
           "Stylise.paint* for 3D parts to match the painted art"
         ]
       },
-      "skin": "paper",
+      "ui": "paper",
       "palette": {
         "size": "free, but 3 to 5 dominant masses per scene",
         "rules": "Complementary clashes in shadows; one dominant temperature per scene; avoid neutral greys."
@@ -96,7 +96,7 @@
         ],
         "missing": []
       },
-      "skin": "fantasy",
+      "ui": "fantasy",
       "palette": {
         "size": "20 to 40 colours",
         "rules": "Deep warm or cool shadow colour shared by all materials; accents in one hue family per faction."
@@ -145,7 +145,7 @@
         ],
         "missing": []
       },
-      "skin": "paper",
+      "ui": "paper",
       "palette": {
         "size": "12 to 24 colours",
         "rules": "Light values dominate; two or three pigments mixed into the rest; no pure black."
@@ -196,7 +196,7 @@
         ],
         "missing": []
       },
-      "skin": "fantasy",
+      "ui": "fantasy",
       "palette": {
         "size": "sprites 32 to 64 colours; the set is unconstrained but graded to match",
         "rules": "Grade the 3D set with a LUT towards the sprites' palette so the two read as one world."
@@ -244,7 +244,7 @@
         ],
         "missing": []
       },
-      "skin": "paper",
+      "ui": "paper",
       "palette": {
         "size": "16 to 32 colours",
         "rules": "Colour per material, gradients only from lighting and fog."
@@ -295,7 +295,7 @@
         ],
         "missing": []
       },
-      "skin": "cartoon",
+      "ui": "cartoon",
       "palette": {
         "size": "warm, slightly desaturated plasticine colours",
         "rules": "Matte surfaces; saturation from the clay, not the light."
@@ -344,7 +344,7 @@
         ],
         "missing": []
       },
-      "skin": "pixel",
+      "ui": "pixel",
       "palette": {
         "size": "8 to 16 colours",
         "rules": "Ramps of 3 or 4 steps per material; one shared black; no gradients; background colours darker or desaturated against sprites."
@@ -393,7 +393,7 @@
         ],
         "missing": []
       },
-      "skin": "pixel",
+      "ui": "pixel",
       "palette": {
         "size": "32 to 64 colours (a voxel palette)",
         "rules": "One palette for the whole world; shade by light, not by palette steps."
@@ -444,7 +444,7 @@
           "Stylise.paintCanvas for the vellum grain"
         ]
       },
-      "skin": "paper",
+      "ui": "paper",
       "palette": {
         "size": "10 to 16 colours",
         "rules": "Parchment ground, iron-gall ink, a few mineral pigments (ultramarine, vermilion, verdigris) and gold."
@@ -495,7 +495,7 @@
           "the look is in frame-by-frame animation (flipbooks); the engine supplies the film treatment"
         ]
       },
-      "skin": "cartoon",
+      "ui": "cartoon",
       "palette": {
         "size": "sepia or muted primaries, 12 to 24 colours",
         "rules": "Inked black lines, flat fills, a warm faded grade over everything."
@@ -544,7 +544,7 @@
         ],
         "missing": []
       },
-      "skin": "paper",
+      "ui": "paper",
       "palette": {
         "size": "graphite or sepia ramp plus paper, optional single accent",
         "rules": "Value from line density only; the accent marks danger or the goal."
@@ -596,7 +596,7 @@
           "ornament is content; Stylise.depthBands for layered haze"
         ]
       },
-      "skin": "fantasy",
+      "ui": "fantasy",
       "palette": {
         "size": "cool desaturated base with 1 or 2 glowing accents",
         "rules": "Dark blue-grey grounds, pale characters, glows in one hue."
@@ -647,7 +647,7 @@
           "painted backdrops are content; Stylise.paint* for 3D props"
         ]
       },
-      "skin": "fantasy",
+      "ui": "fantasy",
       "palette": {
         "size": "free, organised by warm light and cool shadow",
         "rules": "Saturation highest at the light's edge; value grouping in three planes."
@@ -697,7 +697,7 @@
           "illustration is content; Stylise.ink and paintCanvas"
         ]
       },
-      "skin": "cartoon",
+      "ui": "cartoon",
       "palette": {
         "size": "16 to 32 colours",
         "rules": "Soft saturated hues, coloured line work, patterns from the same palette."
@@ -747,7 +747,7 @@
           "the source paintings and cut-outs are content (public-domain scans or original painting); no engine primitive is missing"
         ]
       },
-      "skin": "paper",
+      "ui": "paper",
       "palette": {
         "size": "the source paintings' own",
         "rules": "Grade all sources to a common varnish tone with a LUT."
@@ -797,7 +797,7 @@
           "the drawing is content; Stylise.ink can outline 3D props to match"
         ]
       },
-      "skin": "paper",
+      "ui": "paper",
       "palette": {
         "size": "monochrome ink or 4 to 8 light colours",
         "rules": "White or off-white ground; colour never hides line."
@@ -847,7 +847,7 @@
           "silhouettes are content; Stylise.palette locks the colours"
         ]
       },
-      "skin": "fantasy",
+      "ui": "fantasy",
       "palette": {
         "size": "2 to 4 colours",
         "rules": "Ochre ground, black figures, a lighter line colour, optional red-brown."
@@ -896,7 +896,7 @@
         ],
         "missing": []
       },
-      "skin": "fantasy",
+      "ui": "fantasy",
       "palette": {
         "size": "muted 12 to 24 colours plus black",
         "rules": "Desaturated mid-tones, black for every shadow, one blood or fire accent."
@@ -945,7 +945,7 @@
         ],
         "missing": []
       },
-      "skin": "pixel",
+      "ui": "pixel",
       "palette": {
         "size": "2 colours plus at most 1 accent",
         "rules": "Pick ink and paper first; shading only through dither or pattern; the accent means one thing."
@@ -994,7 +994,7 @@
         ],
         "missing": []
       },
-      "skin": "pixel",
+      "ui": "pixel",
       "palette": {
         "size": "32 to 64 colours",
         "rules": "Ramps of 4 to 6 steps; hue-shifted shadows (cooler) and highlights (warmer); saturated accents on characters, calmer backgrounds."
@@ -1044,7 +1044,7 @@
         ],
         "missing": []
       },
-      "skin": "fantasy",
+      "ui": "fantasy",
       "palette": {
         "size": "48 to 128 colours",
         "rules": "Long hue-shifted ramps; a value plan per scene that keeps the play area mid-value and the foreground darkest."
@@ -1094,7 +1094,7 @@
         ],
         "missing": []
       },
-      "skin": "neon",
+      "ui": "neon",
       "palette": {
         "size": "24 to 48 colours",
         "rules": "A near-black ground with two or three saturated light hues; no mid-grey fills; accents reserved for interactables."
@@ -1143,7 +1143,7 @@
         ],
         "missing": []
       },
-      "skin": "fantasy",
+      "ui": "fantasy",
       "palette": {
         "size": "32 to 64 colours",
         "rules": "Floors desaturated and mid-value; walls darker on their faces; characters most saturated."
@@ -1194,7 +1194,7 @@
         ],
         "missing": []
       },
-      "skin": "scifi",
+      "ui": "scifi",
       "palette": {
         "size": "free, but posterised to 32 levels per channel",
         "rules": "Fog colour equals the clear colour; dithered gradients."
@@ -1242,7 +1242,7 @@
         ],
         "missing": []
       },
-      "skin": "pixel",
+      "ui": "pixel",
       "palette": {
         "size": "6 to 16 colours",
         "rules": "Each scene has one dominant mass colour; detail colour only where the eye should go."
@@ -1293,7 +1293,7 @@
         ],
         "missing": []
       },
-      "skin": "neon",
+      "ui": "neon",
       "palette": {
         "size": "24 to 48 colours",
         "rules": "Two tones per material (lit, shadow) with hue-shifted shadows; highlights as shapes."
@@ -1344,7 +1344,7 @@
         ],
         "missing": []
       },
-      "skin": "scifi",
+      "ui": "scifi",
       "palette": {
         "size": "free, saturated",
         "rules": "Bold local colours, black ink for all shadow edges."
@@ -1394,7 +1394,7 @@
         ],
         "missing": []
       },
-      "skin": "paper",
+      "ui": "paper",
       "palette": {
         "size": "8 to 16 colours",
         "rules": "Colours of real paper stock: muted, slightly warm; white is off-white."
@@ -1444,7 +1444,7 @@
         ],
         "missing": []
       },
-      "skin": "cartoon",
+      "ui": "cartoon",
       "palette": {
         "size": "soft pastel 24 to 48 colours",
         "rules": "Bright but slightly desaturated; warm sunlight, cool shadows."
@@ -1494,7 +1494,7 @@
         ],
         "missing": []
       },
-      "skin": "fantasy",
+      "ui": "fantasy",
       "palette": {
         "size": "free, harmonised by a LUT",
         "rules": "Two or three dominant hues per area; graded towards them."
@@ -1546,7 +1546,7 @@
         ],
         "missing": []
       },
-      "skin": "scifi",
+      "ui": "scifi",
       "palette": {
         "size": "free, graded",
         "rules": "One grade per area; avoid oversaturation; skin tones protected."
@@ -1597,7 +1597,7 @@
         ],
         "missing": []
       },
-      "skin": "scifi",
+      "ui": "scifi",
       "palette": {
         "size": "greys and one accent",
         "rules": "Desaturated everything; the accent is red or warm light only where the story points."
@@ -1646,7 +1646,7 @@
         ],
         "missing": []
       },
-      "skin": "neon",
+      "ui": "neon",
       "palette": {
         "size": "1 hue in 4 to 6 values, or black plus a gradient sky",
         "rules": "Value steps per layer; colour only in the far layers or a single accent."
@@ -1695,7 +1695,7 @@
         ],
         "missing": []
       },
-      "skin": "neon",
+      "ui": "neon",
       "palette": {
         "size": "3 to 6 colours",
         "rules": "One ground, one figure colour, one accent; contrast by hue and value."
@@ -1746,7 +1746,7 @@
         ],
         "missing": []
       },
-      "skin": "neon",
+      "ui": "neon",
       "palette": {
         "size": "black plus 2 to 4 saturated hues",
         "rules": "Each hue one meaning (player, enemy, pickup); white only for the hottest centres."
@@ -1795,7 +1795,7 @@
         ],
         "missing": []
       },
-      "skin": "pixel",
+      "ui": "pixel",
       "palette": {
         "size": "2 to 4 colours",
         "rules": "Ink and paper, optionally one mid-tone and one accent."
@@ -1846,7 +1846,7 @@
         ],
         "missing": []
       },
-      "skin": "fantasy",
+      "ui": "fantasy",
       "palette": {
         "size": "dark cool masses plus warm luminous accents",
         "rules": "Value structure first: dark foreground, mid play plane, glowing background."

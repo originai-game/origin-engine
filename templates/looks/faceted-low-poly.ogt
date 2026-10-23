@@ -3,6 +3,7 @@ version 1
 ---
 # Visible facets, broad colour fields, a soft vignette and AgX.
 name "Faceted low-poly"
+ui "paper"
 MaterialStyle {
   flatShading true
 }

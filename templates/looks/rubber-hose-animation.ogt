@@ -3,6 +3,7 @@ version 1
 ---
 # Flat cel shading with thick outlines and four tones, no shadows to speak of.
 name "Rubber-hose animation"
+ui "cartoon"
 MaterialStyle {
   toon true
   outlineWidth 3

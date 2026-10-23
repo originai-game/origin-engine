@@ -3,6 +3,7 @@ version 1
 ---
 # Pixels that glow: bloom over an eight-tone grid.
 name "Luminous high-contrast pixel art"
+ui "neon"
 antialias off
 Stylise {
   pixelHeight 216

@@ -3,6 +3,7 @@ version 1
 ---
 # Two depth bands: black figures on terracotta, with ink contours.
 name "Black-figure pottery"
+ui "fantasy"
 Stylise {
   depthBands 2
   depthBandsNear 2

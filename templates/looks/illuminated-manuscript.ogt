@@ -3,6 +3,7 @@ version 1
 ---
 # Flat colour fields with a dark contour and a warm vignette, as gold-leaf pages.
 name "Illuminated manuscript illustration"
+ui "paper"
 MaterialStyle {
   outlineWidth 2
   outlineColor "#3a2410"

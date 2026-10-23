@@ -3,6 +3,7 @@ version 1
 ---
 # AgX, a little bloom, grain, aberration, a vignette and eye-like exposure adaptation.
 name "Cinematic realism"
+ui "scifi"
 RenderSettings {
   toneMapping agx
   bloom true

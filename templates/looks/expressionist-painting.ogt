@@ -3,6 +3,7 @@ version 1
 ---
 # Wide anisotropic strokes, heavy pigment pooling and bleed, a lifted exposure.
 name "Expressionist painting"
+ui "paper"
 Stylise {
   paintRadius 5
   paintAnisotropy 0.9

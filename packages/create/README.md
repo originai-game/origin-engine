@@ -38,7 +38,7 @@ catalogue (`packages/knowledge/looks/catalogue.json`, 37 styles):
   whole, then to catalogue order). On a terminal, with neither flag, create
   asks for the premise (`--no-prompt` does not);
 - otherwise the template's own look stays: the plain template extends
-  `faceted-low-poly`, the idle archetype carries its skin and render
+  `faceted-low-poly`, the idle archetype carries its UI style and render
   settings, and the other archetypes get a look that extends nothing (their
   frames stay as their `references/` recorded them).
 

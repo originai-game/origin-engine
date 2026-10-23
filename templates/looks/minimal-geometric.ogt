@@ -3,6 +3,7 @@ version 1
 ---
 # Flat facets and six clean tones, nothing else.
 name "Minimal geometric color"
+ui "neon"
 MaterialStyle {
   flatShading true
 }

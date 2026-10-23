@@ -3,6 +3,7 @@ version 1
 ---
 # A low grid, four tones per channel through a Bayer 8 dither, every pixel one of four greens (the engine's @palettes/handheld4): one hue carries the picture.
 name "Monochrome-led pixel art"
+ui "pixel"
 antialias off
 Stylise {
   pixelHeight 160

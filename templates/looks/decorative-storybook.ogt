@@ -3,6 +3,7 @@ version 1
 ---
 # Ten flat tones with a fine dark contour and a soft vignette.
 name "Decorative storybook illustration"
+ui "cartoon"
 MaterialStyle {
   outlineWidth 2
   outlineColor "#2a1a10"

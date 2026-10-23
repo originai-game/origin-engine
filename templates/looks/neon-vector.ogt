@@ -3,6 +3,7 @@ version 1
 ---
 # Bright outlines that bloom: glowing tubes on a dark scene.
 name "Neon vector-like graphics"
+ui "neon"
 MaterialStyle {
   outlineWidth 2
   outlineColor "#40f0ff"

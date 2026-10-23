@@ -3,6 +3,7 @@ version 1
 ---
 # Hard shadow bands, cool-tinted shadows, outlines that thin with distance.
 name "Anime cel-shaded 3D"
+ui "neon"
 MaterialStyle {
   toon true
   shadowTint "#2a3060"

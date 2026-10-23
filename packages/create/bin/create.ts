@@ -102,7 +102,7 @@ export interface Style {
   readonly descriptor: string;
   readonly premise: Readonly<Record<string, string>>;
   readonly look: { readonly presetReady: boolean; readonly support: string; readonly missing: readonly string[] };
-  readonly skin: string;
+  readonly ui: string;
 }
 
 /** The style catalogue this copy of the package reads. */
@@ -284,8 +284,8 @@ function lookText(name: string, style: Style | undefined, slug: string | null, i
     head.push(
       `# It extends the style catalogue's ${slug} preset (${style.name}),`,
       style.look.support === "full" ? "# whose primitives all draw today." : `# support ${style.look.support}: ${style.look.missing.join("; ")}.`,
-      `# The style's UI skin pack is ${style.skin}: copy templates/ui-kit/assets/styles/${style.skin}`,
-      `# to assets/styles/${id}/ and add \`skin "skins/${id}/skin.ogt"\` to dress the UI.`,
+      `# The preset dresses the UI in the built-in ${style.ui} style; a \`ui "<slug>"\``,
+      `# line here picks another, or the game's own assets/styles/<name>/style.ogt.`,
     );
   } else if (slug) head.push(`# It extends ${slug}.`);
   else head.push("# It extends no preset yet: the frame is the engine's defaults plus the lines below.");
@@ -312,11 +312,11 @@ function lookReadme(look: CreatedLook, style: Style | undefined, entry: string, 
     "after the first scene spawns and before `start` runs, and sets tone",
     "mapping and exposure, the post stack, the stylisation (`Stylise`),",
     "material defaults (`MaterialStyle`: toon, outlines, flat shading), fog,",
-    "sky, the environment map and the UI skin.",
+    "sky, the environment map and the UI style (its `ui` line).",
     "",
   ];
   if (look.extends && style) {
-    lines.push(`It extends \`${look.extends}\`${how}: "${style.name}" in the style`, `catalogue. ${style.descriptor} Its UI skin pack is \`${style.skin}\`.`, "");
+    lines.push(`It extends \`${look.extends}\`${how}: "${style.name}" in the style`, `catalogue. ${style.descriptor} Its UI style is \`${style.ui}\`.`, "");
   } else if (look.extends) lines.push(`It extends \`${look.extends}\`${how}.`, "");
   else lines.push("It extends no preset yet: the frame is the engine's defaults plus what", "the file sets.", "");
   lines.push(

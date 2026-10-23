@@ -3,6 +3,7 @@ version 1
 ---
 # Flat facets with a fine contour, twelve tones, ambient occlusion in the folds and a paper grain over all of it (the engine's @canvas/paper).
 name "Folded paper & papercraft"
+ui "paper"
 MaterialStyle {
   flatShading true
   outlineWidth 1

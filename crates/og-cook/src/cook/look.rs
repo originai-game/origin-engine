@@ -1266,7 +1266,7 @@ mod tests {
 
     #[test]
     fn every_preset_checks_against_the_records_with_the_built_ins() {
-        let builtin_ids: Vec<&str> = BUILTINS.iter().map(|(id, _)| *id).collect();
+        let builtin_ids: Vec<&str> = BUILTINS.iter().chain(STYLES).map(|(id, _)| *id).collect();
         for (slug, _) in PRESETS {
             let root = project(&[("looks/x.ogt", &format!("{HEAD}extends \"{slug}\"\n"))]);
             let s = source(&root, "looks/x.ogt");

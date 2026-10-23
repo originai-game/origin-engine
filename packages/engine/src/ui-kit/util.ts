@@ -1,5 +1,5 @@
 // Small helpers the screen templates share: sizes, insets, the frame's
-// tokens, number and time formats, and HUD capsules. Nothing here keeps
+// tokens, number and time formats, and HUD boxes. Nothing here keeps
 // state: what must persist lives in the UI's memory (og.ui.memory).
 
 import type * as Api from "@origingame/engine";
@@ -73,8 +73,8 @@ export function lapTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}.${(ms % 1000).toString().padStart(3, "0")}`;
 }
 
-/** A HUD capsule: a translucent dark pill (material-thick) that keeps text legible over any art. */
-export function capsule(id: string, build: () => void, desc: { gap?: number; padX?: number; height?: number } = {}): Api.Response {
+/** A HUD box: the style's `hud` fill and frame, cornered by its control radius, that keeps text legible over any art. */
+export function hudBox(id: string, build: () => void, desc: { gap?: number; padX?: number; height?: number } = {}): Api.Response {
   const { t } = frame();
   return kit.row(id, {
     padding: xy(desc.padX ?? t.md, 0),

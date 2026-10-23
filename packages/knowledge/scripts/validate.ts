@@ -399,7 +399,7 @@ interface Style {
   checks: string[];
   premise: Record<string, string>;
   look: { preset: string; presetReady: boolean; support: string; primitives: string[]; missing: string[] };
-  skin: string;
+  ui: string;
   palette: { size: string; rules: string };
   assets: Record<string, string>;
   artBible: { direction: string; avoid: string[] };
@@ -408,7 +408,7 @@ interface Style {
 /** What `look.support` may say: full (every primitive draws), partial or planned (`missing` names what is still to land), content (the look is authored art). */
 export const SUPPORT = ["full", "partial", "planned", "content"] as const;
 /** The placeholders the art-bible template may use. */
-export const BIBLE_FIELDS = ["title", "premise", "camera", "platform", "name", "descriptor", "direction", "palette", "assets", "skin", "avoid", "game", "slug", "checks"] as const;
+export const BIBLE_FIELDS = ["title", "premise", "camera", "platform", "name", "descriptor", "direction", "palette", "assets", "ui", "avoid", "game", "slug", "checks"] as const;
 const PREMISE = ["genre", "mood", "era", "audience"];
 const ASSET_SPECS = ["logicalResolution", "spriteScale", "faceBudget", "outlinePx", "textureDensity"];
 
@@ -428,7 +428,7 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
     problems.push(`${at}: missing; og-taste §12 reads the style catalogue from it`);
     return;
   }
-  let cat: { schemaVersion?: number; categories?: Record<string, string>; skins?: string[]; artBibleTemplate?: string; styles?: Style[] };
+  let cat: { schemaVersion?: number; categories?: Record<string, string>; ui?: string[]; artBibleTemplate?: string; styles?: Style[] };
   try {
     cat = JSON.parse(readFileSync(path, "utf8"));
   } catch (e) {
@@ -437,7 +437,10 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
   }
   if (cat.schemaVersion !== 1) problems.push(`${at}: schemaVersion ${cat.schemaVersion}, expected 1`);
   const categories = Object.keys(cat.categories ?? {});
-  const skins = cat.skins ?? [];
+  const packs = cat.ui ?? [];
+  for (const p of packs) {
+    if (existsSync(join(roots.pkg, "..", "..", "templates")) && !existsSync(join(roots.pkg, "..", "..", "templates", "styles", p, "style.ogt"))) problems.push(`${at}: ui names ${p}, which is not a built-in style (templates/styles/${p}/style.ogt)`);
+  }
   for (const m of (cat.artBibleTemplate ?? "").matchAll(/\{(\w+)\}/g)) {
     if (!(BIBLE_FIELDS as readonly string[]).includes(m[1]!)) problems.push(`${at}: artBibleTemplate uses {${m[1]}}, which is none of ${BIBLE_FIELDS.join(", ")}`);
   }
@@ -454,9 +457,9 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
     if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(s.slug ?? "")) problems.push(`${id}: slug is not lowercase-hyphen`);
     if (seen.has(s.slug)) problems.push(`${id}: a second style with this slug`);
     seen.add(s.slug);
-    for (const k of ["name", "descriptor", "skin"] as const) if (!text(s[k])) problems.push(`${id}: no ${k}`);
+    for (const k of ["name", "descriptor", "ui"] as const) if (!text(s[k])) problems.push(`${id}: no ${k}`);
     if (!categories.includes(s.category)) problems.push(`${id}: category ${s.category} is none of ${categories.join(", ")}`);
-    if (!skins.includes(s.skin)) problems.push(`${id}: skin ${s.skin} is none of the packs (${skins.join(", ")})`);
+    if (!packs.includes(s.ui)) problems.push(`${id}: ui ${s.ui} is none of the built-in styles (${packs.join(", ")})`);
     if (!Array.isArray(s.checks) || s.checks.length !== 3 || !s.checks.every(text)) problems.push(`${id}: needs exactly three checks a critic can judge on a frame`);
     for (const k of PREMISE) if (!text(s.premise?.[k])) problems.push(`${id}: premise has no ${k}`);
     for (const k of ASSET_SPECS) if (!text(s.assets?.[k])) problems.push(`${id}: assets has no ${k}`);
@@ -482,15 +485,21 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
     const preset = join(repo, look.preset);
     if (look.presetReady) {
       if (existsSync(join(repo, "templates")) && !existsSync(preset)) problems.push(`${id}: presetReady, but ${look.preset} does not exist`);
-      else if (existsSync(preset) && !/^type look\s*$/m.test(readFileSync(preset, "utf8"))) problems.push(`${id}: ${look.preset} is not an .ogt of type look`);
+      else if (existsSync(preset)) {
+        const body = readFileSync(preset, "utf8");
+        if (!/^type look\s*$/m.test(body)) problems.push(`${id}: ${look.preset} is not an .ogt of type look`);
+        // The preset dresses the UI in the style the catalogue gives it.
+        const ui = /^ui[ \t]+"([^"]+)"/m.exec(body)?.[1];
+        if (ui !== s.ui) problems.push(`${id}: ${look.preset} has ${ui ? `ui "${ui}"` : "no ui line"}; the catalogue says ui "${s.ui}"`);
+      }
     }
     if (tasteText && !tasteText.includes(`\`${s.slug}\``)) problems.push(`skills/og-taste/SKILL.md: the style catalogue (§12) does not list \`${s.slug}\``);
     else if (tasteText) {
-      // §12's row for the style says what the catalogue says: family, name, support, skin.
+      // §12's row for the style says what the catalogue says: family, name, support, ui style.
       const row = new RegExp(`^\\| \`${s.slug.replace(/[-]/g, "\\-")}\` \\| ([^|]+) \\| ([^|]+) \\| ([^|]+) \\| \`([^\`]+)\` \\|$`, "m").exec(tasteText);
-      const want = [cat.categories?.[s.category] ?? s.category, s.name, look.support, s.skin];
+      const want = [cat.categories?.[s.category] ?? s.category, s.name, look.support, s.ui];
       const have = row?.slice(1, 5).map((x) => x.trim());
-      if (!have) problems.push(`skills/og-taste/SKILL.md: §12's table has no row for \`${s.slug}\` (| slug | family | style | support | skin |)`);
+      if (!have) problems.push(`skills/og-taste/SKILL.md: §12's table has no row for \`${s.slug}\` (| slug | family | style | support | ui |)`);
       else if (have.join("|") !== want.join("|")) problems.push(`skills/og-taste/SKILL.md: §12's row for \`${s.slug}\` reads ${have.join(", ")}; the catalogue says ${want.join(", ")}`);
     }
     const all = JSON.stringify(s);

@@ -3,6 +3,7 @@ version 1
 ---
 # Thick ink contours, five tones, tinted shadows and a dark vignette.
 name "Gothic ornamental linework"
+ui "fantasy"
 Stylise {
   ink true
   inkThreshold 0.08

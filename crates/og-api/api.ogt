@@ -10262,9 +10262,9 @@ module ui {
   }
 
   struct ActionButtonDesc {
-    doc "A round touch action button (jump, fire)."
+    doc "A square touch action button (jump, fire), cornered by the style's control radius."
     desc true
-    field size f32 "Its diameter; 0 is 64 (never under 44)." {
+    field size f32 "Its side; 0 is 64 (never under 44)." {
       unit cssPx
       min 0
     }
@@ -10600,7 +10600,7 @@ module ui {
   }
 
   fn actionButton {
-    doc "A round touch action button: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px."
+    doc "A square touch action button, cornered by the style's control radius: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px."
     param id String "Its id."
     param text String "Its label (and what the probe reads)."
     param desc ActionButtonDesc "Size, primary and icon."

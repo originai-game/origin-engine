@@ -3,6 +3,7 @@ version 1
 ---
 # Soft rim light, a touch of grain and painterly smoothing: handmade surfaces (set AnimationPlayer.stepFps 12 on the characters for stop motion on twos).
 name "Sculpted clay & stop-motion"
+ui "cartoon"
 MaterialStyle {
   rimIntensity 0.35
   rimPower 2.5

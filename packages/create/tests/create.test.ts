@@ -223,7 +223,7 @@ test("--look extends the catalogue preset it names; an unknown slug is refused w
   expect(r.out).toContain("extends anime-cel-3d (--look)");
   const look = read("cel", "assets", "looks", "cel.ogt");
   expect(topLevel(look, "extends")).toBe("anime-cel-3d");
-  expect(look).toContain("skins/neon"); // the style's skin pack, as the catalogue gives it
+  expect(look).toContain("built-in neon style"); // the preset's UI style, as the catalogue gives it
   expect(read("cel", "README.md")).toContain("It extends `anime-cel-3d`, chosen with `--look`");
   const bad = cli("nope-look", "--look", "photoreal-ultra");
   expect(bad.code).not.toBe(0);
@@ -275,10 +275,10 @@ test("an archetype without a look gets one: GameDesc.look inserted into og.game(
   expect(read("run3", "README.md")).toContain("OG_FX_CAPTURE=1 og test .");
 });
 
-test("the idle archetype's look carries over: its skin and render settings stay, a preset goes under them", () => {
+test("the idle archetype's look carries over: its UI style and render settings stay, a preset goes under them", () => {
   expect(cli("orb", "--archetype", "idle").code).toBe(0);
   const plain = read("orb", "assets", "looks", "orb.ogt");
-  expect(topLevel(plain, "skin")).toBe("styles/sparkorb/style.ogt");
+  expect(topLevel(plain, "ui")).toBe("styles/sparkorb/style.ogt");
   expect(plain).toContain("RenderSettings {\n  toneMapped false\n  environmentIntensity 0\n}");
   expect(topLevel(plain, "extends")).toBeNull();
   expect(existsSync(join(scratch, "orb", "assets", "looks", "idle.ogt"))).toBeFalse();
@@ -286,6 +286,6 @@ test("the idle archetype's look carries over: its skin and render settings stay,
   expect(cli("orb2", "--archetype", "idle", "--look", "luminous-pixel").code).toBe(0);
   const lit = read("orb2", "assets", "looks", "orb2.ogt");
   expect(topLevel(lit, "extends")).toBe("luminous-pixel");
-  expect(topLevel(lit, "skin")).toBe("styles/sparkorb/style.ogt");
+  expect(topLevel(lit, "ui")).toBe("styles/sparkorb/style.ogt");
   expect(lit.indexOf('extends "luminous-pixel"')).toBeLessThan(lit.indexOf("RenderSettings {"));
 });

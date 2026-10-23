@@ -3,6 +3,7 @@ version 1
 ---
 # Cel shading, heavy outlines, ink marks hatched on the surfaces (strokes that follow the form, darken the shadows and gather along the contours) and ink on every edge.
 name "Inked comic-book 3D"
+ui "scifi"
 MaterialStyle {
   toon true
   outlineWidth 3

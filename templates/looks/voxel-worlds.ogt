@@ -3,6 +3,7 @@ version 1
 ---
 # Flat faces with ambient occlusion in the corners (.vox models cook to flat-shaded meshes).
 name "Voxel worlds"
+ui "pixel"
 MaterialStyle {
   flatShading true
 }

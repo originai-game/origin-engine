@@ -130,7 +130,7 @@ module ui {
 | [`JoystickResult`](#type-JoystickResult) | struct | A joystick's vector this tick. |
 | [`DpadDesc`](#type-DpadDesc) | desc struct | A d-pad. |
 | [`DpadResult`](#type-DpadResult) | struct | Which arms of a d-pad are held this tick. |
-| [`ActionButtonDesc`](#type-ActionButtonDesc) | desc struct | A round touch action button (jump, fire). |
+| [`ActionButtonDesc`](#type-ActionButtonDesc) | desc struct | A square touch action button (jump, fire), cornered by the style's control radius. |
 | [`SkeletonDesc`](#type-SkeletonDesc) | desc struct | A skeleton: the neutral fill standing in for content that is loading. |
 | [`UiItemBuild`](#type-UiItemBuild) | callback | Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it. |
 | [`og.ui.breakpoint`](#fn-breakpoint) | function | The size class of the play surface of the frame being built (desktop outside a frame). |
@@ -175,7 +175,7 @@ module ui {
 | [`og.ui.dialogue`](#fn-dialogue) | function | A dialogue box: a portrait slot, the speaker in primary ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown. |
 | [`og.ui.joystick`](#fn-joystick) | function | A virtual joystick: a base and a knob that follows a press that started on it. It keeps the finger that grabbed it (any of og.Pointers), so another finger can hold an action button at the same time. |
 | [`og.ui.dpad`](#fn-dpad) | function | A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px. |
-| [`og.ui.actionButton`](#fn-actionButton) | function | A round touch action button: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px. |
+| [`og.ui.actionButton`](#fn-actionButton) | function | A square touch action button, cornered by the style's control radius: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px. |
 | [`og.ui.toast`](#fn-toast) | function | Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it. |
 | [`og.ui.dismissToast`](#fn-dismissToast) | function | Start a toast's exit. |
 | [`og.ui.navigate`](#fn-navigate) | function | Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command. A move queued while the focus is on nothing puts the focus on the first control, whatever its direction, and no further: moves asked again before the focus lands (each tick until og.ui.focus answers a path) land on that same first control. |
@@ -2251,7 +2251,7 @@ fn dpad {
 
 ### `og.ui.actionButton`
 
-A round touch action button: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px.
+A square touch action button, cornered by the style's control radius: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px.
 
 ```ts
 og.ui.actionButton(id: string, text: string, desc?: ActionButtonDesc): Response
@@ -2269,7 +2269,7 @@ Binding symbol `og_ui_action_button` · publish builds: kept
 
 ```ogt
 fn actionButton {
-  doc "A round touch action button: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px."
+  doc "A square touch action button, cornered by the style's control radius: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px."
   param id String "Its id."
   param text String "Its label (and what the probe reads)."
   param desc ActionButtonDesc "Size, primary and icon."
@@ -5879,21 +5879,21 @@ struct DpadResult {
 
 ### `ActionButtonDesc` (desc struct)
 
-A round touch action button (jump, fire).
+A square touch action button (jump, fire), cornered by the style's control radius.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | Its diameter; 0 is 64 (never under 44). |
+| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | Its side; 0 is 64 (never under 44). |
 | `primary` | `boolean` | `false` | — | — | — | The primary button (one per screen). |
 | `icon` | `string` | `""` | — | — | — | An icon of the atlas by name, instead of the label; empty is the label. |
 
 ```ogt
 struct ActionButtonDesc {
-  doc "A round touch action button (jump, fire)."
+  doc "A square touch action button (jump, fire), cornered by the style's control radius."
   desc true
-  field size f32 "Its diameter; 0 is 64 (never under 44)." {
+  field size f32 "Its side; 0 is 64 (never under 44)." {
     unit cssPx
     min 0
   }

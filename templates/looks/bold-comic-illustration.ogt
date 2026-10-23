@@ -3,6 +3,7 @@ version 1
 ---
 # Cel shading with thick outlines, ink on every edge and six flat tones.
 name "Bold comic illustration"
+ui "fantasy"
 MaterialStyle {
   toon true
   outlineWidth 3

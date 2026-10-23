@@ -3,6 +3,7 @@ version 1
 ---
 # Soft strokes that bleed into each other and pool at their rims on cold-pressed paper (the engine's @canvas/watercolor), a bright exposure.
 name "Watercolor washes"
+ui "paper"
 Stylise {
   paintRadius 3
   paintAnisotropy 0.4

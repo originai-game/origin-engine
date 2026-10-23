@@ -3,6 +3,7 @@ version 1
 ---
 # Early-console 3D: a low grid, vertices snapped to it, affine textures, a coarse depth buffer, sixteen tones.
 name "Low-resolution retro 3D"
+ui "scifi"
 antialias off
 Stylise {
   pixelHeight 240

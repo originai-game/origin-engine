@@ -3,6 +3,7 @@ version 1
 ---
 # A low grid, two tones per channel through a Bayer 8 dither, every pixel black or white (the engine's @palettes/1bit): true 1-bit.
 name "Monochrome dithered 3D"
+ui "pixel"
 antialias off
 Stylise {
   pixelHeight 240

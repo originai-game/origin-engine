@@ -4,7 +4,7 @@
 
 import type * as Api from "@origingame/engine";
 import { kit } from "./bind.ts";
-import { capsule, fit, fmt, frame, grow, iconOr, px, token } from "./util.ts";
+import { hudBox, fit, fmt, frame, grow, iconOr, px, token } from "./util.ts";
 
 /** A screen panel: a dialog over the game, wide on desktop, full width on a phone. With `scrim` a press on the backdrop closes it too. */
 function screen(id: string, title: string, width: number, build: () => void, scrim = false): boolean {
@@ -37,7 +37,7 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
       } else {
         kit.spacer("Gap", null);
       }
-      capsule("Balance", () => {
+      hudBox("Balance", () => {
         if (desc.currencyIcon) iconOr("Icon", desc.currencyIcon, 18, token("gold"));
         kit.counter("Amount", balance, { font: "mono", step: "base" });
         kit.label("Unit", desc.currency ?? "coins", { step: "base", color: token("inkMuted"), nowrap: true });

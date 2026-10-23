@@ -3,6 +3,7 @@ version 1
 ---
 # Six flat depth bands from a dark foreground to a pale distance.
 name "Layered silhouettes"
+ui "neon"
 Stylise {
   depthBands 6
   depthBandsNear 3

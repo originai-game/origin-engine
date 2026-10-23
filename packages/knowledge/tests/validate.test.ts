@@ -235,7 +235,7 @@ test("og-taste §12's table is held to the catalogue, row by row", () => {
   );
   expect(p.sort()).toEqual([
     "skills/og-taste/SKILL.md: §12's row for `voxel-worlds` reads 3D rendering, Voxel worlds, partial, cartoon; the catalogue says 3D rendering, Voxel worlds, full, pixel",
-    "skills/og-taste/SKILL.md: §12's table has no row for `neon-vector` (| slug | family | style | support | skin |)",
+    "skills/og-taste/SKILL.md: §12's table has no row for `neon-vector` (| slug | family | style | support | ui |)",
   ]);
 });
 

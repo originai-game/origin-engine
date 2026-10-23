@@ -8,7 +8,7 @@
 
 import type * as Api from "@origingame/engine";
 import { kit } from "./bind.ts";
-import { all, capsule, clock, fit, fmt, frame, grow, iconOr, lapTime, px, token } from "./util.ts";
+import { all, hudBox, clock, fit, fmt, frame, grow, iconOr, lapTime, px, token } from "./util.ts";
 
 type Hud = { paused: boolean; action: string | null; moveX: number; moveY: number; held: string[] };
 
@@ -58,16 +58,16 @@ export function platformerHud(id: string, desc: Api.PlatformerHudDesc = {}): Api
   const { t, touch } = frame();
   const out = hud();
   // What the game leaves out is not drawn: no hearts with maxLives 0 (and
-  // no health bar), no coins or score capsule without coins or score.
+  // no health bar), no coins or score box without coins or score.
   const health = desc.health ?? null;
   const maxLives = desc.maxLives ?? 3;
   const coins = desc.coins ?? null;
   const score = desc.score ?? null;
   if (health !== null || maxLives > 0 || desc.level) {
     kit.anchor(`${id}.left`, { anchor: "topLeft", direction: "column", gap: t.sm }, () => {
-      if (health !== null) capsule("Lives", () => kit.meter("Health", health, 1, { width: px(120) }));
+      if (health !== null) hudBox("Lives", () => kit.meter("Health", health, 1, { width: px(120) }));
       else if (maxLives > 0) {
-        capsule("Lives", () => {
+        hudBox("Lives", () => {
           for (let i = 0; i < maxLives; i++) iconOr(kit.idi("Life", i), "heart", 20, token(i < (desc.lives ?? 0) ? "danger" : "controlStrong"));
         });
       }
@@ -77,17 +77,17 @@ export function platformerHud(id: string, desc: Api.PlatformerHudDesc = {}): Api
   if (desc.timeLeft !== null && desc.timeLeft !== undefined) {
     const low = desc.timeLeft <= 10;
     kit.anchor(`${id}.top`, { anchor: "top" }, () => {
-      capsule("Timer", () => kit.label("Time", clock(desc.timeLeft!), { step: "lg", font: "mono", color: token(low ? "danger" : "ink"), nowrap: true }));
+      hudBox("Timer", () => kit.label("Time", clock(desc.timeLeft!), { step: "lg", font: "mono", color: token(low ? "danger" : "ink"), nowrap: true }));
     });
   }
   kit.anchor(`${id}.right`, { anchor: "topRight", gap: t.sm, cross: "center" }, () => {
     if (coins !== null) {
-      capsule("Coins", () => {
+      hudBox("Coins", () => {
         iconOr("Coin", "coin", 20, token("gold"));
         kit.label("Count", fmt(coins), { font: "mono", nowrap: true });
       });
     }
-    if (score !== null) capsule("Score", () => kit.label("Points", fmt(score), { font: "mono", nowrap: true }));
+    if (score !== null) hudBox("Score", () => kit.label("Points", fmt(score), { font: "mono", nowrap: true }));
     pauseButton(out, desc.pauseLabel ?? "Pause");
   });
   if ((desc.touch ?? false) && touch) touchControls(out, { dpad: true, buttons: [{ id: "jump", label: desc.jumpLabel ?? "Jump", primary: true }] });
@@ -121,7 +121,7 @@ export function shooterHud(id: string, desc: Api.ShooterHudDesc = {}): Api.HudRe
   });
   if (desc.map && !showTouch) kit.anchor(`${id}.map`, { anchor: "topLeft" }, () => kit.minimap("Map", desc.map!));
   kit.anchor(`${id}.top`, { anchor: "topRight", gap: t.sm, cross: "center" }, () => {
-    capsule("Kills", () => {
+    hudBox("Kills", () => {
       kit.label("Count", fmt(desc.kills ?? 0), { font: "mono", nowrap: true });
       kit.label("Unit", desc.killsLabel ?? "kills", { step: "meta", color: token("inkMuted"), nowrap: true });
     });
@@ -171,7 +171,7 @@ export function puzzleHud(id: string, desc: Api.PuzzleHudDesc = {}): Api.HudResu
   });
   kit.anchor(`${id}.right`, { anchor: "topRight", gap: t.sm, cross: "center" }, () => {
     if (desc.timeLeft !== null && desc.timeLeft !== undefined) {
-      capsule("Timer", () => kit.label("Time", clock(desc.timeLeft!), { font: "mono", color: token(desc.timeLeft! <= 10 ? "danger" : "ink"), nowrap: true }));
+      hudBox("Timer", () => kit.label("Time", clock(desc.timeLeft!), { font: "mono", color: token(desc.timeLeft! <= 10 ? "danger" : "ink"), nowrap: true }));
     }
     pauseButton(out, desc.pauseLabel ?? "Pause");
   });
@@ -185,7 +185,7 @@ export function idleHud(id: string, desc: Api.IdleHudDesc = {}): Api.HudResult {
   const generators = desc.generators ?? [];
   kit.anchor(`${id}.wallet`, { anchor: "top", gap: t.sm, cross: "center" }, () => {
     currencies.forEach((c, i) => {
-      capsule(c.id ?? kit.idi("Currency", i), () => {
+      hudBox(c.id ?? kit.idi("Currency", i), () => {
         if (c.icon) iconOr("Icon", c.icon, 20, token("primary"));
         kit.label("Amount", fmt(c.amount ?? 0), { step: i === 0 ? "lg" : "body", font: "mono", nowrap: true });
         if ((c.perSecond ?? 0) !== 0) kit.label("Rate", (desc.rateLabel ?? "+{rate}/s").replaceAll("{rate}", fmt(c.perSecond ?? 0)), { step: "meta", color: token("success"), nowrap: true });

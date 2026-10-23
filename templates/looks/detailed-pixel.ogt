@@ -3,6 +3,7 @@ version 1
 ---
 # A tall grid with twelve-tone ramps and a fine dither.
 name "Densely detailed pixel art"
+ui "fantasy"
 antialias off
 Stylise {
   pixelHeight 270

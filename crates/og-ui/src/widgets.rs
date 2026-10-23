@@ -3167,8 +3167,9 @@ impl Ui {
         out
     }
 
-    /// A round action button (jump, fire): at least the touch target;
-    /// `pressed` while held, `clicked` on a tap.
+    /// A square action button (jump, fire), cornered by the style's
+    /// `radius.control` like every other button: at least the touch
+    /// target; `pressed` while held, `clicked` on a tap.
     pub fn action_button(
         &mut self,
         id: impl Into<Id>,
@@ -3185,7 +3186,7 @@ impl Ui {
                 width: Size::Fixed(size),
                 height: Size::Fixed(size),
                 interactive: true,
-                radius: size / 2.0,
+                radius: t.radius.control,
                 ..Element::default()
             },
         );

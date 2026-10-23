@@ -3,6 +3,7 @@ version 1
 ---
 # Cel bands with near-black shadows, thick ink and three tones.
 name "Heavy ink and shadow"
+ui "fantasy"
 MaterialStyle {
   toon true
   shadowTint "#000000"

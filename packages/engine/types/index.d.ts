@@ -15807,13 +15807,13 @@ export interface DpadResult {
 }
 
 /**
- * A round touch action button (jump, fire).
+ * A square touch action button (jump, fire), cornered by the style's control radius.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
 export interface ActionButtonDesc {
   /**
-   * Its diameter; 0 is 64 (never under 44).
+   * Its side; 0 is 64 (never under 44).
    *
    * @default 0
    * @range 0..
@@ -22698,7 +22698,7 @@ export declare namespace og {
      */
     function dpad(id: string, desc?: DpadDesc): DpadResult;
     /**
-     * A round touch action button: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px.
+     * A square touch action button, cornered by the style's control radius: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px.
      *
      * @param id Its id.
      * @param text Its label (and what the probe reads).
