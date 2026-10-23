@@ -63,6 +63,16 @@ track audio {
     sound "audio/click.ogt"
   }
 }
+track music {
+  key 6 {
+    sound "audio/sting.ogt"
+    volume 0.7
+    fadeIn 0.3
+    fadeOut 1
+    end 9.5
+    loop true
+  }
+}
 track event {
   key 5.5 {
     do "spawn_wave:2"

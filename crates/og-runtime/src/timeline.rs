@@ -1330,7 +1330,7 @@ fn evaluate(
                                 continue;
                             };
                             let v = json!({
-                                "sound": handle as f64, "bus": k.bus, "volume": g, "looping": k.looping,
+                                "sound": handle as f64, "bus": k.bus, "volume": g, "loop": k.looping,
                                 "playing": true, "startOffset": t - k.time,
                             });
                             let bytes = r.source.1.encode(None, Some(&v)).map_err(invalid)?;
