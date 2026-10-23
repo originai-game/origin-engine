@@ -57,6 +57,12 @@ struct Message {
 #[derive(Default)]
 struct Net {
     host: String,
+    /// The room a Play link named (`?room=<id>`, og_room_set_host's `join`),
+    /// once the engine asked to join it.
+    link: String,
+    /// A Play link refused for want of a room host: told the game once, and
+    /// joined when a host that carries rooms arrives.
+    link_waiting: String,
     stage: Stage,
     room: String,
     peer: u32,
@@ -123,11 +129,54 @@ pub fn og_room_take(engine: u32) -> String {
     })
 }
 
-/// `og_room_set_host`.
+/// `og_room_set_host`: what carries the rooms, and with `join` the room a
+/// Play link (`?room=<id>`) puts this engine in. The engine joins it itself
+/// (once: a link is not joined again after a leave), so the game hears the
+/// same og.RoomJoined as for its own roomJoin, and a roomJoin of its own
+/// meanwhile is refused as one already being joined. Without a host, or
+/// with a malformed id, og.RoomJoined says why.
 pub fn og_room_set_host(engine: u32, info: String) {
     let v: Value = serde_json::from_str(&info).unwrap_or(Value::Null);
     let host = v["host"].as_str().unwrap_or("none").to_string();
-    with(engine, |n| n.host = host);
+    let join = v["join"].as_str().unwrap_or("").to_string();
+    with(engine, |n| {
+        n.host = host;
+        if join.is_empty() || n.link == join {
+            return;
+        }
+        n.link = join.clone();
+        let refused = |reason: String| {
+            (
+                JOINED,
+                json!({ "ok": false, "room": "", "peer": 0, "peers": 0, "reason": reason }),
+            )
+        };
+        if !protocol::valid_room(&join) {
+            n.pending.push(refused(format!(
+                "the Play link's room '{join}' is not a room id: 1 to 64 of letters, digits, '.', '_' and '-'"
+            )));
+            return;
+        }
+        if n.host.is_empty() || n.host == "none" {
+            n.link.clear();
+            if n.link_waiting != join {
+                n.link_waiting = join.clone();
+                n.pending.push(refused(format!(
+                    "the Play link's room '{join}': this page carries no rooms (the platform's Player answers room.join)"
+                )));
+            }
+            return;
+        }
+        match can_join(n) {
+            Ok(()) => {
+                n.stage = Stage::Joining;
+                n.outbox.push(protocol::join(&join, ""));
+            }
+            Err(e) => n
+                .pending
+                .push(refused(format!("the Play link's room '{join}': {e}"))),
+        }
+    });
 }
 
 /// `og_room_deliver`: one event from the host.
@@ -347,6 +396,7 @@ pub fn og_platform_room_info(world: u32) -> String {
             "state": state,
             "room": if inside { n.room.as_str() } else { "" },
             "host": host,
+            "link": n.link,
             "peer": if inside { n.peer } else { 0 },
             "peers": if inside { peers_json(n) } else { json!([]) },
         })

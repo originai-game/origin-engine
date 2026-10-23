@@ -578,7 +578,7 @@ fn roomCreate {
 }
 ```
 
-<sub>`api.ogt` line 9425</sub>
+<sub>`api.ogt` line 9426</sub>
 
 <a id="fn-roomJoin"></a>
 
@@ -608,7 +608,7 @@ fn roomJoin {
 }
 ```
 
-<sub>`api.ogt` line 9434</sub>
+<sub>`api.ogt` line 9435</sub>
 
 <a id="fn-roomLeave"></a>
 
@@ -636,7 +636,7 @@ fn roomLeave {
 }
 ```
 
-<sub>`api.ogt` line 9441</sub>
+<sub>`api.ogt` line 9442</sub>
 
 <a id="fn-roomSend"></a>
 
@@ -670,7 +670,7 @@ fn roomSend {
 }
 ```
 
-<sub>`api.ogt` line 9447</sub>
+<sub>`api.ogt` line 9448</sub>
 
 <a id="fn-roomPeers"></a>
 
@@ -698,7 +698,7 @@ fn roomPeers {
 }
 ```
 
-<sub>`api.ogt` line 9457</sub>
+<sub>`api.ogt` line 9458</sub>
 
 <a id="fn-roomInfo"></a>
 
@@ -726,7 +726,7 @@ fn roomInfo {
 }
 ```
 
-<sub>`api.ogt` line 9463</sub>
+<sub>`api.ogt` line 9464</sub>
 
 <a id="fn-roomMessage"></a>
 
@@ -756,7 +756,7 @@ fn roomMessage {
 }
 ```
 
-<sub>`api.ogt` line 9469</sub>
+<sub>`api.ogt` line 9470</sub>
 
 ## Components, resources and events
 
@@ -810,7 +810,7 @@ event RoomJoined {
 }
 ```
 
-<sub>`api.ogt` line 9397</sub>
+<sub>`api.ogt` line 9398</sub>
 
 <a id="record-RoomPeerJoined"></a>
 
@@ -833,7 +833,7 @@ event RoomPeerJoined {
 }
 ```
 
-<sub>`api.ogt` line 9406</sub>
+<sub>`api.ogt` line 9407</sub>
 
 <a id="record-RoomPeerLeft"></a>
 
@@ -856,7 +856,7 @@ event RoomPeerLeft {
 }
 ```
 
-<sub>`api.ogt` line 9412</sub>
+<sub>`api.ogt` line 9413</sub>
 
 <a id="record-RoomMessage"></a>
 
@@ -881,7 +881,7 @@ event RoomMessage {
 }
 ```
 
-<sub>`api.ogt` line 9418</sub>
+<sub>`api.ogt` line 9419</sub>
 
 ## Types
 
@@ -1247,6 +1247,7 @@ The room this engine is in.
 | `host` | `string` | `""` | — | — | — | What carries rooms here: `relay` (natively, `og run --room` through `og relay`), `player` (the platform's rooms through the Player, on the web) or `none` (roomCreate and roomJoin are refused). |
 | `peer` | `number` | `0` | — | — | — | This engine's peer number; 0 in none. |
 | `peers` | `readonly RoomPeer[]` | `[]` | — | — | — | Every peer present, this one included, by number. |
+| `link` | `string` | `""` | — | — | — | The room a Play link to a room (`?room=<id>` on the play page) named: the engine joined it at load (og.RoomJoined answers, as for roomJoin); empty without one. |
 
 ```ogt
 struct RoomInfo {
@@ -1256,6 +1257,7 @@ struct RoomInfo {
   field host String "What carries rooms here: `relay` (natively, `og run --room` through `og relay`), `player` (the platform's rooms through the Player, on the web) or `none` (roomCreate and roomJoin are refused)."
   field peer u32 "This engine's peer number; 0 in none."
   field peers List.RoomPeer "Every peer present, this one included, by number."
+  field link String "The room a Play link to a room (`?room=<id>` on the play page) named: the engine joined it at load (og.RoomJoined answers, as for roomJoin); empty without one."
 }
 ```
 
@@ -1286,4 +1288,4 @@ struct RoomMessageData {
 }
 ```
 
-<sub>`api.ogt` line 9388</sub>
+<sub>`api.ogt` line 9389</sub>

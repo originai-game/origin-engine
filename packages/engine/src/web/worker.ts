@@ -117,7 +117,7 @@ type Message =
   | { type: "platform-answer"; request: number; answer: PlatformAnswer }
   | { type: "platform-host"; host: string; capabilities: string[] }
   | { type: "room-events"; events: unknown[] }
-  | { type: "room-host"; host: string }
+  | { type: "room-host"; host: string; join?: string }
   | AudioMessage
   | AudioLatencyMessage;
 
@@ -822,7 +822,12 @@ export function startWorker(game: GameToken): void {
   };
 
   const calls: Record<string, (e: Engine, args: unknown[]) => unknown> = {
-    advance: (e, [n]) => e.advance(Number(n)),
+    // A harness's ticks carry the room as the page's own frames do: lockstep's inputs leave with them.
+    advance: (e, [n]) => {
+      const answered = e.advance(Number(n));
+      pumpRoom(e);
+      return answered;
+    },
     command: (e, [action, args]) => e.command(String(action), (args as string[]) ?? []),
     hash: (e) => e.hash(),
     /** What the engine holds (ProbeMemory: the wasm linear memory, the counted heap, the world, streaming, audio), in every build. */
@@ -834,7 +839,13 @@ export function startWorker(game: GameToken): void {
     frame: (e, [ms]) => {
       const answered = e.frame(Number(ms));
       relay(answered);
+      pumpRoom(e);
       return answered;
+    },
+    /** og.net on this page: og.net.status (lockstep running, its start tick, the seats, the first divergent tick) and the shared hash, as `og run --json` reports them natively (`lockstep`, `netHash`). */
+    net: (e) => {
+      const abi = boundHost()!.abi;
+      return { status: JSON.parse(abi.og_net_status(e.id)), hash: JSON.parse(abi.og_net_hash(e.id)), room: JSON.parse(abi.og_platform_room_info(e.id)) };
     },
     // The frames played since the last reset (at most FRAME_RECORDS, oldest first); `true` resets.
     timings: (_, [reset]) => {
@@ -1052,7 +1063,11 @@ export function startWorker(game: GameToken): void {
       platformCounter.answered();
     }
     if (data.type === "platform-host") engine.attachPlatform(toPage(data.host, data.capabilities, platformCounter));
-    if (data.type === "room-host") boundHost()?.abi.og_room_set_host(engine.id, JSON.stringify({ host: data.host }));
+    if (data.type === "room-host") {
+      boundHost()?.abi.og_room_set_host(engine.id, JSON.stringify({ host: data.host, ...(data.join ? { join: data.join } : {}) }));
+      // A Play link's join leaves now, not with the next frame (the page may be behind its gate).
+      pumpRoom(engine);
+    }
     if (data.type === "room-events") {
       const abi = boundHost()?.abi;
       for (const event of data.events) abi?.og_room_deliver(engine.id, JSON.stringify(event));

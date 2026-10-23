@@ -9383,6 +9383,7 @@ module platform {
     field host String "What carries rooms here: `relay` (natively, `og run --room` through `og relay`), `player` (the platform's rooms through the Player, on the web) or `none` (roomCreate and roomJoin are refused)."
     field peer u32 "This engine's peer number; 0 in none."
     field peers List.RoomPeer "Every peer present, this one included, by number."
+    field link String "The room a Play link to a room (`?room=<id>` on the play page) named: the engine joined it at load (og.RoomJoined answers, as for roomJoin); empty without one."
   }
 
   struct RoomMessageData {

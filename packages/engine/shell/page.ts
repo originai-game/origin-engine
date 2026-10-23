@@ -184,6 +184,9 @@ export interface PlayHandle {
 export async function play(): Promise<PlayHandle> {
   const config = readConfig();
   const query = new URLSearchParams(location.search);
+  // A Play link to a room (`?room=<id>`, docs/platform-asks.md #16): the engine joins it at load
+  // once a host carries rooms (the Player's room.*), og.RoomJoined answering as for roomJoin.
+  const roomLink = query.get("room") ?? undefined;
   const t0 = performance.now();
   const log = new LogTail();
   const playerEvents: import("./player.ts").PlayerEvents = {};
@@ -592,7 +595,7 @@ export async function play(): Promise<PlayHandle> {
     shell.setPlatform(playerPlatform(player, platformStore));
     // Rooms ride the Player's postMessage link (pushed events): a framed Player's, never the HTTP page's.
     const rooms = playerRooms(player);
-    shell.setRooms(rooms);
+    shell.setRooms(rooms, roomLink);
     playerEvents.room = (e) => rooms?.push(e);
     pausedByPlayer = m.paused;
     if (m.started && phase === "gate") start();
@@ -613,6 +616,9 @@ export async function play(): Promise<PlayHandle> {
   pausedByPlayer = player.paused;
   // A framed page (or the Stage overlay's own document) waits briefly for a Player's hello before drawing its own gate.
   if (linked && !byPlayer) await new Promise((r) => setTimeout(r, 300));
+  // A Play link to a room on a page no Player carries rooms for: the game hears why it is in none
+  // (og.RoomJoined, ok false); a Player's hello later joins it.
+  if (roomLink && !byPlayer) shell.setRooms(null, roomLink);
 
   // ── ready: reveal, then the gate ─────────────────────────────────────
   setProgress(1);

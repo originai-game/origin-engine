@@ -307,7 +307,7 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "og_room_set_host",
         &[("engine", "u32", "number"), ("info", "String", "string")],
         "()",
-        "Say what carries this engine's rooms: JSON `{ host }` (`relay`, `player` or `none`), as og.platform.roomInfo reports; with `none` roomCreate and roomJoin are refused.",
+        "Say what carries this engine's rooms: JSON `{ host, join? }` (`relay`, `player` or `none`), as og.platform.roomInfo reports; with `none` roomCreate and roomJoin are refused. `join` is the room a Play link named (`?room=<id>`): the engine joins it once, itself, and og.RoomJoined answers.",
     ),
 ];
 

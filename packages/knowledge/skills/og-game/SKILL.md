@@ -1988,7 +1988,11 @@ const Move = defineSystem("Move", { reads: [og.PlayerInput], writes: [og.Transfo
 Alone, or with lockstep off, `submit` drives the local player on the next
 tick, so the same code plays single-player. Natively, run `og relay` and
 then `og run . --room ws://127.0.0.1:47900/<room>` in two terminals; on
-the web the shell carries the platform's rooms. A playtest plays itself in
+the web the shell carries the platform's rooms, and a Play link with
+`?room=<id>` puts the page in that room at load (the game hears
+og.RoomJoined as for its own roomJoin; `og.platform.roomInfo(world).link`
+names the link's room), so a game that plays over a room need not ask for
+one when the link named it. A playtest plays itself in
 a room with `room: { players: 2, commands: [...] }`: its runs are `run`
 and `run.peers`, and each has `netHash` and `lockstep`. Equal `netHash`
 values at the same tick mean the peers stayed in step. Once lockstep runs

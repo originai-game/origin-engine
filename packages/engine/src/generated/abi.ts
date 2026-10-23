@@ -45,7 +45,7 @@ export interface HostAbi<A, V> {
   og_room_take(engine: number): string;
   /** One room event from the host, JSON: `{ type: "joined", room, peer, peers: [{ peer, name }] }`, `{ type: "peer_joined", peer, name }`, `{ type: "peer_left", peer }`, `{ type: "message", from, channel?, data? | bytes? }`, `{ type: "left", reason }` or `{ type: "error", op, code, message }`. Lockstep's messages act between ticks at once; the game's events are sent at the start of the next tick. False for a malformed event. */
   og_room_deliver(engine: number, event: string): boolean;
-  /** Say what carries this engine's rooms: JSON `{ host }` (`relay`, `player` or `none`), as og.platform.roomInfo reports; with `none` roomCreate and roomJoin are refused. */
+  /** Say what carries this engine's rooms: JSON `{ host, join? }` (`relay`, `player` or `none`), as og.platform.roomInfo reports; with `none` roomCreate and roomJoin are refused. `join` is the room a Play link named (`?room=<id>`): the engine joins it once, itself, and og.RoomJoined answers. */
   og_room_set_host(engine: number, info: string): void;
   /** `defineComponent` */
   og_reflect_define_component(name: string, fields: string): string;

@@ -14132,6 +14132,10 @@ export interface RoomInfo {
   readonly peer: number;
   /** Every peer present, this one included, by number. */
   readonly peers: readonly RoomPeer[];
+  /**
+   * The room a Play link to a room (`?room=<id>` on the play page) named: the engine joined it at load (og.RoomJoined answers, as for roomJoin); empty without one.
+   */
+  readonly link: string;
 }
 
 /** A message another peer sent: what og.RoomMessage announced. */

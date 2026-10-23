@@ -606,7 +606,16 @@ Each host carries rooms its own way:
   delivers the page's events. The shell's `RoomHost` maps them onto the
   Player's `room.*` (docs/platform-asks.md #16, open). A Player whose
   hello does not list `room.join` leaves the host as `none`, and
-  roomCreate and roomJoin are refused.
+  roomCreate and roomJoin are refused. A Play link to a room
+  (`?room=<id>`) is read by the play page and handed to the engine with
+  the host (`og_room_set_host`'s `join`): the engine joins it itself, once,
+  as soon as a host carries rooms, so the game hears the same
+  og.RoomJoined as for its own roomJoin, and roomInfo's `link` names it.
+  On a page with no room host og.RoomJoined says so (ok false). The
+  Worker's `advance` and `frame` calls pump the room as its own frames do,
+  and its `net` call answers og.net's status and shared hash. Two
+  Worker-hosted pages joined by a Play link play the arena in lockstep
+  through a relay (`packages/engine/tests/web-rooms.test.ts`).
 
 ### 2.9 The video producer
 

@@ -473,11 +473,14 @@ export class Shell {
   /**
    * What carries og.platform's rooms from now on (og.platform.roomInfo's `host`); null for
    * none, where roomCreate and roomJoin are refused. A host already carrying a room keeps it
-   * until its `left`: the engine is told the new host only for its next room.
+   * until its `left`: the engine is told the new host only for its next room. `link` is the room
+   * a Play link named (`?room=<id>`, the play page passes it): the engine joins it once, itself,
+   * as soon as a host carries rooms (og.RoomJoined answers, as for roomJoin; with none it says
+   * this page carries no rooms), and og.platform.roomInfo's `link` names it.
    */
-  setRooms(host: RoomHost | null): void {
+  setRooms(host: RoomHost | null, link?: string): void {
     this.#rooms = host;
-    this.worker.postMessage({ type: "room-host", host: host ? host.host : "none" });
+    this.worker.postMessage({ type: "room-host", host: host ? host.host : "none", ...(link ? { join: link } : {}) });
   }
 
   /** What answers og.platform's calls from now on (og.platform.info reports its host and capabilities). */
