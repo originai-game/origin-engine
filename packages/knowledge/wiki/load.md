@@ -66,6 +66,8 @@ module load {
 | [`og.load.rig`](#fn-rig) | function | Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle. |
 | [`og.load.flipbook`](#fn-flipbook) | function | Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. A sheet with `array true` is cooked into a texture array instead (its frames, one size, cut out of the texture as layers): its sprites draw frame n as layer n, every sprite of the sheet one draw whichever frame each shows, and FlipbookInfo.array names the array. A sheet in a streaming group (its array and layers with it) loads once its group is resident (refused naming the group before), and its sprites draw nothing while the group is away. Loading the same path again answers the same handles. |
 | [`og.load.tilemap`](#fn-tilemap) | function | Load a cooked map (a tilemap `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`), its tilesets and their textures. Loading the same path again answers the same handles. |
+| [`og.load.video`](#fn-video) | function | Load cooked footage (an `.ogt` of `type video`: `source` an .mp4, .webm or .mov beside it or under assets/, `fps`, `maxSeconds`, `size W H`, `kind color\|pixel`, `audio`), which og cook turns with ffmpeg into a texture array of its frames and its sound track. Uploads the frames as one 2D-array texture and makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at: a material map, an og.Sprite or a UI image draws it like any texture. Load it in GameDesc.start (every process of an og render --jobs run loads it the same way, so its handles agree). Loading the same path again answers the same handles. |
+| [`og.load.videoInfo`](#fn-videoInfo) | function | A loaded video's size, frames, rate, length, texture and sound. |
 | [`og.AssetReady`](#record-AssetReady) | event | A load completed. |
 | [`og.AssetFailed`](#record-AssetFailed) | event | A load failed. |
 
@@ -866,6 +868,66 @@ fn tilemap {
 
 <sub>`api.ogt` line 3688</sub>
 
+<a id="fn-video"></a>
+
+### `og.load.video`
+
+Load cooked footage (an `.ogt` of `type video`: `source` an .mp4, .webm or .mov beside it or under assets/, `fps`, `maxSeconds`, `size W H`, `kind color|pixel`, `audio`), which og cook turns with ffmpeg into a texture array of its frames and its sound track. Uploads the frames as one 2D-array texture and makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at: a material map, an og.Sprite or a UI image draws it like any texture. Load it in GameDesc.start (every process of an og render --jobs run loads it the same way, so its handles agree). Loading the same path again answers the same handles.
+
+```ts
+og.load.video(world: World, path: string): Result<VideoInfo>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer and audio own it. |
+| `path` | `string` | no | The video's asset id: the `.ogt`, such as `clips/intro.ogt`. |
+
+**Returns** `Result<VideoInfo>`: Refused for a path not in the bundle (run og cook: a video needs ffmpeg there, og doctor) or not a video.
+
+Binding symbol `og_load_video` · publish builds: kept
+
+```ogt
+fn video {
+  doc "Load cooked footage (an `.ogt` of `type video`: `source` an .mp4, .webm or .mov beside it or under assets/, `fps`, `maxSeconds`, `size W H`, `kind color|pixel`, `audio`), which og cook turns with ffmpeg into a texture array of its frames and its sound track. Uploads the frames as one 2D-array texture and makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at: a material map, an og.Sprite or a UI image draws it like any texture. Load it in GameDesc.start (every process of an og render --jobs run loads it the same way, so its handles agree). Loading the same path again answers the same handles."
+  param world World "The world whose renderer and audio own it."
+  param path String "The video's asset id: the `.ogt`, such as `clips/intro.ogt`."
+  returns Result.VideoInfo "Refused for a path not in the bundle (run og cook: a video needs ffmpeg there, og doctor) or not a video."
+}
+```
+
+<sub>`api.ogt` line 3695</sub>
+
+<a id="fn-videoInfo"></a>
+
+### `og.load.videoInfo`
+
+A loaded video's size, frames, rate, length, texture and sound.
+
+```ts
+og.load.videoInfo(world: World, video: Video): Result<VideoInfo>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world that loaded it. |
+| `video` | `Video` | no | The video. |
+
+**Returns** `Result<VideoInfo>`: Refused for a handle og.load.video did not answer.
+
+Binding symbol `og_load_video_info` · publish builds: kept
+
+```ogt
+fn videoInfo {
+  doc "A loaded video's size, frames, rate, length, texture and sound."
+  param world World "The world that loaded it."
+  param video Video "The video."
+  returns Result.VideoInfo "Refused for a handle og.load.video did not answer."
+}
+```
+
+<sub>`api.ogt` line 3702</sub>
+
 ## Components, resources and events
 
 <a id="record-Model"></a>
@@ -939,7 +1001,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 3695</sub>
+<sub>`api.ogt` line 3709</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -964,7 +1026,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 3701</sub>
+<sub>`api.ogt` line 3715</sub>
 
 ## Types
 

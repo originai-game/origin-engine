@@ -825,6 +825,18 @@ pub fn og_load_tilemap(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_tilemap(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_video")]
+pub fn og_load_video(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_video(&Host, world, path)
+}
+
+#[napi(js_name = "og_load_video_info")]
+pub fn og_load_video_info(env: Env, world: u32, video: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_video_info(&Host, world, video)
+}
+
 #[napi(js_name = "og_physics_raycast")]
 pub fn og_physics_raycast(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

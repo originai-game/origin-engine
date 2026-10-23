@@ -3692,6 +3692,20 @@ module load {
     returns Result.TilemapInfo "Refused for a path not in the bundle, a missing tileset or texture, or a terrain its tileset lacks."
   }
 
+  fn video {
+    doc "Load cooked footage (an `.ogt` of `type video`: `source` an .mp4, .webm or .mov beside it or under assets/, `fps`, `maxSeconds`, `size W H`, `kind color|pixel`, `audio`), which og cook turns with ffmpeg into a texture array of its frames and its sound track. Uploads the frames as one 2D-array texture and makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at: a material map, an og.Sprite or a UI image draws it like any texture. Load it in GameDesc.start (every process of an og render --jobs run loads it the same way, so its handles agree). Loading the same path again answers the same handles."
+    param world World "The world whose renderer and audio own it."
+    param path String "The video's asset id: the `.ogt`, such as `clips/intro.ogt`."
+    returns Result.VideoInfo "Refused for a path not in the bundle (run og cook: a video needs ffmpeg there, og doctor) or not a video."
+  }
+
+  fn videoInfo {
+    doc "A loaded video's size, frames, rate, length, texture and sound."
+    param world World "The world that loaded it."
+    param video Video "The video."
+    returns Result.VideoInfo "Refused for a handle og.load.video did not answer."
+  }
+
   event AssetReady {
     doc "A load completed."
     field asset Asset "The handle."
@@ -11421,5 +11435,68 @@ module stream {
     param world World "The world."
     param bytes f64 "The bytes resident groups may take."
     returns Result.Void "Refused for a negative or non-finite size."
+  }
+}
+
+# ── video ─────────────────────────────────────────────────────────────────
+
+module video {
+  skill og-game
+  doc "Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg into a texture array of its frames and its sound, loaded with og.load.video and played by og.VideoPlayer. The frame shown is a Texture (VideoInfo.texture, also VideoPlayer.texture) any material map, og.Sprite or UI image draws, and the sound plays on the entity's og.AudioSource in step with it."
+  doc "Playback is simulation: the og.video system (after the game's systems, before og.audio) advances VideoPlayer.time by the tick's dt times `speed` (not the time scale, so the picture stays with its sound), so the frame at a tick is the same on both hosts, in every run and after a snapshot is restored. With a 30 Hz tick a player started at 0 shows the source's frame 3 s in at tick 90."
+
+  handle Video "Cooked footage: its frames as a texture array, its sound (og.load.video)."
+
+  column Video {
+    doc "A Video handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value Video
+  }
+
+  struct VideoInfo {
+    doc "What og.load.video loaded."
+    field video Video "The video."
+    field texture Texture "The texture that shows the frame its og.VideoPlayer is at (frame 0 until one plays it)."
+    field sound Sound "Its sound track (og.load.sound's kind of handle, for an og.AudioSource); 0 when it has none or was cooked with `audio false`."
+    field width u32 "Each frame's width in texels."
+    field height u32 "Each frame's height in texels."
+    field frames u32 "Frames kept (at most 256)."
+    field fps u32 "Frames per second kept."
+    field seconds f32 "frames / fps." {
+      unit s
+    }
+    field format String "The frames' encoding on the GPU (`rgba8`, `bc7`, `astc4x4`, `etc2`)."
+    field bytes f64 "Bytes its frames take on the GPU." {
+      unit bytes
+    }
+  }
+
+  component VideoPlayer {
+    doc "Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Several players of one video share its texture, which shows the first player's frame in query order; cook a second asset to show two moments of one clip."
+    field video Video "The video (og.load.video's `video`); 0 plays nothing."
+    field playing bool "Whether time advances." {
+      default true
+    }
+    field time f32 "Seconds into the video; written every tick, set it to seek." {
+      min 0
+      unit s
+    }
+    field speed f32 "The playback rate: 1 as cooked, 0.5 half speed (the sound's pitch follows)." {
+      default 1
+      min 0
+      max 4
+      tunable true
+    }
+    field loop bool "Start again at 0 past the end; otherwise hold the last frame and set finished."
+    field frame u32 "Written: the frame shown, floor(time * fps)." {
+      readonly true
+    }
+    field finished bool "Written: a player without loop reached the end." {
+      readonly true
+    }
+    field texture Texture "Written: the video's texture (VideoInfo.texture), for a material or sprite set up from the player." {
+      readonly true
+    }
   }
 }

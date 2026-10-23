@@ -279,6 +279,10 @@ export interface HostAbi<A, V> {
   og_load_flipbook(world: number, path: string): string;
   /** `og.load.tilemap` */
   og_load_tilemap(world: number, path: string): string;
+  /** `og.load.video` */
+  og_load_video(world: number, path: string): string;
+  /** `og.load.videoInfo` */
+  og_load_video_info(world: number, video: number): string;
   /** `og.physics.raycast` */
   og_physics_raycast(world: number, desc: string | undefined): string;
   /** `og.physics.shapeCast` */
@@ -774,6 +778,8 @@ export const SYMBOLS: readonly string[] = [
   "og_load_rig",
   "og_load_flipbook",
   "og_load_tilemap",
+  "og_load_video",
+  "og_load_video_info",
   "og_physics_raycast",
   "og_physics_shape_cast",
   "og_physics_overlap",

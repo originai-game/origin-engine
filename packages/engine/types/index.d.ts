@@ -173,6 +173,8 @@ export interface ColumnKinds {
   Behaviour: { readonly array: Uint32Array; readonly stride: 2; readonly value: Behaviour };
   /** A TerrainData handle field. */
   TerrainData: { readonly array: Uint32Array; readonly stride: 2; readonly value: TerrainData };
+  /** A Video handle field (0 is none). */
+  Video: { readonly array: Uint32Array; readonly stride: 2; readonly value: Video };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -5775,6 +5777,8 @@ export interface Model {
    */
   visible: boolean;
 }
+
+
 
 
 
@@ -17830,6 +17834,111 @@ export interface StreamBudget {
 
 
 
+// ── video ───────────────────────────────────────────────────────
+// Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg into a texture array of its frames and its sound, loaded with og.load.video and played by og.VideoPlayer. The frame shown is a Texture (VideoInfo.texture, also VideoPlayer.texture) any material map, og.Sprite or UI image draws, and the sound plays on the entity's og.AudioSource in step with it.
+// Playback is simulation: the og.video system (after the game's systems, before og.audio) advances VideoPlayer.time by the tick's dt times `speed` (not the time scale, so the picture stays with its sound), so the frame at a tick is the same on both hosts, in every run and after a snapshot is restored. With a 30 Hz tick a player started at 0 shows the source's frame 3 s in at tick 90.
+
+/**
+ * Cooked footage: its frames as a texture array, its sound (og.load.video).
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type Video = number & { readonly [handleType]: "Video" };
+
+/**
+ * A Video handle field (0 is none).
+ *
+ * A `Video` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Video(value?: Video, options?: FieldOptions): FieldSpec<"Video">;
+
+/** What og.load.video loaded. */
+export interface VideoInfo {
+  /** The video. */
+  readonly video: Video;
+  /** The texture that shows the frame its og.VideoPlayer is at (frame 0 until one plays it). */
+  readonly texture: Texture;
+  /**
+   * Its sound track (og.load.sound's kind of handle, for an og.AudioSource); 0 when it has none or was cooked with `audio false`.
+   */
+  readonly sound: Sound;
+  /** Each frame's width in texels. */
+  readonly width: number;
+  /** Each frame's height in texels. */
+  readonly height: number;
+  /** Frames kept (at most 256). */
+  readonly frames: number;
+  /** Frames per second kept. */
+  readonly fps: number;
+  /**
+   * frames / fps.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly seconds: number;
+  /** The frames' encoding on the GPU (`rgba8`, `bc7`, `astc4x4`, `etc2`). */
+  readonly format: string;
+  /**
+   * Bytes its frames take on the GPU.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly bytes: number;
+}
+
+/**
+ * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Several players of one video share its texture, which shows the first player's frame in query order; cook a second asset to show two moments of one clip.
+ *
+ * The value of the `VideoPlayer` component (token `og.VideoPlayer`).
+ */
+export interface VideoPlayer {
+  /** The video (og.load.video's `video`); 0 plays nothing. */
+  video: Video;
+  /**
+   * Whether time advances.
+   *
+   * @default true
+   */
+  playing: boolean;
+  /**
+   * Seconds into the video; written every tick, set it to seek.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  time: number;
+  /**
+   * The playback rate: 1 as cooked, 0.5 half speed (the sound's pitch follows).
+   *
+   * @default 1
+   * @range 0..4
+   * @tunable
+   */
+  speed: number;
+  /** Start again at 0 past the end; otherwise hold the last frame and set finished. */
+  loop: boolean;
+  /**
+   * Written: the frame shown, floor(time * fps).
+   *
+   * @readonly written by the engine
+   */
+  readonly frame: number;
+  /**
+   * Written: a player without loop reached the end.
+   *
+   * @readonly written by the engine
+   */
+  readonly finished: boolean;
+  /**
+   * Written: the video's texture (VideoInfo.texture), for a material or sprite set up from the player.
+   *
+   * @readonly written by the engine
+   */
+  readonly texture: Texture;
+}
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -18436,6 +18545,22 @@ export declare namespace og {
      * @returns Refused for a path not in the bundle, a missing tileset or texture, or a terrain its tileset lacks.
      */
     function tilemap(world: World, path: string): Result<TilemapInfo>;
+    /**
+     * Load cooked footage (an `.ogt` of `type video`: `source` an .mp4, .webm or .mov beside it or under assets/, `fps`, `maxSeconds`, `size W H`, `kind color|pixel`, `audio`), which og cook turns with ffmpeg into a texture array of its frames and its sound track. Uploads the frames as one 2D-array texture and makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at: a material map, an og.Sprite or a UI image draws it like any texture. Load it in GameDesc.start (every process of an og render --jobs run loads it the same way, so its handles agree). Loading the same path again answers the same handles.
+     *
+     * @param world The world whose renderer and audio own it.
+     * @param path The video's asset id: the `.ogt`, such as `clips/intro.ogt`.
+     * @returns Refused for a path not in the bundle (run og cook: a video needs ffmpeg there, og doctor) or not a video.
+     */
+    function video(world: World, path: string): Result<VideoInfo>;
+    /**
+     * A loaded video's size, frames, rate, length, texture and sound.
+     *
+     * @param world The world that loaded it.
+     * @param video The video.
+     * @returns Refused for a handle og.load.video did not answer.
+     */
+    function videoInfo(world: World, video: Video): Result<VideoInfo>;
   }
   /**
    * A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one.
@@ -20218,4 +20343,8 @@ export declare namespace og {
      */
     function setBudget(world: World, bytes: number): Result<void>;
   }
+  /**
+   * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Several players of one video share its texture, which shows the first player's frame in query order; cook a second asset to show two moments of one clip.
+   */
+  const VideoPlayer: ComponentType<{ readonly video: FieldSpec<"Video">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly frame: FieldSpec<"u32">; readonly finished: FieldSpec<"bool">; readonly texture: FieldSpec<"Texture"> }, VideoPlayer>;
 }

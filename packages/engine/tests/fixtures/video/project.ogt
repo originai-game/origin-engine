@@ -1,0 +1,14 @@
+type project
+version 1
+---
+# The fixture og-video.test.ts cooks and plays: assets/clips/count.mp4 is
+# ffmpeg's testsrc2 (a moving pattern with its frame count burned in, every
+# frame different) and a 440 Hz tone, 4 s at 30 fps, on a sprite at a 30 Hz
+# tick, so tick 90 shows the source's frame 3 s in.
+name "Video fixture"
+id "video-fixture"
+engine "0.2.0"
+entry "src/main.ts"
+profile "2d"
+tick 30
+seed 1

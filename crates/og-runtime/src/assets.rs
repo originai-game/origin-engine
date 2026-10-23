@@ -659,6 +659,27 @@ fn add_texture_array(
     eng: &Engine,
     id: &str,
 ) -> Result<(og_render::TextureArrayHandle, og_render::TextureArrayInfo), String> {
+    let (data, pixel) = texture_array_data(eng, id)?;
+    let info = data.info().map_err(|e| format!("{id}: {e}"))?;
+    let mut rs = eng.render.borrow_mut();
+    let added = rs
+        .scene
+        .add_texture_array(data)
+        .map_err(|e| format!("{id}: {e}"))?;
+    if pixel {
+        rs.scene
+            .set_texture_array_filter(added, og_render::TextureFilter::Nearest);
+    }
+    Ok((added, info))
+}
+
+/// A cooked texture array's layers, decoded through the host's texture
+/// hook into the encodings the device takes, and whether its kind is pixel
+/// art (sampled nearest).
+pub(crate) fn texture_array_data(
+    eng: &Engine,
+    id: &str,
+) -> Result<(og_render::TextureArrayData, bool), String> {
     let formats = texture_formats(eng);
     let (array, layers, pixel) = {
         let assets = eng.assets.borrow();
@@ -685,19 +706,14 @@ fn add_texture_array(
         }
         (array, layers, pixel)
     };
-    let data = og_render::TextureArrayData { layers };
-    let info = data.info().map_err(|e| format!("{id}: {e}"))?;
-    debug_assert_eq!(array.meta.layers, info.layers);
-    let mut rs = eng.render.borrow_mut();
-    let added = rs
-        .scene
-        .add_texture_array(data)
-        .map_err(|e| format!("{id}: {e}"))?;
-    if pixel {
-        rs.scene
-            .set_texture_array_filter(added, og_render::TextureFilter::Nearest);
+    if layers.len() != array.meta.layers as usize {
+        return Err(format!(
+            "{id}: {} layers, its meta says {}",
+            layers.len(),
+            array.meta.layers
+        ));
     }
-    Ok((added, info))
+    Ok((og_render::TextureArrayData { layers }, pixel))
 }
 
 /// `og.load.textureArray`: a cooked `type texture-array`, its layers

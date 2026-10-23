@@ -1,0 +1,7 @@
+type video
+version 1
+---
+source "count.mp4"
+fps 30
+maxSeconds 4
+size 192 108

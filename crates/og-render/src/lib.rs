@@ -81,6 +81,7 @@ mod terrain_tiles;
 mod texture;
 mod texture_array;
 mod upload;
+mod video;
 mod water;
 mod weather;
 
@@ -138,6 +139,7 @@ pub use terrain_tiles::{
 };
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use texture_array::{TextureArrayData, TextureArrayHandle, TextureArrayInfo};
+pub use video::FrameTexture;
 pub use water::{Water, Water2d, WaterHeights};
 pub use weather::{
     WEATHER_DUST, WEATHER_MIST, WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW, WeatherLook, weather,

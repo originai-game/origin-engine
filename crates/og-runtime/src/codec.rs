@@ -55,6 +55,8 @@ impl Kind {
             | "TextureArray" => Kind::Asset,
             // The E4 handles: flipbook sheets, tilemaps, tweens.
             "FlipbookSheet" | "TilemapAsset" | "Tween" => Kind::Asset,
+            // Footage (og.load.video).
+            "Video" => Kind::Asset,
             // The E6 handles: navigation (grids, navmeshes, flow fields) and behaviours.
             "Navigation" | "Behaviour" => Kind::Asset,
             // Phase 2: terrains.

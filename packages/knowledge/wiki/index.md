@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 28 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 29 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -37,6 +37,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`tilemap`](tilemap.md) | `og.tilemap.*` | kept | Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component. |
 | [`terrain`](terrain.md) | `og.terrain.*` | kept | Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry. |
 | [`stream`](stream.md) | `og.stream.*` | kept | Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] \| volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures, texture arrays, flipbooks (an `array true` sheet brings its array), sounds, environment maps, palettes, looks and colour LUTs (`.cube`) that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads. |
+| [`video`](video.md) | types and tokens | kept | Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg into a texture array of its frames and its sound, loaded with og.load.video and played by og.VideoPlayer. The frame shown is a Texture (VideoInfo.texture, also VideoPlayer.texture) any material map, og.Sprite or UI image draws, and the sound plays on the entity's og.AudioSource in step with it. |
 
 ### `og-feel`
 
@@ -114,7 +115,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-910 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+916 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -486,6 +487,8 @@ Field units the docs and Tune use.
 | [`og.load.texture`](load.md#fn-texture) | function | load | `og_load_texture` |
 | [`og.load.textureArray`](load.md#fn-textureArray) | function | load | `og_load_texture_array` |
 | [`og.load.tilemap`](load.md#fn-tilemap) | function | load | `og_load_tilemap` |
+| [`og.load.video`](load.md#fn-video) | function | load | `og_load_video` |
+| [`og.load.videoInfo`](load.md#fn-videoInfo) | function | load | `og_load_video_info` |
 | [`og.MaterialStyle`](render.md#record-MaterialStyle) | resource | render | — |
 | [`og.MatrixWorld`](transform.md#record-MatrixWorld) | component | transform | — |
 | [`og.Mesh`](render.md#record-Mesh) | component | render | — |
@@ -729,6 +732,7 @@ Field units the docs and Tune use.
 | [`og.ui.zoomView`](ui.md#fn-zoomView) | function | ui | `og_ui_zoom_view` |
 | [`og.Vehicle`](physics.md#record-Vehicle) | component | physics | — |
 | [`og.Velocity`](physics.md#record-Velocity) | component | physics | — |
+| [`og.VideoPlayer`](video.md#record-VideoPlayer) | component | video | — |
 | [`og.Water`](atmosphere.md#record-Water) | component | atmosphere | — |
 | [`og.Water2D`](atmosphere.md#record-Water2D) | component | atmosphere | — |
 | [`og.WaterLine`](physics.md#record-WaterLine) | component | physics | — |
@@ -997,6 +1001,9 @@ Field units the docs and Tune use.
 | [`Vector2()`](reflect.md#column-Vector2) | column kind | reflect | — |
 | [`Vector3`](math.md#type-Vector3) | struct | math | — |
 | [`Vector3()`](reflect.md#column-Vector3) | column kind | reflect | — |
+| [`Video`](video.md#type-Video) | handle | video | — |
+| [`Video()`](video.md#column-Video) | column kind | video | — |
+| [`VideoInfo`](video.md#type-VideoInfo) | struct | video | — |
 | [`Viewport`](ui.md#type-Viewport) | struct | ui | — |
 | [`WEATHER_DUST`](atmosphere.md#const-WEATHER_DUST) | constant | atmosphere | — |
 | [`WEATHER_MIST`](atmosphere.md#const-WEATHER_MIST) | constant | atmosphere | — |
