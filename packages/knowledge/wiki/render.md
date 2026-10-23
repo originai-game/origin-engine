@@ -123,7 +123,7 @@ module render {
 | [`TorusGeometryDesc`](#type-TorusGeometryDesc) | desc struct | A torus in the xy plane around +Z, as three.js TorusGeometry(radius, tube, radialSegments, tubularSegments, arc). |
 | [`RingGeometryDesc`](#type-RingGeometryDesc) | desc struct | A flat ring in the xy plane facing +Z, as three.js RingGeometry(innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength). |
 | [`CircleGeometryDesc`](#type-CircleGeometryDesc) | desc struct | A disc (or a sector) in the xy plane facing +Z, as three.js CircleGeometry(radius, segments, thetaStart, thetaLength): a 2D polygon's simplest shape. |
-| [`TubeGeometryDesc`](#type-TubeGeometryDesc) | desc struct | A tube along a curve, as three.js TubeGeometry(curve, tubularSegments, radius, radialSegments, closed): its rings are evenly spaced along the curve's length (three.js getPointAt), u runs along it, v around. The curve is `path` when set (an og.path, whatever its kind, followed exactly: a scene's or a timeline's path becomes a tube), otherwise new CatmullRomCurve3(points, closed, 'centripetal') through `points`, which may come from anywhere: a rope's points, a spline a tool made. |
+| [`TubeGeometryDesc`](#type-TubeGeometryDesc) | desc struct | A tube along a curve through points, as three.js TubeGeometry(new CatmullRomCurve3(points, closed, 'centripetal'), tubularSegments, radius, radialSegments, closed): u runs along it, v around. The points may come from anywhere: a path's samples, a rope's points, a spline a tool made. |
 | [`og.render.cylinderGeometry`](#fn-cylinderGeometry) | function | Make a cylinder geometry for og.Mesh (give its body a cylinder-like Collider: a capsule, a convex Collider.mesh of it, or the geometry itself). |
 | [`og.render.coneGeometry`](#fn-coneGeometry) | function | Make a cone geometry for og.Mesh. Physics can use it as a convex Collider.mesh. |
 | [`og.render.capsuleGeometry`](#fn-capsuleGeometry) | function | Make a capsule geometry for og.Mesh (its body's Collider is a capsule of the same radius and half the height). |
@@ -157,7 +157,7 @@ module render {
 | [`PostError`](#type-PostError) | struct | A custom post pass the device failed to compile. |
 | [`og.render.postErrors`](#fn-postErrors) | function | The custom post passes PostEffects.custom1 to custom8 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal. |
 | [`VolumetricFog`](#type-VolumetricFog) | enum | How the device draws Fog.volumetric (RenderCapabilities.volumetricFog). |
-| [`og.RectLight`](#record-RectLight) | component | A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. With castShadow it casts a soft shadow in the frame; og bake lightmaps traces its exact soft shadows into the bounce light either way. |
+| [`og.RectLight`](#record-RectLight) | component | A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light. |
 | [`og.LightVolume`](#record-LightVolume) | component | A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (bounced off its static models, from the sky, from emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every mesh, model, skinned character and particle-lit surface drawn inside it that has no lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing: a ball rolling past a red wall turns red on that side. |
 | [`BakedScene`](#type-BakedScene) | struct | One instantiated scene's baked lighting, as og.render.bakedLighting reports it. |
 | [`og.render.bakedLighting`](#fn-bakedLighting) | function | The baked lighting of every scene instantiated in the world, in instantiation order: whether it is drawn, and why not. A scene with no static model and no LightVolume is not listed. |
@@ -402,7 +402,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4009</sub>
+<sub>`api.ogt` line 4008</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -434,7 +434,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4016</sub>
+<sub>`api.ogt` line 4015</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -466,7 +466,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4026</sub>
+<sub>`api.ogt` line 4025</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -498,7 +498,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 4034</sub>
+<sub>`api.ogt` line 4033</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -532,7 +532,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 4042</sub>
+<sub>`api.ogt` line 4041</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -562,7 +562,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 4051</sub>
+<sub>`api.ogt` line 4050</sub>
 
 <a id="fn-look"></a>
 
@@ -590,7 +590,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 4058</sub>
+<sub>`api.ogt` line 4057</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -618,7 +618,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 4064</sub>
+<sub>`api.ogt` line 4063</sub>
 
 <a id="fn-text"></a>
 
@@ -648,7 +648,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 4070</sub>
+<sub>`api.ogt` line 4069</sub>
 
 <a id="fn-bufferGeometry"></a>
 
@@ -678,7 +678,7 @@ fn bufferGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4108</sub>
+<sub>`api.ogt` line 4107</sub>
 
 <a id="fn-updateGeometry"></a>
 
@@ -710,7 +710,7 @@ fn updateGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4115</sub>
+<sub>`api.ogt` line 4114</sub>
 
 <a id="fn-geometryInfo"></a>
 
@@ -740,7 +740,7 @@ fn geometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 4123</sub>
+<sub>`api.ogt` line 4122</sub>
 
 <a id="fn-cylinderGeometry"></a>
 
@@ -770,7 +770,7 @@ fn cylinderGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4318</sub>
+<sub>`api.ogt` line 4316</sub>
 
 <a id="fn-coneGeometry"></a>
 
@@ -800,7 +800,7 @@ fn coneGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4325</sub>
+<sub>`api.ogt` line 4323</sub>
 
 <a id="fn-capsuleGeometry"></a>
 
@@ -830,7 +830,7 @@ fn capsuleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4332</sub>
+<sub>`api.ogt` line 4330</sub>
 
 <a id="fn-torusGeometry"></a>
 
@@ -860,7 +860,7 @@ fn torusGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4339</sub>
+<sub>`api.ogt` line 4337</sub>
 
 <a id="fn-ringGeometry"></a>
 
@@ -890,7 +890,7 @@ fn ringGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4346</sub>
+<sub>`api.ogt` line 4344</sub>
 
 <a id="fn-circleGeometry"></a>
 
@@ -920,7 +920,7 @@ fn circleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4353</sub>
+<sub>`api.ogt` line 4351</sub>
 
 <a id="fn-tubeGeometry"></a>
 
@@ -937,7 +937,7 @@ og.render.tubeGeometry(world: World, desc?: TubeGeometryDesc): Result<Geometry>
 | `world` | `World` | no | The world whose renderer owns the geometry. |
 | `desc` | `TubeGeometryDesc` | yes | The points, radius and tessellation. |
 
-**Returns** `Result<Geometry>`: Refused for fewer than two points or a point that is not finite (without a path), or a path that is not alive.
+**Returns** `Result<Geometry>`: Refused for fewer than two points or a point that is not finite.
 
 Binding symbol `og_render_tube_geometry` · publish builds: kept
 
@@ -946,11 +946,11 @@ fn tubeGeometry {
   doc "Make a tube along a curve through points for og.Mesh: pipes, cables, rails, a path shown as a ribbon of geometry. Physics can use it as a triangle-mesh Collider.mesh."
   param world World "The world whose renderer owns the geometry."
   param desc TubeGeometryDesc "The points, radius and tessellation."
-  returns Result.Geometry "Refused for fewer than two points or a point that is not finite (without a path), or a path that is not alive."
+  returns Result.Geometry "Refused for fewer than two points or a point that is not finite."
 }
 ```
 
-<sub>`api.ogt` line 4360</sub>
+<sub>`api.ogt` line 4358</sub>
 
 <a id="fn-lines"></a>
 
@@ -980,7 +980,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 4418</sub>
+<sub>`api.ogt` line 4416</sub>
 
 <a id="fn-points"></a>
 
@@ -1010,7 +1010,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 4453</sub>
+<sub>`api.ogt` line 4451</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1042,7 +1042,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 4557</sub>
+<sub>`api.ogt` line 4555</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1072,7 +1072,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4613</sub>
+<sub>`api.ogt` line 4611</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1106,7 +1106,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 4725</sub>
+<sub>`api.ogt` line 4723</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1134,7 +1134,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 4740</sub>
+<sub>`api.ogt` line 4738</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1162,7 +1162,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 4808</sub>
+<sub>`api.ogt` line 4805</sub>
 
 ## Components, resources and events
 
@@ -2700,7 +2700,7 @@ component ReflectionProbe {
 }
 ```
 
-<sub>`api.ogt` line 3977</sub>
+<sub>`api.ogt` line 3976</sub>
 
 <a id="record-Lines"></a>
 
@@ -2763,7 +2763,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 4460</sub>
+<sub>`api.ogt` line 4458</sub>
 
 <a id="record-Points"></a>
 
@@ -2817,7 +2817,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 4497</sub>
+<sub>`api.ogt` line 4495</sub>
 
 <a id="record-CameraView"></a>
 
@@ -2924,7 +2924,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 4620</sub>
+<sub>`api.ogt` line 4618</sub>
 
 <a id="record-Mirror"></a>
 
@@ -2969,13 +2969,13 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 4692</sub>
+<sub>`api.ogt` line 4690</sub>
 
 <a id="record-RectLight"></a>
 
 ### `og.RectLight` (component)
 
-A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. With castShadow it casts a soft shadow in the frame; og bake lightmaps traces its exact soft shadows into the bounce light either way.
+A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light.
 
 Area lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches as far as its brightness carries (where it would light a white surface facing it at one hundredth of one), and fades smoothly to zero there.
 
@@ -2988,11 +2988,10 @@ Token `og.RectLight`, registered under the schema name `og.RectLight`; its value
 | `width` | `number` | `10` | ≥ 0 | `m` | tunable | Its size along the entity's local x, as RectAreaLight.width. |
 | `height` | `number` | `10` | ≥ 0 | `m` | tunable | Its size along the entity's local y, as RectAreaLight.height. |
 | `twoSided` | `boolean` | `false` | — | — | — | Emit from the back face as well (a hanging panel lit both ways). |
-| `castShadow` | `boolean` | `false` | — | — | — | Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp where a caster touches its receiver and widening with the rectangle's size away from it. The view is from the centre, so a caster close to a large panel is shadowed as from its centre. |
 
 ```ogt
 component RectLight {
-  doc "A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. With castShadow it casts a soft shadow in the frame; og bake lightmaps traces its exact soft shadows into the bounce light either way."
+  doc "A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light."
   doc "Area lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches as far as its brightness carries (where it would light a white surface facing it at one hundredth of one), and fades smoothly to zero there."
   field color Color "The light's linear colour." {
     default 1 1 1
@@ -3015,11 +3014,10 @@ component RectLight {
     tunable true
   }
   field twoSided bool "Emit from the back face as well (a hanging panel lit both ways)."
-  field castShadow bool "Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp where a caster touches its receiver and widening with the rectangle's size away from it. The view is from the centre, so a caster close to a large panel is shadowed as from its centre."
 }
 ```
 
-<sub>`api.ogt` line 4754</sub>
+<sub>`api.ogt` line 4752</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -3053,7 +3051,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 4781</sub>
+<sub>`api.ogt` line 4778</sub>
 
 ## Types
 
@@ -4371,9 +4369,8 @@ What the renderer can do on this device. Backend limits are reported here, never
 | `renderTargetDepth` | `boolean` | `false` | — | — | — | Whether a render target made with `depth` gets its view's depth drawn: true on every tier with a renderer (WebGPU, Vulkan, Metal and WebGL2 alike), false without one. The depth comes from the view's own depth prepass of its opaque meshes into a linear-depth colour target, never from its depth buffer, which WebGL2 cannot read in a shader. |
 | `maxRenderTargetSize` | `number` | `0` | — | — | — | The largest side of a render target (the device's largest 2D texture). |
 | `maxCustomPosts` | `number` | `0` | — | — | — | The most custom post passes a frame runs: 8 on every tier, PostEffects.custom1 to custom8 (numbered fields, as a reflected record has no list field). |
-| `volumetricFog` | `VolumetricFog` | `"froxel"` | — | — | — | How Fog.volumetric is drawn on this device: a froxel grid (the full tier) or a raymarch along each pixel's view ray (WebGL2), each lit by the sun through its shadows and by the point, spot and rect lights around each sample (up to volumetricLights of them) through their shadows and cookies. |
-| `volumetricLights` | `number` | `0` | — | — | — | The most point, spot and rect lights that light one sample of Fog.volumetric: those of its screen cluster, MAX_CLUSTER_LIGHTS (64) in the froxel grid, 8 in WebGL2's raymarch, the brightest at the camera first. |
-| `maxLightCookies` | `number` | `0` | — | — | — | The most light cookie layers one frame draws (24 on every tier): a SpotLight.cookie takes one, a PointLight.cookie six (its cube's faces), and a texture several lights of one kind share takes its layers once. Cookies past it, in the order of their lights' entities, are not drawn: those lights shine without them, and the log names them in a warning. |
+| `volumetricFog` | `VolumetricFog` | `"froxel"` | — | — | — | How Fog.volumetric is drawn on this device: a froxel grid lit by the sun and the clustered point, spot and rect lights (the full tier), or a raymarch of the sun alone along each pixel's view ray (WebGL2). |
+| `gpuTimestamps` | `boolean` | `false` | — | — | — | Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true. |
 
 ```ogt
 struct RenderCapabilities {
@@ -4392,9 +4389,8 @@ struct RenderCapabilities {
   field renderTargetDepth bool "Whether a render target made with `depth` gets its view's depth drawn: true on every tier with a renderer (WebGPU, Vulkan, Metal and WebGL2 alike), false without one. The depth comes from the view's own depth prepass of its opaque meshes into a linear-depth colour target, never from its depth buffer, which WebGL2 cannot read in a shader."
   field maxRenderTargetSize u32 "The largest side of a render target (the device's largest 2D texture)."
   field maxCustomPosts u32 "The most custom post passes a frame runs: 8 on every tier, PostEffects.custom1 to custom8 (numbered fields, as a reflected record has no list field)."
-  field volumetricFog VolumetricFog "How Fog.volumetric is drawn on this device: a froxel grid (the full tier) or a raymarch along each pixel's view ray (WebGL2), each lit by the sun through its shadows and by the point, spot and rect lights around each sample (up to volumetricLights of them) through their shadows and cookies."
-  field volumetricLights u32 "The most point, spot and rect lights that light one sample of Fog.volumetric: those of its screen cluster, MAX_CLUSTER_LIGHTS (64) in the froxel grid, 8 in WebGL2's raymarch, the brightest at the camera first."
-  field maxLightCookies u32 "The most light cookie layers one frame draws (24 on every tier): a SpotLight.cookie takes one, a PointLight.cookie six (its cube's faces), and a texture several lights of one kind share takes its layers once. Cookies past it, in the order of their lights' entities, are not drawn: those lights shine without them, and the log names them in a warning."
+  field volumetricFog VolumetricFog "How Fog.volumetric is drawn on this device: a froxel grid lit by the sun and the clustered point, spot and rect lights (the full tier), or a raymarch of the sun alone along each pixel's view ray (WebGL2)."
+  field gpuTimestamps bool "Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true."
 }
 ```
 
@@ -4421,7 +4417,7 @@ enum ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 3964</sub>
+<sub>`api.ogt` line 3963</sub>
 
 <a id="type-Shader"></a>
 
@@ -4435,7 +4431,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read."
 ```
 
-<sub>`api.ogt` line 4024</sub>
+<sub>`api.ogt` line 4023</sub>
 
 <a id="type-BufferGeometryDesc"></a>
 
@@ -4476,7 +4472,7 @@ struct BufferGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4079</sub>
+<sub>`api.ogt` line 4078</sub>
 
 <a id="type-GeometryInfo"></a>
 
@@ -4507,7 +4503,7 @@ struct GeometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 4095</sub>
+<sub>`api.ogt` line 4094</sub>
 
 <a id="type-CylinderGeometryDesc"></a>
 
@@ -4566,7 +4562,7 @@ struct CylinderGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4130</sub>
+<sub>`api.ogt` line 4129</sub>
 
 <a id="type-ConeGeometryDesc"></a>
 
@@ -4610,7 +4606,7 @@ struct ConeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4166</sub>
+<sub>`api.ogt` line 4165</sub>
 
 <a id="type-CapsuleGeometryDesc"></a>
 
@@ -4657,7 +4653,7 @@ struct CapsuleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4190</sub>
+<sub>`api.ogt` line 4189</sub>
 
 <a id="type-TorusGeometryDesc"></a>
 
@@ -4704,7 +4700,7 @@ struct TorusGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4217</sub>
+<sub>`api.ogt` line 4216</sub>
 
 <a id="type-RingGeometryDesc"></a>
 
@@ -4755,7 +4751,7 @@ struct RingGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4244</sub>
+<sub>`api.ogt` line 4243</sub>
 
 <a id="type-CircleGeometryDesc"></a>
 
@@ -4795,20 +4791,19 @@ struct CircleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4274</sub>
+<sub>`api.ogt` line 4273</sub>
 
 <a id="type-TubeGeometryDesc"></a>
 
 ### `TubeGeometryDesc` (desc struct)
 
-A tube along a curve, as three.js TubeGeometry(curve, tubularSegments, radius, radialSegments, closed): its rings are evenly spaced along the curve's length (three.js getPointAt), u runs along it, v around. The curve is `path` when set (an og.path, whatever its kind, followed exactly: a scene's or a timeline's path becomes a tube), otherwise new CatmullRomCurve3(points, closed, 'centripetal') through `points`, which may come from anywhere: a rope's points, a spline a tool made.
+A tube along a curve through points, as three.js TubeGeometry(new CatmullRomCurve3(points, closed, 'centripetal'), tubularSegments, radius, radialSegments, closed): u runs along it, v around. The points may come from anywhere: a path's samples, a rope's points, a spline a tool made.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `points` | `readonly Vector3[]` | `[]` | — | `m` | — | The points the curve passes through, in order (at least two), when `path` is 0. |
-| `path` | `Path` | `0` | — | — | — | A path (og.path.create, or a scene's `path` by og.path.find) the tube follows instead of the points: its own curve, kind and closed flag (`closed` is the path's then). 0 uses the points. |
+| `points` | `readonly Vector3[]` | `[]` | — | `m` | — | The points the curve passes through, in order (at least two). |
 | `tubularSegments` | `number` | `64` | ≥ 1 | — | — | Segments along the tube. |
 | `radius` | `number` | `1` | ≥ 0 | `m` | — | The tube's radius. |
 | `radialSegments` | `number` | `8` | ≥ 3 | — | — | Segments around it. |
@@ -4816,12 +4811,11 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct TubeGeometryDesc {
-  doc "A tube along a curve, as three.js TubeGeometry(curve, tubularSegments, radius, radialSegments, closed): its rings are evenly spaced along the curve's length (three.js getPointAt), u runs along it, v around. The curve is `path` when set (an og.path, whatever its kind, followed exactly: a scene's or a timeline's path becomes a tube), otherwise new CatmullRomCurve3(points, closed, 'centripetal') through `points`, which may come from anywhere: a rope's points, a spline a tool made."
+  doc "A tube along a curve through points, as three.js TubeGeometry(new CatmullRomCurve3(points, closed, 'centripetal'), tubularSegments, radius, radialSegments, closed): u runs along it, v around. The points may come from anywhere: a path's samples, a rope's points, a spline a tool made."
   desc true
-  field points List.Vector3 "The points the curve passes through, in order (at least two), when `path` is 0." {
+  field points List.Vector3 "The points the curve passes through, in order (at least two)." {
     unit m
   }
-  field path Path "A path (og.path.create, or a scene's `path` by og.path.find) the tube follows instead of the points: its own curve, kind and closed flag (`closed` is the path's then). 0 uses the points."
   field tubularSegments u32 "Segments along the tube." {
     default 64
     min 1
@@ -4839,7 +4833,7 @@ struct TubeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4295</sub>
+<sub>`api.ogt` line 4294</sub>
 
 <a id="type-LineMode"></a>
 
@@ -4864,7 +4858,7 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4367</sub>
+<sub>`api.ogt` line 4365</sub>
 
 <a id="type-LinesDesc"></a>
 
@@ -4930,7 +4924,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 4381</sub>
+<sub>`api.ogt` line 4379</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -4981,7 +4975,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 4425</sub>
+<sub>`api.ogt` line 4423</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -5014,7 +5008,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4528</sub>
+<sub>`api.ogt` line 4526</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -5049,7 +5043,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 4542</sub>
+<sub>`api.ogt` line 4540</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -5072,7 +5066,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4567</sub>
+<sub>`api.ogt` line 4565</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -5086,7 +5080,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 4580</sub>
+<sub>`api.ogt` line 4578</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -5120,7 +5114,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 4589</sub>
+<sub>`api.ogt` line 4587</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -5147,7 +5141,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 4604</sub>
+<sub>`api.ogt` line 4602</sub>
 
 <a id="type-Post"></a>
 
@@ -5161,7 +5155,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 4716</sub>
+<sub>`api.ogt` line 4714</sub>
 
 <a id="type-PostError"></a>
 
@@ -5182,7 +5176,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 4734</sub>
+<sub>`api.ogt` line 4732</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -5194,18 +5188,18 @@ A string: one of the variants below. The zero value is `"froxel"`.
 
 | Variant | Doc |
 |---|---|
-| `"froxel"` | A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows and cookies (each cell the mean of eight samples over its depth), then integrated front to back: the full tier. |
-| `"raymarch"` | Each pixel's view ray marched through the fog in 24 jittered steps, each lit by the sun through its cascades and by the first 8 point, spot and rect lights of its screen cluster through their shadows and cookies (RenderCapabilities.volumetricLights): WebGL2, which has no compute. |
+| `"froxel"` | A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows, then integrated front to back: the full tier. |
+| `"raymarch"` | Each pixel's view ray marched through the fog in 24 steps, lit by the sun through its cascades alone: WebGL2, which has no compute. |
 
 ```ogt
 enum VolumetricFog {
   doc "How the device draws Fog.volumetric (RenderCapabilities.volumetricFog)."
-  variant froxel "A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows and cookies (each cell the mean of eight samples over its depth), then integrated front to back: the full tier."
-  variant raymarch "Each pixel's view ray marched through the fog in 24 jittered steps, each lit by the sun through its cascades and by the first 8 point, spot and rect lights of its screen cluster through their shadows and cookies (RenderCapabilities.volumetricLights): WebGL2, which has no compute."
+  variant froxel "A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows, then integrated front to back: the full tier."
+  variant raymarch "Each pixel's view ray marched through the fog in 24 steps, lit by the sun through its cascades alone: WebGL2, which has no compute."
 }
 ```
 
-<sub>`api.ogt` line 4748</sub>
+<sub>`api.ogt` line 4746</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -5238,7 +5232,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 4796</sub>
+<sub>`api.ogt` line 4793</sub>
 
 ## Column kinds
 
@@ -5429,7 +5423,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 3970</sub>
+<sub>`api.ogt` line 3969</sub>
 
 ```ogt
 column LineMode {
@@ -5440,7 +5434,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4374</sub>
+<sub>`api.ogt` line 4372</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -5451,7 +5445,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4573</sub>
+<sub>`api.ogt` line 4571</sub>
 
 ```ogt
 column RenderTarget {
@@ -5462,7 +5456,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4582</sub>
+<sub>`api.ogt` line 4580</sub>
 
 ```ogt
 column Post {
@@ -5473,7 +5467,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 4718</sub>
+<sub>`api.ogt` line 4716</sub>
 
 ## Constants
 
@@ -5513,4 +5507,4 @@ const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (Sp
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>`api.ogt` line 3962</sub>
+<sub>`api.ogt` line 3961</sub>

@@ -15,11 +15,25 @@
 //!   clips 64             # animation clips of a model
 //!   assetBytes 8388608   # cooked bytes of one source asset
 //!   totalBytes 67108864  # cooked bytes of the project
+//!   soundSeconds 600     # the length of one sound
+//!   videoSeconds 300     # the length of one video
+//!   fontGlyphs 8192      # glyphs cooked into one font's atlas
+//!   navPolygons 65536    # polygons of one navmesh
+//!   sceneEntities 10000  # entities one scene spawns
+//!   emitterParticles 16384 # max particles of one emitter
 //! }
 //! ```
+//!
+//! Every output type has its own figures in the report: a sound its
+//! seconds, channels, rate and chunks; a font its glyphs, kerning pairs and
+//! atlas pages; a scene its entities and components; a navmesh its tiles,
+//! polygons and vertices; a timeline its tracks and seconds; a style, a
+//! string table, a behaviour, a tileset, a tilemap, a rig, a flipbook, a
+//! shader, a post pass, an emitter, a look, a palette, a LUT, an
+//! environment map, a video, a terrain and a stream pack theirs.
 
 use super::Report;
-use crate::format::{codec, kind};
+use crate::format::{self, codec, kind};
 use crate::runtime::Bundle;
 use og_core::ogt::Block;
 use serde_json::{Value, json};
@@ -44,6 +58,18 @@ pub struct Budgets {
     pub asset_bytes: u64,
     /// Cooked bytes of the whole project.
     pub total_bytes: u64,
+    /// Seconds of one sound (a long track belongs streamed, in chunks).
+    pub sound_seconds: u64,
+    /// Seconds of one video.
+    pub video_seconds: u64,
+    /// Glyphs cooked into one font (its charset).
+    pub font_glyphs: u64,
+    /// Polygons of one navmesh.
+    pub nav_polygons: u64,
+    /// Entities of one scene.
+    pub scene_entities: u64,
+    /// `max_particles` of one emitter.
+    pub emitter_particles: u64,
 }
 
 impl Default for Budgets {
@@ -56,11 +82,17 @@ impl Default for Budgets {
             clips: 64,
             asset_bytes: 8 << 20,
             total_bytes: 64 << 20,
+            sound_seconds: 600,
+            video_seconds: 300,
+            font_glyphs: 8192,
+            nav_polygons: 65_536,
+            scene_entities: 10_000,
+            emitter_particles: 16_384,
         }
     }
 }
 
-const KEYS: [&str; 7] = [
+const KEYS: [&str; 13] = [
     "triangles",
     "vertices",
     "textureSize",
@@ -68,6 +100,12 @@ const KEYS: [&str; 7] = [
     "clips",
     "assetBytes",
     "totalBytes",
+    "soundSeconds",
+    "videoSeconds",
+    "fontGlyphs",
+    "navPolygons",
+    "sceneEntities",
+    "emitterParticles",
 ];
 
 impl Budgets {
@@ -98,6 +136,12 @@ impl Budgets {
                 "clips" => b.clips = v,
                 "assetBytes" => b.asset_bytes = v,
                 "totalBytes" => b.total_bytes = v,
+                "soundSeconds" => b.sound_seconds = v,
+                "videoSeconds" => b.video_seconds = v,
+                "fontGlyphs" => b.font_glyphs = v,
+                "navPolygons" => b.nav_polygons = v,
+                "sceneEntities" => b.scene_entities = v,
+                "emitterParticles" => b.emitter_particles = v,
                 k => {
                     return Err(format!(
                         "project.ogt line {}: unknown budget '{k}' (expected {})",
@@ -119,6 +163,12 @@ impl Budgets {
             "clips": self.clips,
             "assetBytes": self.asset_bytes,
             "totalBytes": self.total_bytes,
+            "soundSeconds": self.sound_seconds,
+            "videoSeconds": self.video_seconds,
+            "fontGlyphs": self.font_glyphs,
+            "navPolygons": self.nav_polygons,
+            "sceneEntities": self.scene_entities,
+            "emitterParticles": self.emitter_particles,
         })
     }
 
@@ -135,6 +185,12 @@ impl Budgets {
             clips: n("clips", d.clips),
             asset_bytes: n("assetBytes", d.asset_bytes),
             total_bytes: n("totalBytes", d.total_bytes),
+            sound_seconds: n("soundSeconds", d.sound_seconds),
+            video_seconds: n("videoSeconds", d.video_seconds),
+            font_glyphs: n("fontGlyphs", d.font_glyphs),
+            nav_polygons: n("navPolygons", d.nav_polygons),
+            scene_entities: n("sceneEntities", d.scene_entities),
+            emitter_particles: n("emitterParticles", d.emitter_particles),
         }
     }
 }
@@ -165,6 +221,7 @@ fn asset_stats(bundle: &Bundle, outputs: &[(String, String, u64)]) -> Value {
     let mut textures = Vec::new();
     let mut animation = Value::Null;
     let mut lightmap = Value::Null;
+    let mut others = serde_json::Map::new();
     let mut unread = Vec::new();
     for (id, ty, _) in outputs {
         let read = match ty.as_str() {
@@ -236,7 +293,16 @@ fn asset_stats(bundle: &Bundle, outputs: &[(String, String, u64)]) -> Value {
                     "bakeSeconds": l.file.seconds,
                 });
             }),
-            _ => Ok(()),
+            _ => {
+                match other_stats(bundle, id, ty) {
+                    Ok(Some((key, v))) => {
+                        others.entry(key).or_insert(v);
+                    }
+                    Ok(None) => {}
+                    Err(e) => unread.push(format!("{id}: {e}")),
+                }
+                Ok(())
+            }
         };
         if let Err(e) = read {
             unread.push(format!("{id}: {e}"));
@@ -255,10 +321,317 @@ fn asset_stats(bundle: &Bundle, outputs: &[(String, String, u64)]) -> Value {
     if !lightmap.is_null() {
         out.insert("lightmap".into(), lightmap);
     }
+    out.extend(others);
     if !unread.is_empty() {
         out.insert("unread".into(), json!(unread));
     }
     Value::Object(out)
+}
+
+/// Rounds to a thousandth (seconds, sizes in metres).
+fn milli(x: f64) -> f64 {
+    (x * 1000.0).round() / 1000.0
+}
+
+/// The `meta` row of the blob of `id`.
+fn meta<K: format::BlobKind, T: og_core::Reflect + bytemuck::Pod>(
+    bundle: &Bundle,
+    id: &str,
+) -> Result<T, String> {
+    let bytes = bundle.read(id).map_err(|e| e.to_string())?;
+    let blob = bundle.blob::<K>(id, &bytes).map_err(|e| e.to_string())?;
+    blob.table::<T>("meta", format::row_hash::<T>())
+        .map_err(|e| e.to_string())?
+        .first()
+        .copied()
+        .ok_or_else(|| "the blob has no meta row".to_string())
+}
+
+/// What an output of a type other than a model, texture, animation or
+/// lightmap holds: the report's key for it and its figures; `None` for an
+/// output whose figures its parent reports (a sound's chunks, a texture
+/// array's layers are `og.Texture`s).
+fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Value)>, String> {
+    let e = |e: crate::runtime::LoadError| e.to_string();
+    let bytes = || bundle.read(id).map_err(e);
+    let (key, v) = match ty {
+        "og.Sound" => {
+            let m = bundle.load_sound(id).map_err(e)?.meta;
+            let rate = m.sample_rate.max(1) as f64;
+            (
+                "sound",
+                json!({
+                    "seconds": milli(m.frames as f64 / rate),
+                    "channels": m.channels,
+                    "sampleRate": m.sample_rate,
+                    "frames": m.frames,
+                    "chunks": m.chunk_count,
+                }),
+            )
+        }
+        "og.SoundChunk" => return Ok(None),
+        "og.Font" => {
+            let f = bundle.load_font(id).map_err(e)?;
+            (
+                "font",
+                json!({
+                    "glyphs": f.meta.glyph_count,
+                    "kerningPairs": f.kerning.len(),
+                    "pages": f.meta.page_count,
+                    "pageWidth": f.meta.page_width,
+                    "pageHeight": f.meta.page_height,
+                    "emPx": milli(f.meta.em_px as f64),
+                    "uncookedCodepoints": f.meta.uncooked_codepoints,
+                }),
+            )
+        }
+        "og.Scene" => {
+            let s = bundle.load_scene(id).map_err(e)?;
+            (
+                "scene",
+                json!({
+                    "entities": s.entities.len(),
+                    "instances": s.entities.iter().filter(|x| x.instance.is_some()).count(),
+                    "componentTypes": s.components.len(),
+                    "components": s.components.iter().map(|c| c.rows.len()).sum::<usize>(),
+                    "resources": s.resources.len(),
+                    "paths": s.paths.len(),
+                }),
+            )
+        }
+        "og.NavMesh" => {
+            let (field, tiles) = bundle.navmesh(id, &bytes()?).map_err(e)?;
+            (
+                "navmesh",
+                json!({
+                    "tiles": tiles.len(),
+                    "polygons": tiles.iter().map(|t| t.polys.len()).sum::<usize>(),
+                    "vertices": tiles.iter().map(|t| t.verts.len()).sum::<usize>(),
+                    "cells": [field.width, field.depth],
+                    "spans": field.spans.len(),
+                    "cellSize": milli(field.params.cell_size as f64),
+                    "agentRadius": milli(field.params.agent_radius as f64),
+                    "agentHeight": milli(field.params.agent_height as f64),
+                }),
+            )
+        }
+        "og.TimelineAsset" => {
+            let t = bundle.timeline(id, &bytes()?).map_err(e)?;
+            (
+                "timeline",
+                json!({
+                    "tracks": t.tracks.len(),
+                    "seconds": milli(t.duration as f64),
+                    "paths": t.paths.len(),
+                }),
+            )
+        }
+        "og.UiStyle" => {
+            let s = og_ui::parse_style(&bundle.style_text(id, &bytes()?).map_err(e)?)?;
+            (
+                "style",
+                json!({
+                    "name": s.name,
+                    "fonts": s.fonts.iter().flatten().count(),
+                    "sounds": s.sounds.iter().flatten().count(),
+                    "icons": s.icons.as_ref().map_or(0, |i| i.3.len()),
+                    "atlas": s.atlas.is_some(),
+                    "references": s.references().len(),
+                }),
+            )
+        }
+        "og.Strings" => {
+            let t = og_i18n::StringTable::parse(&bundle.strings_text(id, &bytes()?).map_err(e)?)?;
+            (
+                "strings",
+                json!({
+                    "locale": t.locale,
+                    "keys": t.entries.len(),
+                    "base": t.base,
+                    "fonts": t.fonts.len(),
+                }),
+            )
+        }
+        "og.Behaviour" => {
+            let b = og_ai::Behaviour::parse(&bundle.behaviour_text(id, &bytes()?).map_err(e)?)?;
+            (
+                "behaviour",
+                json!({
+                    "nodes": b.nodes.len(),
+                    "keys": b.keys.len(),
+                    "routes": b.routes.len(),
+                }),
+            )
+        }
+        "og.Tileset" => {
+            let t = bundle.load_tileset(id).map_err(e)?;
+            (
+                "tileset",
+                json!({
+                    "tiles": t.columns * t.rows,
+                    "tileWidth": t.tile_width,
+                    "tileHeight": t.tile_height,
+                    "definedTiles": t.tiles.len(),
+                    "terrains": t.terrains.len(),
+                }),
+            )
+        }
+        "og.Tilemap" => {
+            let m = bundle.load_tilemap(id).map_err(e)?;
+            (
+                "tilemap",
+                json!({
+                    "width": m.width,
+                    "height": m.height,
+                    "cells": m.width as u64 * m.height as u64,
+                    "layers": m.layers.len(),
+                    "objects": m.objects.len(),
+                    "tilesets": m.tilesets.len(),
+                }),
+            )
+        }
+        "og.TextureArray" => {
+            let a = bundle.load_texture_array(id).map_err(e)?.meta;
+            (
+                "textureArray",
+                json!({
+                    "width": a.width,
+                    "height": a.height,
+                    "layers": a.layers,
+                    "levels": a.levels,
+                    "kind": kind_name(a.kind),
+                }),
+            )
+        }
+        "og.Video" => {
+            let v = meta::<format::Video, format::VideoMeta>(bundle, id)?;
+            (
+                "video",
+                json!({
+                    "seconds": milli(v.seconds as f64),
+                    "frames": v.frames,
+                    "fps": v.fps,
+                    "width": v.width,
+                    "height": v.height,
+                    "audio": v.audio != 0,
+                }),
+            )
+        }
+        "og.Terrain" => {
+            let t = meta::<format::Terrain, format::TerrainMeta>(bundle, id)?;
+            (
+                "terrain",
+                json!({
+                    "size": [milli(t.size_x as f64), milli(t.size_z as f64)],
+                    "columns": t.columns,
+                    "rows": t.rows,
+                    "tile": t.tile,
+                    "levels": t.levels,
+                    "layers": t.layers,
+                    "heightRange": [milli(t.height_min as f64), milli(t.height_max as f64)],
+                }),
+            )
+        }
+        "og.EnvironmentMap" => {
+            let m = meta::<format::EnvironmentMap, format::EnvironmentMeta>(bundle, id)?;
+            (
+                "environment",
+                json!({
+                    "size": m.size,
+                    "levels": m.levels,
+                    "sourceWidth": m.source_width,
+                    "sourceHeight": m.source_height,
+                    "samples": m.samples,
+                }),
+            )
+        }
+        "og.Lut" => {
+            let m = meta::<format::Lut, format::LutMeta>(bundle, id)?;
+            ("lut", json!({ "size": m.size }))
+        }
+        "og.Palette" => {
+            let p = bundle.palette(id, &bytes()?).map_err(e)?;
+            ("palette", json!({ "colours": p.len() }))
+        }
+        "og.Look" => {
+            let l = bundle.look(id, &bytes()?).map_err(e)?;
+            (
+                "look",
+                json!({
+                    "blocks": l.blocks.len(),
+                    "extends": l.extends,
+                    "ui": l.ui,
+                }),
+            )
+        }
+        "og.Rig" => {
+            let r = bundle.rig(id, &bytes()?).map_err(e)?;
+            ("rig", json!({ "bones": r.bones.len(), "scheme": r.scheme }))
+        }
+        "og.Rig2D" => {
+            let r = bundle.load_rig2d(id).map_err(e)?;
+            (
+                "rig2d",
+                json!({
+                    "bones": r.bones.len(),
+                    "slots": r.slots.len(),
+                    "attachments": r.attachments.len(),
+                    "iks": r.iks.len(),
+                    "clips": r.clips.len(),
+                }),
+            )
+        }
+        "og.Flipbook" => {
+            let f = bundle.load_flipbook(id).map_err(e)?;
+            (
+                "flipbook",
+                json!({
+                    "frames": f.frames.len(),
+                    "clips": f.clips.len(),
+                    "size": f.size,
+                    "array": f.array,
+                }),
+            )
+        }
+        "og.MaterialShader" => {
+            let s = bundle.shader(id, &bytes()?).map_err(e)?;
+            (
+                "shader",
+                json!({
+                    "params": s.params.len(),
+                    "mode": format!("{:?}", s.mode).to_lowercase(),
+                    "codeBytes": s.code.len(),
+                }),
+            )
+        }
+        "og.PostPass" => {
+            let s = bundle.post(id, &bytes()?).map_err(e)?;
+            (
+                "post",
+                json!({ "params": s.params.len(), "codeBytes": s.code.len() }),
+            )
+        }
+        "og.ParticleEmitter" => {
+            let text = bundle.emitter_text(id, &bytes()?).map_err(e)?;
+            let p = crate::fx::parse_emitter(&text, &mut |_| Ok(None))?;
+            (
+                "emitter",
+                json!({
+                    "maxParticles": p.max_particles,
+                    "rate": milli(p.rate as f64),
+                    "bursts": p.bursts.len(),
+                    "seconds": milli(p.duration as f64),
+                    "looping": p.looping,
+                }),
+            )
+        }
+        "og.StreamPack" => {
+            let m = meta::<format::StreamPack, format::StreamPackMeta>(bundle, id)?;
+            ("streamPack", json!({ "files": m.files }))
+        }
+        _ => return Ok(None),
+    };
+    Ok(Some((key.to_string(), v)))
 }
 
 fn flag(budget: &str, limit: u64, value: u64, what: String) -> Value {
@@ -271,7 +644,8 @@ fn flag(budget: &str, limit: u64, value: u64, what: String) -> Value {
 }
 
 /// The budget flags of one asset entry of a report (its `cookedBytes`,
-/// `model`, `textures`, `animation`).
+/// `model`, `textures`, `animation`, `sound`, `video`, `font`, `navmesh`,
+/// `scene`, `emitter`).
 pub fn asset_flags(asset: &Value, b: &Budgets) -> Vec<Value> {
     let source = asset["source"].as_str().unwrap_or("");
     let mut out = Vec::new();
@@ -325,6 +699,49 @@ pub fn asset_flags(asset: &Value, b: &Budgets) -> Vec<Value> {
         .filter(|n| *n > b.clips)
     {
         out.push(flag("clips", b.clips, n, format!("{source} clips")));
+    }
+    // Lengths in seconds are flagged when over the whole-second budget
+    // (the value reported rounded up).
+    for (key, budget, limit, what) in [
+        ("sound", "soundSeconds", b.sound_seconds, "seconds of sound"),
+        ("video", "videoSeconds", b.video_seconds, "seconds of video"),
+    ] {
+        if let Some(s) = asset[key]["seconds"].as_f64().filter(|s| *s > limit as f64) {
+            out.push(flag(
+                budget,
+                limit,
+                s.ceil() as u64,
+                format!("{source} {what}"),
+            ));
+        }
+    }
+    for (key, field, budget, limit, what) in [
+        ("font", "glyphs", "fontGlyphs", b.font_glyphs, "font glyphs"),
+        (
+            "navmesh",
+            "polygons",
+            "navPolygons",
+            b.nav_polygons,
+            "navmesh polygons",
+        ),
+        (
+            "scene",
+            "entities",
+            "sceneEntities",
+            b.scene_entities,
+            "scene entities",
+        ),
+        (
+            "emitter",
+            "maxParticles",
+            "emitterParticles",
+            b.emitter_particles,
+            "emitter max particles",
+        ),
+    ] {
+        if let Some(n) = asset[key][field].as_u64().filter(|n| *n > limit) {
+            out.push(flag(budget, limit, n, format!("{source} {what}")));
+        }
     }
     out
 }

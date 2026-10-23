@@ -9,6 +9,17 @@
 //! (or a new component block before its entity's). The result therefore
 //! cooks to the world it was written from, and writing it again changes
 //! nothing.
+//!
+//! Resources are `resource <Name> { ... }` blocks at the top level (the
+//! cook's `resource` entry): their field lines are rewritten as a
+//! component's are, under the owner [`RESOURCE`]; a tuned resource no
+//! block sets gets one at the end of the authored text where
+//! [`Plan::add_resources`] says so (the boot scene's).
+//!
+//! Entities the game spawned at run time go under a marked section at the
+//! end ([`SPAWNED_MARK`], [`Plan::spawned`]): regenerated whole from the
+//! world on every save, so a reader tells them from the authored entities
+//! above it, and cooked like any other entity.
 
 /// A field's current value, as the scene text would give it.
 #[derive(Clone, Debug, PartialEq)]
@@ -21,8 +32,51 @@ pub enum FieldValue {
     Text(String),
 }
 
-/// One tuned field: `(entity, component, field)` as the scene names them.
+/// One tuned field: `(entity, component, field)` as the scene names them;
+/// a resource's is `(RESOURCE, resource, field)`.
 pub type Tuned = (String, String, String);
+
+/// The owner of a resource's fields in [`Tuned`] and in `current`'s first
+/// argument: no entity.
+pub const RESOURCE: &str = "";
+
+/// The line that opens the section of entities spawned at run time; what
+/// follows it to the end of the text is that section.
+pub const SPAWNED_MARK: &str = "# ── spawned at run time";
+
+/// The whole line [`SPAWNED_MARK`] opens.
+const SPAWNED_LINE: &str = "# ── spawned at run time ── entities the game made while it ran, written by save_scene from the world; not authored: edit above this line";
+
+/// An entity the game spawned at run time, as the section writes it: its
+/// components with every field the text can give (handles are the
+/// engine's: a component holding one is left out with a note), and its
+/// children spawned at run time.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SpawnedEntity {
+    pub name: String,
+    /// A model it instantiates (`model "<asset id>"`).
+    pub model: Option<String>,
+    pub components: Vec<(String, Vec<(String, FieldValue)>)>,
+    /// Comment lines inside its block (what was not written, and why).
+    pub notes: Vec<String>,
+    pub children: Vec<SpawnedEntity>,
+}
+
+/// A tuned field placed in a new block: its index in the tuned list, its
+/// name and value.
+type Placed = (usize, String, FieldValue);
+
+/// What [`rewrite_with`] writes beside the authored lines.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Plan {
+    pub tuned: Vec<Tuned>,
+    /// Add a `resource` block for each tuned resource the text does not
+    /// set (one scene gets them: the boot scene's).
+    pub add_resources: bool,
+    /// Regenerate the spawned section from these (`None` keeps the text's
+    /// section, if any, as authored text).
+    pub spawned: Option<Vec<SpawnedEntity>>,
+}
 
 /// What [`rewrite`] made.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -188,7 +242,122 @@ pub fn rewrite(
     current: &dyn Fn(&str, &str, &str) -> Option<FieldValue>,
     tuned: &[Tuned],
 ) -> Rewrite {
-    let lines: Vec<&str> = text.split('\n').collect();
+    rewrite_with(
+        text,
+        current,
+        &Plan {
+            tuned: tuned.to_vec(),
+            ..Plan::default()
+        },
+    )
+}
+
+/// The names of the entities in a text's spawned section ([`SPAWNED_MARK`]),
+/// at every depth, in order.
+pub fn spawned_names(text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut inside = false;
+    for line in text.split('\n') {
+        if line.trim_start().starts_with(SPAWNED_MARK) {
+            inside = true;
+            continue;
+        }
+        if !inside {
+            continue;
+        }
+        let (code, _) = split_comment(line);
+        if let Some(head) = code.trim().strip_suffix('{')
+            && let ["entity", name] = tokens(head).as_slice()
+            && let Some(name) = unquote(name)
+        {
+            out.push(name);
+        }
+    }
+    out
+}
+
+/// [`rewrite`] with resources added and the spawned section regenerated as
+/// `plan` says.
+pub fn rewrite_with(
+    text: &str,
+    current: &dyn Fn(&str, &str, &str) -> Option<FieldValue>,
+    plan: &Plan,
+) -> Rewrite {
+    let all: Vec<&str> = text.split('\n').collect();
+    let mark = all
+        .iter()
+        .position(|l| l.trim_start().starts_with(SPAWNED_MARK));
+    let (head, old_section): (&[&str], &[&str]) = match (&plan.spawned, mark) {
+        (Some(_), Some(m)) => (&all[..m], &all[m..]),
+        _ => (&all[..], &[]),
+    };
+    let mut r = rewrite_lines(head, current, plan);
+    let Some(spawned) = &plan.spawned else {
+        return r;
+    };
+    // The section, regenerated: its old lines dropped, the new ones after
+    // the authored text, each line that differs from the old one's counted.
+    let mut section: Vec<String> = Vec::new();
+    if !spawned.is_empty() {
+        section.push(SPAWNED_LINE.to_string());
+        for e in spawned {
+            spawned_block(e, "", &mut section);
+        }
+    }
+    // The authored text without its trailing empty line, then the section
+    // and a final newline.
+    let mut lines: Vec<String> = r.text.split('\n').map(str::to_string).collect();
+    let ended = lines.last().is_some_and(String::is_empty);
+    if !section.is_empty() || mark.is_some() {
+        if ended {
+            lines.pop();
+        }
+        let at = lines.len();
+        let old = match old_section.last() {
+            Some(&"") => &old_section[..old_section.len() - 1],
+            _ => old_section,
+        };
+        for (k, l) in section.iter().enumerate() {
+            if old.get(k) != Some(&l.as_str()) {
+                r.lines.push(at + k + 1);
+            }
+        }
+        lines.extend(section);
+        lines.push(String::new());
+    }
+    r.text = lines.join("\n");
+    r
+}
+
+/// One spawned entity's block at `indent`.
+fn spawned_block(e: &SpawnedEntity, indent: &str, out: &mut Vec<String>) {
+    out.push(format!("{indent}entity {} {{", quote(&e.name)));
+    if let Some(m) = &e.model {
+        out.push(format!("{indent}  model {}", quote(m)));
+    }
+    for (c, fields) in &e.components {
+        out.push(format!("{indent}  {c} {{"));
+        for (f, v) in fields {
+            out.push(format!("{indent}    {f} {}", spell(v, &[])));
+        }
+        out.push(format!("{indent}  }}"));
+    }
+    for n in &e.notes {
+        out.push(format!("{indent}  # {n}"));
+    }
+    let deeper = format!("{indent}  ");
+    for c in &e.children {
+        spawned_block(c, &deeper, out);
+    }
+    out.push(format!("{indent}}}"));
+}
+
+fn rewrite_lines(
+    lines: &[&str],
+    current: &dyn Fn(&str, &str, &str) -> Option<FieldValue>,
+    plan: &Plan,
+) -> Rewrite {
+    let tuned = &plan.tuned;
     let mut out: Vec<String> = Vec::with_capacity(lines.len() + tuned.len());
     let mut changed: Vec<usize> = Vec::new();
     let mut stack: Vec<Frame> = Vec::new();
@@ -205,7 +374,7 @@ pub fn rewrite(
             changed.push(out.len());
         }
     };
-    for raw in &lines {
+    for raw in lines {
         let line = *raw;
         if !body {
             body = line.trim() == "---";
@@ -228,6 +397,15 @@ pub fn rewrite(
                     }
                     None => Frame::Other,
                 },
+                (None, ["resource", r]) => {
+                    let r = unquote(r).unwrap_or_else(|| r.to_string());
+                    components.insert((RESOURCE.to_string(), r.clone()));
+                    Frame::Component {
+                        entity: RESOURCE.to_string(),
+                        name: r,
+                        indent: indent.clone(),
+                    }
+                }
                 (Some(Frame::Entity { name, .. }), [comp]) => {
                     components.insert((name.clone(), comp.to_string()));
                     Frame::Component {
@@ -321,12 +499,55 @@ pub fn rewrite(
         }
         out.push(line.to_string());
     }
+    // Tuned resources no block sets: one block each at the end of the
+    // authored text, where the plan adds them.
+    if plan.add_resources {
+        let mut blocks: Vec<(String, Vec<Placed>)> = Vec::new();
+        for (i, (e, c, f)) in tuned.iter().enumerate() {
+            if e != RESOURCE
+                || placed.contains(&i)
+                || listed.contains(&(e.clone(), c.clone(), f.clone()))
+                || components.contains(&(e.clone(), c.clone()))
+            {
+                continue;
+            }
+            let Some(v) = current(e, c, f) else { continue };
+            match blocks.iter_mut().find(|b| b.0 == *c) {
+                Some(b) => b.1.push((i, f.clone(), v)),
+                None => blocks.push((c.clone(), vec![(i, f.clone(), v)])),
+            }
+        }
+        if !blocks.is_empty() {
+            let ended = out.last().is_some_and(String::is_empty);
+            if ended {
+                out.pop();
+            }
+            for (c, fields) in blocks {
+                push(&mut out, &mut changed, format!("resource {c} {{"), true);
+                for (i, f, v) in fields {
+                    push(
+                        &mut out,
+                        &mut changed,
+                        format!("  {f} {}", spell(&v, &[])),
+                        true,
+                    );
+                    placed.insert(i);
+                }
+                push(&mut out, &mut changed, "}".to_string(), true);
+            }
+            if ended {
+                out.push(String::new());
+            }
+        }
+    }
     let mut skipped = Vec::new();
     for (i, (e, c, f)) in tuned.iter().enumerate() {
         if placed.contains(&i) || listed.contains(&(e.clone(), c.clone(), f.clone())) {
             continue;
         }
-        skipped.push(if entities.contains(e) {
+        skipped.push(if e == RESOURCE {
+            format!("{c}.{f}: a resource this scene does not set")
+        } else if entities.contains(e) {
             format!("{e}.{c}.{f}: the world has no such field")
         } else {
             format!("{e}.{c}.{f}: '{e}' is not an entity of the scene")

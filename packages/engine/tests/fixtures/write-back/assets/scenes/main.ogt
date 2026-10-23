@@ -1,0 +1,13 @@
+type scene
+version 1
+---
+# The boot scene of tests/scene-write-back.test.ts.
+name "Main"
+resource Score {
+  best 1 # the record
+}
+entity "post" {
+  Transform {
+    position 0 0 0 # where it stands
+  }
+}

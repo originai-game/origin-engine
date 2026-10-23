@@ -874,3 +874,41 @@ fn steps_left_ends_a_script_whose_steps_a_restore_moved_past_its_scheduled_end()
     assert!(h.probe.quit_requested());
     assert_eq!(h.probe.steps_left(), 0);
 }
+
+#[test]
+fn a_gate_that_restores_a_peers_snapshot_keeps_the_steps_on_the_shared_ticks() {
+    // og.net's lockstep: a joiner takes the authority's snapshot at the
+    // start, and from then on both worlds run on one clock. The steps
+    // stayed on this process's own ticks (shifted by the jump), so a `quit`
+    // or an `expect` landed on different ticks on each peer.
+    let mut authority = build(1, false);
+    while authority.probe.tick(&authority.world) < 40 {
+        authority.probe.step(&mut authority.world).unwrap();
+    }
+    let snapshot = authority.world.snapshot();
+    let mut h = build(1, false);
+    // 60 Hz: the dump at tick 30 runs before the jump, the quit is tick 60.
+    h.probe
+        .schedule(&h.world, "0.5:dump_world;1.0:quit")
+        .unwrap();
+    let mut restored = false;
+    h.probe.set_gate(Box::new(move |world| {
+        if !restored && world.time().tick == 10 {
+            world.restore(&snapshot).unwrap();
+            restored = true;
+        }
+        true
+    }));
+    run(&mut h, 1000);
+    assert!(h.probe.quit_requested());
+    assert_eq!(
+        h.probe.tick(&h.world),
+        60,
+        "the quit ran on tick 60 of the shared clock"
+    );
+    // The dump at tick 30, which the jump from 10 to 40 passed, ran once,
+    // with the first steps due after the jump (tick 40 taken, at 41).
+    let dumps = json_outputs(&mut h);
+    assert_eq!(dumps.len(), 1);
+    assert_eq!(dumps[0].0, 41);
+}

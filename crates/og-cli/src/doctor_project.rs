@@ -160,6 +160,18 @@ fn fix_for(budget: &str) -> &'static str {
         "bones" => "reduce the skin's joints in its source, or raise budgets.bones",
         "clips" => "split the clips across models, or raise budgets.clips",
         "assetBytes" => "reduce the asset's content, or raise budgets.assetBytes",
+        "soundSeconds" => "shorten the sound in its source, or raise budgets.soundSeconds",
+        "videoSeconds" => "shorten the video in its source, or raise budgets.videoSeconds",
+        "fontGlyphs" => {
+            "narrow the font's charset in its .ogt (only the scripts the game shows), or raise budgets.fontGlyphs"
+        }
+        "navPolygons" => {
+            "raise the navmesh's cellSize or maxError, narrow its bounds, or raise budgets.navPolygons"
+        }
+        "sceneEntities" => "split the scene, or raise budgets.sceneEntities",
+        "emitterParticles" => {
+            "lower the emitter's max_particles (or its rate), or raise budgets.emitterParticles"
+        }
         _ => "reduce the project's assets, or raise budgets.totalBytes",
     }
 }

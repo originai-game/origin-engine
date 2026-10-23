@@ -1,0 +1,13 @@
+type scene
+version 1
+---
+# Instantiated under "hall" by the game's start (og.world.instantiate).
+name "Room"
+entity "lamp" {
+  Transform {
+    position 0 2 0
+  }
+  Glow {
+    level 1
+  }
+}

@@ -747,6 +747,16 @@ which lives in the Worker and answers asynchronously:
   `memory` call, `og_web_memory`), a publish page included, whose probe
   has no `memory`; the dogfood harness's table reads it
   (`tests/web/dogfood.ts`, `memoryProbe`, `memoryPlayed`, `memoryEnd`).
+- `trace`: the run's Chrome trace, the document `og run --trace` writes
+  natively (`src/trace.ts`), buffered in the engine Worker: the Worker
+  takes the engine's spans (`og_web_trace_take`) after every frame and
+  places them on the page's clock. `?trace` records from the boot (the
+  boot scene's loads included); `__runtime_probe__.trace("start" |
+  "stop" | "take")` (the Worker's `trace` call, the shell's `trace()`)
+  begins, ends or reads it; `saveTrace(name)` downloads it. The GPU's
+  passes are there where the adapter has `timestamp-query`
+  (`RenderCapabilities.gpuTimestamps`), a frame or two after the frame
+  (`tests/web-trace.test.ts`).
 
 Proven in headless Chrome 150 by `bun run test:browser` in
 `packages/engine`: `tests/web/wire.ts` (dev and publish, isolated and not:

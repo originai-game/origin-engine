@@ -53,6 +53,7 @@ import { readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring
 import { loadBasisTranscoder, transcodeKtx2, TEXTURE_FORMATS, type BasisTranscoder, type TextureFormat } from "./basis.ts";
 import type { HostError } from "./shell.ts";
 import { PlatformCounter, settle, SETTLE_FIRST_MS, SETTLE_MS } from "./settle.ts";
+import { Trace, unixMs } from "../trace.ts";
 
 interface Start {
   type: "start";
@@ -92,6 +93,8 @@ interface Start {
    * game's first screen (its UI is built by ticks), then the ticks that apply the platform's answers to it (settle.ts).
    */
   prime?: boolean;
+  /** Record the run's trace from the boot on (src/trace.ts; the shell's `trace()` reads it). */
+  trace?: boolean;
 }
 
 type Viewport = { width: number; height: number; dpr: number; safeArea?: Record<string, number>; covered?: Record<string, number>; coarsePointer?: boolean; reducedMotion?: boolean; highContrast?: boolean; reducedTransparency?: boolean; macKeys?: boolean };
@@ -114,7 +117,7 @@ type Message =
   | { type: "platform-answer"; request: number; answer: PlatformAnswer }
   | { type: "platform-host"; host: string; capabilities: string[] }
   | { type: "room-events"; events: unknown[] }
-  | { type: "room-host"; host: string }
+  | { type: "room-host"; host: string; join?: string }
   | AudioMessage
   | AudioLatencyMessage;
 
@@ -182,7 +185,14 @@ export interface WebExtras {
   og_web_panic?(): string;
   /** Test hook: the next item at a lanes site panics (in a lane when the call splits). */
   og_web_lanes_fault?(site: string): boolean;
+  /** The trace (crates/og-runtime/src/trace.rs): on or off for an engine (0xffffffff: the loads before one exists). */
+  og_web_trace?(engine: number, on: boolean): void;
+  /** The trace's spans since the last take: `{ now, events }`, Chrome trace events on the engine's clock. */
+  og_web_trace_take?(engine: number, last: boolean): string;
 }
+
+/** The trace's key for loads made before the engine exists (og-runtime's `BEFORE_ENGINE`). */
+const TRACE_BEFORE_ENGINE = 0xffffffff;
 
 /** Where the runtime asks for a bundle's files: `<root>/cooked/<file>` (crates/og-runtime/src/assets.rs). */
 export function cookedDir(root: string): string {
@@ -533,6 +543,9 @@ export function startWorker(game: GameToken): void {
     phaseAt = now;
   };
   const firstFrameMessage = () => ({ type: "frame", first: true, boot: { ...boot, at: Math.round(performance.now()) } });
+  /** What the trace's document records beside its events: the renderer's tier and the lanes. */
+  let lastTier = "none";
+  let lanesState: unknown = null;
   let glueRef: (WebGlue & WebExtras & WebAudioGlue) | null = null;
   let audio: WorkerAudio | null = null;
   /** Captures waiting for their readback (requested on tick N, answered on N + 1). */
@@ -611,7 +624,21 @@ export function startWorker(game: GameToken): void {
   };
 
   /** What a frame's answer tells the shell: the UI's focused text control (text-input.ts), a copy, and the accessibility tree when it changed (a11y.ts). */
+  /** The run's trace while one is recorded (src/trace.ts): taken after every frame, so the engine holds a frame's spans at most. */
+  let trace: Trace | null = null;
+  const takeTrace = (last = false) => {
+    if (!trace || !engine || !glueRef?.og_web_trace_take) return;
+    trace.append(glueRef.og_web_trace_take(engine.id, last), unixMs());
+  };
+  const traceOn = (on: boolean) => {
+    if (!engine || !glueRef?.og_web_trace) return false;
+    if (on && !trace) trace = new Trace({ producer: "og web trace", process: "og web" });
+    if (!on) trace = null;
+    glueRef.og_web_trace(engine.id, on);
+    return true;
+  };
   const relay = (answered: ReturnType<Engine["frame"]>) => {
+    takeTrace();
     if (!answered.ok) return;
     const target = JSON.stringify(answered.text ?? null);
     if (target !== textTarget) {
@@ -797,7 +824,12 @@ export function startWorker(game: GameToken): void {
   };
 
   const calls: Record<string, (e: Engine, args: unknown[]) => unknown> = {
-    advance: (e, [n]) => e.advance(Number(n)),
+    // A harness's ticks carry the room as the page's own frames do: lockstep's inputs leave with them.
+    advance: (e, [n]) => {
+      const answered = e.advance(Number(n));
+      pumpRoom(e);
+      return answered;
+    },
     command: (e, [action, args]) => e.command(String(action), (args as string[]) ?? []),
     hash: (e) => e.hash(),
     /** What the engine holds (ProbeMemory: the wasm linear memory, the counted heap, the world, streaming, audio), in every build. */
@@ -818,7 +850,13 @@ export function startWorker(game: GameToken): void {
     frame: (e, [ms]) => {
       const answered = e.frame(Number(ms));
       relay(answered);
+      pumpRoom(e);
       return answered;
+    },
+    /** og.net on this page: og.net.status (lockstep running, its start tick, the seats, the first divergent tick) and the shared hash, as `og run --json` reports them natively (`lockstep`, `netHash`). */
+    net: (e) => {
+      const abi = boundHost()!.abi;
+      return { status: JSON.parse(abi.og_net_status(e.id)), hash: JSON.parse(abi.og_net_hash(e.id)), room: JSON.parse(abi.og_platform_room_info(e.id)) };
     },
     // The frames played since the last reset (at most FRAME_RECORDS, oldest first); `true` resets.
     timings: (_, [reset]) => {
@@ -827,6 +865,22 @@ export function startWorker(game: GameToken): void {
       const answer = { frames: recorded, intervals: at(intervals), work: at(work) };
       if (reset) recorded = 0;
       return answer;
+    },
+    /**
+     * The run's trace (src/trace.ts): `start` begins one (dropping any), `stop` ends it, `take` (the
+     * default) answers the document so far, a Chrome trace as `og run --trace` writes it; null when
+     * none is recorded or the module cannot trace.
+     */
+    trace: (_, [action]) => {
+      const a = String(action ?? "take");
+      if (a === "start") {
+        traceOn(false);
+        return traceOn(true);
+      }
+      if (a === "stop") return traceOn(false);
+      if (!trace) return null;
+      takeTrace(true);
+      return trace.document({ tier: lastTier, lanes: lanesState });
     },
     probe: (e, [member, ...rest]) => {
       const f = (e.probe as unknown as Record<string, unknown>)[String(member)];
@@ -899,6 +953,8 @@ export function startWorker(game: GameToken): void {
           installFetcher(glue, fetched.manifest ?? "", data.basis, () => (rendering && engine ? engine.id : null));
         }
         phase("bundle");
+        // A trace from the boot on records the boot scene's loads too.
+        if (data.trace) glue.og_web_trace?.(TRACE_BEFORE_ENGINE, true);
         const created = createEngine(game, {
           ...(data.seed === undefined ? {} : { seed: data.seed }),
           ...(data.root === undefined ? {} : { root: data.root }),
@@ -910,6 +966,10 @@ export function startWorker(game: GameToken): void {
         });
         if (!created.ok) throw new Error(created.reason);
         engine = created.value;
+        if (data.trace) {
+          traceOn(true);
+          glue.og_web_trace?.(TRACE_BEFORE_ENGINE, false);
+        }
         // og.platform: calls go to the page, which answers them (the Player, or the browser's storage).
         // The time is the browser's until the Player's answers carry its own (docs/platform-asks.md).
         engine.setClock(systemClock("browser"));
@@ -925,6 +985,8 @@ export function startWorker(game: GameToken): void {
           rendering = true;
         }
         phase("attach");
+        lastTier = tier;
+        lanesState = lanes;
         // The textures go to the renderer's encodings, so after it is attached (the game starts later).
         const loaded = fetched ? await transcodeBundle(glue, rendering ? engine.id : null, fetched, data.basis, progress, data.expect ? received : undefined) : null;
         phase("transcode");
@@ -1012,7 +1074,11 @@ export function startWorker(game: GameToken): void {
       platformCounter.answered();
     }
     if (data.type === "platform-host") engine.attachPlatform(toPage(data.host, data.capabilities, platformCounter));
-    if (data.type === "room-host") boundHost()?.abi.og_room_set_host(engine.id, JSON.stringify({ host: data.host }));
+    if (data.type === "room-host") {
+      boundHost()?.abi.og_room_set_host(engine.id, JSON.stringify({ host: data.host, ...(data.join ? { join: data.join } : {}) }));
+      // A Play link's join leaves now, not with the next frame (the page may be behind its gate).
+      pumpRoom(engine);
+    }
     if (data.type === "room-events") {
       const abi = boundHost()?.abi;
       for (const event of data.events) abi?.og_room_deliver(engine.id, JSON.stringify(event));

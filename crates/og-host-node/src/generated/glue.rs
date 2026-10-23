@@ -2121,9 +2121,9 @@ pub fn og_engine_probe_expectations(env: Env, engine_probe: u32) -> String {
 
 #[cfg(not(feature = "publish"))]
 #[napi(js_name = "og_engine_probe_save_scene")]
-pub fn og_engine_probe_save_scene(env: Env, engine_probe: u32, write: Option<bool>) -> String {
+pub fn og_engine_probe_save_scene(env: Env, engine_probe: u32, write: Option<bool>, spawned: Option<bool>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as ProbeApi>::og_engine_probe_save_scene(&Host, engine_probe, write)
+    <Host as ProbeApi>::og_engine_probe_save_scene(&Host, engine_probe, write, spawned)
 }
 
 #[napi(js_name = "og_terrain_load")]

@@ -227,6 +227,7 @@ fn spawn(eng: &Engine, desc: &Value) -> Result<Entity, String> {
     if !name.is_empty() {
         set_name(eng, e, &name);
     }
+    eng.state.borrow_mut().game_spawned.insert(e.to_bits());
     Ok(e)
 }
 
@@ -259,6 +260,7 @@ fn spawn_in_system(eng: &Engine, f: &super::engine::Frame, desc: &Value) -> Resu
     if !name.is_empty() {
         set_name(eng, e, &name);
     }
+    eng.state.borrow_mut().game_spawned.insert(e.to_bits());
     Ok(e)
 }
 
@@ -1615,6 +1617,7 @@ pub fn og_render_capabilities(world: u32) -> String {
                     |i| i.volumetric_lights,
                 ),
                 "maxLightCookies": og_render::MAX_COOKIE_LAYERS,
+                "gpuTimestamps": b.gpu_timing_absent().is_none(),
             })
         })
         .map(|mut c| {
@@ -1624,7 +1627,7 @@ pub fn og_render_capabilities(world: u32) -> String {
             c
         })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0 }))
+    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false }))
         .to_string()
 }
 
@@ -2520,11 +2523,15 @@ pub fn og_engine_probe_expectations(probe: u32) -> String {
     member(probe, "expectations", json!({})).to_string()
 }
 
-pub fn og_engine_probe_save_scene(probe: u32, write: Option<bool>) -> String {
+pub fn og_engine_probe_save_scene(
+    probe: u32,
+    write: Option<bool>,
+    spawned: Option<bool>,
+) -> String {
     member(
         probe,
         "save_scene",
-        json!({ "write": write.unwrap_or(false) }),
+        json!({ "write": write.unwrap_or(false), "spawned": spawned.unwrap_or(false) }),
     )
     .to_string()
 }

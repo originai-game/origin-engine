@@ -224,6 +224,27 @@ pub(crate) fn clock_ms() -> f64 {
     })
 }
 
+/// The page's time in milliseconds, alike on every Worker
+/// (`performance.timeOrigin + performance.now()`): og-lanes' trace clock,
+/// since each pool Worker's `performance.now()` counts from its own start.
+pub(crate) fn epoch_ms() -> f64 {
+    PERFORMANCE.with(|p| match p {
+        Some((performance, now)) => {
+            let origin = js_sys::Reflect::get(performance, &JsValue::from_str("timeOrigin"))
+                .ok()
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.0);
+            origin
+                + now
+                    .call0(performance)
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0)
+        }
+        None => js_sys::Date::now(),
+    })
+}
+
 /// `cooked/stream/<name>.ogb`, as the Worker's fetcher tells a pack
 /// (`/\/stream\/[^/]+\.ogb$/`).
 fn is_stream_pack(path: &str) -> bool {
@@ -540,6 +561,22 @@ fn take_resize(engine: u32) -> Option<(u32, u32)> {
     RESIZES.with(|r| r.borrow_mut().remove(&engine))
 }
 
+/// The trace (og-runtime's `trace.rs`, the shell's `trace()`): turns the
+/// engine's trace on or off.
+#[wasm_bindgen]
+pub fn og_web_trace(engine: u32, on: bool) {
+    og_runtime::trace_set(engine, on);
+}
+
+/// The trace's spans since the last take, as JSON (`{ now, events }`, the
+/// events Chrome trace events on the engine's clock); `last` waits for the
+/// GPU's frames in flight where it can (natively only: the web's arrive in
+/// a later take).
+#[wasm_bindgen]
+pub fn og_web_trace_take(engine: u32, last: bool) -> String {
+    og_runtime::trace_take(engine, last)
+}
+
 /// What the engine holds (og-runtime's `memory_report`, the probe's
 /// `memory`: the wasm linear memory, the counted heap, the world, the
 /// streaming budget, the audio), as JSON: the engine Worker's `memory` call,
@@ -744,8 +781,14 @@ mod canvas {
         fn set_clock(&mut self, clock: Option<fn() -> f64>) {
             self.renderer.set_clock(clock);
         }
-        fn pass_timings(&self) -> Vec<(String, f64)> {
+        fn pass_timings(&self) -> Vec<og_render::PassTiming> {
             self.renderer.pass_timings().to_vec()
+        }
+        fn gpu_timings(&mut self, wait: bool) -> Vec<og_render::GpuFrame> {
+            self.renderer.gpu_timings(wait)
+        }
+        fn gpu_timing_absent(&self) -> Option<&'static str> {
+            self.renderer.gpu_timing_absent()
         }
         fn triangles(&self) -> u64 {
             self.triangles

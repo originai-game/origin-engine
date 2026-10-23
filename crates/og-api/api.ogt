@@ -3957,6 +3957,7 @@ module render {
     field volumetricFog VolumetricFog "How Fog.volumetric is drawn on this device: a froxel grid (the full tier) or a raymarch along each pixel's view ray (WebGL2), each lit by the sun through its shadows and by the point, spot and rect lights around each sample (up to volumetricLights of them) through their shadows and cookies."
     field volumetricLights u32 "The most point, spot and rect lights that light one sample of Fog.volumetric: those of its screen cluster, MAX_CLUSTER_LIGHTS (64) in the froxel grid, 8 in WebGL2's raymarch, the brightest at the camera first."
     field maxLightCookies u32 "The most light cookie layers one frame draws (24 on every tier): a SpotLight.cookie takes one, a PointLight.cookie six (its cube's faces), and a texture several lights of one kind share takes its layers once. Cookies past it, in the order of their lights' entities, are not drawn: those lights shine without them, and the log names them in a warning."
+    field gpuTimestamps bool "Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true."
   }
 
   const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
@@ -9400,6 +9401,7 @@ module platform {
     field host String "What carries rooms here: `relay` (natively, `og run --room` through `og relay`), `player` (the platform's rooms through the Player, on the web) or `none` (roomCreate and roomJoin are refused)."
     field peer u32 "This engine's peer number; 0 in none."
     field peers List.RoomPeer "Every peer present, this one included, by number."
+    field link String "The room a Play link to a room (`?room=<id>` on the play page) named: the engine joined it at load (og.RoomJoined answers, as for roomJoin); empty without one."
   }
 
   struct RoomMessageData {
@@ -12172,7 +12174,7 @@ module commands {
     variant quit "`quit`: exit."
     variant describe "`describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera."
     variant expect "`expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=), `entity:<id>:<path>==<value>` (a field of its dump_entity: `render.lod==2`, `og.Transform.position.y>0`), `timings:<path>==<value>` (state().timings: `triangles<=1500000`). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked, as are an entity's `render.*` fields and the renderer's timings (`triangles`, `render`, `passes`)."
-    variant save_scene "`save_scene[:path]`: write the boot scene's `.ogt` back from the world, only the lines whose values changed (comments and order kept) and the fields set or patch tuned; to the scene's source, or with a path to that file under the output directory."
+    variant save_scene "`save_scene[:path][:spawned]`: write every scene the world was assembled from back from the world (the boot scene's, then each og.world.instantiate made, each to its own `.ogt`): only the lines whose values changed (comments and order kept), the fields set or patch tuned, and resources as `resource <Name> { }` blocks; with `spawned`, the entities the game spawned at run time under the boot scene's marked section. To each scene's source, or with a path the boot scene's to that file under the output directory and the others beside it."
     variant help "`help`: list every action the channel knows, core and registered."
   }
 
@@ -12301,7 +12303,8 @@ module probe {
       unit ms
     }
     field systems List.ProbeTiming "The last tick's systems in run order, each with its milliseconds."
-    field passes List.ProbeTiming "The last rendered frame's render passes in the render graph's order, each with its milliseconds (CPU encode time; empty without a renderer)."
+    field passes List.ProbeTiming "The last rendered frame's render passes in the render graph's order, each with its milliseconds of CPU encoding (empty without a renderer)."
+    field gpuPasses List.ProbeTiming "The render passes of the newest frame the GPU's timestamps were read back for (a frame or two behind `passes`), each with the GPU's milliseconds from the end of the pass before it to its own end; empty where the device has no timestamp queries (RenderCapabilities.gpuTimestamps) or without a renderer."
     field triangles u32 "Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer."
   }
 
@@ -12563,6 +12566,7 @@ module probe {
     field name String "Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id."
     field value String "Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none."
     field states List.String "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy."
+    field opaque bool "It draws an opaque background over its whole box (its fill's alpha times its opacity is 1), hiding the scene under it."
     field x f32 "Left edge." {
       unit cssPx
     }
@@ -12657,7 +12661,7 @@ module probe {
     field coverage f32 "Its visible share of the surface." {
       unit ratio
     }
-    field occlusion f32 "The share of what it covers alone that something else hides." {
+    field occlusion f32 "The share of what it covers alone that something else hides: another object in front, or a UI element drawn opaque over it (DescribedUi.opaque); on a secondary camera's image, objects only." {
       unit ratio
     }
     field views List.String "The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty)."
@@ -12681,6 +12685,7 @@ module probe {
     field text String "The text it shows."
     field value String "Its value as text."
     field states List.String "Its states."
+    field opaque bool "It draws an opaque background over its whole box: the entities under it count it in their occlusion."
     field box ScreenBox "Its rect."
   }
 
@@ -12751,13 +12756,23 @@ module probe {
   }
 
   struct SavedScene {
-    doc "A scene written back from the world."
+    doc "The scenes written back from the world: the head is the boot scene's (or the first instantiated one's), `scenes` lists every one."
     field tick u32 "The tick of the world it was written from."
-    field source String "The scene's source, project-relative."
+    field source String "The first scene's source, project-relative."
     field written String "Where it was written; empty when only returned."
-    field lines List.u32 "The 1-based lines of the new text that changed or were added."
-    field skipped List.String "Tuned fields that were not written, each with its reason: a resource, or an entity the scene did not make."
-    field text String "The new text."
+    field lines List.u32 "The 1-based lines of the first scene's new text that changed or were added."
+    field skipped List.String "Tuned fields that were not written, each with its reason: an entity no scene made (without `spawned`), a resource no scene sets where no boot scene takes it."
+    field text String "The first scene's new text."
+    field spawned u32 "Entities written under the boot scene's spawned section (0 without `spawned`)."
+    field scenes List.SavedSceneFile "Every scene written back: the boot scene's first, then each og.world.instantiate made, once each."
+  }
+
+  struct SavedSceneFile {
+    doc "One scene file written back."
+    field source String "Its source, project-relative."
+    field written String "Where it was written; empty when only returned."
+    field lines List.u32 "The 1-based lines of its new text that changed or were added."
+    field text String "Its new text."
   }
 
   interface RuntimeProbe {
@@ -12912,8 +12927,11 @@ module probe {
       returns ExpectReport
     }
     fn saveScene {
-      doc "Write the boot scene back from the world: its entities' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order. The probe writes the file only with write; otherwise the text is returned."
-      param write bool "Replace the scene's source file." {
+      doc "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned."
+      param write bool "Replace each scene's source file." {
+        default false
+      }
+      param spawned bool "Write the entities the game spawned at run time under the boot scene's marked section." {
         default false
       }
       returns Option.SavedScene "Null without a scene to write back (the reason is in the log)."

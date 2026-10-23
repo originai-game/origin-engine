@@ -15,7 +15,8 @@ the room.
 og relay                                              # terminal 1: ws://127.0.0.1:47900/<room>
 og run . --room ws://127.0.0.1:47900/duel --realtime  # terminals 2 and 3
 og run . --headless --setup bot:1 --ticks 600 --json  # alone, scripted
-og test .                                             # tests/duel.og.ts: two processes through a relay
+og test .                                             # tests/duel.og.ts (two processes through a relay), tests/solo.og.ts
+og polish .                                           # og-taste and og-feel measured over both playtests
 ```
 
 ## How it is made deterministic
@@ -27,6 +28,11 @@ og test .                                             # tests/duel.og.ts: two pr
   It hands this peer's input to `og.net.submit`.
 - `Move` and `CoinDrop` read `og.PlayerInput`, `Tuning` and `og.Rng` only:
   the same on every peer.
+- `Feedback` and `Voices` play what `Move` and `CoinDrop` asked for in
+  `Duel` (`sfx`, `took`): the coin's chime, a ring of sparks where it lay,
+  "+1" in the taker's ink, a 3-tick hit stop and a light shake; a dash's
+  whoosh; a round's fanfare and a heavier shake. They read the world
+  alone, so every peer plays them the same.
 - `Hud` draws this peer's own line ("You are Red", "Waiting for 1 more")
   and keeps nothing in the world.
 
@@ -47,6 +53,11 @@ component and field (`og run --commands "...:dump_desync:d.json"`).
 `Tuning`: `speed`, `dashSpeed`, `dashTicks`, `dashCooldown`, `target`,
 `restTicks`. A tunable must be the same on every peer. Change it in code or
 on every peer at the same tick; otherwise `og.Desync` reports it.
+
+The look (`assets/looks/arena.ogt`) puts the UI in the catalogue's neon
+style. `og polish` on vulkan-cpu scores taste 100 and feel 66; its one
+finding is frame time, which lavapipe's software rasteriser sets (about
+27 ms to draw four sprites), not the game.
 
 ## What a Maker changes first
 

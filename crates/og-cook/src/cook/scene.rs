@@ -29,6 +29,12 @@
 //! ordered and defaulted from it; without one the cook infers a layout from
 //! the text (f32 lanes; a string needs the schema for its capacity) and
 //! every entity must set the same fields.
+//!
+//! At the top level, `resource <Name> { ... }` sets a resource's fields
+//! when the scene is instantiated (`resource Run { chimed true }`): its
+//! entries are fields as a component's are, packed with the resource's
+//! schema or inferred from the text; the fields it does not list keep the
+//! values the world holds. `save_scene` writes tuned resources there.
 
 use super::CookError;
 use crate::format::{self, *};
@@ -231,6 +237,40 @@ fn pack(schema: &Schema, row: &Pending, out: &mut Vec<u8>) -> Result<(), CookErr
     Ok(())
 }
 
+/// A component's or resource's block of fields, as one pending row.
+fn block_fields(
+    fields: &Block,
+    entity: u32,
+    line: usize,
+    comp: &str,
+) -> Result<Pending, CookError> {
+    let mut pending = Pending {
+        entity,
+        line,
+        fields: Vec::new(),
+    };
+    for f in &fields.entries {
+        if f.block.is_some() {
+            return Err(CookError(format!(
+                "line {}: {comp}.{}: fields do not nest",
+                f.line, f.key
+            )));
+        }
+        if pending.fields.iter().any(|(n, ..)| n == &f.key) {
+            return Err(CookError(format!(
+                "line {}: {comp}.{} is set twice",
+                f.line, f.key
+            )));
+        }
+        pending.fields.push((
+            f.key.clone(),
+            lanes(&f.values, f.line, comp, &f.key)?,
+            f.line,
+        ));
+    }
+    Ok(pending)
+}
+
 /// The asset ids a scene references (for its stamp and the planner).
 pub fn references(text: &str) -> Vec<String> {
     let mut out = BTreeSet::new();
@@ -285,6 +325,7 @@ pub fn cook(
     let mut tables: BTreeMap<String, Vec<Pending>> = BTreeMap::new();
     let mut name = String::new();
     let mut paths: Vec<(String, og_timeline::PathDesc)> = Vec::new();
+    let mut resources: BTreeMap<String, Pending> = BTreeMap::new();
     for e in &doc.body.entries {
         match e.key.as_str() {
             "name" => {
@@ -294,6 +335,32 @@ pub fn cook(
                     .to_string()
             }
             "entity" => {}
+            "resource" => {
+                let r = e
+                    .values
+                    .first()
+                    .and_then(|v| v.as_word().or_else(|| v.as_str()))
+                    .ok_or_else(|| {
+                        CookError(format!(
+                            "line {}: resource: the resource's name (resource Run {{ ... }})",
+                            e.line
+                        ))
+                    })?
+                    .to_string();
+                let fields = e.block.as_ref().ok_or_else(|| {
+                    CookError(format!(
+                        "line {}: resource {r}: its fields in a block",
+                        e.line
+                    ))
+                })?;
+                if resources.contains_key(&r) {
+                    return Err(CookError(format!(
+                        "line {}: resource {r} is set twice",
+                        e.line
+                    )));
+                }
+                resources.insert(r.clone(), block_fields(fields, 0, e.line, &r)?);
+            }
             // Streaming groups: read by the cook's planner (cook/stream.rs).
             "stream" => {}
             // Named paths (og.path.find, a timeline's `rail`), made when
@@ -310,7 +377,7 @@ pub fn cook(
             }
             k => {
                 return Err(CookError(format!(
-                    "line {}: unknown scene entry '{k}' (expected name, entity, stream or path)",
+                    "line {}: unknown scene entry '{k}' (expected name, entity, resource, stream or path)",
                     e.line
                 )));
             }
@@ -378,30 +445,7 @@ pub fn cook(
                     entity.instance = r as u32;
                 }
                 (comp, Some(fields)) => {
-                    let mut pending = Pending {
-                        entity: index,
-                        line: c.line,
-                        fields: Vec::new(),
-                    };
-                    for f in &fields.entries {
-                        if f.block.is_some() {
-                            return Err(CookError(format!(
-                                "line {}: {comp}.{}: fields do not nest",
-                                f.line, f.key
-                            )));
-                        }
-                        if pending.fields.iter().any(|(n, ..)| n == &f.key) {
-                            return Err(CookError(format!(
-                                "line {}: {comp}.{} is set twice",
-                                f.line, f.key
-                            )));
-                        }
-                        pending.fields.push((
-                            f.key.clone(),
-                            lanes(&f.values, f.line, comp, &f.key)?,
-                            f.line,
-                        ));
-                    }
+                    let pending = block_fields(fields, index, c.line, comp)?;
                     let rows = tables.entry(comp.to_string()).or_default();
                     if rows.iter().any(|r| r.entity == index) {
                         return Err(CookError(format!(
@@ -495,6 +539,48 @@ pub fn cook(
             schema.to_json(),
         ));
     }
+    // Resources: one row each, its schema beside it (`r.`/`rs.<name>`).
+    let mut resource_rows = Vec::new();
+    let mut resource_payloads = Vec::new();
+    for (r, row) in &resources {
+        // Only the fields the text lists: the others keep the world's values.
+        let (schema, inferred) = match schemas.get(r) {
+            Some(s) => {
+                for (f, _, line) in &row.fields {
+                    if !s.fields.iter().any(|x| &x.name == f) {
+                        return Err(CookError(format!(
+                            "line {line}: resource {r} has no field '{f}'"
+                        )));
+                    }
+                }
+                let mut listed = s.clone();
+                listed
+                    .fields
+                    .retain(|x| row.fields.iter().any(|(f, ..)| *f == x.name));
+                (listed, false)
+            }
+            None => {
+                notes.push(format!(
+                    "resource {r}: no schema given; layout inferred from the scene text"
+                ));
+                (infer(r, std::slice::from_ref(row))?, true)
+            }
+        };
+        let size = Layout::of(&schema).size();
+        let mut bytes = Vec::with_capacity(size);
+        pack(&schema, row, &mut bytes)?;
+        let hash = schema.layout_hash();
+        let (name_offset, name_len) = add(r);
+        resource_rows.push(ComponentRow {
+            name_offset,
+            name_len,
+            layout_hash_lo: hash as u32,
+            layout_hash_hi: (hash >> 32) as u32,
+            rows: 1,
+            inferred: inferred as u32,
+        });
+        resource_payloads.push((r.clone(), bytes, size as u32, hash, schema.to_json()));
+    }
     let meta = SceneMeta {
         entity_count: entity_rows.len() as u32,
         component_count: comp_rows.len() as u32,
@@ -515,6 +601,14 @@ pub fn cook(
     for (comp, bytes, stride, hash, json) in payloads {
         w.rows(&format!("c.{comp}"), bytes, stride, hash);
         w.raw(&format!("s.{comp}"), json.into_bytes(), 1);
+    }
+    if !resource_rows.is_empty() {
+        w.table("resources", &resource_rows, row_hash::<ComponentRow>());
+        for (r, bytes, stride, hash, json) in resource_payloads {
+            w.rows(&format!("r.{r}"), bytes, stride.max(1), hash);
+            w.raw(&format!("rs.{r}"), json.into_bytes(), 1);
+        }
+        notes.push(format!("{} resource(s)", resources.len()));
     }
     if !paths.is_empty() {
         w.raw("paths", og_timeline::paths_to_text(&paths).into_bytes(), 1);

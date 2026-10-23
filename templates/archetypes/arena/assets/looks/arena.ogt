@@ -1,0 +1,10 @@
+type look
+version 1
+---
+# Coin Duel's look (og-taste §12), named by GameDesc.look in src/main.ts:
+# the catalogue's neon UI style for the scores and the status line (an
+# arcade duel on a dark floor; `og polish` flagged the engine's placeholder
+# prototype style). The floor, the fighters and the coin are the sprites
+# start places in their own inks.
+name "Coin Duel"
+ui "@styles/neon/style.ogt"

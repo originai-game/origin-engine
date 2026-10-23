@@ -20,7 +20,7 @@ module probe {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 12246</sub>
+<sub>`api.ogt` line 12230</sub>
 
 ## Contents
 
@@ -80,7 +80,8 @@ module probe {
 | [`ExpectStatus`](#type-ExpectStatus) | enum | How an expectation came out. |
 | [`ExpectResult`](#type-ExpectResult) | struct | One evaluated expectation. |
 | [`ExpectReport`](#type-ExpectReport) | struct | The expectations evaluated since the last call. |
-| [`SavedScene`](#type-SavedScene) | struct | A scene written back from the world. |
+| [`SavedScene`](#type-SavedScene) | struct | The scenes written back from the world: the head is the boot scene's (or the first instantiated one's), `scenes` lists every one. |
+| [`SavedSceneFile`](#type-SavedSceneFile) | struct | One scene file written back. |
 | [`RuntimeProbe`](#type-RuntimeProbe) | interface | RuntimeProbe protocol 5, member for member. Every member answers synchronously with JSON-serialisable values. |
 | [`EngineProbe`](#type-EngineProbe) | interface | The engine's probe: protocol 5 plus the wire members of the loopback WebSocket and the in-page request ring. |
 
@@ -99,7 +100,7 @@ interface RuntimeProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 12763</sub>
+<sub>`api.ogt` line 12760</sub>
 
 <a id="member-RuntimeProbe-version"></a>
 
@@ -119,7 +120,7 @@ prop version u32 "PROBE_VERSION." {
 }
 ```
 
-<sub>`api.ogt` line 12767</sub>
+<sub>`api.ogt` line 12764</sub>
 
 <a id="member-RuntimeProbe-tick"></a>
 
@@ -143,7 +144,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 12770</sub>
+<sub>`api.ogt` line 12767</sub>
 
 <a id="member-RuntimeProbe-state"></a>
 
@@ -167,7 +168,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 12775</sub>
+<sub>`api.ogt` line 12772</sub>
 
 <a id="member-RuntimeProbe-advance"></a>
 
@@ -195,7 +196,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 12780</sub>
+<sub>`api.ogt` line 12777</sub>
 
 <a id="member-RuntimeProbe-pause"></a>
 
@@ -218,7 +219,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 12785</sub>
+<sub>`api.ogt` line 12782</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -241,7 +242,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 12789</sub>
+<sub>`api.ogt` line 12786</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -270,7 +271,7 @@ fn input {
 }
 ```
 
-<sub>`api.ogt` line 12793</sub>
+<sub>`api.ogt` line 12790</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -293,7 +294,7 @@ fn accepted {
 }
 ```
 
-<sub>`api.ogt` line 12799</sub>
+<sub>`api.ogt` line 12796</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
@@ -324,7 +325,7 @@ fn pick {
 }
 ```
 
-<sub>`api.ogt` line 12803</sub>
+<sub>`api.ogt` line 12800</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -353,7 +354,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 12810</sub>
+<sub>`api.ogt` line 12807</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
@@ -381,7 +382,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 12816</sub>
+<sub>`api.ogt` line 12813</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -413,7 +414,7 @@ fn patch {
 }
 ```
 
-<sub>`api.ogt` line 12821</sub>
+<sub>`api.ogt` line 12818</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -441,7 +442,7 @@ fn run {
 }
 ```
 
-<sub>`api.ogt` line 12828</sub>
+<sub>`api.ogt` line 12825</sub>
 
 <a id="type-EngineProbe"></a>
 
@@ -459,7 +460,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 12835</sub>
+<sub>`api.ogt` line 12832</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -483,7 +484,7 @@ fn hello {
 }
 ```
 
-<sub>`api.ogt` line 12840</sub>
+<sub>`api.ogt` line 12837</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -524,7 +525,7 @@ fn capture {
 }
 ```
 
-<sub>`api.ogt` line 12845</sub>
+<sub>`api.ogt` line 12842</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -554,7 +555,7 @@ fn sweep {
 }
 ```
 
-<sub>`api.ogt` line 12858</sub>
+<sub>`api.ogt` line 12855</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -577,7 +578,7 @@ fn reload {
 }
 ```
 
-<sub>`api.ogt` line 12865</sub>
+<sub>`api.ogt` line 12862</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -600,7 +601,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 12869</sub>
+<sub>`api.ogt` line 12866</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -628,7 +629,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 12873</sub>
+<sub>`api.ogt` line 12870</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -658,7 +659,7 @@ fn dump {
 }
 ```
 
-<sub>`api.ogt` line 12878</sub>
+<sub>`api.ogt` line 12875</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -686,7 +687,7 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 12885</sub>
+<sub>`api.ogt` line 12882</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -716,7 +717,7 @@ fn listen {
 }
 ```
 
-<sub>`api.ogt` line 12890</sub>
+<sub>`api.ogt` line 12887</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -739,7 +740,7 @@ fn memory {
 }
 ```
 
-<sub>`api.ogt` line 12897</sub>
+<sub>`api.ogt` line 12894</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -762,7 +763,7 @@ fn describe {
 }
 ```
 
-<sub>`api.ogt` line 12901</sub>
+<sub>`api.ogt` line 12898</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -790,7 +791,7 @@ fn expect {
 }
 ```
 
-<sub>`api.ogt` line 12905</sub>
+<sub>`api.ogt` line 12902</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -813,21 +814,22 @@ fn expectations {
 }
 ```
 
-<sub>`api.ogt` line 12910</sub>
+<sub>`api.ogt` line 12907</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
 #### `EngineProbe.saveScene`
 
-Write the boot scene back from the world: its entities' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order. The probe writes the file only with write; otherwise the text is returned.
+Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned.
 
 ```ts
-EngineProbe.saveScene(write?: boolean): SavedScene | null
+EngineProbe.saveScene(write?: boolean, spawned?: boolean): SavedScene | null
 ```
 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
-| `write` | `boolean` | yes | Replace the scene's source file. Default `false`. |
+| `write` | `boolean` | yes | Replace each scene's source file. Default `false`. |
+| `spawned` | `boolean` | yes | Write the entities the game spawned at run time under the boot scene's marked section. Default `false`. |
 
 **Returns** `SavedScene | null`: Null without a scene to write back (the reason is in the log).
 
@@ -835,15 +837,18 @@ Binding symbol `og_engine_probe_save_scene` · publish builds: dropped
 
 ```ogt
 fn saveScene {
-  doc "Write the boot scene back from the world: its entities' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order. The probe writes the file only with write; otherwise the text is returned."
-  param write bool "Replace the scene's source file." {
+  doc "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned."
+  param write bool "Replace each scene's source file." {
+    default false
+  }
+  param spawned bool "Write the entities the game spawned at run time under the boot scene's marked section." {
     default false
   }
   returns Option.SavedScene "Null without a scene to write back (the reason is in the log)."
 }
 ```
 
-<sub>`api.ogt` line 12914</sub>
+<sub>`api.ogt` line 12911</sub>
 
 ## Types
 
@@ -868,7 +873,7 @@ struct PickResult {
 }
 ```
 
-<sub>`api.ogt` line 12260</sub>
+<sub>`api.ogt` line 12244</sub>
 
 <a id="type-ProbeTunable"></a>
 
@@ -903,7 +908,7 @@ struct ProbeTunable {
 }
 ```
 
-<sub>`api.ogt` line 12267</sub>
+<sub>`api.ogt` line 12251</sub>
 
 <a id="type-ProbeEntityRef"></a>
 
@@ -926,7 +931,7 @@ struct ProbeEntityRef {
 }
 ```
 
-<sub>`api.ogt` line 12284</sub>
+<sub>`api.ogt` line 12268</sub>
 
 <a id="type-ProbeTimings"></a>
 
@@ -940,7 +945,8 @@ The fixed timings head of state().
 | `render` | `number` | `0` | — | `ms` | — | Time the last frame's render took; 0 without a renderer. |
 | `frameMs` | `number` | `0` | — | `ms` | — | step + render. |
 | `systems` | `readonly ProbeTiming[]` | `[]` | — | — | — | The last tick's systems in run order, each with its milliseconds. |
-| `passes` | `readonly ProbeTiming[]` | `[]` | — | — | — | The last rendered frame's render passes in the render graph's order, each with its milliseconds (CPU encode time; empty without a renderer). |
+| `passes` | `readonly ProbeTiming[]` | `[]` | — | — | — | The last rendered frame's render passes in the render graph's order, each with its milliseconds of CPU encoding (empty without a renderer). |
+| `gpuPasses` | `readonly ProbeTiming[]` | `[]` | — | — | — | The render passes of the newest frame the GPU's timestamps were read back for (a frame or two behind `passes`), each with the GPU's milliseconds from the end of the pass before it to its own end; empty where the device has no timestamp queries (RenderCapabilities.gpuTimestamps) or without a renderer. |
 | `triangles` | `number` | `0` | — | — | — | Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer. |
 
 ```ogt
@@ -956,12 +962,13 @@ struct ProbeTimings {
     unit ms
   }
   field systems List.ProbeTiming "The last tick's systems in run order, each with its milliseconds."
-  field passes List.ProbeTiming "The last rendered frame's render passes in the render graph's order, each with its milliseconds (CPU encode time; empty without a renderer)."
+  field passes List.ProbeTiming "The last rendered frame's render passes in the render graph's order, each with its milliseconds of CPU encoding (empty without a renderer)."
+  field gpuPasses List.ProbeTiming "The render passes of the newest frame the GPU's timestamps were read back for (a frame or two behind `passes`), each with the GPU's milliseconds from the end of the pass before it to its own end; empty where the device has no timestamp queries (RenderCapabilities.gpuTimestamps) or without a renderer."
   field triangles u32 "Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer."
 }
 ```
 
-<sub>`api.ogt` line 12292</sub>
+<sub>`api.ogt` line 12276</sub>
 
 <a id="type-ProbeTiming"></a>
 
@@ -984,7 +991,7 @@ struct ProbeTiming {
 }
 ```
 
-<sub>`api.ogt` line 12308</sub>
+<sub>`api.ogt` line 12293</sub>
 
 <a id="type-ProbeState"></a>
 
@@ -997,7 +1004,7 @@ The probe's state(): a fixed head, then the game's own facts.
 | `tick` | `number` | `0` | — | — | — | Fixed steps since load. |
 | `paused` | `boolean` | `false` | — | — | — | Whether the clock is held. |
 | `seed` | `number` | `0` | — | — | — | The seed the world was assembled from. |
-| `timings` | `ProbeTimings` | `{ step: 0, render: 0, frameMs: 0, systems: [], passes: [], triangles: 0 }` | — | — | — | The last tick's timings. |
+| `timings` | `ProbeTimings` | `{ step: 0, render: 0, frameMs: 0, systems: [], passes: [], gpuPasses: [], triangles: 0 }` | — | — | — | The last tick's timings. |
 | `entities` | `readonly ProbeEntityRef[]` | `[]` | — | — | — | The named entities. |
 | `facts` | `unknown` | `null` | — | — | — | What GameDesc.facts returned, or null. |
 
@@ -1013,7 +1020,7 @@ struct ProbeState {
 }
 ```
 
-<sub>`api.ogt` line 12316</sub>
+<sub>`api.ogt` line 12301</sub>
 
 <a id="type-AdvanceOperation"></a>
 
@@ -1032,7 +1039,7 @@ struct AdvanceOperation {
 }
 ```
 
-<sub>`api.ogt` line 12326</sub>
+<sub>`api.ogt` line 12311</sub>
 
 <a id="type-InputOperation"></a>
 
@@ -1051,7 +1058,7 @@ struct InputOperation {
 }
 ```
 
-<sub>`api.ogt` line 12331</sub>
+<sub>`api.ogt` line 12316</sub>
 
 <a id="type-PickOperation"></a>
 
@@ -1072,7 +1079,7 @@ struct PickOperation {
 }
 ```
 
-<sub>`api.ogt` line 12336</sub>
+<sub>`api.ogt` line 12321</sub>
 
 <a id="type-EntityOperation"></a>
 
@@ -1091,7 +1098,7 @@ struct EntityOperation {
 }
 ```
 
-<sub>`api.ogt` line 12342</sub>
+<sub>`api.ogt` line 12327</sub>
 
 <a id="type-ExpectOperation"></a>
 
@@ -1110,7 +1117,7 @@ struct ExpectOperation {
 }
 ```
 
-<sub>`api.ogt` line 12347</sub>
+<sub>`api.ogt` line 12332</sub>
 
 <a id="type-ProbeOperation"></a>
 
@@ -1148,7 +1155,7 @@ union ProbeOperation {
 }
 ```
 
-<sub>`api.ogt` line 12352</sub>
+<sub>`api.ogt` line 12337</sub>
 
 <a id="type-ProbeProgramResult"></a>
 
@@ -1171,7 +1178,7 @@ struct ProbeProgramResult {
 }
 ```
 
-<sub>`api.ogt` line 12366</sub>
+<sub>`api.ogt` line 12351</sub>
 
 <a id="type-Hello"></a>
 
@@ -1208,7 +1215,7 @@ struct Hello {
 }
 ```
 
-<sub>`api.ogt` line 12373</sub>
+<sub>`api.ogt` line 12358</sub>
 
 <a id="type-BuildProfile"></a>
 
@@ -1233,7 +1240,7 @@ enum BuildProfile {
 }
 ```
 
-<sub>`api.ogt` line 12388</sub>
+<sub>`api.ogt` line 12373</sub>
 
 <a id="type-Capture"></a>
 
@@ -1258,7 +1265,7 @@ struct Capture {
 }
 ```
 
-<sub>`api.ogt` line 12395</sub>
+<sub>`api.ogt` line 12380</sub>
 
 <a id="type-Heard"></a>
 
@@ -1289,7 +1296,7 @@ struct Heard {
 }
 ```
 
-<sub>`api.ogt` line 12403</sub>
+<sub>`api.ogt` line 12388</sub>
 
 <a id="type-ProbeHeap"></a>
 
@@ -1316,7 +1323,7 @@ struct ProbeHeap {
 }
 ```
 
-<sub>`api.ogt` line 12415</sub>
+<sub>`api.ogt` line 12400</sub>
 
 <a id="type-ProbeWorldMemory"></a>
 
@@ -1335,7 +1342,7 @@ struct ProbeWorldMemory {
 }
 ```
 
-<sub>`api.ogt` line 12426</sub>
+<sub>`api.ogt` line 12411</sub>
 
 <a id="type-ProbeStreamMemory"></a>
 
@@ -1364,7 +1371,7 @@ struct ProbeStreamMemory {
 }
 ```
 
-<sub>`api.ogt` line 12431</sub>
+<sub>`api.ogt` line 12416</sub>
 
 <a id="type-ProbeMemory"></a>
 
@@ -1401,7 +1408,7 @@ struct ProbeMemory {
 }
 ```
 
-<sub>`api.ogt` line 12444</sub>
+<sub>`api.ogt` line 12429</sub>
 
 <a id="type-SweepDesc"></a>
 
@@ -1433,7 +1440,7 @@ struct SweepDesc {
 }
 ```
 
-<sub>`api.ogt` line 12461</sub>
+<sub>`api.ogt` line 12446</sub>
 
 <a id="type-SweepFrame"></a>
 
@@ -1456,7 +1463,7 @@ struct SweepFrame {
 }
 ```
 
-<sub>`api.ogt` line 12472</sub>
+<sub>`api.ogt` line 12457</sub>
 
 <a id="type-SweepResult"></a>
 
@@ -1475,7 +1482,7 @@ struct SweepResult {
 }
 ```
 
-<sub>`api.ogt` line 12479</sub>
+<sub>`api.ogt` line 12464</sub>
 
 <a id="type-ReloadReport"></a>
 
@@ -1504,7 +1511,7 @@ struct ReloadReport {
 }
 ```
 
-<sub>`api.ogt` line 12484</sub>
+<sub>`api.ogt` line 12469</sub>
 
 <a id="type-SnapshotInfo"></a>
 
@@ -1531,7 +1538,7 @@ struct SnapshotInfo {
 }
 ```
 
-<sub>`api.ogt` line 12495</sub>
+<sub>`api.ogt` line 12480</sub>
 
 <a id="type-DumpKind"></a>
 
@@ -1558,7 +1565,7 @@ enum DumpKind {
 }
 ```
 
-<sub>`api.ogt` line 12505</sub>
+<sub>`api.ogt` line 12490</sub>
 
 <a id="type-DumpDesc"></a>
 
@@ -1582,7 +1589,7 @@ struct DumpDesc {
 }
 ```
 
-<sub>`api.ogt` line 12513</sub>
+<sub>`api.ogt` line 12498</sub>
 
 <a id="type-ArchetypeDump"></a>
 
@@ -1603,7 +1610,7 @@ struct ArchetypeDump {
 }
 ```
 
-<sub>`api.ogt` line 12520</sub>
+<sub>`api.ogt` line 12505</sub>
 
 <a id="type-SystemDump"></a>
 
@@ -1632,7 +1639,7 @@ struct SystemDump {
 }
 ```
 
-<sub>`api.ogt` line 12526</sub>
+<sub>`api.ogt` line 12511</sub>
 
 <a id="type-WorldDump"></a>
 
@@ -1661,7 +1668,7 @@ struct WorldDump {
 }
 ```
 
-<sub>`api.ogt` line 12537</sub>
+<sub>`api.ogt` line 12522</sub>
 
 <a id="type-EntityDump"></a>
 
@@ -1684,7 +1691,7 @@ struct EntityDump {
 }
 ```
 
-<sub>`api.ogt` line 12547</sub>
+<sub>`api.ogt` line 12532</sub>
 
 <a id="type-UiElement"></a>
 
@@ -1704,6 +1711,7 @@ One UI element with its bounds.
 | `name` | `string` | `""` | — | — | — | Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id. |
 | `value` | `string` | `""` | — | — | — | Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none. |
 | `states` | `readonly string[]` | `[]` | — | — | — | Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy. |
+| `opaque` | `boolean` | `false` | — | — | — | It draws an opaque background over its whole box (its fill's alpha times its opacity is 1), hiding the scene under it. |
 | `x` | `number` | `0` | — | `cssPx` | — | Left edge. |
 | `y` | `number` | `0` | — | `cssPx` | — | Top edge. |
 | `width` | `number` | `0` | — | `cssPx` | — | Width. |
@@ -1722,6 +1730,7 @@ struct UiElement {
   field name String "Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id."
   field value String "Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none."
   field states List.String "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy."
+  field opaque bool "It draws an opaque background over its whole box (its fill's alpha times its opacity is 1), hiding the scene under it."
   field x f32 "Left edge." {
     unit cssPx
   }
@@ -1737,7 +1746,7 @@ struct UiElement {
 }
 ```
 
-<sub>`api.ogt` line 12554</sub>
+<sub>`api.ogt` line 12539</sub>
 
 <a id="type-UiSurface"></a>
 
@@ -1766,7 +1775,7 @@ struct UiSurface {
 }
 ```
 
-<sub>`api.ogt` line 12580</sub>
+<sub>`api.ogt` line 12566</sub>
 
 <a id="type-UiDump"></a>
 
@@ -1789,7 +1798,7 @@ struct UiDump {
 }
 ```
 
-<sub>`api.ogt` line 12593</sub>
+<sub>`api.ogt` line 12579</sub>
 
 <a id="type-DesyncDump"></a>
 
@@ -1816,7 +1825,7 @@ struct DesyncDump {
 }
 ```
 
-<sub>`api.ogt` line 12600</sub>
+<sub>`api.ogt` line 12586</sub>
 
 <a id="type-DumpResult"></a>
 
@@ -1844,7 +1853,7 @@ union DumpResult {
 }
 ```
 
-<sub>`api.ogt` line 12609</sub>
+<sub>`api.ogt` line 12595</sub>
 
 <a id="type-ScreenBox"></a>
 
@@ -1877,7 +1886,7 @@ struct ScreenBox {
 }
 ```
 
-<sub>`api.ogt` line 12618</sub>
+<sub>`api.ogt` line 12604</sub>
 
 <a id="type-ScreenPoint"></a>
 
@@ -1902,7 +1911,7 @@ struct ScreenPoint {
 }
 ```
 
-<sub>`api.ogt` line 12634</sub>
+<sub>`api.ogt` line 12620</sub>
 
 <a id="type-DescribedEntity"></a>
 
@@ -1922,7 +1931,7 @@ One entity the frame shows, from the entity-id pass (a CPU rasterisation of the 
 | `point` | `ScreenPoint` | `{ x: 0, y: 0 }` | — | — | — | A visible point nearest the box's centre: pick answers this entity there. |
 | `depth` | `number` | `0` | — | `m` | — | From the camera to its nearest visible point, along the view. |
 | `coverage` | `number` | `0` | — | `ratio` | — | Its visible share of the surface. |
-| `occlusion` | `number` | `0` | — | `ratio` | — | The share of what it covers alone that something else hides. |
+| `occlusion` | `number` | `0` | — | `ratio` | — | The share of what it covers alone that something else hides: another object in front, or a UI element drawn opaque over it (DescribedUi.opaque); on a secondary camera's image, objects only. |
 | `views` | `readonly string[]` | `[]` | — | — | — | The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty). |
 
 ```ogt
@@ -1942,14 +1951,14 @@ struct DescribedEntity {
   field coverage f32 "Its visible share of the surface." {
     unit ratio
   }
-  field occlusion f32 "The share of what it covers alone that something else hides." {
+  field occlusion f32 "The share of what it covers alone that something else hides: another object in front, or a UI element drawn opaque over it (DescribedUi.opaque); on a secondary camera's image, objects only." {
     unit ratio
   }
   field views List.String "The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty)."
 }
 ```
 
-<sub>`api.ogt` line 12644</sub>
+<sub>`api.ogt` line 12630</sub>
 
 <a id="type-DescribedView"></a>
 
@@ -1976,7 +1985,7 @@ struct DescribedView {
 }
 ```
 
-<sub>`api.ogt` line 12666</sub>
+<sub>`api.ogt` line 12652</sub>
 
 <a id="type-DescribedUi"></a>
 
@@ -1993,6 +2002,7 @@ One UI element as describe lists it (the tree dump_ui writes).
 | `text` | `string` | `""` | — | — | — | The text it shows. |
 | `value` | `string` | `""` | — | — | — | Its value as text. |
 | `states` | `readonly string[]` | `[]` | — | — | — | Its states. |
+| `opaque` | `boolean` | `false` | — | — | — | It draws an opaque background over its whole box: the entities under it count it in their occlusion. |
 | `box` | `ScreenBox` | `{ x: 0, y: 0, width: 0, height: 0 }` | — | — | — | Its rect. |
 
 ```ogt
@@ -2005,11 +2015,12 @@ struct DescribedUi {
   field text String "The text it shows."
   field value String "Its value as text."
   field states List.String "Its states."
+  field opaque bool "It draws an opaque background over its whole box: the entities under it count it in their occlusion."
   field box ScreenBox "Its rect."
 }
 ```
 
-<sub>`api.ogt` line 12675</sub>
+<sub>`api.ogt` line 12661</sub>
 
 <a id="type-DescribedCamera"></a>
 
@@ -2050,7 +2061,7 @@ struct DescribedCamera {
 }
 ```
 
-<sub>`api.ogt` line 12687</sub>
+<sub>`api.ogt` line 12674</sub>
 
 <a id="type-PassSize"></a>
 
@@ -2071,7 +2082,7 @@ struct PassSize {
 }
 ```
 
-<sub>`api.ogt` line 12707</sub>
+<sub>`api.ogt` line 12694</sub>
 
 <a id="type-Description"></a>
 
@@ -2102,7 +2113,7 @@ struct Description {
 }
 ```
 
-<sub>`api.ogt` line 12713</sub>
+<sub>`api.ogt` line 12700</sub>
 
 <a id="type-ExpectStatus"></a>
 
@@ -2127,7 +2138,7 @@ enum ExpectStatus {
 }
 ```
 
-<sub>`api.ogt` line 12724</sub>
+<sub>`api.ogt` line 12711</sub>
 
 <a id="type-ExpectResult"></a>
 
@@ -2162,7 +2173,7 @@ struct ExpectResult {
 }
 ```
 
-<sub>`api.ogt` line 12731</sub>
+<sub>`api.ogt` line 12718</sub>
 
 <a id="type-ExpectReport"></a>
 
@@ -2187,36 +2198,65 @@ struct ExpectReport {
 }
 ```
 
-<sub>`api.ogt` line 12745</sub>
+<sub>`api.ogt` line 12732</sub>
 
 <a id="type-SavedScene"></a>
 
 ### `SavedScene` (struct)
 
-A scene written back from the world.
+The scenes written back from the world: the head is the boot scene's (or the first instantiated one's), `scenes` lists every one.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `tick` | `number` | `0` | — | — | — | The tick of the world it was written from. |
-| `source` | `string` | `""` | — | — | — | The scene's source, project-relative. |
+| `source` | `string` | `""` | — | — | — | The first scene's source, project-relative. |
 | `written` | `string` | `""` | — | — | — | Where it was written; empty when only returned. |
-| `lines` | `readonly number[]` | `[]` | — | — | — | The 1-based lines of the new text that changed or were added. |
-| `skipped` | `readonly string[]` | `[]` | — | — | — | Tuned fields that were not written, each with its reason: a resource, or an entity the scene did not make. |
-| `text` | `string` | `""` | — | — | — | The new text. |
+| `lines` | `readonly number[]` | `[]` | — | — | — | The 1-based lines of the first scene's new text that changed or were added. |
+| `skipped` | `readonly string[]` | `[]` | — | — | — | Tuned fields that were not written, each with its reason: an entity no scene made (without `spawned`), a resource no scene sets where no boot scene takes it. |
+| `text` | `string` | `""` | — | — | — | The first scene's new text. |
+| `spawned` | `number` | `0` | — | — | — | Entities written under the boot scene's spawned section (0 without `spawned`). |
+| `scenes` | `readonly SavedSceneFile[]` | `[]` | — | — | — | Every scene written back: the boot scene's first, then each og.world.instantiate made, once each. |
 
 ```ogt
 struct SavedScene {
-  doc "A scene written back from the world."
+  doc "The scenes written back from the world: the head is the boot scene's (or the first instantiated one's), `scenes` lists every one."
   field tick u32 "The tick of the world it was written from."
-  field source String "The scene's source, project-relative."
+  field source String "The first scene's source, project-relative."
   field written String "Where it was written; empty when only returned."
-  field lines List.u32 "The 1-based lines of the new text that changed or were added."
-  field skipped List.String "Tuned fields that were not written, each with its reason: a resource, or an entity the scene did not make."
-  field text String "The new text."
+  field lines List.u32 "The 1-based lines of the first scene's new text that changed or were added."
+  field skipped List.String "Tuned fields that were not written, each with its reason: an entity no scene made (without `spawned`), a resource no scene sets where no boot scene takes it."
+  field text String "The first scene's new text."
+  field spawned u32 "Entities written under the boot scene's spawned section (0 without `spawned`)."
+  field scenes List.SavedSceneFile "Every scene written back: the boot scene's first, then each og.world.instantiate made, once each."
 }
 ```
 
-<sub>`api.ogt` line 12753</sub>
+<sub>`api.ogt` line 12740</sub>
+
+<a id="type-SavedSceneFile"></a>
+
+### `SavedSceneFile` (struct)
+
+One scene file written back.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `source` | `string` | `""` | — | — | — | Its source, project-relative. |
+| `written` | `string` | `""` | — | — | — | Where it was written; empty when only returned. |
+| `lines` | `readonly number[]` | `[]` | — | — | — | The 1-based lines of its new text that changed or were added. |
+| `text` | `string` | `""` | — | — | — | Its new text. |
+
+```ogt
+struct SavedSceneFile {
+  doc "One scene file written back."
+  field source String "Its source, project-relative."
+  field written String "Where it was written; empty when only returned."
+  field lines List.u32 "The 1-based lines of its new text that changed or were added."
+  field text String "Its new text."
+}
+```
+
+<sub>`api.ogt` line 12752</sub>
 
 ## Constants
 
@@ -2233,34 +2273,34 @@ struct SavedScene {
 const PROBE_GLOBAL String "__runtime_probe__" "The global the page publishes the probe on."
 ```
 
-<sub>`api.ogt` line 12253</sub>
+<sub>`api.ogt` line 12237</sub>
 
 ```ogt
 const PROBE_VERSION u32 5 "The RuntimeProbe contract revision both sides speak."
 ```
 
-<sub>`api.ogt` line 12254</sub>
+<sub>`api.ogt` line 12238</sub>
 
 ```ogt
 const PROBE_WIRE_VERSION u32 1 "The wire revision hello reports."
 ```
 
-<sub>`api.ogt` line 12255</sub>
+<sub>`api.ogt` line 12239</sub>
 
 ```ogt
 const REPLAY_SEED_PARAM String "replay-seed" "The page query parameter that starts a deterministic replay from a uint32 seed."
 ```
 
-<sub>`api.ogt` line 12256</sub>
+<sub>`api.ogt` line 12240</sub>
 
 ```ogt
 const PLAYTEST_MAX_TICKS u32 3600 "The longest playtest one request may advance, in fixed steps."
 ```
 
-<sub>`api.ogt` line 12257</sub>
+<sub>`api.ogt` line 12241</sub>
 
 ```ogt
 const PROBE_PROGRAM_MAX_OPERATIONS u32 256 "The most operations one probe program may carry."
 ```
 
-<sub>`api.ogt` line 12258</sub>
+<sub>`api.ogt` line 12242</sub>

@@ -20,7 +20,7 @@ struct Hit {
 struct FixedView;
 
 impl SceneView for FixedView {
-    fn seen(&mut self, world: &World) -> Option<Seen> {
+    fn seen(&mut self, world: &World, _cover: &[[f32; 4]]) -> Option<Seen> {
         let player = world.find("player")?;
         let crate_ = world.find("crate")?;
         let shown = |entity, rect: [f32; 4], depth: f32, occlusion: f32| Shown {
@@ -215,7 +215,7 @@ fn describe_orders_entities_nearest_first_with_ui_and_pick_falls_back_to_the_vie
 struct ViewedScene;
 
 impl SceneView for ViewedScene {
-    fn seen(&mut self, world: &World) -> Option<Seen> {
+    fn seen(&mut self, world: &World, _cover: &[[f32; 4]]) -> Option<Seen> {
         let player = world.find("player")?;
         let crate_ = world.find("crate")?;
         let cctv = world.find("cctv")?;

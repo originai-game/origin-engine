@@ -305,6 +305,38 @@ fn lane<R>(f: impl FnOnce() -> R) -> R {
     f()
 }
 
+/// One job of a parallel call, `items` of its items (0 for a library's call
+/// run on the pool, [`install`]): a lane, timed for the trace while it is
+/// on ([`set_trace`]).
+#[cfg(any(not(target_arch = "wasm32"), target_feature = "atomics"))]
+fn job<R>(items: usize, f: impl FnOnce() -> R) -> R {
+    if !TRACING.load(Ordering::Relaxed) {
+        return lane(f);
+    }
+    let clock = trace_clock();
+    let start = clock();
+    let r = lane(f);
+    let ms = (clock() - start).max(0.0);
+    let thread = rayon::current_thread_index().map_or(u32::MAX, |i| i as u32);
+    let site = SITE
+        .load(Ordering::Relaxed)
+        .checked_sub(1)
+        .and_then(Site::from_index);
+    let mut jobs = JOBS.lock().unwrap_or_else(|e| e.into_inner());
+    if jobs.len() < MAX_JOBS {
+        jobs.push(Job {
+            thread,
+            site,
+            items: items as u32,
+            start,
+            ms,
+        });
+    } else {
+        DROPPED.fetch_add(1, Ordering::Relaxed);
+    }
+    r
+}
+
 /// The lane boundary of the lanes wasm: a helper call runs on the pool while
 /// the calling thread waits on [`wait_for`], so a lane that panics (and
 /// aborts its Worker) wakes it instead of leaving it waiting forever.
@@ -353,6 +385,92 @@ mod guard {
 /// Results never change; only the threads that compute them do.
 pub fn set_enabled(on: bool) {
     SWITCH.store(on, Ordering::Relaxed);
+}
+
+// ── the trace: each job's thread, start and length ─────────────────────────
+
+static TRACING: AtomicBool = AtomicBool::new(false);
+static JOBS: Mutex<Vec<Job>> = Mutex::new(Vec::new());
+static DROPPED: AtomicU64 = AtomicU64::new(0);
+/// The host's clock for the trace (a fn pointer; 0 for the built-in one).
+static CLOCK: AtomicUsize = AtomicUsize::new(0);
+/// The most jobs held between two takes; past it they are counted, not kept.
+#[cfg(any(not(target_arch = "wasm32"), target_feature = "atomics"))]
+const MAX_JOBS: usize = 1 << 20;
+
+/// One job a pool thread ran while tracing ([`set_trace`]): the thread
+/// (the pool's index; `u32::MAX` off the pool), the call's site, its items
+/// (0 for a library run on the pool, [`install`]), and when it started and
+/// how long it took on the trace clock ([`set_trace_clock`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Job {
+    pub thread: u32,
+    pub site: Option<Site>,
+    pub items: u32,
+    pub start: f64,
+    pub ms: f64,
+}
+
+/// The jobs since the last take ([`take_trace`]), with the trace clock's
+/// reading at the take, so a caller puts them on its own clock, and the
+/// jobs dropped past the buffer's bound.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Trace {
+    pub now: f64,
+    pub jobs: Vec<Job>,
+    pub dropped: u64,
+}
+
+/// The clock jobs are timed with: one origin on every thread of the pool.
+/// Natively a process-wide monotonic clock is built in; the lanes wasm's
+/// host gives one that every Worker reads alike (the page's
+/// `performance.timeOrigin + performance.now()`).
+pub fn set_trace_clock(clock: fn() -> f64) {
+    CLOCK.store(clock as usize, Ordering::Relaxed);
+}
+
+fn trace_clock() -> fn() -> f64 {
+    match CLOCK.load(Ordering::Relaxed) {
+        0 => builtin_clock,
+        // SAFETY: only `set_trace_clock` stores, and it stores a `fn() -> f64`.
+        p => unsafe { std::mem::transmute::<usize, fn() -> f64>(p) },
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn builtin_clock() -> f64 {
+    static ORIGIN: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    ORIGIN
+        .get_or_init(std::time::Instant::now)
+        .elapsed()
+        .as_secs_f64()
+        * 1000.0
+}
+
+/// The wasm has no clock of its own: 0 until the host gives one.
+#[cfg(target_arch = "wasm32")]
+fn builtin_clock() -> f64 {
+    0.0
+}
+
+/// Turns the timing of every job on or off; off drops what was not taken.
+/// Measurement only: no job reads it.
+pub fn set_trace(on: bool) {
+    TRACING.store(on, Ordering::Relaxed);
+    if !on {
+        JOBS.lock().unwrap_or_else(|e| e.into_inner()).clear();
+        DROPPED.store(0, Ordering::Relaxed);
+    }
+}
+
+/// The jobs timed since the last take, in the order they ended.
+pub fn take_trace() -> Trace {
+    let jobs = std::mem::take(&mut *JOBS.lock().unwrap_or_else(|e| e.into_inner()));
+    Trace {
+        now: trace_clock()(),
+        jobs,
+        dropped: DROPPED.swap(0, Ordering::Relaxed),
+    }
 }
 
 /// What the engine got (the probe's `dump_lanes`).
@@ -751,7 +869,8 @@ mod par {
         let grain = grain.max(1);
         (0..len.div_ceil(grain)).into_par_iter().for_each(|c| {
             let start = c * grain;
-            super::lane(|| body(start, (start + grain).min(len)))
+            let end = (start + grain).min(len);
+            super::job(end - start, || body(start, end))
         })
     }
 }
@@ -798,7 +917,7 @@ mod imp {
 
     pub fn install<R: Send>(f: impl FnOnce() -> R + Send) -> R {
         match &pool_of().0 {
-            Some(p) => p.install(|| super::lane(f)),
+            Some(p) => p.install(|| super::job(0, f)),
             None => serial(f),
         }
     }
@@ -875,7 +994,7 @@ mod imp {
     }
 
     pub fn install<R: Send>(f: impl FnOnce() -> R + Send) -> R {
-        guarded(|| super::lane(f))
+        guarded(|| super::job(0, f))
     }
 }
 
@@ -1197,6 +1316,62 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// While tracing, every job of a parallel call is timed on the pool
+    /// thread that ran it: the jobs cover the call's items once, name its
+    /// site and their pool thread, and the jobs of one thread follow each
+    /// other without overlapping (one thread runs one job at a time).
+    #[test]
+    fn traced_jobs_cover_the_items_on_their_threads() {
+        let _one = HOOK.lock().unwrap_or_else(|e| e.into_inner());
+        let r = report();
+        if !r.on {
+            return; // one core, or OG_LANES off: nothing splits
+        }
+        set_trace(true);
+        let _ = take_trace();
+        let items: Vec<u64> = (0..40_000).collect();
+        let out = map(Site::Anim, &items, 1000, |&i| {
+            (0..200).fold(i, |a, k| a ^ (a << 1).wrapping_add(k))
+        });
+        let t = take_trace();
+        set_trace(false);
+        assert_eq!(out.len(), items.len());
+        let jobs: Vec<&Job> = t
+            .jobs
+            .iter()
+            .filter(|j| j.site == Some(Site::Anim) && j.items > 0)
+            .collect();
+        assert_eq!(
+            jobs.iter().map(|j| j.items as usize).sum::<usize>(),
+            items.len()
+        );
+        assert_eq!(jobs.len(), 40, "one job per grain");
+        assert!(
+            jobs.iter()
+                .all(|j| j.thread < r.threads && j.ms >= 0.0 && j.start <= t.now)
+        );
+        let mut by_thread: std::collections::BTreeMap<u32, Vec<(f64, f64)>> = Default::default();
+        for j in &jobs {
+            by_thread
+                .entry(j.thread)
+                .or_default()
+                .push((j.start, j.start + j.ms));
+        }
+        assert!(
+            by_thread.len() >= 2,
+            "the jobs ran on one thread: {by_thread:?}"
+        );
+        for spans in by_thread.values_mut() {
+            spans.sort_by(|a, b| a.0.total_cmp(&b.0));
+            for w in spans.windows(2) {
+                assert!(w[1].0 >= w[0].1, "jobs overlap on one thread: {w:?}");
+            }
+        }
+        // Off, nothing is timed.
+        let _ = map(Site::Anim, &items, 1000, |&i| i);
+        assert!(take_trace().jobs.is_empty());
     }
 
     /// `threads` is the pool's when lanes are on and 1 when switched off.

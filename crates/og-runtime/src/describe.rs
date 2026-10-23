@@ -4,6 +4,11 @@
 //! pixels), and the ids mapped back to entities. Extraction records which
 //! entity each drawable came from ([`DrawIds`]); nothing here needs a GPU,
 //! so a host without a renderer describes the same frame.
+//!
+//! The UI draws over the finished frame: a pixel of the pass whose centre
+//! lies under an element with an opaque background ([`hide_under`]) shows
+//! the UI, not the entity, so the entity's visible pixels, box, point and
+//! occlusion count the UI as something in front of it.
 
 use super::extract::{RenderState, extract};
 use og_ecs::{Entity, World};
@@ -209,8 +214,21 @@ impl RuntimeView {
 }
 
 impl SceneView for RuntimeView {
-    fn seen(&mut self, world: &World) -> Option<Seen> {
-        let pass = self.pass(world)?;
+    fn seen(&mut self, world: &World, cover: &[[f32; 4]]) -> Option<Seen> {
+        let mut pass = self.pass(world)?;
+        // The UI's opaque rects in pass pixels.
+        let cover: Vec<[f32; 4]> = cover
+            .iter()
+            .map(|r| {
+                [
+                    r[0] / pass.scale.0,
+                    r[1] / pass.scale.1,
+                    r[2] / pass.scale.0,
+                    r[3] / pass.scale.1,
+                ]
+            })
+            .collect();
+        hide_under(&mut pass.frame, &cover);
         let entities = self.shown(world, &pass.frame, &pass.entities, pass.scale);
         let views = pass
             .views
@@ -245,5 +263,85 @@ impl SceneView for RuntimeView {
             world: vec![at.x, at.y, at.z],
             source: None,
         })
+    }
+}
+
+/// Hides what the UI covers: every pixel of `frame` whose centre lies in
+/// one of `cover` (pass pixels, `[x, y, width, height]`) shows nothing,
+/// and each object's visible pixels, bounds and point are counted again
+/// from what still shows (its depth stays the nearest point the pass
+/// found). Its coverage drawn alone does not change, so its occlusion
+/// grows by the share the UI hides.
+pub(crate) fn hide_under(frame: &mut og_render::IdFrame, cover: &[[f32; 4]]) {
+    if cover.is_empty() {
+        return;
+    }
+    let (w, h) = (frame.width, frame.height);
+    let mut changed = false;
+    for y in 0..h {
+        let cy = y as f32 + 0.5;
+        for x in 0..w {
+            let cx = x as f32 + 0.5;
+            let k = (y * w + x) as usize;
+            if frame.ids[k] != 0
+                && cover
+                    .iter()
+                    .any(|r| cx >= r[0] && cx < r[0] + r[2] && cy >= r[1] && cy < r[1] + r[3])
+            {
+                frame.ids[k] = 0;
+                frame.depth[k] = 1.0;
+                changed = true;
+            }
+        }
+    }
+    if !changed {
+        return;
+    }
+    for o in &mut frame.objects {
+        o.visible = 0;
+        o.bounds = [u32::MAX, u32::MAX, 0, 0];
+    }
+    for y in 0..h {
+        for x in 0..w {
+            let id = frame.ids[(y * w + x) as usize];
+            if id == 0 {
+                continue;
+            }
+            if let Ok(i) = frame.objects.binary_search_by_key(&id, |o| o.id) {
+                let o = &mut frame.objects[i];
+                o.visible += 1;
+                o.bounds = [
+                    o.bounds[0].min(x),
+                    o.bounds[1].min(y),
+                    o.bounds[2].max(x + 1),
+                    o.bounds[3].max(y + 1),
+                ];
+            }
+        }
+    }
+    for o in &mut frame.objects {
+        if o.visible == 0 {
+            o.bounds = [0; 4];
+            o.point = [0, 0];
+            o.depth = f32::INFINITY;
+            continue;
+        }
+        // The visible pixel nearest the bounds' centre, first in row order
+        // on a tie, as the pass picks it.
+        let cx = (o.bounds[0] + o.bounds[2]) as f32 * 0.5;
+        let cy = (o.bounds[1] + o.bounds[3]) as f32 * 0.5;
+        let mut best = (f32::INFINITY, [0, 0]);
+        for y in o.bounds[1]..o.bounds[3] {
+            for x in o.bounds[0]..o.bounds[2] {
+                if frame.ids[(y * w + x) as usize] != o.id {
+                    continue;
+                }
+                let d = (x as f32 + 0.5 - cx).powi(2) + (y as f32 + 0.5 - cy).powi(2);
+                if d < best.0 {
+                    best = (d, [x, y]);
+                }
+            }
+        }
+        o.point = best.1;
     }
 }

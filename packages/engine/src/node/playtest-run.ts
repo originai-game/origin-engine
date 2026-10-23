@@ -96,15 +96,23 @@ result.title = desc!.name;
 // The host's clock is pinned (PlaytestDesc.clock), so og.platform.now is
 // reproducible; `store: "keep"` shares one local store file between them,
 // kept under a dot name, which no step's output may take (an output named
-// `platform.json` once replaced it: hollowbell FINDINGS #18).
-const store = desc!.store === "keep" ? join(out, ".store", "platform.json") : undefined;
-if (store) mkdirSync(dirname(store), { recursive: true });
-const command = (commands: string, dir: string, clock: number, room?: { url: string; ticks: number }) => {
+// `platform.json` once replaced it: hollowbell FINDINGS #18). In a room each
+// place has its own (`platform-<place>.json`): its processes run at once,
+// and a `then` step relaunches every place on its own store.
+const storeOf = (place: number): string | undefined => {
+  if (desc!.store !== "keep") return undefined;
+  const path = join(out, ".store", desc!.room && place > 0 ? `platform-${place}.json` : "platform.json");
+  mkdirSync(dirname(path), { recursive: true });
+  return path;
+};
+const command = (commands: string, dir: string, clock: number, room?: { url: string; ticks?: number | undefined; place: number }) => {
   const c = ["bun", join(here, "run.ts"), "--entry", entry!, "--commands", commands, "--out", dir, "--json", "--clock", String(clock)];
-  if (room) c.push("--room", room.url, "--ticks", String(room.ticks));
+  if (room) c.push("--room", room.url);
+  if (room?.ticks !== undefined) c.push("--ticks", String(room.ticks));
   if (root) c.push("--root", root);
   if (desc!.seed !== undefined) c.push("--seed", String(desc!.seed));
   if (desc!.size) c.push("--size", desc!.size);
+  const store = storeOf(room?.place ?? 0);
   if (store) c.push("--platform-store", store);
   return c;
 };
@@ -154,16 +162,20 @@ const clock = desc!.clock ?? PLAYTEST_CLOCK;
 
 // PlaytestDesc.room: a relay in this process, and every peer's process at
 // once, each joined to the room (the first is the run, the others its peers).
+// A `then` step relaunches every place at once into a room of its own
+// (`<name>.then-<n>`), each running the step's script: lockstep keeps the
+// steps on the room's shared ticks, so a `quit` ends every place on one tick.
 const room = desc!.room;
 const peerSummaries: Summary[] = [];
 let summary: Summary | null;
+let playRoom: ((name: string, scripts: (place: number) => string, dirOf: (place: number) => string, clock: number, what: string) => Promise<Summary[]>) | null = null;
 if (room) {
   const players = Math.floor(room.players);
   if (!(players >= 2 && players <= 16)) failures.push(`room.players is ${room.players}: a room playtest takes 2 to 16 processes`);
-  if ((desc!.runs ?? 1) > 1 || (desc!.then ?? []).length > 0) failures.push("a room playtest takes neither `runs` nor `then`: its processes play at once");
+  if ((desc!.runs ?? 1) > 1) failures.push("a room playtest takes no `runs`: its processes play at once (a relaunch is a `then` step)");
   const name = room.name ?? "playtest";
-  if (!(Number.isInteger(room.ticks) && room.ticks > 0)) failures.push(`room.ticks is ${room.ticks}: the tick every process stops at, a whole number above 0`);
-  if (!/^[A-Za-z0-9._-]{1,64}$/.test(name)) failures.push(`room.name '${name}' is not a room id: 1 to 64 of letters, digits, '.', '_' and '-'`);
+  if (room.ticks !== undefined && !(Number.isInteger(room.ticks) && room.ticks > 0)) failures.push(`room.ticks is ${room.ticks}: the tick every process stops at, a whole number above 0 (or leave it out and end the script with quit)`);
+  if (!/^[A-Za-z0-9._-]{1,54}$/.test(name)) failures.push(`room.name '${name}' is not a room id: 1 to 54 of letters, digits, '.', '_' and '-' (a then step's room adds .then-<n>)`);
   if (failures.length > 0) finish();
   loadNativeHost();
   const relay = JSON.parse(native().og_node_relay_start(0)) as { ok: boolean; value?: number; reason?: string };
@@ -171,19 +183,23 @@ if (room) {
     failures.push(`the playtest's relay did not start: ${relay.reason}`);
     finish();
   }
-  const url = `ws://127.0.0.1:${relay.value}/${name}`;
-  const results = await Promise.all(
-    Array.from({ length: players }, async (_, i) => {
-      const dir = i === 0 ? out : join(out, `peer-${i}`);
-      mkdirSync(dir, { recursive: true });
-      const p = Bun.spawn(command(room.commands?.[i] ?? desc!.commands, dir, clock, { url, ticks: room.ticks }), { stdout: "pipe", stderr: "pipe" });
-      const [code, stdout, stderr] = await Promise.all([p.exited, new Response(p.stdout).text(), new Response(p.stderr).text()]);
-      return summarise(code, stdout, stderr, i === 0 ? "og run (peer 0)" : `og run (peer ${i})`);
-    }),
-  );
-  if (results.some((r) => r === null)) finish();
+  playRoom = async (roomName, scripts, dirOf, at, what) => {
+    const url = `ws://127.0.0.1:${relay.value}/${roomName}`;
+    const results = await Promise.all(
+      Array.from({ length: players }, async (_, i) => {
+        const dir = dirOf(i);
+        mkdirSync(dir, { recursive: true });
+        const p = Bun.spawn(command(scripts(i), dir, at, { url, ticks: room.ticks, place: i }), { stdout: "pipe", stderr: "pipe" });
+        const [code, stdout, stderr] = await Promise.all([p.exited, new Response(p.stdout).text(), new Response(p.stderr).text()]);
+        return summarise(code, stdout, stderr, `${what} (peer ${i})`);
+      }),
+    );
+    if (results.some((r) => r === null)) finish();
+    return results as Summary[];
+  };
+  const results = await playRoom(name, (i) => room.commands?.[i] ?? desc!.commands, (i) => (i === 0 ? out : join(out, `peer-${i}`)), clock, "og run");
   summary = results[0]!;
-  peerSummaries.push(...(results.slice(1) as Summary[]));
+  peerSummaries.push(...results.slice(1));
   for (const [i, s] of peerSummaries.entries()) for (const f of s.unchecked ?? []) unchecked.push(`peer ${i + 1} ${f}`);
 } else summary = spawn(command(desc!.commands, out, clock), "og run");
 if (!summary) finish();
@@ -250,11 +266,19 @@ const runOf = (s: Summary, dir: string, later: readonly PlaytestRun[], peers: re
     },
   };
 };
-// The later processes (desc.then), in order, after the script and its runs.
+// The later processes (desc.then), in order, after the script and its runs;
+// in a room every place again, at once (their runs are each step's `peers`).
 const later: PlaytestRun[] = [];
 for (const [i, step] of (desc!.then ?? []).entries()) {
   const dir = join(out, `then-${i + 1}`);
   mkdirSync(dir, { recursive: true });
+  if (playRoom) {
+    const peerDir = (p: number) => join(dir, `peer-${p}`);
+    const all = await playRoom(`${room!.name ?? "playtest"}.then-${i + 1}`, () => step.commands, (p) => (p === 0 ? dir : peerDir(p)), step.clock ?? clock, `then[${i}]`);
+    for (const [p, s] of all.entries()) for (const f of s.unchecked ?? []) unchecked.push(`then[${i}]${p > 0 ? ` peer ${p}` : ""} ${f}`);
+    later.push(runOf(all[0]!, dir, [], all.slice(1).map((s, p) => runOf(s, peerDir(p + 1), []))));
+    continue;
+  }
   const s = spawn(command(step.commands, dir, step.clock ?? clock), `then[${i}]`);
   if (!s) finish();
   for (const f of s!.unchecked ?? []) unchecked.push(`then[${i}] ${f}`);

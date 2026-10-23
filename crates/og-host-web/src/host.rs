@@ -22,6 +22,7 @@ impl Lifecycle for WebHost {
     fn og_host_set_dispatcher(&self, dispatcher: Self::Function) {
         rt::set_hooks(Rc::new(WebHooks { dispatcher }));
         rt::set_physics_clock(crate::clock_ms);
+        og_lanes::set_trace_clock(crate::epoch_ms);
     }
     fn og_engine_create(&self, game: u32, options: String) -> String {
         rt::og_engine_create(game, options)
@@ -1057,7 +1058,12 @@ impl ProbeApi for WebHost {
         rt::og_engine_probe_expectations(engine_probe)
     }
 
-    fn og_engine_probe_save_scene(&self, engine_probe: u32, write: Option<bool>) -> String {
-        rt::og_engine_probe_save_scene(engine_probe, write)
+    fn og_engine_probe_save_scene(
+        &self,
+        engine_probe: u32,
+        write: Option<bool>,
+        spawned: Option<bool>,
+    ) -> String {
+        rt::og_engine_probe_save_scene(engine_probe, write, spawned)
     }
 }

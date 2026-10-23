@@ -80,12 +80,14 @@ export interface PlaytestRoom {
   /** The room's name in the relay (default `playtest`). */
   readonly name?: string;
   /**
-   * The tick every process stops at (`og run --ticks`): their `netHash` there is what lockstep
-   * makes equal. A script's steps run on each process's own ticks, and a peer that takes the
-   * authority's snapshot at the start moves to its tick (the steps keep their delays), so a
-   * `quit` step would stop the peers at different ticks: end a room script by `ticks`.
+   * The tick every process stops at (`og run --ticks`), when the scripts do not end first: their
+   * `netHash` there is what lockstep makes equal. Leave it out to end each script by its `quit`
+   * (or its last step). A script's steps are on the room's shared ticks once lockstep runs (a
+   * peer that takes the authority's snapshot at the start moves to its tick and its steps stay
+   * on theirs, a step whose tick it jumped past running at once), so a `quit` or an `expect` at
+   * tick t runs at tick t on every peer.
    */
-  readonly ticks: number;
+  readonly ticks?: number;
 }
 
 /** The checks a playtest makes; a playtest that made none fails. */
@@ -145,10 +147,13 @@ export interface PlaytestDesc {
    * (`og relay`, in its own process) and runs `players` processes at once, each `og run
    * --room ws://127.0.0.1:P/<name>` with its own script (`room.commands[i]`, else `commands`)
    * and its own files. The first is the run; the others are `run.peers`. Every process stops
-   * at `room.ticks`. `runs` and `then` are refused with it.
+   * at `room.ticks`, or at its script's `quit`, which lands on one tick of the room for all.
+   * `runs` is refused with it; each `then` step relaunches every process at once into a room of
+   * its own (`<name>.then-<n>`), each running the step's script, its runs in `run.then[n].peers`;
+   * `store: "keep"` keeps one store per place across them.
    */
   readonly room?: PlaytestRoom;
-  /** More processes after the script, in order, each a fresh `og run` (a relaunch): their runs are `run.then`. */
+  /** More processes after the script, in order, each a fresh `og run` (a relaunch): their runs are `run.then`. With `room`, every place of the room relaunches at once. */
   readonly then?: readonly PlaytestStep[];
   /**
    * Checks over what the run wrote. Optional when the script carries `expect:` steps: each

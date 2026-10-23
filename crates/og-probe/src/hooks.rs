@@ -151,38 +151,60 @@ pub struct SeenView {
 /// answers in a host without a renderer too.
 pub trait SceneView {
     /// What the frame shows at the current tick; `None` when the host has
-    /// no scene to describe.
-    fn seen(&mut self, world: &World) -> Option<Seen>;
+    /// no scene to describe. `cover` are the rects the UI draws opaque over
+    /// the main camera's frame (`[x, y, width, height]`, CSS pixels): what
+    /// lies under them is hidden, as another object in front would hide it.
+    fn seen(&mut self, world: &World, cover: &[[f32; 4]]) -> Option<Seen>;
     /// What is under a point of the play surface, in CSS pixels.
     fn pick(&mut self, world: &World, x: f32, y: f32) -> Option<Pick>;
 }
 
-/// A scene's text written back (`save_scene`).
+/// One scene file written back (`save_scene`).
 #[derive(Clone, Debug, PartialEq)]
-pub struct SavedScene {
+pub struct SavedFile {
     /// The scene's source, project-relative (`assets/scenes/main.ogt`).
     pub source: String,
-    /// Where the text was written: the source itself, or the caller's path
-    /// (empty when the caller writes it).
+    /// Where the text was written: the source itself, or empty when only
+    /// returned (the caller writes it).
     pub written: String,
     /// The whole new text.
     pub text: String,
     /// The 1-based lines of the new text that changed or were added.
     pub lines: Vec<usize>,
-    /// Tuned fields that were not written, each with its reason (a
-    /// resource, an entity the scene did not make).
-    pub skipped: Vec<String>,
 }
 
-/// The host's half of `save_scene`: the scene the world was loaded from,
-/// rewritten line by line from the world.
+/// Every scene the world was assembled from, written back (`save_scene`).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SavedScene {
+    /// The boot scene's first (it holds the resources and the spawned
+    /// section), then each scene og.world.instantiate made, once each.
+    pub files: Vec<SavedFile>,
+    /// Tuned fields that were not written, each with its reason (an entity
+    /// no scene made and the spawned section was not asked for, a
+    /// resource no scene sets where none takes new ones).
+    pub skipped: Vec<String>,
+    /// Entities written under the boot scene's spawned section.
+    pub spawned: usize,
+}
+
+/// The host's half of `save_scene`: the scenes the world was assembled
+/// from, rewritten line by line from the world.
 pub trait SceneWriter {
-    /// Rewrites the boot scene's text from `world`: the lines of its
-    /// entities' fields whose values changed, keeping every other line, and
-    /// a line or block for each `tuned` field (`<entity>.<Component>.<field>`
-    /// or `<Resource>.<field>`) the text does not have. With `write`, the
-    /// text replaces the source file; otherwise it is only returned.
-    fn save(&mut self, world: &World, tuned: &[String], write: bool) -> Result<SavedScene, String>;
+    /// Rewrites each scene's text from `world`: the lines of its entities'
+    /// and resources' fields whose values changed, keeping every other
+    /// line, and a line or block for each `tuned` field
+    /// (`<entity>.<Component>.<field>` or `<Resource>.<field>`) the text
+    /// does not have. With `spawned`, the entities the game spawned at run
+    /// time are written under the boot scene's marked section. With
+    /// `write`, each text replaces its source file; otherwise they are only
+    /// returned.
+    fn save(
+        &mut self,
+        world: &World,
+        tuned: &[String],
+        write: bool,
+        spawned: bool,
+    ) -> Result<SavedScene, String>;
 }
 
 /// One UI element with its bounds, in CSS pixels (IDL `probe.UiElement`).
@@ -214,6 +236,10 @@ pub struct UiElement {
     /// Its states: `disabled`, `focused`, `focusable` (keys and pads can
     /// reach it now), `checked`, `selected`, `expanded`, `pressed`, `busy`.
     pub states: Vec<String>,
+    /// It draws an opaque background over its whole box (its fill's alpha
+    /// times its opacity is 1): what is under it does not show, so
+    /// `describe` counts it as hiding the scene there.
+    pub opaque: bool,
     pub x: f32,
     pub y: f32,
     pub width: f32,
@@ -229,7 +255,7 @@ impl UiElement {
         json!({
             "id": self.id, "parent": self.parent, "kind": self.kind, "disabled": self.disabled, "clipped": self.clipped, "text": self.text,
             "role": self.role, "name": self.name, "value": self.value, "states": self.states,
-            "x": self.x, "y": self.y, "width": self.width, "height": self.height,
+            "opaque": self.opaque, "x": self.x, "y": self.y, "width": self.width, "height": self.height,
         })
     }
 }

@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# A dash: a short swell of air.
+preset "whoosh"
+seed 2
+pitch 1.4
+length 0.5
+volume 0.6

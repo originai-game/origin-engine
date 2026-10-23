@@ -176,7 +176,9 @@ pub(crate) fn with_probe<T>(
             .into_iter()
             .filter_map(|s| s.ms.map(|ms| (s.name, ms)))
             .collect();
-        probe.set_timing_detail(systems, eng.state.borrow().pass_ms.clone());
+        let st = eng.state.borrow();
+        let passes = st.pass_ms.iter().map(|p| (p.name.clone(), p.ms)).collect();
+        probe.set_timing_detail(systems, passes, st.gpu_ms.clone());
     }
     let out = f(&mut probe, world);
     flush_names(eng);
@@ -303,7 +305,7 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         render: eng.render.clone(),
         engine: id,
     }));
-    // save_scene: the boot scene's text rewritten from the world.
+    // save_scene: every scene's text rewritten from the world.
     probe.set_scene_writer(Box::new(super::scene_save::RuntimeWriter { engine: id }));
     for (name, usage, doc) in commands {
         register_one(&mut probe, id, &name, &usage, &doc)?;

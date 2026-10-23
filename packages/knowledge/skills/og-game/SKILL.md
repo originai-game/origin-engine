@@ -2060,10 +2060,19 @@ const Move = defineSystem("Move", { reads: [og.PlayerInput], writes: [og.Transfo
 Alone, or with lockstep off, `submit` drives the local player on the next
 tick, so the same code plays single-player. Natively, run `og relay` and
 then `og run . --room ws://127.0.0.1:47900/<room>` in two terminals; on
-the web the shell carries the platform's rooms. A playtest plays itself in
-a room with `room: { players: 2, ticks: 600, commands: [...] }`: its runs
-are `run` and `run.peers`, and each has `netHash` and `lockstep`. Equal
-`netHash` values at the same tick mean the peers stayed in step.
+the web the shell carries the platform's rooms, and a Play link with
+`?room=<id>` puts the page in that room at load (the game hears
+og.RoomJoined as for its own roomJoin; `og.platform.roomInfo(world).link`
+names the link's room), so a game that plays over a room need not ask for
+one when the link named it. A playtest plays itself in
+a room with `room: { players: 2, commands: [...] }`: its runs are `run`
+and `run.peers`, and each has `netHash` and `lockstep`. Equal `netHash`
+values at the same tick mean the peers stayed in step. Once lockstep runs
+a script's steps are on the room's shared ticks (a peer that took the
+authority's snapshot keeps its steps on theirs), so end each script with
+`quit` (or give `room.ticks`) and every place stops on one tick; a `then`
+step relaunches every place at once into a room of its own, its runs in
+`run.then[n]` and `run.then[n].peers`.
 
 When the worlds part, `og.Desync { tick, peer }` fires once and
 `og.net.status(world).desync` holds the tick. Then
@@ -2106,27 +2115,45 @@ These are the checks to use before opening frames. All of them run from
   region expectation is unchecked, never failed. Take screen boxes from a
   `describe` of a good run, with a margin.
 - **`og run --trace out.json`** writes the run in the Chrome trace format;
-  open it in Perfetto (ui.perfetto.dev). The engine lane holds each tick
-  with its systems, render holds each frame with its render passes (CPU
-  encode time), load holds each cooked file read, and cook holds the
-  cook. The probe's `state().timings.systems` and `.passes` give the last
-  tick's and frame's numbers live.
-- **`save_scene[:path]`** (probe `saveScene(write)`) writes the boot
-  scene back after `teleport`, `set` or the Tune panel moved things. Only
-  the lines whose values changed are rewritten; comments and order stay,
-  and a tuned field the text lacks gets a line. With a path, the text goes
-  under `--out` to diff first; without one, it replaces
-  `assets/<scene>.ogt`. `set` names engine components by their registered
-  name (`set:marker.og.Transform.scale=0.5,0.5,0.5`). Resources are not
-  scene text, so a tuned resource is reported as not written.
+  open it in Perfetto (ui.perfetto.dev). Every span lies where it ran.
+  The engine thread holds each tick with its systems, render each frame
+  with its render passes (CPU encoding), gpu the same passes as the GPU
+  ran them (where `og.render.capabilities(world).gpuTimestamps`), load
+  each cooked file read, cook the cook and each output on the cook thread
+  that made it, and `lane N` the jobs og-lanes ran on pool thread N
+  (physics, cull, anim, extract). The probe's `state().timings.systems`,
+  `.passes` and `.gpuPasses` give the last tick's and frame's numbers
+  live.
+- **`save_scene[:path][:spawned]`** (probe `saveScene(write, spawned)`)
+  writes the scenes back after `teleport`, `set` or the Tune panel moved
+  things: the boot scene and every scene `world.instantiate` made, each
+  to its own `.ogt`. Only the lines whose values changed are rewritten;
+  comments and order stay, and a tuned field the text lacks gets a line.
+  Resources are scene text (`resource Run { chimed true }` at the top
+  level of a scene); a tuned resource no scene sets gets a block in the
+  boot scene. `spawned` also writes the entities your code spawned under
+  `# ── spawned at run time ──` at the end of the boot scene; if you keep
+  them, guard their spawn (`if (world.find("bolt") === null)`) so the next
+  run does not make them twice. With a path, the texts go under `--out`
+  to diff first; without one, they replace `assets/<scene>.ogt`. `set`
+  names engine components by their registered name
+  (`set:marker.og.Transform.scale=0.5,0.5,0.5`).
 - **`og cook --report`** writes `og-out/cook-report.json`: per asset its
   triangles per LOD, vertices, textures (size, format), bones, clips,
-  bytes cooked and flags. **`og doctor --project . [--json]`** checks it
-  against `budgets { }` in project.ogt and exits 1 on an over-budget
-  asset, naming the asset, the limit, the value and the fix. The keys are
-  `triangles` 100000, `vertices` 65536, `textureSize` 2048, `bones` 128,
-  `clips` 64, `assetBytes` 8 MiB and `totalBytes` 64 MiB, each a default
-  a project may move.
+  bytes cooked and flags, and for every other asset its figures under its
+  kind (`sound` seconds/channels/sampleRate/chunks, `font`
+  glyphs/kerningPairs/pages, `scene` entities/instances/components,
+  `navmesh` tiles/polygons/vertices, `timeline` tracks/seconds, `strings`
+  locale/keys, `style`, `behaviour`, `tileset`, `tilemap`, `rig`,
+  `rig2d`, `flipbook`, `shader`, `post`, `emitter`, `look`, `palette`,
+  `lut`, `environment`, `video`, `terrain`, `streamPack`). **`og doctor
+  --project . [--json]`** checks it against `budgets { }` in project.ogt
+  and exits 1 on an over-budget asset, naming the asset, the limit, the
+  value and the fix. The keys are `triangles` 100000, `vertices` 65536,
+  `textureSize` 2048, `bones` 128, `clips` 64, `assetBytes` 8 MiB,
+  `totalBytes` 64 MiB, `soundSeconds` 600, `videoSeconds` 300,
+  `fontGlyphs` 8192, `navPolygons` 65536, `sceneEntities` 10000 and
+  `emitterParticles` 16384, each a default a project may move.
 
 ## 22. Levels of detail, reflection probes and screen-space reflections
 

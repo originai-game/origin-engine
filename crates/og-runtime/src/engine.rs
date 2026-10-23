@@ -401,6 +401,16 @@ impl<T> Table<T> {
     }
 }
 
+/// One scene's entities as instantiated: its asset id, the root it was
+/// instantiated under (none for the boot scene) and its entities by scene
+/// row, as bits.
+#[derive(Clone, Debug)]
+pub(crate) struct SceneInstance {
+    pub id: String,
+    pub root: Option<u64>,
+    pub entities: Vec<u64>,
+}
+
 pub(crate) struct State {
     pub layouts: BTreeMap<String, Layout>,
     /// Schema name by id index, for archetype type lists.
@@ -419,8 +429,15 @@ pub(crate) struct State {
     /// The scene GameDesc.scene names, while its bundle is still loading.
     pub boot_scene: Option<String>,
     /// The asset id of the scene GameDesc.scene spawned (`save_scene`
-    /// writes its source back).
+    /// writes its source back first, with the resources and the spawned
+    /// section).
     pub scene_source: Option<String>,
+    /// Every scene instantiated, in order (the boot scene's, those of
+    /// og.world.instantiate): `save_scene` writes each back to its source.
+    pub scene_instances: Vec<SceneInstance>,
+    /// Entities the game spawned (world.spawn, between ticks or in a
+    /// system), by bits: what `save_scene`'s spawned section writes.
+    pub game_spawned: std::collections::BTreeSet<u64>,
     /// GameDesc.start, until it has run.
     pub start: Option<u32>,
     /// What GameDesc.start threw: the world is half-built, so every later
@@ -436,8 +453,11 @@ pub(crate) struct State {
     pub ui_desc: Value,
     pub step_ms: f64,
     pub render_ms: f64,
-    /// The last frame's render-graph passes and their encode milliseconds.
-    pub pass_ms: Vec<(String, f64)>,
+    /// The last frame's render-graph passes and their encoding (start, ms).
+    pub pass_ms: Vec<og_render::PassTiming>,
+    /// The GPU milliseconds per pass of the newest frame the GPU's
+    /// timestamps were read back for (`ProbeTimings.gpuPasses`).
+    pub gpu_ms: Vec<(String, f64)>,
     /// The last frame's main-pass triangles (`ProbeTimings.triangles`).
     pub triangles: u64,
     pub warnings: Vec<String>,
@@ -1148,6 +1168,8 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         facts: a.game.facts,
         boot_scene: None,
         scene_source: None,
+        scene_instances: Vec::new(),
+        game_spawned: Default::default(),
         start: a.game.start,
         start_failed: None,
         project,
@@ -1156,6 +1178,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         step_ms: 0.0,
         render_ms: 0.0,
         pass_ms: Vec::new(),
+        gpu_ms: Vec::new(),
         triangles: 0,
         // A GameDesc mistake is logged at once (the others answer the call that meets them).
         log: a
@@ -1597,6 +1620,7 @@ fn render(eng: &Engine) -> Result<bool, String> {
     // The tick this frame shows: its notes (and a missing glyph) are this tick's.
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
     let mut passes = Vec::new();
+    let mut gpu = Vec::new();
     let mut triangles = 0;
     let notes = {
         let world = eng.world()?;
@@ -1608,6 +1632,7 @@ fn render(eng: &Engine) -> Result<bool, String> {
             b.set_clock(Some(rprobe::now_ms));
             b.render(&rs.scene)?;
             passes = b.pass_timings();
+            gpu = b.gpu_timings(false);
             triangles = b.triangles();
             if b.missing_glyphs() > 0 {
                 let assets = eng.assets.borrow();
@@ -1628,6 +1653,14 @@ fn render(eng: &Engine) -> Result<bool, String> {
     let mut st = eng.state.borrow_mut();
     st.render_ms = rprobe::now_ms() - t0;
     super::trace::frame(eng.id, tick, t0, st.render_ms, &passes);
+    super::trace::gpu_frames(eng.id, &gpu);
+    if let Some(newest) = gpu.last() {
+        st.gpu_ms = newest
+            .passes
+            .iter()
+            .map(|p| (p.name.clone(), p.ms))
+            .collect();
+    }
     st.pass_ms = passes;
     st.triangles = triangles;
     for n in notes {

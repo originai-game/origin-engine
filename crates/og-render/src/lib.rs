@@ -102,6 +102,7 @@ mod terrain;
 mod terrain_tiles;
 mod texture;
 mod texture_array;
+mod timing;
 mod upload;
 mod video;
 mod views;
@@ -177,6 +178,7 @@ pub use terrain_tiles::{
 };
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use texture_array::{TextureArrayData, TextureArrayHandle, TextureArrayInfo};
+pub use timing::{GpuFrame, GpuPass, PassTiming, gpu_timing_absent};
 pub use video::FrameTexture;
 pub use views::{MirrorQuad, View, ViewTarget};
 pub use volumetric::{FROXELS, RAYMARCH_LIGHTS, RAYMARCH_STEPS, VolumetricFog, VolumetricMethod};
@@ -1354,8 +1356,12 @@ pub struct Renderer {
     graph: post::FrameGraph,
     /// Measures each graph pass's encoding (`set_clock`); measurement only.
     clock: Option<fn() -> f64>,
-    /// The last frame's `(pass, ms)` in execution order (`pass_timings`).
-    pass_ms: Vec<(String, f64)>,
+    /// The last frame's passes in execution order, each with the start and
+    /// length of its encoding (`pass_timings`).
+    pass_ms: Vec<PassTiming>,
+    /// Each pass's GPU time where the device has timestamp queries and a
+    /// clock is set (`timing.rs`, `gpu_timings`).
+    gpu_timer: Option<timing::GpuTimer>,
     /// The CPU cull's per-instance scratch ([`Renderer::cull`]), kept
     /// between frames so no pass allocates it.
     /// The sorted instances, kept across frames (`instances.rs`).
@@ -2076,19 +2082,42 @@ fn shadow_pipeline(
 }
 
 impl Renderer {
-    /// Times each render-graph pass's CPU encoding with `clock` (ms);
-    /// `None` stops timing. Measurement only: nothing drawn depends on it.
+    /// Times each render-graph pass's CPU encoding with `clock` (ms) and,
+    /// where the device has timestamp queries, its GPU time
+    /// ([`Renderer::gpu_timings`]); `None` stops timing. Measurement only:
+    /// nothing drawn depends on it.
     pub fn set_clock(&mut self, clock: Option<fn() -> f64>) {
         self.clock = clock;
         if clock.is_none() {
             self.pass_ms.clear();
+            self.gpu_timer = None;
+        } else if self.gpu_timer.is_none() {
+            self.gpu_timer = timing::GpuTimer::new(&self.device, &self.queue);
         }
     }
 
-    /// The last frame's render-graph passes in execution order with the
-    /// milliseconds their encoding took; empty without a clock.
-    pub fn pass_timings(&self) -> &[(String, f64)] {
+    /// The last frame's render-graph passes in execution order, each with
+    /// the clock's reading when its encoding began and the milliseconds it
+    /// took; empty without a clock.
+    pub fn pass_timings(&self) -> &[PassTiming] {
         &self.pass_ms
+    }
+
+    /// Why this device times no pass on the GPU (no timestamp queries), or
+    /// `None` when it does once a clock is set.
+    pub fn gpu_timing_absent(&self) -> Option<&'static str> {
+        gpu_timing_absent(self.device.features())
+    }
+
+    /// The GPU time per pass of the frames whose timestamps were read back
+    /// since the last call, oldest first: a frame's arrive a frame or two
+    /// after it was rendered. With `wait` (native), every frame in flight
+    /// is waited for. Empty without a clock or timestamp queries.
+    pub fn gpu_timings(&mut self, wait: bool) -> Vec<GpuFrame> {
+        match self.gpu_timer.as_mut() {
+            Some(t) => t.take(&self.device, wait),
+            None => Vec::new(),
+        }
     }
 
     /// The custom post passes of `scene` that failed to compile on this
@@ -2257,6 +2286,10 @@ impl Renderer {
         let cache_dir = pipeline_cache::dir();
         if cache_dir.is_some() && adapter.features().contains(wgpu::Features::PIPELINE_CACHE) {
             features |= wgpu::Features::PIPELINE_CACHE;
+        }
+        // GPU pass timing (`timing.rs`) where the adapter has timestamps.
+        if adapter.features().contains(wgpu::Features::TIMESTAMP_QUERY) {
+            features |= wgpu::Features::TIMESTAMP_QUERY;
         }
         let mut info = RenderInfo {
             adapter: adapter_info.name.clone(),
@@ -2859,6 +2892,7 @@ impl Renderer {
             graph: post::FrameGraph::default(),
             clock: None,
             pass_ms: Vec::new(),
+            gpu_timer: None,
             cull_inside: Vec::new(),
             probes: probes::Probes::default(),
             sorted: instances::SortedInstances::default(),
@@ -7096,6 +7130,11 @@ impl Renderer {
                 self.lines.view_group(&self.device, &slot.line_buffer)
             })
             .collect();
+        // The query set of this frame's pass timestamps (`timing.rs`).
+        let gpu_set = match (&mut self.gpu_timer, self.clock) {
+            (Some(t), Some(_)) => t.begin(&self.device, self.graph.order().len()),
+            _ => None,
+        };
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -7576,9 +7615,14 @@ impl Renderer {
             );
             stats.draw_calls += n;
         };
-        // Per-pass CPU encode time, with a clock (`Renderer::set_clock`).
+        // Per-pass CPU encode time, with a clock (`Renderer::set_clock`),
+        // and GPU time where the device has timestamps (`timing.rs`):
+        // timestamp 0 before the first pass, k + 1 after pass k.
         let clock = self.clock;
-        let mut pass_ms: Vec<(String, f64)> = Vec::new();
+        let mut pass_ms: Vec<PassTiming> = Vec::new();
+        if let Some(set) = &gpu_set {
+            timing::GpuTimer::mark(&mut encoder, set, 0);
+        }
         for &pass in self.graph.order() {
             let t0 = clock.map(|c| c());
             match pass {
@@ -8703,8 +8747,18 @@ impl Renderer {
                 }
             }
             if let (Some(c), Some(t0)) = (clock, t0) {
-                pass_ms.push((pass.name(), c() - t0));
+                pass_ms.push(PassTiming {
+                    name: pass.name(),
+                    start: t0,
+                    ms: (c() - t0).max(0.0),
+                });
             }
+            if let Some(set) = &gpu_set {
+                timing::GpuTimer::mark(&mut encoder, set, pass_ms.len() as u32);
+            }
+        }
+        if let (Some(t), Some(_)) = (&self.gpu_timer, &gpu_set) {
+            t.resolve(&mut encoder, pass_ms.len());
         }
         self.pass_ms = pass_ms;
         for &(slot, _) in &probe_frame.due {
@@ -8891,6 +8945,10 @@ impl Renderer {
             .submit(cull_commands.into_iter().chain(Some(encoder.finish())));
         if let Some(gc) = self.gpu_cull.as_mut().filter(|_| gpu_cull) {
             gc.after_submit();
+        }
+        if let (Some(t), Some(c), Some(_)) = (self.gpu_timer.as_mut(), self.clock, &gpu_set) {
+            let names = self.pass_ms.iter().map(|p| p.name.clone()).collect();
+            t.after_submit(self.frame_index, names, c());
         }
         if let Some((frame, ..)) = surface_frame {
             self.queue.present(frame);

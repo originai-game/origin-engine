@@ -221,6 +221,7 @@ pub struct Probe {
     /// The last tick's milliseconds per system and per render pass.
     systems_ms: Vec<(String, f64)>,
     passes_ms: Vec<(String, f64)>,
+    gpu_passes_ms: Vec<(String, f64)>,
     commands: BTreeMap<String, Registered>,
     queue: BTreeMap<(u64, u64), Queued>,
     seq: u64,
@@ -262,7 +263,9 @@ pub struct Probe {
 /// The host's tick gate: asked before every tick the clock takes (a frame's
 /// ticks, `advance`), with the world between ticks; false holds the tick
 /// (og.net's lockstep waiting for a player's input). It may restore the
-/// world (a lockstep start or late join hands a peer's snapshot over).
+/// world (a lockstep start or late join hands a peer's snapshot over): the
+/// clock it moves to is the one every peer shares, so the scheduled steps
+/// stay on their ticks ([`Probe::step`]), unlike a game's own restore.
 pub type GateFn = Box<dyn FnMut(&mut World) -> bool>;
 
 /// The host's end-of-tick hook: called after every tick the probe takes,
@@ -441,6 +444,7 @@ impl Probe {
             tuned: BTreeSet::new(),
             systems_ms: Vec::new(),
             passes_ms: Vec::new(),
+            gpu_passes_ms: Vec::new(),
             listen: None,
             memory: None,
             stamp: 0.0,
@@ -535,19 +539,17 @@ impl Probe {
         self.gate = Some(gate);
     }
 
-    /// Whether the gate holds the next tick. A gate that moved `Time` (it
-    /// restored a peer's snapshot) moves the scheduled steps with it.
+    /// Whether the gate holds the next tick. A gate that moved `Time`
+    /// restored a peer's snapshot (lockstep's start or a late join): the
+    /// world now runs on the room's shared clock, and the scheduled steps
+    /// stay on their ticks of it, so every peer of a room runs the same
+    /// script step (a `quit`, an `expect`) on the same tick. A step whose
+    /// tick the jump passed runs at the next tick, in order.
     fn held(&mut self, world: &mut World) -> bool {
         let Some(gate) = self.gate.as_mut() else {
             return false;
         };
-        let before = world.time().tick;
-        let go = gate(world);
-        let now = world.time().tick;
-        if now != before {
-            self.shift_schedule(before, now);
-        }
-        !go
+        !gate(world)
     }
 
     /// The world's clock jumped from `from` to `to` outside a tick (a game
@@ -617,9 +619,17 @@ impl Probe {
     /// The last tick's milliseconds per system (in run order) and the last
     /// frame's per render pass (in the graph's order), for
     /// `state().timings.systems` and `.passes`.
-    pub fn set_timing_detail(&mut self, systems: Vec<(String, f64)>, passes: Vec<(String, f64)>) {
+    /// `gpu`: the GPU's milliseconds per pass of the newest frame its
+    /// timestamps were read back for (`.gpuPasses`; empty without them).
+    pub fn set_timing_detail(
+        &mut self,
+        systems: Vec<(String, f64)>,
+        passes: Vec<(String, f64)>,
+        gpu: Vec<(String, f64)>,
+    ) {
         self.systems_ms = systems;
         self.passes_ms = passes;
+        self.gpu_passes_ms = gpu;
     }
 
     /// Probe ids over the world's names (`World::set_name` names entities).
@@ -1459,17 +1469,35 @@ impl Probe {
             }
             "expect" => self.expect_args(world, args, Some(step.at)).map(|_| ()),
             "save_scene" => {
-                let path = output_path(args.first())?;
-                let saved = self.save_scene(world, path.is_none())?;
+                // `save_scene[:path][:spawned]`: `spawned` is a flag, any
+                // other argument the path.
+                let spawned = args.iter().any(|a| a == "spawned");
+                let path = output_path(args.iter().find(|a| *a != "spawned"))?;
+                let saved = self.save_scene(world, path.is_none(), spawned)?;
+                let scenes = saved["scenes"].as_array().cloned().unwrap_or_default();
                 self.note(
                     tick,
                     false,
                     format!(
-                        "save_scene: {} ({} line(s) changed{}{})",
-                        saved["source"].as_str().unwrap_or(""),
-                        saved["lines"].as_array().map_or(0, Vec::len),
-                        match saved["written"].as_str() {
-                            Some(w) if !w.is_empty() => format!(", written to {w}"),
+                        "save_scene: {}{}{}",
+                        scenes
+                            .iter()
+                            .map(|s| format!(
+                                "{} ({} line(s) changed{})",
+                                s["source"].as_str().unwrap_or(""),
+                                s["lines"].as_array().map_or(0, Vec::len),
+                                match s["written"].as_str() {
+                                    Some(w) if !w.is_empty() => format!(", written to {w}"),
+                                    _ => String::new(),
+                                }
+                            ))
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                        match saved["spawned"].as_u64() {
+                            Some(n) if spawned => format!(
+                                "; {n} spawned entit{} under the marked section",
+                                if n == 1 { "y" } else { "ies" }
+                            ),
                             _ => String::new(),
                         },
                         match saved["skipped"].as_array() {
@@ -1484,17 +1512,35 @@ impl Probe {
                         }
                     ),
                 );
+                // With a path, the boot scene's text goes there and each
+                // other scene's beside it, at its path under assets/.
                 if let Some(path) = path {
-                    let text = saved["text"].as_str().unwrap_or("").to_owned();
-                    self.emit(
-                        step.at,
-                        Output {
-                            tick,
-                            action: step.action.clone(),
-                            path: Some(path),
-                            payload: Payload::Text(text),
-                        },
-                    );
+                    let dir = std::path::Path::new(&path)
+                        .parent()
+                        .map(|d| d.to_string_lossy().into_owned())
+                        .unwrap_or_default();
+                    for (k, s) in scenes.iter().enumerate() {
+                        let to = if k == 0 {
+                            path.clone()
+                        } else {
+                            let source = s["source"].as_str().unwrap_or("");
+                            let rel = source.strip_prefix("assets/").unwrap_or(source);
+                            if dir.is_empty() {
+                                rel.to_string()
+                            } else {
+                                format!("{dir}/{rel}")
+                            }
+                        };
+                        self.emit(
+                            step.at,
+                            Output {
+                                tick,
+                                action: step.action.clone(),
+                                path: Some(to),
+                                payload: Payload::Text(s["text"].as_str().unwrap_or("").to_owned()),
+                            },
+                        );
+                    }
                 }
                 Ok(())
             }
@@ -1926,6 +1972,7 @@ impl Probe {
                 "systems": self.systems_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
                 "triangles": self.triangles,
                 "passes": self.passes_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
+                "gpuPasses": self.gpu_passes_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
             },
             "entities": entities,
             "facts": self.facts.as_ref().map_or(Value::Null, |f| f(world)),
@@ -2415,24 +2462,40 @@ impl Probe {
         }
     }
 
-    /// `save_scene`: the boot scene's text rewritten from the world (the
-    /// lines whose values changed, and the fields `set` and `patch` tuned);
-    /// with `write`, over its source file. `Err` without a scene writer or
-    /// a scene.
-    pub fn save_scene(&mut self, world: &World, write: bool) -> Result<Value, String> {
+    /// `save_scene`: every scene the world was assembled from rewritten
+    /// from the world (the lines whose values changed, and the fields
+    /// `set` and `patch` tuned), the boot scene's first and its fields at
+    /// the top level; with `spawned`, the entities the game spawned under
+    /// the boot scene's marked section; with `write`, over their source
+    /// files. `Err` without a scene writer or a scene.
+    pub fn save_scene(
+        &mut self,
+        world: &World,
+        write: bool,
+        spawned: bool,
+    ) -> Result<Value, String> {
         let tuned: Vec<String> = self.tuned.iter().cloned().collect();
         let writer = self
             .scene_writer
             .as_mut()
             .ok_or("this host has no scene write-back")?;
-        let saved = writer.save(world, &tuned, write)?;
+        let saved = writer.save(world, &tuned, write, spawned)?;
+        let first = saved
+            .files
+            .first()
+            .cloned()
+            .ok_or("no scene to write back")?;
         Ok(json!({
             "tick": world.time().tick,
-            "source": saved.source,
-            "written": saved.written,
-            "lines": saved.lines,
+            "source": first.source,
+            "written": first.written,
+            "lines": first.lines,
             "skipped": saved.skipped,
-            "text": saved.text,
+            "text": first.text,
+            "spawned": saved.spawned,
+            "scenes": saved.files.iter().map(|f| json!({
+                "source": f.source, "written": f.written, "lines": f.lines, "text": f.text,
+            })).collect::<Vec<_>>(),
         }))
     }
 

@@ -18,7 +18,9 @@
 // - the error card (§6): the reason, the last 200 log lines and the world
 //   dump (state in a publish build), with Reload and Copy report;
 // - the probe: `globalThis.__runtime_probe__` (protocol 5, every member a
-//   Promise, plus `lanes`, `memory()` (what the engine holds), `boot`
+//   Promise, plus `lanes`, `memory()` (what the engine holds), `trace()`
+//   and `saveTrace()` (the run's Chrome trace; `?trace` records from the
+//   boot), `boot`
 //   (where the Worker's boot went) and
 //   `error`: what stopped the engine, a panic with its tick and lane, an
 //   error or a hang) and the platform's `og-probe`
@@ -62,6 +64,7 @@ export interface ShellConfig {
 const PROBE_GLOBAL = "__runtime_probe__";
 const TIMINGS_GLOBAL = "__og_timings__";
 const REPLAY_SEED_PARAM = "replay-seed";
+const TRACE_PARAM = "trace";
 const LOG_LINES = 200;
 const INSTALL_DISMISSED = "og-install-dismissed";
 
@@ -181,6 +184,9 @@ export interface PlayHandle {
 export async function play(): Promise<PlayHandle> {
   const config = readConfig();
   const query = new URLSearchParams(location.search);
+  // A Play link to a room (`?room=<id>`, docs/platform-asks.md #16): the engine joins it at load
+  // once a host carries rooms (the Player's room.*), og.RoomJoined answering as for roomJoin.
+  const roomLink = query.get("room") ?? undefined;
   const t0 = performance.now();
   const log = new LogTail();
   const playerEvents: import("./player.ts").PlayerEvents = {};
@@ -449,6 +455,8 @@ export async function play(): Promise<PlayHandle> {
       // Behind the gate, the first screen: one tick builds the game's UI (a harness keeps tick 0).
       prime: !harness,
       ...(seed === undefined ? {} : { seed }),
+      // `?trace`: the run's trace from the boot on (the probe's `trace()` and `saveTrace()` read it).
+      ...(query.has(TRACE_PARAM) ? { trace: true } : {}),
       profile: config.profile,
       ...(config.project === undefined ? {} : { project: config.project }),
       dprCap: config.dprCap,
@@ -501,6 +509,10 @@ export async function play(): Promise<PlayHandle> {
   probe["saveScene"] = () => shell.probe("save_scene", { write: false });
   // `memory`: what the engine holds (ProbeMemory), from the Worker in every build (a publish probe has no `memory`).
   probe["memory"] = () => shell.call("memory");
+  // `trace`: the run's Chrome trace, as `og run --trace` writes it ("take", "start", "stop");
+  // `saveTrace`: the same, downloaded as a file (`?trace` records from the boot).
+  probe["trace"] = (action?: "take" | "start" | "stop") => shell.trace(action);
+  probe["saveTrace"] = (name?: string) => shell.saveTrace(name);
   (globalThis as Record<string, unknown>)[PROBE_GLOBAL] = Object.freeze(probe);
   // The played frames' display intervals and engine work, ms (`og run --device` reads them; `true` resets).
   (globalThis as Record<string, unknown>)[TIMINGS_GLOBAL] = (reset?: boolean) => shell.call("timings", reset === true);
@@ -583,7 +595,7 @@ export async function play(): Promise<PlayHandle> {
     shell.setPlatform(playerPlatform(player, platformStore));
     // Rooms ride the Player's postMessage link (pushed events): a framed Player's, never the HTTP page's.
     const rooms = playerRooms(player);
-    shell.setRooms(rooms);
+    shell.setRooms(rooms, roomLink);
     playerEvents.room = (e) => rooms?.push(e);
     pausedByPlayer = m.paused;
     if (m.started && phase === "gate") start();
@@ -604,6 +616,9 @@ export async function play(): Promise<PlayHandle> {
   pausedByPlayer = player.paused;
   // A framed page (or the Stage overlay's own document) waits briefly for a Player's hello before drawing its own gate.
   if (linked && !byPlayer) await new Promise((r) => setTimeout(r, 300));
+  // A Play link to a room on a page no Player carries rooms for: the game hears why it is in none
+  // (og.RoomJoined, ok false); a Player's hello later joins it.
+  if (roomLink && !byPlayer) shell.setRooms(null, roomLink);
 
   // ── ready: reveal, then the gate ─────────────────────────────────────
   setProgress(1);

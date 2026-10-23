@@ -119,7 +119,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1159 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1158 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -479,7 +479,6 @@ Field units the docs and Tune use.
 | [`og.anim.humanoid`](anim.md#fn-humanoid) | function | anim | `og_anim_humanoid` |
 | [`og.anim.retarget`](anim.md#fn-retarget) | function | anim | `og_anim_retarget` |
 | [`og.anim.rig2dInfo`](anim.md#fn-rig2dInfo) | function | anim | `og_anim_rig2d_info` |
-| [`og.anim.skeleton2dBoxes`](anim.md#fn-skeleton2dBoxes) | function | anim | `og_anim_skeleton2d_boxes` |
 | [`og.AnimationEvent`](anim.md#record-AnimationEvent) | event | anim | — |
 | [`og.AnimationGraph`](anim.md#record-AnimationGraph) | component | anim | — |
 | [`og.AnimationPlayer`](anim.md#record-AnimationPlayer) | component | anim | — |
@@ -1056,6 +1055,7 @@ Field units the docs and Tune use.
 | [`RuntimeProbe.tick`](probe.md#member-RuntimeProbe-tick) | method | probe | `og_runtime_probe_tick` |
 | [`RuntimeProbe.version`](probe.md#member-RuntimeProbe-version) | property | probe | `og_runtime_probe_get_version` |
 | [`SavedScene`](probe.md#type-SavedScene) | struct | probe | — |
+| [`SavedSceneFile`](probe.md#type-SavedSceneFile) | struct | probe | — |
 | [`SaveSlotDesc`](platform.md#type-SaveSlotDesc) | desc struct | platform | — |
 | [`Scheme`](ui.md#type-Scheme) | enum | ui | — |
 | [`ScoreFormat`](ui.md#type-ScoreFormat) | enum | ui | — |
@@ -1090,7 +1090,6 @@ Field units the docs and Tune use.
 | [`Side`](render.md#type-Side) | enum | render | — |
 | [`Size`](ui.md#type-Size) | union | ui | — |
 | [`SizeRange`](ui.md#type-SizeRange) | struct | ui | — |
-| [`Skeleton2DBox`](anim.md#type-Skeleton2DBox) | struct | anim | — |
 | [`SkeletonAsset`](anim.md#type-SkeletonAsset) | handle | anim | — |
 | [`SkeletonAsset()`](anim.md#column-SkeletonAsset) | column kind | anim | — |
 | [`SkeletonDesc`](ui.md#type-SkeletonDesc) | desc struct | ui | — |

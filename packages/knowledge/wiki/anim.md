@@ -18,7 +18,7 @@ module anim {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7138</sub>
+<sub>`api.ogt` line 7135</sub>
 
 ## Contents
 
@@ -65,16 +65,14 @@ module anim {
 | [`og.anim.clip`](#fn-clip) | function | The index of a flipbook clip by name, for Flipbook.clip: `og.anim.clip(hero, "walk_down")`. -1 when the sheet has no such clip. |
 | [`og.anim.clip`](#fn-clip) | function | A loaded model's clip by name, for AnimationPlayer.clip: `og.anim.clip(og.load.animation(world, "models/slime.glb").value, "chase")`, the same lookup as a flipbook's (Animation.clips by ClipInfo.name). A skinned glTF's clips are its animations' names; an animated `.vox`'s are `frames` or its `voxClip` names. 0 (plays nothing) when the model has no such clip. |
 | [`og.anim.clip`](#fn-clip) | function | The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, "rigs/hero.ogt").value, "walk")`. -1 when the rig has no such clip. |
-| [`Rig2D`](#type-Rig2D) | handle | A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d. |
+| [`Rig2D`](#type-Rig2D) | handle | A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region and mesh attachments, IK constraints and clips, from og.load.rig2d. |
 | [`Rig2D()`](#column-Rig2D) | column kind | A Rig2D handle field. |
 | [`og.Skeleton2D`](#record-Skeleton2D) | component | Plays a clip of a 2D rig at the entity: the og.skeleton2d system advances it by scaled time (Time.scaledDt) after the game's systems and fires its events as og.Skeleton2DEvent; extraction draws its slots, in their order, as textured triangles of the sprite batch at `layer` (region attachments as quads, mesh attachments weighted to bones and deformed by the clip), lit by og.Lighting2D when the layer is in its range, as a sprite there is. The rig's pixels are `unit` to a world unit and +y is up; the entity's og.Transform places, turns (about z) and scales it. |
 | [`og.Skeleton2DEvent`](#record-Skeleton2DEvent) | event | A 2D skeleton's clip passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass. |
-| [`og.IkTarget2D`](#record-IkTarget2D) | component | Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge, a tail's tip. A constraint is a chain of any length: one bone points at the target, two are solved exactly (bending the way the rig says), three or more by FABRIK from the animated pose, curling the way the rig says. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way. |
+| [`og.IkTarget2D`](#record-IkTarget2D) | component | Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way. |
 | [`Rig2DClipInfo`](#type-Rig2DClipInfo) | struct | One clip of a loaded 2D rig. |
 | [`Rig2DInfo`](#type-Rig2DInfo) | struct | What og.load.rig2d registered, or og.anim.rig2dInfo reads back from a handle. |
 | [`og.anim.rig2dInfo`](#fn-rig2dInfo) | function | What a loaded 2D rig holds: its bones, slots, IK constraints and clips, by the handle Skeleton2D.rig keeps (og.load.rig2d answers the same on load). |
-| [`Skeleton2DBox`](#type-Skeleton2DBox) | struct | A bounding box a 2D skeleton's pose shows: a `box` attachment of its rig (or of a child armature in one of its slots) while its slot shows it. |
-| [`og.anim.skeleton2dBoxes`](#fn-skeleton2dBoxes) | function | The bounding boxes an og.Skeleton2D's pose showed when og.skeleton2d last ran (after the game's systems, so a system reads the previous tick's): hurt and hit boxes a clip switches on and off with its slots' attachments, to test against points or other shapes. Empty for a rig without boxes or when no slot shows one. They are part of the og.skeleton2d state block, so a restored snapshot answers what it saved. |
 
 ## Functions
 
@@ -106,7 +104,7 @@ fn graph {
 }
 ```
 
-<sub>`api.ogt` line 7453</sub>
+<sub>`api.ogt` line 7450</sub>
 
 <a id="fn-humanoid"></a>
 
@@ -136,7 +134,7 @@ fn humanoid {
 }
 ```
 
-<sub>`api.ogt` line 7481</sub>
+<sub>`api.ogt` line 7478</sub>
 
 <a id="fn-retarget"></a>
 
@@ -166,7 +164,7 @@ fn retarget {
 }
 ```
 
-<sub>`api.ogt` line 7501</sub>
+<sub>`api.ogt` line 7498</sub>
 
 <a id="fn-clip"></a>
 
@@ -197,7 +195,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 7586</sub>
+<sub>`api.ogt` line 7583</sub>
 
 <a id="fn-clip-2"></a>
 
@@ -228,7 +226,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 7594</sub>
+<sub>`api.ogt` line 7591</sub>
 
 <a id="fn-clip-3"></a>
 
@@ -259,7 +257,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 7602</sub>
+<sub>`api.ogt` line 7599</sub>
 
 <a id="fn-rig2dInfo"></a>
 
@@ -289,37 +287,7 @@ fn rig2dInfo {
 }
 ```
 
-<sub>`api.ogt` line 7707</sub>
-
-<a id="fn-skeleton2dBoxes"></a>
-
-### `og.anim.skeleton2dBoxes`
-
-The bounding boxes an og.Skeleton2D's pose showed when og.skeleton2d last ran (after the game's systems, so a system reads the previous tick's): hurt and hit boxes a clip switches on and off with its slots' attachments, to test against points or other shapes. Empty for a rig without boxes or when no slot shows one. They are part of the og.skeleton2d state block, so a restored snapshot answers what it saved.
-
-```ts
-og.anim.skeleton2dBoxes(world: World, entity: Entity): Result<readonly Skeleton2DBox[]>
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `world` | `World` | no | The world whose animation poses the skeleton. |
-| `entity` | `Entity` | no | The entity with the og.Skeleton2D. |
-
-**Returns** `Result<readonly Skeleton2DBox[]>`: Refused for an entity og.skeleton2d has not posed: no og.Skeleton2D with a loaded rig, or before its first tick.
-
-Binding symbol `og_anim_skeleton2d_boxes` · publish builds: kept
-
-```ogt
-fn skeleton2dBoxes {
-  doc "The bounding boxes an og.Skeleton2D's pose showed when og.skeleton2d last ran (after the game's systems, so a system reads the previous tick's): hurt and hit boxes a clip switches on and off with its slots' attachments, to test against points or other shapes. Empty for a rig without boxes or when no slot shows one. They are part of the og.skeleton2d state block, so a restored snapshot answers what it saved."
-  param world World "The world whose animation poses the skeleton."
-  param entity Entity "The entity with the og.Skeleton2D."
-  returns Result.List.Skeleton2DBox "Refused for an entity og.skeleton2d has not posed: no og.Skeleton2D with a loaded rig, or before its first tick."
-}
-```
-
-<sub>`api.ogt` line 7721</sub>
+<sub>`api.ogt` line 7704</sub>
 
 ## Components, resources and events
 
@@ -356,7 +324,7 @@ component Skeleton {
 }
 ```
 
-<sub>`api.ogt` line 7222</sub>
+<sub>`api.ogt` line 7219</sub>
 
 <a id="record-AnimationPlayer"></a>
 
@@ -418,7 +386,7 @@ component AnimationPlayer {
 }
 ```
 
-<sub>`api.ogt` line 7237</sub>
+<sub>`api.ogt` line 7234</sub>
 
 <a id="record-AnimationGraph"></a>
 
@@ -494,7 +462,7 @@ component AnimationGraph {
 }
 ```
 
-<sub>`api.ogt` line 7276</sub>
+<sub>`api.ogt` line 7273</sub>
 
 <a id="record-Blendshapes"></a>
 
@@ -567,7 +535,7 @@ component Blendshapes {
 }
 ```
 
-<sub>`api.ogt` line 7324</sub>
+<sub>`api.ogt` line 7321</sub>
 
 <a id="record-IkChain"></a>
 
@@ -638,7 +606,7 @@ component IkChain {
 }
 ```
 
-<sub>`api.ogt` line 7372</sub>
+<sub>`api.ogt` line 7369</sub>
 
 <a id="record-AnimationEvent"></a>
 
@@ -669,7 +637,7 @@ event AnimationEvent {
 }
 ```
 
-<sub>`api.ogt` line 7416</sub>
+<sub>`api.ogt` line 7413</sub>
 
 <a id="record-Flipbook"></a>
 
@@ -725,7 +693,7 @@ component Flipbook {
 }
 ```
 
-<sub>`api.ogt` line 7524</sub>
+<sub>`api.ogt` line 7521</sub>
 
 <a id="record-FlipbookEvent"></a>
 
@@ -752,7 +720,7 @@ event FlipbookEvent {
 }
 ```
 
-<sub>`api.ogt` line 7555</sub>
+<sub>`api.ogt` line 7552</sub>
 
 <a id="record-Skeleton2D"></a>
 
@@ -804,7 +772,7 @@ component Skeleton2D {
 }
 ```
 
-<sub>`api.ogt` line 7619</sub>
+<sub>`api.ogt` line 7616</sub>
 
 <a id="record-Skeleton2DEvent"></a>
 
@@ -833,13 +801,13 @@ event Skeleton2DEvent {
 }
 ```
 
-<sub>`api.ogt` line 7646</sub>
+<sub>`api.ogt` line 7643</sub>
 
 <a id="record-IkTarget2D"></a>
 
 ### `og.IkTarget2D` (component)
 
-Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge, a tail's tip. A constraint is a chain of any length: one bone points at the target, two are solved exactly (bending the way the rig says), three or more by FABRIK from the animated pose, curling the way the rig says. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way.
+Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way.
 
 Token `og.IkTarget2D`, registered under the schema name `og.IkTarget2D`; its value type is `IkTarget2D`.
 
@@ -848,14 +816,14 @@ Token `og.IkTarget2D`, registered under the schema name `og.IkTarget2D`; its val
 | `skeleton` | `Entity` | `0` | — | — | — | The entity with the og.Skeleton2D. |
 | `constraint` | `number` | `0` | ≥ 0 | — | — | The constraint: an index into Rig2DInfo.constraints. |
 | `target` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | Where the chain's tip should be, in the frame the skeleton entity's og.Transform is written in (the world for an entity without a parent). |
-| `weight` | `number` | `1` | 0 … 1 | — | tunable | How much of the solve applies (0 is the animated pose, 1 fully solved), times the constraint's own weight (its `weight` line, or its clip's IK keys). |
+| `weight` | `number` | `1` | 0 … 1 | — | tunable | How much of the solve applies (0 is the animated pose, 1 fully solved). |
 | `tolerance` | `number` | `0.01` | ≥ 0 | `m` | — | The distance at which the target counts as reached. |
 | `reached` | `boolean` | `false` | — | — | read only | Written: the tip is within `tolerance` of the target after solving. |
 | `error` | `number` | `0` | — | `m` | read only | Written: the tip's distance from the target after solving (for a one-bone constraint, how far the target lies off the bone's line). |
 
 ```ogt
 component IkTarget2D {
-  doc "Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge, a tail's tip. A constraint is a chain of any length: one bone points at the target, two are solved exactly (bending the way the rig says), three or more by FABRIK from the animated pose, curling the way the rig says. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way."
+  doc "Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way."
   field skeleton Entity "The entity with the og.Skeleton2D."
   field constraint u32 "The constraint: an index into Rig2DInfo.constraints." {
     min 0
@@ -863,7 +831,7 @@ component IkTarget2D {
   field target Vector2 "Where the chain's tip should be, in the frame the skeleton entity's og.Transform is written in (the world for an entity without a parent)." {
     unit m
   }
-  field weight f32 "How much of the solve applies (0 is the animated pose, 1 fully solved), times the constraint's own weight (its `weight` line, or its clip's IK keys)." {
+  field weight f32 "How much of the solve applies (0 is the animated pose, 1 fully solved)." {
     default 1
     min 0
     max 1
@@ -884,7 +852,7 @@ component IkTarget2D {
 }
 ```
 
-<sub>`api.ogt` line 7656</sub>
+<sub>`api.ogt` line 7653</sub>
 
 ## Types
 
@@ -900,7 +868,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle SkeletonAsset "A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices)."
 ```
 
-<sub>`api.ogt` line 7144</sub>
+<sub>`api.ogt` line 7141</sub>
 
 <a id="type-ClipAsset"></a>
 
@@ -914,7 +882,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ClipAsset "An animation clip, resampled at the cook's rate, with its markers."
 ```
 
-<sub>`api.ogt` line 7145</sub>
+<sub>`api.ogt` line 7142</sub>
 
 <a id="type-GraphAsset"></a>
 
@@ -928,7 +896,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle GraphAsset "A blend-tree graph (`type animgraph`) whose clip references were resolved to clip handles."
 ```
 
-<sub>`api.ogt` line 7146</sub>
+<sub>`api.ogt` line 7143</sub>
 
 <a id="type-RootMotion"></a>
 
@@ -953,7 +921,7 @@ enum RootMotion {
 }
 ```
 
-<sub>`api.ogt` line 7169</sub>
+<sub>`api.ogt` line 7166</sub>
 
 <a id="type-BlendshapeSource"></a>
 
@@ -976,7 +944,7 @@ enum BlendshapeSource {
 }
 ```
 
-<sub>`api.ogt` line 7183</sub>
+<sub>`api.ogt` line 7180</sub>
 
 <a id="type-IkSolver"></a>
 
@@ -999,7 +967,7 @@ enum IkSolver {
 }
 ```
 
-<sub>`api.ogt` line 7196</sub>
+<sub>`api.ogt` line 7193</sub>
 
 <a id="type-IkSpace"></a>
 
@@ -1022,7 +990,7 @@ enum IkSpace {
 }
 ```
 
-<sub>`api.ogt` line 7209</sub>
+<sub>`api.ogt` line 7206</sub>
 
 <a id="type-ClipInfo"></a>
 
@@ -1049,7 +1017,7 @@ struct ClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 7427</sub>
+<sub>`api.ogt` line 7424</sub>
 
 <a id="type-Animation"></a>
 
@@ -1076,7 +1044,7 @@ struct Animation {
 }
 ```
 
-<sub>`api.ogt` line 7437</sub>
+<sub>`api.ogt` line 7434</sub>
 
 <a id="type-GraphDesc"></a>
 
@@ -1100,7 +1068,7 @@ struct GraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 7446</sub>
+<sub>`api.ogt` line 7443</sub>
 
 <a id="type-Rig"></a>
 
@@ -1114,7 +1082,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright."
 ```
 
-<sub>`api.ogt` line 7460</sub>
+<sub>`api.ogt` line 7457</sub>
 
 <a id="type-HumanBone"></a>
 
@@ -1135,7 +1103,7 @@ struct HumanBone {
 }
 ```
 
-<sub>`api.ogt` line 7462</sub>
+<sub>`api.ogt` line 7459</sub>
 
 <a id="type-Humanoid"></a>
 
@@ -1156,7 +1124,7 @@ struct Humanoid {
 }
 ```
 
-<sub>`api.ogt` line 7468</sub>
+<sub>`api.ogt` line 7465</sub>
 
 <a id="type-HumanoidDesc"></a>
 
@@ -1180,7 +1148,7 @@ struct HumanoidDesc {
 }
 ```
 
-<sub>`api.ogt` line 7474</sub>
+<sub>`api.ogt` line 7471</sub>
 
 <a id="type-RetargetDesc"></a>
 
@@ -1214,7 +1182,7 @@ struct RetargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 7488</sub>
+<sub>`api.ogt` line 7485</sub>
 
 <a id="type-FlipbookSheet"></a>
 
@@ -1228,7 +1196,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
 ```
 
-<sub>`api.ogt` line 7508</sub>
+<sub>`api.ogt` line 7505</sub>
 
 <a id="type-FlipMode"></a>
 
@@ -1253,7 +1221,7 @@ enum FlipMode {
 }
 ```
 
-<sub>`api.ogt` line 7517</sub>
+<sub>`api.ogt` line 7514</sub>
 
 <a id="type-FlipbookClipInfo"></a>
 
@@ -1284,7 +1252,7 @@ struct FlipbookClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 7563</sub>
+<sub>`api.ogt` line 7560</sub>
 
 <a id="type-FlipbookInfo"></a>
 
@@ -1315,21 +1283,21 @@ struct FlipbookInfo {
 }
 ```
 
-<sub>`api.ogt` line 7575</sub>
+<sub>`api.ogt` line 7572</sub>
 
 <a id="type-Rig2D"></a>
 
 ### `Rig2D` (handle)
 
-A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d.
+A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region and mesh attachments, IK constraints and clips, from og.load.rig2d.
 
 A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
 
 ```ogt
-handle Rig2D "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d."
+handle Rig2D "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region and mesh attachments, IK constraints and clips, from og.load.rig2d."
 ```
 
-<sub>`api.ogt` line 7610</sub>
+<sub>`api.ogt` line 7607</sub>
 
 <a id="type-Rig2DClipInfo"></a>
 
@@ -1358,7 +1326,7 @@ struct Rig2DClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 7685</sub>
+<sub>`api.ogt` line 7682</sub>
 
 <a id="type-Rig2DInfo"></a>
 
@@ -1389,30 +1357,7 @@ struct Rig2DInfo {
 }
 ```
 
-<sub>`api.ogt` line 7696</sub>
-
-<a id="type-Skeleton2DBox"></a>
-
-### `Skeleton2DBox` (struct)
-
-A bounding box a 2D skeleton's pose shows: a `box` attachment of its rig (or of a child armature in one of its slots) while its slot shows it.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `slot` | `string` | `""` | — | — | — | The slot showing it (`slot/child-slot` inside a child armature). |
-| `name` | `string` | `""` | — | — | — | The box's name in the rig. |
-| `points` | `readonly Vector2[]` | `[]` | — | — | — | Its polygon, moved by its bones (IK included), in the frame the skeleton entity's og.Transform is written in (the world for an entity without a parent). |
-
-```ogt
-struct Skeleton2DBox {
-  doc "A bounding box a 2D skeleton's pose shows: a `box` attachment of its rig (or of a child armature in one of its slots) while its slot shows it."
-  field slot String "The slot showing it (`slot/child-slot` inside a child armature)."
-  field name String "The box's name in the rig."
-  field points List.Vector2 "Its polygon, moved by its bones (IK included), in the frame the skeleton entity's og.Transform is written in (the world for an entity without a parent)."
-}
-```
-
-<sub>`api.ogt` line 7714</sub>
+<sub>`api.ogt` line 7693</sub>
 
 ## Column kinds
 
@@ -1439,7 +1384,7 @@ column SkeletonAsset {
 }
 ```
 
-<sub>`api.ogt` line 7148</sub>
+<sub>`api.ogt` line 7145</sub>
 
 ```ogt
 column ClipAsset {
@@ -1450,7 +1395,7 @@ column ClipAsset {
 }
 ```
 
-<sub>`api.ogt` line 7155</sub>
+<sub>`api.ogt` line 7152</sub>
 
 ```ogt
 column GraphAsset {
@@ -1461,7 +1406,7 @@ column GraphAsset {
 }
 ```
 
-<sub>`api.ogt` line 7162</sub>
+<sub>`api.ogt` line 7159</sub>
 
 ```ogt
 column RootMotion {
@@ -1472,7 +1417,7 @@ column RootMotion {
 }
 ```
 
-<sub>`api.ogt` line 7176</sub>
+<sub>`api.ogt` line 7173</sub>
 
 ```ogt
 column BlendshapeSource {
@@ -1483,7 +1428,7 @@ column BlendshapeSource {
 }
 ```
 
-<sub>`api.ogt` line 7189</sub>
+<sub>`api.ogt` line 7186</sub>
 
 ```ogt
 column IkSolver {
@@ -1494,7 +1439,7 @@ column IkSolver {
 }
 ```
 
-<sub>`api.ogt` line 7202</sub>
+<sub>`api.ogt` line 7199</sub>
 
 ```ogt
 column IkSpace {
@@ -1505,7 +1450,7 @@ column IkSpace {
 }
 ```
 
-<sub>`api.ogt` line 7215</sub>
+<sub>`api.ogt` line 7212</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -1516,7 +1461,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>`api.ogt` line 7510</sub>
+<sub>`api.ogt` line 7507</sub>
 
 ```ogt
 column Rig2D {
@@ -1527,4 +1472,4 @@ column Rig2D {
 }
 ```
 
-<sub>`api.ogt` line 7612</sub>
+<sub>`api.ogt` line 7609</sub>

@@ -348,8 +348,8 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
     ),
     (
         "save_scene",
-        "save_scene[:path]",
-        "Write the boot scene back from the world: only the lines whose values changed (comments and order kept), plus the fields set or patch tuned; over the scene's .ogt, or to path under the output directory.",
+        "save_scene[:path][:spawned]",
+        "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): only the lines whose values changed (comments and order kept), plus the fields and resources set or patch tuned; with spawned, the entities the game spawned under the boot scene's marked section; over each scene's .ogt, or the boot scene's to path under the output directory and the others beside it.",
     ),
     ("quit", "quit", "End the run."),
     (

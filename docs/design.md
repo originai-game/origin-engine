@@ -653,7 +653,16 @@ Each host carries rooms its own way:
   delivers the page's events. The shell's `RoomHost` maps them onto the
   Player's `room.*` (docs/platform-asks.md #16, open). A Player whose
   hello does not list `room.join` leaves the host as `none`, and
-  roomCreate and roomJoin are refused.
+  roomCreate and roomJoin are refused. A Play link to a room
+  (`?room=<id>`) is read by the play page and handed to the engine with
+  the host (`og_room_set_host`'s `join`): the engine joins it itself, once,
+  as soon as a host carries rooms, so the game hears the same
+  og.RoomJoined as for its own roomJoin, and roomInfo's `link` names it.
+  On a page with no room host og.RoomJoined says so (ok false). The
+  Worker's `advance` and `frame` calls pump the room as its own frames do,
+  and its `net` call answers og.net's status and shared hash. Two
+  Worker-hosted pages joined by a Play link play the arena in lockstep
+  through a relay (`packages/engine/tests/web-rooms.test.ts`).
 
 ### 2.9 The video producer
 
@@ -773,8 +782,12 @@ cross the room. Lockstep rests on §1's determinism and snapshot.
   (`packages/engine/tests/rooms.test.ts`).
 - **The proof.** `templates/archetypes/arena` (Coin Duel) is two players in
   lockstep. Its playtest `tests/duel.og.ts` (`PlaytestDesc.room`) runs two
-  native processes through a relay that the playtest starts, and both hash
-  the same at tick 600.
+  native processes through a relay that the playtest starts; both quit on
+  tick 600 and hash the same there. A script's steps sit on the room's
+  shared ticks once lockstep runs (the gate's snapshot restore leaves the
+  schedule on them, unlike a game's own restore, which moves it), so a
+  `quit` or an `expect` lands on one tick for every peer, and a `then`
+  step relaunches every place into a room of its own.
 
 ## 3. API surface
 
@@ -859,7 +872,7 @@ a game registers more (`commands:` above). Unknown actions warn and continue.
 | `seed:<n>` / `pause` / `resume` / `advance:<ticks>` | determinism controls |
 | `describe[:path]` | the frame as data (§3.4): visible entities with screen boxes, depth order and occlusion; UI elements with rects and text; the camera |
 | `expect:<operation>` | an assertion at this tick (§3.4); a failure fails the run |
-| `save_scene[:path]` | the boot scene's `.ogt` rewritten from the world (§3.4) |
+| `save_scene[:path][:spawned]` | every scene's `.ogt` rewritten from the world, resources included; with `spawned`, the run-time entities under a marked section (§3.4) |
 | `quit` | exit |
 
 ### 3.4 Probe **(D)**
@@ -880,7 +893,9 @@ reading pixels:
   `describe[:path]` action) answers the current tick's frame as JSON,
   deterministic for the same world: the visible entities nearest first, each
   with its name, archetype, label, screen-space box and pick point (CSS
-  pixels), depth and the fraction of it that others hide; the UI elements
+  pixels), depth and the fraction of it that others hide (objects in
+  front, and UI elements drawn with an opaque background over it: the id
+  pass's pixels under them show the UI); the UI elements
   with their rects and text (from `dump_ui`); the camera. The entities come
   from an entity-id pass: og-render's `id_pass.rs` renders the extracted
   frame (meshes, skinned meshes posed on the CPU, world sprites) at half
@@ -912,27 +927,57 @@ reading pixels:
   exits 1 on any failure; a playtest may be expectations alone. A frame
   expectation without a renderer is unchecked, never a failure.
 - **Trace.** `og run --trace out.json` writes the run in the Chrome trace
-  format (Perfetto opens it): lanes are threads — engine (each tick, its
-  systems inside it from the world's clock), render (each frame, its
-  render-graph passes), load (each cooked output read), cook (the cook and
-  the outputs it cooked). Systems and passes are laid end to end inside
-  their parent, since the engine records their lengths. Pass times are CPU
-  encoding, not GPU time. The live probe's `state().timings` carries the
-  last tick's `systems[]` and the last frame's `passes[]` (name, ms).
-- **Scene write-back.** `save_scene` (member, and `save_scene[:path]`)
-  rewrites the boot scene's `.ogt` from the world, line by line: a field
-  line changes only when its value, rounded as the cook rounds it, differs;
-  a field `set` or `patch` tuned that the text lacks gets a line (or a
-  component block); comments, order and spelling stay. Cooking the result
-  loads the same world, and saving again changes nothing. Resources are
-  not scene text: a tuned resource is reported as skipped.
+  format (Perfetto opens it; `packages/engine/src/trace.ts` builds it on
+  both hosts and checks it); every span carries the start it was timed
+  at, so it lies where it ran. Threads: engine (each tick, its systems
+  inside it from the world's clock), render (each frame, its render-graph
+  passes' CPU encoding), gpu (the same passes from timestamp queries,
+  where the device has them, `RenderCapabilities.gpuTimestamps`: each
+  frame anchored at its submit, after the frame before it, since the
+  GPU's clock is its own), load (each cooked output read), cook (the
+  cook) and `cook N` (each output on the cook thread that made it), and
+  `lane N` (each job og-lanes ran on pool thread N, with its site). The
+  live probe's `state().timings` carries the last tick's `systems[]`, the
+  last frame's `passes[]` and the GPU's `gpuPasses[]` of the newest frame
+  read back (name, ms). On the web the engine Worker records the same
+  document (the play page's `?trace` from the boot, or the probe's
+  `trace("start")`) and the shell reads it (`trace()`, `saveTrace()`
+  downloads it).
+- **Scene write-back.** `save_scene` (member, and
+  `save_scene[:path][:spawned]`) rewrites every scene the world was
+  assembled from, each to its own `.ogt` (the boot scene's, then each
+  `og.world.instantiate` made), line by line: a field line changes only
+  when its value, rounded as the cook rounds it, differs; a field `set` or
+  `patch` tuned that the text lacks gets a line (or a component block);
+  comments, order and spelling stay. Resources are scene text too
+  (`resource <Name> { field value }` at the top level sets those fields
+  when the scene is instantiated, the others keep the world's values): a
+  scene's resource lines are rewritten, and a tuned resource no scene sets
+  gets a block in the boot scene. With `spawned`, the entities the game
+  spawned at run time are written at the end of the boot scene under the
+  line `# ── spawned at run time ──`, regenerated whole on every save,
+  nested by og.Parent, each with every component whose fields scene text
+  can give (a model's `model` line; a component holding a geometry,
+  material, sound or entity handle is named in a comment, not written; an
+  instance's root, which the instantiating code makes again, is left
+  out). Cooking the result loads the same world, and saving again changes
+  nothing (`packages/engine/tests/scene-write-back.test.ts`).
 - **Diagnostics as data.** `og cook --report` writes
   `og-out/cook-report.json`. For each asset it records triangles,
   vertices and LODs, textures with sizes and formats, bones, clips, bytes
-  cooked and budget flags. `og doctor --project <dir> [--json]` checks it
-  against the budgets project.ogt sets (`budgets { triangles vertices
-  textureSize bones clips assetBytes totalBytes }`, each with a default)
-  and prints findings with severity, asset, budget, limit, value and fix.
+  cooked and budget flags, and every other output type its own figures,
+  read back through the runtime's loaders: a sound its seconds, channels,
+  rate and chunks; a font its glyphs, kerning pairs and atlas pages; a
+  scene its entities, instances and components; a navmesh its tiles,
+  polygons and vertices; a timeline its tracks and seconds; a string
+  table its locale and keys; a style, behaviour, tileset, tilemap, rig,
+  flipbook, shader, post pass, emitter, look, palette, LUT, environment
+  map, video, terrain and stream pack theirs. `og doctor --project <dir>
+  [--json]` checks it against the budgets project.ogt sets (`budgets {
+  triangles vertices textureSize bones clips assetBytes totalBytes
+  soundSeconds videoSeconds fontGlyphs navPolygons sceneEntities
+  emitterParticles }`, each with a default) and prints findings with
+  severity, asset, budget, limit, value and fix.
 
 ### 3.5 Hot reload **(D)**
 

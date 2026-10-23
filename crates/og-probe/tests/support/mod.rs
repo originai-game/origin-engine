@@ -76,6 +76,7 @@ pub fn ui() -> StaticUi {
         y,
         width: 100.0,
         height: 40.0,
+        opaque: false,
         ..UiElement::default()
     };
     StaticUi(vec![

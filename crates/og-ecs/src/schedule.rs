@@ -71,8 +71,10 @@ pub(crate) struct System {
     pub matched_at: Option<u64>,
     /// The tick the system last ran in.
     pub last_tick: Option<u64>,
-    /// Wall-clock milliseconds of its last run, of every run, and the runs
-    /// timed (only while the world has a clock, [`World::set_clock`]).
+    /// The clock's reading when its last run began, the wall-clock
+    /// milliseconds of that run, of every run, and the runs timed (only
+    /// while the world has a clock, [`World::set_clock`]).
+    pub start: Option<f64>,
     pub ms: Option<f64>,
     pub total_ms: f64,
     pub runs: u64,
@@ -97,6 +99,10 @@ pub struct SystemInfo {
     /// The tick it last ran in (`None` before the first tick). A tick that
     /// failed in an earlier system did not run it.
     pub last_tick: Option<u64>,
+    /// The world's clock when its last timed run began (the same clock and
+    /// origin as [`World::set_clock`]'s), so a trace lays the run where it
+    /// ran; `None` before a timed run.
+    pub start: Option<f64>,
     /// Wall-clock milliseconds of its last run, its commands applied (`None`
     /// before a run timed with the world's clock, [`World::set_clock`]).
     pub ms: Option<f64>,
@@ -190,6 +196,7 @@ impl System {
             queries,
             desc_queries: desc.queries,
             last_tick: None,
+            start: None,
             ms: None,
             total_ms: 0.0,
             runs: 0,

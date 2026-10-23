@@ -6327,17 +6327,13 @@ export interface RenderCapabilities {
    */
   readonly maxCustomPosts: number;
   /**
-   * How Fog.volumetric is drawn on this device: a froxel grid (the full tier) or a raymarch along each pixel's view ray (WebGL2), each lit by the sun through its shadows and by the point, spot and rect lights around each sample (up to volumetricLights of them) through their shadows and cookies.
+   * How Fog.volumetric is drawn on this device: a froxel grid lit by the sun and the clustered point, spot and rect lights (the full tier), or a raymarch of the sun alone along each pixel's view ray (WebGL2).
    */
   readonly volumetricFog: VolumetricFog;
   /**
-   * The most point, spot and rect lights that light one sample of Fog.volumetric: those of its screen cluster, MAX_CLUSTER_LIGHTS (64) in the froxel grid, 8 in WebGL2's raymarch, the brightest at the camera first.
+   * Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true.
    */
-  readonly volumetricLights: number;
-  /**
-   * The most light cookie layers one frame draws (24 on every tier): a SpotLight.cookie takes one, a PointLight.cookie six (its cube's faces), and a texture several lights of one kind share takes its layers once. Cookies past it, in the order of their lights' entities, are not drawn: those lights shine without them, and the log names them in a warning.
-   */
-  readonly maxLightCookies: number;
+  readonly gpuTimestamps: boolean;
 }
 
 /**
@@ -6800,24 +6796,18 @@ export interface CircleGeometryDesc {
 }
 
 /**
- * A tube along a curve, as three.js TubeGeometry(curve, tubularSegments, radius, radialSegments, closed): its rings are evenly spaced along the curve's length (three.js getPointAt), u runs along it, v around. The curve is `path` when set (an og.path, whatever its kind, followed exactly: a scene's or a timeline's path becomes a tube), otherwise new CatmullRomCurve3(points, closed, 'centripetal') through `points`, which may come from anywhere: a rope's points, a spline a tool made.
+ * A tube along a curve through points, as three.js TubeGeometry(new CatmullRomCurve3(points, closed, 'centripetal'), tubularSegments, radius, radialSegments, closed): u runs along it, v around. The points may come from anywhere: a path's samples, a rope's points, a spline a tool made.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
 export interface TubeGeometryDesc {
   /**
-   * The points the curve passes through, in order (at least two), when `path` is 0.
+   * The points the curve passes through, in order (at least two).
    *
    * @default []
    * @unit m (metres)
    */
   readonly points?: readonly Vector3[];
-  /**
-   * A path (og.path.create, or a scene's `path` by og.path.find) the tube follows instead of the points: its own curve, kind and closed flag (`closed` is the path's then). 0 uses the points.
-   *
-   * @default 0
-   */
-  readonly path?: Path;
   /**
    * Segments along the tube.
    *
@@ -7475,13 +7465,13 @@ export interface PostError {
 
 /**
  * How the device draws Fog.volumetric (RenderCapabilities.volumetricFog).
- * - `"froxel"`: A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows and cookies (each cell the mean of eight samples over its depth), then integrated front to back: the full tier.
- * - `"raymarch"`: Each pixel's view ray marched through the fog in 24 jittered steps, each lit by the sun through its cascades and by the first 8 point, spot and rect lights of its screen cluster through their shadows and cookies (RenderCapabilities.volumetricLights): WebGL2, which has no compute.
+ * - `"froxel"`: A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows, then integrated front to back: the full tier.
+ * - `"raymarch"`: Each pixel's view ray marched through the fog in 24 steps, lit by the sun through its cascades alone: WebGL2, which has no compute.
  */
 export type VolumetricFog = "froxel" | "raymarch";
 
 /**
- * A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. With castShadow it casts a soft shadow in the frame; og bake lightmaps traces its exact soft shadows into the bounce light either way.
+ * A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light.
  * Area lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches as far as its brightness carries (where it would light a white surface facing it at one hundredth of one), and fades smoothly to zero there.
  *
  * The value of the `RectLight` component (token `og.RectLight`).
@@ -7521,10 +7511,6 @@ export interface RectLight {
   height: number;
   /** Emit from the back face as well (a hanging panel lit both ways). */
   twoSided: boolean;
-  /**
-   * Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp where a caster touches its receiver and widening with the rectangle's size away from it. The view is from the centre, so a caster close to a large panel is shadowed as from its centre.
-   */
-  castShadow: boolean;
 }
 
 /**
@@ -10416,7 +10402,7 @@ export interface Fog {
    */
   sky: number;
   /**
-   * Light the fog as a participating medium: within volumetricDistance of the camera the fog (density per metre, thickened below height by heightDensity and falloff, as above) scatters the sun through its shadow cascades, so light shafts fall through windows and between trees and move with the sun, and every point, spot and rect light it is lit by (up to RenderCapabilities.volumetricLights at each sample); it dims what lies behind it by the same amounts. RenderCapabilities.volumetricFog names the method (a froxel grid on the full tier, a raymarch on WebGL2). Opaque surfaces and the sky are seen through the volume; blended surfaces, particles and sprites take the plain distance and height fog of the same medium. Past volumetricDistance nothing more is added.
+   * Light the fog as a participating medium: within volumetricDistance of the camera the fog (density per metre, thickened below height by heightDensity and falloff, as above) scatters the sun through its shadow cascades, so light shafts fall through windows and between trees and move with the sun, and on the full tier every point, spot and rect light it is lit by; it dims what lies behind it by the same amounts. RenderCapabilities.volumetricFog names the method (a froxel grid on the full tier, a raymarch of the sun on WebGL2). Opaque surfaces and the sky are seen through the volume; blended surfaces, particles and sprites take the plain distance and height fog of the same medium. Past volumetricDistance nothing more is added.
    */
   volumetric: boolean;
   /**
@@ -11673,7 +11659,7 @@ export interface FlipbookInfo {
 
 
 /**
- * A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d.
+ * A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region and mesh attachments, IK constraints and clips, from og.load.rig2d.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
@@ -11759,7 +11745,7 @@ export interface Skeleton2DEvent {
 }
 
 /**
- * Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge, a tail's tip. A constraint is a chain of any length: one bone points at the target, two are solved exactly (bending the way the rig says), three or more by FABRIK from the animated pose, curling the way the rig says. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way.
+ * Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way.
  *
  * The value of the `IkTarget2D` component (token `og.IkTarget2D`).
  */
@@ -11779,7 +11765,7 @@ export interface IkTarget2D {
    */
   target: Vector2;
   /**
-   * How much of the solve applies (0 is the animated pose, 1 fully solved), times the constraint's own weight (its `weight` line, or its clip's IK keys).
+   * How much of the solve applies (0 is the animated pose, 1 fully solved).
    *
    * @default 1
    * @range 0..1
@@ -11845,21 +11831,6 @@ export interface Rig2DInfo {
   readonly constraints: readonly string[];
   /** Its clips, in file order. */
   readonly clips: readonly Rig2DClipInfo[];
-}
-
-
-/**
- * A bounding box a 2D skeleton's pose shows: a `box` attachment of its rig (or of a child armature in one of its slots) while its slot shows it.
- */
-export interface Skeleton2DBox {
-  /** The slot showing it (`slot/child-slot` inside a child armature). */
-  readonly slot: string;
-  /** The box's name in the rig. */
-  readonly name: string;
-  /**
-   * Its polygon, moved by its bones (IK included), in the frame the skeleton entity's og.Transform is written in (the world for an entity without a parent).
-   */
-  readonly points: readonly Vector2[];
 }
 
 
@@ -14161,6 +14132,10 @@ export interface RoomInfo {
   readonly peer: number;
   /** Every peer present, this one included, by number. */
   readonly peers: readonly RoomPeer[];
+  /**
+   * The room a Play link to a room (`?room=<id>` on the play page) named: the engine joined it at load (og.RoomJoined answers, as for roomJoin); empty without one.
+   */
+  readonly link: string;
 }
 
 /** A message another peer sent: what og.RoomMessage announced. */
@@ -18851,7 +18826,7 @@ export interface AlertDesc {
  * - `"quit"`: `quit`: exit.
  * - `"describe"`: `describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera.
  * - `"expect"`: `expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=), `entity:<id>:<path>==<value>` (a field of its dump_entity: `render.lod==2`, `og.Transform.position.y>0`), `timings:<path>==<value>` (state().timings: `triangles<=1500000`). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked, as are an entity's `render.*` fields and the renderer's timings (`triangles`, `render`, `passes`).
- * - `"save_scene"`: `save_scene[:path]`: write the boot scene's `.ogt` back from the world, only the lines whose values changed (comments and order kept) and the fields set or patch tuned; to the scene's source, or with a path to that file under the output directory.
+ * - `"save_scene"`: `save_scene[:path][:spawned]`: write every scene the world was assembled from back from the world (the boot scene's, then each og.world.instantiate made, each to its own `.ogt`): only the lines whose values changed (comments and order kept), the fields set or patch tuned, and resources as `resource <Name> { }` blocks; with `spawned`, the entities the game spawned at run time under the boot scene's marked section. To each scene's source, or with a path the boot scene's to that file under the output directory and the others beside it.
  * - `"help"`: `help`: list every action the channel knows, core and registered.
  */
 export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "compose" | "commit" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "describe" | "expect" | "save_scene" | "help";
@@ -19005,9 +18980,13 @@ export interface ProbeTimings {
   /** The last tick's systems in run order, each with its milliseconds. */
   readonly systems: readonly ProbeTiming[];
   /**
-   * The last rendered frame's render passes in the render graph's order, each with its milliseconds (CPU encode time; empty without a renderer).
+   * The last rendered frame's render passes in the render graph's order, each with its milliseconds of CPU encoding (empty without a renderer).
    */
   readonly passes: readonly ProbeTiming[];
+  /**
+   * The render passes of the newest frame the GPU's timestamps were read back for (a frame or two behind `passes`), each with the GPU's milliseconds from the end of the pass before it to its own end; empty where the device has no timestamp queries (RenderCapabilities.gpuTimestamps) or without a renderer.
+   */
+  readonly gpuPasses: readonly ProbeTiming[];
   /**
    * Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer.
    */
@@ -19475,6 +19454,10 @@ export interface UiElement {
    */
   readonly states: readonly string[];
   /**
+   * It draws an opaque background over its whole box (its fill's alpha times its opacity is 1), hiding the scene under it.
+   */
+  readonly opaque: boolean;
+  /**
    * Left edge.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
@@ -19636,7 +19619,7 @@ export interface DescribedEntity {
    */
   readonly coverage: number;
   /**
-   * The share of what it covers alone that something else hides.
+   * The share of what it covers alone that something else hides: another object in front, or a UI element drawn opaque over it (DescribedUi.opaque); on a secondary camera's image, objects only.
    *
    * @unit ratio (a fraction between 0 and 1)
    */
@@ -19679,6 +19662,10 @@ export interface DescribedUi {
   readonly value: string;
   /** Its states. */
   readonly states: readonly string[];
+  /**
+   * It draws an opaque background over its whole box: the entities under it count it in their occlusion.
+   */
+  readonly opaque: boolean;
   /** Its rect. */
   readonly box: ScreenBox;
 }
@@ -19793,21 +19780,41 @@ export interface ExpectReport {
   readonly results: readonly ExpectResult[];
 }
 
-/** A scene written back from the world. */
+/**
+ * The scenes written back from the world: the head is the boot scene's (or the first instantiated one's), `scenes` lists every one.
+ */
 export interface SavedScene {
   /** The tick of the world it was written from. */
   readonly tick: number;
-  /** The scene's source, project-relative. */
+  /** The first scene's source, project-relative. */
   readonly source: string;
   /** Where it was written; empty when only returned. */
   readonly written: string;
-  /** The 1-based lines of the new text that changed or were added. */
+  /** The 1-based lines of the first scene's new text that changed or were added. */
   readonly lines: readonly number[];
   /**
-   * Tuned fields that were not written, each with its reason: a resource, or an entity the scene did not make.
+   * Tuned fields that were not written, each with its reason: an entity no scene made (without `spawned`), a resource no scene sets where no boot scene takes it.
    */
   readonly skipped: readonly string[];
-  /** The new text. */
+  /** The first scene's new text. */
+  readonly text: string;
+  /** Entities written under the boot scene's spawned section (0 without `spawned`). */
+  readonly spawned: number;
+  /**
+   * Every scene written back: the boot scene's first, then each og.world.instantiate made, once each.
+   */
+  readonly scenes: readonly SavedSceneFile[];
+}
+
+/** One scene file written back. */
+export interface SavedSceneFile {
+  /** Its source, project-relative. */
+  readonly source: string;
+  /** Where it was written; empty when only returned. */
+  readonly written: string;
+  /** The 1-based lines of its new text that changed or were added. */
+  readonly lines: readonly number[];
+  /** Its new text. */
   readonly text: string;
 }
 
@@ -19961,12 +19968,13 @@ export interface EngineProbe extends RuntimeProbe {
    */
   expectations(): ExpectReport;
   /**
-   * Write the boot scene back from the world: its entities' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order. The probe writes the file only with write; otherwise the text is returned.
+   * Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned.
    *
-   * @param write Replace the scene's source file. Default `false`.
+   * @param write Replace each scene's source file. Default `false`.
+   * @param spawned Write the entities the game spawned at run time under the boot scene's marked section. Default `false`.
    * @returns Null without a scene to write back (the reason is in the log).
    */
-  saveScene(write?: boolean): SavedScene | null;
+  saveScene(write?: boolean, spawned?: boolean): SavedScene | null;
 }
 
 // ── terrain ─────────────────────────────────────────────────────
@@ -20589,7 +20597,7 @@ export interface VideoInfo {
 }
 
 /**
- * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Each player has a texture of its own (written to `texture`): the first player of a video takes VideoInfo.texture, each further one a texture the og.video system makes for it over the same decoded frames (one frame of GPU memory each), so two players at different times show different frames. Show a player's `texture`, not VideoInfo.texture, once a video has more than one player.
+ * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Several players of one video share its texture, which shows the first player's frame in query order; cook a second asset to show two moments of one clip.
  *
  * The value of the `VideoPlayer` component (token `og.VideoPlayer`).
  */
@@ -20632,7 +20640,7 @@ export interface VideoPlayer {
    */
   readonly finished: boolean;
   /**
-   * Written: this player's texture (VideoInfo.texture for the video's first player, a texture of its own for each further one), for a material, sprite or UI image set up from the player. It keeps it while it lives.
+   * Written: the video's texture (VideoInfo.texture), for a material or sprite set up from the player.
    *
    * @readonly written by the engine
    */
@@ -20690,7 +20698,7 @@ export interface DebugDrawDesc {
 
 // ── path ────────────────────────────────────────────────────────
 // Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t.
-// Make one with og.path.create, or declare it in a scene (`path "<name>" { kind catmullRom; closed false; point x y z ... }`) and find it by name with og.path.find; a timeline's camera rides one with `rail "<name>"`. og.PathFollower moves an entity along one, og.CameraRail.path moves the camera along one, og.render.tubeGeometry makes a tube along one (TubeGeometryDesc.path). Paths are assets: they are not world state, and a hot reload registers them again.
+// Make one with og.path.create, or declare it in a scene (`path "<name>" { kind catmullRom; closed false; point x y z ... }`) and find it by name with og.path.find; a timeline's camera rides one with `rail "<name>"`. og.PathFollower moves an entity along one, og.CameraRail.path moves the camera along one, og.render's tube geometry can take its og.path.sample points. Paths are assets: they are not world state, and a hot reload registers them again.
 
 /**
  * A path: its points, kind and arc-length table.
@@ -21452,10 +21460,10 @@ export declare namespace og {
    */
   const Mirror: ComponentType<{ readonly target: FieldSpec<"RenderTarget">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly every: FieldSpec<"u32">; readonly active: FieldSpec<"bool"> }, Mirror>;
   /**
-   * A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. With castShadow it casts a soft shadow in the frame; og bake lightmaps traces its exact soft shadows into the bounce light either way.
+   * A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light.
    * Area lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches as far as its brightness carries (where it would light a white surface facing it at one hundredth of one), and fades smoothly to zero there.
    */
-  const RectLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly twoSided: FieldSpec<"bool">; readonly castShadow: FieldSpec<"bool"> }, RectLight>;
+  const RectLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly twoSided: FieldSpec<"bool"> }, RectLight>;
   /**
    * A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (bounced off its static models, from the sky, from emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every mesh, model, skinned character and particle-lit surface drawn inside it that has no lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing: a ball rolling past a red wall turns red on that side.
    * The box is size metres centred on the entity, axis-aligned in world space (its rotation and scale are ignored). Its probes are the scene's: unbaked (no bake since the volume was added, moved or resized) it lights nothing and og doctor --project names the scene.
@@ -21662,7 +21670,7 @@ export declare namespace og {
      *
      * @param world The world whose renderer owns the geometry.
      * @param desc The points, radius and tessellation.
-     * @returns Refused for fewer than two points or a point that is not finite (without a path), or a path that is not alive.
+     * @returns Refused for fewer than two points or a point that is not finite.
      */
     function tubeGeometry(world: World, desc?: TubeGeometryDesc): Result<Geometry>;
     /**
@@ -22306,7 +22314,7 @@ export declare namespace og {
    */
   const Skeleton2DEvent: EventType<Skeleton2DEvent>;
   /**
-   * Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge, a tail's tip. A constraint is a chain of any length: one bone points at the target, two are solved exactly (bending the way the rig says), three or more by FABRIK from the animated pose, curling the way the rig says. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way.
+   * Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge. Put it on its own entity, one per constraint; og.skeleton2d writes `reached` and `error`, and the drawn pose solves the same way.
    */
   const IkTarget2D: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly constraint: FieldSpec<"u32">; readonly target: FieldSpec<"Vector2">; readonly weight: FieldSpec<"f32">; readonly tolerance: FieldSpec<"f32">; readonly reached: FieldSpec<"bool">; readonly error: FieldSpec<"f32"> }, IkTarget2D>;
   /**
@@ -22368,14 +22376,6 @@ export declare namespace og {
      * @returns Refused for a handle og.load.rig2d did not answer.
      */
     function rig2dInfo(world: World, rig: Rig2D): Result<Rig2DInfo>;
-    /**
-     * The bounding boxes an og.Skeleton2D's pose showed when og.skeleton2d last ran (after the game's systems, so a system reads the previous tick's): hurt and hit boxes a clip switches on and off with its slots' attachments, to test against points or other shapes. Empty for a rig without boxes or when no slot shows one. They are part of the og.skeleton2d state block, so a restored snapshot answers what it saved.
-     *
-     * @param world The world whose animation poses the skeleton.
-     * @param entity The entity with the og.Skeleton2D.
-     * @returns Refused for an entity og.skeleton2d has not posed: no og.Skeleton2D with a loaded rig, or before its first tick.
-     */
-    function skeleton2dBoxes(world: World, entity: Entity): Result<readonly Skeleton2DBox[]>;
   }
   /** A tween or group ended on its own (read in the tick after). */
   const TweenCompleted: EventType<TweenCompleted>;
@@ -23870,7 +23870,7 @@ export declare namespace og {
     function setBudget(world: World, bytes: number): Result<void>;
   }
   /**
-   * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Each player has a texture of its own (written to `texture`): the first player of a video takes VideoInfo.texture, each further one a texture the og.video system makes for it over the same decoded frames (one frame of GPU memory each), so two players at different times show different frames. Show a player's `texture`, not VideoInfo.texture, once a video has more than one player.
+   * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Several players of one video share its texture, which shows the first player's frame in query order; cook a second asset to show two moments of one clip.
    */
   const VideoPlayer: ComponentType<{ readonly video: FieldSpec<"Video">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly frame: FieldSpec<"u32">; readonly finished: FieldSpec<"bool">; readonly texture: FieldSpec<"Texture"> }, VideoPlayer>;
   /**
@@ -23971,7 +23971,7 @@ export declare namespace og {
   const PathFollower: ComponentType<{ readonly path: FieldSpec<"Path">; readonly speed: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly align: FieldSpec<"bool">; readonly offset: FieldSpec<"Vector3">; readonly playing: FieldSpec<"bool">; readonly finished: FieldSpec<"bool"> }, PathFollower>;
   /**
    * Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t.
-   * Make one with og.path.create, or declare it in a scene (`path "<name>" { kind catmullRom; closed false; point x y z ... }`) and find it by name with og.path.find; a timeline's camera rides one with `rail "<name>"`. og.PathFollower moves an entity along one, og.CameraRail.path moves the camera along one, og.render.tubeGeometry makes a tube along one (TubeGeometryDesc.path). Paths are assets: they are not world state, and a hot reload registers them again.
+   * Make one with og.path.create, or declare it in a scene (`path "<name>" { kind catmullRom; closed false; point x y z ... }`) and find it by name with og.path.find; a timeline's camera rides one with `rail "<name>"`. og.PathFollower moves an entity along one, og.CameraRail.path moves the camera along one, og.render's tube geometry can take its og.path.sample points. Paths are assets: they are not world state, and a hot reload registers them again.
    */
   namespace path {
     /**

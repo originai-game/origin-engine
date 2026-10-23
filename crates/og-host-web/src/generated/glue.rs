@@ -1772,8 +1772,8 @@ pub fn og_engine_probe_expectations(engine_probe: u32) -> String {
 
 #[cfg(not(feature = "publish"))]
 #[wasm_bindgen]
-pub fn og_engine_probe_save_scene(engine_probe: u32, write: Option<bool>) -> String {
-    <Host as ProbeApi>::og_engine_probe_save_scene(&Host, engine_probe, write)
+pub fn og_engine_probe_save_scene(engine_probe: u32, write: Option<bool>, spawned: Option<bool>) -> String {
+    <Host as ProbeApi>::og_engine_probe_save_scene(&Host, engine_probe, write, spawned)
 }
 
 #[wasm_bindgen]
