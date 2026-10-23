@@ -68,6 +68,14 @@ pub(crate) fn pick_sphere(boxes: &[(Vec3, Vec3)], c: Vec3, r: f32) -> u8 {
     best.0
 }
 
+/// Whether a sphere is near a probe's box (min, max): within the box's own
+/// half extent of it. A capture draws scattered copies only there.
+pub(crate) fn near_box((lo, hi): (Vec3, Vec3)) -> impl Fn(Vec3, f32) -> bool {
+    let margin = (hi - lo) * 0.5;
+    let (lo, hi) = (lo - margin, hi + margin);
+    move |c: Vec3, r: f32| c.clamp(lo, hi).distance_squared(c) <= r * r
+}
+
 /// A pass's probe frame groups: probe `i`'s at `groups[i]`, the frame's own
 /// for [`NONE`].
 #[derive(Clone, Copy)]

@@ -7553,13 +7553,18 @@ impl Renderer {
                                 )
                                 .0;
                             }
+                            // Scattered copies near the box only: farther,
+                            // a blade is under a texel of the face.
+                            let near = probe_select::near_box(
+                                active_probes[probe_frame.due[d].1].bounds(),
+                            );
                             let (n, _) = self.scatter.draw(
                                 &mut pass,
                                 scatter::ScatterPass::Lit,
                                 &scatter_batches,
                                 scatter_material,
                                 scatter_mesh,
-                                |c, r| frustum.intersects_sphere(c, r),
+                                |c, r| near(c, r) && frustum.intersects_sphere(c, r),
                                 None,
                             );
                             if n > 0 {
