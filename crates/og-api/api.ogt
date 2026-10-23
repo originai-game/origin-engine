@@ -7638,19 +7638,23 @@ module anim {
     }
     field flipX bool "Mirror the rig left to right about the entity's position (a character facing left)."
     field layer i32 "The sprite layer it draws in, sorted with the sprites there (after them when they share the layer)."
+    field skin u32 "The skin it wears: an index into Rig2DInfo.skins (0 is the rig's default; `rig.skins.indexOf(\"armor\")` finds one by name). A skin shows its own attachment wherever the setup pose or a clip shows the default's; a slot the skin leaves alone shows the default's. Change it any tick: the pose is drawn from it." {
+      min 0
+    }
     field finished bool "Written: a clip that does not loop reached its end (or its start, played backwards)." {
       readonly true
     }
   }
 
   event Skeleton2DEvent {
-    doc "A 2D skeleton's clip passed one of its events (`event 0.2 \"step\"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass."
+    doc "A 2D skeleton's clip, or the clip a child armature in one of its slots plays, passed one of its events (`event 0.2 \"step\"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass."
     field entity Entity "The entity with the og.Skeleton2D."
     field clip u32 "The clip index."
     field name String "The event's name (at most 63 bytes)."
     field time f32 "The event's time in the clip." {
       unit s
     }
+    field armature String "Empty for the skeleton's own clip; for an event of a child armature shown in one of its slots, that armature's name (`clip` and `time` are then the child's clip and its time): a flame's crackle apart from the keeper's footsteps (at most 63 bytes)."
   }
 
   component IkTarget2D {
@@ -7701,6 +7705,7 @@ module anim {
     field bones List.String "The bones' names, parents first."
     field slots List.String "The slots' names, in draw order."
     field constraints List.String "The IK constraints' names: an index here is IkTarget2D.constraint."
+    field skins List.String "Its skins' names, `default` (the rig's own attachments) first: an index here is Skeleton2D.skin."
     field clips List.Rig2DClipInfo "Its clips, in file order."
   }
 

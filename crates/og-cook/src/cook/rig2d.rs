@@ -21,23 +21,33 @@
 //! `ik`'s `bone` with `chain` n is that bone and its n ancestors, root
 //! first, and `bendPositive` (clockwise on screen) is `bend clockwise`; an animation's `duration` and frame
 //! `duration`s are frames of `frameRate`, `playTimes` 0 loops,
-//! `translateFrame`, `rotateFrame` (`rotate` and `skew`) and `scaleFrame`
-//! become bone keys (relative to the setup pose, as there), `displayFrame`
+//! `translateFrame`, `rotateFrame` (`rotate` and `skew`, a frame's
+//! `clockwise` turns as the key's turn, accumulated as DragonBones' parser
+//! accumulates them) and `scaleFrame` become bone keys (relative to the
+//! setup pose, as there), `displayFrame`
 //! and `colorFrame` slot keys (multipliers and offsets), `ffd` (or
 //! `deform`) frames deform keys (`offset` and `vertices`, per influence),
 //! `zOrder` frames (slot and offset pairs) draw orders, `ik` frames
 //! (`weight`, `bendPositive`) IK keys, and frame `events` (or `actions` of
 //! type 10 and 11) events. A frame's `curve` is a Bézier key; a
-//! `tweenEasing` of 0 is linear, other numbers DragonBones' quadratic
-//! eases as Béziers; a frame with neither holds its value (DragonBones'
-//! no-tween). Path displays and `clockwise` turns are noted.
+//! `tweenEasing` of 0 is linear, up to 1 DragonBones' quadratic eases as
+//! Béziers (exact: a quadratic is a cubic), above 1 its sine in-out as a
+//! Bézier of Hermite segments within 1e-7 of it; a frame with neither
+//! holds its value (DragonBones' no-tween). A `path` display is a path
+//! attachment (its `vertices` three per knot, weighted as a mesh's,
+//! `closed`, `constantSpeed` and `lengths`), and the armature's `path`
+//! constraints (`target` slot and `targetDisplay`, `bones`,
+//! `positionMode`, `spacingMode`, `rotateMode`, `position`, `spacing`,
+//! `rotateOffset`, `rotateMix`, `translateMix`) `along` constraints;
+//! DragonBones has no transform constraint.
 
 use super::{CookError, Source};
 use crate::format::{self, *};
 use og_anim::{
     Affine2, Armature2d, Attachment2d, AttachmentKind, Bone2d, BoneTimeline, Clip2d,
-    DeformTimeline, Ease, Ik2d, IkKey, IkTimeline, Influence, Key, MeshVertex2d, Rig2dAsset,
-    SheetFilter, Slot2d, SlotTimeline,
+    DeformTimeline, Ease, Ik2d, IkKey, IkTimeline, Influence, Key, MeshVertex2d, PathConstraint2d,
+    PathRotate, PathSpacing, PathUnit, Rig2dAsset, Rotation, SheetFilter, Skin2d, Slot2d,
+    SlotTimeline, Turn, turn_delta,
 };
 use og_blob::BlobWriter;
 use og_core::ogt::{Document, Entry, Value};
@@ -299,21 +309,43 @@ fn ease(k: &Json, notes: &mut Vec<String>) -> Ease {
             third * (2.0 + e),
         ])
     } else {
-        // Sine in-out has no cubic; smoothstep (1/3, 0) (2/3, 1) is within 0.011 of it.
-        let a = (e - 1.0).min(1.0);
-        if !notes.iter().any(|n| n.starts_with("tweenEasing above 1")) {
-            notes.push(
-                "tweenEasing above 1 (sine in-out) is played as smoothstep, within 0.011 of it"
-                    .into(),
-            );
-        }
-        Ease::Bezier(vec![
-            third,
-            third * (1.0 - a),
-            2.0 * third,
-            third * (2.0 + a),
-        ])
+        // DragonBones keeps (e - 1) in hundredths, unclamped (_parseTweenFrame).
+        Ease::Bezier(sine_curve((f64::from(e) * 100.0 - 100.0).round() * 0.01))
     }
+}
+
+/// DragonBones' sine in-out blended with the line by `a` (its
+/// `_getEasingValue`: `s + a (0.5 (1 - cos πs) - s)`), which has no cubic
+/// form, as a Bézier of equal segments: each the cubic Hermite through
+/// the curve's values and slopes at its ends (control points a third of
+/// the segment along the tangents). Its error is at most `max |y''''|
+/// h⁴ / 384` with `y'''' = a π⁴ / 2`; the segments are enough to keep it
+/// under 1e-7 of the key's change.
+fn sine_curve(a: f64) -> Vec<f32> {
+    const PI: f64 = std::f64::consts::PI;
+    const ERROR: f64 = 1e-7;
+    let y = |s: f64| s + a * (0.5 * (1.0 - og_anim::sincos(PI * s).1) - s);
+    let slope = |s: f64| 1.0 + a * (0.5 * PI * og_anim::sincos(PI * s).0 - 1.0);
+    let bound = a.abs() * PI.powi(4) / 2.0 / 384.0;
+    let mut n = 1usize;
+    while n < 256 && bound / (n as f64).powi(4) > ERROR {
+        n += 1;
+    }
+    let h = 1.0 / n as f64;
+    let mut c = Vec::with_capacity(6 * n - 2);
+    for k in 0..n {
+        let (x0, x1) = (k as f64 * h, (k + 1) as f64 * h);
+        if k > 0 {
+            c.extend([x0, y(x0)]);
+        }
+        c.extend([
+            x0 + h / 3.0,
+            y(x0) + h / 3.0 * slope(x0),
+            x1 - h / 3.0,
+            y(x1) - h / 3.0 * slope(x1),
+        ]);
+    }
+    c.into_iter().map(|v| v as f32).collect()
 }
 
 /// The animation a DragonBones `actions` list (a name, or `gotoAndPlay`
@@ -361,7 +393,7 @@ pub fn dragonbones(
         .collect::<Result<_, String>>()?;
     // Child armatures in the order displays first name them.
     let mut children: Vec<String> = Vec::new();
-    let top = armature(first, ske, &subs, &mut children, notes)?;
+    let (top, top_skins) = armature(first, ske, &subs, &mut children, notes)?;
     let mut armatures = Vec::new();
     let mut i = 0;
     while i < children.len() {
@@ -372,8 +404,18 @@ pub fn dragonbones(
             .ok_or(format!(
                 "an armature display shows `{n}`, not an armature of the export"
             ))?;
-        let mut a = armature(raw, ske, &subs, &mut children, notes)
+        let (mut a, skins) = armature(raw, ske, &subs, &mut children, notes)
             .map_err(|e| format!("armature {n}: {e}"))?;
+        if !skins.is_empty() {
+            notes.push(format!(
+                "child armature {n} wears its default skin; its other skins are not imported: {}",
+                skins
+                    .iter()
+                    .map(|k| k.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
         a.name = n;
         armatures.push(a);
         i += 1;
@@ -400,7 +442,10 @@ pub fn dragonbones(
         slots: top.slots,
         attachments: top.attachments,
         iks: top.iks,
+        transforms: top.transforms,
+        paths: top.paths,
         clips: top.clips,
+        skins: top_skins,
         armatures,
     };
     // What the runtime reads back: refused here (a display showing its own armature) rather than there.
@@ -418,7 +463,7 @@ fn armature(
     subs: &[(String, [f32; 4])],
     children: &mut Vec<String>,
     notes: &mut Vec<String>,
-) -> Result<Armature2d, String> {
+) -> Result<(Armature2d, Vec<Skin2d>), String> {
     let rate = arm["frameRate"]
         .as_f64()
         .or(ske["frameRate"].as_f64())
@@ -458,7 +503,10 @@ fn armature(
             slots: Vec::new(),
             attachments: Vec::new(),
             iks: Vec::new(),
+            transforms: Vec::new(),
+            paths: Vec::new(),
             clips: Vec::new(),
+            skins: Vec::new(),
             armatures: Vec::new(),
         };
         probe.pose(None, 0.0, &[]).world
@@ -469,11 +517,8 @@ fn armature(
             .map(|(_, r)| *r)
             .ok_or(format!("no sub-texture `{n}` in the atlas"))
     };
-    let skin = arm["skin"].get(0);
-    // Per slot: its displays' attachment indices (None for a display not imported).
-    let mut displays: Vec<Vec<Option<usize>>> = Vec::new();
-    let mut skipped = Vec::new();
-    for (si, sl) in arm["slot"].as_array().into_iter().flatten().enumerate() {
+    let raw_slots: Vec<&Json> = arm["slot"].as_array().into_iter().flatten().collect();
+    for sl in &raw_slots {
         let n = name(sl)?;
         let bone_name = sl["parent"]
             .as_str()
@@ -481,114 +526,220 @@ fn armature(
         let bone = bone_of(&rig, bone_name).ok_or(format!("slot {n}: no bone {bone_name}"))?;
         let (color, offset) = color(&sl["color"]);
         rig.slots.push(Slot2d {
-            name: n.clone(),
+            name: n,
             bone,
             attachment: None,
             color,
             offset,
         });
-        let list = skin
-            .and_then(|k| k["slot"].as_array())
-            .and_then(|l| l.iter().find(|s| s["name"].as_str() == Some(n.as_str())))
-            .and_then(|s| s["display"].as_array());
-        let mut ids = Vec::new();
-        for d in list.into_iter().flatten() {
-            if d.is_null() {
-                ids.push(None);
-                continue;
-            }
-            let dn = name(d)?;
-            let path = d["path"].as_str().unwrap_or(&dn).to_string();
-            let mut an = dn.clone();
-            if rig.attachments.iter().any(|a| a.name == an) {
-                an = format!("{n}/{dn}");
-            }
-            let t = place(&d["transform"]);
-            let kind = match d["type"].as_str().unwrap_or("image") {
-                "image" => {
-                    let rect = sub(&path)?;
-                    let size = [rect[2] * t.scale[0], rect[3] * t.scale[1]];
-                    // The pivot (0.5 the centre) moves the centre off the display's origin.
-                    let (px, py) = (f(&d["pivot"], "x", 0.5), f(&d["pivot"], "y", 0.5));
-                    let shift = Affine2::trsk(0.0, 0.0, t.rotation, t.skew, 1.0, 1.0)
-                        .apply((0.5 - px) * size[0], -(0.5 - py) * size[1]);
-                    AttachmentKind::Region {
-                        rect,
-                        at: [t.x + shift[0], t.y + shift[1]],
-                        rotation: t.rotation,
-                        skew: t.skew,
-                        size,
-                    }
-                }
-                "mesh" => mesh(d, &dn, &sub(&path)?, bone, &setup)?,
-                "boundingBox" => {
-                    let m = t.affine();
-                    let (w, h) = (f(d, "width", 0.0) / 2.0, f(d, "height", 0.0) / 2.0);
-                    let local: Vec<[f32; 2]> = match d["subType"].as_str().unwrap_or("rectangle") {
-                        "rectangle" => vec![[-w, -h], [w, -h], [w, h], [-w, h]],
-                        "ellipse" => {
-                            notes.push(format!("box {an}: the ellipse is a 32-sided polygon"));
-                            (0..32)
-                                .map(|i| {
-                                    let (s, c) =
-                                        og_anim::sincos(f64::from(i) * std::f64::consts::PI / 16.0);
-                                    [w * c as f32, h * s as f32]
-                                })
-                                .collect()
-                        }
-                        "polygon" => {
-                            let v: Vec<f32> = d["vertices"]
-                                .as_array()
-                                .into_iter()
-                                .flatten()
-                                .map(|v| v.as_f64().unwrap_or(0.0) as f32)
-                                .collect();
-                            v.as_chunks::<2>().0.iter().map(|p| [p[0], -p[1]]).collect()
-                        }
-                        other => return Err(format!("box {an}: subType {other}")),
-                    };
-                    if local.len() < 3 {
-                        return Err(format!("box {an}: fewer than three points"));
-                    }
-                    AttachmentKind::Box {
-                        polygon: local.into_iter().map(|p| m.apply_to(p)).collect(),
-                    }
-                }
-                "armature" => {
-                    let index = match children.iter().position(|c| *c == path) {
-                        Some(i) => i,
-                        None => {
-                            children.push(path.clone());
-                            children.len() - 1
-                        }
-                    };
-                    AttachmentKind::Child {
-                        armature: index,
-                        clip: play_action(&d["actions"]).or_else(|| play_action(&sl["actions"])),
-                        at: [t.x, t.y],
-                        rotation: t.rotation,
-                        skew: t.skew,
-                        scale: t.scale,
-                    }
-                }
-                other => {
-                    skipped.push(format!("{n}/{dn} ({other})"));
+    }
+    // The skins, the default first (DragonBones' defaultSkin: the one named
+    // `default`, else the first); each other one swaps the default's
+    // displays, slot by slot and index by index (its replaceSkin).
+    let all: Vec<&Json> = arm["skin"].as_array().into_iter().flatten().collect();
+    let first = all
+        .iter()
+        .position(|k| k["name"].as_str() == Some("default"))
+        .unwrap_or(0);
+    let order: Vec<&Json> = all
+        .get(first)
+        .into_iter()
+        .copied()
+        .chain(
+            all.iter()
+                .enumerate()
+                .filter(|(i, _)| *i != first)
+                .map(|(_, k)| *k),
+        )
+        .collect();
+    // Per slot: the default skin's displays' attachment indices (None for a display not imported).
+    let mut displays: Vec<Vec<Option<usize>>> = vec![Vec::new(); raw_slots.len()];
+    let mut skipped = Vec::new();
+    let mut skins: Vec<Skin2d> = Vec::new();
+    for (ki, skin) in order.iter().enumerate() {
+        let skin_name = skin["name"].as_str().unwrap_or("").to_string();
+        if ki > 0
+            && (skin_name.is_empty()
+                || skin_name == "default"
+                || skins.iter().any(|k: &Skin2d| k.name == skin_name))
+        {
+            notes.push(format!(
+                "a skin without a name of its own is not imported (`{skin_name}`)"
+            ));
+            continue;
+        }
+        let mut swaps = Vec::new();
+        for (si, sl) in raw_slots.iter().enumerate() {
+            let n = rig.slots[si].name.clone();
+            let bone = rig.slots[si].bone;
+            let list = skin["slot"]
+                .as_array()
+                .and_then(|l| l.iter().find(|s| s["name"].as_str() == Some(n.as_str())))
+                .and_then(|s| s["display"].as_array());
+            let Some(list) = list else { continue };
+            let mut ids = Vec::new();
+            for d in list {
+                if d.is_null() {
                     ids.push(None);
                     continue;
                 }
-            };
-            ids.push(Some(rig.attachments.len()));
-            rig.attachments.push(Attachment2d {
-                name: an,
-                slot: si,
-                kind,
+                let dn = name(d)?;
+                let path = d["path"].as_str().unwrap_or(&dn).to_string();
+                let mut an = if ki == 0 {
+                    dn.clone()
+                } else {
+                    format!("{skin_name}/{dn}")
+                };
+                if rig.attachments.iter().any(|a| a.name == an) {
+                    an = if ki == 0 {
+                        format!("{n}/{dn}")
+                    } else {
+                        format!("{skin_name}/{n}/{dn}")
+                    };
+                }
+                let t = place(&d["transform"]);
+                let kind = match d["type"].as_str().unwrap_or("image") {
+                    "image" => {
+                        let rect = sub(&path)?;
+                        let size = [rect[2] * t.scale[0], rect[3] * t.scale[1]];
+                        // The pivot (0.5 the centre) moves the centre off the display's origin.
+                        let (px, py) = (f(&d["pivot"], "x", 0.5), f(&d["pivot"], "y", 0.5));
+                        let shift = Affine2::trsk(0.0, 0.0, t.rotation, t.skew, 1.0, 1.0)
+                            .apply((0.5 - px) * size[0], -(0.5 - py) * size[1]);
+                        AttachmentKind::Region {
+                            rect,
+                            at: [t.x + shift[0], t.y + shift[1]],
+                            rotation: t.rotation,
+                            skew: t.skew,
+                            size,
+                        }
+                    }
+                    "mesh" => mesh(d, &dn, &sub(&path)?, bone, &setup)?,
+                    "path" => {
+                        // Points as a mesh's vertices are read (y flipped).
+                        let points = influences(d, &format!("path {an}"), bone, &setup)?;
+                        if points.len() < 6 || points.len() % 3 != 0 {
+                            skipped.push(format!(
+                            "{n}/{dn} (a path of {} vertices, not three per knot of two or more)",
+                            points.len()
+                        ));
+                            ids.push(None);
+                            continue;
+                        }
+                        let closed = d["closed"].as_bool().unwrap_or(false);
+                        let curves = points.len() / 3 - usize::from(!closed);
+                        let lengths: Vec<f32> = d["lengths"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .map(|v| v.as_f64().unwrap_or(0.0) as f32)
+                            .take(curves)
+                            .collect();
+                        let constant = d["constantSpeed"].as_bool().unwrap_or(false);
+                        AttachmentKind::Path {
+                            points,
+                            closed,
+                            // Without a length per curve only arc length can place a position.
+                            constant: constant || lengths.len() != curves,
+                            lengths: if lengths.len() == curves {
+                                lengths
+                            } else {
+                                Vec::new()
+                            },
+                        }
+                    }
+                    "boundingBox" => {
+                        let m = t.affine();
+                        let (w, h) = (f(d, "width", 0.0) / 2.0, f(d, "height", 0.0) / 2.0);
+                        let local: Vec<[f32; 2]> = match d["subType"]
+                            .as_str()
+                            .unwrap_or("rectangle")
+                        {
+                            "rectangle" => vec![[-w, -h], [w, -h], [w, h], [-w, h]],
+                            "ellipse" => {
+                                notes.push(format!("box {an}: the ellipse is a 32-sided polygon"));
+                                (0..32)
+                                    .map(|i| {
+                                        let (s, c) = og_anim::sincos(
+                                            f64::from(i) * std::f64::consts::PI / 16.0,
+                                        );
+                                        [w * c as f32, h * s as f32]
+                                    })
+                                    .collect()
+                            }
+                            "polygon" => {
+                                let v: Vec<f32> = d["vertices"]
+                                    .as_array()
+                                    .into_iter()
+                                    .flatten()
+                                    .map(|v| v.as_f64().unwrap_or(0.0) as f32)
+                                    .collect();
+                                v.as_chunks::<2>().0.iter().map(|p| [p[0], -p[1]]).collect()
+                            }
+                            other => return Err(format!("box {an}: subType {other}")),
+                        };
+                        if local.len() < 3 {
+                            return Err(format!("box {an}: fewer than three points"));
+                        }
+                        AttachmentKind::Box {
+                            polygon: local.into_iter().map(|p| m.apply_to(p)).collect(),
+                        }
+                    }
+                    "armature" => {
+                        let index = match children.iter().position(|c| *c == path) {
+                            Some(i) => i,
+                            None => {
+                                children.push(path.clone());
+                                children.len() - 1
+                            }
+                        };
+                        AttachmentKind::Child {
+                            armature: index,
+                            clip: play_action(&d["actions"])
+                                .or_else(|| play_action(&sl["actions"])),
+                            at: [t.x, t.y],
+                            rotation: t.rotation,
+                            skew: t.skew,
+                            scale: t.scale,
+                        }
+                    }
+                    other => {
+                        skipped.push(format!("{n}/{dn} ({other})"));
+                        ids.push(None);
+                        continue;
+                    }
+                };
+                ids.push(Some(rig.attachments.len()));
+                rig.attachments.push(Attachment2d {
+                    name: an,
+                    slot: si,
+                    kind,
+                });
+            }
+            if ki == 0 {
+                let shown = sl["displayIndex"].as_i64().unwrap_or(0);
+                rig.slots[si].attachment = usize::try_from(shown)
+                    .ok()
+                    .and_then(|i| ids.get(i).copied().flatten());
+                displays[si] = ids;
+                continue;
+            }
+            for (i, to) in ids.into_iter().enumerate() {
+                match displays[si].get(i).copied().flatten() {
+                Some(from) => swaps.push((from, to)),
+                None if to.is_some() => notes.push(format!(
+                    "skin {skin_name}: slot {n}'s display {i} has none in the default skin to replace, and is not shown"
+                )),
+                None => {}
+            }
+            }
+        }
+        if ki > 0 {
+            skins.push(Skin2d {
+                name: skin_name,
+                swaps,
             });
         }
-        let shown = sl["displayIndex"].as_i64().unwrap_or(0);
-        rig.slots[si].attachment = usize::try_from(shown)
-            .ok()
-            .and_then(|i| ids.get(i).copied().flatten());
-        displays.push(ids);
     }
     if !skipped.is_empty() {
         notes.push(format!("displays not imported: {}", skipped.join(", ")));
@@ -615,7 +766,67 @@ fn armature(
             weight: f(k, "weight", 1.0),
         });
     }
-    let mut clockwise = Vec::new();
+    // Path constraints (the armature's `path` list): bones along a path display.
+    for k in arm["path"].as_array().into_iter().flatten() {
+        let n = name(k)?;
+        let target = k["target"].as_str().unwrap_or("");
+        let slot = rig
+            .slots
+            .iter()
+            .position(|s| s.name == target)
+            .ok_or(format!("path {n}: no slot {target}"))?;
+        let display = k["targetDisplay"].as_str().unwrap_or(target);
+        let path = rig
+            .attachments
+            .iter()
+            .position(|a| {
+                a.slot == slot
+                    && matches!(a.kind, AttachmentKind::Path { .. })
+                    && (a.name == display || a.name.ends_with(&format!("/{display}")))
+            })
+            .ok_or(format!("path {n}: slot {target} shows no path {display}"))?;
+        let bones = k["bones"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|b| {
+                let b = b.as_str().unwrap_or("");
+                bone_of(&rig, b).ok_or(format!("path {n}: no bone {b}"))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        if bones.is_empty() {
+            return Err(format!("path {n}: no bones"));
+        }
+        let mode = |key: &str| k[key].as_str().unwrap_or("").to_lowercase();
+        rig.paths.push(PathConstraint2d {
+            name: n,
+            path,
+            bones,
+            position: f(k, "position", 0.0),
+            position_unit: if mode("positionMode") == "fixed" {
+                PathUnit::Fixed
+            } else {
+                PathUnit::Percent
+            },
+            spacing: f(k, "spacing", 0.0),
+            spacing_mode: match mode("spacingMode").as_str() {
+                "fixed" => PathSpacing::Fixed,
+                "percent" => PathSpacing::Percent,
+                _ => PathSpacing::Length,
+            },
+            rotate: match mode("rotateMode").as_str() {
+                "chain" => PathRotate::Chain,
+                "chainscale" => PathRotate::ChainScale,
+                _ => PathRotate::Tangent,
+            },
+            // Clockwise with y down is negative here.
+            rotation: -f(k, "rotateOffset", 0.0),
+            mix: [
+                f(k, "rotateMix", 1.0).clamp(0.0, 1.0),
+                f(k, "translateMix", 1.0).clamp(0.0, 1.0),
+            ],
+        });
+    }
     for a in arm["animation"].as_array().into_iter().flatten() {
         let n = name(a)?;
         let mut clip = Clip2d {
@@ -643,14 +854,16 @@ fn armature(
                     ease: ease(k, notes),
                 });
             }
-            for (time, k) in frames(&t["rotateFrame"], rate) {
-                if f(k, "clockwise", 0.0) != 0.0 {
-                    clockwise.push(format!("{n}.{}", rig.bones[bone].name));
-                }
+            let rotate_frames = frames(&t["rotateFrame"], rate);
+            let turns = turns(&rotate_frames);
+            for ((time, k), turn) in rotate_frames.into_iter().zip(turns) {
                 let e = ease(k, notes);
                 timeline.rotate.push(Key {
                     time,
-                    value: -f(k, "rotate", 0.0),
+                    value: Rotation {
+                        degrees: -f(k, "rotate", 0.0),
+                        turn,
+                    },
                     ease: e.clone(),
                 });
                 timeline.skew.push(Key {
@@ -731,14 +944,27 @@ fn armature(
             let slot = t["slot"]
                 .as_str()
                 .and_then(|s| rig.slots.iter().position(|x| x.name == s));
+            // A deform of a skin other than the default names that skin.
+            let skin = t["skin"]
+                .as_str()
+                .filter(|k| !k.is_empty() && *k != "default");
             let attachment = rig
                 .attachments
                 .iter()
                 .position(|x| {
+                    let own = x.name.as_str();
+                    let in_skin = skins
+                        .iter()
+                        .any(|k| own.starts_with(&format!("{}/", k.name)));
+                    let name = t["name"].as_str().unwrap_or("");
                     Some(x.slot) == slot
-                        && (Some(x.name.as_str()) == t["name"].as_str()
-                            || x.name
-                                .ends_with(&format!("/{}", t["name"].as_str().unwrap_or(""))))
+                        && match skin {
+                            Some(k) => {
+                                own.starts_with(&format!("{k}/"))
+                                    && own.ends_with(&format!("/{name}"))
+                            }
+                            None => !in_skin && (own == name || own.ends_with(&format!("/{name}"))),
+                        }
                 })
                 .ok_or(format!(
                     "animation {n}: no mesh {} in slot {}",
@@ -817,13 +1043,61 @@ fn armature(
         clip.events.sort_by(|a, b| a.0.total_cmp(&b.0));
         rig.clips.push(clip);
     }
-    if !clockwise.is_empty() {
-        notes.push(format!(
-            "rotations of more than half a turn (clockwise) play the shorter way: {}",
-            clockwise.join(", ")
-        ));
+    Ok((rig, skins))
+}
+
+/// Each rotate frame's turn to the next, as DragonBones' parser
+/// (`_parseBoneRotateFrame`) accumulates the angles: after a frame with
+/// `clockwise` 0 the next angle is the nearer one; after `clockwise` n > 0
+/// (n < 0) it is the next angle at or past this one in the increasing
+/// (decreasing) direction plus n - 1 whole turns (n + 1), or n whole turns
+/// when the raw angle is behind. With y down there, the increasing
+/// direction is clockwise on screen: here the turn's sign flips, and each
+/// turn is the one whose [`og_anim::turn_delta`] over the written angles
+/// is that difference.
+fn turns(list: &[(f32, &Json)]) -> Vec<Turn> {
+    let raw: Vec<f64> = list
+        .iter()
+        .map(|(_, k)| k.get("rotate").and_then(Json::as_f64).unwrap_or(0.0))
+        .collect();
+    let mut out = vec![Turn::Shorter; list.len()];
+    let (mut prev, mut prev_cw) = (0.0f64, 0i64);
+    for (i, (_, k)) in list.iter().enumerate() {
+        let mut r = raw[i];
+        if i > 0 {
+            if prev_cw == 0 {
+                // Transform.normalizeRadian in degrees: (-180, 180].
+                let mut d = (r - prev + 180.0) % 360.0;
+                d += if d > 0.0 { -180.0 } else { 180.0 };
+                r = prev + d;
+            } else {
+                let mut n = prev_cw;
+                if (n > 0 && r >= prev) || (n < 0 && r <= prev) {
+                    n -= n.signum();
+                }
+                r += 360.0 * n as f64;
+                // The written angles are y up: the turn here is -(r - prev).
+                let delta = -(r - prev) as f32;
+                let (a, b) = (-raw[i - 1] as f32, -raw[i] as f32);
+                let way = |n: u32| {
+                    if delta >= 0.0 {
+                        Turn::Counterclockwise(n)
+                    } else {
+                        Turn::Clockwise(n)
+                    }
+                };
+                let whole = ((delta.abs() - turn_delta(a, b, way(0)).abs()) / 360.0).round();
+                out[i - 1] = way(whole.max(0.0) as u32);
+            }
+        }
+        prev = r;
+        prev_cw = k
+            .get("clockwise")
+            .and_then(Json::as_f64)
+            .unwrap_or(0.0)
+            .round() as i64;
     }
-    Ok(rig)
+    out
 }
 
 /// A DragonBones zOrder frame (pairs of a slot index in the setup order
@@ -889,7 +1163,6 @@ fn mesh(
     };
     let (vs, uvs) = (nums("vertices"), nums("uvs"));
     let triangles: Vec<u32> = nums("triangles").into_iter().map(|t| t as u32).collect();
-    let weights = nums("weights");
     let count = vs.len() / 2;
     if uvs.len() != vs.len() || count == 0 {
         return Err(format!(
@@ -898,6 +1171,49 @@ fn mesh(
             uvs.len()
         ));
     }
+    let influences = influences(d, &format!("mesh {n}"), slot_bone, setup)?;
+    let vertices = influences
+        .into_iter()
+        .enumerate()
+        .map(|(i, influences)| MeshVertex2d {
+            uv: [
+                rect[0] + uvs[2 * i] * rect[2],
+                rect[1] + uvs[2 * i + 1] * rect[3],
+            ],
+            influences,
+        })
+        .collect();
+    if triangles.is_empty() || triangles.iter().any(|t| *t as usize >= count) {
+        return Err(format!(
+            "mesh {n}: triangles index past its {count} vertices"
+        ));
+    }
+    Ok(AttachmentKind::Mesh {
+        vertices,
+        triangles,
+    })
+}
+
+/// A DragonBones geometry's vertices (a mesh's or a path's) as influences:
+/// unweighted, in the slot's bone; weighted, through `slotPose` into the
+/// setup pose and from there into each bone of `weights`.
+fn influences(
+    d: &Json,
+    what: &str,
+    slot_bone: usize,
+    setup: &[Affine2],
+) -> Result<Vec<Vec<Influence>>, String> {
+    let nums = |k: &str| -> Vec<f32> {
+        d[k].as_array()
+            .into_iter()
+            .flatten()
+            .map(|v| v.as_f64().unwrap_or(0.0) as f32)
+            .collect()
+    };
+    let vs = nums("vertices");
+    let weights = nums("weights");
+    let count = vs.len() / 2;
+    let n = what;
     // slotPose (a b c d tx ty) takes a weighted vertex into the setup pose (y down).
     let sp = nums("slotPose");
     let slot_pose = if sp.len() == 6 {
@@ -915,10 +1231,6 @@ fn mesh(
     let mut vertices = Vec::with_capacity(count);
     let mut w = 0usize;
     for i in 0..count {
-        let uv = [
-            rect[0] + uvs[2 * i] * rect[2],
-            rect[1] + uvs[2 * i + 1] * rect[3],
-        ];
         let (x, y) = (vs[2 * i], vs[2 * i + 1]);
         let influences = if weights.is_empty() {
             vec![Influence {
@@ -931,21 +1243,17 @@ fn mesh(
             let g = slot_pose.apply(x, y);
             // The setup position here (y up), into each bone.
             let here = [g[0], -g[1]];
-            let k = *weights
-                .get(w)
-                .ok_or(format!("mesh {n}: weights end early"))? as usize;
+            let k = *weights.get(w).ok_or(format!("{n}: weights end early"))? as usize;
             w += 1;
             let mut out = Vec::with_capacity(k);
             for _ in 0..k {
                 let (b, wt) = (weights.get(w).copied(), weights.get(w + 1).copied());
                 let (Some(b), Some(wt)) = (b, wt) else {
-                    return Err(format!("mesh {n}: weights end early"));
+                    return Err(format!("{n}: weights end early"));
                 };
                 w += 2;
                 let b = b as usize;
-                let m = setup
-                    .get(b)
-                    .ok_or(format!("mesh {n}: weight on bone {b}"))?;
+                let m = setup.get(b).ok_or(format!("{n}: weight on bone {b}"))?;
                 let l = m.inverse().apply(here[0], here[1]);
                 out.push(Influence {
                     bone: b,
@@ -961,15 +1269,7 @@ fn mesh(
             }
             out
         };
-        vertices.push(MeshVertex2d { uv, influences });
+        vertices.push(influences);
     }
-    if triangles.is_empty() || triangles.iter().any(|t| *t as usize >= count) {
-        return Err(format!(
-            "mesh {n}: triangles index past its {count} vertices"
-        ));
-    }
-    Ok(AttachmentKind::Mesh {
-        vertices,
-        triangles,
-    })
+    Ok(vertices)
 }

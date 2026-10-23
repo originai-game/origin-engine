@@ -37,6 +37,9 @@ fn info(handle: u64, rig: &Rig2dAsset, texture: usize) -> Value {
         "bones": names(rig.bones.iter().map(|b| &b.name).collect()),
         "slots": names(rig.slots.iter().map(|s| &s.name).collect()),
         "constraints": names(rig.iks.iter().map(|k| &k.name).collect()),
+        "skins": std::iter::once("default".to_string())
+            .chain(rig.skins.iter().map(|k| k.name.clone()))
+            .collect::<Vec<_>>(),
         "clips": rig.clips.iter().enumerate().map(|(i, c)| json!({
             "clip": i,
             "name": c.name,

@@ -592,24 +592,34 @@ Baked lighting, volumetrics and area lights (depth S7).
   a chain of any length (one bone points, two are solved exactly, three
   or more by FABRIK from the animated pose, seeded on the `bend` side:
   position passes with no trigonometry inside them, as og-anim's 3D
-  chains are solved), and clips of bone (rotate, skew, translate, scale), slot
+  chains are solved), `transform` constraints (bones moved by a mix
+  towards a target bone's world transform) and `along` constraints
+  (bones placed on a `path` attachment, a cubic spline drawn as nothing,
+  with DragonBones' position, spacing and rotate modes), and clips of bone (rotate, skew, translate, scale), slot
   (attachment, colour, offset), deform, draw-order (`order`) and IK
   (weight and bend) keys with events; keys ease linearly, hold (`step`)
-  or follow a cubic Bézier (`curve`, solved by bisection). A child
+  or follow a cubic Bézier (`curve`, solved by bisection), and a rotate
+  key turns the shorter way or, with `clockwise n` or `counterclockwise
+  n`, that way through n more whole turns. A child
   armature plays its parent's clip by name when it has one, else its own,
   at the parent's time. The cook stores the canonical text in an
   `og.Rig2D` blob, written by hand or imported from a DragonBones 5.5
   export with its atlas (`dragonbones "x_ske.json"`, `atlas
   "x_tex.json"`): skew, colour offsets, zOrder and IK timelines, armature
-  displays (as child armatures), bounding boxes and Bézier curves come
-  across, and a frame without `tweenEasing` holds as DragonBones holds
+  displays (as child armatures), bounding boxes, path displays and path
+  constraints, every skin (the `default` one the rig's own attachments,
+  each other a `skin` block of swaps), Bézier curves,
+  `clockwise` turns (accumulated as DragonBones' parser does) and the
+  sine `tweenEasing` (above 1: Hermite segments of a `curve`, within 1e-7
+  of the sine) come across, and a frame without `tweenEasing` holds as DragonBones holds
   it. Spine's format is not imported (its licence); the module docs of
   `rig2d.rs` give the mapping a converter follows. `og.load.rig2d`
   registers a rig and its texture (`og.anim.rig2dInfo` reads it back;
   `og.anim.clip` finds a clip by name). `og.Skeleton2D` (`rig`, `clip`,
-  `time`, `speed`, `loop`, `flipX`, `layer`, `finished`) plays it through
+  `time`, `speed`, `loop`, `flipX`, `layer`, `skin`, `finished`) plays it through
   the `og.skeleton2d` system, run with the tweens and flipbooks after the
-  game's systems; clip events arrive as `og.Skeleton2DEvent`;
+  game's systems; clip events arrive as `og.Skeleton2DEvent` (a child
+  armature's tagged with its name);
   `og.IkTarget2D` moves a constraint's target (its weight multiplies the
   constraint's) and reads back `reached` and `error`;
   `og.anim.skeleton2dBoxes` answers the bounding boxes the last pose

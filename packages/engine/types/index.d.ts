@@ -11754,6 +11754,12 @@ export interface Skeleton2D {
    */
   layer: number;
   /**
+   * The skin it wears: an index into Rig2DInfo.skins (0 is the rig's default; `rig.skins.indexOf("armor")` finds one by name). A skin shows its own attachment wherever the setup pose or a clip shows the default's; a slot the skin leaves alone shows the default's. Change it any tick: the pose is drawn from it.
+   *
+   * @range 0..
+   */
+  skin: number;
+  /**
    * Written: a clip that does not loop reached its end (or its start, played backwards).
    *
    * @readonly written by the engine
@@ -11762,7 +11768,7 @@ export interface Skeleton2D {
 }
 
 /**
- * A 2D skeleton's clip passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.
+ * A 2D skeleton's clip, or the clip a child armature in one of its slots plays, passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.
  *
  * The payload of the `Skeleton2DEvent` event (token `og.Skeleton2DEvent`).
  */
@@ -11779,6 +11785,10 @@ export interface Skeleton2DEvent {
    * @unit s (seconds of simulation time)
    */
   readonly time: number;
+  /**
+   * Empty for the skeleton's own clip; for an event of a child armature shown in one of its slots, that armature's name (`clip` and `time` are then the child's clip and its time): a flame's crackle apart from the keeper's footsteps (at most 63 bytes).
+   */
+  readonly armature: string;
 }
 
 /**
@@ -11866,6 +11876,10 @@ export interface Rig2DInfo {
   readonly slots: readonly string[];
   /** The IK constraints' names: an index here is IkTarget2D.constraint. */
   readonly constraints: readonly string[];
+  /**
+   * Its skins' names, `default` (the rig's own attachments) first: an index here is Skeleton2D.skin.
+   */
+  readonly skins: readonly string[];
   /** Its clips, in file order. */
   readonly clips: readonly Rig2DClipInfo[];
 }
@@ -22360,9 +22374,9 @@ export declare namespace og {
    * Plays a clip of a 2D rig at the entity: the og.skeleton2d system advances it by scaled time (Time.scaledDt) after the game's systems and fires its events as og.Skeleton2DEvent; extraction draws its slots, in their order, as textured triangles of the sprite batch at `layer` (region attachments as quads, mesh attachments weighted to bones and deformed by the clip), lit by og.Lighting2D when the layer is in its range, as a sprite there is. The rig's pixels are `unit` to a world unit and +y is up; the entity's og.Transform places, turns (about z) and scales it.
    * Changing `clip` restarts at 0 (or at `time`, written in the same tick); writing a different time is a seek and fires no events. The pose is a function of these fields, the Transform and the og.IkTarget2D on it; the playback position is world state (the og.skeleton2d state block).
    */
-  const Skeleton2D: ComponentType<{ readonly rig: FieldSpec<"Rig2D">; readonly clip: FieldSpec<"u32">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly flipX: FieldSpec<"bool">; readonly layer: FieldSpec<"i32">; readonly finished: FieldSpec<"bool"> }, Skeleton2D>;
+  const Skeleton2D: ComponentType<{ readonly rig: FieldSpec<"Rig2D">; readonly clip: FieldSpec<"u32">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly flipX: FieldSpec<"bool">; readonly layer: FieldSpec<"i32">; readonly skin: FieldSpec<"u32">; readonly finished: FieldSpec<"bool"> }, Skeleton2D>;
   /**
-   * A 2D skeleton's clip passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.
+   * A 2D skeleton's clip, or the clip a child armature in one of its slots plays, passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.
    */
   const Skeleton2DEvent: EventType<Skeleton2DEvent>;
   /**

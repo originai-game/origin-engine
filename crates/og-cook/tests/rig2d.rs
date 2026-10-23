@@ -13,7 +13,7 @@
 //! or a Bézier `curve` is dropped or played as a line; a child armature
 //! plays the wrong clip or at its parent's frame rate.
 
-use og_anim::{AttachmentKind, Ease, Rig2dAsset};
+use og_anim::{AttachmentKind, Ease, Rig2dAsset, Turn};
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};
 use std::path::PathBuf;
@@ -210,7 +210,7 @@ fn a_dragonbones_export_becomes_a_rig_with_y_up() {
         (0.5, &Ease::Step)
     );
     assert_eq!(bone.translate[0].ease, Ease::Linear);
-    assert_eq!(bone.rotate[0].value, -15.0);
+    assert_eq!(bone.rotate[0].value.degrees, -15.0);
     assert_eq!(walk.slots[0].attachment, [(0.0, Some(0)), (0.5, Some(1))]);
     assert_eq!(
         walk.deforms[0].keys[0].value,
@@ -385,4 +385,234 @@ fn a_dragonbones_ik_chain_of_any_length_is_imported_root_first() {
         "{tip:?}"
     );
     assert!(p.ik_error[1] < 1e-3);
+}
+
+/// The notes of the rig at `rigs/hero.ogt` of a cooked project.
+fn notes_of(root: &std::path::Path) -> Vec<String> {
+    let report = cook_project(root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    report.assets.iter().flat_map(|a| a.notes.clone()).collect()
+}
+
+/// A one-bone export at 10 frames per second with `spin`'s rotate frames.
+fn spin_export(frames: &str) -> String {
+    format!(
+        r#"{{ "name": "spin", "version": "5.5", "frameRate": 10, "armature": [{{
+  "name": "spin",
+  "bone": [{{ "name": "root" }}, {{ "name": "spin", "parent": "root", "length": 10 }}],
+  "slot": [{{ "name": "s", "parent": "spin" }}],
+  "skin": [{{ "slot": [{{ "name": "s", "display": [{{ "name": "arm" }}] }}] }}],
+  "animation": [{{ "name": "go", "duration": 20, "bone": [{{ "name": "spin", "rotateFrame": {frames} }}] }}]
+}}] }}"#
+    )
+}
+
+fn spin_rig(name: &str, frames: &str) -> (Rig2dAsset, Vec<String>) {
+    let root = project(
+        name,
+        &[
+            ("rigs/hero_tex.png", png(32, 16)),
+            ("rigs/hero_ske.json", spin_export(frames).into_bytes()),
+            ("rigs/hero_tex.json", ATLAS.as_bytes().to_vec()),
+            ("rigs/hero.ogt", IMPORT.as_bytes().to_vec()),
+        ],
+    );
+    let notes = notes_of(&root);
+    (cooked(&root).load_rig2d("rigs/hero.ogt").unwrap(), notes)
+}
+
+/// The bone `spin`'s angle (degrees, counter-clockwise, y up) at `t`.
+fn spin_angle(rig: &Rig2dAsset, t: f32) -> f64 {
+    let p = rig.pose(Some(&rig.clips[0]), t, &[]);
+    f64::from(p.world[1].b)
+        .atan2(f64::from(p.world[1].a))
+        .to_degrees()
+}
+
+/// DragonBones' `clockwise` turns more than half a turn between frames;
+/// the old import played the shorter way and noted it.
+#[test]
+fn a_dragonbones_clockwise_turn_plays_its_whole_turns() {
+    // DragonBones (y down, clockwise positive): 0 with clockwise 2, then 30
+    // with clockwise -1, then -60. Its parser makes the second angle the
+    // first at or past 0 going up, plus one more turn: 390 (390 degrees
+    // clockwise on screen); the third the first at or below 390 going
+    // down: -60 (450 degrees counter-clockwise). Here (y up) the bone turns
+    // -390 in the first second and +450 in the next.
+    let (rig, notes) = spin_rig(
+        "dragonbones-clockwise",
+        r#"[{ "duration": 10, "tweenEasing": 0, "rotate": 0, "clockwise": 2 },
+            { "duration": 10, "tweenEasing": 0, "rotate": 30, "clockwise": -1 },
+            { "duration": 0, "rotate": -60 }]"#,
+    );
+    let keys = &rig.clips[0].bones[0].rotate;
+    assert_eq!(
+        keys.iter()
+            .map(|k| (k.value.degrees, k.value.turn))
+            .collect::<Vec<_>>(),
+        [
+            (0.0, Turn::Clockwise(1)),
+            (-30.0, Turn::Counterclockwise(1)),
+            (60.0, Turn::Shorter)
+        ]
+    );
+    let same = |a: f64, b: f64| (a - b).rem_euclid(360.0).min((b - a).rem_euclid(360.0)) < 1e-3;
+    for (t, want) in [
+        (0.25, -97.5),
+        (0.5, -195.0),
+        (0.9, -351.0),
+        (1.5, -390.0 + 225.0),
+        (1.8, -390.0 + 360.0),
+    ] {
+        let got = spin_angle(&rig, t);
+        assert!(same(got, want), "at {t}: {got}, not {want}");
+    }
+    assert!(
+        !notes
+            .iter()
+            .any(|n| n.contains("half a turn") || n.contains("clockwise")),
+        "{notes:?}"
+    );
+}
+
+/// `tweenEasing` above 1 is DragonBones' sine in-out blended with the line
+/// by `tweenEasing - 1`; the old import played smoothstep (within 0.011 of
+/// it, a degree of a 90-degree turn) and noted it.
+#[test]
+fn a_dragonbones_sine_ease_plays_the_sine_at_every_tick() {
+    let (rig, notes) = spin_rig(
+        "dragonbones-sine",
+        r#"[{ "duration": 10, "tweenEasing": 2, "rotate": 0 }, { "duration": 10, "tweenEasing": 2.5, "rotate": 90 }, { "duration": 0, "rotate": 100 }]"#,
+    );
+    // DragonBones' _getEasingValue for QuadInOut, written out here.
+    let sine = |s: f64, a: f64| s + a * (0.5 * (1.0 - (std::f64::consts::PI * s).cos()) - s);
+    let mut worst = 0.0f64;
+    for tick in 0..=120 {
+        let t = tick as f64 / 60.0;
+        // Clockwise on screen with y down is negative here.
+        let want = if t <= 1.0 {
+            -90.0 * sine(t, 1.0)
+        } else {
+            -90.0 - 10.0 * sine(t - 1.0, 1.5)
+        };
+        let got = spin_angle(&rig, t as f32);
+        worst = worst.max((got - want).abs());
+    }
+    assert!(worst < 1e-4, "the sine is missed by {worst} degrees");
+    assert!(
+        !notes.iter().any(|n| n.contains("tweenEasing")),
+        "{notes:?}"
+    );
+}
+
+/// A DragonBones path display and path constraint (the old import noted
+/// the display as not imported and had no path constraint at all).
+#[test]
+fn a_dragonbones_path_constraint_places_its_bones_on_the_path_display() {
+    // y down there: the curve from (0, 0) through (0, -10) and (10, -10)
+    // to (10, 0) is, here, the one through (0, 10) and (10, 10).
+    let ske = r#"{ "name": "rail", "version": "5.5", "frameRate": 10, "armature": [{
+  "name": "rail",
+  "bone": [{ "name": "root" },
+    { "name": "a", "parent": "root", "length": 8, "transform": { "x": -40, "y": -3, "skY": 30 } },
+    { "name": "b", "parent": "a", "length": 8, "transform": { "x": 8 } }],
+  "slot": [{ "name": "rail", "parent": "root" }],
+  "skin": [{ "slot": [{ "name": "rail", "display": [
+    { "name": "rail", "type": "path", "closed": false, "constantSpeed": false, "lengths": [20],
+      "vertices": [0, 10, 0, 0, 0, -10, 10, -10, 10, 0, 10, 10] }] }] }],
+  "path": [{ "name": "follow", "target": "rail", "bones": ["a", "b"],
+    "positionMode": "percent", "spacingMode": "percent", "rotateMode": "tangent", "position": 0, "spacing": 0.25 }],
+  "animation": [{ "name": "still", "duration": 1 }]
+}] }"#;
+    let root = project(
+        "dragonbones-path",
+        &[
+            ("rigs/hero_tex.png", png(32, 16)),
+            ("rigs/hero_ske.json", ske.as_bytes().to_vec()),
+            ("rigs/hero_tex.json", ATLAS.as_bytes().to_vec()),
+            ("rigs/hero.ogt", IMPORT.as_bytes().to_vec()),
+        ],
+    );
+    let notes = notes_of(&root);
+    assert!(
+        !notes.iter().any(|n| n.contains("not imported")),
+        "{notes:?}"
+    );
+    let rig = cooked(&root).load_rig2d("rigs/hero.ogt").unwrap();
+    assert_eq!(rig.paths.len(), 1);
+    let p = rig.pose(None, 0.0, &[]);
+    // Worked by hand (Bernstein form): a at t 0.25, (1.5625, 5.625), along
+    // the tangent (3.75, 5), 53.130102 degrees; b at t 0.5, (5, 7.5), level.
+    let angle = |m: &og_anim::Affine2| f64::from(m.b).atan2(f64::from(m.a)).to_degrees();
+    let (a, b) = (p.world[1], p.world[2]);
+    assert!(
+        (a.tx - 1.5625).abs() < 1e-4 && (a.ty - 5.625).abs() < 1e-4,
+        "{a:?}"
+    );
+    assert!((angle(&a) - 53.130_102).abs() < 1e-3, "{}", angle(&a));
+    assert!(
+        (b.tx - 5.0).abs() < 1e-4 && (b.ty - 7.5).abs() < 1e-4,
+        "{b:?}"
+    );
+    assert!(angle(&b).abs() < 1e-3, "{}", angle(&b));
+}
+
+/// Every skin of an export (the old import read the first only): the one
+/// named `default` is the rig's own, each other one a skin of swaps.
+#[test]
+fn every_dragonbones_skin_is_imported_and_the_default_comes_first() {
+    let ske = r#"{ "name": "kit", "version": "5.5", "frameRate": 10, "armature": [{
+  "name": "kit",
+  "bone": [{ "name": "root" }],
+  "slot": [{ "name": "body", "parent": "root", "displayIndex": 0 }, { "name": "hat", "parent": "root" }],
+  "skin": [
+    { "name": "armor", "slot": [
+      { "name": "body", "display": [{ "name": "plate", "path": "cloth" }, null] },
+      { "name": "hat", "display": [null] } ] },
+    { "name": "default", "slot": [
+      { "name": "body", "display": [{ "name": "shirt", "path": "arm" }, { "name": "vest", "path": "arm" }] },
+      { "name": "hat", "display": [{ "name": "cap", "path": "arm" }] } ] }
+  ],
+  "animation": [{ "name": "swap", "duration": 10, "slot": [{ "name": "body",
+    "displayFrame": [{ "duration": 5, "value": 0 }, { "duration": 5, "value": 1 }] }] }]
+}] }"#;
+    let root = project(
+        "dragonbones-skins",
+        &[
+            ("rigs/hero_tex.png", png(32, 16)),
+            ("rigs/hero_ske.json", ske.as_bytes().to_vec()),
+            ("rigs/hero_tex.json", ATLAS.as_bytes().to_vec()),
+            ("rigs/hero.ogt", IMPORT.as_bytes().to_vec()),
+        ],
+    );
+    let rig = cooked(&root).load_rig2d("rigs/hero.ogt").unwrap();
+    let id = |n: &str| {
+        rig.attachments
+            .iter()
+            .position(|a| a.name == n)
+            .unwrap_or_else(|| panic!("{n}"))
+    };
+    // The default skin (named so, though second in the file) is the rig's own.
+    assert_eq!(rig.slots[0].attachment, Some(id("shirt")));
+    assert_eq!(rig.skins.len(), 1);
+    assert_eq!(rig.skins[0].name, "armor");
+    assert_eq!(
+        rig.skins[0].swaps,
+        [
+            (id("shirt"), Some(id("armor/plate"))),
+            (id("vest"), None),
+            (id("cap"), None)
+        ]
+    );
+    let walk = &rig.clips[0];
+    let shows = |skin: u32, t: f32| rig.pose_in_skin(Some(walk), t, &[], skin).slots;
+    assert_eq!(shows(0, 0.2), [Some(id("shirt")), Some(id("cap"))]);
+    assert_eq!(shows(0, 0.7), [Some(id("vest")), Some(id("cap"))]);
+    // Armor: the plate (the cloth sub-texture) for the shirt, nothing for the vest or the cap.
+    assert_eq!(shows(1, 0.2), [Some(id("armor/plate")), None]);
+    assert_eq!(shows(1, 0.7), [None, None]);
+    match &rig.attachments[id("armor/plate")].kind {
+        AttachmentKind::Region { rect, .. } => assert_eq!(*rect, [16.0, 0.0, 16.0, 16.0]),
+        k => panic!("{k:?}"),
+    }
 }

@@ -23376,6 +23376,14 @@
           "description": "The sprite layer it draws in, sorted with the sprites there (after them when they share the layer).",
           "default": 0
         },
+        "skin": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The skin it wears: an index into Rig2DInfo.skins (0 is the rig's default; `rig.skins.indexOf(\"armor\")` finds one by name). A skin shows its own attachment wherever the setup pose or a clip shows the default's; a slot the skin leaves alone shows the default's. Change it any tick: the pose is drawn from it.",
+          "default": 0,
+          "minimum": 0
+        },
         "finished": {
           "type": "boolean",
           "description": "Written: a clip that does not loop reached its end (or its start, played backwards).",
@@ -23388,7 +23396,7 @@
     "Skeleton2DEvent": {
       "x-og-kind": "event",
       "x-og-module": "anim",
-      "description": "A 2D skeleton's clip passed one of its events (`event 0.2 \"step\"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.",
+      "description": "A 2D skeleton's clip, or the clip a child armature in one of its slots plays, passed one of its events (`event 0.2 \"step\"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.",
       "type": "object",
       "properties": {
         "entity": {
@@ -23409,13 +23417,18 @@
           "type": "number",
           "description": "The event's time in the clip.",
           "x-og-unit": "s"
+        },
+        "armature": {
+          "type": "string",
+          "description": "Empty for the skeleton's own clip; for an event of a child armature shown in one of its slots, that armature's name (`clip` and `time` are then the child's clip and its time): a flame's crackle apart from the keeper's footsteps (at most 63 bytes)."
         }
       },
       "required": [
         "entity",
         "clip",
         "name",
-        "time"
+        "time",
+        "armature"
       ],
       "additionalProperties": false
     },
@@ -23559,6 +23572,13 @@
           },
           "description": "The IK constraints' names: an index here is IkTarget2D.constraint."
         },
+        "skins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its skins' names, `default` (the rig's own attachments) first: an index here is Skeleton2D.skin."
+        },
         "clips": {
           "type": "array",
           "items": {
@@ -23574,6 +23594,7 @@
         "bones",
         "slots",
         "constraints",
+        "skins",
         "clips"
       ],
       "additionalProperties": false
