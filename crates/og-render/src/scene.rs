@@ -697,9 +697,11 @@ pub enum LightKind {
     /// on `position`, spanning `±half_width` and `±half_height` (world
     /// vectors along its sides), emitting `color * intensity` as radiance
     /// along `-(half_width × half_height)`, and from its back as well when
-    /// `two_sided`. Shaded with linearly transformed cosines; it never
-    /// casts a shadow map (`cast_shadows` is ignored) and fades to zero at
-    /// `range` as the other lights do.
+    /// `two_sided`. Shaded with linearly transformed cosines; with
+    /// `cast_shadows` it takes one local shadow layer (two when two-sided):
+    /// a [`crate::RECT_SHADOW_FOV`] view from its centre along its normal,
+    /// read with a penumbra that widens with the rectangle's size (area.rs).
+    /// It fades to zero at `range` as the other lights do.
     Rect {
         half_width: Vec3,
         half_height: Vec3,

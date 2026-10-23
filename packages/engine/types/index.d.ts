@@ -7461,7 +7461,7 @@ export interface PostError {
 export type VolumetricFog = "froxel" | "raymarch";
 
 /**
- * A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light.
+ * A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. With castShadow it casts a soft shadow in the frame; og bake lightmaps traces its exact soft shadows into the bounce light either way.
  * Area lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches as far as its brightness carries (where it would light a white surface facing it at one hundredth of one), and fades smoothly to zero there.
  *
  * The value of the `RectLight` component (token `og.RectLight`).
@@ -7501,6 +7501,10 @@ export interface RectLight {
   height: number;
   /** Emit from the back face as well (a hanging panel lit both ways). */
   twoSided: boolean;
+  /**
+   * Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp where a caster touches its receiver and widening with the rectangle's size away from it. The view is from the centre, so a caster close to a large panel is shadowed as from its centre.
+   */
+  castShadow: boolean;
 }
 
 /**
@@ -21389,10 +21393,10 @@ export declare namespace og {
    */
   const Mirror: ComponentType<{ readonly target: FieldSpec<"RenderTarget">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly every: FieldSpec<"u32">; readonly active: FieldSpec<"bool"> }, Mirror>;
   /**
-   * A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light.
+   * A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. With castShadow it casts a soft shadow in the frame; og bake lightmaps traces its exact soft shadows into the bounce light either way.
    * Area lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches as far as its brightness carries (where it would light a white surface facing it at one hundredth of one), and fades smoothly to zero there.
    */
-  const RectLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly twoSided: FieldSpec<"bool"> }, RectLight>;
+  const RectLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly twoSided: FieldSpec<"bool">; readonly castShadow: FieldSpec<"bool"> }, RectLight>;
   /**
    * A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (bounced off its static models, from the sky, from emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every mesh, model, skinned character and particle-lit surface drawn inside it that has no lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing: a ball rolling past a red wall turns red on that side.
    * The box is size metres centred on the entity, axis-aligned in world space (its rotation and scale are ignored). Its probes are the scene's: unbaked (no bake since the volume was added, moved or resized) it lights nothing and og doctor --project names the scene.

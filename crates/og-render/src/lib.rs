@@ -111,7 +111,7 @@ pub mod gltf;
 #[cfg(not(target_arch = "wasm32"))]
 mod headless;
 
-pub use area::{CookieLayers, LightCookie, MAX_COOKIE_LAYERS, cookie_layers};
+pub use area::{CookieLayers, LightCookie, MAX_COOKIE_LAYERS, RECT_SHADOW_FOV, cookie_layers};
 pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
 pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
 pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS, UNIFORM_LIGHT_REFS};
@@ -4050,7 +4050,7 @@ impl Renderer {
                 .map(|l| match l.kind {
                     LightKind::Point => self.info.point_shadows.layers(),
                     LightKind::Spot { .. } => 1,
-                    LightKind::Rect { .. } => 0,
+                    LightKind::Rect { two_sided, .. } => 1 + two_sided as usize,
                 })
                 .sum::<usize>()
                 .min(capacity)
@@ -5310,7 +5310,7 @@ impl Renderer {
                 .map(|l| match l.kind {
                     LightKind::Point => self.info.point_shadows.layers(),
                     LightKind::Spot { .. } => 1,
-                    LightKind::Rect { .. } => 0,
+                    LightKind::Rect { two_sided, .. } => 1 + two_sided as usize,
                 })
                 .sum::<usize>()
                 .min(shadows::capacity(

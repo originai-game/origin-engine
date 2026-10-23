@@ -235,8 +235,9 @@ fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3
   if (light.color_kind.w < -0.5) {
     // A rect light (area.wgsl) on the base lobes.
     let a = area_shade(light, s, p, n, v);
-    o.diffuse = a.diffuse;
-    o.specular = a.specular;
+    let shadow = select(1.0, rect_shadow(light, p, n), receives);
+    o.diffuse = a.diffuse * shadow;
+    o.specular = a.specular * shadow;
     return o;
   }
   let to_light = light.position_range.xyz - p;

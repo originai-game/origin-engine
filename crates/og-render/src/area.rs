@@ -7,7 +7,19 @@
 //! table is one 16 KiB uniform: frame binding 11, no texture slot taken
 //! from WebGL2's full skinned pipeline). Its record in the light table:
 //! `color_kind.w` -1 one-sided, -2 two-sided; the half-width vector in
-//! `direction_slot.xyz` (no shadow slot); the half-height in `cone.xyz`.
+//! `direction_slot.xyz` and its shadow slot in `.w` (-1: none); the
+//! half-height in `cone.xyz`. A rect light with `cast_shadows` takes one
+//! layer of the local shadow array (its back a second when two-sided): a
+//! [`RECT_SHADOW_FOV`] perspective view from its centre along its normal,
+//! storing distance / range as every local shadow does, and counted in the
+//! shadowed lights' budget. area.wgsl's `rect_shadow` reads it as
+//! percentage-closer soft shadows: a 16-tap blocker search, then 24
+//! bilinear taps (each pixel's spiral turned by a hash of its position)
+//! over the penumbra the rectangle casts past the blockers (half-size ×
+//! (receiver − blocker) / blocker as the radius), so contact shadows are sharp
+//! and far ones soft. The view is from the centre, so a caster close to a
+//! large panel is shadowed as from its centre with the penumbra widened by
+//! the panel's extent, not by its true view of each part of the panel.
 //! Terrain, scattered copies and the 3D fluid light them the same way
 //! through area.wgsl's `surface_local_light` (with the points' and spots'
 //! cookies).
@@ -31,6 +43,12 @@ pub struct LightCookie {
     pub light: usize,
     pub texture: TextureHandle,
 }
+
+/// The field of view (degrees) of a shadowed rect light's shadow view from
+/// its centre along its normal: a rect emits into a hemisphere, which a
+/// perspective view cannot hold; past 75° from the normal the light falls
+/// with the cosine to a quarter and the receivers there stay unshadowed.
+pub const RECT_SHADOW_FOV: f32 = 150.0;
 
 /// The most local shadow array layers cookies take.
 pub const MAX_COOKIE_LAYERS: usize = 24;
@@ -379,13 +397,14 @@ pub(crate) fn rect_record(
     half_width: glam::Vec3,
     half_height: glam::Vec3,
     two_sided: bool,
+    slot: f32,
 ) -> LightGpu {
     LightGpu {
         position_range: position.extend(range).to_array(),
         color_kind: radiance
             .extend(if two_sided { -2.0 } else { -1.0 })
             .to_array(),
-        direction_slot: half_width.extend(-1.0).to_array(),
+        direction_slot: half_width.extend(slot).to_array(),
         cone: half_height.extend(0.0).to_array(),
     }
 }

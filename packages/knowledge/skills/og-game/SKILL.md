@@ -2296,8 +2296,12 @@ sample (64 for the froxel grid, 8 for the raymarch, brightest first).
 **Area lights.** `og.RectLight { width, height, color, intensity,
 twoSided }` emits from a rectangle facing the entity's -Z. Aim it with
 `og.transform.lookAt`, as you would a spot. A glossy floor shows the
-rectangle's shape in its highlight. Rect lights cast no shadows, so pair
-one with an emissive slab for the fixture.
+rectangle's shape in its highlight. Pair one with an emissive slab for
+the fixture. Set `castShadow` for a soft shadow: sharp where a caster
+touches the floor, widening with the panel's size away from it. It takes
+one shadow layer (two when `twoSided`) from the same budget as shadowed
+spots and points, and is drawn from the panel's centre, so a caster right
+against a large panel is shadowed as from its middle.
 
 **Cookies.** `SpotLight.cookie` is a texture projected along the cone,
 like a window's lattice or stained glass. `PointLight.cookie` is six

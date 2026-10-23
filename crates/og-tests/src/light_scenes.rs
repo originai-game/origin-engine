@@ -796,3 +796,47 @@ pub fn rect_meadow_scene(grass: bool) -> (RenderScene, [Vec3; 2]) {
         [ground(foot - side * 2.5), ground(foot + side * 2.5)],
     )
 }
+
+/// A shadowed rect light: a 1.6 m square panel facing down 3 m over a
+/// matte floor and 1.2 m to the left of a 2 m post standing on it, the
+/// panel's emissive slab drawn where it is. With `cast` the post throws a
+/// shadow to the right, sharp at its foot and widening into penumbra
+/// toward its tip (x 2.4); without, the floor is lit through it. Returns
+/// the scene and floor points along the shadow's axis: by the post's foot
+/// and near the tip.
+pub fn rect_shadow_scene(cast: bool) -> (RenderScene, [Vec3; 2]) {
+    let mut scene = RenderScene::new();
+    dark(&mut scene, 0.02);
+    put(
+        &mut scene,
+        shapes::plane(14.0, 1.0),
+        matte(Vec3::splat(0.6), 0.9),
+        Mat4::IDENTITY,
+    );
+    put(
+        &mut scene,
+        shapes::cuboid(Vec3::new(0.3, 2.0, 0.3)),
+        matte(Vec3::new(0.7, 0.3, 0.2), 0.8),
+        Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0)),
+    );
+    // Facing down: right × up = +y, so up is -z.
+    let mut panel = rect(
+        Vec3::new(-1.2, 3.0, 0.0),
+        Vec3::X,
+        Vec3::NEG_Z,
+        (1.6, 1.6),
+        Vec3::new(1.0, 0.9, 0.75),
+        4.0,
+        false,
+    );
+    panel.cast_shadows = cast;
+    fixture(&mut scene, &panel);
+    scene.lights = vec![panel];
+    scene.camera = Camera {
+        position: Vec3::new(0.6, 4.5, 5.5),
+        target: Vec3::new(0.6, 0.3, 0.0),
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    (scene, [Vec3::new(0.45, 0.0, 0.0), Vec3::new(2.1, 0.0, 0.0)])
+}

@@ -130,7 +130,92 @@ fn area_shade(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3
 
 fn area_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
   let o = area_shade(light, s, p, n, v);
-  return o.diffuse + o.specular;
+  return (o.diffuse + o.specular) * rect_shadow(light, p, n);
+}
+
+// tan(RECT_SHADOW_FOV / 2): the half-width of a rect shadow view at a
+// distance of one metre (area.rs; 150°).
+const RECT_SHADOW_TAN: f32 = 3.7320508;
+
+// The tap at i of n on a unit disc (a golden-angle spiral turned by
+// `turn` radians).
+fn rect_shadow_tap(i: u32, n: u32, turn: f32) -> vec2<f32> {
+  let r = sqrt((f32(i) + 0.5) / f32(n));
+  let a = f32(i) * 2.3999632 + turn;
+  return vec2<f32>(cos(a), sin(a)) * r;
+}
+
+// A turn in [0, 2π) hashed from a world position's bits (PCG): each
+// pixel's spiral turned its own way, so the few taps over a wide penumbra
+// read as fine grain instead of copies of the caster.
+fn rect_shadow_turn(p: vec3<f32>) -> f32 {
+  var h = bitcast<u32>(p.x) ^ (bitcast<u32>(p.y) * 0x9e3779b9u) ^ (bitcast<u32>(p.z) * 0x85ebca6bu);
+  h = h * 747796405u + 2891336453u;
+  h = ((h >> ((h >> 28u) + 4u)) ^ h) * 277803737u;
+  h = (h >> 22u) ^ h;
+  return f32(h >> 8u) * (6.2831853 / 16777216.0);
+}
+
+// How much of a shadowed rect light reaches p (normal n): 1 without a
+// shadow slot (direction_slot.w < 0). Its layer (the back's next when
+// two-sided) is a perspective view from the centre storing distance /
+// range; read as PCSS: 16 taps find the mean blocker distance within the
+// light's footprint, then 24 bilinear taps filter over the penumbra the
+// rectangle's size casts, size × (receiver - blocker) / blocker (taps
+// over a disc whose radius is half of it).
+fn rect_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
+  let slot = i32(light.direction_slot.w);
+  if (slot < 0) { return 1.0; }
+  let center = light.position_range.xyz;
+  let range = light.position_range.w;
+  let hw = light.direction_slot.xyz;
+  let hh = light.cone.xyz;
+  let to = p - center;
+  var layer = u32(slot);
+  if (dot(to, cross(hw, hh)) > 0.0) {
+    // Behind its face: lit only from the back of a two-sided panel.
+    if (light.color_kind.w > -1.5) { return 1.0; }
+    layer += 1u;
+  }
+  let dist = length(to);
+  // Normal offset: about two texels of the view at this distance.
+  let texels = f32(textureDimensions(local_shadow_map).x);
+  let offset = p + n * (4.0 * RECT_SHADOW_TAN / texels) * dist;
+  let clip = frame.local_view_proj[layer] * vec4<f32>(offset, 1.0);
+  if (clip.w <= 0.0) { return 1.0; }
+  let ndc = clip.xy / clip.w;
+  let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+  if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) { return 1.0; }
+  let receiver = length(offset - center);
+  let ref_depth = receiver / range - 0.002;
+  // The rectangle's half-width (the taps' disc is a radius), in the
+  // view's uv at the receiver.
+  let size = max(length(hw), length(hh));
+  let per_metre = 1.0 / (2.0 * receiver * RECT_SHADOW_TAN);
+  let texel = 1.0 / texels;
+  let search = clamp(size * per_metre, 2.0 * texel, 48.0 * texel);
+  let size_i = vec2<i32>(textureDimensions(local_shadow_map));
+  let turn = rect_shadow_turn(p);
+  var blockers = 0.0;
+  var count = 0.0;
+  for (var i = 0u; i < 16u; i++) {
+    let q = clamp(uv + rect_shadow_tap(i, 16u, turn) * search, vec2<f32>(0.0), vec2<f32>(1.0));
+    let at = clamp(vec2<i32>(q * vec2<f32>(size_i)), vec2<i32>(0), size_i - 1);
+    let d = textureLoad(local_shadow_map, at, i32(layer), 0).r;
+    if (d < ref_depth) {
+      blockers += d;
+      count += 1.0;
+    }
+  }
+  if (count < 0.5) { return 1.0; }
+  let blocker = max(blockers / count * range, 1e-3);
+  let penumbra = clamp(size * (receiver - blocker) / blocker * per_metre, texel, 48.0 * texel);
+  var lit = 0.0;
+  for (var i = 0u; i < 24u; i++) {
+    let q = clamp(uv + rect_shadow_tap(i, 24u, turn) * penumbra, vec2<f32>(0.0), vec2<f32>(1.0));
+    lit += pcf(local_shadow_map, q, layer, ref_depth);
+  }
+  return lit / 24.0;
 }
 
 fn cookie_texel(layer: u32, at: vec2<i32>) -> vec3<f32> {

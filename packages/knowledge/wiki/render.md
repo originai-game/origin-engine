@@ -157,7 +157,7 @@ module render {
 | [`PostError`](#type-PostError) | struct | A custom post pass the device failed to compile. |
 | [`og.render.postErrors`](#fn-postErrors) | function | The custom post passes PostEffects.custom1 to custom4 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal. |
 | [`VolumetricFog`](#type-VolumetricFog) | enum | How the device draws Fog.volumetric (RenderCapabilities.volumetricFog). |
-| [`og.RectLight`](#record-RectLight) | component | A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light. |
+| [`og.RectLight`](#record-RectLight) | component | A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. With castShadow it casts a soft shadow in the frame; og bake lightmaps traces its exact soft shadows into the bounce light either way. |
 | [`og.LightVolume`](#record-LightVolume) | component | A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (bounced off its static models, from the sky, from emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every mesh, model, skinned character and particle-lit surface drawn inside it that has no lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing: a ball rolling past a red wall turns red on that side. |
 | [`BakedScene`](#type-BakedScene) | struct | One instantiated scene's baked lighting, as og.render.bakedLighting reports it. |
 | [`og.render.bakedLighting`](#fn-bakedLighting) | function | The baked lighting of every scene instantiated in the world, in instantiation order: whether it is drawn, and why not. A scene with no static model and no LightVolume is not listed. |
@@ -1162,7 +1162,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 4799</sub>
+<sub>`api.ogt` line 4800</sub>
 
 ## Components, resources and events
 
@@ -2963,7 +2963,7 @@ component Mirror {
 
 ### `og.RectLight` (component)
 
-A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light.
+A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. With castShadow it casts a soft shadow in the frame; og bake lightmaps traces its exact soft shadows into the bounce light either way.
 
 Area lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches as far as its brightness carries (where it would light a white surface facing it at one hundredth of one), and fades smoothly to zero there.
 
@@ -2976,10 +2976,11 @@ Token `og.RectLight`, registered under the schema name `og.RectLight`; its value
 | `width` | `number` | `10` | ≥ 0 | `m` | tunable | Its size along the entity's local x, as RectAreaLight.width. |
 | `height` | `number` | `10` | ≥ 0 | `m` | tunable | Its size along the entity's local y, as RectAreaLight.height. |
 | `twoSided` | `boolean` | `false` | — | — | — | Emit from the back face as well (a hanging panel lit both ways). |
+| `castShadow` | `boolean` | `false` | — | — | — | Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp where a caster touches its receiver and widening with the rectangle's size away from it. The view is from the centre, so a caster close to a large panel is shadowed as from its centre. |
 
 ```ogt
 component RectLight {
-  doc "A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. It casts no shadow map in the frame; og bake lightmaps traces it with its soft shadows into the bounce light."
+  doc "A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. With castShadow it casts a soft shadow in the frame; og bake lightmaps traces its exact soft shadows into the bounce light either way."
   doc "Area lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches as far as its brightness carries (where it would light a white surface facing it at one hundredth of one), and fades smoothly to zero there."
   field color Color "The light's linear colour." {
     default 1 1 1
@@ -3002,6 +3003,7 @@ component RectLight {
     tunable true
   }
   field twoSided bool "Emit from the back face as well (a hanging panel lit both ways)."
+  field castShadow bool "Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp where a caster touches its receiver and widening with the rectangle's size away from it. The view is from the centre, so a caster close to a large panel is shadowed as from its centre."
 }
 ```
 
@@ -3039,7 +3041,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 4772</sub>
+<sub>`api.ogt` line 4773</sub>
 
 ## Types
 
@@ -5222,7 +5224,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 4787</sub>
+<sub>`api.ogt` line 4788</sub>
 
 ## Column kinds
 

@@ -105,7 +105,7 @@ pub(crate) fn rect_light(m: Mat4, v: &Value) -> og_render::Light {
         range: reach
             .max((half_width + half_height).length() * 2.0)
             .max(0.1),
-        cast_shadows: false,
+        cast_shadows: on(v, "castShadow", false),
     }
 }
 

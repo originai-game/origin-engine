@@ -437,8 +437,18 @@ Baked lighting, volumetrics and area lights (depth S7).
   lights and shaded with linearly transformed cosines (Heitz et al.'s GGX
   fit, `third_party/ltc`, resampled to 32 × 32 half floats in one 16 KiB
   uniform). Their highlight on a glossy surface is the rectangle's shape.
-  They cast no shadows. Terrain, scattered copies and 3D fluids shade
-  them with LTC too (and take point and spot cookies), through one
+  With `castShadow` one takes a layer of the local shadow array (two when
+  two-sided, counted in the shadowed lights' budget): a 150° perspective
+  view from its centre along its normal (`RECT_SHADOW_FOV`), read as
+  percentage-closer soft shadows (`rect_shadow`): 16 taps find the mean
+  blocker distance, then 24 bilinear taps, each pixel's spiral turned by
+  a hash of its position, filter over the penumbra the rectangle casts,
+  half-size × (receiver − blocker) / blocker. A contact shadow is sharp
+  and a far one soft; the view is from the centre, so a caster close to
+  a large panel is shadowed as from its centre with its penumbra widened
+  by the panel's extent, and receivers past 75° from the normal stay
+  unshadowed. Terrain, scattered copies and 3D fluids shade them with
+  LTC and their shadow too (and take point and spot cookies), through one
   shared `surface_local_light` in `area.wgsl`; a full custom shader
   (`custom_lit.wgsl`) still lights them as a point.
 - **Light cookies** (`SpotLight.cookie`, `PointLight.cookie`, a cube of

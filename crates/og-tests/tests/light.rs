@@ -288,3 +288,43 @@ fn terrain_and_scatter_light_rect_lights_as_areas() {
         );
     }
 }
+
+/// A rect light with cast_shadows throws a soft shadow (area.wgsl's
+/// rect_shadow): the floor by the post's foot is dark where the unshadowed
+/// light reaches it, and toward the shadow's tip the rectangle's penumbra
+/// fills it in, so a hard shadow from its centre fails as surely as none.
+#[test]
+fn a_shadowed_rect_light_casts_a_soft_shadow() {
+    let read = |cast: bool| {
+        let (scene, points) = og_tests::light_scenes::rect_shadow_scene(cast);
+        let mut built = og_tests::scenes::build("baked-cornell").expect("build");
+        built.scene = scene;
+        let img = gfx::render_built(&mut built).expect("render").image;
+        if let Ok(dir) = std::env::var("OG_RECT_SHADOW_OUT") {
+            gfx::save_png(
+                std::path::Path::new(&format!("{dir}/rect-shadow-{cast}.png")),
+                &img,
+            )
+            .expect("save");
+        }
+        points.map(|p| {
+            let (x, y) = project(&built.scene.camera, p);
+            let c = mean(&img, x - 4, y - 3, x + 4, y + 3);
+            0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+        })
+    };
+    let [foot_open, tip_open] = read(false);
+    let [foot, tip] = read(true);
+    println!(
+        "unshadowed: foot {foot_open:.1}, tip {tip_open:.1}; shadowed: foot {foot:.1}, tip {tip:.1}"
+    );
+    assert!(
+        foot < 0.35 * foot_open,
+        "no shadow at the post's foot ({foot:.1} against {foot_open:.1} unshadowed)"
+    );
+    let (foot_k, tip_k) = (foot / foot_open, tip / tip_open);
+    assert!(
+        tip_k > foot_k + 0.2 && tip_k < 0.95,
+        "the shadow does not soften toward its tip (foot {foot_k:.2}, tip {tip_k:.2} of unshadowed)"
+    );
+}

@@ -371,7 +371,10 @@ fn toon_light(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, shadow: f32)
 // (look_receives).
 fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, receives: bool) -> vec3<f32> {
   // A rect light (area.wgsl): linearly transformed cosines, no shadow map.
-  if (light.color_kind.w < -0.5) { return area_light(light, s, p, n, v); }
+  if (light.color_kind.w < -0.5) {
+    let a = area_shade(light, s, p, n, v);
+    return (a.diffuse + a.specular) * select(1.0, rect_shadow(light, p, n), receives);
+  }
   let to_light = light.position_range.xyz - p;
   let d2 = max(dot(to_light, to_light), 1e-4);
   let range = light.position_range.w;

@@ -80,6 +80,9 @@ fn locals_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>, most: u32) -> vec3<f
       var facing = dot(l, normalize(side));
       if (kind < -1.5) { facing = abs(facing); }
       atten *= area * max(facing, 0.0);
+      if (atten > 0.0) {
+        atten *= rect_shadow(light, p, l);
+      }
     } else {
       if (kind > 0.5) {
         let t = clamp((dot(-l, light.direction_slot.xyz) - light.cone.x) * light.cone.y, 0.0, 1.0);
