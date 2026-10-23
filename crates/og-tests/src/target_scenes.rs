@@ -462,10 +462,13 @@ pub fn depth_scene() -> RenderScene {
 pub enum ViewFx {
     /// An orange ribbon across a perspective view.
     Ribbon,
+    /// A white sprite on a 2D-lit layer under a dark ambient and a warm
+    /// light to its upper right (off: the frame without 2D lighting).
+    Lit2d,
 }
 
 impl ViewFx {
-    pub const ALL: [ViewFx; 1] = [ViewFx::Ribbon];
+    pub const ALL: [ViewFx; 2] = [ViewFx::Ribbon, ViewFx::Lit2d];
 }
 
 /// A dark grey wall at z = -1 and the effect `fx` (`on` false: the scene
@@ -515,7 +518,28 @@ pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
                     blend: og_render::ParticleBlend::Alpha,
                 });
             }
+            ViewFx::Lit2d => {
+                scene.lighting_2d = Some(og_render::Lighting2d {
+                    ambient: Vec3::splat(0.05),
+                    ..Default::default()
+                });
+                scene.lights_2d.push(og_render::Light2d {
+                    position: glam::Vec2::new(0.8, 0.6),
+                    color: Vec3::new(1.0, 0.7, 0.4),
+                    intensity: 2.0,
+                    radius: 2.2,
+                    ..Default::default()
+                });
+            }
         }
+    }
+    if fx == ViewFx::Lit2d {
+        scene.add_sprite(og_render::Sprite {
+            position: Vec3::ZERO,
+            size: glam::Vec2::new(3.0, 3.0),
+            color: [0.9, 0.9, 0.9, 1.0],
+            ..Default::default()
+        });
     }
     scene.views.push(View {
         camera,

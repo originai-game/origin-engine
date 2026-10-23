@@ -5412,9 +5412,9 @@ impl Renderer {
         )?;
         // Each view's world sprites, 2D particles and text on its layers
         // (views.rs), their instances after the main camera's in the
-        // sprite buffer. 2D lighting, glow and the metaball composite read
-        // the main frame's screen: a view draws its sprites unlit, without
-        // glow, and leaves the 2D fluids out.
+        // sprite buffer, lit by the view's own 2D light map. Glow and the
+        // metaball composite read the main frame's screen: a view draws
+        // its sprites without glow and leaves the 2D fluids out.
         let mut view_sprites: Vec<Vec<sprites::SpriteRun>> = Vec::new();
         for (p, runs) in view_plans.iter().zip(&view_ribbons) {
             let view_strips: Vec<sprites::LayeredStrip> = runs
@@ -5434,7 +5434,7 @@ impl Renderer {
                 self.cache.textures.len(),
                 array_layers,
                 &particle_frame.sprites,
-                |_| false,
+                |layer| lit_range.is_some_and(|(lo, hi)| (lo..=hi).contains(&layer)),
                 None,
                 &view_strips,
                 p.layers,
@@ -6349,7 +6349,14 @@ impl Renderer {
             &fx_uniform,
             !lights_gpu.is_empty(),
             viewport_format,
+            scene.lighting_2d.map(|l| l.resolution.clamp(0.25, 1.0)),
         );
+        if scene.lighting_2d.is_some() {
+            for (k, p) in view_plans.iter().enumerate() {
+                self.lights_2d
+                    .write_view(&self.device, &self.queue, k, p.frame.view_proj);
+            }
+        }
         let proj = cam.view_proj * cam.view.inverse();
         let global_outline = post_fx.outline;
         let fxp = post::FxPostUniform {
@@ -7157,6 +7164,28 @@ impl Renderer {
             )
         });
         let view_groups = self.view_groups(scene, &view_plans);
+        // Each view's sprite effect group: its 2D light map (white
+        // without 2D lighting) and its image's size.
+        let view_sprite_fx: Vec<wgpu::BindGroup> = view_plans
+            .iter()
+            .map(|p| {
+                let slot = self.views.slots[p.index].as_ref().expect("written");
+                bind_group(
+                    &self.device,
+                    "sprite fx (view)",
+                    &self.sprite_fx_layout,
+                    &[
+                        wgpu::BindingResource::TextureView(
+                            slot.light_map
+                                .as_ref()
+                                .map_or(&self.default_white, |(_, v)| v),
+                        ),
+                        wgpu::BindingResource::Sampler(&self.sprite_sampler),
+                        slot.sprite_fx_buffer.as_entire_binding(),
+                    ],
+                )
+            })
+            .collect();
         // Each view's particle and line groups over its own camera's
         // uniforms (views.rs). A view has no linear depth of its own: its
         // soft particles do not fade into the scene.
@@ -8231,6 +8260,16 @@ impl Renderer {
                     let (i, clear) = (i as usize, background_clear(&scene.environment.background));
                     let p = &view_plans[i];
                     let frustum = Frustum::from_view_proj(p.frame.view_proj);
+                    // Its 2D light map, as its camera sees the lights.
+                    if let (Some(l), Some((_, map))) = (
+                        scene.lighting_2d,
+                        self.views.slots[p.index]
+                            .as_ref()
+                            .and_then(|s| s.light_map.as_ref()),
+                    ) {
+                        self.lights_2d.encode_view(&mut encoder, map, l.ambient, i);
+                        stats.draw_calls += (lights_2d > 0) as u32;
+                    }
                     {
                         let mut pass = self.views.begin(&mut encoder, p, clear);
                         pass.set_bind_group(0, &view_groups[i].0, &[]);
@@ -8320,10 +8359,9 @@ impl Renderer {
                             stats.draw_calls += n;
                             pass.set_bind_group(0, &view_groups[i].0, &[]);
                         }
-                        // The glow group's light map is a placeholder: a
-                        // view's sprites are unlit.
+                        // Lit by the view's 2D light map.
                         stats.draw_calls +=
-                            draw_sprites(&mut pass, &view_sprites[i], glow_fx_group, true);
+                            draw_sprites(&mut pass, &view_sprites[i], &view_sprite_fx[i], true);
                     }
                     // A target's depth texture: the view's opaque meshes
                     // again through the prepass pipelines into its linear

@@ -373,9 +373,12 @@ its own `ParticleViewGpu`), scene lines and points (its own
 `LineUniform`) and world sprites and text (`sprites::build` once per view
 with its mask, the instances appended after the main camera's), and
 trails, ribbons and beams (the frame's strips emitted again facing its
-eye, `Trails::emit`, after the main camera's in the strip buffer). The
-main camera's screen-space inputs stay its own: a view's sprites are not
-2D-lit and do not glow, its soft particles do not fade into depth, and
+eye, `Trails::emit`, after the main camera's in the strip buffer). Its
+lit sprite layers multiply with its own 2D light map, the frame's 2D
+lights drawn through its camera into a target of its size times
+`Lighting2d.resolution` (`Light2dRenderer::write_view`). The main
+camera's other screen-space inputs stay its own: a view's sprites do not
+glow, its soft particles do not fade into depth, and
 2D fluids, screen sprites, the UI and the post chain are the main
 frame's. Of the post chain an `ldr` target or
 a viewport carries exposure and the tone curve (the resolve); an `hdr`

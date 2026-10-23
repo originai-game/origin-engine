@@ -26,8 +26,9 @@
 //! before (a monitor in the monitor's room). It then draws what the main
 //! pass draws over its opaque scene, on its layers from its eye:
 //! transparent meshes, particles, trails, ribbons and beams (facing its
-//! eye), lines and points, world sprites and text (`lib.rs`'s view pass);
-//! the post effects are the main camera's.
+//! eye), lines and points, world sprites and text, its lit sprite layers
+//! through its own 2D light map (`lib.rs`'s view pass); the post effects
+//! are the main camera's.
 //!
 //! Layers: bit `n` of a mask is three.js layer `n`; every object and camera
 //! is on layer 0 (mask 1) unless set. A camera draws an object when their
@@ -349,6 +350,11 @@ pub(crate) struct ViewSlot {
     /// the lines and points (`LineUniform`).
     pub particle_buffer: wgpu::Buffer,
     pub line_buffer: wgpu::Buffer,
+    /// Its image's size for the sprite shader (`SpriteFxFrame`), and its
+    /// 2D light map (size, view) in a frame with 2D lighting: the lit
+    /// sprite layers multiply with the lights as its camera sees them.
+    pub sprite_fx_buffer: wgpu::Buffer,
+    pub light_map: Option<((u32, u32), wgpu::TextureView)>,
     /// (size, samples, depth texture drawn): the attachments below.
     key: ((u32, u32), u32, bool),
     pub hdr: wgpu::TextureView,
@@ -433,6 +439,8 @@ impl Views {
                     "view lines",
                     std::mem::size_of::<crate::lines::LineUniform>() as u64,
                 ),
+                sprite_fx_buffer: buffer("view sprite fx", 16),
+                light_map: None,
                 key,
                 hdr,
                 msaa,
@@ -542,6 +550,7 @@ impl Views {
         fx: &crate::fx::FxUniform,
         lights: bool,
         viewport_format: wgpu::TextureFormat,
+        light_map_scale: Option<f32>,
     ) {
         for p in plans {
             let depth_drawn = matches!(p.dest, Dest::Texture { depth: Some(_), .. });
@@ -600,6 +609,18 @@ impl Views {
             let (w, h) = (p.size.0 as f32, p.size.1 as f32);
             f.screen = [w, h, 1.0 / w, 1.0 / h];
             queue.write_buffer(&slot.fx_buffer, 0, bytemuck::bytes_of(&f));
+            queue.write_buffer(&slot.sprite_fx_buffer, 0, bytemuck::bytes_of(&f.screen));
+            // The 2D light map at the frame's share of the view's size.
+            slot.light_map = light_map_scale.map(|scale| {
+                let size = (
+                    ((p.size.0 as f32 * scale) as u32).max(1),
+                    ((p.size.1 as f32 * scale) as u32).max(1),
+                );
+                match slot.light_map.take() {
+                    Some((s, v)) if s == size => (s, v),
+                    _ => (size, light_map_texture(device, size)),
+                }
+            });
             // Billboards face the view's camera; lines keep their width as a
             // share of the image (CSS pixels of a frame of the view's height).
             let view_t = p.frame.view.transpose();
@@ -837,6 +858,26 @@ fn textures(
         depth: make("view prepass depth buffer", crate::DEPTH_FORMAT, 1, attach),
     });
     (hdr, msaa, depth, prepass)
+}
+
+/// A view's 2D light map: what the light pass draws and the sprites read.
+fn light_map_texture(device: &wgpu::Device, (w, h): (u32, u32)) -> wgpu::TextureView {
+    device
+        .create_texture(&wgpu::TextureDescriptor {
+            label: Some("view light map"),
+            size: wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: crate::HDR_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        })
+        .create_view(&Default::default())
 }
 
 fn attachments(device: &wgpu::Device, old: ViewSlot, key: ((u32, u32), u32, bool)) -> ViewSlot {
