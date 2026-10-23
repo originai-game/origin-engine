@@ -252,6 +252,29 @@ fn bvh_of(g: &mut GeoState, scene: &og_render::RenderScene, mesh: MeshHandle) ->
     Some(b)
 }
 
+/// A loaded model's primitive takes the BVH its cook built (over the mesh
+/// the scene now holds at `mesh`), so no raycast builds one; a primitive
+/// cooked with `raycast false` keeps the lazy build.
+pub(crate) fn adopt_cooked_bvh(
+    rs: &mut RenderState,
+    mesh: MeshHandle,
+    prim: &og_cook::runtime::CookedPrimitive,
+) -> Result<(), String> {
+    let RenderState { geo: g, scene, .. } = rs;
+    let Some(data) = scene.mesh(mesh) else {
+        return Ok(());
+    };
+    let Some(bvh) = prim.bvh(data) else {
+        return Ok(());
+    };
+    let bvh = bvh?;
+    g.bvh.insert(
+        mesh.index(),
+        (scene.mesh_revision(mesh.index()), Rc::new(bvh)),
+    );
+    Ok(())
+}
+
 // ── geometry ────────────────────────────────────────────────────────────────
 
 /// Adds a made geometry: drawn, its BVH built, and (`physics`) a Collider.mesh.

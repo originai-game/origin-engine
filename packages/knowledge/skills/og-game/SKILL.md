@@ -1867,6 +1867,27 @@ space), `uv` and `faceIndex`. Inside a system it reads the meshes as the
 tick started, as `og.physics.raycast` does. Use it for picking, decals on
 detailed meshes, and line of sight against geometry without colliders.
 
+A model's BVH is cooked: `og cook` builds each primitive's into the
+model's `.ogb` (about 6 to 9 bytes per triangle compressed, listed as
+`bvhBytes` in `og cook --report`), and it loads with the mesh, so the
+first raycast never stalls. A model no ray is cast at can leave it out
+with import settings; its first raycast then builds it:
+
+```
+type import
+version 1
+---
+model {
+  raycast false
+}
+```
+
+Leave it on for anything a player can click, aim at or stand a decal on.
+Turn it off for a large model that is only scenery (templates/game's
+16,512-triangle dropship gains 108 KB, 64 % of its blob). Geometries made
+at run time (`bufferGeometry`, the primitives) build theirs when made or
+updated.
+
 **Debug draw.** `og.debug.line`, `box`, `sphere`, `arrow`, `axes` and
 `text` (a label above a world point, in the UI's body font; every field is
 in `reference/debug.md`) each take

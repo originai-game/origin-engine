@@ -1,9 +1,11 @@
 //! A bounding volume hierarchy over a mesh's triangles, for rays against
 //! what is drawn (og.render.raycast): binned SAH splits into leaves of at
 //! most [`LEAF`] triangles, flattened depth first, traversed nearest child
-//! first. Built once per geometry (when it is made, loaded or updated) and
-//! kept with it; a ray in the mesh's local space answers every triangle it
-//! crosses, or the nearest.
+//! first. Built once per geometry (when it is made or updated) and kept
+//! with it; a ray in the mesh's local space answers every triangle it
+//! crosses, or the nearest. A cooked model carries its primitives' BVHs in
+//! its blob (og-cook), and [`Bvh::from_parts`] puts one back together over
+//! the decoded mesh without building anything.
 
 use crate::scene::MeshData;
 use glam::Vec3;
@@ -12,15 +14,18 @@ use glam::Vec3;
 pub const LEAF: usize = 4;
 const BINS: usize = 12;
 
+/// One node of a [`Bvh`], in its depth-first order.
 #[derive(Clone, Copy, Debug, PartialEq)]
-struct Node {
-    min: Vec3,
-    max: Vec3,
-    /// A leaf: the first of `count` entries of `Bvh::tris`. An inner node
-    /// (`count` 0): its right child; the left one follows it.
-    first: u32,
-    count: u32,
+pub struct BvhNode {
+    pub min: Vec3,
+    pub max: Vec3,
+    /// A leaf: the first of `count` entries of [`Bvh::order`]. An inner
+    /// node (`count` 0): its right child's index; the left one follows it.
+    pub first: u32,
+    pub count: u32,
 }
+
+type Node = BvhNode;
 
 /// A mesh's BVH with the triangles' corners copied in (so a ray needs no
 /// mesh beside it).
@@ -52,19 +57,8 @@ pub struct TriangleHit {
 
 impl Bvh {
     pub fn build(mesh: &MeshData) -> Bvh {
-        let n = mesh.vertices.len();
-        let mut corners = Vec::with_capacity(mesh.indices.len() / 3);
-        let mut uvs = Vec::with_capacity(mesh.indices.len() / 3);
-        for t in mesh.indices.as_chunks::<3>().0 {
-            if t.iter().any(|&i| i as usize >= n) {
-                corners.push([Vec3::NAN; 3]);
-                uvs.push([[0.0; 2]; 3]);
-                continue;
-            }
-            let v = |k: usize| &mesh.vertices[t[k] as usize];
-            corners.push([0, 1, 2].map(|k| Vec3::from(v(k).position)));
-            uvs.push([0, 1, 2].map(|k| v(k).uv));
-        }
+        BUILDS.with(|b| b.set(b.get() + 1));
+        let (corners, uvs) = corners_of(mesh);
         let mut tris: Vec<u32> = (0..corners.len() as u32)
             .filter(|&i| corners[i as usize].iter().all(|p| p.is_finite()))
             .collect();
@@ -80,6 +74,61 @@ impl Bvh {
             corners,
             uvs,
         }
+    }
+
+    /// A BVH built earlier (by [`Bvh::build`] over the same mesh, then
+    /// stored: a cooked model's), put back together over `mesh` without
+    /// building anything: the nodes and the triangle order as
+    /// [`Bvh::node_list`] and [`Bvh::order`] gave them. Refused when they do
+    /// not fit the mesh (an index past its triangles, a child that is not
+    /// after its parent), so a ray never leaves them.
+    pub fn from_parts(mesh: &MeshData, nodes: Vec<BvhNode>, tris: Vec<u32>) -> Result<Bvh, String> {
+        let (corners, uvs) = corners_of(mesh);
+        if let Some(t) = tris.iter().find(|&&t| t as usize >= corners.len()) {
+            return Err(format!(
+                "triangle {t} of the BVH is past the mesh's {}",
+                corners.len()
+            ));
+        }
+        let n = nodes.len();
+        for (i, node) in nodes.iter().enumerate() {
+            let ok = if node.count > 0 {
+                node.first as usize + node.count as usize <= tris.len()
+            } else {
+                i + 1 < n && (node.first as usize) > i + 1 && (node.first as usize) < n
+            };
+            if !ok || !(node.min.is_finite() && node.max.is_finite()) {
+                return Err(format!(
+                    "BVH node {i} does not fit its {n} nodes and {} triangles",
+                    tris.len()
+                ));
+            }
+        }
+        if n == 0 && !tris.is_empty() {
+            return Err("a BVH of triangles without nodes".into());
+        }
+        Ok(Bvh {
+            nodes,
+            tris,
+            corners,
+            uvs,
+        })
+    }
+
+    /// Its nodes, depth first (the root first).
+    pub fn node_list(&self) -> &[BvhNode] {
+        &self.nodes
+    }
+
+    /// The triangle indices in leaf order.
+    pub fn order(&self) -> &[u32] {
+        &self.tris
+    }
+
+    /// How many BVHs [`Bvh::build`] has built on this thread: what a load
+    /// that should build none is measured by.
+    pub fn builds() -> u64 {
+        BUILDS.with(|b| b.get())
     }
 
     /// How many triangles it holds.
@@ -162,6 +211,30 @@ impl Bvh {
         let n = &self.nodes[i as usize];
         slab(n.min, n.max, origin, inv, limit)
     }
+}
+
+thread_local! {
+    static BUILDS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// Per triangle of `mesh`: its corners (NaN for one indexing past the
+/// vertices) and their uvs.
+#[allow(clippy::type_complexity)]
+fn corners_of(mesh: &MeshData) -> (Vec<[Vec3; 3]>, Vec<[[f32; 2]; 3]>) {
+    let n = mesh.vertices.len();
+    let mut corners = Vec::with_capacity(mesh.indices.len() / 3);
+    let mut uvs = Vec::with_capacity(mesh.indices.len() / 3);
+    for t in mesh.indices.as_chunks::<3>().0 {
+        if t.iter().any(|&i| i as usize >= n) {
+            corners.push([Vec3::NAN; 3]);
+            uvs.push([[0.0; 2]; 3]);
+            continue;
+        }
+        let v = |k: usize| &mesh.vertices[t[k] as usize];
+        corners.push([0, 1, 2].map(|k| Vec3::from(v(k).position)));
+        uvs.push([0, 1, 2].map(|k| v(k).uv));
+    }
+    (corners, uvs)
 }
 
 /// Where the ray enters a box (0 inside), if it does before `limit`. An
@@ -377,6 +450,24 @@ mod tests {
                 "ray {k} nearest"
             );
         }
+    }
+
+    #[test]
+    fn a_bvh_from_its_parts_is_the_bvh_built() {
+        let mesh = shapes::sphere(24, 16);
+        let built = Bvh::build(&mesh);
+        let builds = Bvh::builds();
+        let back =
+            Bvh::from_parts(&mesh, built.node_list().to_vec(), built.order().to_vec()).unwrap();
+        assert_eq!(back, built);
+        assert_eq!(Bvh::builds(), builds, "from_parts builds nothing");
+        // Parts that do not fit the mesh are refused, not traversed.
+        let mut bad = built.node_list().to_vec();
+        bad[0].first = 0;
+        assert!(Bvh::from_parts(&mesh, bad, built.order().to_vec()).is_err());
+        let mut order = built.order().to_vec();
+        order[0] = 1 << 20;
+        assert!(Bvh::from_parts(&mesh, built.node_list().to_vec(), order).is_err());
     }
 
     #[test]

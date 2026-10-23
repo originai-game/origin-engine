@@ -229,7 +229,9 @@ primitives: cylinder, cone, capsule, torus, ring, circle, and a tube along a
 centripetal Catmull-Rom curve. A dynamic geometry is rewritten in place
 each tick (`updateGeometry`). A made geometry is also a physics mesh
 under its handle, so an og.Collider can use it as its `mesh`. Each geometry
-has a BVH, built when it is made or updated and lazily for loaded ones;
+has a BVH, built when it is made or updated; a model's is cooked into its
+blob (`model { raycast false }` leaves it out, and the first raycast that
+reaches the model builds it);
 `og.render.raycast` uses it to test what is drawn rather than the
 colliders. Inside a system, the raycast reads the meshes as the probe
 recorded them at the tick's start.

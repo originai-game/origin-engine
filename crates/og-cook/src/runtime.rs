@@ -859,9 +859,24 @@ pub struct CookedPrimitive {
     /// Exact local bounds of the source positions.
     pub min: Vec3,
     pub max: Vec3,
+    /// The raycast BVH over LOD 0 the cook built (`None`: cooked with
+    /// `raycast false`, or a blob of a cook before it): put together over
+    /// [`CookedPrimitive::mesh`]`(0)` by [`CookedPrimitive::bvh`].
+    pub bvh_parts: Option<(Vec<og_render::geometry::BvhNode>, Vec<u32>)>,
 }
 
 impl CookedPrimitive {
+    /// The cooked raycast BVH over `mesh` (LOD 0's, as [`Self::mesh`]
+    /// answers it), without building anything; `None` when none was cooked.
+    pub fn bvh(&self, mesh: &MeshData) -> Option<Result<og_render::geometry::Bvh, String>> {
+        let (nodes, tris) = self.bvh_parts.as_ref()?;
+        Some(og_render::geometry::Bvh::from_parts(
+            mesh,
+            nodes.clone(),
+            tris.clone(),
+        ))
+    }
+
     /// The geometry of one LOD (0 is the full mesh) for [`RenderScene::add_mesh`].
     pub fn mesh(&self, lod: usize) -> MeshData {
         let l = self.lods[lod.min(self.lods.len() - 1)];
@@ -1007,6 +1022,31 @@ impl CookedModel {
         let vertices = blob.raw("vertices")?;
         let indices = blob.raw("indices")?;
         let bad = |r: String| invalid(blob, r);
+        // The raycast BVHs: zlib-compressed rows, as many as the
+        // primitives' ranges reach.
+        let inflate = |name: &str, len: usize| -> Result<Vec<u8>, LoadError> {
+            let z = blob.raw(name)?;
+            let out = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(z, len)
+                .map_err(|e| bad(format!("{name}: {e:?}")))?;
+            if out.len() != len {
+                return Err(bad(format!("{name}: {} bytes, expected {len}", out.len())));
+            }
+            Ok(out)
+        };
+        let node_rows = prims
+            .iter()
+            .map(|p| (p.bvh_node_first + p.bvh_node_count) as usize)
+            .max()
+            .unwrap_or(0);
+        let tri_rows = prims
+            .iter()
+            .map(|p| (p.bvh_tri_first + p.bvh_tri_count) as usize)
+            .max()
+            .unwrap_or(0);
+        let node_bytes = inflate("bvh_nodes", node_rows * std::mem::size_of::<BvhNodeRow>())?;
+        let tri_bytes = inflate("bvh_tris", tri_rows * 4)?;
+        let bvh_nodes: Vec<BvhNodeRow> = bytemuck::pod_collect_to_vec(&node_bytes);
+        let bvh_tris: Vec<u32> = bytemuck::pod_collect_to_vec(&tri_bytes);
         let s = |o: u32, l: u32| {
             pool_str(strings, o, l)
                 .map(str::to_string)
@@ -1059,7 +1099,41 @@ impl CookedModel {
                 return Err(bad(format!("primitive {i}: material out of range")));
             }
             let min = Vec3::new(p.pos_offset_x, p.pos_offset_y, p.pos_offset_z);
+            let bvh_parts = if p.bvh_node_count == 0 {
+                None
+            } else {
+                let nodes = bvh_nodes
+                    .get(p.bvh_node_first as usize..(p.bvh_node_first + p.bvh_node_count) as usize)
+                    .ok_or_else(|| bad(format!("primitive {i}: BVH nodes out of range")))?;
+                let tris = bvh_tris
+                    .get(p.bvh_tri_first as usize..(p.bvh_tri_first + p.bvh_tri_count) as usize)
+                    .ok_or_else(|| bad(format!("primitive {i}: BVH triangles out of range")))?;
+                let off = [p.pos_offset_x, p.pos_offset_y, p.pos_offset_z];
+                let scale = [p.pos_scale_x, p.pos_scale_y, p.pos_scale_z];
+                // As `dequantize`: the same grid, the same arithmetic.
+                let deq =
+                    |a: usize, q: u32| off[a] + (q & 0xffff) as u16 as f32 / 65535.0 * scale[a];
+                let nodes = nodes
+                    .iter()
+                    .map(|n| og_render::geometry::BvhNode {
+                        min: Vec3::new(
+                            deq(0, n.min_xy),
+                            deq(1, n.min_xy >> 16),
+                            deq(2, n.min_z_max_x),
+                        ),
+                        max: Vec3::new(
+                            deq(0, n.min_z_max_x >> 16),
+                            deq(1, n.max_yz),
+                            deq(2, n.max_yz >> 16),
+                        ),
+                        first: n.first,
+                        count: n.count,
+                    })
+                    .collect();
+                Some((nodes, tris.to_vec()))
+            };
             primitives.push(CookedPrimitive {
+                bvh_parts,
                 material: p.material as usize,
                 vertices: verts,
                 tangents,

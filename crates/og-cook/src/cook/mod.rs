@@ -77,6 +77,11 @@ pub struct MeshOptions {
     /// model's import settings (`model { lods 1 0.5 0.25 }`). `None`: the
     /// levels `lod_levels` and `lod_ratio` give (1, 0.5, 0.25 by default).
     pub lods: Option<Vec<f32>>,
+    /// Cook each primitive's raycast BVH (og.render.raycast) into the
+    /// model's blob, so a raycast never builds one at run time: a model's
+    /// import settings turn it off (`model { raycast false }`) for a model
+    /// no ray is cast at, saving its bytes (about 13 per triangle).
+    pub raycast: bool,
 }
 
 impl Default for MeshOptions {
@@ -88,6 +93,7 @@ impl Default for MeshOptions {
             overdraw_threshold: 1.05,
             tangents: true,
             lods: None,
+            raycast: true,
         }
     }
 }
@@ -143,6 +149,14 @@ impl MeshOptions {
                 ));
             }
             o.lod_max_error = v;
+        }
+        if let Some(e) = b.get("raycast") {
+            o.raycast = e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
+                format!(
+                    "line {}: raycast takes true (cook the raycast BVH, the default) or false (build it at the first og.render.raycast that reaches the model)",
+                    e.line
+                )
+            })?;
         }
         Ok(o)
     }

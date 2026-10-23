@@ -186,6 +186,13 @@ fn asset_stats(bundle: &Bundle, outputs: &[(String, String, u64)]) -> Value {
                     "primitives": m.primitives.len(),
                     "materials": m.materials.len(),
                     "nodes": m.nodes.len(),
+                    // The raycast BVHs' sections in the blob, compressed
+                    // (`model { raycast false }`: a few bytes).
+                    "bvhBytes": bundle.read(id).ok().and_then(|b| {
+                        let blob = og_blob::Blob::parse(b.as_slice(), id).ok()?;
+                        let n = blob.raw_opt("bvh_nodes")?.len() + blob.raw_opt("bvh_tris")?.len();
+                        Some(n as u64)
+                    }).unwrap_or(0),
                 });
             }),
             "og.Texture" => bundle.load_texture(id).map(|t| {

@@ -6,7 +6,7 @@
 pub mod bvh;
 pub mod primitives;
 
-pub use bvh::{Bvh, TriangleHit};
+pub use bvh::{Bvh, BvhNode, TriangleHit};
 
 use crate::scene::{MeshData, Vertex};
 use glam::Vec3;

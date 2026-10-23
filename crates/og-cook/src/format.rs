@@ -11,7 +11,7 @@
 //!
 //! | blob | root | sections |
 //! |---|---|---|
-//! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices` |
+//! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false` |
 //! | texture (`og.Texture`; a PNG, JPEG or KTX2 source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
 //! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
 //! | video (`og.Video`, an `.ogt` of `type video` cooked by ffmpeg) | [`VideoMeta`] | none: its frames are the texture array `<id>#frames`, its sound `<id>#audio` |
@@ -174,7 +174,7 @@ row!(
     /// `i16 x 2` (snorm octahedral), then when present uv `u16 x 2` (unorm over
     /// the uv range), colour `u8 x 4` (unorm), tangent `i16 x 4` (snorm
     /// octahedral `xy`, `z` the bitangent sign as +-32767, `w` zero).
-    PrimitiveRow, "og.ModelPrimitive", 1 {
+    PrimitiveRow, "og.ModelPrimitive", 2 {
         material: u32,
         attributes: u32,
         vertex_count: u32,
@@ -193,6 +193,32 @@ row!(
         pos_scale_x: f32, pos_scale_y: f32, pos_scale_z: f32,
         uv_offset_x: f32, uv_offset_y: f32,
         uv_scale_x: f32, uv_scale_y: f32,
+        /// The raycast BVH over LOD 0 (og.render.raycast): a range of
+        /// `bvh_nodes` and one of `bvh_tris` (counts 0: none was cooked,
+        /// `raycast false`; the runtime builds it at the first raycast).
+        bvh_node_first: u32,
+        bvh_node_count: u32,
+        bvh_tri_first: u32,
+        bvh_tri_count: u32,
+    }
+);
+
+row!(
+    /// One node of a primitive's raycast BVH (og-render's `BvhNode`), depth
+    /// first. Its bounds are quantised on the primitive's own position grid
+    /// (`pos_offset` + q / 65535 * `pos_scale`), on which every decoded
+    /// vertex lies, so they decode to exactly the bounds a build over the
+    /// decoded mesh computes: `min_xy` packs min x (low 16 bits) and min y,
+    /// `min_z_max_x` min z and max x, `max_yz` max y and max z. `first` and
+    /// `count`: a leaf's range of the primitive's `bvh_tris` (relative to
+    /// its first), or (`count` 0) the right child's index in the
+    /// primitive's nodes.
+    BvhNodeRow, "og.ModelBvhNode", 1 {
+        min_xy: u32,
+        min_z_max_x: u32,
+        max_yz: u32,
+        first: u32,
+        count: u32,
     }
 );
 
@@ -326,6 +352,7 @@ impl BlobKind for Model {
             TextureRefRow::schema(),
             NodeRow::schema(),
             SceneRow::schema(),
+            BvhNodeRow::schema(),
         ]
     }
 }
