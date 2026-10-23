@@ -219,7 +219,7 @@ fn the_default_theme_draws_no_atlas_pieces() {
 fn a_style_file_names_the_line_that_is_wrong() {
     let typo = STYLE.replace("slice fill", "slise fill");
     let e = parse_style(&typo).unwrap_err();
-    assert!(e.contains("unknown skin setting 'slise'"), "{e}");
+    assert!(e.contains("unknown style setting 'slise'"), "{e}");
     let outside = STYLE.replace("slice track 80 0 16 16 4", "slice track 120 0 16 16 4");
     let e = parse_style(&outside).unwrap_err();
     assert!(e.contains("not inside the 128×64 atlas"), "{e}");

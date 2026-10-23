@@ -1114,11 +1114,11 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 })?;
                 file.sounds[s as usize] = Some(p.string(1)?.to_string());
             }
-            k => return Err(format!("line {}: unknown skin setting '{k}'", e.line)),
+            k => return Err(format!("line {}: unknown style setting '{k}'", e.line)),
         }
     }
     if file.atlas.is_some() && theme.art.slices.iter().all(Option::is_none) {
-        return Err("the skin has an atlas but no `slice` lines".into());
+        return Err("the style has an atlas but no `slice` lines".into());
     }
     let needs_soft = theme.art.shadows.iter().flatten().any(|s| s.blur > 0.0)
         || theme.art.glows.iter().any(Option::is_some);
