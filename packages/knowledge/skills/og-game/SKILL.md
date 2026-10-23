@@ -2000,12 +2000,6 @@ the entity, component and field that differ, with both values: fix the
 system that writes that field. The archetype `templates/archetypes/arena`
 (Coin Duel) is the worked example.
 
-## 21. Where to look things up
-
-`reference/index.md` (the generated wiki shipped with this skill) maps every
-module (grouped by skill, as in §1), type and function to its page, with the IDL text, defaults, ranges
-and units of every field.
-
 ## 21. Checking a run: describe, expect, trace, write-back, budgets
 
 These are the checks to use before opening frames. All of them run from
@@ -2061,3 +2055,9 @@ These are the checks to use before opening frames. All of them run from
   `triangles` 100000, `vertices` 65536, `textureSize` 2048, `bones` 128,
   `clips` 64, `assetBytes` 8 MiB and `totalBytes` 64 MiB, each a default
   a project may move.
+
+## 22. Where to look things up
+
+`reference/index.md` (the generated wiki shipped with this skill) maps every
+module (grouped by skill, as in §1), type and function to its page, with the IDL text, defaults, ranges
+and units of every field.
