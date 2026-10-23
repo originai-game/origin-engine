@@ -36,7 +36,7 @@ pub(crate) const CAMERA_SYSTEM: &str = "og.camera";
 pub(crate) const SPRITE_SYSTEM: &str = "og.sprite";
 
 /// Records og-anim and og-tween register themselves (strings, or adopted).
-pub(crate) const REGISTERED_BY_FEEL: &[&str] = &["og.FlipbookEvent"];
+pub(crate) const REGISTERED_BY_FEEL: &[&str] = &["og.FlipbookEvent", "og.Skeleton2DEvent"];
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
@@ -200,6 +200,9 @@ pub(crate) struct Feel {
     pub shared: Arc<Mutex<FeelShared>>,
     /// Per flipbook sheet handle: what its frames are drawn from.
     pub sheet_textures: Arc<Mutex<BTreeMap<u64, SheetImage>>>,
+    /// og.skeleton2d, and per rig handle its texture (an index in RenderState::textures).
+    pub skeletons: og_anim::Skeleton2dSystem,
+    pub rig_textures: Arc<Mutex<BTreeMap<u64, usize>>>,
 }
 
 /// What a flipbook sheet's frames are drawn from: a region of its texture
@@ -217,11 +220,13 @@ pub(crate) struct FeelAssets {
     next: u64,
     pub sheets: BTreeMap<u64, (FlipbookSheet, Option<SheetImage>)>,
     pub maps: BTreeMap<u64, Arc<MapAsset>>,
-    loaded: BTreeMap<String, Value>,
+    /// 2D rigs and their textures, by handle.
+    pub rigs: BTreeMap<u64, (og_anim::Rig2dAsset, usize)>,
+    pub(crate) loaded: BTreeMap<String, Value>,
 }
 
 impl FeelAssets {
-    fn mint(&mut self) -> u64 {
+    pub(crate) fn mint(&mut self) -> u64 {
         self.next += 1;
         self.next | (1u64 << 32)
     }
@@ -233,6 +238,10 @@ impl FeelAssets {
                 lock(&feel.sheet_textures).insert(*h, *t);
             }
         }
+        for (h, (rig, t)) in &self.rigs {
+            let _ = feel.skeletons.add_rig(*h, rig.clone());
+            lock(&feel.rig_textures).insert(*h, *t);
+        }
         let mut t = lock(&feel.tiles);
         for (h, m) in &self.maps {
             t.maps.insert(*h, m.clone());
@@ -240,13 +249,17 @@ impl FeelAssets {
     }
 }
 
-/// Installs tweens and flipbooks (after the game's systems, before og.anim).
+/// Installs tweens, flipbooks and 2D skeletons (after the game's systems,
+/// which set their clips and IK targets, before og.anim).
 pub(crate) fn install_front(world: &mut World, components: &[String]) -> Result<Feel, String> {
     let tweens = og_tween::install(world, components).map_err(err)?;
     let flipbooks = og_anim::install_flipbook(world).map_err(err)?;
+    let skeletons = og_anim::install_skeleton2d(world).map_err(err)?;
     Ok(Feel {
         tweens,
         flipbooks,
+        skeletons,
+        rig_textures: Arc::new(Mutex::new(BTreeMap::new())),
         tiles: Arc::new(Mutex::new(TileShared::default())),
         shared: Arc::new(Mutex::new(FeelShared::default())),
         sheet_textures: Arc::new(Mutex::new(BTreeMap::new())),
@@ -382,7 +395,7 @@ pub(crate) fn install_back(world: &mut World, feel: &Feel, r: &Records) -> Resul
     Ok(())
 }
 
-fn feel_of(eng: &Engine) -> Result<Feel, String> {
+pub(crate) fn feel_of(eng: &Engine) -> Result<Feel, String> {
     eng.state
         .borrow()
         .feel
@@ -1145,7 +1158,7 @@ pub fn og_render_floating_text(world: u32, desc: Option<String>) -> String {
 
 /// The sampling a sheet or tileset states for its texture; it wins over the
 /// texture's own (`kind pixel` loads nearest, `filter linear` smooths it).
-fn set_filter(eng: &Engine, texture: usize, nearest: bool) {
+pub(crate) fn set_filter(eng: &Engine, texture: usize, nearest: bool) {
     let mut rs = eng.render.borrow_mut();
     if let Some(&h) = rs.textures.get(texture) {
         let filter = if nearest {

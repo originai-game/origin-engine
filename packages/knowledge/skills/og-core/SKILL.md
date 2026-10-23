@@ -270,6 +270,17 @@ it is declared.
   probe and the command channel address entities by them.
 - Vector, quaternion, matrix, colour, transform and material vocabulary is
   three.js's (`position`, `quaternion`, `scale`, `metalness`, `roughness`).
+- Math on those values is three.js's methods as pure functions, imported
+  from `@origingame/engine`: `vec3`, `vec2`, `quat`, `mat4`, `box3`,
+  `sphere`, `plane`, `frustum`, `ray`, `color` (`vec3.add(a, b)`,
+  `quat.slerp(a, b, t)`, `mat4.transformPoint(m, p)`,
+  `frustum.fromCamera(...)` then `frustum.intersectsBox(f, box)`,
+  `ray.intersectTriangle(r, a, b, c)` answering a point or null,
+  `color.fromHex(0x14161b)` answering linear RGB). They never change their
+  arguments and answer new plain objects, so there are no classes to
+  construct and a result is written into a column as any other value;
+  they use only arithmetic and `sqrt`, so a system using them stays
+  deterministic. Signatures: `reference/math.md`.
 
 ## 7. Where the API is described
 

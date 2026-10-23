@@ -54,7 +54,7 @@ impl Kind {
             "Texture" | "Lut" | "ParticleEmitter" | "EnvironmentMap" | "Palette"
             | "TextureArray" => Kind::Asset,
             // The E4 handles: flipbook sheets, tilemaps, tweens.
-            "FlipbookSheet" | "TilemapAsset" | "Tween" => Kind::Asset,
+            "FlipbookSheet" | "TilemapAsset" | "Tween" | "Rig2D" => Kind::Asset,
             // Footage (og.load.video).
             "Video" => Kind::Asset,
             // The E6 handles: navigation (grids, navmeshes, flow fields) and behaviours.

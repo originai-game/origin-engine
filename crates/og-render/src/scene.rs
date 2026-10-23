@@ -1260,6 +1260,9 @@ pub struct RenderScene {
     pub occluders_2d: Vec<Occluder2d>,
     /// Effects on single sprites (flash, glow, blend), by sprite index.
     pub sprite_fx: Vec<SpriteFx>,
+    /// Textured triangles drawn in the sprite order (a 2D skeleton's
+    /// attachments): [`crate::SpriteMesh`].
+    pub sprite_meshes: Vec<crate::SpriteMesh>,
     /// Screen shake applied to the camera.
     pub shake: CameraShake,
     /// Each instance's transform in the previous frame (same order as
@@ -1387,6 +1390,7 @@ impl RenderScene {
             lights_2d: Vec::new(),
             occluders_2d: Vec::new(),
             sprite_fx: Vec::new(),
+            sprite_meshes: Vec::new(),
             shake: CameraShake::default(),
             previous_transforms: Vec::new(),
             joint_palettes: Vec::new(),

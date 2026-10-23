@@ -888,6 +888,94 @@ world.insert(body, og.AnimationGraph, { asset: graph });
 // every tick: world.set(body, og.AnimationGraph, { p0: groundSpeed, p1: airborne ? 1 : 0 });
 ```
 
+### 2D skeletons: the rig2d grammar
+
+A cut-out character (bones, a cape that bends, feet that stay on a slope)
+is an `.ogt` of `type rig2d` beside its PNG, loaded with
+`og.load.rig2d(world, "rigs/hero.ogt")` (`reference/anim.md`). Pixels,
++y up, degrees counter-clockwise, `unit` pixels per world unit; bones
+parent first, slots draw in file order:
+
+```text
+type rig2d
+version 1
+---
+texture "hero.png"
+filter nearest
+unit 20
+bone root {
+}
+bone hip {
+  parent root
+  at 0 22
+  rotation 90
+  length 16
+}
+slot torso {
+  bone hip
+  attachment torso
+}
+region torso {
+  slot torso
+  rect 0 0 12 20
+  at 8 0
+  rotation -90
+  size 12 20
+}
+mesh cape {
+  slot cape
+  vertex 0 32 hip 16 9 1
+  vertex 6 40 hip 8 4 0.4 cape-1 7 0 0.6
+  triangles 0 1 2
+}
+ik leg {
+  bones thigh shin
+  target foot
+  bend clockwise
+}
+clip idle {
+  duration 2
+  loop true
+  bone hip {
+    translate 0 0 0
+    translate 1 0 -1.5
+  }
+  deform cape {
+    key 0 0 0 0 0
+    key 1 0 -3 0 -6
+  }
+  event 0 "inhale"
+}
+```
+
+`rect` is pixels from the image's top left; a mesh `vertex` is `u v` in
+pixels then, per bone, `bone x y weight` in that bone's space (weights
+summing to 1), or plain `x y` in the slot's bone. Bone keys add to the
+setup pose (`rotate` degrees, `translate` pixels, `scale` multiplies),
+linear unless they end in `step`; a `deform` key offsets every influence
+in order, one `x y` pair each. A DragonBones 5.5 export is imported
+instead of written: a rig2d `.ogt` with `dragonbones "hero_ske.json"` and
+`atlas "hero_tex.json"` (Spine's files are not read; convert them to this
+text).
+
+```ts
+const rig = must(og.load.rig2d(world, "rigs/hero.ogt"));
+const hero = must(world.spawn({ name: "hero", position: { x, y, z: 0 } }));
+must(world.insert(hero, og.Skeleton2D, { rig: rig.rig, clip: og.anim.clip(rig, "idle"), layer: 1 }));
+// A foot planted on the ground: one og.IkTarget2D per constraint, moved every tick.
+const foot = must(world.spawn({ name: "hero-foot" }));
+must(world.insert(foot, og.IkTarget2D, { skeleton: hero, constraint: rig.constraints.indexOf("leg"), target: { x, y: groundY } }));
+```
+
+`og.Skeleton2D` plays `clip` at `speed` (`time` is written each tick;
+setting it seeks), wraps when `loop`, mirrors with `flipX` and draws at
+sprite `layer`, lit by `og.Lighting2D` like a sprite there. Clip events
+arrive as `og.Skeleton2DEvent` (`entity`, `clip`, `name`); an
+`og.IkTarget2D` writes `reached` and `error`. The pose is a function of
+the component, the Transform and the targets, so a snapshot carries only
+the playback position. `templates/game-2d`'s lamp keeper
+(`assets/rigs/keeper.ogt`, `spawnKeeper`, `Plant`) shows all of it.
+
 ### Cutscenes: timelines and paths
 
 A cutscene, an intro, a scripted beat or a fly-through is a `type timeline`

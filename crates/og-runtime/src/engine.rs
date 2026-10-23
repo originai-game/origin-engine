@@ -892,9 +892,12 @@ pub(crate) fn assemble(
     }
     {
         world.register::<og_anim::FlipbookEvent>().map_err(err)?;
-        let id = world.id_by_name("og.FlipbookEvent").map_err(err)?;
-        let layout = Layout::from_schema(world.schema(id).map_err(err)?, RecordKind::Event);
-        layouts.insert(layout.schema.clone(), layout);
+        world.register::<og_anim::Skeleton2DEvent>().map_err(err)?;
+        for name in super::feel::REGISTERED_BY_FEEL {
+            let id = world.id_by_name(name).map_err(err)?;
+            let layout = Layout::from_schema(world.schema(id).map_err(err)?, RecordKind::Event);
+            layouts.insert(layout.schema.clone(), layout);
+        }
     }
     // og.timeline's events (the marker's name is a str64).
     super::timeline::register_records(&mut world, &mut layouts)?;

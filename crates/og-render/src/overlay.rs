@@ -382,6 +382,7 @@ pub(crate) fn run_textures(
         | RunSource::Strip(..)
         | RunSource::Metaballs(_)
         | RunSource::Glass
+        | RunSource::Mesh(_)
         | RunSource::Array(..) => None,
     })
 }

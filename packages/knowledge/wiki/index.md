@@ -118,7 +118,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1003 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1108 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -164,6 +164,21 @@ Field units the docs and Tune use.
 | [`BODY_STATIC`](physics.md#const-BODY_STATIC) | constant | physics | — |
 | [`BonePose`](physics.md#type-BonePose) | struct | physics | — |
 | [`bool()`](reflect.md#column-bool) | column kind | reflect | — |
+| [`Box3`](math.md#type-Box3) | struct | math | — |
+| [`box3`](math.md#value-box3) | value | math | — |
+| [`Box3Math`](math.md#type-Box3Math) | interface | math | — |
+| [`Box3Math.applyMatrix4`](math.md#member-Box3Math-applyMatrix4) | method | math | — |
+| [`Box3Math.containsBox`](math.md#member-Box3Math-containsBox) | method | math | — |
+| [`Box3Math.containsPoint`](math.md#member-Box3Math-containsPoint) | method | math | — |
+| [`Box3Math.empty`](math.md#member-Box3Math-empty) | method | math | — |
+| [`Box3Math.expandByPoint`](math.md#member-Box3Math-expandByPoint) | method | math | — |
+| [`Box3Math.fromPoints`](math.md#member-Box3Math-fromPoints) | method | math | — |
+| [`Box3Math.getCenter`](math.md#member-Box3Math-getCenter) | method | math | — |
+| [`Box3Math.getSize`](math.md#member-Box3Math-getSize) | method | math | — |
+| [`Box3Math.intersectsBox`](math.md#member-Box3Math-intersectsBox) | method | math | — |
+| [`Box3Math.intersectsSphere`](math.md#member-Box3Math-intersectsSphere) | method | math | — |
+| [`Box3Math.isEmpty`](math.md#member-Box3Math-isEmpty) | method | math | — |
+| [`Box3Math.union`](math.md#member-Box3Math-union) | method | math | — |
 | [`BoxGeometryDesc`](render.md#type-BoxGeometryDesc) | desc struct | render | — |
 | [`Breakpoint`](ui.md#type-Breakpoint) | enum | ui | — |
 | [`BufferGeometryDesc`](render.md#type-BufferGeometryDesc) | desc struct | render | — |
@@ -191,7 +206,13 @@ Field units the docs and Tune use.
 | [`ClipAsset()`](anim.md#column-ClipAsset) | column kind | anim | — |
 | [`ClipInfo`](anim.md#type-ClipInfo) | struct | anim | — |
 | [`Color`](math.md#type-Color) | struct | math | — |
+| [`color`](math.md#value-color) | value | math | — |
 | [`Color()`](reflect.md#column-Color) | column kind | reflect | — |
+| [`ColorMath`](math.md#type-ColorMath) | interface | math | — |
+| [`ColorMath.fromHex`](math.md#member-ColorMath-fromHex) | method | math | — |
+| [`ColorMath.fromHsl`](math.md#member-ColorMath-fromHsl) | method | math | — |
+| [`ColorMath.lerp`](math.md#member-ColorMath-lerp) | method | math | — |
+| [`ColorMath.toHex`](math.md#member-ColorMath-toHex) | method | math | — |
 | [`CommandDesc`](commands.md#type-CommandDesc) | desc struct | commands | — |
 | [`CommandHandler`](commands.md#type-CommandHandler) | callback | commands | — |
 | [`CommandInfo`](commands.md#type-CommandInfo) | struct | commands | — |
@@ -283,6 +304,14 @@ Field units the docs and Tune use.
 | [`Font`](load.md#type-Font) | handle | load | — |
 | [`FontInfo`](load.md#type-FontInfo) | struct | load | — |
 | [`FontRole`](ui.md#type-FontRole) | enum | ui | — |
+| [`Frustum`](math.md#type-Frustum) | struct | math | — |
+| [`frustum`](math.md#value-frustum) | value | math | — |
+| [`FrustumMath`](math.md#type-FrustumMath) | interface | math | — |
+| [`FrustumMath.containsPoint`](math.md#member-FrustumMath-containsPoint) | method | math | — |
+| [`FrustumMath.fromCamera`](math.md#member-FrustumMath-fromCamera) | method | math | — |
+| [`FrustumMath.fromProjectionMatrix`](math.md#member-FrustumMath-fromProjectionMatrix) | method | math | — |
+| [`FrustumMath.intersectsBox`](math.md#member-FrustumMath-intersectsBox) | method | math | — |
+| [`FrustumMath.intersectsSphere`](math.md#member-FrustumMath-intersectsSphere) | method | math | — |
 | [`Game`](game.md#type-Game) | interface | game | — |
 | [`Game.systems`](game.md#member-Game-systems) | property | game | `og_game_get_systems` |
 | [`Game.tick`](game.md#member-Game-tick) | property | game | `og_game_get_tick` |
@@ -381,10 +410,17 @@ Field units the docs and Tune use.
 | [`Lut()`](render.md#column-Lut) | column kind | render | — |
 | [`MainMenuDesc`](ui.md#type-MainMenuDesc) | desc struct | ui | — |
 | [`MapMarker`](ui.md#type-MapMarker) | desc struct | ui | — |
+| [`mat4`](math.md#value-mat4) | value | math | — |
 | [`Material`](render.md#type-Material) | handle | render | — |
 | [`Material()`](render.md#column-Material) | column kind | render | — |
 | [`Matrix4`](math.md#type-Matrix4) | struct | math | — |
 | [`Matrix4()`](reflect.md#column-Matrix4) | column kind | reflect | — |
+| [`Matrix4Math`](math.md#type-Matrix4Math) | interface | math | — |
+| [`Matrix4Math.compose`](math.md#member-Matrix4Math-compose) | method | math | — |
+| [`Matrix4Math.invert`](math.md#member-Matrix4Math-invert) | method | math | — |
+| [`Matrix4Math.multiply`](math.md#member-Matrix4Math-multiply) | method | math | — |
+| [`Matrix4Math.transformDirection`](math.md#member-Matrix4Math-transformDirection) | method | math | — |
+| [`Matrix4Math.transformPoint`](math.md#member-Matrix4Math-transformPoint) | method | math | — |
 | [`MAX_CLUSTER_LIGHTS`](render.md#const-MAX_CLUSTER_LIGHTS) | constant | render | — |
 | [`MAX_GAMEPADS`](input.md#const-MAX_GAMEPADS) | constant | input | — |
 | [`MAX_LIGHTS`](render.md#const-MAX_LIGHTS) | constant | render | — |
@@ -431,9 +467,11 @@ Field units the docs and Tune use.
 | [`og.AiChanged`](ai.md#record-AiChanged) | event | ai | — |
 | [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
 | [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
+| [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
 | [`og.anim.graph`](anim.md#fn-graph) | function | anim | `og_anim_graph` |
 | [`og.anim.humanoid`](anim.md#fn-humanoid) | function | anim | `og_anim_humanoid` |
 | [`og.anim.retarget`](anim.md#fn-retarget) | function | anim | `og_anim_retarget` |
+| [`og.anim.rig2dInfo`](anim.md#fn-rig2dInfo) | function | anim | `og_anim_rig2d_info` |
 | [`og.AnimationEvent`](anim.md#record-AnimationEvent) | event | anim | — |
 | [`og.AnimationGraph`](anim.md#record-AnimationGraph) | component | anim | — |
 | [`og.AnimationPlayer`](anim.md#record-AnimationPlayer) | component | anim | — |
@@ -494,6 +532,7 @@ Field units the docs and Tune use.
 | [`og.i18n.setLocale`](i18n.md#fn-setLocale) | function | i18n | `og_i18n_set_locale` |
 | [`og.i18n.t`](i18n.md#fn-t) | function | i18n | `og_i18n_t` |
 | [`og.IkChain`](anim.md#record-IkChain) | component | anim | — |
+| [`og.IkTarget2D`](anim.md#record-IkTarget2D) | component | anim | — |
 | [`og.Input`](input.md#record-Input) | resource | input | — |
 | [`og.Joint`](physics.md#record-Joint) | component | physics | — |
 | [`og.KeyDown`](input.md#record-KeyDown) | event | input | — |
@@ -518,6 +557,7 @@ Field units the docs and Tune use.
 | [`og.load.lut`](load.md#fn-lut) | function | load | `og_load_lut` |
 | [`og.load.palette`](load.md#fn-palette) | function | load | `og_load_palette` |
 | [`og.load.rig`](load.md#fn-rig) | function | load | `og_load_rig` |
+| [`og.load.rig2d`](load.md#fn-rig2d) | function | load | `og_load_rig2d` |
 | [`og.load.scene`](load.md#fn-scene) | function | load | `og_load_scene` |
 | [`og.load.shader`](load.md#fn-shader) | function | load | `og_load_shader` |
 | [`og.load.skin`](load.md#fn-skin) | function | load | `og_load_skin` |
@@ -644,6 +684,8 @@ Field units the docs and Tune use.
 | [`og.SensorEntered`](physics.md#record-SensorEntered) | event | physics | — |
 | [`og.SensorExited`](physics.md#record-SensorExited) | event | physics | — |
 | [`og.Skeleton`](anim.md#record-Skeleton) | component | anim | — |
+| [`og.Skeleton2D`](anim.md#record-Skeleton2D) | component | anim | — |
+| [`og.Skeleton2DEvent`](anim.md#record-Skeleton2DEvent) | event | anim | — |
 | [`og.Sky`](atmosphere.md#record-Sky) | resource | atmosphere | — |
 | [`og.SoundEnded`](audio.md#record-SoundEnded) | event | audio | — |
 | [`og.SoundStarted`](audio.md#record-SoundStarted) | event | audio | — |
@@ -836,7 +878,17 @@ Field units the docs and Tune use.
 | [`PIN_TOP`](physics.md#const-PIN_TOP) | constant | physics | — |
 | [`PIN_TOP_CORNERS`](physics.md#const-PIN_TOP_CORNERS) | constant | physics | — |
 | [`PIN_TOP_RINGS`](physics.md#const-PIN_TOP_RINGS) | constant | physics | — |
+| [`Plane`](math.md#type-Plane) | struct | math | — |
+| [`plane`](math.md#value-plane) | value | math | — |
 | [`PlaneGeometryDesc`](render.md#type-PlaneGeometryDesc) | desc struct | render | — |
+| [`PlaneMath`](math.md#type-PlaneMath) | interface | math | — |
+| [`PlaneMath.distanceToPoint`](math.md#member-PlaneMath-distanceToPoint) | method | math | — |
+| [`PlaneMath.fromCoplanarPoints`](math.md#member-PlaneMath-fromCoplanarPoints) | method | math | — |
+| [`PlaneMath.fromNormalAndCoplanarPoint`](math.md#member-PlaneMath-fromNormalAndCoplanarPoint) | method | math | — |
+| [`PlaneMath.intersectsBox`](math.md#member-PlaneMath-intersectsBox) | method | math | — |
+| [`PlaneMath.intersectsSphere`](math.md#member-PlaneMath-intersectsSphere) | method | math | — |
+| [`PlaneMath.normalize`](math.md#member-PlaneMath-normalize) | method | math | — |
+| [`PlaneMath.projectPoint`](math.md#member-PlaneMath-projectPoint) | method | math | — |
 | [`PlatformerHudDesc`](ui.md#type-PlatformerHudDesc) | desc struct | ui | — |
 | [`PlatformError`](platform.md#type-PlatformError) | struct | platform | — |
 | [`PlatformInfo`](platform.md#type-PlatformInfo) | struct | platform | — |
@@ -875,8 +927,15 @@ Field units the docs and Tune use.
 | [`PROFILE_3D`](physics.md#const-PROFILE_3D) | constant | physics | — |
 | [`ProgressDesc`](ui.md#type-ProgressDesc) | desc struct | ui | — |
 | [`PuzzleHudDesc`](ui.md#type-PuzzleHudDesc) | desc struct | ui | — |
+| [`quat`](math.md#value-quat) | value | math | — |
 | [`Quaternion`](math.md#type-Quaternion) | struct | math | — |
 | [`Quaternion()`](reflect.md#column-Quaternion) | column kind | reflect | — |
+| [`QuaternionMath`](math.md#type-QuaternionMath) | interface | math | — |
+| [`QuaternionMath.fromEuler`](math.md#member-QuaternionMath-fromEuler) | method | math | — |
+| [`QuaternionMath.invert`](math.md#member-QuaternionMath-invert) | method | math | — |
+| [`QuaternionMath.multiply`](math.md#member-QuaternionMath-multiply) | method | math | — |
+| [`QuaternionMath.rotate`](math.md#member-QuaternionMath-rotate) | method | math | — |
+| [`QuaternionMath.slerp`](math.md#member-QuaternionMath-slerp) | method | math | — |
 | [`Query`](world.md#type-Query) | interface | world | — |
 | [`Query.archetypes`](world.md#member-Query-archetypes) | method | world | `og_query_archetypes` |
 | [`Query.count`](world.md#member-Query-count) | method | world | `og_query_count` |
@@ -888,9 +947,17 @@ Field units the docs and Tune use.
 | [`RagdollBoneDesc`](physics.md#type-RagdollBoneDesc) | desc struct | physics | — |
 | [`RagdollRigDesc`](physics.md#type-RagdollRigDesc) | desc struct | physics | — |
 | [`Ray`](math.md#type-Ray) | struct | math | — |
+| [`ray`](math.md#value-ray) | value | math | — |
 | [`RaycastDesc`](physics.md#type-RaycastDesc) | desc struct | physics | — |
 | [`RaycastGeometryDesc`](render.md#type-RaycastGeometryDesc) | desc struct | render | — |
 | [`RaycastHit`](physics.md#type-RaycastHit) | struct | physics | — |
+| [`RayMath`](math.md#type-RayMath) | interface | math | — |
+| [`RayMath.at`](math.md#member-RayMath-at) | method | math | — |
+| [`RayMath.distanceToPoint`](math.md#member-RayMath-distanceToPoint) | method | math | — |
+| [`RayMath.intersectBox`](math.md#member-RayMath-intersectBox) | method | math | — |
+| [`RayMath.intersectPlane`](math.md#member-RayMath-intersectPlane) | method | math | — |
+| [`RayMath.intersectSphere`](math.md#member-RayMath-intersectSphere) | method | math | — |
+| [`RayMath.intersectTriangle`](math.md#member-RayMath-intersectTriangle) | method | math | — |
 | [`ReloadReport`](probe.md#type-ReloadReport) | struct | probe | — |
 | [`RenderCapabilities`](render.md#type-RenderCapabilities) | struct | render | — |
 | [`RenderOptions`](render.md#type-RenderOptions) | desc struct | render | — |
@@ -905,6 +972,10 @@ Field units the docs and Tune use.
 | [`RichTextDesc`](ui.md#type-RichTextDesc) | desc struct | ui | — |
 | [`RichTextResult`](ui.md#type-RichTextResult) | struct | ui | — |
 | [`Rig`](anim.md#type-Rig) | handle | anim | — |
+| [`Rig2D`](anim.md#type-Rig2D) | handle | anim | — |
+| [`Rig2D()`](anim.md#column-Rig2D) | column kind | anim | — |
+| [`Rig2DClipInfo`](anim.md#type-Rig2DClipInfo) | struct | anim | — |
+| [`Rig2DInfo`](anim.md#type-Rig2DInfo) | struct | anim | — |
 | [`RingGeometryDesc`](render.md#type-RingGeometryDesc) | desc struct | render | — |
 | [`Rng.chance`](rng.md#member-Rng-chance) | method | rng | `og_rng_chance` |
 | [`Rng.fork`](rng.md#member-Rng-fork) | method | rng | `og_rng_fork` |
@@ -987,7 +1058,17 @@ Field units the docs and Tune use.
 | [`SOUND_STOPPED`](audio.md#const-SOUND_STOPPED) | constant | audio | — |
 | [`SoundInfo`](load.md#type-SoundInfo) | struct | load | — |
 | [`SpawnDesc`](world.md#type-SpawnDesc) | desc struct | world | — |
+| [`Sphere`](math.md#type-Sphere) | struct | math | — |
+| [`sphere`](math.md#value-sphere) | value | math | — |
 | [`SphereGeometryDesc`](render.md#type-SphereGeometryDesc) | desc struct | render | — |
+| [`SphereMath`](math.md#type-SphereMath) | interface | math | — |
+| [`SphereMath.applyMatrix4`](math.md#member-SphereMath-applyMatrix4) | method | math | — |
+| [`SphereMath.containsPoint`](math.md#member-SphereMath-containsPoint) | method | math | — |
+| [`SphereMath.distanceToPoint`](math.md#member-SphereMath-distanceToPoint) | method | math | — |
+| [`SphereMath.fromPoints`](math.md#member-SphereMath-fromPoints) | method | math | — |
+| [`SphereMath.getBoundingBox`](math.md#member-SphereMath-getBoundingBox) | method | math | — |
+| [`SphereMath.intersectsBox`](math.md#member-SphereMath-intersectsBox) | method | math | — |
+| [`SphereMath.intersectsSphere`](math.md#member-SphereMath-intersectsSphere) | method | math | — |
 | [`SpotlightDesc`](ui.md#type-SpotlightDesc) | desc struct | ui | — |
 | [`SpriteBlend`](render.md#type-SpriteBlend) | enum | render | — |
 | [`SpriteBlend()`](render.md#column-SpriteBlend) | column kind | render | — |
@@ -1087,10 +1168,34 @@ Field units the docs and Tune use.
 | [`UiSounds`](ui.md#type-UiSounds) | desc struct | ui | — |
 | [`UiSurface`](probe.md#type-UiSurface) | struct | probe | — |
 | [`UiTheme`](ui.md#type-UiTheme) | struct | ui | — |
+| [`vec2`](math.md#value-vec2) | value | math | — |
+| [`vec3`](math.md#value-vec3) | value | math | — |
 | [`Vector2`](math.md#type-Vector2) | struct | math | — |
 | [`Vector2()`](reflect.md#column-Vector2) | column kind | reflect | — |
+| [`Vector2Math`](math.md#type-Vector2Math) | interface | math | — |
+| [`Vector2Math.add`](math.md#member-Vector2Math-add) | method | math | — |
+| [`Vector2Math.cross`](math.md#member-Vector2Math-cross) | method | math | — |
+| [`Vector2Math.distance`](math.md#member-Vector2Math-distance) | method | math | — |
+| [`Vector2Math.dot`](math.md#member-Vector2Math-dot) | method | math | — |
+| [`Vector2Math.length`](math.md#member-Vector2Math-length) | method | math | — |
+| [`Vector2Math.lerp`](math.md#member-Vector2Math-lerp) | method | math | — |
+| [`Vector2Math.normalize`](math.md#member-Vector2Math-normalize) | method | math | — |
+| [`Vector2Math.rotateAround`](math.md#member-Vector2Math-rotateAround) | method | math | — |
+| [`Vector2Math.scale`](math.md#member-Vector2Math-scale) | method | math | — |
+| [`Vector2Math.sub`](math.md#member-Vector2Math-sub) | method | math | — |
 | [`Vector3`](math.md#type-Vector3) | struct | math | — |
 | [`Vector3()`](reflect.md#column-Vector3) | column kind | reflect | — |
+| [`Vector3Math`](math.md#type-Vector3Math) | interface | math | — |
+| [`Vector3Math.add`](math.md#member-Vector3Math-add) | method | math | — |
+| [`Vector3Math.applyQuaternion`](math.md#member-Vector3Math-applyQuaternion) | method | math | — |
+| [`Vector3Math.cross`](math.md#member-Vector3Math-cross) | method | math | — |
+| [`Vector3Math.distance`](math.md#member-Vector3Math-distance) | method | math | — |
+| [`Vector3Math.dot`](math.md#member-Vector3Math-dot) | method | math | — |
+| [`Vector3Math.length`](math.md#member-Vector3Math-length) | method | math | — |
+| [`Vector3Math.lerp`](math.md#member-Vector3Math-lerp) | method | math | — |
+| [`Vector3Math.normalize`](math.md#member-Vector3Math-normalize) | method | math | — |
+| [`Vector3Math.scale`](math.md#member-Vector3Math-scale) | method | math | — |
+| [`Vector3Math.sub`](math.md#member-Vector3Math-sub) | method | math | — |
 | [`Video`](video.md#type-Video) | handle | video | — |
 | [`Video()`](video.md#column-Video) | column kind | video | — |
 | [`VideoInfo`](video.md#type-VideoInfo) | struct | video | — |

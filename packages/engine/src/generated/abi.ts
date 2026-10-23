@@ -311,6 +311,8 @@ export interface HostAbi<A, V> {
   og_load_video_info(world: number, video: number): string;
   /** `og.load.timeline` */
   og_load_timeline(world: number, path: string): string;
+  /** `og.load.rig2d` */
+  og_load_rig2d(world: number, path: string): string;
   /** `og.physics.raycast` */
   og_physics_raycast(world: number, desc: string | undefined): string;
   /** `og.physics.shapeCast` */
@@ -355,6 +357,8 @@ export interface HostAbi<A, V> {
   og_anim_humanoid(world: number, desc: string | undefined): string;
   /** `og.anim.retarget` */
   og_anim_retarget(world: number, desc: string | undefined): string;
+  /** `og.anim.rig2dInfo` */
+  og_anim_rig2d_info(world: number, rig: number): string;
   /** `og.tween.to` */
   og_tween_to(world: number, desc: string | undefined): string;
   /** `og.tween.sequence` */
@@ -872,6 +876,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_video",
   "og_load_video_info",
   "og_load_timeline",
+  "og_load_rig2d",
   "og_physics_raycast",
   "og_physics_shape_cast",
   "og_physics_overlap",
@@ -894,6 +899,7 @@ export const SYMBOLS: readonly string[] = [
   "og_anim_graph",
   "og_anim_humanoid",
   "og_anim_retarget",
+  "og_anim_rig2d_info",
   "og_tween_to",
   "og_tween_sequence",
   "og_tween_parallel",

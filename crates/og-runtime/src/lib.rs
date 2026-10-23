@@ -46,6 +46,7 @@ mod i18n;
 mod lanes;
 mod look;
 mod memory;
+mod skeleton2d;
 pub use lanes::{panic_report, record_panic, report as lanes_report};
 mod modules;
 mod nav;
@@ -140,6 +141,7 @@ pub use probe::png;
 #[cfg(not(feature = "publish"))]
 pub use record::{render_frame, render_restore, render_snapshot};
 pub use save::{og_world_restore, og_world_snapshot};
+pub use skeleton2d::{og_anim_rig2d_info, og_load_rig2d};
 pub use stream::{
     og_stream_budget, og_stream_release, og_stream_request, og_stream_set_budget, og_stream_status,
 };

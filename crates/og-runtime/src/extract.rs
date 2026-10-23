@@ -381,6 +381,14 @@ impl Hierarchy {
         }
     }
 
+    /// The world matrix of an entity's parent (the identity for a root).
+    pub(crate) fn parent_world(&mut self, e: u64) -> Mat4 {
+        match self.parent.get(&e).copied() {
+            Some(p) => self.world_of(p),
+            None => Mat4::IDENTITY,
+        }
+    }
+
     /// The world matrix of an entity: its local transform after its parents'.
     pub(crate) fn world_of(&mut self, e: u64) -> Mat4 {
         if let Some(m) = self.cached(e) {
@@ -607,6 +615,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.lights.clear();
     scene.texts.clear();
     scene.sprites.clear();
+    scene.sprite_meshes.clear();
     scene.overlay = None;
     scene.joint_palettes.clear();
     scene.skinned_instances.clear();
@@ -875,6 +884,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     };
     super::feel::camera_frame(world, rs, aspect);
     super::feel::extract(world, rs, &mut h);
+    super::skeleton2d::extract(world, rs, &mut h);
 
     // Characters the fonts lack, rendered from their files before any
     // text is laid out for this frame.

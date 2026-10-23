@@ -23,3 +23,6 @@ pub mod terrain_scenes;
 // Cooked through og-cook (native only).
 #[cfg(not(target_arch = "wasm32"))]
 pub mod vox_scenes;
+// Posed by og-anim (native only).
+#[cfg(not(target_arch = "wasm32"))]
+pub mod skeleton_scenes;

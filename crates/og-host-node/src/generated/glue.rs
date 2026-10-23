@@ -921,6 +921,12 @@ pub fn og_load_timeline(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_timeline(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_rig2d")]
+pub fn og_load_rig2d(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_rig2d(&Host, world, path)
+}
+
 #[napi(js_name = "og_physics_raycast")]
 pub fn og_physics_raycast(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -1051,6 +1057,12 @@ pub fn og_anim_humanoid(env: Env, world: u32, desc: Option<String>) -> String {
 pub fn og_anim_retarget(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as AnimApi>::og_anim_retarget(&Host, world, desc)
+}
+
+#[napi(js_name = "og_anim_rig2d_info")]
+pub fn og_anim_rig2d_info(env: Env, world: u32, rig: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AnimApi>::og_anim_rig2d_info(&Host, world, rig)
 }
 
 #[napi(js_name = "og_tween_to")]

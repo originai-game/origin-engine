@@ -1381,6 +1381,7 @@ export const load = Object.freeze({
   timeline: (world: WorldImpl, path: string) => parse(abi().og_load_timeline(world.id, path)),
   flipbook: (world: WorldImpl, path: string) => parse(abi().og_load_flipbook(world.id, path)),
   rig: (world: WorldImpl, path: string) => parse(abi().og_load_rig(world.id, path)),
+  rig2d: (world: WorldImpl, path: string) => parse(abi().og_load_rig2d(world.id, path)),
   tilemap: (world: WorldImpl, path: string) => parse(abi().og_load_tilemap(world.id, path)),
 });
 
@@ -1388,8 +1389,9 @@ export const anim = Object.freeze({
   graph: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_graph(world.id, json(desc))),
   humanoid: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_humanoid(world.id, json(desc))),
   retarget: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_retarget(world.id, json(desc))),
-  // One lookup for a flipbook's clips (an index, -1 when missing) and a
-  // loaded model's (og.load.animation: a ClipAsset, 0 when missing).
+  rig2dInfo: (world: WorldImpl, rig: number) => parse(abi().og_anim_rig2d_info(world.id, rig)),
+  // One lookup for a flipbook's or a 2D rig's clips (an index, -1 when
+  // missing) and a loaded model's (og.load.animation: a ClipAsset, 0 when missing).
   clip: (info: { clips?: ReadonlyArray<{ clip: number; name: string }>; skeleton?: number }, name: string): number =>
     info?.clips?.find((c) => c.name === name)?.clip ?? (info?.skeleton !== undefined ? 0 : -1),
 });

@@ -18,7 +18,7 @@ use og_core::ogt::{Block, Document, Entry, Value};
 use std::path::PathBuf;
 
 /// The project's `assets/` directory, from a source's path and asset id.
-fn assets_root(s: &Source) -> PathBuf {
+pub(super) fn assets_root(s: &Source) -> PathBuf {
     let mut p = s.path.clone();
     for _ in s.rel.split('/') {
         p.pop();
@@ -29,7 +29,7 @@ fn assets_root(s: &Source) -> PathBuf {
 /// A path the sheet names: relative to the sheet's directory when that file
 /// exists (`hero.png`, `../art/hero.png`), else an asset id
 /// (`sprites/hero.png`).
-fn resolve(s: &Source, path: &str) -> String {
+pub(super) fn resolve(s: &Source, path: &str) -> String {
     let id = crate::runtime::asset_id(path);
     let mut parts: Vec<&str> = s.rel.split('/').collect();
     parts.pop();

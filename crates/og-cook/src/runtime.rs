@@ -2187,6 +2187,24 @@ impl Bundle {
         og_anim::FlipbookSheet::parse(text).map_err(|e| invalid(&blob, e.reason()))
     }
 
+    /// Decodes a 2D rig blob (`og.Rig2D`) into its rig.
+    pub fn rig2d(&self, id: &str, bytes: &[u8]) -> Result<og_anim::Rig2dAsset, LoadError> {
+        let blob = self.blob::<format::Rig2D>(id, bytes)?;
+        let meta = one::<format::Rig2DMeta>(&blob)?;
+        let text = blob.raw("text")?;
+        let text = text
+            .get(..meta.text_bytes as usize)
+            .and_then(|t| std::str::from_utf8(t).ok())
+            .ok_or_else(|| invalid(&blob, "the rig text is cut short or not UTF-8"))?;
+        og_anim::Rig2dAsset::parse(text).map_err(|e| invalid(&blob, e.reason()))
+    }
+
+    /// Reads and decodes a 2D rig (native).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_rig2d(&self, id: &str) -> Result<og_anim::Rig2dAsset, LoadError> {
+        self.rig2d(id, &self.read(id)?)
+    }
+
     /// Reads and decodes a flipbook sheet (native).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn load_flipbook(&self, id: &str) -> Result<og_anim::FlipbookSheet, LoadError> {
