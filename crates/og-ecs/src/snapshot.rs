@@ -657,6 +657,10 @@ enum Source {
     /// The snapshot string field with this index, of another capacity:
     /// its text when it fits, else the default (empty).
     Text(usize),
+    /// The snapshot list field with this index, of another capacity (the
+    /// same element type): its elements when they fit, else the default
+    /// (empty). Never truncated.
+    List(usize),
     /// The field's default.
     Default,
 }
@@ -668,6 +672,10 @@ struct Plan {
     fields: Option<Vec<Source>>,
     /// Byte ranges of the snapshot type's fields.
     source_ranges: Vec<std::ops::Range<usize>>,
+    /// The snapshot type's field types (empty for a format 1 snapshot).
+    source_types: Vec<FieldType>,
+    /// This world's field types.
+    types: Vec<FieldType>,
     /// Default bytes of each of this world's fields.
     defaults: Vec<Vec<u8>>,
 }
@@ -694,6 +702,20 @@ impl Plan {
         }
     }
 
+    /// A list of another capacity as field `k`: its count lane and
+    /// elements, zero-padded, or the default when it holds more than fit.
+    fn list(&self, k: usize, f: usize, raw: &[u8], out: &mut Vec<u8>) {
+        let (ty, size) = (self.types[k], self.defaults[k].len());
+        let lane = ty.scalar().size();
+        match og_core::list_len(self.source_types[f], raw) {
+            Some(n) if lane * (n + 1) <= size => {
+                out.extend_from_slice(&raw[..lane * (n + 1)]);
+                out.resize(out.len() + size - lane * (n + 1), 0);
+            }
+            _ => out.extend_from_slice(&self.defaults[k]),
+        }
+    }
+
     /// One packed value of the snapshot type as this world's type.
     fn convert(&self, value: &[u8], out: &mut Vec<u8>) {
         let Some(fields) = &self.fields else {
@@ -707,6 +729,7 @@ impl Plan {
                     self.mapped_enum(k, map, &value[self.source_ranges[*f].clone()], out)
                 }
                 Source::Text(f) => self.text(k, &value[self.source_ranges[*f].clone()], out),
+                Source::List(f) => self.list(k, *f, &value[self.source_ranges[*f].clone()], out),
                 Source::Default => out.extend_from_slice(&self.defaults[k]),
             }
         }
@@ -727,6 +750,12 @@ impl Plan {
                 let n = self.source_ranges[*f].len();
                 for raw in columns[*f].chunks_exact(n) {
                     self.text(k, raw, out);
+                }
+            }
+            Some(Source::List(f)) => {
+                let n = self.source_ranges[*f].len();
+                for raw in columns[*f].chunks_exact(n) {
+                    self.list(k, *f, raw, out);
                 }
             }
             Some(Source::Default) => {
@@ -760,11 +789,19 @@ fn plan(
         .iter()
         .map(FieldSchema::default_bytes)
         .collect();
+    let types = info.schema.fields.iter().map(|f| f.ty).collect();
+    let source_types = t
+        .schema
+        .as_ref()
+        .map(|s| s.fields.iter().map(|f| f.ty).collect())
+        .unwrap_or_default();
     if info.layout_hash == t.hash {
         return Ok(Plan {
             target,
             fields: None,
             source_ranges,
+            source_types,
+            types,
             defaults,
         });
     }
@@ -800,6 +837,22 @@ fn plan(
                     ));
                 }
                 Source::Text(i)
+            }
+            Some(i)
+                if snap.fields[i].ty.is_list()
+                    && f.ty.is_list()
+                    && snap.fields[i].ty.scalar() == f.ty.scalar()
+                    && snap.fields[i].ty != f.ty =>
+            {
+                if snap.fields[i].ty.lanes() > f.ty.lanes() {
+                    report.warnings.push(format!(
+                        "{at} changed from {} to {}; a list longer than {} starts empty",
+                        snap.fields[i].ty.name(),
+                        f.ty.name(),
+                        f.ty.lanes() - 1
+                    ));
+                }
+                Source::List(i)
             }
             Some(i) if snap.fields[i].ty != f.ty => {
                 report.warnings.push(format!(
@@ -845,6 +898,8 @@ fn plan(
         target,
         fields: Some(fields),
         source_ranges,
+        source_types,
+        types,
         defaults,
     })
 }

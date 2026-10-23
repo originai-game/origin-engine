@@ -57,10 +57,12 @@ world.add_system(
   registration order. Engine-owned names are dotted (`og.Time`, `og.Rng`),
   matching the TypeScript tokens. A Rust type adopts a host schema of the same name and
   layout; the same name with another layout is refused. A string field
-  (`strN`) is plain data in components, resources and events alike.
+  (`strN`) and a list field (`u64[8]`) are plain data in components,
+  resources and events alike.
 - **Values**: every byte entry point (and every typed one) checks the packed
   value with `Schema::check_packed`: a bool byte is 0 or 1, an enum index
-  names a variant, a string is zero-padded UTF-8; the reason names the field.
+  names a variant, a string is zero-padded UTF-8, a list's count is a whole
+  number up to its capacity with zeros past it; the reason names the field.
   Column views are raw memory: a view may store any byte in a bool column
   (read as true when non-zero), and snapshots keep it as it is.
 - **Access**: registration refuses a query that writes (or reads) a type the
@@ -124,7 +126,9 @@ world.add_system(
 - **Migrating restore** (`restore_migrating`, for hot reload): types by
   name, fields by name; an added field takes its schema default, a removed
   field or type is dropped, a field whose type changed restarts at its
-  default, enum values follow their variant names; entity ids, row order,
+  default, enum values follow their variant names, a string or a list of
+  another capacity (the same element type) keeps a value that fits and
+  starts one that does not empty, never truncated; entity ids, row order,
   names, `Time` and rng states are kept, archetypes only a dropped type kept
   apart merge in snapshot order, and a resource of a type the snapshot does
   not know keeps its current value. `MigrationReport { migrated, added,
@@ -141,7 +145,7 @@ structural operations against a shadow model), `tests/snapshot.rs`,
 snapshot restored into a fresh world, give the same hash; the world itself is
 `tests/support/bouncing_boxes.rs`, shared with `tools/wasm-determinism/`),
 `tests/schedule.rs`, `tests/host_schema.rs`, `tests/field_types.rs` (a bool
-column through snapshot and hash, mat4 columns, string columns through snapshot, hash and a capacity change),
+column through snapshot and hash, mat4 columns, string and list columns through snapshot, hash and a capacity change),
 `tests/packed_access.rs` (the `SystemContext` byte calls and their access
 checks), `tests/introspection.rs` (`system_info` matched counts, names in
 snapshots and the hash, the structural counter), `tests/migrate.rs` (added,
