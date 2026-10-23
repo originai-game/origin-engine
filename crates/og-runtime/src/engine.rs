@@ -860,6 +860,7 @@ pub(crate) fn assemble(
             || REGISTERED_BY_MODULES.contains(&decl.schema)
             || super::anim::REGISTERED_BY_ANIM.contains(&decl.schema)
             || super::feel::REGISTERED_BY_FEEL.contains(&decl.schema)
+            || super::timeline::REGISTERED_BY_TIMELINE.contains(&decl.schema)
             || decl.schema == super::stream::EVENT
         {
             continue;
@@ -890,6 +891,8 @@ pub(crate) fn assemble(
         let layout = Layout::from_schema(world.schema(id).map_err(err)?, RecordKind::Event);
         layouts.insert(layout.schema.clone(), layout);
     }
+    // og.timeline's events (the marker's name is a str64).
+    super::timeline::register_records(&mut world, &mut layouts)?;
     // og.stream's event (its group is a str64), registered as it is sent.
     {
         world
@@ -1041,9 +1044,12 @@ pub(crate) fn assemble(
         .map(|l| l.schema.clone())
         .collect();
     let feel = super::feel::install_front(&mut world, &components)?;
+    // og.path and og.timeline after tweens, before og-anim (an animation
+    // track sets players) and physics.
+    super::timeline::install(&mut world, engine_id, &layouts, &ui)?;
     let anim = super::anim::install(&mut world)?;
     let feel_records = super::feel::Records::of(&world, &layouts)?;
-    super::feel::install_middle(&mut world, &feel, &feel_records)?;
+    super::feel::install_middle(&mut world, engine_id, &feel, &feel_records)?;
     super::e6::mount_back(&mut world, engine_id, profile, &physics)?;
     let mounted =
         super::modules::mount_back(&mut world, engine_id, physics, ui, previous.map(|p| p.1))?;
@@ -1185,6 +1191,8 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         let mut probe = engine.probe.borrow_mut();
         super::e6::commit(engine_id, probe.inbox());
         super::e6::register_commands(&mut probe, engine_id);
+        super::timeline::commit(engine_id, probe.inbox());
+        super::timeline::register_commands(&mut probe, engine_id);
     }
     // The host's locale (og run --locale, the browser's language).
     super::i18n::request(engine_id, options["locale"].as_str().unwrap_or(""));
@@ -1290,6 +1298,7 @@ pub fn destroy(id: u32) -> bool {
     before_structural(&eng);
     og_audio::retire_link(id);
     super::e6::retire(id);
+    super::timeline::retire(id);
     ENGINES.with(|e| {
         if let Some(slot) = e.borrow_mut().get_mut(id as usize) {
             *slot = None;

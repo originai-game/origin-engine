@@ -1372,6 +1372,7 @@ export const load = Object.freeze({
   error: (world: WorldImpl, asset: number) => parse(abi().og_load_error(world.id, asset)),
   gltfInfo: (world: WorldImpl, asset: number) => parse(abi().og_load_gltf_info(world.id, asset)),
   animation: (world: WorldImpl, path: string) => parse(abi().og_load_animation(world.id, path)),
+  timeline: (world: WorldImpl, path: string) => parse(abi().og_load_timeline(world.id, path)),
   flipbook: (world: WorldImpl, path: string) => parse(abi().og_load_flipbook(world.id, path)),
   rig: (world: WorldImpl, path: string) => parse(abi().og_load_rig(world.id, path)),
   tilemap: (world: WorldImpl, path: string) => parse(abi().og_load_tilemap(world.id, path)),

@@ -1,4 +1,4 @@
-// The phase 2 modules' namespaces (IDL `terrain`): thin calls into the host's binding symbols,
+// The phase 2 and depth modules' namespaces (IDL `terrain`, `stream`, `path`, `timeline`): thin calls into the host's binding symbols,
 // typed by the generated declarations through index.ts.
 
 import type { HostAbi } from "./generated/abi.ts";
@@ -32,4 +32,22 @@ export const stream = Object.freeze({
   release: (world: W, group: string) => parse(abi().og_stream_release(world.id, group)),
   budget: (world: W) => parse(abi().og_stream_budget(world.id)),
   setBudget: (world: W, bytes: number) => parse(abi().og_stream_set_budget(world.id, bytes)),
+});
+
+// Depth S2 (IDL `path`, `timeline`).
+export const path = Object.freeze({
+  create: (world: W, desc?: unknown) => parse(abi().og_path_create(world.id, json(desc))),
+  find: (world: W, name: string) => parse(abi().og_path_find(world.id, name)),
+  sample: (world: W, p: number, t: number) => parse(abi().og_path_sample(world.id, p, t)),
+  length: (world: W, p: number) => parse(abi().og_path_length(world.id, p)),
+  nearest: (world: W, p: number, point: unknown) =>
+    parse(abi().og_path_nearest(world.id, p, JSON.stringify(point))),
+});
+
+export const timeline = Object.freeze({
+  info: (world: W, asset: number) => parse(abi().og_timeline_info(world.id, asset)),
+  play: (world: W, entity: number) => parse(abi().og_timeline_play(world.id, entity)),
+  pause: (world: W, entity: number) => parse(abi().og_timeline_pause(world.id, entity)),
+  seek: (world: W, entity: number, time: number) => parse(abi().og_timeline_seek(world.id, entity, time)),
+  stop: (world: W, entity: number) => parse(abi().og_timeline_stop(world.id, entity)),
 });

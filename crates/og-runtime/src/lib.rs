@@ -55,6 +55,7 @@ mod save;
 mod stream;
 mod terrain;
 mod terrain_stream;
+mod timeline;
 
 pub use ai::{
     og_ai_describe, og_ai_get, og_ai_load, og_ai_noise, og_ai_parse, og_ai_restart, og_ai_set,
@@ -128,6 +129,11 @@ pub use stream::{
 pub use terrain::{
     og_terrain_bounds, og_terrain_edit, og_terrain_layer, og_terrain_load, og_terrain_sample,
     og_terrain_set_layer,
+};
+pub use timeline::{
+    og_load_timeline, og_path_create, og_path_find, og_path_length, og_path_nearest,
+    og_path_sample, og_timeline_info, og_timeline_pause, og_timeline_play, og_timeline_seek,
+    og_timeline_stop,
 };
 
 use serde_json::{Value, json};

@@ -26,7 +26,7 @@ import {
 } from "./runtime.ts";
 import { cameras } from "./systems/cameras.ts";
 import { ai, i18n, nav, platform } from "./e6.ts";
-import { stream, terrain } from "./p2.ts";
+import { path, stream, terrain, timeline } from "./p2.ts";
 import { uiKit } from "./ui-kit/index.ts";
 
 const spec = (kind: string, value: unknown, options: unknown): FieldSpec =>
@@ -189,6 +189,8 @@ export const og: typeof Api.og = Object.freeze({
   i18n,
   terrain,
   stream,
+  path,
+  timeline,
   ui: Object.freeze({ ...ui, ...uiKit }),
   systems: Object.freeze({ cameras }),
 }) as unknown as typeof Api.og;

@@ -59,6 +59,8 @@ impl Kind {
             "Navigation" | "Behaviour" => Kind::Asset,
             // Phase 2: terrains.
             "TerrainData" => Kind::Asset,
+            // Depth S2: paths and timelines.
+            "Path" | "TimelineAsset" => Kind::Asset,
             "String" | "str" => Kind::Str,
             _ => return None,
         })

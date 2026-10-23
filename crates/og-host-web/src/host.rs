@@ -438,6 +438,9 @@ impl LoadApi for WebHost {
     fn og_load_animation(&self, world: u32, path: String) -> String {
         rt::og_load_animation(world, path)
     }
+    fn og_load_timeline(&self, world: u32, path: String) -> String {
+        rt::og_load_timeline(world, path)
+    }
     fn og_load_sound(&self, world: u32, path: String) -> String {
         rt::og_load_sound(world, path)
     }

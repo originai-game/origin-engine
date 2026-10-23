@@ -297,7 +297,12 @@ impl Records {
 }
 
 /// Installs og.tilemap and og.camera (after og.anim, before the UI's end and physics).
-pub(crate) fn install_middle(world: &mut World, feel: &Feel, r: &Records) -> Result<(), String> {
+pub(crate) fn install_middle(
+    world: &mut World,
+    engine_id: u32,
+    feel: &Feel,
+    r: &Records,
+) -> Result<(), String> {
     let names =
         |ids: &[&(SchemaId, Layout)]| ids.iter().map(|x| x.1.schema.clone()).collect::<Vec<_>>();
     let tiles = feel.tiles.clone();
@@ -342,7 +347,7 @@ pub(crate) fn install_middle(world: &mut World, feel: &Feel, r: &Records) -> Res
                     },
                 ],
             },
-            move |ctx| camera_system(ctx, &shared, &rec),
+            move |ctx| camera_system(ctx, engine_id, &shared, &rec),
         )
         .map_err(err)?;
     world
@@ -473,6 +478,7 @@ pub fn og_camera_kick(world: u32, direction: String, distance: f64) -> String {
 /// camera along a rail.
 fn camera_system(
     ctx: &mut SystemContext<'_>,
+    engine_id: u32,
     shared: &Mutex<FeelShared>,
     r: &Records,
 ) -> og_core::Result<()> {
@@ -520,11 +526,18 @@ fn camera_system(
         }
     }
     if let Some((_, v, target)) = rail {
-        let n = (v["points"].as_u64().unwrap_or(2) as usize).clamp(2, 8);
-        let pts: Vec<Vec3> = (0..n)
-            .map(|i| v3(&v[format!("p{i}").as_str()], Vec3::ZERO))
-            .collect();
-        let goal = rail_nearest(&pts, target);
+        // A path handle (og.path) replaces the inline points.
+        let path = v["path"].as_f64().map_or(0, |h| h as u64);
+        let goal = match super::timeline::path_of(engine_id, path).filter(|_| path != 0) {
+            Some(p) => p.nearest(target).position,
+            None => {
+                let n = (v["points"].as_u64().unwrap_or(2) as usize).clamp(2, 8);
+                let pts: Vec<Vec3> = (0..n)
+                    .map(|i| v3(&v[format!("p{i}").as_str()], Vec3::ZERO))
+                    .collect();
+                rail_nearest(&pts, target)
+            }
+        };
         let pos = v3(&cam["position"], Vec3::ZERO);
         let smooth = f(&v, "smoothTime", 0.2);
         let k = if smooth > 0.0 {
@@ -626,7 +639,7 @@ fn camera_zone(
 }
 
 /// The rotation that points -Z from `eye` towards `target`, +Y up.
-fn look_rotation(eye: Vec3, target: Vec3) -> Quat {
+pub(crate) fn look_rotation(eye: Vec3, target: Vec3) -> Quat {
     let forward = (target - eye).normalize_or_zero();
     if forward == Vec3::ZERO {
         return Quat::IDENTITY;
