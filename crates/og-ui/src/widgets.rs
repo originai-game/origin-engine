@@ -47,7 +47,7 @@ pub struct AnchorDesc {
     /// Draws over dialogs and spotlights (a tutorial callout, a dragged item).
     pub over: bool,
     /// The skin frame its background takes (`None`: the panel's).
-    pub skin: Option<crate::skin::SkinPart>,
+    pub skin: Option<crate::skin::StylePart>,
     /// Shown settled the first time it is built: no skin entrance or
     /// stagger (the screen a game opens on, which the web draws behind its
     /// play gate).
@@ -454,7 +454,7 @@ impl Ui {
             cross: desc.cross,
             background: desc.background,
             radius: desc.radius,
-            skin: desc.skin.or(Some(crate::skin::SkinPart::Panel)),
+            skin: desc.skin.or(Some(crate::skin::StylePart::Panel)),
             ..Element::default()
         };
         let i = self.open_layer(
@@ -689,7 +689,7 @@ impl Ui {
                 gap: t.space.md,
                 background: (!desc.bare).then_some(t.palette.panel_raised),
                 radius: t.radius.panel,
-                skin: Some(crate::skin::SkinPart::Panel),
+                skin: Some(crate::skin::StylePart::Panel),
                 interactive: !desc.bare,
                 cross: if desc.bare {
                     Cross::Center
@@ -880,7 +880,7 @@ impl Ui {
                     background: Some(t.palette.panel_raised),
                     radius: t.radius.control,
                     interactive: true,
-                    skin: Some(crate::skin::SkinPart::Capsule),
+                    skin: Some(crate::skin::StylePart::Hud),
                     ..Element::default()
                 },
             );
@@ -1354,7 +1354,7 @@ impl Ui {
                 padding: Insets::all(t.space.xs),
                 interactive: true,
                 radius: t.radius.small,
-                skin: Some(crate::skin::SkinPart::Slot),
+                skin: Some(crate::skin::StylePart::Slot),
                 ..Element::default()
             },
         );

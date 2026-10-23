@@ -10,7 +10,7 @@ version 1
 # (src/world.ts sets og.DayNight), and the paper skin.
 name "Kestrel Stair, late afternoon"
 extends "watercolor-wash"
-skin "skins/kestrel/skin.ogt"
+ui "styles/kestrel/style.ogt"
 antialias taa
 Stylise {
   paintRadius 2

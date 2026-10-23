@@ -1,0 +1,108 @@
+type style
+version 1
+---
+# Lantern Vale's skin: a copy of the engine's fantasy style pack (templates/styles/fantasy; CC0 art, OFL fonts; LICENSES.md), its fallback the game's Chinese subset.
+name "lantern"
+scheme dark
+atlas "styles/lantern/atlas.png" 384 256
+scale 1
+palette {
+  backdrop "#1a120b"
+  well "#241910"
+  panel "#efdfb8"
+  panelHover "#f4e8c8"
+  panelRaised "#efdfb8"
+  line "#9b7a4a"
+  lineStrong "#5c4127"
+  ink "#2a1a0c"
+  inkMuted "#3d2a18"
+  inkFaint "#3d2a18"
+  inkInverse "#f4e8c8"
+  control "#e2cc98"
+  controlStrong "#d6bc82"
+  primary "#7a520f"
+  primaryHover "#74500e"
+  primaryActive "#6a470c"
+  onPrimary "#fff4dc"
+  primarySoft "#7a520f40"
+  highlight "#6e470d"
+  focus "#8f2d1f"
+  knob "#f4e8c8"
+  hud "#efdfb8"
+  scrim "#0d0805cc"
+  shadow "#000000aa"
+  sheen "#ffffff52"
+  success "#2d5a1e"
+  warn "#704713"
+  danger "#6e1b10"
+  info "#22517f"
+  health "#2d5a1e"
+  mana "#0a84ff"
+  xp "#bf5af2"
+  gold "#7a520f"
+}
+radius {
+  small 4
+  control 4
+  bar 4
+  panel 4
+}
+ramp {
+  body 15 22
+  meta 13 18
+  caption 13 18
+  reading 16 24
+  lg 19 26
+  xl 22 28
+  xl2 24 30
+  xl3 28 32
+  displaySm 28 34
+  displayMd 34 40
+  displayLg 42 48
+}
+durations {
+  fast 200
+  base 300
+  slow 480
+}
+fonts {
+  body "styles/lantern/Newsreader-Medium.ttf"
+  display "styles/lantern/Cinzel-Bold.ttf"
+  numeric "styles/lantern/Cinzel-Bold.ttf"
+  fallback "fonts/NotoSansSC-subset.ttf"
+}
+icons "styles/lantern/icons.png" 8 4 {
+  names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
+}
+slice panel 4 4 96 96 16 authored
+slice card 104 4 64 64 10 authored
+slice button 172 4 48 48 10 tint
+slice buttonHover 224 4 48 48 10 tint
+slice buttonPressed 276 4 48 48 10 tint
+slice buttonDisabled 328 4 48 48 10 tint
+slice field 4 104 48 48 8 tint
+slice slot 56 104 48 48 10 tint
+slice tooltip 108 104 32 32 8 tint
+slice hud 144 104 32 32 12 tint
+slice track 180 104 32 16 6 tint
+slice fill 216 104 32 16 6 tint
+soft 252 104 64 64 24
+corner 320 104 32 32 28 28 authored 6
+corners panel
+divider 4 172 128 24 112 20 authored
+flourish 136 172 64 24 48 18 authored 0
+tile 204 172 64 64 64 64 0.5 6 panel card
+shadow panel 0 10 18 2 "#000000b3"
+shadow card 0 4 8 0 "#00000066"
+shadow button 0 3 4 0 "#00000073"
+shadow hud 0 3 6 0 "#00000080"
+press 0.98 0.96 1
+hover 0 1.0
+motion {
+  enter scale
+  stagger 35
+  toast slideDown
+  progress 420
+  shake 5
+  pop 0.1
+}

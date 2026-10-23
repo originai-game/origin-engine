@@ -19,7 +19,7 @@ Commands: `show:<screen>`, `viewport:<desktop|tablet|phone|landscape>`
 `--size 1170x2532` for the 390×844@3 phone), `pad:<up|down|left|right|next|prev|activate|back>`
 (a gamepad, through `og.ui.navigate`), `toast:<text>`, `damage:<hp>`, `heal:<hp>`.
 `skin:<tokens|pixel|cartoon|fantasy|scifi|paper|neon>` dresses every screen
-in a style pack (`assets/skins/<pack>/skin.ogt` through `og.load.skin`),
+in a style pack (`assets/styles/<pack>/style.ogt` through `og.load.style`),
 `transition:<none|fade|wipe|iris|dissolve|slide>` sends screen changes through
 `og.ui.screenTransition`, `sounds:<on|off>` (on by default) hands `assets/audio/ui-*.wav` to
 the UI's event sounds, `offline:<on|off>` makes the leaderboard's rows fail
@@ -90,11 +90,11 @@ playtests through `packages/engine/tests/web/reference-ui.ts` (`docs/ci.md`
 
 ## Style packs
 
-`assets/skins/<pack>/` holds a skin (`skin.ogt`), its atlas and icons (CC0,
+`assets/styles/<pack>/` holds a skin (`style.ogt`), its atlas and icons (CC0,
 drawn by `tools/make-skins.py`) and its OFL fonts (`LICENSES.md`). Copy a
-pack's directory into a game's `assets/skins/`, keep
+pack's directory into a game's `assets/styles/`, keep
 `fonts/NotoSansSC-Regular-subset.ttf` for the CJK fallback, and configure:
-`og.ui.configure(world, { skin: og.load.skin(world, "skins/fantasy/skin.ogt").value })`.
+`og.ui.configure(world, { skin: og.load.style(world, "skins/fantasy/style.ogt").value })`.
 
 | Pack | Look |
 |---|---|

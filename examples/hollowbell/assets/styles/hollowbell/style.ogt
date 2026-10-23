@@ -1,0 +1,122 @@
+type style
+version 1
+---
+# Hollowbell's skin: a copy of the engine's pixel style pack (templates/styles/pixel;
+# CC0 art, OFL fonts; LICENSES.md), recoloured to the game's palette (palettes/hollowbell.hex):
+# the cave's violet ground, cream ink, the bell's pale gold as the one accent,
+# and a type ramp in whole multiples of DotGothic16's 16 px grid, so its
+# one-pixel strokes stay whole (at 13 or 22 px they blur and lose contrast).
+# Its fallback is the game's own Chinese subset (tools/subset-font.py).
+name "hollowbell"
+scheme dark
+atlas "atlas.png" 384 256
+scale 1
+palette {
+  backdrop "#1a1726"
+  well "#211c31"
+  panel "#262138"
+  panelHover "#3a3152"
+  panelRaised "#262138"
+  line "#5b4f7d"
+  lineStrong "#a79ccf"
+  ink "#f6f3e4"
+  inkMuted "#d0c8b0"
+  inkFaint "#b4ac96"
+  inkInverse "#14111f"
+  control "#3d3558"
+  controlStrong "#4b4269"
+  primary "#f7dc74"
+  primaryHover "#fff4c4"
+  primaryActive "#e0ae3c"
+  onPrimary "#0b0a12"
+  primarySoft "#f7dc7433"
+  highlight "#fff4c4"
+  focus "#fff4c4"
+  knob "#5b4f7d"
+  hud "#221d36f2"
+  scrim "#0b0a12b3"
+  shadow "#00000099"
+  sheen "#ffffff52"
+  success "#8cc65e"
+  warn "#ffa53d"
+  danger "#ec7a5c"
+  info "#8fcbe8"
+  health "#8cc65e"
+  mana "#0a84ff"
+  xp "#bf5af2"
+  gold "#f7dc74"
+}
+radius {
+  small 0
+  control 0
+  bar 0
+  panel 0
+}
+ramp {
+  xs 16 18
+  meta 16 18
+  caption 16 18
+  sm 16 20
+  body 16 20
+  reading 16 22
+  base 16 22
+  lg 16 24
+  xl 32 36
+  xl2 32 36
+  xl3 32 36
+  displaySm 32 36
+  displayMd 48 52
+  displayLg 48 52
+}
+durations {
+  instant 80
+  fast 120
+  base 160
+  slow 320
+}
+fonts {
+  body "DotGothic16-Regular.ttf"
+  display "DotGothic16-Regular.ttf"
+  numeric "DotGothic16-Regular.ttf"
+  fallback "fonts/NotoSansSC-hollowbell.ttf"
+}
+icons "icons.png" 8 4 {
+  names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
+}
+slice panel 4 4 96 96 8 tint
+slice card 104 4 64 64 4 tint
+slice button 172 4 48 48 6 tint
+slice buttonHover 224 4 48 48 6 tint
+slice buttonPressed 276 4 48 48 6 tint
+slice buttonDisabled 328 4 48 48 6 tint
+slice field 4 104 48 48 4 tint
+slice slot 56 104 48 48 4 tint
+slice tooltip 108 104 32 32 4 tint
+slice hud 144 104 32 32 4 tint
+slice track 180 104 32 16 4 tint
+slice fill 216 104 32 16 4 tint
+soft 252 104 64 64 24
+divider 4 172 128 24 128 24 line
+flourish 136 172 64 24 32 12 primary 0
+tile 204 172 64 64 16 16 0.06 6 panel
+shadow panel 6 6 0 0 "#000000b0"
+shadow card 4 4 0 0 "#00000080"
+shadow button 0 4 0 0 "#000000a0"
+shadow hud 3 3 0 0 "#00000080"
+shadow tooltip 3 3 0 0 "#00000080"
+textShadow display 3 3 0 "#000000c0"
+textShadow body 1 1 0 "#00000080"
+# The pack's thickening of its one-pixel strokes, so a primary label takes its full
+# accentFg ink on the gold (FINDINGS.md #20, fixed in the pack; with px_range 8 in
+# DotGothic16-Regular.ttf.ogt). The pale-gold accent and the 16 px ramp stay as the look.
+textWeight body 0.5
+press 1.0 1.0 3
+hover -1 1.0
+motion {
+  enter slideDown
+  stagger 0
+  toast slideUp
+  progress 240
+  shake 4
+  pop 0.0
+}

@@ -1,0 +1,115 @@
+type style
+version 1
+---
+# Lamp Dive's skin: the engine's pixel style pack (templates/ui-kit/tools/make-skins.py; CC0 art, OFL
+# fonts; LICENSES.md) in tomb colours: plum stone panels, the lamp's amber as the one accent.
+name "lampdive"
+scheme dark
+atlas "styles/lampdive/atlas.png" 384 256
+scale 1
+palette {
+  backdrop "#100c14"
+  well "#17121d"
+  panel "#2a2131"
+  panelHover "#382c41"
+  panelRaised "#2a2131"
+  line "#5a4866"
+  lineStrong "#a990b8"
+  ink "#f4f1de"
+  inkMuted "#c9c2a8"
+  inkFaint "#b8b29a"
+  inkInverse "#14111f"
+  control "#4c3d58"
+  controlStrong "#5e4b6b"
+  primary "#ffb347"
+  primaryHover "#ffc56e"
+  primaryActive "#e69a2e"
+  onPrimary "#14111f"
+  primarySoft "#ffb34724"
+  highlight "#ffc56e"
+  focus "#ffb347"
+  knob "#5a4866"
+  hud "#211a28f2"
+  scrim "#08060bb8"
+  shadow "#00000099"
+  sheen "#ffffff52"
+  success "#6fad74"
+  warn "#ffa53d"
+  danger "#fa7771"
+  info "#5dc2ff"
+  health "#6fad74"
+  mana "#0a84ff"
+  xp "#bf5af2"
+  gold "#ffb347"
+}
+radius {
+  small 0
+  control 0
+  bar 0
+  panel 0
+}
+ramp {
+  xs 12 16
+  meta 13 18
+  caption 13 18
+  sm 14 18
+  body 16 20
+  reading 16 22
+  base 16 22
+  lg 18 24
+  xl 22 28
+  xl2 24 28
+  xl3 28 32
+  displaySm 32 36
+  displayMd 36 40
+  displayLg 44 48
+}
+durations {
+  instant 80
+  fast 120
+  base 160
+  slow 320
+}
+fonts {
+  body "styles/lampdive/DotGothic16-Regular.ttf"
+  display "styles/lampdive/DotGothic16-Regular.ttf"
+  numeric "styles/lampdive/DotGothic16-Regular.ttf"
+  fallback "fonts/NotoSansSC-subset.ttf"
+}
+icons "styles/lampdive/icons.png" 8 4 {
+  names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
+}
+slice panel 4 4 96 96 8 tint
+slice card 104 4 64 64 4 tint
+slice button 172 4 48 48 6 tint
+slice buttonHover 224 4 48 48 6 tint
+slice buttonPressed 276 4 48 48 6 tint
+slice buttonDisabled 328 4 48 48 6 tint
+slice field 4 104 48 48 4 tint
+slice slot 56 104 48 48 4 tint
+slice tooltip 108 104 32 32 4 tint
+slice hud 144 104 32 32 4 tint
+slice track 180 104 32 16 4 tint
+slice fill 216 104 32 16 4 tint
+soft 252 104 64 64 24
+divider 4 172 128 24 128 24 line
+flourish 136 172 64 24 32 12 primary 0
+tile 204 172 64 64 16 16 0.06 6 panel
+shadow panel 6 6 0 0 "#000000b0"
+shadow card 4 4 0 0 "#00000080"
+shadow button 0 4 0 0 "#000000a0"
+shadow hud 3 3 0 0 "#00000080"
+shadow tooltip 3 3 0 0 "#00000080"
+textShadow display 3 3 0 "#000000c0"
+textShadow body 1 0 0 "#14111f"
+textWeight body 0.5
+press 1.0 1.0 3
+hover -1 1.0
+motion {
+  enter slideDown
+  stagger 0
+  toast slideUp
+  progress 240
+  shake 4
+  pop 0.0
+}

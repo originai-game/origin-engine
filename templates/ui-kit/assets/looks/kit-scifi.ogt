@@ -1,0 +1,7 @@
+type look
+version 1
+---
+# Names the built-in scifi style, so the cook puts it in the bundle (@styles/scifi/);
+# the kit loads the style itself and never applies this look.
+name "kit scifi"
+ui "scifi"

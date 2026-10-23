@@ -7,7 +7,7 @@ version 1
 # taken off again for the next run.
 name "Hollowbell at dawn"
 extends "8bit-pixel"
-skin "skins/hollowbell/skin.ogt"
+ui "styles/hollowbell/style.ogt"
 antialias off
 Stylise {
   pixelHeight 160

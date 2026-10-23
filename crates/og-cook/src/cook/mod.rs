@@ -536,7 +536,7 @@ enum Kind {
     Scene,
     Lut,
     Emitter,
-    Skin,
+    Style,
     Tileset,
     Tilemap,
     Flipbook,
@@ -566,7 +566,7 @@ impl Kind {
             Kind::Scene => "scene",
             Kind::Lut => "lut",
             Kind::Emitter => "emitter",
-            Kind::Skin => "skin",
+            Kind::Style => "style",
             Kind::Tileset => "tileset",
             Kind::Tilemap => "tilemap",
             Kind::Flipbook => "flipbook",
@@ -624,7 +624,7 @@ enum Work<'a> {
     SoundChunk(&'a Source, u32, u32),
     Lut(&'a Source),
     Emitter(&'a Source),
-    Skin(&'a Source),
+    Style(&'a Source),
     Tileset(&'a Source),
     Tilemap(&'a Source, tilemap::MapSettings),
     Flipbook(&'a Source),
@@ -798,6 +798,30 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
     };
     let texture_encoder = texture::encoder_name(&options.texture);
 
+    // The engine's built-in assets the looks name join the bundle under
+    // their reserved ids (`@canvas/paper.png`, every file of
+    // `@styles/pixel/`), once each, read from the cook itself.
+    let mut builtins: BTreeMap<String, &'static [u8]> = BTreeMap::new();
+    for (rel, path) in &files {
+        if ext(rel) == "ogt"
+            && let Ok(text) = std::fs::read_to_string(path)
+            && Document::parse(&text).is_ok_and(|d| d.ty == crate::look::LOOK_TYPE)
+        {
+            for (id, bytes) in look::builtin_files(rel, &text, &assets_dir) {
+                builtins.insert(id.to_string(), bytes);
+            }
+        }
+    }
+    for id in builtins.keys() {
+        files.push((id.clone(), assets_dir.join(id)));
+    }
+    let read = |rel: &str, path: &Path| -> Result<Vec<u8>, CookError> {
+        match builtins.get(rel) {
+            Some(b) => Ok(b.to_vec()),
+            None => std::fs::read(path).map_err(|e| CookError(format!("{}: {e}", path.display()))),
+        }
+    };
+
     // Classify; import settings attach to the file they are named after.
     let names: BTreeSet<&str> = files.iter().map(|(r, _)| r.as_str()).collect();
     let mut sources: Vec<Source> = Vec::new();
@@ -805,11 +829,11 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
     let mut ignored = Vec::new();
     let mut early_errors: Vec<(String, &'static str, String)> = Vec::new();
     for (rel, path) in &files {
-        if rel.starts_with('@') {
+        if rel.starts_with('@') && !builtins.contains_key(rel) {
             early_errors.push((
                 rel.clone(),
                 "asset",
-                "paths starting with '@' are the engine's built-in assets (a look names them as \"@canvas/<name>\" or \"@palettes/<name>\"); rename the file or its folder".into(),
+                "paths starting with '@' are the engine's built-in assets (a look names them: \"@canvas/<name>\", \"@palettes/<name>\", a built-in style by its slug); rename the file or its folder".into(),
             ));
             continue;
         }
@@ -822,8 +846,8 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             "tmj" | "ldtk" => Kind::Tilemap,
             "hex" | "gpl" => Kind::Palette,
             "ogt" => {
-                let text = std::fs::read_to_string(path)
-                    .map_err(|e| CookError(format!("{}: {e}", path.display())))?;
+                let text = String::from_utf8(read(rel, path)?)
+                    .map_err(|_| CookError(format!("{}: not UTF-8 text", path.display())))?;
                 match Document::parse(&text) {
                     Ok(doc) if doc.ty == "import" => {
                         let target = rel.trim_end_matches(".ogt");
@@ -840,7 +864,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     }
                     Ok(doc) if doc.ty == "scene" => Kind::Scene,
                     Ok(doc) if doc.ty == crate::fx::EMITTER_TYPE => Kind::Emitter,
-                    Ok(doc) if doc.ty == og_ui::skin::SKIN_TYPE => Kind::Skin,
+                    Ok(doc) if doc.ty == og_ui::skin::STYLE_TYPE => Kind::Style,
                     Ok(doc) if doc.ty == "tileset" => Kind::Tileset,
                     Ok(doc) if doc.ty == "tilemap" => Kind::Tilemap,
                     Ok(doc) if doc.ty == "flipbook" => Kind::Flipbook,
@@ -863,7 +887,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, icons, tileset, tilemap, flipbook, rig2d, shader, behaviour, navmesh, terrain, timeline, environment, texture-array, video, look, sfx, strings, rig or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, style, icons, tileset, tilemap, flipbook, rig2d, shader, behaviour, navmesh, terrain, timeline, environment, texture-array, video, look, sfx, strings, rig or import)",
                                 doc.ty
                             ),
                         ));
@@ -880,42 +904,12 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 continue;
             }
         };
-        let bytes =
-            std::fs::read(path).map_err(|e| CookError(format!("{}: {e}", path.display())))?;
+        let bytes = read(rel, path)?;
         sources.push(Source {
             rel: rel.clone(),
             path: path.clone(),
             kind,
             bytes,
-            settings: None,
-            hash: 0,
-            gltf: None,
-            error: None,
-            encoded: std::sync::OnceLock::new(),
-        });
-    }
-    // The engine's built-in assets the looks name join the bundle under
-    // their reserved ids (`@canvas/paper.png`), once each.
-    let mut builtins: Vec<&'static str> = Vec::new();
-    for s in sources.iter().filter(|s| s.kind == Kind::Look) {
-        for id in look::builtin_references(s, &assets_dir) {
-            if !builtins.contains(&id) {
-                builtins.push(id);
-            }
-        }
-    }
-    builtins.sort();
-    for id in builtins {
-        let (_, bytes) = look::builtin(id).expect("a built-in");
-        sources.push(Source {
-            rel: id.to_string(),
-            path: assets_dir.join(id),
-            kind: if ext(id) == "png" {
-                Kind::Texture
-            } else {
-                Kind::Palette
-            },
-            bytes: bytes.to_vec(),
             settings: None,
             hash: 0,
             gltf: None,
@@ -1178,9 +1172,9 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 let st = stamp(&[b"shader", &hash, wgsl.as_bytes()]);
                 outs.push((s.rel.clone(), format::Shader::NAME, st, Work::Shader(s)));
             }
-            Kind::Skin => {
+            Kind::Style => {
                 let text = String::from_utf8_lossy(&s.bytes);
-                let refs: Vec<String> = og_ui::parse_skin(&text)
+                let refs: Vec<String> = og_ui::parse_style(&text)
                     .map(|mut f| {
                         f.resolve(&s.rel, |id| known.contains(crate::runtime::asset_id(id)));
                         f.references()
@@ -1189,8 +1183,8 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     .into_iter()
                     .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
                     .collect();
-                let st = stamp(&[b"skin", &hash, refs.join("\n").as_bytes()]);
-                outs.push((s.rel.clone(), format::Skin::NAME, st, Work::Skin(s)));
+                let st = stamp(&[b"style", &hash, refs.join("\n").as_bytes()]);
+                outs.push((s.rel.clone(), format::Style::NAME, st, Work::Style(s)));
             }
             Kind::Tileset => {
                 let st = stamp(&[
@@ -1918,10 +1912,10 @@ fn run(
                 )],
             ))
         }
-        Work::Skin(s) => {
+        Work::Style(s) => {
             let text = std::str::from_utf8(&s.bytes)
-                .map_err(|_| CookError("a skin is text (UTF-8)".into()))?;
-            let mut file = og_ui::parse_skin(text).map_err(CookError)?;
+                .map_err(|_| CookError("a style is text (UTF-8)".into()))?;
+            let mut file = og_ui::parse_style(text).map_err(CookError)?;
             file.resolve(&s.rel, |id| known.contains(crate::runtime::asset_id(id)));
             let missing: Vec<String> = file
                 .references()
@@ -1931,27 +1925,27 @@ fn run(
             if !missing.is_empty() {
                 let dir = s.rel.rsplit_once('/').map_or("", |(d, _)| d);
                 return Err(CookError(format!(
-                    "the skin names asset(s) neither beside it in {dir}/ nor under assets/: {} (an id is read relative to the skin file first, then from assets/; a copied pack's `fallback` font is the project's own: point it at a CJK font the game has, or remove the line, og-taste §1)",
+                    "the style names asset(s) neither beside it in {dir}/ nor under assets/: {} (an id is read relative to the style file first, then from assets/; a `fallback` font is the project's own: point it at a CJK font the game has, or remove the line, og-taste §1)",
                     missing.join(", ")
                 )));
             }
             let mut w = og_blob::BlobWriter::new(
-                format::Skin::type_hash(),
-                format::Skin::schema_version(),
+                format::Style::type_hash(),
+                format::Style::schema_version(),
                 p.stamp,
             );
             w.table(
                 "meta",
-                &[format::SkinMeta {
+                &[format::StyleMeta {
                     text_bytes: text.len() as u32,
                 }],
-                format::row_hash::<format::SkinMeta>(),
+                format::row_hash::<format::StyleMeta>(),
             )
             .raw("text", text.as_bytes().to_vec(), 16);
             let parts = file.theme.skin.slices.iter().flatten().count();
             Ok((
                 w.finish(),
-                vec![format!("skin '{}', {parts} frame(s)", file.name)],
+                vec![format!("style '{}', {parts} frame(s)", file.name)],
             ))
         }
         Work::Tileset(s) => {

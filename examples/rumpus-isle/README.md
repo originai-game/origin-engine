@@ -65,7 +65,7 @@ third. New players can sit down between rounds and join from the next.
 | English and French string tables with plurals and selects, the settings' words from them | `assets/strings/`, `src/ui.ts`, `src/prefs.ts` | og-i18n |
 | og sfx presets on voices, a splash from a script, the music streamed in chunks on its bus and ducked under the effects, a limiter on the master | `src/sound.ts`, `assets/audio/`, `assets/music/romp.wav.ogt` | og-audio |
 | og.platform: the settings (read on the first tick, saved when the settings close) and the isle's records written at the revision read, merged on a conflict | `src/save.ts`, `src/prefs.ts` | og-platform-sdk, og-game §17 |
-| A look extending a catalogue preset, with the cartoon skin pack copied and recoloured | `assets/looks/rumpus-isle.ogt`, `assets/skins/rumpus/` | og-taste §1, §12 |
+| A look extending a catalogue preset, with the cartoon skin pack copied and recoloured | `assets/looks/rumpus-isle.ogt`, `assets/styles/rumpus/` | og-taste §1, §12 |
 
 ## The look
 

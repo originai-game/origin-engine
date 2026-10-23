@@ -1,4 +1,4 @@
-// Spark Orb's screens on og.ui and the skin in assets/skins/sparkorb (the
+// Spark Orb's screens on og.ui and the skin in assets/styles/sparkorb (the
 // engine's neon pack in the orb's gold on night violet): the title, the
 // HUD (the sparks and their rate top left, stardust and pause top right,
 // the four generators along the bottom, the supernova's progress), the
@@ -166,7 +166,7 @@ function platform(world: World, g: GameV, p: PrefsV): void {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
+  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "hud", background: { token: "panel" } }, build);
 }
 
 function hud(world: World, g: GameV): void {

@@ -1,4 +1,4 @@
-// Lantern Vale's screens on og.ui with the skin assets/skins/lantern (the
+// Lantern Vale's screens on og.ui with the skin assets/styles/lantern (the
 // engine's fantasy pack, applied by the look): the title over a slow pass
 // above the valley, the HUD (hearts and lanterns top-left, the dusk clock
 // and Pause top-right, the lighting prompt and its progress at the
@@ -191,7 +191,7 @@ function stream(world: World, g: GameV): void {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
+  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "hud", background: { token: "panel" } }, build);
 }
 
 function clockText(hour: number): string {

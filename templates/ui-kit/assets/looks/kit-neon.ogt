@@ -1,0 +1,7 @@
+type look
+version 1
+---
+# Names the built-in neon style, so the cook puts it in the bundle (@styles/neon/);
+# the kit loads the style itself and never applies this look.
+name "kit neon"
+ui "neon"

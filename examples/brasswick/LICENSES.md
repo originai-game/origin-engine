@@ -10,6 +10,6 @@ from the engine's `templates/ui-kit`.
 | `assets/audio/*.ogt` | CC0 1.0 | og cook's procedural sound presets (`og sfx`), written by `tools/make-assets.ts` |
 | `assets/music/vault.wav` (not committed) | CC0 1.0 | synthesised by `tools/make-assets.ts` ("The Vault Turns") |
 | `assets/strings/*.ogt`, `assets/looks/brasswick.ogt` | CC0 1.0 | written for this game |
-| `assets/skins/brasswick/skin.ogt` | CC0 1.0 | the engine's fantasy style pack's skin file, recoloured by `tools/make-assets.ts` |
-| `assets/skins/brasswick/atlas.png`, `icons.png` (not committed) | CC0 1.0 | copied from `templates/ui-kit/assets/skins/fantasy` (its `LICENSES.md`, copied beside them) |
-| `assets/skins/brasswick/Cinzel-Bold.ttf`, `Newsreader-Medium.ttf` (not committed) | SIL Open Font License 1.1 (`assets/skins/brasswick/OFL.txt`) | copied from `templates/ui-kit/assets/skins/fantasy` |
+| `assets/styles/brasswick/style.ogt` | CC0 1.0 | the engine's fantasy style pack's skin file, recoloured by `tools/make-assets.ts` |
+| `assets/styles/brasswick/atlas.png`, `icons.png` (not committed) | CC0 1.0 | copied from `templates/styles/fantasy` (its `LICENSES.md`, copied beside them) |
+| `assets/styles/brasswick/Cinzel-Bold.ttf`, `Newsreader-Medium.ttf` (not committed) | SIL Open Font License 1.1 (`assets/styles/brasswick/OFL.txt`) | copied from `templates/styles/fantasy` |

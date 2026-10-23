@@ -27,17 +27,49 @@ use og_render::{ColorSpace, Mips, RenderScene, TextureData, TextureHandle};
 use og_ui::*;
 use support::*;
 
-const SKIN: &str = r##"type skin
+const SKIN: &str = r##"type style
 version 1
 ---
 name "test"
-base dark
+scheme dark
 atlas "skins/test/atlas.png" 128 64
 palette {
+  backdrop "#000000"
+  well "#111113"
   panel "#203040"
+  panelHover "#3a3a3c"
+  panelRaised "#2c2c2e"
+  line "#38383a"
+  lineStrong "#545458"
   ink "#f0f0f0"
+  inkMuted "#aeaeb2"
+  inkFaint "#98989d"
+  inkInverse "#18181a"
+  control "#7878803d"
+  controlStrong "#7878805c"
+  primary "#ffb224"
+  primaryHover "#ffc04d"
+  primaryActive "#ffd38a"
+  onPrimary "#1d1300"
+  primarySoft "#ffb22429"
+  highlight "#ffb224"
+  focus "#ffb224"
+  knob "#636366"
+  hud "#1c1c1ec7"
+  scrim "#0000006b"
+  shadow "#000000"
+  sheen "#ffffff52"
+  success "#3dd68c"
+  warn "#ff8a3d"
+  danger "#ff8a82"
+  info "#5cc8ff"
+  health "#3dd68c"
+  mana "#0a84ff"
+  xp "#bf5af2"
+  gold "#ffb224"
 }
 radius {
+  small 4
   control 4
   bar 4
   panel 4
@@ -74,7 +106,7 @@ fn atlas() -> TextureHandle {
 }
 
 fn skinned_ui() -> (Ui, TextureHandle) {
-    let file = parse_skin(SKIN).expect("the test skin parses");
+    let file = parse_style(SKIN).expect("the test skin parses");
     let tex = atlas();
     let mut ui = ui_with_font(test_font_metrics());
     let mut sounds = [0u64; 6];
@@ -186,18 +218,27 @@ fn the_default_theme_draws_no_skin_pieces() {
 #[test]
 fn a_skin_file_names_the_line_that_is_wrong() {
     let typo = SKIN.replace("slice fill", "slise fill");
-    let e = parse_skin(&typo).unwrap_err();
+    let e = parse_style(&typo).unwrap_err();
     assert!(e.contains("unknown skin setting 'slise'"), "{e}");
     let outside = SKIN.replace("slice track 80 0 16 16 4", "slice track 120 0 16 16 4");
-    let e = parse_skin(&outside).unwrap_err();
+    let e = parse_style(&outside).unwrap_err();
     assert!(e.contains("not inside the 128×64 atlas"), "{e}");
     let no_soft = SKIN.replace("soft 96 0 32 32 12\n", "");
-    let e = parse_skin(&no_soft).unwrap_err();
+    let e = parse_style(&no_soft).unwrap_err();
     assert!(e.contains("needs a `soft` line"), "{e}");
     let colour = SKIN.replace("\"#203040\"", "\"203040\"");
-    let e = parse_skin(&colour).unwrap_err();
+    let e = parse_style(&colour).unwrap_err();
     assert!(e.contains("#rrggbb"), "{e}");
-    let file = parse_skin(SKIN).unwrap();
+    // A style is complete: no base to fall back on, every role and radius.
+    let e = parse_style(&SKIN.replace("  gold \"#ffb224\"\n", "")).unwrap_err();
+    assert!(e.contains("leaves out gold"), "{e}");
+    let e = parse_style(&SKIN.replace("  bar 4\n", "")).unwrap_err();
+    assert!(e.contains("leaves out bar"), "{e}");
+    let e = parse_style(&SKIN.replace("type style", "type skin")).unwrap_err();
+    assert!(e.contains("now `type style`"), "{e}");
+    let e = parse_style(&SKIN.replace("scheme dark", "base dark")).unwrap_err();
+    assert!(e.contains("`base` is gone"), "{e}");
+    let file = parse_style(SKIN).unwrap();
     assert_eq!(file.theme.palette.panel, Srgba::rgb(0x20, 0x30, 0x40));
     assert_eq!(file.theme.radius.panel, 4.0);
     assert_eq!(file.references(), vec!["skins/test/atlas.png".to_string()]);
@@ -241,7 +282,7 @@ fn a_skin_resolves_its_ids_beside_itself_then_from_assets() {
     assert_eq!(r("skins/mine/skin.ogt", "nope.png"), "nope.png");
     assert_eq!(r("skins/mine/skin.ogt", "../../../x.png"), "../../../x.png");
     let text = SKIN.replace("\"skins/test/atlas.png\"", "\"atlas.png\"");
-    let mut file = parse_skin(&text).unwrap();
+    let mut file = parse_style(&text).unwrap();
     file.resolve("skins/test/skin.ogt", |id| id == "skins/test/atlas.png");
     assert_eq!(file.references(), vec!["skins/test/atlas.png".to_string()]);
 }
@@ -414,7 +455,7 @@ fn keyboard_and_gamepad_focus_moves_sound_as_the_pointer_does() {
     // Ways it could fail: a focus move by key or pad is silent (only the
     // pointer reaching a control sounded), activation by Enter or A makes
     // no press sound, or a move that lands where focus already was sounds.
-    let file = parse_skin(SKIN).expect("the test skin parses");
+    let file = parse_style(SKIN).expect("the test skin parses");
     let mut ui = ui_with_font(test_font_metrics());
     let mut sounds = [0u64; 6];
     sounds[UiSound::Hover as usize] = 5;
@@ -507,7 +548,7 @@ fn the_hover_lift_and_the_press_move_on_springs() {
     // rest on release.
     let springy = SKIN.replace("  pop 0.12\n", "  pop 0.12\n  hoverSpring 0.3 300\n");
     for (text, bounces) in [(SKIN.to_string(), false), (springy, true)] {
-        let file = parse_skin(&text).expect("the skin parses");
+        let file = parse_style(&text).expect("the skin parses");
         let mut ui = ui_with_font(test_font_metrics());
         ui.set_theme(file.theme(Some(atlas()), [0; 6]));
         for _ in 0..30 {
@@ -547,7 +588,7 @@ fn the_hover_lift_and_the_press_move_on_springs() {
     }
     // The press: held, the frame squashes towards sy 0.92; released, it
     // springs back past its rest height before settling.
-    let file = parse_skin(SKIN).unwrap();
+    let file = parse_style(SKIN).unwrap();
     let mut ui = ui_with_font(test_font_metrics());
     let tex = atlas();
     ui.set_theme(file.theme(Some(tex), [0; 6]));
@@ -716,13 +757,15 @@ fn game_code_shakes_an_element_once_and_it_comes_to_rest_by_itself() {
 }
 
 /// The atlas pieces a 100×60 panel draws in a skin whose panel slice
-/// fills its edges with `control` (a 32×32 region with 8 px corners: a 16 px
+/// fills its edges with `fill` (a 32×32 region with 8 px corners: a 16 px
 /// middle), as (rect, uv), only those inside the panel.
 fn panel_pieces(fill: &str) -> (Rect, Vec<(Rect, [f32; 4])>) {
+    // The test style's palette and radius blocks.
+    let values = &SKIN[SKIN.find("palette {").unwrap()..SKIN.find("slice ").unwrap()];
     let text = format!(
-        "type skin\nversion 1\n---\nname \"tiles\"\nbase dark\natlas \"a.png\" 128 64\nslice panel 0 0 32 32 8 tint {fill}\nslice card 0 0 32 32 8 {fill}\n"
+        "type style\nversion 1\n---\nname \"tiles\"\natlas \"a.png\" 128 64\n{values}slice panel 0 0 32 32 8 tint {fill}\nslice card 0 0 32 32 8 {fill}\n"
     );
-    let file = parse_skin(&text).expect("the skin parses");
+    let file = parse_style(&text).expect("the skin parses");
     let tex = atlas();
     let mut ui = ui_with_font(test_font_metrics());
     ui.set_theme(file.theme(Some(tex), [0; 6]));
@@ -805,8 +848,8 @@ fn a_slice_tiles_its_edges_and_centre_when_the_skin_says_repeat_or_round() {
         }
     }
     assert!(
-        parse_skin(
-            "type skin\nversion 1\n---\natlas \"a.png\" 128 64\nslice panel 0 0 16 16 8 repeat\n"
+        parse_style(
+            "type style\nversion 1\n---\natlas \"a.png\" 128 64\nslice panel 0 0 16 16 8 repeat\n"
         )
         .unwrap_err()
         .contains("no middle"),
@@ -843,7 +886,7 @@ fn the_probe_names_each_elements_kind_and_a_disabled_control() {
 #[test]
 fn a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice() {
     let frame_of = |skin: &str, reduced_transparency: bool| {
-        let file = parse_skin(skin).expect("the skin parses");
+        let file = parse_style(skin).expect("the skin parses");
         let tex = atlas();
         let mut ui = ui_with_font(test_font_metrics());
         ui.set_theme(file.theme(Some(tex), [0; 6]));

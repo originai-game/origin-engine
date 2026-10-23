@@ -3487,7 +3487,7 @@
         "Asset",
         "Font",
         "Sound",
-        "Skin",
+        "Style",
         "TextureArray",
         "TextureArray",
         "Asset",
@@ -3796,8 +3796,8 @@
           "publish": true
         },
         {
-          "name": "skin",
-          "doc": "Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path.",
+          "name": "style",
+          "doc": "Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`.",
           "params": [
             {
               "name": "world",
@@ -3809,11 +3809,11 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The asset id, such as `skins/pixel/skin.ogt`."
+              "doc": "The asset id, such as `styles/pixel/style.ogt` or `@styles/pixel/style.ogt`."
             }
           ],
-          "returns": "Result<Skin>",
-          "returnsDoc": "Refused for a path not in the bundle, a skin that does not parse (the reason names the line) or an asset it names that cannot load.",
+          "returns": "Result<Style>",
+          "returnsDoc": "Refused for a path not in the bundle, a style that does not parse (the reason names the line) or an asset it names that cannot load.",
           "publish": true
         },
         {
@@ -6764,7 +6764,7 @@
         "Viewport",
         "UiDesc",
         "UiSounds",
-        "SkinPart",
+        "StylePart",
         "TypeStep",
         "ControlSizes",
         "UiTheme",
@@ -6871,7 +6871,7 @@
       "functions": [
         {
           "name": "configure",
-          "doc": "Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the prototype style). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text.",
+          "doc": "Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the prototype style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text.",
           "params": [
             {
               "name": "world",
@@ -6887,7 +6887,7 @@
             }
           ],
           "returns": "Result<Void>",
-          "returnsDoc": "Refused for a dead font or skin, or a desc that is not an object.",
+          "returnsDoc": "Refused for a dead font or style, or a desc that is not an object.",
           "publish": true
         },
         {
@@ -7098,7 +7098,7 @@
         },
         {
           "name": "richText",
-          "doc": "A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the skin), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning.",
+          "doc": "A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the style), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning.",
           "params": [
             {
               "name": "id",
@@ -8488,7 +8488,7 @@
         },
         {
           "name": "counter",
-          "doc": "A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a skin with motion.pop bumps it when it lands. Scores, currency, rewards.",
+          "doc": "A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a style with motion.pop bumps it when it lands. Scores, currency, rewards.",
           "params": [
             {
               "name": "id",
@@ -8529,7 +8529,7 @@
         },
         {
           "name": "shake",
-          "doc": "Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the skin's motion.shake is set.",
+          "doc": "Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the style's motion.shake is set.",
           "params": [
             {
               "name": "desc",
@@ -15390,16 +15390,16 @@
           },
           "description": "The resources it sets, by IDL name (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment). Applying it replaces each of them whole: the fields the look names take its values, the rest their defaults."
         },
-        "skin": {
+        "style": {
           "anyOf": [
             {
-              "$ref": "#/$defs/Skin"
+              "$ref": "#/$defs/Style"
             },
             {
               "type": "null"
             }
           ],
-          "description": "The UI skin it names, loaded with it; applying the look configures the UI with it."
+          "description": "The UI style its `ui` line names (a game's own or a built-in by slug), loaded with it; applying the look configures the UI with it."
         },
         "antialias": {
           "anyOf": [
@@ -15419,7 +15419,7 @@
         "name",
         "extends",
         "resources",
-        "skin",
+        "style",
         "antialias"
       ],
       "additionalProperties": false
@@ -17760,10 +17760,10 @@
       "type": "integer",
       "minimum": 0
     },
-    "Skin": {
+    "Style": {
       "x-og-kind": "handle",
       "x-og-module": "load",
-      "description": "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure.",
+      "description": "A cooked UI style: its values, atlas, fonts, icons and sounds loaded with it, for og.ui.configure.",
       "type": "integer",
       "minimum": 0
     },
@@ -26280,13 +26280,13 @@
         "frame": {
           "anyOf": [
             {
-              "$ref": "#/$defs/SkinPart"
+              "$ref": "#/$defs/StylePart"
             },
             {
               "type": "null"
             }
           ],
-          "description": "The skin frame its background takes (a HUD capsule, a card); null is a plain fill. Without a skin the fill is drawn either way.",
+          "description": "The style frame its background takes (a HUD element, a card); null is a plain fill. Without a style the fill is drawn either way.",
           "default": null
         },
         "aspect": {
@@ -26357,7 +26357,7 @@
         },
         "heading": {
           "type": "boolean",
-          "description": "A heading: a skin with a flourish frames it.",
+          "description": "A heading: a style with a flourish frames it.",
           "default": false
         },
         "ellipsis": {
@@ -27110,7 +27110,7 @@
     "UiDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it.",
+      "description": "How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it.",
       "type": "object",
       "properties": {
         "scheme": {
@@ -27203,7 +27203,7 @@
         },
         "reducedTransparency": {
           "type": "boolean",
-          "description": "Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on.",
+          "description": "Nothing is see-through: glass parts (a style's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on.",
           "default": false
         },
         "icons": {
@@ -27215,7 +27215,7 @@
               "type": "null"
             }
           ],
-          "description": "The icon atlas og.ui.icon draws from; null takes the skin's.",
+          "description": "The icon atlas og.ui.icon draws from; null takes the style's.",
           "default": null
         },
         "toastAnchor": {
@@ -27230,16 +27230,16 @@
           "description": "Where toasts stack; null is the bottom centre.",
           "default": null
         },
-        "skin": {
+        "style": {
           "anyOf": [
             {
-              "$ref": "#/$defs/Skin"
+              "$ref": "#/$defs/Style"
             },
             {
               "type": "null"
             }
           ],
-          "description": "A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style.",
+          "description": "A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style, the engine's placeholder.",
           "default": null
         },
         "sounds": {
@@ -27251,7 +27251,7 @@
               "type": "null"
             }
           ],
-          "description": "Sounds for UI events (they win over the skin's).",
+          "description": "Sounds for UI events (they win over the style's).",
           "default": null
         }
       },
@@ -27338,10 +27338,10 @@
       },
       "additionalProperties": false
     },
-    "SkinPart": {
+    "StylePart": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "An element class a skin dresses with a nine-slice frame.",
+      "description": "An element class a style dresses with a nine-slice frame.",
       "type": "string",
       "enum": [
         "panel",
@@ -27350,7 +27350,7 @@
         "field",
         "slot",
         "tooltip",
-        "capsule",
+        "hud",
         "track"
       ],
       "x-og-variants": {
@@ -27360,7 +27360,7 @@
         "field": "Text fields.",
         "slot": "Inventory and grid cells.",
         "tooltip": "Tooltips.",
-        "capsule": "HUD capsules and toasts.",
+        "hud": "HUD elements over the game (counters, timers) and toasts.",
         "track": "A progress bar's track."
       }
     },
@@ -27500,9 +27500,9 @@
           },
           "description": "The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds."
         },
-        "skin": {
+        "style": {
           "type": "string",
-          "description": "The configured skin's name; empty for the prototype style."
+          "description": "The configured style's name; empty for the prototype style."
         },
         "contrast": {
           "$ref": "#/$defs/Contrast",
@@ -27525,7 +27525,7 @@
         "typeRamp",
         "sizes",
         "durationsMs",
-        "skin",
+        "style",
         "contrast",
         "reducedMotion",
         "reducedTransparency"
@@ -27992,18 +27992,18 @@
         "frame": {
           "anyOf": [
             {
-              "$ref": "#/$defs/SkinPart"
+              "$ref": "#/$defs/StylePart"
             },
             {
               "type": "null"
             }
           ],
-          "description": "The skin frame its background takes; null is the panel's.",
+          "description": "The style frame its background takes; null is the panel's.",
           "default": null
         },
         "instant": {
           "type": "boolean",
-          "description": "Shown settled the first time it is built: no skin entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap.",
+          "description": "Shown settled the first time it is built: no style entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap.",
           "default": false
         }
       },
@@ -29401,7 +29401,7 @@
       "properties": {
         "amount": {
           "type": "number",
-          "description": "The first swing; 0 is the skin's motion.shake, else 6.",
+          "description": "The first swing; 0 is the style's motion.shake, else 6.",
           "default": 0,
           "minimum": 0,
           "x-og-unit": "cssPx"
@@ -29415,7 +29415,7 @@
         },
         "sound": {
           "type": "boolean",
-          "description": "Also play the skin's error sound, as a refused press does.",
+          "description": "Also play the style's error sound, as a refused press does.",
           "default": false
         }
       },
@@ -29652,7 +29652,7 @@
         },
         "instant": {
           "type": "boolean",
-          "description": "Shown settled the first time it is built (AnchorDesc.instant): pass it while the title is the screen the game opens on, so the frame behind the web's play gate is the whole title; a title the player comes back to enters with the skin.",
+          "description": "Shown settled the first time it is built (AnchorDesc.instant): pass it while the title is the screen the game opens on, so the frame behind the web's play gate is the whole title; a title the player comes back to enters with the style.",
           "default": false
         }
       },

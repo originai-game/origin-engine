@@ -35,7 +35,7 @@ import { must, named } from "./util.ts";
 function start(world: World): void {
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
   const g = must(world.resource(Game));
-  g.font = must(og.load.font(world, "skins/rumpus/LilitaOne-Regular.ttf"));
+  g.font = must(og.load.font(world, "styles/rumpus/LilitaOne-Regular.ttf"));
   buildArena(world);
   spawnVoices(world);
   applyPrefs(world, must(world.resource(Prefs)));

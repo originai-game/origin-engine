@@ -8,7 +8,7 @@
   the sky's haze), spark.png (particles and the fixed stars) and
   mote-<generator>.png (the four motes: an ember, a bolt, a crystal, a
   star),
-- assets/skins/sparkorb/atlas.png: the neon pack's atlas
+- assets/styles/sparkorb/atlas.png: the neon pack's atlas
   (templates/ui-kit) with its magenta frames turned violet,
 - assets/fx/*.ogt: the particle emitters (the tap's burst, a milestone's
   ring, the supernova, the sparks drifting up from the orb, the stars),
@@ -315,7 +315,7 @@ def read_png(path):
 def atlas():
     """The neon pack's atlas with its baked magenta frames turned to the
     night's violet (hue 300 to 262), the rest untouched."""
-    src = os.path.join(root, "..", "..", "ui-kit", "assets", "skins", "neon", "atlas.png")
+    src = os.path.join(root, "..", "..", "styles", "neon", "atlas.png")
     if not os.path.exists(src):
         print("atlas recolour skipped (no templates/ui-kit here); the committed atlas stays")
         return None
@@ -434,7 +434,7 @@ def main():
         write(f"sprites/mote-{kind}.png.ogt", LINEAR)
     recoloured = atlas()
     if recoloured is not None:
-        write("skins/sparkorb/atlas.png", recoloured)
+        write("styles/sparkorb/atlas.png", recoloured)
     write("fx/tap.ogt", TAP)
     write("fx/milestone.ogt", MILESTONE)
     write("fx/nova.ogt", NOVA)

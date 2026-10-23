@@ -37,9 +37,9 @@ function start(world: World): void {
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
   // GameDesc.look set the frame and loaded the skin before start; the UI
   // keeps that skin and adds the sounds.
-  const skin = og.render.look(world)?.skin ?? null;
+  const skin = og.render.look(world)?.style ?? null;
   const sound = (path: string) => must(og.load.sound(world, path));
-  must(og.ui.configure(world, { skin, sounds: { press: sound("audio/ui-press.ogt"), open: sound("audio/ui-open.ogt"), close: sound("audio/ui-close.ogt"), error: sound("audio/ui-error.ogt"), success: sound("audio/ui-success.ogt") } }));
+  must(og.ui.configure(world, { style: skin, sounds: { press: sound("audio/ui-press.ogt"), open: sound("audio/ui-open.ogt"), close: sound("audio/ui-close.ogt"), error: sound("audio/ui-error.ogt"), success: sound("audio/ui-success.ogt") } }));
 
   const camera = must(world.resource(og.Camera));
   camera.orthographic = true;

@@ -1,0 +1,111 @@
+type style
+version 1
+---
+# Path Guard's skin: the engine's cartoon style pack (templates/ui-kit/tools/make-skins.py; CC0 art, OFL fonts;
+# LICENSES.md) in a night-garden palette: cream panels on the dark lawn, the lantern's orange as the one accent.
+name "pathguard"
+scheme light
+atlas "styles/pathguard/atlas.png" 384 256
+scale 1
+palette {
+  backdrop "#10231a"
+  well "#15301f"
+  panel "#fff4dc"
+  panelHover "#ffe9bd"
+  panelRaised "#fff4dc"
+  line "#20302a"
+  lineStrong "#20302a"
+  ink "#0f1a14"
+  inkMuted "#3a483f"
+  inkFaint "#45534a"
+  inkInverse "#fff4dc"
+  control "#ffe08a"
+  controlStrong "#ffd466"
+  primary "#b44c0d"
+  primaryHover "#ab480c"
+  primaryActive "#a0430b"
+  onPrimary "#fff4dc"
+  primarySoft "#ff8c3a40"
+  highlight "#a8400a"
+  focus "#5cb6e8"
+  knob "#ffffff"
+  hud "#fff4dcf5"
+  scrim "#07120ccc"
+  shadow "#0b1a1299"
+  sheen "#ffffff52"
+  success "#06681b"
+  warn "#7b5102"
+  danger "#700b1c"
+  info "#2256af"
+  health "#06681b"
+  mana "#007aff"
+  xp "#af52de"
+  gold "#b44c0d"
+}
+radius {
+  small 10
+  control 10
+  bar 10
+  panel 18
+}
+ramp {
+  body 15 20
+  meta 13 18
+  caption 13 18
+  lg 19 26
+  xl 22 28
+  xl2 26 30
+  xl3 30 34
+  displaySm 32 36
+  displayMd 40 44
+  displayLg 52 56
+}
+durations {
+  instant 110
+  fast 160
+  base 280
+  slow 420
+}
+fonts {
+  body "styles/pathguard/Fredoka-SemiBold.ttf"
+  display "styles/pathguard/LilitaOne-Regular.ttf"
+  numeric "styles/pathguard/LilitaOne-Regular.ttf"
+  fallback "fonts/NotoSansSC-subset.ttf"
+}
+icons "styles/pathguard/icons.png" 8 4 {
+  names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
+}
+slice panel 4 4 96 96 30 tint
+slice card 104 4 64 64 20 tint
+slice button 172 4 48 48 20 tint
+slice buttonHover 224 4 48 48 20 tint
+slice buttonPressed 276 4 48 48 20 tint
+slice buttonDisabled 328 4 48 48 20 tint
+slice field 4 104 48 48 16 tint
+slice slot 56 104 48 48 16 tint
+slice tooltip 108 104 32 32 13 tint
+slice hud 144 104 32 32 15 tint
+slice track 180 104 32 16 7 tint
+slice fill 216 104 32 16 7 tint
+soft 252 104 64 64 24
+divider 4 172 128 24 48 16 primary
+flourish 136 172 64 24 22 10 primary 2
+shadow panel 0 8 0 0 "#0b1a12cc"
+shadow card 0 5 0 0 "#0b1a1299"
+shadow button 0 5 0 0 "#0b1a12cc"
+shadow hud 0 4 0 0 "#0b1a1299"
+shadow slot 0 3 0 0 "#0b1a1266"
+textShadow display 0 4 0 "#0b1a12"
+# Body text gets a hairline of its own ink to the right: the Chinese fallback
+# (Noto Sans SC Regular) reads at the weight of the Latin face.
+textShadow body 1 0 0 "#20302a"
+press 1.08 0.88 3
+hover -3 1.04
+motion {
+  enter pop
+  stagger 50
+  toast pop
+  progress 360
+  shake 8
+  pop 0.22
+}

@@ -849,10 +849,10 @@ pub fn og_load_texture_array(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_texture_array(&Host, world, path)
 }
 
-#[napi(js_name = "og_load_skin")]
-pub fn og_load_skin(env: Env, world: u32, path: String) -> String {
+#[napi(js_name = "og_load_style")]
+pub fn og_load_style(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as LoadApi>::og_load_skin(&Host, world, path)
+    <Host as LoadApi>::og_load_style(&Host, world, path)
 }
 
 #[napi(js_name = "og_load_look")]

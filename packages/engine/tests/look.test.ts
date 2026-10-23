@@ -34,7 +34,7 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   return r.value;
 }
 
-type Info = { look: number; path: string; name: string; extends: string[]; resources: string[]; skin: number | null; antialias: string | null };
+type Info = { look: number; path: string; name: string; extends: string[]; resources: string[]; style: number | null; antialias: string | null };
 type Res = Record<string, unknown> & { [k: string]: any };
 
 function start(desc: Record<string, unknown>, seen?: (w: World) => void): Engine {
@@ -85,10 +85,10 @@ test("GameDesc.look is flattened over its base and applied before start runs", (
   expect(info.extends).toEqual(["looks/base.ogt"]);
   expect(info.resources).toEqual(["RenderSettings", "PostEffects", "Stylise", "MaterialStyle", "Fog"]);
   expect(info.antialias).toBe("off");
-  expect(info.skin).not.toBeNull();
+  expect(info.style).not.toBeNull();
   // The skin configures the UI from the next tick.
   expect(engine.advance(1).ok).toBeTrue();
-  expect((og.ui.theme(engine.world) as unknown as { skin: string }).skin).toBe("tiny");
+  expect((og.ui.theme(engine.world) as unknown as { style: string }).style).toBe("tiny");
 });
 
 test("the look's antialias is the renderer's when GameDesc.render leaves it out", () => {
@@ -114,7 +114,7 @@ test("applyLook replaces the resources it names whole and leaves the rest", () =
   const info = must(og.load.lookInfo(w, bare)) as unknown as Info;
   expect(info.name).toBe("Bare");
   expect(info.resources).toEqual(["PostEffects", "Stylise"]);
-  expect(info.skin).toBeNull();
+  expect(info.style).toBeNull();
   must(og.render.applyLook(w, bare));
   const stylise = res(w, og.Stylise);
   expect(stylise.posterize).toBe(0);

@@ -13,6 +13,6 @@ game.
 | `assets/audio/splash.wav` (not committed) | CC0 1.0 | synthesised by `tools/make-assets.ts` (noise through a falling band-pass) |
 | `assets/music/romp.wav` (not committed), `romp.wav.ogt` | CC0 1.0 | synthesised by `tools/make-assets.ts` ("Rumpus Romp", 16 bars at 128 bpm) |
 | `assets/strings/*.ogt`, `assets/looks/rumpus-isle.ogt`, `assets/scenes/main.ogt` | CC0 1.0 | written for this game |
-| `assets/skins/rumpus/skin.ogt`, `*.ogt` | CC0 1.0 | the engine's cartoon style pack's skin file, recoloured by `tools/make-assets.ts` |
-| `assets/skins/rumpus/atlas.png`, `icons.png` (not committed) | CC0 1.0 | copied from `templates/ui-kit/assets/skins/cartoon` (its `LICENSES.md`, copied beside them) |
-| `assets/skins/rumpus/Fredoka-SemiBold.ttf`, `LilitaOne-Regular.ttf` (not committed) | SIL Open Font License 1.1 (`assets/skins/rumpus/OFL.txt`) | copied from `templates/ui-kit/assets/skins/cartoon` |
+| `assets/styles/rumpus/style.ogt`, `*.ogt` | CC0 1.0 | the engine's cartoon style pack's skin file, recoloured by `tools/make-assets.ts` |
+| `assets/styles/rumpus/atlas.png`, `icons.png` (not committed) | CC0 1.0 | copied from `templates/styles/cartoon` (its `LICENSES.md`, copied beside them) |
+| `assets/styles/rumpus/Fredoka-SemiBold.ttf`, `LilitaOne-Regular.ttf` (not committed) | SIL Open Font License 1.1 (`assets/styles/rumpus/OFL.txt`) | copied from `templates/styles/cartoon` |

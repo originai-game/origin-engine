@@ -21,5 +21,5 @@ the subset cut from it is.
 | `assets/looks/*.ogt`, `assets/strings/*.ogt`, `assets/scenes/*.ogt`, every other `.ogt` | CC0 1.0 | self-made, written by hand (or by the tools above) |
 | `assets/fonts/NotoSansJP-kestrel.otf`, `.otf.ogt` | SIL Open Font License 1.1 (`assets/fonts/OFL.txt`) | Noto Sans JP Regular (notofonts/noto-cjk, `Sans/SubsetOTF/JP/NotoSansJP-Regular.otf`, SHA-256 `dff723ba…5073`), subset to the CJK characters of `assets/strings/ja.ogt` by `tools/subset-font.py` (the engine's `templates/ui-kit/tools/subset-font.py`, copied) |
 | `tools/fonts/NotoSansJP-Regular.otf` (not committed) | SIL Open Font License 1.1 | the subset's source, fetched by `tools/fetch-font.ts` |
-| `assets/skins/kestrel/*` | CC0 1.0 art, SIL OFL 1.1 fonts (Instrument Sans, Newsreader, PT Mono) | a copy of the engine's paper style pack (`templates/ui-kit/assets/skins/paper`), retinted by `tools/make-assets.ts`; `assets/skins/kestrel/LICENSES.md` |
+| `assets/styles/kestrel/*` | CC0 1.0 art, SIL OFL 1.1 fonts (Instrument Sans, Newsreader, PT Mono) | a copy of the engine's paper style pack (`templates/styles/paper`), retinted by `tools/make-assets.ts`; `assets/styles/kestrel/LICENSES.md` |
 | `references/*/*.png` | CC0 1.0 | frames of this game recorded by `tests/frames.og.ts` |

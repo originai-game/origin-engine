@@ -145,7 +145,7 @@ function hud(world: World, g: GameV): boolean {
   const roundName = say(world, ROUND_KEYS[g.round]!);
   // The top: the round and its clock, in the middle (the top-left corner is the web shell's Back).
   og.ui.anchor("Top", { anchor: "top", direction: "row", gap: S.sm, cross: "center" }, () => {
-    og.ui.row("Round", { gap: S.sm, cross: "center", padding: { left: S.md, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, () => {
+    og.ui.row("Round", { gap: S.sm, cross: "center", padding: { left: S.md, top: S.xs, right: S.md, bottom: S.xs }, frame: "hud", background: { token: "panel" } }, () => {
       og.ui.label("Name", say(world, "hud.round", { n: g.round + 1, of: ROUNDS, name: roundName }), { step: "lg", font: "display", nowrap: true });
       og.ui.icon("ClockIcon", "clock", { size: 20, tint: { token: "inkMuted" } });
       og.ui.label("Clock", clock(g.phase === Phase.Intro ? g.left : g.ticks / 60), { step: "lg", font: "mono", nowrap: true });
@@ -156,7 +156,7 @@ function hud(world: World, g: GameV): boolean {
   og.ui.anchor("Players", { anchor: "bottom", direction: "row", gap: S.sm, cross: "center" }, () => {
     seats(g).forEach((s, k) => {
       if (!s.joined) return;
-      og.ui.row(og.ui.idi("Player", k), { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, () => {
+      og.ui.row(og.ui.idi("Player", k), { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "hud", background: { token: "panel" } }, () => {
         og.ui.icon("Dot", g.round === Round.Berry ? "apple" : s.alive ? "person" : "drop", { size: 22, tint: ink(s.colour) });
         og.ui.label("Name", COLOURS[s.colour]!.name, { font: "display", color: { token: "ink" }, nowrap: true });
         const v = value(world, g, s);

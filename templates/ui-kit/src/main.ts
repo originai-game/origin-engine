@@ -10,7 +10,7 @@
 //
 // Commands: show:<screen>, viewport:<desktop|tablet|phone|landscape>,
 // pad:<up|down|left|right|next|prev|activate|back>, toast:<text>,
-// damage:<hp>, heal:<hp>, skin:<tokens|pixel|cartoon|fantasy|scifi|paper|neon>
+// damage:<hp>, heal:<hp>, skin:<prototype|pixel|cartoon|fantasy|scifi|paper|neon>
 // (a style pack from assets/skins), transition:<none|fade|wipe|iris|dissolve|slide>
 // (screen changes go through og.ui.screenTransition), sounds:<on|off> (on by default),
 // mixed:<on|off> (a label of CJK, Latin and Arabic under the locale screens),
@@ -26,8 +26,10 @@ export const SCREENS = [
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
-/** The style packs under assets/skins; "tokens" is the platform look. */
-export const SKINS = ["tokens", "pixel", "cartoon", "fantasy", "scifi", "paper", "neon"] as const;
+/** The engine's built-in UI styles (templates/styles, in the bundle as
+ * `@styles/<name>/` because assets/looks/kit-<name>.ogt names each);
+ * "prototype" is the engine's placeholder. */
+export const SKINS = ["prototype", "pixel", "cartoon", "fantasy", "scifi", "paper", "neon"] as const;
 const WIPES = ["none", "fade", "wipe", "iris", "dissolve", "slide"] as const;
 const UI_SOUNDS = ["hover", "press", "open", "close", "success", "error"] as const;
 
@@ -379,8 +381,8 @@ function followSettings(world: World, tick: number, d: DemoState): void {
 /** Applies the theme-affecting settings (contrast, motion, the style pack,
  * sounds) with the demo's font and icons, or the pack's. */
 function applyTheme(world: World, d: DemoState): void {
-  const name = SKINS[d.skin] ?? "tokens";
-  const loaded = name === "tokens" ? null : og.load.skin(world, `skins/${name}/skin.ogt`);
+  const name = SKINS[d.skin] ?? "prototype";
+  const loaded = name === "prototype" ? null : og.load.style(world, `@styles/${name}/style.ogt`);
   if (loaded && !loaded.ok) throw new Error(loaded.reason);
   const skin = loaded && loaded.ok ? loaded.value : null;
   const sounds: Record<string, unknown> = {};
@@ -396,11 +398,12 @@ function applyTheme(world: World, d: DemoState): void {
     font: d.font && !skin ? (d.font as never) : null,
     displayFont: d.displayFont && !skin ? (d.displayFont as never) : null,
     roundedFont: d.roundedFont && !skin ? (d.roundedFont as never) : null,
-    // Scripts the locale tables' fonts do not cover (the text screen).
-    fallbackFonts: [d.hebrewFont, d.devanagariFont].filter((h) => h !== 0) as never[],
+    // Scripts the locale tables' fonts do not cover (the text screen); under
+    // a style, whose fonts are Latin-1, the demo's CJK body face too.
+    fallbackFonts: [skin ? d.font : 0, d.hebrewFont, d.devanagariFont].filter((h) => h !== 0) as never[],
     contrast: d.highContrast ? "high" : "standard",
     reducedMotion: d.reducedMotion,
-    skin,
+    style: skin,
     // Every screen draws from the iconoir set (distance-field glyphs, named
     // as ICONS names them too); a style pack's own icons on its screens but
     // the materials one; the PNG grid only if the set did not load.
@@ -1151,7 +1154,7 @@ export default og.game({
       update(world, { hp: d.hp });
     },
     skin: (world, args) => {
-      update(world, { skin: Math.max(0, SKINS.indexOf((args[0] ?? "tokens") as (typeof SKINS)[number])) });
+      update(world, { skin: Math.max(0, SKINS.indexOf((args[0] ?? "prototype") as (typeof SKINS)[number])) });
       const d = current(world);
       if (d) applyTheme(world, d);
     },
@@ -1175,7 +1178,7 @@ export default og.game({
     toast: { usage: "<text>", doc: "Queue a toast." },
     damage: { usage: "<hp>", doc: "Take hit points off the HUDs' health." },
     heal: { usage: "<hp>", doc: "Give hit points back." },
-    skin: { usage: "<tokens|pixel|cartoon|fantasy|scifi|paper|neon>", doc: "Dress every screen in a style pack." },
+    skin: { usage: "<prototype|pixel|cartoon|fantasy|scifi|paper|neon>", doc: "Dress every screen in a style pack." },
     transition: { usage: "<none|fade|wipe|iris|dissolve|slide>", doc: "Send screen changes through og.ui.screenTransition." },
     sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
     mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },
@@ -1183,6 +1186,6 @@ export default og.game({
   },
   facts: (world) => {
     const d = current(world);
-    return d ? { screen: SCREENS[d.screen] ?? "gallery", skin: SKINS[d.skin] ?? "tokens", hp: d.hp, balance: d.balance, saves: d.saves, loads: d.loads, language: LANGUAGES[d.language]?.code ?? "en", picks: [d.pick0, d.pick1, d.pick2, d.pick3], focus: [d.focus0, d.focus1, d.focus2, d.focus3] } : {};
+    return d ? { screen: SCREENS[d.screen] ?? "gallery", skin: SKINS[d.skin] ?? "prototype", hp: d.hp, balance: d.balance, saves: d.saves, loads: d.loads, language: LANGUAGES[d.language]?.code ?? "en", picks: [d.pick0, d.pick1, d.pick2, d.pick3], focus: [d.focus0, d.focus1, d.focus2, d.focus3] } : {};
   },
 });

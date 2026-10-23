@@ -27,7 +27,7 @@ module load {
 | [`Asset`](#type-Asset) | handle | A loaded bundle, scene or glTF asset. |
 | [`Font`](#type-Font) | handle | A cooked MSDF font: its glyph table and one or more atlas pages. |
 | [`Sound`](#type-Sound) | handle | A cooked sound: QOA-encoded PCM the audio module plays. |
-| [`Skin`](#type-Skin) | handle | A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure. |
+| [`Style`](#type-Style) | handle | A cooked UI style: its values, atlas, fonts, icons and sounds loaded with it, for og.ui.configure. |
 | [`TextureArray`](#type-TextureArray) | handle | A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray). |
 | [`TextureArray()`](#column-TextureArray) | column kind | A TextureArray handle field (0 is none). |
 | [`Asset()`](#column-Asset) | column kind | An Asset handle field. |
@@ -54,7 +54,7 @@ module load {
 | [`og.load.shader`](#fn-shader) | function | A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path. |
 | [`og.load.texture`](#fn-texture) | function | Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load. |
 | [`og.load.textureArray`](#fn-textureArray) | function | Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color\|normal\|linear\|pixel` and one `layer "<file>"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array. |
-| [`og.load.skin`](#fn-skin) | function | Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. |
+| [`og.load.style`](#fn-style) | function | Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`. |
 | [`og.load.look`](#fn-look) | function | Load a look: an `.ogt` of `type look` binding a frame's art direction as data. Its top-level `name`, `extends` (a built-in preset's slug, such as `anime-cel-3d`, or another look's asset id: the game's own `assets/looks/<slug>.ogt` wins over the built-in preset of that slug), `skin` (a UI skin's asset id) and `antialias`, then one block per resource it sets (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment) with that resource's fields by name, an asset id where a field is a handle (`lut "luts/warm.cube"`, `palette "palettes/dusk.hex"`). The cook validates every field against the resources' reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and skin it names are loaded with it. Loaded once per path. |
 | [`og.load.lookInfo`](#fn-lookInfo) | function | What a loaded look holds and sets. |
 | [`og.load.palette`](#fn-palette) | function | A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. Loaded once per path. One in a streaming group's pack loads once its group is resident; while the group is unloaded Stylise.palette quantises to no palette, and the palette comes back under the same handle. |
@@ -507,31 +507,31 @@ fn textureArray {
 
 <sub>`api.ogt` line 4667</sub>
 
-<a id="fn-skin"></a>
+<a id="fn-style"></a>
 
-### `og.load.skin`
+### `og.load.style`
 
-Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path.
+Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`.
 
 ```ts
-og.load.skin(world: World, path: string): Result<Skin>
+og.load.style(world: World, path: string): Result<Style>
 ```
 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world whose UI uses it. |
-| `path` | `string` | no | The asset id, such as `skins/pixel/skin.ogt`. |
+| `path` | `string` | no | The asset id, such as `styles/pixel/style.ogt` or `@styles/pixel/style.ogt`. |
 
-**Returns** `Result<Skin>`: Refused for a path not in the bundle, a skin that does not parse (the reason names the line) or an asset it names that cannot load.
+**Returns** `Result<Style>`: Refused for a path not in the bundle, a style that does not parse (the reason names the line) or an asset it names that cannot load.
 
-Binding symbol `og_load_skin` · publish builds: kept
+Binding symbol `og_load_style` · publish builds: kept
 
 ```ogt
-fn skin {
-  doc "Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path."
+fn style {
+  doc "Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`."
   param world World "The world whose UI uses it."
-  param path String "The asset id, such as `skins/pixel/skin.ogt`."
-  returns Result.Skin "Refused for a path not in the bundle, a skin that does not parse (the reason names the line) or an asset it names that cannot load."
+  param path String "The asset id, such as `styles/pixel/style.ogt` or `@styles/pixel/style.ogt`."
+  returns Result.Style "Refused for a path not in the bundle, a style that does not parse (the reason names the line) or an asset it names that cannot load."
 }
 ```
 
@@ -1134,16 +1134,16 @@ handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 
 <sub>`api.ogt` line 4452</sub>
 
-<a id="type-Skin"></a>
+<a id="type-Style"></a>
 
-### `Skin` (handle)
+### `Style` (handle)
 
-A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure.
+A cooked UI style: its values, atlas, fonts, icons and sounds loaded with it, for og.ui.configure.
 
 A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
 
 ```ogt
-handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
+handle Style "A cooked UI style: its values, atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
 <sub>`api.ogt` line 4453</sub>

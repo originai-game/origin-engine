@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Regenerates the UI kit's six style packs (CC0 art), byte for byte:
+"""Regenerates the engine's six built-in UI styles (CC0 art), byte for byte,
+and the UI kit's UI sounds:
 
     python3 templates/ui-kit/tools/make-skins.py templates/ui-kit/assets
 
 For each of pixel, cartoon, fantasy, scifi, paper and neon it writes
-assets/skins/<name>/:
+templates/styles/<name>/ (the cook compiles them in; a look names one with
+`ui "<name>"`):
 
 - atlas.png: the nine-slice frames (panel, card, button and its hover,
   pressed and disabled states, field, slot, tooltip, capsule, progress track
@@ -17,8 +19,9 @@ assets/skins/<name>/:
 - icons.png: the kit's 32 icons (tools/make-assets.py draws them) restyled
   per pack: pixelated, thickened, outlined, roughened or neon-lined; white,
   alpha is coverage.
-- skin.ogt: the skin file (og-ui's `parse_skin` grammar) naming the atlas,
-  the slices, the palette, the radii, the type ramp, the fonts, the motion.
+- style.ogt: the style (og-ui's `parse_style` grammar): every palette role,
+  the radii, the type ramp, the fonts, the atlas and its slices, the motion.
+  No CJK fallback font: a game adds its own (UiDesc.fallbackFonts).
 
 The fonts next to them are SIL OFL 1.1 files copied (or subset to Latin-1
 with fontTools) by hand; LICENSES.md and OFL.txt in each directory say which.
@@ -51,7 +54,7 @@ LAYOUT = {
     "field": (4, 104, 48, 48),
     "slot": (56, 104, 48, 48),
     "tooltip": (108, 104, 32, 32),
-    "capsule": (144, 104, 32, 32),
+    "hud": (144, 104, 32, 32),
     "track": (180, 104, 32, 16),
     "fill": (216, 104, 32, 16),
     "soft": (252, 104, 64, 64),
@@ -318,7 +321,7 @@ def pixel_pack():
     p["field"] = pixel_frame(48, 48, cut=0, outline=2, bevel=2, light=1.0, dark=0.7, body=0.94, sunk=True)
     p["slot"] = pixel_frame(48, 48, cut=0, outline=2, bevel=2, light=1.0, dark=0.66, body=0.9, sunk=True)
     p["tooltip"] = pixel_frame(32, 32, cut=2, outline=2, bevel=0, body=1.0)
-    p["capsule"] = pixel_frame(32, 32, cut=2, outline=2, bevel=2, light=1.0, dark=0.7, body=0.9)
+    p["hud"] = pixel_frame(32, 32, cut=2, outline=2, bevel=2, light=1.0, dark=0.7, body=0.9)
     p["track"] = pixel_frame(32, 16, cut=0, outline=2, bevel=2, light=0.7, dark=1.0, body=0.85)
     p["fill"] = pixel_frame(32, 16, cut=0, outline=2, bevel=2, light=1.0, dark=0.7, body=0.9)
     p["soft"] = soft_rect(64, 64, 20)
@@ -346,12 +349,12 @@ def pixel_pack():
     skin = dict(
         name="pixel", base="dark",
         palette=dict(
-            backdrop="#14111f", well="#1d1930", panel="#2b2745", panelRaised="#2b2745", panelHover="#3a3459",
-            hud="#221e38f2", ink="#f4f1de", inkMuted="#c9c2a8", inkFaint="#ada792", inkInverse="#14111f",
-            control="#3f3a5e", controlStrong="#4c4570", line="#5b5480", lineStrong="#a79ccf",
-            primary="#ffcd4a", primaryHover="#ffdb75", primaryActive="#e6ad1f", onPrimary="#14111f", highlight="#ffd86b",
-            primarySoft="#ffcd4a25", focus="#ffcd4a", knob="#5b5480", scrim="#0a0812b3",
-            success="#6bd36b", warn="#ffa53d", danger="#ff8080", info="#5dc2ff", shadow="#00000099",
+            backdrop="#14111f", well="#1d1930", panel="#2b2745", panelHover="#3a3459", panelRaised="#2b2745", line="#5b5480",
+            lineStrong="#a79ccf", ink="#f4f1de", inkMuted="#c9c2a8", inkFaint="#ada792", inkInverse="#14111f", control="#3f3a5e",
+            controlStrong="#4c4570", primary="#ffcd4a", primaryHover="#ffdb75", primaryActive="#e6ad1f", onPrimary="#14111f",
+            primarySoft="#ffcd4a25", highlight="#ffd86b", focus="#ffcd4a", knob="#5b5480", hud="#221e38f2", scrim="#0a0812b3",
+            shadow="#00000099", sheen="#ffffff52", success="#6bd36b", warn="#ffa53d", danger="#ff8080", info="#5dc2ff",
+            health="#6bd36b", mana="#0a84ff", xp="#bf5af2", gold="#ffcd4a",
         ),
         radius=dict(small=0, control=0, bar=0, panel=0),
         ramp=dict(xs=(12, 16), meta=(13, 18), caption=(13, 18), sm=(14, 18), body=(16, 20), reading=(16, 22), base=(16, 22),
@@ -359,11 +362,11 @@ def pixel_pack():
         durations=dict(instant=80, fast=120, base=160, slow=320),
         fonts=dict(body="DotGothic16-Regular.ttf", display="DotGothic16-Regular.ttf", numeric="DotGothic16-Regular.ttf"),
         slices=dict(panel=(8,), card=(4,), button=(6,), buttonHover=(6,), buttonPressed=(6,), buttonDisabled=(6,),
-                    field=(4,), slot=(4,), tooltip=(4,), capsule=(4,), track=(4,), fill=(4,)),
+                    field=(4,), slot=(4,), tooltip=(4,), hud=(4,), track=(4,), fill=(4,)),
         scale=1, divider=(128, 24, "line"), flourish=(32, 12, "primary", 0),
         tile=(16, 16, 0.06, 6, ["panel"]),
         shadows=dict(panel=(6, 6, 0, 0, "#000000b0"), card=(4, 4, 0, 0, "#00000080"), button=(0, 4, 0, 0, "#000000a0"),
-                     capsule=(3, 3, 0, 0, "#00000080"), tooltip=(3, 3, 0, 0, "#00000080")),
+                     hud=(3, 3, 0, 0, "#00000080"), tooltip=(3, 3, 0, 0, "#00000080")),
         # DotGothic16's one-dot strokes are one pixel wide at the body's 16 px
         # but sit between device pixels, so no pixel took more than about half
         # the ink: the gold primary button's label read 2.9:1 (hollowbell
@@ -389,7 +392,7 @@ def cartoon_pack():
     p["field"] = frame(48, 48, r=14, outline=3, outline_c=outline, fill=(grey(0.9), grey(1.0)))
     p["slot"] = frame(48, 48, r=14, outline=3, outline_c=outline, fill=(grey(0.86), grey(0.98)), shade=0)
     p["tooltip"] = frame(32, 32, r=12, outline=3, outline_c=outline, fill=(grey(1.0), grey(0.95)))
-    p["capsule"] = frame(32, 32, r=16, outline=3, outline_c=outline, fill=(grey(1.0), grey(0.9)), shade=3)
+    p["hud"] = frame(32, 32, r=16, outline=3, outline_c=outline, fill=(grey(1.0), grey(0.9)), shade=3)
     p["track"] = frame(32, 16, r=8, outline=3, outline_c=outline, fill=(grey(0.8), grey(0.95)))
     p["fill"] = frame(32, 16, r=8, outline=3, outline_c=outline, fill=(grey(1.0), grey(0.85)), highlight=3)
     p["soft"] = soft_rect(64, 64, 20)
@@ -411,12 +414,12 @@ def cartoon_pack():
     skin = dict(
         name="cartoon", base="light",
         palette=dict(
-            backdrop="#2a1d5c", well="#33246e", panel="#fff4dc", panelRaised="#fff4dc", panelHover="#ffe9bd",
-            hud="#fff4dcf5", ink="#2b1a4a", inkMuted="#5a4880", inkFaint="#61527c", inkInverse="#fff4dc",
-            control="#fff3cc", controlStrong="#ffecb5", line="#2b1a4a", lineStrong="#2b1a4a",
-            primary="#a24112", primaryHover="#a94414", primaryActive="#8c370e", onPrimary="#fff4dc", highlight="#9b3a09",
-            primarySoft="#a2411240", focus="#3fa7ff", knob="#ffffff", scrim="#1a0f3ccc",
-            success="#06681b", warn="#7b5102", danger="#6a0a16", info="#2256af", shadow="#2b1a4a99",
+            backdrop="#2a1d5c", well="#33246e", panel="#fff4dc", panelHover="#ffe9bd", panelRaised="#fff4dc", line="#2b1a4a",
+            lineStrong="#2b1a4a", ink="#2b1a4a", inkMuted="#5a4880", inkFaint="#61527c", inkInverse="#fff4dc", control="#fff3cc",
+            controlStrong="#ffecb5", primary="#a24112", primaryHover="#a94414", primaryActive="#8c370e", onPrimary="#fff4dc",
+            primarySoft="#a2411240", highlight="#9b3a09", focus="#3fa7ff", knob="#ffffff", hud="#fff4dcf5", scrim="#1a0f3ccc",
+            shadow="#2b1a4a99", sheen="#ffffff52", success="#06681b", warn="#7b5102", danger="#6a0a16", info="#2256af",
+            health="#06681b", mana="#007aff", xp="#af52de", gold="#a24112",
         ),
         radius=dict(small=10, control=10, bar=10, panel=18),
         ramp=dict(body=(15, 20), meta=(13, 18), caption=(13, 18), lg=(19, 26), xl=(22, 28), xl2=(26, 30), xl3=(30, 34),
@@ -424,11 +427,11 @@ def cartoon_pack():
         durations=dict(instant=110, fast=160, base=280, slow=420),
         fonts=dict(body="Fredoka-SemiBold.ttf", display="LilitaOne-Regular.ttf", numeric="LilitaOne-Regular.ttf"),
         slices=dict(panel=(30,), card=(20,), button=(20,), buttonHover=(20,), buttonPressed=(20,), buttonDisabled=(20,),
-                    field=(16,), slot=(16,), tooltip=(13,), capsule=(15,), track=(7,), fill=(7,)),
+                    field=(16,), slot=(16,), tooltip=(13,), hud=(15,), track=(7,), fill=(7,)),
         scale=1, divider=(48, 16, "primary"), flourish=(22, 10, "primary", 2),
         tile=None,
         shadows=dict(panel=(0, 8, 0, 0, "#2b1a4acc"), card=(0, 5, 0, 0, "#2b1a4a99"), button=(0, 5, 0, 0, "#2b1a4acc"),
-                     capsule=(0, 4, 0, 0, "#2b1a4a99"), slot=(0, 3, 0, 0, "#2b1a4a66")),
+                     hud=(0, 4, 0, 0, "#2b1a4a99"), slot=(0, 3, 0, 0, "#2b1a4a66")),
         text=dict(textShadow=[("display", 0, 4, 0, "#2b1a4a")]),
         press=(1.08, 0.88, 3), hover=(-3, 1.04),
         motion=dict(enter="pop", stagger=50, toast="pop", progress=360, shake=8, pop=0.22),
@@ -468,7 +471,7 @@ def fantasy_pack():
     p["field"] = frame(48, 48, r=4, outline=2, outline_c=grey(0.35), fill=(grey(0.92), grey(1.0)))
     p["slot"] = frame(48, 48, r=4, outline=2, outline_c=grey(0.3), fill=(grey(0.84), grey(0.98)), inner=2, inner_c=grey(0.72))
     p["tooltip"] = frame(32, 32, r=4, outline=2, outline_c=grey(0.3), fill=(grey(1.0), grey(0.94)))
-    p["capsule"] = frame(32, 32, r=8, outline=2, outline_c=grey(0.25), fill=(grey(1.0), grey(0.86)), inner=1.5, inner_c=grey(0.66))
+    p["hud"] = frame(32, 32, r=8, outline=2, outline_c=grey(0.25), fill=(grey(1.0), grey(0.86)), inner=1.5, inner_c=grey(0.66))
     p["track"] = frame(32, 16, r=4, outline=2, outline_c=grey(0.3), fill=(grey(0.75), grey(0.95)))
     p["fill"] = frame(32, 16, r=4, outline=2, outline_c=grey(0.3), fill=(grey(1.0), grey(0.8)), highlight=2)
     p["soft"] = soft_rect(64, 64, 20)
@@ -515,24 +518,24 @@ def fantasy_pack():
     skin = dict(
         name="fantasy", base="dark",
         palette=dict(
-            backdrop="#1a120b", well="#241910", panel="#efdfb8", panelRaised="#efdfb8", panelHover="#f4e8c8",
-            hud="#efdfb8", ink="#2a1a0c", inkMuted="#3d2a18", inkFaint="#654b31", inkInverse="#f4e8c8",
-            control="#e2cc98", controlStrong="#d6bc82", line="#9b7a4a", lineStrong="#5c4127",
-            primary="#7a520f", primaryHover="#74500e", primaryActive="#6a470c", onPrimary="#fff4dc", highlight="#6e470d",
-            primarySoft="#7a520f40", focus="#8f2d1f", knob="#f4e8c8", scrim="#0d0805cc",
-            success="#2d5a1e", warn="#704713", danger="#6e1b10", info="#22517f", shadow="#000000aa",
-            ),
+            backdrop="#1a120b", well="#241910", panel="#efdfb8", panelHover="#f4e8c8", panelRaised="#efdfb8", line="#9b7a4a",
+            lineStrong="#5c4127", ink="#2a1a0c", inkMuted="#3d2a18", inkFaint="#654b31", inkInverse="#f4e8c8", control="#e2cc98",
+            controlStrong="#d6bc82", primary="#7a520f", primaryHover="#74500e", primaryActive="#6a470c", onPrimary="#fff4dc",
+            primarySoft="#7a520f40", highlight="#6e470d", focus="#8f2d1f", knob="#f4e8c8", hud="#efdfb8", scrim="#0d0805cc",
+            shadow="#000000aa", sheen="#ffffff52", success="#2d5a1e", warn="#704713", danger="#6e1b10", info="#22517f",
+            health="#2d5a1e", mana="#0a84ff", xp="#bf5af2", gold="#7a520f",
+        ),
         radius=dict(small=4, control=4, bar=4, panel=4),
         ramp=dict(body=(15, 22), meta=(13, 18), caption=(13, 18), reading=(16, 24), lg=(19, 26), xl=(22, 28), xl2=(24, 30),
                   xl3=(28, 32), displaySm=(28, 34), displayMd=(34, 40), displayLg=(42, 48)),
         durations=dict(fast=200, base=300, slow=480),
         fonts=dict(body="Newsreader-Medium.ttf", display="Cinzel-Bold.ttf", numeric="Cinzel-Bold.ttf"),
         slices=dict(panel=(16, "authored"), card=(10, "authored"), button=(10,), buttonHover=(10,), buttonPressed=(10,),
-                    buttonDisabled=(10,), field=(8,), slot=(10,), tooltip=(8,), capsule=(12,), track=(6,), fill=(6,)),
+                    buttonDisabled=(10,), field=(8,), slot=(10,), tooltip=(8,), hud=(12,), track=(6,), fill=(6,)),
         scale=1, corner=(28, 28, "authored", 6), corners=["panel"], divider=(112, 20, "authored"), flourish=(48, 18, "authored", 0),
         tile=(64, 64, 0.5, 6, ["panel", "card"]),
         shadows=dict(panel=(0, 10, 18, 2, "#000000b3"), card=(0, 4, 8, 0, "#00000066"), button=(0, 3, 4, 0, "#00000073"),
-                     capsule=(0, 3, 6, 0, "#00000080")),
+                     hud=(0, 3, 6, 0, "#00000080")),
         text=dict(),
         press=(0.98, 0.96, 1), hover=(0, 1.0),
         motion=dict(enter="scale", stagger=35, toast="slideDown", progress=420, shake=5, pop=0.1),
@@ -571,7 +574,7 @@ def scifi_pack():
     p["field"] = hud(48, 48, 6, edge=1.2, body=0.14, body_a=0.94, notch=False)
     p["slot"] = hud(48, 48, 8, edge=1.2, body=0.2, body_a=0.9, notch=False)
     p["tooltip"] = hud(32, 32, 6, edge=1.2, body=0.2, body_a=0.96, notch=False)
-    p["capsule"] = hud(32, 32, 8, edge=1.2, body=0.22, body_a=0.94, notch=False)
+    p["hud"] = hud(32, 32, 8, edge=1.2, body=0.22, body_a=0.94, notch=False)
     p["track"] = hud(32, 16, 4, edge=1.0, body=0.3, body_a=0.9, notch=False)
     p["fill"] = frame(32, 16, r=0, fill=(grey(1.0), grey(0.8)))
     p["soft"] = soft_rect(64, 64, 20)
@@ -602,12 +605,12 @@ def scifi_pack():
     skin = dict(
         name="scifi", base="dark",
         palette=dict(
-            backdrop="#03080f", well="#071220", panel="#1a4a66", panelRaised="#1a4a66", panelHover="#225a7a",
-            hud="#1a4a66", ink="#e2f7ff", inkMuted="#a6cde0", inkFaint="#6f93a6", inkInverse="#03080f",
-            control="#3f8fb3", controlStrong="#5aaed4", line="#2c6a88", lineStrong="#6fd3f5",
-            primary="#38e1ff", primaryHover="#30d4f0", primaryActive="#16c4e6", onPrimary="#e2f7ff", highlight="#7fecff",
-            primarySoft="#38e1ff2d", focus="#ffd23f", knob="#2f7194", scrim="#010409cc",
-            success="#3dffa0", warn="#ffc53d", danger="#ff4d6a", info="#38e1ff", shadow="#00000099",
+            backdrop="#03080f", well="#071220", panel="#1a4a66", panelHover="#225a7a", panelRaised="#1a4a66", line="#2c6a88",
+            lineStrong="#6fd3f5", ink="#e2f7ff", inkMuted="#a6cde0", inkFaint="#6f93a6", inkInverse="#03080f", control="#3f8fb3",
+            controlStrong="#5aaed4", primary="#38e1ff", primaryHover="#30d4f0", primaryActive="#16c4e6", onPrimary="#e2f7ff",
+            primarySoft="#38e1ff2d", highlight="#7fecff", focus="#ffd23f", knob="#2f7194", hud="#1a4a66", scrim="#010409cc",
+            shadow="#00000099", sheen="#ffffff52", success="#3dffa0", warn="#ffc53d", danger="#ff4d6a", info="#38e1ff",
+            health="#3dffa0", mana="#0a84ff", xp="#bf5af2", gold="#38e1ff",
         ),
         radius=dict(small=2, control=2, bar=2, panel=2),
         ramp=dict(body=(14, 20), meta=(12, 16), caption=(12, 16), lg=(17, 24), xl=(19, 26), xl2=(22, 28), xl3=(26, 30),
@@ -615,13 +618,13 @@ def scifi_pack():
         durations=dict(instant=90, fast=140, base=220, slow=360),
         fonts=dict(body="ChakraPetch-Medium.ttf", display="Orbitron-Bold.ttf", numeric="JetBrainsMono-Regular.ttf"),
         slices=dict(panel=(18,), card=(12,), button=(12,), buttonHover=(12,), buttonPressed=(12,), buttonDisabled=(12,),
-                    field=(8,), slot=(10,), tooltip=(8,), capsule=(10,), track=(5,), fill=(2,)),
+                    field=(8,), slot=(10,), tooltip=(8,), hud=(10,), track=(5,), fill=(2,)),
         scale=1, corner=(18, 18, "primary", 4), corners=["panel", "card", "slot"], divider=(128, 24, "primary"), flourish=(32, 14, "primary", 0),
         tile=(64, 64, 0.08, 3, ["panel"]),
         shadows=dict(panel=(0, 0, 18, 0, "#000000aa")),
         # Glass panels: the game behind blurred 16 px, the panel's frame at 85 %.
         glass=dict(panel=(16, 0.85, 0.15)),
-        glows=dict(button=(5, "primary", 0.22), panel=(10, "primary", 0.12), capsule=(4, "primary", 0.18)),
+        glows=dict(button=(5, "primary", 0.22), panel=(10, "primary", 0.12), hud=(4, "primary", 0.18)),
         text=dict(textGlow=[("display", 1.5, "primary", 0.55)]),
         press=(0.98, 0.98, 0), hover=(0, 1.02),
         motion=dict(enter="fade", stagger=30, toast="slideLeft", progress=300, shake=6, pop=0.1),
@@ -652,7 +655,7 @@ def paper_pack():
     p["field"] = sheet(48, 48, 4, ink=1.2, wobble=0.3, seed=6)
     p["slot"] = sheet(48, 48, 5, ink=1.1, wobble=0.35, seed=7, fill=(grey(0.97), grey(0.94)))
     p["tooltip"] = sheet(32, 32, 4, ink=1.2, wobble=0.3, seed=8)
-    p["capsule"] = sheet(32, 32, 14, ink=1.3, wobble=0.35, seed=9)
+    p["hud"] = sheet(32, 32, 14, ink=1.3, wobble=0.35, seed=9)
     p["track"] = sheet(32, 16, 7, ink=1.1, wobble=0.25, seed=10)
     p["fill"] = sheet(32, 16, 7, ink=1.1, wobble=0.25, seed=11)
     p["soft"] = soft_rect(64, 64, 20)
@@ -678,12 +681,12 @@ def paper_pack():
     skin = dict(
         name="paper", base="light",
         palette=dict(
-            backdrop="#e8e2d4", well="#ded7c6", panel="#fbf8f0", panelRaised="#fbf8f0", panelHover="#f3eee2",
-            hud="#fbf8f0f5", ink="#1c1a17", inkMuted="#57524a", inkFaint="#68635a", inkInverse="#fbf8f0",
-            control="#efe9dc", controlStrong="#e2dac8", line="#cfc6b2", lineStrong="#1c1a17",
-            primary="#a02b1a", primaryHover="#942717", primaryActive="#85220f", onPrimary="#fffaf3", highlight="#a8321f",
-            primarySoft="#a02b1a26", focus="#2b5cc8", knob="#fbf8f0", scrim="#2a261f73",
-            success="#1a6034", warn="#7b4802", danger="#8e1d16", info="#1c4bb6", shadow="#2a261f40",
+            backdrop="#e8e2d4", well="#ded7c6", panel="#fbf8f0", panelHover="#f3eee2", panelRaised="#fbf8f0", line="#cfc6b2",
+            lineStrong="#1c1a17", ink="#1c1a17", inkMuted="#57524a", inkFaint="#68635a", inkInverse="#fbf8f0", control="#efe9dc",
+            controlStrong="#e2dac8", primary="#a02b1a", primaryHover="#942717", primaryActive="#85220f", onPrimary="#fffaf3",
+            primarySoft="#a02b1a26", highlight="#a8321f", focus="#2b5cc8", knob="#fbf8f0", hud="#fbf8f0f5", scrim="#2a261f73",
+            shadow="#2a261f40", sheen="#ffffff52", success="#1a6034", warn="#7b4802", danger="#8e1d16", info="#1c4bb6",
+            health="#1a6034", mana="#007aff", xp="#af52de", gold="#a02b1a",
         ),
         radius=dict(small=4, control=4, bar=4, panel=6),
         ramp=dict(body=(15, 22), meta=(13, 18), caption=(13, 18), reading=(16, 25), lg=(19, 26), xl=(22, 30),
@@ -691,11 +694,11 @@ def paper_pack():
         durations=dict(fast=180, base=260, slow=420),
         fonts=dict(body="InstrumentSans-Regular.ttf", display="Newsreader-SemiBold.ttf", numeric="PTMono-Regular.ttf"),
         slices=dict(panel=(12,), card=(10,), button=(12,), buttonHover=(12,), buttonPressed=(12,), buttonDisabled=(12,),
-                    field=(8,), slot=(8,), tooltip=(8,), capsule=(14,), track=(7,), fill=(7,)),
+                    field=(8,), slot=(8,), tooltip=(8,), hud=(14,), track=(7,), fill=(7,)),
         scale=1, divider=(120, 18, "ink"), flourish=(22, 10, "primary", 2),
         tile=(64, 64, 0.6, 4, ["panel", "card"]),
         shadows=dict(panel=(0, 6, 16, 0, "#2a261f3a"), card=(0, 3, 8, 0, "#2a261f2e"), button=(0, 2, 4, 0, "#2a261f33"),
-                     capsule=(0, 2, 6, 0, "#2a261f33"), tooltip=(0, 2, 6, 0, "#2a261f33")),
+                     hud=(0, 2, 6, 0, "#2a261f33"), tooltip=(0, 2, 6, 0, "#2a261f33")),
         text=dict(),
         press=(0.98, 0.98, 1), hover=(-1, 1.0),
         motion=dict(enter="slideUp", stagger=40, toast="slideUp", progress=380, shake=5, pop=0.08),
@@ -746,7 +749,7 @@ def neon_pack():
     p["field"] = tube(48, 48, 6, line=1.4, halo=2.5, body=0.08, body_a=0.94)
     p["slot"] = tube(48, 48, 8, line=1.4, halo=2.5, body=0.12, body_a=0.88)
     p["tooltip"] = tube(32, 32, 6, line=1.4, halo=2.5, body=0.12, body_a=0.94)
-    p["capsule"] = tube(32, 32, 10, line=1.6, halo=3.0, body=0.12, body_a=0.9)
+    p["hud"] = tube(32, 32, 10, line=1.6, halo=3.0, body=0.12, body_a=0.9)
     p["track"] = tube(32, 16, 4, line=1.2, halo=1.5, body=0.2, body_a=0.9, inset=2.5)
     p["fill"] = tube(32, 16, 4, line=1.6, halo=1.5, body=0.9, body_a=1.0, inset=2.5)
     p["soft"] = soft_rect(64, 64, 20)
@@ -773,12 +776,12 @@ def neon_pack():
     skin = dict(
         name="neon", base="dark",
         palette=dict(
-            backdrop="#07020f", well="#0e0520", panel="#1b0f36", panelRaised="#1b0f36", panelHover="#26164a",
-            hud="#1b0f36", ink="#fbefff", inkMuted="#cdb6ea", inkFaint="#8d76ad", inkInverse="#07020f",
-            control="#7a4fe6", controlStrong="#7650d8", line="#4a2f86", lineStrong="#b18cff",
-            primary="#c81ebc", primaryHover="#d42ac8", primaryActive="#b018a6", onPrimary="#fbefff", highlight="#ff8af8",
-            primarySoft="#c81ebc40", focus="#36e8ff", knob="#5a3aa6", scrim="#030008cc",
-            success="#3dffb0", warn="#ffd23d", danger="#ff3d6e", info="#36e8ff", shadow="#000000aa",
+            backdrop="#07020f", well="#0e0520", panel="#1b0f36", panelHover="#26164a", panelRaised="#1b0f36", line="#4a2f86",
+            lineStrong="#b18cff", ink="#fbefff", inkMuted="#cdb6ea", inkFaint="#8d76ad", inkInverse="#07020f", control="#7a4fe6",
+            controlStrong="#7650d8", primary="#c81ebc", primaryHover="#d42ac8", primaryActive="#b018a6", onPrimary="#fbefff",
+            primarySoft="#c81ebc40", highlight="#ff8af8", focus="#36e8ff", knob="#5a3aa6", hud="#1b0f36", scrim="#030008cc",
+            shadow="#000000aa", sheen="#ffffff52", success="#3dffb0", warn="#ffd23d", danger="#ff3d6e", info="#36e8ff",
+            health="#3dffb0", mana="#0a84ff", xp="#bf5af2", gold="#c81ebc",
         ),
         radius=dict(small=6, control=6, bar=6, panel=10),
         ramp=dict(body=(15, 20), meta=(13, 18), caption=(13, 18), lg=(19, 24), xl=(22, 28), xl2=(26, 30), xl3=(30, 34),
@@ -786,11 +789,11 @@ def neon_pack():
         durations=dict(instant=90, fast=140, base=220, slow=380),
         fonts=dict(body="Rajdhani-Bold.ttf", display="ChakraPetch-BoldItalic.ttf", numeric="Orbitron-Medium.ttf"),
         slices=dict(panel=(22, "authored"), card=(14,), button=(16,), buttonHover=(16,), buttonPressed=(16,), buttonDisabled=(16,),
-                    field=(10,), slot=(12,), tooltip=(10,), capsule=(14,), track=(6,), fill=(6,)),
+                    field=(10,), slot=(12,), tooltip=(10,), hud=(14,), track=(6,), fill=(6,)),
         scale=1, corner=(20, 20, "primary", 2), corners=["card"], divider=(128, 24, "primary"), flourish=(36, 16, "primary", 0),
         tile=(48, 48, 0.12, 10, ["panel"]),
         shadows=dict(panel=(0, 0, 0, 0, "#00000000")),
-        glows=dict(button=(6, "primary", 0.35), capsule=(4, "primary", 0.25), panel=(14, "primary", 0.18), slot=(3, "focus", 0.2)),
+        glows=dict(button=(6, "primary", 0.35), hud=(4, "primary", 0.25), panel=(14, "primary", 0.18), slot=(3, "focus", 0.2)),
         text=dict(textGlow=[("display", 2.0, "primary", 0.7), ("numeric", 1.2, "focus", 0.5)]),
         press=(0.96, 0.96, 0), hover=(0, 1.04),
         motion=dict(enter="pop", stagger=35, toast="slideLeft", progress=260, shake=7, pop=0.16),
@@ -827,12 +830,12 @@ def region(name):
 def skin_text(s, d):
     n = s["name"]
     L = [
-        "type skin",
+        "type style",
         "version 1",
         "---",
         f"# The {n} style pack: generated by templates/ui-kit/tools/make-skins.py (CC0 art, OFL fonts; LICENSES.md).",
         f'name "{n}"',
-        f"base {s['base']}",
+        f"scheme {s['base']}",
         f'atlas "atlas.png" {ATLAS_W} {ATLAS_H}',
         f"scale {s['scale']}",
         "palette {",
@@ -846,7 +849,6 @@ def skin_text(s, d):
         f'  body "{s["fonts"]["body"]}"',
         f'  display "{s["fonts"]["display"]}"',
         f'  numeric "{s["fonts"]["numeric"]}"',
-        '  fallback "fonts/NotoSansSC-Regular-subset.ttf"',
         "}",
         f'icons "icons.png" 8 4 {{',
         "  names " + " ".join(f'"{i}"' for i in ICONS),
@@ -947,16 +949,20 @@ def ui_sounds(out):
             w.writeframes(pcm.tobytes())
 
 
+# The built-in styles live beside the templates, compiled into the cook.
+STYLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "styles")
+
+
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else "templates/ui-kit/assets"
     ui_sounds(out)
     for pack in PACKS:
         parts, s = pack()
-        d = os.path.join(out, "skins", s["name"])
+        d = os.path.join(STYLES, s["name"])
         os.makedirs(d, exist_ok=True)
         build_atlas(parts).save(os.path.join(d, "atlas.png"), optimize=True)
         icon_sheet(s["icons"]).save(os.path.join(d, "icons.png"), optimize=True)
-        with open(os.path.join(d, "skin.ogt"), "w") as f:
+        with open(os.path.join(d, "style.ogt"), "w") as f:
             f.write(skin_text(s, d))
         for name in ("atlas.png", "icons.png"):
             with open(os.path.join(d, name + ".ogt"), "w") as f:

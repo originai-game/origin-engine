@@ -1,0 +1,7 @@
+type look
+version 1
+---
+# Names the built-in cartoon style, so the cook puts it in the bundle (@styles/cartoon/);
+# the kit loads the style itself and never applies this look.
+name "kit cartoon"
+ui "cartoon"

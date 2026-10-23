@@ -71,7 +71,7 @@ og build . --publish         # dist/: the play page as it ships
   with reduced motion). There is no hit stop: it would hold the picture
   while the music runs on.
 - **Screens on og.ui with a skin** (og-ui §2–§6, og-taste §1–§7): the
-  engine's sci-fi pack recoloured as `assets/skins/lanebeat`; the title
+  engine's sci-fi pack recoloured as `assets/styles/lanebeat`; the title
   (Play, Calibrate, Settings), the HUD (the score as an `og.ui.counter`
   and the groove top left, Pause top right, the combo beside the
   highway), `og.ui.pauseMenu` (Resume, Restart, Settings, Title), the
@@ -169,7 +169,7 @@ og.music (before og.audio) writes the clock and sends og.MusicBeat.
    bar-aligned) and `partsAt` in `src/systems.ts`, which says which stem
    starts on which bar.
 3. **The difficulty**: the windows, the scroll and the groove in `Tuning`.
-4. **The look**: `assets/skins/lanebeat/skin.ogt`'s palette, the lanes'
+4. **The look**: `assets/styles/lanebeat/style.ogt`'s palette, the lanes'
    colours (`LANE_COLOURS`) and the art in `tools/make-assets.py`.
 5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs the
    script run again to subset the font.
@@ -222,7 +222,7 @@ give the same bytes): the chart and the stems from one set of note lists,
 the click, the taps, the miss, the clear and the fail, the note, the ring,
 the lane's glow, the spark, the hit's burst, the `og sfx` preset files of
 the UI's sounds and the font subset. `LICENSES.md` lists them; the skin's
-are in `assets/skins/lanebeat/LICENSES.md`.
+are in `assets/styles/lanebeat/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)
 

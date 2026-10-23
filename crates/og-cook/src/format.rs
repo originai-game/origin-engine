@@ -21,7 +21,7 @@
 //! | scene (`og.Scene`) | [`SceneMeta`] | `entities` [`EntityRow`], `refs` [`RefRow`], `components` [`ComponentRow`], `strings`, per component `c.<Type>` rows and `s.<Type>` its schema JSON |
 //! | colour LUT (`og.Lut`, a `.cube`) | [`LutMeta`] | `rgba` (size³ RGBA8, red fastest) |
 //! | particle emitter (`og.ParticleEmitter`, an `.ogt` of `type particles`) | [`EmitterMeta`] | `text` (the validated emitter file) |
-//! | UI skin (`og.UiSkin`, an `.ogt` of `type skin`) | [`SkinMeta`] | `text` (the validated skin file) |
+//! | UI style (`og.UiStyle`, an `.ogt` of `type style`) | [`StyleMeta`] | `text` (the validated style file) |
 //! | material shader (`og.MaterialShader`, an `.ogt` of `type shader`) | [`ShaderMeta`] | `text` (the canonical shader file, code inlined) |
 //! | 2D rig (`og.Skeleton2D`, an `.ogt` of `type rig2d`) | [`Rig2DMeta`] | `text` (the canonical rig: a DragonBones export converted, the texture's id and size) |
 //! | flipbook sheet (`og.Flipbook`, an `.ogt` of `type flipbook`) | [`FlipbookMeta`] | `text` (the canonical sheet: frames resolved from the grid and an Aseprite or TexturePacker atlas, clips with frame indices and durations, the texture's size) |
@@ -101,7 +101,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
         Scene,
         Animation,
         Lut,
-        Skin,
+        Style,
         Shader,
         Emitter,
         Tileset,
@@ -867,20 +867,20 @@ row!(
 );
 
 row!(
-    /// The root of a UI skin blob (an `.ogt` of `type skin`).
-    SkinMeta, "og.UiSkin", 1 {
-        /// Bytes of the validated skin text in `text`.
+    /// The root of a UI style blob (an `.ogt` of `type style`).
+    StyleMeta, "og.UiStyle", 1 {
+        /// Bytes of the validated style text in `text`.
         text_bytes: u32,
     }
 );
 
-/// The UI skin blob: `text` holds the skin file the cook validated
-/// (og-ui's `parse_skin`), parsed again at load with the bundle's assets.
-pub struct Skin;
-impl BlobKind for Skin {
-    const NAME: &'static str = "og.UiSkin";
+/// The UI style blob: `text` holds the style file the cook validated
+/// (og-ui's `parse_style`), parsed again at load with the bundle's assets.
+pub struct Style;
+impl BlobKind for Style {
+    const NAME: &'static str = "og.UiStyle";
     fn schemas() -> Vec<Schema> {
-        vec![SkinMeta::schema()]
+        vec![StyleMeta::schema()]
     }
 }
 

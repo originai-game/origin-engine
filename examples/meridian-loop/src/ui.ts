@@ -1,4 +1,4 @@
-// Meridian Loop's screens, on og.ui with the neon skin (assets/skins/meridian,
+// Meridian Loop's screens, on og.ui with the neon skin (assets/styles/meridian,
 // brought by the look):
 //
 // - the title (og.ui.mainMenu): Time trial, Leaderboard
@@ -86,7 +86,7 @@ function saveSettings(world: World, p: PrefsV): void {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.sm, cross: "center", padding: { left: S.md, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
+  og.ui.row(id, { gap: S.sm, cross: "center", padding: { left: S.md, top: S.xs, right: S.md, bottom: S.xs }, frame: "hud", background: { token: "panel" } }, build);
 }
 
 /** The lap's sectors as the HUD's splits: each one's time once crossed, and its delta against the record's sector. */

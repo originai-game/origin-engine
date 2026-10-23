@@ -8,10 +8,10 @@ version 1
 # model: tilt-shift focus, soft sun and occlusion, a high camera), chosen
 # over the rubber-hose-animation `create --premise` matched (a 2D flipbook
 # style: FINDINGS.md #1). Its UI skin pack is cartoon, copied and recoloured
-# by tools/make-assets.ts into skins/rumpus/.
+# by tools/make-assets.ts into styles/rumpus/.
 name "Rumpus Isle"
 extends "miniature-diorama"
-skin "skins/rumpus/skin.ogt"
+ui "styles/rumpus/style.ogt"
 PostEffects {
   # The camera looks down at the island from about 19 m: the island in
   # focus, the sea at the frame's top and bottom softened (the tilt-shift).

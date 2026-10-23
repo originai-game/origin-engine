@@ -13,5 +13,5 @@
 | `assets/fonts/NotoSansHebrew-subset.ttf`, `assets/fonts/NotoSansDevanagari-subset.ttf` | SIL Open Font License 1.1 (`assets/fonts/OFL.txt`) | Noto Sans Hebrew and Noto Sans Devanagari (notofonts; Godot 4.7's thirdparty copies) subset to the text screen's strings by `tools/make-faces.py`, layout features kept for shaping |
 | `assets/strings/*.ogt` | CC0 1.0 | self-written string tables for the five locales |
 | `screens/*.png` | CC0 1.0 | downscaled from `crates/og-ui/references/metal/kit-*.png`, which these playtests render |
-| `assets/skins/<pack>/` (pixel, cartoon, fantasy, scifi, paper, neon) | CC0 1.0 art and skin files; SIL OFL 1.1 fonts | atlases, icons and `skin.ogt` drawn by `tools/make-skins.py` (deterministic); fonts and their origins in each pack's `LICENSES.md` and `OFL.txt` |
+| `assets/styles/<pack>/` (pixel, cartoon, fantasy, scifi, paper, neon) | CC0 1.0 art and skin files; SIL OFL 1.1 fonts | atlases, icons and `style.ogt` drawn by `tools/make-skins.py` (deterministic); fonts and their origins in each pack's `LICENSES.md` and `OFL.txt` |
 | `assets/audio/ui-*.wav` | CC0 1.0 | self-made: short synthesized blips for the UI sound hooks, `tools/make-skins.py` |

@@ -565,10 +565,10 @@ Field units the docs and Tune use.
 | [`og.load.rig2d`](load.md#fn-rig2d) | function | load | `og_load_rig2d` |
 | [`og.load.scene`](load.md#fn-scene) | function | load | `og_load_scene` |
 | [`og.load.shader`](load.md#fn-shader) | function | load | `og_load_shader` |
-| [`og.load.skin`](load.md#fn-skin) | function | load | `og_load_skin` |
 | [`og.load.sound`](load.md#fn-sound) | function | load | `og_load_sound` |
 | [`og.load.soundInfo`](load.md#fn-soundInfo) | function | load | `og_load_sound_info` |
 | [`og.load.status`](load.md#fn-status) | function | load | `og_load_status` |
+| [`og.load.style`](load.md#fn-style) | function | load | `og_load_style` |
 | [`og.load.texture`](load.md#fn-texture) | function | load | `og_load_texture` |
 | [`og.load.textureArray`](load.md#fn-textureArray) | function | load | `og_load_texture_array` |
 | [`og.load.tilemap`](load.md#fn-tilemap) | function | load | `og_load_tilemap` |
@@ -1068,8 +1068,6 @@ Field units the docs and Tune use.
 | [`SkeletonAsset`](anim.md#type-SkeletonAsset) | handle | anim | — |
 | [`SkeletonAsset()`](anim.md#column-SkeletonAsset) | column kind | anim | — |
 | [`SkeletonDesc`](ui.md#type-SkeletonDesc) | desc struct | ui | — |
-| [`Skin`](load.md#type-Skin) | handle | load | — |
-| [`SkinPart`](ui.md#type-SkinPart) | enum | ui | — |
 | [`SliderDesc`](ui.md#type-SliderDesc) | desc struct | ui | — |
 | [`SliderResult`](ui.md#type-SliderResult) | struct | ui | — |
 | [`SlotMove`](ui.md#type-SlotMove) | struct | ui | — |
@@ -1116,6 +1114,8 @@ Field units the docs and Tune use.
 | [`StreamStatus`](stream.md#type-StreamStatus) | struct | stream | — |
 | [`StripBlend`](render.md#type-StripBlend) | enum | render | — |
 | [`StripBlend()`](render.md#column-StripBlend) | column kind | render | — |
+| [`Style`](load.md#type-Style) | handle | load | — |
+| [`StylePart`](ui.md#type-StylePart) | enum | ui | — |
 | [`StyliseSpace`](render.md#type-StyliseSpace) | enum | render | — |
 | [`StyliseSpace()`](render.md#column-StyliseSpace) | column kind | render | — |
 | [`SweepDesc`](probe.md#type-SweepDesc) | desc struct | probe | — |

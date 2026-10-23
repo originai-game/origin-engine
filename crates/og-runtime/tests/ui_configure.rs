@@ -22,7 +22,7 @@
 
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_take_log, og_game_game,
-    og_host_begin_bundle, og_load_skin, og_ui_configure, og_ui_theme, set_hooks,
+    og_host_begin_bundle, og_load_style, og_ui_configure, og_ui_theme, set_hooks,
 };
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -45,25 +45,44 @@ fn project() -> &'static Path {
             std::fs::create_dir_all(p.parent().unwrap()).unwrap();
             std::fs::write(p, bytes).unwrap();
         };
-        let font = repo().join("templates/ui-kit/assets/skins/fantasy/Newsreader-Medium.ttf");
-        write("skins/mini/Body.ttf", &std::fs::read(font).unwrap());
+        let font = repo().join("templates/styles/fantasy/Newsreader-Medium.ttf");
+        write("styles/mini/Body.ttf", &std::fs::read(font).unwrap());
         write(
-            "skins/mini/Body.ttf.ogt",
+            "styles/mini/Body.ttf.ogt",
+            b"type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 32\n  px_range 4\n}\n",
+        );
+        // A style sets every role and radius: the prototype's, written out.
+        let values = |scheme: og_ui::Scheme| {
+            let t = og_ui::Theme::new(scheme);
+            let mut out = String::from("palette {\n");
+            for n in og_ui::Palette::NAMES {
+                let c = t.palette.get(n).unwrap();
+                let [r, g, b] = c.rgb;
+                out += &format!("  {n} \"#{r:02x}{g:02x}{b:02x}{:02x}\"\n", (c.alpha * 255.0).round() as u8);
+            }
+            out + "}\nradius {\n  small 1\n  control 2\n  bar 1\n  panel 3\n}\n"
+        };
+        write(
+            "styles/mini/style.ogt",
+            format!(
+                "type style\nversion 1\n---\nname \"mini\"\nscheme light\n{}fonts {{\n  body \"styles/mini/Body.ttf\"\n}}\n",
+                values(og_ui::Scheme::Light)
+            )
+            .as_bytes(),
+        );
+        let font = repo().join("templates/styles/fantasy/Cinzel-Bold.ttf");
+        write("styles/copied/Body.ttf", &std::fs::read(font).unwrap());
+        write(
+            "styles/copied/Body.ttf.ogt",
             b"type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 32\n  px_range 4\n}\n",
         );
         write(
-            "skins/mini/skin.ogt",
-            b"type skin\nversion 1\n---\nname \"mini\"\nbase light\nfonts {\n  body \"skins/mini/Body.ttf\"\n}\n",
-        );
-        let font = repo().join("templates/ui-kit/assets/skins/fantasy/Cinzel-Bold.ttf");
-        write("skins/copied/Body.ttf", &std::fs::read(font).unwrap());
-        write(
-            "skins/copied/Body.ttf.ogt",
-            b"type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 32\n  px_range 4\n}\n",
-        );
-        write(
-            "skins/copied/skin.ogt",
-            b"type skin\nversion 1\n---\nname \"copied\"\nfonts {\n  body \"Body.ttf\"\n  display \"../mini/Body.ttf\"\n  numeric \"skins/mini/Body.ttf\"\n}\n",
+            "styles/copied/style.ogt",
+            format!(
+                "type style\nversion 1\n---\nname \"copied\"\n{}fonts {{\n  body \"Body.ttf\"\n  display \"../mini/Body.ttf\"\n  numeric \"styles/mini/Body.ttf\"\n}}\n",
+                values(og_ui::Scheme::Dark)
+            )
+            .as_bytes(),
         );
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
@@ -122,29 +141,29 @@ fn warnings(engine: u32) -> Vec<String> {
 #[test]
 fn configure_keeps_the_fields_a_call_leaves_out() {
     let e = engine();
-    let skin = value(og_load_skin(e, "skins/mini/skin.ogt".into()));
-    configure(e, json!({ "skin": skin, "contrast": "high" }));
+    let skin = value(og_load_style(e, "styles/mini/style.ogt".into()));
+    configure(e, json!({ "style": skin, "contrast": "high" }));
     let t = theme(e);
     assert_eq!(
-        (t["skin"].as_str(), t["contrast"].as_str()),
+        (t["style"].as_str(), t["contrast"].as_str()),
         (Some("mini"), Some("high"))
     );
     // Sounds and reduced motion later, as a settings screen does: the skin
     // and the contrast stay.
     configure(e, json!({ "reducedMotion": true }));
     let t = theme(e);
-    assert_eq!(t["skin"].as_str(), Some("mini"), "the skin stays: {t}");
+    assert_eq!(t["style"].as_str(), Some("mini"), "the skin stays: {t}");
     assert_eq!(t["contrast"].as_str(), Some("high"), "the contrast stays");
     assert_eq!(t["reducedMotion"], json!(true));
-    assert_eq!(t["scheme"].as_str(), Some("light"), "the skin's base");
+    assert_eq!(t["scheme"].as_str(), Some("light"), "the style's scheme");
     // A call with nothing keeps everything.
     value(og_ui_configure(e, None));
-    assert_eq!(theme(e)["skin"].as_str(), Some("mini"));
+    assert_eq!(theme(e)["style"].as_str(), Some("mini"));
     // null clears a field to its default.
     configure(e, json!({ "contrast": null }));
     let t = theme(e);
     assert_eq!(
-        (t["contrast"].as_str(), t["skin"].as_str()),
+        (t["contrast"].as_str(), t["style"].as_str()),
         (Some("standard"), Some("mini"))
     );
     assert_eq!(t["reducedMotion"], json!(true), "still reduced");
@@ -153,12 +172,12 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
         "the skin's body font draws"
     );
     // Without the skin the UI has no font at all: a warning names the fix.
-    configure(e, json!({ "skin": null }));
-    assert_eq!(theme(e)["skin"].as_str(), Some(""));
+    configure(e, json!({ "style": null }));
+    assert_eq!(theme(e)["style"].as_str(), Some(""));
     let w = warnings(e);
     assert!(
         w.iter()
-            .any(|w| w.contains("no font") && w.contains("og.load.font") && w.contains("skin")),
+            .any(|w| w.contains("no font") && w.contains("og.load.font") && w.contains("style")),
         "{w:?}"
     );
     // A desc that is not an object is refused.
@@ -169,9 +188,9 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
 #[test]
 fn a_skin_names_its_assets_relative_to_itself_or_from_assets() {
     let e = engine();
-    let skin = value(og_load_skin(e, "skins/copied/skin.ogt".into()));
-    configure(e, json!({ "skin": skin }));
-    assert_eq!(theme(e)["skin"].as_str(), Some("copied"));
+    let skin = value(og_load_style(e, "styles/copied/style.ogt".into()));
+    configure(e, json!({ "style": skin }));
+    assert_eq!(theme(e)["style"].as_str(), Some("copied"));
     assert!(
         warnings(e).iter().all(|w| !w.contains("no font")),
         "its body font, beside it, loaded"

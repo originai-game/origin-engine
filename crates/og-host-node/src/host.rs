@@ -512,8 +512,8 @@ impl LoadApi for NodeHost {
     fn og_load_emitter(&self, world: u32, path: String) -> String {
         rt::og_load_emitter(world, path)
     }
-    fn og_load_skin(&self, world: u32, path: String) -> String {
-        rt::og_load_skin(world, path)
+    fn og_load_style(&self, world: u32, path: String) -> String {
+        rt::og_load_style(world, path)
     }
     fn og_load_look(&self, world: u32, path: String) -> String {
         rt::og_load_look(world, path)

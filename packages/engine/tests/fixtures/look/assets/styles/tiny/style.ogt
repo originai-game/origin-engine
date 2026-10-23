@@ -1,0 +1,46 @@
+type style
+version 1
+---
+name "tiny"
+scheme dark
+palette {
+  backdrop "#101010"
+  well "#161616"
+  panel "#1e1e1e"
+  panelHover "#2a2a2a"
+  panelRaised "#262626"
+  line "#3a3a3a"
+  lineStrong "#606060"
+  ink "#f0f0f0"
+  inkMuted "#b4b4b4"
+  inkFaint "#9c9c9c"
+  inkInverse "#161616"
+  control "#ffffff0f"
+  controlStrong "#ffffff1a"
+  primary "#e8e8e8"
+  primaryHover "#ffffff"
+  primaryActive "#c8c8c8"
+  onPrimary "#161616"
+  primarySoft "#ffffff1f"
+  highlight "#6ad8ec"
+  focus "#5ad1e6"
+  knob "#f0f0f0"
+  hud "#101010d1"
+  scrim "#0000008c"
+  shadow "#000000"
+  sheen "#ffffff3d"
+  success "#4cc38a"
+  warn "#f0a050"
+  danger "#ff8a82"
+  info "#7ab8ff"
+  health "#5ccf6e"
+  mana "#5a9cff"
+  xp "#b07cff"
+  gold "#f2c14e"
+}
+radius {
+  small 1
+  control 2
+  bar 1
+  panel 3
+}

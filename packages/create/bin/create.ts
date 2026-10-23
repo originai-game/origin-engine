@@ -284,8 +284,8 @@ function lookText(name: string, style: Style | undefined, slug: string | null, i
     head.push(
       `# It extends the style catalogue's ${slug} preset (${style.name}),`,
       style.look.support === "full" ? "# whose primitives all draw today." : `# support ${style.look.support}: ${style.look.missing.join("; ")}.`,
-      `# The style's UI skin pack is ${style.skin}: copy templates/ui-kit/assets/skins/${style.skin}`,
-      `# to assets/skins/${id}/ and add \`skin "skins/${id}/skin.ogt"\` to dress the UI.`,
+      `# The style's UI skin pack is ${style.skin}: copy templates/ui-kit/assets/styles/${style.skin}`,
+      `# to assets/styles/${id}/ and add \`skin "skins/${id}/skin.ogt"\` to dress the UI.`,
     );
   } else if (slug) head.push(`# It extends ${slug}.`);
   else head.push("# It extends no preset yet: the frame is the engine's defaults plus the lines below.");

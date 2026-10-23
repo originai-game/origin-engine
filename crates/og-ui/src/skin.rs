@@ -1,32 +1,36 @@
-//! Skins: a game's own look over the token theme. A [`Skin`] dresses the
-//! element classes ([`SkinPart`]: panel, card, button and its states, field,
-//! slot, tooltip, capsule, progress track and fill) in nine-slice frames from
+//! UI styles: a game's whole look, one `.ogt` of `type style`. Its values
+//! (every palette role, the radii, the type ramp, durations) go into the
+//! [`Theme`] fields; its art is a [`Skin`], which dresses the
+//! element classes ([`StylePart`]: panel, card, button and its states, field,
+//! slot, tooltip, hud, progress track and fill) in nine-slice frames from
 //! one atlas texture, adds ornaments (corners, divider, heading flourish), a
 //! tiled panel texture, drop shadows and glows per class, text shadows and
 //! glows per font role, a press squash and a hover lift, motion choices
 //! (entrances, stagger, count-ups, eased progress, refused-action shake,
-//! bursts) and UI sounds. The palette, radii, type ramp and durations a skin
-//! declares go into the [`Theme`] fields themselves; the skin is the rest.
+//! bursts) and UI sounds.
 //!
-//! [`Skin::default`] dresses nothing and moves nothing: every draw path
-//! checks for a slice, an ornament or a motion value first, so the prototype style
-//! is exactly what it was without a skin.
+//! A style is complete: it sets every palette role and every radius, so
+//! nothing of another look shows through it. There is no base to fall back
+//! on; before a game picks a style it has the engine's placeholder
+//! `prototype` ([`crate::theme`]). [`Skin::default`] dresses nothing and
+//! moves nothing: every draw path checks for a slice, an ornament or a
+//! motion value first, so a style without art draws flat.
 //!
-//! A skin is an `.ogt` of `type skin` (the grammar is [`parse_skin`]'s); the
-//! runtime loads its atlas, fonts, icons and sounds through the bundle and
-//! hands the handles to [`SkinFile::theme`].
+//! The grammar is [`parse_style`]'s; the runtime loads a style's atlas,
+//! fonts, icons and sounds through the bundle and hands the handles to
+//! [`StyleFile::theme`].
 
 use crate::motion::TransitionKind;
 use crate::style::{Durations, Palette, Radius, Scheme, Srgba, Theme, TypeRamp, TypeStep};
 use og_core::ogt::{Document, Entry, Value};
 use og_render::TextureHandle;
 
-/// The `.ogt` type of a skin file.
-pub const SKIN_TYPE: &str = "skin";
+/// The `.ogt` type of a UI style.
+pub const STYLE_TYPE: &str = "style";
 
-/// An element class a skin dresses.
+/// An element class a style dresses.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum SkinPart {
+pub enum StylePart {
     /// Dialogs and anchored screen panels.
     Panel,
     /// Cards (`Ui::panel`), shop and level cells.
@@ -39,8 +43,8 @@ pub enum SkinPart {
     /// Inventory and grid cells.
     Slot,
     Tooltip,
-    /// HUD capsules and toasts.
-    Capsule,
+    /// HUD elements over the game (counters, timers) and toasts.
+    Hud,
     /// A progress bar's track.
     Track,
     /// A progress bar's fill.
@@ -50,41 +54,41 @@ pub enum SkinPart {
 /// How many parts there are (the size of the per-part arrays).
 pub const PARTS: usize = 12;
 
-impl SkinPart {
-    pub const ALL: [SkinPart; PARTS] = [
-        SkinPart::Panel,
-        SkinPart::Card,
-        SkinPart::Button,
-        SkinPart::ButtonHover,
-        SkinPart::ButtonPressed,
-        SkinPart::ButtonDisabled,
-        SkinPart::Field,
-        SkinPart::Slot,
-        SkinPart::Tooltip,
-        SkinPart::Capsule,
-        SkinPart::Track,
-        SkinPart::Fill,
+impl StylePart {
+    pub const ALL: [StylePart; PARTS] = [
+        StylePart::Panel,
+        StylePart::Card,
+        StylePart::Button,
+        StylePart::ButtonHover,
+        StylePart::ButtonPressed,
+        StylePart::ButtonDisabled,
+        StylePart::Field,
+        StylePart::Slot,
+        StylePart::Tooltip,
+        StylePart::Hud,
+        StylePart::Track,
+        StylePart::Fill,
     ];
 
     pub fn name(self) -> &'static str {
         match self {
-            SkinPart::Panel => "panel",
-            SkinPart::Card => "card",
-            SkinPart::Button => "button",
-            SkinPart::ButtonHover => "buttonHover",
-            SkinPart::ButtonPressed => "buttonPressed",
-            SkinPart::ButtonDisabled => "buttonDisabled",
-            SkinPart::Field => "field",
-            SkinPart::Slot => "slot",
-            SkinPart::Tooltip => "tooltip",
-            SkinPart::Capsule => "capsule",
-            SkinPart::Track => "track",
-            SkinPart::Fill => "fill",
+            StylePart::Panel => "panel",
+            StylePart::Card => "card",
+            StylePart::Button => "button",
+            StylePart::ButtonHover => "buttonHover",
+            StylePart::ButtonPressed => "buttonPressed",
+            StylePart::ButtonDisabled => "buttonDisabled",
+            StylePart::Field => "field",
+            StylePart::Slot => "slot",
+            StylePart::Tooltip => "tooltip",
+            StylePart::Hud => "hud",
+            StylePart::Track => "track",
+            StylePart::Fill => "fill",
         }
     }
 
-    pub fn from_name(name: &str) -> Option<SkinPart> {
-        SkinPart::ALL.into_iter().find(|p| p.name() == name)
+    pub fn from_name(name: &str) -> Option<StylePart> {
+        StylePart::ALL.into_iter().find(|p| p.name() == name)
     }
 
     pub fn index(self) -> usize {
@@ -93,10 +97,10 @@ impl SkinPart {
 
     /// The class whose shadow, glow, corners and texture apply (a button's
     /// states share the button's).
-    pub fn class(self) -> SkinPart {
+    pub fn class(self) -> StylePart {
         match self {
-            SkinPart::ButtonHover | SkinPart::ButtonPressed | SkinPart::ButtonDisabled => {
-                SkinPart::Button
+            StylePart::ButtonHover | StylePart::ButtonPressed | StylePart::ButtonDisabled => {
+                StylePart::Button
             }
             p => p,
         }
@@ -200,7 +204,7 @@ pub struct Tile {
     pub alpha: f32,
     /// Inset from the element's edges, CSS px.
     pub inset: f32,
-    /// The parts it covers (bits of `SkinPart::index`).
+    /// The parts it covers (bits of `StylePart::index`).
     pub parts: u32,
 }
 
@@ -353,36 +357,36 @@ pub struct Skin {
 impl Skin {
     /// The slice that draws `part`: its own, else the plain button's for a
     /// button state.
-    pub fn slice(&self, part: SkinPart) -> Option<Slice> {
+    pub fn slice(&self, part: StylePart) -> Option<Slice> {
         self.atlas?;
         self.slices[part.index()].or_else(|| {
-            (part.class() == SkinPart::Button)
-                .then(|| self.slices[SkinPart::Button.index()])
+            (part.class() == StylePart::Button)
+                .then(|| self.slices[StylePart::Button.index()])
                 .flatten()
         })
     }
 
-    pub fn shadow(&self, part: SkinPart) -> Option<Shadow> {
+    pub fn shadow(&self, part: StylePart) -> Option<Shadow> {
         self.atlas?;
         self.shadows[part.class().index()]
     }
 
-    pub fn glow(&self, part: SkinPart) -> Option<Glow> {
+    pub fn glow(&self, part: StylePart) -> Option<Glow> {
         self.atlas?;
         self.glows[part.class().index()]
     }
 
-    pub fn glass(&self, part: SkinPart) -> Option<Glass> {
+    pub fn glass(&self, part: StylePart) -> Option<Glass> {
         self.atlas?;
         self.glass[part.class().index()]
     }
 
-    pub fn corners(&self, part: SkinPart) -> Option<Ornament> {
+    pub fn corners(&self, part: StylePart) -> Option<Ornament> {
         self.atlas?;
         self.corner.filter(|_| self.corner_parts & part.bit() != 0)
     }
 
-    pub fn tile(&self, part: SkinPart) -> Option<Tile> {
+    pub fn tile(&self, part: StylePart) -> Option<Tile> {
         self.atlas?;
         self.tile.filter(|t| t.parts & part.bit() != 0)
     }
@@ -393,12 +397,12 @@ impl Skin {
     }
 }
 
-/// A skin file parsed: the theme it makes and the assets it names.
+/// A style file parsed: the theme it makes and the assets it names.
 #[derive(Clone, Debug, PartialEq)]
-pub struct SkinFile {
+pub struct StyleFile {
     pub name: String,
-    /// The theme with the skin's palette, radii, ramp and durations; its
-    /// skin has no atlas or sounds yet (the loader adds the handles).
+    /// The theme with the style's palette, radii, ramp and durations; its
+    /// art has no atlas or sounds yet (the loader adds the handles).
     pub theme: Theme,
     /// The atlas texture's asset id.
     pub atlas: Option<String>,
@@ -411,7 +415,7 @@ pub struct SkinFile {
     pub sounds: [Option<String>; 6],
 }
 
-impl SkinFile {
+impl StyleFile {
     /// Every asset id the file names (the cook checks they exist).
     pub fn references(&self) -> Vec<String> {
         let mut out: Vec<String> = Vec::new();
@@ -455,7 +459,7 @@ impl SkinFile {
 }
 
 /// An asset id a skin file names, resolved against the skin's own id (see
-/// [`SkinFile::resolve`]): relative to its directory when that asset
+/// [`StyleFile::resolve`]): relative to its directory when that asset
 /// exists, else as written.
 pub fn resolve_reference(skin_id: &str, reference: &str, exists: impl Fn(&str) -> bool) -> String {
     let dir = skin_id.rsplit_once('/').map_or("", |(d, _)| d);
@@ -508,6 +512,9 @@ pub fn ramp_step<'a>(r: &'a mut TypeRamp, name: &str) -> Option<&'a mut TypeStep
         _ => return None,
     })
 }
+
+/// The radius names, all of which a style sets.
+const RADII: [&str; 4] = ["small", "control", "bar", "panel"];
 
 fn radius_slot<'a>(r: &'a mut Radius, name: &str) -> Option<&'a mut f32> {
     Some(match name {
@@ -631,8 +638,8 @@ fn parts_mask(p: &P, from: usize) -> Result<u32, String> {
     let mut mask = 0;
     for i in from..p.e.values.len() {
         let w = p.word(i)?;
-        let part =
-            SkinPart::from_name(w).ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?;
+        let part = StylePart::from_name(w)
+            .ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?;
         mask |= part.bit();
     }
     Ok(mask)
@@ -647,22 +654,26 @@ fn role_index(p: &P, w: &str) -> Result<usize, String> {
     }
 }
 
-/// Parses a skin file:
+/// Parses a UI style:
 ///
 /// ```text
-/// type skin
+/// type style
 /// version 1
 /// ---
 /// name "fantasy"
-/// base dark                                  # the style palette the colours below change
-/// atlas "skins/fantasy/atlas.png" 256 256    # its asset id and size in texels
-/// palette {                                # ThemeColor names; a block's lines are one per line
-///   surface "#f2e4c4"
-///   fg "#2b1d12"
+/// scheme dark                                # dark (the default) or light: what the game reads as UiTheme.scheme
+/// atlas "atlas.png" 256 256                  # its asset id and size in texels
+/// palette {                                  # every ThemeColor role, one per line (all required)
+///   backdrop "#1a120b"
+///   panel "#f2e4c4"
+///   ink "#2b1d12"
+///   …
 /// }
-/// radius {
+/// radius {                                   # all four required
+///   small 4
+///   control 4
+///   bar 4
 ///   panel 6
-///   button 6
 /// }
 /// ramp {
 ///   displayLg 44 48                          # TypeStepName: size, line height [, CJK line height, tracking em]
@@ -683,15 +694,15 @@ fn role_index(p: &P, w: &str) -> Result<usize, String> {
 ///                                             # region, corner insets in texels; how edges fill
 /// soft 192 0 32 32 12                         # a blurred white rect: soft shadows and glows
 /// scale 1                                     # CSS px per atlas texel for slice corners
-/// corner 64 0 24 24 24 24 accent [offset]    # region, size on screen, ink
+/// corner 64 0 24 24 24 24 primary [offset]   # region, size on screen, ink (authored, primary, ink, muted, line, focus)
 /// corners panel card
-/// divider 64 32 96 12 96 12 accent
-/// flourish 64 48 48 16 48 16 accent [gap]
+/// divider 64 32 96 12 96 12 primary
+/// flourish 64 48 48 16 48 16 primary [gap]
 /// tile 128 64 64 64 64 64 0.25 [inset] panel card
 /// shadow panel 0 6 14 0 "#00000080"           # part dx dy blur spread colour
-/// glow button 6 accent 0.5                    # part size ink alpha
+/// glow button 6 primary 0.5                   # part size ink alpha
 /// textShadow display 0 2 0 "#000000a0"        # role dx dy blur colour
-/// textGlow display 3 accent 0.6
+/// textGlow display 3 primary 0.6
 /// textWeight body 0.5                         # role, thickening in device px (a pixel font's thin strokes)
 /// press 1.04 0.92 2                           # sx sy dy
 /// hover -2 1.02                               # dy scale (both move on springs: motion below)
@@ -707,28 +718,38 @@ fn role_index(p: &P, w: &str) -> Result<usize, String> {
 /// }
 /// sound press "audio/ui/press.wav"
 /// ```
-pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
+pub fn parse_style(text: &str) -> Result<StyleFile, String> {
     let doc = Document::parse(text).map_err(|e| e.to_string())?;
-    if doc.ty != SKIN_TYPE {
+    if doc.ty == "skin" {
+        return Err(
+            "`type skin` is now `type style`: change the first line, replace `base` with `scheme`, and give the palette every role and the radius block small, control, bar and panel".into(),
+        );
+    }
+    if doc.ty != STYLE_TYPE {
         return Err(format!(
-            "a skin is `type {SKIN_TYPE}`, not `type {}`",
+            "a UI style is `type {STYLE_TYPE}`, not `type {}`",
             doc.ty
         ));
     }
     if doc.version != 1 {
         return Err(format!(
-            "skin version {} (this engine reads 1)",
+            "style version {} (this engine reads 1)",
             doc.version
         ));
     }
     let body = &doc.body;
-    let scheme = match body.get("base").map(|e| P { e }.word(0)).transpose()? {
+    if let Some(e) = body.get("base") {
+        return Err(P { e }.err(
+            "`base` is gone: a style is complete; write `scheme dark` or `scheme light` and set every palette role",
+        ));
+    }
+    let scheme = match body.get("scheme").map(|e| P { e }.word(0)).transpose()? {
         None | Some("dark") => Scheme::Dark,
         Some("light") => Scheme::Light,
-        Some(w) => return Err(format!("base is dark or light, not '{w}'")),
+        Some(w) => return Err(format!("scheme is dark or light, not '{w}'")),
     };
     let mut theme = Theme::new(scheme);
-    let mut file = SkinFile {
+    let mut file = StyleFile {
         name: String::new(),
         theme,
         atlas: None,
@@ -746,6 +767,7 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
         }
     }
     let mut scale = 1.0f32;
+    let (mut has_palette, mut has_radius) = (false, false);
     if let Some(e) = body.get("scale") {
         scale = P { e }.num(0)?;
     }
@@ -759,22 +781,49 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
             }
         };
         match e.key.as_str() {
-            "base" | "atlas" | "scale" => {}
+            "scheme" | "atlas" | "scale" => {}
             "name" => file.name = p.string(0)?.to_string(),
             "palette" => {
-                for c in &p.block()?.entries {
+                let block = p.block()?;
+                for c in &block.entries {
                     let q = P { e: c };
                     let color = q.color(0)?;
                     *palette_color(&mut theme.palette, &c.key)
                         .ok_or_else(|| q.err("is not a ThemeColor name"))? = color;
                 }
+                let missing: Vec<&str> = Palette::NAMES
+                    .iter()
+                    .copied()
+                    .filter(|n| block.get(n).is_none())
+                    .collect();
+                if !missing.is_empty() {
+                    return Err(p.err(&format!(
+                        "leaves out {}: a style sets every palette role",
+                        missing.join(", ")
+                    )));
+                }
+                has_palette = true;
             }
             "radius" => {
-                for c in &p.block()?.entries {
+                let block = p.block()?;
+                for c in &block.entries {
                     let q = P { e: c };
-                    *radius_slot(&mut theme.radius, &c.key)
-                        .ok_or_else(|| q.err("is not a radius name"))? = q.num(0)?;
+                    *radius_slot(&mut theme.radius, &c.key).ok_or_else(|| {
+                        q.err("is not a radius name (small, control, bar, panel)")
+                    })? = q.num(0)?;
                 }
+                let missing: Vec<&str> = RADII
+                    .iter()
+                    .copied()
+                    .filter(|n| block.get(n).is_none())
+                    .collect();
+                if !missing.is_empty() {
+                    return Err(p.err(&format!(
+                        "leaves out {}: a style sets every radius",
+                        missing.join(", ")
+                    )));
+                }
+                has_radius = true;
             }
             "ramp" => {
                 for c in &p.block()?.entries {
@@ -836,7 +885,7 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
                     let w = p.word(0)?;
                     (
                         Some(
-                            SkinPart::from_name(w)
+                            StylePart::from_name(w)
                                 .ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?,
                         ),
                         1,
@@ -945,7 +994,7 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
             }
             "shadow" => {
                 let w = p.word(0)?;
-                let part = SkinPart::from_name(w)
+                let part = StylePart::from_name(w)
                     .ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?;
                 let s = Shadow {
                     dx: p.num(1)?,
@@ -958,7 +1007,7 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
             }
             "glow" => {
                 let w = p.word(0)?;
-                let part = SkinPart::from_name(w)
+                let part = StylePart::from_name(w)
                     .ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?;
                 let iw = p.word(2)?;
                 theme.skin.glows[part.class().index()] = Some(Glow {
@@ -971,7 +1020,7 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
             }
             "glass" => {
                 let w = p.word(0)?;
-                let part = SkinPart::from_name(w)
+                let part = StylePart::from_name(w)
                     .ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?;
                 theme.skin.glass[part.class().index()] = Some(Glass {
                     blur: p.num(1)?.max(0.0),
@@ -1078,6 +1127,12 @@ pub fn parse_skin(text: &str) -> Result<SkinFile, String> {
             "a soft shadow or a glow needs a `soft` line (a blurred white rectangle in the atlas)"
                 .into(),
         );
+    }
+    if !has_palette {
+        return Err("a style needs a `palette { … }` block with every ThemeColor role".into());
+    }
+    if !has_radius {
+        return Err("a style needs a `radius { small control bar panel }` block".into());
     }
     file.theme = theme;
     Ok(file)

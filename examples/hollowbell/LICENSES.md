@@ -17,5 +17,5 @@ engine's own CC0 / OFL assets.
 | `assets/music/hollow.wav` (not committed) | CC0 1.0 | self-made: "Under the Hill", synthesised by `tools/make-assets.ts` |
 | `assets/looks/*.ogt`, `assets/strings/*.ogt`, every other `.ogt` | CC0 1.0 | self-made, written by hand |
 | `assets/fonts/NotoSansSC-hollowbell.ttf` | SIL Open Font License 1.1 (`assets/fonts/OFL.txt`) | Noto Sans SC Regular, subset to the CJK characters of `assets/strings/*.ogt` by `tools/subset-font.py` from the engine's `templates/game/assets/fonts/NotoSansSC-Regular-subset.ttf` |
-| `assets/skins/hollowbell/*` | CC0 1.0 art, SIL OFL 1.1 font (DotGothic16) | a copy of the engine's pixel style pack (`templates/ui-kit/assets/skins/pixel`), recoloured; `assets/skins/hollowbell/LICENSES.md` |
+| `assets/styles/hollowbell/*` | CC0 1.0 art, SIL OFL 1.1 font (DotGothic16) | a copy of the engine's pixel style pack (`templates/styles/pixel`), recoloured; `assets/styles/hollowbell/LICENSES.md` |
 | `references/*/*.png` | CC0 1.0 | frames of this game recorded by `tests/frames.og.ts` |

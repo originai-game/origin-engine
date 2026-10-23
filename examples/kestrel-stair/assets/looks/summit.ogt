@@ -7,7 +7,7 @@ version 1
 # over the same watercolour paper. Applied for the ending and the results.
 name "Kestrel Stair, the summit"
 extends "luminous-layered-painting"
-skin "skins/kestrel/skin.ogt"
+ui "styles/kestrel/style.ogt"
 antialias taa
 Stylise {
   depthBands 5

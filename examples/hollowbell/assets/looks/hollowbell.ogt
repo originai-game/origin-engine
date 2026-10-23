@@ -11,7 +11,7 @@ version 1
 # game's copy of the pixel style pack.
 name "Hollowbell"
 extends "16bit-pixel"
-skin "skins/hollowbell/skin.ogt"
+ui "styles/hollowbell/style.ogt"
 antialias off
 Stylise {
   pixelHeight 240

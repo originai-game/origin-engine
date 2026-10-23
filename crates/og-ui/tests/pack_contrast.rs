@@ -73,11 +73,11 @@ fn packs() -> Vec<(String, PathBuf)> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates");
     let mut out: Vec<(String, PathBuf)> = ["pixel", "cartoon", "fantasy", "scifi", "paper", "neon"]
         .iter()
-        .map(|n| (n.to_string(), root.join("ui-kit/assets/skins").join(n)))
+        .map(|n| (n.to_string(), root.join("styles").join(n)))
         .collect();
     out.push((
         "ember".into(),
-        root.join("archetypes/third-person/assets/skins/ember"),
+        root.join("archetypes/third-person/assets/styles/ember"),
     ));
     out
 }
@@ -94,23 +94,23 @@ fn game_skins() -> Vec<(String, PathBuf)> {
     [
         (
             "sparkorb",
-            "templates/archetypes/idle/assets/skins/sparkorb",
+            "templates/archetypes/idle/assets/styles/sparkorb",
         ),
         (
             "lampdive",
-            "templates/archetypes/roguelike/assets/skins/lampdive",
+            "templates/archetypes/roguelike/assets/styles/lampdive",
         ),
         (
             "lanebeat",
-            "templates/archetypes/rhythm/assets/skins/lanebeat",
+            "templates/archetypes/rhythm/assets/styles/lanebeat",
         ),
         (
             "pathguard",
-            "templates/archetypes/tower-defense/assets/skins/pathguard",
+            "templates/archetypes/tower-defense/assets/styles/pathguard",
         ),
-        ("hollowbell", "examples/hollowbell/assets/skins/hollowbell"),
-        ("lantern", "examples/lantern-vale/assets/skins/lantern"),
-        ("kestrel", "examples/kestrel-stair/assets/skins/kestrel"),
+        ("hollowbell", "examples/hollowbell/assets/styles/hollowbell"),
+        ("lantern", "examples/lantern-vale/assets/styles/lantern"),
+        ("kestrel", "examples/kestrel-stair/assets/styles/kestrel"),
     ]
     .iter()
     .map(|(name, dir)| (name.to_string(), root.join(dir)))
@@ -272,9 +272,9 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
     let mut rows = Vec::new();
     let mut failing = Vec::new();
     for (name, dir) in skins() {
-        let text = std::fs::read_to_string(dir.join("skin.ogt"))
-            .unwrap_or_else(|e| panic!("{name}: skin.ogt: {e}"));
-        let file = parse_skin(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let text = std::fs::read_to_string(dir.join("style.ogt"))
+            .unwrap_or_else(|e| panic!("{name}: style.ogt: {e}"));
+        let file = parse_style(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
         let atlas = image::open(dir.join("atlas.png"))
             .expect("atlas.png")
             .to_rgba8();
@@ -665,9 +665,9 @@ fn every_skin_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel() {
     let mut rows = Vec::new();
     let mut failing = Vec::new();
     for (name, dir) in skins() {
-        let text = std::fs::read_to_string(dir.join("skin.ogt"))
-            .unwrap_or_else(|e| panic!("{name}: skin.ogt: {e}"));
-        let file = parse_skin(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let text = std::fs::read_to_string(dir.join("style.ogt"))
+            .unwrap_or_else(|e| panic!("{name}: style.ogt: {e}"));
+        let file = parse_style(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
         let atlas = image::open(dir.join("atlas.png"))
             .expect("atlas.png")
             .to_rgba8();
@@ -775,7 +775,7 @@ fn cooked_fonts() -> Vec<(String, [CookedFont; 2])> {
     let _ = std::fs::remove_dir_all(&root);
     let mut wanted = Vec::new();
     for (name, dir) in skins() {
-        let file = parse_skin(&std::fs::read_to_string(dir.join("skin.ogt")).expect("skin.ogt"))
+        let file = parse_style(&std::fs::read_to_string(dir.join("style.ogt")).expect("style.ogt"))
             .expect("parses");
         let base = |i: usize| {
             let f = file.fonts[i]
@@ -785,7 +785,7 @@ fn cooked_fonts() -> Vec<(String, [CookedFont; 2])> {
         };
         let files = [base(0), base(1)];
         for f in &files {
-            let dst = root.join("assets/skins").join(&name).join(f);
+            let dst = root.join("assets/styles").join(&name).join(f);
             std::fs::create_dir_all(dst.parent().expect("dir")).expect("dir");
             std::fs::copy(dir.join(f), &dst).unwrap_or_else(|e| panic!("{name}/{f}: {e}"));
             let settings = dir.join(format!("{f}.ogt"));
@@ -803,7 +803,7 @@ fn cooked_fonts() -> Vec<(String, [CookedFont; 2])> {
         .map(|(name, [body, display])| {
             let load = |f: &str| {
                 bundle
-                    .load_font(&format!("skins/{name}/{f}"))
+                    .load_font(&format!("styles/{name}/{f}"))
                     .unwrap_or_else(|e| panic!("{name}/{f}: {e:?}"))
             };
             let fonts = [load(&body), load(&display)];
@@ -934,7 +934,7 @@ fn every_pack_draws_its_primary_and_secondary_labels_at_4_5_to_1_in_the_frame() 
     let mut failing = Vec::new();
     for ((name, dir), (fname, [body, display])) in skins().into_iter().zip(&fonts) {
         assert_eq!(&name, fname);
-        let file = parse_skin(&std::fs::read_to_string(dir.join("skin.ogt")).expect("skin.ogt"))
+        let file = parse_style(&std::fs::read_to_string(dir.join("style.ogt")).expect("style.ogt"))
             .expect("parses");
         let img = image::open(dir.join("atlas.png"))
             .expect("atlas.png")

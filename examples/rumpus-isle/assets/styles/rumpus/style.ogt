@@ -1,0 +1,108 @@
+type style
+version 1
+---
+# Rumpus Isle's skin: the engine's cartoon style pack (templates/ui-kit, CC0 art, OFL fonts:
+# LICENSES.md), copied by tools/make-assets.ts, its ground a deep sea blue and its accent coral;
+# the CJK fallback line dropped, the game shows Latin-1 only.
+name "rumpus"
+scheme light
+atlas "atlas.png" 384 256
+scale 1
+palette {
+  backdrop "#123a5c"
+  well "#174870"
+  panel "#fff4dc"
+  panelHover "#ffe9bd"
+  panelRaised "#fff4dc"
+  line "#2b1a4a"
+  lineStrong "#2b1a4a"
+  ink "#2b1a4a"
+  inkMuted "#5a4880"
+  inkFaint "#61527c"
+  inkInverse "#fff4dc"
+  control "#fff3cc"
+  controlStrong "#ffecb5"
+  primary "#b23a1e"
+  primaryHover "#b9401f"
+  primaryActive "#962f17"
+  onPrimary "#fff4dc"
+  primarySoft "#b23a1e40"
+  highlight "#a3341a"
+  focus "#3fa7ff"
+  knob "#ffffff"
+  hud "#fff4dcf5"
+  scrim "#0b2238cc"
+  shadow "#2b1a4a99"
+  sheen "#ffffff52"
+  success "#06681b"
+  warn "#7b5102"
+  danger "#6a0a16"
+  info "#2256af"
+  health "#06681b"
+  mana "#007aff"
+  xp "#af52de"
+  gold "#b23a1e"
+}
+radius {
+  small 10
+  control 10
+  bar 10
+  panel 18
+}
+ramp {
+  body 15 20
+  meta 13 18
+  caption 13 18
+  lg 19 26
+  xl 22 28
+  xl2 26 30
+  xl3 30 34
+  displaySm 32 36
+  displayMd 40 44
+  displayLg 52 56
+}
+durations {
+  instant 110
+  fast 160
+  base 280
+  slow 420
+}
+fonts {
+  body "Fredoka-SemiBold.ttf"
+  display "LilitaOne-Regular.ttf"
+  numeric "LilitaOne-Regular.ttf"
+}
+icons "icons.png" 8 4 {
+  names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
+}
+slice panel 4 4 96 96 30 tint
+slice card 104 4 64 64 20 tint
+slice button 172 4 48 48 20 tint
+slice buttonHover 224 4 48 48 20 tint
+slice buttonPressed 276 4 48 48 20 tint
+slice buttonDisabled 328 4 48 48 20 tint
+slice field 4 104 48 48 16 tint
+slice slot 56 104 48 48 16 tint
+slice tooltip 108 104 32 32 13 tint
+slice hud 144 104 32 32 15 tint
+slice track 180 104 32 16 7 tint
+slice fill 216 104 32 16 7 tint
+soft 252 104 64 64 24
+divider 4 172 128 24 48 16 primary
+flourish 136 172 64 24 22 10 primary 2
+shadow panel 0 8 0 0 "#2b1a4acc"
+shadow card 0 5 0 0 "#2b1a4a99"
+shadow button 0 5 0 0 "#2b1a4acc"
+shadow hud 0 4 0 0 "#2b1a4a99"
+shadow slot 0 3 0 0 "#2b1a4a66"
+textShadow display 0 4 0 "#2b1a4a"
+press 1.08 0.88 3
+hover -3 1.04
+motion {
+  enter pop
+  stagger 50
+  toast pop
+  progress 360
+  shake 8
+  pop 0.22
+}

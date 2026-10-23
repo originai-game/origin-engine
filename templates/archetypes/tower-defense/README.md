@@ -56,7 +56,7 @@ og build . --publish         # dist/: the play page as it ships
   lantern flashing red and squashing. Plants pop up when set and squash
   when they shoot.
 - **Screens on og.ui with a skin** (og-ui §2–§6, og-taste §1–§7): the
-  engine's cartoon pack recoloured as `assets/skins/pathguard` (cream
+  engine's cartoon pack recoloured as `assets/styles/pathguard` (cream
   panels on the night lawn, the lantern's orange as the one accent); the
   title (`og.ui.mainMenu`), the HUD as capsules in the corners with
   counting numbers (`og.ui.counter`), the plant tray (right on a wide
@@ -176,7 +176,7 @@ The visitors' numbers are `KINDS` and the waves `WAVES` in `src/systems.ts`.
    `fire`.
 3. **The field**: `MAP` in `tools/make-assets.py` (H hedge, R stone, G the
    gate, D the doorstep), then `python3 tools/make-assets.py && og cook .`.
-4. **The look**: `assets/skins/pathguard/skin.ogt`'s palette and the art
+4. **The look**: `assets/styles/pathguard/style.ogt`'s palette and the art
    in `tools/make-assets.py`.
 5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs the
    script run again to subset the font.
@@ -225,7 +225,7 @@ in the engine repository).
 give the same bytes): the tileset, the map, the sprite sheet, the glow and
 particle textures and emitters, the sounds and the music, the `og sfx`
 preset files of the UI's sounds, and the font subset. `LICENSES.md` lists
-them; the skin's are in `assets/skins/pathguard/LICENSES.md`.
+them; the skin's are in `assets/styles/pathguard/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)
 

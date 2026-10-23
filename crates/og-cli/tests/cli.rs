@@ -529,12 +529,12 @@ fn cook_defaults_the_engine_component_fields_a_scene_omits() {
     assert_eq!(lanes(1, "scale"), [2.0, 2.0, 2.0]);
 }
 
-/// A copy of tests/fixtures/skin-pack (three nine-patches, a corner and a
+/// A copy of tests/fixtures/style-pack (three nine-patches, a corner and a
 /// skin file) in a fresh directory.
 fn skin_fixture() -> PathBuf {
     let dir = scratch_root().join("handmade");
     std::fs::create_dir_all(&dir).unwrap();
-    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/skin-pack");
+    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/style-pack");
     for e in std::fs::read_dir(src).unwrap() {
         let p = e.unwrap().path();
         std::fs::copy(&p, dir.join(p.file_name().unwrap())).unwrap();
@@ -542,7 +542,7 @@ fn skin_fixture() -> PathBuf {
     dir
 }
 
-/// `og skin pack` packs a skin drawn by hand: each nine-patch's art lands in
+/// `og style pack` packs a skin drawn by hand: each nine-patch's art lands in
 /// the atlas pixel for pixel, its insets are what lies outside its stretch
 /// marks, the corner is packed as drawn, and the skin file keeps its own
 /// lines (the palette, a slice's tint and repeat words) while its atlas,
@@ -554,15 +554,15 @@ fn skin_fixture() -> PathBuf {
 /// off by the border, images overlap or bleed into each other, the skin
 /// file loses lines it does not own, or a part's region points elsewhere.
 #[test]
-fn skin_pack_packs_nine_patches_and_rewrites_the_skin_file() {
+fn style_pack_packs_nine_patches_and_rewrites_the_style_file() {
     let dir = skin_fixture();
     let out = og()
-        .args(["skin", "pack", dir.to_str().unwrap()])
+        .args(["style", "pack", dir.to_str().unwrap()])
         .output()
         .unwrap();
     assert!(out.status.success(), "{}", text(&out));
     let atlas = image::open(dir.join("atlas.png")).unwrap().to_rgba8();
-    let skin = std::fs::read_to_string(dir.join("skin.ogt")).unwrap();
+    let skin = std::fs::read_to_string(dir.join("style.ogt")).unwrap();
     let line = |key: &str, part: &str| -> Vec<String> {
         skin.lines()
             .map(|l| l.split_whitespace().map(String::from).collect::<Vec<_>>())
@@ -621,11 +621,11 @@ fn skin_pack_packs_nine_patches_and_rewrites_the_skin_file() {
     );
     assert_eq!(
         corner[5..].join(" "),
-        "12 12 accent 2",
+        "12 12 primary 2",
         "the corner keeps its size, ink and offset"
     );
     assert!(
-        skin.contains("accent \"#ffb000\"") && skin.contains("corners panel"),
+        skin.contains("primary \"#ffb000\"") && skin.contains("corners panel"),
         "the skin's own lines stay:\n{skin}"
     );
     assert_eq!(
@@ -633,13 +633,14 @@ fn skin_pack_packs_nine_patches_and_rewrites_the_skin_file() {
         vec![atlas.width().to_string(), atlas.height().to_string()],
         "the atlas line names the packed size"
     );
-    let parsed = og_ui::parse_skin(&skin).unwrap_or_else(|e| panic!("og-ui reads it: {e}\n{skin}"));
+    let parsed =
+        og_ui::parse_style(&skin).unwrap_or_else(|e| panic!("og-ui reads it: {e}\n{skin}"));
     assert_eq!(parsed.name, "handmade");
     // A nine-patch without marks is refused, by name.
     let bad = image::RgbaImage::from_pixel(10, 10, image::Rgba([200, 200, 200, 255]));
     bad.save(dir.join("card.9.png")).unwrap();
     let out = og()
-        .args(["skin", "pack", dir.to_str().unwrap()])
+        .args(["style", "pack", dir.to_str().unwrap()])
         .output()
         .unwrap();
     assert_eq!(out.status.code(), Some(1));

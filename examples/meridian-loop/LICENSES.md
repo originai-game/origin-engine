@@ -14,5 +14,5 @@ engine's own neon style pack, copied by the same script.
 | `assets/music/meridian.wav` (not committed) | CC0 1.0 | self-made: "Meridian", synthesised by `tools/audio.ts` |
 | `assets/fx/*.ogt`, `assets/looks/*.ogt` | CC0 1.0 | self-made: the emitters and the look, `tools/make-assets.ts` |
 | `assets/strings/*.ogt`, `assets/scenes/*.ogt`, every other `.ogt` | CC0 1.0 | self-made, written by hand |
-| `assets/skins/meridian/*` (the PNGs and TTFs not committed) | CC0 1.0 art, SIL OFL 1.1 fonts (Chakra Petch, Orbitron, Rajdhani) | a copy of the engine's neon style pack (`templates/ui-kit/assets/skins/neon`), its `skin.ogt` retinted by `tools/make-assets.ts`; `assets/skins/meridian/LICENSES.md` |
+| `assets/styles/meridian/*` (the PNGs and TTFs not committed) | CC0 1.0 art, SIL OFL 1.1 fonts (Chakra Petch, Orbitron, Rajdhani) | a copy of the engine's neon style pack (`templates/styles/neon`), its `style.ogt` retinted by `tools/make-assets.ts`; `assets/styles/meridian/LICENSES.md` |
 | `references/*/*.png` | CC0 1.0 | frames of this game recorded by `tests/frames.og.ts` and `tests/published.og.ts` |

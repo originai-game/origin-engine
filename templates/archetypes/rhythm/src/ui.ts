@@ -1,4 +1,4 @@
-// Three-Lane Beat's screens on og.ui and the skin in assets/skins/lanebeat
+// Three-Lane Beat's screens on og.ui and the skin in assets/styles/lanebeat
 // (the engine's sci-fi pack): the title, the HUD (the score and the groove
 // top left, Pause top right, the combo and its multiplier beside the
 // highway), the pause menu, the settings with the offset, the calibration
@@ -204,7 +204,7 @@ export function grade(acc: number): string {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.sm, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
+  og.ui.row(id, { gap: S.sm, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "hud", background: { token: "panel" } }, build);
 }
 
 function hud(world: World, g: GameV): void {

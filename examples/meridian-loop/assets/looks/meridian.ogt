@@ -3,7 +3,7 @@ version 1
 ---
 name "Meridian night"
 extends "neon-vector"
-skin "skins/meridian/skin.ogt"
+ui "styles/meridian/style.ogt"
 RenderSettings {
   bloom true
   bloomThreshold 0.75

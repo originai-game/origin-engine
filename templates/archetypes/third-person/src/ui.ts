@@ -1,4 +1,4 @@
-// Ember Vale's screens on og.ui and the skin in assets/skins/ember (the
+// Ember Vale's screens on og.ui and the skin in assets/styles/ember (the
 // engine's fantasy pack): the title over an orbit of the vale, the HUD
 // (hearts and beacons top-left, the dusk clock and pause top-right, the
 // kindling prompt and its progress at the bottom; on a touch screen a
@@ -216,7 +216,7 @@ function clock(world: World, g: GameV, dt: number): void {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
+  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "hud", background: { token: "panel" } }, build);
 }
 
 function clockText(g: GameV): string {

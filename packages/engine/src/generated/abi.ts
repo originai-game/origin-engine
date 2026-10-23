@@ -287,8 +287,8 @@ export interface HostAbi<A, V> {
   og_load_texture(world: number, path: string): string;
   /** `og.load.textureArray` */
   og_load_texture_array(world: number, path: string): string;
-  /** `og.load.skin` */
-  og_load_skin(world: number, path: string): string;
+  /** `og.load.style` */
+  og_load_style(world: number, path: string): string;
   /** `og.load.look` */
   og_load_look(world: number, path: string): string;
   /** `og.load.lookInfo` */
@@ -887,7 +887,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_shader",
   "og_load_texture",
   "og_load_texture_array",
-  "og_load_skin",
+  "og_load_style",
   "og_load_look",
   "og_load_look_info",
   "og_load_palette",

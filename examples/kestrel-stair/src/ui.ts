@@ -1,5 +1,5 @@
 // The Kestrel Stair's screens, on og.ui with the paper skin
-// (assets/skins/kestrel, brought by the look):
+// (assets/styles/kestrel, brought by the look):
 //
 // - the title (og.ui.mainMenu): Continue with the save slot's place and
 //   hour, New journey, Chapters (og.ui.levelSelect: the four chapters, their
@@ -233,7 +233,7 @@ function looks(world: World, g: GameV): void {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
+  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "hud", background: { token: "panel" } }, build);
 }
 
 function hud(world: World, g: GameV): { bag: boolean; pause: boolean } {

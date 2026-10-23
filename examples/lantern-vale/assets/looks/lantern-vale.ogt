@@ -11,7 +11,7 @@ version 1
 # lavender fog softens the ridges.
 name "Lantern Vale at dusk"
 extends "anime-cel-3d"
-skin "skins/lantern/skin.ogt"
+ui "styles/lantern/style.ogt"
 antialias taa
 MaterialStyle {
   shadowTint "#3b2d6e"

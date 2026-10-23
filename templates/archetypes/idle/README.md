@@ -62,7 +62,7 @@ og build . --publish         # dist/: the play page as it ships
   fanfare; the supernova bursts 200 sparks, holds the world 10 ticks,
   shakes and punches it.
 - **og.ui counters on the tokens** (og-ui §2–§6, og-taste §1–§7): the
-  engine's neon pack recoloured as `assets/skins/sparkorb` (the orb's gold
+  engine's neon pack recoloured as `assets/styles/sparkorb` (the orb's gold
   as the one accent on night violet: a burnished amber under the buttons'
   cream labels, the bright gold `accentInk` for gold words and icons); the wallet and the rate top left, the
   stardust (an `og.ui.counter`) and Pause top right, the four generators
@@ -171,7 +171,7 @@ pure functions, the stars come from an og.Rng stream forked by name, and
    the frame's treatment and names the skin; `extends "<slug>"` there
    starts from a style of the catalogue (og-taste §12), and the reference
    frames are then recorded again (`OG_FX_CAPTURE=1 og test .`). The
-   skin's palette is `assets/skins/sparkorb/skin.ogt`, the art
+   skin's palette is `assets/styles/sparkorb/style.ogt`, the art
    `tools/make-assets.py`: `python3 tools/make-assets.py && og cook .`.
 5. **Words and numbers**: `assets/strings/*.ogt` (a locale's `num.step`
    and units make its big numbers); a new Chinese string needs the script
@@ -222,7 +222,7 @@ in the engine repository).
 give the same bytes): the orb, the glow, the spark and the motes, the
 emitters, the sounds and the music, the `og sfx` preset files of the UI's
 sounds, the font subset and the skin's recoloured atlas. `LICENSES.md`
-lists them; the skin's are in `assets/skins/sparkorb/LICENSES.md`.
+lists them; the skin's are in `assets/styles/sparkorb/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)
 

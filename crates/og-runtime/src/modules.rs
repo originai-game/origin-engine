@@ -33,7 +33,7 @@ use og_ui::{
     FontRole, Fonts, GridDesc, IconAtlas, IconDesc, ImageDesc, InputFrame, Insets, JoystickDesc,
     LabelDesc, ListDesc, ListRange, MapMarker, MeterDesc, MeterKind, MinimapDesc, ModalDesc, Nav,
     PanelDesc, Presence, ProgressDesc, RadioDesc, Response, Scheme, ScrollDesc, SelectDesc,
-    SharedUi, Size, SkeletonDesc, SkinPart, SliderDesc, SpotlightDesc, Srgba, StepperDesc,
+    SharedUi, Size, SkeletonDesc, SliderDesc, SpotlightDesc, Srgba, StepperDesc, StylePart,
     TabsDesc, TextAlign, Theme, ToastDesc, Tone, TransitionDesc, TransitionKind, TypeStep, Ui,
     UiDesc, UiFont, Viewport,
 };
@@ -79,7 +79,7 @@ pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> SharedUi {
                 *ui.theme(),
                 ui.fonts().clone(),
                 ui.icons().clone(),
-                ui.skin_name().to_string(),
+                ui.style_name().to_string(),
             )
         }
         None => (
@@ -95,7 +95,7 @@ pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> SharedUi {
         fonts,
     });
     ui.set_icons(icons);
-    ui.set_skin_name(&skin);
+    ui.set_style_name(&skin);
     SharedUi::new(ui)
 }
 
@@ -680,8 +680,8 @@ fn element(theme: &Theme, d: &Value) -> Element {
     }
 }
 
-fn skin_part(v: &Value) -> Option<SkinPart> {
-    SkinPart::from_name(v.as_str()?)
+fn skin_part(v: &Value) -> Option<StylePart> {
+    StylePart::from_name(v.as_str()?)
 }
 
 fn align(v: &Value) -> Align {
@@ -754,15 +754,15 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
         let eng = engine(world)?;
         let d = merged_ui_desc(&eng.state.borrow().ui_desc, parse(desc.as_deref())?)?;
-        let skin = match d["skin"].as_f64() {
+        let skin = match d["style"].as_f64() {
             Some(h) => {
-                let i =
-                    super::assets::index_of(h).ok_or_else(|| format!("skin: {h} is not a skin"))?;
+                let i = super::assets::index_of(h)
+                    .ok_or_else(|| format!("style: {h} is not a UI style"))?;
                 let a = eng.assets.borrow();
                 let s = a
-                    .skins
+                    .styles
                     .get(i)
-                    .ok_or_else(|| format!("skin: skin {h} is not alive"))?;
+                    .ok_or_else(|| format!("style: style {h} is not alive"))?;
                 Some((s.file.clone(), s.atlas, s.fonts, s.icons, s.sounds))
             }
             None => None,
@@ -925,13 +925,13 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             && fonts.chain.is_empty();
         ui.set_fonts(fonts);
         ui.set_icons(atlas);
-        ui.set_skin_name(skin.as_ref().map_or("", |s| s.0.name.as_str()));
+        ui.set_style_name(skin.as_ref().map_or("", |s| s.0.name.as_str()));
         ui.set_toast_anchor(anchor_of(&d["toastAnchor"]).unwrap_or(Anchor::Bottom));
         drop(ui);
         let mut st = eng.state.borrow_mut();
         st.ui_desc = d;
         if fontless {
-            let text = "og.ui.configure: the UI has no font now, so it draws no text (every label, button and field is blank): give `font` (og.load.font) or a `skin` (og.load.skin, whose fonts it brings), in this call or an earlier one; a field set to null is cleared, a field left out keeps its value".to_string();
+            let text = "og.ui.configure: the UI has no font now, so it draws no text (every label, button and field is blank): give `font` (og.load.font) or a `style` (og.load.style, whose fonts it brings), in this call or an earlier one; a field set to null is cleared, a field left out keeps its value".to_string();
             if st.ui_warned.insert(text.clone()) {
                 let tick = eng.world().map_or(0, |w| w.time().tick);
                 st.log
@@ -946,10 +946,10 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
     }
 }
 
-/// A loaded skin: its file and the handles of the assets it names.
-pub(crate) struct LoadedSkin {
+/// A loaded UI style: its file and the handles of the assets it names.
+pub(crate) struct LoadedStyle {
     pub id: String,
-    pub file: og_ui::SkinFile,
+    pub file: og_ui::StyleFile,
     pub atlas: Option<og_render::TextureHandle>,
     /// Font asset handles: body, display, numeric, fallback.
     pub fonts: [Option<f64>; 4],
@@ -957,31 +957,31 @@ pub(crate) struct LoadedSkin {
     pub sounds: [u64; 6],
 }
 
-/// `og.load.skin`: a cooked skin, its atlas, fonts, icons and sounds loaded with it.
-pub fn og_load_skin(world: u32, path: String) -> String {
-    match engine(world).and_then(|eng| load_skin(&eng, &path)) {
+/// `og.load.style`: a cooked UI style, its atlas, fonts, icons and sounds loaded with it.
+pub fn og_load_style(world: u32, path: String) -> String {
+    match engine(world).and_then(|eng| load_style(&eng, &path)) {
         Ok(i) => ok(json!(super::assets::handle(i) as f64)),
         Err(e) => refuse(e),
     }
 }
 
-/// `og.load.skin`: the skin's load index, its atlas, fonts, icons and
+/// `og.load.style`: the style's load index, its atlas, fonts, icons and
 /// sounds loaded with it (once per path).
-pub(crate) fn load_skin(eng: &Engine, path: &str) -> Result<usize, String> {
+pub(crate) fn load_style(eng: &Engine, path: &str) -> Result<usize, String> {
     (|| -> Result<usize, String> {
         let id = og_cook::runtime::asset_id(path).to_string();
-        if let Some(i) = eng.assets.borrow().skins.iter().position(|s| s.id == id) {
+        if let Some(i) = eng.assets.borrow().styles.iter().position(|s| s.id == id) {
             return Ok(i);
         }
         let text = {
             let assets = eng.assets.borrow();
             let (bytes, bundle) = assets.blob(&id)?;
             bundle
-                .skin_text(&id, bytes.bytes())
+                .style_text(&id, bytes.bytes())
                 .map_err(|e| e.to_string())?
         };
-        let mut file = og_ui::parse_skin(&text).map_err(|e| format!("{id}: {e}"))?;
-        // Ids relative to the skin file first, as the cook resolved them.
+        let mut file = og_ui::parse_style(&text).map_err(|e| format!("{id}: {e}"))?;
+        // Ids relative to the style file first, as the cook resolved them.
         file.resolve(&id, |r| eng.assets.borrow().bundle_for(r).is_ok());
         let texture = |p: &str| -> Result<og_render::TextureHandle, String> {
             let i = super::assets::load_texture(eng, p)?;
@@ -1009,7 +1009,7 @@ pub(crate) fn load_skin(eng: &Engine, path: &str) -> Result<usize, String> {
             }
         }
         let mut a = eng.assets.borrow_mut();
-        a.skins.push(LoadedSkin {
+        a.styles.push(LoadedStyle {
             id,
             file,
             atlas,
@@ -1017,7 +1017,7 @@ pub(crate) fn load_skin(eng: &Engine, path: &str) -> Result<usize, String> {
             icons,
             sounds,
         });
-        Ok(a.skins.len() - 1)
+        Ok(a.styles.len() - 1)
     })()
 }
 
@@ -1061,7 +1061,7 @@ pub fn og_ui_theme(world: u32) -> String {
         .and_then(|e| e.state.borrow().ui.clone())
         .map(|ui| {
             let ui = ui.lock();
-            (*ui.theme(), ui.sizes(), ui.skin_name().to_string())
+            (*ui.theme(), ui.sizes(), ui.style_name().to_string())
         })
         .unwrap_or_else(|| {
             let t = Theme::default();
@@ -1086,7 +1086,7 @@ pub fn og_ui_seconds() -> f64 {
 
 pub fn og_ui_frame_theme() -> String {
     let (theme, sizes, skin) = with_ui("og.ui.frameTheme", |ui| {
-        (*ui.theme(), ui.sizes(), ui.skin_name().to_string())
+        (*ui.theme(), ui.sizes(), ui.style_name().to_string())
     })
     .unwrap_or_else(|| {
         let t = Theme::default();
@@ -1150,7 +1150,7 @@ fn theme_json(theme: Theme, sizes: og_ui::Density, skin: &str) -> String {
         "typeRamp": ramp,
         "sizes": { "controlSm": sizes.control_sm, "controlMd": sizes.control_md, "controlLg": sizes.control_lg, "gutter": sizes.gutter, "header": sizes.header, "row": sizes.row, "section": sizes.section },
         "durationsMs": { "instant": d.instant, "fast": d.fast, "base": d.base, "slow": d.slow, "spring": d.spring, "bounce": d.bounce },
-        "skin": skin,
+        "style": skin,
         "contrast": if theme.contrast == og_ui::Contrast::High { "high" } else { "standard" },
         "reducedMotion": theme.reduced_motion,
         "reducedTransparency": theme.reduced_transparency,

@@ -7,7 +7,7 @@ version 1
 # the 2D glow for the lamps, gears and the hatch.
 name "Brasswick"
 extends "detailed-pixel"
-skin "skins/brasswick/skin.ogt"
+ui "styles/brasswick/style.ogt"
 PostEffects {
   glow true
   glowIntensity 0.9

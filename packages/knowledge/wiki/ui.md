@@ -59,14 +59,14 @@ module ui {
 | [`ToggleResult`](#type-ToggleResult) | struct | A toggle's response and its state after this tick's input. |
 | [`FieldResult`](#type-FieldResult) | struct | A text field's response and its text after this tick's input. |
 | [`Viewport`](#type-Viewport) | struct | The play surface the UI lays out in. |
-| [`UiDesc`](#type-UiDesc) | desc struct | How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it. |
+| [`UiDesc`](#type-UiDesc) | desc struct | How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it. |
 | [`UiSounds`](#type-UiSounds) | desc struct | Sounds the UI plays through og-audio (the ui bus) on its events; null is silent. |
-| [`SkinPart`](#type-SkinPart) | enum | An element class a skin dresses with a nine-slice frame. |
+| [`StylePart`](#type-StylePart) | enum | An element class a style dresses with a nine-slice frame. |
 | [`TypeStep`](#type-TypeStep) | struct | One step of the type ramp. |
 | [`ControlSizes`](#type-ControlSizes) | struct | The control, row and header heights and the gutter of the density in effect. |
 | [`UiTheme`](#type-UiTheme) | struct | The style values the UI draws with, read-only. |
 | [`UiBuild`](#type-UiBuild) | callback | Builds a container's children: ui calls made inside it nest under the container. |
-| [`og.ui.configure`](#fn-configure) | function | Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the prototype style). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text. |
+| [`og.ui.configure`](#fn-configure) | function | Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the prototype style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text. |
 | [`og.ui.viewport`](#fn-viewport) | function | This tick's play surface: the render target's size in CSS pixels, its DPR and safe area, as the host reports them. |
 | [`og.ui.theme`](#fn-theme) | function | The style values the UI draws with. |
 | [`og.ui.open`](#fn-open) | function | Open a container; the calls until its close() build its children. |
@@ -79,7 +79,7 @@ module ui {
 | [`og.ui.scroll`](#fn-scroll) | function | A vertical scroll container built by `build`: openScroll(id, desc), build(), close(). |
 | [`RichTextDesc`](#type-RichTextDesc) | desc struct | How a rich text paragraph draws: its defaults, which its markup's spans override. |
 | [`RichTextResult`](#type-RichTextResult) | struct | What a rich text's links did this tick. |
-| [`og.ui.richText`](#fn-richText) | function | A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the skin), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning. |
+| [`og.ui.richText`](#fn-richText) | function | A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the style), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning. |
 | [`og.ui.label`](#fn-label) | function | MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text. |
 | [`og.ui.button`](#fn-button) | function | A button with a label; `clicked` is a press and a release inside it. The probe reads its label. |
 | [`og.ui.image`](#fn-image) | function | A texture region, or a solid rectangle; with ImageDesc.aspect, a fitting side follows the other. |
@@ -190,11 +190,11 @@ module ui {
 | [`og.ui.remember`](#fn-remember) | function | Set a number memory (see memory). |
 | [`og.ui.tick`](#fn-tick) | function | Frames the UI has built: its clock, for animations by the tick. |
 | [`CounterDesc`](#type-CounterDesc) | desc struct | A number that counts to its value. |
-| [`og.ui.counter`](#fn-counter) | function | A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a skin with motion.pop bumps it when it lands. Scores, currency, rewards. |
+| [`og.ui.counter`](#fn-counter) | function | A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a style with motion.pop bumps it when it lands. Scores, currency, rewards. |
 | [`BurstDesc`](#type-BurstDesc) | desc struct | Rays and sparks thrown from an element. |
 | [`og.ui.burst`](#fn-burst) | function | Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. Off under reduced motion. |
 | [`ShakeDesc`](#type-ShakeDesc) | desc struct | A shake of an element: three sideways swings decaying to rest. |
-| [`og.ui.shake`](#fn-shake) | function | Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the skin's motion.shake is set. |
+| [`og.ui.shake`](#fn-shake) | function | Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the style's motion.shake is set. |
 | [`ScreenWipe`](#type-ScreenWipe) | enum | How a screen transition covers the old screen and reveals the new one. |
 | [`WipeSide`](#type-WipeSide) | enum | Where a wipe or a slide comes from. |
 | [`ScreenTransitionDesc`](#type-ScreenTransitionDesc) | desc struct | How a screen transition looks. |
@@ -274,7 +274,7 @@ module ui {
 
 ### `og.ui.configure`
 
-Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the prototype style). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text.
+Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the prototype style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text.
 
 ```ts
 og.ui.configure(world: World, desc?: UiDesc): Result<void>
@@ -285,16 +285,16 @@ og.ui.configure(world: World, desc?: UiDesc): Result<void>
 | `world` | `World` | no | The world whose UI is configured. |
 | `desc` | `UiDesc` | yes | The fields to change; the others keep their values. |
 
-**Returns** `Result<void>`: Refused for a dead font or skin, or a desc that is not an object.
+**Returns** `Result<void>`: Refused for a dead font or style, or a desc that is not an object.
 
 Binding symbol `og_ui_configure` · publish builds: kept
 
 ```ogt
 fn configure {
-  doc "Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the prototype style). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text."
+  doc "Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the prototype style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text."
   param world World "The world whose UI is configured."
   param desc UiDesc "The fields to change; the others keep their values."
-  returns Result.Void "Refused for a dead font or skin, or a desc that is not an object."
+  returns Result.Void "Refused for a dead font or style, or a desc that is not an object."
 }
 ```
 
@@ -605,7 +605,7 @@ fn scroll {
 
 ### `og.ui.richText`
 
-A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the skin), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning.
+A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the style), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning.
 
 ```ts
 og.ui.richText(id: string, markup: string, desc?: RichTextDesc): RichTextResult
@@ -623,7 +623,7 @@ Binding symbol `og_ui_rich_text` · publish builds: kept
 
 ```ogt
 fn richText {
-  doc "A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the skin), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning."
+  doc "A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the style), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning."
   param id String "Its id."
   param markup String "The markup."
   param desc RichTextDesc "Defaults for its spans: type step, ink, alignment, wrapping, width and font."
@@ -2588,7 +2588,7 @@ fn tick {
 
 ### `og.ui.counter`
 
-A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a skin with motion.pop bumps it when it lands. Scores, currency, rewards.
+A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a style with motion.pop bumps it when it lands. Scores, currency, rewards.
 
 ```ts
 og.ui.counter(id: string, value: number, desc?: CounterDesc): number
@@ -2606,7 +2606,7 @@ Binding symbol `og_ui_counter` · publish builds: kept
 
 ```ogt
 fn counter {
-  doc "A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a skin with motion.pop bumps it when it lands. Scores, currency, rewards."
+  doc "A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a style with motion.pop bumps it when it lands. Scores, currency, rewards."
   param id String "Its id."
   param value f64 "The value to count to."
   param desc CounterDesc "Look, duration, start and format."
@@ -2648,7 +2648,7 @@ fn burst {
 
 ### `og.ui.shake`
 
-Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the skin's motion.shake is set.
+Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the style's motion.shake is set.
 
 ```ts
 og.ui.shake(desc?: ShakeDesc): void
@@ -2664,7 +2664,7 @@ Binding symbol `og_ui_shake` · publish builds: kept
 
 ```ogt
 fn shake {
-  doc "Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the skin's motion.shake is set."
+  doc "Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the style's motion.shake is set."
   param desc ShakeDesc "Amount, duration and sound."
   returns Void
 }
@@ -3854,7 +3854,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `interactive` | `boolean` | `false` | — | — | — | Report a Response from close(), as a button does. |
 | `background` | `Paint \| null` | `null` | — | — | — | Its fill; null draws none. |
 | `radius` | `number` | `0` | — | `cssPx` | — | Corner radius. |
-| `frame` | `SkinPart \| null` | `null` | — | — | — | The skin frame its background takes (a HUD capsule, a card); null is a plain fill. Without a skin the fill is drawn either way. |
+| `frame` | `StylePart \| null` | `null` | — | — | — | The style frame its background takes (a HUD element, a card); null is a plain fill. Without a style the fill is drawn either way. |
 | `aspect` | `number` | `0` | ≥ 0 | — | — | Width over height (0: none): with the height left to fit, it is as tall as its laid-out width over this; with a fixed height and the width left to fit, as wide as the height times it. |
 
 ```ogt
@@ -3878,7 +3878,7 @@ struct ElementDesc {
   field radius f32 "Corner radius." {
     unit cssPx
   }
-  field frame Option.SkinPart "The skin frame its background takes (a HUD capsule, a card); null is a plain fill. Without a skin the fill is drawn either way."
+  field frame Option.StylePart "The style frame its background takes (a HUD element, a card); null is a plain fill. Without a style the fill is drawn either way."
   field aspect f32 "Width over height (0: none): with the height left to fit, it is as tall as its laid-out width over this; with a fixed height and the width left to fit, as wide as the height times it." {
     min 0
   }
@@ -3903,7 +3903,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `nowrap` | `boolean` | `false` | — | — | — | Keep to one line (breaking only at `\n`). |
 | `width` | `Size \| null` | `null` | — | — | — | Its width; null fits the text. |
 | `font` | `FontRole` | `"body"` | — | — | — | Which font. |
-| `heading` | `boolean` | `false` | — | — | — | A heading: a skin with a flourish frames it. |
+| `heading` | `boolean` | `false` | — | — | — | A heading: a style with a flourish frames it. |
 | `ellipsis` | `boolean` | `false` | — | — | — | Cut with an ellipsis where the text does not fit its width: on its one line (with nowrap; the label can then shrink in a row) or on its last line (maxLines). The probe still reads the whole text. |
 | `maxLines` | `number` | `0` | — | — | — | The most lines a wrapping label shows; 0 is no limit. With ellipsis the last ends in an ellipsis when text is left out. |
 
@@ -3917,7 +3917,7 @@ struct LabelDesc {
   field nowrap bool "Keep to one line (breaking only at `\\n`)."
   field width Option.Size "Its width; null fits the text."
   field font FontRole "Which font."
-  field heading bool "A heading: a skin with a flourish frames it."
+  field heading bool "A heading: a style with a flourish frames it."
   field ellipsis bool "Cut with an ellipsis where the text does not fit its width: on its one line (with nowrap; the label can then shrink in a row) or on its last line (maxLines). The probe still reads the whole text."
   field maxLines u32 "The most lines a wrapping label shows; 0 is no limit. With ellipsis the last ends in an ellipsis when text is left out."
 }
@@ -4412,7 +4412,7 @@ struct Viewport {
 
 ### `UiDesc` (desc struct)
 
-How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it.
+How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -4428,15 +4428,15 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `contrast` | `Contrast` | `"standard"` | — | — | — | Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast). |
 | `primaryColor` | `Color \| null` | `null` | — | — | — | An sRGB colour as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's. |
 | `reducedMotion` | `boolean` | `false` | — | — | — | Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion). |
-| `reducedTransparency` | `boolean` | `false` | — | — | — | Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on. |
-| `icons` | `IconAtlasDesc \| null` | `null` | — | — | — | The icon atlas og.ui.icon draws from; null takes the skin's. |
+| `reducedTransparency` | `boolean` | `false` | — | — | — | Nothing is see-through: glass parts (a style's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on. |
+| `icons` | `IconAtlasDesc \| null` | `null` | — | — | — | The icon atlas og.ui.icon draws from; null takes the style's. |
 | `toastAnchor` | `Anchor \| null` | `null` | — | — | — | Where toasts stack; null is the bottom centre. |
-| `skin` | `Skin \| null` | `null` | — | — | — | A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style. |
-| `sounds` | `UiSounds \| null` | `null` | — | — | — | Sounds for UI events (they win over the skin's). |
+| `style` | `Style \| null` | `null` | — | — | — | A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style, the engine's placeholder. |
+| `sounds` | `UiSounds \| null` | `null` | — | — | — | Sounds for UI events (they win over the style's). |
 
 ```ogt
 struct UiDesc {
-  doc "How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it."
+  doc "How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it."
   desc true
   field scheme Scheme "The palette."
   field density DensityMode "The control sizes."
@@ -4448,11 +4448,11 @@ struct UiDesc {
   field contrast Contrast "Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast)."
   field primaryColor Option.Color "An sRGB colour as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's."
   field reducedMotion bool "Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion)."
-  field reducedTransparency bool "Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on."
-  field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from; null takes the skin's."
+  field reducedTransparency bool "Nothing is see-through: glass parts (a style's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on."
+  field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from; null takes the style's."
   field toastAnchor Option.Anchor "Where toasts stack; null is the bottom centre."
-  field skin Option.Skin "A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style."
-  field sounds Option.UiSounds "Sounds for UI events (they win over the skin's)."
+  field style Option.Style "A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style, the engine's placeholder."
+  field sounds Option.UiSounds "Sounds for UI events (they win over the style's)."
 }
 ```
 
@@ -4490,11 +4490,11 @@ struct UiSounds {
 
 <sub>`api.ogt` line 9562</sub>
 
-<a id="type-SkinPart"></a>
+<a id="type-StylePart"></a>
 
-### `SkinPart` (enum)
+### `StylePart` (enum)
 
-An element class a skin dresses with a nine-slice frame.
+An element class a style dresses with a nine-slice frame.
 
 A string: one of the variants below. The zero value is `"panel"`.
 
@@ -4506,19 +4506,19 @@ A string: one of the variants below. The zero value is `"panel"`.
 | `"field"` | Text fields. |
 | `"slot"` | Inventory and grid cells. |
 | `"tooltip"` | Tooltips. |
-| `"capsule"` | HUD capsules and toasts. |
+| `"hud"` | HUD elements over the game (counters, timers) and toasts. |
 | `"track"` | A progress bar's track. |
 
 ```ogt
-enum SkinPart {
-  doc "An element class a skin dresses with a nine-slice frame."
+enum StylePart {
+  doc "An element class a style dresses with a nine-slice frame."
   variant panel "Dialogs and screen panels."
   variant card "Cards."
   variant button "Buttons (with hover, pressed and disabled states)."
   variant field "Text fields."
   variant slot "Inventory and grid cells."
   variant tooltip "Tooltips."
-  variant capsule "HUD capsules and toasts."
+  variant hud "HUD elements over the game (counters, timers) and toasts."
   variant track "A progress bar's track."
 }
 ```
@@ -4616,7 +4616,7 @@ The style values the UI draws with, read-only.
 | `typeRamp` | `Readonly<Record<string, TypeStep>>` | `{}` | — | — | — | Each TypeStepName's step. |
 | `sizes` | `ControlSizes` | `{ controlSm: 0, controlMd: 0, controlLg: 0, gutter: 0, header: 0, row: 0, section: 0 }` | — | — | — | The control sizes of the density in effect. |
 | `durationsMs` | `Readonly<Record<string, number>>` | `{}` | — | — | — | The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds. |
-| `skin` | `string` | `""` | — | — | — | The configured skin's name; empty for the prototype style. |
+| `style` | `string` | `""` | — | — | — | The configured style's name; empty for the prototype style. |
 | `contrast` | `Contrast` | `"standard"` | — | — | — | The variant in effect: high when the game asked for it or the page prefers more contrast. |
 | `reducedMotion` | `boolean` | `false` | — | — | — | Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement. |
 | `reducedTransparency` | `boolean` | `false` | — | — | — | Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too. |
@@ -4631,7 +4631,7 @@ struct UiTheme {
   field typeRamp Map.TypeStep "Each TypeStepName's step."
   field sizes ControlSizes "The control sizes of the density in effect."
   field durationsMs Map.f32 "The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds."
-  field skin String "The configured skin's name; empty for the prototype style."
+  field style String "The configured style's name; empty for the prototype style."
   field contrast Contrast "The variant in effect: high when the game asked for it or the page prefers more contrast."
   field reducedMotion bool "Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement."
   field reducedTransparency bool "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
@@ -5023,8 +5023,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `width` | `Size \| null` | `null` | — | — | — | Its width; null fits the content. |
 | `height` | `Size \| null` | `null` | — | — | — | Its height; null fits the content. |
 | `over` | `boolean` | `false` | — | — | — | Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them. |
-| `frame` | `SkinPart \| null` | `null` | — | — | — | The skin frame its background takes; null is the panel's. |
-| `instant` | `boolean` | `false` | — | — | — | Shown settled the first time it is built: no skin entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap. |
+| `frame` | `StylePart \| null` | `null` | — | — | — | The style frame its background takes; null is the panel's. |
+| `instant` | `boolean` | `false` | — | — | — | Shown settled the first time it is built: no style entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap. |
 
 ```ogt
 struct AnchorDesc {
@@ -5052,8 +5052,8 @@ struct AnchorDesc {
   field width Option.Size "Its width; null fits the content."
   field height Option.Size "Its height; null fits the content."
   field over bool "Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them."
-  field frame Option.SkinPart "The skin frame its background takes; null is the panel's."
-  field instant bool "Shown settled the first time it is built: no skin entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap."
+  field frame Option.StylePart "The style frame its background takes; null is the panel's."
+  field instant bool "Shown settled the first time it is built: no style entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap."
 }
 ```
 
@@ -6126,15 +6126,15 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `amount` | `number` | `0` | ≥ 0 | `cssPx` | — | The first swing; 0 is the skin's motion.shake, else 6. |
+| `amount` | `number` | `0` | ≥ 0 | `cssPx` | — | The first swing; 0 is the style's motion.shake, else 6. |
 | `durationMs` | `number` | `0` | ≥ 0 | `ms` | — | How long it takes to come to rest; 0 is motion.duration.slow. |
-| `sound` | `boolean` | `false` | — | — | — | Also play the skin's error sound, as a refused press does. |
+| `sound` | `boolean` | `false` | — | — | — | Also play the style's error sound, as a refused press does. |
 
 ```ogt
 struct ShakeDesc {
   doc "A shake of an element: three sideways swings decaying to rest."
   desc true
-  field amount f32 "The first swing; 0 is the skin's motion.shake, else 6." {
+  field amount f32 "The first swing; 0 is the style's motion.shake, else 6." {
     unit cssPx
     min 0
   }
@@ -6142,7 +6142,7 @@ struct ShakeDesc {
     unit ms
     min 0
   }
-  field sound bool "Also play the skin's error sound, as a refused press does."
+  field sound bool "Also play the style's error sound, as a refused press does."
 }
 ```
 
@@ -6401,7 +6401,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `items` | `readonly MenuItem[]` | `[]` | — | — | — | The items, such as Play, Continue, Settings, Quit. |
 | `footer` | `string` | `""` | — | — | — | A line at the bottom (a version, credits); empty is none. |
 | `onSelect` | `UiAction \| null` | `null` | — | — | — | Called with the chosen item's id. |
-| `instant` | `boolean` | `false` | — | — | — | Shown settled the first time it is built (AnchorDesc.instant): pass it while the title is the screen the game opens on, so the frame behind the web's play gate is the whole title; a title the player comes back to enters with the skin. |
+| `instant` | `boolean` | `false` | — | — | — | Shown settled the first time it is built (AnchorDesc.instant): pass it while the title is the screen the game opens on, so the frame behind the web's play gate is the whole title; a title the player comes back to enters with the style. |
 
 ```ogt
 struct MainMenuDesc {
@@ -6412,7 +6412,7 @@ struct MainMenuDesc {
   field items List.MenuItem "The items, such as Play, Continue, Settings, Quit."
   field footer String "A line at the bottom (a version, credits); empty is none."
   field onSelect Option.UiAction "Called with the chosen item's id."
-  field instant bool "Shown settled the first time it is built (AnchorDesc.instant): pass it while the title is the screen the game opens on, so the frame behind the web's play gate is the whole title; a title the player comes back to enters with the skin."
+  field instant bool "Shown settled the first time it is built (AnchorDesc.instant): pass it while the title is the screen the game opens on, so the frame behind the web's play gate is the whole title; a title the player comes back to enters with the style."
 }
 ```
 

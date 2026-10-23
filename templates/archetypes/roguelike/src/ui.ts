@@ -1,4 +1,4 @@
-// Lamp Dive's screens on og.ui and the skin in assets/skins/lampdive (the
+// Lamp Dive's screens on og.ui and the skin in assets/styles/lampdive (the
 // engine's pixel pack in tomb colours): the title, the HUD (health, strike,
 // armour and gold in the top-left corner, the floor and pause in the
 // top-right, the draught and, on a touch screen, Wait and a d-pad along the
@@ -167,7 +167,7 @@ function platform(world: World, g: GameV, p: PrefsV): void {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
+  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "hud", background: { token: "panel" } }, build);
 }
 
 function hud(world: World, g: GameV): void {

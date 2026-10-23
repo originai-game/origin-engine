@@ -1,7 +1,7 @@
 //! Looks (`.ogt` of `type look`): a frame's art direction as one
 //! git-diffable file. A look names the engine resources it sets (the IDL's
 //! `RenderSettings`, `PostEffects`, `Stylise`, `MaterialStyle`, `Fog`, `Sky`
-//! and `Environment`) with their fields by reflected name, the UI skin, and
+//! and `Environment`) with their fields by reflected name, the UI style, and
 //! the antialiasing it wants, and may build on another look:
 //!
 //! ```text
@@ -12,7 +12,9 @@
 //! extends "anime-cel-3d"        # a built-in preset (templates/looks/<slug>.ogt),
 //!                               # the game's own assets/looks/<slug>.ogt first,
 //!                               # or another look's asset id ("looks/base.ogt")
-//! skin "skins/paper/skin.ogt"   # the UI skin applied with the look
+//! ui "paper"                   # the UI style applied with the look: a built-in
+//!                               # (templates/styles/<slug>), the game's own
+//!                               # styles/<slug>/style.ogt first, or an asset id
 //! antialias off                 # tier, off, msaa4 or taa
 //! RenderSettings {
 //!   toneMapping agx
@@ -68,7 +70,7 @@ pub const ANTIALIAS: [&str; 4] = ["tier", "off", "msaa4", "taa"];
 pub const MAX_EXTENDS: usize = 8;
 
 /// The top-level keys of a look file.
-const TOP: [&str; 4] = ["name", "extends", "skin", "antialias"];
+const TOP: [&str; 4] = ["name", "extends", "ui", "antialias"];
 
 /// One resource block: its IDL name and its fields in file order, each with
 /// its values as written (numbers, `true`/`false`, a variant word, or a
@@ -94,7 +96,7 @@ impl LookBlock {
 pub struct LookFile {
     pub name: Option<String>,
     pub extends: Vec<String>,
-    pub skin: Option<String>,
+    pub ui: Option<String>,
     pub antialias: Option<String>,
     pub blocks: Vec<LookBlock>,
 }
@@ -164,6 +166,12 @@ impl LookFile {
                 });
                 continue;
             }
+            if e.key == "skin" {
+                return Err(format!(
+                    "line {}: 'skin' is now 'ui': `ui \"<slug>\"` names a built-in style (pixel, cartoon, fantasy, scifi, paper, neon) or the game's own styles/<slug>/style.ogt",
+                    e.line
+                ));
+            }
             if !TOP.contains(&e.key.as_str()) {
                 return Err(format!(
                     "line {}: '{}' is not a look entry: {}, or a resource block ({})",
@@ -179,7 +187,7 @@ impl LookFile {
             seen_top.push(TOP.iter().find(|k| **k == e.key).expect("a top key"));
             match e.key.as_str() {
                 "name" => look.name = Some(one_string(e)?),
-                "skin" => look.skin = Some(one_string(e)?),
+                "ui" => look.ui = Some(one_string(e)?),
                 "extends" => {
                     look.extends = e
                         .values
@@ -226,9 +234,9 @@ impl LookFile {
             e.values = self.extends.iter().cloned().map(Value::String).collect();
             doc.body.push(e);
         }
-        if let Some(s) = &self.skin {
+        if let Some(s) = &self.ui {
             doc.body
-                .push(Entry::new("skin").with(Value::String(s.clone())));
+                .push(Entry::new("ui").with(Value::String(s.clone())));
         }
         if let Some(a) = &self.antialias {
             doc.body
@@ -249,7 +257,7 @@ impl LookFile {
     }
 
     /// This look laid over `base` (the look it extends): the name is this
-    /// look's own (a look is not called after its base), its skin and
+    /// look's own (a look is not called after its base), its ui style and
     /// antialias win where given, a resource either names takes both
     /// blocks' fields with this look's winning field by field, and `extends`
     /// becomes `base_id` followed by `base`'s own chain.
@@ -273,7 +281,7 @@ impl LookFile {
         LookFile {
             name: self.name.clone(),
             extends,
-            skin: self.skin.clone().or_else(|| base.skin.clone()),
+            ui: self.ui.clone().or_else(|| base.ui.clone()),
             antialias: self.antialias.clone().or_else(|| base.antialias.clone()),
             blocks,
         }
@@ -383,13 +391,13 @@ mod tests {
     #[test]
     fn merges_over_its_base() {
         let base = LookFile::parse(
-            "type look\nversion 1\n---\nname \"Base\"\nskin \"skins/a/skin.ogt\"\nStylise {\n  posterize 4\n  halftone 0.5\n}\nFog {\n  enabled true\n}\n",
+            "type look\nversion 1\n---\nname \"Base\"\nui \"styles/a/style.ogt\"\nStylise {\n  posterize 4\n  halftone 0.5\n}\nFog {\n  enabled true\n}\n",
         )
         .unwrap();
         let l = LookFile::parse(LOOK).unwrap().over(&base, "looks/base.ogt");
         assert_eq!(l.name.as_deref(), Some("Dusk"));
         assert_eq!(LookFile::default().over(&base, "b").name, None);
-        assert_eq!(l.skin.as_deref(), Some("skins/a/skin.ogt"));
+        assert_eq!(l.ui.as_deref(), Some("styles/a/style.ogt"));
         assert_eq!(l.extends, vec!["looks/base.ogt"]);
         let s = l.blocks.iter().find(|b| b.resource == "Stylise").unwrap();
         assert_eq!(

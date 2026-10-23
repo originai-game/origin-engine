@@ -4,7 +4,7 @@
 //! records by the cook) is loaded with every asset it names, and applying
 //! it writes the resources it names whole, through the same path as
 //! `world.setResource` (so a system that applies one must declare those
-//! writes), then configures the UI with its skin.
+//! writes), then configures the UI with its style.
 //!
 //! A look is data over existing resources: applying one changes nothing
 //! the world could not change by itself, and rendering reads the resources
@@ -31,8 +31,8 @@ pub(crate) struct LoadedLook {
     pub id: String,
     pub file: LookFile,
     pub values: Vec<(String, Map<String, Value>)>,
-    /// The UI skin's load index.
-    pub skin: Option<usize>,
+    /// The UI style's load index.
+    pub style: Option<usize>,
     /// False once its streaming group unloaded it (its values are gone
     /// until the group is resident again).
     pub resident: bool,
@@ -161,11 +161,11 @@ fn read(eng: &Engine, id: &str) -> Result<LookParts, String> {
         values.push((block.resource.clone(), map));
     }
     let skin = file
-        .skin
+        .ui
         .as_deref()
-        .map(|s| super::modules::load_skin(eng, s))
+        .map(|s| super::modules::load_style(eng, s))
         .transpose()
-        .map_err(|e| format!("{id}: skin: {e}"))?;
+        .map_err(|e| format!("{id}: ui style: {e}"))?;
     Ok((file, values, skin))
 }
 
@@ -183,7 +183,7 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<usize, String> {
         id: id.clone(),
         file,
         values,
-        skin,
+        style: skin,
         resident: true,
     });
     let i = state.looks.len() - 1;
@@ -221,7 +221,7 @@ pub(crate) fn resolve(eng: &Engine) {
             let look = &mut rs.fx.look.looks[i];
             look.file = file;
             look.values = values;
-            look.skin = skin;
+            look.style = skin;
             look.resident = true;
         }
     }
@@ -229,7 +229,7 @@ pub(crate) fn resolve(eng: &Engine) {
 
 /// `og.render.applyLook`: every resource the look names replaced whole
 /// (its fields from the look, the rest at their defaults, the animated ones
-/// kept), then its skin given to the UI with the last UiDesc.
+/// kept), then its style given to the UI with the last UiDesc.
 pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
     let (values, skin) = {
         let rs = eng.render.borrow();
@@ -245,7 +245,7 @@ pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
                 look.id
             ));
         }
-        (look.values.clone(), look.skin)
+        (look.values.clone(), look.style)
     };
     for (resource, fields) in &values {
         let schema = format!("og.{resource}");
@@ -272,13 +272,13 @@ pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
     }
     if let Some(skin) = skin {
         // Every other field keeps the last UiDesc's value (og.ui.configure merges).
-        let desc = json!({ "skin": handle_value(skin) });
+        let desc = json!({ "style": handle_value(skin) });
         let answer = super::modules::og_ui_configure(eng.id, Some(desc.to_string()));
         if let Ok(Value::Object(o)) = serde_json::from_str::<Value>(&answer)
             && o.get("ok") == Some(&Value::Bool(false))
         {
             return Err(format!(
-                "the skin: {}",
+                "the ui style: {}",
                 o.get("reason").and_then(Value::as_str).unwrap_or_default()
             ));
         }
@@ -306,14 +306,14 @@ pub(crate) fn info(eng: &Engine, index: usize) -> Result<Value, String> {
         "name": name,
         "extends": look.file.extends,
         "resources": look.file.resources(),
-        "skin": look.skin.map(handle_value),
+        "style": look.style.map(handle_value),
         "antialias": look.file.antialias,
     }))
 }
 
 /// GameDesc.look's antialias as the renderer's, when GameDesc.render
 /// leaves it out: read before the host attaches the renderer, from the
-/// look's blob alone. Loading the look itself loads the textures, skin and
+/// look's blob alone. Loading the look itself loads the textures, style and
 /// environment map it names, which the web host can only decode once its
 /// renderer is attached (they go to the renderer's encodings), so a boot
 /// that loaded the look left the web's renderer on the tier's method:

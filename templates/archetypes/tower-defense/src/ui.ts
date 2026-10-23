@@ -1,4 +1,4 @@
-// Path Guard's screens on og.ui and the skin in assets/skins/pathguard:
+// Path Guard's screens on og.ui and the skin in assets/styles/pathguard:
 // the title, the HUD (the light and the coins in the top-left corner, the
 // wave and pause in the top-right, the plant tray on the right on a wide
 // screen and along the bottom on a phone), the pause menu, the settings
@@ -195,7 +195,7 @@ function platform(world: World, g: GameV, p: PrefsV): void {
 
 /** One HUD capsule: an icon and a number counting to its value. */
 function capsule(t: Theme, id: string, icon: string, value: number, tone: "gold" | "danger" | "ink"): void {
-  og.ui.row(id, { gap: t.space.xs, cross: "center", padding: { left: t.space.sm, top: t.space.xs, right: t.space.md, bottom: t.space.xs }, frame: "capsule", background: { token: "panel" }, radius: 999 }, () => {
+  og.ui.row(id, { gap: t.space.xs, cross: "center", padding: { left: t.space.sm, top: t.space.xs, right: t.space.md, bottom: t.space.xs }, frame: "hud", background: { token: "panel" }, radius: 999 }, () => {
     og.ui.icon("Icon", icon, { size: 26, tint: { token: tone } });
     og.ui.counter("Value", value, { step: "xl", font: "display", durationMs: 300, width: px(56), align: "center" });
   });
@@ -212,7 +212,7 @@ function hud(world: World, theme: Theme, g: GameV, t: TuneV): void {
   });
   let paused = false;
   og.ui.anchor("Waves", { anchor: "topRight", gap: theme.space.sm, cross: "center" }, () => {
-    og.ui.row("Wave", { cross: "center", padding: { left: theme.space.md, top: theme.space.xs, right: theme.space.md, bottom: theme.space.xs }, frame: "capsule", background: { token: "panel" }, radius: 999 }, () => {
+    og.ui.row("Wave", { cross: "center", padding: { left: theme.space.md, top: theme.space.xs, right: theme.space.md, bottom: theme.space.xs }, frame: "hud", background: { token: "panel" }, radius: 999 }, () => {
       og.ui.label("Label", say(world, "hud.wave", { n: Math.max(1, g.wave), total: WAVES.length }), { step: "lg", font: "display", nowrap: true });
     });
     if (og.ui.actionButton("Pause", say(world, "hud.pause"), { icon: "pause", size: 48 }).clicked) paused = true;
@@ -237,7 +237,7 @@ function hud(world: World, theme: Theme, g: GameV, t: TuneV): void {
   // On a phone the call for the next wave sits over the tray, in the thumb's reach.
   if (small) og.ui.anchor("Call", { anchor: "bottom", offsetY: -112 }, () => callButton(world, g, small));
   if (g.wave === 0 && !small) {
-    og.ui.anchor("Hint", { anchor: "bottom", padding: { left: theme.space.md, top: theme.space.xs, right: theme.space.md, bottom: theme.space.xs }, frame: "capsule", background: { token: "panel" }, radius: 999 }, () => {
+    og.ui.anchor("Hint", { anchor: "bottom", padding: { left: theme.space.md, top: theme.space.xs, right: theme.space.md, bottom: theme.space.xs }, frame: "hud", background: { token: "panel" }, radius: 999 }, () => {
       og.ui.label("Text", say(world, "hud.hint"), { nowrap: true });
     });
   }

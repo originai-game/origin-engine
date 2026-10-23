@@ -22,7 +22,7 @@
 //   crypt's drip, the imps' chitter and the summit bell, synthesised here.
 // - music/stair.wav: "The Kestrel Stair", 2 minutes 40 at 84 bpm, cooked in
 //   4-second chunks (music/stair.wav.ogt). About 15 MB: not committed.
-// - skins/kestrel/: the engine's paper style pack, copied and retinted.
+// - styles/kestrel/: the engine's paper style pack, copied and retinted.
 
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -468,24 +468,24 @@ function music(): Uint8Array {
 // --------------------------------------------------------------------- skin
 
 /**
- * The paper style pack (templates/ui-kit/assets/skins/paper), copied as
- * skins/kestrel: the accent turned from the pack's one red to the courier's
+ * The paper style pack (templates/styles/paper), copied as
+ * styles/kestrel: the accent turned from the pack's one red to the courier's
  * cape red, the ground a warmer paper, and the CJK fallback pointed at the
  * game's own Japanese subset (og-taste §1).
  */
 function skin(): void {
-  const from = join(ENGINE, "templates", "ui-kit", "assets", "skins", "paper");
-  const to = join(ASSETS, "skins", "kestrel");
+  const from = join(ENGINE, "templates", "styles", "paper");
+  const to = join(ASSETS, "styles", "kestrel");
   mkdirSync(to, { recursive: true });
-  for (const f of readdirSync(from)) if (f !== "skin.ogt") copyFileSync(join(from, f), join(to, f));
-  let text = readFileSync(join(from, "skin.ogt"), "utf8");
+  for (const f of readdirSync(from)) if (f !== "style.ogt") copyFileSync(join(from, f), join(to, f));
+  let text = readFileSync(join(from, "style.ogt"), "utf8");
   const swap = (line: string, value: string) => {
     const re = new RegExp(`^(\\s*${line}\\s+)"[^"]*"`, "m");
     if (!re.test(text)) throw new Error(`skin.ogt has no ${line} line`);
     text = text.replace(re, `$1"${value}"`);
   };
   text = text.replace(/^name "paper"/m, 'name "kestrel"');
-  text = text.replace(/^# The paper style pack.*$/m, "# The Kestrel Stair's skin: the engine's paper style pack (templates/ui-kit/assets/skins/paper), copied and retinted by tools/make-assets.ts.");
+  text = text.replace(/^# The paper style pack.*$/m, "# The Kestrel Stair's skin: the engine's paper style pack (templates/styles/paper), copied and retinted by tools/make-assets.ts.");
   swap("backdrop", "#efe6d2");
   swap("well", "#e4d9c1");
   swap("primary", "#9c2a1d");
@@ -495,7 +495,7 @@ function skin(): void {
   // The pack's fgSubtle measures 3.5:1 as an item's count on a slot (og polish): a shade darker.
   swap("inkFaint", "#57524a");
   swap("fallback", "fonts/NotoSansJP-kestrel.otf");
-  writeFileSync(join(to, "skin.ogt"), text);
+  writeFileSync(join(to, "style.ogt"), text);
   // The copy's licences: the pack's, its fallback named as this game's.
   let lic = readFileSync(join(from, "LICENSES.md"), "utf8");
   lic = lic.replace("# The paper style pack: licences", "# The Kestrel Stair's skin (the engine's paper style pack, retinted): licences");

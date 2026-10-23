@@ -8,7 +8,7 @@ use crate::layout::{
     Node, Rect, Shape, Size, TextAlign, TextContent, Widget, layout, preorder,
 };
 use crate::motion::Fx;
-use crate::skin::{Ink, Ornament, SkinPart, Slice, SliceFill};
+use crate::skin::{Ink, Ornament, Slice, SliceFill, StylePart};
 use crate::style::{Breakpoint, Density, Srgba, Theme, TypeStep};
 use crate::text::{FontMetrics, UiFont};
 use og_core::glam::Vec2;
@@ -743,7 +743,7 @@ pub struct Ui {
     /// This frame's screen-transition cover.
     pub(crate) cover: Option<crate::juice::Cover>,
     /// The configured skin's name (empty: the style).
-    pub(crate) skin_name: String,
+    pub(crate) style_name: String,
     /// Two touches move a scroller or zoom view this tick: the primary
     /// pointer presses nothing.
     pub(crate) gesture: bool,
@@ -818,7 +818,7 @@ impl Ui {
             clipboard: None,
             text_target: None,
             cover: None,
-            skin_name: String::new(),
+            style_name: String::new(),
             gesture: false,
             direction: og_i18n::Direction::Ltr,
         }
@@ -1023,12 +1023,12 @@ impl Ui {
     }
 
     /// The configured skin's name, for the theme the host reports (empty: the style).
-    pub fn skin_name(&self) -> &str {
-        &self.skin_name
+    pub fn style_name(&self) -> &str {
+        &self.style_name
     }
 
-    pub fn set_skin_name(&mut self, name: &str) {
-        self.skin_name = name.to_owned();
+    pub fn set_style_name(&mut self, name: &str) {
+        self.style_name = name.to_owned();
     }
 
     pub fn fonts(&self) -> &Fonts {
@@ -1409,7 +1409,7 @@ impl Ui {
             cross: desc.cross,
             background: Some(desc.background.unwrap_or(t.palette.panel)),
             radius: t.radius.panel,
-            skin: Some(crate::skin::SkinPart::Card),
+            skin: Some(crate::skin::StylePart::Card),
             ..Element::default()
         };
         let id = id.into();
@@ -1574,13 +1574,13 @@ impl Ui {
         content.align = TextAlign::Center;
         content.wrap = false;
         let part = if desc.disabled {
-            SkinPart::ButtonDisabled
+            StylePart::ButtonDisabled
         } else if r.pressed {
-            SkinPart::ButtonPressed
+            StylePart::ButtonPressed
         } else if r.hovered {
-            SkinPart::ButtonHover
+            StylePart::ButtonHover
         } else {
-            SkinPart::Button
+            StylePart::Button
         };
         let press = self.button_motion(i, r, refused);
         let n = &mut self.nodes[i];
@@ -1917,7 +1917,7 @@ impl Ui {
                 padding: Insets::xy(t.space.md, 0.0),
                 interactive: true,
                 radius: t.radius.control,
-                skin: Some(SkinPart::Field),
+                skin: Some(StylePart::Field),
                 ..Element::default()
             },
         );
@@ -2014,7 +2014,7 @@ impl Ui {
                 padding: pad,
                 interactive: true,
                 radius: t.radius.control,
-                skin: Some(SkinPart::Field),
+                skin: Some(StylePart::Field),
                 ..Element::default()
             },
         );
@@ -2152,7 +2152,7 @@ impl Ui {
                 padding: Insets::xy(t.space.sm, t.space.xs),
                 background: Some(t.palette.panel_raised),
                 radius: t.radius.control,
-                skin: Some(SkinPart::Tooltip),
+                skin: Some(StylePart::Tooltip),
                 ..Element::default()
             },
         );
@@ -3134,13 +3134,13 @@ impl Ui {
                 cmds,
             );
         }
-        let track = t.skin.slice(SkinPart::Track);
+        let track = t.skin.slice(StylePart::Track);
         match n.widget {
             Widget::Progress { value } if track.is_some() => {
-                let fill = t.skin.slice(SkinPart::Fill);
+                let fill = t.skin.slice(StylePart::Fill);
                 if let Some(s) = track {
                     self.dress(
-                        SkinPart::Track,
+                        StylePart::Track,
                         s,
                         rect,
                         t.radius.bar,
@@ -3155,7 +3155,7 @@ impl Ui {
                     let w = (rect.width * value).max(min.min(rect.width));
                     let r = Rect::new(rect.x, rect.y, w, rect.height).snapped(dpr);
                     self.dress(
-                        SkinPart::Fill,
+                        StylePart::Fill,
                         s,
                         r,
                         t.radius.bar,
@@ -3582,7 +3582,7 @@ impl Ui {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn dress(
         &self,
-        part: SkinPart,
+        part: StylePart,
         slice: Slice,
         rect: Rect,
         radius: f32,

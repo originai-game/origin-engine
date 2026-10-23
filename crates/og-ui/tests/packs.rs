@@ -1,4 +1,4 @@
-//! The UI kit's style packs (templates/ui-kit/assets/skins/<name>/skin.ogt
+//! The engine's built-in UI styles (templates/styles/<name>/style.ogt
 //! and atlas.png) parse, and every pack keeps body text legible: each ink a
 //! template puts on a skinned surface reaches WCAG's 4.5:1 against what is
 //! really drawn there (the frame's art multiplied by its tint, composited
@@ -9,12 +9,12 @@
 //! panel whose ink only reads over one backdrop; a selected tab (`knob`)
 //! in the same tone as its text; a pack missing, or a typo in its file.
 
-use og_ui::skin::{SkinPart, Slice};
+use og_ui::skin::{Slice, StylePart};
 use og_ui::*;
 use std::path::PathBuf;
 
 /// Where, the fill a template gives it, the frame, the inks on it.
-type Check = (&'static str, Srgba, SkinPart, Vec<(&'static str, Srgba)>);
+type Check = (&'static str, Srgba, StylePart, Vec<(&'static str, Srgba)>);
 
 const PACKS: [&str; 6] = ["pixel", "cartoon", "fantasy", "scifi", "paper", "neon"];
 
@@ -87,20 +87,19 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
     let mut report = Vec::new();
     let mut failures = Vec::new();
     for name in PACKS {
-        let dir = root().join("skins").join(name);
-        let text = std::fs::read_to_string(dir.join("skin.ogt"))
-            .unwrap_or_else(|e| panic!("{name}: skin.ogt: {e}"));
-        let mut file = parse_skin(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let dir = root().join("../../styles").join(name);
+        let text = std::fs::read_to_string(dir.join("style.ogt"))
+            .unwrap_or_else(|e| panic!("{name}: style.ogt: {e}"));
+        let mut file = parse_style(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
         assert_eq!(file.name, name);
-        // Its ids resolve beside the skin file first, as the cook reads them.
-        file.resolve(&format!("skins/{name}/skin.ogt"), |id| {
-            root().join(id.trim_start_matches("assets/")).exists()
-        });
+        // A built-in style names only its own files: it is cooked into any
+        // game as `@styles/<name>/`, where nothing else of the game is.
+        let styles = root().join("../../styles");
+        file.resolve(&format!("{name}/style.ogt"), |id| styles.join(id).exists());
         for r in file.references() {
-            let id = r.trim_start_matches("assets/");
             assert!(
-                root().join(id).exists(),
-                "{name} names {r}, which is neither beside its skin file nor under templates/ui-kit/assets"
+                r.starts_with(&format!("{name}/")) && styles.join(&r).exists(),
+                "{name} names {r}, which is not beside its style file"
             );
         }
         let atlas = image::open(dir.join("atlas.png"))
@@ -110,10 +109,10 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
         let p = t.palette;
         let bg = linear(p.backdrop);
         let skin = t.skin;
-        let slice = |part: SkinPart| {
+        let slice = |part: StylePart| {
             skin.slices[part.index()]
-                .or(skin.slices[SkinPart::Button.index()]
-                    .filter(|_| part.class() == SkinPart::Button))
+                .or(skin.slices[StylePart::Button.index()]
+                    .filter(|_| part.class() == StylePart::Button))
                 .unwrap_or_else(|| panic!("{name} has no {} slice", part.name()))
         };
         // (where, the fill a template gives it, the frame, the inks on it)
@@ -121,55 +120,55 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
             (
                 "dialog",
                 p.panel_raised,
-                SkinPart::Panel,
+                StylePart::Panel,
                 vec![("fg", p.ink), ("fgMuted", p.ink_muted)],
             ),
             (
                 "screen panel",
                 p.hud,
-                SkinPart::Panel,
+                StylePart::Panel,
                 vec![("fg", p.ink), ("fgMuted", p.ink_muted)],
             ),
             (
                 "gallery panel",
                 p.panel,
-                SkinPart::Panel,
+                StylePart::Panel,
                 vec![("fg", p.ink), ("fgMuted", p.ink_muted)],
             ),
             (
                 "card",
                 p.panel,
-                SkinPart::Card,
+                StylePart::Card,
                 vec![("fg", p.ink), ("fgMuted", p.ink_muted)],
             ),
-            ("button", p.control, SkinPart::Button, vec![("fg", p.ink)]),
+            ("button", p.control, StylePart::Button, vec![("fg", p.ink)]),
             (
                 "hovered button",
                 p.control_strong,
-                SkinPart::ButtonHover,
+                StylePart::ButtonHover,
                 vec![("fg", p.ink)],
             ),
             (
                 "primary button",
                 p.primary,
-                SkinPart::Button,
+                StylePart::Button,
                 vec![("accentFg", p.on_primary)],
             ),
             (
                 "hovered primary",
                 p.primary_hover,
-                SkinPart::ButtonHover,
+                StylePart::ButtonHover,
                 vec![("accentFg", p.on_primary)],
             ),
-            ("HUD capsule", p.hud, SkinPart::Capsule, vec![("fg", p.ink)]),
+            ("HUD capsule", p.hud, StylePart::Hud, vec![("fg", p.ink)]),
             (
                 "tooltip",
                 p.panel_raised,
-                SkinPart::Tooltip,
+                StylePart::Tooltip,
                 vec![("fg", p.ink)],
             ),
-            ("field", p.control, SkinPart::Field, vec![("fg", p.ink)]),
-            ("slot", p.control, SkinPart::Slot, vec![("fg", p.ink)]),
+            ("field", p.control, StylePart::Field, vec![("fg", p.ink)]),
+            ("slot", p.control, StylePart::Slot, vec![("fg", p.ink)]),
         ];
         for (what, fill, part, inks) in checks {
             let ground = under(&atlas, &slice(part), fill, bg);
@@ -184,7 +183,7 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
             }
         }
         // A selected tab: fg on thumb, over the dialog.
-        let dialog = under(&atlas, &slice(SkinPart::Panel), p.panel_raised, bg);
+        let dialog = under(&atlas, &slice(StylePart::Panel), p.panel_raised, bg);
         let tab = over(linear(p.knob), p.knob.alpha, dialog);
         let r = ratio(linear(p.ink), tab);
         report.push(format!("{name:8} fg        on selected tab     {r:5.2}:1"));

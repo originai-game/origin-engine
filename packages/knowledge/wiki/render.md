@@ -3308,7 +3308,7 @@ A loaded look: where it came from and what applying it sets.
 | `name` | `string` | `""` | — | — | — | Its name (the file's `name`, else its file name without `.ogt`). |
 | `extends` | `readonly string[]` | `[]` | — | — | — | The looks it builds on, nearest first: asset ids under assets/ and built-in preset slugs. |
 | `resources` | `readonly string[]` | `[]` | — | — | — | The resources it sets, by IDL name (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment). Applying it replaces each of them whole: the fields the look names take its values, the rest their defaults. |
-| `skin` | `Skin \| null` | `null` | — | — | — | The UI skin it names, loaded with it; applying the look configures the UI with it. |
+| `style` | `Style \| null` | `null` | — | — | — | The UI style its `ui` line names (a game's own or a built-in by slug), loaded with it; applying the look configures the UI with it. |
 | `antialias` | `Antialias \| null` | `null` | — | — | — | The antialiasing it asks for. GameDesc.look's is the renderer's when GameDesc.render leaves antialias out; a running renderer keeps its method. |
 
 ```ogt
@@ -3319,7 +3319,7 @@ struct LookInfo {
   field name String "Its name (the file's `name`, else its file name without `.ogt`)."
   field extends List.String "The looks it builds on, nearest first: asset ids under assets/ and built-in preset slugs."
   field resources List.String "The resources it sets, by IDL name (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment). Applying it replaces each of them whole: the fields the look names take its values, the rest their defaults."
-  field skin Option.Skin "The UI skin it names, loaded with it; applying the look configures the UI with it."
+  field style Option.Style "The UI style its `ui` line names (a game's own or a built-in by slug), loaded with it; applying the look configures the UI with it."
   field antialias Option.Antialias "The antialiasing it asks for. GameDesc.look's is the renderer's when GameDesc.render leaves antialias out; a running renderer keeps its method."
 }
 ```

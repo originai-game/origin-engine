@@ -227,6 +227,302 @@ pub const BUILTINS: &[(&str, &[u8])] = &[
     ),
 ];
 
+/// The engine's built-in UI styles, by bundle id: every file of
+/// `templates/styles/<name>/` (its `style.ogt`, atlas, icons, fonts and
+/// their import settings), compiled into the cook. A look names one by its
+/// slug (`ui "pixel"`); a game that names one has the whole pack cooked into
+/// its bundle under `@styles/<name>/`, where `og.load.style` finds it too
+/// (`@styles/pixel/style.ogt`). A game's own `assets/styles/<slug>/style.ogt`
+/// wins over the built-in of that slug.
+pub const STYLES: &[(&str, &[u8])] = &[
+    (
+        "@styles/cartoon/Fredoka-SemiBold.ttf",
+        include_bytes!("../../../../templates/styles/cartoon/Fredoka-SemiBold.ttf"),
+    ),
+    (
+        "@styles/cartoon/Fredoka-SemiBold.ttf.ogt",
+        include_bytes!("../../../../templates/styles/cartoon/Fredoka-SemiBold.ttf.ogt"),
+    ),
+    (
+        "@styles/cartoon/LilitaOne-Regular.ttf",
+        include_bytes!("../../../../templates/styles/cartoon/LilitaOne-Regular.ttf"),
+    ),
+    (
+        "@styles/cartoon/LilitaOne-Regular.ttf.ogt",
+        include_bytes!("../../../../templates/styles/cartoon/LilitaOne-Regular.ttf.ogt"),
+    ),
+    (
+        "@styles/cartoon/atlas.png",
+        include_bytes!("../../../../templates/styles/cartoon/atlas.png"),
+    ),
+    (
+        "@styles/cartoon/atlas.png.ogt",
+        include_bytes!("../../../../templates/styles/cartoon/atlas.png.ogt"),
+    ),
+    (
+        "@styles/cartoon/icons.png",
+        include_bytes!("../../../../templates/styles/cartoon/icons.png"),
+    ),
+    (
+        "@styles/cartoon/icons.png.ogt",
+        include_bytes!("../../../../templates/styles/cartoon/icons.png.ogt"),
+    ),
+    (
+        "@styles/cartoon/style.ogt",
+        include_bytes!("../../../../templates/styles/cartoon/style.ogt"),
+    ),
+    (
+        "@styles/fantasy/Cinzel-Bold.ttf",
+        include_bytes!("../../../../templates/styles/fantasy/Cinzel-Bold.ttf"),
+    ),
+    (
+        "@styles/fantasy/Cinzel-Bold.ttf.ogt",
+        include_bytes!("../../../../templates/styles/fantasy/Cinzel-Bold.ttf.ogt"),
+    ),
+    (
+        "@styles/fantasy/Newsreader-Medium.ttf",
+        include_bytes!("../../../../templates/styles/fantasy/Newsreader-Medium.ttf"),
+    ),
+    (
+        "@styles/fantasy/Newsreader-Medium.ttf.ogt",
+        include_bytes!("../../../../templates/styles/fantasy/Newsreader-Medium.ttf.ogt"),
+    ),
+    (
+        "@styles/fantasy/atlas.png",
+        include_bytes!("../../../../templates/styles/fantasy/atlas.png"),
+    ),
+    (
+        "@styles/fantasy/atlas.png.ogt",
+        include_bytes!("../../../../templates/styles/fantasy/atlas.png.ogt"),
+    ),
+    (
+        "@styles/fantasy/icons.png",
+        include_bytes!("../../../../templates/styles/fantasy/icons.png"),
+    ),
+    (
+        "@styles/fantasy/icons.png.ogt",
+        include_bytes!("../../../../templates/styles/fantasy/icons.png.ogt"),
+    ),
+    (
+        "@styles/fantasy/style.ogt",
+        include_bytes!("../../../../templates/styles/fantasy/style.ogt"),
+    ),
+    (
+        "@styles/neon/ChakraPetch-BoldItalic.ttf",
+        include_bytes!("../../../../templates/styles/neon/ChakraPetch-BoldItalic.ttf"),
+    ),
+    (
+        "@styles/neon/ChakraPetch-BoldItalic.ttf.ogt",
+        include_bytes!("../../../../templates/styles/neon/ChakraPetch-BoldItalic.ttf.ogt"),
+    ),
+    (
+        "@styles/neon/Orbitron-Medium.ttf",
+        include_bytes!("../../../../templates/styles/neon/Orbitron-Medium.ttf"),
+    ),
+    (
+        "@styles/neon/Orbitron-Medium.ttf.ogt",
+        include_bytes!("../../../../templates/styles/neon/Orbitron-Medium.ttf.ogt"),
+    ),
+    (
+        "@styles/neon/Rajdhani-Bold.ttf",
+        include_bytes!("../../../../templates/styles/neon/Rajdhani-Bold.ttf"),
+    ),
+    (
+        "@styles/neon/Rajdhani-Bold.ttf.ogt",
+        include_bytes!("../../../../templates/styles/neon/Rajdhani-Bold.ttf.ogt"),
+    ),
+    (
+        "@styles/neon/atlas.png",
+        include_bytes!("../../../../templates/styles/neon/atlas.png"),
+    ),
+    (
+        "@styles/neon/atlas.png.ogt",
+        include_bytes!("../../../../templates/styles/neon/atlas.png.ogt"),
+    ),
+    (
+        "@styles/neon/icons.png",
+        include_bytes!("../../../../templates/styles/neon/icons.png"),
+    ),
+    (
+        "@styles/neon/icons.png.ogt",
+        include_bytes!("../../../../templates/styles/neon/icons.png.ogt"),
+    ),
+    (
+        "@styles/neon/style.ogt",
+        include_bytes!("../../../../templates/styles/neon/style.ogt"),
+    ),
+    (
+        "@styles/paper/InstrumentSans-Regular.ttf",
+        include_bytes!("../../../../templates/styles/paper/InstrumentSans-Regular.ttf"),
+    ),
+    (
+        "@styles/paper/InstrumentSans-Regular.ttf.ogt",
+        include_bytes!("../../../../templates/styles/paper/InstrumentSans-Regular.ttf.ogt"),
+    ),
+    (
+        "@styles/paper/Newsreader-SemiBold.ttf",
+        include_bytes!("../../../../templates/styles/paper/Newsreader-SemiBold.ttf"),
+    ),
+    (
+        "@styles/paper/Newsreader-SemiBold.ttf.ogt",
+        include_bytes!("../../../../templates/styles/paper/Newsreader-SemiBold.ttf.ogt"),
+    ),
+    (
+        "@styles/paper/PTMono-Regular.ttf",
+        include_bytes!("../../../../templates/styles/paper/PTMono-Regular.ttf"),
+    ),
+    (
+        "@styles/paper/PTMono-Regular.ttf.ogt",
+        include_bytes!("../../../../templates/styles/paper/PTMono-Regular.ttf.ogt"),
+    ),
+    (
+        "@styles/paper/atlas.png",
+        include_bytes!("../../../../templates/styles/paper/atlas.png"),
+    ),
+    (
+        "@styles/paper/atlas.png.ogt",
+        include_bytes!("../../../../templates/styles/paper/atlas.png.ogt"),
+    ),
+    (
+        "@styles/paper/icons.png",
+        include_bytes!("../../../../templates/styles/paper/icons.png"),
+    ),
+    (
+        "@styles/paper/icons.png.ogt",
+        include_bytes!("../../../../templates/styles/paper/icons.png.ogt"),
+    ),
+    (
+        "@styles/paper/style.ogt",
+        include_bytes!("../../../../templates/styles/paper/style.ogt"),
+    ),
+    (
+        "@styles/pixel/DotGothic16-Regular.ttf",
+        include_bytes!("../../../../templates/styles/pixel/DotGothic16-Regular.ttf"),
+    ),
+    (
+        "@styles/pixel/DotGothic16-Regular.ttf.ogt",
+        include_bytes!("../../../../templates/styles/pixel/DotGothic16-Regular.ttf.ogt"),
+    ),
+    (
+        "@styles/pixel/atlas.png",
+        include_bytes!("../../../../templates/styles/pixel/atlas.png"),
+    ),
+    (
+        "@styles/pixel/atlas.png.ogt",
+        include_bytes!("../../../../templates/styles/pixel/atlas.png.ogt"),
+    ),
+    (
+        "@styles/pixel/icons.png",
+        include_bytes!("../../../../templates/styles/pixel/icons.png"),
+    ),
+    (
+        "@styles/pixel/icons.png.ogt",
+        include_bytes!("../../../../templates/styles/pixel/icons.png.ogt"),
+    ),
+    (
+        "@styles/pixel/style.ogt",
+        include_bytes!("../../../../templates/styles/pixel/style.ogt"),
+    ),
+    (
+        "@styles/scifi/ChakraPetch-Medium.ttf",
+        include_bytes!("../../../../templates/styles/scifi/ChakraPetch-Medium.ttf"),
+    ),
+    (
+        "@styles/scifi/ChakraPetch-Medium.ttf.ogt",
+        include_bytes!("../../../../templates/styles/scifi/ChakraPetch-Medium.ttf.ogt"),
+    ),
+    (
+        "@styles/scifi/JetBrainsMono-Regular.ttf",
+        include_bytes!("../../../../templates/styles/scifi/JetBrainsMono-Regular.ttf"),
+    ),
+    (
+        "@styles/scifi/JetBrainsMono-Regular.ttf.ogt",
+        include_bytes!("../../../../templates/styles/scifi/JetBrainsMono-Regular.ttf.ogt"),
+    ),
+    (
+        "@styles/scifi/Orbitron-Bold.ttf",
+        include_bytes!("../../../../templates/styles/scifi/Orbitron-Bold.ttf"),
+    ),
+    (
+        "@styles/scifi/Orbitron-Bold.ttf.ogt",
+        include_bytes!("../../../../templates/styles/scifi/Orbitron-Bold.ttf.ogt"),
+    ),
+    (
+        "@styles/scifi/atlas.png",
+        include_bytes!("../../../../templates/styles/scifi/atlas.png"),
+    ),
+    (
+        "@styles/scifi/atlas.png.ogt",
+        include_bytes!("../../../../templates/styles/scifi/atlas.png.ogt"),
+    ),
+    (
+        "@styles/scifi/icons.png",
+        include_bytes!("../../../../templates/styles/scifi/icons.png"),
+    ),
+    (
+        "@styles/scifi/icons.png.ogt",
+        include_bytes!("../../../../templates/styles/scifi/icons.png.ogt"),
+    ),
+    (
+        "@styles/scifi/style.ogt",
+        include_bytes!("../../../../templates/styles/scifi/style.ogt"),
+    ),
+];
+
+/// The built-in styles' slugs.
+pub fn style_slugs() -> Vec<&'static str> {
+    let mut out: Vec<&'static str> = STYLES
+        .iter()
+        .filter_map(|(id, _)| id.strip_prefix("@styles/")?.strip_suffix("/style.ogt"))
+        .collect();
+    out.sort();
+    out
+}
+
+/// What a look's `ui "<name>"` names: an asset id as written (a path or an
+/// `.ogt`), else by slug the game's own `styles/<slug>/style.ogt` when
+/// `own` answers it exists, else the built-in `@styles/<slug>/style.ogt`.
+pub fn resolve_style(name: &str, own: &dyn Fn(&str) -> bool) -> Result<String, String> {
+    if name.contains('/') || name.ends_with(".ogt") {
+        let id = crate::runtime::asset_id(name);
+        if !id.ends_with(".ogt") {
+            return Err(format!(
+                "ui \"{name}\": a UI style's .ogt (styles/<name>/style.ogt) or a built-in style's slug ({})",
+                style_slugs().join(", ")
+            ));
+        }
+        return Ok(id.to_string());
+    }
+    let mine = format!("styles/{name}/style.ogt");
+    if own(&mine) {
+        return Ok(mine);
+    }
+    let builtin = format!("@styles/{name}/style.ogt");
+    if STYLES.iter().any(|(id, _)| *id == builtin) {
+        return Ok(builtin);
+    }
+    Err(format!(
+        "ui \"{name}\": neither assets/{mine} nor a built-in style ({})",
+        style_slugs().join(", ")
+    ))
+}
+
+/// The files of the built-in style `id` (`@styles/<name>/style.ogt`)
+/// names, by bundle id: the whole pack.
+pub fn style_files(id: &str) -> Vec<(&'static str, &'static [u8])> {
+    let Some(dir) = id
+        .strip_suffix("style.ogt")
+        .filter(|d| d.starts_with("@styles/"))
+    else {
+        return Vec::new();
+    };
+    STYLES
+        .iter()
+        .filter(|(f, _)| f.starts_with(dir))
+        .copied()
+        .collect()
+}
+
 /// The built-in asset `name` names (`"@canvas/paper"` or its full id
 /// `"@canvas/paper.png"`): its bundle id and bytes.
 pub fn builtin(name: &str) -> Option<(&'static str, &'static [u8])> {
@@ -236,26 +532,37 @@ pub fn builtin(name: &str) -> Option<(&'static str, &'static [u8])> {
         .copied()
 }
 
-/// The built-in assets the look `s` names through its chain of bases, by
-/// bundle id (the cook adds each to the bundle once). A look that does not
-/// resolve names none here; its own cook reports why.
-pub(super) fn builtin_references(s: &Source, root: &Path) -> Vec<&'static str> {
-    let text = String::from_utf8_lossy(&s.bytes);
-    let mut seen = vec![s.rel.clone()];
+/// The built-in assets the look `rel` (text `text`) names through its chain
+/// of bases, by bundle id with their bytes: the canvases and palettes its
+/// fields name, and every file of the built-in style its `ui` names (unless
+/// the game has its own of that slug). The cook adds each to the bundle
+/// once. A look that does not resolve names none here; its own cook reports
+/// why.
+pub(super) fn builtin_files(
+    rel: &str,
+    text: &str,
+    root: &Path,
+) -> Vec<(&'static str, &'static [u8])> {
+    let mut seen = vec![rel.to_string()];
     let mut bases = Vec::new();
-    let Ok(look) = flatten(&s.rel, &text, root, PRESETS, &mut seen, &mut bases) else {
+    let Ok(look) = flatten(rel, text, root, PRESETS, &mut seen, &mut bases) else {
         return Vec::new();
     };
-    let mut out = Vec::new();
+    let mut out: Vec<(&'static str, &'static [u8])> = Vec::new();
     for b in &look.blocks {
         for (_, v, _) in &b.fields {
             if let [Value::String(p)] = v.as_slice()
-                && let Some((id, _)) = builtin(p)
-                && !out.contains(&id)
+                && let Some(f) = builtin(p)
+                && !out.contains(&f)
             {
-                out.push(id);
+                out.push(f);
             }
         }
+    }
+    if let Some(ui) = &look.ui
+        && let Ok(id) = resolve_style(ui, &|id| root.join(id).is_file())
+    {
+        out.extend(style_files(&id));
     }
     out
 }
@@ -376,16 +683,13 @@ fn number(n: f64) -> Value {
 /// linear; `known` answers whether the bundle has an asset id.
 fn check(look: &mut LookFile, known: &dyn Fn(&str) -> bool) -> Result<(), String> {
     let mut missing: Vec<String> = Vec::new();
-    if let Some(skin) = &look.skin {
-        let id = crate::runtime::asset_id(skin);
-        if !id.ends_with(".ogt") {
-            return Err(format!(
-                "skin \"{skin}\": a UI skin's .ogt (skins/<name>/skin.ogt)"
-            ));
+    if let Some(name) = &look.ui {
+        // The blob names the style by its bundle id, resolved here.
+        let id = resolve_style(name, known)?;
+        if !known(&id) {
+            missing.push(id.clone());
         }
-        if !known(id) {
-            missing.push(id.to_string());
-        }
+        look.ui = Some(id);
     }
     for block in &mut look.blocks {
         let schema = format!("og.{}", block.resource);
@@ -566,7 +870,11 @@ pub(super) fn look_dependencies(s: &Source, root: &Path, known: &dyn Fn(&str) ->
     let mut out = Vec::new();
     match flatten(&s.rel, &text, root, PRESETS, &mut seen, &mut bases) {
         Ok(look) => {
-            let mut refs: Vec<String> = look.skin.iter().cloned().collect();
+            let mut refs: Vec<String> = look
+                .ui
+                .iter()
+                .map(|u| resolve_style(u, known).unwrap_or_else(|_| u.clone()))
+                .collect();
             for b in &look.blocks {
                 for (_, v, _) in &b.fields {
                     if let [Value::String(p)] = v.as_slice() {
@@ -810,10 +1118,31 @@ mod tests {
                 .unwrap_err()
                 .contains("not an sRGB")
         );
+        // `ui`: an asset id the bundle must have; a slug names the game's
+        // own style first, else a built-in; neither names both.
+        assert!(
+            one("ui \"styles/x/style.ogt\"\n", &[])
+                .unwrap_err()
+                .contains("styles/x/style.ogt")
+        );
+        let l = one("ui \"pixel\"\n", &["@styles/pixel/style.ogt"]).unwrap();
+        assert_eq!(l.ui.as_deref(), Some("@styles/pixel/style.ogt"));
+        let l = one(
+            "ui \"pixel\"\n",
+            &["styles/pixel/style.ogt", "@styles/pixel/style.ogt"],
+        )
+        .unwrap();
+        assert_eq!(
+            l.ui.as_deref(),
+            Some("styles/pixel/style.ogt"),
+            "the game's own wins"
+        );
+        let e = one("ui \"velvet\"\n", &[]).unwrap_err();
+        assert!(e.contains("velvet") && e.contains("pixel, scifi"), "{e}");
         assert!(
             one("skin \"skins/x/skin.ogt\"\n", &[])
                 .unwrap_err()
-                .contains("skins/x/skin.ogt")
+                .contains("'skin' is now 'ui'")
         );
     }
 
@@ -943,7 +1272,8 @@ mod tests {
             let s = source(&root, "looks/x.ogt");
             let known = |id: &str| builtin_ids.contains(&id);
             resolve(&s, &root, &known, PRESETS).unwrap_or_else(|e| panic!("{slug}: {e}"));
-            for id in builtin_references(&s, &root) {
+            let text = String::from_utf8_lossy(&s.bytes).to_string();
+            for (id, _) in builtin_files(&s.rel, &text, &root) {
                 assert!(builtin_ids.contains(&id), "{slug}: {id}");
             }
         }

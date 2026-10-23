@@ -23,7 +23,7 @@
 // - music/vault.wav: "The Vault Turns", 24 bars at 100 bpm (about 58 s,
 //   44.1 kHz stereo), cooked in chunks and streamed (music/vault.wav.ogt).
 //   About 10 MB, so it is not committed (.gitignore).
-// - skins/brasswick/: the engine's fantasy style pack copied from
+// - styles/brasswick/: the engine's fantasy style pack copied from
 //   templates/ui-kit (its atlas, icons and fonts are not committed:
 //   .gitignore) with the game's skin.ogt, recoloured brass and soot.
 
@@ -1283,11 +1283,11 @@ function music(): Uint8Array {
  * line is dropped (the game shows only Latin-1: English and Spanish).
  */
 function skin(): void {
-  const from = join(ENGINE, "templates", "ui-kit", "assets", "skins", "fantasy");
-  const to = join(ASSETS, "skins", "brasswick");
+  const from = join(ENGINE, "templates", "styles", "fantasy");
+  const to = join(ASSETS, "styles", "brasswick");
   mkdirSync(to, { recursive: true });
   for (const f of ["atlas.png", "atlas.png.ogt", "icons.png", "icons.png.ogt", "Cinzel-Bold.ttf", "Cinzel-Bold.ttf.ogt", "Newsreader-Medium.ttf", "Newsreader-Medium.ttf.ogt", "OFL.txt", "LICENSES.md"]) copyFileSync(join(from, f), join(to, f));
-  let text = readFileSync(join(from, "skin.ogt"), "utf8");
+  let text = readFileSync(join(from, "style.ogt"), "utf8");
   const colours: Record<string, string> = {
     backdrop: "#14110d",
     well: "#1d1812",
@@ -1301,7 +1301,7 @@ function skin(): void {
   text = text.replace(/^name "fantasy"$/m, 'name "brasswick"');
   text = text.replace(/^# The fantasy style pack.*$/m, "# Brasswick's skin: the engine's fantasy style pack (templates/ui-kit, CC0 art, OFL fonts:\n# LICENSES.md), copied by tools/make-assets.ts, its ground soot and its accent brass; the CJK\n# fallback line dropped, the game shows Latin-1 only.");
   text = text.replace(/^  fallback .*\n/m, "");
-  writeFileSync(join(to, "skin.ogt"), text);
+  writeFileSync(join(to, "style.ogt"), text);
 }
 
 // -------------------------------------------------------------------- main

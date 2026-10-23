@@ -26,9 +26,9 @@ import { BEACON_AT, buildVale, ground, HOURS, must, setHour } from "./world.ts";
 
 function start(world: World): void {
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
-  const skin = must(og.load.skin(world, "skins/ember/skin.ogt"));
+  const skin = must(og.load.style(world, "styles/ember/style.ogt"));
   const sound = (path: string) => must(og.load.sound(world, path));
-  must(og.ui.configure(world, { skin, sounds: { press: sound("audio/ui-press.ogt"), open: sound("audio/ui-open.ogt"), close: sound("audio/ui-close.ogt"), error: sound("audio/ui-error.ogt"), success: sound("audio/ui-success.ogt") } }));
+  must(og.ui.configure(world, { style: skin, sounds: { press: sound("audio/ui-press.ogt"), open: sound("audio/ui-open.ogt"), close: sound("audio/ui-close.ogt"), error: sound("audio/ui-error.ogt"), success: sound("audio/ui-success.ogt") } }));
   buildVale(world);
   spawnHero(world);
   spawnSentinels(world);

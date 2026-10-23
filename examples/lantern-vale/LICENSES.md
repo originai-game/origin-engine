@@ -17,5 +17,5 @@ engine's own CC0 / OFL assets.
 | `assets/audio/*.ogt` | CC0 1.0 | `og sfx` presets that `og cook` synthesises |
 | `assets/fx/burst.ogt`, `assets/scenes/main.ogt`, `assets/looks/*.ogt`, `assets/strings/*.ogt`, every other `.ogt` | CC0 1.0 | self-made, written by hand |
 | `assets/fonts/NotoSansSC-subset.ttf` | SIL Open Font License 1.1 (`assets/fonts/OFL.txt`) | Noto Sans SC Regular, subset to the CJK characters of `assets/strings/*.ogt` by `tools/subset-font.py` from the engine's `templates/game/assets/fonts/NotoSansSC-Regular-subset.ttf` |
-| `assets/skins/lantern/*` | CC0 1.0 art, SIL OFL 1.1 fonts | a copy of the engine's fantasy style pack (`templates/ui-kit/assets/skins/fantasy`), `assets/skins/lantern/LICENSES.md`; its `fgSubtle` darkened and its fallback this game's subset |
+| `assets/styles/lantern/*` | CC0 1.0 art, SIL OFL 1.1 fonts | a copy of the engine's fantasy style pack (`templates/styles/fantasy`), `assets/styles/lantern/LICENSES.md`; its `fgSubtle` darkened and its fallback this game's subset |
 | `references/*/*.png` | CC0 1.0 | frames of this game recorded by `tests/frames.og.ts` |

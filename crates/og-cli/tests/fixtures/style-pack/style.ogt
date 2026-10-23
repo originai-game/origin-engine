@@ -1,0 +1,53 @@
+type style
+version 1
+---
+# A style drawn by hand: og style pack rewrites its atlas, slice, soft and corner lines.
+name "handmade"
+scheme dark
+atlas "styles/handmade/atlas.png" 64 64
+palette {
+  backdrop "#000000"
+  well "#111113"
+  panel "#1c1c1e"
+  panelHover "#3a3a3c"
+  panelRaised "#2c2c2e"
+  line "#38383a"
+  lineStrong "#545458"
+  ink "#f5f5f7"
+  inkMuted "#aeaeb2"
+  inkFaint "#98989d"
+  inkInverse "#18181a"
+  control "#7878803d"
+  controlStrong "#7878805c"
+  primary "#ffb000"
+  primaryHover "#ffc04d"
+  primaryActive "#ffd38a"
+  onPrimary "#1d1300"
+  primarySoft "#ffb22429"
+  highlight "#ffb224"
+  focus "#ffb224"
+  knob "#636366"
+  hud "#1c1c1ec7"
+  scrim "#0000006b"
+  shadow "#000000"
+  sheen "#ffffff52"
+  success "#3dd68c"
+  warn "#ff8a3d"
+  danger "#ff8a82"
+  info "#5cc8ff"
+  health "#3dd68c"
+  mana "#0a84ff"
+  xp "#bf5af2"
+  gold "#ffb000"
+}
+radius {
+  small 1
+  control 2
+  bar 1
+  panel 3
+}
+slice panel 0 0 8 8 2
+slice button 8 0 8 8 2 tint repeat
+soft 16 0 8 8 3
+corner 24 0 8 8 12 12 primary 2
+corners panel

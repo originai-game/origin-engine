@@ -9,7 +9,7 @@ version 1
 # dusk look again when they close.
 name "Lantern Vale at dawn"
 extends "luminous-layered-painting"
-skin "skins/lantern/skin.ogt"
+ui "styles/lantern/style.ogt"
 antialias taa
 Stylise {
   depthBands 5

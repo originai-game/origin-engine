@@ -4985,8 +4985,10 @@ export interface LookInfo {
    * The resources it sets, by IDL name (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment). Applying it replaces each of them whole: the fields the look names take its values, the rest their defaults.
    */
   readonly resources: readonly string[];
-  /** The UI skin it names, loaded with it; applying the look configures the UI with it. */
-  readonly skin: Skin | null;
+  /**
+   * The UI style its `ui` line names (a game's own or a built-in by slug), loaded with it; applying the look configures the UI with it.
+   */
+  readonly style: Style | null;
   /**
    * The antialiasing it asks for. GameDesc.look's is the renderer's when GameDesc.render leaves antialias out; a running renderer keeps its method.
    */
@@ -6988,11 +6990,11 @@ export type Font = number & { readonly [handleType]: "Font" };
 export type Sound = number & { readonly [handleType]: "Sound" };
 
 /**
- * A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure.
+ * A cooked UI style: its values, atlas, fonts, icons and sounds loaded with it, for og.ui.configure.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
-export type Skin = number & { readonly [handleType]: "Skin" };
+export type Style = number & { readonly [handleType]: "Style" };
 
 /**
  * A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray).
@@ -13925,11 +13927,11 @@ export interface ElementDesc {
    */
   readonly radius?: number;
   /**
-   * The skin frame its background takes (a HUD capsule, a card); null is a plain fill. Without a skin the fill is drawn either way.
+   * The style frame its background takes (a HUD element, a card); null is a plain fill. Without a style the fill is drawn either way.
    *
    * @default null
    */
-  readonly frame?: SkinPart | null;
+  readonly frame?: StylePart | null;
   /**
    * Width over height (0: none): with the height left to fit, it is as tall as its laid-out width over this; with a fixed height and the width left to fit, as wide as the height times it.
    *
@@ -13982,7 +13984,7 @@ export interface LabelDesc {
    */
   readonly font?: FontRole;
   /**
-   * A heading: a skin with a flourish frames it.
+   * A heading: a style with a flourish frames it.
    *
    * @default false
    */
@@ -14472,7 +14474,7 @@ export interface Viewport {
 }
 
 /**
- * How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it.
+ * How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -14538,13 +14540,13 @@ export interface UiDesc {
    */
   readonly reducedMotion?: boolean;
   /**
-   * Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on.
+   * Nothing is see-through: glass parts (a style's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on.
    *
    * @default false
    */
   readonly reducedTransparency?: boolean;
   /**
-   * The icon atlas og.ui.icon draws from; null takes the skin's.
+   * The icon atlas og.ui.icon draws from; null takes the style's.
    *
    * @default null
    */
@@ -14556,13 +14558,13 @@ export interface UiDesc {
    */
   readonly toastAnchor?: Anchor | null;
   /**
-   * A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style.
+   * A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style, the engine's placeholder.
    *
    * @default null
    */
-  readonly skin?: Skin | null;
+  readonly style?: Style | null;
   /**
-   * Sounds for UI events (they win over the skin's).
+   * Sounds for UI events (they win over the style's).
    *
    * @default null
    */
@@ -14614,17 +14616,17 @@ export interface UiSounds {
 }
 
 /**
- * An element class a skin dresses with a nine-slice frame.
+ * An element class a style dresses with a nine-slice frame.
  * - `"panel"`: Dialogs and screen panels.
  * - `"card"`: Cards.
  * - `"button"`: Buttons (with hover, pressed and disabled states).
  * - `"field"`: Text fields.
  * - `"slot"`: Inventory and grid cells.
  * - `"tooltip"`: Tooltips.
- * - `"capsule"`: HUD capsules and toasts.
+ * - `"hud"`: HUD elements over the game (counters, timers) and toasts.
  * - `"track"`: A progress bar's track.
  */
-export type SkinPart = "panel" | "card" | "button" | "field" | "slot" | "tooltip" | "capsule" | "track";
+export type StylePart = "panel" | "card" | "button" | "field" | "slot" | "tooltip" | "hud" | "track";
 
 /** One step of the type ramp. */
 export interface TypeStep {
@@ -14714,8 +14716,8 @@ export interface UiTheme {
    * The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds.
    */
   readonly durationsMs: Readonly<Record<string, number>>;
-  /** The configured skin's name; empty for the prototype style. */
-  readonly skin: string;
+  /** The configured style's name; empty for the prototype style. */
+  readonly style: string;
   /**
    * The variant in effect: high when the game asked for it or the page prefers more contrast.
    */
@@ -15049,13 +15051,13 @@ export interface AnchorDesc {
    */
   readonly over?: boolean;
   /**
-   * The skin frame its background takes; null is the panel's.
+   * The style frame its background takes; null is the panel's.
    *
    * @default null
    */
-  readonly frame?: SkinPart | null;
+  readonly frame?: StylePart | null;
   /**
-   * Shown settled the first time it is built: no skin entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap.
+   * Shown settled the first time it is built: no style entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap.
    *
    * @default false
    */
@@ -16124,7 +16126,7 @@ export interface BurstDesc {
  */
 export interface ShakeDesc {
   /**
-   * The first swing; 0 is the skin's motion.shake, else 6.
+   * The first swing; 0 is the style's motion.shake, else 6.
    *
    * @default 0
    * @range 0..
@@ -16140,7 +16142,7 @@ export interface ShakeDesc {
    */
   readonly durationMs?: number;
   /**
-   * Also play the skin's error sound, as a refused press does.
+   * Also play the style's error sound, as a refused press does.
    *
    * @default false
    */
@@ -16322,7 +16324,7 @@ export interface MainMenuDesc {
    */
   readonly onSelect?: UiAction | null;
   /**
-   * Shown settled the first time it is built (AnchorDesc.instant): pass it while the title is the screen the game opens on, so the frame behind the web's play gate is the whole title; a title the player comes back to enters with the skin.
+   * Shown settled the first time it is built (AnchorDesc.instant): pass it while the title is the screen the game opens on, so the frame behind the web's play gate is the whole title; a title the player comes back to enters with the style.
    *
    * @default false
    */
@@ -21093,13 +21095,13 @@ export declare namespace og {
      */
     function textureArray(world: World, path: string): Result<TextureArrayInfo>;
     /**
-     * Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path.
+     * Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`.
      *
      * @param world The world whose UI uses it.
-     * @param path The asset id, such as `skins/pixel/skin.ogt`.
-     * @returns Refused for a path not in the bundle, a skin that does not parse (the reason names the line) or an asset it names that cannot load.
+     * @param path The asset id, such as `styles/pixel/style.ogt` or `@styles/pixel/style.ogt`.
+     * @returns Refused for a path not in the bundle, a style that does not parse (the reason names the line) or an asset it names that cannot load.
      */
-    function skin(world: World, path: string): Result<Skin>;
+    function style(world: World, path: string): Result<Style>;
     /**
      * Load a look: an `.ogt` of `type look` binding a frame's art direction as data. Its top-level `name`, `extends` (a built-in preset's slug, such as `anime-cel-3d`, or another look's asset id: the game's own `assets/looks/<slug>.ogt` wins over the built-in preset of that slug), `skin` (a UI skin's asset id) and `antialias`, then one block per resource it sets (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment) with that resource's fields by name, an asset id where a field is a handle (`lut "luts/warm.cube"`, `palette "palettes/dusk.hex"`). The cook validates every field against the resources' reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and skin it names are loaded with it. Loaded once per path.
      *
@@ -22228,11 +22230,11 @@ export declare namespace og {
    */
   namespace ui {
     /**
-     * Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the prototype style). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text.
+     * Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the prototype style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text.
      *
      * @param world The world whose UI is configured.
      * @param desc The fields to change; the others keep their values.
-     * @returns Refused for a dead font or skin, or a desc that is not an object.
+     * @returns Refused for a dead font or style, or a desc that is not an object.
      */
     function configure(world: World, desc?: UiDesc): Result<void>;
     /**
@@ -22309,7 +22311,7 @@ export declare namespace og {
      */
     function scroll(id: string, desc: ScrollDesc, build: UiBuild): void;
     /**
-     * A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the skin), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning.
+     * A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the style), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning.
      *
      * @param id Its id.
      * @param markup The markup.
@@ -22769,7 +22771,7 @@ export declare namespace og {
     /** Frames the UI has built: its clock, for animations by the tick. */
     function tick(): number;
     /**
-     * A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a skin with motion.pop bumps it when it lands. Scores, currency, rewards.
+     * A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a style with motion.pop bumps it when it lands. Scores, currency, rewards.
      *
      * @param id Its id.
      * @param value The value to count to.
@@ -22784,7 +22786,7 @@ export declare namespace og {
      */
     function burst(desc?: BurstDesc): void;
     /**
-     * Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the skin's motion.shake is set.
+     * Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the style's motion.shake is set.
      *
      * @param desc Amount, duration and sound.
      */

@@ -1,4 +1,4 @@
-// Hollowbell's screens on og.ui with the skin assets/skins/hollowbell (the
+// Hollowbell's screens on og.ui with the skin assets/styles/hollowbell (the
 // engine's pixel style pack, recoloured; the look applies it): the title
 // over the village (New game, Continue when a save answered, Settings), the
 // name dialog of a new game (a text field kept in Prefs.name, a str field),
@@ -151,7 +151,7 @@ export function score(g: GameV): number {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
+  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "hud", background: { token: "panel" } }, build);
 }
 
 function hud(world: World, g: GameV): void {

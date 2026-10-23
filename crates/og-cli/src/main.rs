@@ -24,7 +24,7 @@ mod render;
 mod run;
 mod serve_relay;
 mod sfx;
-mod skin;
+mod style;
 mod test;
 mod trace;
 
@@ -88,9 +88,9 @@ commands:
                       the procedural sound presets (coin, jump, hit, click, ...): list them,
                       write one as an asset `og cook` synthesises (or render it to a WAV),
                       or write the whole library
-  skin pack <dir> [--out <dir>]
-                      pack a skin drawn by hand (<part>.9.png nine-patches, other PNGs) into
-                      atlas.png and the skin file's atlas, slice and ornament lines
+  style pack <dir> [--out <dir>]
+                      pack a UI style's art drawn by hand (<part>.9.png nine-patches, other PNGs)
+                      into atlas.png and the style file's atlas, slice and ornament lines
   relay [--port P] [--host <ip>]
                       a local WebSocket relay for rooms: `og run --room ws://127.0.0.1:P/<room>`
                       processes join <room> and play together (og.net's lockstep)
@@ -131,7 +131,7 @@ fn main() -> ExitCode {
         ["cook", rest @ ..] => cook::run(rest),
         ["api", rest @ ..] => api::run(rest),
         ["sfx", rest @ ..] => sfx::run(rest),
-        ["skin", rest @ ..] => skin::run(rest),
+        ["style", rest @ ..] => style::run(rest),
         [] => {
             eprint!("{USAGE}");
             ExitCode::from(2)

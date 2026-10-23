@@ -60,7 +60,7 @@ og build . --publish         # dist/: the play page as it ships (behind "tap to 
   vignette, the teal-orange LUT and film grain, the sky, height fog and
   `og.DayNight` running from late afternoon to night as the run's clock.
 - **Screens on og.ui with tokens and MSDF text** (og-ui §2–§6, og-taste):
-  the engine's fantasy pack as `assets/skins/ember` (Cinzel and Newsreader,
+  the engine's fantasy pack as `assets/styles/ember` (Cinzel and Newsreader,
   Noto Sans SC as the fallback, every font an MSDF atlas at cook time); the
   title over an orbit of the vale, the HUD (hearts and beacons top-left,
   the dusk clock and Pause top-right, the kindling prompt and its progress
@@ -180,7 +180,7 @@ stages.
 2. **The pressure**: `duskSeconds`, the sentinels' speeds and sight, their
    minds in `assets/ai/`, `HEARTS` in `src/components.ts`.
 3. **The look**: the post stack, fog and sky in `buildVale`, the water's
-   colours, the skin's palette in `assets/skins/ember/skin.ogt`.
+   colours, the skin's palette in `assets/styles/ember/style.ogt`.
 4. **The characters**: another CC0 humanoid in `assets/models/` with the
    clip library retargeted onto it (`src/anim.ts`), the graphs' thresholds.
 5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs the script
@@ -231,7 +231,7 @@ heightmap and control map, the sounds and music, the `og sfx` presets, the
 sentinels' minds and the font subset byte for byte; the characters, the
 clip library, the textures and the beacon's effects are the engine's own
 CC0 assets. `LICENSES.md` lists every file; the skin's are in
-`assets/skins/ember/LICENSES.md`.
+`assets/styles/ember/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)
 

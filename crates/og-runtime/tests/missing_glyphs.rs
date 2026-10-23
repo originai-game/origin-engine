@@ -35,7 +35,7 @@ fn project() -> &'static Path {
         let _ = std::fs::remove_dir_all(&root);
         let dir = root.join("assets/fonts");
         std::fs::create_dir_all(&dir).unwrap();
-        let skin = repo().join("templates/ui-kit/assets/skins/neon");
+        let skin = repo().join("templates/styles/neon");
         for f in [
             "ChakraPetch-BoldItalic.ttf",
             "ChakraPetch-BoldItalic.ttf.ogt",

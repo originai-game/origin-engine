@@ -101,7 +101,7 @@ pub use geometry::{
 pub use i18n::{og_i18n_has, og_i18n_load, og_i18n_locale, og_i18n_set_locale, og_i18n_t};
 pub use memory::memory_report;
 pub use modules::{
-    THEME_COLORS, TYPE_STEPS, og_load_skin, og_physics_overlap, og_physics_raycast,
+    THEME_COLORS, TYPE_STEPS, og_load_style, og_physics_overlap, og_physics_raycast,
     og_physics_set_mesh, og_physics_shape_cast, og_ui_a11y, og_ui_action_button, og_ui_back,
     og_ui_badge, og_ui_bounds, og_ui_breakpoint, og_ui_burst, og_ui_button, og_ui_checkbox,
     og_ui_checkbox_list, og_ui_chip, og_ui_close, og_ui_close_list, og_ui_close_modal,

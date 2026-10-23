@@ -274,7 +274,7 @@ pub struct Element {
     pub radius: f32,
     /// The skin frame its background takes (`None`: a plain fill). Without
     /// a skin, or a skin without that part, the background is the fill.
-    pub skin: Option<crate::skin::SkinPart>,
+    pub skin: Option<crate::skin::StylePart>,
     /// Width over height (0: none). With the height left to fit, the
     /// element is as tall as its laid-out width over this; with a fixed
     /// height and the width left to fit, as wide as the height times it

@@ -17,7 +17,7 @@
 //   so it is not committed (.gitignore).
 // - fx/*.ogt: the emitters (a splash, dash dust, a berry's sparkle, a tile's
 //   crumbs, the podium's confetti).
-// - skins/rumpus/: the engine's cartoon style pack copied from
+// - styles/rumpus/: the engine's cartoon style pack copied from
 //   templates/ui-kit (its atlas, icons and fonts are not committed:
 //   .gitignore), recoloured sea and coral, its CJK fallback line dropped.
 
@@ -474,11 +474,11 @@ blend alpha
  * and French only, Latin-1).
  */
 function skin(): void {
-  const from = join(ENGINE, "templates", "ui-kit", "assets", "skins", "cartoon");
-  const to = join(ASSETS, "skins", "rumpus");
+  const from = join(ENGINE, "templates", "styles", "cartoon");
+  const to = join(ASSETS, "styles", "rumpus");
   mkdirSync(to, { recursive: true });
   for (const f of ["atlas.png", "atlas.png.ogt", "icons.png", "icons.png.ogt", "Fredoka-SemiBold.ttf", "Fredoka-SemiBold.ttf.ogt", "LilitaOne-Regular.ttf", "LilitaOne-Regular.ttf.ogt", "OFL.txt", "LICENSES.md"]) copyFileSync(join(from, f), join(to, f));
-  let text = readFileSync(join(from, "skin.ogt"), "utf8");
+  let text = readFileSync(join(from, "style.ogt"), "utf8");
   const colours: Record<string, string> = {
     backdrop: "#123a5c",
     well: "#174870",
@@ -493,7 +493,7 @@ function skin(): void {
   text = text.replace(/^name "cartoon"$/m, 'name "rumpus"');
   text = text.replace(/^# The cartoon style pack.*$/m, "# Rumpus Isle's skin: the engine's cartoon style pack (templates/ui-kit, CC0 art, OFL fonts:\n# LICENSES.md), copied by tools/make-assets.ts, its ground a deep sea blue and its accent coral;\n# the CJK fallback line dropped, the game shows Latin-1 only.");
   text = text.replace(/^  fallback .*\n/m, "");
-  writeFileSync(join(to, "skin.ogt"), text);
+  writeFileSync(join(to, "style.ogt"), text);
 }
 
 // -------------------------------------------------------------------- main
