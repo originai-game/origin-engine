@@ -45,8 +45,9 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
     assert_eq!(s["seconds"], frames as f64 / rate as f64);
     assert_eq!(s["chunks"], 0);
 
-    // strings/en.ogt holds five `string` lines; intro.ogt eight tracks over
-    // `duration 10`; guard.ogt's tree is a patrol under one sequence.
+    // strings/en.ogt holds five `string` lines; intro.ogt nine tracks (the
+    // music sting among them) over `duration 10`; guard.ogt's tree is a
+    // patrol under one sequence.
     let st = &asset(&json, "strings/en.ogt")["strings"];
     assert_eq!(
         (st["locale"].as_str(), st["keys"].as_u64()),
@@ -55,7 +56,7 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
     let tl = &asset(&json, "timelines/intro.ogt")["timeline"];
     assert_eq!(
         (tl["tracks"].as_u64(), tl["seconds"].as_f64()),
-        (Some(8), Some(10.0))
+        (Some(9), Some(10.0))
     );
     assert!(asset(&json, "ai/guard.ogt")["behaviour"]["nodes"].as_u64() > Some(0));
 
