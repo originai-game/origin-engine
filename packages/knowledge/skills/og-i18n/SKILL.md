@@ -16,7 +16,7 @@ Two games written from this package alone (`examples/lantern-vale`,
 `examples/hollowbell`) ship English and Simplified Chinese from string
 tables: `og polish` found no locale gaps in either, the results template
 showed its localised Best and New best, a name was typed partly through an
-input method, and a skin copied without its CJK `fallback` was refused by
+input method, and a style copied without its CJK `fallback` was refused by
 the cook with the line named. The Kestrel Stair (`examples/kestrel-stair`)
 ships English and Japanese: its Noto Sans JP subset cut by the ui-kit's
 `tools/subset-font.py` needed no other step, and its locales playtest
@@ -125,12 +125,12 @@ string "results.time" "タイム {time}"
   take a `label` (else the reader hears the id) and `IconDesc` and
   `ImageDesc` a `label` (else an icon is its atlas name, `star`; `""` is
   decoration): og-ui §4.
-- Latin and Cyrillic: the skin's font. Every other script: a subset of a
+- Latin and Cyrillic: the style's font. Every other script: a subset of a
   Noto face for that script holding exactly the characters your tables
   use, named first in that table's `fonts` line.
 - What the engine ships: `fonts/NotoSansSC-Regular-subset.ttf`, in every
   project (Simplified Chinese: GB2312's 6,763 hanzi, kana and Latin-1,
-  2.5 MB), the source for a Chinese subset and the skins' CJK `fallback`.
+  2.5 MB), the source for a Chinese subset and the styles' CJK `fallback`.
   The ui-kit's `NotoSansJP-subset.otf`, `NotoSansKR-subset.otf` and its
   Arabic, Hebrew and Devanagari subsets hold only the ui-kit's own strings
   (the Japanese one 246 characters, 74 of them kanji): they are no source
@@ -152,13 +152,13 @@ string "results.time" "タイム {time}"
   ```
 
   `--cjk-only` leaves Latin out, so a label mixing scripts takes its Latin
-  from the skin's face run by run; with Latin kept, the whole label is
+  from the style's face run by run; with Latin kept, the whole label is
   drawn in the subset (og-ui §7 has the rule).
 - Never take Japanese from the Chinese face: it lacks the Japanese forms of
   common kanji (鐘 鈴 険 続 設 語 楽 効 are not in it) and draws the kanji
   both scripts share in their Chinese shapes. The fallback chain below is a
   safety net for a character a subset missed, not a font for a language:
-  a Japanese string that reaches the skin's Chinese `fallback` is drawn in
+  a Japanese string that reaches the style's Chinese `fallback` is drawn in
   Chinese forms, and one no font has is a box with a warning on the first
   frame that draws it.
 - Each font's import settings (`<font>.ogt`) list its characters (`chars`)
@@ -167,12 +167,12 @@ string "results.time" "タイム {time}"
   outlines, which og-ui's shaper needs.
 - og-ui looks a glyph up in the active locale's fonts first, then every
   other loaded table's, then `UiDesc.fallbackFonts` (fonts for scripts no
-  table names: a Hebrew or Devanagari face), then the skin's. A box (tofu)
+  table names: a Hebrew or Devanagari face), then the style's. A box (tofu)
   in a frame means a font lacks the character: add it to the subset and
   to `chars`. The engine's log says so on the tick a character is first
   drawn, once per character, naming it, the font's asset and what its atlas
   holds (`WARN tick 2603 a frame drew "−" U+2212, which font
-  skins/neon/ChakraPetch-BoldItalic.ttf lacks (its atlas holds charset
+  styles/neon/ChakraPetch-BoldItalic.ttf lacks (its atlas holds charset
   latin punct)`): the packs cook `latin punct`, which has the hyphen-minus
   `-` but not the minus sign U+2212 nor the arrows U+2190 to U+2193. One
   label is drawn in one font, so the font that covers a
