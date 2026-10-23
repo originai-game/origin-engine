@@ -11,6 +11,7 @@
 //! | [`Flipbook`], [`FlipbookEvent`], [`FlipbookSheet`], [`install_flipbook`] | sprite animation: sheets of frames, clips with fps, loop / ping-pong / once and frame events, played by `og.flipbook` |
 //! | [`SkeletonAsset`], [`ClipAsset`], [`GraphAsset`] | the assets (the cook's `<model>#anim` blob, an `animgraph` `.ogt`) |
 //! | [`HumanoidMap`], [`RigAsset`], [`retarget`] | humanoid bone maps (detected from Mixamo, VRM, Unity, Rigify, Unreal or Blender names, or a `type rig` .ogt) and clips rewritten from one rig to another (rest correction, bone lengths, scaled root travel, foot IK) |
+//! | [`Rig2dAsset`], [`Skeleton2D`], [`Skeleton2DEvent`], [`IkTarget2D`], [`install_skeleton2d`] | 2D skeletal animation: the `type rig2d` asset (bones, slots, region and weighted-mesh attachments, IK, clips with bone, slot and deform keys), played by `og.skeleton2d` and drawn as triangles |
 //! | [`AnimationSystem`] | asset registration, the final pose, the per-entity [`AnimOutput`] (joint palette, blendshape weights) and [`PaletteSink`], the renderer contract |
 //!
 //! **Determinism.** f32 with `+ - * /` and `sqrt` only (no trigonometry:
@@ -29,7 +30,9 @@ mod graph;
 mod ik;
 mod pose;
 mod retarget;
+mod rig2d;
 mod schema;
+mod skeleton2d;
 mod system;
 mod xform;
 
@@ -50,6 +53,14 @@ pub use retarget::{
     HUMAN_BONE_COUNT, HUMAN_BONES, HumanoidMap, RetargetOptions, Retargeted, RigAsset, SCHEMES,
     human_bone, retarget,
 };
+pub use rig2d::{
+    Affine2, Attachment2d, AttachmentKind, Bone2d, BoneTimeline, Clip2d, DeformTimeline, Ik2d,
+    Influence, Key, MeshVertex2d, Pose2d, RIG2D_TYPE, Rig2dAsset, RigVertex, Slot2d, SlotTimeline,
+};
 pub use schema::*;
+pub use skeleton2d::{
+    IkTarget2D, SKELETON2D_SYSTEM, Skeleton2D, Skeleton2DEvent, Skeleton2dSystem,
+    install_skeleton2d, skeleton_frame, skeleton_pose,
+};
 pub use system::{AnimOutput, AnimationSystem, JointPalette, PaletteSink, SYSTEM_NAME, install};
 pub use xform::{Trs, nlerp, rotation_arc, twist_y, unit};
