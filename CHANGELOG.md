@@ -26,6 +26,22 @@ Debt round 2 (`docs/phase-1.md`, "Plan 2026-10-23, debt round 2").
   knowledge skills call a UI style a style (the old `skins/<name>` paths
   are `styles/<name>`), and knowledge `validate` refuses a skill or wiki
   page that calls one a skin.
+- `physics-push`: the raycast record's hierarchy refresh keeps the world
+  matrices that cannot have moved (a still tick of 20k meshes 14.2 → 4.0 ms,
+  dev profile); `ext::push` splits a tick's push budget across every body
+  hit in the same fraction instead of giving it to the first; Lantern
+  Vale's rock pile is convex hulls that stand still without the hero.
+  brasswick keeps its `pushSpeed` slowdown as the game's push speed: the
+  force-capped push alone runs the 2 kg crates past their plates.
+- Mesh levels of detail are picked by measured error, not by triangle
+  fraction. The cook measures each level's distance from the full mesh
+  (two-way nearest surface through the BVHs; `LodRow` version 2,
+  `lodErrors` in `cook --report`) and the renderer draws the coarsest
+  level whose error projects under a pixel at the model's near side, with
+  hysteresis; `RenderSettings.lodBias` and `Model.lodBias` multiply that
+  error (0 still draws the full mesh). The old rule decimated small props
+  while they filled a few hundred pixels, which is where the reference
+  drift of lantern-vale and meridian-loop came from.
 
 ## 0.3.0 (2026-10-23)
 
