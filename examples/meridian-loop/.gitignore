@@ -1,8 +1,8 @@
 # Made by tools/make-assets.ts (11 MB): run `bun tools/make-assets.ts` after a clone.
 assets/music/meridian.wav
 # The engine's neon skin pack, copied by tools/make-assets.ts from templates/ui-kit (its fonts and art).
-assets/skins/meridian/*.png
-assets/skins/meridian/*.ttf
+assets/styles/meridian/*.png
+assets/styles/meridian/*.ttf
 # og cook output: rebuilt from assets/, never committed.
 cooked/
 # og build output.

@@ -1,8 +1,8 @@
 # Made by tools/make-assets.ts (about 10 MB): run `bun tools/make-assets.ts` after a clone.
 assets/music/vault.wav
 # The engine's fantasy style pack, copied by tools/make-assets.ts from templates/ui-kit (its art and fonts).
-assets/skins/brasswick/*.png
-assets/skins/brasswick/*.ttf
+assets/styles/brasswick/*.png
+assets/styles/brasswick/*.ttf
 # og cook output: rebuilt from assets/, never committed.
 cooked/
 # og build output.
