@@ -159,9 +159,9 @@ test("a section reference names a numbered section that exists", () => {
   expect(own).toEqual(["skills/og-audio/SKILL.md: refers to its own §8, which it does not have (its sections: 1, 2, 3, 4, 5, 6, 7)"]);
 });
 
-test("a skill or wiki page that calls a UI style a skin is refused; the glTF and collision skins pass", () => {
+test("a skill or wiki page that calls a UI style a skin is refused; the glTF, collision and 2D skeleton skins pass", () => {
   const p = added((r) => {
-    edit(join(r.pkg, "skills/og-ui/SKILL.md"), (s) => `${s}\nCopy the pack as the game's skin and keep its\n\`fallback\` beside the skin file.\n\nThe controller keeps \`skin\` off every surface. A glTF's skins hold its joints.\n`);
+    edit(join(r.pkg, "skills/og-ui/SKILL.md"), (s) => `${s}\nCopy the pack as the game's skin and keep its\n\`fallback\` beside the skin file.\n\nThe controller keeps \`skin\` off every surface. A glTF's skins hold its joints. A skin armor { swap torso torso-armor } dresses the rig; a slot the skin leaves alone shows the default's.\n`);
     edit(join(r.pkg, "wiki/physics.md"), (s) => s.replace("The gap kept between it and every surface.", "The gap kept between it and every surface; the HUD wears the skin's panel."));
   });
   expect(p).toEqual([
