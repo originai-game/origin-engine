@@ -76,6 +76,10 @@ export function buildVale(world: World): void {
   });
 
   // The pile: ten boulders the hero's controller shoves about (pushBodies).
+  // The controller pushes with its default pushStrength (1,000 N, a strong
+  // walker), so the rocks are hollow-light, density 150 (46 kg each): the
+  // hero parts the front two and rolls the middle one ahead. At 900 (279 kg)
+  // it only wedged between the front two.
   const rock = must(og.load.gltf(world, "models/rock.vox"));
   const spots: [number, number, number][] = [[-1, 0, -1], [0, 0, -1], [1, 0, -1], [-1, 0, 0], [0, 0, 0], [1, 0, 0], [-0.5, 0, 1], [0.5, 0, 1], [-0.5, 1, -0.5], [0.5, 1, 0]];
   spots.forEach(([dx, dy, dz], i) => {
@@ -85,7 +89,7 @@ export function buildVale(world: World): void {
     const e = place(world, rock, `rock-${i}`, x, y, z, i * 2.3, 1);
     must(world.insert(e, og.RigidBody, { linearDamping: 0.8, angularDamping: 0.8 }));
     must(world.insert(e, og.Velocity));
-    must(world.insert(e, og.Collider, { shape: SHAPE_SPHERE, radius: 0.42, offset: { x: 0, y: 0.38, z: 0 }, density: 900, friction: 0.9, layers: LAYER.rock }));
+    must(world.insert(e, og.Collider, { shape: SHAPE_SPHERE, radius: 0.42, offset: { x: 0, y: 0.38, z: 0 }, density: 150, friction: 0.9, layers: LAYER.rock }));
     must(world.insert(e, Rock, { x0: x, z0: z }));
   });
 
