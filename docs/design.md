@@ -253,6 +253,75 @@ save), `og_leaderboard_*`, `og_room_*` (rooms/RTC via the shell), `og_telemetry`
 `og.platform.*`. Nothing in game code can reach cookies, the DOM or arbitrary
 origins; the shell owns every credential.
 
+### 2.9 The video producer
+
+The engine already has what "video is code" pipelines bolt on (a fixed
+tick, exact seeking by snapshot, headless runs, an offline mixer), so a
+video is a command script played headless and recorded (docs/depth.md §3).
+
+- **Frames.** `og render [project] --commands "..." --fps F --from S --to S
+  --size WxH` runs the game on the native host at its own tick and draws
+  the world once every `rate / F` ticks (F must divide the tick rate;
+  otherwise the error names the nearest that do), so frame i is the world
+  at tick `round(S · rate) + i · rate / F`, never between ticks. The ticks
+  between frames are simulated without drawing. Each drawn frame is read
+  back from the render target through og-probe's `Capture::frame` (the
+  frame the loop drew, no second draw, no PNG, no JSON-RPC) and streamed
+  to `og` as RGBA rows (`packages/engine/src/node/render.ts`), which
+  writes PNG or JPEG frames, pipes them to ffmpeg, and hashes them.
+- **Audio.** `--audio` runs the capture mixer (`og run --audio`'s) from
+  tick 0 to the range's end into a 16-bit WAV, muxed into the video (AAC
+  in an `.mp4`, Opus in a `.webm`); it is rendered from the tick's command
+  stream, so it is the same bytes in every run.
+- **Encoding.** ffmpeg is found through `OG_FFMPEG` or `PATH` and reported
+  by `og doctor`; `.mp4` is H.264 (yuv420p, CRF 18) and `.webm` VP9 (CRF
+  32). Without ffmpeg the render writes its frames and says so: nothing in
+  the engine needs it.
+- **Determinism as a contract.** `frames.json` lists every frame's tick,
+  time and the SHA-256 of its RGBA bytes (hashed before any encoding) and
+  the audio's SHA-256; two runs of one script give the same list (a test,
+  `packages/engine/tests/og-render.test.ts`). A changed hash is a changed
+  frame, which is how a review finds what a change moved.
+- **Jobs.** `--jobs N` splits the range in N parts. A leader process
+  simulates the script without drawing and writes a render snapshot
+  (og-probe's `render_snapshot`: the world exactly, input resources and
+  the probe's pointer included, unlike a save) eight frames before each
+  part; each part restores its snapshot, drops the script steps the leader
+  already ran, draws those eight frames unsent (the renderer's history,
+  TAA and the adapted exposure, settles) and renders its frames; ffmpeg
+  concatenates the parts. The frames equal a one-job render's (the same
+  test).
+- **The review surface.** `--contact-sheet COLS` writes a grid PNG of
+  frames spaced over the range (COLS columns, ceil(COLS / 2) rows), each
+  labelled with its time and tick in a built-in pixel font: an agent
+  reads one image instead of watching a video, then opens the frames the
+  sheet points at. `--timeline <name>` is `--commands
+  "0:timeline:play:<name>"` with the timeline's `duration` as the range,
+  once timelines exist (§2.7, docs/depth.md §2).
+- **Footage.** A `type video` asset (`.ogt` naming an `.mp4`, `.webm` or
+  `.mov`, with `fps`, `maxSeconds`, `size`, `kind`, `audio`) is cooked by
+  ffmpeg (ffprobe plans it) into an `og.Video` blob, a texture array of
+  its frames (`<id>#frames`, each a KTX2 layer of one mip level, at most
+  256) and its sound (`<id>#audio`, QOA); the cook reports the bytes and
+  warns past 64 MiB. `og.load.video` keeps the frames as the device
+  encodes them and makes one Texture of a frame's size (og-render's
+  `FrameTexture`) whose contents become the frame shown, so a material
+  map, an `og.Sprite` or a UI image draws footage as any texture, at one
+  frame's GPU memory. `og.VideoPlayer` (`video`, `playing`, `time`,
+  `speed`, `loop`) is played by the `og.video` system by the tick (not the
+  time scale) and keeps the entity's `og.AudioSource` in step: its
+  `startOffset` is the video's time, and a seek stops it for a tick and
+  starts it again there. A player's state is its component, so a restored
+  snapshot plays on as the world that took it; at a 30 Hz tick, tick 90
+  shows the source's frame 3 s in (`packages/engine/tests/og-video.test.ts`).
+- **The CPU-only sandbox's cost.** On lavapipe (16 cores) the 3D template
+  renders a 1280×720 frame in about 0.39 s in one job and 0.15 s a frame
+  with `--jobs 4`; at 640×360 about 0.11 s. An 8 s clip at 30 fps is
+  240 frames: about 90 s at full size in one job, 35 s in four. Agents
+  iterate at 640×360 and review the contact sheet, rendering full size
+  once. `og render` and its capture members are development members:
+  absent from `publish` builds.
+
 ## 3. API surface
 
 ### 3.1 One IDL, two hosts **(D)**
