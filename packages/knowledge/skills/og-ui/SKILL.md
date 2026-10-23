@@ -4,8 +4,9 @@ description: Game screens and HUDs on Origin Engine with og.ui — which screen 
 ---
 
 `og.ui` is the engine's immediate-mode UI: a system describes the tree every
-tick, the engine lays it out, draws it in the platform's design tokens and
-answers the probe (`dump_ui`, `touch_move_to`, `move_to_text`). The API
+tick, the engine lays it out, draws it in the game's UI style (a look's
+`ui` line; the `prototype` placeholder without one, never the platform's
+tokens) and answers the probe (`dump_ui`, `touch_move_to`, `move_to_text`). The API
 reference is `reference/ui.md`; this skill is how to use it well.
 
 ## What works
