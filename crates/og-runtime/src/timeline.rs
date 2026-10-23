@@ -866,11 +866,15 @@ fn timeline_system(
         let asset = bits(&comp["asset"]);
         let mut run = lock(state).runs.remove(&key).unwrap_or_default();
         let loaded = lock(&reg).timeline(asset);
+        // A new run starts where its `time` field is, stopped: nothing is
+        // evaluated (the camera is not taken) until a play or a seek.
+        let field_time = comp["time"].as_f64().unwrap_or(0.0) as f32;
         if run.asset != asset {
             release(ctx, r, &mut run)?;
             run = Run {
                 asset,
-                written: f32::NAN,
+                written: field_time,
+                num: (f64::from(field_time.max(0.0)) * den as f64).round() as i64,
                 ..Run::default()
             };
         }
@@ -889,7 +893,6 @@ fn timeline_system(
         let mut playing = comp["playing"].as_bool().unwrap_or(false);
         let mut stop = false;
         let mut seek: Option<f32> = None;
-        let field_time = comp["time"].as_f64().unwrap_or(0.0) as f32;
         if field_time != run.written {
             seek = Some(field_time);
         }
@@ -1587,6 +1590,8 @@ fn command(engine_id: u32, world: &mut World, args: &[String]) -> Result<(), Str
                     world
                         .set_name(e, &entity_name)
                         .map_err(|e| e.reason().to_string())?;
+                    // og.world.find reads the runtime's names.
+                    super::api::set_name(&eng, e, &entity_name);
                     e
                 }
             };
