@@ -19,6 +19,7 @@ and a third-person vale, the engine's mid-size 3D slice.
 | `roguelike/` | Lamp Dive | 2d | the arrows or WASD, a tap on the next cell, a pad, or the HUD's d-pad | step a turn at a time through a fresh tomb, strike what the lamp shows, take what it finds, reach the relic on floor 2 with one life |
 | `idle/` | Spark Orb | 2d | taps or Space on the orb, 1–4 or the cards to buy, a pad | tap for sparks, buy generators that make them, double each kind every tenth, collapse into a supernova for stardust, come back to what it made while away |
 | `rhythm/` | Three-Lane Beat | 2d | A S D or the arrows, fingers on the lanes, a pad | read the notes falling to the line, hit each on its time, keep the combo and the groove, clear the song |
+| `arena/` | Coin Duel | 2d | WASD or the arrows, Space or Shift to dash, a pad; two players over a room | race the other player to the coin, first to five; played in lockstep through `og relay` or the platform's rooms |
 | `third-person/` | Ember Vale | 3d | WASD or the arrows, Shift, Space, hold F, Q and E; a pad; a touch joystick, Jump and Kindle | walk, wade and jump a lake vale at dusk, kindle four beacons before night while stone sentinels on their rounds hunt you |
 
 Each archetype's README has its rules, components, systems, tunables, the
