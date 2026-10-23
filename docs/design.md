@@ -294,8 +294,15 @@ S6).
   six 90° views drawn with the lit pipelines in a `reflection-probes`
   graph pass before the main pass: the opaque meshes, skinned meshes in
   their current pose, terrain, scattered copies within the box's half
-  extent of it, the sky, then transparent meshes sorted back to front from
-  the probe; lit by the sun and every local light, its own reflections
+  extent of it, the sky, water (its deep colour over the reflected
+  environment and the sun's highlight: a face has no scene copy or depth
+  below, so no refraction, edge foam or screen-space and planar
+  reflections; `WaterRenderer::face_draws`), then transparent meshes
+  sorted back to front from the probe, the particle systems (billboards facing each face, through
+  its own `ParticleViewGpu`), scene lines and points and world sprites and
+  text, on every layer (sprites unlit by 2D lights and without glow, soft
+  particles at full strength: a face has no depth to fade against); lit
+  by the sun and every local light, its own reflections
   the environment's (one bounce). It is then copied and GGX-prefiltered like the
   environment (`ibl.rs`). The lit shaders box-project the reflected ray
   onto the probe's box, so a room's walls reflect where they stand, and
@@ -308,7 +315,10 @@ S6).
   centre of its bounds. The instance sort keys on it, so one mesh and
   material in two rooms is two batches, each binding its room's probe (a
   per-instance index would need every cube bound at once: a cube array,
-  which WebGL2 lacks). Skinned instances choose by their bind-pose bounds;
+  which WebGL2 lacks). Skinned instances choose by their posed bounds:
+  each joint's bind-pose box of the vertices it moves (made once per
+  mesh, `skin.rs`) through the frame's joint matrices, so a figure whose
+  root joint walks it into the next room takes that room's probe;
   terrain levels, scatter chunks, water surfaces and the 3D fluids per
   draw, by the box holding their centre or else the smallest box their
   bounds reach. Every lit shader (standard, physical, custom, terrain,
@@ -379,11 +389,21 @@ opaque and transparent instances (sorted from its eye), skinned
 instances, terrain, sky, particles (billboards facing its camera, through
 its own `ParticleViewGpu`), scene lines and points (its own
 `LineUniform`) and world sprites and text (`sprites::build` once per view
-with its mask, the instances appended after the main camera's). The
-main camera's screen-space inputs stay its own: a view's sprites are not
-2D-lit and do not glow, its soft particles do not fade into depth, and
-trails (built facing the main eye), 2D fluids, screen sprites, the UI and
-the post chain are the main frame's. Of the post chain an `ldr` target or
+with its mask, the instances appended after the main camera's), and
+trails, ribbons and beams (the frame's strips emitted again facing its
+eye, `Trails::emit`, after the main camera's in the strip buffer). Its
+lit sprite layers multiply with its own 2D light map, the frame's 2D
+lights drawn through its camera into a target of its size times
+`Lighting2d.resolution` (`Light2dRenderer::write_view`), and its 2D
+fluids are composited in its sprite order from field targets of its own
+size, the frame's kernels drawn through its camera. In a frame with soft
+particles every view runs its depth prepass (the one a target's depth
+texture takes) before its pass, and its particles fade against it. With
+`PostEffects.glow` its glowing sprites draw into a glow buffer at half its size,
+whose box-filtered mip chain (as many levels as the frame's bloom chain,
+each spread by a 3 × 3 tent) is added onto its image before the resolve
+(`views_glow.wgsl`): the main frame's glow without the rest of the bloom.
+Screen sprites, the UI and the post chain are the main frame's. Of the post chain an `ldr` target or
 a viewport carries exposure and the tone curve (the resolve); an `hdr`
 target carries linear radiance for the frame that shows it to expose.
 The cost is explicit: a view draws everything its mask admits, so its
@@ -513,8 +533,8 @@ Baked lighting, volumetrics and area lights (depth S7).
   by the panel's extent, and receivers past 75° from the normal stay
   unshadowed. Terrain, scattered copies and 3D fluids shade them with
   LTC and their shadow too (and take point and spot cookies), through one
-  shared `surface_local_light` in `area.wgsl`; a full custom shader
-  (`custom_lit.wgsl`) still lights them as a point.
+  shared `surface_local_light` in `area.wgsl`, and so does a full custom
+  shader's lit surface (`custom_lit.wgsl`).
 - **Light cookies** (`SpotLight.cookie`, `PointLight.cookie`, a cube of
   six faces stacked in one texture). A small pass draws each cookie from
   its uploaded texture, in whatever format was cooked, into layers of the

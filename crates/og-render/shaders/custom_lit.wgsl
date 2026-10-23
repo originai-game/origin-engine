@@ -34,25 +34,6 @@ fn vs_skinned(@builtin(vertex_index) vi: u32, v: CustomVertexIn, i: CustomSkinne
   return custom_skinned(vi, v, i, s);
 }
 
-// A point or spot light of the fragment's cluster (pbr.wgsl local_light,
-// without the toon ramp).
-fn custom_local(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
-  let to_light = light.position_range.xyz - p;
-  let d2 = max(dot(to_light, to_light), 1e-4);
-  let range = light.position_range.w;
-  let ratio = d2 / (range * range);
-  let window = clamp(1.0 - ratio * ratio, 0.0, 1.0);
-  var atten = window * window / d2;
-  let l = to_light * inverseSqrt(d2);
-  if (light.color_kind.w > 0.5) {
-    let cos_angle = dot(-l, light.direction_slot.xyz);
-    let t = clamp((cos_angle - light.cone.x) * light.cone.y, 0.0, 1.0);
-    atten *= t * t;
-  }
-  if (atten <= 0.0 || dot(n, l) <= 0.0) { return vec3<f32>(0.0); }
-  return brdf(s, n, v, l) * light.color_kind.rgb * atten * local_shadow(light, p, n);
-}
-
 @fragment
 fn fs(in: CustomOut) -> @location(0) vec4<f32> {
   let v = custom_view(in.world);
@@ -82,8 +63,10 @@ fn fs(in: CustomOut) -> @location(0) vec4<f32> {
     let word = cluster_word(cluster_at(in.clip.xy, in.world));
     let first = word & 0xffffffu;
     let count = word >> 24u;
+    // Rect lights through LTC with their shadows, points and spots with
+    // their cookies (area.wgsl), as terrain, scatter and the 3D fluid.
     for (var k = 0u; k < count; k++) {
-      color += custom_local(light_list[cluster_ref(first + k)], s, in.world, n, v);
+      color += surface_local_light(light_list[cluster_ref(first + k)], s, in.world, n, v);
     }
   }
   let n_dot_v = max(dot(n, v), 1e-4);

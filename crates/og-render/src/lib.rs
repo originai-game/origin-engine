@@ -1108,6 +1108,9 @@ struct SceneCache {
     fonts: Vec<GpuFont>,
     /// Joints and weights of skinned (or morphed) meshes, by mesh.
     skins: Vec<Option<wgpu::Buffer>>,
+    /// Each skinned mesh's joint boxes (`skin::joint_boxes`): its posed
+    /// bounds, which pick its instances' reflection probes. By mesh.
+    joint_boxes: Vec<Vec<skin::JointBox>>,
     /// Per mesh: (first delta, targets) in `morph_data`.
     morph_ranges: Vec<(u32, u32)>,
     /// Every mesh's morph deltas: per vertex, per target, position then normal.
@@ -3392,6 +3395,16 @@ impl Renderer {
                 }
             };
             self.cache.skins.push(skin);
+            self.cache.joint_boxes.push(
+                scene.skins()[index]
+                    .as_ref()
+                    .map(|k| {
+                        let positions: Vec<[f32; 3]> =
+                            mesh.vertices.iter().map(|v| v.position).collect();
+                        skin::joint_boxes(&positions, k)
+                    })
+                    .unwrap_or_default(),
+            );
         }
         self.sync_assets(scene)?;
         let revisions = scene.lut_revisions();
@@ -3704,6 +3717,10 @@ impl Renderer {
                 continue;
             }
             let source = &scene.meshes()[i];
+            if let Some(k) = &scene.skins()[i] {
+                let positions: Vec<[f32; 3]> = source.vertices.iter().map(|v| v.position).collect();
+                self.cache.joint_boxes[i] = skin::joint_boxes(&positions, k);
+            }
             let compact = scene.mesh_encodings()[i] == VertexEncoding::Compact
                 && scene.skins()[i].is_none()
                 && scene.morphs()[i].is_none();
@@ -4777,19 +4794,30 @@ impl Renderer {
         let joint_base = self.palette.joint_base(self.cache.morph_data.len());
         let mut order: Vec<usize> = (0..scene.skinned_instances.len()).collect();
         // Each instance's reflection probe: the one holding the centre of
-        // its bounds in the bind pose (probe_select.rs).
+        // its posed bounds, its joints' boxes moved by its palette
+        // (skin.rs; a morphed mesh without a skin: its bind pose's), so a
+        // figure walked out of a room by its root joint takes the room it
+        // is in (probe_select.rs).
         let probe_of: Vec<u8> = scene
             .skinned_instances
             .iter()
             .map(|s| {
-                let centre = self
+                let mesh = s.mesh.index();
+                let palette = &scene.joint_palettes[s.palette as usize].matrices;
+                let posed = self
                     .cache
-                    .meshes
-                    .get(s.mesh.index())
-                    .and_then(|m| m.bounds)
-                    .map_or(s.transform.w_axis.truncate(), |(c, _)| {
-                        s.transform.transform_point3(c)
-                    });
+                    .joint_boxes
+                    .get(mesh)
+                    .and_then(|b| skin::posed_centre(b, palette, &s.transform));
+                let centre = posed.unwrap_or_else(|| {
+                    self.cache
+                        .meshes
+                        .get(mesh)
+                        .and_then(|m| m.bounds)
+                        .map_or(s.transform.w_axis.truncate(), |(c, _)| {
+                            s.transform.transform_point3(c)
+                        })
+                });
                 probe_select::pick(probes, centre)
             })
             .collect();
@@ -5156,11 +5184,13 @@ impl Renderer {
                 b.derivatives |= decals;
             }
         }
-        // A target's depth texture is drawn by the view's own prepass
-        // (views.rs): its pipelines are the main prepass's.
-        let view_depth = view_plans
-            .iter()
-            .any(|p| matches!(p.dest, views::Dest::Texture { depth: Some(_), .. }));
+        // A target's depth texture, and the depth a view's soft particles
+        // fade against, are drawn by the view's own prepass (views.rs):
+        // its pipelines are the main prepass's.
+        let view_depth = particle_frame.soft
+            || view_plans
+                .iter()
+                .any(|p| matches!(p.dest, views::Dest::Texture { depth: Some(_), .. }));
         self.ensure_pipelines(&batches, &skinned_batches, prepass || view_depth);
         // A view may draw a skinned batch the main camera culled or hides.
         for v in &view_skinned {
@@ -5363,6 +5393,26 @@ impl Renderer {
             Projection::Perspective { .. } => None,
         };
         water::water_2d_strips(&scene.water_2d, &mut ribbon_frame);
+        // Each view's strips facing its own eye (views.rs), after the main
+        // camera's in the strip buffer.
+        let view_ribbons: Vec<Vec<ribbons::RibbonRun>> = view_plans
+            .iter()
+            .map(|p| {
+                let mut f = self
+                    .trails
+                    .emit(p.position, p.frame.forward, p.frame.orthographic);
+                water::water_2d_strips(&scene.water_2d, &mut f);
+                let base = ribbon_frame.vertices.len() as u32;
+                ribbon_frame.vertices.extend_from_slice(&f.vertices);
+                f.runs
+                    .into_iter()
+                    .map(|mut r| {
+                        r.first += base;
+                        r
+                    })
+                    .collect()
+            })
+            .collect();
         let mut layered: Vec<sprites::LayeredStrip> = ribbon_frame
             .runs
             .iter()
@@ -5414,28 +5464,41 @@ impl Renderer {
         )?;
         // Each view's world sprites, 2D particles and text on its layers
         // (views.rs), their instances after the main camera's in the
-        // sprite buffer. 2D lighting, glow and the metaball composite read
-        // the main frame's screen: a view draws its sprites unlit, without
-        // glow, and leaves the 2D fluids out.
-        let view_strips: Vec<sprites::LayeredStrip> = layered
-            .iter()
-            .filter(|s| !matches!(s.source, RunSource::Metaballs(_)))
-            .map(|s| sprites::LayeredStrip {
-                layer: s.layer,
-                source: s.source,
-                first: s.first,
-                count: s.count,
-            })
-            .collect();
+        // sprite buffer, lit by the view's own 2D light map, its 2D fluids
+        // composited from its own fields, its glowing sprites into its own
+        // glow buffer.
         let mut view_sprites: Vec<Vec<sprites::SpriteRun>> = Vec::new();
-        for p in &view_plans {
+        let mut view_glow_runs: Vec<Vec<sprites::SpriteRun>> = Vec::new();
+        for (p, runs) in view_plans.iter().zip(&view_ribbons) {
+            let view_strips: Vec<sprites::LayeredStrip> = runs
+                .iter()
+                .filter_map(|r| {
+                    Some(sprites::LayeredStrip {
+                        layer: r.layer?,
+                        source: RunSource::Strip(r.blend as u8, r.texture),
+                        first: r.first,
+                        count: r.count,
+                    })
+                })
+                .chain(
+                    layered
+                        .iter()
+                        .filter(|s| matches!(s.source, RunSource::Metaballs(_)))
+                        .map(|s| sprites::LayeredStrip {
+                            layer: s.layer,
+                            source: s.source,
+                            first: s.first,
+                            count: s.count,
+                        }),
+                )
+                .collect();
             let f = sprites::build(
                 scene,
                 font,
                 self.cache.textures.len(),
                 array_layers,
                 &particle_frame.sprites,
-                |_| false,
+                |layer| lit_range.is_some_and(|(lo, hi)| (lo..=hi).contains(&layer)),
                 None,
                 &view_strips,
                 p.layers,
@@ -5446,18 +5509,18 @@ impl Renderer {
                     RunSource::Strip(..) | RunSource::Mesh(_) | RunSource::Metaballs(_)
                 )
             };
-            // The glow instances follow every run's: they are left behind.
-            let keep = f
-                .runs
-                .iter()
-                .filter(|r| in_buffer(r))
-                .map(|r| r.first + r.count)
-                .max()
-                .unwrap_or(0) as usize;
+            // Its glow instances follow every run's (its glow pass reads them).
             let base = sprite_frame.instances.len() as u32;
-            sprite_frame
-                .instances
-                .extend_from_slice(&f.instances[..keep]);
+            sprite_frame.instances.extend_from_slice(&f.instances);
+            view_glow_runs.push(
+                f.glow_runs
+                    .into_iter()
+                    .map(|mut r| {
+                        r.first += base;
+                        r
+                    })
+                    .collect(),
+            );
             view_sprites.push(
                 f.runs
                     .into_iter()
@@ -5470,12 +5533,46 @@ impl Renderer {
                     .collect(),
             );
         }
+        // The due probe faces' world sprites, 2D particles and text (every
+        // layer, unlit, without glow: probes.rs), after the views' in the
+        // sprite buffer; built once, as no camera moves them.
+        let face_sprites: Vec<sprites::SpriteRun> = if probe_faces.is_empty() {
+            Vec::new()
+        } else {
+            let f = sprites::build(
+                scene,
+                font,
+                self.cache.textures.len(),
+                array_layers,
+                &particle_frame.sprites,
+                |_| false,
+                None,
+                &[],
+                u32::MAX,
+            )?;
+            let base = sprite_frame.instances.len() as u32;
+            sprite_frame.instances.extend_from_slice(&f.instances);
+            f.runs
+                .into_iter()
+                .map(|mut r| {
+                    if !matches!(
+                        r.source,
+                        RunSource::Strip(..) | RunSource::Mesh(_) | RunSource::Metaballs(_)
+                    ) {
+                        r.first += base;
+                    }
+                    r
+                })
+                .collect()
+        };
         let sprite_frame = sprite_frame;
         for run in sprite_frame
             .runs
             .iter()
             .chain(&sprite_frame.glow_runs)
             .chain(view_sprites.iter().flatten())
+            .chain(view_glow_runs.iter().flatten())
+            .chain(&face_sprites)
         {
             match run.source {
                 RunSource::Sprite(_, t) => {
@@ -6350,7 +6447,23 @@ impl Renderer {
             &fx_uniform,
             !lights_gpu.is_empty(),
             viewport_format,
+            scene.lighting_2d.map(|l| l.resolution.clamp(0.25, 1.0)),
+            fluids,
+            particle_frame.soft,
+            post_fx
+                .glow
+                .filter(|_| view_glow_runs.iter().any(|r| !r.is_empty()))
+                .map(|g| g.intensity),
         );
+        if self.views.slots.iter().flatten().any(|s| s.glow.is_some()) {
+            self.mips.prepare(&self.device, HDR_FORMAT);
+        }
+        if scene.lighting_2d.is_some() {
+            for (k, p) in view_plans.iter().enumerate() {
+                self.lights_2d
+                    .write_view(&self.device, &self.queue, k, p.frame.view_proj);
+            }
+        }
         let proj = cam.view_proj * cam.view.inverse();
         let global_outline = post_fx.outline;
         let fxp = post::FxPostUniform {
@@ -7115,6 +7228,17 @@ impl Renderer {
             ),
             _ => Vec::new(),
         };
+        // The water as the due probe faces draw it (water.rs `face_draws`).
+        let face_water = if water_draws.is_empty() || probe_frame.due.is_empty() {
+            Vec::new()
+        } else {
+            self.water.face_draws(
+                &self.device,
+                &scene.water,
+                &self.default_white,
+                &self.post.far_depth,
+            )
+        };
         // The 3D fluids' bounding sphere: the reflection probe their one
         // composite draw samples.
         let fluid_bounds = instances::fold_box(
@@ -7158,22 +7282,89 @@ impl Renderer {
             )
         });
         let view_groups = self.view_groups(scene, &view_plans);
+        // Each view's metaball field groups (its own fields' textures).
+        let view_fields: Vec<Vec<wgpu::BindGroup>> = view_plans
+            .iter()
+            .map(|p| {
+                let slot = self.views.slots[p.index].as_ref().expect("written");
+                slot.fields
+                    .iter()
+                    .map(|v| self.metaballs.group(&self.device, v))
+                    .collect()
+            })
+            .collect();
+        // Each view's sprite effect group: its 2D light map (white
+        // without 2D lighting) and its image's size.
+        let view_sprite_fx: Vec<wgpu::BindGroup> = view_plans
+            .iter()
+            .map(|p| {
+                let slot = self.views.slots[p.index].as_ref().expect("written");
+                bind_group(
+                    &self.device,
+                    "sprite fx (view)",
+                    &self.sprite_fx_layout,
+                    &[
+                        wgpu::BindingResource::TextureView(
+                            slot.light_map
+                                .as_ref()
+                                .map_or(&self.default_white, |(_, v)| v),
+                        ),
+                        wgpu::BindingResource::Sampler(&self.sprite_sampler),
+                        slot.sprite_fx_buffer.as_entire_binding(),
+                    ],
+                )
+            })
+            .collect();
         // Each view's particle and line groups over its own camera's
-        // uniforms (views.rs). A view has no linear depth of its own: its
-        // soft particles do not fade into the scene.
+        // uniforms (views.rs).
         let view_particle_groups: Vec<Option<wgpu::BindGroup>> = view_plans
             .iter()
             .map(|p| {
                 let slot = self.views.slots[p.index].as_ref().expect("written");
+                // Soft particles fade against the view's own depth.
+                let depth = slot
+                    .prepass
+                    .as_ref()
+                    .map_or(&self.post.far_depth, |pre| &pre.lindepth);
                 (!particle_frame.systems.is_empty()).then(|| {
-                    self.particles.draw_group_of(
-                        &self.device,
-                        &slot.particle_buffer,
-                        &self.post.far_depth,
-                    )
+                    self.particles
+                        .draw_group_of(&self.device, &slot.particle_buffer, depth)
                 })
             })
             .collect();
+        // Each due probe face's particle and line groups over its own
+        // camera's uniforms (probes.rs); no depth of its own to soften
+        // particles against.
+        let (face_particle_groups, face_line_groups): (Vec<_>, Vec<_>) = probe_faces
+            .iter()
+            .enumerate()
+            .flat_map(|(d, cams)| {
+                let size = active_probes[probe_frame.due[d].1].face_size();
+                let position = active_probes[probe_frame.due[d].1].position;
+                cams.iter().map(move |f| (f, position, size))
+            })
+            .map(|(f, position, size)| {
+                let (particles, lines) =
+                    views::camera_gpu(f, position, (size, size), scene.css_height);
+                let buffer = |label, contents: &[u8]| {
+                    self.device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some(label),
+                            contents,
+                            usage: wgpu::BufferUsages::UNIFORM,
+                        })
+                };
+                let pb = buffer("probe face particles", bytemuck::bytes_of(&particles));
+                let lb = buffer("probe face lines", bytemuck::bytes_of(&lines));
+                (
+                    (!particle_frame.systems.is_empty()).then(|| {
+                        self.particles
+                            .draw_group_of(&self.device, &pb, &self.post.far_depth)
+                    }),
+                    self.lines.view_group(&self.device, &lb),
+                )
+            })
+            .unzip();
         let view_line_groups: Vec<wgpu::BindGroup> = view_plans
             .iter()
             .map(|p| {
@@ -7438,12 +7629,92 @@ impl Renderer {
             binder.reset(pass);
             draws
         };
+        // Glowing sprites into a glow buffer (group 0 set: the camera's).
+        let draw_glow = |pass: &mut wgpu::RenderPass, runs: &[sprites::SpriteRun]| -> u32 {
+            let mut draws = 0;
+            pass.set_bind_group(2, glow_fx_group, &[]);
+            // Plain sprites first (sorted before arrays), then each array's.
+            let mut on_array = None;
+            for run in runs {
+                let array = matches!(run.source, RunSource::Array(..));
+                if on_array != Some(array) {
+                    pass.set_pipeline(match array {
+                        false => &self.sprite_glow_pipeline,
+                        true => {
+                            &self
+                                .sprite_arrays
+                                .as_ref()
+                                .expect("made before the pass")
+                                .glow
+                        }
+                    });
+                    on_array = Some(array);
+                }
+                let group = match run.source {
+                    RunSource::Sprite(_, Some(t)) => self.cache.sprite_groups[t.index()]
+                        .as_ref()
+                        .expect("made before the pass"),
+                    RunSource::Array(_, a) => {
+                        &self.cache.sprite_array_groups[a.index()]
+                            .as_ref()
+                            .expect("made before the pass")
+                            .0
+                    }
+                    _ => &self.white_sprite_group,
+                };
+                pass.set_bind_group(1, group, &[]);
+                let start = run.first as u64 * SPRITE_STRIDE;
+                pass.set_vertex_buffer(
+                    0,
+                    self.sprite_buffer
+                        .slice(start..start + run.count as u64 * SPRITE_STRIDE),
+                );
+                pass.draw(0..6, 0..run.count);
+                draws += 1;
+            }
+            draws
+        };
+        // Trails, ribbons and beams drawn with the 3D scene (layered 2D
+        // trails go with the sprites): the main camera's or a view's runs.
+        let draw_strips = |pass: &mut wgpu::RenderPass, runs: &[ribbons::RibbonRun]| -> u32 {
+            let mut draws = 0;
+            for run in runs.iter().filter(|r| r.layer.is_none()) {
+                pass.set_pipeline(
+                    &self.ribbon_pipelines[match run.blend {
+                        ParticleBlend::Additive => 0,
+                        ParticleBlend::Alpha => 1,
+                    }],
+                );
+                pass.set_bind_group(
+                    1,
+                    match run.texture {
+                        None => &self.white_sprite_group,
+                        Some(t) => self.cache.ribbon_groups[t.index()]
+                            .as_ref()
+                            .expect("made before the pass"),
+                    },
+                    &[],
+                );
+                let stride = std::mem::size_of::<ribbons::RibbonVertex>() as u64;
+                let start = run.first as u64 * stride;
+                pass.set_vertex_buffer(
+                    0,
+                    self.ribbon_buffer
+                        .slice(start..start + run.count as u64 * stride),
+                );
+                pass.draw(0..run.count, 0..1);
+                draws += 1;
+            }
+            draws
+        };
         // Sprites and text over a camera's scene, in sorted order: the main
-        // camera's runs with its effect group, or a view's (`view`: every
-        // run tone mapped, no HDR alpha cover). Answers the draws made.
+        // camera's runs with its effect group and metaball fields, or a
+        // view's (`view`: every run tone mapped, no HDR alpha cover).
+        // Answers the draws made.
         let draw_sprites = |pass: &mut wgpu::RenderPass,
                             runs: &[sprites::SpriteRun],
                             fx: &wgpu::BindGroup,
+                            fields: &[wgpu::BindGroup],
                             view: bool|
          -> u32 {
             let mut draws = 0;
@@ -7462,10 +7733,7 @@ impl Renderer {
                     current = None;
                 }
                 if let RunSource::Metaballs(i) = run.source
-                    && let Some(group) = self
-                        .metaballs
-                        .field_of(i)
-                        .and_then(|f| metaball_groups.get(f))
+                    && let Some(group) = self.metaballs.field_of(i).and_then(|f| fields.get(f))
                 {
                     self.metaballs.composite(pass, group, i);
                     draws += 1;
@@ -8061,6 +8329,16 @@ impl Renderer {
                                 pass.draw(0..3, 0..1);
                                 stats.draw_calls += 1;
                             }
+                            // Water over the opaque capture and the sky, as
+                            // the main pass draws it before its transparents.
+                            if !face_water.is_empty() {
+                                stats.draw_calls += self.water.draw(
+                                    &mut pass,
+                                    &face_water,
+                                    &mut probe_select::Binder::new(None),
+                                );
+                                pass.set_bind_group(2, fx_group, &[]);
+                            }
                             // Transparent meshes, back to front from the
                             // probe, over the opaque capture.
                             let blended = &probe_blended[k];
@@ -8076,6 +8354,38 @@ impl Renderer {
                                 None,
                                 None,
                             );
+                            // Particles, lines and points, world sprites and
+                            // text, as the main pass draws them over its
+                            // scene (every layer; sprites unlit).
+                            if let Some(group) = &face_particle_groups[k] {
+                                let groups = &self.cache.sprite_groups;
+                                let white = &self.white_sprite_group;
+                                stats.draw_calls += self.particles.draw(
+                                    &mut pass,
+                                    &particle_frame,
+                                    self.samples,
+                                    group,
+                                    u32::MAX,
+                                    |t: Option<TextureHandle>| match t {
+                                        None => white,
+                                        Some(t) => groups[t.index()]
+                                            .as_ref()
+                                            .expect("made before the pass"),
+                                    },
+                                );
+                            }
+                            let n = self.lines.draw_scene_with(
+                                &mut pass,
+                                &line_frame,
+                                &face_line_groups[k],
+                                u32::MAX,
+                            );
+                            if n > 0 {
+                                stats.draw_calls += n;
+                                pass.set_bind_group(0, &face_groups[k], &[]);
+                            }
+                            stats.draw_calls +=
+                                draw_sprites(&mut pass, &face_sprites, glow_fx_group, &[], true);
                         }
                         self.ibl.record_probe_filter(&mut encoder, &s.filter);
                     }
@@ -8199,106 +8509,33 @@ impl Renderer {
                     let (i, clear) = (i as usize, background_clear(&scene.environment.background));
                     let p = &view_plans[i];
                     let frustum = Frustum::from_view_proj(p.frame.view_proj);
-                    {
-                        let mut pass = self.views.begin(&mut encoder, p, clear);
-                        pass.set_bind_group(0, &view_groups[i].0, &[]);
-                        pass.set_bind_group(2, &view_groups[i].1, &[]);
-                        draw_list(&mut pass, &view_lists[i], true, &mut None, None, None);
-                        stats.draw_calls += view_lists[i].ranges.len() as u32;
-                        let pipelines: Vec<&wgpu::RenderPipeline> = view_skinned[i]
-                            .iter()
-                            .map(|b| self.lit_pipeline_of(b, true, false))
-                            .collect();
-                        stats.draw_calls += draw_skinned(
-                            &mut pass,
-                            &view_skinned[i],
-                            false,
-                            1,
-                            3,
-                            &pipelines,
-                            None,
-                            None,
-                        );
-                        if let Some(indices) = terrain_indices {
-                            stats.draw_calls += terrain::draw_levels(
-                                &mut pass,
-                                &terrain_draws,
-                                indices,
-                                terrain::TerrainPass::Lit,
-                                |c, rad| frustum.intersects_sphere(c, rad),
-                                None,
-                            )
-                            .0;
-                        }
-                        let sky = match scene.environment.background {
-                            Background::Sky => Some(&self.sky_pipeline),
-                            Background::Procedural { .. } => Some(&self.sky_look_pipeline),
-                            Background::Color(_) => None,
-                        };
-                        if let (Some(sky), None) = (sky, p.clear) {
-                            pass.set_pipeline(sky);
-                            pass.set_bind_group(1, sky_group, &[]);
-                            pass.draw(0..3, 0..1);
-                            stats.draw_calls += 1;
-                        }
-                        // What the main pass draws over its opaque scene, on
-                        // the view's layers from the view's eye: the
-                        // transparent meshes back to front, the particles,
-                        // the scene lines and points, the world sprites and
-                        // text.
-                        pass.set_bind_group(2, &view_groups[i].1, &[]);
-                        draw_list(&mut pass, &view_blended[i], true, &mut None, None, None);
-                        stats.draw_calls += view_blended[i].ranges.len() as u32;
-                        stats.draw_calls += draw_skinned(
-                            &mut pass,
-                            &view_skinned[i],
-                            true,
-                            1,
-                            3,
-                            &pipelines,
-                            None,
-                            None,
-                        );
-                        if let Some(group) = &view_particle_groups[i] {
-                            let groups = &self.cache.sprite_groups;
-                            let white = &self.white_sprite_group;
-                            stats.draw_calls += self.particles.draw(
-                                &mut pass,
-                                &particle_frame,
-                                self.samples,
-                                group,
-                                p.layers,
-                                |t: Option<TextureHandle>| match t {
-                                    None => white,
-                                    Some(t) => {
-                                        groups[t.index()].as_ref().expect("made before the pass")
-                                    }
-                                },
-                            );
-                        }
-                        let n = self.lines.draw_scene_with(
-                            &mut pass,
-                            &line_frame,
-                            &view_line_groups[i],
-                            p.layers,
-                        );
-                        if n > 0 {
-                            stats.draw_calls += n;
-                            pass.set_bind_group(0, &view_groups[i].0, &[]);
-                        }
-                        // The glow group's light map is a placeholder: a
-                        // view's sprites are unlit.
-                        stats.draw_calls +=
-                            draw_sprites(&mut pass, &view_sprites[i], glow_fx_group, true);
-                    }
-                    // A target's depth texture: the view's opaque meshes
-                    // again through the prepass pipelines into its linear
-                    // depth (views.rs), which the resolve normalises.
-                    if let views::Dest::Texture { depth: Some(_), .. } = p.dest {
-                        let pre = self.views.slots[p.index]
+                    // Its 2D light map, as its camera sees the lights.
+                    if let (Some(l), Some((_, map))) = (
+                        scene.lighting_2d,
+                        self.views.slots[p.index]
                             .as_ref()
-                            .and_then(|s| s.prepass.as_ref())
-                            .expect("made for its depth");
+                            .and_then(|s| s.light_map.as_ref()),
+                    ) {
+                        self.lights_2d.encode_view(&mut encoder, map, l.ambient, i);
+                        stats.draw_calls += (lights_2d > 0) as u32;
+                    }
+                    // Its 2D fluids' fields, the kernels through its camera.
+                    if let Some(slot) = self.views.slots[p.index].as_ref()
+                        && !slot.fields.is_empty()
+                    {
+                        let fields: Vec<&wgpu::TextureView> = slot.fields.iter().collect();
+                        self.metaballs
+                            .encode_field(&mut encoder, &fields, &view_groups[i].0);
+                        stats.draw_calls += fields.len() as u32;
+                    }
+                    // Its linear depth, for a target's depth texture (the
+                    // resolve normalises it) and for its soft particles:
+                    // the view's opaque meshes through the prepass
+                    // pipelines (views.rs), before its pass reads it.
+                    if let Some(pre) = self.views.slots[p.index]
+                        .as_ref()
+                        .and_then(|s| s.prepass.as_ref())
+                    {
                         let attachment = |view, clear: f64| {
                             Some(wgpu::RenderPassColorAttachment {
                                 view,
@@ -8383,6 +8620,133 @@ impl Renderer {
                             )
                             .0;
                         }
+                    }
+                    {
+                        let mut pass = self.views.begin(&mut encoder, p, clear);
+                        pass.set_bind_group(0, &view_groups[i].0, &[]);
+                        pass.set_bind_group(2, &view_groups[i].1, &[]);
+                        draw_list(&mut pass, &view_lists[i], true, &mut None, None, None);
+                        stats.draw_calls += view_lists[i].ranges.len() as u32;
+                        let pipelines: Vec<&wgpu::RenderPipeline> = view_skinned[i]
+                            .iter()
+                            .map(|b| self.lit_pipeline_of(b, true, false))
+                            .collect();
+                        stats.draw_calls += draw_skinned(
+                            &mut pass,
+                            &view_skinned[i],
+                            false,
+                            1,
+                            3,
+                            &pipelines,
+                            None,
+                            None,
+                        );
+                        if let Some(indices) = terrain_indices {
+                            stats.draw_calls += terrain::draw_levels(
+                                &mut pass,
+                                &terrain_draws,
+                                indices,
+                                terrain::TerrainPass::Lit,
+                                |c, rad| frustum.intersects_sphere(c, rad),
+                                None,
+                            )
+                            .0;
+                        }
+                        let sky = match scene.environment.background {
+                            Background::Sky => Some(&self.sky_pipeline),
+                            Background::Procedural { .. } => Some(&self.sky_look_pipeline),
+                            Background::Color(_) => None,
+                        };
+                        if let (Some(sky), None) = (sky, p.clear) {
+                            pass.set_pipeline(sky);
+                            pass.set_bind_group(1, sky_group, &[]);
+                            pass.draw(0..3, 0..1);
+                            stats.draw_calls += 1;
+                        }
+                        // What the main pass draws over its opaque scene, on
+                        // the view's layers from the view's eye: the
+                        // transparent meshes back to front, the particles,
+                        // the scene lines and points, the world sprites and
+                        // text.
+                        pass.set_bind_group(2, &view_groups[i].1, &[]);
+                        draw_list(&mut pass, &view_blended[i], true, &mut None, None, None);
+                        stats.draw_calls += view_blended[i].ranges.len() as u32;
+                        stats.draw_calls += draw_skinned(
+                            &mut pass,
+                            &view_skinned[i],
+                            true,
+                            1,
+                            3,
+                            &pipelines,
+                            None,
+                            None,
+                        );
+                        if let Some(group) = &view_particle_groups[i] {
+                            let groups = &self.cache.sprite_groups;
+                            let white = &self.white_sprite_group;
+                            stats.draw_calls += self.particles.draw(
+                                &mut pass,
+                                &particle_frame,
+                                self.samples,
+                                group,
+                                p.layers,
+                                |t: Option<TextureHandle>| match t {
+                                    None => white,
+                                    Some(t) => {
+                                        groups[t.index()].as_ref().expect("made before the pass")
+                                    }
+                                },
+                            );
+                        }
+                        // Trails, ribbons and beams facing the view's eye.
+                        stats.draw_calls += draw_strips(&mut pass, &view_ribbons[i]);
+                        let n = self.lines.draw_scene_with(
+                            &mut pass,
+                            &line_frame,
+                            &view_line_groups[i],
+                            p.layers,
+                        );
+                        if n > 0 {
+                            stats.draw_calls += n;
+                            pass.set_bind_group(0, &view_groups[i].0, &[]);
+                        }
+                        // Lit by the view's 2D light map.
+                        stats.draw_calls += draw_sprites(
+                            &mut pass,
+                            &view_sprites[i],
+                            &view_sprite_fx[i],
+                            &view_fields[i],
+                            true,
+                        );
+                    }
+                    // Its glowing sprites into its glow buffer, the chain
+                    // added onto its image (views.rs).
+                    if let Some(g) = self.views.slots[p.index]
+                        .as_ref()
+                        .and_then(|s| s.glow.as_ref())
+                    {
+                        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                            label: Some("view glow sprites"),
+                            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                view: &g.target,
+                                depth_slice: None,
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                                    store: wgpu::StoreOp::Store,
+                                },
+                            })],
+                            depth_stencil_attachment: None,
+                            timestamp_writes: None,
+                            occlusion_query_set: None,
+                            multiview_mask: None,
+                        });
+                        pass.set_bind_group(0, &view_groups[i].0, &[]);
+                        stats.draw_calls += draw_glow(&mut pass, &view_glow_runs[i]);
+                        drop(pass);
+                        self.views
+                            .add_glow(&self.device, &self.mips, &mut encoder, p);
+                        stats.draw_calls += 1;
                     }
                     if let views::Dest::Texture {
                         color,
@@ -8656,33 +9020,7 @@ impl Renderer {
                         );
                     }
                     // Trails, ribbons and beams (layered 2D trails go with the sprites).
-                    for run in ribbon_frame.runs.iter().filter(|r| r.layer.is_none()) {
-                        pass.set_pipeline(
-                            &self.ribbon_pipelines[match run.blend {
-                                ParticleBlend::Additive => 0,
-                                ParticleBlend::Alpha => 1,
-                            }],
-                        );
-                        pass.set_bind_group(
-                            1,
-                            match run.texture {
-                                None => &self.white_sprite_group,
-                                Some(t) => self.cache.ribbon_groups[t.index()]
-                                    .as_ref()
-                                    .expect("made before the pass"),
-                            },
-                            &[],
-                        );
-                        let stride = std::mem::size_of::<ribbons::RibbonVertex>() as u64;
-                        let start = run.first as u64 * stride;
-                        pass.set_vertex_buffer(
-                            0,
-                            self.ribbon_buffer
-                                .slice(start..start + run.count as u64 * stride),
-                        );
-                        pass.draw(0..run.count, 0..1);
-                        stats.draw_calls += 1;
-                    }
+                    stats.draw_calls += draw_strips(&mut pass, &ribbon_frame.runs);
                     // Lines, points and wireframes (lines.rs), with their own group 0.
                     let n = self
                         .lines
@@ -8692,8 +9030,13 @@ impl Renderer {
                         pass.set_bind_group(0, frame_bind_group, &[]);
                     }
                     // Sprites and text, blended over the scene in sorted order.
-                    stats.draw_calls +=
-                        draw_sprites(&mut pass, &sprite_frame.runs, sprite_fx_group, false);
+                    stats.draw_calls += draw_sprites(
+                        &mut pass,
+                        &sprite_frame.runs,
+                        sprite_fx_group,
+                        &metaball_groups,
+                        false,
+                    );
                     drop(pass);
                     // Volumetric fog over everything drawn (volumetric.rs).
                     if volumetric_fog.is_some() {
@@ -8724,46 +9067,7 @@ impl Renderer {
                         multiview_mask: None,
                     });
                     pass.set_bind_group(0, frame_bind_group, &[]);
-                    pass.set_bind_group(2, glow_fx_group, &[]);
-                    // Plain sprites first (sorted before arrays), then each array's.
-                    let mut on_array = None;
-                    for run in &sprite_frame.glow_runs {
-                        let array = matches!(run.source, RunSource::Array(..));
-                        if on_array != Some(array) {
-                            pass.set_pipeline(match array {
-                                false => &self.sprite_glow_pipeline,
-                                true => {
-                                    &self
-                                        .sprite_arrays
-                                        .as_ref()
-                                        .expect("made before the pass")
-                                        .glow
-                                }
-                            });
-                            on_array = Some(array);
-                        }
-                        let group = match run.source {
-                            RunSource::Sprite(_, Some(t)) => self.cache.sprite_groups[t.index()]
-                                .as_ref()
-                                .expect("made before the pass"),
-                            RunSource::Array(_, a) => {
-                                &self.cache.sprite_array_groups[a.index()]
-                                    .as_ref()
-                                    .expect("made before the pass")
-                                    .0
-                            }
-                            _ => &self.white_sprite_group,
-                        };
-                        pass.set_bind_group(1, group, &[]);
-                        let start = run.first as u64 * SPRITE_STRIDE;
-                        pass.set_vertex_buffer(
-                            0,
-                            self.sprite_buffer
-                                .slice(start..start + run.count as u64 * SPRITE_STRIDE),
-                        );
-                        pass.draw(0..6, 0..run.count);
-                        stats.draw_calls += 1;
-                    }
+                    stats.draw_calls += draw_glow(&mut pass, &sprite_frame.glow_runs);
                 }
                 FramePass::CustomPost(i) => {
                     let (read, write) = self.graph.custom_post_views(&self.persistent, i, slot);

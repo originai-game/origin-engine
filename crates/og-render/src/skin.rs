@@ -98,6 +98,59 @@ impl SkinnedInstance {
     }
 }
 
+/// The bind-pose box (min, max) of the vertices one joint moves (any
+/// weight above 0), in the mesh's space: a skinned mesh's posed bounds are
+/// these boxes through their joints' matrices ([`posed_centre`]).
+pub(crate) type JointBox = (u16, Vec3, Vec3);
+
+/// Each joint's [`JointBox`] over `positions` and `skin` (vertices with no
+/// weight stay in the bind pose: they are joint `u16::MAX`'s, unmoved).
+pub(crate) fn joint_boxes(positions: &[[f32; 3]], skin: &SkinData) -> Vec<JointBox> {
+    let mut boxes: Vec<JointBox> = Vec::new();
+    let mut grow = |j: u16, p: Vec3| match boxes.iter_mut().find(|b| b.0 == j) {
+        Some(b) => {
+            b.1 = b.1.min(p);
+            b.2 = b.2.max(p);
+        }
+        None => boxes.push((j, p, p)),
+    };
+    for ((p, joints), weights) in positions.iter().zip(&skin.joints).zip(&skin.weights) {
+        let p = Vec3::from_array(*p);
+        let mut any = false;
+        for k in 0..4 {
+            if weights[k] > 0.0 {
+                grow(joints[k], p);
+                any = true;
+            }
+        }
+        if !any {
+            grow(u16::MAX, p);
+        }
+    }
+    boxes
+}
+
+/// The centre of a skinned instance's posed bounds in the world: the union
+/// of its joints' boxes moved by `palette` (a missing joint stays put),
+/// through `transform`. `None` without boxes (a morphed mesh with no skin).
+pub(crate) fn posed_centre(boxes: &[JointBox], palette: &[Mat4], transform: &Mat4) -> Option<Vec3> {
+    let (mut lo, mut hi) = (Vec3::splat(f32::INFINITY), Vec3::splat(f32::NEG_INFINITY));
+    for &(j, a, b) in boxes {
+        let m = palette.get(j as usize).copied().unwrap_or(Mat4::IDENTITY);
+        for k in 0..8 {
+            let c = Vec3::new(
+                if k & 1 == 0 { a.x } else { b.x },
+                if k & 2 == 0 { a.y } else { b.y },
+                if k & 4 == 0 { a.z } else { b.z },
+            );
+            let w = transform.transform_point3(m.transform_point3(c));
+            lo = lo.min(w);
+            hi = hi.max(w);
+        }
+    }
+    lo.is_finite().then(|| (lo + hi) * 0.5)
+}
+
 /// The most joints one frame's palettes may hold together.
 pub const MAX_JOINTS: usize = 256 * 256;
 

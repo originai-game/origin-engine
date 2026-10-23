@@ -352,3 +352,117 @@ pub fn ssr_floor_scene(floor: SsrFloor, ssr: bool) -> RenderScene {
     }
     scene
 }
+
+/// `probe-two-rooms` with a chrome skinned cylinder whose instance stands
+/// in the left (red) room and whose palette moves every joint
+/// [`ROOMS`]'s span along +x, so its pose stands in the right (blue)
+/// room, left of that room's sphere; `posed` false places the same
+/// cylinder there by its transform instead, in its bind pose.
+pub fn posed_figure_scene(posed: bool) -> RenderScene {
+    let mut scene = two_rooms_scene(true);
+    let (mesh, skin) = skinned_cylinder(0.35, 24, 32);
+    let cylinder = scene.add_skinned_mesh(mesh, skin);
+    let chrome = scene.add_material(Material {
+        base_color: [0.95, 0.95, 0.95, 1.0],
+        metallic: 1.0,
+        roughness: 0.05,
+        ..Default::default()
+    });
+    let span = ROOMS[1] - ROOMS[0];
+    let shift = Mat4::from_translation(Vec3::X * span);
+    let (transform, joint) = if posed {
+        (
+            Mat4::from_translation(Vec3::new(ROOMS[0] - 1.7, 0.0, 1.0)),
+            shift,
+        )
+    } else {
+        (
+            Mat4::from_translation(Vec3::new(ROOMS[1] - 1.7, 0.0, 1.0)),
+            Mat4::IDENTITY,
+        )
+    };
+    scene.joint_palettes.push(og_render::JointPalette {
+        matrices: vec![joint; crate::fx_scenes::CYLINDER_BONES],
+    });
+    scene.skinned_instances.push(SkinnedInstance::new(
+        cylinder,
+        chrome,
+        transform,
+        scene.joint_palettes.len() as u32 - 1,
+    ));
+    scene
+}
+
+/// `probe-outdoor` without its figures and pane, and with (`on`) what the
+/// main pass draws over the opaque scene around the probe: a red world
+/// sprite facing it on its -z side, a yellow line loop on its +x side and a
+/// green particle fountain on its -x side.
+pub fn probe_effects_scene(on: bool) -> RenderScene {
+    let mut scene = outdoor_scene(Outdoor {
+        content: false,
+        probe: Some(1.0),
+    });
+    let p = outdoor_probe();
+    if on {
+        scene.add_sprite(og_render::Sprite {
+            position: p + Vec3::new(0.0, 0.0, -2.5),
+            size: Vec2::new(2.4, 2.4),
+            color: [1.0, 0.08, 0.06, 1.0],
+            ..Default::default()
+        });
+        let c = p + Vec3::new(2.5, 0.0, 0.0);
+        scene.lines.push(og_render::Lines {
+            points: vec![
+                c + Vec3::new(0.0, -0.9, -0.9),
+                c + Vec3::new(0.0, -0.9, 0.9),
+                c + Vec3::new(0.0, 0.9, 0.9),
+                c + Vec3::new(0.0, 0.9, -0.9),
+            ],
+            color: [1.0, 0.9, 0.05, 1.0],
+            mode: og_render::LineMode::Loop,
+            width: 0.35,
+            world_width: true,
+            ..Default::default()
+        });
+        let e = scene.add_emitter(og_render::ParticleEmitter {
+            rate: 200.0,
+            lifetime: [1.4, 1.6],
+            speed: [0.4, 0.6],
+            size: [1.2, 1.5],
+            gravity: Vec3::ZERO,
+            color: [0.1, 0.95, 0.15, 1.0],
+            blend: og_render::ParticleBlend::Alpha,
+            ..Default::default()
+        });
+        scene.particles.push(og_render::ParticleSystem::new(
+            11,
+            e,
+            Mat4::from_translation(p + Vec3::new(-2.5, -0.6, 0.0)),
+            0x7a11,
+            0,
+        ));
+    }
+    crate::fx_scenes::tick_all(&mut scene, 60);
+    scene
+}
+
+/// `probe-outdoor` without its figures and pane, and with (`on`) a pond
+/// of red-tinted water 0.4 m under the probe, 6 m square: its -y face sees
+/// the water where it saw the meadow.
+pub fn probe_water_scene(on: bool) -> RenderScene {
+    let mut scene = outdoor_scene(Outdoor {
+        content: false,
+        probe: Some(1.0),
+    });
+    if on {
+        let p = outdoor_probe();
+        scene.water.push(og_render::Water {
+            transform: Mat4::from_translation(p - Vec3::Y * 0.4),
+            size: Vec2::new(6.0, 6.0),
+            shallow: Vec3::new(0.9, 0.2, 0.15),
+            deep: Vec3::new(0.5, 0.04, 0.03),
+            ..Default::default()
+        });
+    }
+    scene
+}

@@ -226,6 +226,9 @@ pub(crate) struct ParticleFrame {
     pub sprites: Vec<ExtraSprite>,
     pub any_gpu: bool,
     pub needs_depth: bool,
+    /// A system fades against the depth behind it (soft particles): each
+    /// view draws its own depth for them (`views.rs`).
+    pub soft: bool,
     pub capacity: u32,
     pub cpu_alive: u32,
     pub ticks: u32,
@@ -512,6 +515,7 @@ impl ParticleRenderer {
             let textured = e.texture.is_some();
             let collide = gpu && e.collision.is_some() && e.space == SimulationSpace::World;
             out.needs_depth |= e.soft_distance > 0.0 || collide;
+            out.soft |= e.soft_distance > 0.0;
             let first_entry = entries.len() as u32;
             if gpu {
                 let g = state.gpu.get_or_insert_with(|| GpuSystem {

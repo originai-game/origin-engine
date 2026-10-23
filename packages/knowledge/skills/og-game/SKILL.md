@@ -2237,8 +2237,10 @@ world.insert(probe, og.ReflectionProbe, {
     the interval high.
 - Size the box to the room. Each object takes the smallest box holding
   its centre, so two rooms that share a model each reflect their own.
-  The capture shows everything in the room: characters in their pose,
-  terrain, grass, glass. Terrain, grass and water inside the box are lit
+  The capture shows everything in the room: characters in their pose
+  (and each one takes the probe of the room its pose stands in), terrain,
+  grass, water, glass, particles, lines and world sprites and text
+  (3D fluids are left out). Terrain, grass and water inside the box are lit
   by it too. At most 8 probes (`MAX_REFLECTION_PROBES`) are used,
   nearest the camera first.
 - `dump_render` lists the frame's probes and whether each was loaded from
@@ -2286,7 +2288,8 @@ default) or `hdr`:
 `depth: true` also keeps the view's linear depth, from near (0) to far
 (1), of its opaque meshes, on every tier, WebGL2 included. It costs a
 second draw of the view's opaque meshes, so ask for it only when a
-material reads it.
+material reads it. (A scene with soft particles, `softDistance` above 0,
+pays that draw in every view anyway: its particles fade against it.)
 `RenderCapabilities.maxRenderTargetSize` is the largest side.
 
 **A second camera.** `og.CameraView` on an entity is a camera with
@@ -2310,16 +2313,18 @@ world.insert(p2, og.CameraView, { viewportX: 0.5, viewportWidth: 0.5 });
 A view draws what the main camera draws, from its own eye and on its own
 `layers`: meshes and models (skinned meshes and custom shaders included),
 opaque then transparent back to front, the terrain and the sky, particle
-systems, og.Lines and og.Points, and world sprites and text, lit and
+systems, trails, og.Lines and og.Points, and world sprites and text, lit and
 shadowed by the frame's lights. Each view is a second draw of everything
 its layers admit, so keep it cheap with `layers` and `every`.
 - An `ldr` target and a viewport are exposed with the view's `exposure`
   and tone mapped with the frame's curve. An `hdr` target holds linear
   radiance and is exposed by the frame that shows it.
 - Bloom, AO, SSR, depth of field, colour grading and custom post passes
-  run on the main frame only.
-- In a view, sprites are not 2D-lit and do not glow. Trails, 2D fluids,
-  screen sprites, the UI and debug draw stay on the main frame.
+  run on the main frame only (the 2D glow, `PostEffects.glow`, is the
+  exception: a view adds its own).
+- In a view, sprites are 2D-lit and glow and 2D fluids and soft
+  particles draw as in the main frame. Screen sprites, the UI and debug
+  draw stay on the main frame.
 
 A viewport view draws over the finished image and under the UI.
 
@@ -2365,8 +2370,9 @@ fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput                  // f:
 // standard_surface(f), noise3(p).
 ```
 An entry you leave out is the standard one.
-- `lit` surfaces are lit by the sun's cascades, the point and spot lights
-  with their shadows, the environment and the fog. `unlit` surfaces draw
+- `lit` surfaces are lit by the sun's cascades, the point, spot and rect
+  lights with their shadows and cookies (a rect light as an area, as on a
+  standard material), the environment and the fog. `unlit` surfaces draw
   as returned.
 - The depth prepass, every shadow pass and every view run the same
   entries, and alpha under the material's `alphaTest` is cut in each of

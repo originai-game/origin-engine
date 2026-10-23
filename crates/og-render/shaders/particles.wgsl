@@ -96,7 +96,9 @@ fn fs(in: ParticleOut) -> @location(0) vec4<f32> {
     c.a *= d * d;
   }
   if (emitter.render.z > 0.0) {
-    let scene = textureLoad(scene_depth, vec2<i32>(in.clip.xy), 0).r;
+    // Clamped: a pass without a depth of its own binds a 1x1 far plane.
+    let at = min(vec2<i32>(in.clip.xy), vec2<i32>(textureDimensions(scene_depth)) - vec2<i32>(1));
+    let scene = textureLoad(scene_depth, at, 0).r;
     c.a *= clamp((scene - in.depth) / emitter.render.z, 0.0, 1.0);
   }
   c.a *= fog_keep(in.world);

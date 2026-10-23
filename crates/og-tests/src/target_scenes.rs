@@ -455,3 +455,166 @@ pub fn depth_scene() -> RenderScene {
     };
     scene
 }
+
+/// What a view draws of the main pass's effects (`view_fx_scene`), each
+/// in front of the view's camera and out of the main camera's sight.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ViewFx {
+    /// An orange ribbon across a perspective view.
+    Ribbon,
+    /// A white sprite on a 2D-lit layer under a dark ambient and a warm
+    /// light to its upper right (off: the frame without 2D lighting).
+    Lit2d,
+    /// A blue 2D fluid: a blob of metaball particles.
+    Fluid2d,
+    /// Large green particles against the wall, soft over 0.8 m.
+    SoftParticles,
+    /// The same particles, hard (what the soft ones are compared with; not
+    /// in [`ViewFx::ALL`]).
+    HardParticles,
+    /// A small white sprite glowing through og.Glow (off: not glowing).
+    Glow,
+}
+
+impl ViewFx {
+    pub const ALL: [ViewFx; 5] = [
+        ViewFx::Ribbon,
+        ViewFx::Lit2d,
+        ViewFx::Fluid2d,
+        ViewFx::SoftParticles,
+        ViewFx::Glow,
+    ];
+}
+
+/// A dark grey wall at z = -1 and the effect `fx` (`on` false: the scene
+/// without it), drawn by a viewport view over the frame's right half
+/// (x 0.5..1) looking down -z from (0, 0, 6); the main camera looks the
+/// other way, along +z, so the left half never shows the effect.
+pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
+    let mut scene = RenderScene::new();
+    scene.light = DirectionalLight {
+        direction_to_light: Vec3::new(0.2, 0.5, 1.0),
+        intensity: 1.5,
+        ..Default::default()
+    };
+    scene.environment.intensity = 0.3;
+    scene.environment.background = og_render::Background::Color(Vec3::splat(0.02));
+    let wall = scene.add_mesh(shapes::cuboid(Vec3::new(20.0, 20.0, 0.2)));
+    let grey = scene.add_standard_material(colour(0.25, 0.25, 0.25));
+    scene.add_instance(
+        wall,
+        grey,
+        Mat4::from_translation(Vec3::new(0.0, 0.0, -1.1)),
+    );
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 0.0, 6.0),
+        target: Vec3::new(0.0, 0.0, 12.0),
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    let camera = Camera {
+        position: Vec3::new(0.0, 0.0, 6.0),
+        target: Vec3::ZERO,
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    if on {
+        match fx {
+            ViewFx::Ribbon => {
+                let point = |x: f32| og_render::RibbonPoint {
+                    position: Vec3::new(x, 0.3 * x.sin(), 0.0),
+                    width: 0.6,
+                    color: [1.0, 0.45, 0.1, 1.0],
+                };
+                scene.ribbons.push(og_render::Ribbon {
+                    points: (0..=8).map(|i| point(-2.0 + i as f32 * 0.5)).collect(),
+                    texture: None,
+                    uv: og_render::RibbonUv::Stretch,
+                    blend: og_render::ParticleBlend::Alpha,
+                });
+            }
+            ViewFx::Lit2d => {
+                scene.lighting_2d = Some(og_render::Lighting2d {
+                    ambient: Vec3::splat(0.05),
+                    ..Default::default()
+                });
+                scene.lights_2d.push(og_render::Light2d {
+                    position: glam::Vec2::new(0.8, 0.6),
+                    color: Vec3::new(1.0, 0.7, 0.4),
+                    intensity: 2.0,
+                    radius: 2.2,
+                    ..Default::default()
+                });
+            }
+            ViewFx::Fluid2d => {
+                let particles: Vec<glam::Vec2> = (0..48)
+                    .map(|i| {
+                        let a = i as f32 * 2.399;
+                        let r = 1.2 * ((i as f32 + 0.5) / 48.0).sqrt();
+                        glam::Vec2::new(r * a.cos(), r * a.sin())
+                    })
+                    .collect();
+                scene.metaballs.push(og_render::Metaballs {
+                    particles: particles.into(),
+                    radius: 0.45,
+                    ..Default::default()
+                });
+            }
+            ViewFx::Glow => {
+                scene.sprite_fx.push(og_render::SpriteFx {
+                    sprite: 0,
+                    glow: 3.0,
+                    ..Default::default()
+                });
+            }
+            ViewFx::SoftParticles | ViewFx::HardParticles => {
+                let e = scene.add_emitter(og_render::ParticleEmitter {
+                    rate: 40.0,
+                    lifetime: [1.8, 2.0],
+                    speed: [0.2, 0.3],
+                    size: [1.2, 1.4],
+                    gravity: Vec3::ZERO,
+                    color: [0.2, 0.9, 0.3, 0.9],
+                    blend: og_render::ParticleBlend::Alpha,
+                    soft_distance: if fx == ViewFx::SoftParticles {
+                        0.8
+                    } else {
+                        0.0
+                    },
+                    ..Default::default()
+                });
+                scene.particles.push(og_render::ParticleSystem::new(
+                    9,
+                    e,
+                    Mat4::from_translation(Vec3::new(0.0, 0.0, -0.9)),
+                    0x5f7,
+                    0,
+                ));
+            }
+        }
+    }
+    if fx == ViewFx::Glow {
+        scene.post.glow = Some(og_render::Glow { intensity: 1.0 });
+        scene.add_sprite(og_render::Sprite {
+            position: Vec3::ZERO,
+            size: glam::Vec2::new(0.8, 0.8),
+            color: [1.0, 0.9, 0.6, 1.0],
+            ..Default::default()
+        });
+    }
+    if fx == ViewFx::Lit2d {
+        scene.add_sprite(og_render::Sprite {
+            position: Vec3::ZERO,
+            size: glam::Vec2::new(3.0, 3.0),
+            color: [0.9, 0.9, 0.9, 1.0],
+            ..Default::default()
+        });
+    }
+    scene.views.push(View {
+        camera,
+        target: ViewTarget::Viewport([0.5, 0.0, 0.5, 1.0]),
+        ..Default::default()
+    });
+    crate::fx_scenes::tick_all(&mut scene, 60);
+    scene
+}

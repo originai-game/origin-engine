@@ -2,7 +2,9 @@
 //! instance.
 //!
 //! An instance samples the smallest probe box holding the centre of its
-//! bounds (none: the frame's environment). The choice is made per
+//! bounds (none: the frame's environment); a skinned instance's bounds are
+//! its pose's, its joints' bind-pose boxes moved by its palette
+//! (`skin.rs` `posed_centre`). The choice is made per
 //! instance and carried by the batch: the instance sort keys on it
 //! (`instances.rs` [`crate::instances::Run::probe`], the skinned batches
 //! the same), so a mesh and material shared by two rooms are two batches,

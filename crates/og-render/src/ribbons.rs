@@ -191,12 +191,14 @@ struct TrailHistory {
     seen: u64,
 }
 
-/// The renderer's trail histories, by id.
+/// The renderer's trail histories, by id, and the frame's strips (each
+/// camera, a view's included, emits them facing its own eye).
 #[derive(Default)]
 pub(crate) struct Trails {
     histories: HashMap<u64, TrailHistory>,
     scene_id: u64,
     frame: u64,
+    strips: Vec<Strip>,
 }
 
 struct Strip {
@@ -364,8 +366,16 @@ impl Trails {
         // Group by (texture, blend) for one draw each.
         // (Layered strips after the 3D ones, by layer: each is its own run.)
         strips.sort_by_key(|s| (s.layer, s.texture, s.blend as u8));
+        self.strips = strips;
+        Ok(self.emit(eye, forward, orthographic))
+    }
+
+    /// The frame's strips (the last [`Trails::build`]'s) as vertices facing
+    /// a camera at `eye` looking along `forward`: the main camera's, or a
+    /// view's (`views.rs`).
+    pub fn emit(&self, eye: Vec3, forward: Vec3, orthographic: bool) -> RibbonFrame {
         let mut out = RibbonFrame::default();
-        for s in &strips {
+        for s in &self.strips {
             let first = out.vertices.len() as u32;
             emit_strip(s, eye, forward, orthographic, &mut out.vertices);
             let count = out.vertices.len() as u32 - first;
@@ -387,7 +397,7 @@ impl Trails {
                 }),
             }
         }
-        Ok(out)
+        out
     }
 }
 

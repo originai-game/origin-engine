@@ -328,3 +328,54 @@ fn a_shadowed_rect_light_casts_a_soft_shadow() {
         "the shadow does not soften toward its tip (foot {foot_k:.2}, tip {tip_k:.2} of unshadowed)"
     );
 }
+
+/// A full custom lit shader lights a rect light as the standard material
+/// does: as an area (the floor under the panel within a few percent of
+/// the standard floor's) with its soft shadow (the post's foot dark).
+/// Before the debt round 2 `custom_lit.wgsl` lit it as a point at its
+/// centre without its shadow.
+#[test]
+fn a_full_custom_shader_lights_rect_lights_with_their_shadow() {
+    let read = |custom: bool, cast: bool| {
+        let (scene, points) = if custom {
+            og_tests::light_scenes::rect_shadow_custom_scene(cast)
+        } else {
+            og_tests::light_scenes::rect_shadow_scene(cast)
+        };
+        let mut built = og_tests::scenes::build("baked-cornell").expect("build");
+        built.scene = scene;
+        let img = gfx::render_built(&mut built).expect("render").image;
+        if let Ok(dir) = std::env::var("OG_RECT_SHADOW_OUT") {
+            gfx::save_png(
+                std::path::Path::new(&format!("{dir}/rect-shadow-custom-{custom}-{cast}.png")),
+                &img,
+            )
+            .expect("save");
+        }
+        points.map(|p| {
+            let (x, y) = project(&built.scene.camera, p);
+            let c = mean(&img, x - 4, y - 3, x + 4, y + 3);
+            0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+        })
+    };
+    let [foot_std, tip_std] = read(false, false);
+    let [foot_open, tip_open] = read(true, false);
+    let [foot, tip] = read(true, true);
+    println!(
+        "standard: foot {foot_std:.1}, tip {tip_std:.1}; custom unshadowed: foot {foot_open:.1}, tip {tip_open:.1}; shadowed: foot {foot:.1}, tip {tip:.1}"
+    );
+    for (c, s) in [(foot_open, foot_std), (tip_open, tip_std)] {
+        assert!(
+            (c - s).abs() <= 0.06 * s + 2.0,
+            "the custom floor is lit as the standard one ({c:.1} against {s:.1})"
+        );
+    }
+    assert!(
+        foot < 0.35 * foot_open,
+        "no shadow at the post's foot ({foot:.1} against {foot_open:.1} unshadowed)"
+    );
+    assert!(
+        tip / tip_open > foot / foot_open + 0.2,
+        "the shadow does not soften toward its tip"
+    );
+}

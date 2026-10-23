@@ -6,7 +6,10 @@
 
 use og_render::{RenderDesc, RenderTarget, Renderer, RgbaImage};
 use og_tests::gfx;
-use og_tests::probe_scenes::{Outdoor, SsrFloor, outdoor_scene, ssr_floor_scene, two_rooms_scene};
+use og_tests::probe_scenes::{
+    Outdoor, SsrFloor, outdoor_scene, posed_figure_scene, probe_effects_scene, probe_water_scene,
+    ssr_floor_scene, two_rooms_scene,
+};
 use og_tests::scenes;
 use std::path::PathBuf;
 
@@ -112,6 +115,65 @@ fn each_of_two_rooms_reflects_its_own_room() {
     );
 }
 
+/// A skinned figure takes the probe of the room its pose stands in: a
+/// chrome cylinder whose instance stands in the red room and whose joints
+/// carry it into the blue one reflects the blue room, as the same cylinder
+/// placed there by its transform does. Picked by its bind pose's bounds,
+/// as before the debt round 2, it reflected the red room it is not in.
+#[test]
+fn a_skinned_instance_takes_the_probe_of_its_pose() {
+    let desc = scenes::base_desc();
+    let frame = |posed: Option<bool>| {
+        let scene = posed.map_or_else(|| two_rooms_scene(true), posed_figure_scene);
+        let (img, _) = render(&desc, &scene, None);
+        if let (Ok(dir), Some(posed)) = (std::env::var("OG_PROBE_OUT"), posed) {
+            gfx::save_png(
+                std::path::Path::new(&format!("{dir}/posed-figure-{posed}.png")),
+                &img,
+            )
+            .expect("save");
+        }
+        img
+    };
+    let (bare, posed, placed) = (frame(None), frame(Some(true)), frame(Some(false)));
+    // The cylinder's pixels: where the placed one changed the room.
+    let px = |i: usize| &bare.pixels[i * 4..i * 4 + 3];
+    let cylinder: Vec<usize> = (0..(bare.width * bare.height) as usize)
+        .filter(|&i| {
+            let q = &placed.pixels[i * 4..i * 4 + 3];
+            px(i)
+                .iter()
+                .zip(q)
+                .map(|(a, b)| a.abs_diff(*b) as u32)
+                .sum::<u32>()
+                > 60
+        })
+        .collect();
+    let mean = |img: &RgbaImage| {
+        let mut s = [0.0f32; 3];
+        for &i in &cylinder {
+            for (k, v) in s.iter_mut().enumerate() {
+                *v += img.pixels[i * 4 + k] as f32 / cylinder.len() as f32;
+            }
+        }
+        s
+    };
+    let (posed, placed) = (mean(&posed), mean(&placed));
+    println!(
+        "the cylinder ({} px): posed {posed:?}, placed {placed:?}",
+        cylinder.len()
+    );
+    assert!(cylinder.len() > 2000, "the cylinder is in view");
+    assert!(
+        placed[2] > placed[0] + 6.0,
+        "placed in the blue room its sides reflect blue: {placed:?}"
+    );
+    assert!(
+        (0..3).all(|k| (posed[k] - placed[k]).abs() < 3.0),
+        "posed into the blue room it reflects the blue room: {posed:?} against {placed:?}"
+    );
+}
+
 /// The outdoor probe's capture has the skinned figures on its +x face, the
 /// meadow (terrain and grass) on its -y face and the red pane over its -z
 /// face; without the figures and the pane those faces are sky and meadow.
@@ -162,6 +224,51 @@ fn a_capture_draws_skinned_meshes_terrain_grass_and_glass() {
     assert!(
         nz[0] / nz[2].max(1e-3) > 1.5 * nz0[0] / nz0[2].max(1e-3),
         "the red pane over -z: {nz:?} against {nz0:?}"
+    );
+}
+
+/// A capture draws what the main pass draws over its opaque scene: the
+/// red world sprite on the probe's -z face, the yellow line loop on its +x
+/// face and the green particles on its -x face. Before the debt round 2 a
+/// capture drew none of them: each face would match the bare meadow's.
+#[test]
+fn a_capture_draws_particles_sprites_and_lines() {
+    let desc = scenes::base_desc();
+    let (_, with) = render(&desc, &probe_effects_scene(true), Some(7));
+    let (_, bare) = render(&desc, &probe_effects_scene(false), Some(7));
+    let (with, bare) = (with.unwrap(), bare.unwrap());
+    let f = |c: &(u32, Vec<f32>), face| face_mean(c, face);
+    let (nz, nz0) = (f(&with, 5), f(&bare, 5));
+    let (px, px0) = (f(&with, 0), f(&bare, 0));
+    let (nx, nx0) = (f(&with, 1), f(&bare, 1));
+    println!("-z {nz:?} / {nz0:?}; +x {px:?} / {px0:?}; -x {nx:?} / {nx0:?}");
+    let share = |c: [f32; 3], k: usize| c[k] / (c[0] + c[1] + c[2]).max(1e-4);
+    let mut failures = Vec::new();
+    if share(nz, 0) < share(nz0, 0) + 0.15 {
+        failures.push(format!("the red sprite on -z: {nz:?} against {nz0:?}"));
+    }
+    if share(px, 2) > share(px0, 2) - 0.08 {
+        failures.push(format!("the yellow lines on +x: {px:?} against {px0:?}"));
+    }
+    if share(nx, 1) < share(nx0, 1) + 0.08 {
+        failures.push(format!("the green particles on -x: {nx:?} against {nx0:?}"));
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// A capture draws water: the -y face of the probe over a red-tinted pond
+/// turns from the meadow's green to the water's red. Before the debt round
+/// 2 the capture left water out and the face stayed the meadow's.
+#[test]
+fn a_capture_draws_water() {
+    let desc = scenes::base_desc();
+    let (_, with) = render(&desc, &probe_water_scene(true), Some(7));
+    let (_, bare) = render(&desc, &probe_water_scene(false), Some(7));
+    let (ny, ny0) = (face_mean(&with.unwrap(), 3), face_mean(&bare.unwrap(), 3));
+    println!("-y {ny:?} / {ny0:?}");
+    assert!(
+        ny[0] > ny[1] * 1.5 && ny0[1] > ny0[0],
+        "the pond on -y: {ny:?} against the meadow {ny0:?}"
     );
 }
 

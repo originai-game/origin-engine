@@ -23,8 +23,14 @@
 //! Views are drawn before the main pass, lowest [`View::order`] first, so a
 //! material of the main camera's (and of a later view's) reads the target
 //! as drawn this frame; a view that sees its own target reads the frame
-//! before (a monitor in the monitor's room). Transparent meshes, sprites,
-//! text, particles, lines and the post effects are the main camera's.
+//! before (a monitor in the monitor's room). It then draws what the main
+//! pass draws over its opaque scene, on its layers from its eye:
+//! transparent meshes, particles, trails, ribbons and beams (facing its
+//! eye), lines and points, world sprites and text, its lit sprite layers
+//! through its own 2D light map and its 2D fluids from its own fields
+//! (`lib.rs`'s view pass), its soft particles against its own depth
+//! prepass, its glowing sprites through its own glow chain
+//! (`views_glow.wgsl`); the other post effects are the main camera's.
 //!
 //! Layers: bit `n` of a mask is three.js layer `n`; every object and camera
 //! is on layer 0 (mask 1) unless set. A camera draws an object when their
@@ -334,6 +340,39 @@ pub(crate) fn resolve_entry(format: wgpu::TextureFormat, depth: bool) -> &'stati
     }
 }
 
+/// A secondary camera's billboard and line uniforms (a view's, a probe
+/// face's): billboards face it; lines keep their width as a share of the
+/// image (CSS pixels of a frame of its height).
+pub(crate) fn camera_gpu(
+    frame: &CameraFrame,
+    position: Vec3,
+    size: (u32, u32),
+    css_height: f32,
+) -> (
+    crate::particles_gpu::ParticleViewGpu,
+    crate::lines::LineUniform,
+) {
+    let view_t = frame.view.transpose();
+    let (w, h) = (size.0 as f32, size.1 as f32);
+    let particles = crate::particles_gpu::ParticleViewGpu {
+        view_proj: frame.view_proj.to_cols_array_2d(),
+        cam_pos: position.extend(frame.orthographic as u32 as f32).to_array(),
+        cam_forward: frame.forward.extend(0.0).to_array(),
+        cam_right: view_t.x_axis.truncate().extend(0.0).to_array(),
+        cam_up: view_t.y_axis.truncate().extend(0.0).to_array(),
+        screen: [w, h, 1.0 / w, 1.0 / h],
+    };
+    let lines = crate::lines::LineUniform::new(
+        frame.view_proj,
+        frame.proj,
+        size.0,
+        size.1,
+        css_height,
+        false,
+    );
+    (particles, lines)
+}
+
 /// One view's GPU state, kept across frames while the view exists.
 pub(crate) struct ViewSlot {
     pub frame_buffer: wgpu::Buffer,
@@ -346,6 +385,18 @@ pub(crate) struct ViewSlot {
     /// the lines and points (`LineUniform`).
     pub particle_buffer: wgpu::Buffer,
     pub line_buffer: wgpu::Buffer,
+    /// Its image's size for the sprite shader (`SpriteFxFrame`), and its
+    /// 2D light map (size, view) in a frame with 2D lighting: the lit
+    /// sprite layers multiply with the lights as its camera sees them.
+    pub sprite_fx_buffer: wgpu::Buffer,
+    pub light_map: Option<((u32, u32), wgpu::TextureView)>,
+    /// Its 2D fluids' field targets of its size (`metaballs.rs`), as many
+    /// as the frame's: the kernels drawn through its camera, composited in
+    /// its sprite order.
+    pub fields: Vec<wgpu::TextureView>,
+    fields_size: (u32, u32),
+    /// Its sprite glow in a frame with og.Glow (`views_glow.wgsl`).
+    pub glow: Option<ViewGlow>,
     /// (size, samples, depth texture drawn): the attachments below.
     key: ((u32, u32), u32, bool),
     pub hdr: wgpu::TextureView,
@@ -365,6 +416,31 @@ pub(crate) struct DepthPrepass {
     pub depth: wgpu::TextureView,
 }
 
+/// A view's glow buffer: half its size with a mip chain, its glowing
+/// sprites drawn into level 0, the levels added onto its HDR image.
+pub(crate) struct ViewGlow {
+    size: (u32, u32),
+    texture: wgpu::Texture,
+    /// Level 0, which the glow sprites draw into.
+    pub target: wgpu::TextureView,
+    uniform: wgpu::Buffer,
+    group: wgpu::BindGroup,
+}
+
+/// The glow add's pipeline and what its groups are made with.
+struct GlowAdd {
+    pipeline: wgpu::RenderPipeline,
+    layout: wgpu::BindGroupLayout,
+    sampler: wgpu::Sampler,
+}
+
+const VIEWS_GLOW_WGSL: &str = wgsl!("views_glow.wgsl");
+
+/// The glow add's module (`fs`).
+pub(crate) fn glow_source() -> String {
+    VIEWS_GLOW_WGSL.into()
+}
+
 /// Every view's slot and the resolve pipelines.
 #[derive(Default)]
 pub(crate) struct Views {
@@ -375,6 +451,7 @@ pub(crate) struct Views {
     pub stale: bool,
     /// By (destination format, entry point).
     pipelines: std::collections::HashMap<(wgpu::TextureFormat, &'static str), wgpu::RenderPipeline>,
+    glow_add: Option<GlowAdd>,
 }
 
 impl Views {
@@ -430,6 +507,11 @@ impl Views {
                     "view lines",
                     std::mem::size_of::<crate::lines::LineUniform>() as u64,
                 ),
+                sprite_fx_buffer: buffer("view sprite fx", 16),
+                light_map: None,
+                fields: Vec::new(),
+                fields_size: (0, 0),
+                glow: None,
                 key,
                 hdr,
                 msaa,
@@ -539,9 +621,19 @@ impl Views {
         fx: &crate::fx::FxUniform,
         lights: bool,
         viewport_format: wgpu::TextureFormat,
+        light_map_scale: Option<f32>,
+        fields: usize,
+        soft: bool,
+        glow: Option<f32>,
     ) {
+        if glow.is_some() && self.glow_add.is_none() {
+            self.glow_add = Some(glow_add(device));
+        }
+        // Held apart while the slots are borrowed, put back below.
+        let add = self.glow_add.take();
         for p in plans {
-            let depth_drawn = matches!(p.dest, Dest::Texture { depth: Some(_), .. });
+            // A depth texture, or soft particles to fade against it.
+            let depth_drawn = soft || matches!(p.dest, Dest::Texture { depth: Some(_), .. });
             let slot = self.slot(
                 device,
                 tables,
@@ -597,31 +689,46 @@ impl Views {
             let (w, h) = (p.size.0 as f32, p.size.1 as f32);
             f.screen = [w, h, 1.0 / w, 1.0 / h];
             queue.write_buffer(&slot.fx_buffer, 0, bytemuck::bytes_of(&f));
-            // Billboards face the view's camera; lines keep their width as a
-            // share of the image (CSS pixels of a frame of the view's height).
-            let view_t = p.frame.view.transpose();
-            let particles = crate::particles_gpu::ParticleViewGpu {
-                view_proj: vp,
-                cam_pos: p
-                    .position
-                    .extend(p.frame.orthographic as u32 as f32)
-                    .to_array(),
-                cam_forward: p.frame.forward.extend(0.0).to_array(),
-                cam_right: view_t.x_axis.truncate().extend(0.0).to_array(),
-                cam_up: view_t.y_axis.truncate().extend(0.0).to_array(),
-                screen: f.screen,
+            queue.write_buffer(&slot.sprite_fx_buffer, 0, bytemuck::bytes_of(&f.screen));
+            // The 2D light map at the frame's share of the view's size.
+            slot.light_map = light_map_scale.map(|scale| {
+                let size = (
+                    ((p.size.0 as f32 * scale) as u32).max(1),
+                    ((p.size.1 as f32 * scale) as u32).max(1),
+                );
+                match slot.light_map.take() {
+                    Some((s, v)) if s == size => (s, v),
+                    _ => (size, hdr_texture(device, "view light map", size)),
+                }
+            });
+            // Field targets follow the attachments' size (`slot` remade
+            // them with a new key).
+            if slot.fields.len() != fields || slot.fields_size != p.size {
+                slot.fields = (0..fields)
+                    .map(|_| hdr_texture(device, "view metaball field", p.size))
+                    .collect();
+                slot.fields_size = p.size;
+            }
+            slot.glow = match glow {
+                None => None,
+                Some(intensity) => {
+                    let size = ((p.size.0 / 2).max(1), (p.size.1 / 2).max(1));
+                    let g = match slot.glow.take() {
+                        Some(g) if g.size == size => g,
+                        _ => view_glow(device, add.as_ref().expect("made above"), size),
+                    };
+                    let levels = crate::post::bloom_levels(p.size.0, p.size.1)
+                        .min(g.texture.mip_level_count());
+                    let u = [intensity.max(0.0), levels as f32, 0.0, 0.0];
+                    queue.write_buffer(&g.uniform, 0, bytemuck::cast_slice(&u));
+                    Some(g)
+                }
             };
+            let (particles, lines) = camera_gpu(&p.frame, p.position, p.size, scene.css_height);
             queue.write_buffer(&slot.particle_buffer, 0, bytemuck::bytes_of(&particles));
-            let lines = crate::lines::LineUniform::new(
-                p.frame.view_proj,
-                p.frame.proj,
-                p.size.0,
-                p.size.1,
-                scene.css_height,
-                false,
-            );
             queue.write_buffer(&slot.line_buffer, 0, bytemuck::bytes_of(&lines));
         }
+        self.glow_add = add;
         for p in plans {
             match p.dest {
                 Dest::Texture { format, depth, .. } => {
@@ -637,6 +744,41 @@ impl Views {
                 }
             }
         }
+    }
+
+    /// Adds `plan`'s glow chain (its level 0 drawn) onto its HDR image:
+    /// fills the levels, then adds them.
+    pub fn add_glow(
+        &self,
+        device: &wgpu::Device,
+        mips: &crate::mips::MipGenerator,
+        encoder: &mut crate::Encoder,
+        plan: &ViewPlan,
+    ) {
+        let slot = self.slots[plan.index].as_ref().expect("made for the plan");
+        let (Some(g), Some(add)) = (&slot.glow, &self.glow_add) else {
+            return;
+        };
+        mips.record(device, encoder, &g.texture);
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("view glow"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &slot.hdr,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+        pass.set_pipeline(&add.pipeline);
+        pass.set_bind_group(0, &g.group, &[]);
+        pass.draw(0..3, 0..1);
     }
 
     /// Writes `plan`'s resolve: its HDR (or depth) into `dest` of `format`,
@@ -834,6 +976,166 @@ fn textures(
         depth: make("view prepass depth buffer", crate::DEPTH_FORMAT, 1, attach),
     });
     (hdr, msaa, depth, prepass)
+}
+
+fn glow_add(device: &wgpu::Device) -> GlowAdd {
+    let module = crate::shader(device, "view glow", glow_source());
+    let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("view glow"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+        ],
+    });
+    let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("view glow"),
+        bind_group_layouts: &[Some(&layout)],
+        immediate_size: 0,
+    });
+    let add = wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::One,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    };
+    let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("view glow"),
+        layout: Some(&pl),
+        vertex: wgpu::VertexState {
+            module: &module,
+            entry_point: Some("vs"),
+            compilation_options: Default::default(),
+            buffers: &[],
+        },
+        primitive: Default::default(),
+        depth_stencil: None,
+        multisample: Default::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: &module,
+            entry_point: Some("fs"),
+            compilation_options: Default::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: crate::HDR_FORMAT,
+                blend: Some(wgpu::BlendState {
+                    color: add,
+                    alpha: add,
+                }),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview_mask: None,
+        cache: None,
+    });
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("view glow"),
+        mag_filter: wgpu::FilterMode::Linear,
+        min_filter: wgpu::FilterMode::Linear,
+        ..Default::default()
+    });
+    GlowAdd {
+        pipeline,
+        layout,
+        sampler,
+    }
+}
+
+fn view_glow(device: &wgpu::Device, add: &GlowAdd, (w, h): (u32, u32)) -> ViewGlow {
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("view glow"),
+        size: wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: crate::mips::mip_count(w, h),
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: crate::HDR_FORMAT,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    });
+    let target = texture.create_view(&wgpu::TextureViewDescriptor {
+        label: Some("view glow level 0"),
+        base_mip_level: 0,
+        mip_level_count: Some(1),
+        ..Default::default()
+    });
+    let all = texture.create_view(&Default::default());
+    let uniform = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("view glow"),
+        size: 16,
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("view glow"),
+        layout: &add.layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&all),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(&add.sampler),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: uniform.as_entire_binding(),
+            },
+        ],
+    });
+    ViewGlow {
+        size: (w, h),
+        texture,
+        target,
+        uniform,
+        group,
+    }
+}
+
+/// A view's HDR target of `size` that a pass draws and its main pass reads
+/// (the 2D light map, a metaball field).
+fn hdr_texture(device: &wgpu::Device, label: &str, (w, h): (u32, u32)) -> wgpu::TextureView {
+    device
+        .create_texture(&wgpu::TextureDescriptor {
+            label: Some(label),
+            size: wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: crate::HDR_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        })
+        .create_view(&Default::default())
 }
 
 fn attachments(device: &wgpu::Device, old: ViewSlot, key: ((u32, u32), u32, bool)) -> ViewSlot {

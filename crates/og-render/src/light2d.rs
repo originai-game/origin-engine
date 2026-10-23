@@ -33,10 +33,17 @@ const LIGHT_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout
 
 pub(crate) struct Light2dRenderer {
     pipeline: Deferred<wgpu::RenderPipeline>,
+    layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
     instances: wgpu::Buffer,
     group: wgpu::BindGroup,
     count: u32,
+    /// The frame's uniform as written, which each view's copy takes with
+    /// its own camera.
+    written: Lights2dUniform,
+    /// A uniform and group per view (`views.rs`), by its place in the
+    /// frame's plans.
+    views: Vec<(wgpu::Buffer, wgpu::BindGroup)>,
 }
 
 impl Light2dRenderer {
@@ -126,10 +133,13 @@ impl Light2dRenderer {
         };
         Light2dRenderer {
             pipeline,
+            layout,
             uniform,
             instances,
             group,
             count: 0,
+            written: bytemuck::Zeroable::zeroed(),
+            views: Vec::new(),
         }
     }
 
@@ -152,6 +162,7 @@ impl Light2dRenderer {
             u.occluders[i * 2 + 1] = [c, s, 0.0, 0.0];
         }
         queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
+        self.written = u;
         let instances: Vec<LightInstance> = lights
             .iter()
             .take(MAX_LIGHTS_2D)
@@ -171,8 +182,61 @@ impl Light2dRenderer {
         (self.count, occ as u32)
     }
 
+    /// Writes view `k`'s uniform: the frame's lights and occluders seen
+    /// through `view_proj` (a view's camera, `views.rs`).
+    pub fn write_view(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        k: usize,
+        view_proj: Mat4,
+    ) {
+        while self.views.len() <= k {
+            let uniform = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("lights 2d (view)"),
+                size: std::mem::size_of::<Lights2dUniform>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("lights 2d (view)"),
+                layout: &self.layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform.as_entire_binding(),
+                }],
+            });
+            self.views.push((uniform, group));
+        }
+        let mut u = self.written;
+        u.view_proj = view_proj.to_cols_array_2d();
+        queue.write_buffer(&self.views[k].0, 0, bytemuck::bytes_of(&u));
+    }
+
+    /// Clears `target` to `ambient` and adds the lights as view `k` sees
+    /// them ([`Light2dRenderer::write_view`]).
+    pub fn encode_view(
+        &self,
+        encoder: &mut crate::Encoder,
+        target: &wgpu::TextureView,
+        ambient: Vec3,
+        k: usize,
+    ) {
+        self.encode_with(encoder, target, ambient, &self.views[k].1);
+    }
+
     /// Clears `target` to `ambient` and adds the lights.
     pub fn encode(&self, encoder: &mut crate::Encoder, target: &wgpu::TextureView, ambient: Vec3) {
+        self.encode_with(encoder, target, ambient, &self.group);
+    }
+
+    fn encode_with(
+        &self,
+        encoder: &mut crate::Encoder,
+        target: &wgpu::TextureView,
+        ambient: Vec3,
+        group: &wgpu::BindGroup,
+    ) {
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("lights 2d"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -198,7 +262,7 @@ impl Light2dRenderer {
             return;
         }
         pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, &self.group, &[]);
+        pass.set_bind_group(0, group, &[]);
         pass.set_vertex_buffer(0, self.instances.slice(..));
         pass.draw(0..6, 0..self.count);
     }
