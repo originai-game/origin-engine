@@ -421,8 +421,7 @@ sink.close();
 if (frameFailed) process.stderr.write(`og run: ${frameFailed}\n`);
 const dump = engine.probe.dump({ what: "world" }) as unknown as { hash: string; entities: number; tick: number; systems?: SystemTimes };
 // The script's expectations (`expect:` steps): a failure fails the run.
-type ExpectResult = { tick: number; expect: string; status: "pass" | "fail" | "unchecked"; expected: unknown; observed: unknown; reason: string };
-const expectations = engine.probe.expectations() as { passed: number; failed: number; unchecked: number; results: ExpectResult[] };
+const expectations = engine.probe.expectations();
 // og polish's order statistics (src/node/polish.ts), so the two agree.
 const percentile = (xs: number[], q: number): number => {
   if (xs.length === 0) return 0;
