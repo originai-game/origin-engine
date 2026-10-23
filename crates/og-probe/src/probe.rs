@@ -1422,11 +1422,21 @@ impl Probe {
                     tick,
                     false,
                     format!(
-                        "save_scene: {} ({} line(s) changed{})",
+                        "save_scene: {} ({} line(s) changed{}{})",
                         saved["source"].as_str().unwrap_or(""),
                         saved["lines"].as_array().map_or(0, Vec::len),
                         match saved["written"].as_str() {
                             Some(w) if !w.is_empty() => format!(", written to {w}"),
+                            _ => String::new(),
+                        },
+                        match saved["skipped"].as_array() {
+                            Some(s) if !s.is_empty() => format!(
+                                "; not written: {}",
+                                s.iter()
+                                    .filter_map(Value::as_str)
+                                    .collect::<Vec<_>>()
+                                    .join("; ")
+                            ),
                             _ => String::new(),
                         }
                     ),
@@ -2369,6 +2379,7 @@ impl Probe {
             "source": saved.source,
             "written": saved.written,
             "lines": saved.lines,
+            "skipped": saved.skipped,
             "text": saved.text,
         }))
     }

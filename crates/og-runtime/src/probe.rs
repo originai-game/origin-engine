@@ -243,6 +243,8 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         render: eng.render.clone(),
         engine: id,
     }));
+    // save_scene: the boot scene's text rewritten from the world.
+    probe.set_scene_writer(Box::new(super::scene_save::RuntimeWriter { engine: id }));
     for (name, usage, doc) in commands {
         register_one(&mut probe, id, &name, &usage, &doc)?;
     }

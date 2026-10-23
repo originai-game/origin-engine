@@ -418,6 +418,9 @@ pub(crate) struct State {
     pub facts: Option<u32>,
     /// The scene GameDesc.scene names, while its bundle is still loading.
     pub boot_scene: Option<String>,
+    /// The asset id of the scene GameDesc.scene spawned (`save_scene`
+    /// writes its source back).
+    pub scene_source: Option<String>,
     /// GameDesc.start, until it has run.
     pub start: Option<u32>,
     /// What GameDesc.start threw: the world is half-built, so every later
@@ -1134,6 +1137,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         accumulator_ms: 0.0,
         facts: a.game.facts,
         boot_scene: None,
+        scene_source: None,
         start: a.game.start,
         start_failed: None,
         project,
@@ -1276,7 +1280,9 @@ fn boot_scene(eng: &Engine) {
                 super::assets::Payload::Scene(s) => s.clone(),
                 _ => return Err(format!("{path} is not a scene")),
             };
-            super::assets::spawn_scene(eng, &scene, None).map(|_| ())
+            super::assets::spawn_scene(eng, &scene, None).map(|_| {
+                eng.state.borrow_mut().scene_source = Some(scene.id.clone());
+            })
         }),
     };
     let mut st = eng.state.borrow_mut();

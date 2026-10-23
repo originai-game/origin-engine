@@ -31567,6 +31567,13 @@
           },
           "description": "The 1-based lines of the new text that changed or were added."
         },
+        "skipped": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tuned fields that were not written, each with its reason: a resource, or an entity the scene did not make."
+        },
         "text": {
           "type": "string",
           "description": "The new text."
@@ -31577,6 +31584,7 @@
         "source",
         "written",
         "lines",
+        "skipped",
         "text"
       ],
       "additionalProperties": false

@@ -18173,6 +18173,10 @@ export interface SavedScene {
   readonly written: string;
   /** The 1-based lines of the new text that changed or were added. */
   readonly lines: readonly number[];
+  /**
+   * Tuned fields that were not written, each with its reason: a resource, or an entity the scene did not make.
+   */
+  readonly skipped: readonly string[];
   /** The new text. */
   readonly text: string;
 }

@@ -11529,6 +11529,7 @@ module probe {
     field source String "The scene's source, project-relative."
     field written String "Where it was written; empty when only returned."
     field lines List.u32 "The 1-based lines of the new text that changed or were added."
+    field skipped List.String "Tuned fields that were not written, each with its reason: a resource, or an entity the scene did not make."
     field text String "The new text."
   }
 

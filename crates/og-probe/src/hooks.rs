@@ -141,6 +141,9 @@ pub struct SavedScene {
     pub text: String,
     /// The 1-based lines of the new text that changed or were added.
     pub lines: Vec<usize>,
+    /// Tuned fields that were not written, each with its reason (a
+    /// resource, an entity the scene did not make).
+    pub skipped: Vec<String>,
 }
 
 /// The host's half of `save_scene`: the scene the world was loaded from,

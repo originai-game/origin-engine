@@ -97,7 +97,7 @@ interface RuntimeProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 11535</sub>
+<sub>`api.ogt` line 11536</sub>
 
 <a id="member-RuntimeProbe-version"></a>
 
@@ -117,7 +117,7 @@ prop version u32 "PROBE_VERSION." {
 }
 ```
 
-<sub>`api.ogt` line 11539</sub>
+<sub>`api.ogt` line 11540</sub>
 
 <a id="member-RuntimeProbe-tick"></a>
 
@@ -141,7 +141,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 11542</sub>
+<sub>`api.ogt` line 11543</sub>
 
 <a id="member-RuntimeProbe-state"></a>
 
@@ -165,7 +165,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 11547</sub>
+<sub>`api.ogt` line 11548</sub>
 
 <a id="member-RuntimeProbe-advance"></a>
 
@@ -193,7 +193,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 11552</sub>
+<sub>`api.ogt` line 11553</sub>
 
 <a id="member-RuntimeProbe-pause"></a>
 
@@ -216,7 +216,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 11557</sub>
+<sub>`api.ogt` line 11558</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -239,7 +239,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 11561</sub>
+<sub>`api.ogt` line 11562</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -268,7 +268,7 @@ fn input {
 }
 ```
 
-<sub>`api.ogt` line 11565</sub>
+<sub>`api.ogt` line 11566</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -291,7 +291,7 @@ fn accepted {
 }
 ```
 
-<sub>`api.ogt` line 11571</sub>
+<sub>`api.ogt` line 11572</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
@@ -322,7 +322,7 @@ fn pick {
 }
 ```
 
-<sub>`api.ogt` line 11575</sub>
+<sub>`api.ogt` line 11576</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -351,7 +351,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 11582</sub>
+<sub>`api.ogt` line 11583</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
@@ -379,7 +379,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 11588</sub>
+<sub>`api.ogt` line 11589</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -411,7 +411,7 @@ fn patch {
 }
 ```
 
-<sub>`api.ogt` line 11593</sub>
+<sub>`api.ogt` line 11594</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -439,7 +439,7 @@ fn run {
 }
 ```
 
-<sub>`api.ogt` line 11600</sub>
+<sub>`api.ogt` line 11601</sub>
 
 <a id="type-EngineProbe"></a>
 
@@ -457,7 +457,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 11607</sub>
+<sub>`api.ogt` line 11608</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -481,7 +481,7 @@ fn hello {
 }
 ```
 
-<sub>`api.ogt` line 11612</sub>
+<sub>`api.ogt` line 11613</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -522,7 +522,7 @@ fn capture {
 }
 ```
 
-<sub>`api.ogt` line 11617</sub>
+<sub>`api.ogt` line 11618</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -552,7 +552,7 @@ fn sweep {
 }
 ```
 
-<sub>`api.ogt` line 11630</sub>
+<sub>`api.ogt` line 11631</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -575,7 +575,7 @@ fn reload {
 }
 ```
 
-<sub>`api.ogt` line 11637</sub>
+<sub>`api.ogt` line 11638</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -598,7 +598,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 11641</sub>
+<sub>`api.ogt` line 11642</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -626,7 +626,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 11645</sub>
+<sub>`api.ogt` line 11646</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -656,7 +656,7 @@ fn dump {
 }
 ```
 
-<sub>`api.ogt` line 11650</sub>
+<sub>`api.ogt` line 11651</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -684,7 +684,7 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 11657</sub>
+<sub>`api.ogt` line 11658</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -714,7 +714,7 @@ fn listen {
 }
 ```
 
-<sub>`api.ogt` line 11662</sub>
+<sub>`api.ogt` line 11663</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -737,7 +737,7 @@ fn memory {
 }
 ```
 
-<sub>`api.ogt` line 11669</sub>
+<sub>`api.ogt` line 11670</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -760,7 +760,7 @@ fn describe {
 }
 ```
 
-<sub>`api.ogt` line 11673</sub>
+<sub>`api.ogt` line 11674</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -788,7 +788,7 @@ fn expect {
 }
 ```
 
-<sub>`api.ogt` line 11677</sub>
+<sub>`api.ogt` line 11678</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -811,7 +811,7 @@ fn expectations {
 }
 ```
 
-<sub>`api.ogt` line 11682</sub>
+<sub>`api.ogt` line 11683</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -841,7 +841,7 @@ fn saveScene {
 }
 ```
 
-<sub>`api.ogt` line 11686</sub>
+<sub>`api.ogt` line 11687</sub>
 
 ## Types
 
@@ -2135,6 +2135,7 @@ A scene written back from the world.
 | `source` | `string` | `""` | — | — | — | The scene's source, project-relative. |
 | `written` | `string` | `""` | — | — | — | Where it was written; empty when only returned. |
 | `lines` | `readonly number[]` | `[]` | — | — | — | The 1-based lines of the new text that changed or were added. |
+| `skipped` | `readonly string[]` | `[]` | — | — | — | Tuned fields that were not written, each with its reason: a resource, or an entity the scene did not make. |
 | `text` | `string` | `""` | — | — | — | The new text. |
 
 ```ogt
@@ -2144,6 +2145,7 @@ struct SavedScene {
   field source String "The scene's source, project-relative."
   field written String "Where it was written; empty when only returned."
   field lines List.u32 "The 1-based lines of the new text that changed or were added."
+  field skipped List.String "Tuned fields that were not written, each with its reason: a resource, or an entity the scene did not make."
   field text String "The new text."
 }
 ```
