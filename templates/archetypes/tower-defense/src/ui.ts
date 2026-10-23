@@ -30,8 +30,10 @@ type PrefsV = Value<typeof Prefs>;
  * millisecond), so the screens read it from here.
  */
 const SPACE = { xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 24 } as const;
-type Theme = { readonly space: typeof SPACE };
-const THEME: Theme = { space: SPACE };
+/** The pathguard style's radius block (assets/styles/pathguard/style.ogt), read from here for the same reason. */
+const RADIUS = { bar: 6, panel: 10 } as const;
+type Theme = { readonly space: typeof SPACE; readonly radius: typeof RADIUS };
+const THEME: Theme = { space: SPACE, radius: RADIUS };
 
 /** A string of the active locale (og.i18n). */
 export function say(world: World, key: string, args?: Record<string, string | number>): string {
@@ -193,9 +195,9 @@ function platform(world: World, g: GameV, p: PrefsV): void {
   }
 }
 
-/** One HUD capsule: an icon and a number counting to its value. */
-function capsule(t: Theme, id: string, icon: string, value: number, tone: "gold" | "danger" | "ink"): void {
-  og.ui.row(id, { gap: t.space.xs, cross: "center", padding: { left: t.space.sm, top: t.space.xs, right: t.space.md, bottom: t.space.xs }, frame: "hud", background: { token: "panel" }, radius: 999 }, () => {
+/** One HUD box: an icon and a number counting to its value. */
+function hudBox(t: Theme, id: string, icon: string, value: number, tone: "gold" | "danger" | "ink"): void {
+  og.ui.row(id, { gap: t.space.xs, cross: "center", padding: { left: t.space.sm, top: t.space.xs, right: t.space.md, bottom: t.space.xs }, frame: "hud", background: { token: "panel" }, radius: t.radius.bar }, () => {
     og.ui.icon("Icon", icon, { size: 26, tint: { token: tone } });
     og.ui.counter("Value", value, { step: "xl", font: "display", durationMs: 300, width: px(56), align: "center" });
   });
@@ -205,14 +207,14 @@ function hud(world: World, theme: Theme, g: GameV, t: TuneV): void {
   const small = phone();
   og.ui.setNavigation(false);
   og.ui.anchor("Purse", { anchor: "topLeft", gap: theme.space.sm }, () => {
-    capsule(theme, "Light", "heart", g.lives, g.lives <= 3 ? "danger" : "ink");
-    capsule(theme, "Coins", "coin", g.gold, "gold");
+    hudBox(theme, "Light", "heart", g.lives, g.lives <= 3 ? "danger" : "ink");
+    hudBox(theme, "Coins", "coin", g.gold, "gold");
     // A refused placement shakes the purse once, with the error sound (og-ui §6).
     if (g.refusedTick === world.tick) og.ui.shake({ sound: true });
   });
   let paused = false;
   og.ui.anchor("Waves", { anchor: "topRight", gap: theme.space.sm, cross: "center" }, () => {
-    og.ui.row("Wave", { cross: "center", padding: { left: theme.space.md, top: theme.space.xs, right: theme.space.md, bottom: theme.space.xs }, frame: "hud", background: { token: "panel" }, radius: 999 }, () => {
+    og.ui.row("Wave", { cross: "center", padding: { left: theme.space.md, top: theme.space.xs, right: theme.space.md, bottom: theme.space.xs }, frame: "hud", background: { token: "panel" }, radius: theme.radius.bar }, () => {
       og.ui.label("Label", say(world, "hud.wave", { n: Math.max(1, g.wave), total: WAVES.length }), { step: "lg", font: "display", nowrap: true });
     });
     if (og.ui.actionButton("Pause", say(world, "hud.pause"), { icon: "pause", size: 48 }).clicked) paused = true;
@@ -223,7 +225,7 @@ function hud(world: World, theme: Theme, g: GameV, t: TuneV): void {
     PLANTS.forEach((name, kind) => {
       const price = cost(t, kind);
       const chosen = g.selected === kind;
-      og.ui.column(og.ui.idi("Plant", kind), { cross: "center", gap: theme.space.xxs, padding: { left: theme.space.sm, top: theme.space.xs, right: theme.space.sm, bottom: theme.space.sm }, frame: "card", background: { token: "panel" }, radius: 18 }, () => {
+      og.ui.column(og.ui.idi("Plant", kind), { cross: "center", gap: theme.space.xxs, padding: { left: theme.space.sm, top: theme.space.xs, right: theme.space.sm, bottom: theme.space.sm }, frame: "card", background: { token: "panel" }, radius: theme.radius.panel }, () => {
         og.ui.row("Top", { cross: "center", gap: theme.space.xs }, () => {
           og.ui.image("Picture", { texture: g.sheet as unknown as never, uv: uvOf(PICTURE[kind]!), width: px(small ? 32 : 44), height: px(small ? 32 : 44) });
           // The price: muted when the purse covers it, in danger's ink when it does not.
@@ -237,7 +239,7 @@ function hud(world: World, theme: Theme, g: GameV, t: TuneV): void {
   // On a phone the call for the next wave sits over the tray, in the thumb's reach.
   if (small) og.ui.anchor("Call", { anchor: "bottom", offsetY: -112 }, () => callButton(world, g, small));
   if (g.wave === 0 && !small) {
-    og.ui.anchor("Hint", { anchor: "bottom", padding: { left: theme.space.md, top: theme.space.xs, right: theme.space.md, bottom: theme.space.xs }, frame: "hud", background: { token: "panel" }, radius: 999 }, () => {
+    og.ui.anchor("Hint", { anchor: "bottom", padding: { left: theme.space.md, top: theme.space.xs, right: theme.space.md, bottom: theme.space.xs }, frame: "hud", background: { token: "panel" }, radius: theme.radius.bar }, () => {
       og.ui.label("Text", say(world, "hud.hint"), { nowrap: true });
     });
   }

@@ -1,7 +1,7 @@
 type style
 version 1
 ---
-# Path Guard's skin: the engine's cartoon style pack (templates/ui-kit/tools/make-styles.py; CC0 art, OFL fonts;
+# Path Guard's style: the engine's cartoon style pack (templates/ui-kit/tools/make-styles.py; CC0 art, OFL fonts;
 # LICENSES.md) in a night-garden palette: cream panels on the dark lawn, the lantern's orange as the one accent.
 name "pathguard"
 scheme light
@@ -43,10 +43,10 @@ palette {
   gold "#b44c0d"
 }
 radius {
-  small 10
-  control 10
-  bar 10
-  panel 18
+  small 6
+  control 6
+  bar 6
+  panel 10
 }
 ramp {
   body 15 20
@@ -75,16 +75,16 @@ fonts {
 icons "styles/pathguard/icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
 }
-slice panel 4 4 96 96 30 tint
-slice card 104 4 64 64 20 tint
-slice button 172 4 48 48 20 tint
-slice buttonHover 224 4 48 48 20 tint
-slice buttonPressed 276 4 48 48 20 tint
-slice buttonDisabled 328 4 48 48 20 tint
-slice field 4 104 48 48 16 tint
-slice slot 56 104 48 48 16 tint
-slice tooltip 108 104 32 32 13 tint
-slice hud 144 104 32 32 15 tint
+slice panel 4 4 96 96 16 tint
+slice card 104 4 64 64 14 tint
+slice button 172 4 48 48 12 tint
+slice buttonHover 224 4 48 48 12 tint
+slice buttonPressed 276 4 48 48 12 tint
+slice buttonDisabled 328 4 48 48 12 tint
+slice field 4 104 48 48 10 tint
+slice slot 56 104 48 48 10 tint
+slice tooltip 108 104 32 32 10 tint
+slice hud 144 104 32 32 10 tint
 slice track 180 104 32 16 7 tint
 slice fill 216 104 32 16 7 tint
 soft 252 104 64 64 24

@@ -1,4 +1,4 @@
-# Path Guard's skin (the engine's cartoon style pack, recoloured): licences
+# Path Guard's style (the engine's cartoon style pack, recoloured): licences
 
 | File | Licence | Origin |
 |---|---|---|
@@ -9,5 +9,5 @@
 | `LilitaOne-Regular.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Lilita One (Google Fonts); unmodified (Reserved Font Name "Lilita One"). Copyright (c) 2011 Juan Montoreano (juan@remolacha.biz), with Reserved Font Names "Lilita One" |
 
 Characters these fonts lack (Chinese, Japanese, Korean) are drawn with the
-skin's `fallback` font, `fonts/NotoSansSC-Regular-subset.ttf` (the platform's
+style's `fallback` font, `fonts/NotoSansSC-Regular-subset.ttf` (the platform's
 subset, OFL 1.1, `assets/fonts/OFL.txt`).
