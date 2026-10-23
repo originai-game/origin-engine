@@ -549,7 +549,8 @@ Baked lighting, volumetrics and area lights (depth S7).
   into a control shorter than its art shows the centre of the art's middle,
   squeezed at most twice, and sprites and the UI's images are sampled
   anisotropically where the device can (`RenderCapabilities.spriteAnisotropy`,
-  16; WebGL2 through `EXT_texture_filter_anisotropic`), so the outline
+  16; WebGL2 through `EXT_texture_filter_anisotropic`; 1 on a software
+  rasterizer, whose filter softens even a 1:1 draw), so the outline
   through a squeezed middle is as crisp as the corners; text keeps a
   trilinear sampler (its distance field). Screen transitions, count-ups and
   bursts run by the tick in the UI state.

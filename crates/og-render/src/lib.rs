@@ -650,7 +650,11 @@ pub struct RenderInfo {
     /// draw through (text keeps a trilinear one: its distance field): [`SPRITE_ANISOTROPY`] where the device filters
     /// anisotropically (wgpu's `ANISOTROPIC_FILTERING`: Vulkan with
     /// `samplerAnisotropy`, Metal, WebGPU, WebGL2 with
-    /// `EXT_texture_filter_anisotropic`), 1 where it has none. Above 1, an
+    /// `EXT_texture_filter_anisotropic`), 1 where it has none and on a
+    /// software rasterizer ([`is_software_adapter`]): lavapipe's anisotropic
+    /// filter is an elliptical weighted average that softens even an image
+    /// drawn 1:1 (a 4-texel outline reads 216, 124, 40, 40, 124, 216 where
+    /// trilinear reads it exactly), so every sprite would blur. Above 1, an
     /// image squeezed along one axis reads its mip level by the other axis
     /// (a nine-slice's middle row stays as crisp as its corners); at 1 it
     /// reads it by the squeezed axis and blurs, which og-ui's 2× bound on a
@@ -2334,6 +2338,7 @@ impl Renderer {
                 .get_downlevel_capabilities()
                 .flags
                 .contains(wgpu::DownlevelFlags::ANISOTROPIC_FILTERING)
+                && !is_software_adapter(adapter_info.device_type, &adapter_info.name)
             {
                 SPRITE_ANISOTROPY
             } else {

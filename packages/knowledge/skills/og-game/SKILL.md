@@ -383,7 +383,7 @@ else ignores it. The stamp is world state, so a replay reproduces it.
   one-tick, immediate drawing (HUDs, debug). Sprites and og.ui's frames
   are filtered anisotropically where the device can
   (`og.render.capabilities(world).spriteAnisotropy`: 16, or 1 on a WebGL2
-  without `EXT_texture_filter_anisotropic`), so a sprite or a nine-slice
+  without `EXT_texture_filter_anisotropic` and on a software rasterizer), so a sprite or a nine-slice
   squeezed along one axis keeps the other axis's detail (a button's
   outline stays sharp); at 1 it blurs, and og.ui bounds a frame's middle
   at twice its art for that reason.

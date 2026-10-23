@@ -826,15 +826,19 @@ fn text_fields_match_their_reference_frame() {
 /// (level 0), where trilinear filtering reads it by the larger axis (level
 /// 2 to 3) and blurs the outline into the fill. The art is an edge column
 /// of a mipmapped atlas: a 4-texel dark outline on a cream fill, uniform
-/// down its 48 rows. It is drawn twice, 1:1 (the art's level-0 value) and
-/// 48 rows into 8 px, and the outline's darkest pixel of each is compared.
-/// A tier without anisotropic filtering (`RenderInfo::sprite_anisotropy`
-/// 1, RenderCapabilities.spriteAnisotropy) is skipped: there og-ui's 2×
-/// bound on a middle's squeeze is what keeps the band away.
+/// down its 48 rows. It is drawn twice, 1:1 and 48 rows into 8 px. On
+/// every tier the 1:1 piece shows the art exactly (its 4 outline columns
+/// dark, cream beside them: an anisotropic filter that softens an
+/// isotropic draw, as lavapipe's does, is not one the sampler may use).
+/// Where the tier filters anisotropically (`RenderInfo::sprite_anisotropy`
+/// above 1, RenderCapabilities.spriteAnisotropy), the squeezed piece's
+/// outline reads the 1:1 one's darkness; where it does not (1: WebGL2
+/// without the extension, a software rasterizer), og-ui's 2× bound on a
+/// middle's squeeze is what keeps the band away, and that half is skipped.
 ///
 /// Ways it could fail: the sampler reads the mip level by the larger axis
 /// (the Linear-mip sampler: the outline lightens to the fill's side), or
-/// the squeezed piece is drawn from another level than the 1:1 one.
+/// the anisotropic filter blurs what is drawn 1:1.
 #[test]
 fn a_middle_squeezed_six_times_keeps_its_outline_as_dark_as_the_art() {
     use og_render::{ColorSpace, Mips, Sprite, TextureData};
@@ -880,14 +884,24 @@ fn a_middle_squeezed_six_times_keeps_its_outline_as_dark_as_the_art() {
     let mut renderer = Renderer::new_blocking(&desc).expect("a headless adapter");
     let aniso = renderer.info().sprite_anisotropy;
     let tier = renderer.info().backend_tier();
-    if aniso == 1 {
-        println!("{tier}: sprite anisotropy {aniso}, skipped (the 2× bound holds there)");
-        return;
-    }
     renderer
         .render(&scene, &RenderTarget::Offscreen)
         .expect("render");
     let image = renderer.read_offscreen().expect("read back");
+    // The 1:1 piece's row across the outline: cream, 4 ink, cream.
+    let profile: Vec<u8> = (16 + 7..16 + 13)
+        .map(|x| image.pixels[((40 * image.width + x) * 4) as usize])
+        .collect();
+    let near = |v: u8, want: u8| v.abs_diff(want) <= 4;
+    assert!(
+        near(profile[0], cream[0])
+            && profile[1..5].iter().all(|&v| near(v, ink[0]))
+            && near(profile[5], cream[0]),
+        "{tier} (anisotropy {aniso}): the 1:1 piece reads {profile:?} across its outline, \
+         not the art's {} ×4 between {}",
+        ink[0],
+        cream[0]
+    );
     // The darkest red across the outline's columns, on the piece's middle row.
     let darkest = |x0: u32, y: u32| {
         (x0 + 6..x0 + 14)
@@ -901,11 +915,10 @@ fn a_middle_squeezed_six_times_keeps_its_outline_as_dark_as_the_art() {
     println!(
         "{tier} (anisotropy {aniso}): outline 1:1 {level0}, squeezed 6× {squeezed}, fill {fill}"
     );
-    assert!(
-        level0 <= ink[0] + 4,
-        "the 1:1 piece reads the art's outline ({level0}, the art's {})",
-        ink[0]
-    );
+    if aniso == 1 {
+        println!("{tier}: no anisotropic filtering; the squeeze is og-ui's 2× bound's");
+        return;
+    }
     assert!(
         squeezed <= level0 + 6,
         "the outline through a 6× squeezed middle reads {squeezed}, the art's level 0 {level0} (fill {fill}): \
