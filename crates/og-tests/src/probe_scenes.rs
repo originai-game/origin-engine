@@ -62,7 +62,7 @@ fn meadow() -> RenderScene {
         control: Some(TerrainControl {
             width: 2,
             height: 2,
-            rgba: Arc::from(vec![255u8, 0, 0, 0].repeat(4)),
+            rgba: Arc::from([255u8, 0, 0, 0].repeat(4)),
         }),
     });
     let layers = island_layers(&mut scene);
