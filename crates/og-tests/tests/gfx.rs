@@ -1445,3 +1445,107 @@ fn vox_keyframes_show_the_keyed_block_at_both_keys() {
         "frame 2: the block lifted ({right_block:?} against {left_block:?})"
     );
 }
+
+/// The mean linear-ish RGB (0..255) of `img` over `x`, `y`.
+fn region_mean(img: &RgbaImage, x: std::ops::Range<u32>, y: std::ops::Range<u32>) -> [f64; 3] {
+    let mut sum = [0.0f64; 3];
+    let mut n = 0.0f64;
+    for py in y {
+        for px in x.clone() {
+            let i = ((py * img.width + px) * 4) as usize;
+            for c in 0..3 {
+                sum[c] += f64::from(img.pixels[i + c]);
+            }
+            n += 1.0;
+        }
+    }
+    sum.map(|s| s / n.max(1.0))
+}
+
+/// `lod-levels` (depth S6; reference `lod-levels.png`): the cooked tree at
+/// 6, 16 and 45 m, each at the level its size on screen picks and tinted
+/// as debugView lod tints it (green, yellow, orange).
+#[test]
+fn lod_levels_matches_its_reference() {
+    check("lod-levels");
+}
+
+/// The tree cooks into the default `lods 1 0.5 0.25`, the three distances
+/// pick levels 0, 1 and 2, and the three trees draw well under the
+/// triangles of three full ones: a level ignored draws the full mesh; a
+/// selection inverted puts the full mesh far away.
+#[test]
+fn lod_levels_pick_coarser_meshes_with_distance() {
+    let (_, levels, (drawn, full)) =
+        og_tests::depth_render_scenes::lod_scene().expect("the tree cooks");
+    assert_eq!(levels, [0, 1, 2]);
+    assert!(
+        (drawn as f64) < 0.65 * full as f64,
+        "{drawn} triangles drawn of {full} at level 0"
+    );
+}
+
+/// `probe-interior` (depth S6; reference `probe-interior.png`): a chrome
+/// sphere in a closed room reflecting the room's reflection probe.
+#[test]
+fn probe_interior_matches_its_reference() {
+    check("probe-interior");
+}
+
+/// The chrome sphere shows the room, not the sky: without the probe its
+/// lower half reflects the procedural sky's brown ground (red above blue);
+/// with it, the room's grey floor and blue wall (blue above red). A probe
+/// sampled without box projection, or not at all, keeps the sky's ground.
+#[test]
+fn a_reflection_probe_puts_the_room_in_the_chrome_sphere() {
+    let desc = scenes::base_desc();
+    let with = frame(&desc, &og_tests::depth_render_scenes::probe_scene(true), 1).0;
+    let without = frame(&desc, &og_tests::depth_render_scenes::probe_scene(false), 1).0;
+    // The sphere spans about x 520..690, y 270..445 of the 1280x720 frame.
+    let (x, y) = (560..650, 380..430);
+    let (a, b) = (
+        region_mean(&with, x.clone(), y.clone()),
+        region_mean(&without, x, y),
+    );
+    println!("chrome sphere, lower half: with the probe {a:?}, without {b:?}");
+    assert!(
+        b[0] > b[2] + 10.0,
+        "without the probe, the sky's ground: {b:?}"
+    );
+    assert!(a[2] > a[0] + 10.0, "with the probe, the room: {a:?}");
+}
+
+/// `ssr-wet-floor` (depth S6; the full tier; reference `ssr-wet-floor.png`):
+/// screen-space reflections on a mirror-smooth floor under a black sky.
+#[test]
+fn ssr_wet_floor_matches_its_reference() {
+    if adapter().tier != Tier::Full {
+        return;
+    }
+    check("ssr-wet-floor");
+}
+
+/// The floor under the red sphere shows its reflection with SSR on and is
+/// dark without it (the environment is black and there is no probe, so
+/// nothing else reflects it); a reflection drawn upside down or offset
+/// would leave this patch dark.
+#[test]
+fn ssr_reflects_the_sphere_in_the_floor() {
+    if adapter().tier != Tier::Full {
+        return;
+    }
+    let desc = scenes::base_desc();
+    let on = frame(&desc, &og_tests::depth_render_scenes::ssr_scene(true), 1).0;
+    let off = frame(&desc, &og_tests::depth_render_scenes::ssr_scene(false), 1).0;
+    // The reflection lies about x 440..550, y 500..620.
+    let (x, y) = (460..530, 540..600);
+    let (a, b) = (
+        region_mean(&on, x.clone(), y.clone()),
+        region_mean(&off, x, y),
+    );
+    println!("floor under the sphere: ssr on {a:?}, off {b:?}");
+    assert!(
+        a[0] > b[0] + 20.0 && a[0] > a[1] * 1.5,
+        "no red reflection: {a:?} against {b:?}"
+    );
+}

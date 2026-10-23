@@ -26,3 +26,6 @@ pub mod vox_scenes;
 // Posed by og-anim (native only).
 #[cfg(not(target_arch = "wasm32"))]
 pub mod skeleton_scenes;
+// Levels of detail cooked by og-cook, reflection probes and SSR (native only).
+#[cfg(not(target_arch = "wasm32"))]
+pub mod depth_render_scenes;
