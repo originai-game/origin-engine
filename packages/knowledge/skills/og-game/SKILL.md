@@ -2361,11 +2361,15 @@ with up to eight `param` lines. The function reads:
 
 It returns linear HDR. To use one:
 1. Load it with `og.load.post(world, "post/crt.ogt")`.
-2. Put the handle in `PostEffects.custom1` to `custom8`
-   (`RenderCapabilities.maxCustomPosts` is 8). They run in that order, a
-   slot left 0 skipped, each over the one before it, after depth of field
-   and motion blur and before exposure, bloom and tone mapping. There is
-   no `custom` list: a resource's fields hold one value each.
+2. Put the handles in the list `PostEffects.custom`, at most
+   `RenderCapabilities.maxCustomPosts` (8) of them. They run in its order,
+   each over the one before it, after depth of field and motion blur and
+   before exposure, bloom and tone mapping. Write the list whole:
+   `post.custom = [grade, crt]`, `post.custom = [...post.custom, h]`,
+   `post.custom = []`. Reading it answers a frozen copy, so
+   `post.custom.push(h)` throws instead of changing nothing; nine passes
+   are refused, never cut to eight. A look gives it on one line:
+   `custom "post/tint.ogt" "post/crt.ogt"`.
 3. Set its parameters with `og.render.setPostParam(world, post, "curve",
    [0.1])`.
 
