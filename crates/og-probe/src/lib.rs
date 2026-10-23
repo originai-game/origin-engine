@@ -15,8 +15,14 @@
 //! error is only for a malformed call, an unknown method (`-32601`) or a
 //! fault. The probe never writes files and never reads a clock; every call
 //! is answered on the world's thread between ticks. With the `publish`
-//! feature only the player-facing members answer. README.md has the whole
-//! contract.
+//! feature only the player-facing members answer, and only their code and
+//! the command actions that change the world are built in (the members
+//! and actions for tools, `describe`, `expect`, `dump_*`, `save_scene` and
+//! the rest, are compiled out, with what only they read). README.md has
+//! the whole contract.
+
+// What only the compiled-out members read is unused in a publish build.
+#![cfg_attr(feature = "publish", allow(dead_code, unused_imports))]
 
 mod base64;
 pub mod command;

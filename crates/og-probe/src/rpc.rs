@@ -209,15 +209,23 @@ impl Probe {
                 message: format!("method not found: {method}"),
             });
         }
+        // A publish build compiles only the player-facing members' arms
+        // (served_members refuses the rest above), so the others' code is
+        // not in the module.
+        #[cfg(not(feature = "publish"))]
         let internal =
             |err: og_core::Error| RpcError::internal(format!("{method}: {}", err.reason()));
         Ok(match method {
             "hello" => self.hello(world),
             "tick" => json!(self.tick(world)),
             "state" => self.state(world),
+            #[cfg(not(feature = "publish"))]
             "advance" => json!(self.advance(world, steps(p)?).map_err(internal)?),
+            #[cfg(not(feature = "publish"))]
             "pause" => json!(self.pause()),
+            #[cfg(not(feature = "publish"))]
             "resume" => json!(self.resume()),
+            #[cfg(not(feature = "publish"))]
             "accepted" => json!(self.accepted()),
             "input" => {
                 let event = p
@@ -231,7 +239,9 @@ impl Probe {
                 _ => return Err(RpcError::invalid("x and y must be finite numbers")),
             },
             "entity" => or_null(self.entity(world, string(p, "id")?)),
+            #[cfg(not(feature = "publish"))]
             "bounds" => or_null(self.bounds(world, string(p, "id")?)),
+            #[cfg(not(feature = "publish"))]
             "patch" => {
                 let id = string(p, "id")?.to_owned();
                 let parameter = string(p, "parameter")?.to_owned();
@@ -240,6 +250,7 @@ impl Probe {
                     .ok_or_else(|| RpcError::invalid("value is required"))?;
                 json!(self.patch(world, &id, &parameter, value))
             }
+            #[cfg(not(feature = "publish"))]
             "run" => {
                 let program = p
                     .get("program")
@@ -251,6 +262,7 @@ impl Probe {
                 let (width, height) = size(p)?;
                 or_null(self.capture(world, width, height))
             }
+            #[cfg(not(feature = "publish"))]
             "sweep" => {
                 let values = p
                     .get("values")
@@ -272,9 +284,13 @@ impl Probe {
                 };
                 or_null(self.sweep(world, &desc).map_err(internal)?)
             }
+            #[cfg(not(feature = "publish"))]
             "reload" => or_null(self.reload(world)),
+            #[cfg(not(feature = "publish"))]
             "snapshot" => self.snapshot(world),
+            #[cfg(not(feature = "publish"))]
             "restore" => json!(self.restore(world, string(p, "id")?)),
+            #[cfg(not(feature = "publish"))]
             "dump" => {
                 let kind = match string(p, "what")? {
                     "world" => DumpKind::World,
@@ -294,7 +310,9 @@ impl Probe {
                 };
                 or_null(self.dump(world, kind, id))
             }
+            #[cfg(not(feature = "publish"))]
             "commands" => or_null(self.commands(world, string(p, "script")?)),
+            #[cfg(not(feature = "publish"))]
             "listen" => {
                 let seconds = match p.get("seconds") {
                     None | Some(Value::Null) => 1.0,
@@ -306,12 +324,16 @@ impl Probe {
                 };
                 or_null(self.listen(world, seconds))
             }
+            #[cfg(not(feature = "publish"))]
             "memory" => or_null(self.memory(world)),
+            #[cfg(not(feature = "publish"))]
             "describe" => self.describe(world),
+            #[cfg(not(feature = "publish"))]
             "expect" => match self.expect(world, string(p, "what")?) {
                 Ok(r) => r.to_json(),
                 Err(reason) => return Err(RpcError::invalid(reason)),
             },
+            #[cfg(not(feature = "publish"))]
             "expectations" => {
                 let taken = self.take_expectations();
                 let failed = taken
@@ -329,6 +351,7 @@ impl Probe {
                     "results": taken.iter().map(|r| r.to_json()).collect::<Vec<_>>(),
                 })
             }
+            #[cfg(not(feature = "publish"))]
             "save_scene" => {
                 let write = p.get("write").and_then(Value::as_bool).unwrap_or(false);
                 let spawned = p.get("spawned").and_then(Value::as_bool).unwrap_or(false);

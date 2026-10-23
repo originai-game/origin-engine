@@ -405,6 +405,7 @@ impl<T> Table<T> {
 /// instantiated under (none for the boot scene) and its entities by scene
 /// row, as bits.
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "publish", allow(dead_code))]
 pub(crate) struct SceneInstance {
     pub id: String,
     pub root: Option<u64>,
@@ -444,7 +445,8 @@ pub(crate) struct State {
     /// advance, frame and probe call is refused with it.
     pub start_failed: Option<String>,
     /// project.ogt's game values (CreateOptions.project), for a reload's
-    /// assembly.
+    /// assembly (none in a publish build, which does not reload).
+    #[cfg_attr(feature = "publish", allow(dead_code))]
     pub project: Option<ProjectGame>,
     /// GameDesc.look, until it has been applied (just before start).
     pub boot_look: Option<String>,
@@ -468,6 +470,7 @@ pub(crate) struct State {
     /// A rebuilt bundle's state, waiting for the probe's reload to swap it in.
     pub reloaded: Option<Box<Assembled>>,
     /// The physics profile (2 or 3), from the host's options.
+    #[cfg_attr(feature = "publish", allow(dead_code))]
     pub profile: u32,
     /// The engine modules' handles: physics (meshes, queries) and the UI.
     pub physics: Option<og_physics::PhysicsSystem>,
@@ -1243,6 +1246,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
     // The host's locale (og run --locale, the browser's language).
     super::i18n::request(engine_id, options["locale"].as_str().unwrap_or(""));
     ENGINES.with(|e| e.borrow_mut().push(Some(engine.clone())));
+    #[cfg(not(feature = "publish"))]
     rprobe::set_reloader(&engine);
 
     // The game's bundle and its first scene, before the first tick.

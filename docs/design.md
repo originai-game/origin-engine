@@ -886,7 +886,14 @@ The engine implements `RuntimeProbe` protocol 5 natively (`hello`, `tick`,
 from the shell (no postMessage hop: the shell calls the Worker through a
 request ring), a loopback WebSocket from `og` on native. `publish` builds keep
 the player-facing members (`hello`, `tick`, `state`, `pick`, `entity`,
-`input`, `capture`) and drop the rest.
+`input`, `capture`) and drop the rest, compiled out with what only they
+read (`describe` and the views' id passes, `save_scene`'s scene writer,
+`reload`, the dumps the modules register). Their command channel keeps the
+actions og.ai's commands and a timeline's event keys reach (input, `set`,
+`teleport`, the clock, registered commands) and refuses the ones that only
+observe the world for a tool (`screenshot`, `describe`, `expect`, `get`,
+`dump_*`, `help`, `listen`, `save_scene`) with a warning
+(crates/og-probe/README.md §Builds).
 
 Above capture sits the layer that lets an agent check a frame without
 reading pixels:

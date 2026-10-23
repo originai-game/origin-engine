@@ -147,3 +147,61 @@ What the table says:
   regenerated with `og api gen` (index.d.ts, api.schema.json, wiki
   render.md). docs/design.md §3.4 (trace) and docs/web-export.md (trace)
   say the same.
+
+### 2. The probe's non-player members compiled out of publish (describe and the views' id pass among them)
+
+- **Why one item.** `describe` is reached from three dispatchers: the
+  JSON-RPC `invoke`, the probe program (`run`) and the command channel's
+  `describe` action, and `expect:entity:...:within` reads its boxes. A
+  publish build refused those members at run time (`served_members`) but
+  linked every one of them, so cutting describe meant gating the
+  dispatchers, and with them every member publish already refused.
+- **Change.**
+  - og-probe `rpc.rs`: `invoke` compiles only the seven player members'
+    arms under `publish` (`hello`, `tick`, `state`, `input`, `pick`,
+    `entity`, `capture`); the others were already `-32601` there.
+  - og-probe `probe.rs`: the command channel keeps every action that
+    changes the world, because og.ai's commands and a timeline's event
+    keys reach it in a shipped game (the input actions, `set`, `teleport`,
+    `frame_entity`, `seed`, `pause`, `resume`, `advance`, `quit`, the
+    registered commands such as `timeline:play`); the ten that only observe
+    the world for a tool (`screenshot`, `listen`, `describe`, `expect`,
+    `save_scene`, `dump_world`, `dump_ui`, `dump_entity`, `get`, `help`)
+    are not built in and log "`<action>` is not built into a publish
+    build". `register_dump` keeps nothing (so the engine modules' dumps,
+    `dump_render`, `dump_desync`, `dump_lanes`, the nav and AI dumps, are
+    not linked), nor do `set_listen`, `set_memory` and `set_reader`.
+  - og-runtime: `SceneView::seen` (describe) answers `None` in publish and
+    `pick` no longer runs the views' id passes in any build (it reads the
+    main camera's pass alone; describe still runs them); the scene writer
+    (`scene_save.rs`), the reloader and `get`'s derive (`atmosphere::derive`)
+    are not registered or built in publish.
+  - og-probe's lib carries `cfg_attr(feature = "publish", allow(dead_code,
+    unused_imports))`: what only the compiled-out members read is unused
+    there; the default build still warns about real dead code.
+- **Measured** (after item 1). 3D publish 13,033,282 → 12,753,175 B
+  (−280,107 B), brotli 3,529,527 → 3,457,520 B (**−72,007 B**); 2D
+  publish 12,395,677 → 12,115,631 B (−280,046 B), brotli 3,353,116 →
+  3,280,554 B (**−72,562 B**). Per crate (3D): og_runtime −309,052 B,
+  og_probe −81,558 B, og_ecs −31,859 B (the world dump and reflection
+  JSON), og_render −29,715 B (`render_ids_from` for views, the view
+  cameras), std −20,149 B, data −15,673 B (the help text, usages,
+  messages); og_host_web's exports grew +239,984 B because wasm-opt now
+  inlines the smaller runtime bodies into them, which is where the
+  og_runtime figure went in part.
+- **Test.** og-probe `tests/publish.rs`
+  `the_command_channel_runs_world_actions_and_refuses_the_tools`
+  (`--features publish`): a script with `teleport`, a registered command
+  and eight tool actions; the world actions run, no output is written,
+  each tool action logs its refusal and a registered dump is unknown.
+  It fails on the old code (the dump and describe were written as
+  outputs). `only_player_facing_members_answer` and the default build's
+  41 tests pass unchanged; og-runtime's lib tests (16) pass;
+  `cargo check -p og-host-node --features publish` is clean.
+- **Behaviour change to judge.** In a publish build, a timeline event key
+  or an og.ai command naming a tool action (`dump_world`, `get`, ...) now
+  logs a refusal instead of writing an output nobody reads. No game in
+  the repository does that.
+- **Shared files.** og-runtime `probe.rs`, `engine.rs` (the reloader's
+  registration), `lib.rs` (`mod scene_save` gated); docs/design.md §3.4
+  and crates/og-probe/README.md §Builds.

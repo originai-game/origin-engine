@@ -128,6 +128,7 @@ fn day_night_now(world: &World, layout: Option<&Layout>) -> Option<DayNightNow> 
     })
 }
 
+#[cfg(not(feature = "publish"))]
 fn xyz(v: Vec3) -> Value {
     json!([v.x, v.y, v.z])
 }
@@ -138,7 +139,9 @@ fn xyz(v: Vec3) -> Value {
 /// `lightIntensity`); the first og.DirectionalLight, the one it drives, is
 /// answered with the colour and intensity it is drawn with, `toLight` (the
 /// unit vector towards the sun or the moon that replaces the entity's -Z)
-/// and `drivenBy`. Reads only; the world is never written.
+/// and `drivenBy`. Reads only; the world is never written. A publish
+/// build has no `get`, so no derive.
+#[cfg(not(feature = "publish"))]
 pub(crate) fn derive(
     world: &World,
     layouts: &BTreeMap<String, Layout>,
