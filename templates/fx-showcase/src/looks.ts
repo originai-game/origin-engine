@@ -102,6 +102,10 @@ export function applyLookPreset(world: World, slug: string): void {
 export function resetLooks(world: World): void {
   const look = must(og.load.look(world, "looks/none.ogt"));
   must(og.render.applyLook(world, look));
+  // A look owns only what it names: the none look has no `ui` line, so the
+  // style the last preset dressed the HUD in stays until the UI is told
+  // otherwise. Null is the prototype style (UiDesc.style).
+  must(og.ui.configure(world, { style: null }));
   // The render settings a preset may set, back at their defaults (the
   // none look leaves RenderSettings alone: it holds the decal atlas).
   Object.assign(must(world.resource(og.RenderSettings)), {
