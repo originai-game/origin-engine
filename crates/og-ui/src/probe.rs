@@ -80,4 +80,8 @@ impl UiTree for UiProbe {
         let v = self.0.lock().viewport();
         Some((v.width, v.height, if v.dpr > 0.0 { v.dpr } else { 1.0 }))
     }
+
+    fn style(&self, _world: &World) -> Option<String> {
+        Some(self.0.lock().style_name().to_owned())
+    }
 }

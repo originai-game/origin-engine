@@ -218,6 +218,12 @@ pub trait UiTree {
     fn surface(&self, _world: &World) -> Option<(f32, f32, f32)> {
         None
     }
+
+    /// The name of the UI style the game configured: empty for the
+    /// engine's placeholder `prototype`. `None` when unknown.
+    fn style(&self, _world: &World) -> Option<String> {
+        None
+    }
 }
 
 /// A fixed UI tree: for tests, and for a host with no UI module yet.

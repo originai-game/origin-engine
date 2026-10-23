@@ -18168,7 +18168,7 @@ export interface AlertDesc {
  * - `"frame_entity"`: `frame_entity:<entity>`: point the camera at an entity.
  * - `"dump_world"`: `dump_world[:path]`: tables, systems and their matched counts.
  * - `"dump_entity"`: `dump_entity:<name>[:path]`: one entity's components and transform.
- * - `"dump_ui"`: `dump_ui[:path]`: the UI tree with bounds.
+ * - `"dump_ui"`: `dump_ui[:path]`: the UI tree with bounds, and `style`, the configured UI style's name (empty for the placeholder prototype).
  * - `"set"`: `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector, an enum's variant name or its index; refused outside the field's FieldOptions min/max, never clamped.
  * - `"get"`: `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (an enum as its variant's name, `"music"`; og.Time whole, with rate and the time scale; the DirectionalLight og.DayNight drives with the colour, intensity and direction it is drawn with), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...).
  * - `"seed"`: `seed:<n>`: reseed the Rng resource.

@@ -1,6 +1,6 @@
 ---
 name: og-ui
-description: Game screens and HUDs on Origin Engine with og.ui — which screen template to pick (title, pause, settings, five HUDs, cutscene, shop, inventory, level select, results, leaderboard, tutorial, loading, dialogs, toasts), how to feed it data and read what it answers, the widget set beneath, focus for keyboard and gamepad, accessibility (the screen-reader mirror), phones, touch gestures and the safe area, text (fields, text areas, selection and the clipboard, input methods, ellipsis, kerning, shaping, font fallback), and the look: skins (style packs) and how their frames tile, count-ups, bursts, shakes, screen transitions and UI sounds. Use when building or changing menus, HUDs or any UI in a project with a project.ogt.
+description: Game screens and HUDs on Origin Engine with og.ui — which screen template to pick (title, pause, settings, five HUDs, cutscene, shop, inventory, level select, results, leaderboard, tutorial, loading, dialogs, toasts), how to feed it data and read what it answers, the widget set beneath, focus for keyboard and gamepad, accessibility (the screen-reader mirror), phones, touch gestures and the safe area, text (fields, text areas, selection and the clipboard, input methods, ellipsis, kerning, shaping, font fallback), and the look: UI styles (a look's `ui` line, the six built-ins, the game's own) and how their frames tile, count-ups, bursts, shakes, screen transitions and UI sounds. Use when building or changing menus, HUDs or any UI in a project with a project.ogt.
 ---
 
 `og.ui` is the engine's immediate-mode UI: a system describes the tree every
@@ -14,7 +14,7 @@ Two games written from this package alone (`examples/lantern-vale`,
 `examples/hollowbell`) used the main menu, pause, cutscene, shop and
 results templates (the results with a localised Best and New best) and a
 text field with input-method composition, and none needed wiring beyond
-its desc; a skin pack copied into the game restyled every screen, and
+its desc; a style copied into the game restyled every screen, and
 `og polish` measured taste 99 for both. The Kestrel Stair
 (`examples/kestrel-stair`) used the cutscene, tutorial overlay,
 inventory with drag and drop, level select, leaderboard with its honest
@@ -57,7 +57,7 @@ and every style pack's screens on a phone `kit-skin-<pack>-phone.png`.
 | A title screen | `og.ui.mainMenu(id, { title, subtitle, items, footer, instant })` (`instant` while it is the screen the game opens on: §6) | `selected`: the item id |
 | Pause | `og.ui.pauseMenu(id, { open, items })` (Resume, Settings, Quit by default) | `selected`; Back answers `resume` |
 | Settings | `og.ui.settingsScreen(id, { open, settings, languages, onChange, onSave })` | the new `GameSettings`, `changed`, `closed` |
-| A platformer HUD | `og.ui.platformerHud(id, { lives, maxLives, coins, score, level, timeLeft, touch })` (what it is not given it does not draw: `maxLives: 0` no hearts, no `coins` or `score` no capsule for them; the words `pauseLabel`, `jumpLabel` from the string table, og-i18n §2) | `paused`, `moveX`, `action: "jump"` |
+| A platformer HUD | `og.ui.platformerHud(id, { lives, maxLives, coins, score, level, timeLeft, touch })` (what it is not given it does not draw: `maxLives: 0` no hearts, no `coins` or `score` no box for them; the words `pauseLabel`, `jumpLabel` from the string table, og-i18n §2) | `paused`, `moveX`, `action: "jump"` |
 | A shooter HUD | `og.ui.shooterHud(id, { health, armor, ammo, reserve, abilities, map, touch })` (the words `killsLabel`, `fireLabel`, `pauseLabel`) | `paused`, `action` (ability id, `fire`), stick |
 | A puzzle HUD | `og.ui.puzzleHud(id, { level, score, target, stars, moves, timeLeft })` (the words `movesLabel`, `targetLabel` with `{target}`, `pauseLabel`) | `paused` |
 | An idle or incremental HUD | `og.ui.idleHud(id, { currencies, generators })` (the words `tapLabel`, `levelLabel` with `{level}`, `rateLabel` with `{rate}`, `pauseLabel`) | `action: "tap"` or `"buy:<id>"` |
@@ -143,9 +143,9 @@ its own names `coin`, `gear`, `fire`…, and every kit screen draws them) loads 
 { font } })`; `og.ui.icon(id, "heart", { size, tint })` and `[icon=heart]`
 then draw crisp distance-field glyphs at any size in their ink. A texture
 grid (`icons: { texture, columns, rows, names }`) still works for painted
-icons. Icons sit in `fgMuted` or `fgSubtle` (design language: icons are
-neutral). Sets name their icons differently (iconoir's `coins` and
-`fire-flame`, the skin grids' `coin` and `fire`): an unknown name draws an
+icons. Icons sit in `inkMuted` or `inkFaint` (icons stay neutral; colour
+is for state). Sets name their icons differently (iconoir's `coins` and
+`fire-flame`, the style grids' `coin` and `fire`): an unknown name draws an
 empty slot and warns, so a template that may meet either asks
 `og.ui.hasIcon(name)` first and draws its fallback, or names an icon twice
 in its set (`icon "coin" "coins"`). A path's `stroke-linejoin` is kept
@@ -284,46 +284,60 @@ fingers with `touch_start` for the first and `touch:1:down:<x,y>` /
 `touch:1:move:<x,y>` / `touch:1:up` for the second
 (`templates/ui-kit/tests/gestures.og.ts`).
 
-## 6. Theming: skins, motion, transitions, sounds
+## 6. Styles: the look of the game's UI, motion, transitions, sounds
 
-The default look is the platform's tokens; a game should have its own. A
-**skin** (`og.load.skin`, an `.ogt` of `type skin`) replaces the palette,
-radii, type ramp, durations, fonts and icons, and dresses every element
-class in nine-slice frames from its atlas (panel, card, button with hover,
-pressed and disabled, field, slot, tooltip, HUD capsule, progress track and
-fill), with ornaments (panel corners, the divider, a heading flourish), a
-panel texture, shadows and glows, press squash and hover lift, entrances and
-sounds. Choosing one is og-taste §1. Six packs to start from are in
-the engine repository under `templates/ui-kit/assets/skins/` (`pixel`,
-`cartoon`, `fantasy`, `scifi`, `paper`, `neon`; copy the directory into the
-game's `assets/skins/` and rename it at will: a skin's ids are read
-relative to its file first, then from `assets/`; og-taste §1 has the one
-line to check, the CJK `fallback`):
+The game's UI follows the game's art, never the Origin platform's look:
+the engine has no house style to fall back on. Without a style a UI draws
+in **prototype**, the engine's placeholder: greys, near-square corners and
+a cyan focus ring, meant to be replaced. `og polish` warns when a game
+ships in it. A **style** (`og.load.style`, an `.ogt` of `type style`) is
+complete: its scheme, every palette role (`backdrop`, `panel`, `ink`,
+`inkMuted`, `primary`, `focus`, `hud`, `danger`, ...), the four radii
+(`small`, `control`, `bar`, `panel`), the type ramp, durations, fonts and
+icons. It dresses every element class in nine-slice frames from its atlas
+(panel, card, button with hover, pressed and disabled, field, slot,
+tooltip, HUD box, progress track and fill), with ornaments (panel corners,
+the divider, a heading flourish), a panel texture, shadows and glows,
+press squash and hover lift, entrances and sounds. Choosing one is
+og-taste §1.
+
+The usual way in is the game's look (og-taste §12): its `ui` line names
+the style, and every catalogue preset already names one. `ui "pixel"` is a
+built-in style by slug (`pixel`, `cartoon`, `fantasy`, `scifi`, `paper`,
+`neon`; `og cook` bundles the one a look names). `ui
+"styles/<name>/style.ogt"` is the game's own, and a game's
+`assets/styles/<slug>/style.ogt` wins over the built-in of that slug.
+To make one from a built-in, copy `templates/styles/<slug>/` of the
+engine repository into the game's `assets/styles/<name>/` and change it
+at will: a style's ids are read relative to its file first, then from
+`assets/`. A style file must name every palette role and all four radii;
+`og cook` lists the ones missing. Loading one by hand:
 
 ```ts
-const skin = og.load.skin(world, "skins/fantasy/skin.ogt");   // atlas, fonts, icons load with it
+const style = og.load.style(world, "styles/fantasy/style.ogt");   // atlas, fonts, icons load with it
 og.ui.configure(world, {
-  skin: skin.ok ? skin.value : null,
-  contrast: "high",                  // still applies over a skin
+  style: style.ok ? style.value : null,
+  contrast: "high",                  // still applies over a style
   reducedMotion: settings.reducedMotion,   // every motion becomes a fade
   sounds: { hover, press, open, close, success, error },  // og.load.sound handles, played on the ui bus
 });
-og.ui.configure(world, { reducedMotion: true });   // later, from the settings: the skin, fonts and sounds stay
+og.ui.configure(world, { reducedMotion: true });   // later, from the settings: the style, fonts and sounds stay
+og.ui.configure(world, { primaryColor: "#e0553b" });   // re-colour the style's primary; hover, pressed and the ink on it follow
 ```
 
 `configure` takes a partial UiDesc: a field left out keeps the value the
-last call gave it (or the skin a look applied, `GameDesc.look` and
-`og.render.applyLook`), and `null` clears one (`skin: null` is the
-platform tokens again). A UI left with no font at all warns that it draws
+last call gave it (or the style a look applied, `GameDesc.look` and
+`og.render.applyLook`), and `null` clears one (`style: null` is the
+prototype style again). A UI left with no font at all warns that it draws
 no text.
 
-A skin's `slice` line says how a frame's edges and centre fill: `stretch`
+A style's `slice` line says how a frame's edges and centre fill: `stretch`
 (the default), `repeat` (tiled at the art's size from the corner, the last
 tile cut) or `round` (a whole number of tiles resized to fit, as CSS
 `round`): tile patterned borders (a rope, a rivet row, a pixel bevel),
 stretch plain ones. `glass <part> <blur> <fill> [tint]` makes a part glass:
 the game behind it blurred (`blur` CSS px), tinted by the part's fill, under
-its frame drawn at `fill` opacity (the scifi pack's dialogs:
+its frame drawn at `fill` opacity (the scifi style's dialogs:
 `glass panel 16 0.85 0.15`). Glass blurs the scene and the UI drawn under
 it (a HUD under a glass dialog); it costs a frame copy and a blur pyramid
 when any is on screen (about 0.8 ms at 1280×720 on an M4 Pro), and one more
@@ -335,43 +349,44 @@ translucent fills (secondary buttons, chips, tracks) flat. Your own
 see-through overlays should follow: read `og.ui.frameTheme().reducedTransparency`
 (and `reducedMotion`) and draw them opaque.
 
-A skin of the game's own art: draw each part as a nine-patch PNG
+A style of the game's own art: draw each part as a nine-patch PNG
 (`panel.9.png`, `button.9.png`, `buttonHover.9.png`, ..., `soft.9.png`: the
 art inside a one-pixel border whose top row and left column mark in opaque
 black what stretches) and any ornament as a plain PNG (`corner.png`,
-`divider.png`, `flourish.png`, `tile.png`) in the skin's directory, then
-`og skin pack assets/skins/<name>`: it packs them into `atlas.png` and
-writes the skin file's `atlas`, `slice` and `soft` lines and the ornaments'
-regions, keeping every other line (palette, fonts, a slice's `tint` or
+`divider.png`, `flourish.png`, `tile.png`) in the style's directory, then
+`og style pack assets/styles/<name>`: it packs them into `atlas.png` and
+writes the style file's `atlas`, `slice` and `soft` lines and the ornaments'
+regions, keeping every other line (palette, radii, fonts, a slice's `tint` or
 `repeat`). Re-run it after redrawing a part.
 
-Never pass hex colours for chrome: use `{ token: "accent" }`, `"fgMuted"`,
-`"surface"` and the type steps (`displayLg`, `xl`, `meta`); the skin's
-palette answers them. A container that should look like a HUD capsule or a
-card takes `frame: "capsule"` (or `"card"`, `"slot"`…) in its desc; titles
-take `heading: true`. Without a skin both are plain.
+Never pass hex colours for chrome: use `{ token: "primary" }`, `"inkMuted"`,
+`"panel"` and the type steps (`xl3`, `xl`, `meta`); the style's
+palette answers them. A container that should look like a HUD box or a
+card takes `frame: "hud"` (or `"card"`, `"slot"`…) in its desc; titles
+take `heading: true`. Without a frame atlas both are plain fills at the
+style's radii.
 
 Motion and juice, all by the tick and in the UI state:
 
 | Want | Call |
 |---|---|
-| A score, coins or a reward counting up | `og.ui.counter(id, value, { from: 0, font: "display", step: "displayLg" })` |
+| A score, coins or a reward counting up | `og.ui.counter(id, value, { from: 0, font: "display", step: "xl3" })` |
 | Sparks when a star or reward lands | `og.ui.burst({ count: 10 })` right after the element |
 | A panel or item popping in | `og.ui.transition(id, show, { kind: "pop" })` (also `fade`, `slideUp`…, `scale`) |
 | A change of game screen | `const s = og.ui.screenTransition("Screens", state.screen, { kind: "iris" }).shown;` then build `s` (`fade`, `wipe`, `iris`, `dissolve`, `slide`; a colour or a texture) |
-| A wrong answer, a locked door, a refused purchase | `og.ui.shake({ sound: true })` right after the element, once, on the tick it happens: it swings three times and comes to rest by itself (the skin's `motion.shake`, else 6 px), with the `error` sound |
+| A wrong answer, a locked door, a refused purchase | `og.ui.shake({ sound: true })` right after the element, once, on the tick it happens: it swings three times and comes to rest by itself (the style's `motion.shake`, else 6 px), with the `error` sound |
 
 `screenTransition` keeps the previous screen in `shown` for the closing
 half of its duration, switches at full cover, then reveals the new one.
 Build `shown`, not the requested screen; `dump_ui` therefore lists the old
 screen until the midpoint. The cover itself does not block input. A new
-panel's own skin entrance starts when that panel is first built, and
+panel's own style entrance starts when that panel is first built, and
 ignores presses until it arrives (§4): the closing half of a wipe plus
 that entrance explains why a press just after the switch can be lost.
 
-Skins add the rest themselves: dialog and panel entrances with staggered
+Styles add the rest themselves: dialog and panel entrances with staggered
 controls, hover lift and press squash on springs (the `hoverSpring 1 350` and `pressSpring 0.55 120` lines of a
-skin's `motion` block: damping ratio and response in ms; below 1 bounces), eased progress bars, toasts flying in,
+style's `motion` block: damping ratio and response in ms; below 1 bounces), eased progress bars, toasts flying in,
 a shake and the error sound on a press of a disabled button. Reduced motion
 keeps every shake still and turns the rest into fades. The screen the game
 opens on is built settled (`instant: true` on its `mainMenu`, `anchor` or
@@ -388,7 +403,7 @@ scripts are shaped (Arabic joins, Devanagari conjuncts) and every font's
 kerning pairs apply. What a game sets:
 
 ```ts
-og.ui.label("Quest", quest.text, { width: { kind: "grow" }, maxLines: 2, ellipsis: true, color: { token: "fgMuted" } });   // cut with … on the last line
+og.ui.label("Quest", quest.text, { width: { kind: "grow" }, maxLines: 2, ellipsis: true, color: { token: "inkMuted" } });   // cut with … on the last line
 og.ui.label("Gold", gold, { font: "rounded", step: "xl", nowrap: true });   // body, display, mono or rounded
 ```
 
@@ -430,7 +445,7 @@ script text with `type:`, not `key_down`.
 
 Fonts (the one rule for every label, field and button):
 
-1. The role's font (body, display, mono, rounded; the skin's or
+1. The role's font (body, display, mono, rounded; the style's or
    `og.ui.configure`'s) when it has every character: the whole label in it.
 2. Else the first of the locale's fonts (its string table's `fonts` line)
    that has every character: the whole label in that face, its Latin and
@@ -439,9 +454,9 @@ Fonts (the one rule for every label, field and button):
 3. Else run by run: each run of the label from the first font that has it,
    the role's font first, then the locale's fonts, `UiDesc.fallbackFonts`
    (a Hebrew or Devanagari face, a CJK face cooked with `runtime true`) and
-   the skin's `fallback`; a letter and its accents stay in one face. A
+   the style's `fallback`; a letter and its accents stay in one face. A
    CJK-only subset (lantern-vale's `tools/subset-font.py`) gives this: the
-   Latin in the skin's face, the Chinese in Noto, on one line.
+   Latin in the style's face, the Chinese in Noto, on one line.
 
 So choose by the subset: keep Latin in the CJK subset for one face per
 label, leave it out to keep the game's Latin face beside CJK. Tracking

@@ -2506,7 +2506,10 @@ impl Probe {
             Value::Null,
             |(w, h, dpr)| json!({ "width": w, "height": h, "dpr": dpr }),
         );
-        json!({"kind": "ui", "tick": world.time().tick, "surface": surface, "elements": elements})
+        // The style's name ("" is the engine's placeholder, prototype): a
+        // check that the game dressed its UI reads it here.
+        let style = self.ui.as_ref().and_then(|ui| ui.style(world));
+        json!({"kind": "ui", "tick": world.time().tick, "surface": surface, "style": style, "elements": elements})
     }
 }
 

@@ -1,13 +1,14 @@
 ---
 name: og-taste
-description: Art direction for a game on Origin Engine — choosing a style from the premise (genre, mood, era, audience) out of a 37-style catalogue and binding it as a look (post stack, stylisation, material defaults, skin) with a UI skin, a palette and a type ramp; composition and hierarchy on the play surface, colour, typography, motion, feedback and consistency; atmosphere (fog, sky, time of day, weather, water); the anti-patterns that make a game look like a web form; and the checklist to run (with og run captures and dump_ui) before calling a game done. Use when starting a game's look, building or reviewing any screen or HUD, or when a game "works but looks generic".
+description: Art direction for a game on Origin Engine — choosing a style from the premise (genre, mood, era, audience) out of a 37-style catalogue and binding it as a look (post stack, stylisation, material defaults, the UI style) with a palette and a type ramp; composition and hierarchy on the play surface, colour, typography, motion, feedback and consistency; atmosphere (fog, sky, time of day, weather, water); the anti-patterns that make a game look like a web form; and the checklist to run (with og run captures and dump_ui) before calling a game done. Use when starting a game's look, building or reviewing any screen or HUD, or when a game "works but looks generic".
 ---
 
 A game is judged in its first second, before anyone reads a word. The
-engine's UI is correct by default and characterless by default: the platform
-tokens are grey glass that suits a settings page. This skill is how to give a
-game a look of its own and keep it consistent. The mechanics are og-ui's
-(skins, motion and sounds are og-ui §6) and the amounts of game feel
+engine's UI is correct by default and characterless by default: its
+placeholder style, `prototype`, is greys and square corners meant to be
+replaced, and the game's UI never borrows the Origin platform's look. This
+skill is how to give a game a look of its own and keep it consistent. The
+mechanics are og-ui's (styles, motion and sounds are og-ui §6) and the amounts of game feel
 og-feel's; this is the taste.
 
 ## What works
@@ -57,11 +58,16 @@ for a new game and writes the result (`--look <slug>` names it instead):
 `assets/looks/<game>.ogt` extending the preset, named by `GameDesc.look`,
 with a README section on changing it. For a game that exists, write the
 same file by hand (§12) and add `look: "looks/<game>.ogt"` to `og.game`.
-The entry also names the palette rules, the asset specs and the skin pack
-that matches it. Then pick **one** starting skin. The six packs in the engine's
-`templates/ui-kit/assets/skins/` are starting points, not the only looks:
+The entry also names the palette rules, the asset specs and the UI style
+its preset carries (the look's `ui` line, §12), so a game that extends a
+preset is dressed by it from the first frame. The game's UI follows the
+game's art, never the Origin platform's: without a style it draws in the
+engine's placeholder `prototype` (greys, near-square corners, a cyan focus
+ring), and `og polish` warns when a game ships in it. The six built-in
+styles in the engine's `templates/styles/` are starting points, not the
+only looks:
 
-| Pack | Premises it fits | Signature | Start look (§12) |
+| Style | Premises it fits | Signature | Start look (§12) |
 |---|---|---|---|
 | `pixel` | platformers, roguelikes, retro shooters, jam games | square frames, 2 px bevels, hard shadows, a bitmap face | `16bit-pixel` |
 | `cartoon` | casual, match-3, party, kids, idle | thick outlines, cream panels, squash on press, pops | `bold-comic-illustration` |
@@ -70,88 +76,90 @@ that matches it. Then pick **one** starting skin. The six packs in the engine's
 | `paper` | narrative, puzzle, cosy, mystery, word games | off-white sheets, ink outlines, soft shadows, one red | `pencil-hatching` |
 | `neon` | arcade, rhythm, racing, synthwave | dark glass, glowing tubes, italic display | `neon-vector` |
 
-```ts
-const skin = og.load.skin(world, "skins/fantasy/skin.ogt");
-if (skin.ok) og.ui.configure(world, { skin: skin.value });
+```text
+ui "fantasy"                     # in the game's look: a built-in style by slug
+ui "styles/harbour/style.ogt"    # or the game's own
 ```
 
-Make it the game's own by changing the skin file, never by passing colours
-to individual calls: copy the pack directory into the game's
-`assets/skins/<game>/` (`cp -R .../skins/fantasy assets/skins/<game>`) and
-load `skins/<game>/skin.ogt`. Nothing in it needs rewriting: the ids in a
-skin file are read relative to the file first (`atlas "atlas.png"`, `body
-"Newsreader-Medium.ttf"`), then from `assets/` (`skins/fantasy/atlas.png`
-still works). The one asset outside the pack is its CJK `fallback`,
-`fonts/NotoSansSC-Regular-subset.ttf` (2.5 MB, shared by every pack, so
-not copied six times): a project made by `npm create @origingame/game`
-has it at that id; otherwise point the line at the game's own CJK font,
-or delete it when the game shows no Chinese, Japanese or Korean (the cook
-names the line it cannot find). Then change `palette` (start with
-`accent`, `bg`, `surface`, `fg`), `ramp` and `fonts` (any OFL font beside
-the skin file), and redraw the atlas if the frames should change (`og skin
-pack`, og-ui §6). The art in the art direction of the
-world (sprites, backgrounds) and the skin must agree: a pixel-art world in a
+Make it the game's own by changing the style file, never by passing colours
+to individual calls: copy the built-in's directory into the game's
+`assets/styles/<game>/` (`cp -R .../templates/styles/fantasy
+assets/styles/<game>`) and name it in the look (`ui
+"styles/<game>/style.ogt"`). Nothing in it needs rewriting: the ids in a
+style file are read relative to the file first (`atlas "atlas.png"`, `body
+"Newsreader-Medium.ttf"`), then from `assets/`. A style is complete: it
+names every palette role and the four radii (`small`, `control`, `bar`,
+`panel`), so nothing of it comes from anywhere else. Then change `palette`
+(start with `primary`, `backdrop`, `panel`, `ink`), `radius`, `ramp` and
+`fonts` (any OFL font beside the style file), and redraw the atlas if the
+frames should change (`og style pack`, og-ui §6). A game that shows Chinese,
+Japanese or Korean adds a `fallback` font to its style (or its string
+table's `fonts` line, og-i18n). For a quick re-colour without a copy,
+`og.ui.configure(world, { primaryColor })` derives the primary's hover,
+pressed and soft tones and the ink on it. The art direction of the world
+(sprites, backgrounds) and the style must agree: a pixel-art world in a
 neon UI reads as two games.
 
 ## 2. Composition and hierarchy
 
 - **What the eye reads first**: decide the one thing per screen (the score on
   results, Play on the title, the health on a HUD) and make it the biggest,
-  the brightest or the only accent-coloured thing. If two things compete,
+  the brightest or the only thing in the primary colour. If two things compete,
   shrink one.
 - **The play surface is the hero**: a HUD sits in the corners and edges
   (anchors `topLeft`, `topRight`, `bottom`), never across the middle. Keep
   the centre third free during play.
-- **HUD weight**: at most three HUD groups visible at once; each is a capsule
-  with an icon and a number, not a panel with labels. Move rarely needed
+- **HUD weight**: at most three HUD groups visible at once; each is a HUD box
+  (`frame: "hud"`) with an icon and a number, not a panel with labels. Move rarely needed
   information behind pause.
 - **Safe area**: everything interactive inside `og.ui.frameViewport().safeArea`
   plus the density gutter; anchors do this for you, absolute positions do not.
 - **Phone vs desktop**: on `phonePortrait` the thumb zone is the bottom third:
   primary actions go there, touch controls at least 44 CSS px apart; titles
-  shrink one step (`displayMd` instead of `displayLg`). On desktop, menus sit
+  shrink one step (`xl2` instead of `xl3`). On desktop, menus sit
   centred or left, never full-width.
 - **Grouping**: spacing does the grouping. Related things are `space.sm`
   apart, groups `space.lg` or more. Do not draw a box around everything.
 
 ## 3. Colour
 
-- **Limited palette**: a ground (`bg`), one or two surfaces, one ink (`fg`)
-  with a muted ink, **one accent**, and the status colours. That is the whole
-  palette; a skin declares exactly these.
-- **One accent**, used for the one primary action per screen, earned stars,
-  the player's own row and focus. If everything is accent, nothing is.
+- **Limited palette**: a ground (`backdrop`), one or two surfaces (`panel`,
+  `panelRaised`), one ink (`ink`) with a muted ink (`inkMuted`), **one
+  primary**, and the status colours. That is the whole palette; a style
+  declares these and the roles derived from them.
+- **One primary**, used for the one primary action per screen, earned stars,
+  the player's own row and focus. If everything is primary, nothing is.
 - **Value before hue**: check the screen in greyscale. Text, the primary
   button and the player character must separate from their ground by value
   alone (body text at least 4.5:1; the packs' test enforces it for theirs:
   every label ink, every button label in every state, a text field's
-  placeholder, which draws in `fgSubtle` on the field's frame, and an
-  accent badge, `accentInk` on `accentSoft` over a panel (the results
+  placeholder, which draws in `inkFaint` on the field's frame, and a
+  primary badge, `highlight` on `primarySoft` over a panel (the results
   screen's "New best"), and a status badge in each of `success`, `warn`,
   `danger` and `info` (the tone's own ink on its 16 % tint), so a copied
-  pack whose `fgSubtle`, `fill`, `accentInk`, `accentSoft` or a status
+  style whose `inkFaint`, `control`, `highlight`, `primarySoft` or a status
   colour moves must keep those pairs at 4.5:1 too. The status colours are
   also the meters', toasts' and status dots' colours: on a cream panel they
-  are deep (the cartoon pack's warn is `#7b5102`, not a bright amber that
-  read 1.63:1), on a dark one light (a red under a dark pack's panel is a
+  are deep (the cartoon style's warn is `#7b5102`, not a bright amber that
+  read 1.63:1), on a dark one light (a red under a dark style's panel is a
   salmon such as `#ff8080`). Make them for the panels; a badge placed on
-  the other side of the scale (a light pack's badge straight on its dark
+  the other side of the scale (a light style's badge straight on its dark
   stage) moves its own ink towards white or black until it reads there,
   and the neutral badge does the same on its `fill`, so neither needs a
-  second palette. A game's copied skin is held to the same bars: the
+  second palette. A game's own style is held to the same bars: the
   engine's `pack_contrast.rs` measures the archetypes' and examples'
-  skins too, and their fixes were value, not hue (pathguard's lantern
+  styles too, and their fixes were value, not hue (pathguard's lantern
   orange deepened under a cream label, sparkorb's gold to a burnished
   amber under its cream ink, lampdive's plum fill darkened under its
   placeholder, Lantern Vale's status colours taken back to the fantasy
-  pack's deep ones);
+  style's deep ones);
   it also reads the primary and secondary labels from a rendered frame,
   where thin strokes may never reach their colour: a pixel font's one-pixel
-  strokes fall between pixels and took half their ink, so the pixel pack
+  strokes fall between pixels and took half their ink, so the pixel style
   thickens them with `textWeight body 0.5` and cooks DotGothic16 at
-  `px_range 8`; a copy of the pack made before that needs both lines).
+  `px_range 8`; a copy of the style made before that needs both lines).
 - Saturated colour on large areas tires the eye: keep saturation for small
-  things (the accent, icons, effects) and keep grounds calmer.
+  things (the primary, icons, effects) and keep grounds calmer.
 - Status colours mean status: never use `danger` red as decoration.
 
 ## 4. Typography
@@ -163,22 +171,22 @@ neon UI reads as two games.
 - **Numerals**: scores, timers, prices and stats in the numeric role
   (`font: "mono"`), so digits do not jitter as they count; big scores in the
   display face. Count them with `og.ui.counter`, never by setting text.
-- **A ramp, not sizes**: use the skin's steps (`displayLg`, `xl`, `body`,
+- **A ramp, not sizes**: use the style's steps (`xl3`, `xl`, `body`,
   `meta`); three or four steps per screen at most. Each step carries its
-  tracking (display sizes tighten, as the tokens do; a skin's `ramp` line
+  tracking (display sizes tighten; a style's `ramp` line
   takes it as its fourth number after the CJK leading), and it is applied
   to Latin text only.
-- Headings get `heading: true` so the skin's flourish frames them.
+- Headings get `heading: true` so the style's flourish frames them.
 
 ## 5. Motion
 
 - Every change of state moves; nothing pops in or out without a transition
   unless reduced motion is on.
-- **Durations 120 to 300 ms** for UI (the skin's `durations`), up to 700 ms
+- **Durations 120 to 300 ms** for UI (the style's `durations`), up to 700 ms
   for a screen transition, longer only for rewards. **Never linear**: ease
   out on arrival, ease in on exit.
 - **Anticipation and follow-through**: a press squashes before the action
-  (`press` in the skin), a reward overshoots and settles (`pop`, `motion.pop`).
+  (`press` in the style), a reward overshoots and settles (`pop`, `motion.pop`).
 - **Stagger**: a panel's controls arrive one after another (`motion.stagger`
   30–60 ms), not all at once.
 - **Screens change through a transition** (`og.ui.screenTransition`): fade
@@ -190,22 +198,22 @@ neon UI reads as two games.
 ## 6. Feedback
 
 Every input is answered **on the same tick** (og-feel §1) by a visual and a
-sound: hover (the skin's lift or highlight), press (squash, the `press`
+sound: hover (the style's lift or highlight), press (squash, the `press`
 sound), success (a toast, a burst, `success`), refusal (a disabled button
 shakes and plays `error` by itself; a wrong answer or a locked door shakes
 its element with `og.ui.shake` and the `error` sound; never silently ignore
 a press, and never shake the camera for it). Hand the UI its sounds with
 `og.ui.configure(world, { sounds: { hover, press, open, close, success, error } })`
-or the skin's `sound` lines. Results land with a count-up, stars with a
+or the style's `sound` lines. Results land with a count-up, stars with a
 `og.ui.burst`, rewards with a pop.
 
 ## 7. Consistency
 
-- **One skin per game.** Every screen, dialog and HUD uses it.
-- **One radius scale**: the skin's `radius`; never pass radii by hand.
-- **One shadow direction**: the skin's shadows all fall the same way (down);
+- **One style per game.** Every screen, dialog and HUD uses it.
+- **One radius scale**: the style's `radius`; never pass radii by hand.
+- **One shadow direction**: the style's shadows all fall the same way (down);
   in-world shadows should agree.
-- **One icon set**: the skin's `icons`; do not mix icon styles.
+- **One icon set**: the style's `icons`; do not mix icon styles.
 - **One transition kind** for screen changes, one entrance for dialogs.
 
 ## 8. Atmosphere
@@ -255,15 +263,16 @@ Each of these is a defect, not a style choice:
 - the HUD as a toolbar: a full-width bar of labelled boxes across the top;
 - labels instead of icons on the HUD ("Health: 72/100" instead of a heart
   and a bar);
-- every colour saturated, or every button in the accent;
+- every colour saturated, or every button in the primary colour;
 - a settings-page layout (left-aligned form rows) for a title screen.
 
 ## 10. The checklist before a game is done
 
 Run each item; each is checkable from a scripted run.
 
-1. **A skin is configured**: `og.ui.theme(world).skin` is not empty (log it
-   from a command, or read it in a playtest through a `facts` field).
+1. **A style is configured**: `og.ui.theme(world).style` is not empty and
+   not `prototype` (log it from a command, or read it in a playtest through
+   a `facts` field).
 2. **Title, pause and results screens captured**: `og run --headless --commands
    "0.5:show:title;1.5:screenshot:title.png;…"` (with the game's own commands);
    look at each capture in greyscale: the one thing per screen reads first.
@@ -277,7 +286,7 @@ Run each item; each is checkable from a scripted run.
    `og run --size 1170x2532`) and check in `dump_ui` that every control is at
    least 44 × 44 CSS px and nothing leaves the safe area.
 6. **Text legible**: body text at 13 px or more in `dump_ui` heights (a line
-   of at least 16 px); the skin passes 4.5:1 (the packs' test, or the same
+   of at least 16 px); the style passes 4.5:1 (the built-ins' test, or the same
    check over your atlas).
 7. **Motion present**: captures 100 ms apart after `show:` differ (an
    entrance), and a score `dump_ui` text read twice during the results
@@ -290,7 +299,7 @@ Run each item; each is checkable from a scripted run.
 10. **Reduced motion**: with `reducedMotion: true` the captures show fades
     only, and nothing is missing.
 11. **CJK**: switch the language to Chinese in settings and capture: no
-    missing-glyph boxes (the skin's fallback font covers it).
+    missing-glyph boxes (the style's or the string table's fallback font covers it).
 12. **None of section 9** is visible in any capture.
 13. **`og polish .` scores taste 90 or more** where it applies, and every
     finding left is one you read in the frames and can name a reason for
@@ -303,7 +312,7 @@ occupancy, screen transitions, UI sounds, locale keys) from the frames, the
 UI trees and the run's audio, with og-feel's measures beside it; og-build §5
 is the one list of its measures, thresholds and fixes. The numbers cannot
 judge a style: read the frames before changing anything, and fix the cause
-in the skin or the template, never per call.
+in the style or the template, never per call.
 
 ## 12. Style catalogue: looks
 
@@ -311,7 +320,7 @@ A style is chosen once per game and then held by data, not by habit: the
 **look** (`assets/looks/<game>.ogt`, an `.ogt` of `type look`) binds the
 frame's whole treatment (tone mapping and exposure, the post stack, the
 stylisation primitives, material defaults such as toon shading and
-outlines, fog and sky, the UI skin and the antialiasing) in one diffable
+outlines, fog and sky, the UI style and the antialiasing) in one diffable
 file. The engine ships the primitives and the presets; the taste is in
 which one you pick and how you tune it.
 
@@ -320,7 +329,7 @@ describes 37 styles in four families (pixel and retro, paint and line,
 shape and material, 3D rendering). For each: a one-line descriptor, three
 checks a critic can judge on a captured frame, the premises it fits
 (genre, mood, era, audience, as §1 asks them), the preset it maps to, the
-skin pack, palette constraints, asset specs (logical resolution, sprite
+UI style (`ui`), palette constraints, asset specs (logical resolution, sprite
 scale, face budget, outline width, texture density) and an art-bible
 direction. Match the premise's four answers against `premise`, shortlist
 two, and choose by the checks you can actually hold for the whole game.
@@ -344,7 +353,7 @@ version 1
 ---
 name "Harbour at dusk"
 extends "anime-cel-3d"          # the preset's slug (templates/looks/<slug>.ogt)
-skin "skins/harbour/skin.ogt"   # the game's own copy of the style's skin pack
+ui "styles/harbour/style.ogt"   # the game's own UI style (the preset names a built-in)
 RenderSettings {
   toneMapping agx
   exposure 1.1
@@ -455,8 +464,8 @@ middle ground.
 
 Name it in the game (`og.game({ look: "looks/harbour.ogt", … })`) and it
 is applied after the first scene spawns and before `start` runs (so
-`start` may still change any field, and reads the look's skin from
-`og.render.look(world)?.skin`); switch looks at a tick with
+`start` may still change any field, and reads the look's UI style from
+`og.render.look(world)?.style`); switch looks at a tick with
 `og.load.look` and `og.render.applyLook` (a flashback, a photo mode, an
 area's mood). A look's `MaterialStyle` reaches every lit material that
 leaves the field at its default; a material that must stay as made (a
@@ -492,7 +501,7 @@ in its style step (`docs/platform-asks.md` in the engine repository): the
 catalogue entry chosen from the premise, the look written, and the
 entry's three checks handed to the critic that reads the frames.
 
-| Slug | Family | Style | Support | Skin |
+| Slug | Family | Style | Support | UI |
 |---|---|---|---|---|
 | `expressionist-painting` | Paint and line | Expressionist paint | content | `paper` |
 | `bold-comic-illustration` | Paint and line | Bold comic illustration | full | `fantasy` |

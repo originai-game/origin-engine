@@ -14,8 +14,8 @@ needs a browser or a Rust toolchain. The command channel is
 The loop held for two whole games written from this package alone
 (`examples/lantern-vale`, `examples/hollowbell`): `og cook` took 47 and 69
 assets cold in 8.2 s and 3.6 s and under 100 ms after a change, without a
-warning, and every refusal named the line and the fix (a copied skin
-without its CJK `fallback` named the line and og-taste §1;
+warning, and every refusal named the line and the fix (a copied UI skin, as
+styles were then called, without its CJK `fallback` named the line and og-taste §1;
 `PostEffects.vignette is true or false` named the line). Scripted runs gave
 the same frames every time, `store: "keep"` relaunches and two-process
 replays worked the first time they were asked for, and `og polish` scored
@@ -201,7 +201,10 @@ every screen that matters.
 | feel | Sound on input | inputs answered by a sound within 6 ticks | every action | og-audio §1 |
 | feel | Frame time | step + render, p95, on the tier it ran on (`metal` on a Mac, `vulkan` on a GPU); the probe's own screenshots (render, read back, PNG) are not the game's step and are left out. Without a renderer the row says `n/a (no renderer)`, as do contrast, text size and HUD occupancy, which read frames | 8.3 ms (half the frame) | og-game §14 |
 
-The report also lists clipped samples in the mix (og-audio §4). Contrast and
+The report also lists clipped samples in the mix (og-audio §4), and a UI
+style finding (no score) when a shot's `dump_ui` reports `style` empty: the
+UI draws in prototype, the engine's placeholder, not a style of the game's
+own (og-taste §1). Contrast and
 text size read text only: icons and images (their "text" is a picture's
 name), disabled controls and what they hold (WCAG exempts them), the
 slivers a scroll container cuts, what a dialog's or a tutorial's scrim
@@ -218,7 +221,7 @@ so it depends on the glyphs' coverage: thin strokes cover few pixels
 whole, and a regular-weight CJK face at body sizes measures lower than
 Latin in the same colours (a 15 px "设置" 3.1:1 where "Settings" reads
 4.6:1 on one button), as it reads lower to the eye. Darken the ink in the
-skin's palette, give the CJK face a heavier weight or the label a larger
+style's palette, give the CJK face a heavier weight or the label a larger
 step; the measure is not wrong there. Facts are the game's `facts`
 (og-game §3): expose `hp`, `hits` or `kills` there or the hit measures stay
 n/a. A baseline line says how often things change with no input at all;
@@ -226,7 +229,7 @@ when it is high (a runner that always moves), read latency together with
 the frames.
 
 The numbers cannot judge a style. Read the frames before changing anything,
-fix the cause in the skin, the template or the system, never per call, and
+fix the cause in the style, the template or the system, never per call, and
 run it again after the fix: the report is the evidence.
 
 ## 6. Shipping

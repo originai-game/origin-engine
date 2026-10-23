@@ -78,6 +78,8 @@ interface UiDump {
   tick: number;
   /** The surface the CSS-pixel bounds are on (dpr: device pixels per CSS pixel). */
   surface?: { width: number; height: number; dpr: number } | null;
+  /** The configured UI style's name: "" is the engine's placeholder, prototype. */
+  style?: string | null;
   elements: Array<{ id: string; parent: string; kind?: string; disabled?: boolean; clipped?: boolean; text: string; x: number; y: number; width: number; height: number }>;
 }
 
@@ -626,6 +628,14 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
   const tickIndex = new Map(s.map((p, i) => [p.tick, i]));
   const findings: Finding[] = [];
 
+  // The UI's style: a game that shows UI in the engine's placeholder has
+  // not chosen its own look (og-taste §1).
+  const dressed = rec.shots
+    .filter((shot) => shot.ui && existsSync(shot.ui))
+    .map((shot) => JSON.parse(readFileSync(shot.ui!, "utf8")) as UiDump)
+    .filter((ui) => ui.elements.length > 0 && typeof ui.style === "string");
+  if (dressed.some((ui) => ui.style === "")) findings.push({ measure: "UI style", where: rec.playtest, detail: "the UI draws in prototype, the engine's placeholder style (greys, square corners), not a style of the game's own", fix: "og-taste §1: name a style in the game's look (`ui \"<slug>\"` or `ui \"styles/<name>/style.ogt\"`), or extend a catalogue preset, which names one" });
+
   // Frames: contrast, text size, HUD.
   const shots: PlaytestMeasures["shots"] = [];
   const allTexts: Array<TextBox & { shot: string }> = [];
@@ -660,14 +670,14 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
   }
   const contrastPass = allTexts.filter((b) => b.contrast >= 4.5);
   const worstContrast = [...allTexts].sort((a, b) => a.contrast - b.contrast).slice(0, 3).map((b) => ({ shot: b.shot, id: b.id, text: b.text.slice(0, 40), ratio: b.contrast }));
-  for (const w of worstContrast.filter((w) => w.ratio < 4.5)) findings.push({ measure: "contrast", where: `${rec.playtest} ${w.shot}: \`${w.id}\` "${w.text}"`, detail: `${w.ratio}:1 between ink and ground (body text wants 4.5:1)`, fix: "og-taste §3 (value before hue): darken the ground or lighten the ink in the skin's palette, never per call" });
+  for (const w of worstContrast.filter((w) => w.ratio < 4.5)) findings.push({ measure: "contrast", where: `${rec.playtest} ${w.shot}: \`${w.id}\` "${w.text}"`, detail: `${w.ratio}:1 between ink and ground (body text wants 4.5:1)`, fix: "og-taste §3 (value before hue): darken the ground or lighten the ink in the style's palette, never per call" });
   const sized = allTexts.filter((b) => b.ink > 0);
   // Ink lines of at least 9 px are a 13 px face (x-height and caps to descenders).
   const sizePass = sized.filter((b) => b.ink >= 9);
   const smallest = [...sized].sort((a, b) => a.ink - b.ink).slice(0, 3).map((b) => ({ shot: b.shot, id: b.id, text: b.text.slice(0, 40), ink: b.ink }));
   for (const w of smallest.filter((w) => w.ink < 9)) findings.push({ measure: "text size", where: `${rec.playtest} ${w.shot}: \`${w.id}\` "${w.text}"`, detail: `ink lines ${w.ink} CSS px tall (a 13 px face's capitals and digits are about 9)`, fix: "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone" });
   if (gameplayShots > 0 && (worstShare > 15 || worstCentre > 5))
-    findings.push({ measure: "HUD occupancy", where: `${rec.playtest}`, detail: `the HUD covers up to ${worstShare} % of the surface and ${worstCentre} % of the central third`, fix: "og-taste §2 (the play surface is the hero; HUD weight): capsules in the corners, the centre third free" });
+    findings.push({ measure: "HUD occupancy", where: `${rec.playtest}`, detail: `the HUD covers up to ${worstShare} % of the surface and ${worstCentre} % of the central third`, fix: "og-taste §2 (the play surface is the hero; HUD weight): HUD boxes in the corners, the centre third free" });
 
   // UI motion, transitions and sounds.
   let screenChanges = 0, withMotion = 0, motionTicks = 0;
@@ -728,7 +738,7 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
     else if (median(lat) > 1) findings.push({ measure: "input latency", where: rec.playtest, detail: `the median input is answered ${median(lat)} ticks after the tick it landed (0 is the same tick)`, fix: "og-feel §1: read input and act in the same tick; buffer, do not queue" });
   }
   if (screenChanges > 0 && withMotion < screenChanges) findings.push({ measure: "screen transitions", where: rec.playtest, detail: `${screenChanges - withMotion} of ${screenChanges} screen changes had no motion in the 20 ticks around them`, fix: "og-taste §5 (screens change through a transition): og.ui.screenTransition, one kind per game" });
-  if (presses > 0 && pressesWithSound < presses) findings.push({ measure: "UI sounds", where: rec.playtest, detail: `${presses - pressesWithSound} of ${presses} UI presses played no sound on the ui bus`, fix: "og-taste §6 (feedback) and og-audio §3: give the skin or og.ui.configure its press and open sounds" });
+  if (presses > 0 && pressesWithSound < presses) findings.push({ measure: "UI sounds", where: rec.playtest, detail: `${presses - pressesWithSound} of ${presses} UI presses played no sound on the ui bus`, fix: "og-taste §6 (feedback) and og-audio §3: give the style or og.ui.configure its press and open sounds" });
 
   // Damage facts and their feedback.
   const moments: number[] = [];
