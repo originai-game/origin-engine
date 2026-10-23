@@ -235,8 +235,9 @@ fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3
   if (light.color_kind.w < -0.5) {
     // A rect light (area.wgsl) on the base lobes.
     let a = area_shade(light, s, p, n, v);
-    o.diffuse = a.diffuse;
-    o.specular = a.specular;
+    let shadow = select(1.0, rect_shadow(light, p, n), receives);
+    o.diffuse = a.diffuse * shadow;
+    o.specular = a.specular * shadow;
     return o;
   }
   let to_light = light.position_range.xyz - p;
@@ -294,6 +295,12 @@ fn scene_behind(uv: vec2<f32>, lod: f32) -> vec3<f32> {
 
 @fragment
 fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
+  return physical_fragment(in);
+}
+
+// The physical shading of a fragment (`fs`, and lightmap_physical.wgsl's
+// `fs_physical_lightmap`).
+fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let uv = stylised_uv(in.uv, in.affine);
   let base_sample = textureSample(base_color_tex, material_sampler, uv);
   var hook: Hook;

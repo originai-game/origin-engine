@@ -53,3 +53,11 @@ fn fs_prepass(in: PrepassOut) -> PrepassTargets {
   array_layers(in.layer);
   return prepass_targets(in);
 }
+
+// A lightmapped static mesh with an array-map material (lightmap.wgsl's
+// `vs_lightmap` carries the instance's look, so its layer, to here).
+@fragment
+fn fs_lightmap_array(in: LightmappedOut) -> @location(0) vec4<f32> {
+  array_layers(u32(max(look_layer(in.look), 0.0) + 0.5));
+  return lightmapped_fragment(in);
+}

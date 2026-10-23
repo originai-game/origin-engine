@@ -114,7 +114,7 @@ pub mod gltf;
 #[cfg(not(target_arch = "wasm32"))]
 mod headless;
 
-pub use area::{LightCookie, MAX_COOKIE_LAYERS};
+pub use area::{CookieLayers, LightCookie, MAX_COOKIE_LAYERS, RECT_SHADOW_FOV, cookie_layers};
 pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
 pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
 pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS, UNIFORM_LIGHT_REFS};
@@ -138,7 +138,9 @@ pub use id_pass::{
     IdCamera, IdFrame, IdObject, IdSources, id_pass_size, projection_name, render_ids,
     render_ids_from, view_id_cameras,
 };
-pub use lightmap::{BakedLighting, LightmapPages, LightmapUvs, PROBE_VOLUMES, Probe, ProbeVolume};
+pub use lightmap::{
+    BakedLighting, BakedMesh, LightmapPages, LightmapUvs, PROBE_VOLUMES, Probe, ProbeVolume,
+};
 pub use lines::{LineLayer, LineMode, Lines, wire_edges};
 pub use material::{PhysicalExtensions, Side, StandardMaterial};
 pub use metaballs::{FIELDS, MAX_FLUIDS, Metaballs};
@@ -177,7 +179,7 @@ pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats
 pub use texture_array::{TextureArrayData, TextureArrayHandle, TextureArrayInfo};
 pub use video::FrameTexture;
 pub use views::{MirrorQuad, View, ViewTarget};
-pub use volumetric::{FROXELS, RAYMARCH_STEPS, VolumetricFog, VolumetricMethod};
+pub use volumetric::{FROXELS, RAYMARCH_LIGHTS, RAYMARCH_STEPS, VolumetricFog, VolumetricMethod};
 pub use water::{Water, Water2d, WaterHeights};
 pub use weather::{
     WEATHER_DUST, WEATHER_MIST, WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW, WeatherLook, weather,
@@ -230,8 +232,13 @@ pub(crate) const INSTANCE_WGSL: &str = wgsl!("instance.wgsl");
 pub(crate) const LIGHTING_WGSL: &str = wgsl!("lighting.wgsl");
 /// Rect lights and cookies (area.rs), after lighting.wgsl.
 pub(crate) const AREA_WGSL: &str = wgsl!("area.wgsl");
+/// The lightmap pages at group 3 and their lookup (lightmap.rs), in the
+/// standard and physical lit modules.
+const LIGHTMAP_PAGES_WGSL: &str = wgsl!("lightmap_pages.wgsl");
 /// The lightmapped entry points (lightmap.rs), after the standard lit shader.
 const LIGHTMAP_WGSL: &str = wgsl!("lightmap.wgsl");
+/// The physical lightmapped entry points, after the physical lit shader.
+const LIGHTMAP_PHYSICAL_WGSL: &str = wgsl!("lightmap_physical.wgsl");
 
 /// The lit shader's source with `hooks` (`hooks.rs`), the joint palette
 /// read as `palette` and the light tables as `tables`.
@@ -241,7 +248,7 @@ fn lit_source_with(
     tables: clusters::LightTables,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3),
@@ -257,7 +264,7 @@ fn physical_source_with(
     tables: clusters::LightTables,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PHYSICAL_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3),
@@ -315,7 +322,7 @@ pub(crate) fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
 /// The scattered copies' lit module with the light tables `tables`.
 fn scatter_lit_source(tables: clusters::LightTables) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{INSTANCE_WGSL}{}{}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{AREA_WGSL}{INSTANCE_WGSL}{}{}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         wgsl!("scatter_common.wgsl"),
@@ -334,9 +341,9 @@ fn scatter_shadow_source() -> String {
 }
 
 /// What the 3D fluid's module starts with: the frame group, the light
-/// tables `tables` and the lighting.
+/// tables `tables`, the lighting and the area lights (area.wgsl).
 fn fluid_shared_source(tables: clusters::LightTables) -> String {
-    format!("{FRAME_WGSL}{}{LIGHTING_WGSL}", tables.wgsl())
+    format!("{FRAME_WGSL}{}{LIGHTING_WGSL}{AREA_WGSL}", tables.wgsl())
 }
 const SKY_WGSL: &str = wgsl!("sky.wgsl");
 const SPRITE_WGSL: &str = wgsl!("sprite.wgsl");
@@ -523,6 +530,12 @@ pub struct RenderDesc {
     /// clamped unsharp mask over the 4 neighbours that restores what the
     /// history's blend softened, never past the neighbourhood's range.
     pub taa_sharpen: f32,
+    /// How volumetric fog is drawn: `None` by the tier (the froxel grid
+    /// where there is compute, the raymarch on WebGL2); `Some(Raymarch)`
+    /// draws WebGL2's raymarch on a full-tier device too (to read that
+    /// path's frames natively: `OG_GFX_VOLUMETRIC=raymarch`). A froxel grid
+    /// asked for without compute is the raymarch.
+    pub volumetric: Option<VolumetricMethod>,
 }
 
 /// Where instances are culled ([`RenderDesc::culling`]).
@@ -571,6 +584,7 @@ impl Default for RenderDesc {
             point_shadows: PointShadows::Auto,
             taa_history: TaaHistory::Bilinear,
             taa_sharpen: 0.0,
+            volumetric: None,
         }
     }
 }
@@ -623,6 +637,12 @@ pub struct RenderInfo {
     pub pipeline_cache: bool,
     /// The largest side of a 2D texture, so of a render target.
     pub max_texture_size: u32,
+    /// How volumetric fog is drawn ([`RenderDesc::volumetric`], the tier).
+    pub volumetric: VolumetricMethod,
+    /// The most point, spot and rect lights that light one sample of the
+    /// volumetric fog: the cluster's ([`MAX_CLUSTER_LIGHTS`]) in the froxel
+    /// grid, [`RAYMARCH_LIGHTS`] in the raymarch.
+    pub volumetric_lights: u32,
 }
 
 impl RenderInfo {
@@ -2238,7 +2258,15 @@ impl Renderer {
             texture_formats,
             pipeline_cache: false,
             max_texture_size: limits.max_texture_dimension_2d,
+            volumetric: if tier == Tier::Full && desc.volumetric != Some(VolumetricMethod::Raymarch)
+            {
+                VolumetricMethod::Froxel
+            } else {
+                VolumetricMethod::Raymarch
+            },
+            volumetric_lights: 0,
         };
+        info.volumetric_lights = volumetric::lights(info.volumetric);
         log::info!(
             "og-render: {} ({:?}, {:?}, {:?}, antialias {:?}, shadows {}x{}², textures {:?}/{:?})",
             info.adapter,
@@ -2422,7 +2450,8 @@ impl Renderer {
         let volumetric = volumetric::Volumetric::new(
             &device,
             light_tables,
-            light_tables == clusters::LightTables::Storage,
+            light_tables == clusters::LightTables::Storage
+                && desc.volumetric != Some(VolumetricMethod::Raymarch),
         );
         let reflection_light_buffers = light_tables.buffers(&device);
         let reflection_buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -2485,12 +2514,7 @@ impl Renderer {
             })
         };
         let pbr_layout = pipeline_layout("pbr", &[&frame_layout, &material_layout, &fx_layout]);
-        let lightmaps = lightmap::Lightmaps::new(
-            &device,
-            &queue,
-            [&frame_layout, &material_layout, &fx_layout],
-            light_tables,
-        );
+        let lightmaps = lightmap::Lightmaps::new(&device, &queue, &frame_layout, light_tables);
         let pbr_skinned_layout = pipeline_layout(
             "pbr skinned",
             &[&frame_layout, &material_layout, &fx_layout, &palette_layout],
@@ -4034,7 +4058,7 @@ impl Renderer {
                 .map(|l| match l.kind {
                     LightKind::Point => self.info.point_shadows.layers(),
                     LightKind::Spot { .. } => 1,
-                    LightKind::Rect { .. } => 0,
+                    LightKind::Rect { two_sided, .. } => 1 + two_sided as usize,
                 })
                 .sum::<usize>()
                 .min(capacity)
@@ -4339,19 +4363,28 @@ impl Renderer {
         slot.as_ref().expect("made above")
     }
 
-    /// The lit pipeline of a batch (made by [`Renderer::ensure_pipelines`]):
-    /// its material shader's or the built-in one, physical or standard.
-    /// Whether a batch draws with its mesh's lightmap (lightmap.rs): a
-    /// lightmapped mesh drawn by a standard material without a material
-    /// shader or array maps, from its f32 vertices.
-    fn lightmapped(lightmaps: &lightmap::Lightmaps, b: &Batch) -> bool {
-        !b.physical
-            && b.shader.is_none()
-            && !b.array
-            && !b.compact
-            && lightmaps.uvs(b.mesh).is_some()
+    /// The lightmapped pipeline family a batch draws with (lightmap.rs):
+    /// every batch of a lightmapped mesh, its kind's (`physical`: drawn
+    /// with the physical pipelines in this pass, as `lit_pipeline_of`).
+    fn lightmap_family(
+        lightmaps: &lightmap::Lightmaps,
+        b: &Batch,
+        physical: bool,
+    ) -> Option<lightmap::Family> {
+        use lightmap::Family;
+        lightmaps.uvs(b.mesh)?;
+        Some(match (physical, b.shader) {
+            (true, None) => Family::Physical,
+            (true, Some(sh)) => Family::PhysicalShader(sh),
+            (false, _) if b.array => Family::Array,
+            (false, Some(sh)) => Family::Shader(sh),
+            (false, None) if b.compact => Family::Compact,
+            (false, None) => Family::Standard,
+        })
     }
 
+    /// The lit pipeline of a batch (made by [`Renderer::ensure_pipelines`]):
+    /// its material shader's or the built-in one, physical or standard.
     fn lit_pipeline_of(&self, b: &Batch, skinned: bool, physical: bool) -> &wgpu::RenderPipeline {
         if b.lean && !skinned {
             return &self.lean_pipelines[&(b.side, b.effects, b.derivatives, b.compact)];
@@ -5037,11 +5070,42 @@ impl Renderer {
         for v in &probe_skinned {
             self.ensure_pipelines(&[], v, false);
         }
+        // Lightmapped batches (lightmap.rs): their family's pipeline, and a
+        // physical one's standard family too (passes without the physical
+        // groups, views and probes, draw it standard).
         for b in &batches {
-            if Self::lightmapped(&self.lightmaps, b) {
+            let physical = [b.physical, false];
+            for physical in &physical[..if b.physical { 2 } else { 1 }] {
+                let Some(family) = Self::lightmap_family(&self.lightmaps, b, *physical) else {
+                    continue;
+                };
+                use lightmap::Family;
+                let (groups, module) = match family {
+                    Family::Standard | Family::Compact => {
+                        ([&self.material_layout, &self.fx_layout], &self.pbr_shader)
+                    }
+                    Family::Shader(sh) => (
+                        [&self.material_layout, &self.fx_layout],
+                        &self.cache.shaders[sh],
+                    ),
+                    Family::Array => {
+                        let a = self.array_maps.as_ref().expect("an array batch");
+                        ([&a.layout, &self.fx_layout], &a.module)
+                    }
+                    Family::Physical | Family::PhysicalShader(_) => {
+                        let p = self.physical.as_ref().expect("a physical batch");
+                        let module = match family {
+                            Family::PhysicalShader(sh) => &self.cache.physical_shaders[&sh],
+                            _ => &p.module,
+                        };
+                        ([&p.material_layout, &p.fx_layout], module)
+                    }
+                };
                 self.lightmaps.ensure_pipeline(
                     &self.device,
-                    &self.pbr_shader,
+                    family,
+                    groups,
+                    module,
                     (b.side, b.blend, b.effects),
                     self.samples,
                 );
@@ -5401,7 +5465,7 @@ impl Renderer {
                 .map(|l| match l.kind {
                     LightKind::Point => self.info.point_shadows.layers(),
                     LightKind::Spot { .. } => 1,
-                    LightKind::Rect { .. } => 0,
+                    LightKind::Rect { two_sided, .. } => 1 + two_sided as usize,
                 })
                 .sum::<usize>()
                 .min(shadows::capacity(
@@ -7081,8 +7145,13 @@ impl Renderer {
             let mut physical_bound = false;
             // The batch's reflection probe's frame group (probe_select.rs).
             let mut binder = probe_select::Binder::new(probes);
+            // The lightmap pages bound at group 3 (lightmap.rs: one
+            // group per baked scene).
+            let mut pages_bound: Option<usize> = None;
             for &(b, first, count) in &list.ranges {
                 let batch = &batches[b as usize];
+                // Drawn with its lightmap's pipeline (lit passes only).
+                let mut lightmapped = false;
                 binder.bind(pass, batch.probe);
                 if lit {
                     let physical = batch.physical && physical_fx.is_some();
@@ -7097,17 +7166,21 @@ impl Renderer {
                         batch.compact,
                         batch.array,
                     );
-                    let lightmap = Self::lightmapped(&self.lightmaps, batch)
-                        .then(|| {
+                    let lightmap = Self::lightmap_family(&self.lightmaps, batch, physical)
+                        .and_then(|f| {
                             self.lightmaps
-                                .pipeline((batch.side, batch.blend, batch.effects))
+                                .pipeline(f, (batch.side, batch.blend, batch.effects))
                         })
-                        .flatten();
-                    if let Some(p) = lightmap {
-                        // Lightmapped (lightmap.rs): its pipeline, the
-                        // pages at group 3, its uvs below.
+                        .zip(self.lightmaps.group(batch.mesh));
+                    lightmapped = lightmap.is_some();
+                    if let Some((p, (pages, group))) = lightmap {
+                        // Lightmapped (lightmap.rs): its pipeline, its
+                        // scene's pages at group 3, its uvs below.
                         pass.set_pipeline(p);
-                        pass.set_bind_group(3, self.lightmaps.group(), &[]);
+                        if pages_bound != Some(pages) {
+                            pass.set_bind_group(3, group, &[]);
+                            pages_bound = Some(pages);
+                        }
                         *current = None;
                     } else if *current != Some(key) {
                         pass.set_pipeline(self.lit_pipeline_of(batch, false, physical));
@@ -7168,14 +7241,7 @@ impl Renderer {
                     1,
                     instances.slice(start..start + count as u64 * INSTANCE_STRIDE),
                 );
-                if lit
-                    && Self::lightmapped(&self.lightmaps, batch)
-                    && let Some(uvs) = self.lightmaps.uvs(batch.mesh)
-                    && self
-                        .lightmaps
-                        .pipeline((batch.side, batch.blend, batch.effects))
-                        .is_some()
-                {
+                if lightmapped && let Some(uvs) = self.lightmaps.uvs(batch.mesh) {
                     pass.set_vertex_buffer(2, uvs.slice(..));
                 }
                 pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);

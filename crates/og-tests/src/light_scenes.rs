@@ -396,8 +396,143 @@ pub fn volumetric_fog_scene() -> RenderScene {
 /// alone. `baked: false` builds it unbaked (the environment's ambient).
 #[cfg(not(target_arch = "wasm32"))]
 pub fn baked_cornell_scene(baked: bool) -> Result<RenderScene, String> {
-    use og_render::{BakedLighting, LightmapPages, LightmapUvs, ProbeVolume};
-    use std::collections::HashMap;
+    let mut scene = cornell_view();
+    cornell_box(&mut scene, Vec3::ZERO, false, baked, false)?;
+    Ok(scene)
+}
+
+/// The dark scene and the camera the one-box Cornell scenes share.
+#[cfg(not(target_arch = "wasm32"))]
+fn cornell_view() -> RenderScene {
+    let mut scene = RenderScene::new();
+    dark(&mut scene, 0.35);
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 1.0, 3.7),
+        target: Vec3::new(0.0, 0.95, 0.0),
+        projection: og_render::Projection::Perspective {
+            fov_y_degrees: 40.0,
+        },
+        exposure: Exposure::linear(0.85),
+        ..Default::default()
+    };
+    scene
+}
+
+/// Two of [`baked_cornell_scene`]'s boxes side by side, 2.4 m apart, the
+/// right one with its red and green walls swapped, each baked on its own:
+/// its own pages and light volume, as two baked scenes loaded together hand
+/// them over (`og.load.scene` twice, or one scene streamed in beside
+/// another). The left box's short block is green on the side facing its
+/// green wall, the right box's tall block green on the side facing its
+/// green wall, only when each box draws its own pages: the other's are red
+/// there.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn baked_cornell_pair_scene() -> Result<RenderScene, String> {
+    let mut scene = RenderScene::new();
+    dark(&mut scene, 0.35);
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 1.0, 5.6),
+        target: Vec3::new(0.0, 0.95, 0.0),
+        projection: og_render::Projection::Perspective {
+            fov_y_degrees: 40.0,
+        },
+        exposure: Exposure::linear(0.85),
+        ..Default::default()
+    };
+    cornell_box(&mut scene, Vec3::new(-1.2, 0.0, 0.0), false, true, false)?;
+    cornell_box(&mut scene, Vec3::new(1.2, 0.0, 0.0), true, true, false)?;
+    Ok(scene)
+}
+
+/// [`baked_cornell_scene`]'s box with its parts drawn by every kind of lit
+/// batch (`baked-batches`): the ceiling a physical material, the back wall
+/// a plain material from compact vertices, the tall block an array-map
+/// material and the short block a material shader; floor and side walls
+/// standard. Each part draws its bake, so the frame is `baked-cornell`'s
+/// but for the physical ceiling's specular; a batch that ignores its
+/// lightmap takes the probes or the sky's ambient instead (the ceiling,
+/// outside the light volume, goes near black).
+#[cfg(not(target_arch = "wasm32"))]
+pub fn baked_batches_scene(baked: bool) -> Result<RenderScene, String> {
+    let mut scene = cornell_view();
+    cornell_box(&mut scene, Vec3::ZERO, false, baked, true)?;
+    Ok(scene)
+}
+
+/// The material of part `i` of a Cornell box (0 floor, 1 ceiling, 2 back,
+/// 3 and 4 the side walls, 5 the tall block, 6 the short one): matte, or
+/// with `batches` the batch kind [`baked_batches_scene`] names (the back
+/// wall's compact vertices are set by the caller).
+#[cfg(not(target_arch = "wasm32"))]
+fn part_material(
+    scene: &mut RenderScene,
+    i: usize,
+    color: Vec3,
+    batches: bool,
+) -> og_render::MaterialHandle {
+    use og_render::{MaterialShader, ParamKind, ShaderParam, TextureArrayData, TextureSource};
+    let m = matte(color, 0.9);
+    if !batches {
+        return scene.add_standard_material(m);
+    }
+    match i {
+        // Physical: an ior other than 1.5 is a physical lobe.
+        1 => scene.add_standard_material(StandardMaterial { ior: 1.45, ..m }),
+        5 => {
+            let white = TextureData {
+                width: 4,
+                height: 4,
+                rgba: vec![255; 64],
+                color_space: ColorSpace::Srgb,
+                mips: Mips::Generate,
+            };
+            let array = scene
+                .add_texture_array(TextureArrayData {
+                    layers: vec![
+                        TextureSource::Rgba(white.clone()),
+                        TextureSource::Rgba(white),
+                    ],
+                })
+                .expect("two white layers");
+            scene.add_standard_material(StandardMaterial {
+                mapArray: array.slot(),
+                mapLayer: 1,
+                ..m
+            })
+        }
+        6 => {
+            let shader = scene.add_shader(MaterialShader {
+                name: "tint".into(),
+                code: "fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> {\n  return vec4<f32>(c.rgb * p.gain, c.a);\n}\n".into(),
+                params: vec![ShaderParam {
+                    name: "gain".into(),
+                    kind: ParamKind::Float,
+                    default: [1.0, 0.0, 0.0, 0.0],
+                }],
+                mode: Default::default(),
+            });
+            let material = scene.add_standard_material(m);
+            scene.set_material_shader(material, Some(shader));
+            material
+        }
+        _ => scene.add_standard_material(m),
+    }
+}
+
+/// One Cornell box at `at` (red wall on the left, green on the right, or
+/// the other way round when `swapped`): its spot, its ball and its walls
+/// and blocks (each part's material [`part_material`]'s), baked by og-bake
+/// on their own when `baked` (its pages and its light volume added to the
+/// scene's bake).
+#[cfg(not(target_arch = "wasm32"))]
+fn cornell_box(
+    scene: &mut RenderScene,
+    at: Vec3,
+    swapped: bool,
+    baked: bool,
+    batches: bool,
+) -> Result<(), String> {
+    use og_render::{BakedMesh, LightmapPages, LightmapUvs, ProbeVolume};
     use std::sync::Arc;
 
     let (white, red, green) = (
@@ -405,7 +540,8 @@ pub fn baked_cornell_scene(baked: bool) -> Result<RenderScene, String> {
         Vec3::new(0.63, 0.065, 0.05),
         Vec3::new(0.14, 0.45, 0.09),
     );
-    let p = |x: f32, y: f32, z: f32| Vec3::new(x, y, z);
+    let (red, green) = if swapped { (green, red) } else { (red, green) };
+    let p = |x: f32, y: f32, z: f32| at + Vec3::new(x, y, z);
     let block = |size: Vec3, at: Vec3, turn: f32| {
         transformed(
             shapes::cuboid(size),
@@ -453,8 +589,11 @@ pub fn baked_cornell_scene(baked: bool) -> Result<RenderScene, String> {
             quad(p(1., 0., -1.), p(1., 0., 1.), p(1., 2., 1.), p(1., 2., -1.)),
             green,
         ),
-        (block(p(0.6, 1.2, 0.6), p(-0.35, 0.6, -0.3), 18.0), white),
-        (block(p(0.6, 0.6, 0.6), p(0.38, 0.3, 0.3), -18.0), white),
+        (
+            block(Vec3::new(0.6, 1.2, 0.6), p(-0.35, 0.6, -0.3), 18.0),
+            white,
+        ),
+        (block(Vec3::splat(0.6), p(0.38, 0.3, 0.3), -18.0), white),
     ];
     let spot = Light {
         kind: LightKind::Spot {
@@ -470,29 +609,26 @@ pub fn baked_cornell_scene(baked: bool) -> Result<RenderScene, String> {
     };
     let ball = (p(-0.55, 0.22, 0.55), 0.22);
 
-    let mut scene = RenderScene::new();
-    dark(&mut scene, 0.35);
-    scene.lights = vec![spot];
-    scene.camera = Camera {
-        position: p(0.0, 1.0, 3.7),
-        target: p(0.0, 0.95, 0.0),
-        projection: og_render::Projection::Perspective {
-            fov_y_degrees: 40.0,
-        },
-        exposure: Exposure::linear(0.85),
-        ..Default::default()
-    };
+    scene.lights.push(spot);
     put(
-        &mut scene,
+        scene,
         shapes::sphere(32, 16),
         matte(Vec3::splat(0.85), 0.7),
         Mat4::from_scale_rotation_translation(Vec3::splat(ball.1), Quat::IDENTITY, ball.0),
     );
-    if !baked {
-        for (mesh, color) in parts {
-            put(&mut scene, mesh, matte(color, 0.9), Mat4::IDENTITY);
+    let place = |scene: &mut RenderScene, i: usize, mesh: og_render::MeshHandle, color: Vec3| {
+        if batches && i == 2 {
+            scene.set_vertex_encoding(mesh, og_render::VertexEncoding::Compact);
         }
-        return Ok(scene);
+        let material = part_material(scene, i, color, batches);
+        scene.add_instance(mesh, material, Mat4::IDENTITY);
+    };
+    if !baked {
+        for (i, (mesh, color)) in parts.into_iter().enumerate() {
+            let mesh = scene.add_mesh(mesh);
+            place(scene, i, mesh, color);
+        }
+        return Ok(());
     }
 
     let mut bake = og_bake::Scene {
@@ -573,8 +709,12 @@ pub fn baked_cornell_scene(baked: bool) -> Result<RenderScene, String> {
         1,
         1,
     );
-    let mut meshes = HashMap::new();
-    for ((mesh, color), a) in parts.into_iter().zip(&atlas.meshes) {
+    let pages = Arc::new(LightmapPages {
+        width: lightmap.width,
+        height: lightmap.height,
+        pages: lightmap.pages,
+    });
+    for (i, ((mesh, color), a)) in parts.into_iter().zip(&atlas.meshes).enumerate() {
         let lit = MeshData {
             vertices: a
                 .vertices
@@ -595,23 +735,108 @@ pub fn baked_cornell_scene(baked: bool) -> Result<RenderScene, String> {
             })
             .collect();
         let handle = scene.add_mesh(lit);
-        meshes.insert(handle.index(), Arc::new(LightmapUvs { uvs }));
-        let material = scene.add_standard_material(matte(color, 0.9));
-        scene.add_instance(handle, material, Mat4::IDENTITY);
+        scene.baked.meshes.insert(
+            handle.index(),
+            BakedMesh {
+                pages: pages.clone(),
+                uvs: Arc::new(LightmapUvs { uvs }),
+            },
+        );
+        place(scene, i, handle, color);
     }
-    scene.baked = BakedLighting {
-        pages: Some(Arc::new(LightmapPages {
-            width: lightmap.width,
-            height: lightmap.height,
-            pages: lightmap.pages,
-        })),
-        meshes,
-        volumes: vec![ProbeVolume {
-            min: volume.min,
-            max: volume.max,
-            counts: volume.counts,
-            probes: Arc::new(volume.probes),
-        }],
+    scene.baked.volumes.push(ProbeVolume {
+        min: volume.min,
+        max: volume.max,
+        counts: volume.counts,
+        probes: Arc::new(volume.probes),
+    });
+    Ok(())
+}
+
+/// The island's meadow at night (`grass` with its scattered grass, else the
+/// bare terrain) lit by one upright one-sided rect light 10 m ahead of the
+/// camera, its face turned to the camera's left. With linearly transformed
+/// cosines the meadow left of the panel is lit and the meadow right of it,
+/// behind its back, stays dark; a point at its centre (how terrain and
+/// scatter lit rect lights before) lights both sides alike. Also the two
+/// ground points, left and right of the panel, 2.5 m from it.
+pub fn rect_meadow_scene(grass: bool) -> (RenderScene, [Vec3; 2]) {
+    use crate::terrain_scenes::{grass_scene, island_height, island_view};
+    let mut scene = if grass {
+        grass_scene()
+    } else {
+        island_view("near")
     };
-    Ok(scene)
+    scene.light.intensity = 0.0;
+    scene.light.cast_shadows = false;
+    scene.environment.intensity = 0.02;
+    scene.environment.background = Background::Color(Vec3::new(0.004, 0.006, 0.015));
+    scene.fog = None;
+    let eye = scene.camera.position;
+    let ahead = (scene.camera.target - eye) * Vec3::new(1.0, 0.0, 1.0);
+    let forward = ahead.normalize();
+    let side = forward.cross(Vec3::Y).normalize();
+    let foot = eye + forward * 10.0;
+    let ground = |p: Vec3| Vec3::new(p.x, island_height(p.x, p.z), p.z);
+    let centre = ground(foot) + Vec3::Y * 0.9;
+    // Spanned by forward and up, so it faces -(forward × up): the left.
+    let panel = rect(
+        centre,
+        forward,
+        Vec3::Y,
+        (1.6, 1.4),
+        Vec3::new(1.0, 0.85, 0.6),
+        6.0,
+        false,
+    );
+    fixture(&mut scene, &panel);
+    scene.lights = vec![panel];
+    (
+        scene,
+        [ground(foot - side * 2.5), ground(foot + side * 2.5)],
+    )
+}
+
+/// A shadowed rect light: a 1.6 m square panel facing down 3 m over a
+/// matte floor and 1.2 m to the left of a 2 m post standing on it, the
+/// panel's emissive slab drawn where it is. With `cast` the post throws a
+/// shadow to the right, sharp at its foot and widening into penumbra
+/// toward its tip (x 2.4); without, the floor is lit through it. Returns
+/// the scene and floor points along the shadow's axis: by the post's foot
+/// and near the tip.
+pub fn rect_shadow_scene(cast: bool) -> (RenderScene, [Vec3; 2]) {
+    let mut scene = RenderScene::new();
+    dark(&mut scene, 0.02);
+    put(
+        &mut scene,
+        shapes::plane(14.0, 1.0),
+        matte(Vec3::splat(0.6), 0.9),
+        Mat4::IDENTITY,
+    );
+    put(
+        &mut scene,
+        shapes::cuboid(Vec3::new(0.3, 2.0, 0.3)),
+        matte(Vec3::new(0.7, 0.3, 0.2), 0.8),
+        Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0)),
+    );
+    // Facing down: right × up = +y, so up is -z.
+    let mut panel = rect(
+        Vec3::new(-1.2, 3.0, 0.0),
+        Vec3::X,
+        Vec3::NEG_Z,
+        (1.6, 1.6),
+        Vec3::new(1.0, 0.9, 0.75),
+        4.0,
+        false,
+    );
+    panel.cast_shadows = cast;
+    fixture(&mut scene, &panel);
+    scene.lights = vec![panel];
+    scene.camera = Camera {
+        position: Vec3::new(0.6, 4.5, 5.5),
+        target: Vec3::new(0.6, 0.3, 0.0),
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    (scene, [Vec3::new(0.45, 0.0, 0.0), Vec3::new(2.1, 0.0, 0.0)])
 }

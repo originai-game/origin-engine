@@ -10,10 +10,16 @@
 //!   (two compute dispatches after the shadow passes) lights a 160 × 90 ×
 //!   64 froxel grid over the view by the sun through its cascades and by
 //!   the clustered point, spot and rect lights through their shadows and
-//!   cookies, then sums it front to back.
+//!   cookies, then sums it front to back. Each froxel's light is the mean
+//!   of eight stratified samples over its slice's depth, jittered per
+//!   froxel and per frame: a slice is metres deep far out, and a single
+//!   sample there landed in or out of a shaft column by column (vertical
+//!   streaks).
 //! - WebGL2 ([`VolumetricMethod::Raymarch`]): no compute; the apply pass
 //!   marches each pixel's view ray in 24 jittered steps, lit by the sun
-//!   through its cascades alone.
+//!   through its cascades and by the first [`RAYMARCH_LIGHTS`] point, spot
+//!   and rect lights of each step's cluster through their shadows and
+//!   cookies (a lantern lights its fog on WebGL2 too).
 //!
 //! Either way the last thing the `main` pass does is blend the result over
 //! the lit image (colour × transmittance + in-scattered light) at each
@@ -70,6 +76,20 @@ pub enum VolumetricMethod {
 pub const FROXELS: [u32; 3] = [160, 90, 64];
 /// The raymarch's steps per pixel.
 pub const RAYMARCH_STEPS: u32 = 24;
+/// The most point, spot and rect lights of a step's cluster that light the
+/// raymarch's fog (the first of the cluster's, which keeps the brightest
+/// at the camera first): each step evaluates them with their shadows and
+/// cookies, so 24 steps × 8 lights is the WebGL2 fragment's bound.
+pub const RAYMARCH_LIGHTS: u32 = 8;
+
+/// The lights one sample of the fog is lit by, by method
+/// ([`crate::RenderInfo::volumetric_lights`]).
+pub(crate) fn lights(method: VolumetricMethod) -> u32 {
+    match method {
+        VolumetricMethod::Froxel => crate::MAX_CLUSTER_LIGHTS as u32,
+        VolumetricMethod::Raymarch => RAYMARCH_LIGHTS,
+    }
+}
 const FROXEL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
 #[repr(C)]
@@ -176,9 +196,12 @@ pub(crate) fn source(tables: LightTables, full: bool) -> String {
         crate::AREA_WGSL,
         wgsl!("volumetric.wgsl"),
         if full {
-            wgsl!("volumetric_froxel.wgsl")
+            wgsl!("volumetric_froxel.wgsl").to_string()
         } else {
-            wgsl!("volumetric_raymarch.wgsl")
+            format!(
+                "const RAYMARCH_LIGHTS: u32 = {RAYMARCH_LIGHTS}u;\n{}",
+                wgsl!("volumetric_raymarch.wgsl")
+            )
         }
     )
 }

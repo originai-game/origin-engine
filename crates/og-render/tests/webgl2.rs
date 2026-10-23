@@ -99,7 +99,7 @@ fn the_overlay_and_glass_shaders_translate_to_glsl_es_300() {
 }
 
 /// The physical lit shader (`physical.rs`) on the WebGL2 tier: it
-/// translates, and its static and skinned pipelines sample at most the
+/// translates, and its static, skinned and lightmapped pipelines sample at most the
 /// sixteen textures a WebGL2 pipeline has across its groups (wgpu's GL
 /// backend binds every group's textures to one set of units), with the
 /// texture joint palette the tier uses. The pack pass translates too.
@@ -116,17 +116,27 @@ fn the_physical_shaders_translate_and_fit_webgl2s_texture_units() {
     assert!(failures.is_empty(), "{failures:#?}");
     let pack = webgl2_failures("pack.wgsl", include_str!("../shaders/pack.wgsl"));
     assert!(pack.is_empty(), "{pack:#?}");
+    // Group 3 holds the skinned pipelines' joint palette (bindings 0 and
+    // 1) or the lightmapped pipelines' pages (4 and 5, lightmap.rs), never
+    // both: each pipeline binds groups 0 to 2 and one of them.
     let module = naga::front::wgsl::parse_str(&source).expect("parses");
-    let textures = module
-        .global_variables
-        .iter()
-        .filter(|(_, g)| matches!(module.types[g.ty].inner, naga::TypeInner::Image { .. }))
-        .count();
-    assert!(
-        textures <= 16,
-        "{textures} textures in the physical module: WebGL2 has 16 per pipeline"
+    let (mut shared, mut skin, mut pages) = (0, 0, 0);
+    for (_, g) in module.global_variables.iter() {
+        if !matches!(module.types[g.ty].inner, naga::TypeInner::Image { .. }) {
+            continue;
+        }
+        match g.binding.as_ref().map(|b| (b.group, b.binding)) {
+            Some((3, b)) if b < 4 => skin += 1,
+            Some((3, _)) => pages += 1,
+            _ => shared += 1,
+        }
+    }
+    assert_eq!(
+        (shared, skin, pages),
+        (13, 1, 1),
+        "frame 5, material 5, effects 3; the skin's palette; the lightmap's pages"
     );
-    assert_eq!(textures, 14, "frame 5, material 5, effects 3, skin 1");
+    assert!(shared + skin.max(pages) <= 16, "WebGL2 has 16 per pipeline");
 }
 
 /// The shadow and antialiasing passes of shadows.rs and post.rs on the

@@ -7,9 +7,22 @@
 //! table is one 16 KiB uniform: frame binding 11, no texture slot taken
 //! from WebGL2's full skinned pipeline). Its record in the light table:
 //! `color_kind.w` -1 one-sided, -2 two-sided; the half-width vector in
-//! `direction_slot.xyz` (no shadow slot); the half-height in `cone.xyz`.
-//! Shaders that do not know rect lights (terrain, scattered copies, 3D
-//! fluids) light them as a point at their centre.
+//! `direction_slot.xyz` and its shadow slot in `.w` (-1: none); the
+//! half-height in `cone.xyz`. A rect light with `cast_shadows` takes one
+//! layer of the local shadow array (its back a second when two-sided): a
+//! [`RECT_SHADOW_FOV`] perspective view from its centre along its normal,
+//! storing distance / range as every local shadow does, and counted in the
+//! shadowed lights' budget. area.wgsl's `rect_shadow` reads it as
+//! percentage-closer soft shadows: a 16-tap blocker search, then 24
+//! bilinear taps (each pixel's spiral turned by a hash of its position)
+//! over the penumbra the rectangle casts past the blockers (half-size ×
+//! (receiver − blocker) / blocker as the radius), so contact shadows are sharp
+//! and far ones soft. The view is from the centre, so a caster close to a
+//! large panel is shadowed as from its centre with the penumbra widened by
+//! the panel's extent, not by its true view of each part of the panel.
+//! Terrain, scattered copies and the 3D fluid light them the same way
+//! through area.wgsl's `surface_local_light` (with the points' and spots'
+//! cookies).
 //!
 //! Cookies ([`LightCookie`]) take layers of the local shadow array past the
 //! shadow layers, each texel the cookie's linear colour packed 8:8:8 in an
@@ -30,6 +43,12 @@ pub struct LightCookie {
     pub light: usize,
     pub texture: TextureHandle,
 }
+
+/// The field of view (degrees) of a shadowed rect light's shadow view from
+/// its centre along its normal: a rect emits into a hemisphere, which a
+/// perspective view cannot hold; past 75° from the normal the light falls
+/// with the cosine to a quarter and the receivers there stay unshadowed.
+pub const RECT_SHADOW_FOV: f32 = 150.0;
 
 /// The most local shadow array layers cookies take.
 pub const MAX_COOKIE_LAYERS: usize = 24;
@@ -98,26 +117,57 @@ pub(crate) fn cookie_source() -> String {
     format!("{}{}", crate::post::FULLSCREEN_WGSL, wgsl!("cookie.wgsl"))
 }
 
+/// What a scene's cookies take of the [`MAX_COOKIE_LAYERS`] layers
+/// ([`cookie_layers`]): one per distinct spot cookie texture, six per
+/// distinct point cookie texture, in the order of
+/// [`RenderScene::light_cookies`].
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct CookieLayers {
+    /// The layers drawn (at most [`MAX_COOKIE_LAYERS`]).
+    pub drawn: u32,
+    /// The layers every cookie would take.
+    pub asked: u32,
+    /// The lights (by index into [`RenderScene::lights`]) whose cookie did
+    /// not fit: they shine without it.
+    pub left_out: Vec<usize>,
+}
+
+/// The layers this scene's cookies take and the lights whose cookie is left
+/// out past [`MAX_COOKIE_LAYERS`] (a cookie shared by several lights takes
+/// its layers once).
+pub fn cookie_layers(scene: &RenderScene) -> CookieLayers {
+    let mut seen: Vec<(TextureHandle, bool, bool)> = Vec::new();
+    let mut out = CookieLayers::default();
+    for c in &scene.light_cookies {
+        let Some(need) = faces(scene, c) else {
+            continue;
+        };
+        if c.texture.index() >= scene.textures().len() {
+            continue;
+        }
+        let point = need == 6;
+        if let Some(&(.., fits)) = seen.iter().find(|s| s.0 == c.texture && s.1 == point) {
+            if !fits {
+                out.left_out.push(c.light);
+            }
+            continue;
+        }
+        out.asked += need;
+        let fits = out.drawn + need <= MAX_COOKIE_LAYERS as u32;
+        if fits {
+            out.drawn += need;
+        } else {
+            out.left_out.push(c.light);
+        }
+        seen.push((c.texture, point, fits));
+    }
+    out
+}
+
 impl Cookies {
     /// The layers this frame's cookies need.
     pub fn layers(scene: &RenderScene) -> u32 {
-        let mut seen: Vec<(TextureHandle, bool)> = Vec::new();
-        let mut layers = 0u32;
-        for c in &scene.light_cookies {
-            let Some(need) = faces(scene, c) else {
-                continue;
-            };
-            let key = (c.texture, need == 6);
-            if seen.contains(&key) || c.texture.index() >= scene.textures().len() {
-                continue;
-            }
-            if layers + need > MAX_COOKIE_LAYERS as u32 {
-                continue;
-            }
-            seen.push(key);
-            layers += need;
-        }
-        layers
+        cookie_layers(scene).drawn
     }
 
     fn ensure(&mut self, device: &wgpu::Device) {
@@ -347,13 +397,14 @@ pub(crate) fn rect_record(
     half_width: glam::Vec3,
     half_height: glam::Vec3,
     two_sided: bool,
+    slot: f32,
 ) -> LightGpu {
     LightGpu {
         position_range: position.extend(range).to_array(),
         color_kind: radiance
             .extend(if two_sided { -2.0 } else { -1.0 })
             .to_array(),
-        direction_slot: half_width.extend(-1.0).to_array(),
+        direction_slot: half_width.extend(slot).to_array(),
         cone: half_height.extend(0.0).to_array(),
     }
 }
@@ -367,5 +418,63 @@ mod tests {
         // The first texel of ltc_1 is (1, 0, 0, 2e-5): a, b = 1, 0.
         let a = u16::from_le_bytes([LTC[0], LTC[1]]);
         assert_eq!(a, 0x3c00);
+    }
+
+    /// Four point cookies take 24 layers; a fifth would make 30 and is
+    /// left out, as is a second light sharing its texture; a spot sharing
+    /// a drawn point cookie's texture takes a layer of its own (a spot's
+    /// cookie is one face, a point's six), and fits only before the cap.
+    #[test]
+    fn cookies_past_the_cap_are_counted_and_named() {
+        use crate::scene::{Light, TextureData};
+        let mut scene = RenderScene::new();
+        let texture = |scene: &mut RenderScene| {
+            scene.add_texture(TextureData {
+                width: 2,
+                height: 12,
+                rgba: vec![255; 2 * 12 * 4],
+                ..Default::default()
+            })
+        };
+        let light = |kind| Light {
+            kind,
+            position: glam::Vec3::ZERO,
+            color: glam::Vec3::ONE,
+            intensity: 1.0,
+            range: 5.0,
+            cast_shadows: false,
+        };
+        let point = || light(LightKind::Point);
+        let spot = || {
+            light(LightKind::Spot {
+                direction: glam::Vec3::NEG_Y,
+                angle_degrees: 30.0,
+                penumbra: 0.0,
+            })
+        };
+        let textures: Vec<_> = (0..5).map(|_| texture(&mut scene)).collect();
+        // Lights 0..5 points on textures 0..5, light 5 a point on texture 4,
+        // light 6 a spot on texture 0.
+        for (i, &t) in textures
+            .iter()
+            .chain([&textures[4], &textures[0]])
+            .enumerate()
+        {
+            scene.lights.push(if i == 6 { spot() } else { point() });
+            scene.light_cookies.push(LightCookie {
+                light: i,
+                texture: t,
+            });
+        }
+        let used = cookie_layers(&scene);
+        assert_eq!(
+            used,
+            CookieLayers {
+                drawn: 24,
+                asked: 31,
+                left_out: vec![4, 5, 6],
+            }
+        );
+        assert_eq!(Cookies::layers(&scene), 24);
     }
 }

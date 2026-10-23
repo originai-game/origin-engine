@@ -130,6 +130,7 @@ pub const NATIVE_SCENES: &[&str] = &[
     "baked-cornell",
     "probe-two-rooms",
     "probe-outdoor",
+    "baked-batches",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -208,7 +209,8 @@ fn asset_text(rel: &str) -> Result<String, String> {
 }
 
 /// The renderer description every scene starts from: 1280x720 on the
-/// adapter `OG_GFX_BACKEND` names (`metal`, `vulkan`; default: the platform's).
+/// adapter `OG_GFX_BACKEND` names (`metal`, `vulkan`; default: the platform's),
+/// with WebGL2's volumetric raymarch when `OG_GFX_VOLUMETRIC=raymarch`.
 pub fn base_desc() -> RenderDesc {
     let backend = match std::env::var("OG_GFX_BACKEND").as_deref() {
         Ok("metal") => og_render::Backend::Metal,
@@ -219,6 +221,10 @@ pub fn base_desc() -> RenderDesc {
         width: 1280,
         height: 720,
         backend,
+        // OG_GFX_VOLUMETRIC=raymarch draws WebGL2's volumetric fog here.
+        volumetric: std::env::var("OG_GFX_VOLUMETRIC")
+            .is_ok_and(|v| v == "raymarch")
+            .then_some(og_render::VolumetricMethod::Raymarch),
         ..Default::default()
     }
 }
@@ -555,6 +561,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "volumetric-fog" => g.scene = crate::light_scenes::volumetric_fog_scene(),
         #[cfg(not(target_arch = "wasm32"))]
         "baked-cornell" => g.scene = crate::light_scenes::baked_cornell_scene(true)?,
+        #[cfg(not(target_arch = "wasm32"))]
+        "baked-batches" => g.scene = crate::light_scenes::baked_batches_scene(true)?,
         // Materials sampling texture arrays: eight cubes of one tile
         // material (colour and normal arrays), each on its own layer or the
         // material's, one batch; a cube of layer 1 as plain 2D textures;

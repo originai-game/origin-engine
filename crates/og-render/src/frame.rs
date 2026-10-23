@@ -394,8 +394,7 @@ pub(crate) fn local_lights(
     let shadowed: Vec<usize> = (0..kept.len())
         .filter(|&k| {
             let l = &lights[kept[k]];
-            // Rect lights cast no shadow map (area.rs).
-            l.cast_shadows && !matches!(l.kind, LightKind::Rect { .. })
+            l.cast_shadows
         })
         .collect();
     let mut chosen = vec![false; kept.len()];
@@ -475,7 +474,35 @@ pub(crate) fn local_lights(
                     let vp = proj * view;
                     vec![(vp, Frustum::from_view_proj(vp))]
                 }
-                LightKind::Rect { .. } => unreachable!("rect lights are never chosen"),
+                LightKind::Rect {
+                    half_width,
+                    half_height,
+                    two_sided,
+                } => {
+                    // From the centre along the normal (and its back when
+                    // two-sided), a RECT_SHADOW_FOV view (area.rs).
+                    let normal = -half_width.cross(half_height).normalize_or(Vec3::NEG_Y);
+                    let up = half_height.normalize_or(Vec3::Y);
+                    let proj = glam::camera::rh::proj::directx::perspective(
+                        crate::area::RECT_SHADOW_FOV.to_radians(),
+                        1.0,
+                        near,
+                        range,
+                    );
+                    let sides: &[f32] = if two_sided { &[1.0, -1.0] } else { &[1.0] };
+                    sides
+                        .iter()
+                        .map(|&side| {
+                            let view = glam::camera::rh::view::look_at_mat4(
+                                light.position,
+                                light.position + normal * side,
+                                up,
+                            );
+                            let vp = proj * view;
+                            (vp, Frustum::from_view_proj(vp))
+                        })
+                        .collect()
+                }
             };
             shadows.push(LocalShadow {
                 layer: next_layer,
@@ -499,6 +526,7 @@ pub(crate) fn local_lights(
                 half_width,
                 half_height,
                 two_sided,
+                slot,
             ));
             continue;
         }

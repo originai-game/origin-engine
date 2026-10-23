@@ -1847,6 +1847,11 @@
           "name": "twoSided",
           "column": "bool",
           "default": false
+        },
+        {
+          "name": "castShadow",
+          "column": "bool",
+          "default": false
         }
       ]
     },

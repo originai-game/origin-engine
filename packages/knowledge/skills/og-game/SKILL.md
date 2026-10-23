@@ -2308,8 +2308,9 @@ scene or a static model, the bake is stale and the scene renders unbaked
 until you bake again. `og doctor --project` warns `unbaked`, and
 `og.render.bakedLighting(world)` lists each scene with `baked` and a
 `reason`. `RenderSettings.bakedLighting = false` draws everything unbaked,
-which is useful to compare. Only the newest instantiated scene's lightmap
-is drawn.
+which is useful to compare. Every instantiated scene draws its own bake,
+so baked scenes loaded together or streamed in side by side all keep
+their light.
 
 **Volumetric fog.** Set `Fog.volumetric = true` to light the fog as a
 medium, which gives shafts through windows and the cones of spots. Tune it
@@ -2317,21 +2318,31 @@ with `density`, `heightDensity` and `falloff` (thicker low down),
 `scattering` (how bright) and `anisotropy` (towards 1, bright looking into
 the light), up to `volumetricDistance`. Fog of 0.03 to 0.1 per metre reads
 well indoors. With `og.DayNight`, the shafts move with the sun.
-`RenderCapabilities.volumetricFog` is `froxel` on the full tier, where
-spots, points and rect lights light the fog too, or `raymarch` on WebGL2,
-where only the sun does.
+`RenderCapabilities.volumetricFog` is `froxel` on the full tier or
+`raymarch` on WebGL2. On both, the sun, spots, points and rect lights light
+the fog, so a lantern glows in it on WebGL2 too.
+`RenderCapabilities.volumetricLights` is how many local lights light one
+sample (64 for the froxel grid, 8 for the raymarch, brightest first).
 
 **Area lights.** `og.RectLight { width, height, color, intensity,
 twoSided }` emits from a rectangle facing the entity's -Z. Aim it with
 `og.transform.lookAt`, as you would a spot. A glossy floor shows the
-rectangle's shape in its highlight. Rect lights cast no shadows, so pair
-one with an emissive slab for the fixture.
+rectangle's shape in its highlight. Pair one with an emissive slab for
+the fixture. Set `castShadow` for a soft shadow: sharp where a caster
+touches the floor, widening with the panel's size away from it. It takes
+one shadow layer (two when `twoSided`) from the same budget as shadowed
+spots and points, and is drawn from the panel's centre, so a caster right
+against a large panel is shadowed as from its middle.
 
 **Cookies.** `SpotLight.cookie` is a texture projected along the cone,
 like a window's lattice or stained glass. `PointLight.cookie` is six
 square faces stacked top to bottom (+X, -X, +Y, -Y, +Z, -Z), like a
-pierced lantern. A cookie multiplies the light and its colour. At most 24
-cookie layers are drawn: one per spot cookie, six per point cookie.
+pierced lantern. A cookie multiplies the light and its colour. A frame
+draws at most `og.render.capabilities(world).maxLightCookies` (24) cookie
+layers: a spot cookie takes one, a point cookie six, and a texture shared
+by lights of one kind counts once. Past that, the later lights shine
+without their cookies and the log warns, naming them; share cookie
+textures between lanterns to stay under it.
 
 ## 25. Where to look things up
 

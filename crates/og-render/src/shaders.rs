@@ -145,6 +145,14 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
     );
     add("fluid 3d blur", crate::fluid3d::FLUID_BLUR_WGSL.to_string());
     add("volumetric", crate::volumetric::source(tables, full));
+    if full {
+        // RenderDesc::volumetric draws WebGL2's raymarch on a full-tier
+        // device too.
+        add(
+            "volumetric raymarch",
+            crate::volumetric::source(tables, false),
+        );
+    }
     add("cookie", crate::area::cookie_source());
     add(
         "particles",

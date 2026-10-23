@@ -1604,7 +1604,17 @@ pub fn og_render_capabilities(world: u32) -> String {
                 // SSR is the full tier's; WebGL2 reflects the probes and the environment.
                 "ssr": tier != "webgl2",
                 "reflectionProbes": og_render::MAX_REFLECTION_PROBES,
-                "volumetricFog": if tier == "webgl2" { "raymarch" } else { "froxel" },
+                "volumetricFog": match info.as_ref().map(|i| i.volumetric) {
+                    Some(og_render::VolumetricMethod::Froxel) => "froxel",
+                    Some(og_render::VolumetricMethod::Raymarch) => "raymarch",
+                    None if tier == "webgl2" => "raymarch",
+                    None => "froxel",
+                },
+                "volumetricLights": info.as_ref().map_or(
+                    if tier == "webgl2" { og_render::RAYMARCH_LIGHTS } else { og_render::MAX_CLUSTER_LIGHTS as u32 },
+                    |i| i.volumetric_lights,
+                ),
+                "maxLightCookies": og_render::MAX_COOKIE_LAYERS,
             })
         })
         .map(|mut c| {
@@ -1614,7 +1624,7 @@ pub fn og_render_capabilities(world: u32) -> String {
             c
         })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch" }))
+    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0 }))
         .to_string()
 }
 

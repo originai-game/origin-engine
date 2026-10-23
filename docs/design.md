@@ -444,25 +444,38 @@ Baked lighting, volumetrics and area lights (depth S7).
   cook turns them into an `og.Lightmap` blob, listed in `cook --report`.
   When a scene is instantiated, the runtime loads its bake if the hashes
   match. Static models then draw lightmapped copies of their parts: a
-  second vertex stream, with the pages at group 3 (`lightmap.rs`,
-  `lightmap.wgsl`). Every other lit fragment inside a volume takes its
+  second vertex stream, with their own scene's pages at group 3
+  (`lightmap.rs`, `lightmap.wgsl`). Every instantiated scene's bake draws
+  at once: each scene's pages are one texture array with its own bind
+  group, and each lightmapped batch binds its scene's, so scenes loaded
+  together or streamed in beside each other all keep their bakes. A bake
+  stops drawing while its static models are all despawned. Every other lit fragment inside a volume takes its
   ambient light from the probes, trilinear between eight and faded over
   one spacing (frame binding 10, `ambient_irradiance`). Without a bake, or
   with a stale one, the scene renders unbaked with the environment's
   ambient; `og.render.bakedLighting` gives the reason and `og doctor
   --project` warns `unbaked`. `RenderSettings.bakedLighting` false draws
-  every scene unbaked. One scene's lightmap is drawn at a time (the newest
-  instantiated), and physical, texture-array, material-shader and compact
-  batches use the probes instead of the lightmap.
+  every scene unbaked. A static mesh draws its bake in every lit batch:
+  standard, lean and compact (`vs_lightmap_compact`), texture-array
+  (`fs_lightmap_array`), material-shader (its module carries the same
+  entry points) and physical (`lightmap_physical.wgsl`).
 - **Volumetric fog** (`og.Fog.volumetric`, `volumetric.rs`). The fog's
   density, height fog, `scattering` and `anisotropy` (Henyey–Greenstein)
   define a participating medium up to `volumetricDistance`. On the full
   tier the medium is a froxel grid (160 × 90 × 64, slices deepening
   quadratically), handled by a named `volumetric` compute pass. The pass
   lights each cell by the sun through its cascades and by the cluster's
-  point, spot and rect lights through their shadows and cookies, then
-  integrates front to back. On WebGL2, which has no compute, each pixel's
-  ray is marched in 24 steps lit by the sun alone.
+  point, spot and rect lights through their shadows and cookies (each
+  froxel the mean of eight stratified, jittered samples over its slice's
+  depth, so a shaft crossing a deep slice is integrated, not hit or
+  missed column by column), then integrates front to back. On WebGL2,
+  which has no compute, each pixel's ray is marched in 24 steps, each lit
+  by the sun and by the first 8 point, spot and rect lights of its
+  cluster (`RAYMARCH_LIGHTS`) through their shadows and cookies.
+  `RenderCapabilities.volumetricLights` reports the per-sample bound (64
+  in the froxel grid, 8 in the raymarch); `RenderDesc::volumetric`
+  (`OG_GFX_VOLUMETRIC=raymarch`) draws the raymarch on a full-tier device
+  to read its frames natively.
   `RenderCapabilities.volumetricFog` reports which method the device uses.
   Both methods blend over the lit image after the main pass as
   colour × transmittance plus in-scattered light, reading the prepass's
@@ -472,15 +485,31 @@ Baked lighting, volumetrics and area lights (depth S7).
   lights and shaded with linearly transformed cosines (Heitz et al.'s GGX
   fit, `third_party/ltc`, resampled to 32 × 32 half floats in one 16 KiB
   uniform). Their highlight on a glossy surface is the rectangle's shape.
-  They cast no shadows. Shaders that do not know rect lights (terrain,
-  scattered copies, 3D fluids) light them as a point at their centre.
+  With `castShadow` one takes a layer of the local shadow array (two when
+  two-sided, counted in the shadowed lights' budget): a 150° perspective
+  view from its centre along its normal (`RECT_SHADOW_FOV`), read as
+  percentage-closer soft shadows (`rect_shadow`): 16 taps find the mean
+  blocker distance, then 24 bilinear taps, each pixel's spiral turned by
+  a hash of its position, filter over the penumbra the rectangle casts,
+  half-size × (receiver − blocker) / blocker. A contact shadow is sharp
+  and a far one soft; the view is from the centre, so a caster close to
+  a large panel is shadowed as from its centre with its penumbra widened
+  by the panel's extent, and receivers past 75° from the normal stay
+  unshadowed. Terrain, scattered copies and 3D fluids shade them with
+  LTC and their shadow too (and take point and spot cookies), through one
+  shared `surface_local_light` in `area.wgsl`; a full custom shader
+  (`custom_lit.wgsl`) still lights them as a point.
 - **Light cookies** (`SpotLight.cookie`, `PointLight.cookie`, a cube of
   six faces stacked in one texture). A small pass draws each cookie from
   its uploaded texture, in whatever format was cooked, into layers of the
   local shadow array past the shadow layers. Each texel is packed as an
   8:8:8 integer in the R32Float array, so a cookie takes no texture slot
-  on either tier. At most 24 layers are used: one per spot cookie, six per
-  point cookie.
+  on either tier. At most 24 layers are used (`MAX_COOKIE_LAYERS`,
+  reported as `RenderCapabilities.maxLightCookies`): one per spot cookie,
+  six per point cookie, a texture shared by lights of one kind once.
+  Cookies past them, in their lights' entity order, are not drawn; the
+  frame warns once in the log, naming the lights that shine without
+  theirs (`og_render::cookie_layers`).
 
 ### 2.7 Animation, physics, navigation, audio, UI **(D)**
 

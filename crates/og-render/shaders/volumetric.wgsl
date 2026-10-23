@@ -10,7 +10,8 @@
 // shadows and cookies; `integrate` sums them front to back into the
 // in-scattered light and the transmittance at each slice's far edge;
 // `fs_froxel` reads that at each pixel's depth. WebGL2: `fs_raymarch`
-// marches each pixel's view ray in steps, lit by the sun alone. Both
+// marches each pixel's view ray in steps, lit by the sun and the first
+// RAYMARCH_LIGHTS lights of each step's cluster. Both
 // output (in-scattered light, transmittance), blended over the lit image
 // as colour × transmittance + light.
 
@@ -53,13 +54,15 @@ fn sun_in(p: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
   return frame.light_color.rgb * shadow * hg_phase(dot(dir, l), vol.scatter.w);
 }
 
-// The cluster's lights scattered towards the eye at p (frag: its pixel).
-fn locals_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>) -> vec3<f32> {
+// The cluster's lights scattered towards the eye at p (frag: its pixel),
+// the first `most` of them (the cluster keeps the brightest at the camera
+// first): every one in the froxel grid, RAYMARCH_LIGHTS in the raymarch.
+fn locals_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>, most: u32) -> vec3<f32> {
   var sum = vec3<f32>(0.0);
   if (frame.params.z < 0.5) { return sum; }
   let word = cluster_word(cluster_at(frag, p));
   let first = word & 0xffffffu;
-  let count = word >> 24u;
+  let count = min(word >> 24u, most);
   for (var k = 0u; k < count; k++) {
     let light = light_list[cluster_ref(first + k)];
     let to_light = light.position_range.xyz - p;
@@ -77,6 +80,9 @@ fn locals_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>) -> vec3<f32> {
       var facing = dot(l, normalize(side));
       if (kind < -1.5) { facing = abs(facing); }
       atten *= area * max(facing, 0.0);
+      if (atten > 0.0) {
+        atten *= rect_shadow(light, p, l);
+      }
     } else {
       if (kind > 0.5) {
         let t = clamp((dot(-l, light.direction_slot.xyz) - light.cone.x) * light.cone.y, 0.0, 1.0);
