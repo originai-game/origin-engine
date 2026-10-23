@@ -524,6 +524,10 @@ impl LoadApi for WebHost {
         rt::og_load_flipbook(world, path)
     }
 
+    fn og_load_rig2d(&self, world: u32, path: String) -> String {
+        rt::og_load_rig2d(world, path)
+    }
+
     fn og_load_rig(&self, world: u32, path: String) -> String {
         rt::og_load_rig(world, path)
     }
@@ -590,6 +594,10 @@ impl AnimApi for WebHost {
 
     fn og_anim_humanoid(&self, world: u32, desc: Option<String>) -> String {
         rt::og_anim_humanoid(world, desc)
+    }
+
+    fn og_anim_rig2d_info(&self, world: u32, rig: f64) -> String {
+        rt::og_anim_rig2d_info(world, rig)
     }
 
     fn og_anim_retarget(&self, world: u32, desc: Option<String>) -> String {
