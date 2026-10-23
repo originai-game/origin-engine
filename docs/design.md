@@ -277,32 +277,53 @@ S6).
 - **Reflection probes.** An `og.ReflectionProbe` is a box of the world,
   centred on its entity, whose lit surfaces reflect a cube captured at
   its centre instead of the environment map (`probes.rs`). Each capture is
-  six 90° views drawn with the lit pipelines (sun, local lights, sky;
-  no transparent or skinned meshes) in a `reflection-probes` graph pass
-  before the main pass. It is then copied and GGX-prefiltered like the
+  six 90° views drawn with the lit pipelines in a `reflection-probes`
+  graph pass before the main pass: the opaque meshes, skinned meshes in
+  their current pose, terrain, scattered copies within the box's half
+  extent of it, the sky, then transparent meshes sorted back to front from
+  the probe; lit by the sun and every local light, its own reflections
+  the environment's (one bounce). It is then copied and GGX-prefiltered like the
   environment (`ibl.rs`). The lit shaders box-project the reflected ray
   onto the probe's box, so a room's walls reflect where they stand, and
   blend the probe into the environment over `blendDistance` at the box's
   faces. Probes cost no texture slot, because WebGL2's skinned lit
-  pipeline uses all sixteen. A batch inside a probe's box binds that
+  pipeline uses all sixteen. A draw inside a probe's box binds that
   probe's frame group instead, whose uniform carries the box and whose
-  two IBL cubes are the environment's and the probe's. The smallest box
-  holding the batch's centre wins, and at most `MAX_REFLECTION_PROBES` (8)
+  two IBL cubes are the environment's and the probe's. The probe is
+  chosen per instance (`probe_select.rs`): the smallest box holding the
+  centre of its bounds. The instance sort keys on it, so one mesh and
+  material in two rooms is two batches, each binding its room's probe (a
+  per-instance index would need every cube bound at once: a cube array,
+  which WebGL2 lacks). Skinned instances choose by their bind-pose bounds;
+  terrain levels, scatter chunks, water surfaces and the 3D fluids per
+  draw, by the box holding their centre or else the smallest box their
+  bounds reach. Every lit shader (standard, physical, custom, terrain,
+  scatter, water, 3D fluid) samples through `frame.wgsl`'s
+  `ambient_light`/`reflected_light`. At most `MAX_REFLECTION_PROBES` (8)
   probes are used, nearest the camera first.
   - A `baked` probe is captured once. `og bake probes [project]` renders
     the baked probes on the native host and writes each into the cook
     cache as an environment blob (`cooked/probes/<key>.ogb`, kind `probe`
     in the manifest; the cook keeps it while the file exists). The key
-    hashes the probe's position, box and face size. The runtime loads the
-    blob when its key is in the bundle; otherwise the probe draws its
-    capture on its first frame (lazily).
+    hashes the probe's position, box and face size and its room's content
+    (`probe_content.rs`: what the capture draws in its box, by value:
+    meshes, materials and their texels, transforms, terrain, scatter,
+    lights, the sun and the environment), so a changed room is a new key.
+    The runtime loads the blob when its key is in the bundle; otherwise
+    the probe draws its capture on its first frame (lazily). Beside each
+    blob a record (`cooked/probes/<key>.ogt`) names the model assets in
+    the room with their cooked hashes and, when game code built part of
+    it, the hash of `src/`; `og doctor --project` reports a bake whose
+    assets or code changed since as `stale-probe`.
   - A `realtime` probe is drawn again every `interval` ticks.
 - **SSR.** `PostEffects.ssr` (with `ssrMaxDistance`, `ssrThickness`,
   `ssrSteps`, `ssrFade` and `ssrIntensity`) adds a full-tier pass after
   the main pass (`ssr.rs`, `ssr.wgsl`). Each glossy pixel marches its
   reflected ray in view space through the prepass's view depth, then
   bisects the hit. The prepass's depth target is RG32F, and its second
-  channel carries the material's gloss and metalness. The hit is weighted
+  channel carries the gloss and metalness the lit pass shades: the
+  factors times the roughness and metalness maps, a terrain's blended
+  layer roughness, a scattered copy's material. The hit is weighted
   by Fresnel and gloss² and faded at the screen's edges, towards the
   maximum distance, and for rays turning back to the camera. Where a ray
   misses, the probes and environment already drawn remain. WebGL2 draws
@@ -833,7 +854,10 @@ reading pixels:
   `within:x0,y0,z0,x1,y1,z1` (its position inside a world box),
   `event:<Name>[:count]`, `ui:text:[=]<text>`,
   `region:x,y,w,h:color:#rrggbb[:tol]`, `frame:<ref.png>:rmse:<=v` and
-  `state:<path><op><value>` over the game's `state()` facts. Each result
+  `state:<path><op><value>` over the game's `state()` facts,
+  `entity:<id>:<path><op><value>` over a field of the entity's
+  `dump_entity` (`render.lod==2`) and `timings:<path><op><value>` over
+  `state().timings` (`triangles<=1500000`). Each result
   keeps its tick, what was expected and what was observed; a failure is a
   warning in the log. `og run --json` carries them (`expectations`) and
   exits 1 on any failure; a playtest may be expectations alone. A frame

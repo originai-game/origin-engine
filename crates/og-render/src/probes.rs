@@ -19,8 +19,9 @@
 //! probe's. The lit shaders then box-project the reflected ray onto the
 //! probe's box and blend the probe with the environment by the distance to
 //! the box's faces (`frame.wgsl`'s `reflected_light`, `ambient_light`).
-//! Each batch takes one probe: the smallest box holding the centre of its
-//! instances' bounds.
+//! Each instance takes one probe, the smallest box holding the centre of
+//! its bounds; instances of one mesh and material in different boxes are
+//! different batches (`probe_select.rs`).
 
 use crate::frame::FrameUniform;
 use crate::scene::{Camera, Projection};
@@ -104,16 +105,6 @@ impl ReflectionProbe {
         (self.position - h, self.position + h)
     }
 
-    fn contains(&self, p: Vec3) -> bool {
-        let (lo, hi) = self.bounds();
-        p.cmpge(lo).all() && p.cmple(hi).all()
-    }
-
-    fn volume(&self) -> f32 {
-        let s = self.size.abs();
-        s.x * s.y * s.z
-    }
-
     /// The frame uniform's probe rows (`FrameUniform::probe`).
     fn rows(&self) -> [[f32; 4]; 3] {
         let (lo, hi) = self.bounds();
@@ -150,35 +141,6 @@ pub(crate) fn face_camera(base: &Camera, at: Vec3, face: u32, far: f32) -> Camer
         far,
         exposure: base.exposure,
     }
-}
-
-/// The probe each batch samples: `u8::MAX` for none, else an index into
-/// the frame's active probes. A batch takes the smallest box holding the
-/// centre of its instances' bounds (`spheres[first..first + count]`).
-pub(crate) fn assign(
-    batches: impl Iterator<Item = (u32, u32)>,
-    spheres: &[(Vec3, f32)],
-    probes: &[ReflectionProbe],
-) -> Vec<u8> {
-    batches
-        .map(|(first, count)| {
-            if probes.is_empty() || count == 0 {
-                return u8::MAX;
-            }
-            let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
-            for &(c, r) in &spheres[first as usize..(first + count) as usize] {
-                lo = lo.min(c - r);
-                hi = hi.max(c + r);
-            }
-            let centre = (lo + hi) * 0.5;
-            probes
-                .iter()
-                .enumerate()
-                .filter(|(_, p)| p.contains(centre))
-                .min_by(|a, b| a.1.volume().total_cmp(&b.1.volume()))
-                .map_or(u8::MAX, |(i, _)| i as u8)
-        })
-        .collect()
 }
 
 /// One probe's cube and what draws and filters it.
@@ -567,25 +529,6 @@ pub(crate) fn read_back(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// A batch takes the smallest box holding its centre; one outside
-    /// every box takes none; boxes nest (a cupboard inside a room).
-    #[test]
-    fn a_batch_takes_the_smallest_box_holding_it() {
-        let room = ReflectionProbe::new(1, Vec3::ZERO, Vec3::splat(10.0));
-        let cupboard = ReflectionProbe::new(2, Vec3::new(3.0, 0.0, 0.0), Vec3::splat(2.0));
-        let spheres = [
-            (Vec3::new(-2.0, 0.0, 0.0), 0.5),
-            (Vec3::new(3.2, 0.1, 0.0), 0.5),
-            (Vec3::new(40.0, 0.0, 0.0), 0.5),
-        ];
-        let got = assign(
-            [(0, 1), (1, 1), (2, 1)].into_iter(),
-            &spheres,
-            &[room, cupboard],
-        );
-        assert_eq!(got, vec![0, 1, u8::MAX]);
-    }
 
     /// Face sizes are powers of two in range; a probe of resolution 100
     /// captures at 128.

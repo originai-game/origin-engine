@@ -97,9 +97,10 @@ fn fs(in: ScatterOut) -> @location(0) vec4<f32> {
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  let irradiance = textureSample(irradiance_map, ibl_sampler, n).rgb;
+  // The environment, or the probe holding the chunk blended with it (probes.rs).
+  let irradiance = ambient_light(n, in.world);
   let r = reflect(-v, n);
-  let prefiltered = textureSampleLevel(prefiltered_map, ibl_sampler, r, s.roughness * frame.params.y).rgb;
+  let prefiltered = reflected_light(r, in.world, s.roughness * frame.params.y);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   var ibl_scale = frame.params.x * material.flags.z;
   if (material.flags.y >= 0.0) {
@@ -131,7 +132,12 @@ fn fs_prepass(in: ScatterOut) -> ScatterPrepass {
   let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
   var o: ScatterPrepass;
   o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
-  o.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), 0.0, 0.0, 1.0);
+  // The reflectivity screen-space reflections read, as the lit pass shades
+  // the copy (none unlit).
+  let metalness = material.mr.x * textureSample(metalness_tex, material_sampler, in.uv).b;
+  let roughness = clamp(material.mr.y * textureSample(roughness_tex, material_sampler, in.uv).g, 0.04, 1.0);
+  let reflectivity = select(reflectivity_bits(roughness, metalness), 0.0, (u32(material.flags.w) & 2u) != 0u);
+  o.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
   o.outline = vec4<f32>(0.0);
   return o;
 }

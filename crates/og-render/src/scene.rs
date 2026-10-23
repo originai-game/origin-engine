@@ -2532,6 +2532,16 @@ impl RenderScene {
         self.mesh_revisions.get(index).copied().unwrap_or(0)
     }
 
+    /// How many times the texture at `index` was replaced (or removed).
+    pub fn texture_revision(&self, index: usize) -> u64 {
+        self.texture_revisions.get(index).copied().unwrap_or(0)
+    }
+
+    /// How many times the terrain at `index` was replaced or edited.
+    pub fn terrain_revision(&self, index: usize) -> u64 {
+        self.terrain_revisions.get(index).copied().unwrap_or(0)
+    }
+
     pub fn mesh(&self, handle: MeshHandle) -> Option<&MeshData> {
         if !self.contains_mesh(handle) {
             return None;

@@ -207,7 +207,8 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // Reflection with Schlick's Fresnel.
   let r = reflect(-v, n);
   let fresnel = (0.02 + 0.98 * pow(1.0 - max(dot(n, v), 0.0), 5.0)) * water.look.x;
-  var reflected = textureSampleLevel(prefiltered_map, ibl_sampler, r, 0.5).rgb * frame.params.x * 1.8;
+  // The environment, or the reflection probe holding the surface (probes.rs).
+  var reflected = reflected_light(r, in.world, 0.5) * frame.params.x * 1.8;
   if (water.extra.y > 0.5) {
     // The mirrored scene, flipped left to right, shifted by the waves.
     let shift_r = (n - in.normal).xz * water.screen.zw * 60.0;

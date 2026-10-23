@@ -94,6 +94,16 @@ fn ambient_light(n: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
   return mix(env, probe, probe_weight(p));
 }
 
+// `ambient_light` without screen derivatives (level 0 of the irradiance
+// cube): for shaders that sample it after a fragment may have returned.
+fn ambient_light_level(n: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
+  if (frame.probe_min.w < 0.5) { return textureSampleLevel(irradiance_map, ibl_sampler, n, 0.0).rgb; }
+  let top = frame.params.y;
+  let env = textureSampleLevel(irradiance_map, ibl_sampler, n, top).rgb;
+  let probe = textureSampleLevel(prefiltered_map, ibl_sampler, n, top).rgb * frame.probe_max.w;
+  return mix(env, probe, probe_weight(p));
+}
+
 // The environment reflected along `r` at `p` at prefiltered level `mip`:
 // with a probe its box-projected capture blended with the environment.
 fn reflected_light(r: vec3<f32>, p: vec3<f32>, mip: f32) -> vec3<f32> {
@@ -101,6 +111,14 @@ fn reflected_light(r: vec3<f32>, p: vec3<f32>, mip: f32) -> vec3<f32> {
   let env = textureSampleLevel(irradiance_map, ibl_sampler, r, mip).rgb;
   let probe = textureSampleLevel(prefiltered_map, ibl_sampler, probe_direction(r, p), mip).rgb * frame.probe_max.w;
   return mix(env, probe, probe_weight(p));
+}
+
+// The prepass's reflectivity (lindepth's y, read by ssr.wgsl
+// `ssr_surface`): the gloss (1 - roughness) in 255ths, the metalness in
+// 255ths times 256 above it. The standard prepass, terrain and scattered
+// copies write it.
+fn reflectivity_bits(roughness: f32, metalness: f32) -> f32 {
+  return round((1.0 - clamp(roughness, 0.0, 1.0)) * 255.0) + 256.0 * round(clamp(metalness, 0.0, 1.0) * 255.0);
 }
 
 // Fog: distance (exponential from start, or a linear ramp start..end) and

@@ -213,14 +213,15 @@ fn fs_composite(in: FullOut) -> CompositeOut {
   var shadow = 1.0;
   if (frame.light_dir.w > 0.5) { shadow = cascade_shadow(p, n, n_dot_l); }
   var body = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
-  body += textureSampleLevel(irradiance_map, ibl_sampler, n, 0.0).rgb * color * frame.params.x;
+  body += ambient_light_level(n, p) * color * frame.params.x;
   body += cluster_lights(in.pos.xy, s, p, n, v);
   var out = through + body * (1.0 - transmit);
 
   // The environment reflected (Schlick, water's reflectance).
   let n_dot_v = max(dot(n, v), 0.0);
   let fresnel = clamp((0.02 + 0.98 * pow(1.0 - n_dot_v, 5.0)) * fluid.up.w, 0.0, 1.0);
-  let reflected = textureSampleLevel(prefiltered_map, ibl_sampler, reflect(-v, n), 0.5).rgb * frame.params.x;
+  // The environment, or the reflection probe holding the fluid (probes.rs).
+  let reflected = reflected_light(reflect(-v, n), p, 0.5) * frame.params.x;
   out = mix(out, reflected, fresnel);
   let h = normalize(l + v);
   out += frame.light_color.rgb * pow(max(dot(n, h), 0.0), 200.0) * 2.0 * fresnel * fluid.up.w * shadow;

@@ -124,6 +124,18 @@ pub fn findings(root: &Path) -> Vec<Value> {
         f["asset"] = json!(scene);
         out.push(f);
     }
+    // Baked reflection probes whose room changed since (`og bake probes`).
+    let code = crate::bake_probes::code_hash(root);
+    for (probe, reason) in og_cook::cook::probes::status(root, code) {
+        let mut f = finding(
+            "warning",
+            "stale-probe",
+            format!("{reason}: it draws its own capture on first use"),
+            "run `og bake probes` in the project again, with the commands that reach the probe",
+        );
+        f["asset"] = json!(probe);
+        out.push(f);
+    }
     for fl in stats::total_flags(&report, &budgets) {
         let mut f = finding(
             "error",

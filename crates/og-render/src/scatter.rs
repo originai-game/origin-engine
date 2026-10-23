@@ -892,6 +892,7 @@ impl ScatterRenderer {
     /// Draws `batches` into a pass (groups 0 and, for the lit passes, the
     /// frame bound by the caller): the chunks whose bounds `visible` keeps.
     /// Answers the draws and the copies drawn.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn draw<'a>(
         &self,
         pass: &mut wgpu::RenderPass,
@@ -900,6 +901,7 @@ impl ScatterRenderer {
         material_group: impl Fn(usize) -> Option<&'a wgpu::BindGroup>,
         mesh: impl Fn(usize) -> Option<(&'a wgpu::Buffer, &'a wgpu::Buffer, u32)>,
         visible: impl Fn(Vec3, f32) -> bool,
+        mut probes: Option<&mut crate::probe_select::Binder>,
     ) -> (u32, u32) {
         let (mut draws, mut copies) = (0, 0);
         for b in batches {
@@ -927,11 +929,18 @@ impl ScatterRenderer {
                     pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
                     bound = true;
                 }
+                // Each chunk's reflection probe (probe_select.rs).
+                if let Some(b) = probes.as_deref_mut() {
+                    b.at(pass, c.center, c.radius);
+                }
                 pass.set_vertex_buffer(1, buffer.slice(..));
                 pass.draw_indexed(0..count, 0, 0..c.count);
                 draws += 1;
                 copies += c.count;
             }
+        }
+        if let Some(b) = probes {
+            b.reset(pass);
         }
         (draws, copies)
     }

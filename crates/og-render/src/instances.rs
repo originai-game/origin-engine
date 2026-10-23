@@ -106,6 +106,9 @@ pub(crate) struct Run {
     /// Its material samples texture arrays: its instances carry their
     /// layer ([`GpuTransform::layer`]).
     pub array: bool,
+    /// The reflection probe its instances sample (`probe_select.rs`; an
+    /// index into the frame's probes, [`crate::probe_select::NONE`]: none).
+    pub probe: u8,
 }
 
 /// An instance's GPU transform in `run`.
@@ -155,6 +158,11 @@ pub(crate) struct SortedInstances {
     /// The materials whose instances the last rebuild left out (wireframe
     /// materials, drawn by the lines pass).
     skipped: Vec<u32>,
+    /// The frame's reflection probe boxes ([`SortedInstances::set_probes`]):
+    /// an instance's run is also keyed by the probe holding its centre.
+    probes: Vec<(Vec3, Vec3)>,
+    /// The boxes changed since the last sort.
+    probes_moved: bool,
 }
 
 /// What [`SortedInstances::update`] lends a frame.
@@ -208,6 +216,15 @@ fn same_bits(a: &Mat4, b: &Mat4) -> bool {
 }
 
 impl SortedInstances {
+    /// The frame's reflection probe boxes, before [`SortedInstances::update`]:
+    /// other boxes than the last frame's sort the instances again.
+    pub fn set_probes(&mut self, boxes: Vec<(Vec3, Vec3)>) {
+        if boxes != self.probes {
+            self.probes = boxes;
+            self.probes_moved = true;
+        }
+    }
+
     /// The frame's sorted instances, from the last frame's where they still
     /// hold. Fails on an instance whose mesh or material index is not below
     /// `meshes` / `materials` (the renderer's copies of the scene's);
@@ -270,11 +287,11 @@ impl SortedInstances {
         let skipped: Vec<u32> = (0..materials as u32)
             .filter(|&m| skip(m as usize))
             .collect();
-        same = same && skipped == self.skipped;
+        same = same && skipped == self.skipped && !self.probes_moved;
         self.skipped = skipped;
-        if same {
-            self.refresh(scene, &mesh);
-        } else {
+        self.probes_moved = false;
+        // An instance that moved into another probe's box sorts again.
+        if !same || self.refresh(scene, &mesh).is_none() {
             self.rebuild(scene, &mesh, &dequant, &array);
         }
         Ok(Sorted {
@@ -309,9 +326,29 @@ impl SortedInstances {
         // (mesh, material) pair's casters come first, then each layer mask
         // a run of its own (a camera draws or skips a run whole).
         let layers = |i: usize| crate::views::layer_of(&scene.instance_layers, i);
+        // Each instance's reflection probe (last: a run splits by probe
+        // only where its instances sit in different boxes).
+        let probe: Vec<u8> = if self.probes.is_empty() {
+            Vec::new()
+        } else {
+            instances
+                .iter()
+                .map(|inst| {
+                    let bounds = mesh_info(inst.mesh.index()).0;
+                    crate::probe_select::pick(&self.probes, world_sphere(&inst.transform, bounds).0)
+                })
+                .collect()
+        };
+        let probe_of = |i: usize| probe.get(i).copied().unwrap_or(crate::probe_select::NONE);
         order.sort_by_key(|&i| {
             let inst = &instances[i];
-            (inst.mesh, inst.material, !inst.cast_shadows, layers(i))
+            (
+                inst.mesh,
+                inst.material,
+                !inst.cast_shadows,
+                layers(i),
+                probe_of(i),
+            )
         });
         self.order.clear();
         self.matrices.clear();
@@ -321,11 +358,12 @@ impl SortedInstances {
         self.meshes.clear();
         for &i in &order {
             let inst = &instances[i];
-            let (mesh, material, cast, mask) = (
+            let (mesh, material, cast, mask, probe) = (
                 inst.mesh.index(),
                 inst.material.index(),
                 inst.cast_shadows,
                 layers(i),
+                probe_of(i),
             );
             let (bounds, empty) = mesh_info(mesh);
             // Sorted by mesh: a mesh's instances are together.
@@ -340,7 +378,8 @@ impl SortedInstances {
                     if r.mesh == mesh
                         && r.material == material
                         && r.cast == cast
-                        && r.layers == mask =>
+                        && r.layers == mask
+                        && r.probe == probe =>
                 {
                     r.count += 1
                 }
@@ -353,6 +392,7 @@ impl SortedInstances {
                     count: 1,
                     dequant: dequant(mesh, material),
                     array: array(material),
+                    probe,
                 }),
             }
             let m = inst.transform;
@@ -367,8 +407,13 @@ impl SortedInstances {
     }
 
     /// The same sort: recomputes what changed with the transforms; returns
-    /// how many instances that was.
-    fn refresh(&mut self, scene: &RenderScene, mesh_info: &impl Fn(usize) -> MeshInfo) -> usize {
+    /// how many instances that was, `None` when one moved into another
+    /// reflection probe's box (the sort is then redone).
+    fn refresh(
+        &mut self,
+        scene: &RenderScene,
+        mesh_info: &impl Fn(usize) -> MeshInfo,
+    ) -> Option<usize> {
         let instances = &scene.instances;
         let mut changed = 0;
         for run in &self.runs {
@@ -384,6 +429,11 @@ impl SortedInstances {
                     continue;
                 }
                 self.spheres[k] = world_sphere(m, bounds);
+                if !self.probes.is_empty()
+                    && crate::probe_select::pick(&self.probes, self.spheres[k].0) != run.probe
+                {
+                    return None;
+                }
                 self.transforms[k] = run_transform(m, inst, run);
                 self.matrices[k] = *m;
                 changed += 1;
@@ -392,7 +442,7 @@ impl SortedInstances {
         if changed > 0 {
             self.sphere_box = fold_box(None, self.spheres.iter().copied());
         }
-        changed
+        Some(changed)
     }
 }
 
@@ -447,6 +497,50 @@ mod tests {
         assert_eq!(a.sphere_box, b.sphere_box);
     }
 
+    /// One mesh and material in two reflection probes' boxes is two runs,
+    /// each with its box's probe (an aggregate centre between the rooms
+    /// would give both the same one, or none); an instance that walks into
+    /// the other room sorts again and changes run.
+    #[test]
+    fn instances_in_two_probes_boxes_are_two_runs() {
+        let mut scene = RenderScene::new();
+        let mesh = scene.add_mesh(MeshData::default());
+        let material = scene.add_material(Material::default());
+        for x in [-5.0, -4.0, 5.0] {
+            scene.add_instance(
+                mesh,
+                material,
+                Mat4::from_translation(Vec3::new(x, 0.0, 0.0)),
+            );
+        }
+        let mut kept = SortedInstances::default();
+        kept.set_probes(vec![
+            (Vec3::new(-8.0, -2.0, -2.0), Vec3::new(-2.0, 2.0, 2.0)),
+            (Vec3::new(2.0, -2.0, -2.0), Vec3::new(8.0, 2.0, 2.0)),
+        ]);
+        let update = |k: &mut SortedInstances, s: &RenderScene| {
+            k.update(s, 3, info, 2, |_, _| None, |_| false, |_| false)
+                .unwrap()
+        };
+        let runs = |s: &Sorted| {
+            s.runs
+                .iter()
+                .map(|r| (r.probe, r.count))
+                .collect::<Vec<_>>()
+        };
+        let first = update(&mut kept, &scene);
+        assert_eq!(runs(&first), vec![(0, 2), (1, 1)]);
+        kept.restore(first.transforms, first.spheres);
+        scene.instances[1].transform = Mat4::from_translation(Vec3::new(4.0, 0.0, 0.0));
+        let walked = update(&mut kept, &scene);
+        assert_eq!(runs(&walked), vec![(0, 1), (1, 2)]);
+        kept.restore(walked.transforms, walked.spheres);
+        // No probes: one run, sampling none.
+        kept.set_probes(Vec::new());
+        let none = update(&mut kept, &scene);
+        assert_eq!(runs(&none), vec![(crate::probe_select::NONE, 3)]);
+    }
+
     /// Kept, refreshed or rebuilt, a frame's sorted instances are a fresh
     /// build's, bit for bit, and only what changed is computed again.
     #[test]
@@ -467,7 +561,7 @@ mod tests {
         );
         kept.restore(first.transforms, first.spheres);
         // Unchanged: nothing computed.
-        assert_eq!(kept.refresh(&scene, &info), 0);
+        assert_eq!(kept.refresh(&scene, &info), Some(0));
         let still = kept
             .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
@@ -483,7 +577,7 @@ mod tests {
         scene.instances[3].transform.w_axis.x += 2.0;
         scene.instances[10].transform = Mat4::from_translation(Vec3::new(-3.0, 1.0, 0.0));
         scene.instances[7].transform.w_axis.y = -0.0;
-        assert_eq!(kept.refresh(&scene, &info), 3);
+        assert_eq!(kept.refresh(&scene, &info), Some(3));
         kept.refresh(&scene, &info);
         let moved = kept
             .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)

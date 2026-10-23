@@ -2104,15 +2104,24 @@ world.insert(probe, og.ReflectionProbe, {
     room, run `og bake probes [project] --commands "0:station:hall"` (the
     commands reach the scene). It writes the captures into
     `cooked/probes/`, and runs then load them instead of drawing them.
-    Moving or resizing a probe needs a new bake: until then it draws its
-    own capture.
+    A bake is keyed by the probe's place and size and by its room's
+    content: moving the probe or changing what is in its box (a mesh,
+    a material, a texture, a light) needs a new bake, and until then it
+    draws its own capture. `og doctor --project` lists stale bakes
+    (`stale-probe`).
   - A `realtime` probe redraws six faces every `interval` ticks. Keep
     the interval high.
-- Size the box to the room. Where boxes overlap, the smallest one holding
-  an object wins. At most 8 probes (`MAX_REFLECTION_PROBES`) are used,
+- Size the box to the room. Each object takes the smallest box holding
+  its centre, so two rooms that share a model each reflect their own.
+  The capture shows everything in the room: characters in their pose,
+  terrain, grass, glass. Terrain, grass and water inside the box are lit
+  by it too. At most 8 probes (`MAX_REFLECTION_PROBES`) are used,
   nearest the camera first.
 - `dump_render` lists the frame's probes and whether each was loaded from
-  the cache.
+  the cache. In a playtest, assert what the sphere shows with
+  `expect:region:x,y,w,h:color:#rrggbb:tol`, and a model's level of
+  detail and the frame's triangles with `expect:entity:<name>:render.lod==1`
+  and `expect:timings:triangles<=1500000`.
 
 **Screen-space reflections.** On the full tier, `PostEffects.ssr` adds the
 frame's own reflections to smooth surfaces: a wet street, a polished
@@ -2127,8 +2136,9 @@ post.ssrThickness = 0.3;  // how far behind a surface a ray still hits it
 post.ssrFade = 0.15;      // fade at the screen's edges
 ```
 
-SSR is weighted by roughness (`roughness` 0.05 reflects sharply; above
-0.75 it reflects nothing) and by Fresnel. What it misses (off screen,
+SSR is weighted by roughness as the surface is shaded, its roughness map
+and a terrain layer's roughness included (`roughness` 0.05 reflects
+sharply; above 0.75 it reflects nothing), and by Fresnel. What it misses (off screen,
 behind objects) falls back to the probes and the environment, so use SSR
 together with a probe. WebGL2 draws no SSR: check
 `og.render.capabilities(world).ssr`, and on that tier the probe is the
