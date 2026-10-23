@@ -472,14 +472,17 @@ pub enum ViewFx {
     /// The same particles, hard (what the soft ones are compared with; not
     /// in [`ViewFx::ALL`]).
     HardParticles,
+    /// A small white sprite glowing through og.Glow (off: not glowing).
+    Glow,
 }
 
 impl ViewFx {
-    pub const ALL: [ViewFx; 4] = [
+    pub const ALL: [ViewFx; 5] = [
         ViewFx::Ribbon,
         ViewFx::Lit2d,
         ViewFx::Fluid2d,
         ViewFx::SoftParticles,
+        ViewFx::Glow,
     ];
 }
 
@@ -557,6 +560,13 @@ pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
                     ..Default::default()
                 });
             }
+            ViewFx::Glow => {
+                scene.sprite_fx.push(og_render::SpriteFx {
+                    sprite: 0,
+                    glow: 3.0,
+                    ..Default::default()
+                });
+            }
             ViewFx::SoftParticles | ViewFx::HardParticles => {
                 let e = scene.add_emitter(og_render::ParticleEmitter {
                     rate: 40.0,
@@ -582,6 +592,15 @@ pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
                 ));
             }
         }
+    }
+    if fx == ViewFx::Glow {
+        scene.post.glow = Some(og_render::Glow { intensity: 1.0 });
+        scene.add_sprite(og_render::Sprite {
+            position: Vec3::ZERO,
+            size: glam::Vec2::new(0.8, 0.8),
+            color: [1.0, 0.9, 0.6, 1.0],
+            ..Default::default()
+        });
     }
     if fx == ViewFx::Lit2d {
         scene.add_sprite(og_render::Sprite {

@@ -2293,10 +2293,11 @@ its layers admit, so keep it cheap with `layers` and `every`.
   and tone mapped with the frame's curve. An `hdr` target holds linear
   radiance and is exposed by the frame that shows it.
 - Bloom, AO, SSR, depth of field, colour grading and custom post passes
-  run on the main frame only.
-- In a view, sprites are 2D-lit and 2D fluids drawn as in the main
-  frame, but sprites do not glow. Screen sprites, the UI and debug draw
-  stay on the main frame.
+  run on the main frame only (the 2D glow, `PostEffects.glow`, is the
+  exception: a view adds its own).
+- In a view, sprites are 2D-lit and glow and 2D fluids and soft
+  particles draw as in the main frame. Screen sprites, the UI and debug
+  draw stay on the main frame.
 
 A viewport view draws over the finished image and under the UI.
 

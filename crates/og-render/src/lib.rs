@@ -5415,9 +5415,10 @@ impl Renderer {
         // Each view's world sprites, 2D particles and text on its layers
         // (views.rs), their instances after the main camera's in the
         // sprite buffer, lit by the view's own 2D light map, its 2D fluids
-        // composited from its own fields. Glow reads the main frame's
-        // screen: a view draws its sprites without glow.
+        // composited from its own fields, its glowing sprites into its own
+        // glow buffer.
         let mut view_sprites: Vec<Vec<sprites::SpriteRun>> = Vec::new();
+        let mut view_glow_runs: Vec<Vec<sprites::SpriteRun>> = Vec::new();
         for (p, runs) in view_plans.iter().zip(&view_ribbons) {
             let view_strips: Vec<sprites::LayeredStrip> = runs
                 .iter()
@@ -5458,18 +5459,18 @@ impl Renderer {
                     RunSource::Strip(..) | RunSource::Mesh(_) | RunSource::Metaballs(_)
                 )
             };
-            // The glow instances follow every run's: they are left behind.
-            let keep = f
-                .runs
-                .iter()
-                .filter(|r| in_buffer(r))
-                .map(|r| r.first + r.count)
-                .max()
-                .unwrap_or(0) as usize;
+            // Its glow instances follow every run's (its glow pass reads them).
             let base = sprite_frame.instances.len() as u32;
-            sprite_frame
-                .instances
-                .extend_from_slice(&f.instances[..keep]);
+            sprite_frame.instances.extend_from_slice(&f.instances);
+            view_glow_runs.push(
+                f.glow_runs
+                    .into_iter()
+                    .map(|mut r| {
+                        r.first += base;
+                        r
+                    })
+                    .collect(),
+            );
             view_sprites.push(
                 f.runs
                     .into_iter()
@@ -5488,6 +5489,7 @@ impl Renderer {
             .iter()
             .chain(&sprite_frame.glow_runs)
             .chain(view_sprites.iter().flatten())
+            .chain(view_glow_runs.iter().flatten())
         {
             match run.source {
                 RunSource::Sprite(_, t) => {
@@ -6365,7 +6367,14 @@ impl Renderer {
             scene.lighting_2d.map(|l| l.resolution.clamp(0.25, 1.0)),
             fluids,
             particle_frame.soft,
+            post_fx
+                .glow
+                .filter(|_| view_glow_runs.iter().any(|r| !r.is_empty()))
+                .map(|g| g.intensity),
         );
+        if self.views.slots.iter().flatten().any(|s| s.glow.is_some()) {
+            self.mips.prepare(&self.device, HDR_FORMAT);
+        }
         if scene.lighting_2d.is_some() {
             for (k, p) in view_plans.iter().enumerate() {
                 self.lights_2d
@@ -7493,6 +7502,51 @@ impl Renderer {
             binder.reset(pass);
             draws
         };
+        // Glowing sprites into a glow buffer (group 0 set: the camera's).
+        let draw_glow = |pass: &mut wgpu::RenderPass, runs: &[sprites::SpriteRun]| -> u32 {
+            let mut draws = 0;
+            pass.set_bind_group(2, glow_fx_group, &[]);
+            // Plain sprites first (sorted before arrays), then each array's.
+            let mut on_array = None;
+            for run in runs {
+                let array = matches!(run.source, RunSource::Array(..));
+                if on_array != Some(array) {
+                    pass.set_pipeline(match array {
+                        false => &self.sprite_glow_pipeline,
+                        true => {
+                            &self
+                                .sprite_arrays
+                                .as_ref()
+                                .expect("made before the pass")
+                                .glow
+                        }
+                    });
+                    on_array = Some(array);
+                }
+                let group = match run.source {
+                    RunSource::Sprite(_, Some(t)) => self.cache.sprite_groups[t.index()]
+                        .as_ref()
+                        .expect("made before the pass"),
+                    RunSource::Array(_, a) => {
+                        &self.cache.sprite_array_groups[a.index()]
+                            .as_ref()
+                            .expect("made before the pass")
+                            .0
+                    }
+                    _ => &self.white_sprite_group,
+                };
+                pass.set_bind_group(1, group, &[]);
+                let start = run.first as u64 * SPRITE_STRIDE;
+                pass.set_vertex_buffer(
+                    0,
+                    self.sprite_buffer
+                        .slice(start..start + run.count as u64 * SPRITE_STRIDE),
+                );
+                pass.draw(0..6, 0..run.count);
+                draws += 1;
+            }
+            draws
+        };
         // Trails, ribbons and beams drawn with the 3D scene (layered 2D
         // trails go with the sprites): the main camera's or a view's runs.
         let draw_strips = |pass: &mut wgpu::RenderPass, runs: &[ribbons::RibbonRun]| -> u32 {
@@ -8496,6 +8550,35 @@ impl Renderer {
                             true,
                         );
                     }
+                    // Its glowing sprites into its glow buffer, the chain
+                    // added onto its image (views.rs).
+                    if let Some(g) = self.views.slots[p.index]
+                        .as_ref()
+                        .and_then(|s| s.glow.as_ref())
+                    {
+                        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                            label: Some("view glow sprites"),
+                            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                view: &g.target,
+                                depth_slice: None,
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                                    store: wgpu::StoreOp::Store,
+                                },
+                            })],
+                            depth_stencil_attachment: None,
+                            timestamp_writes: None,
+                            occlusion_query_set: None,
+                            multiview_mask: None,
+                        });
+                        pass.set_bind_group(0, &view_groups[i].0, &[]);
+                        stats.draw_calls += draw_glow(&mut pass, &view_glow_runs[i]);
+                        drop(pass);
+                        self.views
+                            .add_glow(&self.device, &self.mips, &mut encoder, p);
+                        stats.draw_calls += 1;
+                    }
                     if let views::Dest::Texture {
                         color,
                         format,
@@ -8815,46 +8898,7 @@ impl Renderer {
                         multiview_mask: None,
                     });
                     pass.set_bind_group(0, frame_bind_group, &[]);
-                    pass.set_bind_group(2, glow_fx_group, &[]);
-                    // Plain sprites first (sorted before arrays), then each array's.
-                    let mut on_array = None;
-                    for run in &sprite_frame.glow_runs {
-                        let array = matches!(run.source, RunSource::Array(..));
-                        if on_array != Some(array) {
-                            pass.set_pipeline(match array {
-                                false => &self.sprite_glow_pipeline,
-                                true => {
-                                    &self
-                                        .sprite_arrays
-                                        .as_ref()
-                                        .expect("made before the pass")
-                                        .glow
-                                }
-                            });
-                            on_array = Some(array);
-                        }
-                        let group = match run.source {
-                            RunSource::Sprite(_, Some(t)) => self.cache.sprite_groups[t.index()]
-                                .as_ref()
-                                .expect("made before the pass"),
-                            RunSource::Array(_, a) => {
-                                &self.cache.sprite_array_groups[a.index()]
-                                    .as_ref()
-                                    .expect("made before the pass")
-                                    .0
-                            }
-                            _ => &self.white_sprite_group,
-                        };
-                        pass.set_bind_group(1, group, &[]);
-                        let start = run.first as u64 * SPRITE_STRIDE;
-                        pass.set_vertex_buffer(
-                            0,
-                            self.sprite_buffer
-                                .slice(start..start + run.count as u64 * SPRITE_STRIDE),
-                        );
-                        pass.draw(0..6, 0..run.count);
-                        stats.draw_calls += 1;
-                    }
+                    stats.draw_calls += draw_glow(&mut pass, &sprite_frame.glow_runs);
                 }
                 FramePass::CustomPost(i) => {
                     let (read, write) = self.graph.custom_post_views(&self.persistent, i, slot);

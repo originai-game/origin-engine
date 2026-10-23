@@ -380,10 +380,12 @@ lights drawn through its camera into a target of its size times
 fluids are composited in its sprite order from field targets of its own
 size, the frame's kernels drawn through its camera. In a frame with soft
 particles every view runs its depth prepass (the one a target's depth
-texture takes) before its pass, and its particles fade against it. The
-main camera's other screen-space inputs stay its own: a view's sprites do
-not glow, and screen sprites, the UI and the post chain are the main
-frame's. Of the post chain an `ldr` target or
+texture takes) before its pass, and its particles fade against it. With
+`PostEffects.glow` its glowing sprites draw into a glow buffer at half its size,
+whose box-filtered mip chain (as many levels as the frame's bloom chain,
+each spread by a 3 × 3 tent) is added onto its image before the resolve
+(`views_glow.wgsl`): the main frame's glow without the rest of the bloom.
+Screen sprites, the UI and the post chain are the main frame's. Of the post chain an `ldr` target or
 a viewport carries exposure and the tone curve (the resolve); an `hdr`
 target carries linear radiance for the frame that shows it to expose.
 The cost is explicit: a view draws everything its mask admits, so its

@@ -90,6 +90,7 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
         );
     }
     add("view resolve", crate::views::resolve_color_source());
+    add("view glow", crate::views::glow_source());
     add(
         "custom post (crt)",
         crate::post_custom::post_module_source(&crate::post_custom::example_crt()),
