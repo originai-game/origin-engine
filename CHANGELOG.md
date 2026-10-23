@@ -18,6 +18,14 @@ Debt round 2 (`docs/phase-1.md`, "Plan 2026-10-23, debt round 2").
   `List.Post.8`; `custom1..custom8` are gone and their callers migrated
   (fx-showcase's shaders station, the og-game skill, design §2.6).
   `maxCustomPosts` stays the bound.
+- `ui-prose`: og-ui's nine-slice no longer squeezes a middle column or row
+  past twice its art (it shows the centre of the art instead), which
+  removes the light band through short buttons such as Rumpus Isle's
+  Pause: the band came from the mipmapped atlas sampling a coarse level
+  for a 6× squeeze, not from the corners. The games, archetypes and
+  knowledge skills call a UI style a style (the old `skins/<name>` paths
+  are `styles/<name>`), and knowledge `validate` refuses a skill or wiki
+  page that calls one a skin.
 
 ## 0.3.0 (2026-10-23)
 
