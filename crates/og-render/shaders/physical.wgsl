@@ -294,6 +294,12 @@ fn scene_behind(uv: vec2<f32>, lod: f32) -> vec3<f32> {
 
 @fragment
 fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
+  return physical_fragment(in);
+}
+
+// The physical shading of a fragment (`fs`, and lightmap_physical.wgsl's
+// `fs_physical_lightmap`).
+fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let uv = stylised_uv(in.uv, in.affine);
   let base_sample = textureSample(base_color_tex, material_sampler, uv);
   var hook: Hook;

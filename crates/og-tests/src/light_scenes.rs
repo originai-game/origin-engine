@@ -396,6 +396,14 @@ pub fn volumetric_fog_scene() -> RenderScene {
 /// alone. `baked: false` builds it unbaked (the environment's ambient).
 #[cfg(not(target_arch = "wasm32"))]
 pub fn baked_cornell_scene(baked: bool) -> Result<RenderScene, String> {
+    let mut scene = cornell_view();
+    cornell_box(&mut scene, Vec3::ZERO, false, baked, false)?;
+    Ok(scene)
+}
+
+/// The dark scene and the camera the one-box Cornell scenes share.
+#[cfg(not(target_arch = "wasm32"))]
+fn cornell_view() -> RenderScene {
     let mut scene = RenderScene::new();
     dark(&mut scene, 0.35);
     scene.camera = Camera {
@@ -407,8 +415,7 @@ pub fn baked_cornell_scene(baked: bool) -> Result<RenderScene, String> {
         exposure: Exposure::linear(0.85),
         ..Default::default()
     };
-    cornell_box(&mut scene, Vec3::ZERO, false, baked)?;
-    Ok(scene)
+    scene
 }
 
 /// Two of [`baked_cornell_scene`]'s boxes side by side, 2.4 m apart, the
@@ -432,21 +439,98 @@ pub fn baked_cornell_pair_scene() -> Result<RenderScene, String> {
         exposure: Exposure::linear(0.85),
         ..Default::default()
     };
-    cornell_box(&mut scene, Vec3::new(-1.2, 0.0, 0.0), false, true)?;
-    cornell_box(&mut scene, Vec3::new(1.2, 0.0, 0.0), true, true)?;
+    cornell_box(&mut scene, Vec3::new(-1.2, 0.0, 0.0), false, true, false)?;
+    cornell_box(&mut scene, Vec3::new(1.2, 0.0, 0.0), true, true, false)?;
     Ok(scene)
+}
+
+/// [`baked_cornell_scene`]'s box with its parts drawn by every kind of lit
+/// batch (`baked-batches`): the ceiling a physical material, the back wall
+/// a plain material from compact vertices, the tall block an array-map
+/// material and the short block a material shader; floor and side walls
+/// standard. Each part draws its bake, so the frame is `baked-cornell`'s
+/// but for the physical ceiling's specular; a batch that ignores its
+/// lightmap takes the probes or the sky's ambient instead (the ceiling,
+/// outside the light volume, goes near black).
+#[cfg(not(target_arch = "wasm32"))]
+pub fn baked_batches_scene(baked: bool) -> Result<RenderScene, String> {
+    let mut scene = cornell_view();
+    cornell_box(&mut scene, Vec3::ZERO, false, baked, true)?;
+    Ok(scene)
+}
+
+/// The material of part `i` of a Cornell box (0 floor, 1 ceiling, 2 back,
+/// 3 and 4 the side walls, 5 the tall block, 6 the short one): matte, or
+/// with `batches` the batch kind [`baked_batches_scene`] names (the back
+/// wall's compact vertices are set by the caller).
+#[cfg(not(target_arch = "wasm32"))]
+fn part_material(
+    scene: &mut RenderScene,
+    i: usize,
+    color: Vec3,
+    batches: bool,
+) -> og_render::MaterialHandle {
+    use og_render::{MaterialShader, ParamKind, ShaderParam, TextureArrayData, TextureSource};
+    let m = matte(color, 0.9);
+    if !batches {
+        return scene.add_standard_material(m);
+    }
+    match i {
+        // Physical: an ior other than 1.5 is a physical lobe.
+        1 => scene.add_standard_material(StandardMaterial { ior: 1.45, ..m }),
+        5 => {
+            let white = TextureData {
+                width: 4,
+                height: 4,
+                rgba: vec![255; 64],
+                color_space: ColorSpace::Srgb,
+                mips: Mips::Generate,
+            };
+            let array = scene
+                .add_texture_array(TextureArrayData {
+                    layers: vec![
+                        TextureSource::Rgba(white.clone()),
+                        TextureSource::Rgba(white),
+                    ],
+                })
+                .expect("two white layers");
+            scene.add_standard_material(StandardMaterial {
+                mapArray: array.slot(),
+                mapLayer: 1,
+                ..m
+            })
+        }
+        6 => {
+            let shader = scene.add_shader(MaterialShader {
+                name: "tint".into(),
+                code: "fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> {\n  return vec4<f32>(c.rgb * p.gain, c.a);\n}\n".into(),
+                params: vec![ShaderParam {
+                    name: "gain".into(),
+                    kind: ParamKind::Float,
+                    default: [1.0, 0.0, 0.0, 0.0],
+                }],
+                mode: Default::default(),
+            });
+            let material = scene.add_standard_material(m);
+            scene.set_material_shader(material, Some(shader));
+            material
+        }
+        _ => scene.add_standard_material(m),
+    }
 }
 
 /// One Cornell box at `at` (red wall on the left, green on the right, or
 /// the other way round when `swapped`): its spot, its ball and its walls
-/// and blocks, baked by og-bake on their own when `baked` (its pages and
-/// its light volume added to the scene's bake).
+/// and blocks (each part's material [`part_material`]'s), baked by og-bake
+/// on their own when `baked` (its pages and its light volume added to the
+/// scene's bake).
 #[cfg(not(target_arch = "wasm32"))]
 fn cornell_box(
     scene: &mut RenderScene,
     at: Vec3,
     swapped: bool,
     baked: bool,
+    batches: bool,
 ) -> Result<(), String> {
     use og_render::{BakedMesh, LightmapPages, LightmapUvs, ProbeVolume};
     use std::sync::Arc;
@@ -532,9 +616,17 @@ fn cornell_box(
         matte(Vec3::splat(0.85), 0.7),
         Mat4::from_scale_rotation_translation(Vec3::splat(ball.1), Quat::IDENTITY, ball.0),
     );
+    let place = |scene: &mut RenderScene, i: usize, mesh: og_render::MeshHandle, color: Vec3| {
+        if batches && i == 2 {
+            scene.set_vertex_encoding(mesh, og_render::VertexEncoding::Compact);
+        }
+        let material = part_material(scene, i, color, batches);
+        scene.add_instance(mesh, material, Mat4::IDENTITY);
+    };
     if !baked {
-        for (mesh, color) in parts {
-            put(scene, mesh, matte(color, 0.9), Mat4::IDENTITY);
+        for (i, (mesh, color)) in parts.into_iter().enumerate() {
+            let mesh = scene.add_mesh(mesh);
+            place(scene, i, mesh, color);
         }
         return Ok(());
     }
@@ -622,7 +714,7 @@ fn cornell_box(
         height: lightmap.height,
         pages: lightmap.pages,
     });
-    for ((mesh, color), a) in parts.into_iter().zip(&atlas.meshes) {
+    for (i, ((mesh, color), a)) in parts.into_iter().zip(&atlas.meshes).enumerate() {
         let lit = MeshData {
             vertices: a
                 .vertices
@@ -650,8 +742,7 @@ fn cornell_box(
                 uvs: Arc::new(LightmapUvs { uvs }),
             },
         );
-        let material = scene.add_standard_material(matte(color, 0.9));
-        scene.add_instance(handle, material, Mat4::IDENTITY);
+        place(scene, i, handle, color);
     }
     scene.baked.volumes.push(ProbeVolume {
         min: volume.min,

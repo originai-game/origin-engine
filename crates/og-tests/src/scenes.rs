@@ -126,6 +126,7 @@ pub const NATIVE_SCENES: &[&str] = &[
     "probe-interior",
     "ssr-wet-floor",
     "baked-cornell",
+    "baked-batches",
 ];
 
 /// Which backend tiers a scene has a reference for.
@@ -541,6 +542,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "volumetric-fog" => g.scene = crate::light_scenes::volumetric_fog_scene(),
         #[cfg(not(target_arch = "wasm32"))]
         "baked-cornell" => g.scene = crate::light_scenes::baked_cornell_scene(true)?,
+        #[cfg(not(target_arch = "wasm32"))]
+        "baked-batches" => g.scene = crate::light_scenes::baked_batches_scene(true)?,
         // Materials sampling texture arrays: eight cubes of one tile
         // material (colour and normal arrays), each on its own layer or the
         // material's, one batch; a cube of layer 1 as plain 2D textures;

@@ -1,18 +1,11 @@
 // Lightmapped static surfaces (lightmap.rs): the standard lit shading of
 // pbr_fs.wgsl with the ambient light read from the baked lightmap pages
 // instead of the environment's irradiance (`baked_lightmap`, which
-// ambient_irradiance prefers). Appended to the standard lit module only;
-// the lightmap pages sit at group 3 beside the skinned palette's bindings
-// (0 and 1), which no lightmapped pipeline binds (lightmapped meshes are
-// never skinned).
-
-@group(3) @binding(4) var lightmap_pages: texture_2d_array<f32>;
-@group(3) @binding(5) var lightmap_sampler: sampler;
-
-// The mesh's lightmap uv (0..1 on its page) and the page, per vertex.
-struct LightmapIn {
-  @location(9) lightmap: vec3<f32>,
-};
+// ambient_irradiance prefers). Appended to the standard lit module after
+// lightmap_pages.wgsl, so the material shaders' modules (the same source
+// with their hooks) and the array-map module (pbr_array.wgsl's
+// `fs_lightmap_array`) have these entry points too; the physical module
+// has lightmap_physical.wgsl's.
 
 struct LightmappedOut {
   @builtin(position) clip: vec4<f32>,
@@ -44,10 +37,29 @@ fn vs_lightmap(v: VertexIn, i: InstanceIn, k: InstanceFxIn, m: LightmapIn) -> Li
   return l;
 }
 
-@fragment
-fn fs_lightmap(in: LightmappedOut) -> @location(0) vec4<f32> {
-  let page = i32(in.lightmap.z + 0.5);
-  baked_lightmap = vec4<f32>(textureSample(lightmap_pages, lightmap_sampler, in.lightmap.xy, page).rgb, 1.0);
+// A lean batch's compact vertices (pbr_lean.wgsl `vs_lean_compact`: no uv,
+// no tangent; a plain material reads neither) with its lightmap.
+@vertex
+fn vs_lightmap_compact(v: CompactVertexIn, i: InstanceIn, k: InstanceFxIn, m: LightmapIn) -> LightmappedOut {
+  let n = oct_decode(v.normal);
+  let p = lit_place(instance_matrix(i.m0, i.m1, i.m2, i.m3), v.position.xyz, n, vec2<f32>(0.0), v.color);
+  var l: LightmappedOut;
+  l.clip = p.clip;
+  l.world_pos = p.world;
+  l.normal = p.normal;
+  l.uv = vec2<f32>(0.0);
+  l.color = v.color;
+  l.local_pos = vec3<f32>(0.0);
+  l.tangent = vec4<f32>(0.0);
+  l.affine = vec3<f32>(0.0);
+  l.lightmap = m.lightmap;
+  l.look = k.look;
+  return l;
+}
+
+// The lit shading of a lightmapped fragment.
+fn lightmapped_fragment(in: LightmappedOut) -> vec4<f32> {
+  baked_lightmap = lightmap_texel(in.lightmap);
   var o: VertexOut;
   o.clip = in.clip;
   o.world_pos = in.world_pos;
@@ -59,4 +71,9 @@ fn fs_lightmap(in: LightmappedOut) -> @location(0) vec4<f32> {
   o.affine = in.affine;
   o.look = in.look;
   return lit_fragment(o);
+}
+
+@fragment
+fn fs_lightmap(in: LightmappedOut) -> @location(0) vec4<f32> {
+  return lightmapped_fragment(in);
 }

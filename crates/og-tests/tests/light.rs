@@ -108,3 +108,44 @@ fn two_baked_scenes_draw_their_own_pages() {
         );
     }
 }
+
+#[test]
+fn baked_batches_matches_its_reference() {
+    check("baked-batches");
+}
+
+/// Every kind of lit batch draws its lightmap (debt render-light #2): the
+/// box drawn with a physical ceiling, a compact back wall, an array-map tall
+/// block and a material-shader short block matches the all-standard
+/// `baked-cornell` over each of those parts, its bake drawn. A batch that
+/// ignores its lightmap takes the probes or the sky instead: the ceiling and
+/// the back wall, outside the light volume, the sky's blue-grey or near
+/// black; the blocks the probes' coarser light, the tall block's side
+/// with a third less red from the wall. On lavapipe (Mesa 22.3) every
+/// physical pipeline crashes the driver's draw thread, main's physical
+/// tests too, so this one is read on Metal.
+#[test]
+fn every_batch_kind_draws_its_lightmap() {
+    let standard = gfx::render("baked-cornell").expect("render").image;
+    let batches = gfx::render("baked-batches").expect("render").image;
+    for (part, [x0, y0, x1, y1]) in [
+        ("the physical ceiling", [480, 16, 800, 40]),
+        ("the compact back wall", [660, 150, 840, 280]),
+        ("the array-map tall block's red side", [472, 340, 488, 580]),
+        (
+            "the material-shader short block's front",
+            [650, 480, 820, 640],
+        ),
+    ] {
+        let (a, b) = (
+            mean(&standard, x0, y0, x1, y1),
+            mean(&batches, x0, y0, x1, y1),
+        );
+        let off = (0..3).map(|k| (a[k] - b[k]).abs()).fold(0.0, f32::max);
+        println!("{part}: standard {a:?}, batches {b:?}");
+        assert!(
+            off < 3.0,
+            "{part} draws its lightmap: {b:?} against the standard batch's {a:?}"
+        );
+    }
+}

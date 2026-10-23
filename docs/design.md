@@ -407,8 +407,10 @@ Baked lighting, volumetrics and area lights (depth S7).
   with a stale one, the scene renders unbaked with the environment's
   ambient; `og.render.bakedLighting` gives the reason and `og doctor
   --project` warns `unbaked`. `RenderSettings.bakedLighting` false draws
-  every scene unbaked. Physical, texture-array, material-shader and
-  compact batches use the probes instead of the lightmap.
+  every scene unbaked. A static mesh draws its bake in every lit batch:
+  standard, lean and compact (`vs_lightmap_compact`), texture-array
+  (`fs_lightmap_array`), material-shader (its module carries the same
+  entry points) and physical (`lightmap_physical.wgsl`).
 - **Volumetric fog** (`og.Fog.volumetric`, `volumetric.rs`). The fog's
   density, height fog, `scattering` and `anisotropy` (Henyey–Greenstein)
   define a participating medium up to `volumetricDistance`. On the full

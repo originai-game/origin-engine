@@ -226,8 +226,13 @@ pub(crate) const INSTANCE_WGSL: &str = wgsl!("instance.wgsl");
 pub(crate) const LIGHTING_WGSL: &str = wgsl!("lighting.wgsl");
 /// Rect lights and cookies (area.rs), after lighting.wgsl.
 pub(crate) const AREA_WGSL: &str = wgsl!("area.wgsl");
+/// The lightmap pages at group 3 and their lookup (lightmap.rs), in the
+/// standard and physical lit modules.
+const LIGHTMAP_PAGES_WGSL: &str = wgsl!("lightmap_pages.wgsl");
 /// The lightmapped entry points (lightmap.rs), after the standard lit shader.
 const LIGHTMAP_WGSL: &str = wgsl!("lightmap.wgsl");
+/// The physical lightmapped entry points, after the physical lit shader.
+const LIGHTMAP_PHYSICAL_WGSL: &str = wgsl!("lightmap_physical.wgsl");
 
 /// The lit shader's source with `hooks` (`hooks.rs`), the joint palette
 /// read as `palette` and the light tables as `tables`.
@@ -237,7 +242,7 @@ fn lit_source_with(
     tables: clusters::LightTables,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3),
@@ -253,7 +258,7 @@ fn physical_source_with(
     tables: clusters::LightTables,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PHYSICAL_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3),
@@ -2479,12 +2484,7 @@ impl Renderer {
             })
         };
         let pbr_layout = pipeline_layout("pbr", &[&frame_layout, &material_layout, &fx_layout]);
-        let lightmaps = lightmap::Lightmaps::new(
-            &device,
-            &queue,
-            [&frame_layout, &material_layout, &fx_layout],
-            light_tables,
-        );
+        let lightmaps = lightmap::Lightmaps::new(&device, &queue, &frame_layout, light_tables);
         let pbr_skinned_layout = pipeline_layout(
             "pbr skinned",
             &[&frame_layout, &material_layout, &fx_layout, &palette_layout],
@@ -4327,19 +4327,28 @@ impl Renderer {
         slot.as_ref().expect("made above")
     }
 
-    /// The lit pipeline of a batch (made by [`Renderer::ensure_pipelines`]):
-    /// its material shader's or the built-in one, physical or standard.
-    /// Whether a batch draws with its mesh's lightmap (lightmap.rs): a
-    /// lightmapped mesh drawn by a standard material without a material
-    /// shader or array maps, from its f32 vertices.
-    fn lightmapped(lightmaps: &lightmap::Lightmaps, b: &Batch) -> bool {
-        !b.physical
-            && b.shader.is_none()
-            && !b.array
-            && !b.compact
-            && lightmaps.uvs(b.mesh).is_some()
+    /// The lightmapped pipeline family a batch draws with (lightmap.rs):
+    /// every batch of a lightmapped mesh, its kind's (`physical`: drawn
+    /// with the physical pipelines in this pass, as `lit_pipeline_of`).
+    fn lightmap_family(
+        lightmaps: &lightmap::Lightmaps,
+        b: &Batch,
+        physical: bool,
+    ) -> Option<lightmap::Family> {
+        use lightmap::Family;
+        lightmaps.uvs(b.mesh)?;
+        Some(match (physical, b.shader) {
+            (true, None) => Family::Physical,
+            (true, Some(sh)) => Family::PhysicalShader(sh),
+            (false, _) if b.array => Family::Array,
+            (false, Some(sh)) => Family::Shader(sh),
+            (false, None) if b.compact => Family::Compact,
+            (false, None) => Family::Standard,
+        })
     }
 
+    /// The lit pipeline of a batch (made by [`Renderer::ensure_pipelines`]):
+    /// its material shader's or the built-in one, physical or standard.
     fn lit_pipeline_of(&self, b: &Batch, skinned: bool, physical: bool) -> &wgpu::RenderPipeline {
         if b.lean && !skinned {
             return &self.lean_pipelines[&(b.side, b.effects, b.derivatives, b.compact)];
@@ -4951,11 +4960,42 @@ impl Renderer {
         for v in &view_skinned {
             self.ensure_pipelines(&[], v, false);
         }
+        // Lightmapped batches (lightmap.rs): their family's pipeline, and a
+        // physical one's standard family too (passes without the physical
+        // groups, views and probes, draw it standard).
         for b in &batches {
-            if Self::lightmapped(&self.lightmaps, b) {
+            let physical = [b.physical, false];
+            for physical in &physical[..if b.physical { 2 } else { 1 }] {
+                let Some(family) = Self::lightmap_family(&self.lightmaps, b, *physical) else {
+                    continue;
+                };
+                use lightmap::Family;
+                let (groups, module) = match family {
+                    Family::Standard | Family::Compact => {
+                        ([&self.material_layout, &self.fx_layout], &self.pbr_shader)
+                    }
+                    Family::Shader(sh) => (
+                        [&self.material_layout, &self.fx_layout],
+                        &self.cache.shaders[sh],
+                    ),
+                    Family::Array => {
+                        let a = self.array_maps.as_ref().expect("an array batch");
+                        ([&a.layout, &self.fx_layout], &a.module)
+                    }
+                    Family::Physical | Family::PhysicalShader(_) => {
+                        let p = self.physical.as_ref().expect("a physical batch");
+                        let module = match family {
+                            Family::PhysicalShader(sh) => &self.cache.physical_shaders[&sh],
+                            _ => &p.module,
+                        };
+                        ([&p.material_layout, &p.fx_layout], module)
+                    }
+                };
                 self.lightmaps.ensure_pipeline(
                     &self.device,
-                    &self.pbr_shader,
+                    family,
+                    groups,
+                    module,
                     (b.side, b.blend, b.effects),
                     self.samples,
                 );
@@ -6858,6 +6898,8 @@ impl Renderer {
                 let mut pages_bound: Option<usize> = None;
                 for &(b, first, count) in &list.ranges {
                     let batch = &batches[b as usize];
+                    // Drawn with its lightmap's pipeline (lit passes only).
+                    let mut lightmapped = false;
                     if let Some((of, groups, frame_group)) = probes {
                         let want = of.get(b as usize).copied().unwrap_or(u8::MAX);
                         if want != probe_bound {
@@ -6882,13 +6924,13 @@ impl Renderer {
                             batch.compact,
                             batch.array,
                         );
-                        let lightmap = Self::lightmapped(&self.lightmaps, batch)
-                            .then(|| {
+                        let lightmap = Self::lightmap_family(&self.lightmaps, batch, physical)
+                            .and_then(|f| {
                                 self.lightmaps
-                                    .pipeline((batch.side, batch.blend, batch.effects))
-                                    .zip(self.lightmaps.group(batch.mesh))
+                                    .pipeline(f, (batch.side, batch.blend, batch.effects))
                             })
-                            .flatten();
+                            .zip(self.lightmaps.group(batch.mesh));
+                        lightmapped = lightmap.is_some();
                         if let Some((p, (pages, group))) = lightmap {
                             // Lightmapped (lightmap.rs): its pipeline, its
                             // scene's pages at group 3, its uvs below.
@@ -6961,14 +7003,7 @@ impl Renderer {
                         1,
                         instances.slice(start..start + count as u64 * INSTANCE_STRIDE),
                     );
-                    if lit
-                        && Self::lightmapped(&self.lightmaps, batch)
-                        && let Some(uvs) = self.lightmaps.uvs(batch.mesh)
-                        && self
-                            .lightmaps
-                            .pipeline((batch.side, batch.blend, batch.effects))
-                            .is_some()
-                    {
+                    if lightmapped && let Some(uvs) = self.lightmaps.uvs(batch.mesh) {
                         pass.set_vertex_buffer(2, uvs.slice(..));
                     }
                     pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);

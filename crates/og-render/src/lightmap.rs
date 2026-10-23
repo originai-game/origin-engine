@@ -15,9 +15,13 @@
 //!   vertex stream at location 9), and each set of pages is one texture
 //!   array with its own group, bound at group 3 for the batches of its
 //!   meshes, so any number of scenes loaded together draw their bakes. A
-//!   lightmapped mesh is drawn by the standard lit pipeline's
-//!   `vs_lightmap`/`fs_lightmap` (lightmap.wgsl); physical, array-map and
-//!   material-shader batches keep the probes or the sky.
+//!   lightmapped mesh is drawn in every kind of lit batch ([`Family`]):
+//!   the standard module's `vs_lightmap`/`fs_lightmap` (lightmap.wgsl;
+//!   `vs_lightmap_compact` for compact vertices, pbr_array.wgsl's
+//!   `fs_lightmap_array` for array maps, a material shader's module the
+//!   same entry points with its hooks) and the physical module's
+//!   `vs_physical_lightmap`/`fs_physical_lightmap`
+//!   (lightmap_physical.wgsl).
 //! - [`ProbeVolume`]s: one buffer at frame binding 10 (storage on the full
 //!   tier, a 16 KiB uniform on WebGL2, where a volume larger than the
 //!   uniform holds is resampled to fit), read by `ambient_irradiance` for
@@ -289,7 +293,11 @@ pub(crate) fn f16_bits(x: f32) -> u16 {
 pub(crate) struct Lightmaps {
     tables: LightTables,
     layout: wgpu::BindGroupLayout,
-    pipeline_layout: wgpu::PipelineLayout,
+    /// The frame group's layout, every lightmapped pipeline's group 0.
+    frame_layout: wgpu::BindGroupLayout,
+    /// The pipeline layouts: frame, a family's material and effect groups,
+    /// the pages (by the family's [`Groups`]).
+    pipeline_layouts: HashMap<Groups, wgpu::PipelineLayout>,
     sampler: wgpu::Sampler,
     /// Each set of pages a lightmapped mesh names, by its Arc (held, so the
     /// address is not reused while it keys the group), and its group.
@@ -297,8 +305,9 @@ pub(crate) struct Lightmaps {
     /// Per lightmapped mesh index: its uvs and pages (by Arc) and the uvs'
     /// buffer.
     uvs: HashMap<usize, MeshUvs>,
-    /// The lit pipelines of lightmapped batches: (side, blended, effects).
-    pipelines: HashMap<(Side, bool, bool), wgpu::RenderPipeline>,
+    /// The lit pipelines of lightmapped batches: their family and (side,
+    /// blended, effects).
+    pipelines: HashMap<(Family, LitKey), wgpu::RenderPipeline>,
     /// Frame binding 10, and what was last written to it.
     pub probe_buffer: wgpu::Buffer,
     probes_key: Vec<(Vec3, Vec3, [u32; 3], usize)>,
@@ -317,6 +326,60 @@ fn key<T>(a: &Arc<T>) -> usize {
     Arc::as_ptr(a) as usize
 }
 
+/// A lightmapped pipeline's (side, blended, effects).
+pub(crate) type LitKey = (Side, bool, bool);
+
+/// The lit pipeline family a lightmapped batch draws with: each the lit
+/// shading of its kind of batch with the lightmap's vertex stream and
+/// pages (the entry points of lightmap.wgsl, pbr_array.wgsl and
+/// lightmap_physical.wgsl), so a static mesh draws its bake whatever its
+/// material.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum Family {
+    /// The standard lit module (a lean batch from its full vertices too).
+    Standard,
+    /// A lean batch from its compact vertices (compact.rs).
+    Compact,
+    /// An array-map material (material.rs `ArrayMaps`).
+    Array,
+    /// A physical material (physical.rs).
+    Physical,
+    /// A material shader's standard module, by its index.
+    Shader(usize),
+    /// A material shader's physical module.
+    PhysicalShader(usize),
+}
+
+/// The bind group layouts a family's pipelines take at groups 1 and 2.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+enum Groups {
+    Standard,
+    Array,
+    Physical,
+}
+
+impl Family {
+    fn groups(self) -> Groups {
+        match self {
+            Family::Standard | Family::Compact | Family::Shader(_) => Groups::Standard,
+            Family::Array => Groups::Array,
+            Family::Physical | Family::PhysicalShader(_) => Groups::Physical,
+        }
+    }
+
+    /// Its vertex and fragment entry points.
+    fn entries(self) -> (&'static str, &'static str) {
+        match self {
+            Family::Standard | Family::Shader(_) => ("vs_lightmap", "fs_lightmap"),
+            Family::Compact => ("vs_lightmap_compact", "fs_lightmap"),
+            Family::Array => ("vs_lightmap", "fs_lightmap_array"),
+            Family::Physical | Family::PhysicalShader(_) => {
+                ("vs_physical_lightmap", "fs_physical_lightmap")
+            }
+        }
+    }
+}
+
 /// The lightmap uvs' vertex stream.
 const LIGHTMAP_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: 12,
@@ -328,7 +391,7 @@ impl Lightmaps {
     pub fn new(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        groups: [&wgpu::BindGroupLayout; 3],
+        frame_layout: &wgpu::BindGroupLayout,
         tables: LightTables,
     ) -> Lightmaps {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -337,12 +400,6 @@ impl Lightmaps {
                 crate::texture_entry(4, true, wgpu::TextureViewDimension::D2Array),
                 crate::sampler_entry(5, wgpu::SamplerBindingType::Filtering),
             ],
-        });
-        let [frame, material, fx] = groups;
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("pbr (lightmapped)"),
-            bind_group_layouts: &[Some(frame), Some(material), Some(fx), Some(&layout)],
-            immediate_size: 0,
         });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("lightmap"),
@@ -368,7 +425,8 @@ impl Lightmaps {
         Lightmaps {
             tables,
             layout,
-            pipeline_layout,
+            frame_layout: frame_layout.clone(),
+            pipeline_layouts: HashMap::new(),
             sampler,
             pages: HashMap::new(),
             uvs: HashMap::new(),
@@ -502,33 +560,59 @@ impl Lightmaps {
         Some((m.pages, &self.pages.get(&m.pages)?.1))
     }
 
-    /// Makes the lightmapped pipeline for (side, blended, effects).
+    /// Makes the lightmapped pipeline of `family` for `key` from `module`
+    /// (the family's lit module), its groups 1 and 2 laid out as
+    /// `material` and `fx`.
+    #[allow(clippy::too_many_arguments)]
     pub fn ensure_pipeline(
         &mut self,
         device: &wgpu::Device,
+        family: Family,
+        [material, fx]: [&wgpu::BindGroupLayout; 2],
         module: &wgpu::ShaderModule,
-        key: (Side, bool, bool),
+        key: LitKey,
         samples: u32,
     ) {
-        if self.pipelines.contains_key(&key) {
+        if self.pipelines.contains_key(&(family, key)) {
             return;
         }
+        let layout = self
+            .pipeline_layouts
+            .entry(family.groups())
+            .or_insert_with(|| {
+                device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("lit (lightmapped)"),
+                    bind_group_layouts: &[
+                        Some(&self.frame_layout),
+                        Some(material),
+                        Some(fx),
+                        Some(&self.layout),
+                    ],
+                    immediate_size: 0,
+                })
+            });
         let (side, blend, effects) = key;
         let constants = [("EFFECTS", effects as u32 as f64)];
+        let vertices = if family == Family::Compact {
+            crate::compact::LEAN_LAYOUT
+        } else {
+            crate::VERTEX_LAYOUT
+        };
         let buffers = [
-            Some(crate::VERTEX_LAYOUT),
+            Some(vertices),
             Some(crate::INSTANCE_LAYOUT),
             Some(LIGHTMAP_LAYOUT),
         ];
+        let (vs, fs) = family.entries();
         let p = crate::hdr_pipeline_with(
             device,
             &constants,
             crate::HdrPipeline {
-                label: "pbr lightmapped",
-                layout: &self.pipeline_layout,
+                label: "lit lightmapped",
+                layout,
                 module,
-                vs: "vs_lightmap",
-                fs: "fs_lightmap",
+                vs,
+                fs,
                 buffers: &buffers,
                 cull: crate::cull_mode(side),
                 depth_write: !blend,
@@ -537,11 +621,11 @@ impl Lightmaps {
                 samples,
             },
         );
-        self.pipelines.insert(key, p);
+        self.pipelines.insert((family, key), p);
     }
 
-    pub fn pipeline(&self, key: (Side, bool, bool)) -> Option<&wgpu::RenderPipeline> {
-        self.pipelines.get(&key)
+    pub fn pipeline(&self, family: Family, key: LitKey) -> Option<&wgpu::RenderPipeline> {
+        self.pipelines.get(&(family, key))
     }
 }
 
