@@ -67,6 +67,11 @@ pub trait RenderBackend {
     fn triangles(&self) -> u64 {
         0
     }
+    /// Reflection probe `id`'s capture read back (og-render's
+    /// `Renderer::read_reflection_probe`): native hosts, for `og bake probes`.
+    fn read_reflection_probe(&self, _id: u64) -> Option<Result<(u32, Vec<Vec<f32>>), String>> {
+        None
+    }
     /// Draw the scene offscreen at `width`×`height` (0×0: the target's size)
     /// and read it back. Native hosts block on the readback; the web host
     /// answers a frame it requested earlier (request on tick N, answer on
@@ -161,6 +166,8 @@ pub(crate) struct RenderState {
     /// The level each og.Model entity drew last (by entity bits): the
     /// hysteresis of the next choice, and what dump_entity reports.
     pub lod_drawn: BTreeMap<u64, u8>,
+    /// The baked reflection probes' captures tried (`super::probes`).
+    pub probe_bakes: super::probes::ProbeBakes,
     /// Fonts by Font handle index.
     pub fonts: Vec<FontPages>,
     /// Text queued during the current tick, and that tick.
@@ -227,6 +234,7 @@ impl RenderState {
             models: BTreeMap::new(),
             model_lods: BTreeMap::new(),
             lod_drawn: BTreeMap::new(),
+            probe_bakes: Default::default(),
             fonts: Vec::new(),
             texts: Vec::new(),
             texts_tick: 0,
@@ -466,7 +474,7 @@ impl Hierarchy {
 }
 
 /// Decoded rows of one component: `(entity bits, value)`.
-fn rows(world: &World, layout: &Layout) -> Vec<(u64, Value)> {
+pub(crate) fn rows(world: &World, layout: &Layout) -> Vec<(u64, Value)> {
     let Ok(id) = world.id_by_name(&layout.schema) else {
         return Vec::new();
     };
@@ -619,6 +627,8 @@ pub(crate) struct DrawLayouts {
     /// og.Lines and og.Points (`super::geometry`).
     pub lines: Option<Layout>,
     pub points: Option<Layout>,
+    /// og.ReflectionProbe (`super::probes`).
+    pub probe: Option<Layout>,
     /// The engine's physics, for the debug view (`super::geometry`).
     pub physics: Option<og_physics::PhysicsSystem>,
     pub engine: u32,
@@ -945,6 +955,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // Cloth meshes are instances too: keyed for per-object motion.
     keys.extend(super::atmosphere::extract(world, rs, &mut h));
     super::environment::extract(world, rs);
+    super::probes::extract(world, rs, &mut h);
     // Scattered copies are instances too, keyed by their terrain cell.
     keys.extend(super::terrain::extract(world, rs, &mut h));
     particle_colliders(world, rs, &mut h);

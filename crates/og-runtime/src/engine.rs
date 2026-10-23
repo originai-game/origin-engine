@@ -1104,6 +1104,7 @@ pub(crate) fn extract_layouts(eng: &Engine) -> (Option<Layout>, Option<Layout>, 
             collider: get("og.Collider"),
             lines: get("og.Lines"),
             points: get("og.Points"),
+            probe: get("og.ReflectionProbe"),
             physics: st.physics.clone(),
             engine: eng.id,
         },
@@ -1212,6 +1213,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         super::timeline::commit(engine_id, probe.inbox());
         super::timeline::register_commands(&mut probe, engine_id);
         super::probe::register_render_dump(&mut probe, engine_id);
+        super::probes::register_bake_dump(&mut probe, engine_id);
     }
     // The host's locale (og run --locale, the browser's language).
     super::i18n::request(engine_id, options["locale"].as_str().unwrap_or(""));
@@ -1598,6 +1600,7 @@ fn render(eng: &Engine) -> Result<bool, String> {
         let world = eng.world()?;
         let mut rs = eng.render.borrow_mut();
         super::extract::extract(world, &mut rs);
+        super::probes::load_bakes(eng, &mut rs);
         let rs = &mut *rs;
         if let Some(b) = rs.backend.as_mut() {
             b.set_clock(Some(rprobe::now_ms));

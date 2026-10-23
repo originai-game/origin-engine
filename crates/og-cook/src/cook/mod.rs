@@ -22,6 +22,7 @@ pub mod icons;
 pub mod ktx2_source;
 pub mod look;
 mod model;
+pub mod probes;
 mod rig2d;
 mod scene;
 pub mod sfx;
@@ -1646,6 +1647,15 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
         }
         manifest.assets.push(asset);
     }
+    // Baked reflection probes (`og bake probes`, probes.rs) have no source:
+    // kept while their files are.
+    for a in old.assets.iter().filter(|a| a.kind == probes::KIND) {
+        if a.outputs.iter().all(|o| cooked_dir.join(&o.file).is_file()) {
+            keep.extend(a.outputs.iter().map(|o| o.file.clone()));
+            manifest.assets.push(a.clone());
+        }
+    }
+    manifest.assets.sort_by(|a, b| a.source.cmp(&b.source));
     for r in reports.iter_mut().filter(|r| r.error.is_some()) {
         r.outputs.clear();
     }

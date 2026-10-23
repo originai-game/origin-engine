@@ -513,6 +513,9 @@ impl RenderBackend for OffscreenBackend {
     fn triangles(&self) -> u64 {
         self.triangles
     }
+    fn read_reflection_probe(&self, id: u64) -> Option<Result<(u32, Vec<Vec<f32>>), String>> {
+        self.renderer.read_reflection_probe(id)
+    }
     fn capture(
         &mut self,
         scene: &og_render::RenderScene,

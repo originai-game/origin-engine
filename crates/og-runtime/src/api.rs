@@ -1601,10 +1601,13 @@ pub fn og_render_capabilities(world: u32) -> String {
                 "pointShadows": info.as_ref().map_or("cube", |i| crate::point_shadows_name(i.point_shadows)),
                 "width": w, "height": h,
                 "stylise": og_render::STYLISE_DRAWN,
+                // SSR is the full tier's; WebGL2 reflects the probes and the environment.
+                "ssr": tier != "webgl2",
+                "reflectionProbes": og_render::MAX_REFLECTION_PROBES,
             })
         })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [] }))
+    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0 }))
         .to_string()
 }
 

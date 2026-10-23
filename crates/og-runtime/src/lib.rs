@@ -46,6 +46,7 @@ mod i18n;
 mod lanes;
 mod look;
 mod memory;
+mod probes;
 mod skeleton2d;
 pub use lanes::{panic_report, record_panic, report as lanes_report};
 mod modules;
