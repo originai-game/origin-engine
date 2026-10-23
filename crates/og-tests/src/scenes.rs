@@ -517,7 +517,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "lines" => g.scene = crate::geometry_scenes::lines_scene(),
         "points" => g.scene = crate::geometry_scenes::points_scene(),
         "wireframe" => g.scene = crate::geometry_scenes::wireframe_scene(),
-        "debug-overlay" => g.scene = crate::geometry_scenes::debug_scene(),
+        "debug-overlay" => g.scene = crate::geometry_scenes::debug_scene()?,
         // Render targets and secondary cameras (docs/depth.md §8): a
         // monitor showing a second camera's view (with an object on a layer
         // only it sees), a mirror reflecting the room, split-screen.
