@@ -140,10 +140,18 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "rig2d"
         ]
     );
-    // og.anim.clip twice: a flipbook's clip and a model's (TypeScript overloads).
+    // og.anim.clip three times: a flipbook's clip, a model's and a 2D rig's (TypeScript overloads).
     assert_eq!(
         fns("anim"),
-        ["graph", "humanoid", "retarget", "clip", "clip"]
+        [
+            "graph",
+            "humanoid",
+            "retarget",
+            "clip",
+            "clip",
+            "clip",
+            "rig2dInfo"
+        ]
     );
     // E4: time scale, camera feel, tweens, tilemaps, floating text.
     assert_eq!(fns("time"), ["setScale", "hitStop"]);

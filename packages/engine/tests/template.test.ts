@@ -36,7 +36,7 @@ test("a scaffolded game cooks, passes its playtest and leaves the frame and dump
 
   const tested = run([ogBin(), "test", game]);
   if (tested.code !== 0) throw new Error(tested.out);
-  expect(tested.out).toMatch(/PASS smoke \(8 checks/);
+  expect(tested.out).toMatch(/PASS smoke \(9 checks/);
   expect(tested.out).toMatch(/PASS guard \(16 checks/);
   expect(tested.out).toMatch(/PASS intro \(17 checks/);
   expect(tested.out).toContain("3 suite(s) passed");

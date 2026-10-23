@@ -109,12 +109,14 @@ test("og test without a renderer passes, counts its unchecked frames and runs th
   // Without a renderer, as a person reads it: a line per frame and the count.
   const text = run([ogBin(), "test", game], false);
   if (text.code !== 0) throw new Error(text.out);
-  expect(text.stdout).toMatch(/PASS smoke \(\d+ checks, 1 frame unchecked/);
+  expect(text.stdout).toMatch(/PASS smoke \(\d+ checks, 2 frames unchecked/);
+  // The region expectation reads the frame too: unchecked, like the screenshot.
+  expect(text.stdout).toContain("  ~ og run: expect:region:560,16,64,24:color:#9da5b1:24: no renderer, frame unchecked\n");
   expect(text.stdout).toContain("  ~ smoke.png: no renderer, frame unchecked\n");
   expect(text.stdout).toContain("  ~ surface.png: no renderer, frame unchecked\n");
-  // smoke, guard, intro (two frames) and the surface suite written above.
+  // smoke (the region expectation and its screenshot), guard, intro (two frames) and the surface suite written above.
   expect(text.stdout).toMatch(/PASS intro \(\d+ checks, 2 frames unchecked/);
-  expect(text.stdout).toContain("og test: 4 suite(s) passed; 4 frame(s) unchecked: no renderer here");
+  expect(text.stdout).toContain("og test: 4 suite(s) passed; 5 frame(s) unchecked: no renderer here");
   expect(existsSync(join(game, "og-out", "test", "smoke", "smoke.png"))).toBeFalse();
 
   // And as JSON, with the dumps kept for the comparison below.
@@ -129,7 +131,7 @@ test("og test without a renderer passes, counts its unchecked frames and runs th
     expect(r.frameChecks).toBe(0);
     expect(r.notes).toEqual([]);
   }
-  expect(blind.get("smoke")!.unchecked).toEqual(["smoke.png"]);
+  expect(blind.get("smoke")!.unchecked).toEqual(["og run: expect:region:560,16,64,24:color:#9da5b1:24", "smoke.png"]);
   expect(blind.get("surface")!.unchecked).toEqual(["surface.png"]);
   expect(blind.get("guard")!.unchecked).toEqual([]);
   expect(blind.get("intro")!.unchecked).toEqual(["intro-4.png", "intro-8.png"]);

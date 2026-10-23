@@ -47,7 +47,7 @@ mkdirSync(out, { recursive: true });
 const t0 = performance.now();
 const failures: string[] = [];
 let checks = 0;
-// Checks made inside t.frame (with a renderer): what a run without one leaves out.
+// Checks made inside t.frame and region or frame expectations (with a renderer): what a run without one leaves out.
 let frameChecks = 0;
 // Every screenshot taken without a renderer, by the file it would have written, in order.
 const unchecked: string[] = [];
@@ -108,7 +108,7 @@ const command = (commands: string, dir: string, clock: number, room?: { url: str
   if (store) c.push("--platform-store", store);
   return c;
 };
-type ExpectResult = { tick: number; expect: string; status: "pass" | "fail" | "unchecked"; expected: unknown; observed: unknown; reason: string };
+type ExpectResult = { tick: number; expect: string; kind: string; status: "pass" | "fail" | "unchecked"; expected: unknown; observed: unknown; reason: string };
 type Summary = {
   tick: number;
   hash: string;
@@ -143,6 +143,8 @@ function summarise(exitCode: number, stdout: string, stderr: string, what: strin
     if (e.status === "unchecked") unchecked.push(`${what}: expect:${e.expect}`);
     else {
       checks++;
+      // A region or frame expectation read the frame: without a renderer it is unchecked.
+      if (e.kind === "region" || e.kind === "frame") frameChecks++;
       if (e.status === "fail") failures.push(`${what}: expect:${e.expect} failed at tick ${e.tick}: expected ${JSON.stringify(e.expected)}, observed ${JSON.stringify(e.observed)}; ${e.reason}`);
     }
   }

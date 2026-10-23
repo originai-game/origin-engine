@@ -190,7 +190,17 @@ changes are the CHANGELOG's `## Unreleased` depth wave 2 entry.
   S5's §21 both landed before "Where to look things up", which §1's
   references expect last; it is §22 now, and the knowledge validate
   passes. The wiki, bindings and schema were regenerated after each
-  merge (`og api gen`, `--wiki`, `api check`).
+  merge (`og api gen`, `--wiki`, `api check`). The gate then found what
+  the merged tests expected of each other: og-idl's member lists lacked
+  S9's `rig2d` load and `anim.rig2dInfo`, `packages/engine` exported no
+  `Rig2D` column factory, and the template and no-renderer tests counted
+  the smoke playtest before S5 rewrote it as `expect:` steps. That last
+  one exposed a contract break: a `region` or `frame` expectation is
+  unchecked without a renderer but was not a frame check with one, so
+  "checks minus frame checks is the same with or without a renderer" no
+  longer held; `playtest-run.ts` counts them as frame checks now, and
+  the smoke playtest reports 9 checks with a renderer and 8 checks, 2
+  frames unchecked, without.
 - **Owed to the wave's end**, beyond wave 1's list: the platform side of
   rooms (platform-asks #16), a browser two-page room run, the `?room=`
   Play link and rollback (S4); the trace is native-only, lays systems and
