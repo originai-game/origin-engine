@@ -6,7 +6,7 @@
 
 use og_render::{RenderDesc, RenderTarget, Renderer, RgbaImage};
 use og_tests::gfx;
-use og_tests::probe_scenes::{Outdoor, outdoor_scene, two_rooms_scene};
+use og_tests::probe_scenes::{Outdoor, SsrFloor, outdoor_scene, ssr_floor_scene, two_rooms_scene};
 use og_tests::scenes;
 use std::path::PathBuf;
 
@@ -200,5 +200,42 @@ fn terrain_and_grass_in_a_probes_box_take_its_light() {
     assert!(
         (0..3).all(|k| (c[k] - d[k]).abs() < 1.5),
         "the far meadow does not: {c:?} -> {d:?}"
+    );
+}
+
+/// Screen-space reflections read the roughness the lit pass shades: a
+/// floor of roughness factor 1 whose map makes it 0.04 mirrors the red
+/// sphere, as one without the map does not; so does a terrain whose layer
+/// is glossy. From the factors alone (and nothing for terrain), all three
+/// patches would be the dark floor.
+#[test]
+fn ssr_reads_roughness_maps_and_terrain_layers() {
+    let desc = scenes::base_desc();
+    let tier = Renderer::new_blocking(&desc)
+        .expect("a GPU adapter")
+        .info()
+        .tier;
+    if tier != og_render::Tier::Full {
+        return;
+    }
+    // Under the sphere, as `ssr_reflects_the_sphere_in_the_floor` reads it.
+    let at = |floor, ssr| {
+        let (img, _) = render(&desc, &ssr_floor_scene(floor, ssr), None);
+        region_mean(&img, 460..530, 540..600)
+    };
+    let mapped = at(SsrFloor::Mapped(true), true);
+    let factor = at(SsrFloor::Mapped(false), true);
+    let terrain = at(SsrFloor::Terrain, true);
+    let terrain_off = at(SsrFloor::Terrain, false);
+    println!(
+        "under the sphere: map {mapped:?}, factor only {factor:?}, terrain {terrain:?} (ssr off {terrain_off:?})"
+    );
+    assert!(
+        mapped[0] > mapped[1] * 1.4 && (factor[0] - factor[1]).abs() < 3.0,
+        "the mapped floor mirrors the red sphere, the rough one does not: {mapped:?} against {factor:?}"
+    );
+    assert!(
+        terrain[0] > terrain_off[0] + 15.0 && terrain[0] > terrain[1] * 1.4,
+        "the terrain mirrors it: {terrain:?} against {terrain_off:?}"
     );
 }

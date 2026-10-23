@@ -17,6 +17,12 @@
 //!   sphere reflects the figures, the meadow and the pane; and the terrain
 //!   and grass inside the box are lit by the probe, blended with the
 //!   environment towards its faces.
+//! - SSR reflectivity (no reference frames; `tests/probes.rs` reads the
+//!   frames): S6's `ssr-wet-floor` with the floor's roughness given by its
+//!   map (factor 1, map 0.04) or by a terrain layer of roughness 0.05. The
+//!   prepass writes the roughness the lit pass shades, so both floors
+//!   mirror the sphere; from the factor alone, or nothing for terrain, they
+//!   would reflect nothing.
 
 use crate::fx_scenes::{bend_palette, skinned_cylinder};
 use crate::terrain_scenes::{grass_scatter, grass_tuft, island_layers};
@@ -287,6 +293,62 @@ pub fn outdoor_scene(o: Outdoor) -> RenderScene {
         r.intensity = intensity;
         r.blend_distance = 0.5;
         scene.reflection_probes.push(r);
+    }
+    scene
+}
+
+/// Which floor [`ssr_floor_scene`] draws.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SsrFloor {
+    /// A box of roughness factor 1, its roughness map 0.04 (`true`) or none.
+    Mapped(bool),
+    /// A flat terrain of one dark layer of roughness 0.05.
+    Terrain,
+}
+
+/// S6's `ssr-wet-floor` (`depth_render_scenes::ssr_scene`, SSR on) with
+/// `floor` in place of its floor.
+pub fn ssr_floor_scene(floor: SsrFloor, ssr: bool) -> RenderScene {
+    let mut scene = crate::depth_render_scenes::ssr_scene(ssr);
+    // The old floor is the first instance.
+    scene.instances.remove(0);
+    match floor {
+        SsrFloor::Mapped(map) => {
+            let texture = map.then(|| {
+                // glTF's layout: roughness in green (0.04), metalness in blue (0).
+                scene.add_texture(crate::scenes::texture(
+                    4,
+                    og_render::ColorSpace::Linear,
+                    |_, _| [0, 10, 0, 255],
+                ))
+            });
+            let m = scene.add_material(Material {
+                base_color: [0.04, 0.04, 0.04, 1.0],
+                metallic: 0.0,
+                roughness: 1.0,
+                metallic_roughness_texture: texture,
+                ..Default::default()
+            });
+            let mesh = scene.add_mesh(shapes::cuboid(Vec3::new(14.0, 0.2, 14.0)));
+            scene.add_instance(mesh, m, Mat4::from_translation(Vec3::new(0.0, -0.1, 0.0)));
+        }
+        SsrFloor::Terrain => {
+            let handle = scene.add_terrain(TerrainData {
+                size: Vec2::splat(14.0),
+                columns: 15,
+                rows: 15,
+                heights: Arc::from(vec![0.0f32; 15 * 15]),
+                control: None,
+            });
+            scene.terrains.push(Terrain {
+                layers: vec![og_render::TerrainLayer {
+                    color: Vec3::splat(0.04),
+                    roughness: 0.05,
+                    ..Default::default()
+                }],
+                ..Terrain::new(handle)
+            });
+        }
     }
     scene
 }
