@@ -220,7 +220,7 @@ export const Hud = defineSystem("Hud", { reads: [Duel, og.Lockstep] }, (_q, _tim
           ? "Local: Red"
           : `Waiting for ${Math.max(0, lock.players - net.peers.length)} more`;
   og.ui.anchor("Status", { anchor: "bottom", padding: { left: 16, top: 12, right: 16, bottom: 16 } }, () => {
-    og.ui.label("Line", line, { color: { token: "fgMuted" }, nowrap: true });
+    og.ui.label("Line", line, { color: { token: "inkMuted" }, nowrap: true });
   });
 });
 
