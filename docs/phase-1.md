@@ -92,6 +92,68 @@ on a frame and saying so, is wave 13's no-renderer stream (lane-1). Rows
 lavapipe run and the moved Lantern Vale frames on lavapipe (the wave 13
 gate section) are no longer owed.
 
+## Depth wave 1: geometry, timeline, video (2026-10-23)
+
+The depth plan (`docs/depth.md`, nine streams against three.js and the
+other engines, the AI-native baseline kept) runs in three waves after
+the owner's correction of 2026-10-23 that nine orbs at once was too
+many: wave 1 is S1 `geometry`, S2 `timeline`, S3 `video`; wave 2 S5
+`probe-depth`, S9 `two-d-math`, S4 `rooms`; wave 3 S6 `render-lod`, S8
+`render-targets`, S7 `render-light`. Each stream is a claude-code orb
+(Opus 5.5, effort high, `a1.xxlarge`) on its `depth/<stream>` branch,
+under §0's rule that no stream runs the gate; the streams of waves 2 and
+3 started with the first batch, pushed what they had and paused on
+their branches until their wave. The coordinator merged wave 1 in §10's
+order on this machine, S1 (4b8e161f), S3 (01408642) and S2 (40c3b73b):
+api.ogt's appended modules (video, debug, path, timeline) and the three
+`load` functions were kept together, og-cook declares both the video
+and the timeline cook, og-runtime installs video then timeline after
+feel's front, and the generated outputs were regenerated (`og api gen
+--wiki` writes only the wiki; the plain `og api gen` must follow it,
+then `api check`). What each stream landed, its frames and its numbers
+are in `tests/evidence/depth/{geometry,timeline,video}/NOTES.md`; the
+IDL changes are the CHANGELOG's `## Unreleased` depth wave 1 entry.
+
+- **Metal references** (707d7f7d): og-tests' `geometry-procedural`,
+  `lines`, `points`, `wireframe`, `debug-overlay`; fx-showcase's
+  `geometry.png`; the game template's `intro-4.png` and `intro-8.png`;
+  the video fixture's `video-90.png`. Every frame read, and the three
+  compared side by side with the streams' lavapipe frames: the same
+  composition, only shading and anti-aliasing differ. Read: the
+  geometry scene's height field occludes the lower part of the
+  cylinder, cone and capsule (the stream's framing, kept); the
+  `wireframe` scene's solid sphere is the test's control; the
+  `debug-overlay` text label is not visible in either tier (owed: a
+  look at `og.debug.text` in that scene); the game template's menu
+  panel stays over the intro's frames, since the playtest never presses
+  Start (the template's choice, visible in both tiers); the video frame
+  reads `00:00:03.000` and `90` over the test pattern, magnified with
+  nearest filtering as the fixture asks.
+- **Integration the streams could not see** (their rule: no gate).
+  `cargo fmt` after the merges (6066cb6d). og-idl's `load` function
+  list gains `video`, `videoInfo`, `timeline` (in the merge). The
+  create package's tests scaffolded from a stale untracked
+  `packages/create/template/` left by an earlier prepack, which shadowed
+  the live `templates/game`: in the repository the live template now
+  wins, a published package has no `templates/` beside it (78b3654f).
+  `api-surface.test.ts` found `Path`, `PathKind` and `TimelineAsset`
+  without column factories, and then the runtime refused a game field
+  of `PathKind`, an enum column no engine record uses, since
+  og-runtime's codec learned an enum's variants only from `RECORDS`'
+  fields: `og api gen` now emits `COLUMNS` (every `column X` with its
+  variants) and the codec reads them there, so any declared column kind
+  is a game's to use (c51d4c36). The template and no-renderer tests
+  count the game template's third suite, `intro`, and its two frames.
+- **Owed to the wave's end** (`scripts/wave-end.sh` after wave 3):
+  S1's raycast inside a system refreshes the transform hierarchy every
+  tick (its cost is a wave-end measurement); `og render` is native only
+  and the web host has no `Capture::frame`; several players of one
+  video share the first player's texture; loaded glTF geometries get
+  their BVH at the first raycast, not at load; the intro's audio is
+  unheard (headless), and hot reload during a timeline's playback is
+  untested; the wasm build, its size and the browser tiers run at the
+  wave's end, not here.
+
 ## Main gate, wave 13 (2026-10-21)
 
 Wave 13 started as wave 12's streams merged, on the web dogfood's twelve
