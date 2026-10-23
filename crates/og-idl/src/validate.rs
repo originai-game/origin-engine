@@ -450,6 +450,20 @@ impl<'a> Validator<'a, '_> {
 
     fn column(&mut self, c: &Column) {
         self.doc(&c.doc, c.line, || format!("column `{}`", c.name));
+        if c.list {
+            // A list of another column's values: the element's array,
+            // stride and value, so none of its own.
+            if !c.array.is_empty() || c.stride != 0 || !c.value.name().is_empty() || c.capacity {
+                self.error(
+                    c.line,
+                    format!(
+                        "column `{}` is a list: it takes the element's column, so it declares no array, stride, value or capacity",
+                        c.name
+                    ),
+                );
+            }
+            return;
+        }
         self.ty(&c.value, &[], c.line);
         if c.capacity {
             // Text: a byte capacity per field, so no fixed stride and no
@@ -558,6 +572,14 @@ impl<'a> Validator<'a, '_> {
                 site,
                 FieldSite::Record(RecordKind::Component | RecordKind::Resource)
             );
+            // A list column (`List.Post.8`) is a record field's type only:
+            // a stored layout of fixed capacity, which nothing else has.
+            if let Some((element, n)) = self.ix.list(&f.ty)
+                && let FieldSite::Record(_) = site
+            {
+                self.list_field(owner, f, element, n, reflected);
+                continue;
+            }
             // A text column (`str.48`) is a component or resource field's
             // type only: it is a stored layout, which nothing else has.
             let text = self.ix.columns.get(f.ty.name()).is_some_and(|c| c.capacity);
@@ -571,10 +593,21 @@ impl<'a> Validator<'a, '_> {
             } else {
                 f.ty.to_string()
             };
-            if reflected && !self.ix.columns.contains_key(column.as_str()) {
+            let list_column = self.ix.columns.get(column.as_str()).is_some_and(|c| c.list);
+            if reflected && (!self.ix.columns.contains_key(column.as_str()) || list_column) {
+                let hint = if f.ty.name() == "List" || list_column {
+                    format!(
+                        " (a list field declares its element and capacity: `List.{}.8`)",
+                        f.ty.args()
+                            .first()
+                            .map_or("f32".to_string(), |a| a.to_string())
+                    )
+                } else {
+                    String::new()
+                };
                 self.error(
                     f.line,
-                    format!("field `{owner}.{}` has type `{}`, which is not a column kind: component and resource fields are columns", f.name, f.ty),
+                    format!("field `{owner}.{}` has type `{}`, which is not a column kind: component and resource fields are columns{hint}", f.name, f.ty),
                 );
             }
             if let FieldSite::Record(RecordKind::Event) = site
@@ -674,6 +707,59 @@ impl<'a> Validator<'a, '_> {
         }
     }
 
+    /// A record field of a list column (`List.Post.8`): a single-lane number
+    /// or a handle, 1 to og-core's `LIST_MAX_CAPACITY` elements, starting
+    /// empty, never tunable and without a range.
+    fn list_field(&mut self, owner: &str, f: &Field, element: &TypeRef, n: u32, reflected: bool) {
+        let at = format!("field `{owner}.{}`", f.name);
+        let max = og_core::reflect::LIST_MAX_CAPACITY;
+        if !(1..=max as u32).contains(&n) {
+            self.error(
+                f.line,
+                format!("{at}: a list holds 1 to {max} elements, got `{}`", f.ty),
+            );
+        }
+        let name = element.name();
+        let number = crate::index::is_number(name);
+        let handle = matches!(self.ix.decl(name), Some(TypeDecl::Handle(_)));
+        if !element.args().is_empty() || !(number || handle) {
+            self.error(
+                f.line,
+                format!("{at}: a list holds f32, f64, u32, i32 or a handle, not `{element}`"),
+            );
+            return;
+        }
+        if reflected && !self.ix.columns.contains_key(name) {
+            self.error(
+                f.line,
+                format!("{at}: `{name}` is not a column kind, so a list cannot hold it"),
+            );
+        }
+        if f.default.is_some() {
+            self.error(
+                f.line,
+                format!("{at}: a list field starts empty, so it declares no default"),
+            );
+        }
+        if f.min.is_some() || f.max.is_some() || f.step.is_some() || f.tunable {
+            self.error(
+                f.line,
+                format!("{at}: a list is never tunable and has no range (Tune and the probe's bounds move one number)"),
+            );
+        }
+        if f.optional {
+            self.error(
+                f.line,
+                format!("{at}: `optional` belongs to plain struct fields"),
+            );
+        }
+        if let Some(unit) = &f.unit
+            && !self.ix.units.contains_key(unit.as_str())
+        {
+            self.error(f.line, format!("{at} uses unknown unit `{unit}`"));
+        }
+    }
+
     /// Type expressions: every name resolves, arities match, special forms
     /// take what they mean.
     fn ty(&mut self, ty: &TypeRef, generics: &[Generic], line: usize) {
@@ -698,6 +784,13 @@ impl<'a> Validator<'a, '_> {
             return;
         }
         if let Some((_, arity)) = GENERICS.iter().find(|(n, _)| *n == name) {
+            if name == "List" && matches!(args, [_, TypeRef::Int(_)]) {
+                self.error(
+                    line,
+                    format!("`{ty}` is a list column: only a component, resource or event field takes it; elsewhere a list is `List.{}`", args[0]),
+                );
+                return;
+            }
             if args.len() != *arity {
                 self.error(
                     line,
@@ -771,6 +864,13 @@ impl<'a> Validator<'a, '_> {
             if !args.is_empty() {
                 self.error(line, format!("`{name}` takes no type arguments"));
             }
+            return;
+        }
+        if self.ix.columns.get(name).is_some_and(|c| c.list) {
+            self.error(
+                line,
+                format!("`{name}` is a list column's factory: a record field's list is `List.<element>.<capacity>`"),
+            );
             return;
         }
         if self.ix.columns.get(name).is_some_and(|c| c.capacity) {

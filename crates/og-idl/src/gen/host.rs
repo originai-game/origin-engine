@@ -424,6 +424,9 @@ pub fn host_rs(ix: &Index<'_>) -> String {
          \x20   pub variants: &'static [&'static str],\n\
          \x20   /// A text column's capacity in bytes (`str.48` in the IDL); 0 otherwise.\n\
          \x20   pub capacity: u32,\n\
+         \x20   /// A list column's capacity in elements (`List.Post.8` in the IDL),\n\
+         \x20   /// whose `column` is the element's kind; 0 otherwise.\n\
+         \x20   pub list: u32,\n\
          }\n\n\
          /// An engine-owned component, resource or event.\n\
          #[derive(Clone, Copy, Debug, PartialEq)]\n\
@@ -466,9 +469,9 @@ pub fn host_rs(ix: &Index<'_>) -> String {
                     _ => String::new(),
                 };
                 out.push_str(&format!(
-                    "            FieldDecl {{\n                name: \"{}\",\n                column: \"{}\",\n                default: {:?},\n                readonly: {},\n                tunable: {},\n                min: {},\n                max: {},\n                step: {},\n                unit: {:?},\n                label: {:?},\n                doc: {:?},\n                variants: &[{}],\n                capacity: {},\n            }},\n",
+                    "            FieldDecl {{\n                name: \"{}\",\n                column: \"{}\",\n                default: {:?},\n                readonly: {},\n                tunable: {},\n                min: {},\n                max: {},\n                step: {},\n                unit: {:?},\n                label: {:?},\n                doc: {:?},\n                variants: &[{}],\n                capacity: {},\n                list: {},\n            }},\n",
                     f.name,
-                    f.ty.name(),
+                    ix.list(&f.ty).map_or(f.ty.name(), |(element, _)| element.name()),
                     default,
                     f.readonly,
                     f.tunable,
@@ -479,7 +482,8 @@ pub fn host_rs(ix: &Index<'_>) -> String {
                     f.label.as_deref().unwrap_or_default(),
                     f.doc.join(" "),
                     variants,
-                    ix.capacity(&f.ty).unwrap_or(0)
+                    ix.capacity(&f.ty).unwrap_or(0),
+                    ix.list(&f.ty).map_or(0, |(_, n)| n)
                 ));
             }
             out.push_str("        ],\n    },\n");
@@ -504,6 +508,10 @@ pub fn host_rs(ix: &Index<'_>) -> String {
     for m in &ix.api.modules {
         for item in &m.items {
             let Item::Column(c) = item else { continue };
+            if c.list {
+                // A list's kind is its element's.
+                continue;
+            }
             let variants = match ix.decl(c.value.name()) {
                 Some(crate::index::TypeDecl::Enum(e)) => e
                     .variants

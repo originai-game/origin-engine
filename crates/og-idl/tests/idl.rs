@@ -405,6 +405,103 @@ fn a_record_text_field_carries_its_capacity_into_every_output() {
     );
 }
 
+/// A record's list field (`field passes List.Post.4`) reaches every output
+/// with its element and capacity: a read-only array in TypeScript and a
+/// `ListSpec` of the element in its token, the element's kind and the
+/// capacity in the binding table and the hosts' record table, `maxItems` in
+/// the schema, and the wiki's note.
+#[test]
+fn a_record_list_field_carries_its_element_and_capacity_into_every_output() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    let api = og_idl::parse(&std::fs::read_to_string(dir.join("valid.ogt")).unwrap())
+        .unwrap_or_else(|d| panic!("valid.ogt refused: {d:?}"));
+    let out = |path: &str| -> String {
+        og_idl::generate(&api)
+            .into_iter()
+            .chain(og_idl::generate_wiki(&api))
+            .find(|g| g.path.ends_with(path))
+            .unwrap_or_else(|| panic!("no generated {path}"))
+            .contents
+    };
+    let dts = out("types/index.d.ts");
+    assert!(dts.contains("  passes: readonly Post[];"), "{dts}");
+    assert!(dts.contains("  weights: readonly number[];"), "{dts}");
+    assert!(
+        dts.contains(
+            "@capacity 4 elements (List.Post.4): reading answers a frozen copy (push throws)"
+        ),
+        "{dts}"
+    );
+    assert!(
+        dts.contains("readonly passes: ListSpec<\"Post\">; readonly weights: ListSpec<\"f32\">"),
+        "{dts}"
+    );
+    assert!(
+        dts.contains("export declare function list<K extends ListKind>(of: FieldSpec<K>, capacity: number, options?: FieldOptions): ListSpec<K>;"),
+        "{dts}"
+    );
+    assert!(
+        !dts.contains("  list: {"),
+        "a list is not a column kind of its own: {dts}"
+    );
+
+    let bindings: serde_json::Value = serde_json::from_str(&out("types/bindings.json")).unwrap();
+    let chain = &bindings["resources"][1]["fields"];
+    assert_eq!(
+        (&chain[0]["column"], &chain[0]["list"], &chain[0]["default"]),
+        (&"Post".into(), &4.into(), &serde_json::json!([]))
+    );
+    assert_eq!(
+        (&chain[1]["column"], &chain[1]["list"]),
+        (&"f32".into(), &2.into())
+    );
+    let factory = bindings["columns"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == "list")
+        .unwrap();
+    assert_eq!(
+        factory,
+        &serde_json::json!({ "name": "list", "list": true })
+    );
+
+    let schema: serde_json::Value = serde_json::from_str(&out("schema/api.schema.json")).unwrap();
+    let passes = &schema["$defs"]["Chain"]["properties"]["passes"];
+    assert_eq!(
+        (&passes["type"], &passes["maxItems"]),
+        (&"array".into(), &4.into())
+    );
+
+    let host = out("og-api/src/generated/host.rs");
+    assert!(host.contains("pub list: u32,"), "{host}");
+    let field = |name: &str| {
+        let at = host
+            .find(&format!("name: \"{name}\""))
+            .unwrap_or_else(|| panic!("no {name} in host.rs"));
+        host[at..at + host[at..].find("}").unwrap()].to_string()
+    };
+    assert!(
+        field("passes").contains("column: \"Post\""),
+        "{}",
+        field("passes")
+    );
+    assert!(field("passes").contains("list: 4,"), "{}", field("passes"));
+    assert!(
+        field("weights").contains("list: 2,"),
+        "{}",
+        field("weights")
+    );
+    assert!(field("size").contains("list: 0,"), "{}", field("size"));
+    assert!(!host.contains("ColumnDecl { name: \"list\""), "{host}");
+
+    let wiki = out("game.md");
+    assert!(
+        wiki.contains("a list of at most 4 `Post` (`List.Post.4`)"),
+        "{wiki}"
+    );
+}
+
 #[test]
 fn the_committed_generated_files_match_the_idl() {
     let drift = og_idl::check(&repo()).unwrap_or_else(|e| panic!("{e}"));

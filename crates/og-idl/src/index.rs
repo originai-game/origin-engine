@@ -201,6 +201,16 @@ impl<'a> Index<'a> {
         }
     }
 
+    /// A list column field's type (`List.Post.8`, shown `List<Post,8>`):
+    /// its element type and capacity in elements; `None` for any other type
+    /// (an unbounded `List<X>` included).
+    pub fn list<'t>(&self, ty: &'t TypeRef) -> Option<(&'t TypeRef, u32)> {
+        match (ty.name(), ty.args()) {
+            ("List", [element, TypeRef::Int(n)]) => Some((element, *n)),
+            _ => None,
+        }
+    }
+
     pub fn has_zero(&self, ty: &TypeRef) -> bool {
         if self.columns.get(ty.name()).is_some_and(|c| c.capacity) {
             // The empty text (a missing capacity is reported on its own).
