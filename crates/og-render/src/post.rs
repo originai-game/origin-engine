@@ -279,7 +279,7 @@ pub(crate) fn deferred_fullscreen(
 
 /// Records one fullscreen pass into `target`.
 pub(crate) fn fullscreen_pass(
-    encoder: &mut wgpu::CommandEncoder,
+    encoder: &mut crate::Encoder,
     label: &str,
     target: &wgpu::TextureView,
     load: wgpu::LoadOp<wgpu::Color>,
@@ -1093,7 +1093,7 @@ impl PostPasses {
     }
 
     fn texel_copy(
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
         from: &wgpu::Texture,
         from_x: u32,
         to: &wgpu::Texture,
@@ -1131,7 +1131,7 @@ impl PostPasses {
     /// Keeps the adapted exposure as it is now; the answer names it for
     /// [`PostPasses::restore_exposure`]. Recorded into `encoder`, so it
     /// copies what the frames submitted before it wrote.
-    pub fn save_exposure(&mut self, encoder: &mut wgpu::CommandEncoder) -> u64 {
+    pub fn save_exposure(&mut self, encoder: &mut crate::Encoder) -> u64 {
         let id = self.exposure.next_id;
         self.exposure.next_id += 1;
         let at = (id % EXPOSURE_SAVES as u64) as u32;
@@ -1154,7 +1154,7 @@ impl PostPasses {
     /// Brings back the adapted exposure [`PostPasses::save_exposure`] kept
     /// as `id`; one no longer kept (or 0) starts the next adapted frame
     /// afresh. Recorded into `encoder`.
-    pub fn restore_exposure(&mut self, encoder: &mut wgpu::CommandEncoder, id: u64) {
+    pub fn restore_exposure(&mut self, encoder: &mut crate::Encoder, id: u64) {
         let at = (id % EXPOSURE_SAVES as u64) as usize;
         let kept = self.exposure.ring[at].filter(|s| s.id == id && id != 0);
         self.exposure.last = match kept.and_then(|s| s.last_tick) {
@@ -2446,7 +2446,7 @@ impl FrameGraph {
     #[allow(clippy::too_many_arguments)]
     pub fn encode_post(
         &self,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
         passes: &PostPasses,
         persistent: &Persistent,
         pass: FramePass,

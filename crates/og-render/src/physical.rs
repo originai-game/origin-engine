@@ -392,7 +392,7 @@ impl PhysicalPipelines {
     pub fn pack(
         &self,
         device: &wgpu::Device,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
         layers: &[(PackUniform, [wgpu::TextureView; 4])],
         (width, height): (u32, u32),
         sampler: &wgpu::Sampler,

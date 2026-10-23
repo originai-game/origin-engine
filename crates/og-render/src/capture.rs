@@ -17,7 +17,7 @@
 //! started after it reads the frame the loop drew (`og render`'s
 //! every-frame capture on the web, through the probe's `Capture::frame`).
 
-use crate::{RenderError, Renderer, RgbaImage};
+use crate::{Encoder, RenderError, Renderer, RgbaImage};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
@@ -203,18 +203,18 @@ impl Renderer {
     /// goes through with [`Renderer::set_keep_frame`], for a host that
     /// draws its frames elsewhere.
     pub fn keep_texture(&self, frame: &wgpu::Texture) {
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        let mut encoder = Encoder::untimed(self.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
                 label: Some("keep frame"),
-            });
+            },
+        ));
         self.keep_presented(&mut encoder, frame);
         self.queue.submit(Some(encoder.finish()));
     }
 
     /// Encodes the copy of a presented surface frame into the offscreen
     /// target (the same size and format: both follow the output).
-    pub(crate) fn keep_presented(&self, encoder: &mut wgpu::CommandEncoder, frame: &wgpu::Texture) {
+    pub(crate) fn keep_presented(&self, encoder: &mut crate::Encoder, frame: &wgpu::Texture) {
         let size = wgpu::Extent3d {
             width: self.out_width.min(frame.width()),
             height: self.out_height.min(frame.height()),

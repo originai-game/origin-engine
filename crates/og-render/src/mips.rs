@@ -69,7 +69,7 @@ impl MipGenerator {
     pub(crate) fn generate(
         &mut self,
         device: &wgpu::Device,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
         texture: &wgpu::Texture,
     ) {
         self.prepare(device, texture.format());
@@ -111,7 +111,7 @@ impl MipGenerator {
     pub(crate) fn record(
         &self,
         device: &wgpu::Device,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
         texture: &wgpu::Texture,
     ) {
         let pipeline = &self.pipelines[&texture.format()];

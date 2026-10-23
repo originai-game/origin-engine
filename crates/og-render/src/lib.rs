@@ -178,6 +178,7 @@ pub use terrain_tiles::{
 };
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use texture_array::{TextureArrayData, TextureArrayHandle, TextureArrayInfo};
+pub(crate) use timing::Encoder;
 pub use timing::{GpuFrame, GpuPass, PassTiming, gpu_timing_absent};
 pub use video::FrameTexture;
 pub use views::{MirrorQuad, View, ViewTarget};
@@ -2115,7 +2116,7 @@ impl Renderer {
     /// is waited for. Empty without a clock or timestamp queries.
     pub fn gpu_timings(&mut self, wait: bool) -> Vec<GpuFrame> {
         match self.gpu_timer.as_mut() {
-            Some(t) => t.take(&self.device, wait),
+            Some(t) => t.take(&self.device, &self.queue, wait),
             None => Vec::new(),
         }
     }
@@ -3372,11 +3373,11 @@ impl Renderer {
             for index in self.cache.textures.len()..scene.textures().len() {
                 self.check_texture(index, &scene.textures()[index])?;
             }
-            let mut encoder = self
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            let mut encoder = Encoder::untimed(self.device.create_command_encoder(
+                &wgpu::CommandEncoderDescriptor {
                     label: Some("texture upload"),
-                });
+                },
+            ));
             for index in self.cache.textures.len()..scene.textures().len() {
                 let gpu = self.upload_source(&scene.textures()[index], &mut encoder);
                 self.cache.textures.push(gpu);
@@ -3398,11 +3399,11 @@ impl Renderer {
             for &index in &replaced {
                 self.check_texture(index, &scene.textures()[index])?;
             }
-            let mut encoder = self
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            let mut encoder = Encoder::untimed(self.device.create_command_encoder(
+                &wgpu::CommandEncoderDescriptor {
                     label: Some("texture replace"),
-                });
+                },
+            ));
             for &index in &replaced {
                 let gpu = self.upload_source(&scene.textures()[index], &mut encoder);
                 self.cache.textures[index] = gpu;
@@ -3751,7 +3752,7 @@ impl Renderer {
     fn upload_source(
         &mut self,
         source: &TextureSource,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
     ) -> GpuTexture {
         match source {
             TextureSource::Rgba(texture) => GpuTexture {
@@ -3771,7 +3772,7 @@ impl Renderer {
     fn upload_texture(
         &mut self,
         texture: &TextureData,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
     ) -> wgpu::TextureView {
         let format = match texture.color_space {
             ColorSpace::Srgb => wgpu::TextureFormat::Rgba8UnormSrgb,
@@ -4031,11 +4032,11 @@ impl Renderer {
                     }
                     sources.push((layer.uniform, views));
                 }
-                let mut encoder =
-                    self.device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                            label: Some("material pack"),
-                        });
+                let mut encoder = Encoder::untimed(self.device.create_command_encoder(
+                    &wgpu::CommandEncoderDescriptor {
+                        label: Some("material pack"),
+                    },
+                ));
                 let view = physical.pack(
                     &self.device,
                     &mut encoder,
@@ -7130,16 +7131,19 @@ impl Renderer {
                 self.lines.view_group(&self.device, &slot.line_buffer)
             })
             .collect();
-        // The query set of this frame's pass timestamps (`timing.rs`).
+        // The queries this frame's passes write their timestamps into
+        // (`timing.rs`): the encoder puts a pair around every pass.
         let gpu_set = match (&mut self.gpu_timer, self.clock) {
-            (Some(t), Some(_)) => t.begin(&self.device, self.graph.order().len()),
+            (Some(t), Some(_)) => t.begin(&self.device, &self.queue),
             _ => None,
         };
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("frame"),
-            });
+        let mut encoder = Encoder::new(
+            self.device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("frame"),
+                }),
+            gpu_set,
+        );
         let palette_group = self.palette.bind_group.as_ref();
         // The main pass draws physical materials with their pipelines, the
         // planar reflection with the standard ones.
@@ -7530,7 +7534,7 @@ impl Renderer {
         };
         // One shadow pass: a cascade or a local light's face.
         let terrain_indices = self.terrain.index_buffer();
-        let shadow_pass = |encoder: &mut wgpu::CommandEncoder,
+        let shadow_pass = |encoder: &mut crate::Encoder,
                            color: &wgpu::TextureView,
                            depth: &wgpu::TextureView,
                            slot: usize,
@@ -7616,15 +7620,15 @@ impl Renderer {
             stats.draw_calls += n;
         };
         // Per-pass CPU encode time, with a clock (`Renderer::set_clock`),
-        // and GPU time where the device has timestamps (`timing.rs`):
-        // timestamp 0 before the first pass, k + 1 after pass k.
+        // and GPU time where the device has timestamps (`timing.rs`): each
+        // graph pass owns the queries of the render and compute passes it
+        // opened.
         let clock = self.clock;
         let mut pass_ms: Vec<PassTiming> = Vec::new();
-        if let Some(set) = &gpu_set {
-            timing::GpuTimer::mark(&mut encoder, set, 0);
-        }
+        let mut pass_queries: Vec<(String, std::ops::Range<u32>)> = Vec::new();
         for &pass in self.graph.order() {
             let t0 = clock.map(|c| c());
+            let q0 = encoder.used();
             match pass {
                 FramePass::Cascade(i) => shadow_pass(
                     &mut encoder,
@@ -8398,7 +8402,7 @@ impl Renderer {
                     let split = !water_draws.is_empty()
                         || fluid_frame.is_some()
                         || transmission_view.is_some();
-                    let begin = |encoder: &mut wgpu::CommandEncoder, first: bool| {
+                    let begin = |encoder: &mut crate::Encoder, first: bool| {
                         let (view, resolve_target, store) = if msaa {
                             (
                                 self.graph.view("hdr-msaa"),
@@ -8753,13 +8757,11 @@ impl Renderer {
                     ms: (c() - t0).max(0.0),
                 });
             }
-            if let Some(set) = &gpu_set {
-                timing::GpuTimer::mark(&mut encoder, set, pass_ms.len() as u32);
+            if encoder.timed() {
+                pass_queries.push((pass.name(), q0..encoder.used()));
             }
         }
-        if let (Some(t), Some(_)) = (&self.gpu_timer, &gpu_set) {
-            t.resolve(&mut encoder, pass_ms.len());
-        }
+        let gpu_queries = encoder.used();
         self.pass_ms = pass_ms;
         for &(slot, _) in &probe_frame.due {
             self.probes.slots[slot].captured = Some(scene.tick);
@@ -8946,9 +8948,14 @@ impl Renderer {
         if let Some(gc) = self.gpu_cull.as_mut().filter(|_| gpu_cull) {
             gc.after_submit();
         }
-        if let (Some(t), Some(c), Some(_)) = (self.gpu_timer.as_mut(), self.clock, &gpu_set) {
-            let names = self.pass_ms.iter().map(|p| p.name.clone()).collect();
-            t.after_submit(self.frame_index, names, c());
+        if let (Some(t), Some(c)) = (self.gpu_timer.as_mut(), self.clock) {
+            t.after_submit(
+                &self.queue,
+                self.frame_index,
+                pass_queries,
+                gpu_queries,
+                c(),
+            );
         }
         if let Some((frame, ..)) = surface_frame {
             self.queue.present(frame);
@@ -9087,11 +9094,11 @@ impl Renderer {
     /// frames the snapshot's world would have drawn. Kept on the GPU (no
     /// readback): the last 64 saves are kept.
     pub fn save_state(&mut self) -> RendererState {
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        let mut encoder = Encoder::untimed(self.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
                 label: Some("save state"),
-            });
+            },
+        ));
         let exposure = self.post.save_exposure(&mut encoder);
         self.queue.submit(Some(encoder.finish()));
         RendererState { exposure }
@@ -9100,11 +9107,11 @@ impl Renderer {
     /// Brings back what [`Renderer::save_state`] kept; state no longer kept
     /// starts afresh (the next adapted frame takes the metered exposure).
     pub fn restore_state(&mut self, state: RendererState) {
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        let mut encoder = Encoder::untimed(self.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
                 label: Some("restore state"),
-            });
+            },
+        ));
         self.post.restore_exposure(&mut encoder, state.exposure);
         self.queue.submit(Some(encoder.finish()));
         self.views.stale = true;

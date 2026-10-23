@@ -444,7 +444,7 @@ impl Volumetric {
     pub fn encode_froxels(
         &self,
         device: &wgpu::Device,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
         frame: &wgpu::Buffer,
         cascades: &wgpu::TextureView,
         locals: &wgpu::TextureView,
@@ -503,7 +503,7 @@ impl Volumetric {
     pub fn encode_apply(
         &self,
         device: &wgpu::Device,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
         frame_group: &wgpu::BindGroup,
         hdr: &wgpu::TextureView,
         depth: &wgpu::TextureView,

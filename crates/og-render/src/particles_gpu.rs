@@ -640,7 +640,7 @@ impl ParticleRenderer {
     pub fn simulate(
         &self,
         device: &wgpu::Device,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
         frame: &ParticleFrame,
         depth: &wgpu::TextureView,
         gbuffer: &wgpu::TextureView,

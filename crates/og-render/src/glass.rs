@@ -303,7 +303,7 @@ impl GlassPasses {
     pub fn encode(
         &self,
         queue: &wgpu::Queue,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
         targets: &GlassTargets,
         output: &wgpu::TextureView,
         decode: bool,
@@ -314,7 +314,7 @@ impl GlassPasses {
     /// Copies the source to the output, unchanged.
     pub fn blit(
         &self,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
         targets: &GlassTargets,
         output: &wgpu::TextureView,
     ) -> u32 {
@@ -334,7 +334,7 @@ impl GlassPasses {
     pub fn pyramid(
         &self,
         queue: &wgpu::Queue,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
         targets: &GlassTargets,
         decode: bool,
     ) -> u32 {

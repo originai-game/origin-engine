@@ -646,7 +646,7 @@ impl Views {
         &self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
         plan: &ViewPlan,
         tonemap: crate::Tonemap,
         dest: &wgpu::TextureView,

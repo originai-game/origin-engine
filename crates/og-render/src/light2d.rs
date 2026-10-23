@@ -172,12 +172,7 @@ impl Light2dRenderer {
     }
 
     /// Clears `target` to `ambient` and adds the lights.
-    pub fn encode(
-        &self,
-        encoder: &mut wgpu::CommandEncoder,
-        target: &wgpu::TextureView,
-        ambient: Vec3,
-    ) {
+    pub fn encode(&self, encoder: &mut crate::Encoder, target: &wgpu::TextureView, ambient: Vec3) {
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("lights 2d"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {

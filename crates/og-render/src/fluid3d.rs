@@ -503,7 +503,7 @@ impl Fluid3dRenderer {
     /// calls.
     pub(crate) fn encode(
         &self,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
         frame: &Fluid3dFrame,
         frame_group: &wgpu::BindGroup,
         views: &Fluid3dViews,

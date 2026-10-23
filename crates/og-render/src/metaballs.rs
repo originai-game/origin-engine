@@ -390,7 +390,7 @@ impl MetaballRenderer {
     /// `k`'s target).
     pub(crate) fn encode_field(
         &self,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
         fields: &[&wgpu::TextureView],
         frame_group: &wgpu::BindGroup,
     ) {

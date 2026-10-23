@@ -593,7 +593,7 @@ impl LineRenderer {
     /// sRGB view when `srgb_view`). Answers the draws made.
     pub fn draw_overlay(
         &self,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut crate::Encoder,
         target: &wgpu::TextureView,
         srgb_view: bool,
         frame: &LineFrame,

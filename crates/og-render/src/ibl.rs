@@ -673,11 +673,7 @@ impl IblGenerator {
     }
 
     /// Records `filter`'s passes (after the capture's).
-    pub(crate) fn record_probe_filter(
-        &self,
-        encoder: &mut wgpu::CommandEncoder,
-        filter: &ProbeFilter,
-    ) {
+    pub(crate) fn record_probe_filter(&self, encoder: &mut crate::Encoder, filter: &ProbeFilter) {
         for (target, pipeline, group) in &filter.draws {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("probe filter"),

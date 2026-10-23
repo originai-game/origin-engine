@@ -3,23 +3,30 @@
 //! timestamp queries, its GPU time ([`GpuTimer`]). Measurement only:
 //! nothing drawn depends on it.
 //!
-//! The GPU time of a pass is the time between two timestamps the GPU
-//! writes into the frame's encoder, one before the graph's first pass and
-//! one after each pass. Each is written by an empty compute pass whose
-//! only content is its beginning timestamp, which needs nothing past
-//! `Features::TIMESTAMP_QUERY` (WebGPU's `timestamp-query`); arbitrary
-//! timestamps inside an encoder (`TIMESTAMP_QUERY_INSIDE_ENCODERS`) are a
-//! native extension WebGPU lacks, and timestamps on every pass descriptor
-//! would reach into every pass's code. A timestamp lands once the work
-//! before it is done (Vulkan writes it at the bottom of the pipe), so the
-//! difference of two is the GPU's time for the pass between them,
-//! including its wait for the previous one.
+//! The GPU time comes from the timestamps WebGPU writes at a pass's
+//! boundaries (`timestamp_writes`, the `timestamp-query` feature). The
+//! frame's command encoder is an [`Encoder`]: every render or compute pass
+//! it begins gets a pair of queries from the frame's set, one written as
+//! the pass begins and one as it ends. This is the one measurement every
+//! backend makes: Vulkan writes the pair at the top and the bottom of the
+//! pipe; Metal samples the GPU's counters at the encoder's stage
+//! boundaries (the vertex stage's start, the fragment stage's end).
+//! Nothing else measures a pass there: Apple GPUs run encoders with no
+//! data dependency at once, so a timestamp written by a separate marker
+//! pass measured only the marker (every pass read a few microseconds on
+//! Apple silicon), and for the same reason a pass's own beginning can lie
+//! before the end of the pass before it (its vertex stage starts while the
+//! previous fragments run). A render-graph pass is therefore reported
+//! from the end of the pass before it to the last end of the passes it
+//! opened (`ProbeTimings.gpuPasses`): the GPU's time in queue order,
+//! which sums to the frame.
 //!
 //! The timestamps of a frame are resolved into a buffer, copied to a
 //! readback and mapped after the submit; a later frame (or
 //! [`crate::Renderer::gpu_timings`]) reads them, so the GPU's numbers
 //! arrive a frame or two after the frame they measure, tagged with it.
 
+use std::ops::Range;
 use std::sync::{Arc, Mutex};
 
 /// One render-graph pass of a frame: when its CPU encoding began (the
@@ -41,7 +48,8 @@ pub struct GpuFrame {
     /// timestamp here.
     pub submitted: f64,
     /// The passes in execution order: each one's start in milliseconds
-    /// after the frame's first timestamp, and its GPU milliseconds.
+    /// after the frame's first timestamp (where the pass before it ended)
+    /// and its GPU milliseconds to its own end, back to back.
     pub passes: Vec<GpuPass>,
 }
 
@@ -69,16 +77,158 @@ pub fn gpu_timing_absent(features: wgpu::Features) -> Option<&'static str> {
     }
 }
 
-/// Frames whose timestamps are in flight at once: a fourth frame finds no
-/// readback free and is not timed on the GPU.
-const SLOTS: usize = 3;
+/// A frame's timestamp queries: its set and the next pair to hand out
+/// ([`GpuTimer::begin`]).
+pub(crate) struct FrameMarks {
+    set: wgpu::QuerySet,
+    next: u32,
+    count: u32,
+}
+
+impl FrameMarks {
+    /// The set and the pair of queries the next pass writes, or `None`
+    /// once the frame's set is full (the pass goes untimed).
+    fn pair(&mut self) -> Option<(&wgpu::QuerySet, u32, u32)> {
+        if self.next + 2 > self.count {
+            return None;
+        }
+        let begin = self.next;
+        self.next += 2;
+        Some((&self.set, begin, begin + 1))
+    }
+}
+
+/// The frame's command encoder: wgpu's, writing a pair of timestamps
+/// around every render or compute pass it begins when the frame is timed
+/// (the module's documentation). Everything else of the encoder is reached
+/// through `Deref`.
+pub(crate) struct Encoder {
+    raw: wgpu::CommandEncoder,
+    marks: Option<FrameMarks>,
+}
+
+impl std::ops::Deref for Encoder {
+    type Target = wgpu::CommandEncoder;
+    fn deref(&self) -> &wgpu::CommandEncoder {
+        &self.raw
+    }
+}
+
+impl std::ops::DerefMut for Encoder {
+    fn deref_mut(&mut self) -> &mut wgpu::CommandEncoder {
+        &mut self.raw
+    }
+}
+
+impl Encoder {
+    /// An encoder timing its passes with `marks`, or none with `None`.
+    pub fn new(raw: wgpu::CommandEncoder, marks: Option<FrameMarks>) -> Encoder {
+        Encoder { raw, marks }
+    }
+
+    /// An encoder outside a timed frame (uploads, bakes, readbacks).
+    pub fn untimed(raw: wgpu::CommandEncoder) -> Encoder {
+        Encoder::new(raw, None)
+    }
+
+    /// Whether this frame's passes are timed.
+    pub fn timed(&self) -> bool {
+        self.marks.is_some()
+    }
+
+    /// The queries the passes begun so far wrote: pass `k` of the frame
+    /// wrote `2k` and `2k + 1`.
+    pub fn used(&self) -> u32 {
+        self.marks.as_ref().map_or(0, |m| m.next)
+    }
+
+    /// `wgpu::CommandEncoder::begin_render_pass`, with the frame's
+    /// timestamps around the pass unless `desc` brings its own.
+    pub fn begin_render_pass<'e>(
+        &'e mut self,
+        desc: &wgpu::RenderPassDescriptor<'_>,
+    ) -> wgpu::RenderPass<'e> {
+        let Encoder { raw, marks } = self;
+        let pair = match desc.timestamp_writes {
+            Some(_) => None,
+            None => marks.as_mut().and_then(FrameMarks::pair),
+        };
+        let timestamp_writes = match (&desc.timestamp_writes, pair) {
+            (Some(w), _) => Some(wgpu::RenderPassTimestampWrites {
+                query_set: w.query_set,
+                beginning_of_pass_write_index: w.beginning_of_pass_write_index,
+                end_of_pass_write_index: w.end_of_pass_write_index,
+            }),
+            (None, Some((set, begin, end))) => Some(wgpu::RenderPassTimestampWrites {
+                query_set: set,
+                beginning_of_pass_write_index: Some(begin),
+                end_of_pass_write_index: Some(end),
+            }),
+            (None, None) => None,
+        };
+        raw.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: desc.label,
+            color_attachments: desc.color_attachments,
+            depth_stencil_attachment: desc.depth_stencil_attachment.clone(),
+            timestamp_writes,
+            occlusion_query_set: desc.occlusion_query_set,
+            multiview_mask: desc.multiview_mask,
+        })
+    }
+
+    /// `wgpu::CommandEncoder::begin_compute_pass`, with the frame's
+    /// timestamps around the pass unless `desc` brings its own.
+    pub fn begin_compute_pass<'e>(
+        &'e mut self,
+        desc: &wgpu::ComputePassDescriptor<'_>,
+    ) -> wgpu::ComputePass<'e> {
+        let Encoder { raw, marks } = self;
+        let pair = match desc.timestamp_writes {
+            Some(_) => None,
+            None => marks.as_mut().and_then(FrameMarks::pair),
+        };
+        let timestamp_writes = match (&desc.timestamp_writes, pair) {
+            (Some(w), _) => Some(wgpu::ComputePassTimestampWrites {
+                query_set: w.query_set,
+                beginning_of_pass_write_index: w.beginning_of_pass_write_index,
+                end_of_pass_write_index: w.end_of_pass_write_index,
+            }),
+            (None, Some((set, begin, end))) => Some(wgpu::ComputePassTimestampWrites {
+                query_set: set,
+                beginning_of_pass_write_index: Some(begin),
+                end_of_pass_write_index: Some(end),
+            }),
+            (None, None) => None,
+        };
+        raw.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: desc.label,
+            timestamp_writes,
+        })
+    }
+
+    /// `wgpu::CommandEncoder::finish`.
+    pub fn finish(self) -> wgpu::CommandBuffer {
+        self.raw.finish()
+    }
+}
+
+/// Frames whose timestamps are in flight at once. A frame that finds every
+/// readback still in flight once the device was polled is not timed on
+/// the GPU.
+const SLOTS: usize = 8;
+
+/// Queries a frame's set holds: 128 passes (the graph's passes open one
+/// render or compute pass each, the post chain and a probe's capture
+/// several).
+const QUERIES: u32 = 256;
 
 struct Slot {
     set: wgpu::QuerySet,
-    /// Queries the set and buffers hold.
-    count: u32,
     resolve: wgpu::Buffer,
     read: wgpu::Buffer,
+    /// Set by the queue once the frame's work is done
+    /// (`on_submitted_work_done`): its timestamps can be resolved.
+    done: Arc<Mutex<bool>>,
     /// Set by `map_async`'s callback: whether the mapping succeeded.
     mapped: Arc<Mutex<Option<bool>>>,
     /// The frame written into it and its passes, until read.
@@ -87,12 +237,24 @@ struct Slot {
 
 struct Pending {
     frame: u64,
-    names: Vec<String>,
+    /// Each render-graph pass and the queries the passes it opened wrote.
+    passes: Vec<(String, Range<u32>)>,
+    /// Queries written, to resolve into the readback.
+    queries: u32,
     submitted: f64,
+    /// Whether the resolve and the copy to the readback were submitted.
+    resolved: bool,
 }
 
 /// The GPU side of the frame's timing: a ring of query sets with their
 /// readbacks ([`SLOTS`]).
+///
+/// A frame's timestamps are resolved in a command buffer of their own,
+/// submitted once the queue reports the frame's work done: Metal's
+/// counter samples are not complete until the command buffer that took
+/// them has, so a resolve encoded at the end of the frame read zeros and
+/// the previous frame's values on Apple silicon (Apple's counter-sampling
+/// sample resolves from the completion handler for the same reason).
 pub(crate) struct GpuTimer {
     /// Nanoseconds per timestamp tick (`Queue::get_timestamp_period`).
     period_ns: f64,
@@ -107,25 +269,25 @@ pub(crate) struct GpuTimer {
 impl GpuTimer {
     /// A timer where the device has timestamp queries.
     pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Option<GpuTimer> {
-        gpu_timing_absent(device.features())
-            .is_none()
-            .then(|| GpuTimer {
-                period_ns: f64::from(queue.get_timestamp_period()),
-                slots: Vec::new(),
-                current: None,
-                done: Vec::new(),
-            })
+        if gpu_timing_absent(device.features()).is_some() {
+            return None;
+        }
+        Some(GpuTimer {
+            period_ns: f64::from(queue.get_timestamp_period()),
+            slots: Vec::new(),
+            current: None,
+            done: Vec::new(),
+        })
     }
 
-    fn slot(device: &wgpu::Device, count: u32) -> Slot {
-        let bytes = u64::from(count) * u64::from(wgpu::QUERY_SIZE);
+    fn slot(device: &wgpu::Device) -> Slot {
+        let bytes = u64::from(QUERIES) * u64::from(wgpu::QUERY_SIZE);
         Slot {
             set: device.create_query_set(&wgpu::QuerySetDescriptor {
                 label: Some("pass timestamps"),
                 ty: wgpu::QueryType::Timestamp,
-                count,
+                count: QUERIES,
             }),
-            count,
             resolve: device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("pass timestamps resolve"),
                 size: bytes,
@@ -138,88 +300,105 @@ impl GpuTimer {
                 usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             }),
+            done: Arc::new(Mutex::new(false)),
             mapped: Arc::new(Mutex::new(None)),
             pending: None,
         }
     }
 
-    /// Starts a frame of `passes` graph passes: the query set its
-    /// timestamps go into (`passes + 1` of them), or `None` when every
+    /// Starts a frame: the marks its passes write, or `None` when every
     /// readback is still in flight.
-    pub fn begin(&mut self, device: &wgpu::Device, passes: usize) -> Option<wgpu::QuerySet> {
-        self.collect();
-        let count = (passes as u32 + 1).min(wgpu::QUERY_SET_MAX_QUERIES);
-        let free = self
-            .slots
-            .iter()
-            .position(|s| s.pending.is_none() && s.count >= count);
-        let i = match free {
+    pub fn begin(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) -> Option<FrameMarks> {
+        self.collect(device, queue);
+        let free = |slots: &[Slot]| slots.iter().position(|s| s.pending.is_none());
+        let mut i = free(&self.slots);
+        if i.is_none() {
+            // Completions and readbacks land in callbacks the device runs
+            // when polled: a frame whose GPU work is done may still hold
+            // its slot.
+            #[cfg(not(target_arch = "wasm32"))]
+            let _ = device.poll(wgpu::PollType::Poll);
+            self.collect(device, queue);
+            i = free(&self.slots);
+        }
+        let i = match i {
             Some(i) => i,
             None if self.slots.len() < SLOTS => {
-                self.slots.push(Self::slot(device, count.max(16)));
+                self.slots.push(Self::slot(device));
                 self.slots.len() - 1
             }
-            None => {
-                // A free slot too small for this graph is made again.
-                let i = self.slots.iter().position(|s| s.pending.is_none())?;
-                self.slots[i] = Self::slot(device, count.max(16));
-                i
-            }
+            None => return None,
         };
         self.current = Some(i);
-        Some(self.slots[i].set.clone())
+        Some(FrameMarks {
+            set: self.slots[i].set.clone(),
+            next: 0,
+            count: QUERIES,
+        })
     }
 
-    /// Writes timestamp `index` of the frame's set: an empty compute pass
-    /// that writes it as it begins (see the module's documentation).
-    pub fn mark(encoder: &mut wgpu::CommandEncoder, set: &wgpu::QuerySet, index: u32) {
-        encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: Some("pass timestamp"),
-            timestamp_writes: Some(wgpu::ComputePassTimestampWrites {
-                query_set: set,
-                beginning_of_pass_write_index: Some(index),
-                end_of_pass_write_index: None,
-            }),
-        });
-    }
-
-    /// After the frame's last mark: resolves its `passes + 1` timestamps
-    /// and copies them to the slot's readback.
-    pub fn resolve(&self, encoder: &mut wgpu::CommandEncoder, passes: usize) {
-        let Some(i) = self.current else {
-            return;
-        };
-        let s = &self.slots[i];
-        let n = passes as u32 + 1;
-        let bytes = u64::from(n) * u64::from(wgpu::QUERY_SIZE);
-        encoder.resolve_query_set(&s.set, 0..n, &s.resolve, 0);
-        encoder.copy_buffer_to_buffer(&s.resolve, 0, &s.read, 0, bytes);
-    }
-
-    /// After the submit of frame `frame`, whose passes were `names`, at
-    /// `submitted` on the renderer's clock: maps the readback it copied
-    /// into. A frame that failed before its submit never gets here, and
-    /// its slot stays free.
-    pub fn after_submit(&mut self, frame: u64, names: Vec<String>, submitted: f64) {
+    /// After the submit of frame `frame`, whose render-graph passes were
+    /// `passes` (each with the queries it wrote; `queries` in all, the
+    /// encoder's [`Encoder::used`]), at `submitted` on the renderer's
+    /// clock: asks the queue to say when the frame's work is done, so its
+    /// timestamps can be resolved. A frame that failed before its submit
+    /// never gets here, and its slot stays free.
+    pub fn after_submit(
+        &mut self,
+        queue: &wgpu::Queue,
+        frame: u64,
+        passes: Vec<(String, Range<u32>)>,
+        queries: u32,
+        submitted: f64,
+    ) {
         let Some(i) = self.current.take() else {
             return;
         };
+        if queries == 0 {
+            return;
+        }
         let s = &mut self.slots[i];
         s.pending = Some(Pending {
             frame,
-            names,
+            passes,
+            queries,
             submitted,
+            resolved: false,
         });
-        let mapped = s.mapped.clone();
-        s.read
-            .slice(..)
-            .map_async(wgpu::MapMode::Read, move |result| {
-                *mapped.lock().unwrap_or_else(|e| e.into_inner()) = Some(result.is_ok());
-            });
+        *s.done.lock().unwrap_or_else(|e| e.into_inner()) = false;
+        let done = s.done.clone();
+        queue.on_submitted_work_done(move || {
+            *done.lock().unwrap_or_else(|e| e.into_inner()) = true;
+        });
     }
 
-    /// Reads every readback that has landed into [`GpuTimer::done`].
-    fn collect(&mut self) {
+    /// Resolves the timestamps of every frame whose work the queue
+    /// reported done and maps the readback, then reads every readback
+    /// that has landed into [`GpuTimer::done`].
+    fn collect(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        for s in &mut self.slots {
+            let Some(p) = s.pending.as_mut().filter(|p| !p.resolved) else {
+                continue;
+            };
+            if !*s.done.lock().unwrap_or_else(|e| e.into_inner()) {
+                continue;
+            }
+            p.resolved = true;
+            let n = p.queries;
+            let bytes = u64::from(n) * u64::from(wgpu::QUERY_SIZE);
+            let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("pass timestamps resolve"),
+            });
+            encoder.resolve_query_set(&s.set, 0..n, &s.resolve, 0);
+            encoder.copy_buffer_to_buffer(&s.resolve, 0, &s.read, 0, bytes);
+            queue.submit(Some(encoder.finish()));
+            let mapped = s.mapped.clone();
+            s.read
+                .slice(..bytes)
+                .map_async(wgpu::MapMode::Read, move |result| {
+                    *mapped.lock().unwrap_or_else(|e| e.into_inner()) = Some(result.is_ok());
+                });
+        }
         for s in &mut self.slots {
             let landed = s.mapped.lock().unwrap_or_else(|e| e.into_inner()).take();
             let Some(ok) = landed else {
@@ -230,18 +409,17 @@ impl GpuTimer {
                 continue;
             }
             if let Some(p) = pending {
-                let n = p.names.len() + 1;
                 let ticks: Vec<u64> = {
-                    let Ok(view) = s.read.slice(..).get_mapped_range() else {
+                    let Ok(view) = s
+                        .read
+                        .slice(..u64::from(p.queries) * u64::from(wgpu::QUERY_SIZE))
+                        .get_mapped_range()
+                    else {
                         s.read.unmap();
                         continue;
                     };
                     let (words, _) = view.as_chunks::<8>();
-                    words
-                        .iter()
-                        .take(n)
-                        .map(|b| u64::from_le_bytes(*b))
-                        .collect()
+                    words.iter().map(|b| u64::from_le_bytes(*b)).collect()
                 };
                 self.done.push(frame_of(p, &ticks, self.period_ns));
             }
@@ -250,43 +428,70 @@ impl GpuTimer {
     }
 
     /// The frames read back since the last take, oldest first. With `wait`
-    /// (native), every frame in flight is waited for first.
-    pub fn take(&mut self, device: &wgpu::Device, wait: bool) -> Vec<GpuFrame> {
+    /// (native), every frame in flight is waited for first: once for its
+    /// work, once for the resolve of its timestamps.
+    pub fn take(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        wait: bool,
+    ) -> Vec<GpuFrame> {
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let poll = if wait && self.slots.iter().any(|s| s.pending.is_some()) {
-                wgpu::PollType::wait_indefinitely()
-            } else {
-                wgpu::PollType::Poll
+            let in_flight = |slots: &[Slot]| slots.iter().any(|s| s.pending.is_some());
+            let poll = |wait: bool| {
+                let _ = device.poll(if wait {
+                    wgpu::PollType::wait_indefinitely()
+                } else {
+                    wgpu::PollType::Poll
+                });
             };
-            let _ = device.poll(poll);
+            poll(wait && in_flight(&self.slots));
+            self.collect(device, queue);
+            poll(wait && in_flight(&self.slots));
         }
-        #[cfg(target_arch = "wasm32")]
-        let _ = (device, wait);
-        self.collect();
+        self.collect(device, queue);
         std::mem::take(&mut self.done)
     }
 }
 
-/// A frame's passes from its timestamps: pass `k` runs from timestamp `k`
-/// to `k + 1`. A timestamp before the one ahead of it (a GPU whose
-/// counter is not monotonic across passes) gives the pass 0 ms.
+/// A frame's passes from its timestamps: pass `k` of a render-graph pass
+/// wrote queries `2k` and `2k + 1`, and the graph pass ends at the last
+/// end among them. Each graph pass runs from the end of the one before it
+/// (the frame's first beginning for the first) to its own end, in queue
+/// order (the module's documentation). A query the GPU left at 0 is not
+/// read; a pass with none ends where the one before it did, 0 ms long.
 fn frame_of(p: Pending, ticks: &[u64], period_ns: f64) -> GpuFrame {
-    let first = ticks.first().copied().unwrap_or(0);
-    let at = |t: u64| t.saturating_sub(first) as f64 * period_ns / 1e6;
-    let passes = p
-        .names
-        .into_iter()
-        .enumerate()
-        .map(|(k, name)| {
-            let (a, b) = (ticks.get(k).copied(), ticks.get(k + 1).copied());
-            let start = a.map_or(0.0, at);
-            let end = b.map_or(start, at).max(start);
-            GpuPass {
-                name,
-                start,
-                ms: end - start,
+    let span = |r: &Range<u32>| -> Option<(u64, u64)> {
+        let mut span: Option<(u64, u64)> = None;
+        for q in (r.start..r.end).step_by(2) {
+            let (Some(&b), Some(&e)) = (ticks.get(q as usize), ticks.get(q as usize + 1)) else {
+                break;
+            };
+            if b == 0 || e == 0 {
+                continue;
             }
+            span = Some(span.map_or((b, e), |(sb, se)| (sb.min(b), se.max(e))));
+        }
+        span
+    };
+    let spans: Vec<Option<(u64, u64)>> = p.passes.iter().map(|(_, r)| span(r)).collect();
+    let first = spans.iter().flatten().map(|s| s.0).min().unwrap_or(0);
+    let ms = |ticks: u64| ticks.saturating_sub(first) as f64 * period_ns / 1e6;
+    let mut prev_end = 0.0;
+    let passes = p
+        .passes
+        .into_iter()
+        .zip(spans)
+        .map(|((name, _), span)| {
+            let end = span.map_or(prev_end, |(_, e)| ms(e).max(prev_end));
+            let pass = GpuPass {
+                name,
+                start: prev_end,
+                ms: end - prev_end,
+            };
+            prev_end = end;
+            pass
         })
         .collect();
     GpuFrame {
@@ -301,15 +506,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn passes_lie_between_their_timestamps() {
+    fn passes_run_back_to_back_to_the_ends_of_the_passes_they_opened() {
         let p = Pending {
             frame: 7,
-            names: vec!["Cascade0".into(), "Main".into(), "Bloom".into()],
+            passes: vec![
+                ("Cascade0".into(), 0..2),
+                ("Main".into(), 2..6),
+                ("Bloom".into(), 6..6),
+                ("Tonemap".into(), 6..8),
+            ],
+            queries: 8,
             submitted: 100.0,
+            resolved: true,
         };
-        // 10 ns a tick: 1 ms is 100 000 ticks. Bloom's end is earlier than
-        // its start (a counter that went back): 0 ms, never negative.
-        let f = frame_of(p, &[5_000, 105_000, 405_000, 305_000], 10.0);
+        // 10 ns a tick: 1 ms is 100 000 ticks. Main opened two passes, the
+        // second begun before the first ended (an Apple GPU overlapping
+        // encoders): it ends at the later end. Bloom opened none: 0 ms
+        // where Main ended. Tonemap's end was left at 0 by the GPU: its
+        // one pair is not read, so it sits there too.
+        let f = frame_of(
+            p,
+            &[
+                5_000, 105_000, 95_000, 305_000, 255_000, 405_000, 405_000, 0,
+            ],
+            10.0,
+        );
         assert_eq!(f.frame, 7);
         let got: Vec<(&str, f64, f64)> = f
             .passes
@@ -321,7 +542,8 @@ mod tests {
             [
                 ("Cascade0", 0.0, 1.0),
                 ("Main", 1.0, 3.0),
-                ("Bloom", 4.0, 0.0)
+                ("Bloom", 4.0, 0.0),
+                ("Tonemap", 4.0, 0.0)
             ]
         );
         assert_eq!(f.ms(), 4.0);
