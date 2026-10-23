@@ -149,10 +149,63 @@ struct Item {
     sprite: bool,
 }
 
-/// Renders the id pass of `scene` at `width`×`height` pixels.
+/// The camera an id pass draws from: the main one ([`render_ids`]) or a
+/// secondary camera's ([`view_id_cameras`]), with the layers it draws.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct IdCamera {
+    pub view_proj: Mat4,
+    pub view: Mat4,
+    /// Three.js layer mask: an object whose mask shares no bit is left out.
+    pub layers: u32,
+}
+
+/// Each of the scene's views ([`RenderScene::views`]) as an id-pass camera,
+/// whatever its `every`: (its index, the camera, the pixels it draws: its
+/// target's size, or its viewport's rect of a frame of `frame` pixels). A
+/// view without a live target, or a mirror seen from behind, is left out.
+pub fn view_id_cameras(
+    scene: &RenderScene,
+    frame: (u32, u32),
+) -> Vec<(usize, IdCamera, (u32, u32))> {
+    let main = crate::shaken_camera(&scene.camera, scene.shake);
+    crate::views::plan(scene, &main, frame, |_| true)
+        .into_iter()
+        .map(|p| {
+            (
+                p.index,
+                IdCamera {
+                    view_proj: p.frame.view_proj,
+                    view: p.frame.view,
+                    layers: p.layers,
+                },
+                p.size,
+            )
+        })
+        .collect()
+}
+
+/// Renders the id pass of `scene` at `width`×`height` pixels from the main
+/// camera (on its layers, [`RenderScene::camera_layers`]).
 pub fn render_ids(scene: &RenderScene, sources: &IdSources, width: u32, height: u32) -> IdFrame {
+    let (vp, view) = view_proj(scene, width.max(1) as f32 / height.max(1) as f32);
+    let camera = IdCamera {
+        view_proj: vp,
+        view,
+        layers: scene.camera_layers,
+    };
+    render_ids_from(scene, sources, width, height, &camera)
+}
+
+/// Renders the id pass of `scene` at `width`×`height` pixels from `camera`.
+pub fn render_ids_from(
+    scene: &RenderScene,
+    sources: &IdSources,
+    width: u32,
+    height: u32,
+    camera: &IdCamera,
+) -> IdFrame {
     let (width, height) = (width.max(1), height.max(1));
-    let (vp, view) = view_proj(scene, width as f32 / height as f32);
+    let (vp, view) = (camera.view_proj, camera.view);
     let mut items: Vec<Item> = Vec::new();
     let mut bounds: BTreeMap<MeshHandle, Option<(Vec3, f32)>> = BTreeMap::new();
     let mut sphere = |mesh: MeshHandle, data: &MeshData| {
@@ -169,8 +222,8 @@ pub fn render_ids(scene: &RenderScene, sources: &IdSources, width: u32, height: 
     };
     for (i, inst) in scene.instances.iter().enumerate() {
         let id = sources.instances.get(i).copied().unwrap_or(0);
-        // The main camera's view: an instance off its layers is not drawn there.
-        let shown = crate::views::layer_of(&scene.instance_layers, i) & scene.camera_layers != 0;
+        // An instance off the camera's layers is not drawn there.
+        let shown = crate::views::layer_of(&scene.instance_layers, i) & camera.layers != 0;
         let Some(data) = (id != 0 && shown).then(|| scene.mesh(inst.mesh)).flatten() else {
             continue;
         };
@@ -199,7 +252,7 @@ pub fn render_ids(scene: &RenderScene, sources: &IdSources, width: u32, height: 
     }
     for (i, inst) in scene.skinned_instances.iter().enumerate() {
         let id = sources.skinned.get(i).copied().unwrap_or(0);
-        let shown = crate::views::layer_of(&scene.skinned_layers, i) & scene.camera_layers != 0;
+        let shown = crate::views::layer_of(&scene.skinned_layers, i) & camera.layers != 0;
         let Some(data) = (id != 0 && shown).then(|| scene.mesh(inst.mesh)).flatten() else {
             continue;
         };
@@ -228,7 +281,8 @@ pub fn render_ids(scene: &RenderScene, sources: &IdSources, width: u32, height: 
     }
     for (i, s) in scene.sprites.iter().enumerate() {
         let id = sources.sprites.get(i).copied().unwrap_or(0);
-        if id == 0 || s.size.x == 0.0 || s.size.y == 0.0 {
+        let shown = crate::views::layer_of(&scene.sprite_layers, i) & camera.layers != 0;
+        if id == 0 || !shown || s.size.x == 0.0 || s.size.y == 0.0 {
             continue;
         }
         let (sin, cos) = s.rotation.sin_cos();
@@ -588,6 +642,39 @@ mod tests {
             (at.z - 0.5).abs() < 0.05,
             "the cube's front face is z 0.5: {at}"
         );
+    }
+
+    /// The cube on layer 1 alone: the main camera (layer 0) does not see
+    /// it, a view of layers 0 and 1 does, from its own eye (from the right),
+    /// and a view of layer 0 does not.
+    #[test]
+    fn a_view_sees_what_its_layers_admit_from_its_own_eye() {
+        let (mut scene, ids) = scene_with_boxes();
+        scene.instance_layers = vec![1, 2];
+        let eye = |layers| crate::View {
+            camera: Camera {
+                position: Vec3::new(8.0, 0.0, 4.0),
+                target: Vec3::new(-1.0, 0.0, 0.0),
+                ..Camera::default()
+            },
+            target: crate::ViewTarget::Viewport([0.0, 0.0, 0.5, 1.0]),
+            layers,
+            ..Default::default()
+        };
+        scene.views = vec![eye(3), eye(1)];
+        assert!(render_ids(&scene, &ids, 200, 100).object(9).is_none());
+        let cams = view_id_cameras(&scene, (400, 200));
+        assert_eq!(cams.len(), 2);
+        assert_eq!(cams[0].2, (200, 200), "the viewport's pixels");
+        let seen = render_ids_from(&scene, &ids, 100, 100, &cams[0].1);
+        let cube = seen.object(9).expect("the layer-1 view sees the cube");
+        let slab = seen.object(7).expect("and the slab");
+        // From its eye the slab's right end is the nearest point (about
+        // 7 m along its view; the main camera has the slab 11.9 m away).
+        assert!(slab.depth < cube.depth, "{} {}", slab.depth, cube.depth);
+        assert!(slab.depth < 9.0, "{} from the view's eye", slab.depth);
+        let unseen = render_ids_from(&scene, &ids, 100, 100, &cams[1].1);
+        assert!(unseen.object(9).is_none() && unseen.object(7).is_some());
     }
 
     #[test]

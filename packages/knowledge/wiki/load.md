@@ -18,7 +18,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 4806</sub>
+<sub>`api.ogt` line 4813</sub>
 
 ## Contents
 
@@ -52,7 +52,7 @@ module load {
 | [`og.load.environment`](#fn-environment) | function | A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it; `prefiltered true` takes a KTX2 cube's own mip chain as those levels instead (one already GGX-prefiltered by cmgen, IBLBaker or the glTF IBL sampler: level k of L at roughness k / (L - 1)), at the file's own size, without filtering it again. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path. |
 | [`og.load.emitter`](#fn-emitter) | function | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the og-game skill's Effects section gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off \| life <cycles> \| fps <n> \| random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path. |
 | [`og.load.shader`](#fn-shader) | function | A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots; the og-game skill's Full custom shaders section), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path. |
-| [`og.load.post`](#fn-post) | function | A custom post pass for PostEffects.custom1 to custom4, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float\|vec2\|vec3\|vec4\|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path. |
+| [`og.load.post`](#fn-post) | function | A custom post pass for PostEffects.custom1 to custom8, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float\|vec2\|vec3\|vec4\|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path. |
 | [`og.load.texture`](#fn-texture) | function | Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load. |
 | [`og.load.textureArray`](#fn-textureArray) | function | Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color\|normal\|linear\|pixel` and one `layer "<file>"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array. |
 | [`og.load.style`](#fn-style) | function | Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`. |
@@ -104,7 +104,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 4945</sub>
+<sub>`api.ogt` line 4952</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -134,7 +134,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 4952</sub>
+<sub>`api.ogt` line 4959</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -162,7 +162,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 4959</sub>
+<sub>`api.ogt` line 4966</sub>
 
 <a id="fn-gltf"></a>
 
@@ -197,7 +197,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 4965</sub>
+<sub>`api.ogt` line 4972</sub>
 
 <a id="fn-scene"></a>
 
@@ -227,7 +227,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 4974</sub>
+<sub>`api.ogt` line 4981</sub>
 
 <a id="fn-font"></a>
 
@@ -257,7 +257,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 4981</sub>
+<sub>`api.ogt` line 4988</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -287,7 +287,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 4988</sub>
+<sub>`api.ogt` line 4995</sub>
 
 <a id="fn-sound"></a>
 
@@ -320,7 +320,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 4995</sub>
+<sub>`api.ogt` line 5002</sub>
 
 <a id="fn-lut"></a>
 
@@ -350,7 +350,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 5003</sub>
+<sub>`api.ogt` line 5010</sub>
 
 <a id="fn-environment"></a>
 
@@ -380,7 +380,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 5010</sub>
+<sub>`api.ogt` line 5017</sub>
 
 <a id="fn-emitter"></a>
 
@@ -410,7 +410,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 5017</sub>
+<sub>`api.ogt` line 5024</sub>
 
 <a id="fn-shader"></a>
 
@@ -440,13 +440,13 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 5024</sub>
+<sub>`api.ogt` line 5031</sub>
 
 <a id="fn-post"></a>
 
 ### `og.load.post`
 
-A custom post pass for PostEffects.custom1 to custom4, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.
+A custom post pass for PostEffects.custom1 to custom8, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.
 
 ```ts
 og.load.post(world: World, path: string): Result<Post>
@@ -463,14 +463,14 @@ Binding symbol `og_load_post` · publish builds: kept
 
 ```ogt
 fn post {
-  doc "A custom post pass for PostEffects.custom1 to custom4, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path."
+  doc "A custom post pass for PostEffects.custom1 to custom8, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path."
   param world World "The world whose renderer owns it."
   param path String "The asset id, such as `post/crt.ogt`."
   returns Result.Post "Refused for a path not in the bundle or not a post pass."
 }
 ```
 
-<sub>`api.ogt` line 5031</sub>
+<sub>`api.ogt` line 5038</sub>
 
 <a id="fn-texture"></a>
 
@@ -503,7 +503,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 5038</sub>
+<sub>`api.ogt` line 5045</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -536,7 +536,7 @@ fn textureArray {
 }
 ```
 
-<sub>`api.ogt` line 5046</sub>
+<sub>`api.ogt` line 5053</sub>
 
 <a id="fn-style"></a>
 
@@ -566,7 +566,7 @@ fn style {
 }
 ```
 
-<sub>`api.ogt` line 5054</sub>
+<sub>`api.ogt` line 5061</sub>
 
 <a id="fn-look"></a>
 
@@ -596,7 +596,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 5061</sub>
+<sub>`api.ogt` line 5068</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -626,7 +626,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 5068</sub>
+<sub>`api.ogt` line 5075</sub>
 
 <a id="fn-palette"></a>
 
@@ -656,7 +656,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 5075</sub>
+<sub>`api.ogt` line 5082</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -686,7 +686,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 5082</sub>
+<sub>`api.ogt` line 5089</sub>
 
 <a id="fn-status"></a>
 
@@ -716,7 +716,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 5089</sub>
+<sub>`api.ogt` line 5096</sub>
 
 <a id="fn-error"></a>
 
@@ -746,7 +746,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 5096</sub>
+<sub>`api.ogt` line 5103</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -776,7 +776,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 5103</sub>
+<sub>`api.ogt` line 5110</sub>
 
 <a id="fn-animation"></a>
 
@@ -809,7 +809,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 5110</sub>
+<sub>`api.ogt` line 5117</sub>
 
 <a id="fn-rig"></a>
 
@@ -839,7 +839,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 5118</sub>
+<sub>`api.ogt` line 5125</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -869,7 +869,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 5125</sub>
+<sub>`api.ogt` line 5132</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -899,7 +899,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 5132</sub>
+<sub>`api.ogt` line 5139</sub>
 
 <a id="fn-video"></a>
 
@@ -929,7 +929,7 @@ fn video {
 }
 ```
 
-<sub>`api.ogt` line 5139</sub>
+<sub>`api.ogt` line 5146</sub>
 
 <a id="fn-videoInfo"></a>
 
@@ -959,7 +959,7 @@ fn videoInfo {
 }
 ```
 
-<sub>`api.ogt` line 5146</sub>
+<sub>`api.ogt` line 5153</sub>
 
 <a id="fn-timeline"></a>
 
@@ -989,7 +989,7 @@ fn timeline {
 }
 ```
 
-<sub>`api.ogt` line 5153</sub>
+<sub>`api.ogt` line 5160</sub>
 
 <a id="fn-rig2d"></a>
 
@@ -1019,7 +1019,7 @@ fn rig2d {
 }
 ```
 
-<sub>`api.ogt` line 5160</sub>
+<sub>`api.ogt` line 5167</sub>
 
 ## Components, resources and events
 
@@ -1084,7 +1084,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 4909</sub>
+<sub>`api.ogt` line 4916</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -1107,7 +1107,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 5167</sub>
+<sub>`api.ogt` line 5174</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1132,7 +1132,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 5173</sub>
+<sub>`api.ogt` line 5180</sub>
 
 ## Types
 
@@ -1148,7 +1148,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 4812</sub>
+<sub>`api.ogt` line 4819</sub>
 
 <a id="type-Font"></a>
 
@@ -1162,7 +1162,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 4813</sub>
+<sub>`api.ogt` line 4820</sub>
 
 <a id="type-Sound"></a>
 
@@ -1176,7 +1176,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 4814</sub>
+<sub>`api.ogt` line 4821</sub>
 
 <a id="type-Style"></a>
 
@@ -1190,7 +1190,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Style "A cooked UI style: its values, atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 4815</sub>
+<sub>`api.ogt` line 4822</sub>
 
 <a id="type-TextureArray"></a>
 
@@ -1204,7 +1204,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
 ```
 
-<sub>`api.ogt` line 4816</sub>
+<sub>`api.ogt` line 4823</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -1229,7 +1229,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 4839</sub>
+<sub>`api.ogt` line 4846</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -1259,7 +1259,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 4846</sub>
+<sub>`api.ogt` line 4853</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -1284,7 +1284,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 4858</sub>
+<sub>`api.ogt` line 4865</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -1307,7 +1307,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 4866</sub>
+<sub>`api.ogt` line 4873</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -1340,7 +1340,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 4873</sub>
+<sub>`api.ogt` line 4880</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1371,7 +1371,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 4885</sub>
+<sub>`api.ogt` line 4892</sub>
 
 <a id="type-TextureArrayInfo"></a>
 
@@ -1402,7 +1402,7 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 4898</sub>
+<sub>`api.ogt` line 4905</sub>
 
 ## Column kinds
 
@@ -1423,7 +1423,7 @@ column TextureArray {
 }
 ```
 
-<sub>`api.ogt` line 4818</sub>
+<sub>`api.ogt` line 4825</sub>
 
 ```ogt
 column Asset {
@@ -1434,7 +1434,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 4825</sub>
+<sub>`api.ogt` line 4832</sub>
 
 ```ogt
 column Sound {
@@ -1445,4 +1445,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 4832</sub>
+<sub>`api.ogt` line 4839</sub>

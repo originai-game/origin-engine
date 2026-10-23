@@ -1354,11 +1354,22 @@ pub struct RenderScene {
     pub instance_layers: Vec<u32>,
     /// The same for `skinned_instances`.
     pub skinned_layers: Vec<u32>,
-    /// The main camera's layer mask (three.js `Camera.layers`): it draws the
-    /// instances and skinned instances whose masks share a bit with it. 1
-    /// by default; 0 draws none of them (the sky, terrain, water,
-    /// particles, sprites and text are on every layer: a host filters its
-    /// sprites and lines by their own masks before it submits them).
+    /// The same for the world `sprites` (with their drop shadows, glow and
+    /// afterimages drawn from them).
+    pub sprite_layers: Vec<u32>,
+    /// The same for `lines` and `points` (scene sets; overlay and screen
+    /// sets draw on the main frame whatever their masks).
+    pub line_layers: Vec<u32>,
+    pub point_layers: Vec<u32>,
+    /// The same for `particles` (billboards and 2D sprite particles alike).
+    pub particle_layers: Vec<u32>,
+    /// The main camera's layer mask (three.js `Camera.layers`): it draws
+    /// the instances, skinned instances, world sprites, scene lines and
+    /// points and particle systems whose masks share a bit with it, as each
+    /// [`crate::View`] does with its own. 1 by default; 0 draws none of
+    /// them. What carries no mask (the sky, terrain, scattered copies,
+    /// water, trails, text, tile layers and sprite meshes) draws on every
+    /// camera.
     pub camera_layers: u32,
     /// Secondary cameras drawn into render targets or viewports of the
     /// frame, before it in [`crate::View::order`] (`views.rs`).
@@ -1434,6 +1445,10 @@ impl RenderScene {
             terrain_revisions: Vec::new(),
             instance_layers: Vec::new(),
             skinned_layers: Vec::new(),
+            sprite_layers: Vec::new(),
+            line_layers: Vec::new(),
+            point_layers: Vec::new(),
+            particle_layers: Vec::new(),
             camera_layers: 1,
             posts: Vec::new(),
             post_params: Vec::new(),

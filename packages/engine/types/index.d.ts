@@ -2847,7 +2847,7 @@ export interface Camera {
    */
   zoneScrollTime: number;
   /**
-   * Three.js layers, as Camera.layers.mask: the frame draws the meshes, models and world sprites whose layers share a bit with it. 1 (layer 0) by default, as every object's.
+   * Three.js layers, as Camera.layers.mask: the frame draws the meshes, models, world sprites, particle systems, lines and points whose layers share a bit with it. 1 (layer 0) by default, as every object's.
    *
    * @default 1
    */
@@ -4617,7 +4617,7 @@ export interface PostEffects {
    */
   ssrIntensity: number;
   /**
-   * The first custom post pass (og.load.post, a `type post` asset; 0 is none). PostEffects.custom1 to custom4 are an ordered list: each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (it turns the prepass on). Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped.
+   * The first custom post pass (og.load.post, a `type post` asset; 0 is none). PostEffects.custom1 to custom8 are an ordered list, as many as og-render runs (RenderCapabilities.maxCustomPosts): each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (it turns the prepass on). Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped.
    */
   custom1: Post;
   /** The second custom post pass, over the first's output (0 skips the slot). */
@@ -4626,6 +4626,14 @@ export interface PostEffects {
   custom3: Post;
   /** The fourth custom post pass. */
   custom4: Post;
+  /** The fifth custom post pass. */
+  custom5: Post;
+  /** The sixth custom post pass. */
+  custom6: Post;
+  /** The seventh custom post pass. */
+  custom7: Post;
+  /** The eighth and last custom post pass, over every one before it. */
+  custom8: Post;
 }
 
 /**
@@ -5288,6 +5296,12 @@ export interface ParticleSystem {
    * @default true
    */
   visible: boolean;
+  /**
+   * Three.js layers, as Mesh.layers: its particles (billboards and 2D sprite particles alike) are drawn by the cameras whose masks share a bit with it (og.Camera, og.CameraView, og.Mirror).
+   *
+   * @default 1
+   */
+  layers: number;
 }
 
 /**
@@ -6303,13 +6317,13 @@ export interface RenderCapabilities {
    */
   readonly reflectionProbes: number;
   /**
-   * Whether a render target made with `depth` gets its view's depth drawn (the full tier). WebGL2 cannot read a depth buffer in a shader: there the depth texture stays cleared to 0, and every other part of the target draws.
+   * Whether a render target made with `depth` gets its view's depth drawn: true on every tier with a renderer (WebGPU, Vulkan, Metal and WebGL2 alike), false without one. The depth comes from the view's own depth prepass of its opaque meshes into a linear-depth colour target, never from its depth buffer, which WebGL2 cannot read in a shader.
    */
   readonly renderTargetDepth: boolean;
   /** The largest side of a render target (the device's largest 2D texture). */
   readonly maxRenderTargetSize: number;
   /**
-   * The most custom post passes a frame runs (PostEffects.custom1 to custom4 on every tier).
+   * The most custom post passes a frame runs: 8 on every tier, PostEffects.custom1 to custom8 (numbered fields, as a reflected record has no list field).
    */
   readonly maxCustomPosts: number;
   /**
@@ -7051,7 +7065,7 @@ export interface Lines {
    */
   visible: boolean;
   /**
-   * Three.js layers, as Mesh.layers: drawn by the main camera when its mask shares a bit (secondary cameras do not draw lines).
+   * Three.js layers, as Mesh.layers: drawn by every camera whose mask shares a bit with it (og.Camera, og.CameraView, og.Mirror).
    *
    * @default 1
    */
@@ -7107,7 +7121,7 @@ export interface Points {
    */
   visible: boolean;
   /**
-   * Three.js layers, as Mesh.layers: drawn by the main camera when its mask shares a bit (secondary cameras do not draw points).
+   * Three.js layers, as Mesh.layers: drawn by every camera whose mask shares a bit with it (og.Camera, og.CameraView, og.Mirror).
    *
    * @default 1
    */
@@ -7236,7 +7250,7 @@ export interface RenderTargetDesc {
    */
   readonly format?: RenderTargetFormat;
   /**
-   * Keep the view's depth too, as a second texture (RenderTargetInfo.depthTexture): its linear view depth from near (0) to far (1) in red, green and blue. Drawn on the full tier (RenderCapabilities.renderTargetDepth).
+   * Keep the view's depth too, as a second texture (RenderTargetInfo.depthTexture): its linear view depth from near (0) to far (1) in red, green and blue, of the opaque meshes and models, alpha-cut ones cut (transparent meshes, sprites and particles write none), drawn on every tier (RenderCapabilities.renderTargetDepth). It costs a second draw of the view's opaque meshes.
    *
    * @default false
    */
@@ -7262,7 +7276,7 @@ export interface RenderTargetInfo {
 
 /**
  * A secondary camera, as a second three.js camera rendered with setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z, as og.Camera) into a render target (target), or, without one, into a rect of the frame (viewport: split-screen, picture-in-picture) over the finished image and under the UI.
- * It draws the opaque meshes and models on its layers (skinned and with any material: hooks and full shaders run their vertex and fragment entries), the terrain and the sky, lit by the frame's lights and shadowed by its shadow maps. Transparent meshes, sprites, particles, text, lines and the post effects are the main camera's. Views draw lowest order first, all before the frame.
+ * It draws what the main camera draws, from its own eye and on its own layers: the meshes and models (skinned and with any material: hooks and full shaders run their vertex and fragment entries), opaque then transparent back to front, the terrain and the sky, the particle systems, og.Lines and og.Points, world sprites (og.Sprite, og.render.sprite) and world text, lit by the frame's lights and shadowed by its shadow maps. Each view is a draw of everything its layers admit: keep a view cheap with its layers and `every`. Screen sprites, the UI and debug draw stay on the main frame. Of the post chain, an ldr target and a viewport carry the view's exposure (its camera's) and the frame's tone curve; an hdr target carries linear radiance before exposure, exposed by the frame that shows it. Neither runs the frame's bloom, AO, SSR, depth of field, colour grading or custom post passes, whose inputs are the main camera's. Sprites in a view are not 2D-lit and do not glow; trails and 2D fluids draw on the main frame only. Views draw lowest order first, all before the frame.
  *
  * The value of the `CameraView` component (token `og.CameraView`).
  */
@@ -18802,7 +18816,7 @@ export interface AlertDesc {
  * - `"resume"`: `resume`: release the clock.
  * - `"advance"`: `advance:<ticks>`: take fixed steps.
  * - `"quit"`: `quit`: exit.
- * - `"describe"`: `describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, the UI elements with rects and text, the camera.
+ * - `"describe"`: `describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera.
  * - `"expect"`: `expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked.
  * - `"save_scene"`: `save_scene[:path]`: write the boot scene's `.ogt` back from the world, only the lines whose values changed (comments and order kept) and the fields set or patch tuned; to the scene's source, or with a path to that file under the output directory.
  * - `"help"`: `help`: list every action the channel knows, core and registered.
@@ -19594,6 +19608,26 @@ export interface DescribedEntity {
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly occlusion: number;
+  /**
+   * The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty).
+   */
+  readonly views: readonly string[];
+}
+
+/**
+ * A secondary camera (og.CameraView, og.Mirror) and what its image shows: its own entity-id pass, from its eye and on its layers, at a quarter of its image's pixels, whatever its `every`. An entity only its layers admit (a layer the main camera leaves out) is listed here and not in Description.entities.
+ */
+export interface DescribedView {
+  /** The view entity's probe id. */
+  readonly id: string;
+  /** Its name. */
+  readonly name: string | null;
+  /** `camera` (og.CameraView) or `mirror` (og.Mirror). */
+  readonly kind: string;
+  /** The pixels its image covers: its render target's, or its viewport's rect of the frame. */
+  readonly size: PassSize;
+  /** What it shows, nearest its eye first, boxes and points in its image's pixels. */
+  readonly entities: readonly DescribedEntity[];
 }
 
 /** One UI element as describe lists it (the tree dump_ui writes). */
@@ -19672,8 +19706,12 @@ export interface Description {
   readonly pass: PassSize | null;
   /** The camera; null without a scene. */
   readonly camera: DescribedCamera | null;
-  /** The visible entities, nearest first. */
+  /**
+   * The entities the main camera shows, nearest first (each names the views that also show it).
+   */
   readonly entities: readonly DescribedEntity[];
+  /** The secondary cameras the frame draws, in its view order, each with what it shows. */
+  readonly views: readonly DescribedView[];
   /** The UI elements in draw order. */
   readonly ui: readonly DescribedUi[];
 }
@@ -21312,7 +21350,7 @@ export declare namespace og {
    * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.
    * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.
    */
-  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly ssr: FieldSpec<"bool">; readonly ssrMaxDistance: FieldSpec<"f32">; readonly ssrThickness: FieldSpec<"f32">; readonly ssrSteps: FieldSpec<"u32">; readonly ssrFade: FieldSpec<"f32">; readonly ssrIntensity: FieldSpec<"f32">; readonly custom1: FieldSpec<"Post">; readonly custom2: FieldSpec<"Post">; readonly custom3: FieldSpec<"Post">; readonly custom4: FieldSpec<"Post"> }, PostEffects>;
+  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly ssr: FieldSpec<"bool">; readonly ssrMaxDistance: FieldSpec<"f32">; readonly ssrThickness: FieldSpec<"f32">; readonly ssrSteps: FieldSpec<"u32">; readonly ssrFade: FieldSpec<"f32">; readonly ssrIntensity: FieldSpec<"f32">; readonly custom1: FieldSpec<"Post">; readonly custom2: FieldSpec<"Post">; readonly custom3: FieldSpec<"Post">; readonly custom4: FieldSpec<"Post">; readonly custom5: FieldSpec<"Post">; readonly custom6: FieldSpec<"Post">; readonly custom7: FieldSpec<"Post">; readonly custom8: FieldSpec<"Post"> }, PostEffects>;
   /**
    * Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.
    * Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised.
@@ -21341,7 +21379,7 @@ export declare namespace og {
   /**
    * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: compute on the full tier, the CPU on WebGL2, identical either way.
    */
-  const ParticleSystem: ComponentType<{ readonly emitter: FieldSpec<"ParticleEmitter">; readonly seed: FieldSpec<"u32">; readonly startTick: FieldSpec<"u32">; readonly stopTick: FieldSpec<"u32">; readonly visible: FieldSpec<"bool"> }, ParticleSystem>;
+  const ParticleSystem: ComponentType<{ readonly emitter: FieldSpec<"ParticleEmitter">; readonly seed: FieldSpec<"u32">; readonly startTick: FieldSpec<"u32">; readonly stopTick: FieldSpec<"u32">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32"> }, ParticleSystem>;
   /**
    * A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail.
    */
@@ -21373,7 +21411,7 @@ export declare namespace og {
   const Points: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly size: FieldSpec<"f32">; readonly sizeAttenuation: FieldSpec<"bool">; readonly depthTest: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32"> }, Points>;
   /**
    * A secondary camera, as a second three.js camera rendered with setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z, as og.Camera) into a render target (target), or, without one, into a rect of the frame (viewport: split-screen, picture-in-picture) over the finished image and under the UI.
-   * It draws the opaque meshes and models on its layers (skinned and with any material: hooks and full shaders run their vertex and fragment entries), the terrain and the sky, lit by the frame's lights and shadowed by its shadow maps. Transparent meshes, sprites, particles, text, lines and the post effects are the main camera's. Views draw lowest order first, all before the frame.
+   * It draws what the main camera draws, from its own eye and on its own layers: the meshes and models (skinned and with any material: hooks and full shaders run their vertex and fragment entries), opaque then transparent back to front, the terrain and the sky, the particle systems, og.Lines and og.Points, world sprites (og.Sprite, og.render.sprite) and world text, lit by the frame's lights and shadowed by its shadow maps. Each view is a draw of everything its layers admit: keep a view cheap with its layers and `every`. Screen sprites, the UI and debug draw stay on the main frame. Of the post chain, an ldr target and a viewport carry the view's exposure (its camera's) and the frame's tone curve; an hdr target carries linear radiance before exposure, exposed by the frame that shows it. Neither runs the frame's bloom, AO, SSR, depth of field, colour grading or custom post passes, whose inputs are the main camera's. Sprites in a view are not 2D-lit and do not glow; trails and 2D fluids draw on the main frame only. Views draw lowest order first, all before the frame.
    */
   const CameraView: ComponentType<{ readonly target: FieldSpec<"RenderTarget">; readonly viewportX: FieldSpec<"f32">; readonly viewportY: FieldSpec<"f32">; readonly viewportWidth: FieldSpec<"f32">; readonly viewportHeight: FieldSpec<"f32">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly exposure: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly order: FieldSpec<"i32">; readonly clear: FieldSpec<"bool">; readonly clearColor: FieldSpec<"Color">; readonly every: FieldSpec<"u32">; readonly active: FieldSpec<"bool"> }, CameraView>;
   /**
@@ -21638,7 +21676,7 @@ export declare namespace og {
      */
     function setPostParam(world: World, post: Post, name: string, value: readonly number[]): Result<void>;
     /**
-     * The custom post passes PostEffects.custom1 to custom4 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal.
+     * The custom post passes PostEffects.custom1 to custom8 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal.
      *
      * @param world The world asked.
      */
@@ -21761,7 +21799,7 @@ export declare namespace og {
      */
     function shader(world: World, path: string): Result<Shader>;
     /**
-     * A custom post pass for PostEffects.custom1 to custom4, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.
+     * A custom post pass for PostEffects.custom1 to custom8, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.
      *
      * @param world The world whose renderer owns it.
      * @param path The asset id, such as `post/crt.ogt`.

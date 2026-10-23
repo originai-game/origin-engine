@@ -1,7 +1,7 @@
 //! Render targets, secondary cameras, layers and custom post passes (depth
 //! S8): `og.render.renderTarget`, `og.CameraView`, `og.Mirror`, the
 //! `layers` masks of og.Mesh, og.Model and og.Camera, `og.load.post`,
-//! `PostEffects.custom1..4`, `og.render.setPostParam` and
+//! `PostEffects.custom1..8`, `og.render.setPostParam` and
 //! `og.render.postErrors`, onto og-render's `targets.rs`, `views.rs` and
 //! `post_custom.rs`.
 //!
@@ -20,8 +20,9 @@ use og_ecs::{Entity, QueryDesc, World};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, HashMap};
 
-/// The custom post slots of PostEffects (custom1 to custom4).
-pub(crate) const POST_SLOTS: usize = 4;
+/// The custom post slots of PostEffects (custom1 to custom8): every pass
+/// og-render runs.
+pub(crate) const POST_SLOTS: usize = og_render::MAX_CUSTOM_POSTS;
 
 /// The records extraction reads here.
 #[derive(Default)]
@@ -47,6 +48,9 @@ pub(crate) struct ViewState {
     /// Post passes by Post handle index, and the asset each came from.
     pub posts: Vec<og_render::PostHandle>,
     pub post_paths: BTreeMap<String, usize>,
+    /// The entity of each of the frame's views, by index in
+    /// `RenderScene::views` (the probe's `describe` names them).
+    pub entities: Vec<u64>,
 }
 
 // ── og.render.renderTarget ──────────────────────────────────────────────────
@@ -111,15 +115,13 @@ fn max_target_size(rs: &RenderState) -> u32 {
 
 /// RenderCapabilities' members of this module.
 pub(crate) fn capabilities(rs: &RenderState) -> Value {
-    let full = rs
-        .backend
-        .as_ref()
-        .and_then(|b| b.info())
-        .is_some_and(|i| i.tier == og_render::Tier::Full);
+    // Every tier draws a target's depth (og-render views.rs: from the
+    // view's linear depth prepass, which WebGL2 reads too).
+    let renderer = rs.backend.as_ref().and_then(|b| b.info()).is_some();
     json!({
-        "renderTargetDepth": full,
+        "renderTargetDepth": renderer,
         "maxRenderTargetSize": max_target_size(rs),
-        "maxCustomPosts": POST_SLOTS.min(og_render::MAX_CUSTOM_POSTS),
+        "maxCustomPosts": POST_SLOTS,
     })
 }
 
@@ -299,6 +301,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
 
     // Views.
     scene.views.clear();
+    rs.views.entities.clear();
     let targets = &rs.views.targets;
     let target = |v: &Value| index(&v["target"]).and_then(|i| targets.get(i).copied());
     for (e, v) in sorted_rows(world, rs.draw.views.camera_view.as_ref()) {
@@ -324,6 +327,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
             every: every(&v),
             mirror: None,
         });
+        rs.views.entities.push(e);
     }
     for (e, v) in sorted_rows(world, rs.draw.views.mirror.as_ref()) {
         if !on(&v, "active", true) {
@@ -345,9 +349,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
                 height: f(&v, "height", 1.0),
             }),
         });
+        rs.views.entities.push(e);
     }
 
-    // PostEffects.custom1..4, in order, the slots left 0 skipped.
+    // PostEffects.custom1..8, in order, the slots left 0 skipped.
     scene.custom_post.clear();
     if let Some(p) = resource(world, rs.draw.fx.post.as_ref()) {
         for k in 1..=POST_SLOTS {

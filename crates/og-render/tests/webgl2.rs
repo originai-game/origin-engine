@@ -161,3 +161,19 @@ fn the_shadow_and_antialiasing_shaders_translate_to_glsl_es_300() {
         .collect();
     assert!(failures.is_empty(), "{failures:#?}");
 }
+
+/// A render target's depth texture on WebGL2 (views.rs): its resolve reads
+/// the view's linear-depth prepass, a colour target, so the GL tier
+/// compiles it and it translates (a depth buffer, multisampled as WebGL2's
+/// MSAA makes it, has no GLSL ES 3.0 load).
+#[test]
+fn a_targets_depth_resolve_is_the_gl_tiers_and_translates() {
+    let sources = og_render::shader_sources(false);
+    let resolve = sources
+        .iter()
+        .find(|s| s.label == "view resolve depth")
+        .expect("the GL tier compiles the view depth resolve");
+    assert!(resolve.gl);
+    let failures = webgl2_failures(&resolve.label, &resolve.wgsl);
+    assert!(failures.is_empty(), "{failures:#?}");
+}

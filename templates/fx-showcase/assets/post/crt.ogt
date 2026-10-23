@@ -1,7 +1,7 @@
 type post
 version 1
 ---
-# A CRT monitor over the finished lit image (PostEffects.custom1): the
+# A CRT monitor over the finished lit image (PostEffects.custom8): the
 # screen bulges, scanlines and an RGB shadow mask cross it, and its rounded
 # corners darken. crt.wgsl reads the pass before it with previous(uv).
 source "post/crt.wgsl"

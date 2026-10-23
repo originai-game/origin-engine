@@ -25,41 +25,27 @@ impl Probe {
     /// `pass` and `camera` are null.
     pub fn describe(&mut self, world: &World) -> Value {
         let seen = self.scene_view.as_mut().and_then(|v| v.seen(world));
-        let mut entities: Vec<(f32, String, Value)> = Vec::new();
+        let mut entities = Vec::new();
+        let mut views = Vec::new();
         if let Some(seen) = &seen {
-            for s in &seen.entities {
-                let id = self.names.id_of(world, s.entity);
-                let archetype: Vec<String> = world
-                    .components_of(s.entity)
-                    .unwrap_or_default()
-                    .into_iter()
-                    .filter_map(|c| world.schema(c).ok().map(|schema| schema.name.clone()))
-                    .collect();
-                let value = json!({
+            // Each secondary camera's entities, and per entity the views
+            // that show it.
+            let mut shows: Vec<(og_ecs::Entity, String)> = Vec::new();
+            for v in &seen.views {
+                let id = self.names.id_of(world, v.entity);
+                for s in &v.entities {
+                    shows.push((s.entity, id.clone()));
+                }
+                views.push(json!({
                     "id": id,
-                    "name": self.names.name_of(world, s.entity),
-                    "order": 0,
-                    "archetype": archetype,
-                    "labels": s.labels,
-                    "box": rect(s.rect),
-                    "drawn": rect(s.drawn),
-                    "point": {"x": round(s.point[0], 2), "y": round(s.point[1], 2)},
-                    "depth": round(s.depth, 4),
-                    "coverage": round(s.coverage, 5),
-                    "occlusion": round(s.occlusion, 4),
-                });
-                entities.push((s.depth, id, value));
+                    "name": self.names.name_of(world, v.entity),
+                    "kind": if v.mirror { "mirror" } else { "camera" },
+                    "size": {"width": v.size.0, "height": v.size.1},
+                    "entities": self.shown_entities(world, &v.entities, &[]),
+                }));
             }
+            entities = self.shown_entities(world, &seen.entities, &shows);
         }
-        entities.sort_by(|a, b| a.0.total_cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
-        let entities: Vec<Value> = entities
-            .into_iter()
-            .enumerate()
-            .map(|(order, (_, _, mut v))| {
-                v["order"] = json!(order);
-                v
-            })
-            .collect();
         let ui: Vec<Value> = self
             .ui
             .as_ref()
@@ -90,7 +76,58 @@ impl Probe {
             "pass": seen.as_ref().map(|s| json!({"width": s.pass.0, "height": s.pass.1})),
             "camera": seen.as_ref().map_or(Value::Null, |s| s.camera.clone()),
             "entities": entities,
+            "views": views,
             "ui": ui,
         })
+    }
+
+    /// `shown` as described entities, nearest first (`order` 0), then by
+    /// id; each names the views (`shows`: entity, view id) it shows in.
+    fn shown_entities(
+        &mut self,
+        world: &World,
+        shown: &[crate::Shown],
+        shows: &[(og_ecs::Entity, String)],
+    ) -> Vec<Value> {
+        let mut entities: Vec<(f32, String, Value)> = Vec::new();
+        for s in shown {
+            let id = self.names.id_of(world, s.entity);
+            let archetype: Vec<String> = world
+                .components_of(s.entity)
+                .unwrap_or_default()
+                .into_iter()
+                .filter_map(|c| world.schema(c).ok().map(|schema| schema.name.clone()))
+                .collect();
+            let mut in_views: Vec<&str> = shows
+                .iter()
+                .filter(|(e, _)| *e == s.entity)
+                .map(|(_, v)| v.as_str())
+                .collect();
+            in_views.dedup();
+            let value = json!({
+                "id": id,
+                "name": self.names.name_of(world, s.entity),
+                "order": 0,
+                "archetype": archetype,
+                "labels": s.labels,
+                "box": rect(s.rect),
+                "drawn": rect(s.drawn),
+                "point": {"x": round(s.point[0], 2), "y": round(s.point[1], 2)},
+                "depth": round(s.depth, 4),
+                "coverage": round(s.coverage, 5),
+                "occlusion": round(s.occlusion, 4),
+                "views": in_views,
+            });
+            entities.push((s.depth, id, value));
+        }
+        entities.sort_by(|a, b| a.0.total_cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+        entities
+            .into_iter()
+            .enumerate()
+            .map(|(order, (_, _, mut v))| {
+                v["order"] = json!(order);
+                v
+            })
+            .collect()
     }
 }

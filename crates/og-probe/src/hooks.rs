@@ -122,6 +122,24 @@ pub struct Seen {
     pub camera: Value,
     /// Every entity with a visible pixel, any order (`describe` sorts them).
     pub entities: Vec<Shown>,
+    /// The secondary cameras (og.CameraView, og.Mirror), each with what its
+    /// own id pass shows on its layers, in the frame's view order.
+    pub views: Vec<SeenView>,
+}
+
+/// One secondary camera's view of the frame (`describe`; IDL
+/// `probe.DescribedView`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct SeenView {
+    /// The og.CameraView or og.Mirror entity.
+    pub entity: Entity,
+    /// An og.Mirror (else an og.CameraView).
+    pub mirror: bool,
+    /// The pixels its image covers: its target's, or its viewport's rect.
+    pub size: (u32, u32),
+    /// Every entity with a visible pixel in it; screen values in the
+    /// image's pixels.
+    pub entities: Vec<Shown>,
 }
 
 /// The frame described as data and points resolved to entities, over the

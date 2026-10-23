@@ -2150,8 +2150,9 @@ default) or `hdr`:
   `color` is black.
 
 `depth: true` also keeps the view's linear depth, from near (0) to far
-(1). It is drawn on the full tier only: `RenderCapabilities.renderTargetDepth`
-is false on WebGL2, where the depth texture stays 0.
+(1), of its opaque meshes, on every tier, WebGL2 included. It costs a
+second draw of the view's opaque meshes, so ask for it only when a
+material reads it.
 `RenderCapabilities.maxRenderTargetSize` is the largest side.
 
 **A second camera.** `og.CameraView` on an entity is a camera with
@@ -2172,11 +2173,21 @@ world.insert(p2, og.CameraView, { viewportX: 0.5, viewportWidth: 0.5 });
 - `clear` with `clearColor` replaces the sky or background colour.
 - `active: false` stops it.
 
-A view draws the opaque meshes and models (skinned meshes and custom
-shaders included), the terrain and the sky, lit and shadowed by the
-frame's lights. Transparent meshes, sprites, particles, text, lines and
-post effects are the main camera's only. A viewport view draws over the
-finished image and under the UI.
+A view draws what the main camera draws, from its own eye and on its own
+`layers`: meshes and models (skinned meshes and custom shaders included),
+opaque then transparent back to front, the terrain and the sky, particle
+systems, og.Lines and og.Points, and world sprites and text, lit and
+shadowed by the frame's lights. Each view is a second draw of everything
+its layers admit, so keep it cheap with `layers` and `every`.
+- An `ldr` target and a viewport are exposed with the view's `exposure`
+  and tone mapped with the frame's curve. An `hdr` target holds linear
+  radiance and is exposed by the frame that shows it.
+- Bloom, AO, SSR, depth of field, colour grading and custom post passes
+  run on the main frame only.
+- In a view, sprites are not 2D-lit and do not glow. Trails, 2D fluids,
+  screen sprites, the UI and debug draw stay on the main frame.
+
+A viewport view draws over the finished image and under the UI.
 
 **A mirror.** Put `og.Mirror` on the glass's entity. It reflects the main
 camera in the entity's xy plane (its +Z faces the room) and fits the image
@@ -2188,8 +2199,9 @@ world.insert(glass, og.Mesh, { geometry: must(og.render.planeGeometry(world, { w
 world.insert(glass, og.Mirror, { target: rt.target, width: 4, height: 2.4 });
 ```
 
-**Layers.** `layers` on og.Mesh, og.Model, og.Sprite, og.Lines, og.Points
-and og.Camera (and on og.CameraView and og.Mirror) is a three.js bit mask:
+**Layers.** `layers` on og.Mesh, og.Model, og.Sprite, og.ParticleSystem,
+og.Lines, og.Points and og.Camera (and on og.CameraView and og.Mirror) is a
+three.js bit mask:
 bit n is layer n, and the default 1 is layer 0. A camera draws an object
 when `object.layers & camera.layers` is not 0. `og.render.raycast`'s
 `layers` uses the same test. Some uses:
@@ -2199,6 +2211,13 @@ when `object.layers & camera.layers` is not 0. `og.render.raycast`'s
 
 Shadow maps take every caster whatever its layers, so a hidden object
 still casts a shadow. Give it `castShadow: false` if it should not.
+
+The probe's `describe` lists what the main camera shows, and each
+og.CameraView and og.Mirror under `views` with what its own image shows,
+on its layers. An entity on a layer only a view sees is found under that
+view, not in `entities`. A main-camera entity names the views that also
+show it in its `views`. `pick` and `expect:entity:...:within` read the
+main camera.
 
 **Full custom shaders.** `mode full lit` (or `mode full unlit`) in a `type
 shader` asset replaces the lit shader's stages with your own entries:
@@ -2233,9 +2252,11 @@ with up to eight `param` lines. The function reads:
 
 It returns linear HDR. To use one:
 1. Load it with `og.load.post(world, "post/crt.ogt")`.
-2. Put the handle in `PostEffects.custom1` to `custom4`. They run in that
-   order, after depth of field and motion blur and before exposure, bloom
-   and tone mapping.
+2. Put the handle in `PostEffects.custom1` to `custom8`
+   (`RenderCapabilities.maxCustomPosts` is 8). They run in that order, a
+   slot left 0 skipped, each over the one before it, after depth of field
+   and motion blur and before exposure, bloom and tone mapping. There is
+   no `custom` list: a resource's fields hold one value each.
 3. Set its parameters with `og.render.setPostParam(world, post, "curve",
    [0.1])`.
 

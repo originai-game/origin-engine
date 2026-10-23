@@ -216,6 +216,8 @@ pub(crate) struct ExtraSprite {
     pub glow: f32,
     pub soft: bool,
     pub array: Option<(TextureArrayHandle, u32)>,
+    /// Its system's three.js layer mask ([`RenderScene::particle_layers`]).
+    pub layers: u32,
 }
 
 /// Sprites drawn from texture arrays, by sprite index (the last entry for
@@ -394,7 +396,10 @@ fn tile_instances(
 /// not uploaded or removed); `lit` says which layers 2D lighting applies
 /// to; `view` culls tile chunks (orthographic cameras). A sprite or
 /// particle drawn from an array ([`RenderScene::sprite_arrays`]) joins its
-/// array's run, and the glow pass by array when it glows.
+/// array's run, and the glow pass by array when it glows. `mask` is the
+/// camera's three.js layer mask: a world sprite or 2D particle whose own
+/// ([`RenderScene::sprite_layers`], [`ExtraSprite::layers`]) shares no bit
+/// with it is left out, with its shadow and glow (`views.rs`).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build<'a>(
     scene: &RenderScene,
@@ -405,6 +410,7 @@ pub(crate) fn build<'a>(
     lit: impl Fn(i32) -> bool,
     view: Option<ViewRect>,
     strips: &[LayeredStrip],
+    mask: u32,
 ) -> Result<SpriteFrame, RenderError> {
     // Per-sprite effects by index (the last entry for an index wins).
     let mut fx: HashMap<u32, &crate::SpriteFx> = HashMap::new();
@@ -464,6 +470,9 @@ pub(crate) fn build<'a>(
                 "sprite {i}: texture {}",
                 t.index()
             )));
+        }
+        if crate::views::layer_of(&scene.sprite_layers, i) & mask == 0 {
+            continue;
         }
         let found = if fx.is_empty() {
             None
@@ -543,7 +552,7 @@ pub(crate) fn build<'a>(
             inst,
         ));
     }
-    for e in extra {
+    for e in extra.iter().filter(|e| e.layers & mask != 0) {
         let s = &e.sprite;
         let mut inst = sprite_instance(s, [1.0, 1.0, 1.0, 0.0], e.glow, lit(s.layer), e.soft);
         let array = match e.array {
@@ -772,7 +781,7 @@ mod tests {
     use glam::Vec3;
 
     fn frame(scene: &RenderScene) -> SpriteFrame {
-        build(scene, |_| None, 0, |_| None, &[], |_| false, None, &[]).expect("a frame")
+        build(scene, |_| None, 0, |_| None, &[], |_| false, None, &[], 1).expect("a frame")
     }
 
     #[test]
@@ -807,7 +816,7 @@ mod tests {
         scene.light.direction_to_light = Vec3::new(0.0, -1.0, 0.0);
         assert_eq!(frame(&scene).instances.len(), 3);
         scene.sprite_shadows[0].sprite = 3;
-        assert!(build(&scene, |_| None, 0, |_| None, &[], |_| false, None, &[]).is_err());
+        assert!(build(&scene, |_| None, 0, |_| None, &[], |_| false, None, &[], 1).is_err());
     }
 
     #[test]
@@ -1000,7 +1009,7 @@ mod tests {
         assert_eq!((f.runs[2].first, f.runs[2].count), (2, 1));
         // An index past its vertices is refused.
         scene.sprite_meshes[0].indices[5] = 9;
-        assert!(build(&scene, |_| None, 0, |_| None, &[], |_| false, None, &[]).is_err());
+        assert!(build(&scene, |_| None, 0, |_| None, &[], |_| false, None, &[], 1).is_err());
     }
 
     #[test]

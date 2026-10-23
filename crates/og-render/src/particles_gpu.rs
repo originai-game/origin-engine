@@ -214,6 +214,8 @@ pub(crate) struct FrameSystem {
     pub texture: Option<crate::TextureHandle>,
     /// View depth of the emitter (draw order: far first).
     depth: f32,
+    /// Its three.js layer mask ([`RenderScene::particle_layers`]).
+    pub layers: u32,
 }
 
 /// What the frame's particles need from the rest of the renderer.
@@ -404,6 +406,7 @@ impl ParticleRenderer {
         let mut out = ParticleFrame::default();
         let mut entries: Vec<EmitterGpu> = Vec::new();
         for (i, sys) in scene.particles.iter().enumerate() {
+            let layers = crate::views::layer_of(&scene.particle_layers, i);
             let e = scene.emitters().get(sys.emitter.index()).ok_or_else(|| {
                 RenderError::InvalidHandle(format!(
                     "particle system {i}: emitter {}",
@@ -495,7 +498,14 @@ impl ParticleRenderer {
                 };
                 out.ticks += state.cpu.advance(e, sys, tick_rate, points, &[]);
                 out.cpu_alive += state.cpu.alive() as u32;
-                push_sprites(e, sys, &state.cpu.slots, layer, array, &mut out.sprites);
+                push_sprites(
+                    e,
+                    sys,
+                    &state.cpu.slots,
+                    (layer, layers),
+                    array,
+                    &mut out.sprites,
+                );
                 continue;
             }
             let depth = (sys.transform.w_axis.truncate() - eye).dot(forward);
@@ -562,6 +572,7 @@ impl ParticleRenderer {
                     blend: e.blend,
                     texture: e.texture,
                     depth,
+                    layers,
                 });
             } else {
                 out.ticks += state.cpu.advance(e, sys, tick_rate, points, colliders);
@@ -595,6 +606,7 @@ impl ParticleRenderer {
                     blend: e.blend,
                     texture: e.texture,
                     depth,
+                    layers,
                 });
             }
         }
@@ -698,8 +710,20 @@ impl ParticleRenderer {
         }
     }
 
-    /// The draw bind group (emitter entries, view, scene depth).
+    /// The draw bind group (emitter entries, view, scene depth): the main
+    /// camera's view buffer.
     pub fn draw_group(&self, device: &wgpu::Device, depth: &wgpu::TextureView) -> wgpu::BindGroup {
+        self.draw_group_of(device, &self.view_buffer, depth)
+    }
+
+    /// The draw bind group of a camera whose [`ParticleViewGpu`] is in
+    /// `view` (a secondary camera's, `views.rs`).
+    pub fn draw_group_of(
+        &self,
+        device: &wgpu::Device,
+        view: &wgpu::Buffer,
+        depth: &wgpu::TextureView,
+    ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("particle draw"),
             layout: &self.draw_layout,
@@ -714,7 +738,7 @@ impl ParticleRenderer {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: self.view_buffer.as_entire_binding(),
+                    resource: view.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
@@ -768,17 +792,20 @@ impl ParticleRenderer {
         let _ = HDR_FORMAT;
     }
 
-    /// Draws the frame's billboard systems, far to near. Returns the draws.
+    /// Draws the frame's billboard systems on a camera's layers (`mask`),
+    /// far to near. Returns the draws.
+    #[allow(clippy::too_many_arguments)]
     pub fn draw<'b>(
         &self,
         pass: &mut wgpu::RenderPass<'_>,
         frame: &ParticleFrame,
         samples: u32,
         group: &wgpu::BindGroup,
+        mask: u32,
         texture_group: impl Fn(Option<crate::TextureHandle>) -> &'b wgpu::BindGroup,
     ) -> u32 {
         let mut draws = 0;
-        for s in &frame.systems {
+        for s in frame.systems.iter().filter(|s| s.layers & mask != 0) {
             let Some(state) = self.systems.get(&s.id) else {
                 continue;
             };
@@ -838,7 +865,7 @@ fn push_sprites(
     e: &ParticleEmitter,
     sys: &ParticleSystem,
     slots: &[ParticleState],
-    layer: i32,
+    (layer, layers): (i32, u32),
     array: Option<(crate::TextureArrayHandle, u32)>,
     out: &mut Vec<ExtraSprite>,
 ) {
@@ -884,6 +911,7 @@ fn push_sprites(
             glow: e.glow,
             soft,
             array: array.map(|(a, _)| (a, frame)),
+            layers,
         });
     }
 }

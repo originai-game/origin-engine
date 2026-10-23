@@ -94,18 +94,9 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
         "custom post (crt)",
         crate::post_custom::post_module_source(&crate::post_custom::example_crt()),
     );
-    // A target's depth texture is the full tier's (RenderCapabilities
-    // reports it): GLSL ES 3.0 cannot load from a depth texture.
-    if full {
-        add(
-            "view resolve depth",
-            crate::views::resolve_depth_source(false),
-        );
-        add(
-            "view resolve depth (msaa)",
-            crate::views::resolve_depth_source(true),
-        );
-    }
+    // A target's depth texture, on every tier: from the view's linear
+    // depth prepass, a colour target GLSL ES 3.0 loads.
+    add("view resolve depth", crate::views::resolve_depth_source());
     add("lines", crate::lines::LINES_WGSL.to_string());
     add("sky", format!("{}{}", crate::FRAME_WGSL, crate::SKY_WGSL));
     add(

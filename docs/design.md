@@ -320,9 +320,14 @@ next frame, so a target drawn every few ticks never shows the cut run.
 - `ldr` (Rgba8 sRGB) holds the view's finished image.
 - `hdr` (Rgba16Float) holds its linear radiance. The frame that shows it
   exposes it, so a mirror matches the room.
-- The depth texture is drawn on the full tier only, because GLSL ES cannot
-  load a depth buffer. `RenderCapabilities.renderTargetDepth` reports
-  this; the member is never missing.
+- The depth texture is drawn on every tier. GLSL ES 3.0 cannot load a
+  depth buffer (a multisampled one least of all), so the depth never comes
+  from the view's depth buffer: the view draws its opaque meshes, skinned
+  meshes and terrain again through the prepass pipelines into a
+  single-sampled linear-depth colour target (RG32F, as the main
+  prepass's `lindepth`), and the resolve normalises it from near to far.
+  One path on every tier, so the native gfx tests run what WebGL2 runs.
+  `RenderCapabilities.renderTargetDepth` is true with a renderer.
 
 **Views.** A view (`views.rs`, `og.CameraView`, `og.Mirror`) is a
 secondary camera. Each is a timed graph pass, `view-<i>`, drawn before the
@@ -334,22 +339,42 @@ main pass in `order`, so a target shows this frame's image. Each view has:
   tone mapped for ldr, and copied linear for hdr. A viewport rect draws
   after the post chain, under lines, the overlay and the UI.
 
-A view draws the opaque instances, skinned instances, terrain and sky,
-with the frame's shadow maps. Transparents, sprites, particles, text and
-post effects belong to the main camera. A frame with views culls on the
-CPU, because GPU culling builds one camera's draw list.
+A view draws what the main pass draws, from its eye and on its layers:
+opaque and transparent instances (sorted from its eye), skinned
+instances, terrain, sky, particles (billboards facing its camera, through
+its own `ParticleViewGpu`), scene lines and points (its own
+`LineUniform`) and world sprites and text (`sprites::build` once per view
+with its mask, the instances appended after the main camera's). The
+main camera's screen-space inputs stay its own: a view's sprites are not
+2D-lit and do not glow, its soft particles do not fade into depth, and
+trails (built facing the main eye), 2D fluids, screen sprites, the UI and
+the post chain are the main frame's. Of the post chain an `ldr` target or
+a viewport carries exposure and the tone curve (the resolve); an `hdr`
+target carries linear radiance for the frame that shows it to expose.
+The cost is explicit: a view draws everything its mask admits, so its
+`layers` and `every` are the knobs. Views cull on the CPU while the
+main camera, its shadow maps and the planar reflection keep GPU culling
+(`cull_gpu.rs`): under it a view's list appends every instance it draws
+to the instance buffer, since the sorted instances live in the culling's
+buffer, and the GPU passes test each batch's layer mask as the CPU lists
+do.
 - `every` skips ticks.
 - A mirror reflects the main eye in its plane. It draws through an
   off-axis frustum fitted to the quad's corners (Kooima), with the near
   plane on the glass.
-- The id pass (`id_pass.rs`) and the probe always describe the main
-  camera.
+- The id pass (`id_pass.rs`) draws from any camera on its layers
+  (`render_ids_from`, `view_id_cameras`). The probe's `describe` lists the
+  main camera's entities, each naming the views that also show it
+  (`views`), and each view with what its own pass shows (§3.4).
 
 **Layers.** Layers are three.js masks: bit n is layer n, everything
 defaults to 1, and a camera draws an object when `a & b != 0`.
 `RenderScene::instance_layers` and `skinned_layers` split runs and batches
-by mask. og-runtime fills them from og.Mesh and og.Model `layers`, and
-filters sprites, lines and points against og.Camera's mask.
+by mask; `sprite_layers`, `line_layers`, `point_layers` and
+`particle_layers` carry the other drawables' masks, and every camera (the
+main one with `camera_layers`, each view with its own) tests them in the
+renderer. og-runtime fills them from the `layers` of og.Mesh, og.Model,
+og.Sprite, og.Lines, og.Points and og.ParticleSystem.
 `og.render.raycast` makes the same test against the same per-entity masks.
 Shadow maps take every caster.
 
@@ -371,8 +396,10 @@ entry, and cut by its alpha. The cook validates each tier's modules
 **Custom post passes.** A `type post` asset (`post_custom.rs`, an
 og.PostPass blob) is a WGSL `post` function. It reads the previous pass,
 the lit image, the prepass's depth and normals, and its parameters.
-`PostEffects.custom1..4` names up to four passes, which run as
-`custom-post.<i>` after motion blur and before exposure, bloom and the
+`PostEffects.custom1..8` names up to eight passes (og-render's
+`MAX_CUSTOM_POSTS`, `RenderCapabilities.maxCustomPosts`; numbered fields,
+as a reflected record holds one value per field), which run in slot
+order, a slot left 0 skipped, as `custom-post.<i>` after motion blur and before exposure, bloom and the
 tone curve. Each pass compiles in an error scope. One the device refuses
 is skipped and reported (`og.render.postErrors`); the frame draws as if
 the pass were absent.
@@ -791,6 +818,15 @@ reading pixels:
   without a GPU describes the same frame. `pick` answers from the same pass
   when the game has no picker, so a box `describe` gives contains the point
   `pick` names.
+- **What the secondary cameras show.** The id pass runs again for each
+  og.CameraView and og.Mirror, from its eye and on its layers, at a
+  quarter of its image's pixels. `describe` lists the views (`views`: id,
+  kind, image size and its entities, boxes in the image's pixels), and
+  every main-camera entity names the views that also show it (its
+  `views`). An entity on a layer only a view admits is invisible to the
+  main pass and `pick`, and is found under its view: describe reports
+  visibility per camera, never a merge. `expect:entity:...:within` and
+  `pick` read the main camera.
 - **Expectations.** `expect` operations run as actions (`expect:<op>`) and
   as a probe program step, and are evaluated at their tick:
   `entity:<id>:within:x,y,w,h` (its described box inside a screen box) or

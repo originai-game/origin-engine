@@ -3554,7 +3554,7 @@
         },
         {
           "name": "postErrors",
-          "doc": "The custom post passes PostEffects.custom1 to custom4 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal.",
+          "doc": "The custom post passes PostEffects.custom1 to custom8 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal.",
           "params": [
             {
               "name": "world",
@@ -3862,7 +3862,7 @@
         },
         {
           "name": "post",
-          "doc": "A custom post pass for PostEffects.custom1 to custom4, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.",
+          "doc": "A custom post pass for PostEffects.custom1 to custom8, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.",
           "params": [
             {
               "name": "world",
@@ -9321,6 +9321,7 @@
         "ScreenBox",
         "ScreenPoint",
         "DescribedEntity",
+        "DescribedView",
         "DescribedUi",
         "DescribedCamera",
         "PassSize",
@@ -13071,7 +13072,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Three.js layers, as Camera.layers.mask: the frame draws the meshes, models and world sprites whose layers share a bit with it. 1 (layer 0) by default, as every object's.",
+          "description": "Three.js layers, as Camera.layers.mask: the frame draws the meshes, models, world sprites, particle systems, lines and points whose layers share a bit with it. 1 (layer 0) by default, as every object's.",
           "default": 1
         }
       },
@@ -15078,7 +15079,7 @@
         },
         "custom1": {
           "$ref": "#/$defs/Post",
-          "description": "The first custom post pass (og.load.post, a `type post` asset; 0 is none). PostEffects.custom1 to custom4 are an ordered list: each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (it turns the prepass on). Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped.",
+          "description": "The first custom post pass (og.load.post, a `type post` asset; 0 is none). PostEffects.custom1 to custom8 are an ordered list, as many as og-render runs (RenderCapabilities.maxCustomPosts): each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (it turns the prepass on). Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped.",
           "default": 0
         },
         "custom2": {
@@ -15094,6 +15095,26 @@
         "custom4": {
           "$ref": "#/$defs/Post",
           "description": "The fourth custom post pass.",
+          "default": 0
+        },
+        "custom5": {
+          "$ref": "#/$defs/Post",
+          "description": "The fifth custom post pass.",
+          "default": 0
+        },
+        "custom6": {
+          "$ref": "#/$defs/Post",
+          "description": "The sixth custom post pass.",
+          "default": 0
+        },
+        "custom7": {
+          "$ref": "#/$defs/Post",
+          "description": "The seventh custom post pass.",
+          "default": 0
+        },
+        "custom8": {
+          "$ref": "#/$defs/Post",
+          "description": "The eighth and last custom post pass, over every one before it.",
           "default": 0
         }
       },
@@ -15881,6 +15902,13 @@
           "type": "boolean",
           "description": "Whether it is drawn (a hidden system loses its particles).",
           "default": true
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Three.js layers, as Mesh.layers: its particles (billboards and 2D sprite particles alike) are drawn by the cameras whose masks share a bit with it (og.Camera, og.CameraView, og.Mirror).",
+          "default": 1
         }
       },
       "additionalProperties": false
@@ -17124,7 +17152,7 @@
         },
         "renderTargetDepth": {
           "type": "boolean",
-          "description": "Whether a render target made with `depth` gets its view's depth drawn (the full tier). WebGL2 cannot read a depth buffer in a shader: there the depth texture stays cleared to 0, and every other part of the target draws."
+          "description": "Whether a render target made with `depth` gets its view's depth drawn: true on every tier with a renderer (WebGPU, Vulkan, Metal and WebGL2 alike), false without one. The depth comes from the view's own depth prepass of its opaque meshes into a linear-depth colour target, never from its depth buffer, which WebGL2 cannot read in a shader."
         },
         "maxRenderTargetSize": {
           "type": "integer",
@@ -17136,7 +17164,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The most custom post passes a frame runs (PostEffects.custom1 to custom4 on every tier)."
+          "description": "The most custom post passes a frame runs: 8 on every tier, PostEffects.custom1 to custom8 (numbered fields, as a reflected record has no list field)."
         },
         "volumetricFog": {
           "$ref": "#/$defs/VolumetricFog",
@@ -17953,7 +17981,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Three.js layers, as Mesh.layers: drawn by the main camera when its mask shares a bit (secondary cameras do not draw lines).",
+          "description": "Three.js layers, as Mesh.layers: drawn by every camera whose mask shares a bit with it (og.Camera, og.CameraView, og.Mirror).",
           "default": 1
         }
       },
@@ -18013,7 +18041,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Three.js layers, as Mesh.layers: drawn by the main camera when its mask shares a bit (secondary cameras do not draw points).",
+          "description": "Three.js layers, as Mesh.layers: drawn by every camera whose mask shares a bit with it (og.Camera, og.CameraView, og.Mirror).",
           "default": 1
         }
       },
@@ -18152,7 +18180,7 @@
         },
         "depth": {
           "type": "boolean",
-          "description": "Keep the view's depth too, as a second texture (RenderTargetInfo.depthTexture): its linear view depth from near (0) to far (1) in red, green and blue. Drawn on the full tier (RenderCapabilities.renderTargetDepth).",
+          "description": "Keep the view's depth too, as a second texture (RenderTargetInfo.depthTexture): its linear view depth from near (0) to far (1) in red, green and blue, of the opaque meshes and models, alpha-cut ones cut (transparent meshes, sprites and particles write none), drawn on every tier (RenderCapabilities.renderTargetDepth). It costs a second draw of the view's opaque meshes.",
           "default": false
         }
       },
@@ -18201,7 +18229,7 @@
     "CameraView": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "A secondary camera, as a second three.js camera rendered with setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z, as og.Camera) into a render target (target), or, without one, into a rect of the frame (viewport: split-screen, picture-in-picture) over the finished image and under the UI.\nIt draws the opaque meshes and models on its layers (skinned and with any material: hooks and full shaders run their vertex and fragment entries), the terrain and the sky, lit by the frame's lights and shadowed by its shadow maps. Transparent meshes, sprites, particles, text, lines and the post effects are the main camera's. Views draw lowest order first, all before the frame.",
+      "description": "A secondary camera, as a second three.js camera rendered with setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z, as og.Camera) into a render target (target), or, without one, into a rect of the frame (viewport: split-screen, picture-in-picture) over the finished image and under the UI.\nIt draws what the main camera draws, from its own eye and on its own layers: the meshes and models (skinned and with any material: hooks and full shaders run their vertex and fragment entries), opaque then transparent back to front, the terrain and the sky, the particle systems, og.Lines and og.Points, world sprites (og.Sprite, og.render.sprite) and world text, lit by the frame's lights and shadowed by its shadow maps. Each view is a draw of everything its layers admit: keep a view cheap with its layers and `every`. Screen sprites, the UI and debug draw stay on the main frame. Of the post chain, an ldr target and a viewport carry the view's exposure (its camera's) and the frame's tone curve; an hdr target carries linear radiance before exposure, exposed by the frame that shows it. Neither runs the frame's bloom, AO, SSR, depth of field, colour grading or custom post passes, whose inputs are the main camera's. Sprites in a view are not 2D-lit and do not glow; trails and 2D fluids draw on the main frame only. Views draw lowest order first, all before the frame.",
       "type": "object",
       "properties": {
         "target": {
@@ -32645,7 +32673,7 @@
         "resume": "`resume`: release the clock.",
         "advance": "`advance:<ticks>`: take fixed steps.",
         "quit": "`quit`: exit.",
-        "describe": "`describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, the UI elements with rects and text, the camera.",
+        "describe": "`describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera.",
         "expect": "`expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked.",
         "save_scene": "`save_scene[:path]`: write the boot scene's `.ogt` back from the world, only the lines whose values changed (comments and order kept) and the fields set or patch tuned; to the scene's source, or with a path to that file under the output directory.",
         "help": "`help`: list every action the channel knows, core and registered."
@@ -34513,6 +34541,13 @@
           "type": "number",
           "description": "The share of what it covers alone that something else hides.",
           "x-og-unit": "ratio"
+        },
+        "views": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty)."
         }
       },
       "required": [
@@ -34526,7 +34561,54 @@
         "point",
         "depth",
         "coverage",
-        "occlusion"
+        "occlusion",
+        "views"
+      ],
+      "additionalProperties": false
+    },
+    "DescribedView": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "A secondary camera (og.CameraView, og.Mirror) and what its image shows: its own entity-id pass, from its eye and on its layers, at a quarter of its image's pixels, whatever its `every`. An entity only its layers admit (a layer the main camera leaves out) is listed here and not in Description.entities.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The view entity's probe id."
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its name."
+        },
+        "kind": {
+          "type": "string",
+          "description": "`camera` (og.CameraView) or `mirror` (og.Mirror)."
+        },
+        "size": {
+          "$ref": "#/$defs/PassSize",
+          "description": "The pixels its image covers: its render target's, or its viewport's rect of the frame."
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DescribedEntity"
+          },
+          "description": "What it shows, nearest its eye first, boxes and points in its image's pixels."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "size",
+        "entities"
       ],
       "additionalProperties": false
     },
@@ -34743,7 +34825,14 @@
           "items": {
             "$ref": "#/$defs/DescribedEntity"
           },
-          "description": "The visible entities, nearest first."
+          "description": "The entities the main camera shows, nearest first (each names the views that also show it)."
+        },
+        "views": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DescribedView"
+          },
+          "description": "The secondary cameras the frame draws, in its view order, each with what it shows."
         },
         "ui": {
           "type": "array",
@@ -34759,6 +34848,7 @@
         "pass",
         "camera",
         "entities",
+        "views",
         "ui"
       ],
       "additionalProperties": false

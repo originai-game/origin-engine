@@ -119,7 +119,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1156 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1157 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -244,6 +244,7 @@ Field units the docs and Tune use.
 | [`DescribedCamera`](probe.md#type-DescribedCamera) | struct | probe | — |
 | [`DescribedEntity`](probe.md#type-DescribedEntity) | struct | probe | — |
 | [`DescribedUi`](probe.md#type-DescribedUi) | struct | probe | — |
+| [`DescribedView`](probe.md#type-DescribedView) | struct | probe | — |
 | [`Description`](probe.md#type-Description) | struct | probe | — |
 | [`DesyncDump`](probe.md#type-DesyncDump) | struct | probe | — |
 | [`DialogueDesc`](ui.md#type-DialogueDesc) | desc struct | ui | — |

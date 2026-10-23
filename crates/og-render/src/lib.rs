@@ -131,7 +131,10 @@ pub use hooks::{
     MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderMode, ShaderParam,
     lit_module_source, physical_module_source, shadow_module_source,
 };
-pub use id_pass::{IdFrame, IdObject, IdSources, id_pass_size, projection_name, render_ids};
+pub use id_pass::{
+    IdCamera, IdFrame, IdObject, IdSources, id_pass_size, projection_name, render_ids,
+    render_ids_from, view_id_cameras,
+};
 pub use lightmap::{BakedLighting, LightmapPages, LightmapUvs, PROBE_VOLUMES, Probe, ProbeVolume};
 pub use lines::{LineLayer, LineMode, Lines, wire_edges};
 pub use material::{PhysicalExtensions, Side, StandardMaterial};
@@ -4186,11 +4189,15 @@ impl Renderer {
     }
 
     /// The draw ranges of one pass: per batch (`include`d), every instance
-    /// whose sphere touches `frustum`. A batch that loses less than a tenth
-    /// of its instances is drawn whole (cheaper than copying its
-    /// transforms); otherwise its visible instances are appended to
-    /// `transforms`. `inside` is the caller's scratch, reused across the
-    /// frame's passes.
+    /// whose sphere touches `frustum`. With `whole`, a batch that loses
+    /// less than a tenth of its instances is drawn whole from the sorted
+    /// instances (cheaper than copying its transforms); otherwise, and
+    /// always without `whole`, its visible instances are appended to
+    /// `transforms`. A frame under GPU culling passes `whole` false: its
+    /// sorted instances live in the culling's buffer, and the CPU lists
+    /// (views, probe faces) draw only what they appended, from the
+    /// instance buffer. `inside` is the caller's scratch, reused across
+    /// the frame's passes.
     #[allow(clippy::too_many_arguments)]
     fn cull(
         &self,
@@ -4200,6 +4207,7 @@ impl Renderer {
         origins: &mut Vec<u32>,
         inside: &mut Vec<bool>,
         frustum: &Frustum,
+        whole: bool,
         include: impl Fn(&Batch) -> bool,
     ) -> (DrawList, u32) {
         let mut list = DrawList::default();
@@ -4231,7 +4239,7 @@ impl Renderer {
             list.in_view_triangles += (index_count / 3) as u64 * visible.len() as u64;
             let (first, count) = if visible.is_empty() {
                 continue;
-            } else if visible.len() as u32 * 10 >= b.count * 9 {
+            } else if whole && visible.len() as u32 * 10 >= b.count * 9 {
                 (b.first, b.count)
             } else {
                 let first = transforms.len() as u32;
@@ -4354,6 +4362,30 @@ impl Renderer {
             }
             (false, None) => &self.pbr_pipelines[&key],
         }
+    }
+
+    /// The depth prepass pipeline of a batch (made by `ensure_pipelines`
+    /// with its prepass): a material shader's, the lean or array-map
+    /// variant, or the standard one; `None` before it is made.
+    fn prepass_pipeline_of(&self, b: &Batch, skinned: bool) -> Option<&wgpu::RenderPipeline> {
+        if let Some(sh) = b.shader {
+            return self
+                .cache
+                .hook_prepass_pipelines
+                .get(&(sh, b.side, skinned));
+        }
+        if b.lean && !skinned {
+            return self
+                .lean_prepass_pipelines
+                .get(&(b.side, b.derivatives, b.compact));
+        }
+        if b.array {
+            return self
+                .array_maps
+                .as_ref()
+                .and_then(|a| a.prepass.get(&(b.side, skinned)));
+        }
+        self.prepass_pipelines.get(&(b.side, skinned))
     }
 
     /// Makes the lit, shadow and prepass pipelines this frame's batches need.
@@ -4856,13 +4888,9 @@ impl Renderer {
         });
         // Secondary cameras (views.rs): the views due this frame, each
         // with its skinned instances in view on its layers.
-        let view_plans = views::plan(
-            scene,
-            &camera,
-            (self.out_width, self.out_height),
-            self.info.tier == Tier::Full,
-            |i| self.views.stale || self.views.slots.get(i).is_none_or(|s| s.is_none()),
-        );
+        let view_plans = views::plan(scene, &camera, (self.out_width, self.out_height), |i| {
+            self.views.stale || self.views.slots.get(i).is_none_or(|s| s.is_none())
+        });
         self.views.stale = false;
         self.views.retain(scene.views.len());
         let mut view_skinned: Vec<Vec<Batch>> = view_plans
@@ -4944,10 +4972,15 @@ impl Renderer {
                 b.derivatives |= decals;
             }
         }
-        self.ensure_pipelines(&batches, &skinned_batches, prepass);
+        // A target's depth texture is drawn by the view's own prepass
+        // (views.rs): its pipelines are the main prepass's.
+        let view_depth = view_plans
+            .iter()
+            .any(|p| matches!(p.dest, views::Dest::Texture { depth: Some(_), .. }));
+        self.ensure_pipelines(&batches, &skinned_batches, prepass || view_depth);
         // A view may draw a skinned batch the main camera culled or hides.
         for v in &view_skinned {
-            self.ensure_pipelines(&[], v, false);
+            self.ensure_pipelines(&[], v, view_depth);
         }
         for b in &batches {
             if Self::lightmapped(&self.lightmaps, b) {
@@ -5142,23 +5175,90 @@ impl Renderer {
         );
         let fonts = &self.cache.fonts;
         let arrays = &self.cache.texture_arrays;
-        let sprite_frame = sprites::build(
+        let font = |i: usize| fonts.get(i).map(|f| &f.layout);
+        let array_layers = |a: TextureArrayHandle| {
+            scene
+                .contains_texture_array(a)
+                .then(|| arrays.get(a.index()).and_then(Option::as_ref))
+                .flatten()
+                .map(|g| g.info.layers)
+        };
+        let mut sprite_frame = sprites::build(
             scene,
-            |i| fonts.get(i).map(|f| &f.layout),
+            font,
             self.cache.textures.len(),
-            |a| {
-                scene
-                    .contains_texture_array(a)
-                    .then(|| arrays.get(a.index()).and_then(Option::as_ref))
-                    .flatten()
-                    .map(|g| g.info.layers)
-            },
+            array_layers,
             &particle_frame.sprites,
             |layer| lit_range.is_some_and(|(lo, hi)| (lo..=hi).contains(&layer)),
             view,
             &layered,
+            scene.camera_layers,
         )?;
-        for run in sprite_frame.runs.iter().chain(&sprite_frame.glow_runs) {
+        // Each view's world sprites, 2D particles and text on its layers
+        // (views.rs), their instances after the main camera's in the
+        // sprite buffer. 2D lighting, glow and the metaball composite read
+        // the main frame's screen: a view draws its sprites unlit, without
+        // glow, and leaves the 2D fluids out.
+        let view_strips: Vec<sprites::LayeredStrip> = layered
+            .iter()
+            .filter(|s| !matches!(s.source, RunSource::Metaballs(_)))
+            .map(|s| sprites::LayeredStrip {
+                layer: s.layer,
+                source: s.source,
+                first: s.first,
+                count: s.count,
+            })
+            .collect();
+        let mut view_sprites: Vec<Vec<sprites::SpriteRun>> = Vec::new();
+        for p in &view_plans {
+            let f = sprites::build(
+                scene,
+                font,
+                self.cache.textures.len(),
+                array_layers,
+                &particle_frame.sprites,
+                |_| false,
+                None,
+                &view_strips,
+                p.layers,
+            )?;
+            let in_buffer = |r: &sprites::SpriteRun| {
+                !matches!(
+                    r.source,
+                    RunSource::Strip(..) | RunSource::Mesh(_) | RunSource::Metaballs(_)
+                )
+            };
+            // The glow instances follow every run's: they are left behind.
+            let keep = f
+                .runs
+                .iter()
+                .filter(|r| in_buffer(r))
+                .map(|r| r.first + r.count)
+                .max()
+                .unwrap_or(0) as usize;
+            let base = sprite_frame.instances.len() as u32;
+            sprite_frame
+                .instances
+                .extend_from_slice(&f.instances[..keep]);
+            view_sprites.push(
+                f.runs
+                    .into_iter()
+                    .map(|mut r| {
+                        if in_buffer(&r) {
+                            r.first += base;
+                        }
+                        r
+                    })
+                    .collect(),
+            );
+        }
+        let sprite_frame = sprite_frame;
+        for run in sprite_frame
+            .runs
+            .iter()
+            .chain(&sprite_frame.glow_runs)
+            .chain(view_sprites.iter().flatten())
+        {
             match run.source {
                 RunSource::Sprite(_, t) => {
                     self.sprite_group(t);
@@ -5260,8 +5360,6 @@ impl Renderer {
                 Culling::Cpu => false,
             }
             && !object_motion
-            // A view's CPU-culled lists index the sorted instances.
-            && view_plans.is_empty()
             && !batches.is_empty()
             && {
                 let limits = self.device.limits();
@@ -5280,6 +5378,12 @@ impl Renderer {
             cull_passes.push(cull_gpu::CullPass {
                 kind,
                 planes: frustum.planes().to_vec(),
+                // Shadow maps take every caster; the camera's passes its
+                // layers (views.rs), as the CPU lists' `include`.
+                layers: match kind {
+                    cull_gpu::PassKind::Shadow => u32::MAX,
+                    _ => scene.camera_layers,
+                },
             });
             cull_passes.len() as u32 - 1
         };
@@ -5314,6 +5418,7 @@ impl Renderer {
                 &mut origins,
                 &mut cull_inside,
                 &view_frustum,
+                true,
                 |b| !b.transparent && b.layers & mask != 0,
             )
         };
@@ -5344,6 +5449,7 @@ impl Renderer {
                     &mut origins,
                     &mut cull_inside,
                     &frustum,
+                    true,
                     |b| !b.transparent && b.layers & mask != 0,
                 )
                 .0
@@ -5373,15 +5479,36 @@ impl Renderer {
                     &mut origins,
                     &mut cull_inside,
                     &frustum,
+                    !gpu_cull,
                     |b| !b.transparent,
                 )
                 .0,
             );
         }
 
-        // Each view's opaque meshes on its layers (CPU culled: a frame with
-        // views culls on the CPU).
-        let view_lists: Vec<DrawList> = view_plans
+        // Each view's transparent meshes on its layers, back to front from
+        // its eye.
+        let mut view_blended: Vec<DrawList> = view_plans
+            .iter()
+            .map(|p| {
+                self.sort_transparent(
+                    &batches,
+                    &spheres,
+                    &submission,
+                    &mut transforms,
+                    &mut origins,
+                    &Frustum::from_view_proj(p.frame.view_proj),
+                    p.position,
+                    p.frame.forward,
+                    p.layers,
+                )
+                .0
+            })
+            .collect();
+        // Each view's opaque meshes on its layers, culled on the CPU (the
+        // main camera, its shadows and reflection keep GPU culling: under
+        // it these lists append every instance they draw).
+        let mut view_lists: Vec<DrawList> = view_plans
             .iter()
             .map(|p| {
                 self.cull(
@@ -5391,6 +5518,7 @@ impl Renderer {
                     &mut origins,
                     &mut cull_inside,
                     &Frustum::from_view_proj(p.frame.view_proj),
+                    !gpu_cull,
                     |b| !b.transparent && b.layers & p.layers != 0,
                 )
                 .0
@@ -5497,6 +5625,7 @@ impl Renderer {
                         &mut origins,
                         &mut cull_inside,
                         &c.frustum,
+                        true,
                         |b| b.cast,
                     )
                     .0
@@ -5621,6 +5750,7 @@ impl Renderer {
                         &mut origins,
                         &mut cull_inside,
                         f,
+                        true,
                         |b| b.cast,
                     )
                     .0
@@ -5663,7 +5793,12 @@ impl Renderer {
             for r in &mut blended_list.ranges {
                 r.1 -= sorted;
             }
-            for r in probe_lists.iter_mut().flat_map(|l| &mut l.ranges) {
+            for r in probe_lists
+                .iter_mut()
+                .chain(view_lists.iter_mut())
+                .chain(view_blended.iter_mut())
+                .flat_map(|l| &mut l.ranges)
+            {
                 r.1 -= sorted;
             }
             Some(commands)
@@ -6787,6 +6922,29 @@ impl Renderer {
             )
         });
         let view_groups = self.view_groups(scene, &view_plans);
+        // Each view's particle and line groups over its own camera's
+        // uniforms (views.rs). A view has no linear depth of its own: its
+        // soft particles do not fade into the scene.
+        let view_particle_groups: Vec<Option<wgpu::BindGroup>> = view_plans
+            .iter()
+            .map(|p| {
+                let slot = self.views.slots[p.index].as_ref().expect("written");
+                (!particle_frame.systems.is_empty()).then(|| {
+                    self.particles.draw_group_of(
+                        &self.device,
+                        &slot.particle_buffer,
+                        &self.post.far_depth,
+                    )
+                })
+            })
+            .collect();
+        let view_line_groups: Vec<wgpu::BindGroup> = view_plans
+            .iter()
+            .map(|p| {
+                let slot = self.views.slots[p.index].as_ref().expect("written");
+                self.lines.view_group(&self.device, &slot.line_buffer)
+            })
+            .collect();
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -7044,6 +7202,150 @@ impl Renderer {
                 && physical_bound
             {
                 pass.set_bind_group(2, fx, &[]);
+            }
+            draws
+        };
+        // Sprites and text over a camera's scene, in sorted order: the main
+        // camera's runs with its effect group, or a view's (`view`: every
+        // run tone mapped, no HDR alpha cover). Answers the draws made.
+        let draw_sprites = |pass: &mut wgpu::RenderPass,
+                            runs: &[sprites::SpriteRun],
+                            fx: &wgpu::BindGroup,
+                            view: bool|
+         -> u32 {
+            let mut draws = 0;
+            pass.set_bind_group(2, fx, &[]);
+            let mut current: Option<(bool, SpriteBlend, bool)> = None;
+            let mut covered = false;
+            for run in runs {
+                // A view keeps no HDR alpha: every run is tone mapped there.
+                let tone_mapped = run.tone_mapped || view;
+                if !tone_mapped && !covered {
+                    // The HDR alpha to 1 before the first untonemapped run.
+                    pass.set_pipeline(&self.sprite_cover_pipeline);
+                    pass.draw(0..3, 0..1);
+                    draws += 1;
+                    covered = true;
+                    current = None;
+                }
+                if let RunSource::Metaballs(i) = run.source
+                    && let Some(group) = self
+                        .metaballs
+                        .field_of(i)
+                        .and_then(|f| metaball_groups.get(f))
+                {
+                    self.metaballs.composite(pass, group, i);
+                    draws += 1;
+                    pass.set_bind_group(2, fx, &[]);
+                    current = None;
+                    continue;
+                }
+                if let RunSource::Strip(blend, texture) = run.source {
+                    pass.set_pipeline(
+                        &self.ribbon_pipelines[usize::from(blend != ParticleBlend::Additive as u8)],
+                    );
+                    pass.set_bind_group(
+                        1,
+                        match texture {
+                            None => &self.white_sprite_group,
+                            Some(t) => self.cache.ribbon_groups[t.index()]
+                                .as_ref()
+                                .expect("made before the pass"),
+                        },
+                        &[],
+                    );
+                    let stride = std::mem::size_of::<ribbons::RibbonVertex>() as u64;
+                    let start = run.first as u64 * stride;
+                    pass.set_vertex_buffer(
+                        0,
+                        self.ribbon_buffer
+                            .slice(start..start + run.count as u64 * stride),
+                    );
+                    pass.draw(0..run.count, 0..1);
+                    draws += 1;
+                    // The sprite pipeline and its groups again.
+                    pass.set_bind_group(2, fx, &[]);
+                    current = None;
+                    continue;
+                }
+                if let RunSource::Mesh(i) = run.source {
+                    let mesh = &scene.sprite_meshes[i as usize];
+                    pass.set_bind_group(
+                        1,
+                        match mesh.texture {
+                            None => &self.white_sprite_group,
+                            Some(t) => self.cache.sprite_groups[t.index()]
+                                .as_ref()
+                                .expect("made before the pass"),
+                        },
+                        &[],
+                    );
+                    self.sprite_meshes
+                        .as_ref()
+                        .expect("made before the pass")
+                        .draw(pass, mesh.blend, run.first, run.count);
+                    draws += 1;
+                    current = None;
+                    continue;
+                }
+                if let RunSource::Array(blend, a) = run.source {
+                    let arrays = self.sprite_arrays.as_ref().expect("made before the pass");
+                    pass.set_pipeline(arrays.pipeline(blend, tone_mapped));
+                    let (group, _) = self.cache.sprite_array_groups[a.index()]
+                        .as_ref()
+                        .expect("made before the pass");
+                    pass.set_bind_group(1, group, &[]);
+                    let start = run.first as u64 * SPRITE_STRIDE;
+                    pass.set_vertex_buffer(
+                        0,
+                        self.sprite_buffer
+                            .slice(start..start + run.count as u64 * SPRITE_STRIDE),
+                    );
+                    pass.draw(0..6, 0..run.count);
+                    draws += 1;
+                    current = None;
+                    continue;
+                }
+                let (msdf, blend, group) = match run.source {
+                    RunSource::Strip(..)
+                    | RunSource::Metaballs(_)
+                    | RunSource::Mesh(_)
+                    | RunSource::Array(..) => {
+                        unreachable!("drawn above")
+                    }
+                    RunSource::Glass => unreachable!("glass is the overlay's only"),
+                    RunSource::Sprite(blend, None) => (false, blend, &self.white_sprite_group),
+                    RunSource::Sprite(blend, Some(t)) => (
+                        false,
+                        blend,
+                        self.cache.sprite_groups[t.index()]
+                            .as_ref()
+                            .expect("made before the pass"),
+                    ),
+                    RunSource::Font(f) => (
+                        true,
+                        SpriteBlend::Alpha,
+                        &self.cache.fonts[f.index()].bind_group,
+                    ),
+                };
+                if current != Some((msdf, blend, tone_mapped)) {
+                    pass.set_pipeline(match (msdf, blend, tone_mapped) {
+                        (true, _, _) => &self.msdf_pipeline,
+                        (false, SpriteBlend::Alpha, false) => &self.sprite_untonemapped_pipeline,
+                        (false, SpriteBlend::Alpha, true) => &self.sprite_pipeline,
+                        (false, SpriteBlend::Additive, _) => &self.sprite_additive_pipeline,
+                    });
+                    current = Some((msdf, blend, tone_mapped));
+                }
+                pass.set_bind_group(1, group, &[]);
+                let start = run.first as u64 * SPRITE_STRIDE;
+                pass.set_vertex_buffer(
+                    0,
+                    self.sprite_buffer
+                        .slice(start..start + run.count as u64 * SPRITE_STRIDE),
+                );
+                pass.draw(0..6, 0..run.count);
+                draws += 1;
             }
             draws
         };
@@ -7573,8 +7875,8 @@ impl Renderer {
                     }
                 }
                 FramePass::View(i) => {
-                    // A secondary camera (views.rs): opaque meshes,
-                    // terrain and sky, then its resolve into its target.
+                    // A secondary camera (views.rs): the main pass's draws
+                    // on its layers from its eye, then its resolve.
                     let (i, clear) = (i as usize, background_clear(&scene.environment.background));
                     let p = &view_plans[i];
                     let frustum = Frustum::from_view_proj(p.frame.view_proj);
@@ -7618,6 +7920,139 @@ impl Renderer {
                             pass.draw(0..3, 0..1);
                             stats.draw_calls += 1;
                         }
+                        // What the main pass draws over its opaque scene, on
+                        // the view's layers from the view's eye: the
+                        // transparent meshes back to front, the particles,
+                        // the scene lines and points, the world sprites and
+                        // text.
+                        pass.set_bind_group(2, &view_groups[i].1, &[]);
+                        draw_list(&mut pass, &view_blended[i], true, &mut None, None, None);
+                        stats.draw_calls += view_blended[i].ranges.len() as u32;
+                        stats.draw_calls +=
+                            draw_skinned(&mut pass, &view_skinned[i], true, 1, 3, &pipelines, None);
+                        if let Some(group) = &view_particle_groups[i] {
+                            let groups = &self.cache.sprite_groups;
+                            let white = &self.white_sprite_group;
+                            stats.draw_calls += self.particles.draw(
+                                &mut pass,
+                                &particle_frame,
+                                self.samples,
+                                group,
+                                p.layers,
+                                |t: Option<TextureHandle>| match t {
+                                    None => white,
+                                    Some(t) => {
+                                        groups[t.index()].as_ref().expect("made before the pass")
+                                    }
+                                },
+                            );
+                        }
+                        let n = self.lines.draw_scene_with(
+                            &mut pass,
+                            &line_frame,
+                            &view_line_groups[i],
+                            p.layers,
+                        );
+                        if n > 0 {
+                            stats.draw_calls += n;
+                            pass.set_bind_group(0, &view_groups[i].0, &[]);
+                        }
+                        // The glow group's light map is a placeholder: a
+                        // view's sprites are unlit.
+                        stats.draw_calls +=
+                            draw_sprites(&mut pass, &view_sprites[i], glow_fx_group, true);
+                    }
+                    // A target's depth texture: the view's opaque meshes
+                    // again through the prepass pipelines into its linear
+                    // depth (views.rs), which the resolve normalises.
+                    if let views::Dest::Texture { depth: Some(_), .. } = p.dest {
+                        let pre = self.views.slots[p.index]
+                            .as_ref()
+                            .and_then(|s| s.prepass.as_ref())
+                            .expect("made for its depth");
+                        let attachment = |view, clear: f64| {
+                            Some(wgpu::RenderPassColorAttachment {
+                                view,
+                                depth_slice: None,
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                                        r: clear,
+                                        g: 0.0,
+                                        b: 0.0,
+                                        a: 0.0,
+                                    }),
+                                    store: wgpu::StoreOp::Store,
+                                },
+                            })
+                        };
+                        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                            label: Some("view depth"),
+                            color_attachments: &[
+                                attachment(&pre.gbuffer, 0.0),
+                                attachment(&pre.lindepth, post::FAR_DEPTH as f64),
+                                attachment(&pre.outline, 0.0),
+                            ],
+                            depth_stencil_attachment: Some(
+                                wgpu::RenderPassDepthStencilAttachment {
+                                    view: &pre.depth,
+                                    depth_ops: Some(wgpu::Operations {
+                                        load: wgpu::LoadOp::Clear(1.0),
+                                        store: wgpu::StoreOp::Discard,
+                                    }),
+                                    stencil_ops: None,
+                                },
+                            ),
+                            timestamp_writes: None,
+                            occlusion_query_set: None,
+                            multiview_mask: None,
+                        });
+                        pass.set_bind_group(0, &view_groups[i].0, &[]);
+                        pass.set_bind_group(2, &view_groups[i].1, &[]);
+                        for &(b, first, count) in &view_lists[i].ranges {
+                            let batch = &batches[b as usize];
+                            let Some(pipeline) = self.prepass_pipeline_of(batch, false) else {
+                                continue;
+                            };
+                            pass.set_pipeline(pipeline);
+                            let m = &self.cache.materials[batch.material];
+                            pass.set_bind_group(1, m.array.as_ref().unwrap_or(&m.bind_group), &[]);
+                            let mesh = &self.cache.meshes[batch.mesh];
+                            let start = first as u64 * INSTANCE_STRIDE;
+                            let range = start..start + count as u64 * INSTANCE_STRIDE;
+                            pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
+                            pass.set_vertex_buffer(1, self.instance_buffer.slice(range.clone()));
+                            pass.set_vertex_buffer(2, self.instance_buffer.slice(range));
+                            pass.set_index_buffer(
+                                mesh.indices.slice(..),
+                                wgpu::IndexFormat::Uint32,
+                            );
+                            pass.draw_indexed(0..mesh.index_count, 0, 0..count);
+                            stats.draw_calls += 1;
+                        }
+                        let opaque: Vec<Batch> = view_skinned[i]
+                            .iter()
+                            .filter(|b| {
+                                !b.transparent && self.prepass_pipeline_of(b, true).is_some()
+                            })
+                            .map(|b| Batch { ..*b })
+                            .collect();
+                        let pipelines: Vec<&wgpu::RenderPipeline> = opaque
+                            .iter()
+                            .filter_map(|b| self.prepass_pipeline_of(b, true))
+                            .collect();
+                        stats.draw_calls +=
+                            draw_skinned(&mut pass, &opaque, false, 1, 3, &pipelines, None);
+                        if let Some(indices) = terrain_indices {
+                            stats.draw_calls += terrain::draw_levels(
+                                &mut pass,
+                                &terrain_draws,
+                                indices,
+                                terrain::TerrainPass::Prepass,
+                                |c, rad| frustum.intersects_sphere(c, rad),
+                            )
+                            .0;
+                        }
                     }
                     if let views::Dest::Texture {
                         color,
@@ -7637,7 +8072,6 @@ impl Renderer {
                             view,
                             format.wgpu(),
                             false,
-                            self.samples,
                         );
                         if let Some(d) = depth {
                             let view = &self.cache.textures[d].view;
@@ -7651,7 +8085,6 @@ impl Renderer {
                                 view,
                                 f,
                                 true,
-                                self.samples,
                             );
                         }
                         stats.draw_calls += 1 + depth.is_some() as u32;
@@ -7873,6 +8306,7 @@ impl Renderer {
                             &particle_frame,
                             self.samples,
                             group,
+                            scene.camera_layers,
                             |t| match t {
                                 None => white,
                                 Some(t) => {
@@ -7910,148 +8344,16 @@ impl Renderer {
                         stats.draw_calls += 1;
                     }
                     // Lines, points and wireframes (lines.rs), with their own group 0.
-                    let n = self.lines.draw_scene(&mut pass, &line_frame);
+                    let n = self
+                        .lines
+                        .draw_scene(&mut pass, &line_frame, scene.camera_layers);
                     if n > 0 {
                         stats.draw_calls += n;
                         pass.set_bind_group(0, frame_bind_group, &[]);
                     }
                     // Sprites and text, blended over the scene in sorted order.
-                    pass.set_bind_group(2, sprite_fx_group, &[]);
-                    let mut current: Option<(bool, SpriteBlend, bool)> = None;
-                    let mut covered = false;
-                    for run in &sprite_frame.runs {
-                        if !run.tone_mapped && !covered {
-                            // The HDR alpha to 1 before the first untonemapped run.
-                            pass.set_pipeline(&self.sprite_cover_pipeline);
-                            pass.draw(0..3, 0..1);
-                            stats.draw_calls += 1;
-                            covered = true;
-                            current = None;
-                        }
-                        if let RunSource::Metaballs(i) = run.source
-                            && let Some(group) = self
-                                .metaballs
-                                .field_of(i)
-                                .and_then(|f| metaball_groups.get(f))
-                        {
-                            self.metaballs.composite(&mut pass, group, i);
-                            stats.draw_calls += 1;
-                            pass.set_bind_group(2, sprite_fx_group, &[]);
-                            current = None;
-                            continue;
-                        }
-                        if let RunSource::Strip(blend, texture) = run.source {
-                            pass.set_pipeline(
-                                &self.ribbon_pipelines
-                                    [usize::from(blend != ParticleBlend::Additive as u8)],
-                            );
-                            pass.set_bind_group(
-                                1,
-                                match texture {
-                                    None => &self.white_sprite_group,
-                                    Some(t) => self.cache.ribbon_groups[t.index()]
-                                        .as_ref()
-                                        .expect("made before the pass"),
-                                },
-                                &[],
-                            );
-                            let stride = std::mem::size_of::<ribbons::RibbonVertex>() as u64;
-                            let start = run.first as u64 * stride;
-                            pass.set_vertex_buffer(
-                                0,
-                                self.ribbon_buffer
-                                    .slice(start..start + run.count as u64 * stride),
-                            );
-                            pass.draw(0..run.count, 0..1);
-                            stats.draw_calls += 1;
-                            // The sprite pipeline and its groups again.
-                            pass.set_bind_group(2, sprite_fx_group, &[]);
-                            current = None;
-                            continue;
-                        }
-                        if let RunSource::Mesh(i) = run.source {
-                            let mesh = &scene.sprite_meshes[i as usize];
-                            pass.set_bind_group(
-                                1,
-                                match mesh.texture {
-                                    None => &self.white_sprite_group,
-                                    Some(t) => self.cache.sprite_groups[t.index()]
-                                        .as_ref()
-                                        .expect("made before the pass"),
-                                },
-                                &[],
-                            );
-                            self.sprite_meshes
-                                .as_ref()
-                                .expect("made before the pass")
-                                .draw(&mut pass, mesh.blend, run.first, run.count);
-                            stats.draw_calls += 1;
-                            current = None;
-                            continue;
-                        }
-                        if let RunSource::Array(blend, a) = run.source {
-                            let arrays = self.sprite_arrays.as_ref().expect("made before the pass");
-                            pass.set_pipeline(arrays.pipeline(blend, run.tone_mapped));
-                            let (group, _) = self.cache.sprite_array_groups[a.index()]
-                                .as_ref()
-                                .expect("made before the pass");
-                            pass.set_bind_group(1, group, &[]);
-                            let start = run.first as u64 * SPRITE_STRIDE;
-                            pass.set_vertex_buffer(
-                                0,
-                                self.sprite_buffer
-                                    .slice(start..start + run.count as u64 * SPRITE_STRIDE),
-                            );
-                            pass.draw(0..6, 0..run.count);
-                            stats.draw_calls += 1;
-                            current = None;
-                            continue;
-                        }
-                        let (msdf, blend, group) = match run.source {
-                            RunSource::Strip(..)
-                            | RunSource::Metaballs(_)
-                            | RunSource::Mesh(_)
-                            | RunSource::Array(..) => {
-                                unreachable!("drawn above")
-                            }
-                            RunSource::Glass => unreachable!("glass is the overlay's only"),
-                            RunSource::Sprite(blend, None) => {
-                                (false, blend, &self.white_sprite_group)
-                            }
-                            RunSource::Sprite(blend, Some(t)) => (
-                                false,
-                                blend,
-                                self.cache.sprite_groups[t.index()]
-                                    .as_ref()
-                                    .expect("made before the pass"),
-                            ),
-                            RunSource::Font(f) => (
-                                true,
-                                SpriteBlend::Alpha,
-                                &self.cache.fonts[f.index()].bind_group,
-                            ),
-                        };
-                        if current != Some((msdf, blend, run.tone_mapped)) {
-                            pass.set_pipeline(match (msdf, blend, run.tone_mapped) {
-                                (true, _, _) => &self.msdf_pipeline,
-                                (false, SpriteBlend::Alpha, false) => {
-                                    &self.sprite_untonemapped_pipeline
-                                }
-                                (false, SpriteBlend::Alpha, true) => &self.sprite_pipeline,
-                                (false, SpriteBlend::Additive, _) => &self.sprite_additive_pipeline,
-                            });
-                            current = Some((msdf, blend, run.tone_mapped));
-                        }
-                        pass.set_bind_group(1, group, &[]);
-                        let start = run.first as u64 * SPRITE_STRIDE;
-                        pass.set_vertex_buffer(
-                            0,
-                            self.sprite_buffer
-                                .slice(start..start + run.count as u64 * SPRITE_STRIDE),
-                        );
-                        pass.draw(0..6, 0..run.count);
-                        stats.draw_calls += 1;
-                    }
+                    stats.draw_calls +=
+                        draw_sprites(&mut pass, &sprite_frame.runs, sprite_fx_group, false);
                     drop(pass);
                     // Volumetric fog over everything drawn (volumetric.rs).
                     if volumetric_fog.is_some() {
@@ -8182,7 +8484,6 @@ impl Renderer {
                 dest,
                 viewport_format,
                 false,
-                self.samples,
             );
             stats.draw_calls += 1;
         }

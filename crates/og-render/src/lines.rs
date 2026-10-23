@@ -195,6 +195,10 @@ pub(crate) struct LineFrame {
     pub overlay: (u32, u32),
     /// Segments and points drawn (wireframe edges included).
     pub instances: u32,
+    /// The scene sets' instance ranges in the buffer with their layer
+    /// masks, in buffer order: (mask, first, count). A camera draws the
+    /// ranges whose masks share a bit with its own (`views.rs`).
+    pub sets: Vec<(u32, u32, u32)>,
 }
 
 impl LineFrame {
@@ -241,6 +245,8 @@ impl LineUniform {
 type Edges = std::rc::Rc<Vec<[u32; 2]>>;
 
 pub(crate) struct LineRenderer {
+    /// The uniform's layout, for a secondary camera's group (`views.rs`).
+    pub layout: wgpu::BindGroupLayout,
     scene_uniform: wgpu::Buffer,
     scene_group: wgpu::BindGroup,
     overlay_uniform: wgpu::Buffer,
@@ -355,6 +361,7 @@ impl LineRenderer {
             mapped_at_creation: false,
         });
         LineRenderer {
+            layout,
             scene_uniform,
             scene_group,
             overlay_uniform,
@@ -400,25 +407,51 @@ impl LineRenderer {
         wire: impl Fn(usize) -> Option<[f32; 4]>,
     ) -> LineFrame {
         let mut groups: [Vec<LineInstance>; 3] = Default::default();
+        // Per scene slot: (mask, first in the slot, count) of each set.
+        let mut sets: [Vec<(u32, u32, u32)>; 2] = Default::default();
         let slot = |layer: LineLayer, depth_test: bool| match (layer, depth_test) {
             (LineLayer::Overlay, _) => 2,
             (LineLayer::Scene, true) => 0,
             (LineLayer::Scene, false) => 1,
         };
-        for l in &scene.lines {
-            l.instances(&mut groups[slot(l.layer(), l.depth_test)]);
+        let mut record =
+            |groups: &mut [Vec<LineInstance>; 3], k: usize, mask: u32, before: usize| {
+                let n = groups[k].len() - before;
+                if k < 2 && n > 0 {
+                    sets[k].push((mask, before as u32, n as u32));
+                }
+            };
+        for (i, l) in scene.lines.iter().enumerate() {
+            let k = slot(l.layer(), l.depth_test);
+            let before = groups[k].len();
+            l.instances(&mut groups[k]);
+            record(
+                &mut groups,
+                k,
+                crate::views::layer_of(&scene.line_layers, i),
+                before,
+            );
         }
-        for p in &scene.points {
-            p.instances(&mut groups[slot(p.layer(), p.depth_test)]);
+        for (i, p) in scene.points.iter().enumerate() {
+            let k = slot(p.layer(), p.depth_test);
+            let before = groups[k].len();
+            p.instances(&mut groups[k]);
+            record(
+                &mut groups,
+                k,
+                crate::views::layer_of(&scene.point_layers, i),
+                before,
+            );
         }
         if any_wire {
             let live: std::collections::HashSet<usize> =
                 scene.instances.iter().map(|i| i.mesh.index()).collect();
             self.edges.retain(|m, _| live.contains(m));
-            for inst in &scene.instances {
+            for (i, inst) in scene.instances.iter().enumerate() {
                 let Some(color) = wire(inst.material.index()) else {
                     continue;
                 };
+                let before = groups[0].len();
                 let Some(mesh) = scene.mesh(inst.mesh) else {
                     continue;
                 };
@@ -448,6 +481,8 @@ impl LineRenderer {
                         params: [1.0, 0.0, 0.0, 0.0],
                     });
                 }
+                let mask = crate::views::layer_of(&scene.instance_layers, i);
+                record(&mut groups, 0, mask, before);
             }
         }
         let counts = groups.each_ref().map(|g| g.len() as u32);
@@ -457,6 +492,11 @@ impl LineRenderer {
             over: (counts[0], counts[1]),
             overlay: (counts[0] + counts[1], counts[2]),
             instances: all.len() as u32,
+            sets: sets[0]
+                .iter()
+                .copied()
+                .chain(sets[1].iter().map(|&(m, f, n)| (m, f + counts[0], n)))
+                .collect(),
         };
         if all.is_empty() {
             frame.instances = 0;
@@ -493,22 +533,60 @@ impl LineRenderer {
         pass.draw(0..6, 0..range.1);
     }
 
-    /// The scene's sets, in the main pass (its group 0 is rebound: the
-    /// caller sets its own again after). Answers the draws made.
-    pub fn draw_scene(&self, pass: &mut wgpu::RenderPass, frame: &LineFrame) -> u32 {
+    /// The scene's sets on the main camera's layers (`mask`), in the main
+    /// pass (its group 0 is rebound: the caller sets its own again after).
+    /// Answers the draws made.
+    pub fn draw_scene(&self, pass: &mut wgpu::RenderPass, frame: &LineFrame, mask: u32) -> u32 {
+        self.draw_scene_with(pass, frame, &self.scene_group, mask)
+    }
+
+    /// The scene's sets on a camera's layers (`mask`) with that camera's
+    /// uniform `group` (a secondary camera's, [`LineRenderer::view_group`]).
+    /// The admitted sets next to each other are one draw.
+    pub fn draw_scene_with(
+        &self,
+        pass: &mut wgpu::RenderPass,
+        frame: &LineFrame,
+        group: &wgpu::BindGroup,
+        mask: u32,
+    ) -> u32 {
         if frame.scene_empty() {
             return 0;
         }
-        pass.set_bind_group(0, &self.scene_group, &[]);
+        pass.set_bind_group(0, group, &[]);
         let mut draws = 0;
-        for (pipeline, range) in [(&self.depth, frame.depth), (&self.over, frame.over)] {
-            if range.1 > 0 {
+        for (pipeline, (lo, n)) in [(&self.depth, frame.depth), (&self.over, frame.over)] {
+            let mut ranges: Vec<(u32, u32)> = Vec::new();
+            for &(m, first, count) in &frame.sets {
+                if m & mask == 0 || first < lo || first >= lo + n {
+                    continue;
+                }
+                match ranges.last_mut() {
+                    Some(r) if r.0 + r.1 == first => r.1 += count,
+                    _ => ranges.push((first, count)),
+                }
+            }
+            if !ranges.is_empty() {
                 pass.set_pipeline(pipeline);
-                self.draw(pass, range);
+            }
+            for r in ranges {
+                self.draw(pass, r);
                 draws += 1;
             }
         }
         draws
+    }
+
+    /// A secondary camera's uniform group over its `buffer`.
+    pub fn view_group(&self, device: &wgpu::Device, buffer: &wgpu::Buffer) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("lines (view)"),
+            layout: &self.layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buffer.as_entire_binding(),
+            }],
+        })
     }
 
     /// The overlay's sets over the finished frame in `target` (through its

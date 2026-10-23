@@ -2002,7 +2002,7 @@ module camera {
       param y f32 "Vertical position in CSS pixels."
       returns Ray
     }
-    field layers u32 "Three.js layers, as Camera.layers.mask: the frame draws the meshes, models and world sprites whose layers share a bit with it. 1 (layer 0) by default, as every object's." {
+    field layers u32 "Three.js layers, as Camera.layers.mask: the frame draws the meshes, models, world sprites, particle systems, lines and points whose layers share a bit with it. 1 (layer 0) by default, as every object's." {
       default 1
     }
   }
@@ -2999,10 +2999,14 @@ module render {
       max 1
       tunable true
     }
-    field custom1 Post "The first custom post pass (og.load.post, a `type post` asset; 0 is none). PostEffects.custom1 to custom4 are an ordered list: each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (it turns the prepass on). Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped."
+    field custom1 Post "The first custom post pass (og.load.post, a `type post` asset; 0 is none). PostEffects.custom1 to custom8 are an ordered list, as many as og-render runs (RenderCapabilities.maxCustomPosts): each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (it turns the prepass on). Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped."
     field custom2 Post "The second custom post pass, over the first's output (0 skips the slot)."
     field custom3 Post "The third custom post pass."
     field custom4 Post "The fourth custom post pass."
+    field custom5 Post "The fifth custom post pass."
+    field custom6 Post "The sixth custom post pass."
+    field custom7 Post "The seventh custom post pass."
+    field custom8 Post "The eighth and last custom post pass, over every one before it."
   }
 
   # ── stylisation and looks ─────────────────────────────────────────────
@@ -3398,6 +3402,9 @@ module render {
     field stopTick u32 "The tick emission stops (the particles live out); 0 keeps emitting while the emitter loops."
     field visible bool "Whether it is drawn (a hidden system loses its particles)." {
       default true
+    }
+    field layers u32 "Three.js layers, as Mesh.layers: its particles (billboards and 2D sprite particles alike) are drawn by the cameras whose masks share a bit with it (og.Camera, og.CameraView, og.Mirror)." {
+      default 1
     }
   }
 
@@ -3944,9 +3951,9 @@ module render {
     field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
     field ssr bool "Whether PostEffects.ssr draws: true on the full tier, false on WebGL2, where smooth surfaces reflect the reflection probes and the environment instead."
     field reflectionProbes u32 "How many og.ReflectionProbe components one frame samples (MAX_REFLECTION_PROBES on every tier)."
-    field renderTargetDepth bool "Whether a render target made with `depth` gets its view's depth drawn (the full tier). WebGL2 cannot read a depth buffer in a shader: there the depth texture stays cleared to 0, and every other part of the target draws."
+    field renderTargetDepth bool "Whether a render target made with `depth` gets its view's depth drawn: true on every tier with a renderer (WebGPU, Vulkan, Metal and WebGL2 alike), false without one. The depth comes from the view's own depth prepass of its opaque meshes into a linear-depth colour target, never from its depth buffer, which WebGL2 cannot read in a shader."
     field maxRenderTargetSize u32 "The largest side of a render target (the device's largest 2D texture)."
-    field maxCustomPosts u32 "The most custom post passes a frame runs (PostEffects.custom1 to custom4 on every tier)."
+    field maxCustomPosts u32 "The most custom post passes a frame runs: 8 on every tier, PostEffects.custom1 to custom8 (numbered fields, as a reflected record has no list field)."
     field volumetricFog VolumetricFog "How Fog.volumetric is drawn on this device: a froxel grid lit by the sun and the clustered point, spot and rect lights (the full tier), or a raymarch of the sun alone along each pixel's view ray (WebGL2)."
   }
 
@@ -4479,7 +4486,7 @@ module render {
     field visible bool "Whether it is drawn." {
       default true
     }
-    field layers u32 "Three.js layers, as Mesh.layers: drawn by the main camera when its mask shares a bit (secondary cameras do not draw lines)." {
+    field layers u32 "Three.js layers, as Mesh.layers: drawn by every camera whose mask shares a bit with it (og.Camera, og.CameraView, og.Mirror)." {
       default 1
     }
   }
@@ -4510,7 +4517,7 @@ module render {
     field visible bool "Whether it is drawn." {
       default true
     }
-    field layers u32 "Three.js layers, as Mesh.layers: drawn by the main camera when its mask shares a bit (secondary cameras do not draw points)." {
+    field layers u32 "Three.js layers, as Mesh.layers: drawn by every camera whose mask shares a bit with it (og.Camera, og.CameraView, og.Mirror)." {
       default 1
     }
   }
@@ -4588,7 +4595,7 @@ module render {
       min 1
     }
     field format RenderTargetFormat "How its colour is stored."
-    field depth bool "Keep the view's depth too, as a second texture (RenderTargetInfo.depthTexture): its linear view depth from near (0) to far (1) in red, green and blue. Drawn on the full tier (RenderCapabilities.renderTargetDepth)."
+    field depth bool "Keep the view's depth too, as a second texture (RenderTargetInfo.depthTexture): its linear view depth from near (0) to far (1) in red, green and blue, of the opaque meshes and models, alpha-cut ones cut (transparent meshes, sprites and particles write none), drawn on every tier (RenderCapabilities.renderTargetDepth). It costs a second draw of the view's opaque meshes."
   }
 
   struct RenderTargetInfo {
@@ -4609,7 +4616,7 @@ module render {
 
   component CameraView {
     doc "A secondary camera, as a second three.js camera rendered with setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z, as og.Camera) into a render target (target), or, without one, into a rect of the frame (viewport: split-screen, picture-in-picture) over the finished image and under the UI."
-    doc "It draws the opaque meshes and models on its layers (skinned and with any material: hooks and full shaders run their vertex and fragment entries), the terrain and the sky, lit by the frame's lights and shadowed by its shadow maps. Transparent meshes, sprites, particles, text, lines and the post effects are the main camera's. Views draw lowest order first, all before the frame."
+    doc "It draws what the main camera draws, from its own eye and on its own layers: the meshes and models (skinned and with any material: hooks and full shaders run their vertex and fragment entries), opaque then transparent back to front, the terrain and the sky, the particle systems, og.Lines and og.Points, world sprites (og.Sprite, og.render.sprite) and world text, lit by the frame's lights and shadowed by its shadow maps. Each view is a draw of everything its layers admit: keep a view cheap with its layers and `every`. Screen sprites, the UI and debug draw stay on the main frame. Of the post chain, an ldr target and a viewport carry the view's exposure (its camera's) and the frame's tone curve; an hdr target carries linear radiance before exposure, exposed by the frame that shows it. Neither runs the frame's bloom, AO, SSR, depth of field, colour grading or custom post passes, whose inputs are the main camera's. Sprites in a view are not 2D-lit and do not glow; trails and 2D fluids draw on the main frame only. Views draw lowest order first, all before the frame."
     field target RenderTarget "The target it draws into; 0 draws into the viewport rect of the frame."
     field viewportX f32 "The viewport's left edge, as a fraction of the frame's width (without a target)." {
       min 0
@@ -4728,7 +4735,7 @@ module render {
   }
 
   fn postErrors {
-    doc "The custom post passes PostEffects.custom1 to custom4 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal."
+    doc "The custom post passes PostEffects.custom1 to custom8 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal."
     param world World "The world asked."
     returns List.PostError
   }
@@ -5029,7 +5036,7 @@ module load {
   }
 
   fn post {
-    doc "A custom post pass for PostEffects.custom1 to custom4, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path."
+    doc "A custom post pass for PostEffects.custom1 to custom8, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path."
     param world World "The world whose renderer owns it."
     param path String "The asset id, such as `post/crt.ogt`."
     returns Result.Post "Refused for a path not in the bundle or not a post pass."
@@ -12145,7 +12152,7 @@ module commands {
     variant resume "`resume`: release the clock."
     variant advance "`advance:<ticks>`: take fixed steps."
     variant quit "`quit`: exit."
-    variant describe "`describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, the UI elements with rects and text, the camera."
+    variant describe "`describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera."
     variant expect "`expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked."
     variant save_scene "`save_scene[:path]`: write the boot scene's `.ogt` back from the world, only the lines whose values changed (comments and order kept) and the fields set or patch tuned; to the scene's source, or with a path to that file under the output directory."
     variant help "`help`: list every action the channel knows, core and registered."
@@ -12635,6 +12642,16 @@ module probe {
     field occlusion f32 "The share of what it covers alone that something else hides." {
       unit ratio
     }
+    field views List.String "The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty)."
+  }
+
+  struct DescribedView {
+    doc "A secondary camera (og.CameraView, og.Mirror) and what its image shows: its own entity-id pass, from its eye and on its layers, at a quarter of its image's pixels, whatever its `every`. An entity only its layers admit (a layer the main camera leaves out) is listed here and not in Description.entities."
+    field id String "The view entity's probe id."
+    field name Option.String "Its name."
+    field kind String "`camera` (og.CameraView) or `mirror` (og.Mirror)."
+    field size PassSize "The pixels its image covers: its render target's, or its viewport's rect of the frame."
+    field entities List.DescribedEntity "What it shows, nearest its eye first, boxes and points in its image's pixels."
   }
 
   struct DescribedUi {
@@ -12681,7 +12698,8 @@ module probe {
     field surface Option.UiSurface "The play surface."
     field pass Option.PassSize "The entity-id pass; null without a scene."
     field camera Option.DescribedCamera "The camera; null without a scene."
-    field entities List.DescribedEntity "The visible entities, nearest first."
+    field entities List.DescribedEntity "The entities the main camera shows, nearest first (each names the views that also show it)."
+    field views List.DescribedView "The secondary cameras the frame draws, in its view order, each with what it shows."
     field ui List.DescribedUi "The UI elements in draw order."
   }
 

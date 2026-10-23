@@ -7,7 +7,7 @@
 
 use super::extract::{RenderState, extract};
 use og_ecs::{Entity, World};
-use og_probe::{Pick, SceneView, Seen, Shown};
+use og_probe::{Pick, SceneView, Seen, SeenView, Shown};
 use serde_json::json;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -35,6 +35,9 @@ struct Pass {
     entities: Vec<u64>,
     scale: (f32, f32),
     camera: serde_json::Value,
+    /// Each secondary camera's pass: its entity, whether a mirror, the
+    /// image's pixels and its id frame (ids as `entities`').
+    views: Vec<(u64, bool, (u32, u32), og_render::IdFrame)>,
 }
 
 impl RuntimeView {
@@ -86,6 +89,18 @@ impl RuntimeView {
             }
         }
         let frame = og_render::render_ids(scene, &sources, pw, ph);
+        // Each view from its own camera on its own layers, at a quarter of
+        // its image's pixels as the main pass.
+        let views = og_render::view_id_cameras(scene, (fw, fh))
+            .into_iter()
+            .filter_map(|(i, camera, (w, h))| {
+                let e = *rs.views.entities.get(i)?;
+                let mirror = scene.views[i].mirror.is_some();
+                let (vw, vh) = og_render::id_pass_size(w, h);
+                let f = og_render::render_ids_from(scene, &sources, vw, vh, &camera);
+                Some((e, mirror, (w, h), f))
+            })
+            .collect();
         let c = &scene.camera;
         let camera = json!({
             "position": [c.position.x, c.position.y, c.position.z],
@@ -102,7 +117,49 @@ impl RuntimeView {
             entities,
             scale: (css_w / pw as f32, css_h / ph as f32),
             camera,
+            views,
         })
+    }
+
+    /// The entities an id frame shows, its values scaled by `scale` (pixels
+    /// of the image per pass pixel).
+    fn shown(
+        &self,
+        world: &World,
+        frame: &og_render::IdFrame,
+        entities: &[u64],
+        (sx, sy): (f32, f32),
+    ) -> Vec<Shown> {
+        let area = (frame.width * frame.height).max(1) as f32;
+        let r = |b: [u32; 4]| {
+            [
+                b[0] as f32 * sx,
+                b[1] as f32 * sy,
+                (b[2] - b[0]) as f32 * sx,
+                (b[3] - b[1]) as f32 * sy,
+            ]
+        };
+        frame
+            .objects
+            .iter()
+            .filter(|o| o.visible > 0)
+            .filter_map(|o| {
+                let e = *entities.get(o.id as usize - 1)?;
+                Some(Shown {
+                    entity: Entity::from_bits(e),
+                    rect: r(o.bounds),
+                    drawn: r(o.drawn_bounds),
+                    point: [
+                        (o.point[0] as f32 + 0.5) * sx,
+                        (o.point[1] as f32 + 0.5) * sy,
+                    ],
+                    depth: o.depth,
+                    coverage: o.visible as f32 / area,
+                    occlusion: o.occlusion(),
+                    labels: self.labels(world, e),
+                })
+            })
+            .collect()
     }
 
     /// What draws an entity: `model` (and its asset's path), `mesh`,
@@ -154,42 +211,28 @@ impl RuntimeView {
 impl SceneView for RuntimeView {
     fn seen(&mut self, world: &World) -> Option<Seen> {
         let pass = self.pass(world)?;
-        let (sx, sy) = pass.scale;
-        let area = (pass.frame.width * pass.frame.height).max(1) as f32;
-        let r = |b: [u32; 4]| {
-            [
-                b[0] as f32 * sx,
-                b[1] as f32 * sy,
-                (b[2] - b[0]) as f32 * sx,
-                (b[3] - b[1]) as f32 * sy,
-            ]
-        };
-        let entities = pass
-            .frame
-            .objects
+        let entities = self.shown(world, &pass.frame, &pass.entities, pass.scale);
+        let views = pass
+            .views
             .iter()
-            .filter(|o| o.visible > 0)
-            .filter_map(|o| {
-                let e = *pass.entities.get(o.id as usize - 1)?;
-                Some(Shown {
-                    entity: Entity::from_bits(e),
-                    rect: r(o.bounds),
-                    drawn: r(o.drawn_bounds),
-                    point: [
-                        (o.point[0] as f32 + 0.5) * sx,
-                        (o.point[1] as f32 + 0.5) * sy,
-                    ],
-                    depth: o.depth,
-                    coverage: o.visible as f32 / area,
-                    occlusion: o.occlusion(),
-                    labels: self.labels(world, e),
-                })
+            .map(|(e, mirror, size, frame)| {
+                let scale = (
+                    size.0 as f32 / frame.width as f32,
+                    size.1 as f32 / frame.height as f32,
+                );
+                SeenView {
+                    entity: Entity::from_bits(*e),
+                    mirror: *mirror,
+                    size: *size,
+                    entities: self.shown(world, frame, &pass.entities, scale),
+                }
             })
             .collect();
         Some(Seen {
             pass: (pass.frame.width, pass.frame.height),
             camera: pass.camera,
             entities,
+            views,
         })
     }
 

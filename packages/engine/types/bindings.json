@@ -1097,6 +1097,11 @@
           "name": "visible",
           "column": "bool",
           "default": true
+        },
+        {
+          "name": "layers",
+          "column": "u32",
+          "default": 1
         }
       ]
     },
@@ -6353,6 +6358,26 @@
         },
         {
           "name": "custom4",
+          "column": "Post",
+          "default": 0
+        },
+        {
+          "name": "custom5",
+          "column": "Post",
+          "default": 0
+        },
+        {
+          "name": "custom6",
+          "column": "Post",
+          "default": 0
+        },
+        {
+          "name": "custom7",
+          "column": "Post",
+          "default": 0
+        },
+        {
+          "name": "custom8",
           "column": "Post",
           "default": 0
         }

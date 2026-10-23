@@ -900,9 +900,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
     // og.Lines and og.Points.
     if let Some(layout) = rs.draw.lines.clone() {
         for (e, v) in super::fx::rows(world, Some(&layout)) {
-            // Off the main camera's layers: not drawn.
+            // Drawn by the cameras its layers admit (the renderer tests them).
             let layers = v["layers"].as_u64().map_or(1, |x| x as u32);
-            if !flag(&v, "visible", true) || layers & rs.scene.camera_layers == 0 {
+            if !flag(&v, "visible", true) {
                 continue;
             }
             let alpha = num(&v, "opacity", 1.0).clamp(0.0, 1.0);
@@ -910,6 +910,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
                 continue;
             };
             let dash = num(&v, "dashSize", 0.0);
+            let at = rs.scene.lines.len();
+            if layers != 1 {
+                rs.scene.line_layers.resize(at, 1);
+                rs.scene.line_layers.push(layers);
+            }
             rs.scene.lines.push(Lines {
                 points,
                 colors,
@@ -927,15 +932,20 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
     }
     if let Some(layout) = rs.draw.points.clone() {
         for (e, v) in super::fx::rows(world, Some(&layout)) {
-            // Off the main camera's layers: not drawn.
+            // Drawn by the cameras its layers admit (the renderer tests them).
             let layers = v["layers"].as_u64().map_or(1, |x| x as u32);
-            if !flag(&v, "visible", true) || layers & rs.scene.camera_layers == 0 {
+            if !flag(&v, "visible", true) {
                 continue;
             }
             let alpha = num(&v, "opacity", 1.0).clamp(0.0, 1.0);
             let Some((positions, colors)) = vertices_of(rs, &v, alpha) else {
                 continue;
             };
+            let at = rs.scene.points.len();
+            if layers != 1 {
+                rs.scene.point_layers.resize(at, 1);
+                rs.scene.point_layers.push(layers);
+            }
             rs.scene.points.push(Points {
                 positions,
                 colors,

@@ -12,7 +12,11 @@
 //! then writes the target: [`crate::TargetFormat::Rgba8`] exposed and tone
 //! mapped with the camera's exposure and the frame's tone curve,
 //! [`crate::TargetFormat::Rgba16Float`] as linear radiance, the depth
-//! texture as the normalised linear view depth. A viewport view resolves
+//! texture as the normalised linear view depth. The depth comes from a
+//! prepass of the view's opaque meshes into a linear-depth colour target
+//! (as the main prepass's `lindepth`), never from its depth buffer: GLSL ES
+//! 3.0 cannot load a depth buffer, multisampled least of all, so this one
+//! path draws the depth on every tier, WebGL2 included. A viewport view resolves
 //! into its rect of the output after the frame's post chain, under the
 //! lines and the overlay.
 //!
@@ -125,14 +129,12 @@ pub(crate) enum Dest {
 
 /// The frame's views to draw: those due this tick with a live target, in
 /// order. `main`: the main camera (a mirror's eye); `out`: the output size;
-/// `depth`: targets' depth textures are drawn (the full tier: WebGL2 leaves
-/// them cleared, as RenderCapabilities reports); `due(i)`: view `i` draws
-/// whatever its `every` (never drawn yet, or the renderer restored).
+/// `due(i)`: view `i` draws whatever its `every` (never drawn yet, or the
+/// renderer restored).
 pub(crate) fn plan(
     scene: &crate::RenderScene,
     main: &Camera,
     out: (u32, u32),
-    depth: bool,
     due: impl Fn(usize) -> bool,
 ) -> Vec<ViewPlan> {
     let mut order: Vec<usize> = (0..scene.views.len()).collect();
@@ -153,7 +155,6 @@ pub(crate) fn plan(
                 };
                 let depth = t
                     .depth
-                    .filter(|_| depth)
                     .filter(|d| {
                         scene
                             .target_texture(*d)
@@ -219,8 +220,10 @@ pub(crate) fn plan(
 
 /// The camera a mirror draws with: the eye reflected in the quad's plane,
 /// looking through the quad with an off-axis frustum fitted to its corners
-/// (Kooima's generalised perspective projection), its near plane on the
-/// mirror (nothing behind the glass is drawn). Seen from behind, the quad's
+/// (Kooima's generalised perspective projection), its near plane a hair
+/// past the mirror (nothing behind the glass is drawn, nor the glass
+/// itself: a quad on the near plane is kept or clipped by rounding alone,
+/// and the probe's CPU id pass keeps it, seeing only the glass). Seen from behind, the quad's
 /// +x runs to the image's left: the resolve writes it mirrored, so the
 /// target's u runs along +x. `None` when the eye is behind the mirror.
 pub(crate) fn mirror_frame(eye: &Camera, m: &MirrorQuad) -> Option<(CameraFrame, Vec3, f32)> {
@@ -252,7 +255,7 @@ pub(crate) fn mirror_frame(eye: &Camera, m: &MirrorQuad) -> Option<(CameraFrame,
     if dist <= 1e-4 {
         return None;
     }
-    let near = dist.max(1e-3);
+    let near = (dist * (1.0 + 1e-3)).max(1e-3);
     let far = eye.far.max(near * 2.0);
     let s = near / dist;
     let l = vr.dot(va) * s;
@@ -302,14 +305,10 @@ pub(crate) fn resolve_color_source() -> String {
     format!("{VIEWS_WGSL}{VIEWS_COLOR_WGSL}")
 }
 
-/// The depth resolve's source (`fs_depth`; `ms`: the depth is multisampled).
-pub(crate) fn resolve_depth_source(ms: bool) -> String {
-    let depth = if ms {
-        "texture_depth_multisampled_2d"
-    } else {
-        "texture_depth_2d"
-    };
-    format!("alias ViewDepth = {depth};\n{VIEWS_WGSL}{VIEWS_DEPTH_WGSL}")
+/// The depth resolve's source (`fs_depth`): the view's linear depth
+/// target normalised from near to far.
+pub(crate) fn resolve_depth_source() -> String {
+    format!("{VIEWS_WGSL}{VIEWS_DEPTH_WGSL}")
 }
 
 /// `Resolve` in views.wgsl.
@@ -343,10 +342,26 @@ pub(crate) struct ViewSlot {
     pub light_buffers: [wgpu::Buffer; 3],
     pub clusters: crate::clusters::ClusterBuilder,
     pub resolve_buffer: wgpu::Buffer,
-    /// (size, samples, depth readable): the attachments below.
+    /// Its camera for the particle billboards (`ParticleViewGpu`) and for
+    /// the lines and points (`LineUniform`).
+    pub particle_buffer: wgpu::Buffer,
+    pub line_buffer: wgpu::Buffer,
+    /// (size, samples, depth texture drawn): the attachments below.
     key: ((u32, u32), u32, bool),
     pub hdr: wgpu::TextureView,
     pub msaa: Option<wgpu::TextureView>,
+    pub depth: wgpu::TextureView,
+    /// For a target with a depth texture: the view's depth prepass.
+    pub prepass: Option<DepthPrepass>,
+}
+
+/// A view's depth prepass attachments, single-sampled as the main
+/// prepass's (its pipelines'): the linear view depth the resolve reads, and
+/// the normals and outline ids those pipelines also write.
+pub(crate) struct DepthPrepass {
+    pub gbuffer: wgpu::TextureView,
+    pub lindepth: wgpu::TextureView,
+    pub outline: wgpu::TextureView,
     pub depth: wgpu::TextureView,
 }
 
@@ -358,9 +373,8 @@ pub(crate) struct Views {
     /// frame, so a target drawn every few ticks shows the restored world,
     /// not the image of the run that was cut.
     pub stale: bool,
-    /// By (destination format, entry point, multisampled depth).
-    pipelines:
-        std::collections::HashMap<(wgpu::TextureFormat, &'static str, bool), wgpu::RenderPipeline>,
+    /// By (destination format, entry point).
+    pipelines: std::collections::HashMap<(wgpu::TextureFormat, &'static str), wgpu::RenderPipeline>,
 }
 
 impl Views {
@@ -374,14 +388,14 @@ impl Views {
         index: usize,
         size: (u32, u32),
         samples: u32,
-        depth_read: bool,
+        depth_drawn: bool,
         frame_bytes: u64,
         fx_bytes: u64,
     ) -> &mut ViewSlot {
         if self.slots.len() <= index {
             self.slots.resize_with(index + 1, || None);
         }
-        let key = (size, samples, depth_read);
+        let key = (size, samples, depth_drawn);
         if self.slots[index].as_ref().is_some_and(|s| s.key != key) {
             let old = self.slots[index].take().expect("checked");
             self.slots[index] = Some(ViewSlot {
@@ -398,7 +412,7 @@ impl Views {
                     mapped_at_creation: false,
                 })
             };
-            let (hdr, msaa, depth) = textures(device, key);
+            let (hdr, msaa, depth, prepass) = textures(device, key);
             ViewSlot {
                 frame_buffer: buffer("view frame", frame_bytes),
                 fx_buffer: buffer("view fx", fx_bytes),
@@ -408,10 +422,19 @@ impl Views {
                     "view resolve",
                     std::mem::size_of::<ResolveUniform>() as u64,
                 ),
+                particle_buffer: buffer(
+                    "view particles",
+                    std::mem::size_of::<crate::particles_gpu::ParticleViewGpu>() as u64,
+                ),
+                line_buffer: buffer(
+                    "view lines",
+                    std::mem::size_of::<crate::lines::LineUniform>() as u64,
+                ),
                 key,
                 hdr,
                 msaa,
                 depth,
+                prepass,
             }
         })
     }
@@ -427,46 +450,78 @@ impl Views {
         device: &wgpu::Device,
         format: wgpu::TextureFormat,
         entry: &'static str,
-        ms: bool,
     ) {
-        self.pipelines
-            .entry((format, entry, ms))
-            .or_insert_with(|| {
-                let module = crate::shader(
-                    device,
-                    "view resolve",
-                    if entry == "fs_depth" {
-                        resolve_depth_source(ms)
-                    } else {
-                        resolve_color_source()
-                    },
-                );
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("view resolve"),
-                    layout: None,
-                    vertex: wgpu::VertexState {
-                        module: &module,
-                        entry_point: Some("vs"),
-                        compilation_options: Default::default(),
-                        buffers: &[],
-                    },
-                    primitive: Default::default(),
-                    depth_stencil: None,
-                    multisample: Default::default(),
-                    fragment: Some(wgpu::FragmentState {
-                        module: &module,
-                        entry_point: Some(entry),
-                        compilation_options: Default::default(),
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format,
-                            blend: None,
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
-                    }),
-                    multiview_mask: None,
-                    cache: None,
+        self.pipelines.entry((format, entry)).or_insert_with(|| {
+            let depth = entry == "fs_depth";
+            let module = crate::shader(
+                device,
+                "view resolve",
+                if depth {
+                    resolve_depth_source()
+                } else {
+                    resolve_color_source()
+                },
+            );
+            // The linear depth (RG32F) is not filterable: its layout
+            // says so (a derived one would ask for a filterable float).
+            let layout = depth.then(|| {
+                let group = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("view resolve depth"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Texture {
+                                sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                                view_dimension: wgpu::TextureViewDimension::D2,
+                                multisampled: false,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+                device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("view resolve depth"),
+                    bind_group_layouts: &[Some(&group)],
+                    immediate_size: 0,
                 })
             });
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("view resolve"),
+                layout: layout.as_ref(),
+                vertex: wgpu::VertexState {
+                    module: &module,
+                    entry_point: Some("vs"),
+                    compilation_options: Default::default(),
+                    buffers: &[],
+                },
+                primitive: Default::default(),
+                depth_stencil: None,
+                multisample: Default::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &module,
+                    entry_point: Some(entry),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format,
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: None,
+            })
+        });
     }
 
     /// Writes the views' frame, effect and light-cluster uniforms (the
@@ -486,14 +541,14 @@ impl Views {
         viewport_format: wgpu::TextureFormat,
     ) {
         for p in plans {
-            let depth_read = matches!(p.dest, Dest::Texture { depth: Some(_), .. });
+            let depth_drawn = matches!(p.dest, Dest::Texture { depth: Some(_), .. });
             let slot = self.slot(
                 device,
                 tables,
                 p.index,
                 p.size,
                 samples,
-                depth_read,
+                depth_drawn,
                 std::mem::size_of::<crate::frame::FrameUniform>() as u64,
                 std::mem::size_of::<crate::fx::FxUniform>() as u64,
             );
@@ -542,20 +597,43 @@ impl Views {
             let (w, h) = (p.size.0 as f32, p.size.1 as f32);
             f.screen = [w, h, 1.0 / w, 1.0 / h];
             queue.write_buffer(&slot.fx_buffer, 0, bytemuck::bytes_of(&f));
+            // Billboards face the view's camera; lines keep their width as a
+            // share of the image (CSS pixels of a frame of the view's height).
+            let view_t = p.frame.view.transpose();
+            let particles = crate::particles_gpu::ParticleViewGpu {
+                view_proj: vp,
+                cam_pos: p
+                    .position
+                    .extend(p.frame.orthographic as u32 as f32)
+                    .to_array(),
+                cam_forward: p.frame.forward.extend(0.0).to_array(),
+                cam_right: view_t.x_axis.truncate().extend(0.0).to_array(),
+                cam_up: view_t.y_axis.truncate().extend(0.0).to_array(),
+                screen: f.screen,
+            };
+            queue.write_buffer(&slot.particle_buffer, 0, bytemuck::bytes_of(&particles));
+            let lines = crate::lines::LineUniform::new(
+                p.frame.view_proj,
+                p.frame.proj,
+                p.size.0,
+                p.size.1,
+                scene.css_height,
+                false,
+            );
+            queue.write_buffer(&slot.line_buffer, 0, bytemuck::bytes_of(&lines));
         }
         for p in plans {
             match p.dest {
                 Dest::Texture { format, depth, .. } => {
                     let f = format.wgpu();
-                    self.pipeline(device, f, resolve_entry(f, false), false);
+                    self.pipeline(device, f, resolve_entry(f, false));
                     if depth.is_some() {
-                        let d = wgpu::TextureFormat::Rgba16Float;
-                        self.pipeline(device, d, "fs_depth", samples > 1);
+                        self.pipeline(device, wgpu::TextureFormat::Rgba16Float, "fs_depth");
                     }
                 }
                 Dest::Viewport(_) => {
                     let f = viewport_format;
-                    self.pipeline(device, f, resolve_entry(f, false), false);
+                    self.pipeline(device, f, resolve_entry(f, false));
                 }
             }
         }
@@ -574,10 +652,8 @@ impl Views {
         dest: &wgpu::TextureView,
         format: wgpu::TextureFormat,
         depth: bool,
-        samples: u32,
     ) {
         let entry = resolve_entry(format, depth);
-        let ms = depth && samples > 1;
         let slot = self.slots[plan.index].as_ref().expect("made for the plan");
         let rect = match plan.dest {
             Dest::Viewport(r) => r,
@@ -603,7 +679,7 @@ impl Views {
             ],
         };
         queue.write_buffer(&slot.resolve_buffer, 0, bytemuck::bytes_of(&u));
-        let pipeline = &self.pipelines[&(format, entry, ms)];
+        let pipeline = &self.pipelines[&(format, entry)];
         let layout = pipeline.get_bind_group_layout(0);
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("view resolve"),
@@ -612,7 +688,7 @@ impl Views {
                 wgpu::BindGroupEntry {
                     binding: 0,
                     resource: wgpu::BindingResource::TextureView(if depth {
-                        &slot.depth
+                        &slot.prepass.as_ref().expect("made for its depth").lindepth
                     } else {
                         &slot.hdr
                     }),
@@ -706,11 +782,12 @@ impl Views {
 
 fn textures(
     device: &wgpu::Device,
-    ((w, h), samples, depth_read): ((u32, u32), u32, bool),
+    ((w, h), samples, depth_drawn): ((u32, u32), u32, bool),
 ) -> (
     wgpu::TextureView,
     Option<wgpu::TextureView>,
     wgpu::TextureView,
+    Option<DepthPrepass>,
 ) {
     let make = |label, format, samples, usage| {
         device
@@ -734,21 +811,38 @@ fn textures(
     let bind = wgpu::TextureUsages::TEXTURE_BINDING;
     let hdr = make("view hdr", crate::HDR_FORMAT, 1, attach | bind);
     let msaa = (samples > 1).then(|| make("view hdr (msaa)", crate::HDR_FORMAT, samples, attach));
-    let depth = make(
-        "view depth",
-        crate::DEPTH_FORMAT,
-        samples,
-        if depth_read { attach | bind } else { attach },
-    );
-    (hdr, msaa, depth)
+    let depth = make("view depth", crate::DEPTH_FORMAT, samples, attach);
+    let prepass = depth_drawn.then(|| DepthPrepass {
+        gbuffer: make(
+            "view prepass normals",
+            crate::post::GBUFFER_FORMAT,
+            1,
+            attach,
+        ),
+        lindepth: make(
+            "view prepass depth",
+            crate::post::LINDEPTH_FORMAT,
+            1,
+            attach | bind,
+        ),
+        outline: make(
+            "view prepass outline",
+            crate::post::OUTLINE_FORMAT,
+            1,
+            attach,
+        ),
+        depth: make("view prepass depth buffer", crate::DEPTH_FORMAT, 1, attach),
+    });
+    (hdr, msaa, depth, prepass)
 }
 
 fn attachments(device: &wgpu::Device, old: ViewSlot, key: ((u32, u32), u32, bool)) -> ViewSlot {
-    let (hdr, msaa, depth) = textures(device, key);
+    let (hdr, msaa, depth, prepass) = textures(device, key);
     ViewSlot {
         hdr,
         msaa,
         depth,
+        prepass,
         ..old
     }
 }
@@ -835,15 +929,16 @@ mod tests {
         };
         let (f, pe, near) = mirror_frame(&eye, &quad).expect("in front");
         assert!((pe - Vec3::new(0.7, 1.3, -4.0)).length() < 1e-5);
-        assert!((near - 4.0).abs() < 1e-4);
+        assert!((near - 4.004).abs() < 1e-4);
         let ndc = |p: Vec3| f.view_proj.project_point3(p);
         // The quad's +x end is the image's left (x = -1) before the flip.
         let a = ndc(Vec3::new(1.2, 0.5, 0.0));
         let c = ndc(Vec3::new(-0.8, 1.5, 0.0));
         assert!((a.x + 1.0).abs() < 1e-4 && (a.y + 1.0).abs() < 1e-4, "{a}");
         assert!((c.x - 1.0).abs() < 1e-4 && (c.y - 1.0).abs() < 1e-4, "{c}");
-        // On the glass: depth 0; the room in front of it is beyond.
-        assert!(a.z.abs() < 1e-4);
+        // The glass itself is in front of the near plane (clipped); the
+        // room in front of the mirror is beyond it.
+        assert!(a.z < 0.0, "{a}");
         assert!(ndc(Vec3::new(0.2, 1.0, 2.0)).z > 0.0);
         // Behind the mirror, no reflection.
         let behind = Camera {
