@@ -917,14 +917,18 @@ fn timeline_system(
             comp["time"] = json!(0.0);
             comp["playing"] = json!(false);
             run.written = 0.0;
-            let out = r
-                .timeline
-                .1
-                .encode(Some(&cb), Some(&comp))
-                .map_err(invalid)?;
-            ctx.set_bytes(e, r.timeline.0, &out)?;
-            lock(state).runs.insert(key, run);
-            continue;
+            // A stop resets; a play or seek queued after it (the
+            // command `timeline:play` queues Stop then Play) still applies.
+            if !playing && seek.is_none() {
+                let out = r
+                    .timeline
+                    .1
+                    .encode(Some(&cb), Some(&comp))
+                    .map_err(invalid)?;
+                ctx.set_bytes(e, r.timeline.0, &out)?;
+                lock(state).runs.insert(key, run);
+                continue;
+            }
         }
         // A timeline that ended last tick hands back what it owns now
         // (its last frame showed the end).
