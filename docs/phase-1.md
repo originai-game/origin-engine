@@ -6146,8 +6146,48 @@ hosts; M6 needs M3, M4, M5; M7 needs M6.
   its last pass does, one `span_to` rounds both). At 91064b19: PASS
   (fmt 1 s, clippy 10 s, test 202 s with 1154 tests, bun-functional
   149 s, drift skipped on unchanged inputs).
-- Every stream is merged. The wave's end (`scripts/wave-end.sh`) runs
-  next, once.
+- The wave's end at 3f283424 (`scripts/wave-end.sh`, 1,880 s): gate
+  PASS 777 s (determinism 284 s, wasm-build 390 s, test 192 s,
+  wasm-opt 204 s, size-gate 55 s, bun-test 182 s), conformance PASS
+  14 s, release PASS 664 s (the pack and the install test on linux-x64,
+  `og test` frames unchecked there for want of a renderer), web FAIL
+  425 s with four failures, each diagnosed to its cause and fixed on
+  main (no stream reopened):
+  - **Wasm**: 3,519,278 bytes brotli for the 3D publish host (83 % of the
+    4 MiB download budget; 63 % at E5's end), 3,344,401 for 2D (79 %),
+    the lanes variants 3,559,972 (84 %, the largest download) and
+    3,380,705 (80 %). Twenty points in one round: the BVH loader, the
+    view passes, rect-light shadows, the lit raymarch, GPU timing and the
+    2D rig's new timelines all landed in the publish host. A number to
+    read; the next round should see which of them `publish` can leave
+    out.
+  - The fx-showcase `baked` station drew the Cornell box unbaked on both
+    tiers (22 % outliers against Metal). Cause: a bake was keyed on the
+    cooked blob hashes of its scene and models, and the BVH in the cook
+    had moved every model blob, so the runtime called every bake stale.
+    Fixed at the root (482ec8cb): the key is the scene's source hash and
+    `og_cook::lightmap::geometry_hash` of each static model's LOD-0
+    parts, the one key the bake, `og doctor` and `bakedLighting` read; a
+    test re-cooks the fixture with `raycast false` and the hall still
+    draws baked. The box rebaked (260b9657, pages byte-identical) and
+    the station matches Metal on webgpu (0.000 %) and webgl2 (0.001 %)
+    with the rebuilt wasm.
+  - The `volumetric` station and og-tests' `volumetric-fog` on webgl2
+    failed against frames recorded before render-light lit the WebGL2
+    raymarch and spread the froxel injection. Both re-recorded and read
+    (b648bea3): the warm point light's shafts and the rect panel's cone;
+    the test scene's two cones with no column streaks.
+  - Ember Vale refused to start on both tiers: `strider.glb.ogb` held the
+    pre-BVH type hash. The browser scripts cooked only when `cooked/`
+    was missing, so a stale cook survived every format move; they now
+    cook on every run (9d607bff, 0.1 s when up to date). All three
+    frames match on both tiers.
+  - Rerun on main at 57f2b371 after these fixes: functional gate PASS
+    5/5 in 181 s (fmt 2 s, clippy 8 s, drift 40 s, bun-functional
+    130 s, test 177 s); web-reference PASS in 367 s (E5 24/24 stations
+    on both tiers, the 37 looks, og-tests gfx 104/104 on webgpu and
+    webgl2, every ui-kit sheet, Ember Vale 3/3 on both tiers, a11y 26/26
+    on both). The debt round is closed; what it leaves is listed below.
 - Left for a later round: a list column in records (og-core; eight
   custom post slots until then), the raycast's per-tick hierarchy
   refresh, rollback and the platform's ask #16, og-ui's nine-slice band

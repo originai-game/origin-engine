@@ -281,6 +281,15 @@ changes by stream:
   `quit` (a lockstep gate's restore no longer moves scheduled steps);
   `?room=<id>` Play links (`RoomInfo.link`); the arena archetype polished
   to taste 100 / feel 66.
+- The wave's end: a lightmap bake is keyed on the scene's source text
+  and each static model's geometry (positions, normals, uvs, colours,
+  indices of its LOD-0 parts), no longer on the cooked blobs' hashes, so
+  a re-cook that keeps the geometry (a cooker revision, the BVH in the
+  cook, a texture or raycast option) keeps the bake; before, every cook
+  format move staled every bake of every project (the fx-showcase
+  Cornell box drew unbaked on both browser tiers). `og doctor --project`
+  and `og.render.bakedLighting` read the same key. The browser test
+  scripts cook their project on every run, as `og test` does.
 
 ## 0.2.0 (2026-10-23)
 
