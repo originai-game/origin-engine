@@ -23,8 +23,11 @@
 //! Views are drawn before the main pass, lowest [`View::order`] first, so a
 //! material of the main camera's (and of a later view's) reads the target
 //! as drawn this frame; a view that sees its own target reads the frame
-//! before (a monitor in the monitor's room). Transparent meshes, sprites,
-//! text, particles, lines and the post effects are the main camera's.
+//! before (a monitor in the monitor's room). It then draws what the main
+//! pass draws over its opaque scene, on its layers from its eye:
+//! transparent meshes, particles, trails, ribbons and beams (facing its
+//! eye), lines and points, world sprites and text (`lib.rs`'s view pass);
+//! the post effects are the main camera's.
 //!
 //! Layers: bit `n` of a mask is three.js layer `n`; every object and camera
 //! is on layer 0 (mask 1) unless set. A camera draws an object when their

@@ -2285,7 +2285,7 @@ world.insert(p2, og.CameraView, { viewportX: 0.5, viewportWidth: 0.5 });
 A view draws what the main camera draws, from its own eye and on its own
 `layers`: meshes and models (skinned meshes and custom shaders included),
 opaque then transparent back to front, the terrain and the sky, particle
-systems, og.Lines and og.Points, and world sprites and text, lit and
+systems, trails, og.Lines and og.Points, and world sprites and text, lit and
 shadowed by the frame's lights. Each view is a second draw of everything
 its layers admit, so keep it cheap with `layers` and `every`.
 - An `ldr` target and a viewport are exposed with the view's `exposure`
@@ -2293,8 +2293,8 @@ its layers admit, so keep it cheap with `layers` and `every`.
   radiance and is exposed by the frame that shows it.
 - Bloom, AO, SSR, depth of field, colour grading and custom post passes
   run on the main frame only.
-- In a view, sprites are not 2D-lit and do not glow. Trails, 2D fluids,
-  screen sprites, the UI and debug draw stay on the main frame.
+- In a view, sprites are not 2D-lit and do not glow. 2D fluids, screen
+  sprites, the UI and debug draw stay on the main frame.
 
 A viewport view draws over the finished image and under the UI.
 

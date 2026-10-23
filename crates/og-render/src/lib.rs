@@ -5341,6 +5341,26 @@ impl Renderer {
             Projection::Perspective { .. } => None,
         };
         water::water_2d_strips(&scene.water_2d, &mut ribbon_frame);
+        // Each view's strips facing its own eye (views.rs), after the main
+        // camera's in the strip buffer.
+        let view_ribbons: Vec<Vec<ribbons::RibbonRun>> = view_plans
+            .iter()
+            .map(|p| {
+                let mut f = self
+                    .trails
+                    .emit(p.position, p.frame.forward, p.frame.orthographic);
+                water::water_2d_strips(&scene.water_2d, &mut f);
+                let base = ribbon_frame.vertices.len() as u32;
+                ribbon_frame.vertices.extend_from_slice(&f.vertices);
+                f.runs
+                    .into_iter()
+                    .map(|mut r| {
+                        r.first += base;
+                        r
+                    })
+                    .collect()
+            })
+            .collect();
         let mut layered: Vec<sprites::LayeredStrip> = ribbon_frame
             .runs
             .iter()
@@ -5395,18 +5415,19 @@ impl Renderer {
         // sprite buffer. 2D lighting, glow and the metaball composite read
         // the main frame's screen: a view draws its sprites unlit, without
         // glow, and leaves the 2D fluids out.
-        let view_strips: Vec<sprites::LayeredStrip> = layered
-            .iter()
-            .filter(|s| !matches!(s.source, RunSource::Metaballs(_)))
-            .map(|s| sprites::LayeredStrip {
-                layer: s.layer,
-                source: s.source,
-                first: s.first,
-                count: s.count,
-            })
-            .collect();
         let mut view_sprites: Vec<Vec<sprites::SpriteRun>> = Vec::new();
-        for p in &view_plans {
+        for (p, runs) in view_plans.iter().zip(&view_ribbons) {
+            let view_strips: Vec<sprites::LayeredStrip> = runs
+                .iter()
+                .filter_map(|r| {
+                    Some(sprites::LayeredStrip {
+                        layer: r.layer?,
+                        source: RunSource::Strip(r.blend as u8, r.texture),
+                        first: r.first,
+                        count: r.count,
+                    })
+                })
+                .collect();
             let f = sprites::build(
                 scene,
                 font,
@@ -7416,6 +7437,39 @@ impl Renderer {
             binder.reset(pass);
             draws
         };
+        // Trails, ribbons and beams drawn with the 3D scene (layered 2D
+        // trails go with the sprites): the main camera's or a view's runs.
+        let draw_strips = |pass: &mut wgpu::RenderPass, runs: &[ribbons::RibbonRun]| -> u32 {
+            let mut draws = 0;
+            for run in runs.iter().filter(|r| r.layer.is_none()) {
+                pass.set_pipeline(
+                    &self.ribbon_pipelines[match run.blend {
+                        ParticleBlend::Additive => 0,
+                        ParticleBlend::Alpha => 1,
+                    }],
+                );
+                pass.set_bind_group(
+                    1,
+                    match run.texture {
+                        None => &self.white_sprite_group,
+                        Some(t) => self.cache.ribbon_groups[t.index()]
+                            .as_ref()
+                            .expect("made before the pass"),
+                    },
+                    &[],
+                );
+                let stride = std::mem::size_of::<ribbons::RibbonVertex>() as u64;
+                let start = run.first as u64 * stride;
+                pass.set_vertex_buffer(
+                    0,
+                    self.ribbon_buffer
+                        .slice(start..start + run.count as u64 * stride),
+                );
+                pass.draw(0..run.count, 0..1);
+                draws += 1;
+            }
+            draws
+        };
         // Sprites and text over a camera's scene, in sorted order: the main
         // camera's runs with its effect group, or a view's (`view`: every
         // run tone mapped, no HDR alpha cover). Answers the draws made.
@@ -8254,6 +8308,8 @@ impl Renderer {
                                 },
                             );
                         }
+                        // Trails, ribbons and beams facing the view's eye.
+                        stats.draw_calls += draw_strips(&mut pass, &view_ribbons[i]);
                         let n = self.lines.draw_scene_with(
                             &mut pass,
                             &line_frame,
@@ -8634,33 +8690,7 @@ impl Renderer {
                         );
                     }
                     // Trails, ribbons and beams (layered 2D trails go with the sprites).
-                    for run in ribbon_frame.runs.iter().filter(|r| r.layer.is_none()) {
-                        pass.set_pipeline(
-                            &self.ribbon_pipelines[match run.blend {
-                                ParticleBlend::Additive => 0,
-                                ParticleBlend::Alpha => 1,
-                            }],
-                        );
-                        pass.set_bind_group(
-                            1,
-                            match run.texture {
-                                None => &self.white_sprite_group,
-                                Some(t) => self.cache.ribbon_groups[t.index()]
-                                    .as_ref()
-                                    .expect("made before the pass"),
-                            },
-                            &[],
-                        );
-                        let stride = std::mem::size_of::<ribbons::RibbonVertex>() as u64;
-                        let start = run.first as u64 * stride;
-                        pass.set_vertex_buffer(
-                            0,
-                            self.ribbon_buffer
-                                .slice(start..start + run.count as u64 * stride),
-                        );
-                        pass.draw(0..run.count, 0..1);
-                        stats.draw_calls += 1;
-                    }
+                    stats.draw_calls += draw_strips(&mut pass, &ribbon_frame.runs);
                     // Lines, points and wireframes (lines.rs), with their own group 0.
                     let n = self
                         .lines

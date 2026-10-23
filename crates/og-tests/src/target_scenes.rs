@@ -455,3 +455,73 @@ pub fn depth_scene() -> RenderScene {
     };
     scene
 }
+
+/// What a view draws of the main pass's effects (`view_fx_scene`), each
+/// in front of the view's camera and out of the main camera's sight.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ViewFx {
+    /// An orange ribbon across a perspective view.
+    Ribbon,
+}
+
+impl ViewFx {
+    pub const ALL: [ViewFx; 1] = [ViewFx::Ribbon];
+}
+
+/// A dark grey wall at z = -1 and the effect `fx` (`on` false: the scene
+/// without it), drawn by a viewport view over the frame's right half
+/// (x 0.5..1) looking down -z from (0, 0, 6); the main camera looks the
+/// other way, along +z, so the left half never shows the effect.
+pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
+    let mut scene = RenderScene::new();
+    scene.light = DirectionalLight {
+        direction_to_light: Vec3::new(0.2, 0.5, 1.0),
+        intensity: 1.5,
+        ..Default::default()
+    };
+    scene.environment.intensity = 0.3;
+    scene.environment.background = og_render::Background::Color(Vec3::splat(0.02));
+    let wall = scene.add_mesh(shapes::cuboid(Vec3::new(20.0, 20.0, 0.2)));
+    let grey = scene.add_standard_material(colour(0.25, 0.25, 0.25));
+    scene.add_instance(
+        wall,
+        grey,
+        Mat4::from_translation(Vec3::new(0.0, 0.0, -1.1)),
+    );
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 0.0, 6.0),
+        target: Vec3::new(0.0, 0.0, 12.0),
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    let camera = Camera {
+        position: Vec3::new(0.0, 0.0, 6.0),
+        target: Vec3::ZERO,
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    if on {
+        match fx {
+            ViewFx::Ribbon => {
+                let point = |x: f32| og_render::RibbonPoint {
+                    position: Vec3::new(x, 0.3 * x.sin(), 0.0),
+                    width: 0.6,
+                    color: [1.0, 0.45, 0.1, 1.0],
+                };
+                scene.ribbons.push(og_render::Ribbon {
+                    points: (0..=8).map(|i| point(-2.0 + i as f32 * 0.5)).collect(),
+                    texture: None,
+                    uv: og_render::RibbonUv::Stretch,
+                    blend: og_render::ParticleBlend::Alpha,
+                });
+            }
+        }
+    }
+    scene.views.push(View {
+        camera,
+        target: ViewTarget::Viewport([0.5, 0.0, 0.5, 1.0]),
+        ..Default::default()
+    });
+    crate::fx_scenes::tick_all(&mut scene, 60);
+    scene
+}

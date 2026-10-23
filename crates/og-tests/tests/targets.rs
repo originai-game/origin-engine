@@ -186,6 +186,57 @@ fn a_view_draws_transparents_sprites_particles_and_lines_on_its_layers() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// A view draws the main pass's effects from its own eye: each effect in
+/// front of the viewport view's camera moves its half of the frame (x
+/// 640..1280) and leaves the main camera's half alone. Before the debt
+/// round 2 a view drew none of them (ribbons, trails and beams).
+#[test]
+fn a_view_draws_the_main_passs_effects() {
+    use og_tests::target_scenes::{ViewFx, view_fx_scene};
+    let mut failures = Vec::new();
+    for fx in ViewFx::ALL {
+        let on = frame(&view_fx_scene(fx, true));
+        let off = frame(&view_fx_scene(fx, false));
+        if let Ok(dir) = std::env::var("OG_VIEW_FX_OUT") {
+            gfx::save_png(
+                std::path::Path::new(&format!("{dir}/view-fx-{fx:?}.png")),
+                &on,
+            )
+            .expect("save");
+            gfx::save_png(
+                std::path::Path::new(&format!("{dir}/view-fx-{fx:?}-off.png")),
+                &off,
+            )
+            .expect("save");
+        }
+        let (mut view, mut main) = (0, 0);
+        for y in 0..on.height {
+            for x in 0..on.width {
+                let i = ((y * on.width + x) * 4) as usize;
+                let d = (0..3)
+                    .map(|c| on.pixels[i + c].abs_diff(off.pixels[i + c]))
+                    .max()
+                    .unwrap_or(0);
+                if d > 12 {
+                    if x >= on.width / 2 {
+                        view += 1;
+                    } else {
+                        main += 1;
+                    }
+                }
+            }
+        }
+        println!("{fx:?}: {view} pixels moved in the view, {main} in the main frame");
+        if view < 400 {
+            failures.push(format!("{fx:?}: the view drew it on {view} pixels"));
+        }
+        if main > 0 {
+            failures.push(format!("{fx:?}: the main frame moved on {main} pixels"));
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 #[test]
 fn views_depth_matches_its_reference() {
     check("views-depth");

@@ -371,11 +371,13 @@ opaque and transparent instances (sorted from its eye), skinned
 instances, terrain, sky, particles (billboards facing its camera, through
 its own `ParticleViewGpu`), scene lines and points (its own
 `LineUniform`) and world sprites and text (`sprites::build` once per view
-with its mask, the instances appended after the main camera's). The
+with its mask, the instances appended after the main camera's), and
+trails, ribbons and beams (the frame's strips emitted again facing its
+eye, `Trails::emit`, after the main camera's in the strip buffer). The
 main camera's screen-space inputs stay its own: a view's sprites are not
 2D-lit and do not glow, its soft particles do not fade into depth, and
-trails (built facing the main eye), 2D fluids, screen sprites, the UI and
-the post chain are the main frame's. Of the post chain an `ldr` target or
+2D fluids, screen sprites, the UI and the post chain are the main
+frame's. Of the post chain an `ldr` target or
 a viewport carries exposure and the tone curve (the resolve); an `hdr`
 target carries linear radiance for the frame that shows it to expose.
 The cost is explicit: a view draws everything its mask admits, so its
