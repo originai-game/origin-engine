@@ -1723,12 +1723,12 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         g.transient("dof.coc", desc(hw, hh, HDR_FORMAT, 1, attach_bind))
             .transient("dof.blur", desc(hw, hh, HDR_FORMAT, 1, attach_bind));
     }
-    for i in 0..passes
+    let customs = passes
         .iter()
         .filter(|p| matches!(p, FramePass::CustomPost(_)))
-        .count()
-    {
-        g.transient(CUSTOM_POST_NAMES[i], desc(w, h, HDR_FORMAT, 1, attach_bind));
+        .count();
+    for &name in &CUSTOM_POST_NAMES[..customs] {
+        g.transient(name, desc(w, h, HDR_FORMAT, 1, attach_bind));
     }
     if has(FramePass::GodRaysMask) {
         g.transient("god.mask", desc(hw, hh, HDR_FORMAT, 1, attach_bind))

@@ -471,6 +471,7 @@ impl Views {
 
     /// Writes the views' frame, effect and light-cluster uniforms (the
     /// frame's with each view's camera) and makes their resolve pipelines.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn write(
         &mut self,
         device: &wgpu::Device,

@@ -302,7 +302,8 @@ pub fn validate_shader(shader: &MaterialShader) -> Result<Vec<String>, String> {
     use naga::valid::{Capabilities, ValidationFlags, Validator};
     let mut done = Vec::new();
     // A full shader's casters run its code too (custom.rs).
-    let mut modules: Vec<(&str, fn(&MaterialShader, bool) -> String, [&str; 2])> =
+    type Source = fn(&MaterialShader, bool) -> String;
+    let mut modules: Vec<(&str, Source, [&str; 2])> =
         vec![("lit", og_render::lit_module_source, ["vs", "fs"])];
     if shader.mode != ShaderMode::Hooks {
         modules.push((
