@@ -98,6 +98,21 @@ pub fn findings(root: &Path) -> Vec<Value> {
             f["asset"] = json!(source);
             out.push(f);
         }
+        // Warnings (a model's raycast BVH past budgets.bvhShare), read
+        // again with the budgets of now, as the flags are.
+        for w in stats::asset_warnings(a, &budgets) {
+            let mut f = finding(
+                "warning",
+                "bvh-share",
+                w["message"].as_str().unwrap_or("").to_string(),
+                "write `model { raycast false }` in the model's .ogt if nothing raycasts against it, or raise budgets.bvhShare in project.ogt",
+            );
+            f["asset"] = json!(source);
+            for k in ["budget", "limit", "value"] {
+                f[k] = w[k].clone();
+            }
+            out.push(f);
+        }
         for fl in stats::asset_flags(a, &budgets) {
             let mut f = finding(
                 "error",

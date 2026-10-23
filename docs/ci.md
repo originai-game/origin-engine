@@ -421,7 +421,7 @@ crate; that is expected.
 
 There is one lanes module per game profile (owed row 71,
 docs/web-export.md §Variants): `scripts/wasm-crates.txt`'s `lanes` lines
-build `og_host_web-lanes2d.wasm` (`publish,physics2d,shaping`) and then
+build `og_host_web-lanes2d.wasm` (`publish,physics2d,profile2d,shaping`) and then
 `og_host_web-lanes.wasm` (`publish,physics3d,shaping`), both in
 `target/wasm-mt`, where cargo keys each unit by its features: std and
 every dependency are shared, and only og-physics, og-runtime and
@@ -499,7 +499,7 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
   `origin-engine` and measured by the size gate as its own download.
   og-host-web has two, one per game profile (docs/web-export.md
   §Variants): `publish` (`publish,physics3d,shaping`, the 3D module in
-  `dist/web-publish`) and `publish2d` (`publish,physics2d,shaping`, the 2D module
+  `dist/web-publish`) and `publish2d` (`publish,physics2d,profile2d,shaping`, the 2D module
   in `dist/web-publish-2d`); `build.sh` under the gate stops when a declared
   variant's wasm is missing.
 - A line `lanes NAME CRATE FEATURES` does the same for the lanes variant

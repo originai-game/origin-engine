@@ -165,7 +165,14 @@ world hash, replayed. The input module replaces it by implementing
 
 - Features: `ws` (default) the native WebSocket server, ignored on wasm32;
   `publish` keeps `hello`, `tick`, `state`, `pick`, `entity`, `input`,
-  `capture` and answers `-32601` for the rest. `hello.build` is `publish`,
+  `capture` and answers `-32601` for the rest, whose code is compiled out.
+  Its command channel still runs what og.ai's commands and a timeline's
+  event keys reach (the input actions, `set`, `teleport`, `frame_entity`,
+  `seed`, the clock, registered commands); the actions that only observe
+  the world for a tool (`screenshot`, `listen`, `describe`, `expect`,
+  `save_scene`, `dump_world`, `dump_ui`, `dump_entity`, `get`, `help`) are
+  not built in and log a warning, and `register_dump`, `set_listen`,
+  `set_memory` and `set_reader` keep nothing. `hello.build` is `publish`,
   `dev` (debug assertions) or `release`.
 - `cargo check -p og-probe --target wasm32-unknown-unknown` builds with or
   without default features.
@@ -185,6 +192,8 @@ world hash, replayed. The input module replaces it by implementing
   steps inside `advance`, pointer and key actions, `teleport`/`set`/
   `frame_entity`/`screenshot`.
 - `tests/websocket.rs`: a real tungstenite client against `ProbeServer`.
-- `tests/publish.rs` (`--features publish`): the trim.
+- `tests/publish.rs` (`--features publish`): the trim: the members, and
+  the command channel's world actions running while the tools' are
+  refused.
 
 The world they drive is `tests/support/mod.rs`.

@@ -60,6 +60,7 @@ mod probe;
 #[cfg(not(feature = "publish"))]
 mod record;
 mod save;
+#[cfg(not(feature = "publish"))]
 mod scene_save;
 mod stream;
 mod terrain;

@@ -13,10 +13,14 @@
 //! returns, so a scheduled step addresses a name a command gave from the
 //! next probe call on.
 
-use super::engine::{DECL, Engine, assemble, call, engine, extract_layouts, hooks, invalidate};
+#[cfg(not(feature = "publish"))]
+use super::engine::{DECL, assemble};
+use super::engine::{Engine, call, engine, extract_layouts, hooks, invalidate};
 use super::extract::{RenderState, extract};
 use og_ecs::{Entity, World};
-use og_probe::{Capture, Frame, Probe, Rebuilt, Reloader};
+use og_probe::{Capture, Frame, Probe};
+#[cfg(not(feature = "publish"))]
+use og_probe::{Rebuilt, Reloader};
 use serde_json::{Value, json};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -305,12 +309,16 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         render: eng.render.clone(),
         engine: id,
     }));
-    // save_scene: every scene's text rewritten from the world.
+    // save_scene: every scene's text rewritten from the world (a publish
+    // build serves no save_scene).
+    #[cfg(not(feature = "publish"))]
     probe.set_scene_writer(Box::new(super::scene_save::RuntimeWriter { engine: id }));
     for (name, usage, doc) in commands {
         register_one(&mut probe, id, &name, &usage, &doc)?;
     }
-    // `get` answers what og.DayNight makes of the sun, as drawn.
+    // `get` answers what og.DayNight makes of the sun, as drawn (a publish
+    // build has no `get`).
+    #[cfg(not(feature = "publish"))]
     probe.set_derive(Box::new(move |world, entity, name, fields| {
         if let Ok(eng) = engine(id)
             && let Ok(st) = eng.state.try_borrow()
@@ -337,11 +345,14 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
 
 /// The host's half of a hot reload: the latest declared game, assembled into
 /// a fresh world. The runtime's view of it waits in `State::reloaded` until
-/// the probe has restored the old world into it ([`after_reload`]).
+/// the probe has restored the old world into it ([`after_reload`]). A
+/// publish build serves no `reload`.
+#[cfg(not(feature = "publish"))]
 struct RuntimeReloader {
     engine: u32,
 }
 
+#[cfg(not(feature = "publish"))]
 impl Reloader for RuntimeReloader {
     fn rebuild(&mut self, current: &World) -> Result<Rebuilt, String> {
         let t0 = now_ms();
@@ -381,6 +392,7 @@ impl Reloader for RuntimeReloader {
     }
 }
 
+#[cfg(not(feature = "publish"))]
 pub(crate) fn set_reloader(eng: &Rc<Engine>) {
     eng.probe
         .borrow_mut()

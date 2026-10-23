@@ -147,7 +147,8 @@ wasm="$target/wasm32-unknown-unknown/wasm/og_host_web.wasm"
 # `variant`): 3D into dist/web-publish, 2D into dist/web-publish-2d.
 rm -rf "$here/dist/web-publish-2d"
 mkdir -p "$here/dist/web-publish-2d"
-for v in "publish physics3d web-publish" "publish2d physics2d web-publish-2d"; do
+# The 2D modules also leave out the 3D world's renderer (`profile2d`).
+for v in "publish physics3d web-publish" "publish2d physics2d,profile2d web-publish-2d"; do
   set -- $v
   cargo build --profile wasm -q --target wasm32-unknown-unknown -p og-host-web --lib --no-default-features --features "publish,$2,shaping" --target-dir "$target/wasm-$1"
   wasm-bindgen --target web --out-dir "$here/dist/$3" --out-name origin-engine "$target/wasm-$1/wasm32-unknown-unknown/wasm/og_host_web.wasm"
@@ -167,7 +168,7 @@ set --
 # (scripts/wasm-lanes.sh), bound as origin-engine-lanes and optimised with
 # --enable-threads. The 2D one first, so cargo's last output there is the
 # 3D one, as in the gate's wasm-build.
-for v in "physics2d web-publish-2d" "physics3d web-publish"; do
+for v in "physics2d,profile2d web-publish-2d" "physics3d web-publish"; do
   set -- $v
   rm -rf "$here/dist/$2/snippets" "$here/dist/$2/origin-engine-lanes"*
   "$root/scripts/wasm-lanes.sh" --profile wasm -q -p og-host-web --lib --no-default-features --features "publish,$1,shaping"

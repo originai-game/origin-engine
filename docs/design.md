@@ -934,7 +934,14 @@ The engine implements `RuntimeProbe` protocol 5 natively (`hello`, `tick`,
 from the shell (no postMessage hop: the shell calls the Worker through a
 request ring), a loopback WebSocket from `og` on native. `publish` builds keep
 the player-facing members (`hello`, `tick`, `state`, `pick`, `entity`,
-`input`, `capture`) and drop the rest.
+`input`, `capture`) and drop the rest, compiled out with what only they
+read (`describe` and the views' id passes, `save_scene`'s scene writer,
+`reload`, the dumps the modules register). Their command channel keeps the
+actions og.ai's commands and a timeline's event keys reach (input, `set`,
+`teleport`, the clock, registered commands) and refuses the ones that only
+observe the world for a tool (`screenshot`, `describe`, `expect`, `get`,
+`dump_*`, `help`, `listen`, `save_scene`) with a warning
+(crates/og-probe/README.md §Builds).
 
 Above capture sits the layer that lets an agent check a frame without
 reading pixels:
@@ -982,7 +989,8 @@ reading pixels:
   at, so it lies where it ran. Threads: engine (each tick, its systems
   inside it from the world's clock), render (each frame, its render-graph
   passes' CPU encoding), gpu (the same passes from timestamp queries,
-  where the device has them, `RenderCapabilities.gpuTimestamps`: each
+  where the device has them and the build is not `publish`, whose
+  og-render leaves the queries out, `RenderCapabilities.gpuTimestamps`: each
   frame anchored at its submit, after the frame before it, since the
   GPU's clock is its own), load (each cooked output read), cook (the
   cook) and `cook N` (each output on the cook thread that made it), and
@@ -1027,7 +1035,12 @@ reading pixels:
   triangles vertices textureSize bones clips assetBytes totalBytes
   soundSeconds videoSeconds fontGlyphs navPolygons sceneEntities
   emitterParticles }`, each with a default) and prints findings with
-  severity, asset, budget, limit, value and fix.
+  severity, asset, budget, limit, value and fix. One more key,
+  `bvhShare` (30), is a warning, not a limit: a model whose cooked
+  raycast BVH is over that percent of its blob and at least 16 KiB is
+  named by `og cook --report` and `og doctor --project`, with
+  `model { raycast false }` as the fix (the 30 % read from the
+  repository's models, tests/evidence/debt2/size/NOTES.md).
 
 ### 3.5 Hot reload **(D)**
 

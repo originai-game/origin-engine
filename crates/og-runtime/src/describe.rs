@@ -12,7 +12,9 @@
 
 use super::extract::{RenderState, extract};
 use og_ecs::{Entity, World};
-use og_probe::{Pick, SceneView, Seen, SeenView, Shown};
+use og_probe::{Pick, SceneView, Seen};
+#[cfg(not(feature = "publish"))]
+use og_probe::{SeenView, Shown};
 use serde_json::json;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -30,11 +32,13 @@ pub(crate) struct DrawIds {
 
 pub(crate) struct RuntimeView {
     pub render: Rc<RefCell<RenderState>>,
+    #[cfg_attr(feature = "publish", allow(dead_code))]
     pub engine: u32,
 }
 
 /// One id pass over the current tick: the frame, the entities by id, the
 /// CSS pixels per pass pixel.
+#[cfg_attr(feature = "publish", allow(dead_code))]
 struct Pass {
     frame: og_render::IdFrame,
     entities: Vec<u64>,
@@ -46,7 +50,9 @@ struct Pass {
 }
 
 impl RuntimeView {
-    fn pass(&self, world: &World) -> Option<Pass> {
+    /// The main camera's id pass and, for `describe` (`pick` reads the
+    /// main camera's pass alone), each secondary camera's and the camera.
+    fn pass(&self, world: &World, describe: bool) -> Option<Pass> {
         let mut rs = self.render.try_borrow_mut().ok()?;
         rs.terrain.settle = true;
         extract(world, &mut rs);
@@ -96,18 +102,25 @@ impl RuntimeView {
         let frame = og_render::render_ids(scene, &sources, pw, ph);
         // Each view from its own camera on its own layers, at a quarter of
         // its image's pixels as the main pass.
-        let views = og_render::view_id_cameras(scene, (fw, fh))
-            .into_iter()
-            .filter_map(|(i, camera, (w, h))| {
-                let e = *rs.views.entities.get(i)?;
-                let mirror = scene.views[i].mirror.is_some();
-                let (vw, vh) = og_render::id_pass_size(w, h);
-                let f = og_render::render_ids_from(scene, &sources, vw, vh, &camera);
-                Some((e, mirror, (w, h), f))
-            })
-            .collect();
+        let views = (if describe {
+            og_render::view_id_cameras(scene, (fw, fh))
+        } else {
+            Vec::new()
+        })
+        .into_iter()
+        .filter_map(|(i, camera, (w, h))| {
+            let e = *rs.views.entities.get(i)?;
+            let mirror = scene.views[i].mirror.is_some();
+            let (vw, vh) = og_render::id_pass_size(w, h);
+            let f = og_render::render_ids_from(scene, &sources, vw, vh, &camera);
+            Some((e, mirror, (w, h), f))
+        })
+        .collect();
         let c = &scene.camera;
-        let camera = json!({
+        let camera = if !describe {
+            serde_json::Value::Null
+        } else {
+            json!({
             "position": [c.position.x, c.position.y, c.position.z],
             "target": [c.target.x, c.target.y, c.target.z],
             "up": [c.up.x, c.up.y, c.up.z],
@@ -116,7 +129,8 @@ impl RuntimeView {
             "height": match c.projection { og_render::Projection::Orthographic { height } => json!(height), _ => json!(null) },
             "near": c.near,
             "far": c.far,
-        });
+            })
+        };
         Some(Pass {
             frame,
             entities,
@@ -126,6 +140,7 @@ impl RuntimeView {
         })
     }
 
+    #[cfg(not(feature = "publish"))]
     /// The entities an id frame shows, its values scaled by `scale` (pixels
     /// of the image per pass pixel).
     fn shown(
@@ -167,6 +182,7 @@ impl RuntimeView {
             .collect()
     }
 
+    #[cfg(not(feature = "publish"))]
     /// What draws an entity: `model` (and its asset's path), `mesh`,
     /// `skinned`, `sprite`.
     fn labels(&self, world: &World, e: u64) -> Vec<String> {
@@ -214,8 +230,17 @@ impl RuntimeView {
 }
 
 impl SceneView for RuntimeView {
+    /// A publish build serves no `describe`: nothing describes the frame,
+    /// so the views' id passes and what reads the passes for it are not
+    /// built in (`pick` keeps the main camera's).
+    #[cfg(feature = "publish")]
+    fn seen(&mut self, _world: &World, _cover: &[[f32; 4]]) -> Option<Seen> {
+        None
+    }
+
+    #[cfg(not(feature = "publish"))]
     fn seen(&mut self, world: &World, cover: &[[f32; 4]]) -> Option<Seen> {
-        let mut pass = self.pass(world)?;
+        let mut pass = self.pass(world, true)?;
         // The UI's opaque rects in pass pixels.
         let cover: Vec<[f32; 4]> = cover
             .iter()
@@ -255,7 +280,7 @@ impl SceneView for RuntimeView {
     }
 
     fn pick(&mut self, world: &World, x: f32, y: f32) -> Option<Pick> {
-        let pass = self.pass(world)?;
+        let pass = self.pass(world, false)?;
         let (id, at) = pass.frame.at(x / pass.scale.0, y / pass.scale.1)?;
         let e = *pass.entities.get(id as usize - 1)?;
         Some(Pick {
@@ -266,6 +291,7 @@ impl SceneView for RuntimeView {
     }
 }
 
+#[cfg(not(feature = "publish"))]
 /// Hides what the UI covers: every pixel of `frame` whose centre lies in
 /// one of `cover` (pass pixels, `[x, y, width, height]`) shows nothing,
 /// and each object's visible pixels, bounds and point are counted again

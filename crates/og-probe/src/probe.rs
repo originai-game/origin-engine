@@ -504,7 +504,13 @@ impl Probe {
 
     /// Reads `expect:frame` references (project-relative paths).
     pub fn set_reader(&mut self, read: impl Fn(&str) -> Option<Vec<u8>> + 'static) {
-        self.reader = Some(Box::new(read));
+        // Only a member a publish build does not serve reads it.
+        #[cfg(feature = "publish")]
+        let _ = read;
+        #[cfg(not(feature = "publish"))]
+        {
+            self.reader = Some(Box::new(read));
+        }
     }
 
     /// The bundle swap for `reload`.
@@ -576,7 +582,13 @@ impl Probe {
 
     /// Gives `listen` the host's audio: the last seconds its mixer rendered.
     pub fn set_listen(&mut self, listen: impl Fn(f32) -> Option<Heard> + 'static) {
-        self.listen = Some(Box::new(listen));
+        // Only a member a publish build does not serve reads it.
+        #[cfg(feature = "publish")]
+        let _ = listen;
+        #[cfg(not(feature = "publish"))]
+        {
+            self.listen = Some(Box::new(listen));
+        }
     }
 
     /// `listen`: the last `seconds` (0 to 2) of audio the host's mixer
@@ -596,7 +608,13 @@ impl Probe {
 
     /// Gives `memory` the host's figures ([`MemoryFn`]).
     pub fn set_memory(&mut self, memory: impl Fn(&World) -> Value + 'static) {
-        self.memory = Some(Box::new(memory));
+        // Only a member a publish build does not serve reads it.
+        #[cfg(feature = "publish")]
+        let _ = memory;
+        #[cfg(not(feature = "publish"))]
+        {
+            self.memory = Some(Box::new(memory));
+        }
     }
 
     /// `memory`: what the engine holds (`ProbeMemory`); `None` from a host
@@ -763,9 +781,16 @@ impl Probe {
         path_arg: usize,
         handler: impl Fn(&World, &[String]) -> Result<Value, String> + 'static,
     ) -> og_core::Result<()> {
-        self.register_command(name, desc, |_, _| Ok(()))?;
-        if let Some(r) = self.commands.get_mut(name) {
-            r.handler = Handler::Dump(Rc::new(handler), path_arg);
+        // A dump only observes the world for a tool: a publish build keeps
+        // none, so the handlers the engine's modules register are not built.
+        #[cfg(feature = "publish")]
+        let _ = (name, desc, path_arg, handler);
+        #[cfg(not(feature = "publish"))]
+        {
+            self.register_command(name, desc, |_, _| Ok(()))?;
+            if let Some(r) = self.commands.get_mut(name) {
+                r.handler = Handler::Dump(Rc::new(handler), path_arg);
+            }
         }
         Ok(())
     }
@@ -1042,6 +1067,7 @@ impl Probe {
         };
         let joined = args.join(":");
         match step.action.as_str() {
+            #[cfg(not(feature = "publish"))]
             "screenshot" => {
                 let mut path = None;
                 let mut edge = None;
@@ -1113,6 +1139,7 @@ impl Probe {
                 );
                 Ok(())
             }
+            #[cfg(not(feature = "publish"))]
             "listen" => {
                 let mut path = None;
                 let mut seconds = 1.0f32;
@@ -1454,6 +1481,7 @@ impl Probe {
                     .insert_resource_bytes(cid, &bytes)
                     .map_err(|e| e.reason().to_owned())
             }
+            #[cfg(not(feature = "publish"))]
             "describe" => {
                 let value = self.describe(world);
                 self.emit(
@@ -1467,7 +1495,9 @@ impl Probe {
                 );
                 Ok(())
             }
+            #[cfg(not(feature = "publish"))]
             "expect" => self.expect_args(world, args, Some(step.at)).map(|_| ()),
+            #[cfg(not(feature = "publish"))]
             "save_scene" => {
                 // `save_scene[:path][:spawned]`: `spawned` is a flag, any
                 // other argument the path.
@@ -1544,6 +1574,7 @@ impl Probe {
                 }
                 Ok(())
             }
+            #[cfg(not(feature = "publish"))]
             "dump_world" | "dump_ui" => {
                 let dump = if step.action == "dump_world" {
                     self.dump_world(world)
@@ -1561,6 +1592,7 @@ impl Probe {
                 );
                 Ok(())
             }
+            #[cfg(not(feature = "publish"))]
             "dump_entity" => {
                 let id = arg(0, "dump_entity:<entity>[:path]")?;
                 let e = self.entity_of(world, id)?;
@@ -1611,6 +1643,7 @@ impl Probe {
                 self.tuned.insert(format!("{entity}.{parameter}"));
                 Ok(())
             }
+            #[cfg(not(feature = "publish"))]
             "get" => {
                 let usage = "get:<Resource>[.<field>] or get:<entity>[.<component>[.<field>]]";
                 let target = arg(0, usage)?.trim();
@@ -1688,6 +1721,7 @@ impl Probe {
                 self.quit = true;
                 Ok(())
             }
+            #[cfg(not(feature = "publish"))]
             "help" => {
                 let mut text = String::new();
                 for info in self.help() {
@@ -1706,6 +1740,16 @@ impl Probe {
                 );
                 Ok(())
             }
+            // A publish build runs the actions that change the world (input,
+            // set, teleport, the clock, registered commands: what og.ai's
+            // commands and a timeline's event keys reach); the ones that only
+            // observe it for a tool are not built in.
+            #[cfg(feature = "publish")]
+            "screenshot" | "listen" | "describe" | "expect" | "save_scene" | "dump_world"
+            | "dump_ui" | "dump_entity" | "get" | "help" => Err(format!(
+                "`{}` is not built into a publish build",
+                step.action
+            )),
             name => {
                 let Some(registered) = self.commands.get(name) else {
                     return Err(format!(

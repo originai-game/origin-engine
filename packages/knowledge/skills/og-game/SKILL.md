@@ -2173,6 +2173,10 @@ These are the checks to use before opening frames. All of them run from
   `totalBytes` 64 MiB, `soundSeconds` 600, `videoSeconds` 300,
   `fontGlyphs` 8192, `navPolygons` 65536, `sceneEntities` 10000 and
   `emitterParticles` 16384, each a default a project may move.
+  `bvhShare` 30 is a warning, not a limit: a model whose cooked raycast
+  BVH is over 30 % of its blob (and at least 16 KiB) is named by `og cook
+  --report` and `og doctor`; write `model { raycast false }` in its .ogt
+  when nothing raycasts against it.
 
 ## 22. Levels of detail, reflection probes and screen-space reflections
 

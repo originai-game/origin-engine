@@ -22,6 +22,11 @@ publish = ["og-runtime/publish"]
 # --publish` ships the 3D or the 2D one; scripts/wasm-crates.txt `variant`).
 physics2d = ["og-runtime/physics2d"]
 physics3d = ["og-runtime/physics3d"]
+# The 2D profile's renderer: terrain, planar water, 3D fluids, scattered
+# copies and volumetric fog are not built in (og-render's `profile2d`,
+# RenderCapabilities.world3d false). The 2D publish and lanes modules
+# have it (scripts/wasm-crates.txt).
+profile2d = ["og-runtime/profile2d"]
 
 [dependencies]
 og-api = { path = "../og-api" }
