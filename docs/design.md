@@ -934,7 +934,8 @@ reading pixels:
   at, so it lies where it ran. Threads: engine (each tick, its systems
   inside it from the world's clock), render (each frame, its render-graph
   passes' CPU encoding), gpu (the same passes from timestamp queries,
-  where the device has them, `RenderCapabilities.gpuTimestamps`: each
+  where the device has them and the build is not `publish`, whose
+  og-render leaves the queries out, `RenderCapabilities.gpuTimestamps`: each
   frame anchored at its submit, after the frame before it, since the
   GPU's clock is its own), load (each cooked output read), cook (the
   cook) and `cook N` (each output on the cook thread that made it), and

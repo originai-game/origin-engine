@@ -4360,7 +4360,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 | `volumetricFog` | `VolumetricFog` | `"froxel"` | — | — | — | How Fog.volumetric is drawn on this device: a froxel grid (the full tier) or a raymarch along each pixel's view ray (WebGL2), each lit by the sun through its shadows and by the point, spot and rect lights around each sample (up to volumetricLights of them) through their shadows and cookies. |
 | `volumetricLights` | `number` | `0` | — | — | — | The most point, spot and rect lights that light one sample of Fog.volumetric: those of its screen cluster, MAX_CLUSTER_LIGHTS (64) in the froxel grid, 8 in WebGL2's raymarch, the brightest at the camera first. |
 | `maxLightCookies` | `number` | `0` | — | — | — | The most light cookie layers one frame draws (24 on every tier): a SpotLight.cookie takes one, a PointLight.cookie six (its cube's faces), and a texture several lights of one kind share takes its layers once. Cookies past it, in the order of their lights' entities, are not drawn: those lights shine without them, and the log names them in a warning. |
-| `gpuTimestamps` | `boolean` | `false` | — | — | — | Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true. |
+| `gpuTimestamps` | `boolean` | `false` | — | — | — | Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2, and never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true. |
 
 ```ogt
 struct RenderCapabilities {
@@ -4382,7 +4382,7 @@ struct RenderCapabilities {
   field volumetricFog VolumetricFog "How Fog.volumetric is drawn on this device: a froxel grid (the full tier) or a raymarch along each pixel's view ray (WebGL2), each lit by the sun through its shadows and by the point, spot and rect lights around each sample (up to volumetricLights of them) through their shadows and cookies."
   field volumetricLights u32 "The most point, spot and rect lights that light one sample of Fog.volumetric: those of its screen cluster, MAX_CLUSTER_LIGHTS (64) in the froxel grid, 8 in WebGL2's raymarch, the brightest at the camera first."
   field maxLightCookies u32 "The most light cookie layers one frame draws (24 on every tier): a SpotLight.cookie takes one, a PointLight.cookie six (its cube's faces), and a texture several lights of one kind share takes its layers once. Cookies past it, in the order of their lights' entities, are not drawn: those lights shine without them, and the log names them in a warning."
-  field gpuTimestamps bool "Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true."
+  field gpuTimestamps bool "Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2, and never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true."
 }
 ```
 

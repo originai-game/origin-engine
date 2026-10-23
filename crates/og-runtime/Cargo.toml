@@ -32,8 +32,9 @@ og-net = { path = "../og-net" }
 
 [features]
 default = ["shaping", "physics2d", "physics3d"]
-# A published game: the probe keeps only its player-facing members.
-publish = ["og-probe/publish"]
+# A published game: the probe keeps only its player-facing members and
+# the renderer times no pass on the GPU (og-render's `publish`).
+publish = ["og-probe/publish", "og-render/publish"]
 # og-ui's run-time shaping (rustybuzz: Arabic, Indic and the other shaped
 # scripts). A build for games without them can leave it out.
 shaping = ["og-ui/shaping"]

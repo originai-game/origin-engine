@@ -755,7 +755,8 @@ which lives in the Worker and answers asynchronously:
   "stop" | "take")` (the Worker's `trace` call, the shell's `trace()`)
   begins, ends or reads it; `saveTrace(name)` downloads it. The GPU's
   passes are there where the adapter has `timestamp-query`
-  (`RenderCapabilities.gpuTimestamps`), a frame or two after the frame
+  (`RenderCapabilities.gpuTimestamps`; never in a publish module, which
+  leaves the queries out), a frame or two after the frame
   (`tests/web-trace.test.ts`).
 
 Proven in headless Chrome 150 by `bun run test:browser` in

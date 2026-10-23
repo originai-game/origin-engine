@@ -2288,8 +2288,11 @@ impl Renderer {
         if cache_dir.is_some() && adapter.features().contains(wgpu::Features::PIPELINE_CACHE) {
             features |= wgpu::Features::PIPELINE_CACHE;
         }
-        // GPU pass timing (`timing.rs`) where the adapter has timestamps.
-        if adapter.features().contains(wgpu::Features::TIMESTAMP_QUERY) {
+        // GPU pass timing (`timing.rs`) where the adapter has timestamps;
+        // a publish build has none.
+        if cfg!(not(feature = "publish"))
+            && adapter.features().contains(wgpu::Features::TIMESTAMP_QUERY)
+        {
             features |= wgpu::Features::TIMESTAMP_QUERY;
         }
         let mut info = RenderInfo {

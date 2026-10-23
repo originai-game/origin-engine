@@ -116,3 +116,34 @@ What the table says:
   decoding); og-render's 3D-only subsystems in the 2D host: terrain
   111,803 B (`terrain`, `terrain_tiles`) plus og-runtime's terrain and
   terrain streaming 56,374 B, the scatter 17,352 B, and the 3D WGSL (below).
+
+## Items
+
+### 1. GPU timestamp queries out of publish
+
+- **Change.** og-render gains a `publish` feature, turned on by
+  og-runtime's `publish` (so both hosts' publish builds have it). Under it
+  `GpuTimer` and `FrameMarks` are empty enums (`timing.rs`): no timer is
+  ever made, so the query sets, the resolve and readback ring and the
+  encoder's timestamp pairs are not linked; the renderer no longer asks
+  the device for `TIMESTAMP_QUERY`; `gpu_timing_absent` answers "a publish
+  build times no pass on the GPU", so `RenderCapabilities.gpuTimestamps`
+  is false and `ProbeTimings.gpuPasses` and the trace's gpu thread are
+  empty there, as on WebGL2. The CPU's pass timings stay (`state()`
+  serves them in publish).
+- **Measured.** 3D publish 13,045,922 → 13,033,282 B (−12,640 B),
+  brotli 3,532,992 → 3,529,527 B (**−3,465 B**); 2D publish 12,408,297 →
+  12,395,677 B (−12,620 B), brotli 3,357,559 → 3,353,116 B (**−4,443 B**).
+  Per crate: og_render −4,098 B, wgpu −4,760 B (its query-set and
+  resolve paths), og_host_web −1,716 B, wgpu_core −1,073 B, data −687 B.
+- **Test.** og-render `timing::publish_tests` (run with `--features
+  publish`): the publish build reports no GPU timing on an adapter with
+  timestamps; the old code has no such build and reports `None` there.
+  The measured bytes are the regression number.
+- **Shared files.** `crates/og-render/Cargo.toml` (feature `publish`),
+  `crates/og-runtime/Cargo.toml` (`publish` turns it on), og-render
+  `lib.rs` (the device feature request). `crates/og-api/api.ogt`'s
+  `RenderCapabilities.gpuTimestamps` doc says publish has none;
+  regenerated with `og api gen` (index.d.ts, api.schema.json, wiki
+  render.md). docs/design.md §3.4 (trace) and docs/web-export.md (trace)
+  say the same.

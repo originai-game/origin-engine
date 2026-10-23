@@ -25,8 +25,15 @@
 //! readback and mapped after the submit; a later frame (or
 //! [`crate::Renderer::gpu_timings`]) reads them, so the GPU's numbers
 //! arrive a frame or two after the frame they measure, tagged with it.
+//!
+//! A `publish` build times no pass on the GPU: [`GpuTimer`] and
+//! [`FrameMarks`] are types without values there, so the query sets, their
+//! resolves and readbacks and the encoder's pairs are not in the module
+//! ([`gpu_timing_absent`] says why; the CPU's pass timings stay).
 
+#[cfg(not(feature = "publish"))]
 use std::ops::Range;
+#[cfg(not(feature = "publish"))]
 use std::sync::{Arc, Mutex};
 
 /// One render-graph pass of a frame: when its CPU encoding began (the
@@ -79,7 +86,9 @@ impl GpuFrame {
 
 /// Why a device has no GPU pass timing, or `None` when it has.
 pub fn gpu_timing_absent(features: wgpu::Features) -> Option<&'static str> {
-    if features.contains(wgpu::Features::TIMESTAMP_QUERY) {
+    if cfg!(feature = "publish") {
+        Some("a publish build times no pass on the GPU")
+    } else if features.contains(wgpu::Features::TIMESTAMP_QUERY) {
         None
     } else {
         Some("the adapter has no timestamp queries (wgpu's TIMESTAMP_QUERY)")
@@ -88,15 +97,28 @@ pub fn gpu_timing_absent(features: wgpu::Features) -> Option<&'static str> {
 
 /// A frame's timestamp queries: its set and the next pair to hand out
 /// ([`GpuTimer::begin`]).
+#[cfg(not(feature = "publish"))]
 pub(crate) struct FrameMarks {
     set: wgpu::QuerySet,
     next: u32,
     count: u32,
 }
 
+/// No frame is timed in a `publish` build (the module's documentation).
+#[cfg(feature = "publish")]
+pub(crate) enum FrameMarks {}
+
 impl FrameMarks {
     /// The set and the pair of queries the next pass writes, or `None`
     /// once the frame's set is full (the pass goes untimed).
+    #[cfg(feature = "publish")]
+    fn pair(&mut self) -> Option<(&wgpu::QuerySet, u32, u32)> {
+        match *self {}
+    }
+
+    /// The set and the pair of queries the next pass writes, or `None`
+    /// once the frame's set is full (the pass goes untimed).
+    #[cfg(not(feature = "publish"))]
     fn pair(&mut self) -> Option<(&wgpu::QuerySet, u32, u32)> {
         if self.next + 2 > self.count {
             return None;
@@ -147,8 +169,15 @@ impl Encoder {
 
     /// The queries the passes begun so far wrote: pass `k` of the frame
     /// wrote `2k` and `2k + 1`.
+    #[cfg(not(feature = "publish"))]
     pub fn used(&self) -> u32 {
         self.marks.as_ref().map_or(0, |m| m.next)
+    }
+
+    /// The queries the passes begun so far wrote: none in a `publish` build.
+    #[cfg(feature = "publish")]
+    pub fn used(&self) -> u32 {
+        0
     }
 
     /// `wgpu::CommandEncoder::begin_render_pass`, with the frame's
@@ -221,16 +250,19 @@ impl Encoder {
     }
 }
 
+#[cfg(not(feature = "publish"))]
 /// Frames whose timestamps are in flight at once. A frame that finds every
 /// readback still in flight once the device was polled is not timed on
 /// the GPU.
 const SLOTS: usize = 8;
 
+#[cfg(not(feature = "publish"))]
 /// Queries a frame's set holds: 128 passes (the graph's passes open one
 /// render or compute pass each, the post chain and a probe's capture
 /// several).
 const QUERIES: u32 = 256;
 
+#[cfg(not(feature = "publish"))]
 struct Slot {
     set: wgpu::QuerySet,
     resolve: wgpu::Buffer,
@@ -244,6 +276,7 @@ struct Slot {
     pending: Option<Pending>,
 }
 
+#[cfg(not(feature = "publish"))]
 struct Pending {
     frame: u64,
     /// Each render-graph pass and the queries the passes it opened wrote.
@@ -255,6 +288,7 @@ struct Pending {
     resolved: bool,
 }
 
+#[cfg(not(feature = "publish"))]
 /// The GPU side of the frame's timing: a ring of query sets with their
 /// readbacks ([`SLOTS`]).
 ///
@@ -275,6 +309,7 @@ pub(crate) struct GpuTimer {
     done: Vec<GpuFrame>,
 }
 
+#[cfg(not(feature = "publish"))]
 impl GpuTimer {
     /// A timer where the device has timestamp queries.
     pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Option<GpuTimer> {
@@ -466,6 +501,43 @@ impl GpuTimer {
     }
 }
 
+/// No GPU timing in a `publish` build: no timer is ever made, so every
+/// method below is unreachable and nothing of the timing is linked.
+#[cfg(feature = "publish")]
+pub(crate) enum GpuTimer {}
+
+#[cfg(feature = "publish")]
+impl GpuTimer {
+    pub fn new(_device: &wgpu::Device, _queue: &wgpu::Queue) -> Option<GpuTimer> {
+        None
+    }
+
+    pub fn begin(&mut self, _device: &wgpu::Device, _queue: &wgpu::Queue) -> Option<FrameMarks> {
+        match *self {}
+    }
+
+    pub fn after_submit(
+        &mut self,
+        _queue: &wgpu::Queue,
+        _frame: u64,
+        _passes: Vec<(String, std::ops::Range<u32>)>,
+        _queries: u32,
+        _submitted: f64,
+    ) {
+        match *self {}
+    }
+
+    pub fn take(
+        &mut self,
+        _device: &wgpu::Device,
+        _queue: &wgpu::Queue,
+        _wait: bool,
+    ) -> Vec<GpuFrame> {
+        match *self {}
+    }
+}
+
+#[cfg(not(feature = "publish"))]
 /// A frame's passes from its timestamps: pass `k` of a render-graph pass
 /// wrote queries `2k` and `2k + 1`, and the graph pass ends at the last
 /// end among them. Each graph pass runs from the end of the one before it
@@ -512,7 +584,7 @@ fn frame_of(p: Pending, ticks: &[u64], period_ns: f64) -> GpuFrame {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "publish")))]
 mod tests {
     use super::*;
 
@@ -559,5 +631,16 @@ mod tests {
         );
         assert_eq!(f.passes[1].ms(), 3.0);
         assert_eq!(f.ms(), 4.0);
+    }
+}
+
+#[cfg(all(test, feature = "publish"))]
+mod publish_tests {
+    #[test]
+    fn a_publish_build_reports_no_gpu_timing_even_where_the_adapter_has_timestamps() {
+        assert_eq!(
+            super::gpu_timing_absent(wgpu::Features::TIMESTAMP_QUERY),
+            Some("a publish build times no pass on the GPU")
+        );
     }
 }

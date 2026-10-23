@@ -6358,7 +6358,7 @@ export interface RenderCapabilities {
    */
   readonly maxLightCookies: number;
   /**
-   * Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true.
+   * Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2, and never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true.
    */
   readonly gpuTimestamps: boolean;
 }
