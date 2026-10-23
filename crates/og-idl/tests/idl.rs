@@ -151,7 +151,8 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "clip",
             "clip",
             "clip",
-            "rig2dInfo"
+            "rig2dInfo",
+            "skeleton2dBoxes"
         ]
     );
     // E4: time scale, camera feel, tweens, tilemaps, floating text.
