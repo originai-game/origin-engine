@@ -465,15 +465,15 @@ blend alpha
 `);
 }
 
-// -------------------------------------------------------------------- skin
+// ------------------------------------------------------------------- style
 
 /**
- * The cartoon style pack (the catalogue's skin for miniature-diorama), copied
+ * The cartoon style pack (the catalogue's style for miniature-diorama), copied
  * from the engine's templates/ui-kit as og-taste §1 says: its ground a deep
  * sea blue, its accent a coral. Its CJK `fallback` line is dropped (English
  * and French only, Latin-1).
  */
-function skin(): void {
+function style(): void {
   const from = join(ENGINE, "templates", "styles", "cartoon");
   const to = join(ASSETS, "styles", "rumpus");
   mkdirSync(to, { recursive: true });
@@ -488,10 +488,11 @@ function skin(): void {
     highlight: "#a3341a",
     primarySoft: "#b23a1e40",
     scrim: "#0b2238cc",
+    gold: "#b23a1e",
   };
   for (const [k, v] of Object.entries(colours)) text = text.replace(new RegExp(`^(  ${k}) "#[0-9a-fA-F]+"`, "m"), `$1 "${v}"`);
   text = text.replace(/^name "cartoon"$/m, 'name "rumpus"');
-  text = text.replace(/^# The cartoon style pack.*$/m, "# Rumpus Isle's skin: the engine's cartoon style pack (templates/ui-kit, CC0 art, OFL fonts:\n# LICENSES.md), copied by tools/make-assets.ts, its ground a deep sea blue and its accent coral;\n# the CJK fallback line dropped, the game shows Latin-1 only.");
+  text = text.replace(/^# The cartoon style pack.*$/m, "# Rumpus Isle's style: the engine's cartoon style pack (templates/ui-kit, CC0 art, OFL fonts:\n# LICENSES.md), copied by tools/make-assets.ts, its ground a deep sea blue and its accent coral;\n# the CJK fallback line dropped, the game shows Latin-1 only.");
   text = text.replace(/^  fallback .*\n/m, "");
   writeFileSync(join(to, "style.ogt"), text);
 }
@@ -506,7 +507,7 @@ podium();
 berry();
 sfx();
 fx();
-skin();
+style();
 write("audio/splash.wav", splash());
 write("music/romp.wav.ogt", "type import\nversion 1\n---\n# The music (tools/make-assets.ts): cooked in 4-second chunks and\n# streamed, never resident whole (og-audio §5).\nsound {\n  stream true\n  chunk 4\n}\n");
 if (!process.argv.includes("--no-music")) write("music/romp.wav", music());
