@@ -4124,10 +4124,14 @@ fn nine(
     let vs = [v0, v0 + bt, v1 - bb, v1];
     // The middle column's and row's cut of the art. Squeezed more than
     // twice, the middle shows the centre of the art's middle, squeezed
-    // twice, rather than all of it: further, the mipmapped atlas samples a
-    // level that blurs an edge piece's border into its fill (a light band
-    // across both ends of a button a few px taller than its corners, Rumpus
-    // Isle's small Pause). The corners keep their cut; Repeat cuts its tile.
+    // twice, rather than all of it. og-render's sprite sampler filters
+    // anisotropically where the device can (RenderCapabilities.
+    // spriteAnisotropy), so a squeezed edge piece reads the art's own mip
+    // level and its border stays as crisp as the corners'; where it cannot,
+    // a squeeze past two would sample a level that blurs the border into
+    // the fill (a light band across both ends of a button a few px taller
+    // than its corners, Rumpus Isle's small Pause), and at two it is one
+    // level softer. The corners keep their cut; Repeat cuts its tile.
     let (mu, mv) = if s.fill == SliceFill::Repeat {
         ((us[1], us[2]), (vs[1], vs[2]))
     } else {

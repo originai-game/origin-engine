@@ -6361,6 +6361,10 @@ export interface RenderCapabilities {
    * Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true.
    */
   readonly gpuTimestamps: boolean;
+  /**
+   * The anisotropic filtering of sprites and og.ui's images (text is not filtered anisotropically: its distance field would lose its edge): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, WebGL2 with EXT_texture_filter_anisotropic), 1 where it has none and on a software rasterizer (the vulkan-cpu tier: lavapipe's anisotropic filter softens even an image drawn 1:1), 0 without a renderer. Above 1, an image squeezed along one axis keeps the other axis's detail: a style's nine-slice middle squeezed into a short button keeps its outline as crisp as the corners. At 1 the squeezed piece reads a smaller mip level and blurs; og.ui bounds a middle's squeeze at twice its art, so the outline there is one mip level softer than the corners.
+   */
+  readonly spriteAnisotropy: number;
 }
 
 /**

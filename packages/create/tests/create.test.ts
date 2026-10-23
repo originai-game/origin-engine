@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { pickStyle, premiseProfile, readCatalogue, words } from "../bin/create.ts";
 import { fileURLToPath } from "node:url";
+import { SKIN_ELSEWHERE } from "../../knowledge/scripts/validate.ts";
 
 declare const Bun: { spawnSync(cmd: string[], o?: { cwd?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
 
@@ -290,4 +291,24 @@ test("the idle archetype's look carries over: its UI style and render settings s
   expect(topLevel(lit, "extends")).toBe("luminous-pixel");
   expect(topLevel(lit, "ui")).toBe("styles/sparkorb/style.ogt");
   expect(lit.indexOf('extends "luminous-pixel"')).toBeLessThan(lit.indexOf("RenderSettings {"));
+});
+
+test("what a scaffold ships never calls a UI style a skin", () => {
+  // og-ui's word is style (type style, og.load.style, UiDesc.style,
+  // styles/<name>/). A sentence of code or prose that says skin beside the
+  // UI's words (og.ui, ui, style, entrance, theme) is that use, unless it
+  // names one of the word's other meanings (knowledge's SKIN_ELSEWHERE: a
+  // glTF rig, the controllers' collision gap, a surface).
+  const roots = ["game", "game-2d", "archetypes"].map((d) => join(pkg, "..", "..", "templates", d));
+  const found: string[] = [];
+  for (const root of roots) {
+    for (const f of copied(root).filter((f) => /\.(ts|md|ogt|py)$/.test(f))) {
+      for (const paragraph of readFileSync(join(root, f), "utf8").split(/\n\s*\n/)) {
+        for (const s of paragraph.replace(/\s*\n\s*/g, " ").split(/(?<=[.;!?])\s+/)) {
+          if (/\bskins?\b/i.test(s) && /\b(og\.ui|ui|styles?|entrance|theme)\b/i.test(s) && !SKIN_ELSEWHERE.test(s)) found.push(`${relative(join(pkg, "..", ".."), join(root, f))}: ${s.trim().slice(0, 100)}`);
+        }
+      }
+    }
+  }
+  expect(found).toEqual([]);
 });

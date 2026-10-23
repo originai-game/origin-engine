@@ -1618,6 +1618,7 @@ pub fn og_render_capabilities(world: u32) -> String {
                 ),
                 "maxLightCookies": og_render::MAX_COOKIE_LAYERS,
                 "gpuTimestamps": b.gpu_timing_absent().is_none(),
+                "spriteAnisotropy": info.as_ref().map_or(1, |i| i.sprite_anisotropy),
             })
         })
         .map(|mut c| {
@@ -1627,7 +1628,7 @@ pub fn og_render_capabilities(world: u32) -> String {
             c
         })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false }))
+    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "spriteAnisotropy": 0 }))
         .to_string()
 }
 

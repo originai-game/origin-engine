@@ -28,7 +28,7 @@ export const Refusal = { None: 0, Poor: 1, Blocked: 2, Taken: 3 } as const;
 /** The round: the lantern's light, the purse, the waves and the effects' bookkeeping. */
 export const Game = defineResource("Game", {
   phase: u32(Phase.Title, { doc: "Phase.* of src/components.ts." }),
-  leftTitle: bool(false, { doc: "The player has left the title the game opened on: from then on the title enters with the skin's entrance (the opening one is built settled, og.ui.mainMenu's instant: the web draws it behind the play gate)." }),
+  leftTitle: bool(false, { doc: "The player has left the title the game opened on: from then on the title enters with the style's entrance (the opening one is built settled, og.ui.mainMenu's instant: the web draws it behind the play gate)." }),
   paused: bool(false, { doc: "The pause menu is open (the garden holds)." }),
   settingsOpen: bool(false, { doc: "The settings dialog is open." }),
   won: bool(false, { doc: "The last round held every wave." }),
