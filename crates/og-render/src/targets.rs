@@ -22,8 +22,8 @@
 //!   camera, a soft intersection. It needs the depth prepass, which a view
 //!   with a depth target runs.
 
-use crate::scene::{RenderScene, TextureSource};
 use crate::TextureHandle;
+use crate::scene::{RenderScene, TextureSource};
 
 /// How a render target's colour is stored.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]

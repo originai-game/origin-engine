@@ -15,9 +15,16 @@
 //! param amount float 0             # <name> float|vec2|vec3|vec4|color <default...>
 //! param edgeColor color 4 1.6 0.4  # color: a vec3 (linear rgb)
 //! ```
+//!
+//! `mode full [lit|unlit]` (the S8 depth stream) makes it a full shader:
+//! the code defines `vertex` and `fragment` entries over og-render's
+//! binding contract (`custom.rs`) instead of the hooks, lit by the frame's
+//! lights (`lit`, the default) or drawn as returned (`unlit`); its shadow
+//! casters' module is compiled for every tier too. `mode hooks` (the
+//! default) is the hooks.
 
 use og_core::ogt::{Document, Entry, Number, Value};
-use og_render::{MaterialShader, ParamKind, ShaderParam};
+use og_render::{MaterialShader, ParamKind, ShaderMode, ShaderParam};
 
 /// The `.ogt` type of a shader file.
 pub const SHADER_TYPE: &str = "shader";
@@ -55,9 +62,25 @@ pub fn parse_shader(
     }
     let mut code = None;
     let mut params = Vec::new();
+    let mut mode = ShaderMode::Hooks;
     for e in &doc.body.entries {
         let line = e.line;
         match e.key.as_str() {
+            "mode" => {
+                let word = |i: usize| e.values.get(i).and_then(Value::as_word);
+                mode = match (word(0), word(1), e.values.len()) {
+                    (Some("hooks"), None, 1) => ShaderMode::Hooks,
+                    (Some("full"), None, 1) | (Some("full"), Some("lit"), 2) => {
+                        ShaderMode::Full { lit: true }
+                    }
+                    (Some("full"), Some("unlit"), 2) => ShaderMode::Full { lit: false },
+                    _ => {
+                        return Err(format!(
+                            "line {line}: `mode hooks` or `mode full [lit|unlit]`"
+                        ));
+                    }
+                };
+            }
             "code" | "source" => {
                 if code.is_some() {
                     return Err(format!("line {line}: one `code` or `source` per shader"));
@@ -115,8 +138,9 @@ pub fn parse_shader(
     }
     let shader = MaterialShader {
         name: name.to_string(),
-        code: code.ok_or("a shader needs `code` or `source` (the WGSL hooks)")?,
+        code: code.ok_or("a shader needs `code` or `source` (the WGSL hooks or full entries)")?,
         params,
+        mode,
     };
     shader.check()?;
     Ok(shader)
@@ -125,6 +149,13 @@ pub fn parse_shader(
 /// The canonical file of `shader`, its code inlined (what a cooked blob holds).
 pub fn shader_text(shader: &MaterialShader) -> String {
     let mut doc = Document::new(SHADER_TYPE, 1);
+    if let ShaderMode::Full { lit } = shader.mode {
+        doc.body.entries.push(
+            Entry::new("mode")
+                .with(Value::Word("full".into()))
+                .with(Value::Word(if lit { "lit" } else { "unlit" }.into())),
+        );
+    }
     doc.body
         .entries
         .push(Entry::new("code").with(Value::String(shader.code.clone())));
@@ -158,75 +189,94 @@ pub fn validate_shader(shader: &MaterialShader) -> Result<Vec<String>, String> {
     use naga::back::pipeline_constants::process_overrides;
     use naga::valid::{Capabilities, ValidationFlags, Validator};
     let mut done = Vec::new();
+    // A full shader's casters run its code too (custom.rs).
+    let mut modules: Vec<(&str, fn(&MaterialShader, bool) -> String, [&str; 2])> =
+        vec![("lit", og_render::lit_module_source, ["vs", "fs"])];
+    if shader.mode != ShaderMode::Hooks {
+        modules.push((
+            "shadow",
+            og_render::shadow_module_source,
+            ["vs_hooked", "fs_hooked"],
+        ));
+    }
     for (tier, full) in [("full", true), ("webgl2", false)] {
-        let src = og_render::lit_module_source(shader, full);
-        let first = src
-            .find(shader.code.as_str())
-            .map_or(0, |at| src[..at].lines().count());
-        let lines = shader.code.lines().count();
-        let module = naga::front::wgsl::parse_str(&src).map_err(|e| {
-            format!(
-                "WGSL ({tier}): {}",
-                user_lines(&e.emit_to_string(&src), first, lines)
-            )
-        })?;
-        let caps = if full {
-            Capabilities::all()
-        } else {
-            Capabilities::empty()
-        };
-        let info = Validator::new(ValidationFlags::all(), caps)
-            .validate(&module)
-            .map_err(|e| {
+        for &(_label, source, entries) in &modules {
+            let src = source(shader, full);
+            let first = src
+                .find(shader.code.as_str())
+                .map_or(0, |at| src[..at].lines().count());
+            let lines = shader.code.lines().count();
+            let module = naga::front::wgsl::parse_str(&src).map_err(|e| {
                 format!(
-                    "validation ({tier}): {}",
+                    "WGSL ({tier}): {}",
                     user_lines(&e.emit_to_string(&src), first, lines)
                 )
             })?;
-        for effects in [1.0, 0.0] {
-            let mut constants = naga::back::PipelineConstants::default();
-            constants.insert("EFFECTS".to_string(), effects);
-            let (module, info) = process_overrides(&module, &info, None, &constants)
-                .map_err(|e| format!("overrides ({tier}): {e}"))?;
-            if full {
-                naga::back::spv::write_vec(&module, &info, &Default::default(), None)
-                    .map_err(|e| format!("SPIR-V: {e}"))?;
-                naga::back::msl::write_string(
-                    &module,
-                    &info,
-                    &Default::default(),
-                    &Default::default(),
-                )
-                .map_err(|e| format!("MSL: {e}"))?;
+            let caps = if full {
+                Capabilities::all()
             } else {
-                for (stage, entry) in [
-                    (naga::ShaderStage::Vertex, "vs"),
-                    (naga::ShaderStage::Fragment, "fs"),
-                ] {
-                    let options = naga::back::glsl::Options {
-                        version: naga::back::glsl::Version::Embedded {
-                            version: 300,
-                            is_webgl: true,
-                        },
-                        ..Default::default()
-                    };
-                    let pipeline = naga::back::glsl::PipelineOptions {
-                        shader_stage: stage,
-                        entry_point: entry.to_string(),
-                        multiview: None,
-                    };
-                    let mut out = String::new();
-                    let mut w = naga::back::glsl::Writer::new(
-                        &mut out,
+                Capabilities::empty()
+            };
+            let info = Validator::new(ValidationFlags::all(), caps)
+                .validate(&module)
+                .map_err(|e| {
+                    format!(
+                        "validation ({tier}): {}",
+                        user_lines(&e.emit_to_string(&src), first, lines)
+                    )
+                })?;
+            for effects in [1.0, 0.0] {
+                let mut constants = naga::back::PipelineConstants::default();
+                // The lit modules' (a shadow module has none).
+                if module
+                    .overrides
+                    .iter()
+                    .any(|(_, o)| o.name.as_deref() == Some("EFFECTS"))
+                {
+                    constants.insert("EFFECTS".to_string(), effects);
+                }
+                let (module, info) = process_overrides(&module, &info, None, &constants)
+                    .map_err(|e| format!("overrides ({tier}): {e}"))?;
+                if full {
+                    naga::back::spv::write_vec(&module, &info, &Default::default(), None)
+                        .map_err(|e| format!("SPIR-V: {e}"))?;
+                    naga::back::msl::write_string(
                         &module,
                         &info,
-                        &options,
-                        &pipeline,
-                        naga::proc::BoundsCheckPolicies::default(),
+                        &Default::default(),
+                        &Default::default(),
                     )
-                    .map_err(|e| format!("GLSL ES 3.0 ({entry}): {e}"))?;
-                    w.write()
+                    .map_err(|e| format!("MSL: {e}"))?;
+                } else {
+                    for (stage, entry) in [
+                        (naga::ShaderStage::Vertex, entries[0]),
+                        (naga::ShaderStage::Fragment, entries[1]),
+                    ] {
+                        let options = naga::back::glsl::Options {
+                            version: naga::back::glsl::Version::Embedded {
+                                version: 300,
+                                is_webgl: true,
+                            },
+                            ..Default::default()
+                        };
+                        let pipeline = naga::back::glsl::PipelineOptions {
+                            shader_stage: stage,
+                            entry_point: entry.to_string(),
+                            multiview: None,
+                        };
+                        let mut out = String::new();
+                        let mut w = naga::back::glsl::Writer::new(
+                            &mut out,
+                            &module,
+                            &info,
+                            &options,
+                            &pipeline,
+                            naga::proc::BoundsCheckPolicies::default(),
+                        )
                         .map_err(|e| format!("GLSL ES 3.0 ({entry}): {e}"))?;
+                        w.write()
+                            .map_err(|e| format!("GLSL ES 3.0 ({entry}): {e}"))?;
+                    }
                 }
             }
         }
@@ -260,4 +310,52 @@ fn user_lines(report: &str, first: usize, lines: usize) -> String {
     }
     out.push_str(rest);
     out
+}
+
+#[cfg(all(test, feature = "cook"))]
+mod tests {
+    use super::*;
+
+    const CODE: &str = "fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput {
+  var s = standard_surface(f);
+  s.color = vec4<f32>(p.tint * tex0(f.uv).rgb, step(p.cut, noise3(f.local * 4.0)));
+  return s;
+}";
+
+    fn full(code: &str) -> String {
+        format!(
+            "type shader\nversion 1\n---\nmode full unlit\ncode \"{}\"\nparam tint color 1 0.5 0.2\nparam cut float 0.3\n",
+            code.replace('\n', "\\n")
+        )
+    }
+
+    fn refuse(_: &str) -> Result<String, String> {
+        Err("no files".into())
+    }
+
+    /// A full shader parses with its mode, validates for every tier (its
+    /// lit and its shadow casters' modules) and keeps its mode through the
+    /// canonical text the blob holds.
+    #[test]
+    fn a_full_shader_cooks_for_every_tier_and_keeps_its_mode() {
+        let s = parse_shader("crt", &full(CODE), &mut refuse).expect("parses");
+        assert_eq!(s.mode, ShaderMode::Full { lit: false });
+        let done = validate_shader(&s).expect("validates");
+        assert_eq!(done.len(), 2, "{done:?}");
+        let again = parse_shader("crt", &shader_text(&s), &mut refuse).expect("round trip");
+        assert_eq!(again, s);
+    }
+
+    /// A full shader's error is reported at its own line, and one with
+    /// neither entry is refused.
+    #[test]
+    fn a_broken_full_shader_is_refused_at_its_line() {
+        let broken = full(&CODE.replace("noise3(f.local * 4.0)", "noise3(f.nowhere)"));
+        let s = parse_shader("crt", &broken, &mut refuse).expect("parses");
+        let e = validate_shader(&s).expect_err("refused");
+        assert!(e.contains("hooks:3"), "{e}");
+        let none = full(&CODE.replace("fn fragment(", "fn other("));
+        let e = parse_shader("crt", &none, &mut refuse).expect_err("no entry");
+        assert!(e.contains("neither"), "{e}");
+    }
 }

@@ -124,8 +124,15 @@ pub(crate) enum Dest {
 }
 
 /// The frame's views to draw: those due this tick with a live target, in
-/// order. `main`: the main camera (a mirror's eye); `out`: the output size.
-pub(crate) fn plan(scene: &crate::RenderScene, main: &Camera, out: (u32, u32)) -> Vec<ViewPlan> {
+/// order. `main`: the main camera (a mirror's eye); `out`: the output size;
+/// `depth`: targets' depth textures are drawn (the full tier: WebGL2 leaves
+/// them cleared, as RenderCapabilities reports).
+pub(crate) fn plan(
+    scene: &crate::RenderScene,
+    main: &Camera,
+    out: (u32, u32),
+    depth: bool,
+) -> Vec<ViewPlan> {
     let mut order: Vec<usize> = (0..scene.views.len()).collect();
     order.sort_by_key(|&i| scene.views[i].order);
     let mut plans = Vec::new();
@@ -144,7 +151,12 @@ pub(crate) fn plan(scene: &crate::RenderScene, main: &Camera, out: (u32, u32)) -
                 };
                 let depth = t
                     .depth
-                    .filter(|d| scene.target_texture(*d).is_some_and(|d| (d.width, d.height) == (c.width, c.height)))
+                    .filter(|_| depth)
+                    .filter(|d| {
+                        scene
+                            .target_texture(*d)
+                            .is_some_and(|d| (d.width, d.height) == (c.width, c.height))
+                    })
                     .map(|d| d.index());
                 (
                     Dest::Texture {
@@ -279,9 +291,9 @@ pub(crate) fn off_axis(l: f32, r: f32, b: f32, t: f32, n: f32, f: f32) -> Mat4 {
     )
 }
 
-const VIEWS_WGSL: &str = include_str!("../shaders/views.wgsl");
-const VIEWS_COLOR_WGSL: &str = include_str!("../shaders/views_color.wgsl");
-const VIEWS_DEPTH_WGSL: &str = include_str!("../shaders/views_depth.wgsl");
+const VIEWS_WGSL: &str = wgsl!("views.wgsl");
+const VIEWS_COLOR_WGSL: &str = wgsl!("views_color.wgsl");
+const VIEWS_DEPTH_WGSL: &str = wgsl!("views_depth.wgsl");
 
 /// The colour resolve's source (`fs_color`, `fs_linear`).
 pub(crate) fn resolve_color_source() -> String {
@@ -341,7 +353,8 @@ pub(crate) struct ViewSlot {
 pub(crate) struct Views {
     pub slots: Vec<Option<ViewSlot>>,
     /// By (destination format, entry point, multisampled depth).
-    pipelines: std::collections::HashMap<(wgpu::TextureFormat, &'static str, bool), wgpu::RenderPipeline>,
+    pipelines:
+        std::collections::HashMap<(wgpu::TextureFormat, &'static str, bool), wgpu::RenderPipeline>,
 }
 
 impl Views {
@@ -410,42 +423,44 @@ impl Views {
         entry: &'static str,
         ms: bool,
     ) {
-        self.pipelines.entry((format, entry, ms)).or_insert_with(|| {
-            let module = crate::shader(
-                device,
-                "view resolve",
-                if entry == "fs_depth" {
-                    resolve_depth_source(ms)
-                } else {
-                    resolve_color_source()
-                },
-            );
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("view resolve"),
-                layout: None,
-                vertex: wgpu::VertexState {
-                    module: &module,
-                    entry_point: Some("vs"),
-                    compilation_options: Default::default(),
-                    buffers: &[],
-                },
-                primitive: Default::default(),
-                depth_stencil: None,
-                multisample: Default::default(),
-                fragment: Some(wgpu::FragmentState {
-                    module: &module,
-                    entry_point: Some(entry),
-                    compilation_options: Default::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format,
-                        blend: None,
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                multiview_mask: None,
-                cache: None,
-            })
-        });
+        self.pipelines
+            .entry((format, entry, ms))
+            .or_insert_with(|| {
+                let module = crate::shader(
+                    device,
+                    "view resolve",
+                    if entry == "fs_depth" {
+                        resolve_depth_source(ms)
+                    } else {
+                        resolve_color_source()
+                    },
+                );
+                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("view resolve"),
+                    layout: None,
+                    vertex: wgpu::VertexState {
+                        module: &module,
+                        entry_point: Some("vs"),
+                        compilation_options: Default::default(),
+                        buffers: &[],
+                    },
+                    primitive: Default::default(),
+                    depth_stencil: None,
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module: &module,
+                        entry_point: Some(entry),
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format,
+                            blend: None,
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                    }),
+                    multiview_mask: None,
+                    cache: None,
+                })
+            });
     }
 
     /// Writes the views' frame, effect and light-cluster uniforms (the
@@ -512,16 +527,14 @@ impl Views {
                 .to_array();
             u.view_forward = p.frame.forward.extend(u.view_forward[3]).to_array();
             u.cluster = slot.clusters.params;
-            queue
-                .write_buffer(&slot.frame_buffer, 0, bytemuck::bytes_of(&u));
+            queue.write_buffer(&slot.frame_buffer, 0, bytemuck::bytes_of(&u));
             let mut f = *fx;
             f.ao = [0.0; 4];
             f.view_proj_unjittered = vp;
             f.prev_view_proj = vp;
             let (w, h) = (p.size.0 as f32, p.size.1 as f32);
             f.screen = [w, h, 1.0 / w, 1.0 / h];
-            queue
-                .write_buffer(&slot.fx_buffer, 0, bytemuck::bytes_of(&f));
+            queue.write_buffer(&slot.fx_buffer, 0, bytemuck::bytes_of(&f));
         }
         for p in plans {
             match p.dest {
@@ -687,7 +700,11 @@ impl Views {
 fn textures(
     device: &wgpu::Device,
     ((w, h), samples, depth_read): ((u32, u32), u32, bool),
-) -> (wgpu::TextureView, Option<wgpu::TextureView>, wgpu::TextureView) {
+) -> (
+    wgpu::TextureView,
+    Option<wgpu::TextureView>,
+    wgpu::TextureView,
+) {
     let make = |label, format, samples, usage| {
         device
             .create_texture(&wgpu::TextureDescriptor {
@@ -748,9 +765,9 @@ impl crate::Renderer {
         plans: &[ViewPlan],
     ) -> Vec<(wgpu::BindGroup, wgpu::BindGroup)> {
         let ibl = self.ibl.views();
-        let atlas_view = scene
-            .decal_atlas
-            .map_or(&self.default_white, |t| &self.cache.textures[t.index()].view);
+        let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
+            &self.cache.textures[t.index()].view
+        });
         plans
             .iter()
             .map(|p| {

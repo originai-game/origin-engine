@@ -36,7 +36,11 @@ pub fn room() -> RenderScene {
         let h = scene.add_standard_material(m);
         scene.add_instance(mesh, h, t);
     };
-    put(shapes::plane(12.0, 6.0), colour(0.55, 0.52, 0.48), Mat4::IDENTITY);
+    put(
+        shapes::plane(12.0, 6.0),
+        colour(0.55, 0.52, 0.48),
+        Mat4::IDENTITY,
+    );
     // Back and left walls.
     put(
         shapes::cuboid(Vec3::new(12.0, 3.0, 0.2)),
@@ -111,7 +115,11 @@ pub fn monitor_scene() -> RenderScene {
     );
     let ghost = scene.add_mesh(shapes::cuboid(Vec3::splat(0.7)));
     let magenta = scene.add_standard_material(colour(0.9, 0.1, 0.8));
-    scene.add_instance(ghost, magenta, Mat4::from_translation(Vec3::new(-1.0, 0.35, 2.0)));
+    scene.add_instance(
+        ghost,
+        magenta,
+        Mat4::from_translation(Vec3::new(-1.0, 0.35, 2.0)),
+    );
     let i = scene.instances.len() - 1;
     scene.instance_layers.resize(i + 1, 1);
     scene.instance_layers[i] = 2;
@@ -196,5 +204,58 @@ pub fn split_scene() -> RenderScene {
         order: 1,
         ..Default::default()
     });
+    scene
+}
+
+/// A full custom shader (og-render `custom.rs`): a dissolve cut through a
+/// sphere and a panel by `amount`, the glowing edge above the cut, the low
+/// sun's shadows on the ground cut the same way (the shadow passes draw
+/// through the shader's vertex and fragment entries).
+pub fn full_dissolve_scene(amount: f32) -> RenderScene {
+    let mut scene = RenderScene::new();
+    let sun = Vec3::new(-0.7, 0.55, 0.3);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.5,
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.intensity = 0.5;
+    let ground = scene.add_mesh(shapes::plane(16.0, 4.0));
+    let grey = scene.add_standard_material(colour(0.6, 0.6, 0.6));
+    scene.add_instance(ground, grey, Mat4::IDENTITY);
+    let shader = scene.add_shader(og_render::example_full_shader());
+    let dissolve = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.2, 0.45, 0.9),
+        roughness: 0.4,
+        alphaTest: 0.5,
+        side: 2,
+        ..Default::default()
+    });
+    scene.set_material_shader(dissolve, Some(shader));
+    scene.set_shader_param(dissolve, "amount", &[amount]);
+    let sphere = scene.add_mesh(shapes::sphere(48, 24));
+    scene.add_instance(
+        sphere,
+        dissolve,
+        Mat4::from_scale_rotation_translation(
+            Vec3::splat(1.2),
+            Quat::IDENTITY,
+            Vec3::new(-1.2, 1.3, 0.0),
+        ),
+    );
+    // A thin panel facing the sun: its holes are its shadow's.
+    let panel = scene.add_mesh(shapes::cuboid(Vec3::new(2.2, 2.4, 0.06)));
+    scene.add_instance(
+        panel,
+        dissolve,
+        Mat4::from_rotation_translation(Quat::from_rotation_y(-1.17), Vec3::new(1.4, 1.25, -0.5)),
+    );
+    scene.camera = Camera {
+        position: Vec3::new(1.0, 3.5, 7.5),
+        target: Vec3::new(0.5, 0.8, 0.0),
+        exposure: Exposure::linear(0.8),
+        ..Default::default()
+    };
     scene
 }

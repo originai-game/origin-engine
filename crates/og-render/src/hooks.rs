@@ -89,9 +89,24 @@ pub struct ShaderParam {
 #[derive(Clone, Debug, PartialEq)]
 pub struct MaterialShader {
     pub name: String,
-    /// The WGSL that defines the hooks (and any helpers they call).
+    /// The WGSL that defines the hooks (and any helpers they call), or a
+    /// full shader's `vertex` and `fragment` entries (`custom.rs`).
     pub code: String,
     pub params: Vec<ShaderParam>,
+    /// Hooks of the built-in lit shader, or a full shader (`custom.rs`).
+    pub mode: ShaderMode,
+}
+
+/// How a material shader's code is used.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum ShaderMode {
+    /// The four hooks of the built-in lit shader (this module).
+    #[default]
+    Hooks,
+    /// Full `vertex` and `fragment` entries over the binding contract of
+    /// `custom.rs`; `lit`: the surface they return is lit by the frame's
+    /// lights, else its colour is drawn as returned.
+    Full { lit: bool },
 }
 
 impl MaterialShader {
@@ -140,6 +155,15 @@ impl MaterialShader {
                 return Err(format!("parameter '{}' is declared twice", p.name));
             }
         }
+        if let ShaderMode::Full { .. } = self.mode {
+            if !["vertex", "fragment"]
+                .iter()
+                .any(|h| defines(&self.code, h))
+            {
+                return Err("a full shader defines neither `vertex` nor `fragment`".into());
+            }
+            return Ok(());
+        }
         if !SHADER_HOOKS.iter().any(|h| defines(&self.code, h)) {
             return Err(format!(
                 "the code defines none of the hooks ({})",
@@ -156,7 +180,7 @@ impl MaterialShader {
 }
 
 /// Whether `code` defines function `name`.
-fn defines(code: &str, name: &str) -> bool {
+pub(crate) fn defines(code: &str, name: &str) -> bool {
     code.match_indices(name).any(|(i, _)| {
         let before = code[..i].trim_end();
         let after = code[i + name.len()..].trim_start();
@@ -244,12 +268,20 @@ pub(crate) fn default_hooks() -> String {
 /// storage-buffer joint palette, else the texture one), as the renderer
 /// compiles it. The cook validates shader assets with this.
 pub fn lit_module_source(shader: &MaterialShader, full: bool) -> String {
+    if let ShaderMode::Full { lit } = shader.mode {
+        let (palette, tables) = crate::custom::tier(full);
+        return crate::custom::lit_source(shader, lit, palette, tables);
+    }
     crate::lit_source(&shader.hooks_wgsl(), full)
 }
 
 /// [`lit_module_source`] for the physical lit shader (`physical.rs`), which
 /// a physical material with a material shader draws with.
 pub fn physical_module_source(shader: &MaterialShader, full: bool) -> String {
+    // A full shader draws a physical material with its own entries.
+    if let ShaderMode::Full { .. } = shader.mode {
+        return lit_module_source(shader, full);
+    }
     crate::physical_source(&shader.hooks_wgsl(), full)
 }
 
@@ -258,6 +290,9 @@ pub fn physical_module_source(shader: &MaterialShader, full: bool) -> String {
 /// palette in a storage buffer (`full`) or a texture (WebGL2): what every
 /// cascade, spot, cube-face and paraboloid pass draws casters with.
 pub fn shadow_module_source(shader: &MaterialShader, full: bool) -> String {
+    if let ShaderMode::Full { .. } = shader.mode {
+        return crate::custom::shadow_source(shader, crate::custom::tier(full).0);
+    }
     crate::shadow_source(
         &shader.hooks_wgsl(),
         if full {

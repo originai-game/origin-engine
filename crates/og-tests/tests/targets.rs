@@ -58,3 +58,44 @@ fn a_layer_the_main_camera_lacks_shows_only_on_the_monitor() {
     assert!(on_screen > 20, "{on_screen} magenta pixels on the monitor");
     assert_eq!(elsewhere, 0, "the main camera drew the layer-1 cube");
 }
+
+#[test]
+fn shader_full_dissolve_matches_its_reference() {
+    check("shader-full-dissolve");
+}
+
+fn frame(scene: &og_render::RenderScene) -> og_render::RgbaImage {
+    let mut r =
+        og_render::Renderer::new_blocking(&og_tests::scenes::base_desc()).expect("renderer");
+    r.render(scene, &og_render::RenderTarget::Offscreen)
+        .expect("render");
+    r.read_offscreen().expect("capture")
+}
+
+/// A full shader's cut reaches the shadow passes: the ground under the
+/// dissolving panel holds fewer shadowed pixels than under the
+/// whole ones, and the objects themselves show the ground through.
+#[test]
+fn a_full_shaders_shadow_follows_its_cut() {
+    use og_tests::target_scenes::full_dissolve_scene;
+    let shadowed = |img: &og_render::RgbaImage| {
+        let mut n = 0;
+        // The panel's shadow on the ground, right of it (no object there).
+        for y in 350..440 {
+            for x in 790..1030 {
+                let p = &img.pixels[((y * img.width + x) * 4) as usize..][..3];
+                // The lit ground is light grey; its shadow a darker blue-grey.
+                if p[0] < 140 && p[2] > p[0] && p[2] < 190 {
+                    n += 1;
+                }
+            }
+        }
+        n
+    };
+    let whole = shadowed(&frame(&full_dissolve_scene(0.0)));
+    let cut = shadowed(&frame(&full_dissolve_scene(0.45)));
+    assert!(
+        (cut as f64) < whole as f64 * 0.9,
+        "shadowed pixels whole {whole}, dissolved {cut}"
+    );
+}

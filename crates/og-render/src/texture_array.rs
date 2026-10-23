@@ -53,7 +53,9 @@ impl TextureArrayData {
                     },
                 ),
                 // A render target is drawn on the GPU, never a layer.
-                TextureSource::Target(t) => (t.width, t.height, TextureFormat::Rgba8, ColorSpace::Srgb, 1),
+                TextureSource::Target(t) => {
+                    (t.width, t.height, TextureFormat::Rgba8, ColorSpace::Srgb, 1)
+                }
                 TextureSource::Encoded(u) => (
                     u.desc.width,
                     u.desc.height,

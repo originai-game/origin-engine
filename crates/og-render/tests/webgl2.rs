@@ -109,6 +109,7 @@ fn the_physical_shaders_translate_and_fit_webgl2s_texture_units() {
         name: "built-in".into(),
         code: String::new(),
         params: Vec::new(),
+        mode: Default::default(),
     };
     let source = og_render::physical_module_source(&builtin, false);
     let failures = webgl2_failures("physical", &source);
@@ -139,6 +140,7 @@ fn the_shadow_and_antialiasing_shaders_translate_to_glsl_es_300() {
         name: "built-in".into(),
         code: String::new(),
         params: Vec::new(),
+        mode: Default::default(),
     };
     let fullscreen = include_str!("../shaders/fullscreen.wgsl");
     let shaders = [

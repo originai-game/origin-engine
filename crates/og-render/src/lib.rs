@@ -42,6 +42,7 @@ mod capture;
 mod clusters;
 mod compact;
 mod cull_gpu;
+mod custom;
 pub mod debug;
 mod deferred;
 mod effects;
@@ -82,13 +83,13 @@ mod sprite_mesh;
 mod sprites;
 mod stylise;
 mod stylise_object;
+mod targets;
 mod terrain;
 mod terrain_tiles;
 mod texture;
 mod texture_array;
 mod upload;
 mod video;
-mod targets;
 mod views;
 mod water;
 mod weather;
@@ -101,6 +102,7 @@ mod headless;
 pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
 pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
 pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS, UNIFORM_LIGHT_REFS};
+pub use custom::{FULL_SHADER_ENTRIES, example as example_full_shader};
 pub use effects::*;
 #[cfg(feature = "bake")]
 pub use environment::bake;
@@ -113,8 +115,8 @@ pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
 #[cfg(not(target_arch = "wasm32"))]
 pub use headless::render_to_rgba;
 pub use hooks::{
-    MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderParam, lit_module_source,
-    physical_module_source, shadow_module_source,
+    MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderMode, ShaderParam,
+    lit_module_source, physical_module_source, shadow_module_source,
 };
 pub use id_pass::{IdFrame, IdObject, IdSources, id_pass_size, projection_name, render_ids};
 pub use lines::{LineLayer, LineMode, Lines, wire_edges};
@@ -141,7 +143,6 @@ pub use stylise::{
     Quantize, Retro3d, STYLISE_DRAWN, Stylise, StyliseSpace,
 };
 pub use targets::{RenderTargetDesc, RenderTargetHandle, TargetFormat, TargetKind, TargetTexture};
-pub use views::{MirrorQuad, View, ViewTarget};
 pub use terrain::{
     DEFAULT_TERRAIN_BUDGET, MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, Terrain,
     TerrainControl, TerrainData, TerrainLayer, TerrainLayerArrays, TerrainLod, TerrainSampler,
@@ -154,6 +155,7 @@ pub use terrain_tiles::{
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use texture_array::{TextureArrayData, TextureArrayHandle, TextureArrayInfo};
 pub use video::FrameTexture;
+pub use views::{MirrorQuad, View, ViewTarget};
 pub use water::{Water, Water2d, WaterHeights};
 pub use weather::{
     WEATHER_DUST, WEATHER_MIST, WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW, WeatherLook, weather,
@@ -3090,18 +3092,14 @@ impl Renderer {
             self.taa_history = None;
         }
         for index in self.cache.shaders.len()..scene.shaders().len() {
-            let hooks = scene.shaders()[index].hooks_wgsl();
-            let module = shader(
-                &self.device,
-                "pbr (material shader)",
-                lit_source_with(&hooks, self.palette.mode(), self.light_tables),
+            let (lit, shadow) = custom::module_sources(
+                &scene.shaders()[index],
+                self.palette.mode(),
+                self.light_tables,
             );
+            let module = shader(&self.device, "pbr (material shader)", lit);
             self.cache.shaders.push(module);
-            let module = shader(
-                &self.device,
-                "shadow (material shader)",
-                shadow_source(&hooks, self.palette.mode()),
-            );
+            let module = shader(&self.device, "shadow (material shader)", shadow);
             self.cache.shadow_shaders.push(module);
         }
         self.refresh_meshes(scene);
@@ -3313,7 +3311,12 @@ impl Renderer {
             }
             let (bind_group, array, factors) =
                 self.material_bind_group(i, material, hooked.map(|h| h.1))?;
-            let physical = if material.is_physical() {
+            // A full shader (custom.rs) draws a physical material with its
+            // own entries: no physical pipelines.
+            let full = hooked.is_some_and(|(sh, _)| {
+                scene.shaders()[sh.index()].mode != hooks::ShaderMode::Hooks
+            });
+            let physical = if material.is_physical() && !full {
                 if let Some((sh, _)) = hooked
                     && !self.cache.physical_shaders.contains_key(&sh.index())
                 {
@@ -4740,7 +4743,12 @@ impl Renderer {
         });
         // Secondary cameras (views.rs): the views due this frame, each
         // with its skinned instances in view on its layers.
-        let view_plans = views::plan(scene, &camera, (self.out_width, self.out_height));
+        let view_plans = views::plan(
+            scene,
+            &camera,
+            (self.out_width, self.out_height),
+            self.info.tier == Tier::Full,
+        );
         self.views.retain(scene.views.len());
         let view_skinned: Vec<Vec<Batch>> = view_plans
             .iter()
@@ -5147,7 +5155,12 @@ impl Renderer {
             if occlusion {
                 gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum);
             }
-            (indirect_list(&batches, sorted, g, |b| !b.transparent && b.layers & mask != 0), 0)
+            (
+                indirect_list(&batches, sorted, g, |b| {
+                    !b.transparent && b.layers & mask != 0
+                }),
+                0,
+            )
         } else {
             self.cull(
                 &batches,
@@ -5175,7 +5188,9 @@ impl Renderer {
             let frustum = Frustum::from_view_proj(r.3);
             if gpu_cull {
                 let g = gpu_pass(cull_gpu::PassKind::Reflection, &frustum);
-                indirect_list(&batches, sorted, g, |b| !b.transparent && b.layers & mask != 0)
+                indirect_list(&batches, sorted, g, |b| {
+                    !b.transparent && b.layers & mask != 0
+                })
             } else {
                 self.cull(
                     &batches,
@@ -7160,8 +7175,15 @@ impl Renderer {
                             .iter()
                             .map(|b| self.lit_pipeline_of(b, true, false))
                             .collect();
-                        stats.draw_calls +=
-                            draw_skinned(&mut pass, &view_skinned[i], false, 1, 3, &pipelines, None);
+                        stats.draw_calls += draw_skinned(
+                            &mut pass,
+                            &view_skinned[i],
+                            false,
+                            1,
+                            3,
+                            &pipelines,
+                            None,
+                        );
                         if let Some(indices) = terrain_indices {
                             stats.draw_calls += terrain::draw_levels(
                                 &mut pass,
@@ -7184,19 +7206,38 @@ impl Renderer {
                             stats.draw_calls += 1;
                         }
                     }
-                    if let views::Dest::Texture { color, format, depth } = p.dest {
+                    if let views::Dest::Texture {
+                        color,
+                        format,
+                        depth,
+                    } = p.dest
+                    {
                         let tonemap = post_fx.tonemap;
                         let (device, queue) = (&self.device, &self.queue);
                         let view = &self.cache.textures[color].view;
                         self.views.resolve(
-                            device, queue, &mut encoder, p, tonemap, view, format.wgpu(), false,
+                            device,
+                            queue,
+                            &mut encoder,
+                            p,
+                            tonemap,
+                            view,
+                            format.wgpu(),
+                            false,
                             self.samples,
                         );
                         if let Some(d) = depth {
                             let view = &self.cache.textures[d].view;
                             let f = wgpu::TextureFormat::Rgba16Float;
                             self.views.resolve(
-                                device, queue, &mut encoder, p, tonemap, view, f, true,
+                                device,
+                                queue,
+                                &mut encoder,
+                                p,
+                                tonemap,
+                                view,
+                                f,
+                                true,
                                 self.samples,
                             );
                         }
