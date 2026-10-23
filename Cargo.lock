@@ -1989,6 +1989,7 @@ dependencies = [
  "glam 0.34.1",
  "image",
  "og-anim",
+ "og-bake",
  "og-cook",
  "og-core",
  "og-render",

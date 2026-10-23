@@ -105,13 +105,16 @@ pub const SCENES: &[&str] = &[
     "points",
     "wireframe",
     "debug-overlay",
+    "rect-lights",
+    "light-cookies",
+    "volumetric-fog",
 ];
 
 /// Scenes rendered natively only, beside [`SCENES`] (`og-gfx --all` takes
 /// both): their content is cooked by og-cook at build time, which the
 /// browser's wasm build of the scenes does not carry.
 #[cfg(not(target_arch = "wasm32"))]
-pub const NATIVE_SCENES: &[&str] = &["vox-keyframes", "skeleton-2d"];
+pub const NATIVE_SCENES: &[&str] = &["vox-keyframes", "skeleton-2d", "baked-cornell"];
 
 /// Which backend tiers a scene has a reference for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -503,6 +506,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "points" => g.scene = crate::geometry_scenes::points_scene(),
         "wireframe" => g.scene = crate::geometry_scenes::wireframe_scene(),
         "debug-overlay" => g.scene = crate::geometry_scenes::debug_scene(),
+        // The depth wave's light (docs/depth.md §7, light_scenes.rs): rect
+        // lights (LTC), light cookies, volumetric fog, and natively a
+        // Cornell box baked by og-bake with a light volume.
+        "rect-lights" => g.scene = crate::light_scenes::rect_lights_scene(),
+        "light-cookies" => g.scene = crate::light_scenes::light_cookies_scene(),
+        "volumetric-fog" => g.scene = crate::light_scenes::volumetric_fog_scene(),
+        #[cfg(not(target_arch = "wasm32"))]
+        "baked-cornell" => g.scene = crate::light_scenes::baked_cornell_scene(true)?,
         // Materials sampling texture arrays: eight cubes of one tile
         // material (colour and normal arrays), each on its own layer or the
         // material's, one batch; a cube of layer 1 as plain 2D textures;
