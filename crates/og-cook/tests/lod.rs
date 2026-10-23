@@ -117,6 +117,13 @@ fn levels(root: &Path, id: &str) -> Vec<usize> {
     (0..p.lods.len()).map(|l| p.triangle_count(l)).collect()
 }
 
+/// Each level's error of the model's first primitive (the cook already ran).
+fn errors(root: &Path, id: &str) -> Vec<f32> {
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let (model, _) = bundle.load_model_with_textures(id).expect("decodes");
+    model.primitives[0].lods.iter().map(|l| l.error).collect()
+}
+
 #[test]
 fn every_mesh_is_simplified_into_the_default_levels() {
     let g = grid(48);
@@ -170,6 +177,40 @@ fn a_model_names_its_own_levels_and_bad_ones_are_refused() {
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     let errors = format!("{:?}", report.errors());
     assert!(errors.contains("each below the one before"), "{errors}");
+}
+
+/// The error the cook writes for a level is the distance measured between
+/// its surface and the full mesh's, not the simplifier's estimate (and not
+/// 0 for an MSFT_lod level): a level that is the full mesh lifted 0.02
+/// stands 0.02 off it over the flats and a shade less over the wave's
+/// slopes (at most 0.24 steep: 0.02 × cos(atan 0.24) = 0.0194). The default
+/// chain's errors are above 0, grow with each level and stay under the
+/// 5 % of the extent the simplifier was allowed.
+#[test]
+fn a_level_carries_the_distance_measured_from_the_full_mesh() {
+    let fine = grid(8);
+    let lifted = (
+        fine.0.iter().map(|p| [p[0], p[1] + 0.02, p[2]]).collect(),
+        fine.1.clone(),
+    );
+    let root = project(
+        "og-cook-lod-error-msft",
+        &[("models/lifted.glb", &glb(&[fine, lifted], true))],
+    );
+    assert_eq!(levels(&root, "models/lifted.glb").len(), 2);
+    let e = errors(&root, "models/lifted.glb");
+    assert_eq!(e[0], 0.0);
+    assert!((0.019..=0.0201).contains(&e[1]), "{e:?}");
+
+    let root = project(
+        "og-cook-lod-error-default",
+        &[("models/field.glb", &glb(&[grid(48)], false))],
+    );
+    assert_eq!(levels(&root, "models/field.glb").len(), 3);
+    let e = errors(&root, "models/field.glb");
+    assert_eq!(e[0], 0.0);
+    assert!(e[1] > 0.0 && e[2] > e[1], "{e:?}");
+    assert!(e[2] < 0.05, "{e:?}");
 }
 
 #[test]

@@ -164,9 +164,29 @@ pub(crate) type Parts = Vec<(MeshHandle, MaterialHandle, Mat4)>;
 /// own space.
 #[derive(Clone, Debug)]
 pub(crate) struct ModelLods {
+    /// Per part, its coarser levels' meshes with their errors in the
+    /// model's units (og-cook's `Lod::error`, the part's node scale in).
     pub parts: Vec<Vec<(MeshHandle, f32)>>,
     pub center: Vec3,
     pub radius: f32,
+}
+
+impl ModelLods {
+    /// The model's error per level, level 0 first (0): the largest of its
+    /// parts' at that level, a part with fewer levels standing at its
+    /// coarsest.
+    pub fn errors(&self) -> Vec<f32> {
+        let n = self.parts.iter().map(|p| p.len()).max().unwrap_or(0);
+        std::iter::once(0.0)
+            .chain((0..n).map(|k| {
+                self.parts
+                    .iter()
+                    .filter_map(|p| p.get(k).or(p.last()))
+                    .map(|x| x.1)
+                    .fold(0.0, f32::max)
+            }))
+            .collect()
+    }
 }
 
 /// The render side of an engine, shared with the probe's capture hook.
@@ -994,13 +1014,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         .map(|m| mesh_rows(world, m))
         .unwrap_or_default();
     let (geometries, materials) = (geometries.clone(), materials.clone());
-    // Levels of detail: per entity, the level its bounding sphere's size on
-    // screen calls for (og_render::lod), kept near a boundary by the level
-    // it drew last. `RenderOptions.debugView lod` colours each by its level.
+    // Levels of detail: per entity, the coarsest level whose error stays
+    // under a pixel at its distance (og_render::lod), kept near a boundary
+    // by the level it drew last. `RenderOptions.debugView lod` colours each
+    // by its level.
     let settings_bias = settings
         .as_ref()
         .map_or(1.0, |s| f(s, "lodBias", 1.0).max(0.0));
     let debug_lod = super::geometry::current_view(rs) == "lod";
+    let view_height = match rs.backend.as_ref().map(|b| b.size()) {
+        Some((_, ht)) if ht > 0 => ht as f32,
+        _ => super::fx::viewport(rs).1,
+    };
     let model_lods = std::mem::take(&mut rs.model_lods);
     let last_drawn = std::mem::take(&mut rs.lod_drawn);
     let mut drawn = BTreeMap::new();
@@ -1008,24 +1033,20 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         let m = h.world_of(e);
         let level = match model_lods.get(&asset) {
             Some(l) => {
-                let fractions = l
-                    .parts
-                    .iter()
-                    .max_by_key(|p| p.len())
-                    .map(|p| {
-                        std::iter::once(1.0)
-                            .chain(p.iter().map(|x| x.1))
-                            .collect::<Vec<f32>>()
-                    })
-                    .unwrap_or_default();
                 let scale = m.to_scale_rotation_translation().0.abs().max_element();
-                let size = og_render::lod::projected_size(
+                let per_unit = og_render::lod::pixels_per_unit(
                     &rs.scene.camera,
                     m.transform_point3(l.center),
                     l.radius * scale,
+                    view_height,
                 );
                 let previous = last_drawn.get(&e).map(|&x| x as usize);
-                og_render::lod::select(&fractions, size, bias * settings_bias, previous)
+                og_render::lod::select(
+                    &l.errors(),
+                    per_unit * scale,
+                    bias * settings_bias,
+                    previous,
+                )
             }
             None => 0,
         };

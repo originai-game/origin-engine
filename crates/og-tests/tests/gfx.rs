@@ -1463,8 +1463,8 @@ fn region_mean(img: &RgbaImage, x: std::ops::Range<u32>, y: std::ops::Range<u32>
 }
 
 /// `lod-levels` (depth S6; reference `lod-levels.png`): the cooked tree at
-/// 6, 16 and 45 m, each at the level its size on screen picks and tinted
-/// as debugView lod tints it (green, yellow, orange).
+/// its three distances, each at the level its projected error picks and
+/// tinted as debugView lod tints it (green, yellow, orange).
 #[test]
 fn lod_levels_matches_its_reference() {
     check("lod-levels");

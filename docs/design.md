@@ -267,16 +267,27 @@ S6).
   lods … lodError … }`; `lods 1` turns it off). A glTF's own `MSFT_lod`
   levels are kept as they are. A level is a range of the primitive's
   indices, and the runtime gives each coarse level a compact mesh of its
-  own. `og cook --report` lists each model's triangles per level. The
-  renderer picks a model entity's level from its bounding sphere's size
-  on screen (`og_render::lod`): level `k` is drawn below `1.2 × fraction`
-  of the view height. The previous level is kept within 15 % of a
-  boundary (hysteresis), so a tree at a threshold does not flicker. The
-  pick is scaled by `og.Model.lodBias × RenderSettings.lodBias`, and a
-  bias of 0 draws the full mesh. `dump_entity` reports the level drawn
-  (`render.lod`), and `debugView lod` tints every model by its level:
-  green, yellow, orange, then red. The showcase's 2,000-tree field draws
-  3.96× fewer main-pass triangles with LOD on (`ProbeTimings.triangles`).
+  own. The cook measures every level's error: the largest distance
+  between the level's surface and the full mesh's, both ways (each
+  corner of one against the other's nearest triangle, og-render's BVH),
+  in the model's units, written as the level's `error` row and listed
+  with the triangles per level by `og cook --report` (`lodErrors`). The
+  renderer picks a model entity's level by that error projected to the
+  screen (`og_render::lod`): the coarsest level whose error covers less
+  than one pixel of the render target's height, at the near side of the
+  model's bounding sphere, is drawn, so a 0.7 m lantern keeps its full
+  mesh until it is far enough that its 3 cm level-1 error is sub-pixel,
+  where a 6 m tree drops a level ten times nearer. (Depth S6 picked by
+  the triangle fraction a level kept, level `k` below `1.2 × fraction`
+  of the view height, which drew voxel props at a quarter of their
+  triangles while they still filled a third of the screen and left the
+  measured error unread; debt round 2 replaced it.) The previous level
+  is kept within 15 % of a boundary (hysteresis), so a tree at a
+  threshold does not flicker. The projected error is scaled by
+  `og.Model.lodBias × RenderSettings.lodBias` (2 keeps detail twice as
+  far), and a bias of 0 draws the full mesh. `dump_entity` reports the
+  level drawn (`render.lod`), and `debugView lod` tints every model by
+  its level: green, yellow, orange, then red.
 - **Reflection probes.** An `og.ReflectionProbe` is a box of the world,
   centred on its entity, whose lit surfaces reflect a cube captured at
   its centre instead of the environment map (`probes.rs`). Each capture is

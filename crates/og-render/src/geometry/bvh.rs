@@ -211,6 +211,91 @@ impl Bvh {
         let n = &self.nodes[i as usize];
         slab(n.min, n.max, origin, inv, limit)
     }
+
+    /// How far `p` stands from the nearest triangle (its surface, not its
+    /// corners): what a coarser mesh's corner is off the full one by
+    /// (og-cook measures a glTF's own `MSFT_lod` levels so). `None` when
+    /// it holds no triangle. Boxes farther than the best triangle found
+    /// are not opened, the nearer child first.
+    pub fn distance(&self, p: Vec3) -> Option<f32> {
+        if self.nodes.is_empty() || !p.is_finite() {
+            return None;
+        }
+        let mut best = f32::INFINITY;
+        let mut stack = vec![0u32];
+        while let Some(i) = stack.pop() {
+            let node = &self.nodes[i as usize];
+            if box_distance(node.min, node.max, p) >= best {
+                continue;
+            }
+            if node.count > 0 {
+                for &tri in &self.tris[node.first as usize..(node.first + node.count) as usize] {
+                    let d = (closest_on_triangle(&self.corners[tri as usize], p) - p).length();
+                    best = best.min(d);
+                }
+                continue;
+            }
+            let (l, r) = (i + 1, node.first);
+            let dl = box_distance(self.nodes[l as usize].min, self.nodes[l as usize].max, p);
+            let dr = box_distance(self.nodes[r as usize].min, self.nodes[r as usize].max, p);
+            if dl <= dr {
+                stack.extend([r, l]);
+            } else {
+                stack.extend([l, r]);
+            }
+        }
+        Some(best)
+    }
+}
+
+/// How far `p` is from the box (0 inside).
+fn box_distance(min: Vec3, max: Vec3, p: Vec3) -> f32 {
+    (min - p).max(p - max).max(Vec3::ZERO).length()
+}
+
+/// The point of the triangle nearest `p` (Ericson, Real-Time Collision
+/// Detection §5.1.5: the Voronoi region of a corner, an edge or the face).
+fn closest_on_triangle(c: &[Vec3; 3], p: Vec3) -> Vec3 {
+    let [a, b, cc] = *c;
+    let ab = b - a;
+    let ac = cc - a;
+    let ap = p - a;
+    let d1 = ab.dot(ap);
+    let d2 = ac.dot(ap);
+    if d1 <= 0.0 && d2 <= 0.0 {
+        return a;
+    }
+    let bp = p - b;
+    let d3 = ab.dot(bp);
+    let d4 = ac.dot(bp);
+    if d3 >= 0.0 && d4 <= d3 {
+        return b;
+    }
+    let vc = d1 * d4 - d3 * d2;
+    if vc <= 0.0 && d1 >= 0.0 && d3 <= 0.0 {
+        let v = d1 / (d1 - d3);
+        return a + ab * v;
+    }
+    let cp = p - cc;
+    let d5 = ab.dot(cp);
+    let d6 = ac.dot(cp);
+    if d6 >= 0.0 && d5 <= d6 {
+        return cc;
+    }
+    let vb = d5 * d2 - d1 * d6;
+    if vb <= 0.0 && d2 >= 0.0 && d6 <= 0.0 {
+        let w = d2 / (d2 - d6);
+        return a + ac * w;
+    }
+    let va = d3 * d6 - d5 * d4;
+    if va <= 0.0 && (d4 - d3) >= 0.0 && (d5 - d6) >= 0.0 {
+        let w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+        return b + (cc - b) * w;
+    }
+    let denom = 1.0 / (va + vb + vc);
+    let v = vb * denom;
+    let w = vc * denom;
+    a + ab * v + ac * w
 }
 
 thread_local! {
@@ -468,6 +553,48 @@ mod tests {
         let mut order = built.order().to_vec();
         order[0] = 1 << 20;
         assert!(Bvh::from_parts(&mesh, built.node_list().to_vec(), order).is_err());
+    }
+
+    /// The distance to every triangle, tried one by one.
+    fn brute_distance(mesh: &MeshData, p: Vec3) -> f32 {
+        mesh.indices
+            .chunks(3)
+            .map(|t| {
+                let c = [0, 1, 2].map(|k| Vec3::from(mesh.vertices[t[k] as usize].position));
+                (closest_on_triangle(&c, p) - p).length()
+            })
+            .fold(f32::INFINITY, f32::min)
+    }
+
+    #[test]
+    fn the_distance_is_to_the_nearest_surface() {
+        // A sphere of radius 0.5 in 24×16 facets: a point 3 out stands about
+        // 2.5 off it, a point at a corner 0, the centre about 0.5 (the facets
+        // lie inside the sphere), and the BVH agrees with every triangle.
+        let mesh = shapes::sphere(24, 16);
+        let bvh = Bvh::build(&mesh);
+        let at = |p: Vec3| bvh.distance(p).unwrap();
+        assert!((at(Vec3::new(3.0, 0.0, 0.0)) - 2.5).abs() < 0.02);
+        let corner = Vec3::from(mesh.vertices[mesh.indices[7] as usize].position);
+        assert_eq!(at(corner), 0.0);
+        assert!((at(Vec3::ZERO) - 0.5).abs() < 0.03);
+        for p in [
+            Vec3::new(0.4, 0.3, -0.9),
+            Vec3::new(-1.3, 2.0, 0.1),
+            Vec3::new(0.0, -0.99, 0.0),
+            Vec3::new(5.0, -5.0, 5.0),
+        ] {
+            let (fast, slow) = (at(p), brute_distance(&mesh, p));
+            assert!((fast - slow).abs() < 1e-6, "{p}: {fast} against {slow}");
+        }
+        assert_eq!(
+            Bvh::build(&MeshData {
+                vertices: Vec::new(),
+                indices: Vec::new()
+            })
+            .distance(Vec3::ZERO),
+            None
+        );
     }
 
     #[test]

@@ -224,10 +224,12 @@ row!(
 
 row!(
     /// One level of detail: a range of a primitive's decoded indices.
-    LodRow, "og.ModelLod", 1 {
+    LodRow, "og.ModelLod", 2 {
         index_first: u32,
         index_count: u32,
-        /// The simplifier's error relative to the primitive's extent (0 for LOD 0).
+        /// The level's largest distance from the full mesh, both ways, in
+        /// the model's units (0 for LOD 0): og-render's `lod` draws the
+        /// level while it projects to less than a pixel.
         error: f32,
     }
 );

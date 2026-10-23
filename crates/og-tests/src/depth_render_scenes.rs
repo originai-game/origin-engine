@@ -1,12 +1,12 @@
 //! The depth wave's render-lod scenes (docs/depth.md §6): mesh levels of
-//! detail picked by projected size (`lod-levels`), a closed room whose
+//! detail picked by projected error (`lod-levels`), a closed room whose
 //! chrome sphere reflects a reflection probe (`probe-interior`), and
 //! screen-space reflections on a wet floor (`ssr-wet-floor`).
 //!
 //! - `lod-levels`: the fx-showcase tree (3,160 triangles), cooked with the
-//!   default `lods 1 0.5 0.25`, at 6, 16 and 45 m along a row seen from
+//!   default `lods 1 0.5 0.25`, at 6, 30 and 70 m along a row seen from
 //!   eye height. Each copy draws the level `og_render::lod::select` picks
-//!   for its bounding sphere's size on screen, tinted as `debugView lod`
+//!   for its error projected to the 720 px view, tinted as `debugView lod`
 //!   tints it: green the full mesh (near), yellow level 1, orange level 2.
 //! - `probe-interior`: a closed 10 × 4 × 10 m room (red back wall, blue
 //!   left, cream right and front, white ceiling, a dark floor) under the
@@ -51,7 +51,7 @@ fn cooked() -> Result<&'static PathBuf, String> {
 }
 
 /// The trees' distances along the row (m) and the camera of `lod-levels`.
-pub const LOD_DISTANCES: [f32; 3] = [6.0, 16.0, 45.0];
+pub const LOD_DISTANCES: [f32; 3] = [6.0, 30.0, 70.0];
 
 fn lod_camera() -> Camera {
     Camera {
@@ -99,14 +99,17 @@ pub fn lod_scene() -> Result<LodScene, String> {
         .iter()
         .map(|&(m, _, _)| prim_of(m).map(|p| levels[p].clone()).unwrap_or_default())
         .collect();
-    let fractions: Vec<f32> = std::iter::once(1.0)
-        .chain(
+    // The model's error per level: the largest of its parts' (the parts of
+    // the tree share one node, unscaled).
+    let n = part_levels.iter().map(|l| l.len()).max().unwrap_or(0);
+    let errors: Vec<f32> = std::iter::once(0.0)
+        .chain((0..n).map(|k| {
             part_levels
                 .iter()
-                .max_by_key(|l| l.len())
-                .map(|l| l.iter().map(|x| x.1).collect::<Vec<_>>())
-                .unwrap_or_default(),
-        )
+                .filter_map(|l| l.get(k).or(l.last()))
+                .map(|x| x.1)
+                .fold(0.0, f32::max)
+        }))
         .collect();
     // The model's bounding sphere, over its primitives' level-0 vertices.
     let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
@@ -133,8 +136,9 @@ pub fn lod_scene() -> Result<LodScene, String> {
             Quat::from_rotation_y(0.6 * i as f32),
             Vec3::new(x, 0.0, -d),
         );
-        let size = lod::projected_size(&scene.camera, at.transform_point3(center), radius);
-        let level = lod::select(&fractions, size, 1.0, None);
+        let per_unit =
+            lod::pixels_per_unit(&scene.camera, at.transform_point3(center), radius, 720.0);
+        let level = lod::select(&errors, per_unit, 1.0, None);
         chosen[i] = level;
         drawn += tris(level);
         for (k, &(mesh, material, local)) in parts.iter().enumerate() {

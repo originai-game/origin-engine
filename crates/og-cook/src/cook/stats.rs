@@ -235,10 +235,22 @@ fn asset_stats(bundle: &Bundle, outputs: &[(String, String, u64)]) -> Value {
                             .sum()
                     })
                     .collect();
+                // Each level's error: the largest of its primitives', in the
+                // model's units (og-render's `lod` draws a level while it
+                // projects to less than a pixel).
+                let lod_errors: Vec<f32> = (0..lods)
+                    .map(|l| {
+                        m.primitives
+                            .iter()
+                            .map(|p| p.lods[l.min(p.lods.len() - 1)].error)
+                            .fold(0.0, f32::max)
+                    })
+                    .collect();
                 model = json!({
                     "triangles": per_lod.first().copied().unwrap_or(0),
                     "vertices": m.primitives.iter().map(|p| p.vertices.len() as u64).sum::<u64>(),
                     "lods": per_lod,
+                    "lodErrors": lod_errors,
                     "meshes": m.meshes.len(),
                     "primitives": m.primitives.len(),
                     "materials": m.materials.len(),

@@ -2172,15 +2172,21 @@ model {
 }
 ```
 
-`og cook --report` lists each model's triangles per level. The renderer
-draws each `og.Model` entity at the level its size on screen calls for,
-with hysteresis, so nothing flickers at a boundary. `og.Model.lodBias`
-(per entity) and `RenderSettings.lodBias` (the frame) scale that choice:
-2 keeps the full mesh twice as far, and 0 always draws it. Check the
-choice with `debug:lod`, which tints models green, yellow, orange and red
-by level, with `dump_entity:<name>` (`render.lod`), and with the
-triangles in `ProbeTimings.triangles` or `dump_render`. A field of 2,000
-trees draws about 4× fewer triangles with LOD on.
+The cook measures each level's error, the largest distance between the
+level and the full mesh in the model's units, and `og cook --report`
+lists each model's triangles (`lods`) and error (`lodErrors`) per level.
+The renderer draws each `og.Model` entity at the coarsest level whose
+error covers less than a pixel at the entity's distance, with
+hysteresis, so nothing flickers at a boundary: a small prop keeps its
+full mesh until it is far away, a large tree drops levels sooner. A
+level whose error is too large for its purpose (a hard-surface model
+melting at a distance) is cooked tighter with `lodError`, or the model
+keeps more detail with `lodBias`. `og.Model.lodBias` (per entity) and
+`RenderSettings.lodBias` (the frame) scale that choice: 2 keeps the full
+mesh twice as far, and 0 always draws it. Check the choice with
+`debug:lod`, which tints models green, yellow, orange and red by level,
+with `dump_entity:<name>` (`render.lod`), and with the triangles in
+`ProbeTimings.triangles` or `dump_render`.
 
 **Reflection probes.** Smooth surfaces reflect the environment map, which
 is the sky. Indoors that is wrong: a chrome sphere in a room would show

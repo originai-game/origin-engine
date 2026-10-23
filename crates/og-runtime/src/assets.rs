@@ -396,10 +396,17 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
             let prim_of = |mesh| {
                 (0..model.primitives.len()).find(|&p| rs.scene.mesh_handle(base + p) == Some(mesh))
             };
+            // Each part's levels with their errors in the model's units: a
+            // part's node scale is folded in.
             let parts: Vec<Vec<(og_render::MeshHandle, f32)>> = parts
                 .parts
                 .iter()
-                .map(|&(mesh, _, _)| prim_of(mesh).map(|p| levels[p].clone()).unwrap_or_default())
+                .map(|&(mesh, _, local)| {
+                    let s = local.to_scale_rotation_translation().0.abs().max_element();
+                    prim_of(mesh)
+                        .map(|p| levels[p].iter().map(|&(m, e)| (m, e * s)).collect())
+                        .unwrap_or_default()
+                })
                 .collect();
             parts
                 .iter()

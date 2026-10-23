@@ -1397,7 +1397,7 @@ Token `og.RenderSettings`, registered under the schema name `og.RenderSettings`;
 | `toneMapping` | `ToneMapping` | `"aces"` | — | — | — | Which curve tone maps the frame while toneMapped is true: aces (the default), agx or none. |
 | `exposure` | `number` | `1` | 0 … 16 | — | tunable | A multiplier on every camera's Camera.exposure, as three.js renderer.toneMappingExposure is one for the whole frame: a look's brightness without touching the cameras; 1 leaves them as they are. |
 | `decalAtlas` | `Texture` | `0` | — | — | — | The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour. |
-| `lodBias` | `number` | `1` | 0 … 16 | — | tunable | A multiplier on every model's projected size when its level of detail is picked (og.Model.lodBias multiplies it again): 1 is the engine's choice, 2 keeps full meshes twice as far, 0.5 simplifies sooner; 0 draws every model at its full mesh. |
+| `lodBias` | `number` | `1` | 0 … 16 | — | tunable | A multiplier on every model's projected level-of-detail error when its level is picked (og.Model.lodBias multiplies it again): a level is drawn while its error, measured by the cook against the full mesh, covers less than a pixel on the screen. 1 is the engine's choice, 2 keeps full meshes twice as far, 0.5 simplifies sooner; 0 draws every model at its full mesh. |
 | `bakedLighting` | `boolean` | `true` | — | — | — | Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map: to compare, or to see the realtime lights alone. |
 
 ```ogt
@@ -1448,7 +1448,7 @@ resource RenderSettings {
     tunable true
   }
   field decalAtlas Texture "The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour."
-  field lodBias f32 "A multiplier on every model's projected size when its level of detail is picked (og.Model.lodBias multiplies it again): 1 is the engine's choice, 2 keeps full meshes twice as far, 0.5 simplifies sooner; 0 draws every model at its full mesh." {
+  field lodBias f32 "A multiplier on every model's projected level-of-detail error when its level is picked (og.Model.lodBias multiplies it again): a level is drawn while its error, measured by the cook against the full mesh, covers less than a pixel on the screen. 1 is the engine's choice, 2 keeps full meshes twice as far, 0.5 simplifies sooner; 0 draws every model at its full mesh." {
     default 1
     min 0
     max 16

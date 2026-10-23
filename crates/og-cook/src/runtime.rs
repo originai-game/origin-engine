@@ -869,7 +869,8 @@ fn opt(i: u32) -> Option<usize> {
 pub struct Lod {
     pub first: usize,
     pub count: usize,
-    /// Simplification error relative to the primitive's extent (0 for LOD 0).
+    /// The level's largest distance from the full mesh, both ways, in the
+    /// model's units (0 for LOD 0).
     pub error: f32,
 }
 
@@ -1372,20 +1373,14 @@ impl CookedModel {
 
     /// Adds every primitive's coarser levels (1 on) to the scene as meshes
     /// of their own, after whatever [`CookedModel::add_to`] added: per
-    /// primitive, each level's mesh and its fraction of level 0's
-    /// triangles (empty for a primitive of one level).
+    /// primitive, each level's mesh and its error, the largest distance from
+    /// level 0 in the model's units (empty for a primitive of one level).
     pub fn add_lod_levels(&self, scene: &mut RenderScene) -> Vec<Vec<(MeshHandle, f32)>> {
         self.primitives
             .iter()
             .map(|p| {
-                let full = p.triangle_count(0).max(1) as f32;
                 (1..p.lods.len())
-                    .map(|l| {
-                        (
-                            scene.add_mesh(p.mesh_compact(l)),
-                            p.triangle_count(l) as f32 / full,
-                        )
-                    })
+                    .map(|l| (scene.add_mesh(p.mesh_compact(l)), p.lods[l].error))
                     .collect()
             })
             .collect()

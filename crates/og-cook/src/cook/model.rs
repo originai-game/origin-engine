@@ -428,6 +428,41 @@ fn cook_bvh(
     (nodes, bvh.order().to_vec())
 }
 
+/// The largest distance between a level's surface and the full mesh's,
+/// both ways: every corner of the level against the full mesh's nearest
+/// triangle (a moved vertex) and every corner of the full mesh against the
+/// level's (a feature simplified away). The runtime draws the level while
+/// this error projects to less than a pixel (og-render's `lod`).
+pub(super) fn level_error(pos: &[[f32; 3]], full: &[u32], level: &[u32]) -> f32 {
+    let mesh = |indices: &[u32]| og_render::MeshData {
+        vertices: pos
+            .iter()
+            .map(|&p| og_render::Vertex {
+                position: p,
+                ..bytemuck::Zeroable::zeroed()
+            })
+            .collect(),
+        indices: indices.to_vec(),
+    };
+    let farthest = |corners: &[u32], bvh: &og_render::geometry::Bvh| {
+        let mut seen = vec![false; pos.len()];
+        let mut worst = 0.0f32;
+        for &i in corners {
+            if !std::mem::replace(&mut seen[i as usize], true)
+                && let Some(d) = bvh.distance(Vec3::from(pos[i as usize]))
+            {
+                worst = worst.max(d);
+            }
+        }
+        worst
+    };
+    let (full_bvh, level_bvh) = (
+        og_render::geometry::Bvh::build(&mesh(full)),
+        og_render::geometry::Bvh::build(&mesh(level)),
+    );
+    farthest(level, &full_bvh).max(farthest(full, &level_bvh))
+}
+
 pub(super) fn cook_primitive(
     src: &GltfSource,
     levels: &[gltf::Primitive],
@@ -752,6 +787,20 @@ pub(super) fn cook_primitive(
         for l in levels.iter_mut().skip(1) {
             l.0 = meshopt::optimize_vertex_cache(&l.0, q.len());
         }
+    }
+    // Each level's error is measured against the full mesh over the
+    // positions the runtime decodes (the simplifier's own estimate, kept
+    // until here, is replaced; a glTF's MSFT_lod level gets one too).
+    let deq = |v: &QVertex| {
+        [
+            lo.x + v.p[0] as f32 / 65535.0 * scale.x,
+            lo.y + v.p[1] as f32 / 65535.0 * scale.y,
+            lo.z + v.p[2] as f32 / 65535.0 * scale.z,
+        ]
+    };
+    let pos_all: Vec<[f32; 3]> = q.iter().map(deq).collect();
+    for l in levels.iter_mut().skip(1) {
+        l.1 = level_error(&pos_all, &lod0, &l.0);
     }
     // A streaming proxy keeps only the coarsest level (and the vertices it uses).
     if coarsest && let Some((last, _)) = levels.pop() {
