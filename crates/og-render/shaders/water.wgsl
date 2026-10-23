@@ -158,6 +158,12 @@ fn ssr(origin: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
   return vec4<f32>(0.0);
 }
 
+// A texel of the depth below, clamped to it: a reflection probe's face
+// binds a 1x1 far plane (water.rs `face_draws`).
+fn depth_texel(p: vec2<f32>) -> vec2<i32> {
+  return min(vec2<i32>(p), vec2<i32>(textureDimensions(scene_depth)) - vec2<i32>(1));
+}
+
 @fragment
 fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let t = frame.time.x;
@@ -179,12 +185,12 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let px = in.clip.xy;
   let uv = px * water.screen.zw;
   let here = view_depth(in.world);
-  let scene_here = textureLoad(scene_depth, vec2<i32>(px), 0).r;
+  let scene_here = textureLoad(scene_depth, depth_texel(px), 0).r;
   // Refraction: the scene behind, shifted by the detail normal, unless the
   // shifted sample is in front of the water.
   let shift = (n - in.normal).xz * water.waves.w * water.screen.zw * 40.0 / max(here * 0.2, 1.0);
   var ruv = clamp(uv + shift, vec2<f32>(0.0), vec2<f32>(1.0));
-  var scene_at = textureLoad(scene_depth, vec2<i32>(ruv * water.screen.xy), 0).r;
+  var scene_at = textureLoad(scene_depth, depth_texel(ruv * water.screen.xy), 0).r;
   if (scene_at < here) {
     ruv = uv;
     scene_at = scene_here;

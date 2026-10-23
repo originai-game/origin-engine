@@ -7178,6 +7178,17 @@ impl Renderer {
             ),
             _ => Vec::new(),
         };
+        // The water as the due probe faces draw it (water.rs `face_draws`).
+        let face_water = if water_draws.is_empty() || probe_frame.due.is_empty() {
+            Vec::new()
+        } else {
+            self.water.face_draws(
+                &self.device,
+                &scene.water,
+                &self.default_white,
+                &self.post.far_depth,
+            )
+        };
         // The 3D fluids' bounding sphere: the reflection probe their one
         // composite draw samples.
         let fluid_bounds = instances::fold_box(
@@ -8267,6 +8278,16 @@ impl Renderer {
                                 pass.set_bind_group(1, sky_group, &[]);
                                 pass.draw(0..3, 0..1);
                                 stats.draw_calls += 1;
+                            }
+                            // Water over the opaque capture and the sky, as
+                            // the main pass draws it before its transparents.
+                            if !face_water.is_empty() {
+                                stats.draw_calls += self.water.draw(
+                                    &mut pass,
+                                    &face_water,
+                                    &mut probe_select::Binder::new(None),
+                                );
+                                pass.set_bind_group(2, fx_group, &[]);
                             }
                             // Transparent meshes, back to front from the
                             // probe, over the opaque capture.

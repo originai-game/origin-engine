@@ -283,8 +283,11 @@ S6).
   six 90° views drawn with the lit pipelines in a `reflection-probes`
   graph pass before the main pass: the opaque meshes, skinned meshes in
   their current pose, terrain, scattered copies within the box's half
-  extent of it, the sky, then transparent meshes sorted back to front from
-  the probe, the particle systems (billboards facing each face, through
+  extent of it, the sky, water (its deep colour over the reflected
+  environment and the sun's highlight: a face has no scene copy or depth
+  below, so no refraction, edge foam or screen-space and planar
+  reflections; `WaterRenderer::face_draws`), then transparent meshes
+  sorted back to front from the probe, the particle systems (billboards facing each face, through
   its own `ParticleViewGpu`), scene lines and points and world sprites and
   text, on every layer (sprites unlit by 2D lights and without glow, soft
   particles at full strength: a face has no depth to fade against); lit

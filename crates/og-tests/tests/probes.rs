@@ -7,8 +7,8 @@
 use og_render::{RenderDesc, RenderTarget, Renderer, RgbaImage};
 use og_tests::gfx;
 use og_tests::probe_scenes::{
-    Outdoor, SsrFloor, outdoor_scene, posed_figure_scene, probe_effects_scene, ssr_floor_scene,
-    two_rooms_scene,
+    Outdoor, SsrFloor, outdoor_scene, posed_figure_scene, probe_effects_scene, probe_water_scene,
+    ssr_floor_scene, two_rooms_scene,
 };
 use og_tests::scenes;
 use std::path::PathBuf;
@@ -254,6 +254,22 @@ fn a_capture_draws_particles_sprites_and_lines() {
         failures.push(format!("the green particles on -x: {nx:?} against {nx0:?}"));
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// A capture draws water: the -y face of the probe over a red-tinted pond
+/// turns from the meadow's green to the water's red. Before the debt round
+/// 2 the capture left water out and the face stayed the meadow's.
+#[test]
+fn a_capture_draws_water() {
+    let desc = scenes::base_desc();
+    let (_, with) = render(&desc, &probe_water_scene(true), Some(7));
+    let (_, bare) = render(&desc, &probe_water_scene(false), Some(7));
+    let (ny, ny0) = (face_mean(&with.unwrap(), 3), face_mean(&bare.unwrap(), 3));
+    println!("-y {ny:?} / {ny0:?}");
+    assert!(
+        ny[0] > ny[1] * 1.5 && ny0[1] > ny0[0],
+        "the pond on -y: {ny:?} against the meadow {ny0:?}"
+    );
 }
 
 /// Terrain and grass inside the probe's box are lit by it: with the

@@ -445,3 +445,24 @@ pub fn probe_effects_scene(on: bool) -> RenderScene {
     crate::fx_scenes::tick_all(&mut scene, 60);
     scene
 }
+
+/// `probe-outdoor` without its figures and pane, and with (`on`) a pond
+/// of red-tinted water 0.4 m under the probe, 6 m square: its -y face sees
+/// the water where it saw the meadow.
+pub fn probe_water_scene(on: bool) -> RenderScene {
+    let mut scene = outdoor_scene(Outdoor {
+        content: false,
+        probe: Some(1.0),
+    });
+    if on {
+        let p = outdoor_probe();
+        scene.water.push(og_render::Water {
+            transform: Mat4::from_translation(p - Vec3::Y * 0.4),
+            size: Vec2::new(6.0, 6.0),
+            shallow: Vec3::new(0.9, 0.2, 0.15),
+            deep: Vec3::new(0.5, 0.04, 0.03),
+            ..Default::default()
+        });
+    }
+    scene
+}

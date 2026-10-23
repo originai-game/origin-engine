@@ -207,6 +207,8 @@ fn grid_segments(water: &Water) -> u32 {
 
 struct Slot {
     uniform: wgpu::Buffer,
+    /// The surface as a reflection probe's faces draw it (`face_draws`).
+    face_uniform: wgpu::Buffer,
     heights: Option<(u32, wgpu::Texture, wgpu::TextureView)>,
 }
 
@@ -339,6 +341,12 @@ impl WaterRenderer {
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                     mapped_at_creation: false,
                 }),
+                face_uniform: device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("water (probe face)"),
+                    size: std::mem::size_of::<WaterGpu>() as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                }),
                 heights: None,
             });
         }
@@ -406,6 +414,13 @@ impl WaterRenderer {
                 under: water.underwater_color.extend(0.0).to_array(),
             };
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
+            // A probe face has no scene copy, depth or planar reflection of
+            // its own: no screen-space or planar reflection there.
+            let mut face = gpu;
+            face.look[1] = 0.0;
+            face.extra[1] = 0.0;
+            face.screen = [1.0; 4];
+            queue.write_buffer(&slot.face_uniform, 0, bytemuck::bytes_of(&face));
             let heights = match (&slot.heights, field) {
                 (Some((_, _, v)), Some(_)) => v,
                 _ => &self.flat,
@@ -451,6 +466,62 @@ impl WaterRenderer {
             });
         }
         draws
+    }
+
+    /// The surfaces as a reflection probe's faces draw them (after
+    /// [`WaterRenderer::prepare`]): no scene copy or depth below of their
+    /// own, so `scene_depth` is the far plane (1x1, the shader clamps its
+    /// loads) and `below` what shows through (the water's shallow colour
+    /// times it): the deep colour over the reflected environment and the
+    /// sun's highlight, without refraction, foam at edges or screen-space
+    /// and planar reflections.
+    pub(crate) fn face_draws(
+        &self,
+        device: &wgpu::Device,
+        waters: &[Water],
+        below: &wgpu::TextureView,
+        scene_depth: &wgpu::TextureView,
+    ) -> Vec<WaterDraw> {
+        waters
+            .iter()
+            .zip(&self.slots)
+            .map(|(water, slot)| {
+                let heights = match (&slot.heights, height_field(water)) {
+                    (Some((_, _, v)), Some(_)) => v,
+                    _ => &self.flat,
+                };
+                let tex = wgpu::BindingResource::TextureView;
+                let entries = [
+                    slot.face_uniform.as_entire_binding(),
+                    tex(heights),
+                    tex(below),
+                    tex(scene_depth),
+                    wgpu::BindingResource::Sampler(&self.sampler),
+                    tex(below),
+                ];
+                let entries: Vec<wgpu::BindGroupEntry> = entries
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, resource)| wgpu::BindGroupEntry {
+                        binding: i as u32,
+                        resource,
+                    })
+                    .collect();
+                let half = Vec3::new(water.size.x, 0.0, water.size.y) * 0.5;
+                WaterDraw {
+                    group: device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("water (probe face)"),
+                        layout: &self.layout,
+                        entries: &entries,
+                    }),
+                    vertices: grid_segments(water) * grid_segments(water) * 6,
+                    bounds: (
+                        water.transform.transform_point3(Vec3::ZERO),
+                        water.transform.transform_vector3(half).length(),
+                    ),
+                }
+            })
+            .collect()
     }
 
     /// Draws the surfaces (group 0: the frame, or each surface's reflection
