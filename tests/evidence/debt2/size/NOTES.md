@@ -354,3 +354,163 @@ that compiles it never runs, so the subsystems go with it.
   og-host-web, `scripts/wasm-crates.txt`, `packages/engine/scripts/build.sh`,
   og-runtime `api.rs` (the capability), docs/web-export.md §Variants,
   docs/ci.md (the variants' feature lists).
+
+## The table after the trims (the branch's head)
+
+Size gate numbers on the shipping `wasm` profile, measured after each
+item on the same machine and toolchain:
+
+| Step | 3D after wasm-opt | 3D brotli | 2D after wasm-opt | 2D brotli |
+|---|---:|---:|---:|---:|
+| ad903b18 (before) | 13,045,922 | 3,532,992 (84.2 %) | 12,408,297 | 3,357,559 (80.1 %) |
+| 1. no GPU timestamp queries | 13,033,282 | 3,529,527 (−3,465) | 12,395,677 | 3,353,116 (−4,443) |
+| 2. probe tool members compiled out | 12,753,175 | 3,457,520 (−72,007) | 12,115,631 | 3,280,554 (−72,562) |
+| 3. (cook report only) | | | | |
+| 4. 2D host without the 3D world | 12,753,430 | 3,456,521 (−999) | 11,971,544 | 3,241,126 (−39,428) |
+| **total** | **−292,492** | **−76,471 (82.4 %)** | **−436,753** | **−116,433 (77.3 %)** |
+
+Per crate, before and after (twiggy shallow bytes):
+
+| Crate | 3D ad903b1 | 3D after |
+|---|---:|---:|
+| og_runtime | 1,783,546 | 1,474,495 (−309,051) |
+| [data] | 1,517,360 | 1,501,008 (−16,352) |
+| og_render | 1,040,886 | 1,007,074 (−33,812) |
+| og_host_web (exports) | 886,782 | 1,127,012 (+240,230) |
+| og_physics | 827,146 | 827,138 (−8) |
+| rapier3d | 826,166 | 826,166 |
+| parry3d | 773,619 | 773,619 |
+| naga | 662,011 | 662,061 (+50) |
+| wgpu | 431,909 | 427,149 (−4,760) |
+| std | 430,368 | 410,219 (−20,149) |
+| wgpu_core | 374,776 | 373,703 (−1,073) |
+| og_ui | 331,342 | 331,637 (+295) |
+| og_ecs | 257,364 | 225,502 (−31,862) |
+| og_anim | 252,149 | 252,149 |
+| serde_json | 220,102 | 194,199 (−25,903) |
+| wgpu_hal | 191,807 | 191,816 (+9) |
+| og_probe | 180,985 | 99,427 (−81,558) |
+| bincode | 169,239 | 169,236 (−3) |
+| og_core | 158,957 | 158,549 (−408) |
+| og_cook | 156,204 | 152,591 (−3,613) |
+| og_nav | 150,988 | 150,988 |
+| [unnamed] | 142,613 | 140,862 (−1,751) |
+| ttf_parser | 130,565 | 130,565 |
+| rustybuzz | 109,407 | 109,407 |
+| og_host_web | 101,827 | 100,109 (−1,718) |
+| og_audio | 94,928 | 94,928 |
+| og_ai | 80,986 | 80,986 |
+| js_sys | 77,939 | 77,956 (+17) |
+| og_timeline | 72,110 | 72,110 |
+| [wasm structure] | 62,497 | 62,082 (−415) |
+| og_input | 48,485 | 48,485 |
+| indexmap | 48,385 | 48,385 |
+| og_tilemap | 47,078 | 47,078 |
+| og_net | 40,293 | 40,293 |
+| og_tween | 34,871 | 34,871 |
+| og_i18n | 32,771 | 32,899 (+128) |
+| og_lanes | 32,369 | 32,369 |
+| glam | 29,303 | 29,303 |
+| wgpu_types | 28,828 | 28,828 |
+| miniz_oxide | 26,124 | 26,040 (−84) |
+| codespan_reporting | 21,414 | 21,587 (+173) |
+| (the rest, under 20,000 B) | 159,146 | 158,272 (−874) |
+| **module** | **13,045,645** | **12,753,153** (−292,492) |
+
+| Crate | 2D ad903b1 | 2D after |
+|---|---:|---:|
+| og_runtime | 1,776,596 | 1,478,334 (−298,262) |
+| [data] | 1,506,444 | 1,441,356 (−65,088) |
+| og_render | 1,041,109 | 900,746 (−140,363) |
+| og_host_web (exports) | 885,300 | 1,126,282 (+240,982) |
+| rapier2d | 713,382 | 713,382 |
+| naga | 661,999 | 662,048 (+49) |
+| og_physics | 645,248 | 645,240 (−8) |
+| parry2d | 457,767 | 457,767 |
+| wgpu | 431,909 | 424,617 (−7,292) |
+| std | 427,039 | 404,612 (−22,427) |
+| wgpu_core | 374,776 | 373,719 (−1,057) |
+| og_ui | 331,343 | 331,639 (+296) |
+| og_ecs | 257,326 | 225,468 (−31,858) |
+| og_anim | 252,240 | 252,150 (−90) |
+| serde_json | 220,103 | 194,199 (−25,904) |
+| wgpu_hal | 190,844 | 190,853 (+9) |
+| og_probe | 180,983 | 99,426 (−81,557) |
+| bincode | 173,974 | 173,971 (−3) |
+| og_core | 158,959 | 158,551 (−408) |
+| og_cook | 156,058 | 157,313 (+1,255) |
+| og_nav | 150,987 | 150,974 (−13) |
+| [unnamed] | 145,930 | 144,183 (−1,747) |
+| ttf_parser | 130,565 | 130,565 |
+| rustybuzz | 109,409 | 109,409 |
+| og_host_web | 101,825 | 99,862 (−1,963) |
+| og_audio | 94,930 | 94,930 |
+| og_ai | 80,988 | 80,988 |
+| js_sys | 77,937 | 78,978 (+1,041) |
+| og_timeline | 72,110 | 72,110 |
+| [wasm structure] | 62,490 | 62,033 (−457) |
+| og_input | 48,485 | 48,485 |
+| og_tilemap | 47,051 | 47,078 (+27) |
+| indexmap | 46,772 | 46,772 |
+| og_net | 40,293 | 40,293 |
+| og_tween | 34,873 | 34,873 |
+| og_i18n | 32,771 | 32,899 (+128) |
+| og_lanes | 29,942 | 29,924 (−18) |
+| wgpu_types | 28,828 | 28,828 |
+| glam | 27,027 | 26,282 (−745) |
+| miniz_oxide | 26,124 | 26,040 (−84) |
+| codespan_reporting | 21,420 | 21,593 (+173) |
+| (the rest, under 20,000 B) | 153,864 | 152,495 (−1,369) |
+| **module** | **12,408,020** | **11,971,267** (−436,753) |
+
+The og_host_web (exports) growth is inlining, not new code: with the
+probe's dispatchers smaller, wasm-opt folds runtime bodies (most of what
+og_runtime lost) into the export shims.
+
+## Left out, and why
+
+- **The BVH loader where no model raycasts.** The table puts it at about
+  3 kB raw (`adopt_cooked_bvh` 1,366 B, `BvhNodeRow` 264 B, the
+  `bvh_nodes`/`bvh_tris` decoding inlined into `Bundle::model`, 19,046 B
+  with the rest of the model's decoding), around 1 kB brotli. Cutting
+  it needs a build that knows no model raycasts, i.e. a per-game engine
+  module, and row 99's first step is the opposite: one content-addressed
+  engine wasm per version shared by every game. Without the loader a game
+  that raycasts would build each BVH on its first raycast (the dropship's
+  16,512 triangles), the stall the cooked BVH exists to remove. The cook
+  side carries the choice instead (item 3: the warning and `raycast
+  false`, which saves the game's own download, 108 kB for the dropship).
+- **og-runtime's terrain in the 2D host.** `og_runtime::terrain` and
+  `terrain_stream` are 56,374 B raw in the 2D module and still built:
+  they load heightfields for `og.terrain.sample` and the physics
+  heightfield too, so cutting them means a capability-reported refusal in
+  the terrain module's API; the renderer's half went in item 4. The next
+  per-profile step, with the 3D lit path's own share measured first.
+- **The lanes modules.** Not measured per crate here; they carry the same
+  features (the 2D lanes module has `profile2d`) and the size gate run
+  below gives their numbers.
+- **The panic and assertion strings** (`.rodata.1`, 199,565 B, the
+  largest data segment) and wgpu's and naga's error strings: not in the
+  row; `panic = "abort"` with `panic_immediate_abort`-style trimming
+  would be a toolchain decision (nightly `-Z build-std` features), worth
+  a measurement in the next size round.
+
+## For the coordinator to decide
+
+1. **Item 2's command channel in publish:** a timeline event key or an
+   og.ai command naming a tool action (`dump_world`, `get`, `help`, ...)
+   now logs a refusal in a publish build instead of writing an output no
+   one reads. No game here does that.
+2. **Item 4's dev/publish divergence for 2D games:** og.Water, terrain,
+   scattered copies and 3D fluids draw in `og dev` and natively but not in
+   a 2D publish build. Whether `og build --publish` should refuse a 2D
+   project whose scenes hold them (a check in og-cli) is open.
+3. **`bvhShare` 30 % with a 16 KiB floor** (item 3) warns on four models
+   of the repository (dropship, fx-showcase's tree and trickster,
+   meridian-loop's track); whether any of them should say
+   `raycast false` is each game's call (fx-showcase's geometry station
+   raycasts the terrain, not the models).
+4. Reference frames: none should move (publish-only and 2D-publish-only
+   changes; the frame's code under the default features is unchanged but
+   for `pick` no longer running the views' id passes, which never fed the
+   main camera's answer).
