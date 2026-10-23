@@ -33,14 +33,21 @@
 //! `tweenEasing` of 0 is linear, up to 1 DragonBones' quadratic eases as
 //! Béziers (exact: a quadratic is a cubic), above 1 its sine in-out as a
 //! Bézier of Hermite segments within 1e-7 of it; a frame with neither
-//! holds its value (DragonBones' no-tween). Path displays are noted.
+//! holds its value (DragonBones' no-tween). A `path` display is a path
+//! attachment (its `vertices` three per knot, weighted as a mesh's,
+//! `closed`, `constantSpeed` and `lengths`), and the armature's `path`
+//! constraints (`target` slot and `targetDisplay`, `bones`,
+//! `positionMode`, `spacingMode`, `rotateMode`, `position`, `spacing`,
+//! `rotateOffset`, `rotateMix`, `translateMix`) `along` constraints;
+//! DragonBones has no transform constraint.
 
 use super::{CookError, Source};
 use crate::format::{self, *};
 use og_anim::{
     Affine2, Armature2d, Attachment2d, AttachmentKind, Bone2d, BoneTimeline, Clip2d,
-    DeformTimeline, Ease, Ik2d, IkKey, IkTimeline, Influence, Key, MeshVertex2d, Rig2dAsset,
-    Rotation, SheetFilter, Slot2d, SlotTimeline, Turn, turn_delta,
+    DeformTimeline, Ease, Ik2d, IkKey, IkTimeline, Influence, Key, MeshVertex2d, PathConstraint2d,
+    PathRotate, PathSpacing, PathUnit, Rig2dAsset, Rotation, SheetFilter, Slot2d, SlotTimeline,
+    Turn, turn_delta,
 };
 use og_blob::BlobWriter;
 use og_core::ogt::{Document, Entry, Value};
@@ -425,6 +432,8 @@ pub fn dragonbones(
         slots: top.slots,
         attachments: top.attachments,
         iks: top.iks,
+        transforms: top.transforms,
+        paths: top.paths,
         clips: top.clips,
         armatures,
     };
@@ -483,6 +492,8 @@ fn armature(
             slots: Vec::new(),
             attachments: Vec::new(),
             iks: Vec::new(),
+            transforms: Vec::new(),
+            paths: Vec::new(),
             clips: Vec::new(),
             armatures: Vec::new(),
         };
@@ -546,6 +557,39 @@ fn armature(
                     }
                 }
                 "mesh" => mesh(d, &dn, &sub(&path)?, bone, &setup)?,
+                "path" => {
+                    // Points as a mesh's vertices are read (y flipped).
+                    let points = influences(d, &format!("path {an}"), bone, &setup)?;
+                    if points.len() < 6 || points.len() % 3 != 0 {
+                        skipped.push(format!(
+                            "{n}/{dn} (a path of {} vertices, not three per knot of two or more)",
+                            points.len()
+                        ));
+                        ids.push(None);
+                        continue;
+                    }
+                    let closed = d["closed"].as_bool().unwrap_or(false);
+                    let curves = points.len() / 3 - usize::from(!closed);
+                    let lengths: Vec<f32> = d["lengths"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .map(|v| v.as_f64().unwrap_or(0.0) as f32)
+                        .take(curves)
+                        .collect();
+                    let constant = d["constantSpeed"].as_bool().unwrap_or(false);
+                    AttachmentKind::Path {
+                        points,
+                        closed,
+                        // Without a length per curve only arc length can place a position.
+                        constant: constant || lengths.len() != curves,
+                        lengths: if lengths.len() == curves {
+                            lengths
+                        } else {
+                            Vec::new()
+                        },
+                    }
+                }
                 "boundingBox" => {
                     let m = t.affine();
                     let (w, h) = (f(d, "width", 0.0) / 2.0, f(d, "height", 0.0) / 2.0);
@@ -638,6 +682,67 @@ fn armature(
             target,
             counterclockwise: !k["bendPositive"].as_bool().unwrap_or(true),
             weight: f(k, "weight", 1.0),
+        });
+    }
+    // Path constraints (the armature's `path` list): bones along a path display.
+    for k in arm["path"].as_array().into_iter().flatten() {
+        let n = name(k)?;
+        let target = k["target"].as_str().unwrap_or("");
+        let slot = rig
+            .slots
+            .iter()
+            .position(|s| s.name == target)
+            .ok_or(format!("path {n}: no slot {target}"))?;
+        let display = k["targetDisplay"].as_str().unwrap_or(target);
+        let path = rig
+            .attachments
+            .iter()
+            .position(|a| {
+                a.slot == slot
+                    && matches!(a.kind, AttachmentKind::Path { .. })
+                    && (a.name == display || a.name.ends_with(&format!("/{display}")))
+            })
+            .ok_or(format!("path {n}: slot {target} shows no path {display}"))?;
+        let bones = k["bones"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|b| {
+                let b = b.as_str().unwrap_or("");
+                bone_of(&rig, b).ok_or(format!("path {n}: no bone {b}"))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        if bones.is_empty() {
+            return Err(format!("path {n}: no bones"));
+        }
+        let mode = |key: &str| k[key].as_str().unwrap_or("").to_lowercase();
+        rig.paths.push(PathConstraint2d {
+            name: n,
+            path,
+            bones,
+            position: f(k, "position", 0.0),
+            position_unit: if mode("positionMode") == "fixed" {
+                PathUnit::Fixed
+            } else {
+                PathUnit::Percent
+            },
+            spacing: f(k, "spacing", 0.0),
+            spacing_mode: match mode("spacingMode").as_str() {
+                "fixed" => PathSpacing::Fixed,
+                "percent" => PathSpacing::Percent,
+                _ => PathSpacing::Length,
+            },
+            rotate: match mode("rotateMode").as_str() {
+                "chain" => PathRotate::Chain,
+                "chainscale" => PathRotate::ChainScale,
+                _ => PathRotate::Tangent,
+            },
+            // Clockwise with y down is negative here.
+            rotation: -f(k, "rotateOffset", 0.0),
+            mix: [
+                f(k, "rotateMix", 1.0).clamp(0.0, 1.0),
+                f(k, "translateMix", 1.0).clamp(0.0, 1.0),
+            ],
         });
     }
     for a in arm["animation"].as_array().into_iter().flatten() {
@@ -963,7 +1068,6 @@ fn mesh(
     };
     let (vs, uvs) = (nums("vertices"), nums("uvs"));
     let triangles: Vec<u32> = nums("triangles").into_iter().map(|t| t as u32).collect();
-    let weights = nums("weights");
     let count = vs.len() / 2;
     if uvs.len() != vs.len() || count == 0 {
         return Err(format!(
@@ -972,6 +1076,49 @@ fn mesh(
             uvs.len()
         ));
     }
+    let influences = influences(d, &format!("mesh {n}"), slot_bone, setup)?;
+    let vertices = influences
+        .into_iter()
+        .enumerate()
+        .map(|(i, influences)| MeshVertex2d {
+            uv: [
+                rect[0] + uvs[2 * i] * rect[2],
+                rect[1] + uvs[2 * i + 1] * rect[3],
+            ],
+            influences,
+        })
+        .collect();
+    if triangles.is_empty() || triangles.iter().any(|t| *t as usize >= count) {
+        return Err(format!(
+            "mesh {n}: triangles index past its {count} vertices"
+        ));
+    }
+    Ok(AttachmentKind::Mesh {
+        vertices,
+        triangles,
+    })
+}
+
+/// A DragonBones geometry's vertices (a mesh's or a path's) as influences:
+/// unweighted, in the slot's bone; weighted, through `slotPose` into the
+/// setup pose and from there into each bone of `weights`.
+fn influences(
+    d: &Json,
+    what: &str,
+    slot_bone: usize,
+    setup: &[Affine2],
+) -> Result<Vec<Vec<Influence>>, String> {
+    let nums = |k: &str| -> Vec<f32> {
+        d[k].as_array()
+            .into_iter()
+            .flatten()
+            .map(|v| v.as_f64().unwrap_or(0.0) as f32)
+            .collect()
+    };
+    let vs = nums("vertices");
+    let weights = nums("weights");
+    let count = vs.len() / 2;
+    let n = what;
     // slotPose (a b c d tx ty) takes a weighted vertex into the setup pose (y down).
     let sp = nums("slotPose");
     let slot_pose = if sp.len() == 6 {
@@ -989,10 +1136,6 @@ fn mesh(
     let mut vertices = Vec::with_capacity(count);
     let mut w = 0usize;
     for i in 0..count {
-        let uv = [
-            rect[0] + uvs[2 * i] * rect[2],
-            rect[1] + uvs[2 * i + 1] * rect[3],
-        ];
         let (x, y) = (vs[2 * i], vs[2 * i + 1]);
         let influences = if weights.is_empty() {
             vec![Influence {
@@ -1005,21 +1148,17 @@ fn mesh(
             let g = slot_pose.apply(x, y);
             // The setup position here (y up), into each bone.
             let here = [g[0], -g[1]];
-            let k = *weights
-                .get(w)
-                .ok_or(format!("mesh {n}: weights end early"))? as usize;
+            let k = *weights.get(w).ok_or(format!("{n}: weights end early"))? as usize;
             w += 1;
             let mut out = Vec::with_capacity(k);
             for _ in 0..k {
                 let (b, wt) = (weights.get(w).copied(), weights.get(w + 1).copied());
                 let (Some(b), Some(wt)) = (b, wt) else {
-                    return Err(format!("mesh {n}: weights end early"));
+                    return Err(format!("{n}: weights end early"));
                 };
                 w += 2;
                 let b = b as usize;
-                let m = setup
-                    .get(b)
-                    .ok_or(format!("mesh {n}: weight on bone {b}"))?;
+                let m = setup.get(b).ok_or(format!("{n}: weight on bone {b}"))?;
                 let l = m.inverse().apply(here[0], here[1]);
                 out.push(Influence {
                     bone: b,
@@ -1035,15 +1174,7 @@ fn mesh(
             }
             out
         };
-        vertices.push(MeshVertex2d { uv, influences });
+        vertices.push(influences);
     }
-    if triangles.is_empty() || triangles.iter().any(|t| *t as usize >= count) {
-        return Err(format!(
-            "mesh {n}: triangles index past its {count} vertices"
-        ));
-    }
-    Ok(AttachmentKind::Mesh {
-        vertices,
-        triangles,
-    })
+    Ok(vertices)
 }

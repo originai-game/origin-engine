@@ -504,3 +504,55 @@ fn a_dragonbones_sine_ease_plays_the_sine_at_every_tick() {
         "{notes:?}"
     );
 }
+
+/// A DragonBones path display and path constraint (the old import noted
+/// the display as not imported and had no path constraint at all).
+#[test]
+fn a_dragonbones_path_constraint_places_its_bones_on_the_path_display() {
+    // y down there: the curve from (0, 0) through (0, -10) and (10, -10)
+    // to (10, 0) is, here, the one through (0, 10) and (10, 10).
+    let ske = r#"{ "name": "rail", "version": "5.5", "frameRate": 10, "armature": [{
+  "name": "rail",
+  "bone": [{ "name": "root" },
+    { "name": "a", "parent": "root", "length": 8, "transform": { "x": -40, "y": -3, "skY": 30 } },
+    { "name": "b", "parent": "a", "length": 8, "transform": { "x": 8 } }],
+  "slot": [{ "name": "rail", "parent": "root" }],
+  "skin": [{ "slot": [{ "name": "rail", "display": [
+    { "name": "rail", "type": "path", "closed": false, "constantSpeed": false, "lengths": [20],
+      "vertices": [0, 10, 0, 0, 0, -10, 10, -10, 10, 0, 10, 10] }] }] }],
+  "path": [{ "name": "follow", "target": "rail", "bones": ["a", "b"],
+    "positionMode": "percent", "spacingMode": "percent", "rotateMode": "tangent", "position": 0, "spacing": 0.25 }],
+  "animation": [{ "name": "still", "duration": 1 }]
+}] }"#;
+    let root = project(
+        "dragonbones-path",
+        &[
+            ("rigs/hero_tex.png", png(32, 16)),
+            ("rigs/hero_ske.json", ske.as_bytes().to_vec()),
+            ("rigs/hero_tex.json", ATLAS.as_bytes().to_vec()),
+            ("rigs/hero.ogt", IMPORT.as_bytes().to_vec()),
+        ],
+    );
+    let notes = notes_of(&root);
+    assert!(
+        !notes.iter().any(|n| n.contains("not imported")),
+        "{notes:?}"
+    );
+    let rig = cooked(&root).load_rig2d("rigs/hero.ogt").unwrap();
+    assert_eq!(rig.paths.len(), 1);
+    let p = rig.pose(None, 0.0, &[]);
+    // Worked by hand (Bernstein form): a at t 0.25, (1.5625, 5.625), along
+    // the tangent (3.75, 5), 53.130102 degrees; b at t 0.5, (5, 7.5), level.
+    let angle = |m: &og_anim::Affine2| f64::from(m.b).atan2(f64::from(m.a)).to_degrees();
+    let (a, b) = (p.world[1], p.world[2]);
+    assert!(
+        (a.tx - 1.5625).abs() < 1e-4 && (a.ty - 5.625).abs() < 1e-4,
+        "{a:?}"
+    );
+    assert!((angle(&a) - 53.130_102).abs() < 1e-3, "{}", angle(&a));
+    assert!(
+        (b.tx - 5.0).abs() < 1e-4 && (b.ty - 7.5).abs() < 1e-4,
+        "{b:?}"
+    );
+    assert!(angle(&b).abs() < 1e-3, "{}", angle(&b));
+}

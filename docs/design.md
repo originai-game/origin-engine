@@ -581,7 +581,10 @@ Baked lighting, volumetrics and area lights (depth S7).
   a chain of any length (one bone points, two are solved exactly, three
   or more by FABRIK from the animated pose, seeded on the `bend` side:
   position passes with no trigonometry inside them, as og-anim's 3D
-  chains are solved), and clips of bone (rotate, skew, translate, scale), slot
+  chains are solved), `transform` constraints (bones moved by a mix
+  towards a target bone's world transform) and `along` constraints
+  (bones placed on a `path` attachment, a cubic spline drawn as nothing,
+  with DragonBones' position, spacing and rotate modes), and clips of bone (rotate, skew, translate, scale), slot
   (attachment, colour, offset), deform, draw-order (`order`) and IK
   (weight and bend) keys with events; keys ease linearly, hold (`step`)
   or follow a cubic Bézier (`curve`, solved by bisection), and a rotate
@@ -592,7 +595,8 @@ Baked lighting, volumetrics and area lights (depth S7).
   `og.Rig2D` blob, written by hand or imported from a DragonBones 5.5
   export with its atlas (`dragonbones "x_ske.json"`, `atlas
   "x_tex.json"`): skew, colour offsets, zOrder and IK timelines, armature
-  displays (as child armatures), bounding boxes, Bézier curves,
+  displays (as child armatures), bounding boxes, path displays and path
+  constraints, Bézier curves,
   `clockwise` turns (accumulated as DragonBones' parser does) and the
   sine `tweenEasing` (above 1: Hermite segments of a `curve`, within 1e-7
   of the sine) come across, and a frame without `tweenEasing` holds as DragonBones holds

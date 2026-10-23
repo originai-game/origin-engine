@@ -990,7 +990,13 @@ linearly to the next, holds with `step`, or follows `curve x1 y1 x2 y2`
 then (alone, the file's order); an `ik` key sets the constraint's weight
 and bend. An `ik`'s `bones` are a chain of any length, root first: one
 bone points, two bend at the joint, three or more (a tail, a tentacle, a
-three-joint leg) are solved by FABRIK and curl to the `bend` side. A `box` draws nothing: `og.anim.skeleton2dBoxes(world, hero)`
+three-joint leg) are solved by FABRIK and curl to the `bend` side. After the IK, a
+`transform t { bones a; target b; mix 1 1 1 1 }` pulls bones towards
+another bone's world rotation, origin, scale and shear by its mix, and an
+`along s { path rail; bones s1 s2; position 0 percent; spacing 0 length;
+rotate tangent 0; mix 1 1 }` lays bones along a `path` attachment (a
+cubic spline, `vertex x y` three per knot, drawn as nothing) while its
+slot shows it. A `box` draws nothing: `og.anim.skeleton2dBoxes(world, hero)`
 answers its polygon (in the Transform's frame) while its slot shows it,
 for hit and hurt boxes a clip switches. A `child` shows an `armature`
 block (a rig of its own on the same texture) in its slot; it plays the
@@ -998,7 +1004,8 @@ parent's clip by name when it has one, else its `clip`, at the parent's
 time. A DragonBones 5.5 export is imported instead of written: a rig2d
 `.ogt` with `dragonbones "hero_ske.json"` and `atlas "hero_tex.json"`
 (skew, colour offsets, zOrder and IK timelines, armature displays,
-bounding boxes, curves and `clockwise` turns included; Spine's files are not read, convert
+bounding boxes, path displays and constraints, curves and `clockwise`
+turns included; Spine's files are not read, convert
 them to this text).
 
 ```ts
