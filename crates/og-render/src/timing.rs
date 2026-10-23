@@ -47,9 +47,10 @@ pub struct GpuFrame {
     /// clock is not the CPU's, so a trace anchors the frame's first
     /// timestamp here.
     pub submitted: f64,
-    /// The passes in execution order: each one's start in milliseconds
-    /// after the frame's first timestamp (where the pass before it ended)
-    /// and its GPU milliseconds to its own end, back to back.
+    /// The passes in execution order: each one's start and end in
+    /// milliseconds after the frame's first timestamp, back to back (a
+    /// pass starts at the very value the one before it ended, so a trace
+    /// rounding both lands them on one microsecond).
     pub passes: Vec<GpuPass>,
 }
 
@@ -58,13 +59,21 @@ pub struct GpuFrame {
 pub struct GpuPass {
     pub name: String,
     pub start: f64,
-    pub ms: f64,
+    pub end: f64,
+}
+
+impl GpuPass {
+    /// The pass's GPU milliseconds.
+    pub fn ms(&self) -> f64 {
+        self.end - self.start
+    }
 }
 
 impl GpuFrame {
-    /// The GPU milliseconds from the first timestamp to the last.
+    /// The GPU milliseconds from the first timestamp to the last: the last
+    /// pass's end, the same value.
     pub fn ms(&self) -> f64 {
-        self.passes.last().map_or(0.0, |p| p.start + p.ms)
+        self.passes.last().map_or(0.0, |p| p.end)
     }
 }
 
@@ -488,7 +497,7 @@ fn frame_of(p: Pending, ticks: &[u64], period_ns: f64) -> GpuFrame {
             let pass = GpuPass {
                 name,
                 start: prev_end,
-                ms: end - prev_end,
+                end,
             };
             prev_end = end;
             pass
@@ -535,17 +544,18 @@ mod tests {
         let got: Vec<(&str, f64, f64)> = f
             .passes
             .iter()
-            .map(|p| (p.name.as_str(), p.start, p.ms))
+            .map(|p| (p.name.as_str(), p.start, p.end))
             .collect();
         assert_eq!(
             got,
             [
                 ("Cascade0", 0.0, 1.0),
-                ("Main", 1.0, 3.0),
-                ("Bloom", 4.0, 0.0),
-                ("Tonemap", 4.0, 0.0)
+                ("Main", 1.0, 4.0),
+                ("Bloom", 4.0, 4.0),
+                ("Tonemap", 4.0, 4.0)
             ]
         );
+        assert_eq!(f.passes[1].ms(), 3.0);
         assert_eq!(f.ms(), 4.0);
     }
 }

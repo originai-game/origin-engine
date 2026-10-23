@@ -1658,7 +1658,7 @@ fn render(eng: &Engine) -> Result<bool, String> {
         st.gpu_ms = newest
             .passes
             .iter()
-            .map(|p| (p.name.clone(), p.ms))
+            .map(|p| (p.name.clone(), p.ms()))
             .collect();
     }
     st.pass_ms = passes;

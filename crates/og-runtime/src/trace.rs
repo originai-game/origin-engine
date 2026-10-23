@@ -65,8 +65,15 @@ fn now() -> f64 {
 
 /// A complete span (`ph: X`) from `start` for `ms` (engine clock, ms).
 fn span(name: &str, cat: &str, tid: u32, start: f64, ms: f64, args: Value) -> Value {
+    span_to(name, cat, tid, start, start + ms.max(0.0), args)
+}
+
+/// A complete span from `start` to `end` (engine clock, ms). Spans that
+/// share an instant pass the same value here: one rounding, one
+/// microsecond, so a child's end never lands past its parent's.
+fn span_to(name: &str, cat: &str, tid: u32, start: f64, end: f64, args: Value) -> Value {
     let ts = (start * 1000.0).round() as i64;
-    let end = ((start + ms.max(0.0)) * 1000.0).round() as i64;
+    let end = (end.max(start) * 1000.0).round() as i64;
     json!({ "name": name, "cat": cat, "ph": "X", "pid": 1, "tid": tid, "ts": ts, "dur": end - ts, "args": args })
 }
 
@@ -186,19 +193,29 @@ pub(crate) fn gpu_frames(engine: u32, frames: &[og_render::GpuFrame]) {
                 // before it is done.
                 let at = f.submitted.max(tr.gpu_end);
                 let args = json!({ "frame": f.frame, "submitted": f.submitted });
-                tr.events.push(span(
+                // The frame ends where its last pass does, and each pass
+                // starts where the one before it ended: the same sums,
+                // so the rounding agrees.
+                let end = at + f.ms();
+                tr.events.push(span_to(
                     &format!("gpu frame {}", f.frame),
                     "gpu",
                     GPU,
                     at,
-                    f.ms(),
+                    end,
                     args.clone(),
                 ));
                 for p in &f.passes {
-                    tr.events
-                        .push(span(&p.name, "gpu", GPU, at + p.start, p.ms, args.clone()));
+                    tr.events.push(span_to(
+                        &p.name,
+                        "gpu",
+                        GPU,
+                        at + p.start,
+                        at + p.end,
+                        args.clone(),
+                    ));
                 }
-                tr.gpu_end = at + f.ms();
+                tr.gpu_end = end;
             }
         }
     });
@@ -281,4 +298,56 @@ pub fn take(engine: u32, last: bool) -> String {
     });
     events.extend(LOADS.with(|l| std::mem::take(&mut *l.borrow_mut())));
     json!({ "now": now(), "events": events }).to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_gpu_pass_ends_on_the_microsecond_its_frame_does() {
+        // The frame's end is the last pass's end, in one sum: a pass end
+        // reached by a second sum ((at + start) + ms) lands past the
+        // frame's by a microsecond on these values, and the trace check
+        // reports a child overlapping its parent.
+        let at = 1948.0215173274164;
+        let frame = og_render::GpuFrame {
+            frame: 7,
+            submitted: at,
+            passes: vec![
+                og_render::GpuPass {
+                    name: "main".into(),
+                    start: 0.0,
+                    end: 1.5297082862458637,
+                },
+                og_render::GpuPass {
+                    name: "tonemap".into(),
+                    start: 1.5297082862458637,
+                    end: 1.9769826725835173,
+                },
+            ],
+        };
+        const ENGINE_ID: u32 = 4242;
+        TRACES.with(|t| {
+            t.borrow_mut().insert(ENGINE_ID, Trace::default());
+        });
+        gpu_frames(ENGINE_ID, &[frame]);
+        let events = TRACES
+            .with(|t| std::mem::take(&mut t.borrow_mut().get_mut(&ENGINE_ID).unwrap().events));
+        let ends: Vec<(String, i64, i64)> = events
+            .iter()
+            .map(|e| {
+                let ts = e["ts"].as_i64().unwrap();
+                (
+                    e["name"].as_str().unwrap().to_string(),
+                    ts,
+                    ts + e["dur"].as_i64().unwrap(),
+                )
+            })
+            .collect();
+        assert_eq!(ends[0].0, "gpu frame 7");
+        assert_eq!(ends[1].2, ends[2].1, "tonemap starts where main ends");
+        assert_eq!(ends[2].2, ends[0].2, "tonemap ends where the frame does");
+        assert_eq!(ends[0].2, 1949999);
+    }
 }
