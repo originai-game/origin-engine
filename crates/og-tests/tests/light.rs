@@ -149,3 +149,38 @@ fn every_batch_kind_draws_its_lightmap() {
         );
     }
 }
+
+/// The renderer's state restore keeps baked data (debt render-light #7): a
+/// baked frame, a renderer snapshot, frames drawn unbaked (the pages and
+/// uvs let go) and from elsewhere, the restore: the baked frame again, byte
+/// for byte.
+#[test]
+fn a_renderer_restore_keeps_the_baked_frame() {
+    use og_render::{BakedLighting, RenderTarget, Renderer};
+    let built = og_tests::scenes::build("baked-cornell").expect("build");
+    let mut r = Renderer::new_blocking(&built.desc).expect("renderer");
+    let frames = built.frames.max(1);
+    let mut scene = built.scene;
+    let camera = scene.camera.clone();
+    let draw = |r: &mut Renderer, s: &og_render::RenderScene| {
+        for _ in 0..frames {
+            r.render(s, &RenderTarget::Offscreen).expect("render");
+        }
+        r.read_offscreen().expect("capture")
+    };
+    let first = draw(&mut r, &scene);
+    let saved = r.save_state();
+    let baked = std::mem::replace(&mut scene.baked, BakedLighting::default());
+    let unbaked = draw(&mut r, &scene);
+    assert_ne!(unbaked.pixels, first.pixels, "unbaked draws otherwise");
+    scene.camera.position.x += 0.4;
+    draw(&mut r, &scene);
+    scene.camera = camera;
+    scene.baked = baked;
+    r.restore_state(saved);
+    let again = draw(&mut r, &scene);
+    assert!(
+        again.pixels == first.pixels,
+        "the restored baked frame differs"
+    );
+}

@@ -12,13 +12,16 @@
 //! old runtime drew "one scene's lightmap at a time": the first box's
 //! instances then drew its unbaked parts, with no lightmap); both scenes'
 //! meshes are handed over with one set of pages (the second box would
-//! sample the first's); a despawned scene keeps its pages drawn.
+//! sample the first's); a despawned scene keeps its pages drawn; a render
+//! snapshot's restore (`og render --jobs`) brings back the world with the
+//! static models but not their bake, or keeps a bake drawn whose models the
+//! restored world does not have.
 
 use og_render::RenderScene;
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_game_game,
     og_host_begin_bundle, og_load_scene, og_render_baked_lighting, og_world_despawn, og_world_find,
-    og_world_instantiate, set_hooks, set_render_backend,
+    og_world_instantiate, render_restore, render_snapshot, set_hooks, set_render_backend,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -285,4 +288,45 @@ fn two_baked_scenes_both_draw_their_bakes() {
         (false, "its static models were despawned")
     );
     assert!(r[1].1, "{r:?}");
+}
+
+/// A render snapshot keeps the baked lighting with the world it restores
+/// (debt render-light #7): restored after the box was despawned, its bake
+/// draws again with the same lightmapped meshes and pages; restored to a
+/// snapshot taken before any scene was instantiated, nothing is drawn baked.
+#[test]
+fn a_render_snapshot_restores_the_bake_with_its_world() {
+    let (engine, seen) = engine();
+    let empty = render_snapshot(engine).expect("snapshot");
+    instantiate(engine, "scenes/hall.ogt");
+    frame(engine);
+    let lit = |s: &Seen| (s.instances.clone(), s.lightmapped.clone());
+    let before = lit(&seen.borrow());
+    assert!(!before.1.is_empty(), "the hall draws its bake");
+    let snapshot = render_snapshot(engine).expect("snapshot");
+
+    let found: Value = serde_json::from_str(&og_world_find(engine, "hall-box".into())).unwrap();
+    value(og_world_despawn(engine, found.as_f64().unwrap()));
+    frame(engine);
+    assert!(
+        seen.borrow().lightmapped.is_empty(),
+        "despawned, no bake drawn"
+    );
+
+    render_restore(engine, &snapshot).expect("restore");
+    frame(engine);
+    assert_eq!(
+        lit(&seen.borrow()),
+        before,
+        "the restored box draws its bake as before"
+    );
+    assert_eq!(reported(engine)[0].1, true);
+
+    render_restore(engine, &empty).expect("restore");
+    frame(engine);
+    let s = seen.borrow();
+    assert!(
+        s.instances.is_empty() && s.lightmapped.is_empty(),
+        "nothing baked drawn"
+    );
 }
