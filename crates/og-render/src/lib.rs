@@ -1224,7 +1224,7 @@ pub(crate) fn gl_safe_array_layers(layers: u32) -> u32 {
 /// A shadow map: one R32Float array the lit shaders read, a view per layer,
 /// and the depth buffer its passes test against.
 struct ShadowMap {
-    /// The array itself: area.rs writes cookies into its last layers.
+    /// The array itself (area.rs names it to know when it was made anew).
     texture: wgpu::Texture,
     array_view: wgpu::TextureView,
     layers: Vec<wgpu::TextureView>,
@@ -1247,9 +1247,7 @@ impl ShadowMap {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::R32Float,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                | wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::COPY_DST,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         });
         ShadowMap {
@@ -5357,12 +5355,14 @@ impl Renderer {
         let cookie_base =
             shadows::capacity(self.info.shadowed_lights as usize, self.info.point_shadows) as u32;
         if !scene.light_cookies.is_empty() && self.local_map.layers.len() as u32 > cookie_base {
+            let textures = &self.cache.textures;
             self.cookies.prepare(
+                &self.device,
                 &self.queue,
                 scene,
-                &self.local_map.texture,
+                (&self.local_map.texture, &self.local_map.layers),
                 cookie_base,
-                LOCAL_SHADOW_SIZE,
+                |h| textures.get(h.index()).map(|t| &t.view),
             );
             self.cookies
                 .patch(scene, &self.clusters.kept, &mut lights_gpu, cookie_base);

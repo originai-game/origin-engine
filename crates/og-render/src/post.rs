@@ -11,7 +11,7 @@ use crate::scene::{Exposure, PostEffects, Tonemap};
 use crate::{Antialias, DEPTH_FORMAT, HDR_FORMAT, TaaHistory, target_texture};
 use std::collections::HashMap;
 
-const FULLSCREEN_WGSL: &str = wgsl!("fullscreen.wgsl");
+pub(crate) const FULLSCREEN_WGSL: &str = wgsl!("fullscreen.wgsl");
 const POST_WGSL: &str = wgsl!("post.wgsl");
 const TAA_WGSL: &str = wgsl!("taa.wgsl");
 const LUMINANCE_WGSL: &str = wgsl!("luminance.wgsl");

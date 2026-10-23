@@ -21,7 +21,7 @@
 //! [`MAX_COOKIE_LAYERS`] layers: cookies past them are not drawn.
 
 use crate::frame::LightGpu;
-use crate::scene::{ColorSpace, LightKind, RenderScene, TextureHandle};
+use crate::scene::{LightKind, RenderScene, TextureHandle};
 
 /// A light's cookie: the light by index into [`RenderScene::lights`] and
 /// the texture projected from it (a point light's: six faces stacked).
@@ -68,16 +68,34 @@ struct Placed {
     point: bool,
     /// Its first layer past the shadow layers.
     offset: u32,
-    /// What was uploaded: the texels' address and size.
-    source: (usize, u32, u32),
+    /// The scene's revision of the texture when it was written.
+    revision: u64,
 }
 
-/// The cookies placed in the local shadow array.
+/// The cookies placed in the local shadow array, and the pass that writes
+/// them: a fullscreen triangle per face sampling the texture as the
+/// renderer uploaded it (RGBA8 or a compressed format alike), its colour
+/// linear (an sRGB texture is sampled through its sRGB format) and packed.
 #[derive(Default)]
 pub(crate) struct Cookies {
     placed: Vec<Placed>,
     /// The array they were written to (its first layer) and its identity.
     written: Option<(u32, usize)>,
+    pipeline: Option<(wgpu::RenderPipeline, wgpu::BindGroupLayout, wgpu::Sampler)>,
+}
+
+/// Whether a cookie's light takes one (spot) or six (point) layers.
+fn faces(scene: &RenderScene, c: &LightCookie) -> Option<u32> {
+    match scene.lights.get(c.light)?.kind {
+        LightKind::Point => Some(6),
+        LightKind::Spot { .. } => Some(1),
+        LightKind::Rect { .. } => None,
+    }
+}
+
+/// The cookie pass's WGSL (validated with the others, shaders.rs).
+pub(crate) fn cookie_source() -> String {
+    format!("{}{}", crate::post::FULLSCREEN_WGSL, wgsl!("cookie.wgsl"))
 }
 
 impl Cookies {
@@ -86,37 +104,110 @@ impl Cookies {
         let mut seen: Vec<(TextureHandle, bool)> = Vec::new();
         let mut layers = 0u32;
         for c in &scene.light_cookies {
-            let Some(light) = scene.lights.get(c.light) else {
+            let Some(need) = faces(scene, c) else {
                 continue;
             };
-            let point = match light.kind {
-                LightKind::Point => true,
-                LightKind::Spot { .. } => false,
-                LightKind::Rect { .. } => continue,
-            };
-            if seen.contains(&(c.texture, point)) || scene.texture(c.texture).is_none() {
+            let key = (c.texture, need == 6);
+            if seen.contains(&key) || c.texture.index() >= scene.textures().len() {
                 continue;
             }
-            let need = if point { 6 } else { 1 };
             if layers + need > MAX_COOKIE_LAYERS as u32 {
                 continue;
             }
-            seen.push((c.texture, point));
+            seen.push(key);
             layers += need;
         }
         layers
     }
 
-    /// Places this frame's cookies from layer `base` of `texture` (an
-    /// R32Float array `size` texels square) and writes those not already
-    /// there. `id` names the array: a new array is written afresh.
-    pub fn prepare(
+    fn ensure(&mut self, device: &wgpu::Device) {
+        if self.pipeline.is_some() {
+            return;
+        }
+        let fragment = wgpu::ShaderStages::FRAGMENT;
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("cookie"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: fragment,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: fragment,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: fragment,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+        let module = crate::shader(device, "cookie", cookie_source());
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("cookie"),
+            bind_group_layouts: &[Some(&layout)],
+            immediate_size: 0,
+        });
+        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("cookie"),
+            layout: Some(&pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &module,
+                entry_point: Some("vs"),
+                compilation_options: Default::default(),
+                buffers: &[],
+            },
+            primitive: Default::default(),
+            depth_stencil: None,
+            multisample: Default::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &module,
+                entry_point: Some("fs_cookie"),
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: wgpu::TextureFormat::R32Float,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview_mask: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
+        });
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("cookie"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+        self.pipeline = Some((pipeline, layout, sampler));
+    }
+
+    /// Places this frame's cookies from layer `base` of the local shadow
+    /// array (`texture`, its per-layer views `layers`) and writes those not
+    /// already there; `view` is the uploaded view of a scene texture. `id`
+    /// names the array: a new array is written afresh.
+    pub fn prepare<'a>(
         &mut self,
+        device: &wgpu::Device,
         queue: &wgpu::Queue,
         scene: &RenderScene,
-        texture: &wgpu::Texture,
+        (texture, layers): (&wgpu::Texture, &[wgpu::TextureView]),
         base: u32,
-        size: u32,
+        view: impl Fn(TextureHandle) -> Option<&'a wgpu::TextureView>,
     ) {
         let id = texture as *const wgpu::Texture as usize;
         if self.written != Some((base, id)) {
@@ -124,26 +215,22 @@ impl Cookies {
             self.written = Some((base, id));
         }
         let mut placed: Vec<Placed> = Vec::new();
+        let mut writes: Vec<(TextureHandle, u32, u32)> = Vec::new();
         let mut next = 0u32;
         for c in &scene.light_cookies {
-            let Some(light) = scene.lights.get(c.light) else {
+            let Some(need) = faces(scene, c) else {
                 continue;
             };
-            let point = match light.kind {
-                LightKind::Point => true,
-                LightKind::Spot { .. } => false,
-                LightKind::Rect { .. } => continue,
-            };
+            let point = need == 6;
             if placed
                 .iter()
                 .any(|p| p.texture == c.texture && p.point == point)
             {
                 continue;
             }
-            let Some(data) = scene.texture(c.texture) else {
+            let Some(&revision) = scene.texture_revisions().get(c.texture.index()) else {
                 continue;
             };
-            let need = if point { 6 } else { 1 };
             if next + need > MAX_COOKIE_LAYERS as u32 {
                 continue;
             }
@@ -151,49 +238,76 @@ impl Cookies {
                 texture: c.texture,
                 point,
                 offset: next,
-                source: (data.rgba.as_ptr() as usize, data.width, data.height),
+                revision,
             };
             next += need;
             if !self.placed.contains(&p) {
-                let faces = if point { 6 } else { 1 };
-                let face_h = (data.height / faces).max(1);
-                for face in 0..faces {
-                    let texels = pack_face(
-                        &data.rgba,
-                        data.width,
-                        face_h,
-                        face * face_h,
-                        data.color_space,
-                        size,
-                    );
-                    queue.write_texture(
-                        wgpu::TexelCopyTextureInfo {
-                            texture,
-                            mip_level: 0,
-                            origin: wgpu::Origin3d {
-                                x: 0,
-                                y: 0,
-                                z: base + p.offset + face,
-                            },
-                            aspect: wgpu::TextureAspect::All,
-                        },
-                        bytemuck::cast_slice(&texels),
-                        wgpu::TexelCopyBufferLayout {
-                            offset: 0,
-                            bytes_per_row: Some(size * 4),
-                            rows_per_image: Some(size),
-                        },
-                        wgpu::Extent3d {
-                            width: size,
-                            height: size,
-                            depth_or_array_layers: 1,
-                        },
-                    );
-                }
+                writes.push((c.texture, base + p.offset, need));
             }
             placed.push(p);
         }
         self.placed = placed;
+        if writes.is_empty() {
+            return;
+        }
+        self.ensure(device);
+        let (pipeline, layout, sampler) = self.pipeline.as_ref().expect("made above");
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("cookies"),
+        });
+        for (handle, first, faces) in writes {
+            let Some(source) = view(handle) else {
+                continue;
+            };
+            for face in 0..faces {
+                let Some(target) = layers.get((first + face) as usize) else {
+                    continue;
+                };
+                let face_uniform = wgpu::util::DeviceExt::create_buffer_init(
+                    device,
+                    &wgpu::util::BufferInitDescriptor {
+                        label: Some("cookie face"),
+                        contents: bytemuck::cast_slice(&[face as f32, faces as f32, 0.0, 0.0]),
+                        usage: wgpu::BufferUsages::UNIFORM,
+                    },
+                );
+                let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("cookie"),
+                    layout,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: face_uniform.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: wgpu::BindingResource::TextureView(source),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 2,
+                            resource: wgpu::BindingResource::Sampler(sampler),
+                        },
+                    ],
+                });
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("cookie"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: target,
+                        depth_slice: None,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    ..Default::default()
+                });
+                pass.set_pipeline(pipeline);
+                pass.set_bind_group(0, &group, &[]);
+                pass.draw(0..3, 0..1);
+            }
+        }
+        queue.submit(Some(encoder.finish()));
     }
 
     /// Marks the records of lights with a placed cookie (`kept`: the
@@ -225,53 +339,6 @@ impl Cookies {
     }
 }
 
-/// One face (`rows` rows from `top`) of an RGBA8 image resampled
-/// bilinearly to `size` square, each texel's linear colour packed 8:8:8.
-fn pack_face(
-    rgba: &[u8],
-    width: u32,
-    rows: u32,
-    top: u32,
-    space: ColorSpace,
-    size: u32,
-) -> Vec<f32> {
-    let lut: Vec<f32> = (0..256)
-        .map(|v| {
-            let c = v as f32 / 255.0;
-            match space {
-                ColorSpace::Srgb if c <= 0.04045 => c / 12.92,
-                ColorSpace::Srgb => ((c + 0.055) / 1.055).powf(2.4),
-                _ => c,
-            }
-        })
-        .collect();
-    let texel = |x: u32, y: u32, k: usize| {
-        let i = (((top + y.min(rows - 1)) * width + x.min(width - 1)) * 4) as usize + k;
-        rgba.get(i).map_or(0.0, |&v| lut[v as usize])
-    };
-    let mut out = Vec::with_capacity((size * size) as usize);
-    for y in 0..size {
-        for x in 0..size {
-            let u = (x as f32 + 0.5) / size as f32 * width as f32 - 0.5;
-            let v = (y as f32 + 0.5) / size as f32 * rows as f32 - 0.5;
-            let (x0, y0) = (u.floor().max(0.0) as u32, v.floor().max(0.0) as u32);
-            let (fx, fy) = (
-                (u - u.floor()).clamp(0.0, 1.0),
-                (v - v.floor()).clamp(0.0, 1.0),
-            );
-            let mut packed = 0u32;
-            for k in 0..3 {
-                let a = texel(x0, y0, k) * (1.0 - fx) + texel(x0 + 1, y0, k) * fx;
-                let b = texel(x0, y0 + 1, k) * (1.0 - fx) + texel(x0 + 1, y0 + 1, k) * fx;
-                let c = (a * (1.0 - fy) + b * fy).clamp(0.0, 1.0);
-                packed = (packed << 8) | (c * 255.0 + 0.5) as u32;
-            }
-            out.push(packed as f32);
-        }
-    }
-    out
-}
-
 /// A rect light's record (`frame::local_lights`).
 pub(crate) fn rect_record(
     position: glam::Vec3,
@@ -294,20 +361,6 @@ pub(crate) fn rect_record(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn packs_linear_colour_exactly() {
-        // A 2 × 2 linear image resampled to 2 × 2 keeps its texels.
-        let rgba = [
-            255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 10, 20, 30, 255,
-        ];
-        let out = pack_face(&rgba, 2, 2, 0, ColorSpace::Linear, 2);
-        assert_eq!(out[0] as u32, 0xff0000);
-        assert_eq!(out[1] as u32, 0x00ff00);
-        assert_eq!(out[3] as u32, (10 << 16) | (20 << 8) | 30);
-        // Exact in an f32.
-        assert_eq!((out[3] as u32) as f32, out[3]);
-    }
 
     #[test]
     fn ltc_table_starts_with_the_identity() {
