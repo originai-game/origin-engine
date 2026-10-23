@@ -2,20 +2,44 @@
 
 @group(1) @binding(1) var froxel_out: texture_storage_3d<rgba16float, write>;
 
+// Depth samples a froxel's light is the mean of. A slice is up to a few
+// metres deep (quadratic slices to `distance`) and the sun's shadow can
+// change inside it many times (a shaft through a slot, the slots' shadows
+// beside it): a single sample at the slice's middle lands in or out of a
+// shaft depending on the column, which the front-to-back sum turns into
+// vertical streaks. INJECT_TAPS stratified samples over the slice's depth,
+// each jittered within its stratum per froxel and per frame, integrate the
+// slice instead.
+const INJECT_TAPS: u32 = 8u;
+
+// Interleaved gradient noise (Jimenez 2014) at a froxel, moved by the
+// frame's seed (vol.grid.w) so successive frames take other strata.
+fn froxel_noise(id: vec3<u32>) -> f32 {
+  let p = vec2<f32>(id.xy) + vec2<f32>(5.588238, 3.1415) * f32(id.z) + vec2<f32>(47.0, 17.0) * vol.grid.w;
+  return fract(52.9829189 * fract(dot(p, vec2<f32>(0.06711056, 0.00583715))));
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn inject(@builtin(global_invocation_id) id: vec3<u32>) {
   let grid = vec3<u32>(vol.grid.xyz);
   if (id.x >= grid.x || id.y >= grid.y || id.z >= grid.z) { return; }
   let uv = (vec2<f32>(id.xy) + 0.5) / vol.grid.xy;
   let dir = view_ray(uv);
-  let depth = slice_depth((f32(id.z) + 0.5) / vol.grid.z);
-  let p = frame.view_pos.xyz + dir * depth / max(dot(dir, frame.view_forward.xyz), 1e-3);
-  let sigma = vol_density(p);
-  var light = vec3<f32>(0.0);
-  if (sigma > 0.0) {
-    light = sun_in(p, dir) + locals_in(p, dir, uv * vol.extent.zw);
+  let stretch = 1.0 / max(dot(dir, frame.view_forward.xyz), 1e-3);
+  let jitter = froxel_noise(id);
+  var sigma_sum = 0.0;
+  var light_sum = vec3<f32>(0.0);
+  for (var t = 0u; t < INJECT_TAPS; t++) {
+    let f = (f32(id.z) + (f32(t) + jitter) / f32(INJECT_TAPS)) / vol.grid.z;
+    let p = frame.view_pos.xyz + dir * slice_depth(f) * stretch;
+    let sigma = vol_density(p);
+    sigma_sum += sigma;
+    if (sigma > 0.0) {
+      light_sum += sigma * (sun_in(p, dir) + locals_in(p, dir, uv * vol.extent.zw));
+    }
   }
-  textureStore(froxel_out, id, vec4<f32>(vol.scatter.rgb * sigma * light, sigma));
+  let n = f32(INJECT_TAPS);
+  textureStore(froxel_out, id, vec4<f32>(vol.scatter.rgb * light_sum / n, sigma_sum / n));
 }
 
 @group(1) @binding(2) var froxel_in: texture_3d<f32>;

@@ -184,3 +184,30 @@ fn a_renderer_restore_keeps_the_baked_frame() {
         "the restored baked frame differs"
     );
 }
+
+/// The froxel fog has no vertical streaks (debt render-light #6): over the
+/// fog in front of the left pier, each column's mean luma (over 300 rows)
+/// keeps within a fraction of a level of its neighbours' 9-column mean. A
+/// froxel lit at a single depth inside a slice that a shaft crosses
+/// (main's inject) flips between lit and shadowed column by column: the
+/// streaks the old frame showed.
+#[test]
+fn the_volumetric_fog_has_no_froxel_streaks() {
+    let img = gfx::render("volumetric-fog").expect("render").image;
+    let (x0, x1, y0, y1) = (60u32, 440u32, 200u32, 500u32);
+    let columns: Vec<f32> = (x0..x1)
+        .map(|x| {
+            let c = mean(&img, x, y0, x + 1, y1);
+            0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+        })
+        .collect();
+    let residual = (4..columns.len() - 4)
+        .map(|i| (columns[i] - columns[i - 4..=i + 4].iter().sum::<f32>() / 9.0).abs())
+        .sum::<f32>()
+        / (columns.len() - 8) as f32;
+    println!("column residual {residual:.3}");
+    assert!(
+        residual < 0.1,
+        "streaks: {residual:.3} levels between neighbouring columns"
+    );
+}

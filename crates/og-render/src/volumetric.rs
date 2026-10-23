@@ -10,7 +10,11 @@
 //!   (two compute dispatches after the shadow passes) lights a 160 × 90 ×
 //!   64 froxel grid over the view by the sun through its cascades and by
 //!   the clustered point, spot and rect lights through their shadows and
-//!   cookies, then sums it front to back.
+//!   cookies, then sums it front to back. Each froxel's light is the mean
+//!   of eight stratified samples over its slice's depth, jittered per
+//!   froxel and per frame: a slice is metres deep far out, and a single
+//!   sample there landed in or out of a shaft column by column (vertical
+//!   streaks).
 //! - WebGL2 ([`VolumetricMethod::Raymarch`]): no compute; the apply pass
 //!   marches each pixel's view ray in 24 jittered steps, lit by the sun
 //!   through its cascades alone.

@@ -417,8 +417,10 @@ Baked lighting, volumetrics and area lights (depth S7).
   tier the medium is a froxel grid (160 × 90 × 64, slices deepening
   quadratically), handled by a named `volumetric` compute pass. The pass
   lights each cell by the sun through its cascades and by the cluster's
-  point, spot and rect lights through their shadows and cookies, then
-  integrates front to back. On WebGL2, which has no compute, each pixel's
+  point, spot and rect lights through their shadows and cookies (each
+  froxel the mean of eight stratified, jittered samples over its slice's
+  depth, so a shaft crossing a deep slice is integrated, not hit or
+  missed column by column), then integrates front to back. On WebGL2, which has no compute, each pixel's
   ray is marched in 24 steps lit by the sun alone.
   `RenderCapabilities.volumetricFog` reports which method the device uses.
   Both methods blend over the lit image after the main pass as
