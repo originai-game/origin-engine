@@ -140,7 +140,7 @@ should move. I did not re-record any frames.
 
 - **The pile's own slump.** The top rocks sit over 0.21 m gaps between
   bottom rocks that do not touch, and they roll off in the first seconds
-  of a run. It is visible on the title camera's pass. Fixing the layout
+  of a session, before the player gets there. Fixing the layout
   (bottom rocks touching, or the top ones removed) changes the look and
   its metal reference frames, which this orb cannot record.
 - **replay.og.ts's "shoved the pile" check (`rockMoved > 0.3`)** is just
