@@ -3,6 +3,9 @@
 //! own). Between frames the run pumps the link: the engine's room ops go to
 //! the relay, the relay's events to the engine (og_room_deliver), in order.
 
+// napi exports, called from JS only (as render.rs): unused in the lib test build.
+#![cfg_attr(test, allow(dead_code))]
+
 use napi_derive::napi;
 use og_net::client::RelayClient;
 use std::cell::RefCell;
