@@ -114,6 +114,18 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   move; a test an agent adds is the one that fails on the old code. The coordinator (the one session that merges into main) is the
   only runner of the gate, the review and the reference captures, once per
   merge, serially. The same applies to a human beside running agents.
+- **Sub-threads: two or three at a time, Claude Code on Opus 5.5 high.**
+  When the coordinator delegates streams to separate Amp threads
+  (`create_thread`), it starts at most three at once and starts the next
+  batch only after the running ones have reported and been merged (the
+  owner's instruction, 2026-10-23: eight at once was too many). Every
+  such thread runs in `external-agent:claude-code` mode with features
+  `["model:claude-opus-5-5", "effort:high"]`, the project ref
+  `origingame/origin-engine`, and its base commit named in the prompt;
+  never Fable or another model, never a mode picked for the task. A
+  stopped or paused thread is not resumed: its pushed commits are merged
+  or dropped by the coordinator, its findings go into the brief of a new
+  thread, and the new thread starts from the merged `origin/main`.
 - **One profile per lane.** Everything in the gate that runs native code
   (tests, `og` for drift, cook, the addon the bun tests load) is the `dev`
   profile, whose heavy dependencies are already optimised per package in
