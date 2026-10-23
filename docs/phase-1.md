@@ -399,6 +399,89 @@ the IDL changes are the CHANGELOG's `## Unreleased` depth wave 3 entry.
   snapshot/restore keeps the baked data by design but is untested; the
   froxel grid's vertical streaks in `volumetric-fog` (on Metal too).
 
+**Wave 3 end (2026-10-23, `scripts/wave-end.sh` on main at c5274b67):**
+the first run failed at `wasm-build`: og-cook's new lightmap reader
+(`Bundle::load_lightmap`, S7) read the KTX2 level offsets as `usize`
+and called the native-only KTX2 decoder, so the web host did not build
+on wasm32 (no stream builds the wasm, by the rules of parallel work).
+The reader is cfg'd out of wasm32 and reads the level table as `u64`
+(c5274b67). The second run: **gate PASS (855 s), web FAIL (455 s),
+conformance PASS (4 s), release PASS (720 s)**.
+
+- The full gate passed all nine steps: fmt 1 s, clippy 5 s, drift 7 s,
+  wasm-build 459 s, test 217 s (1,100 passed), wasm-opt 210 s, size-gate
+  49 s, bun-test 176 s, determinism 450 s.
+- Shipping wasm brotli bytes: 3D lanes 3,482,855 (83 % of 4 MiB); 2D
+  lanes 3,303,555 (78 %); 3D publish 3,443,932 (82 %); 2D publish
+  3,271,785 (78 %). The 3D lanes module grew 313,534 bytes since the F1
+  figure, the depth waves 1 to 3 and ui/style together (waves 1 and 2
+  ran no wave end, so there is no figure per wave); the largest module
+  keeps 17 % of headroom.
+- Every determinism build agrees: math 6117185439544271997, bouncing
+  boxes 15551159556835976588, physics3d 917465598921449438, physics2d
+  4867922716644344347, animation 6030136770684287795. Native lanes used
+  four threads and made 1,660 parallel calls.
+- Conformance: tsrs 0.18.0-ts7.1.0-dev.20260929 against tsgo 7.0.2, no
+  difference.
+- Release: 0.2.0 packed into `dist/release/0.2.0/` and the install test
+  passed on darwin-arm64 (75 s) and in the linux-x64 container (49 s).
+  The tree was dirty when they were packed, so `publish` would refuse
+  them; nothing was published and the registry's 0.2.0 stands.
+- **The browser tiers** failed eleven comparisons, each read and
+  diagnosed before anything was re-recorded:
+  - `fluids`, both tiers, 98 % outliers: the frame was the default
+    scene, not the tank. The run's engine log said "an entity named
+    'light' already exists": S7's fx-showcase `src/light.ts` spawns its
+    state entity as `light`, and the fluids station spawns its light
+    orange fluid as `light`. Native `og test` never hits it because each
+    station's playtest is its own run; the browser E5 run shows every
+    station in one world. The state entity is `render-light` now (and
+    `tests/baked.og.ts` reads it there); both tiers pass against the
+    unchanged Metal reference.
+  - `looks-paper-craft` and `looks-voxel-worlds` (webgl2, their own
+    tier references since 95ea28a8 for SSAO/GTAO): every outlier lay in
+    the "og.ui over the frame" badge. Every catalogue preset names a UI
+    style since ui/style and the fx-showcase presets `extend` them, so
+    the badge wears the preset's style; the two webgl2 references
+    predated that. Re-recorded from the webgl2 run; against Metal the
+    new frames differ only in the scene (RMSE 0.019 and 0.011), as
+    before.
+  - The same finding failed one native check the merged gate had not
+    run yet, `og test templates/fx-showcase --filter looks`: "look:none
+    restores the plain diorama" (RMSE 0.04576, the badge again). A look
+    owns only what it names and `none.ogt` has no `ui` line, so the
+    last preset's style stayed on the HUD; no slug names the prototype
+    style (`UiDesc.style` documents `null` as it). `resetLooks` now also
+    calls `og.ui.configure({ style: null })`; the suite passes its 78
+    checks, with `none` back to RMSE 0.00000.
+  - `volumetric` (webgl2, 2.857 %) and og-tests `volumetric-fog`
+    (webgl2, 0.530 %): WebGL2's fog is the sun-only raymarch by S7's
+    design, so the tier draws no lantern or rect-light scattering. Both
+    frames read as complete renders (the window shafts and the floor
+    patch, every surface present) and are recorded as webgl2 tier
+    references.
+  - `fluids3d` (webgpu, RMSE 0.01074 against 0.01) and `water` (webgl2,
+    0.01091): the difference lies in the fluid and water surfaces,
+    spread over the whole surface, no region missing. Native passes
+    both against Metal (0.00653 and under 0.01), and S7's ambient
+    change is the one shader change of the wave that reaches them. Both
+    recorded as tier references (`webgpu/fluids3d.png`,
+    `webgl2/water.png`), the first webgpu tier reference of the
+    showcase.
+  - third-person `beacon` (webgl2, RMSE 0.01025): a drift of the same
+    kind over the whole frame, read as complete; re-recorded. Native
+    third-person passes 10/10.
+  `scripts/check.sh web-reference` was then rerun alone and passed
+  every comparison and harness in 345 s (E5 on both tiers, the 37 looks
+  on both, og-tests' 102 gfx scenes on both, third-person, the kit
+  sheets, lane-panic and a11y).
+- **Owed past this wave's end:** S1's raycast hierarchy refresh is
+  still unmeasured as a cost of its own (the perf tests passed at their
+  baselines, nothing more); lantern-vale's `rock-4` physics drift; the
+  froxel streaks; the S7 list above; S8's views draw opaque meshes,
+  terrain and sky only; S6's probe captures skip skinned, terrain,
+  scatter and transparent meshes.
+
 ## Main gate, wave 13 (2026-10-21)
 
 Wave 13 started as wave 12's streams merged, on the web dogfood's twelve

@@ -196,6 +196,15 @@ minor bump, §3), by stream:
   `volumetric` (window shafts under a day-night sun, a rect light, a
   lattice cookie, a lantern's cube cookie); gfx scenes `rect-lights`,
   `light-cookies`, `volumetric-fog` and, natively, `baked-cornell`.
+- Wave 3's end (`scripts/wave-end.sh`, docs/phase-1.md): the lightmap
+  reader builds for wasm32; fx-showcase's light-stage entity is
+  `render-light` (its name clashed with the fluids station's `light`
+  fluid when one world shows every station) and its `none` look also
+  puts the HUD back in the prototype style; tier references recorded
+  for WebGL2's sun-only volumetric fog (`volumetric`, `volumetric-fog`),
+  the fluid surfaces (`fluids3d` on WebGPU, `water` on WebGL2),
+  third-person's `beacon` and the two webgl2 looks whose badge wears the
+  preset's style.
 
 ## 0.2.0 (2026-10-23)
 
