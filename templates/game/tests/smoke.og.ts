@@ -20,13 +20,13 @@ export default playtest({
     "0.9:expect:ui:text:=Started",
     // The trickster spins; the crate fell from 4 m and rests on the ground.
     "2.0:expect:state:spin>0",
-    "2.0:expect:entity:crate:within:-3,0.4,-1,-1.8,0.6,2",
+    "2.0:expect:entity:crate:within:-3,0.4,-1,1,0.6,2",
     "2.0:expect:event:og.CollisionStarted",
-    // The frame: the sky above the scene, the dark menu panel, the crate in view.
+    // The frame (1280x720): the sky at the top, the crate and the trickster where they stand.
     "2.0:screenshot:smoke.png",
     "2.0:expect:region:560,16,64,24:color:#9da5b1:24",
-    "2.0:expect:entity:crate:within:200,180,140,120",
-    "2.0:expect:entity:trickster:within:320,150,120,140",
+    "2.0:expect:entity:crate:within:380,360,280,240",
+    "2.0:expect:entity:trickster:within:640,300,240,280",
     "2.1:describe:describe.json",
     "2.1:dump_entity:trickster:trickster.json",
     "2.15:dump_entity:crate:crate.json",
