@@ -23,6 +23,49 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
   win32-x64 package; the engine's `optionalDependencies` pin it from this
   commit on.
 
+Depth wave 1 (`docs/depth.md` §1–§3, merged 2026-10-23), API additions (a
+minor bump, §3), by stream:
+
+- `geometry` (S1), module render: `og.render.bufferGeometry`,
+  `updateGeometry` (dynamic geometries only) and `geometryInfo`, with
+  `BufferGeometryDesc` and `GeometryInfo`; a made geometry is also a
+  `Collider.mesh`. The three.js primitives `cylinderGeometry`,
+  `coneGeometry`, `capsuleGeometry`, `torusGeometry`, `ringGeometry`,
+  `circleGeometry` and `tubeGeometry` (centripetal Catmull-Rom) with their
+  desc structs. Immediate `og.render.lines` (`LinesDesc`, `LineMode`) and
+  `og.render.points` (`PointsDesc`); the retained components `og.Lines`
+  and `og.Points`. `og.render.raycast` (`RaycastGeometryDesc`,
+  `GeometryHit`) through a BVH per geometry, over `og.Mesh` and `og.Model`.
+  `StandardMaterialDesc.wireframe`. `RenderOptions.debugView` is the new
+  `DebugView` enum (`none`, `physics`, `nav`, `bounds`), also the command
+  channel's `debug:<view>`. New module `debug` (`publish false`):
+  `og.debug.line`, `box`, `sphere`, `arrow`, `axes`, `text`, `clear`,
+  `setView`/`view`, `setEnabled`/`enabled`, with `DebugDrawDesc`.
+- `timeline` (S2), new modules `path` and `timeline`: `og.path.create`
+  (`CurveDesc`: catmullRom, bezier or linear, closed, tension), `find` (a
+  scene's `path "<name>" { ... }`), `sample` (`PathSample`), `length` and
+  `nearest` (`PathNearest`), the `Path` handle, `PathKind` and the
+  `og.PathFollower` component; `og.CameraRail.path` follows a path instead
+  of its points. `og.load.timeline` loads an `.ogt` of `type timeline`
+  (the `TimelineAsset` handle); `og.Timeline` plays it with
+  `og.timeline.play`, `pause`, `seek`, `stop` and `info` (`TimelineInfo`,
+  `TimelineTrackInfo`), raising `TimelineStarted`, `TimelineMarker` and
+  `TimelineEnded`; the command channel's `timeline:play:<name>`,
+  `timeline:seek:<s>[:<name>]`, `timeline:pause`, `resume`, `stop`. A
+  timeline's time is a whole count of thousandths of a tick, so a seek
+  hashes as a play. The desc is `CurveDesc`, not `PathDesc`, which og.nav
+  already declares.
+- `video` (S3), new module `video`: `og.load.video` and `videoInfo` (the
+  `Video` handle, `VideoInfo`) for an `.ogt` of `type video`, cooked by
+  ffmpeg into a KTX2 texture array and a QOA sound; the `og.VideoPlayer`
+  component whose frame is a Texture and whose tick keeps the sound in
+  step. `og render` (native only): `--commands`/`--timeline`, `--fps`
+  (must divide the tick rate), `--from/--to`, `--size`, `--out
+  dir|.mp4|.webm`, `--frames png|jpg`, `--audio`, `--contact-sheet`,
+  `--jobs`, `--json`, with a `frames.json` of sha256 per frame; two runs
+  are byte-identical and `--jobs` matches one job. `og doctor` reports
+  ffmpeg and ffprobe.
+
 ## 0.2.0 (2026-10-23)
 
 API additions and changes (a minor bump, §3), by the stream that landed

@@ -215,7 +215,10 @@ export function templateDir(archetype?: string, profile: Profile = "3d"): string
   }
   const packed = profile === "2d" ? "template-2d" : "template";
   const source = profile === "2d" ? "game-2d" : "game";
-  for (const candidate of [join(here, "..", packed), join(here, "..", "..", "..", "templates", source)]) {
+  // In the engine repository the live template wins: a ./template/ left by an
+  // earlier prepack is stale as soon as templates/ changes. A published
+  // package has no templates/ beside it, so it scaffolds from its packed copy.
+  for (const candidate of [join(here, "..", "..", "..", "templates", source), join(here, "..", packed)]) {
     if (existsSync(join(candidate, "project.ogt"))) return candidate;
   }
   throw new Error(`no ${profile} project template next to ${here}: expected ../${packed} (published package) or ../../../templates/${source} (engine repository)`);
