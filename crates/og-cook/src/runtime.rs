@@ -858,6 +858,25 @@ impl CookedPrimitive {
     pub fn triangle_count(&self, lod: usize) -> usize {
         self.lods[lod.min(self.lods.len() - 1)].count / 3
     }
+
+    /// The geometry of one LOD with only the vertices it uses (a coarse
+    /// level's own mesh: [`CookedModel::add_lod_levels`]).
+    pub fn mesh_compact(&self, lod: usize) -> MeshData {
+        let l = self.lods[lod.min(self.lods.len() - 1)];
+        let mut at = vec![u32::MAX; self.vertices.len()];
+        let mut vertices = Vec::new();
+        let indices = self.indices[l.first..l.first + l.count]
+            .iter()
+            .map(|&i| {
+                if at[i as usize] == u32::MAX {
+                    at[i as usize] = vertices.len() as u32;
+                    vertices.push(self.vertices[i as usize]);
+                }
+                at[i as usize]
+            })
+            .collect();
+        MeshData { vertices, indices }
+    }
 }
 
 /// A glTF mesh: a range of [`CookedModel::primitives`].
@@ -1232,6 +1251,27 @@ impl CookedModel {
     pub fn add_to(&self, scene: &mut RenderScene, textures: &[TextureData]) -> ModelParts {
         let sources: Vec<_> = textures.iter().cloned().map(TextureSource::Rgba).collect();
         self.add_to_with(scene, &sources)
+    }
+
+    /// Adds every primitive's coarser levels (1 on) to the scene as meshes
+    /// of their own, after whatever [`CookedModel::add_to`] added: per
+    /// primitive, each level's mesh and its fraction of level 0's
+    /// triangles (empty for a primitive of one level).
+    pub fn add_lod_levels(&self, scene: &mut RenderScene) -> Vec<Vec<(MeshHandle, f32)>> {
+        self.primitives
+            .iter()
+            .map(|p| {
+                let full = p.triangle_count(0).max(1) as f32;
+                (1..p.lods.len())
+                    .map(|l| {
+                        (
+                            scene.add_mesh(p.mesh_compact(l)),
+                            p.triangle_count(l) as f32 / full,
+                        )
+                    })
+                    .collect()
+            })
+            .collect()
     }
 
     /// [`CookedModel::add_to`] with textures of either kind (transcoded to

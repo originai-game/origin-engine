@@ -122,12 +122,17 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   }
 
   // Point and spot lights: those of this fragment's cluster, in scene order.
-  if (frame.params.z > 0.5) {
+  if (frame.params.z > 0.5 && frame.cluster.x > 0.0) {
     let word = cluster_word(cluster_at(in.clip.xy, in.world_pos));
     let first = word & 0xffffffu;
     let count = word >> 24u;
     for (var k = 0u; k < count; k++) {
       color += local_light(light_list[cluster_ref(first + k)], s, in.world_pos, n, v, receives);
+    }
+  } else if (frame.params.z > 0.5) {
+    // A reflection probe's capture (probes.rs) has no clusters: every light.
+    for (var k = 0u; k < u32(frame.params.z); k++) {
+      color += local_light(light_list[k], s, in.world_pos, n, v, receives);
     }
   }
 
@@ -135,11 +140,11 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  let irradiance = textureSample(irradiance_map, ibl_sampler, n).rgb;
+  let irradiance = ambient_light(n, in.world_pos);
   let diffuse_ibl = irradiance * s.albedo;
   let r = reflect(-v, n);
   let mip = s.roughness * frame.params.y;
-  let prefiltered = textureSampleLevel(prefiltered_map, ibl_sampler, r, mip).rgb;
+  let prefiltered = reflected_light(r, in.world_pos, mip);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y);
   let ao_sample = textureSample(ao_tex, material_sampler, uv).r;
@@ -162,7 +167,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     let c_dot_v = max(dot(s.coat_normal, v), 1e-4);
     let fc = f_schlick(c_dot_v, vec3<f32>(0.04)).x * s.coat;
     let rc = reflect(-v, s.coat_normal);
-    let coat_env = textureSampleLevel(prefiltered_map, ibl_sampler, rc, s.coat_roughness * frame.params.y).rgb;
+    let coat_env = reflected_light(rc, in.world_pos, s.coat_roughness * frame.params.y);
     let coat_lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness), 0.0).rg;
     ibl = ibl * (1.0 - fc) + coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat;
   }

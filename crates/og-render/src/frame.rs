@@ -56,6 +56,11 @@ pub(crate) struct FrameUniform {
     /// `MaterialStyle`: x: the distance at which outlines are their width
     /// (0: constant), yzw: unused.
     pub outline_style: [f32; 4],
+    /// The reflection probe of the frame group a draw binds (`probes.rs`):
+    /// the box's min corner (w: 1 with a probe), its max corner (w: the
+    /// probe's intensity), the capture point (w: the blend distance).
+    /// Zero in the frame's own group.
+    pub probe: [[f32; 4]; 3],
 }
 
 /// The camera's matrices for one frame.

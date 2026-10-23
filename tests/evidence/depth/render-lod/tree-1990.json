@@ -1,0 +1,46 @@
+{
+  "components": {
+    "og.Model": {
+      "asset": 4294967299,
+      "castShadow": true,
+      "flash": 0.0,
+      "flashColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "lodBias": 1.0,
+      "receiveShadow": true,
+      "tint": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true
+    },
+    "og.Transform": {
+      "position": [
+        3041.7632,
+        0.0,
+        -201.05864
+      ],
+      "quaternion": [
+        0.0,
+        0.41857657,
+        0.0,
+        0.9081815
+      ],
+      "scale": [
+        1.053344,
+        1.053344,
+        1.053344
+      ]
+    }
+  },
+  "id": "tree-1990",
+  "kind": "entity",
+  "name": "tree-1990",
+  "render": {
+    "lod": 0
+  }
+}

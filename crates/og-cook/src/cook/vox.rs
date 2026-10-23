@@ -183,9 +183,11 @@ impl VoxSettings {
                         }
                     }
                 }
+                // Every model's level-of-detail settings (MeshOptions::for_model).
+                "lods" | "lodError" => {}
                 k => {
                     return Err(format!(
-                        "line {}: unknown model setting '{k}' for a .vox (voxScale, voxOrigin, voxFps, voxClip)",
+                        "line {}: unknown model setting '{k}' for a .vox (voxScale, voxOrigin, voxFps, voxClip, lods, lodError)",
                         e.line
                     ));
                 }

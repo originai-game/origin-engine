@@ -378,6 +378,31 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
     }
     let material_base = rs.scene.material_count();
     let parts = model.add_to_with(&mut rs.scene, &textures);
+    // The coarser levels of detail join the scene after the full meshes, so
+    // the model's primitives stay consecutive from `base`. A streamed model
+    // draws its proxy (one level) and then its full meshes without levels.
+    let lods = match group {
+        Some(_) => None,
+        None => {
+            let levels = model.add_lod_levels(&mut rs.scene);
+            let prim_of = |mesh| {
+                (0..model.primitives.len()).find(|&p| rs.scene.mesh_handle(base + p) == Some(mesh))
+            };
+            let parts: Vec<Vec<(og_render::MeshHandle, f32)>> = parts
+                .parts
+                .iter()
+                .map(|&(mesh, _, _)| prim_of(mesh).map(|p| levels[p].clone()).unwrap_or_default())
+                .collect();
+            parts
+                .iter()
+                .any(|l| !l.is_empty())
+                .then(|| super::extract::ModelLods {
+                    parts,
+                    center: (model.min + model.max) * 0.5,
+                    radius: ((model.max - model.min) * 0.5).length().max(1e-3),
+                })
+        }
+    };
     let stand_in = group.as_ref().map(|_| {
         let meshes: Vec<_> = (0..model.primitives.len())
             .filter_map(|p| {
@@ -431,6 +456,10 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
         None => assets.push(&id, Status::Ready, payload),
     };
     rs.models.insert(handle(index), parts.parts);
+    match lods {
+        Some(l) => rs.model_lods.insert(handle(index), l),
+        None => rs.model_lods.remove(&handle(index)),
+    };
     rs.fx.models.insert(
         handle(index),
         super::fx::ModelInfo {

@@ -206,6 +206,17 @@ fn fs_brdf_lut(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(a / f32(count), b / f32(count), 0.0, 1.0);
 }
 
+// A reflection probe's radiance (probes.rs) from its capture, whose faces
+// were drawn by right-handed cameras and so hold each face mirrored across
+// its horizontal axis: the texel of `d` is read where the capture put it.
+@fragment
+fn fs_probe_copy(in: VsOut) -> @location(0) vec4<f32> {
+  let d = face_dir(params.face, in.uv);
+  let x_major = abs(d.x) >= max(abs(d.y), abs(d.z));
+  let m = select(vec3<f32>(-d.x, d.y, d.z), vec3<f32>(d.x, d.y, -d.z), x_major);
+  return vec4<f32>(textureSampleLevel(source_cube, cube_sampler, m, 0.0).rgb, 1.0);
+}
+
 // Downsample one cube face mip from the mip above (box filter via linear sampling).
 @fragment
 fn fs_downsample(in: VsOut) -> @location(0) vec4<f32> {

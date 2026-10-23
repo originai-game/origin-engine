@@ -111,7 +111,13 @@ pub const SCENES: &[&str] = &[
 /// both): their content is cooked by og-cook at build time, which the
 /// browser's wasm build of the scenes does not carry.
 #[cfg(not(target_arch = "wasm32"))]
-pub const NATIVE_SCENES: &[&str] = &["vox-keyframes", "skeleton-2d"];
+pub const NATIVE_SCENES: &[&str] = &[
+    "vox-keyframes",
+    "skeleton-2d",
+    "lod-levels",
+    "probe-interior",
+    "ssr-wet-floor",
+];
 
 /// Which backend tiers a scene has a reference for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -532,6 +538,20 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // mesh cape), drawn as sprite-batch triangles under 2D lighting.
         #[cfg(not(target_arch = "wasm32"))]
         "skeleton-2d" => g.scene = crate::skeleton_scenes::skeleton_scene()?,
+        // Render-lod (depth S6; depth_render_scenes.rs): a cooked tree at
+        // three distances, each at the level its size on screen picks and
+        // tinted as debugView lod tints it; a chrome sphere in a closed
+        // room reflecting its reflection probe; SSR on a wet floor (the
+        // full tier's).
+        #[cfg(not(target_arch = "wasm32"))]
+        "lod-levels" => g.scene = crate::depth_render_scenes::lod_scene()?.0,
+        #[cfg(not(target_arch = "wasm32"))]
+        "probe-interior" => g.scene = crate::depth_render_scenes::probe_scene(true),
+        #[cfg(not(target_arch = "wasm32"))]
+        "ssr-wet-floor" => {
+            g.scene = crate::depth_render_scenes::ssr_scene(true);
+            g.applies = Applies::FullTier;
+        }
         "stylise-toon-physical" => g.scene = crate::stylise_scenes::toon_physical_scene(),
         "stylise-bands-tint" => g.scene = crate::stylise_scenes::bands_tint_scene(),
         // Untonemapped sprites under TAA (its history carries the alpha).

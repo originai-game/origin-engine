@@ -63,6 +63,7 @@ export const ParticleEmitter = ((value = 0 as Api.ParticleEmitter, options) => s
 export const AoMethod = ((value = "auto" as Api.AoMethod, options) => spec("AoMethod", value, options)) as typeof Api.AoMethod;
 export const LineMode = ((value = "strip" as Api.LineMode, options) => spec("LineMode", value, options)) as typeof Api.LineMode;
 export const DofQuality = ((value = "low" as Api.DofQuality, options) => spec("DofQuality", value, options)) as typeof Api.DofQuality;
+export const ReflectionProbeMode = ((value = "baked" as Api.ReflectionProbeMode, options) => spec("ReflectionProbeMode", value, options)) as typeof Api.ReflectionProbeMode;
 export const SpriteBlend = ((value = "alpha" as Api.SpriteBlend, options) => spec("SpriteBlend", value, options)) as typeof Api.SpriteBlend;
 export const StripBlend = ((value = "additive" as Api.StripBlend, options) => spec("StripBlend", value, options)) as typeof Api.StripBlend;
 export const Palette = ((value = 0 as Api.Palette, options) => spec("Palette", value, options)) as typeof Api.Palette;
@@ -110,6 +111,7 @@ export const MAX_POINTERS: typeof Api.MAX_POINTERS = 5;
 export const MAX_GAMEPADS: typeof Api.MAX_GAMEPADS = 4;
 export const MAX_LIGHTS: typeof Api.MAX_LIGHTS = 256;
 export const MAX_CLUSTER_LIGHTS: typeof Api.MAX_CLUSTER_LIGHTS = 64;
+export const MAX_REFLECTION_PROBES: typeof Api.MAX_REFLECTION_PROBES = 8;
 export const PARTICLES_ARMED: typeof Api.PARTICLES_ARMED = 4294967295;
 export const UI_LAYER: typeof Api.UI_LAYER = 1000;
 export const BODY_DYNAMIC: typeof Api.BODY_DYNAMIC = 0;

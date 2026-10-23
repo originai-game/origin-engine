@@ -23,6 +23,8 @@ struct FxPost {
   bands: vec4<f32>,           // x: depth bands (0: none), y: near, z: far, w: flatten
   bands_near: vec4<f32>,      // the nearest band's colour (linear)
   bands_far: vec4<f32>,       // the farthest band's colour (linear)
+  ssr: vec4<f32>,             // x: max distance, y: thickness, z: edge fade, w: intensity (0: off) (ssr.wgsl)
+  ssr2: vec4<f32>,            // x: steps
 };
 @group(0) @binding(0) var<uniform> fxp: FxPost;
 @group(0) @binding(1) var fx_linear: sampler;

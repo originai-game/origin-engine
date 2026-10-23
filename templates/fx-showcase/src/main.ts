@@ -37,10 +37,11 @@ import { SPH_STATIONS, SPHShow, buildSPH, showSPH, type SPHStation } from "./sph
 import { PM_STATIONS, buildPM, showPM, type PMStation } from "./physical.ts";
 import { IBL_STATIONS, buildIBL, resetIBL, showIBL, type IBLStation } from "./ibl.ts";
 import { GEO_STATIONS, GEOShow, buildGEO, resetGEO, showGEO, type GEOStation } from "./geometry.ts";
+import { DEPTH_STATIONS, buildDepth, resetDepth, showDepth, type DepthStation } from "./depth.ts";
 import { LOOK_PRESETS, LOOK_STATIONS, applyLookPreset, buildLooks, resetLooks, showLooks, type LookStation } from "./looks.ts";
 
 /** The first five stations, then the E5 round's (src/e5.ts) and phase 2's (src/p2.ts, src/anim-physics.ts, src/render.ts, src/sph.ts). */
-export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS, ...P2_STATIONS, ...AP_STATIONS, ...RD_STATIONS, ...SPH_STATIONS, ...PM_STATIONS, ...IBL_STATIONS, ...LOOK_STATIONS, ...GEO_STATIONS] as const;
+export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS, ...P2_STATIONS, ...AP_STATIONS, ...RD_STATIONS, ...SPH_STATIONS, ...PM_STATIONS, ...IBL_STATIONS, ...LOOK_STATIONS, ...GEO_STATIONS, ...DEPTH_STATIONS] as const;
 export type Station = (typeof STATIONS)[number];
 
 /** The showcase's state, on one entity named "stage". */
@@ -237,6 +238,7 @@ function show(world: World, station: Station): void {
   resetIBL(world);
   resetLooks(world);
   resetGEO(world);
+  resetDepth(world);
   cam.orthographic = false;
   cam.fov = 50;
   settings.toneMapped = true;
@@ -320,6 +322,7 @@ function show(world: World, station: Station): void {
       else if ((IBL_STATIONS as readonly string[]).includes(station)) showIBL(world, station as IBLStation);
       else if ((LOOK_STATIONS as readonly string[]).includes(station)) showLooks(world, station as LookStation);
       else if ((GEO_STATIONS as readonly string[]).includes(station)) showGEO(world, station as GEOStation);
+      else if ((DEPTH_STATIONS as readonly string[]).includes(station)) showDepth(world, station as DepthStation);
       else showE5(world, station as E5Station);
   }
 }
@@ -460,6 +463,8 @@ function build(world: World): void {
   buildLooks({ box, sphere, mat, tex });
   // The depth wave's geometry station: runtime geometry, lines, points, debug draw.
   buildGEO(world, { mat, ground: (x, c) => ground(world, x, c) });
+  // The depth wave's render stations: levels of detail and reflections.
+  buildDepth({ box, sphere, mat });
 
   const stage = must(world.spawn({ name: "stage" }));
   world.insert(stage, Stage, {
@@ -494,7 +499,7 @@ export default og.game({
       if (stage !== null) world.set(stage, Stage, { look: LOOK_PRESETS.indexOf(slug as (typeof LOOK_PRESETS)[number]) + 1 });
     },
   },
-  commandHelp: { station: { usage: "<name|1-27>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, the render round's four (lights, moon, materials, skinned), the 3D fluid station (fluids3d), P4's physical materials (physical) and the image-based lighting station (environment), the looks station (looks), and the depth wave's geometry station (geometry: runtime geometry, lines, points, debug draw)." }, look: { usage: "<slug|none>", doc: "On the looks station: apply one of the engine's look presets (templates/looks/<slug>.ogt) to the diorama, or none." } },
+  commandHelp: { station: { usage: "<name|1-29>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, the render round's four (lights, moon, materials, skinned), the 3D fluid station (fluids3d), P4's physical materials (physical) and the image-based lighting station (environment), the looks station (looks), and the depth wave's geometry station (geometry: runtime geometry, lines, points, debug draw), lod (2,000 trees in levels of detail) and reflections (a reflection probe and SSR on a wet floor)." }, look: { usage: "<slug|none>", doc: "On the looks station: apply one of the engine's look presets (templates/looks/<slug>.ogt) to the diorama, or none." } },
   facts: (world) => {
     const e = world.find("stage");
     const s = e === null ? null : world.get(e, Stage);

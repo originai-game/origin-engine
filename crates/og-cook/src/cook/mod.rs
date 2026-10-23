@@ -22,6 +22,7 @@ pub mod icons;
 pub mod ktx2_source;
 pub mod look;
 mod model;
+pub mod probes;
 mod rig2d;
 mod scene;
 pub mod sfx;
@@ -71,6 +72,10 @@ pub struct MeshOptions {
     pub overdraw_threshold: f32,
     /// Generate MikkTSpace tangents for normal-mapped primitives that lack them.
     pub tangents: bool,
+    /// Each level's fraction of the full mesh's triangles, the first 1: a
+    /// model's import settings (`model { lods 1 0.5 0.25 }`). `None`: the
+    /// levels `lod_levels` and `lod_ratio` give (1, 0.5, 0.25 by default).
+    pub lods: Option<Vec<f32>>,
 }
 
 impl Default for MeshOptions {
@@ -81,14 +86,69 @@ impl Default for MeshOptions {
             lod_max_error: 0.05,
             overdraw_threshold: 1.05,
             tangents: true,
+            lods: None,
         }
     }
 }
 
 impl MeshOptions {
+    /// Each level's fraction of the full mesh's triangles, level 0 first (1).
+    pub fn fractions(&self) -> Vec<f32> {
+        match &self.lods {
+            Some(l) => l.clone(),
+            None => (0..self.lod_levels.max(1))
+                .map(|k| self.lod_ratio.powi(k as i32))
+                .collect(),
+        }
+    }
+
+    /// These options with a model's import settings (`model { lods 1 0.5
+    /// 0.25 lodError 0.05 }`) over them: `lods` the levels' triangle
+    /// fractions (the first 1, each below the one before; `lods 1` keeps the
+    /// full mesh alone), `lodError` the largest simplification error
+    /// relative to the mesh's extent.
+    pub fn for_model(&self, block: Option<&og_core::ogt::Block>) -> Result<MeshOptions, String> {
+        let mut o = self.clone();
+        let Some(b) = block else {
+            return Ok(o);
+        };
+        if let Some(e) = b.get("lods") {
+            let mut f = Vec::new();
+            for i in 0..e.values.len() {
+                f.push(
+                    e.f32(i)
+                        .map_err(|x| format!("line {}: lods: {x}", e.line))?,
+                );
+            }
+            let ok = f.first() == Some(&1.0)
+                && f.windows(2).all(|w| w[1] < w[0] && w[1] > 0.0)
+                && f.len() <= 8;
+            if !ok {
+                return Err(format!(
+                    "line {}: lods takes each level's fraction of the full mesh's triangles, the first 1 and each below the one before, at most 8 (`lods 1 0.5 0.25`)",
+                    e.line
+                ));
+            }
+            o.lods = Some(f);
+        }
+        if let Some(e) = b.get("lodError") {
+            let v = e
+                .f32(0)
+                .map_err(|x| format!("line {}: lodError: {x}", e.line))?;
+            if !(v > 0.0 && v <= 1.0) {
+                return Err(format!(
+                    "line {}: lodError is the largest error relative to the mesh's extent, above 0 and at most 1 (default 0.05)",
+                    e.line
+                ));
+            }
+            o.lod_max_error = v;
+        }
+        Ok(o)
+    }
+
     fn describe(&self) -> String {
         format!(
-            "lods {} ratio {} error {} overdraw {} tangents {} (bitangent up the image) quantize 16/oct16/uv16/rgba8 codec meshopt-v1",
+            "lods {} ratio {} error {} overdraw {} tangents {} (bitangent up the image) quantize 16/oct16/uv16/rgba8 codec meshopt-v1 flat levels by position (S6)",
             self.lod_levels,
             self.lod_ratio,
             self.lod_max_error,
@@ -1581,6 +1641,15 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
         }
         manifest.assets.push(asset);
     }
+    // Baked reflection probes (`og bake probes`, probes.rs) have no source:
+    // kept while their files are.
+    for a in old.assets.iter().filter(|a| a.kind == probes::KIND) {
+        if a.outputs.iter().all(|o| cooked_dir.join(&o.file).is_file()) {
+            keep.extend(a.outputs.iter().map(|o| o.file.clone()));
+            manifest.assets.push(a.clone());
+        }
+    }
+    manifest.assets.sort_by(|a, b| a.source.cmp(&b.source));
     for r in reports.iter_mut().filter(|r| r.error.is_some()) {
         r.outputs.clear();
     }
@@ -1759,11 +1828,19 @@ fn run(
     match p.work.as_ref().expect("planned work") {
         Work::Model(s, ids) => {
             let g = s.gltf.as_ref().expect("loaded");
-            model::cook(g, ids, &options.mesh, p.stamp, false).map(|(b, n)| (b, n.notes))
+            let mesh = options
+                .mesh
+                .for_model(settings_block(s, "model"))
+                .map_err(CookError)?;
+            model::cook(g, ids, &mesh, p.stamp, false).map(|(b, n)| (b, n.notes))
         }
         Work::Proxy(s) => {
             let g = s.gltf.as_ref().expect("loaded");
-            model::cook(g, &[], &options.mesh, p.stamp, true).map(|(b, mut n)| {
+            let mesh = options
+                .mesh
+                .for_model(settings_block(s, "model"))
+                .map_err(CookError)?;
+            model::cook(g, &[], &mesh, p.stamp, true).map(|(b, mut n)| {
                 n.notes.retain(|x| x.contains("triangles"));
                 (
                     b,

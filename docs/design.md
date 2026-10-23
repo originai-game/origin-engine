@@ -255,6 +255,59 @@ grids, navmesh polygons and agents' paths, and the bounds view draws mesh
 bounds. Debug draw is rendering: it is not world state, it never feeds the
 tick, and the `debug` module is left out of publish builds.
 
+Levels of detail, reflection probes and screen-space reflections (depth
+S6).
+
+- **Mesh LOD.** The cook simplifies every model mesh with meshoptimizer
+  into levels, `lods 1 0.5 0.25` by default (import settings `model {
+  lods … lodError … }`; `lods 1` turns it off). A glTF's own `MSFT_lod`
+  levels are kept as they are. A level is a range of the primitive's
+  indices, and the runtime gives each coarse level a compact mesh of its
+  own. `og cook --report` lists each model's triangles per level. The
+  renderer picks a model entity's level from its bounding sphere's size
+  on screen (`og_render::lod`): level `k` is drawn below `1.2 × fraction`
+  of the view height. The previous level is kept within 15 % of a
+  boundary (hysteresis), so a tree at a threshold does not flicker. The
+  pick is scaled by `og.Model.lodBias × RenderSettings.lodBias`, and a
+  bias of 0 draws the full mesh. `dump_entity` reports the level drawn
+  (`render.lod`), and `debugView lod` tints every model by its level:
+  green, yellow, orange, then red. The showcase's 2,000-tree field draws
+  3.96× fewer main-pass triangles with LOD on (`ProbeTimings.triangles`).
+- **Reflection probes.** An `og.ReflectionProbe` is a box of the world,
+  centred on its entity, whose lit surfaces reflect a cube captured at
+  its centre instead of the environment map (`probes.rs`). Each capture is
+  six 90° views drawn with the lit pipelines (sun, local lights, sky;
+  no transparent or skinned meshes) in a `reflection-probes` graph pass
+  before the main pass. It is then copied and GGX-prefiltered like the
+  environment (`ibl.rs`). The lit shaders box-project the reflected ray
+  onto the probe's box, so a room's walls reflect where they stand, and
+  blend the probe into the environment over `blendDistance` at the box's
+  faces. Probes cost no texture slot, because WebGL2's skinned lit
+  pipeline uses all sixteen. A batch inside a probe's box binds that
+  probe's frame group instead, whose uniform carries the box and whose
+  two IBL cubes are the environment's and the probe's. The smallest box
+  holding the batch's centre wins, and at most `MAX_REFLECTION_PROBES` (8)
+  probes are used, nearest the camera first.
+  - A `baked` probe is captured once. `og bake probes [project]` renders
+    the baked probes on the native host and writes each into the cook
+    cache as an environment blob (`cooked/probes/<key>.ogb`, kind `probe`
+    in the manifest; the cook keeps it while the file exists). The key
+    hashes the probe's position, box and face size. The runtime loads the
+    blob when its key is in the bundle; otherwise the probe draws its
+    capture on its first frame (lazily).
+  - A `realtime` probe is drawn again every `interval` ticks.
+- **SSR.** `PostEffects.ssr` (with `ssrMaxDistance`, `ssrThickness`,
+  `ssrSteps`, `ssrFade` and `ssrIntensity`) adds a full-tier pass after
+  the main pass (`ssr.rs`, `ssr.wgsl`). Each glossy pixel marches its
+  reflected ray in view space through the prepass's view depth, then
+  bisects the hit. The prepass's depth target is RG32F, and its second
+  channel carries the material's gloss and metalness. The hit is weighted
+  by Fresnel and gloss² and faded at the screen's edges, towards the
+  maximum distance, and for rays turning back to the camera. Where a ray
+  misses, the probes and environment already drawn remain. WebGL2 draws
+  no SSR (`RenderCapabilities.ssr` is false), so its smooth surfaces show
+  the probes alone.
+
 ### 2.7 Animation, physics, navigation, audio, UI **(D)**
 
 - **Animation**: glTF skins and clips, a blend tree asset (`.ogt`), state

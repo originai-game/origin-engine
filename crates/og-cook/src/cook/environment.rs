@@ -396,16 +396,50 @@ pub(super) fn cook_environment(
             )
         }
     };
+    let samples = if doc.prefiltered { 0 } else { doc.samples };
+    let (blob, texels, packed) = environment_blob(
+        &map,
+        (width, height),
+        doc.intensity,
+        doc.rotation,
+        samples,
+        stamp,
+    );
+    let note = format!(
+        "environment: {what} into a {}² cube of {} levels (RGB9E5, {} KiB, {} KiB zlib'd){}",
+        map.size,
+        og_render::ENVIRONMENT_MAP_LEVELS,
+        texels / 1024,
+        packed / 1024,
+        if doc.prefiltered {
+            String::new()
+        } else {
+            format!(", {} samples a texel", doc.samples)
+        }
+    );
+    Ok((blob, vec![note]))
+}
+
+/// A `type environment` blob of `map`: its meta (the source's size, the
+/// cook's intensity, turn and samples; 0 samples: levels taken as given),
+/// irradiance and zlib'd RGB9E5 texels; with the texels' raw and packed bytes.
+pub(super) fn environment_blob(
+    map: &og_render::EnvironmentMapData,
+    (width, height): (u32, u32),
+    intensity: f32,
+    rotation: f32,
+    samples: u32,
+    stamp: u64,
+) -> (Vec<u8>, usize, usize) {
     let meta = format::EnvironmentMeta {
         size: map.size,
         levels: og_render::ENVIRONMENT_MAP_LEVELS,
         texel_count: map.texels.len() as u32,
         source_width: width,
         source_height: height,
-        intensity: doc.intensity,
-        rotation: doc.rotation,
-        // 0: the file's own prefiltered levels, no samples taken.
-        samples: if doc.prefiltered { 0 } else { doc.samples },
+        intensity,
+        rotation,
+        samples,
     };
     let sh: Vec<format::EnvironmentShRow> = map
         .irradiance
@@ -418,6 +452,7 @@ pub(super) fn cook_environment(
         .collect();
     let texels: Vec<u8> = map.texels.iter().flat_map(|t| t.to_le_bytes()).collect();
     let packed = miniz_oxide::deflate::compress_to_vec_zlib(&texels, 6);
+    let (raw, zipped) = (texels.len(), packed.len());
     let mut w = BlobWriter::new(
         format::EnvironmentMap::type_hash(),
         format::EnvironmentMap::schema_version(),
@@ -433,18 +468,6 @@ pub(super) fn cook_environment(
         &sh,
         format::row_hash::<format::EnvironmentShRow>(),
     )
-    .raw("texels", packed.clone(), 16);
-    let note = format!(
-        "environment: {what} into a {}² cube of {} levels (RGB9E5, {} KiB, {} KiB zlib'd){}",
-        map.size,
-        og_render::ENVIRONMENT_MAP_LEVELS,
-        texels.len() / 1024,
-        packed.len() / 1024,
-        if doc.prefiltered {
-            String::new()
-        } else {
-            format!(", {} samples a texel", doc.samples)
-        }
-    );
-    Ok((w.finish(), vec![note]))
+    .raw("texels", packed, 16);
+    (w.finish(), raw, zipped)
 }

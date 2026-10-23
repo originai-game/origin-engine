@@ -889,9 +889,15 @@ fn cook_with(
                 .map_or(default_material, |i| i as u32);
             let normal_mapped = prim.material().normal_texture().is_some();
             let what = format!("mesh '{}' primitive {pi}", m.name().unwrap_or(""));
-            let Some(cooked) =
-                model::cook_primitive(src, &prim, material, normal_mapped, mesh, false)
-                    .map_err(|e| CookError(format!("{what}: {e}")))?
+            let Some(cooked) = model::cook_primitive(
+                src,
+                std::slice::from_ref(&prim),
+                material,
+                normal_mapped,
+                mesh,
+                false,
+            )
+            .map_err(|e| CookError(format!("{what}: {e}")))?
             else {
                 continue;
             };

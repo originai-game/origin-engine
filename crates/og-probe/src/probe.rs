@@ -230,6 +230,7 @@ pub struct Probe {
     quit: bool,
     step_ms: f64,
     render_ms: f64,
+    triangles: u64,
     outputs: Vec<Output>,
     log: Vec<LogLine>,
     pointer: (f32, f32),
@@ -452,6 +453,7 @@ impl Probe {
             quit: false,
             step_ms: 0.0,
             render_ms: 0.0,
+            triangles: 0,
             outputs: Vec::new(),
             log: Vec::new(),
             pointer: (0.0, 0.0),
@@ -602,6 +604,11 @@ impl Probe {
     }
 
     /// The last tick's timings for `state().timings`, measured by the host.
+    /// The last frame's main-pass triangles (`ProbeTimings.triangles`).
+    pub fn set_triangles(&mut self, triangles: u64) {
+        self.triangles = triangles;
+    }
+
     pub fn set_timings(&mut self, step_ms: f64, render_ms: f64) {
         self.step_ms = step_ms;
         self.render_ms = render_ms;
@@ -1917,6 +1924,7 @@ impl Probe {
                 "render": self.render_ms,
                 "frameMs": self.step_ms + self.render_ms,
                 "systems": self.systems_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
+                "triangles": self.triangles,
                 "passes": self.passes_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
             },
             "entities": entities,
@@ -2487,12 +2495,20 @@ impl Probe {
                 (schema.name, Value::Object(fields))
             })
             .collect();
-        json!({
+        let mut out = json!({
             "kind": "entity",
             "id": self.names.id_of(world, e),
             "name": self.names.name_of(world, e),
             "components": components,
-        })
+        });
+        if let Some(r) = self
+            .capture
+            .as_ref()
+            .and_then(|c| c.entity_render(world, e))
+        {
+            out["render"] = r;
+        }
+        out
     }
 
     /// The UI tree in draw order; empty without a UI module.

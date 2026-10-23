@@ -74,6 +74,11 @@ impl Capture for RuntimeCapture {
             rgba: image.pixels,
         })
     }
+    fn entity_render(&self, _world: &World, entity: Entity) -> Option<Value> {
+        let rs = self.render.try_borrow().ok()?;
+        let level = rs.lod_drawn.get(&entity.to_bits())?;
+        Some(json!({ "lod": level }))
+    }
 
     fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
         let mut rs = self.render.try_borrow_mut().ok()?;
@@ -92,6 +97,43 @@ impl Capture for RuntimeCapture {
         rs.capture_ms += now_ms() - t0;
         frame
     }
+}
+
+/// Registers `dump_render[:path]`: the last frame's triangles and how many
+/// og.Model entities drew each level of detail.
+pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
+    let _ = probe.register_dump(
+        "dump_render",
+        og_probe::CommandDesc {
+            usage: "dump_render[:path]".into(),
+            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), render time, and how many og.Model entities drew each level of detail".into(),
+        },
+        0,
+        move |_world, _args| {
+            let eng = super::engine::engine(engine)?;
+            let st = eng.state.borrow();
+            let rs = eng.render.borrow();
+            let mut levels = [0u32; og_render::lod::MAX_LOD_LEVELS];
+            for &l in rs.lod_drawn.values() {
+                levels[(l as usize).min(levels.len() - 1)] += 1;
+            }
+            let last = levels.iter().rposition(|&n| n > 0).map_or(0, |i| i + 1);
+            Ok(json!({
+                "kind": "render",
+                "triangles": st.triangles,
+                "renderMs": (st.render_ms * 1000.0).round() / 1000.0,
+                "debugView": super::geometry::current_view(&rs),
+                "lodLevels": &levels[..last],
+                // The frame's reflection probes: baked ones sampling a capture
+                // `og bake probes` wrote (`bakedFromCache`) or drawing their own.
+                "reflectionProbes": rs.scene.reflection_probes.iter().map(|p| json!({
+                    "entity": p.id,
+                    "mode": if p.mode == og_render::ProbeMode::Realtime { "realtime" } else { "baked" },
+                    "bakedFromCache": p.baked.is_some(),
+                })).collect::<Vec<_>>(),
+            }))
+        },
+    );
 }
 
 /// A name change made outside the probe, replayed into it.
@@ -120,6 +162,7 @@ pub(crate) fn with_probe<T>(
     {
         let st = eng.state.borrow();
         probe.set_timings(st.step_ms, st.render_ms);
+        probe.set_triangles(st.triangles);
     }
     invalidate(moving);
     super::engine::clear_world_queries();
