@@ -161,7 +161,7 @@ fn a_renderer_restore_keeps_the_baked_frame() {
     let mut r = Renderer::new_blocking(&built.desc).expect("renderer");
     let frames = built.frames.max(1);
     let mut scene = built.scene;
-    let camera = scene.camera.clone();
+    let camera = scene.camera;
     let draw = |r: &mut Renderer, s: &og_render::RenderScene| {
         for _ in 0..frames {
             r.render(s, &RenderTarget::Offscreen).expect("render");
