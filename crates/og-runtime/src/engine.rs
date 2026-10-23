@@ -1041,6 +1041,7 @@ pub(crate) fn assemble(
         .map(|l| l.schema.clone())
         .collect();
     let feel = super::feel::install_front(&mut world, &components)?;
+    super::video::install(&mut world, engine_id, &layouts)?;
     let anim = super::anim::install(&mut world)?;
     let feel_records = super::feel::Records::of(&world, &layouts)?;
     super::feel::install_middle(&mut world, &feel, &feel_records)?;

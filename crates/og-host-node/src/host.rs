@@ -439,6 +439,12 @@ impl LoadApi for NodeHost {
     fn og_load_sound_info(&self, world: u32, sound: f64) -> String {
         rt::og_load_sound_info(world, sound)
     }
+    fn og_load_video(&self, world: u32, path: String) -> String {
+        rt::og_load_video(world, path)
+    }
+    fn og_load_video_info(&self, world: u32, video: f64) -> String {
+        rt::og_load_video_info(world, video)
+    }
     fn og_load_error(&self, world: u32, asset: f64) -> String {
         rt::og_load_error(world, asset)
     }

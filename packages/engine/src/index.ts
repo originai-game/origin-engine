@@ -71,6 +71,7 @@ export const ClipAsset = ((value = 0 as Api.ClipAsset, options) => spec("ClipAss
 export const GraphAsset = ((value = 0 as Api.GraphAsset, options) => spec("GraphAsset", value, options)) as typeof Api.GraphAsset;
 export const FlipbookSheet = ((value = 0 as Api.FlipbookSheet, options) => spec("FlipbookSheet", value, options)) as typeof Api.FlipbookSheet;
 export const Tween = ((value = 0 as Api.Tween, options) => spec("Tween", value, options)) as typeof Api.Tween;
+export const Video = ((value = 0 as Api.Video, options) => spec("Video", value, options)) as typeof Api.Video;
 export const TilemapAsset = ((value = 0 as Api.TilemapAsset, options) => spec("TilemapAsset", value, options)) as typeof Api.TilemapAsset;
 export const TerrainData = ((value = 0 as Api.TerrainData, options) => spec("TerrainData", value, options)) as typeof Api.TerrainData;
 export const RootMotion = ((value = "off" as Api.RootMotion, options) => spec("RootMotion", value, options)) as typeof Api.RootMotion;

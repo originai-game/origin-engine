@@ -51,10 +51,13 @@ mod physics_ext;
 mod platform;
 mod polish;
 mod probe;
+#[cfg(not(feature = "publish"))]
+mod record;
 mod save;
 mod stream;
 mod terrain;
 mod terrain_stream;
+mod video;
 
 pub use ai::{
     og_ai_describe, og_ai_get, og_ai_load, og_ai_noise, og_ai_parse, og_ai_restart, og_ai_set,
@@ -121,6 +124,8 @@ pub use platform::{
     og_platform_store_list, og_platform_store_set, og_platform_take, og_platform_telemetry,
 };
 pub use probe::png;
+#[cfg(not(feature = "publish"))]
+pub use record::{render_frame, render_restore, render_snapshot};
 pub use save::{og_world_restore, og_world_snapshot};
 pub use stream::{
     og_stream_budget, og_stream_release, og_stream_request, og_stream_set_budget, og_stream_status,
@@ -129,6 +134,7 @@ pub use terrain::{
     og_terrain_bounds, og_terrain_edit, og_terrain_layer, og_terrain_load, og_terrain_sample,
     og_terrain_set_layer,
 };
+pub use video::{og_load_video, og_load_video_info};
 
 use serde_json::{Value, json};
 

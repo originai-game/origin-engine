@@ -689,6 +689,16 @@ pub fn og_load_tilemap(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_video(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_video(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_load_video_info(world: u32, video: f64) -> String {
+    <Host as LoadApi>::og_load_video_info(&Host, world, video)
+}
+
+#[wasm_bindgen]
 pub fn og_physics_raycast(world: u32, desc: Option<String>) -> String {
     <Host as PhysicsApi>::og_physics_raycast(&Host, world, desc)
 }

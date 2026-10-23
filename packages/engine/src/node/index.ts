@@ -50,6 +50,12 @@ export interface NativeExtras {
   og_node_probe_listen(engine: number, port: number): string;
   og_node_probe_serve(engine: number): number;
   og_node_probe_close(engine: number): boolean;
+  /** `og render`: the frame the loop drew last, RGBA8 rows at the offscreen size (empty without one). Not in publish builds. */
+  og_node_render_frame(engine: number): Uint8Array;
+  /** `og render --jobs`: the world as a render snapshot (empty when refused). */
+  og_node_render_snapshot(engine: number): Uint8Array;
+  /** Restores a render snapshot another process took: a wire Result of its tick. */
+  og_node_render_restore(engine: number, snapshot: Uint8Array): string;
 }
 
 let extras: NativeExtras | null = null;

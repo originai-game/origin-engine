@@ -20,6 +20,8 @@ use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, VecDeque};
 use std::rc::Rc;
 
+mod record;
+
 /// The RuntimeProbe contract revision (`origin/packages/contracts/src/probe.ts`).
 pub const PROBE_VERSION: u32 = 5;
 /// The wire revision `hello` reports (`engine/docs/probe-wire.md`).

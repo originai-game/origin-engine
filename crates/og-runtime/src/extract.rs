@@ -83,6 +83,12 @@ pub trait RenderBackend {
     fn warm(&mut self) -> bool {
         false
     }
+    /// The last frame `render` drew, read back without drawing it again
+    /// (`og render`'s every-frame capture); `None` where the readback cannot
+    /// block (the web) or nothing was drawn.
+    fn read_frame(&mut self) -> Option<og_render::RgbaImage> {
+        None
+    }
 }
 
 /// One loaded font: a cooked MTSDF font as one `MsdfFont` per atlas page.
@@ -140,6 +146,9 @@ pub(crate) struct RenderState {
     pub textures: Vec<og_render::TextureHandle>,
     /// Texture arrays by TextureArray handle index (`og.load.textureArray`).
     pub texture_arrays: Vec<super::assets::LoadedArray>,
+    /// Videos by Video handle index (`og.load.video`), and og.VideoPlayer's layout.
+    pub videos: Vec<super::video::LoadedVideo>,
+    pub video_player: Option<Layout>,
     /// Layouts of the engine records extraction reads.
     pub camera: Option<Layout>,
     pub settings: Option<Layout>,
@@ -189,6 +198,8 @@ impl RenderState {
             fx: super::fx::FxState::default(),
             textures: Vec::new(),
             texture_arrays: Vec::new(),
+            videos: Vec::new(),
+            video_player: None,
             camera: None,
             settings: None,
             draw: DrawLayouts::default(),
@@ -897,6 +908,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // Drop shadows over the terrain under their sprites.
     super::terrain::ground_drop_shadows(rs);
 
+    // Each video's texture shows its player's frame.
+    super::video::extract(world, rs);
     // The UI, over everything else, in the overlay.
     super::modules::emit(rs);
     rs.hierarchy = h;

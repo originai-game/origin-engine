@@ -619,6 +619,17 @@ impl Bundle {
         })
     }
 
+    /// Reads a video blob's meta row (its frames are the texture array
+    /// `<id>#frames`, its sound `<id>#audio`).
+    pub fn video(&self, id: &str, bytes: &[u8]) -> Result<format::VideoMeta, LoadError> {
+        let blob = self.blob::<format::Video>(id, bytes)?;
+        let meta = one::<format::VideoMeta>(&blob)?;
+        if meta.frames == 0 || meta.fps == 0 {
+            return Err(invalid(&blob, "a video with no frames or no rate"));
+        }
+        Ok(meta)
+    }
+
     /// Decodes a texture array blob: its shape and its layers' texture ids
     /// (each an `og.Texture` of its own, loaded as any texture).
     pub fn texture_array(&self, id: &str, bytes: &[u8]) -> Result<CookedTextureArray, LoadError> {

@@ -65,6 +65,16 @@ impl Capture for RuntimeCapture {
         }
     }
 
+    fn frame(&mut self) -> Option<og_probe::RawFrame> {
+        let mut rs = self.render.try_borrow_mut().ok()?;
+        let image = rs.backend.as_mut()?.read_frame()?;
+        Some(og_probe::RawFrame {
+            width: image.width,
+            height: image.height,
+            rgba: image.pixels,
+        })
+    }
+
     fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
         let mut rs = self.render.try_borrow_mut().ok()?;
         // Captured frames show every wanted terrain tile, whatever the decode timing.

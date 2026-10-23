@@ -22,6 +22,7 @@ declare module "node:fs" {
   export function readFileSync(path: string): Uint8Array;
   export function readFileSync(path: string, encoding: string): string;
   export function writeFileSync(path: string, data: string | Uint8Array): void;
+  export function writeSync(fd: number, data: Uint8Array, offset?: number, length?: number): number;
   export function rmSync(path: string, options?: { recursive?: boolean; force?: boolean }): void;
   export function mkdirSync(path: string, options?: { recursive?: boolean }): void;
   export function copyFileSync(from: string, to: string): void;

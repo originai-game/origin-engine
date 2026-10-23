@@ -64,6 +64,21 @@ pub trait Capture {
         let _ = (world, x, y);
         None
     }
+    /// The frame the host's loop drew last, read back as it is in the render
+    /// target: no second draw, no PNG, no JSON-RPC (`og render` records one
+    /// every frame, docs/design.md §2.9). `None` before a frame was drawn or
+    /// from a host that cannot read its target back synchronously (the web).
+    fn frame(&mut self) -> Option<RawFrame> {
+        None
+    }
+}
+
+/// A frame as RGBA8 rows, top row first ([`Capture::frame`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RawFrame {
+    pub width: u32,
+    pub height: u32,
+    pub rgba: Vec<u8>,
 }
 
 /// One UI element with its bounds, in CSS pixels (IDL `probe.UiElement`).

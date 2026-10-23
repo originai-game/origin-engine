@@ -14,6 +14,7 @@
 //! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices` |
 //! | texture (`og.Texture`; a PNG, JPEG or KTX2 source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
 //! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
+//! | video (`og.Video`, an `.ogt` of `type video` cooked by ffmpeg) | [`VideoMeta`] | none: its frames are the texture array `<id>#frames`, its sound `<id>#audio` |
 //! | sound (`og.Sound`; a `.wav`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (a QOA file; of a sound cooked in chunks, the header and the first chunk's frames) |
 //! | sound chunk (`og.SoundChunk`, `<id>#chunk<n>` of a sound cooked in chunks) | [`SoundChunkMeta`] | `qoa` (the chunk's QOA frames) |
 //! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `kerning` [`KernRow`] (sorted by left, right), `atlas.<n>` (KTX2 RGBA8, zlib), `ttf` (the font file, when shaped or `runtime`) |
@@ -91,6 +92,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
     kinds!(
         Model,
         TextureArray,
+        Video,
         Texture,
         Sound,
         SoundChunk,
@@ -392,6 +394,33 @@ impl BlobKind for TextureArray {
     const NAME: &'static str = "og.TextureArray";
     fn schemas() -> Vec<Schema> {
         vec![TextureArrayMeta::schema(), ArrayLayerRow::schema()]
+    }
+}
+
+row!(
+    /// The root of a video blob (an `.ogt` of `type video`, cooked by
+    /// ffmpeg): its frames are the layers of the texture array
+    /// `<id>#frames`, its sound (when `audio` is 1) the sound `<id>#audio`.
+    VideoMeta, "og.Video", 1 {
+        width: u32,
+        height: u32,
+        frames: u32,
+        fps: u32,
+        /// frames / fps.
+        seconds: f32,
+        /// 1 when `<id>#audio` was cooked.
+        audio: u32,
+        /// [`kind`]: colour or pixel.
+        kind: u32,
+    }
+);
+
+/// The video blob.
+pub struct Video;
+impl BlobKind for Video {
+    const NAME: &'static str = "og.Video";
+    fn schemas() -> Vec<Schema> {
+        vec![VideoMeta::schema()]
     }
 }
 

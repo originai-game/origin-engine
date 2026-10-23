@@ -2181,6 +2181,48 @@
           "returns": "Result<TilemapInfo>",
           "returnsDoc": "Refused for a path not in the bundle, a missing tileset or texture, or a terrain its tileset lacks.",
           "publish": true
+        },
+        {
+          "name": "video",
+          "doc": "Load cooked footage (an `.ogt` of `type video`: `source` an .mp4, .webm or .mov beside it or under assets/, `fps`, `maxSeconds`, `size W H`, `kind color|pixel`, `audio`), which og cook turns with ffmpeg into a texture array of its frames and its sound track. Uploads the frames as one 2D-array texture and makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at: a material map, an og.Sprite or a UI image draws it like any texture. Load it in GameDesc.start (every process of an og render --jobs run loads it the same way, so its handles agree). Loading the same path again answers the same handles.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer and audio own it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The video's asset id: the `.ogt`, such as `clips/intro.ogt`."
+            }
+          ],
+          "returns": "Result<VideoInfo>",
+          "returnsDoc": "Refused for a path not in the bundle (run og cook: a video needs ffmpeg there, og doctor) or not a video.",
+          "publish": true
+        },
+        {
+          "name": "videoInfo",
+          "doc": "A loaded video's size, frames, rate, length, texture and sound.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that loaded it."
+            },
+            {
+              "name": "video",
+              "type": "Video",
+              "optional": false,
+              "doc": "The video."
+            }
+          ],
+          "returns": "Result<VideoInfo>",
+          "returnsDoc": "Refused for a handle og.load.video did not answer.",
+          "publish": true
         }
       ],
       "interfaces": [],
@@ -7739,6 +7781,22 @@
           "publish": true
         }
       ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "video",
+      "doc": "Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg into a texture array of its frames and its sound, loaded with og.load.video and played by og.VideoPlayer. The frame shown is a Texture (VideoInfo.texture, also VideoPlayer.texture) any material map, og.Sprite or UI image draws, and the sound plays on the entity's og.AudioSource in step with it.\nPlayback is simulation: the og.video system (after the game's systems, before og.audio) advances VideoPlayer.time by the tick's dt times `speed` (not the time scale, so the picture stays with its sound), so the frame at a tick is the same on both hosts, in every run and after a snapshot is restored. With a 30 Hz tick a player started at 0 shows the source's frame 3 s in at tick 90.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Video",
+        "Video",
+        "VideoInfo",
+        "VideoPlayer"
+      ],
+      "consts": [],
+      "functions": [],
       "interfaces": [],
       "callbacks": []
     }
@@ -29794,6 +29852,143 @@
         "peak",
         "groups"
       ],
+      "additionalProperties": false
+    },
+    "Video": {
+      "x-og-kind": "handle",
+      "x-og-module": "video",
+      "description": "Cooked footage: its frames as a texture array, its sound (og.load.video).",
+      "type": "integer",
+      "minimum": 0
+    },
+    "VideoInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "video",
+      "description": "What og.load.video loaded.",
+      "type": "object",
+      "properties": {
+        "video": {
+          "$ref": "#/$defs/Video",
+          "description": "The video."
+        },
+        "texture": {
+          "$ref": "#/$defs/Texture",
+          "description": "The texture that shows the frame its og.VideoPlayer is at (frame 0 until one plays it)."
+        },
+        "sound": {
+          "$ref": "#/$defs/Sound",
+          "description": "Its sound track (og.load.sound's kind of handle, for an og.AudioSource); 0 when it has none or was cooked with `audio false`."
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Each frame's width in texels."
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Each frame's height in texels."
+        },
+        "frames": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Frames kept (at most 256)."
+        },
+        "fps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Frames per second kept."
+        },
+        "seconds": {
+          "type": "number",
+          "description": "frames / fps.",
+          "x-og-unit": "s"
+        },
+        "format": {
+          "type": "string",
+          "description": "The frames' encoding on the GPU (`rgba8`, `bc7`, `astc4x4`, `etc2`)."
+        },
+        "bytes": {
+          "type": "number",
+          "description": "Bytes its frames take on the GPU.",
+          "x-og-unit": "bytes"
+        }
+      },
+      "required": [
+        "video",
+        "texture",
+        "sound",
+        "width",
+        "height",
+        "frames",
+        "fps",
+        "seconds",
+        "format",
+        "bytes"
+      ],
+      "additionalProperties": false
+    },
+    "VideoPlayer": {
+      "x-og-kind": "component",
+      "x-og-module": "video",
+      "description": "Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Several players of one video share its texture, which shows the first player's frame in query order; cook a second asset to show two moments of one clip.",
+      "type": "object",
+      "properties": {
+        "video": {
+          "$ref": "#/$defs/Video",
+          "description": "The video (og.load.video's `video`); 0 plays nothing.",
+          "default": 0
+        },
+        "playing": {
+          "type": "boolean",
+          "description": "Whether time advances.",
+          "default": true
+        },
+        "time": {
+          "type": "number",
+          "description": "Seconds into the video; written every tick, set it to seek.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "speed": {
+          "type": "number",
+          "description": "The playback rate: 1 as cooked, 0.5 half speed (the sound's pitch follows).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-tunable": true
+        },
+        "loop": {
+          "type": "boolean",
+          "description": "Start again at 0 past the end; otherwise hold the last frame and set finished.",
+          "default": false
+        },
+        "frame": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Written: the frame shown, floor(time * fps).",
+          "default": 0,
+          "readOnly": true
+        },
+        "finished": {
+          "type": "boolean",
+          "description": "Written: a player without loop reached the end.",
+          "default": false,
+          "readOnly": true
+        },
+        "texture": {
+          "$ref": "#/$defs/Texture",
+          "description": "Written: the video's texture (VideoInfo.texture), for a material or sprite set up from the player.",
+          "default": 0,
+          "readOnly": true
+        }
+      },
       "additionalProperties": false
     }
   }

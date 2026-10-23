@@ -29,6 +29,7 @@ mod terrain;
 mod texture;
 pub mod texture_array;
 pub mod tilemap;
+pub mod video;
 pub mod vox;
 
 use crate::format::{self, BlobKind, COOKER_VERSION};
@@ -547,6 +548,7 @@ enum Kind {
     Look,
     Palette,
     TextureArray,
+    Video,
 }
 
 impl Kind {
@@ -574,6 +576,7 @@ impl Kind {
             Kind::Look => "look",
             Kind::Palette => "palette",
             Kind::TextureArray => "texture-array",
+            Kind::Video => "video",
         }
     }
 }
@@ -634,6 +637,12 @@ enum Work<'a> {
     /// A texture array's blob, and layer `n`'s texture.
     TextureArray(&'a Source, texture_array::ArrayDecl),
     ArrayLayer(&'a Source, texture_array::ArrayDecl, usize),
+    /// A video's blob, its frames' texture array, frame `n` (with the
+    /// source's path and hash) and its sound.
+    VideoMeta(Box<video::VideoPlan>),
+    VideoArray(&'a Source, Box<video::VideoPlan>),
+    VideoFrame(PathBuf, u64, Box<video::VideoPlan>, usize),
+    VideoAudio(PathBuf, Box<video::VideoPlan>),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -837,12 +846,13 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == icons::ICONS_TYPE => Kind::Icons,
                     Ok(doc) if doc.ty == crate::look::LOOK_TYPE => Kind::Look,
                     Ok(doc) if doc.ty == texture_array::ARRAY_TYPE => Kind::TextureArray,
+                    Ok(doc) if doc.ty == video::VIDEO_TYPE => Kind::Video,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, icons, tileset, tilemap, flipbook, shader, behaviour, navmesh, terrain, environment, texture-array, look, sfx, strings, rig or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, particles, skin, icons, tileset, tilemap, flipbook, shader, behaviour, navmesh, terrain, environment, texture-array, video, look, sfx, strings, rig or import)",
                                 doc.ty
                             ),
                         ));
@@ -1281,6 +1291,62 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Err(e) => early_errors.push((s.rel.clone(), "texture-array", e)),
                 }
             }
+            Kind::Video => {
+                let text = String::from_utf8_lossy(&s.bytes);
+                let root = texture_array::assets_dir(&s.path, &s.rel);
+                let planned =
+                    video::parse(&s.rel, &text, &|p| root.join(p).is_file()).and_then(|d| {
+                        let src = root.join(&d.source);
+                        let bytes =
+                            std::fs::read(&src).map_err(|e| format!("{}: {e}", src.display()))?;
+                        let plan = video::plan(&d, video::probe(&src)?)?;
+                        Ok((src, hash_bytes(&bytes), plan))
+                    });
+                match planned {
+                    Ok((src, src_hash, plan)) => {
+                        let described = plan.describe();
+                        let base = [
+                            b"video 1".as_slice(),
+                            tex_desc.as_bytes(),
+                            &hash,
+                            &src_hash.to_le_bytes(),
+                            described.as_bytes(),
+                        ];
+                        let plan = Box::new(plan);
+                        outs.push((
+                            s.rel.clone(),
+                            format::Video::NAME,
+                            stamp(&base),
+                            Work::VideoMeta(plan.clone()),
+                        ));
+                        let frames = video::frames_id(&s.rel);
+                        outs.push((
+                            frames.clone(),
+                            format::TextureArray::NAME,
+                            stamp(&[&base[..], &[b"array".as_slice()]].concat()),
+                            Work::VideoArray(s, plan.clone()),
+                        ));
+                        for n in 0..plan.frames as usize {
+                            let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
+                            outs.push((
+                                texture_array::layer_id(&frames, n),
+                                format::Texture::NAME,
+                                st,
+                                Work::VideoFrame(src.clone(), src_hash, plan.clone(), n),
+                            ));
+                        }
+                        if plan.audio {
+                            outs.push((
+                                video::audio_id(&s.rel),
+                                format::Sound::NAME,
+                                stamp(&[&base[..], &[b"audio".as_slice()]].concat()),
+                                Work::VideoAudio(src.clone(), plan.clone()),
+                            ));
+                        }
+                    }
+                    Err(e) => early_errors.push((s.rel.clone(), "video", e)),
+                }
+            }
             Kind::Environment => {
                 let deps = environment::environment_dependencies(s);
                 let st = stamp(&[b"environment 1", &hash, deps.as_bytes()]);
@@ -1609,6 +1675,29 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             r.notes.push(what);
         }
     }
+    // A video's frames past the budget: footage is the heaviest asset a game has.
+    for r in reports.iter_mut().filter(|r| r.kind == "video") {
+        let frames = format!("{}#frames#layer", r.source);
+        let bytes: u64 = r
+            .outputs
+            .iter()
+            .filter(|o| o.id.starts_with(&frames))
+            .map(|o| o.bytes)
+            .sum();
+        if bytes > video::BUDGET_BYTES {
+            let what = format!(
+                "its {} frames take {:.1} MiB cooked, past the {} MiB budget for a video: lower its size, fps or maxSeconds",
+                r.outputs
+                    .iter()
+                    .filter(|o| o.id.starts_with(&frames))
+                    .count(),
+                bytes as f64 / f64::from(1u32 << 20),
+                video::BUDGET_BYTES >> 20
+            );
+            warnings.push(format!("assets/{}: {what}", r.source));
+            r.notes.push(what);
+        }
+    }
     // A Tiled map's custom properties the importer does not read.
     for s in sources
         .iter()
@@ -1866,6 +1955,20 @@ fn run(
             let root = texture_array::assets_dir(&s.path, &s.rel);
             texture_array::cook_layer(&root, decl, *n, &options.texture, p.stamp)
                 .map(|b| (b, Vec::new()))
+        }
+        Work::VideoMeta(plan) => video::cook_meta(plan, p.stamp),
+        Work::VideoArray(s, plan) => Ok((
+            video::cook_array(&s.rel, plan, &options.texture, p.stamp),
+            Vec::new(),
+        )),
+        Work::VideoFrame(src, h, plan, n) => {
+            video::cook_frame(src, *h, plan, *n, &options.texture, p.stamp).map(|b| (b, Vec::new()))
+        }
+        Work::VideoAudio(src, plan) => {
+            let wav = video::audio_wav(src, plan)?;
+            let e = audio::encode(&wav, None).map_err(CookError)?;
+            audio::cook(&e, None, p.stamp)
+                .map(|(b, n)| (b, vec![format!("the video's sound: {n}")]))
         }
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
