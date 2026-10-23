@@ -4120,8 +4120,17 @@ fn nine(
     let ys = [rect.y, rect.y + t, rect.bottom() - b, rect.bottom()];
     let [u0, v0, u1, v1] = s.uv;
     let [bl, bt, br, bb] = s.border_uv;
-    let us = [u0, u0 + bl, u1 - br, u1];
-    let vs = [v0, v0 + bt, v1 - bb, v1];
+    let mut us = [u0, u0 + bl, u1 - br, u1];
+    let mut vs = [v0, v0 + bt, v1 - bb, v1];
+    // A middle squeezed more than twice shows the centre of the art's
+    // middle, squeezed twice, rather than all of it: squeezed further, the
+    // mipmapped atlas samples a level that blurs an edge piece's border into
+    // its fill (a light band across both ends of a button a few px taller
+    // than its corners, Rumpus Isle's small Pause). Repeat cuts its tile.
+    if s.fill != SliceFill::Repeat {
+        fit_middle(&mut us, xs[2] - xs[1], s.middle[0]);
+        fit_middle(&mut vs, ys[2] - ys[1], s.middle[1]);
+    }
     let color = tint.linear();
     for row in 0..3 {
         for col in 0..3 {
@@ -4157,6 +4166,18 @@ fn nine(
                 }
             }
         }
+    }
+}
+
+/// Narrows the middle `[at[1], at[2]]` of one axis's texture cuts to its
+/// centre, when the art's middle (`art`, on screen px) would be squeezed
+/// into `len` more than twice: the window kept is `2 × len` of the art,
+/// so the squeeze stays at 2 (continuous with the plain squeeze above it).
+fn fit_middle(at: &mut [f32; 4], len: f32, art: f32) {
+    if 2.0 * len < art {
+        let (c, h) = ((at[1] + at[2]) / 2.0, (at[2] - at[1]) * len.max(0.0) / art);
+        at[1] = c - h;
+        at[2] = c + h;
     }
 }
 

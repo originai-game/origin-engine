@@ -5,6 +5,9 @@
 //!   transparency (`a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice`);
 //! - a style's slices never reach the frame (the background stays a plain
 //!   quad), or the nine pieces leave gaps or overlap the element's edges;
+//! - a frame a few px taller than its corners squeezes its art's whole
+//!   middle into its middle row, and the atlas's mips draw a light band
+//!   across both ends (`a_frame_smaller_than_its_art_…`);
 //! - the default theme starts emitting atlas pieces (it must stay the token
 //!   look; the reference frames in tests/gfx.rs and tests/kit_gfx.rs prove
 //!   the pixels);
@@ -766,10 +769,16 @@ fn game_code_shakes_an_element_once_and_it_comes_to_rest_by_itself() {
 /// fills its edges with `fill` (a 32×32 region with 8 px corners: a 16 px
 /// middle), as (rect, uv), only those inside the panel.
 fn panel_pieces(fill: &str) -> (Rect, Vec<(Rect, [f32; 4])>) {
+    sliced_pieces(&format!("0 0 32 32 8 tint {fill}"), 100.0, 60.0)
+}
+
+/// The atlas pieces inside a `w`×`h` panel whose slice is `slice panel
+/// <slice>` in a 128×64 atlas, as (rect, uv).
+fn sliced_pieces(slice: &str, w: f32, h: f32) -> (Rect, Vec<(Rect, [f32; 4])>) {
     // The test style's palette and radius blocks.
     let values = &STYLE[STYLE.find("palette {").unwrap()..STYLE.find("slice ").unwrap()];
     let text = format!(
-        "type style\nversion 1\n---\nname \"tiles\"\natlas \"a.png\" 128 64\n{values}slice panel 0 0 32 32 8 tint {fill}\nslice card 0 0 32 32 8 {fill}\n"
+        "type style\nversion 1\n---\nname \"tiles\"\natlas \"a.png\" 128 64\n{values}slice panel {slice}\nslice card {slice}\n"
     );
     let file = parse_style(&text).expect("the style parses");
     let tex = atlas();
@@ -779,8 +788,8 @@ fn panel_pieces(fill: &str) -> (Rect, Vec<(Rect, [f32; 4])>) {
     ui.panel(
         "Box",
         PanelDesc {
-            width: Size::Fixed(100.0),
-            height: Size::Fixed(60.0),
+            width: Size::Fixed(w),
+            height: Size::Fixed(h),
             ..PanelDesc::default()
         },
         |_| {},
@@ -860,6 +869,57 @@ fn a_slice_tiles_its_edges_and_centre_when_the_style_says_repeat_or_round() {
         .unwrap_err()
         .contains("no middle"),
         "a slice that is all corners cannot tile"
+    );
+}
+
+#[test]
+fn a_frame_smaller_than_its_art_tiles_exactly_and_never_squeezes_its_middle_past_twice() {
+    // A 48 texel region with 12 texel corners: a 24 texel middle.
+    let texel = [1.0 / 128.0, 1.0 / 64.0];
+    let slice = "0 0 48 48 12 tint";
+    // Rumpus Isle's small Pause: 28 px tall, a 4 px middle row; then an
+    // element smaller than its two corners both ways; then one taller
+    // than its art, whose middle stretches as before.
+    for (w, h) in [(64.0, 28.0), (16.0, 10.0), (64.0, 60.0)] {
+        let (r, pieces) = sliced_pieces(slice, w, h);
+        // Exact tiling: the areas sum to the element's and no two overlap.
+        let area: f32 = pieces.iter().map(|(p, _)| p.width * p.height).sum();
+        assert!(
+            (area - r.width * r.height).abs() < 0.01,
+            "{w}x{h}: the pieces cover the element once ({area} of {}): {pieces:?}",
+            r.width * r.height
+        );
+        for (i, (a, _)) in pieces.iter().enumerate() {
+            for (b, _) in &pieces[i + 1..] {
+                let ox = a.right().min(b.right()) - a.x.max(b.x);
+                let oy = a.bottom().min(b.bottom()) - a.y.max(b.y);
+                assert!(ox <= 0.01 || oy <= 0.01, "{w}x{h}: {a:?} overlaps {b:?}");
+            }
+        }
+        // Along the middle row and column (between the corners), no piece
+        // shows more than twice its length of art: further, the atlas's
+        // mips blur an edge's border into its fill (the band). Corners
+        // scaled to fit squeeze theirs, as they must.
+        for (p, uv) in &pieces {
+            let mid_x = p.x > r.x + 0.01 && p.right() < r.right() - 0.01;
+            let mid_y = p.y > r.y + 0.01 && p.bottom() < r.bottom() - 0.01;
+            let sx = (uv[2] - uv[0]) / texel[0] / p.width;
+            let sy = (uv[3] - uv[1]) / texel[1] / p.height;
+            assert!(
+                (!mid_x || sx <= 2.0 + 1e-3) && (!mid_y || sy <= 2.0 + 1e-3),
+                "{w}x{h}: {p:?} squeezes its middle art {sx}x{sy}"
+            );
+        }
+    }
+    // The tall element's middle row still shows the whole 24 texel middle.
+    let (r, pieces) = sliced_pieces(slice, 64.0, 60.0);
+    let left = pieces
+        .iter()
+        .find(|(p, _)| (p.x - r.x).abs() < 0.01 && (p.y - r.y - 12.0).abs() < 0.01)
+        .expect("the left edge");
+    assert!(
+        ((left.1[3] - left.1[1]) / texel[1] - 24.0).abs() < 1e-3,
+        "{left:?}"
     );
 }
 
