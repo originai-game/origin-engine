@@ -459,6 +459,10 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
     // whose cooked output changed loads again under the handle it had.
     let (_, failed) = super::assets::refresh(eng);
     eng.state.borrow_mut().warnings.extend(failed);
+    // And a timeline whose cooked output changed plays its edit from the
+    // time it had (its playback is the og.timeline state block, restored).
+    let failed = super::timeline::refresh(eng);
+    eng.state.borrow_mut().warnings.extend(failed);
 }
 
 /// One JSON-RPC call through the probe, with the runtime's additions to

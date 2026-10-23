@@ -501,7 +501,8 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
 }
 
 /// After a hot reload (`og dev` cooks before it rebuilds the bundle): every
-/// open bundle's manifest is read again, and each glTF whose cooked outputs
+/// open bundle's manifest is read again (whatever is loaded: timelines
+/// refresh against it too), and each glTF whose cooked outputs
 /// changed (the model or its `#` textures, by hash) loads again into its own
 /// asset index, so Model components keep their handle and draw the edit.
 /// The old version's meshes and materials stay in the render scene, unused.
@@ -535,9 +536,8 @@ pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
             })
             .collect()
     };
-    if models.is_empty() {
-        return (Vec::new(), Vec::new());
-    }
+    // Every manifest is read again, models or not: timelines and the
+    // other assets read again after this compare against it.
     {
         let mut assets = eng.assets.borrow_mut();
         for entry in &mut assets.entries {

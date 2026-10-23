@@ -126,6 +126,9 @@ fn bits(v: &Value) -> u64 {
 /// (handle and seconds) and, per animation track, the clips it resolved.
 pub(crate) struct Loaded {
     pub id: String,
+    /// The cooked output's hash it was read from (a hot reload reads it
+    /// again when the manifest's differs).
+    pub hash: u64,
     pub timeline: Timeline,
     pub paths: BTreeMap<String, Arc<Path>>,
     pub sounds: BTreeMap<String, (u64, f32)>,
@@ -316,11 +319,31 @@ fn load(eng: &Engine, path: &str) -> Result<u64, String> {
     if let Some(&h) = lock(&reg).by_id.get(&id) {
         return Ok(h);
     }
+    let loaded = decode(eng, &id)?;
+    let mut r = lock(&reg);
+    r.timelines.push(Arc::new(Mutex::new(loaded)));
+    let h = TIMELINE_TAG | r.timelines.len() as u64;
+    r.by_id.insert(id, h);
+    Ok(h)
+}
+
+/// The cooked output hash of `id` in the open bundles (0: not found).
+fn output_hash(eng: &Engine, id: &str) -> u64 {
+    let a = eng.assets.borrow();
+    a.bundle_for(id)
+        .ok()
+        .and_then(|(b, _)| b.output(id).ok().map(|o| o.hash))
+        .unwrap_or(0)
+}
+
+/// Timeline `id` read from its cooked blob, with its paths, sounds and clips.
+fn decode(eng: &Engine, id: &str) -> Result<Loaded, String> {
+    let hash = output_hash(eng, id);
     let timeline = {
         let assets = eng.assets.borrow();
-        let (bytes, bundle) = assets.blob(&id)?;
+        let (bytes, bundle) = assets.blob(id)?;
         bundle
-            .timeline(&id, bytes.bytes())
+            .timeline(id, bytes.bytes())
             .map_err(|e| e.to_string())?
     };
     let mut paths = BTreeMap::new();
@@ -351,18 +374,39 @@ fn load(eng: &Engine, path: &str) -> Result<u64, String> {
             sounds.insert(s.to_string(), (a.sound_handles[i], seconds));
         }
     }
-    let loaded = Loaded {
-        id: id.clone(),
+    Ok(Loaded {
+        id: id.to_string(),
+        hash,
         timeline,
         paths,
         sounds,
         clips,
-    };
-    let mut r = lock(&reg);
-    r.timelines.push(Arc::new(Mutex::new(loaded)));
-    let h = TIMELINE_TAG | r.timelines.len() as u64;
-    r.by_id.insert(id, h);
-    Ok(h)
+    })
+}
+
+/// After a hot reload (`og dev` cooks an edit before it reloads; the
+/// bundles' manifests were read again): every loaded timeline whose cooked
+/// output changed is read again into its own handle, so an og.Timeline
+/// playing it goes on from its time (its state block untouched) with the
+/// edited tracks. Answers why any failed (that one keeps its old tracks).
+pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
+    let loaded: Vec<Arc<Mutex<Loaded>>> = lock(&registry(eng.id)).timelines.clone();
+    let mut failed = Vec::new();
+    for t in loaded {
+        let (id, hash) = {
+            let l = lock(&t);
+            (l.id.clone(), l.hash)
+        };
+        let now = output_hash(eng, &id);
+        if now == 0 || now == hash {
+            continue;
+        }
+        match decode(eng, &id) {
+            Ok(fresh) => *lock(&t) = fresh,
+            Err(e) => failed.push(format!("timeline {id}: {e}")),
+        }
+    }
+    failed
 }
 
 /// A model's skeleton and clips by name (og.load.animation of it).
