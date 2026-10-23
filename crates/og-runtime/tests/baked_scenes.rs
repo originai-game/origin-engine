@@ -320,7 +320,7 @@ fn a_render_snapshot_restores_the_bake_with_its_world() {
         before,
         "the restored box draws its bake as before"
     );
-    assert_eq!(reported(engine)[0].1, true);
+    assert!(reported(engine)[0].1, "the hall is reported baked");
 
     render_restore(engine, &empty).expect("restore");
     frame(engine);
