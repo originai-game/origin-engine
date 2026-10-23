@@ -18,7 +18,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 4444</sub>
+<sub>`api.ogt` line 4648</sub>
 
 ## Contents
 
@@ -51,7 +51,8 @@ module load {
 | [`og.load.lut`](#fn-lut) | function | A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. One in a streaming group's pack loads once its group is resident (refused before, naming the group); while the group is unloaded PostEffects.lut grades nothing with it, and it comes back under the same handle. |
 | [`og.load.environment`](#fn-environment) | function | A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it; `prefiltered true` takes a KTX2 cube's own mip chain as those levels instead (one already GGX-prefiltered by cmgen, IBLBaker or the glTF IBL sampler: level k of L at roughness k / (L - 1)), at the file's own size, without filtering it again. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path. |
 | [`og.load.emitter`](#fn-emitter) | function | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the og-game skill's Effects section gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off \| life <cycles> \| fps <n> \| random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path. |
-| [`og.load.shader`](#fn-shader) | function | A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path. |
+| [`og.load.shader`](#fn-shader) | function | A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots; the og-game skill's Full custom shaders section), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path. |
+| [`og.load.post`](#fn-post) | function | A custom post pass for PostEffects.custom1 to custom4, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float\|vec2\|vec3\|vec4\|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path. |
 | [`og.load.texture`](#fn-texture) | function | Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load. |
 | [`og.load.textureArray`](#fn-textureArray) | function | Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color\|normal\|linear\|pixel` and one `layer "<file>"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array. |
 | [`og.load.skin`](#fn-skin) | function | Load a cooked UI skin (an `.ogt` of `type skin`: the atlas and its nine-slice frames, ornaments, palette, radii, type ramp, fonts, icons, motion and sounds; the grammar is og-ui's `skin` module) for UiDesc.skin. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. |
@@ -103,7 +104,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 4573</sub>
+<sub>`api.ogt` line 4780</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -133,7 +134,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 4580</sub>
+<sub>`api.ogt` line 4787</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -161,7 +162,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 4587</sub>
+<sub>`api.ogt` line 4794</sub>
 
 <a id="fn-gltf"></a>
 
@@ -196,7 +197,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 4593</sub>
+<sub>`api.ogt` line 4800</sub>
 
 <a id="fn-scene"></a>
 
@@ -226,7 +227,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 4602</sub>
+<sub>`api.ogt` line 4809</sub>
 
 <a id="fn-font"></a>
 
@@ -256,7 +257,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 4609</sub>
+<sub>`api.ogt` line 4816</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -286,7 +287,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 4616</sub>
+<sub>`api.ogt` line 4823</sub>
 
 <a id="fn-sound"></a>
 
@@ -319,7 +320,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 4623</sub>
+<sub>`api.ogt` line 4830</sub>
 
 <a id="fn-lut"></a>
 
@@ -349,7 +350,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 4631</sub>
+<sub>`api.ogt` line 4838</sub>
 
 <a id="fn-environment"></a>
 
@@ -379,7 +380,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 4638</sub>
+<sub>`api.ogt` line 4845</sub>
 
 <a id="fn-emitter"></a>
 
@@ -409,13 +410,13 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 4645</sub>
+<sub>`api.ogt` line 4852</sub>
 
 <a id="fn-shader"></a>
 
 ### `og.load.shader`
 
-A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path.
+A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots; the og-game skill's Full custom shaders section), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path.
 
 ```ts
 og.load.shader(world: World, path: string): Result<Shader>
@@ -432,14 +433,44 @@ Binding symbol `og_load_shader` · publish builds: kept
 
 ```ogt
 fn shader {
-  doc "A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path."
+  doc "A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots; the og-game skill's Full custom shaders section), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path."
   param world World "The world whose renderer owns it."
   param path String "The asset id, such as `shaders/dissolve.ogt`."
   returns Result.Shader "Refused for a path not in the bundle or not a shader."
 }
 ```
 
-<sub>`api.ogt` line 4652</sub>
+<sub>`api.ogt` line 4859</sub>
+
+<a id="fn-post"></a>
+
+### `og.load.post`
+
+A custom post pass for PostEffects.custom1 to custom4, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.
+
+```ts
+og.load.post(world: World, path: string): Result<Post>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns it. |
+| `path` | `string` | no | The asset id, such as `post/crt.ogt`. |
+
+**Returns** `Result<Post>`: Refused for a path not in the bundle or not a post pass.
+
+Binding symbol `og_load_post` · publish builds: kept
+
+```ogt
+fn post {
+  doc "A custom post pass for PostEffects.custom1 to custom4, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path."
+  param world World "The world whose renderer owns it."
+  param path String "The asset id, such as `post/crt.ogt`."
+  returns Result.Post "Refused for a path not in the bundle or not a post pass."
+}
+```
+
+<sub>`api.ogt` line 4866</sub>
 
 <a id="fn-texture"></a>
 
@@ -472,7 +503,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 4659</sub>
+<sub>`api.ogt` line 4873</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -505,7 +536,7 @@ fn textureArray {
 }
 ```
 
-<sub>`api.ogt` line 4667</sub>
+<sub>`api.ogt` line 4881</sub>
 
 <a id="fn-skin"></a>
 
@@ -535,7 +566,7 @@ fn skin {
 }
 ```
 
-<sub>`api.ogt` line 4675</sub>
+<sub>`api.ogt` line 4889</sub>
 
 <a id="fn-look"></a>
 
@@ -565,7 +596,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 4682</sub>
+<sub>`api.ogt` line 4896</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -595,7 +626,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 4689</sub>
+<sub>`api.ogt` line 4903</sub>
 
 <a id="fn-palette"></a>
 
@@ -625,7 +656,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 4696</sub>
+<sub>`api.ogt` line 4910</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -655,7 +686,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 4703</sub>
+<sub>`api.ogt` line 4917</sub>
 
 <a id="fn-status"></a>
 
@@ -685,7 +716,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 4710</sub>
+<sub>`api.ogt` line 4924</sub>
 
 <a id="fn-error"></a>
 
@@ -715,7 +746,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 4717</sub>
+<sub>`api.ogt` line 4931</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -745,7 +776,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 4724</sub>
+<sub>`api.ogt` line 4938</sub>
 
 <a id="fn-animation"></a>
 
@@ -778,7 +809,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 4731</sub>
+<sub>`api.ogt` line 4945</sub>
 
 <a id="fn-rig"></a>
 
@@ -808,7 +839,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 4739</sub>
+<sub>`api.ogt` line 4953</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -838,7 +869,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 4746</sub>
+<sub>`api.ogt` line 4960</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -868,7 +899,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 4753</sub>
+<sub>`api.ogt` line 4967</sub>
 
 <a id="fn-video"></a>
 
@@ -898,7 +929,7 @@ fn video {
 }
 ```
 
-<sub>`api.ogt` line 4760</sub>
+<sub>`api.ogt` line 4974</sub>
 
 <a id="fn-videoInfo"></a>
 
@@ -928,7 +959,7 @@ fn videoInfo {
 }
 ```
 
-<sub>`api.ogt` line 4767</sub>
+<sub>`api.ogt` line 4981</sub>
 
 <a id="fn-timeline"></a>
 
@@ -958,7 +989,7 @@ fn timeline {
 }
 ```
 
-<sub>`api.ogt` line 4774</sub>
+<sub>`api.ogt` line 4988</sub>
 
 <a id="fn-rig2d"></a>
 
@@ -988,7 +1019,7 @@ fn rig2d {
 }
 ```
 
-<sub>`api.ogt` line 4781</sub>
+<sub>`api.ogt` line 4995</sub>
 
 ## Components, resources and events
 
@@ -1011,6 +1042,7 @@ Token `og.Model`, registered under the schema name `og.Model`; its value type is
 | `castShadow` | `boolean` | `true` | — | — | — | Every mesh of the model casts shadows, as Mesh.castShadow: drawn into the sun's cascades and the shadowed lights' maps. On by default, unlike Mesh's (a loaded model casts, as it always has); false takes this instance out of every shadow pass. world.instantiate of a glTF and a scene's `model` line set it from the load's GltfDesc.castShadow, unless the scene gives the entity a `Model` table (whose castShadow is on unless it says false). |
 | `receiveShadow` | `boolean` | `true` | — | — | — | Every mesh of the model receives shadows, as Mesh.receiveShadow; false lights this instance as if unshadowed by every light. On by default. Set as castShadow is, from GltfDesc.receiveShadow or the scene's `Model` table. |
 | `visible` | `boolean` | `true` | — | — | — | Whether it is drawn, as Mesh.visible: false skips every draw of this instance (its meshes, its shadows) while it keeps its transform, its animation and its physics, so a ghost car or a pickup waiting to respawn is hidden without moving it away. |
+| `layers` | `number` | `1` | — | — | — | Three.js layers of every mesh of the model, as Mesh.layers. |
 
 ```ogt
 component Model {
@@ -1037,10 +1069,13 @@ component Model {
   field visible bool "Whether it is drawn, as Mesh.visible: false skips every draw of this instance (its meshes, its shadows) while it keeps its transform, its animation and its physics, so a ghost car or a pickup waiting to respawn is hidden without moving it away." {
     default true
   }
+  field layers u32 "Three.js layers of every mesh of the model, as Mesh.layers." {
+    default 1
+  }
 }
 ```
 
-<sub>`api.ogt` line 4547</sub>
+<sub>`api.ogt` line 4751</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -1063,7 +1098,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 4788</sub>
+<sub>`api.ogt` line 5002</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1088,7 +1123,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 4794</sub>
+<sub>`api.ogt` line 5008</sub>
 
 ## Types
 
@@ -1104,7 +1139,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 4450</sub>
+<sub>`api.ogt` line 4654</sub>
 
 <a id="type-Font"></a>
 
@@ -1118,7 +1153,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 4451</sub>
+<sub>`api.ogt` line 4655</sub>
 
 <a id="type-Sound"></a>
 
@@ -1132,7 +1167,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 4452</sub>
+<sub>`api.ogt` line 4656</sub>
 
 <a id="type-Skin"></a>
 
@@ -1146,7 +1181,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Skin "A cooked UI skin: its atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 4453</sub>
+<sub>`api.ogt` line 4657</sub>
 
 <a id="type-TextureArray"></a>
 
@@ -1160,7 +1195,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
 ```
 
-<sub>`api.ogt` line 4454</sub>
+<sub>`api.ogt` line 4658</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -1185,7 +1220,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 4477</sub>
+<sub>`api.ogt` line 4681</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -1215,7 +1250,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 4484</sub>
+<sub>`api.ogt` line 4688</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -1240,7 +1275,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 4496</sub>
+<sub>`api.ogt` line 4700</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -1263,7 +1298,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 4504</sub>
+<sub>`api.ogt` line 4708</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -1296,7 +1331,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 4511</sub>
+<sub>`api.ogt` line 4715</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1327,7 +1362,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 4523</sub>
+<sub>`api.ogt` line 4727</sub>
 
 <a id="type-TextureArrayInfo"></a>
 
@@ -1358,7 +1393,7 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 4536</sub>
+<sub>`api.ogt` line 4740</sub>
 
 ## Column kinds
 
@@ -1379,7 +1414,7 @@ column TextureArray {
 }
 ```
 
-<sub>`api.ogt` line 4456</sub>
+<sub>`api.ogt` line 4660</sub>
 
 ```ogt
 column Asset {
@@ -1390,7 +1425,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 4463</sub>
+<sub>`api.ogt` line 4667</sub>
 
 ```ogt
 column Sound {
@@ -1401,4 +1436,4 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 4470</sub>
+<sub>`api.ogt` line 4674</sub>

@@ -1603,8 +1603,14 @@ pub fn og_render_capabilities(world: u32) -> String {
                 "stylise": og_render::STYLISE_DRAWN,
             })
         })
+        .map(|mut c| {
+            if let (Value::Object(c), Value::Object(v)) = (&mut c, super::views::capabilities(&rs)) {
+                c.extend(v);
+            }
+            c
+        })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [] }))
+    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0 }))
         .to_string()
 }
 

@@ -46,6 +46,8 @@ struct Target {
     mesh: MeshHandle,
     transform: Mat4,
     visible: bool,
+    /// Its og.Mesh's or og.Model's three.js layer mask.
+    layers: u32,
 }
 
 #[derive(Default)]
@@ -569,6 +571,7 @@ fn targets(world: &World, rs: &RenderState, h: &mut Hierarchy) -> Vec<Target> {
                 mesh,
                 transform: h.world_of(r.entity),
                 visible: r.visible,
+                layers: r.layers,
             });
         }
     }
@@ -580,6 +583,7 @@ fn targets(world: &World, rs: &RenderState, h: &mut Hierarchy) -> Vec<Target> {
             };
             let m = h.world_of(e);
             let visible = flag(&v, "visible", true);
+            let layers = v["layers"].as_u64().map_or(1, |x| x as u32);
             for &(mesh, _, local) in parts.iter() {
                 out.push(Target {
                     entity: e,
@@ -591,6 +595,7 @@ fn targets(world: &World, rs: &RenderState, h: &mut Hierarchy) -> Vec<Target> {
                     mesh,
                     transform: m * local,
                     visible,
+                    layers,
                 });
             }
         }
@@ -632,10 +637,9 @@ pub fn og_render_raycast(world: u32, ray: String, desc: Option<String>) -> Strin
         };
         let first = flag(&d, "first", false);
         let invisible = flag(&d, "invisible", false);
-        // Every mesh is on layer 1 until per-object layers land.
-        if d["layers"].as_u64().unwrap_or(1) & 1 == 0 {
-            return Ok(json!([]));
-        }
+        // Three.js layers: a mesh is tested when its mask shares a bit
+        // (`super::views`).
+        let layers = d["layers"].as_u64().map_or(1, |x| x as u32);
         let list: Rc<Vec<Target>> = if running(eng.id).is_some() {
             let rs = eng.render.borrow();
             match &rs.geo.record {
@@ -653,7 +657,10 @@ pub fn og_render_raycast(world: u32, ray: String, desc: Option<String>) -> Strin
         let RenderState { geo: g, scene, .. } = &mut *rs;
         let mut hits = Vec::new();
         let mut reach = max;
-        for t in list.iter().filter(|t| t.visible || invisible) {
+        for t in list
+            .iter()
+            .filter(|t| (t.visible || invisible) && t.layers & layers != 0)
+        {
             let det = t.transform.determinant();
             if !det.is_finite() || det.abs() < 1e-12 {
                 continue;
@@ -884,7 +891,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
     // og.Lines and og.Points.
     if let Some(layout) = rs.draw.lines.clone() {
         for (e, v) in super::fx::rows(world, Some(&layout)) {
-            if !flag(&v, "visible", true) {
+            // Off the main camera's layers: not drawn.
+            let layers = v["layers"].as_u64().map_or(1, |x| x as u32);
+            if !flag(&v, "visible", true) || layers & rs.scene.camera_layers == 0 {
                 continue;
             }
             let alpha = num(&v, "opacity", 1.0).clamp(0.0, 1.0);
@@ -909,7 +918,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
     }
     if let Some(layout) = rs.draw.points.clone() {
         for (e, v) in super::fx::rows(world, Some(&layout)) {
-            if !flag(&v, "visible", true) {
+            // Off the main camera's layers: not drawn.
+            let layers = v["layers"].as_u64().map_or(1, |x| x as u32);
+            if !flag(&v, "visible", true) || layers & rs.scene.camera_layers == 0 {
                 continue;
             }
             let alpha = num(&v, "opacity", 1.0).clamp(0.0, 1.0);

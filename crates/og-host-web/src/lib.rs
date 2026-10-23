@@ -683,6 +683,13 @@ mod canvas {
         fn pass_timings(&self) -> Vec<(String, f64)> {
             self.renderer.pass_timings().to_vec()
         }
+        fn post_errors(&self, scene: &RenderScene) -> Vec<(u32, String)> {
+            self.renderer
+                .post_errors(scene)
+                .into_iter()
+                .map(|(h, e)| (h.0, e))
+                .collect()
+        }
         /// Request on one call, answer on a later one: the first call draws
         /// offscreen and starts the readback; a later call at the same size
         /// answers the frame once the copy has landed (the scene as it was

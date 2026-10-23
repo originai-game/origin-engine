@@ -259,6 +259,12 @@ export interface HostAbi<A, V> {
   og_render_points(world: number, desc: string | undefined): string;
   /** `og.render.raycast` */
   og_render_raycast(world: number, ray: string, desc: string | undefined): string;
+  /** `og.render.renderTarget` */
+  og_render_render_target(world: number, desc: string | undefined): string;
+  /** `og.render.setPostParam` */
+  og_render_set_post_param(world: number, post: number, name: string, value: string): string;
+  /** `og.render.postErrors` */
+  og_render_post_errors(world: number): string;
   /** `og.load.bundle` */
   og_load_bundle(world: number, path: string): string;
   /** `og.load.bundleInfo` */
@@ -283,6 +289,8 @@ export interface HostAbi<A, V> {
   og_load_emitter(world: number, path: string): string;
   /** `og.load.shader` */
   og_load_shader(world: number, path: string): string;
+  /** `og.load.post` */
+  og_load_post(world: number, path: string): string;
   /** `og.load.texture` */
   og_load_texture(world: number, path: string): string;
   /** `og.load.textureArray` */
@@ -873,6 +881,9 @@ export const SYMBOLS: readonly string[] = [
   "og_render_lines",
   "og_render_points",
   "og_render_raycast",
+  "og_render_render_target",
+  "og_render_set_post_param",
+  "og_render_post_errors",
   "og_load_bundle",
   "og_load_bundle_info",
   "og_load_default_bundle",
@@ -885,6 +896,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_environment",
   "og_load_emitter",
   "og_load_shader",
+  "og_load_post",
   "og_load_texture",
   "og_load_texture_array",
   "og_load_skin",

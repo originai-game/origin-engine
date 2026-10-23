@@ -141,6 +141,12 @@ export interface ColumnKinds {
   StyliseSpace: { readonly array: Uint32Array; readonly stride: 1; readonly value: StyliseSpace };
   /** A LineMode field: the variant's index. */
   LineMode: { readonly array: Uint32Array; readonly stride: 1; readonly value: LineMode };
+  /** A RenderTargetFormat field: the variant's index. */
+  RenderTargetFormat: { readonly array: Uint32Array; readonly stride: 1; readonly value: RenderTargetFormat };
+  /** A RenderTarget handle field (0 is none). */
+  RenderTarget: { readonly array: Uint32Array; readonly stride: 2; readonly value: RenderTarget };
+  /** A Post handle field (0 is none). */
+  Post: { readonly array: Uint32Array; readonly stride: 2; readonly value: Post };
   /** A TextureArray handle field (0 is none). */
   TextureArray: { readonly array: Uint32Array; readonly stride: 2; readonly value: TextureArray };
   /** An Asset handle field. */
@@ -2839,6 +2845,12 @@ export interface Camera {
    */
   zoneScrollTime: number;
   /**
+   * Three.js layers, as Camera.layers.mask: the frame draws the meshes, models and world sprites whose layers share a bit with it. 1 (layer 0) by default, as every object's.
+   *
+   * @default 1
+   */
+  layers: number;
+  /**
    * Rotate the camera to look at a point, as three.js Camera.lookAt.
    *
    * @param target The point to look at.
@@ -3844,6 +3856,12 @@ export interface Mesh {
    * @tunable
    */
   materialLayer: number;
+  /**
+   * Three.js layers, as Object3D.layers.mask: bit n set puts it on layer n. A camera (og.Camera, og.CameraView, og.Mirror) draws it when their masks share a bit, and og.render.raycast tests it when its own `layers` does. Shadow maps take every caster whatever its layers, so a body hidden from a first-person camera still casts.
+   *
+   * @default 1
+   */
+  layers: number;
 }
 
 /**
@@ -4528,6 +4546,16 @@ export interface PostEffects {
   shakeFrequency: number;
   /** The shake's noise seed. */
   shakeSeed: number;
+  /**
+   * The first custom post pass (og.load.post, a `type post` asset; 0 is none). PostEffects.custom1 to custom4 are an ordered list: each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (it turns the prepass on). Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped.
+   */
+  custom1: Post;
+  /** The second custom post pass, over the first's output (0 skips the slot). */
+  custom2: Post;
+  /** The third custom post pass. */
+  custom3: Post;
+  /** The fourth custom post pass. */
+  custom4: Post;
 }
 
 /**
@@ -5878,6 +5906,12 @@ export interface Sprite {
    * @default true
    */
   visible: boolean;
+  /**
+   * Three.js layers, as Mesh.layers: a world sprite is drawn by the cameras whose masks share a bit with it (a screen sprite draws on every camera's frame).
+   *
+   * @default 1
+   */
+  layers: number;
 }
 
 /**
@@ -6188,12 +6222,22 @@ export interface RenderCapabilities {
    * The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn.
    */
   readonly stylise: readonly string[];
+  /**
+   * Whether a render target made with `depth` gets its view's depth drawn (the full tier). WebGL2 cannot read a depth buffer in a shader: there the depth texture stays cleared to 0, and every other part of the target draws.
+   */
+  readonly renderTargetDepth: boolean;
+  /** The largest side of a render target (the device's largest 2D texture). */
+  readonly maxRenderTargetSize: number;
+  /**
+   * The most custom post passes a frame runs (PostEffects.custom1 to custom4 on every tier).
+   */
+  readonly maxCustomPosts: number;
 }
 
 
 
 /**
- * A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader and the parameters they read.
+ * A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
@@ -6846,6 +6890,12 @@ export interface Lines {
    * @default true
    */
   visible: boolean;
+  /**
+   * Three.js layers, as Mesh.layers: drawn by the main camera when its mask shares a bit (secondary cameras do not draw lines).
+   *
+   * @default 1
+   */
+  layers: number;
 }
 
 /**
@@ -6896,6 +6946,12 @@ export interface Points {
    * @default true
    */
   visible: boolean;
+  /**
+   * Three.js layers, as Mesh.layers: drawn by the main camera when its mask shares a bit (secondary cameras do not draw points).
+   *
+   * @default 1
+   */
+  layers: number;
 }
 
 /**
@@ -6919,7 +6975,7 @@ export interface RaycastGeometryDesc {
    */
   readonly first?: boolean;
   /**
-   * A bit mask of the layers tested, as three.js Raycaster.layers: an entity's meshes are tested when its layers share a bit with it. Every mesh is on layer 1 (bit 0) until per-object layers land, so the default tests them all.
+   * A bit mask of the layers tested, as three.js Raycaster.layers: an og.Mesh or og.Model is tested when its own layers (Mesh.layers, Model.layers, 1 by default) share a bit with it, so the default tests every mesh on layer 0.
    *
    * @default 1
    */
@@ -6958,6 +7014,274 @@ export interface GeometryHit {
   readonly uv: Vector2;
   /** The triangle's index in the geometry, as three.js faceIndex. */
   readonly faceIndex: number;
+}
+
+
+/**
+ * How a render target's colour is stored.
+ * - `"ldr"`: 8-bit sRGB: the view's finished image (exposed with its camera's exposure and tone mapped with RenderSettings' curve), as a loaded colour texture: a monitor, a minimap, a portrait (show it with an unlit material's map or a sprite).
+ * - `"hdr"`: 16-bit float, linear: the view's radiance before exposure and tone mapping, exposed once with the frame that shows it: a mirror or a portal (show it as a material's emissiveMap with color black).
+ */
+export type RenderTargetFormat = "ldr" | "hdr";
+
+/**
+ * A RenderTargetFormat field: the variant's index.
+ *
+ * A `RenderTargetFormat` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function RenderTargetFormat(value?: RenderTargetFormat, options?: FieldOptions): FieldSpec<"RenderTargetFormat">;
+
+/**
+ * A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type RenderTarget = number & { readonly [handleType]: "RenderTarget" };
+
+/**
+ * A RenderTarget handle field (0 is none).
+ *
+ * A `RenderTarget` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function RenderTarget(value?: RenderTarget, options?: FieldOptions): FieldSpec<"RenderTarget">;
+
+/**
+ * A render target's size and storage, as three.js WebGLRenderTarget's width, height, type and depthTexture.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RenderTargetDesc {
+  /**
+   * Its width in texels.
+   *
+   * @default 512
+   * @range 1..
+   */
+  readonly width?: number;
+  /**
+   * Its height in texels.
+   *
+   * @default 512
+   * @range 1..
+   */
+  readonly height?: number;
+  /**
+   * How its colour is stored.
+   *
+   * @default "ldr"
+   */
+  readonly format?: RenderTargetFormat;
+  /**
+   * Keep the view's depth too, as a second texture (RenderTargetInfo.depthTexture): its linear view depth from near (0) to far (1) in red, green and blue. Drawn on the full tier (RenderCapabilities.renderTargetDepth).
+   *
+   * @default false
+   */
+  readonly depth?: boolean;
+}
+
+/** What og.render.renderTarget made. */
+export interface RenderTargetInfo {
+  /** The target, for CameraView.target and Mirror.target. */
+  readonly target: RenderTarget;
+  /**
+   * Its colour: any material map, og.Sprite, og.render.sprite or og.ui image shows it, as drawn by the last camera that drew into it (transparent black before).
+   */
+  readonly texture: Texture;
+  /** Its depth (RenderTargetDesc.depth); 0 without. */
+  readonly depthTexture: Texture;
+  /** Its width in texels. */
+  readonly width: number;
+  /** Its height in texels. */
+  readonly height: number;
+}
+
+
+/**
+ * A secondary camera, as a second three.js camera rendered with setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z, as og.Camera) into a render target (target), or, without one, into a rect of the frame (viewport: split-screen, picture-in-picture) over the finished image and under the UI.
+ * It draws the opaque meshes and models on its layers (skinned and with any material: hooks and full shaders run their vertex and fragment entries), the terrain and the sky, lit by the frame's lights and shadowed by its shadow maps. Transparent meshes, sprites, particles, text, lines and the post effects are the main camera's. Views draw lowest order first, all before the frame.
+ *
+ * The value of the `CameraView` component (token `og.CameraView`).
+ */
+export interface CameraView {
+  /** The target it draws into; 0 draws into the viewport rect of the frame. */
+  target: RenderTarget;
+  /**
+   * The viewport's left edge, as a fraction of the frame's width (without a target).
+   *
+   * @range 0..1
+   */
+  viewportX: number;
+  /**
+   * The viewport's top edge, as a fraction of the frame's height.
+   *
+   * @range 0..1
+   */
+  viewportY: number;
+  /**
+   * The viewport's width, as a fraction of the frame's.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  viewportWidth: number;
+  /**
+   * The viewport's height, as a fraction of the frame's.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  viewportHeight: number;
+  /**
+   * The vertical field of view, as og.Camera.fov.
+   *
+   * @default 50
+   * @range 1..179
+   * @unit deg (degrees)
+   * @tunable
+   */
+  fov: number;
+  /**
+   * The near clipping plane.
+   *
+   * @default 0.1
+   * @range 0.001..
+   * @unit m (metres)
+   */
+  near: number;
+  /**
+   * The far clipping plane.
+   *
+   * @default 2000
+   * @range 0.01..
+   * @unit m (metres)
+   */
+  far: number;
+  /**
+   * The zoom factor, as og.Camera.zoom.
+   *
+   * @default 1
+   * @range 0.01..100
+   */
+  zoom: number;
+  /** An orthographic projection of `height` world units. */
+  orthographic: boolean;
+  /**
+   * The visible world height of the orthographic projection.
+   *
+   * @default 10
+   * @range 0.01..
+   * @unit m (metres)
+   */
+  height: number;
+  /**
+   * Its exposure before tone mapping (an ldr target and a viewport).
+   *
+   * @default 1
+   * @range 0..16
+   * @tunable
+   */
+  exposure: number;
+  /**
+   * Three.js layers, as og.Camera.layers: it draws the objects whose layers share a bit with it.
+   *
+   * @default 1
+   */
+  layers: number;
+  /** Views draw in ascending order (ties in entity order), all before the frame. */
+  order: number;
+  /** Clear to clearColor instead of drawing the scene's background (sky or colour). */
+  clear: boolean;
+  /**
+   * The linear colour it clears to with clear.
+   *
+   * @default { r: 0, g: 0, b: 0 }
+   */
+  clearColor: Color;
+  /**
+   * Draw once every this many ticks (when the tick is a multiple of it); the target keeps its image between. 0 and 1 draw every frame: a security monitor at 4 costs a quarter.
+   *
+   * @default 1
+   */
+  every: number;
+  /**
+   * Whether it draws.
+   *
+   * @default true
+   */
+  active: boolean;
+}
+
+/**
+ * A planar mirror: the main camera reflected in the entity's xy plane (its local +Z the mirror's facing side), drawn into target fitted to a width by height rect centred on the entity, as a mirrored og.CameraView. Give the mirror's mesh (an og.render.planeGeometry of the same size) a material that reads the target: an hdr target as emissiveMap with color black, or an ldr target as an unlit map. Nothing behind the glass is drawn; seen from behind, it draws nothing.
+ *
+ * The value of the `Mirror` component (token `og.Mirror`).
+ */
+export interface Mirror {
+  /** The target it draws into. */
+  target: RenderTarget;
+  /**
+   * The mirror's width along the entity's local +X.
+   *
+   * @default 1
+   * @range 0.001..
+   * @unit m (metres)
+   */
+  width: number;
+  /**
+   * Its height along local +Y.
+   *
+   * @default 1
+   * @range 0.001..
+   * @unit m (metres)
+   */
+  height: number;
+  /**
+   * Three.js layers it reflects, as og.Camera.layers.
+   *
+   * @default 1
+   */
+  layers: number;
+  /**
+   * Draw once every this many ticks, as CameraView.every.
+   *
+   * @default 1
+   */
+  every: number;
+  /**
+   * Whether it draws.
+   *
+   * @default true
+   */
+  active: boolean;
+}
+
+/**
+ * A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type Post = number & { readonly [handleType]: "Post" };
+
+/**
+ * A Post handle field (0 is none).
+ *
+ * A `Post` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Post(value?: Post, options?: FieldOptions): FieldSpec<"Post">;
+
+
+/** A custom post pass the device failed to compile. */
+export interface PostError {
+  /** The pass. */
+  readonly post: Post;
+  /** The device's message. */
+  readonly message: string;
 }
 
 
@@ -7200,7 +7524,14 @@ export interface Model {
    * @default true
    */
   visible: boolean;
+  /**
+   * Three.js layers of every mesh of the model, as Mesh.layers.
+   *
+   * @default 1
+   */
+  layers: number;
 }
+
 
 
 
@@ -20637,7 +20968,7 @@ export declare namespace og {
   /**
    * The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation.
    */
-  const Camera: ResourceType<{ readonly position: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly background: FieldSpec<"Color">; readonly exposure: FieldSpec<"f32">; readonly trauma: FieldSpec<"f32">; readonly traumaDecay: FieldSpec<"f32">; readonly shakeOffset: FieldSpec<"f32">; readonly shakeRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly punch: FieldSpec<"f32">; readonly punchDecay: FieldSpec<"f32">; readonly kick: FieldSpec<"Vector3">; readonly kickDecay: FieldSpec<"f32">; readonly zoneActive: FieldSpec<"bool">; readonly zoneMin: FieldSpec<"Vector2">; readonly zoneMax: FieldSpec<"Vector2">; readonly zoneFromActive: FieldSpec<"bool">; readonly zoneFromMin: FieldSpec<"Vector2">; readonly zoneFromMax: FieldSpec<"Vector2">; readonly zoneScroll: FieldSpec<"f32">; readonly zoneScrollTime: FieldSpec<"f32"> }, Camera>;
+  const Camera: ResourceType<{ readonly position: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly background: FieldSpec<"Color">; readonly exposure: FieldSpec<"f32">; readonly trauma: FieldSpec<"f32">; readonly traumaDecay: FieldSpec<"f32">; readonly shakeOffset: FieldSpec<"f32">; readonly shakeRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly punch: FieldSpec<"f32">; readonly punchDecay: FieldSpec<"f32">; readonly kick: FieldSpec<"Vector3">; readonly kickDecay: FieldSpec<"f32">; readonly zoneActive: FieldSpec<"bool">; readonly zoneMin: FieldSpec<"Vector2">; readonly zoneMax: FieldSpec<"Vector2">; readonly zoneFromActive: FieldSpec<"bool">; readonly zoneFromMin: FieldSpec<"Vector2">; readonly zoneFromMax: FieldSpec<"Vector2">; readonly zoneScroll: FieldSpec<"f32">; readonly zoneScrollTime: FieldSpec<"f32">; readonly layers: FieldSpec<"u32"> }, Camera>;
   /**
    * Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own.
    * Camera controllers are game-level systems the engine ships in TypeScript (og.systems.cameras); list them in GameDesc.systems: `systems: [...og.systems.cameras, ...yours]`. The first entity carrying one, in query order, drives the camera.
@@ -20692,7 +21023,7 @@ export declare namespace og {
    * Draws a geometry with a material at the entity's MatrixWorld, as a three.js Mesh.
    * The material is a handle from og.render.standardMaterial or from a loaded glTF (GltfInfo.materials); its StandardMaterialDesc maps to the renderer as that struct's docs say.
    */
-  const Mesh: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly materialLayer: FieldSpec<"i32"> }, Mesh>;
+  const Mesh: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly materialLayer: FieldSpec<"i32">; readonly layers: FieldSpec<"u32"> }, Mesh>;
   /**
    * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with three shadow cascades.
    * Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
@@ -20717,7 +21048,7 @@ export declare namespace og {
    * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.
    * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.
    */
-  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32"> }, PostEffects>;
+  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly custom1: FieldSpec<"Post">; readonly custom2: FieldSpec<"Post">; readonly custom3: FieldSpec<"Post">; readonly custom4: FieldSpec<"Post"> }, PostEffects>;
   /**
    * Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.
    * Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised.
@@ -20759,7 +21090,7 @@ export declare namespace og {
    * A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.
    * Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.
    */
-  const Sprite: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly array: FieldSpec<"TextureArray">; readonly arrayLayer: FieldSpec<"u32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly anchor: FieldSpec<"Vector2">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly layer: FieldSpec<"i32">; readonly sortY: FieldSpec<"bool">; readonly flipX: FieldSpec<"bool">; readonly flipY: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly glow: FieldSpec<"f32">; readonly blend: FieldSpec<"SpriteBlend">; readonly castShadow: FieldSpec<"bool">; readonly sliceX: FieldSpec<"Vector2">; readonly sliceY: FieldSpec<"Vector2">; readonly sliceScale: FieldSpec<"f32">; readonly shadow: FieldSpec<"f32">; readonly shadowSize: FieldSpec<"Vector2">; readonly shadowOffset: FieldSpec<"Vector2">; readonly dropShadow: FieldSpec<"f32">; readonly dropShadowHeight: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly visible: FieldSpec<"bool"> }, Sprite>;
+  const Sprite: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly array: FieldSpec<"TextureArray">; readonly arrayLayer: FieldSpec<"u32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly anchor: FieldSpec<"Vector2">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly layer: FieldSpec<"i32">; readonly sortY: FieldSpec<"bool">; readonly flipX: FieldSpec<"bool">; readonly flipY: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly glow: FieldSpec<"f32">; readonly blend: FieldSpec<"SpriteBlend">; readonly castShadow: FieldSpec<"bool">; readonly sliceX: FieldSpec<"Vector2">; readonly sliceY: FieldSpec<"Vector2">; readonly sliceScale: FieldSpec<"f32">; readonly shadow: FieldSpec<"f32">; readonly shadowSize: FieldSpec<"Vector2">; readonly shadowOffset: FieldSpec<"Vector2">; readonly dropShadow: FieldSpec<"f32">; readonly dropShadowHeight: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32"> }, Sprite>;
   /**
    * Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
    */
@@ -20767,11 +21098,20 @@ export declare namespace og {
   /**
    * Draws a geometry's vertices as lines at the entity's MatrixWorld, every frame (three.js Line, LineSegments or LineLoop over a BufferGeometry): a static set of lines kept as data, a level's outline, a track, a constellation. The vertices are taken in order (the geometry's indices are not read), with its vertex colours times color.
    */
-  const Lines: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly mode: FieldSpec<"LineMode">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly worldUnits: FieldSpec<"bool">; readonly depthTest: FieldSpec<"bool">; readonly dashSize: FieldSpec<"f32">; readonly gapSize: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Lines>;
+  const Lines: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly mode: FieldSpec<"LineMode">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly worldUnits: FieldSpec<"bool">; readonly depthTest: FieldSpec<"bool">; readonly dashSize: FieldSpec<"f32">; readonly gapSize: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32"> }, Lines>;
   /**
    * Draws a geometry's vertices as a point cloud at the entity's MatrixWorld, every frame (three.js Points over a BufferGeometry): star fields, scanned surfaces, sparse markers kept as data. Vertex colours times color.
    */
-  const Points: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly size: FieldSpec<"f32">; readonly sizeAttenuation: FieldSpec<"bool">; readonly depthTest: FieldSpec<"bool">; readonly visible: FieldSpec<"bool"> }, Points>;
+  const Points: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly size: FieldSpec<"f32">; readonly sizeAttenuation: FieldSpec<"bool">; readonly depthTest: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32"> }, Points>;
+  /**
+   * A secondary camera, as a second three.js camera rendered with setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z, as og.Camera) into a render target (target), or, without one, into a rect of the frame (viewport: split-screen, picture-in-picture) over the finished image and under the UI.
+   * It draws the opaque meshes and models on its layers (skinned and with any material: hooks and full shaders run their vertex and fragment entries), the terrain and the sky, lit by the frame's lights and shadowed by its shadow maps. Transparent meshes, sprites, particles, text, lines and the post effects are the main camera's. Views draw lowest order first, all before the frame.
+   */
+  const CameraView: ComponentType<{ readonly target: FieldSpec<"RenderTarget">; readonly viewportX: FieldSpec<"f32">; readonly viewportY: FieldSpec<"f32">; readonly viewportWidth: FieldSpec<"f32">; readonly viewportHeight: FieldSpec<"f32">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly exposure: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly order: FieldSpec<"i32">; readonly clear: FieldSpec<"bool">; readonly clearColor: FieldSpec<"Color">; readonly every: FieldSpec<"u32">; readonly active: FieldSpec<"bool"> }, CameraView>;
+  /**
+   * A planar mirror: the main camera reflected in the entity's xy plane (its local +Z the mirror's facing side), drawn into target fitted to a width by height rect centred on the entity, as a mirrored og.CameraView. Give the mirror's mesh (an og.render.planeGeometry of the same size) a material that reads the target: an hdr target as emissiveMap with color black, or an ldr target as an unlit map. Nothing behind the glass is drawn; seen from behind, it draws nothing.
+   */
+  const Mirror: ComponentType<{ readonly target: FieldSpec<"RenderTarget">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly every: FieldSpec<"u32">; readonly active: FieldSpec<"bool"> }, Mirror>;
   /**
    * What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call.
    */
@@ -21001,12 +21341,36 @@ export declare namespace og {
      * @returns Refused for a zero or non-finite direction.
      */
     function raycast(world: World, ray: Ray, desc?: RaycastGeometryDesc): Result<readonly GeometryHit[]>;
+    /**
+     * Make a render target: a texture an og.CameraView or og.Mirror draws into, its colour (RenderTargetInfo.texture) usable by any map, sprite or UI image, as three.js WebGLRenderTarget and its texture. Targets are drawn before the frame, so a material shows this frame's image; one a camera draws while it sees itself (a monitor in the room it films) shows the frame before.
+     *
+     * @param world The world whose renderer owns it.
+     * @param desc Its size, format and depth.
+     * @returns Refused for a side past RenderCapabilities.maxRenderTargetSize.
+     */
+    function renderTarget(world: World, desc?: RenderTargetDesc): Result<RenderTargetInfo>;
+    /**
+     * Set a parameter of a custom post pass, by the name its asset declares: a number for float, two to four for vec2, vec3, vec4 and color. Every frame it runs in reads it.
+     *
+     * @param world The world whose renderer owns the pass.
+     * @param post The pass, from og.load.post.
+     * @param name The parameter's name.
+     * @param value Its value; missing components are 0.
+     * @returns Refused for a pass not loaded in this world or a parameter it does not declare.
+     */
+    function setPostParam(world: World, post: Post, name: string, value: readonly number[]): Result<void>;
+    /**
+     * The custom post passes PostEffects.custom1 to custom4 name that failed to compile on this device, each skipped (the frame draws as without it). The cook validates every pass for each back end, so this is a device's own refusal.
+     *
+     * @param world The world asked.
+     */
+    function postErrors(world: World): readonly PostError[];
   }
   /**
    * Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
    * The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck.
    */
-  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool"> }, Model>;
+  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32"> }, Model>;
   /** A load completed. */
   const AssetReady: EventType<AssetReady>;
   /** A load failed. */
@@ -21105,13 +21469,21 @@ export declare namespace og {
      */
     function emitter(world: World, path: string): Result<ParticleEmitter>;
     /**
-     * A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). Loaded once per path.
+     * A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots; the og-game skill's Full custom shaders section), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path.
      *
      * @param world The world whose renderer owns it.
      * @param path The asset id, such as `shaders/dissolve.ogt`.
      * @returns Refused for a path not in the bundle or not a shader.
      */
     function shader(world: World, path: string): Result<Shader>;
+    /**
+     * A custom post pass for PostEffects.custom1 to custom4, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.
+     *
+     * @param world The world whose renderer owns it.
+     * @param path The asset id, such as `post/crt.ogt`.
+     * @returns Refused for a path not in the bundle or not a post pass.
+     */
+    function post(world: World, path: string): Result<Post>;
     /**
      * Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.
      * Sources are PNG, JPEG or KTX2 files under assets/ (`texture { kind color|normal|linear|pixel }` in `<file>.ogt`). A KTX2's `KTXorientation` and `KTXswizzle` are honoured: one that is not `rd` and `rgba` is decoded, flipped to rows top to bottom and swizzled, and cooked again; one that is (Basis ETC1S or UASTC, or RGBA8, of a colour or linear kind) is taken as it is.

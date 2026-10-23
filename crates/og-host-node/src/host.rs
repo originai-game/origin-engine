@@ -427,6 +427,21 @@ impl RenderApi for NodeHost {
     fn og_render_capabilities(&self, world: u32) -> String {
         rt::og_render_capabilities(world)
     }
+    fn og_render_render_target(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_render_target(world, desc)
+    }
+    fn og_render_set_post_param(
+        &self,
+        world: u32,
+        post: f64,
+        name: String,
+        value: String,
+    ) -> String {
+        rt::og_render_set_post_param(world, post, name, value)
+    }
+    fn og_render_post_errors(&self, world: u32) -> String {
+        rt::og_render_post_errors(world)
+    }
     fn og_render_apply_look(&self, world: u32, look: f64) -> String {
         rt::og_render_apply_look(world, look)
     }
@@ -447,6 +462,9 @@ impl RenderApi for NodeHost {
 impl LoadApi for NodeHost {
     fn og_load_shader(&self, world: u32, path: String) -> String {
         rt::og_load_shader(world, path)
+    }
+    fn og_load_post(&self, world: u32, path: String) -> String {
+        rt::og_load_post(world, path)
     }
     fn og_load_texture(&self, world: u32, path: String) -> String {
         rt::og_load_texture(world, path)

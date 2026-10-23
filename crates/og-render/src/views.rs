@@ -126,19 +126,21 @@ pub(crate) enum Dest {
 /// The frame's views to draw: those due this tick with a live target, in
 /// order. `main`: the main camera (a mirror's eye); `out`: the output size;
 /// `depth`: targets' depth textures are drawn (the full tier: WebGL2 leaves
-/// them cleared, as RenderCapabilities reports).
+/// them cleared, as RenderCapabilities reports); `due(i)`: view `i` draws
+/// whatever its `every` (never drawn yet, or the renderer restored).
 pub(crate) fn plan(
     scene: &crate::RenderScene,
     main: &Camera,
     out: (u32, u32),
     depth: bool,
+    due: impl Fn(usize) -> bool,
 ) -> Vec<ViewPlan> {
     let mut order: Vec<usize> = (0..scene.views.len()).collect();
     order.sort_by_key(|&i| scene.views[i].order);
     let mut plans = Vec::new();
     for i in order {
         let v = &scene.views[i];
-        if v.every > 1 && !scene.tick.is_multiple_of(v.every as u64) {
+        if v.every > 1 && !scene.tick.is_multiple_of(v.every as u64) && !due(i) {
             continue;
         }
         let (dest, size) = match v.target {
@@ -352,6 +354,10 @@ pub(crate) struct ViewSlot {
 #[derive(Default)]
 pub(crate) struct Views {
     pub slots: Vec<Option<ViewSlot>>,
+    /// Set by `Renderer::restore_state`: every view draws on the next
+    /// frame, so a target drawn every few ticks shows the restored world,
+    /// not the image of the run that was cut.
+    pub stale: bool,
     /// By (destination format, entry point, multisampled depth).
     pipelines:
         std::collections::HashMap<(wgpu::TextureFormat, &'static str, bool), wgpu::RenderPipeline>,

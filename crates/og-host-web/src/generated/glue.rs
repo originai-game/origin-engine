@@ -639,6 +639,21 @@ pub fn og_render_raycast(world: u32, ray: String, desc: Option<String>) -> Strin
 }
 
 #[wasm_bindgen]
+pub fn og_render_render_target(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_render_target(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_set_post_param(world: u32, post: f64, name: String, value: String) -> String {
+    <Host as RenderApi>::og_render_set_post_param(&Host, world, post, name, value)
+}
+
+#[wasm_bindgen]
+pub fn og_render_post_errors(world: u32) -> String {
+    <Host as RenderApi>::og_render_post_errors(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_load_bundle(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_bundle(&Host, world, path)
 }
@@ -696,6 +711,11 @@ pub fn og_load_emitter(world: u32, path: String) -> String {
 #[wasm_bindgen]
 pub fn og_load_shader(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_shader(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_load_post(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_post(&Host, world, path)
 }
 
 #[wasm_bindgen]

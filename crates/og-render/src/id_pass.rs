@@ -169,7 +169,9 @@ pub fn render_ids(scene: &RenderScene, sources: &IdSources, width: u32, height: 
     };
     for (i, inst) in scene.instances.iter().enumerate() {
         let id = sources.instances.get(i).copied().unwrap_or(0);
-        let Some(data) = (id != 0).then(|| scene.mesh(inst.mesh)).flatten() else {
+        // The main camera's view: an instance off its layers is not drawn there.
+        let shown = crate::views::layer_of(&scene.instance_layers, i) & scene.camera_layers != 0;
+        let Some(data) = (id != 0 && shown).then(|| scene.mesh(inst.mesh)).flatten() else {
             continue;
         };
         if let Some((c, r)) = sphere(inst.mesh, data) {
@@ -197,7 +199,8 @@ pub fn render_ids(scene: &RenderScene, sources: &IdSources, width: u32, height: 
     }
     for (i, inst) in scene.skinned_instances.iter().enumerate() {
         let id = sources.skinned.get(i).copied().unwrap_or(0);
-        let Some(data) = (id != 0).then(|| scene.mesh(inst.mesh)).flatten() else {
+        let shown = crate::views::layer_of(&scene.skinned_layers, i) & scene.camera_layers != 0;
+        let Some(data) = (id != 0 && shown).then(|| scene.mesh(inst.mesh)).flatten() else {
             continue;
         };
         let palette = scene.joint_palettes.get(inst.palette as usize);

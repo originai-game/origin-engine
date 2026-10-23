@@ -120,6 +120,7 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "environment",
             "emitter",
             "shader",
+            "post",
             "texture",
             "textureArray",
             "skin",

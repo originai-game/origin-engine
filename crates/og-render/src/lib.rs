@@ -595,6 +595,8 @@ pub struct RenderInfo {
     /// Compiled pipelines are kept across runs ([`set_pipeline_cache_dir`]
     /// was given a directory and the backend has a cache: Vulkan).
     pub pipeline_cache: bool,
+    /// The largest side of a 2D texture, so of a render target.
+    pub max_texture_size: u32,
 }
 
 impl RenderInfo {
@@ -2193,6 +2195,7 @@ impl Renderer {
             point_shadows: desc.point_shadows.resolve(tier),
             texture_formats,
             pipeline_cache: false,
+            max_texture_size: limits.max_texture_dimension_2d,
         };
         log::info!(
             "og-render: {} ({:?}, {:?}, {:?}, antialias {:?}, shadows {}x{}², textures {:?}/{:?})",
@@ -4760,7 +4763,9 @@ impl Renderer {
             &camera,
             (self.out_width, self.out_height),
             self.info.tier == Tier::Full,
+            |i| self.views.stale || self.views.slots.get(i).is_none_or(|s| s.is_none()),
         );
+        self.views.stale = false;
         self.views.retain(scene.views.len());
         let view_skinned: Vec<Vec<Batch>> = view_plans
             .iter()
@@ -8060,6 +8065,7 @@ impl Renderer {
             });
         self.post.restore_exposure(&mut encoder, state.exposure);
         self.queue.submit(Some(encoder.finish()));
+        self.views.stale = true;
     }
 }
 

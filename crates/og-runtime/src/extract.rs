@@ -62,6 +62,11 @@ pub trait RenderBackend {
     fn pass_timings(&self) -> Vec<(String, f64)> {
         Vec::new()
     }
+    /// The custom post passes of `scene` the device failed to compile, by
+    /// post index, with its message (og-render's `Renderer::post_errors`).
+    fn post_errors(&self, _scene: &RenderScene) -> Vec<(u32, String)> {
+        Vec::new()
+    }
     /// Draw the scene offscreen at `width`×`height` (0×0: the target's size)
     /// and read it back. Native hosts block on the readback; the web host
     /// answers a frame it requested earlier (request on tick N, answer on
@@ -193,6 +198,8 @@ pub(crate) struct RenderState {
     pub geo: super::geometry::GeoState,
     /// The entity of each drawable of the last extraction (`super::describe`).
     pub ids: super::describe::DrawIds,
+    /// Render targets, secondary cameras and custom post passes (`super::views`).
+    pub views: super::views::ViewState,
 }
 
 impl RenderState {
@@ -230,6 +237,7 @@ impl RenderState {
             hierarchy: Hierarchy::default(),
             geo: Default::default(),
             ids: Default::default(),
+            views: Default::default(),
         }
     }
 }
@@ -487,6 +495,8 @@ pub(crate) struct MeshRow {
     cast: bool,
     /// `receiveShadow`: darkened by the shadow maps.
     receive: bool,
+    /// `layers`: its three.js layer mask (`super::views`).
+    pub layers: u32,
 }
 
 /// A handle field's index, as the JSON rows read it (`as_f64`, then the
@@ -513,6 +523,7 @@ pub(crate) fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
         let l = field("materialLayer")?;
         let s = field("castShadow")?;
         let r = field("receiveShadow")?;
+        let ly = field("layers");
         let q = QueryDesc {
             read: vec![layout.schema.clone()],
             ..QueryDesc::default()
@@ -529,6 +540,10 @@ pub(crate) fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
             let l = a.read::<i32>(l).ok()?;
             let s = a.read::<og_core::reflect::Bool8>(s).ok()?;
             let r = a.read::<og_core::reflect::Bool8>(r).ok()?;
+            let ly = match ly {
+                Some(ly) => Some(a.read::<u32>(ly).ok()?),
+                None => None,
+            };
             out.reserve(a.len());
             for (i, e) in a.entities().iter().enumerate() {
                 out.push(MeshRow {
@@ -541,6 +556,7 @@ pub(crate) fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
                     layer: l[i],
                     cast: s[i].get(),
                     receive: r[i].get(),
+                    layers: ly.as_ref().map_or(1, |ly| ly[i]),
                 });
             }
         }
@@ -563,6 +579,7 @@ pub(crate) fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
                 layer: v["materialLayer"].as_f64().unwrap_or(-1.0) as i32,
                 cast: on(&v, "castShadow", false),
                 receive: on(&v, "receiveShadow", true),
+                layers: v["layers"].as_u64().map_or(1, |x| x as u32),
             }
         })
         .collect()
@@ -595,6 +612,8 @@ pub(crate) struct DrawLayouts {
     /// og.Lines and og.Points (`super::geometry`).
     pub lines: Option<Layout>,
     pub points: Option<Layout>,
+    /// og.CameraView and og.Mirror (`super::views`).
+    pub views: super::views::ViewLayouts,
     /// The engine's physics, for the debug view (`super::geometry`).
     pub physics: Option<og_physics::PhysicsSystem>,
     pub engine: u32,
@@ -640,6 +659,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
 
     // Camera.
     let mut exposure = 1.0f32;
+    scene.camera_layers = camera
+        .as_ref()
+        .and_then(|c| c["layers"].as_u64())
+        .map_or(1, |x| x as u32);
     if let Some(c) = &camera {
         let q = &c["quaternion"];
         let rot = Quat::from_xyzw(
@@ -941,6 +964,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // bounds view).
     super::geometry::extract(world, rs, &mut h, vp);
     super::fx::motion(rs, &keys, tick);
+    // Layer masks, secondary cameras and custom post passes.
+    super::views::extract(world, rs, &keys, &mut h);
     // Which entity each instance came from, for the probe's id pass.
     rs.ids.instances.clear();
     rs.ids.instances.extend(keys.iter().map(|k| k.0));

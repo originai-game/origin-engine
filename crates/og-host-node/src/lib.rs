@@ -505,6 +505,13 @@ impl RenderBackend for OffscreenBackend {
     fn pass_timings(&self) -> Vec<(String, f64)> {
         self.renderer.pass_timings().to_vec()
     }
+    fn post_errors(&self, scene: &og_render::RenderScene) -> Vec<(u32, String)> {
+        self.renderer
+            .post_errors(scene)
+            .into_iter()
+            .map(|(h, e)| (h.0, e))
+            .collect()
+    }
     fn capture(
         &mut self,
         scene: &og_render::RenderScene,
