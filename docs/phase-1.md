@@ -264,6 +264,39 @@ changes.
   above (the wave's end), `og doctor` tests failing in the orb (looks
   environmental).
 
+## Depth wave 3: render-lod, render-targets, render-light (2026-10-23)
+
+The three rendering streams resumed on main c5aa7ff1 and reported the
+same day, S6 first, then S7, then S8. The coordinator merges them in
+§10's order, S6, S8, S7, because each one changes og-render's frame
+graph, `frame.rs`, `scene.rs` and the lit WGSL. What each stream
+landed, its frames and its numbers are in
+`tests/evidence/depth/{render-lod,render-targets,render-light}/NOTES.md`;
+the IDL changes are the CHANGELOG's `## Unreleased` depth wave 3 entry.
+
+- **S6 render-lod** (a14ba640, merged as pushed at 9430bea2) conflicted
+  only in the generated wiki, regenerated after the merge (`og api gen`,
+  `--wiki`, `api check`). The api-surface test then refused
+  `ReflectionProbeMode` as a column kind: the addon in
+  `packages/engine/native` predated the merge, and rebuilt (`OG_GATE=1
+  sh scripts/build.sh`) it takes the column. Three **Metal references**
+  recorded (`OG_GFX_CAPTURE=lod-levels,probe-interior,ssr-wet-floor`),
+  each read beside S6's lavapipe frame: `lod-levels` (the near tree
+  green with the full canopy, the middle one yellow and simpler, the far
+  one orange and smallest, shadows on the ground); `probe-interior` (the
+  chrome sphere shows the blue left wall, the red back wall, the pale
+  ceiling, the grey floor and the green block; nothing of the sky, the
+  one difference to lavapipe a slightly darker lower half);
+  `ssr-wet-floor` (the red sphere and the white panel mirrored in the
+  black floor, the panel's reflection grainy at its foot on both tiers;
+  the dark wedge left of the panel is its shadow, present on both tiers
+  too). The `lod` and `reflections` stations have no playtest, so no
+  station frame is a reference.
+- **Owed to the wave's end**, S6: probe captures skip skinned, terrain,
+  scatter and transparent meshes; one probe per batch, not per instance;
+  SSR reads material factors, not maps; no expect-step station playtest;
+  WebGL2 not run in a browser.
+
 ## Main gate, wave 13 (2026-10-21)
 
 Wave 13 started as wave 12's streams merged, on the web dogfood's twelve

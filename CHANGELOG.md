@@ -135,6 +135,29 @@ additions (a minor bump, §3), by stream:
   the Player's `room.*` (platform-asks #16): until the platform lands it,
   `roomInfo` answers `host: none`.
 
+Depth wave 3 (`docs/depth.md` §6–§8, merged 2026-10-23), API additions (a
+minor bump, §3), by stream:
+
+- `render-lod` (S6), module render: the cook makes LOD levels of every
+  model (`lods 1 0.5 0.25` by default, `lodError`; glTF `MSFT_lod` levels
+  kept; `cook --report` lists them) and the renderer picks one by projected
+  size with hysteresis. `RenderSettings.lodBias` and `og.Model.lodBias`
+  (0 draws the full mesh), `DebugView.lod` (the `debug:lod` command tints
+  by level), `dump_entity`'s `render.lod`, `ProbeTimings.triangles`.
+  `og.ReflectionProbe` (`size`, `resolution`, `mode` `ReflectionProbeMode`
+  baked or realtime, `interval`, `intensity`, `blendDistance`, `visible`;
+  `MAX_REFLECTION_PROBES` 8): six faces captured in a `reflection-probes`
+  pass, GGX-prefiltered, box-projected and blended into the lit shaders.
+  `og bake probes [project] [--commands] [--at] [--size]` writes
+  `cooked/probes/<key>.ogb`, which the runtime loads instead of capturing.
+  Screen-space reflections on the full tier: `PostEffects.ssr`,
+  `ssrMaxDistance`, `ssrThickness`, `ssrSteps`, `ssrFade`, `ssrIntensity`;
+  `RenderCapabilities.ssr` and `reflectionProbes` (`ssr` is false on
+  WebGL2). The prepass's linear depth is `Rg32Float` now, its second
+  channel the reflectivity. fx-showcase stations `lod` (2,000 trees:
+  1,300,812 triangles with LOD against 5,150,788 at `lodBias` 0) and
+  `reflections`.
+
 ## 0.2.0 (2026-10-23)
 
 API additions and changes (a minor bump, §3), by the stream that landed
