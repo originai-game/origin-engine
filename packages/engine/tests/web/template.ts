@@ -15,7 +15,7 @@ import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { webBuild } from "../../src/node/web-build.ts";
-import { ogBin } from "../support/og-bin.ts";
+import { cookProject } from "../support/og-bin.ts";
 
 declare const Bun: {
   serve(o: { port: number; fetch(req: Request): Response | Promise<Response> }): { port: number; stop(): void };
@@ -40,13 +40,7 @@ if (!existsSync(chrome)) {
   console.error(`no Chrome at ${chrome}: pass --chrome <path> or set CHROME`);
   process.exit(1);
 }
-if (!existsSync(join(project, "cooked", ".cook.ogt"))) {
-  const r = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo, stdout: "ignore", stderr: "pipe" });
-  if (r.exitCode !== 0) {
-    console.error(`cooking ${project} failed: ${new TextDecoder().decode(r.stderr)}`);
-    process.exit(1);
-  }
-}
+cookProject(project, repo);
 const entry = resolve(opt("--entry") ?? (existsSync(join(project, "src", "main.ts")) ? join(project, "src", "main.ts") : join(pkg, "examples", "hello.ts")));
 const out = join(pkg, "dist", "test-template");
 const built = await webBuild(project, entry, out, args.includes("--publish"));

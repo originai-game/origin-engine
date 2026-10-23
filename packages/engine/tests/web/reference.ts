@@ -60,7 +60,7 @@ import { fileURLToPath } from "node:url";
 import { settingsOf, webBuild } from "../../src/node/web-build.ts";
 import { Browser, chromePath } from "./cdp.ts";
 import { serve } from "./serve.ts";
-import { ogBin } from "../support/og-bin.ts";
+import { cookProject } from "../support/og-bin.ts";
 import { compareFrames as compare, decodePng, TOLERANCE, type Image } from "../support/png.ts";
 import { encodePng } from "../../src/node/png.ts";
 import { LOOK_COMMANDS, LOOK_FRAMES, LOOK_SHOTS } from "../../../../templates/fx-showcase/tests/looks-script.ts";
@@ -145,10 +145,7 @@ function blit(sheet: Image, cell: Image, i: number, cols: number, into: boolean)
   }
 }
 
-if (!existsSync(join(project, "cooked", ".cook.ogt"))) {
-  const r = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo, stdout: "ignore", stderr: "pipe" });
-  if (r.exitCode !== 0) throw new Error(`cooking ${project}: ${new TextDecoder().decode(r.stderr)}`);
-}
+cookProject(project, repo);
 const dist = join(work, project.split("/").pop()!);
 const built = await webBuild(project, join(project, "src", "main.ts"), dist, false, settingsOf(project));
 if (!built.ok) throw new Error(built.reason);

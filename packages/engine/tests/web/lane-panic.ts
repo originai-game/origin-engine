@@ -22,18 +22,14 @@
 // <out>/lane-panic.json and a screenshot of each card (default
 // dist/test-lane-panic/out). Exits 1 when a check fails.
 
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { settingsOf, webBuild } from "../../src/node/web-build.ts";
 import { Browser, chromePath, type Page } from "./cdp.ts";
 import { serve } from "./serve.ts";
-import { ogBin } from "../support/og-bin.ts";
+import { cookProject } from "../support/og-bin.ts";
 import { FRAME_DEADLINE_MS } from "../../src/web/shell.ts";
-
-declare const Bun: {
-  spawnSync(cmd: string[], o?: { cwd?: string; stdout?: string; stderr?: string }): { exitCode: number; stderr: Uint8Array };
-};
 
 /** How long after the fault the page may take to show the crash. */
 export const CRASH_DEADLINE_MS = 5_000;
@@ -58,10 +54,7 @@ function check(ok: boolean, what: string, detail?: unknown) {
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const project = join(pkg, "tests", "fixtures", "lane-panic");
-if (!existsSync(join(project, "cooked", ".cook.ogt"))) {
-  const r = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo, stdout: "ignore", stderr: "pipe" });
-  if (r.exitCode !== 0) throw new Error(`cooking ${project}: ${new TextDecoder().decode(r.stderr)}`);
-}
+cookProject(project, repo);
 const dist = join(work, "build");
 const built = await webBuild(project, join(project, "src", "main.ts"), dist, true, settingsOf(project));
 if (!built.ok) throw new Error(built.reason);

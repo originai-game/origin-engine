@@ -25,14 +25,14 @@
 // Writes <out>/export-result.json and PNGs (default dist/test-export/out).
 // Exits 1 when a check fails.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { settingsOf, webBuild, type BuildManifest } from "../../src/node/web-build.ts";
 import { Browser, chromePath, type Page } from "./cdp.ts";
 import { serve } from "./serve.ts";
 import { LANES_POOL_DEADLINE_MS } from "../../src/web/host.ts";
-import { ogBin } from "../support/og-bin.ts";
+import { cookProject } from "../support/og-bin.ts";
 
 declare const Bun: {
   spawnSync(cmd: string[], o?: { cwd?: string; stdout?: string; stderr?: string }): { exitCode: number; stderr: Uint8Array };
@@ -66,10 +66,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const builds: Record<string, { dist: string; manifest: BuildManifest; total: { bytes: number; compressed: number }; files: Array<{ path: string; bytes: number; compressed: number }> }> = {};
 for (const game of ["runner", "match3"]) {
   const project = join(repo, "templates", "archetypes", game);
-  if (!existsSync(join(project, "cooked", ".cook.ogt"))) {
-    const r = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo, stdout: "ignore", stderr: "pipe" });
-    if (r.exitCode !== 0) throw new Error(`cooking ${project}: ${new TextDecoder().decode(r.stderr)}`);
-  }
+  cookProject(project, repo);
   const dist = join(work, game);
   const b = await webBuild(project, join(project, "src", "main.ts"), dist, true, settingsOf(project));
   if (!b.ok) throw new Error(b.reason);

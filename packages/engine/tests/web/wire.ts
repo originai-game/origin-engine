@@ -23,17 +23,13 @@
 // (every call and answer, PNGs elided) to --out (default
 // dist/test-wire/transcript.json).
 
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { webBuild, settingsOf } from "../../src/node/web-build.ts";
 import { Browser, chromePath, type Page } from "./cdp.ts";
 import { serve } from "./serve.ts";
-import { ogBin } from "../support/og-bin.ts";
-
-declare const Bun: {
-  spawnSync(cmd: string[], o?: { cwd?: string; stdout?: string; stderr?: string }): { exitCode: number; stderr: Uint8Array };
-};
+import { cookProject } from "../support/og-bin.ts";
 
 const args = process.argv.slice(2);
 const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
@@ -64,10 +60,7 @@ const pngSize = (b64: string) => {
 };
 
 // ── the builds ─────────────────────────────────────────────────────────
-if (!existsSync(join(project, "cooked", ".cook.ogt"))) {
-  const r = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo, stdout: "ignore", stderr: "pipe" });
-  if (r.exitCode !== 0) throw new Error(`cooking ${project}: ${new TextDecoder().decode(r.stderr)}`);
-}
+cookProject(project, repo);
 const dists: Record<string, string> = {};
 for (const kind of ["dev", "publish"] as const) {
   const out = join(work, kind);

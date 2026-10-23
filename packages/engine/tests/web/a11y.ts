@@ -33,13 +33,13 @@
 // Writes <out>/a11y-<tier>.json (default dist/test-a11y/out) and the
 // screenshots of the contrast check. Exits 1 when a check fails.
 
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { settingsOf, webBuild } from "../../src/node/web-build.ts";
 import { Browser, chromePath } from "./cdp.ts";
 import { serve } from "./serve.ts";
-import { ogBin } from "../support/og-bin.ts";
+import { cookProject } from "../support/og-bin.ts";
 
 declare const Bun: {
   build(o: { entrypoints: string[]; target: string; format: string }): Promise<{ success: boolean; logs: unknown[]; outputs: Array<{ text(): Promise<string> }> }>;
@@ -68,10 +68,7 @@ function check(ok: boolean, what: string, detail?: unknown) {
   console.log(`${ok ? "ok  " : "FAIL"} ${what}${!ok && detail !== undefined ? `: ${JSON.stringify(detail).slice(0, 800)}` : ""}`);
 }
 
-if (!existsSync(join(project, "cooked", ".cook.ogt"))) {
-  const r = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo, stdout: "ignore", stderr: "pipe" });
-  if (r.exitCode !== 0) throw new Error(`cooking ${project}: ${new TextDecoder().decode(r.stderr)}`);
-}
+cookProject(project, repo);
 const dist = join(work, "ui-kit");
 const built = await webBuild(project, join(project, "src", "main.ts"), dist, false, settingsOf(project));
 if (!built.ok) throw new Error(built.reason);
