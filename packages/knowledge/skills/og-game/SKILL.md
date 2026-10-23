@@ -2293,8 +2293,9 @@ its layers admit, so keep it cheap with `layers` and `every`.
   radiance and is exposed by the frame that shows it.
 - Bloom, AO, SSR, depth of field, colour grading and custom post passes
   run on the main frame only.
-- In a view, sprites are 2D-lit as in the main frame, but do not glow.
-  2D fluids, screen sprites, the UI and debug draw stay on the main frame.
+- In a view, sprites are 2D-lit and 2D fluids drawn as in the main
+  frame, but sprites do not glow. Screen sprites, the UI and debug draw
+  stay on the main frame.
 
 A viewport view draws over the finished image and under the UI.
 

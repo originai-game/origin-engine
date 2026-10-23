@@ -465,10 +465,12 @@ pub enum ViewFx {
     /// A white sprite on a 2D-lit layer under a dark ambient and a warm
     /// light to its upper right (off: the frame without 2D lighting).
     Lit2d,
+    /// A blue 2D fluid: a blob of metaball particles.
+    Fluid2d,
 }
 
 impl ViewFx {
-    pub const ALL: [ViewFx; 2] = [ViewFx::Ribbon, ViewFx::Lit2d];
+    pub const ALL: [ViewFx; 3] = [ViewFx::Ribbon, ViewFx::Lit2d, ViewFx::Fluid2d];
 }
 
 /// A dark grey wall at z = -1 and the effect `fx` (`on` false: the scene
@@ -528,6 +530,20 @@ pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
                     color: Vec3::new(1.0, 0.7, 0.4),
                     intensity: 2.0,
                     radius: 2.2,
+                    ..Default::default()
+                });
+            }
+            ViewFx::Fluid2d => {
+                let particles: Vec<glam::Vec2> = (0..48)
+                    .map(|i| {
+                        let a = i as f32 * 2.399;
+                        let r = 1.2 * ((i as f32 + 0.5) / 48.0).sqrt();
+                        glam::Vec2::new(r * a.cos(), r * a.sin())
+                    })
+                    .collect();
+                scene.metaballs.push(og_render::Metaballs {
+                    particles: particles.into(),
+                    radius: 0.45,
                     ..Default::default()
                 });
             }

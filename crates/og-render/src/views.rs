@@ -27,8 +27,8 @@
 //! pass draws over its opaque scene, on its layers from its eye:
 //! transparent meshes, particles, trails, ribbons and beams (facing its
 //! eye), lines and points, world sprites and text, its lit sprite layers
-//! through its own 2D light map (`lib.rs`'s view pass); the post effects
-//! are the main camera's.
+//! through its own 2D light map and its 2D fluids from its own fields
+//! (`lib.rs`'s view pass); the post effects are the main camera's.
 //!
 //! Layers: bit `n` of a mask is three.js layer `n`; every object and camera
 //! is on layer 0 (mask 1) unless set. A camera draws an object when their
@@ -355,6 +355,11 @@ pub(crate) struct ViewSlot {
     /// sprite layers multiply with the lights as its camera sees them.
     pub sprite_fx_buffer: wgpu::Buffer,
     pub light_map: Option<((u32, u32), wgpu::TextureView)>,
+    /// Its 2D fluids' field targets of its size (`metaballs.rs`), as many
+    /// as the frame's: the kernels drawn through its camera, composited in
+    /// its sprite order.
+    pub fields: Vec<wgpu::TextureView>,
+    fields_size: (u32, u32),
     /// (size, samples, depth texture drawn): the attachments below.
     key: ((u32, u32), u32, bool),
     pub hdr: wgpu::TextureView,
@@ -441,6 +446,8 @@ impl Views {
                 ),
                 sprite_fx_buffer: buffer("view sprite fx", 16),
                 light_map: None,
+                fields: Vec::new(),
+                fields_size: (0, 0),
                 key,
                 hdr,
                 msaa,
@@ -551,6 +558,7 @@ impl Views {
         lights: bool,
         viewport_format: wgpu::TextureFormat,
         light_map_scale: Option<f32>,
+        fields: usize,
     ) {
         for p in plans {
             let depth_drawn = matches!(p.dest, Dest::Texture { depth: Some(_), .. });
@@ -618,9 +626,17 @@ impl Views {
                 );
                 match slot.light_map.take() {
                     Some((s, v)) if s == size => (s, v),
-                    _ => (size, light_map_texture(device, size)),
+                    _ => (size, hdr_texture(device, "view light map", size)),
                 }
             });
+            // Field targets follow the attachments' size (`slot` remade
+            // them with a new key).
+            if slot.fields.len() != fields || slot.fields_size != p.size {
+                slot.fields = (0..fields)
+                    .map(|_| hdr_texture(device, "view metaball field", p.size))
+                    .collect();
+                slot.fields_size = p.size;
+            }
             // Billboards face the view's camera; lines keep their width as a
             // share of the image (CSS pixels of a frame of the view's height).
             let view_t = p.frame.view.transpose();
@@ -860,11 +876,12 @@ fn textures(
     (hdr, msaa, depth, prepass)
 }
 
-/// A view's 2D light map: what the light pass draws and the sprites read.
-fn light_map_texture(device: &wgpu::Device, (w, h): (u32, u32)) -> wgpu::TextureView {
+/// A view's HDR target of `size` that a pass draws and its main pass reads
+/// (the 2D light map, a metaball field).
+fn hdr_texture(device: &wgpu::Device, label: &str, (w, h): (u32, u32)) -> wgpu::TextureView {
     device
         .create_texture(&wgpu::TextureDescriptor {
-            label: Some("view light map"),
+            label: Some(label),
             size: wgpu::Extent3d {
                 width: w,
                 height: h,

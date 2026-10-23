@@ -5412,9 +5412,9 @@ impl Renderer {
         )?;
         // Each view's world sprites, 2D particles and text on its layers
         // (views.rs), their instances after the main camera's in the
-        // sprite buffer, lit by the view's own 2D light map. Glow and the
-        // metaball composite read the main frame's screen: a view draws
-        // its sprites without glow and leaves the 2D fluids out.
+        // sprite buffer, lit by the view's own 2D light map, its 2D fluids
+        // composited from its own fields. Glow reads the main frame's
+        // screen: a view draws its sprites without glow.
         let mut view_sprites: Vec<Vec<sprites::SpriteRun>> = Vec::new();
         for (p, runs) in view_plans.iter().zip(&view_ribbons) {
             let view_strips: Vec<sprites::LayeredStrip> = runs
@@ -5427,6 +5427,17 @@ impl Renderer {
                         count: r.count,
                     })
                 })
+                .chain(
+                    layered
+                        .iter()
+                        .filter(|s| matches!(s.source, RunSource::Metaballs(_)))
+                        .map(|s| sprites::LayeredStrip {
+                            layer: s.layer,
+                            source: s.source,
+                            first: s.first,
+                            count: s.count,
+                        }),
+                )
                 .collect();
             let f = sprites::build(
                 scene,
@@ -6350,6 +6361,7 @@ impl Renderer {
             !lights_gpu.is_empty(),
             viewport_format,
             scene.lighting_2d.map(|l| l.resolution.clamp(0.25, 1.0)),
+            fluids,
         );
         if scene.lighting_2d.is_some() {
             for (k, p) in view_plans.iter().enumerate() {
@@ -7164,6 +7176,17 @@ impl Renderer {
             )
         });
         let view_groups = self.view_groups(scene, &view_plans);
+        // Each view's metaball field groups (its own fields' textures).
+        let view_fields: Vec<Vec<wgpu::BindGroup>> = view_plans
+            .iter()
+            .map(|p| {
+                let slot = self.views.slots[p.index].as_ref().expect("written");
+                slot.fields
+                    .iter()
+                    .map(|v| self.metaballs.group(&self.device, v))
+                    .collect()
+            })
+            .collect();
         // Each view's sprite effect group: its 2D light map (white
         // without 2D lighting) and its image's size.
         let view_sprite_fx: Vec<wgpu::BindGroup> = view_plans
@@ -7500,11 +7523,13 @@ impl Renderer {
             draws
         };
         // Sprites and text over a camera's scene, in sorted order: the main
-        // camera's runs with its effect group, or a view's (`view`: every
-        // run tone mapped, no HDR alpha cover). Answers the draws made.
+        // camera's runs with its effect group and metaball fields, or a
+        // view's (`view`: every run tone mapped, no HDR alpha cover).
+        // Answers the draws made.
         let draw_sprites = |pass: &mut wgpu::RenderPass,
                             runs: &[sprites::SpriteRun],
                             fx: &wgpu::BindGroup,
+                            fields: &[wgpu::BindGroup],
                             view: bool|
          -> u32 {
             let mut draws = 0;
@@ -7523,10 +7548,7 @@ impl Renderer {
                     current = None;
                 }
                 if let RunSource::Metaballs(i) = run.source
-                    && let Some(group) = self
-                        .metaballs
-                        .field_of(i)
-                        .and_then(|f| metaball_groups.get(f))
+                    && let Some(group) = self.metaballs.field_of(i).and_then(|f| fields.get(f))
                 {
                     self.metaballs.composite(pass, group, i);
                     draws += 1;
@@ -8270,6 +8292,15 @@ impl Renderer {
                         self.lights_2d.encode_view(&mut encoder, map, l.ambient, i);
                         stats.draw_calls += (lights_2d > 0) as u32;
                     }
+                    // Its 2D fluids' fields, the kernels through its camera.
+                    if let Some(slot) = self.views.slots[p.index].as_ref()
+                        && !slot.fields.is_empty()
+                    {
+                        let fields: Vec<&wgpu::TextureView> = slot.fields.iter().collect();
+                        self.metaballs
+                            .encode_field(&mut encoder, &fields, &view_groups[i].0);
+                        stats.draw_calls += fields.len() as u32;
+                    }
                     {
                         let mut pass = self.views.begin(&mut encoder, p, clear);
                         pass.set_bind_group(0, &view_groups[i].0, &[]);
@@ -8360,8 +8391,13 @@ impl Renderer {
                             pass.set_bind_group(0, &view_groups[i].0, &[]);
                         }
                         // Lit by the view's 2D light map.
-                        stats.draw_calls +=
-                            draw_sprites(&mut pass, &view_sprites[i], &view_sprite_fx[i], true);
+                        stats.draw_calls += draw_sprites(
+                            &mut pass,
+                            &view_sprites[i],
+                            &view_sprite_fx[i],
+                            &view_fields[i],
+                            true,
+                        );
                     }
                     // A target's depth texture: the view's opaque meshes
                     // again through the prepass pipelines into its linear
@@ -8738,8 +8774,13 @@ impl Renderer {
                         pass.set_bind_group(0, frame_bind_group, &[]);
                     }
                     // Sprites and text, blended over the scene in sorted order.
-                    stats.draw_calls +=
-                        draw_sprites(&mut pass, &sprite_frame.runs, sprite_fx_group, false);
+                    stats.draw_calls += draw_sprites(
+                        &mut pass,
+                        &sprite_frame.runs,
+                        sprite_fx_group,
+                        &metaball_groups,
+                        false,
+                    );
                     drop(pass);
                     // Volumetric fog over everything drawn (volumetric.rs).
                     if volumetric_fog.is_some() {
