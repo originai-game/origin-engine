@@ -336,6 +336,18 @@ pub struct Hierarchy {
     parent: BTreeMap<u64, u64>,
     /// World matrices of chain members without `og.Transform` (no slot).
     loose: BTreeMap<u64, Mat4>,
+    /// World matrices composed since the last read of the world (the
+    /// raycast record's cost test counts them).
+    pub(crate) composed: usize,
+    /// Which slots had og.Transform at the last read (kept for its
+    /// allocation).
+    was: Vec<bool>,
+    /// Per og.Parent archetype: its entities and its column as last read.
+    parent_columns: Vec<(Vec<Entity>, Vec<u8>)>,
+    /// Per og.Transform archetype, in query order: its entities and its
+    /// position, quaternion and scale columns as last read, so an
+    /// archetype where nothing moved is told by four comparisons.
+    columns: Vec<(Vec<Entity>, [Vec<u8>; 3])>,
 }
 
 #[derive(Clone, Copy)]
@@ -343,7 +355,14 @@ struct Slot {
     bits: u64,
     /// Whether the entity has `og.Transform` this frame.
     local_set: bool,
+    /// Whether `world` holds its world matrix: kept from the last read
+    /// while its transform, its ancestors' and the parents are unchanged.
     world_set: bool,
+    /// Whether its transform differs from the last read's (or it is new).
+    changed: bool,
+    /// Its position, quaternion and scale as last read, as the columns'
+    /// bytes (12, 16 and 12).
+    trs: [u8; 40],
     local: Mat4,
     world: Mat4,
 }
@@ -352,6 +371,8 @@ const EMPTY_SLOT: Slot = Slot {
     bits: 0,
     local_set: false,
     world_set: false,
+    changed: true,
+    trs: [0; 40],
     local: Mat4::IDENTITY,
     world: Mat4::IDENTITY,
 };
@@ -364,13 +385,21 @@ impl Hierarchy {
     }
 
     /// Reads the world's transforms and parents again, keeping the
-    /// allocations of the last frame.
+    /// allocations of the last frame and every world matrix that cannot
+    /// have moved: an entity whose transform (bit for bit) and whose
+    /// ancestors' transforms are as last read, under the same parents,
+    /// keeps its world matrix, so a frame (or the raycast's tick record)
+    /// where little moves composes only what moved. The ECS keeps no
+    /// change ticks, so the columns are still read and compared.
     pub(crate) fn refresh(&mut self, world: &World) {
+        self.composed = 0;
+        // `local_set` now says "had og.Transform at the last read".
+        let mut was: Vec<bool> = std::mem::take(&mut self.was);
+        was.clear();
+        was.extend(self.slots.iter().map(|s| s.local_set));
         for s in &mut self.slots {
             s.local_set = false;
-            s.world_set = false;
         }
-        self.parent.clear();
         self.loose.clear();
         if let Ok(tid) = world.id_by_name("og.Transform") {
             let fields = ["position", "quaternion", "scale"];
@@ -383,27 +412,128 @@ impl Hierarchy {
                 ..QueryDesc::default()
             };
             if let (Ok(all), 3) = (world.query(&q), refs.len()) {
-                for a in all {
-                    let (Ok(p), Ok(r), Ok(s)) = (
+                for (k, a) in all.enumerate() {
+                    let (Ok(p), Ok(r), Ok(s), Ok(pb), Ok(rb), Ok(sb)) = (
                         a.read::<Vec3>(refs[0]),
                         a.read::<Quat>(refs[1]),
                         a.read::<Vec3>(refs[2]),
+                        a.read_bytes(refs[0]),
+                        a.read_bytes(refs[1]),
+                        a.read_bytes(refs[2]),
                     ) else {
                         continue;
                     };
+                    if self.columns.len() <= k {
+                        self.columns.push(Default::default());
+                    }
+                    let (ents, cols) = &mut self.columns[k];
+                    let still = ents.as_slice() == a.entities()
+                        && cols[0] == *pb
+                        && cols[1] == *rb
+                        && cols[2] == *sb;
+                    if !still {
+                        ents.clear();
+                        ents.extend_from_slice(a.entities());
+                        for (c, b) in cols.iter_mut().zip([&pb, &rb, &sb]) {
+                            c.clear();
+                            c.extend_from_slice(b);
+                        }
+                    }
                     for (i, e) in a.entities().iter().enumerate() {
                         let index = e.index() as usize;
+                        if still && was.get(index).copied().unwrap_or(false) {
+                            // As last read, and the slot was this entity's then.
+                            let slot = &mut self.slots[index];
+                            slot.changed = false;
+                            slot.local_set = true;
+                            continue;
+                        }
                         if index >= self.slots.len() {
                             self.slots.resize(index + 1, EMPTY_SLOT);
                         }
                         let slot = &mut self.slots[index];
-                        slot.bits = e.to_bits();
+                        let bits = e.to_bits();
+                        let (pb, rb, sb) = (
+                            &pb[i * 12..i * 12 + 12],
+                            &rb[i * 16..i * 16 + 16],
+                            &sb[i * 12..i * 12 + 12],
+                        );
+                        let same = was.get(index).copied().unwrap_or(false)
+                            && slot.bits == bits
+                            && slot.trs[..12] == *pb
+                            && slot.trs[12..28] == *rb
+                            && slot.trs[28..] == *sb;
+                        slot.changed = !same;
+                        if !same {
+                            slot.bits = bits;
+                            slot.trs[..12].copy_from_slice(pb);
+                            slot.trs[12..28].copy_from_slice(rb);
+                            slot.trs[28..].copy_from_slice(sb);
+                            slot.world_set = false;
+                            slot.local = Mat4::from_scale_rotation_translation(s[i], r[i], p[i]);
+                        }
                         slot.local_set = true;
-                        slot.local = Mat4::from_scale_rotation_translation(s[i], r[i], p[i]);
                     }
                 }
             }
         }
+        // A slot that lost its transform changed; one that never had one
+        // did not.
+        let mut moved = false;
+        for (i, s) in self.slots.iter_mut().enumerate() {
+            if !s.local_set {
+                s.changed = was.get(i).copied().unwrap_or(false);
+                s.world_set = false;
+            }
+            moved |= s.changed;
+        }
+        self.was = was;
+        let reparented = self.read_parents(world);
+        if reparented {
+            // Every world matrix is composed again.
+            for s in &mut self.slots {
+                s.world_set = false;
+            }
+        } else if moved {
+            // A kept child under an ancestor whose slot changed (moved, new,
+            // gone) is composed again; an ancestor without og.Transform is
+            // the identity, so the walk goes on through it.
+            for &child in self.parent.keys() {
+                let index = Entity::from_bits(child).index() as usize;
+                if !self
+                    .slots
+                    .get(index)
+                    .is_some_and(|s| s.world_set && s.bits == child)
+                {
+                    continue;
+                }
+                let mut cur = child;
+                let mut depth = 0;
+                let mut stale = false;
+                while let Some(&p) = self.parent.get(&cur) {
+                    depth += 1;
+                    let changed = self
+                        .slots
+                        .get(Entity::from_bits(p).index() as usize)
+                        .is_some_and(|s| s.changed);
+                    if changed || depth > 256 || p == child {
+                        stale = true;
+                        break;
+                    }
+                    cur = p;
+                }
+                if stale {
+                    self.slots[index].world_set = false;
+                }
+            }
+        }
+    }
+
+    /// Reads og.Parent into `parent`; whether it differs from the last
+    /// read. An archetype whose entities and column are as last read is
+    /// not read again.
+    fn read_parents(&mut self, world: &World) -> bool {
+        let mut views = Vec::new();
         if let Ok(pid) = world.id_by_name("og.Parent")
             && let Ok(field) = world.field_by_id(pid, "entity")
         {
@@ -413,14 +543,32 @@ impl Hierarchy {
             };
             if let Ok(all) = world.query(&q) {
                 for a in all {
-                    if let Ok(p) = a.read::<u64>(field) {
-                        for (e, parent) in a.entities().iter().zip(p.iter()) {
-                            self.parent.insert(e.to_bits(), *parent);
-                        }
+                    if let Ok(b) = a.read_bytes(field) {
+                        views.push((a.entities(), b));
                     }
                 }
             }
         }
+        let same = views.len() == self.parent_columns.len()
+            && views
+                .iter()
+                .zip(&self.parent_columns)
+                .all(|((e, b), (pe, pb))| *e == pe.as_slice() && **b == *pb.as_slice());
+        if same {
+            return false;
+        }
+        self.parent_columns.clear();
+        let mut parent = BTreeMap::new();
+        for (e, b) in &views {
+            for (entity, p) in e.iter().zip(b.as_chunks::<8>().0) {
+                let p = u64::from_le_bytes(*p);
+                parent.insert(entity.to_bits(), p);
+            }
+            self.parent_columns.push((e.to_vec(), b.to_vec()));
+        }
+        let changed = parent != self.parent;
+        self.parent = parent;
+        changed
     }
 
     /// The slot of the entity `e` (bits), when it has `og.Transform`.
@@ -453,6 +601,7 @@ impl Hierarchy {
         }
         if !self.parent.contains_key(&e) {
             // A root: the chain below of one entity, without its vector.
+            self.composed += 1;
             let mut m = Mat4::IDENTITY;
             match self.slot(e) {
                 Some(s) => {
@@ -482,6 +631,7 @@ impl Hierarchy {
                 m = w;
                 continue;
             }
+            self.composed += 1;
             match self.slot(id) {
                 Some(s) => {
                     m *= s.local;
