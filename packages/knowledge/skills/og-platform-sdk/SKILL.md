@@ -114,7 +114,7 @@ trying.
   only starts after the tap, still shows its defaults behind the gate.
 - The frame behind the gate is a still of the opening title a few ticks
   in, held until the tap, so anything on it that moves into place over
-  its first second stands part-way there: the skin's panel entrance and
+  its first second stands part-way there: the style's panel entrance and
   its controls' stagger (about half a second), a transition, a fade the
   game plays itself. Build the screen the game opens on settled while it
   is that screen, and let every later screen enter as usual:

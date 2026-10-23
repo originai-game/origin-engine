@@ -70,7 +70,7 @@ og build . --publish         # dist/: the play page as it ships
   of ten or more broken, louder); the rings breathe with the beat (not
   with reduced motion). There is no hit stop: it would hold the picture
   while the music runs on.
-- **Screens on og.ui with a skin** (og-ui §2–§6, og-taste §1–§7): the
+- **Screens on og.ui with a style** (og-ui §2–§6, og-taste §1–§7): the
   engine's sci-fi pack recoloured as `assets/styles/lanebeat`; the title
   (Play, Calibrate, Settings), the HUD (the score as an `og.ui.counter`
   and the groove top left, Pause top right, the combo beside the
@@ -221,7 +221,7 @@ in the engine repository).
 give the same bytes): the chart and the stems from one set of note lists,
 the click, the taps, the miss, the clear and the fail, the note, the ring,
 the lane's glow, the spark, the hit's burst, the `og sfx` preset files of
-the UI's sounds and the font subset. `LICENSES.md` lists them; the skin's
+the UI's sounds and the font subset. `LICENSES.md` lists them; the style's
 are in `assets/styles/lanebeat/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)

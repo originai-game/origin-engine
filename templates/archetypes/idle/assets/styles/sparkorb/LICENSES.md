@@ -1,4 +1,4 @@
-# Spark Orb's skin (the engine's neon style pack, recoloured): licences
+# Spark Orb's style (the engine's neon style pack, recoloured): licences
 
 The palette, the body size and the fallback font in `style.ogt` are this
 game's edits by hand; `atlas.png` is the pack's atlas with its magenta
@@ -15,5 +15,5 @@ frames turned violet by `tools/make-assets.py`; the rest is the pack as
 | `Rajdhani-Bold.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Rajdhani Bold (Indian Type Foundry, Google Fonts); subset to Latin-1 with fontTools. Copyright (c) 2014 Indian Type Foundry (info@indiantypefoundry.com) |
 
 Characters these fonts lack (Chinese, Japanese, Korean) are drawn with the
-skin's `fallback` font, `fonts/NotoSansSC-subset.ttf` (Noto Sans SC subset to
+style's `fallback` font, `fonts/NotoSansSC-subset.ttf` (Noto Sans SC subset to
 this game's Chinese strings, OFL 1.1, `assets/fonts/OFL.txt`).

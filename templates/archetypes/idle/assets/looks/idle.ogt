@@ -7,7 +7,7 @@ version 1
 # suit a glowing orb) adds that style's treatment under the lines below,
 # and the reference frames are then recorded again (OG_FX_CAPTURE=1 og test .).
 name "Spark Orb"
-# The UI wears the sparkorb skin (start keeps it and adds the sounds).
+# The UI wears the sparkorb style (start keeps it and adds the sounds).
 ui "styles/sparkorb/style.ogt"
 # The night and the orb are authored colour: not tone mapped, and no light
 # from the sky.

@@ -8,5 +8,5 @@
 | `DotGothic16-Regular.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | DotGothic16 (github.com/fontworks-fonts/DotGothic16); subset to Latin-1 with fontTools. Copyright 2020 The DotGothic16 Project Authors (https://github.com/fontworks-fonts/DotGothic16/) |
 
 Characters these fonts lack (Chinese, Japanese, Korean) are drawn with the
-skin's `fallback` font, `fonts/NotoSansSC-Regular-subset.ttf` (the platform's
+style's `fallback` font, `fonts/NotoSansSC-Regular-subset.ttf` (the platform's
 subset, OFL 1.1, `assets/fonts/OFL.txt`).

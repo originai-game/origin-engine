@@ -1,7 +1,7 @@
 type style
 version 1
 ---
-# Brasswick's skin: the engine's fantasy style pack (templates/ui-kit, CC0 art, OFL fonts:
+# Brasswick's style: the engine's fantasy style pack (templates/ui-kit, CC0 art, OFL fonts:
 # LICENSES.md), copied by tools/make-assets.ts, its ground soot and its accent brass; the CJK
 # fallback line dropped, the game shows Latin-1 only.
 name "brasswick"

@@ -5,7 +5,7 @@
 Reads every string of assets/strings/*.ogt (and EXTRA: what the playtests
 type into the name field), subsets the engine's project-template font
 (templates/game/assets/fonts/NotoSansSC-Regular-subset.ttf, OFL) to those
-characters (CJK only: the skin's pixel face draws the Latin, so a label
+characters (CJK only: the style's pixel face draws the Latin, so a label
 mixing scripts takes each run from its own face, og-ui §7), and writes
 assets/fonts/NotoSansSC-hollowbell.ttf with its import settings (`chars`
 naming every CJK character, so the cook's atlas holds them all). Needs

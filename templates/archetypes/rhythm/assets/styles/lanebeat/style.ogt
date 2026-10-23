@@ -1,7 +1,7 @@
 type style
 version 1
 ---
-# Three-Lane Beat's skin: the engine's sci-fi style pack (templates/ui-kit/tools/make-styles.py,
+# Three-Lane Beat's style: the engine's sci-fi style pack (templates/ui-kit/tools/make-styles.py,
 # CC0 art, OFL fonts; LICENSES.md) with this game's palette and its Chinese fallback font, by hand.
 name "lanebeat"
 scheme dark

@@ -1,4 +1,4 @@
-// Meridian Loop's screens, on og.ui with the neon skin (assets/styles/meridian,
+// Meridian Loop's screens, on og.ui with the neon style (assets/styles/meridian,
 // brought by the look):
 //
 // - the title (og.ui.mainMenu): Time trial, Leaderboard

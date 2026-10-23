@@ -2,7 +2,7 @@
 
 Every asset of this game is made by code here (`tools/make-assets.ts` and
 the modules it imports: deterministic, seeded, nothing downloaded) or
-written by hand, except the UI skin's art and fonts, which are the
+written by hand, except the UI style's art and fonts, which are the
 engine's own neon style pack, copied by the same script.
 
 | File | Licence | Origin |

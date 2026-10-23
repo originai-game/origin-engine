@@ -1,7 +1,7 @@
 type style
 version 1
 ---
-# Spark Orb's skin: the engine's neon style pack (templates/ui-kit/tools/make-styles.py, CC0 art,
+# Spark Orb's style: the engine's neon style pack (templates/ui-kit/tools/make-styles.py, CC0 art,
 # OFL fonts; LICENSES.md) with this game's palette (the orb's gold as the one accent on night
 # violet) and its Chinese fallback font, edited by hand.
 name "sparkorb"

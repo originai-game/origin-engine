@@ -7,7 +7,7 @@ version 1
 # (og-taste §12), a warm late-afternoon light with a violet shadow side,
 # soft bloom on the braziers, a pale distance fog matched to the sky's
 # horizon, the synthetic sky as a soft image light under a strong low sun
-# (src/world.ts sets og.DayNight), and the paper skin.
+# (src/world.ts sets og.DayNight), and the paper style.
 name "Kestrel Stair, late afternoon"
 extends "watercolor-wash"
 ui "styles/kestrel/style.ogt"

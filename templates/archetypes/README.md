@@ -64,7 +64,7 @@ commands its playtests use and what a Maker changes first.
   og.CharacterController with blend trees and IK, navmesh sentinels on
   og.ai, particles, decals and the post stack, on the fantasy style pack
   (its README).
-- **The look as data.** `idle/` names its frame treatment and skin in
+- **The look as data.** `idle/` names its frame treatment and style in
   `assets/looks/idle.ogt` through `GameDesc.look` (og-taste §12); the
   others set theirs in `start` until they move to a look. A look that
   extends a catalogue preset changes the frames, so `references/` are

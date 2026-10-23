@@ -1,4 +1,4 @@
-// Hollowbell's screens on og.ui with the skin assets/styles/hollowbell (the
+// Hollowbell's screens on og.ui with the style assets/styles/hollowbell (the
 // engine's pixel style pack, recoloured; the look applies it): the title
 // over the village (New game, Continue when a save answered, Settings), the
 // name dialog of a new game (a text field kept in Prefs.name, a str field),
@@ -50,7 +50,7 @@ export function setName(p: PrefsV, name: string): void {
   p.name = [...name].slice(0, NAME_CHARS).join("");
 }
 
-/** The UI's sounds and reduced motion: configure keeps the skin the look applied. */
+/** The UI's sounds and reduced motion: configure keeps the style the look applied. */
 export function configureUi(world: World, p: PrefsV): void {
   const sound = (path: string) => must(og.load.sound(world, path));
   must(og.ui.configure(world, {
@@ -177,7 +177,7 @@ function hud(world: World, g: GameV): void {
   // The chimes: screen sprites from the items' texture array over the capsule's slots (one draw, whichever layer each shows).
   const slots = og.ui.bounds("Bell/Chimes");
   if (slots !== null) {
-    // A backing in the skin's surface colour, then the three chimes from the items' texture array.
+    // A backing in the style's surface colour, then the three chimes from the items' texture array.
     og.render.sprite(world, { screen: true, position: { x: slots.x, y: slots.y, z: 0 }, anchor: { x: 0, y: 0 }, width: slots.width, height: slots.height, color: { r: 0.024, g: 0.019, b: 0.05 }, opacity: 0.9, layer: 0 });
     for (let k = 0; k < CHIMES; k++) {
       const have = ((g.chimeMask >>> k) & 1) === 1;
@@ -301,7 +301,7 @@ function settings(world: World, g: GameV, p: PrefsV): void {
   let done = false;
   const before = g.settingsOpen ? JSON.stringify(prefsValue(p)) : "";
   const m = og.ui.modal("Settings", g.settingsOpen, { title: say(world, "settings.title"), width: px(Math.min(460, og.ui.frameViewport().width - 32)) }, () => {
-    // A label mixing scripts: the Latin in the skin's pixel face, the Chinese from the game's subset.
+    // A label mixing scripts: the Latin in the style's pixel face, the Chinese from the game's subset.
     og.ui.label("About", say(world, "settings.about"), { color: { token: "inkMuted" }, width: grow });
     const slider = (id: string, key: string, value: number): number => {
       let out = value;
@@ -439,7 +439,7 @@ export const Ui = defineSystem(
         ],
         footer: say(world, "title.footer"),
         // The title the game opens on is built settled: the web draws it behind the play gate, where
-        // the skin's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
+        // the style's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
         instant: !g.leftTitle,
       });
       if (saved !== null) {

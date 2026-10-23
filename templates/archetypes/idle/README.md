@@ -168,10 +168,10 @@ pure functions, the stars come from an og.Rng stream forked by name, and
    an `owned<n>` field.
 3. **Prestige**: `novaGain`, `dustMultiplier`.
 4. **The look**: `assets/looks/idle.ogt` (named by `GameDesc.look`) holds
-   the frame's treatment and names the skin; `extends "<slug>"` there
+   the frame's treatment and names the style; `extends "<slug>"` there
    starts from a style of the catalogue (og-taste §12), and the reference
    frames are then recorded again (`OG_FX_CAPTURE=1 og test .`). The
-   skin's palette is `assets/styles/sparkorb/style.ogt`, the art
+   style's palette is `assets/styles/sparkorb/style.ogt`, the art
    `tools/make-assets.py`: `python3 tools/make-assets.py && og cook .`.
 5. **Words and numbers**: `assets/strings/*.ogt` (a locale's `num.step`
    and units make its big numbers); a new Chinese string needs the script
@@ -221,8 +221,8 @@ in the engine repository).
 `tools/make-assets.py` regenerates every asset byte for byte (two runs
 give the same bytes): the orb, the glow, the spark and the motes, the
 emitters, the sounds and the music, the `og sfx` preset files of the UI's
-sounds, the font subset and the skin's recoloured atlas. `LICENSES.md`
-lists them; the skin's are in `assets/styles/sparkorb/LICENSES.md`.
+sounds, the font subset and the style's recoloured atlas. `LICENSES.md`
+lists them; the style's are in `assets/styles/sparkorb/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)
 

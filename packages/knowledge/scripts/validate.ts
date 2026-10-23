@@ -80,6 +80,7 @@ export function validate(roots: Roots = defaultRoots()): string[] {
 
   skills(rules, files, problems);
   coherence(files, problems);
+  skinWord(roots, files, problems);
   apiNames(roots, files, problems);
   looks(roots, files, problems);
   grammar(roots, files, problems);
@@ -281,6 +282,35 @@ function coherence(files: readonly PayloadFile[], problems: string[]): void {
       const have = sections.get(target);
       if (!have) problems.push(`skills/${skill}/SKILL.md: refers to ${target} §${m[1]}, and there is no skill ${target}`);
       else if (!have.has(m[1]!)) problems.push(`skills/${skill}/SKILL.md: refers to ${target === skill ? "its own" : target} §${m[1]}, which ${target === skill ? "it does not have" : "does not exist there"} (its sections: ${[...have].join(", ") || "none numbered"})`);
+    }
+  }
+}
+
+/**
+ * What a sentence that says "skin" must also name for the word to be one of
+ * its other meanings: a glTF rig's skin (joints, morphs, a model), the
+ * character controllers' collision gap (the `skin` field, off a surface),
+ * or a surface (a skin tone, peach skin, a crowd's or a tile set's looks).
+ */
+const SKIN_ELSEWHERE = /gltf|joint|skelet|morph|\brig\b|bone|mesh|model|clips?\b|anim|`skins?`|surface|\bgap\b|collid|\btones?\b|peach|crowd|tiles/i;
+
+/**
+ * A skill or wiki page never calls a UI style a "skin": og-ui's word is
+ * style (`type style`, `og.load.style`, `UiDesc.style`, `styles/<name>/`).
+ * Each sentence holding `skin` or `skins` must name one of the word's
+ * other meanings (SKIN_ELSEWHERE).
+ */
+function skinWord(roots: Roots, files: readonly PayloadFile[], problems: string[]): void {
+  for (const f of files) {
+    if (!f.path.startsWith("game/skills/") || !f.path.endsWith(".md") || !isText(f.bytes)) continue;
+    const name = relative(roots.pkg, f.source).split("\\").join("/");
+    for (const paragraph of decoder.decode(f.bytes).split(/\n\s*\n/)) {
+      // Sentences, and a table's cells, of the paragraph's joined lines.
+      for (const sentence of paragraph.replace(/\s*\n\s*/g, " ").split(/(?<=[.;!?])\s+|\s\|\s/)) {
+        if (/\bskins?\b/i.test(sentence) && !SKIN_ELSEWHERE.test(sentence)) {
+          problems.push(`${name}: calls a UI style a skin ("${sentence.trim().slice(0, 120)}"); og-ui's word is style (type style, og.load.style, styles/<name>/)`);
+        }
+      }
     }
   }
 }

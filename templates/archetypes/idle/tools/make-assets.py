@@ -272,7 +272,7 @@ render sprite 0
 """)
 
 
-# ── the skin's atlas ───────────────────────────────────────────────────────
+# ── the style's atlas ───────────────────────────────────────────────────────
 
 def read_png(path):
     """An 8-bit RGBA, non-interlaced PNG's rows of pixels (what make-styles.py writes)."""

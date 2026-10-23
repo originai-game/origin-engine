@@ -135,7 +135,7 @@ is what a sprite wants.
 | Take-off | (0.85, 1.15) | 0.1 s |
 | Hit taken | (1.2, 0.8) | 0.15 s, with a flash |
 | Pickup collected (on the pickup) | (1.4, 1.4) then shrink to 0 | 0.15 s |
-| UI button press (the skin's `press` does it for og.ui) | (0.92, 0.92) | 0.08 s, unscaled |
+| UI button press (the style's `press` does it for og.ui) | (0.92, 0.92) | 0.08 s, unscaled |
 
 Do not squash rigid things (crates, walls, the camera's target in a
 cutscene) or anything more than once per 6 ticks.
@@ -161,7 +161,7 @@ motion and hit stop (UI motion). `og.tween.squash` (§5) and
 | Constant motion, timers, scrolling, colour cycles | `linear` |
 | Most small motion when unsure | `quadOut` (the default) |
 
-Durations: 0.1–0.2 s for feedback, 0.12–0.3 s for UI (the skin's
+Durations: 0.1–0.2 s for feedback, 0.12–0.3 s for UI (the style's
 durations, og-taste §5), 0.2–0.35 s for swaps, 0.4–0.8 s for camera moves,
 reveals and screen transitions (up to 0.7 s). Longer feels sluggish unless
 it is a cutscene or a reward.

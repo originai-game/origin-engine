@@ -2,7 +2,7 @@
 // action switches og.i18n to Chinese, and the title, the HUD, the pause
 // menu and the results (og.ui.resultsScreen's best line and new-best badge
 // too, through ResultsDesc.bestLabel and newBestLabel) read in Chinese (Noto Sans SC from the zh-CN table's
-// font chain, the skin's faces for the Latin and the digits); back in
+// font chain, the style's faces for the Latin and the digits); back in
 // English the same screens read in English. og cook warned of no missing
 // key (og polish scores it).
 import { playtest } from "@origingame/engine/playtest";

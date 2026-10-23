@@ -2,7 +2,7 @@
 // card and HUD, pause, the settings (every tab), the banner, the scoreboard
 // and the podium, each dumped after `language:fr`. Every text is from
 // fr.ogt, none of the templates' English defaults is left on screen, the
-// accents and the French spaces before ? and ! draw from the skin's faces,
+// accents and the French spaces before ? and ! draw from the style's faces,
 // the critters' names stay their names, and every focusable control has a
 // name.
 import { playtest } from "@origingame/engine/playtest";

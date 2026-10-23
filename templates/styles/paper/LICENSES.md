@@ -10,5 +10,5 @@
 | `PTMono-Regular.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | PT Mono (ParaType); unmodified. Copyright © 2010 ParaType Inc., ParaType Ltd. All rights reserved. |
 
 Characters these fonts lack (Chinese, Japanese, Korean) are drawn with the
-skin's `fallback` font, `fonts/NotoSansSC-Regular-subset.ttf` (the platform's
+style's `fallback` font, `fonts/NotoSansSC-Regular-subset.ttf` (the platform's
 subset, OFL 1.1, `assets/fonts/OFL.txt`).

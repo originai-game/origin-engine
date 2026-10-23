@@ -8,7 +8,7 @@ levels. What the knowledge package got wrong or left out, and what the
 engine did not do, is `FINDINGS.md`.
 
 ```sh
-bun tools/make-assets.ts   # every asset (the music and the copied skin are not committed)
+bun tools/make-assets.ts   # every asset (the music and the copied style are not committed)
 og cook .
 og run .                   # headless with the probe; og dev . reloads on save
 og test .                  # eight playtests, the frames against references/metal
@@ -69,7 +69,7 @@ three are in the world at once, side by side in x, each inside its
 `assets/looks/brasswick.ogt` extends the catalogue's `detailed-pixel`
 (og-taste §12) at 360 lines (2x at 1280×720, 3x at 1920×1080: the preset's
 270 leave a border at 720p), 24 tones a channel and a lighter dither, with
-the fantasy skin recoloured brass (`skins/brasswick`, copied by the
+the fantasy style recoloured brass (`styles/brasswick`, copied by the
 generator) and the 2D glow.
 
 ## Playtests

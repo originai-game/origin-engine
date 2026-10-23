@@ -1,4 +1,4 @@
-// Lantern Vale's screens on og.ui with the skin assets/styles/lantern (the
+// Lantern Vale's screens on og.ui with the style assets/styles/lantern (the
 // engine's fantasy pack, applied by the look): the title over a slow pass
 // above the valley, the HUD (hearts and lanterns top-left, the dusk clock
 // and Pause top-right, the lighting prompt and its progress at the
@@ -77,7 +77,7 @@ export function toTitle(world: World, g: GameV): void {
 
 /**
  * The UI's sounds and reduced motion: og.ui.configure keeps every field it
- * is not given, so the skin the look applied stays.
+ * is not given, so the style the look applied stays.
  */
 export function configureUi(world: World, reducedMotion: boolean): void {
   const sound = (path: string) => must(og.load.sound(world, path));
@@ -238,7 +238,7 @@ function settings(world: World, g: GameV, p: PrefsV): void {
   let done = false;
   const before = g.settingsOpen ? JSON.stringify(prefsValue(p)) : "";
   const m = og.ui.modal("Settings", g.settingsOpen, { title: say(world, "settings.title"), width: px(Math.min(440, og.ui.frameViewport().width - 32)) }, () => {
-    // A label mixing scripts: the Latin in the skin's face, the Chinese from the fallback.
+    // A label mixing scripts: the Latin in the style's face, the Chinese from the fallback.
     og.ui.label("About", say(world, "settings.about"), { color: { token: "inkMuted" }, width: grow });
     const slider = (id: string, key: string, value: number): number => {
       let out = value;
@@ -346,7 +346,7 @@ export const Ui = defineSystem(
         ],
         footer: say(world, "title.footer"),
         // The title the game opens on is built settled: the web draws it behind the play gate, where
-        // the skin's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
+        // the style's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
         instant: !g.leftTitle,
       });
       if (!g.settingsOpen && r.selected === "play" && g.phase === Phase.Title) startRun(world, g);

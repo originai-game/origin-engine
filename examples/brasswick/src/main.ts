@@ -7,7 +7,7 @@
 // (the checkpoints, and the save), and reaches each level's hatch.
 //
 // The look (GameDesc.look, assets/looks/brasswick.ogt: the detailed-pixel
-// preset at 360 lines, the brasswick skin) sets the frame before `start`;
+// preset at 360 lines, the brasswick style) sets the frame before `start`;
 // `start` loads the string tables and the art, places the three tilemaps
 // and spawns their things (src/level.ts), Wick (src/level.ts, src/hero.ts),
 // the voices and the music (src/sound.ts), and shows the title (src/ui.ts).

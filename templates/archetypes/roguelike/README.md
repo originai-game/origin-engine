@@ -61,7 +61,7 @@ og build . --publish         # dist/: the play page as it ships
   flash, a squash, the red number, a hit stop and a kick; the guardian
   glows red and shows "!" the turn before a charged strike (twice the hit
   stop and trauma); its fall and the lamp going out are heavier still.
-- **Screens on og.ui with a skin** (og-ui §2–§6, og-taste §1–§7): the
+- **Screens on og.ui with a style** (og-ui §2–§6, og-taste §1–§7): the
   engine's pixel pack recoloured as `assets/styles/lampdive` (the tomb's
   violet panels, the lamp's amber as the one accent); the title over the
   lamp-lit first room, the HUD as capsules in the corners (health meter,
@@ -237,7 +237,7 @@ in the engine repository).
 `tools/make-assets.py` regenerates every asset byte for byte (two runs
 give the same bytes): the tileset, the map, the sprite sheet and the glow,
 the sounds and the music, the `og sfx` preset files of the UI's sounds and
-the footstep, and the font subset. `LICENSES.md` lists them; the skin's
+the footstep, and the font subset. `LICENSES.md` lists them; the style's
 are in `assets/styles/lampdive/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)

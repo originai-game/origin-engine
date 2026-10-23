@@ -39,7 +39,7 @@ after a string table changes.
 
 | Area | How | Where |
 |---|---|---|
-| Looks | `GameDesc.look` applies `looks/lantern-vale.ogt` (extends `anime-cel-3d`: AgX, the cool shadow side, ink, bloom, fog, the environment map, the skin) before `start`; `og.load.look` and `og.render.applyLook` swap in `looks/dawn.ogt` (extends `luminous-layered-painting`: five depth bands) for the results and back | `src/ui.ts` `looks` |
+| Looks | `GameDesc.look` applies `looks/lantern-vale.ogt` (extends `anime-cel-3d`: AgX, the cool shadow side, ink, bloom, fog, the environment map, the style) before `start`; `og.load.look` and `og.render.applyLook` swap in `looks/dawn.ogt` (extends `luminous-layered-painting`: five depth bands) for the results and back | `src/ui.ts` `looks` |
 | `og.Stylise`, `og.MaterialStyle` | through the looks: the anime cel preset's toon and outlines (a material's outline draws the voxel models' silhouettes and contact lines; the lanterns' lacquer and the slimes' jelly keep their physical shading under the toon), ink on silhouettes, a tinted shadow side and rim light; depth bands at dawn, whose look takes the toon off | `assets/looks/`, `src/world.ts` `styleModels` |
 | Physical materials | the lanterns' red lacquer (`clearcoat` on the voxel model's material), the slimes' jelly (`KHR_materials_transmission`, volume and ior in their glTF) | `src/world.ts`, `tools/make-assets.ts` `slime` |
 | `og.Environment` | a 64 x 32 synthetic dusk `.hdr`, prefiltered by the cook (`env/dusk.ogt`), named by both looks' `Environment` block; AgX with auto exposure adapting 1 EV/s up, 3 down | `assets/env/`, `assets/looks/` |
@@ -50,8 +50,8 @@ after a string table changes.
 | Physics | the hero on `og.CharacterController` over the terrain's height field; a pile of ten boulders (dynamic bodies) it shoves; trunks that stop it; `og.physics.overlap` on the lantern layer finds the lantern within reach | `src/hero.ts`, `src/lanterns.ts` |
 | Terrain | a 96 m valley from a 16-bit height map and a splat map (grass, path, rock on slopes, moss on the far side) | `assets/terrain/` |
 | Audio | a 4-minute track synthesised to WAV and cooked in 4-second chunks (`sound { stream true }`), looping on the music bus, ducked under the effects; `og sfx` presets on the sfx and ui buses; reverb on effects, a limiter on master | `src/sound.ts` |
-| og.ui | the fantasy pack copied as the game's skin; `mainMenu`, a HUD of capsules, `pauseMenu`, a settings dialog (two sliders, a `textField` for the name, a language radio, a toggle, a label mixing Latin and Chinese), `resultsScreen`; a dissolve between screens; toasts | `src/ui.ts` |
-| i18n | `strings/en.ogt` and `strings/zh-CN.ogt`; Noto Sans SC subset to the table's characters as the Chinese table's font and the skin's fallback | `assets/strings/`, `tools/subset-font.py` |
+| og.ui | the fantasy pack copied as the game's style; `mainMenu`, a HUD of capsules, `pauseMenu`, a settings dialog (two sliders, a `textField` for the name, a language radio, a toggle, a label mixing Latin and Chinese), `resultsScreen`; a dissolve between screens; toasts | `src/ui.ts` |
+| i18n | `strings/en.ogt` and `strings/zh-CN.ogt`; Noto Sans SC subset to the table's characters as the Chinese table's font and the style's fallback | `assets/strings/`, `tools/subset-font.py` |
 | Accessibility | `og.ui.a11y()` read by the game; the settings playtest asserts no focusable node is unnamed | `src/ui.ts`, `tests/settings.og.ts` |
 | Feel | a touch: 6-tick hit stop, shake, red flash, knock-back, "-1", the hurt sound; a lantern: punch, burst, "+1", toast, chime | `src/slimes.ts`, `src/lanterns.ts` |
 

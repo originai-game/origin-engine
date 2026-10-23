@@ -1,4 +1,4 @@
-// Brasswick's screens on og.ui, dressed by the brasswick skin (the fantasy
+// Brasswick's screens on og.ui, dressed by the brasswick style (the fantasy
 // pack recoloured; the look applies it): the title over the first level
 // (Continue when the vault slot answered, New game, Levels, Settings), the
 // level select (og.ui.levelSelect: stars, best gears and time, locks), the

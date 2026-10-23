@@ -14,7 +14,7 @@ needs a browser or a Rust toolchain. The command channel is
 The loop held for two whole games written from this package alone
 (`examples/lantern-vale`, `examples/hollowbell`): `og cook` took 47 and 69
 assets cold in 8.2 s and 3.6 s and under 100 ms after a change, without a
-warning, and every refusal named the line and the fix (a copied UI skin, as
+warning, and every refusal named the line and the fix (a copied UI style, as
 styles were then called, without its CJK `fallback` named the line and og-taste §1;
 `PostEffects.vignette is true or false` named the line). Scripted runs gave
 the same frames every time, `store: "keep"` relaunches and two-process

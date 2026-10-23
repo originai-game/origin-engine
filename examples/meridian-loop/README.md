@@ -32,7 +32,7 @@ Watch replay drives the whole race again from the countdown.
 ## Run it
 
 ```sh
-bun tools/make-assets.ts        # once after a clone: every asset, the 11 MB music and the skin's art and fonts (not committed)
+bun tools/make-assets.ts        # once after a clone: every asset, the 11 MB music and the style's art and fonts (not committed)
 og cook .
 og run . --headless --commands "1:screenshot:title.png;1.2:race;4:drive:auto;20:screenshot:sweeper.png;20.1:quit"
 og test .                       # the ten playtests, the reference frames against references/<tier>/
@@ -47,7 +47,7 @@ the same bytes on every run: the circuit (road, walls, embankments, neon
 tubes, gantry and gates, skyline and ridges) from the centre line in
 `src/track.ts`, the ground grid, the car, its ghost and the wheels, the
 mini-map, the smoke and skid textures, the emitters, the look, every sound
-and the music. The UI skin is the engine's neon pack, copied from
+and the music. The UI style is the engine's neon pack, copied from
 `templates/ui-kit` by the same script and retinted.
 
 ## What it exercises

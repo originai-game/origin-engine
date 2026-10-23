@@ -1,4 +1,4 @@
-// Three-Lane Beat's screens on og.ui and the skin in assets/styles/lanebeat
+// Three-Lane Beat's screens on og.ui and the style in assets/styles/lanebeat
 // (the engine's sci-fi pack): the title, the HUD (the score and the groove
 // top left, Pause top right, the combo and its multiplier beside the
 // highway), the pause menu, the settings with the offset, the calibration
@@ -380,7 +380,7 @@ export const Ui = defineSystem("Ui", { reads: [Tuning, og.Input, og.Gamepad], wr
       ],
       footer: say(world, "title.footer"),
       // The title the game opens on is built settled: the web draws it behind the play gate, where
-      // the skin's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
+      // the style's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
       instant: !g.leftTitle,
     });
     if (!g.settingsOpen && r.selected === "play") begin(world, g);

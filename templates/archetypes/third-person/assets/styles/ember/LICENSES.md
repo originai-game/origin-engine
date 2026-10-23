@@ -1,4 +1,4 @@
-# The ember skin (a copy of the fantasy style pack): licences
+# The ember style (a copy of the fantasy style pack): licences
 
 | File | Licence | Origin |
 |---|---|---|
@@ -9,5 +9,5 @@
 | `Newsreader-Medium.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Newsreader (github.com/productiontype/Newsreader); a static instance (wght 500, opsz 16) of the variable font, subset to Latin-1 with fontTools. Copyright 2020 The Newsreader Project Authors (http://github.com/productiontype/Newsreader) |
 
 Characters these fonts lack (Chinese, Japanese, Korean) are drawn with the
-skin's `fallback` font, `fonts/NotoSansSC-subset.ttf` (the platform's
+style's `fallback` font, `fonts/NotoSansSC-subset.ttf` (the platform's
 subset, OFL 1.1, `assets/fonts/OFL.txt`).

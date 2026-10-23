@@ -15,7 +15,7 @@ export const LANGUAGES = [
   { code: "es", key: "lang.es" },
 ] as const;
 
-/** The UI's sounds and reduced motion; configure keeps the skin the look applied (og-ui §6). */
+/** The UI's sounds and reduced motion; configure keeps the style the look applied (og-ui §6). */
 export function configureUi(world: World, p: PrefsV): void {
   const sound = (path: string) => must(og.load.sound(world, path));
   must(og.ui.configure(world, {
