@@ -64,8 +64,13 @@ The order the games found productive:
 6. **Run with commands** (og-build §1, §4): `og run . --headless
    --commands "...;screenshot:x.png;...;quit"`, then open each frame and
    say what it shows. Do this after every change that shows on screen.
+   Add `describe:frame.json` beside a screenshot to get the frame as data:
+   the visible entities nearest first, each with its screen box, pick point,
+   depth and the fraction hidden; the UI elements with rects and text; the
+   camera (§21).
 7. **Playtests with reference frames** (og-build §3): `tests/*.og.ts`
-   asserting on facts, `get:` answers and dumps, one per feature, and a
+   asserting on facts, `get:` answers and dumps, or written as `expect:`
+   steps alone, which `og run` itself checks (§21), one per feature, and a
    frames playtest comparing screenshots with `references/<tier>/`, its
    frame reads inside `t.frame`: in a sandbox without a renderer each
    screenshot is reported "no renderer, frame unchecked" and passes while
@@ -1865,3 +1870,59 @@ render at 640×360 (about 0.1 s) to iterate, full size once.
 `reference/index.md` (the generated wiki shipped with this skill) maps every
 module (grouped by skill, as in §1), type and function to its page, with the IDL text, defaults, ranges
 and units of every field.
+
+## 21. Checking a run: describe, expect, trace, write-back, budgets
+
+These are the checks to use before opening frames. All of them run from
+`og run --commands`, a playtest's steps or the live probe (`og probe`).
+
+- **`describe[:path]`** (probe `describe`) writes the current frame as
+  JSON. `entities` holds every visible entity, nearest first (`order`):
+  `id` (the probe's id), `name`, `archetype`, `labels`, `box` {x, y, width,
+  height} of its visible pixels and `point` (a pixel `pick` answers it at),
+  both in CSS pixels of the play surface, `drawn` (its box drawn alone),
+  `depth`, `coverage` and `occlusion` (0–1, the share of it others hide).
+  `ui` lists the UI elements with `box`, `kind` and `text`, and `camera`
+  the camera. The boxes come from an entity-id pass over the
+  extracted frame on the CPU, so a run without a renderer describes the
+  same frame. `pick` at an entity's `point` answers that entity.
+- **`expect:<op>`** asserts at its tick. A failure is logged with the tick
+  and the observed value, `og run --json` lists it under `expectations`,
+  and the run exits 1:
+
+  ```text
+  expect:entity:crate:within:380,360,280,240    its described box inside the screen box
+  expect:entity:crate:within:-3,0.4,-1,1,0.6,2  its position inside the world box (x0,y0,z0,x1,y1,z1)
+  expect:event:og.CollisionStarted[:2]          at least one (or exactly 2) since the script began
+  expect:ui:text:=Started                       a UI element shows the text (= exact, else a substring)
+  expect:region:560,16,64,24:color:#9da5b1:24   the region's mean colour within 24 per channel
+  expect:frame:references/start.png:rmse:<=6    the frame against a reference PNG
+  expect:state:score>=3                         a fact of GameDesc.facts by dotted path (== != < <= > >=)
+  ```
+
+  A playtest may be expect steps alone: `templates/game/tests/smoke.og.ts`
+  is. Each expectation counts as a check. Without a renderer a frame or
+  region expectation is unchecked, never failed. Take screen boxes from a
+  `describe` of a good run, with a margin.
+- **`og run --trace out.json`** writes the run in the Chrome trace format;
+  open it in Perfetto (ui.perfetto.dev). The engine lane holds each tick
+  with its systems, render holds each frame with its render passes (CPU
+  encode time), load holds each cooked file read, and cook holds the
+  cook. The probe's `state().timings.systems` and `.passes` give the last
+  tick's and frame's numbers live.
+- **`save_scene[:path]`** (probe `saveScene(write)`) writes the boot
+  scene back after `teleport`, `set` or the Tune panel moved things. Only
+  the lines whose values changed are rewritten; comments and order stay,
+  and a tuned field the text lacks gets a line. With a path, the text goes
+  under `--out` to diff first; without one, it replaces
+  `assets/<scene>.ogt`. `set` names engine components by their registered
+  name (`set:marker.og.Transform.scale=0.5,0.5,0.5`). Resources are not
+  scene text, so a tuned resource is reported as not written.
+- **`og cook --report`** writes `og-out/cook-report.json`: per asset its
+  triangles per LOD, vertices, textures (size, format), bones, clips,
+  bytes cooked and flags. **`og doctor --project . [--json]`** checks it
+  against `budgets { }` in project.ogt and exits 1 on an over-budget
+  asset, naming the asset, the limit, the value and the fix. The keys are
+  `triangles` 100000, `vertices` 65536, `textureSize` 2048, `bones` 128,
+  `clips` 64, `assetBytes` 8 MiB and `totalBytes` 64 MiB, each a default
+  a project may move.

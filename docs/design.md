@@ -154,7 +154,8 @@ and the fallback where tsrs has no package.
 
 - **`.ogt`** is the one text format: a line-based `type`/`version` header, a
   separator, then `key value` lines with nested blocks. Scenes, materials,
-  tuning, import settings, project manifest (`project.ogt`) all use it. It
+  tuning, import settings, project manifest (`project.ogt`, whose `budgets
+  { }` hold the asset budgets `og doctor --project` checks) all use it. It
   diffs line by line in git, which matters because the agent's checkpoints
   are git commits.
 - **`.ogb`** is the one cooked blob: type hash, schema version, cook stamp,
@@ -443,6 +444,9 @@ a game registers more (`commands:` above). Unknown actions warn and continue.
 | `dump_world[:path]` / `dump_entity:<name>[:path]` / `dump_ui[:path]` | tables, systems and their matched counts; one entity's components and transform; the UI tree with bounds |
 | `set:<entity>.<component>.<field>=<value>` | a Tune write through the schema |
 | `seed:<n>` / `pause` / `resume` / `advance:<ticks>` | determinism controls |
+| `describe[:path]` | the frame as data (§3.4): visible entities with screen boxes, depth order and occlusion; UI elements with rects and text; the camera |
+| `expect:<operation>` | an assertion at this tick (§3.4); a failure fails the run |
+| `save_scene[:path]` | the boot scene's `.ogt` rewritten from the world (§3.4) |
 | `quit` | exit |
 
 ### 3.4 Probe **(D)**
@@ -455,6 +459,55 @@ from the shell (no postMessage hop: the shell calls the Worker through a
 request ring), a loopback WebSocket from `og` on native. `publish` builds keep
 the player-facing members (`hello`, `tick`, `state`, `pick`, `entity`,
 `input`, `capture`) and drop the rest.
+
+Above capture sits the layer that lets an agent check a frame without
+reading pixels:
+
+- **The semantic frame.** `describe` (a probe member and the
+  `describe[:path]` action) answers the current tick's frame as JSON,
+  deterministic for the same world: the visible entities nearest first, each
+  with its name, archetype, label, screen-space box and pick point (CSS
+  pixels), depth and the fraction of it that others hide; the UI elements
+  with their rects and text (from `dump_ui`); the camera. The entities come
+  from an entity-id pass: og-render's `id_pass.rs` renders the extracted
+  frame (meshes, skinned meshes posed on the CPU, world sprites) at half
+  the width and height, a quarter of the pixels, on the CPU, so a host
+  without a GPU describes the same frame. `pick` answers from the same pass
+  when the game has no picker, so a box `describe` gives contains the point
+  `pick` names.
+- **Expectations.** `expect` operations run as actions (`expect:<op>`) and
+  as a probe program step, and are evaluated at their tick:
+  `entity:<id>:within:x,y,w,h` (its described box inside a screen box) or
+  `within:x0,y0,z0,x1,y1,z1` (its position inside a world box),
+  `event:<Name>[:count]`, `ui:text:[=]<text>`,
+  `region:x,y,w,h:color:#rrggbb[:tol]`, `frame:<ref.png>:rmse:<=v` and
+  `state:<path><op><value>` over the game's `state()` facts. Each result
+  keeps its tick, what was expected and what was observed; a failure is a
+  warning in the log. `og run --json` carries them (`expectations`) and
+  exits 1 on any failure; a playtest may be expectations alone. A frame
+  expectation without a renderer is unchecked, never a failure.
+- **Trace.** `og run --trace out.json` writes the run in the Chrome trace
+  format (Perfetto opens it): lanes are threads — engine (each tick, its
+  systems inside it from the world's clock), render (each frame, its
+  render-graph passes), load (each cooked output read), cook (the cook and
+  the outputs it cooked). Systems and passes are laid end to end inside
+  their parent, since the engine records their lengths. Pass times are CPU
+  encoding, not GPU time. The live probe's `state().timings` carries the
+  last tick's `systems[]` and the last frame's `passes[]` (name, ms).
+- **Scene write-back.** `save_scene` (member, and `save_scene[:path]`)
+  rewrites the boot scene's `.ogt` from the world, line by line: a field
+  line changes only when its value, rounded as the cook rounds it, differs;
+  a field `set` or `patch` tuned that the text lacks gets a line (or a
+  component block); comments, order and spelling stay. Cooking the result
+  loads the same world, and saving again changes nothing. Resources are
+  not scene text: a tuned resource is reported as skipped.
+- **Diagnostics as data.** `og cook --report` writes
+  `og-out/cook-report.json`. For each asset it records triangles,
+  vertices and LODs, textures with sizes and formats, bones, clips, bytes
+  cooked and budget flags. `og doctor --project <dir> [--json]` checks it
+  against the budgets project.ogt sets (`budgets { triangles vertices
+  textureSize bones clips assetBytes totalBytes }`, each with a default)
+  and prints findings with severity, asset, budget, limit, value and fix.
 
 ### 3.5 Hot reload **(D)**
 
