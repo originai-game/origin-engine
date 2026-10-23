@@ -797,7 +797,10 @@ reading pixels:
   `within:x0,y0,z0,x1,y1,z1` (its position inside a world box),
   `event:<Name>[:count]`, `ui:text:[=]<text>`,
   `region:x,y,w,h:color:#rrggbb[:tol]`, `frame:<ref.png>:rmse:<=v` and
-  `state:<path><op><value>` over the game's `state()` facts. Each result
+  `state:<path><op><value>` over the game's `state()` facts,
+  `entity:<id>:<path><op><value>` over a field of the entity's
+  `dump_entity` (`render.lod==2`) and `timings:<path><op><value>` over
+  `state().timings` (`triangles<=1500000`). Each result
   keeps its tick, what was expected and what was observed; a failure is a
   warning in the log. `og run --json` carries them (`expectations`) and
   exits 1 on any failure; a playtest may be expectations alone. A frame

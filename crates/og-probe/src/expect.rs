@@ -13,6 +13,8 @@
 //! expect:region:x,y,w,h:color:#rrggbb[:tol]    the region's mean colour (CSS pixels) within tol per channel (0-255, default 16)
 //! expect:frame:<ref.png>:rmse:<=v              the frame against a reference PNG: RGB root-mean-square difference (0-255) at most v
 //! expect:state:<path><op><value>               a fact of state().facts by dotted path: == != < <= > >=; value as JSON, else text
+//! expect:entity:<id>:<path><op><value>         a field of the entity as dump_entity shows it (`render.lod==2`, `og.Transform.position.y>0`)
+//! expect:timings:<path><op><value>             state().timings by dotted path (`triangles<=1500000`)
 //! ```
 //!
 //! A frame expectation without a renderer is `unchecked` (never a failure),
@@ -139,9 +141,47 @@ pub(crate) enum Expect {
         op: Op,
         value: Value,
     },
+    /// A field of an entity's dump (`dump_entity`).
+    Field {
+        id: String,
+        path: String,
+        op: Op,
+        value: Value,
+    },
+    /// The probe's timings (`state().timings`).
+    Timings {
+        path: String,
+        op: Op,
+        value: Value,
+    },
 }
 
-const USAGE: &str = "write `expect:entity:<id>:within:x,y,w,h`, `expect:event:<Name>[:count]`, `expect:ui:text:<text>`, `expect:region:x,y,w,h:color:#rrggbb[:tolerance]`, `expect:frame:<ref.png>:rmse:<=v` or `expect:state:<path>==<value>`";
+const USAGE: &str = "write `expect:entity:<id>:within:x,y,w,h`, `expect:entity:<id>:<path>==<value>`, `expect:event:<Name>[:count]`, `expect:ui:text:<text>`, `expect:region:x,y,w,h:color:#rrggbb[:tolerance]`, `expect:frame:<ref.png>:rmse:<=v`, `expect:state:<path>==<value>` or `expect:timings:<path>==<value>`";
+
+/// `<path><op><value>`: the dotted path, the comparison and the value (JSON,
+/// else text). `form` names the expectation in the error.
+fn comparison(text: &str, form: &str) -> Result<(String, Op, Value), String> {
+    let ops = [
+        ("==", Op::Eq),
+        ("!=", Op::Ne),
+        ("<=", Op::Le),
+        (">=", Op::Ge),
+        ("<", Op::Lt),
+        (">", Op::Gt),
+    ];
+    let (at, len, op) = ops
+        .iter()
+        .filter_map(|(t, op)| text.find(t).map(|i| (i, t.len(), *op)))
+        .min_by_key(|(i, len, _)| (*i, usize::MAX - len))
+        .ok_or_else(|| format!("'{text}' has no comparison (== != < <= > >=)"))?;
+    let path = text[..at].trim().to_owned();
+    let raw = text[at + len..].trim();
+    if path.is_empty() || raw.is_empty() {
+        return Err(format!("write `expect:{form}<path>{}<value>`", op.text()));
+    }
+    let value = serde_json::from_str(raw).unwrap_or_else(|_| Value::String(raw.to_owned()));
+    Ok((path, op, value))
+}
 
 fn numbers(text: &str) -> Result<Vec<f32>, String> {
     text.split(',')
@@ -177,7 +217,14 @@ pub(crate) fn parse(args: &[String]) -> Result<Expect, String> {
                 .filter(|s| !s.is_empty())
                 .ok_or("expect:entity needs the entity's id")?;
             if args.get(2).map(String::as_str) != Some("within") {
-                return Err(format!("expect:entity:{id}: {USAGE}"));
+                let (path, op, value) = comparison(&rest(2), &format!("entity:{id}:"))
+                    .map_err(|e| format!("expect:entity:{id}: {e}; {USAGE}"))?;
+                return Ok(Expect::Field {
+                    id: id.clone(),
+                    path,
+                    op,
+                    value,
+                });
             }
             let bounds = numbers(&rest(3))?;
             if bounds.len() != 4 && bounds.len() != 6 {
@@ -266,30 +313,74 @@ pub(crate) fn parse(args: &[String]) -> Result<Expect, String> {
             Ok(Expect::Frame { reference, rmse })
         }
         "state" => {
-            let text = rest(1);
-            let ops = [
-                ("==", Op::Eq),
-                ("!=", Op::Ne),
-                ("<=", Op::Le),
-                (">=", Op::Ge),
-                ("<", Op::Lt),
-                (">", Op::Gt),
-            ];
-            let (at, len, op) = ops
-                .iter()
-                .filter_map(|(t, op)| text.find(t).map(|i| (i, t.len(), *op)))
-                .min_by_key(|(i, len, _)| (*i, usize::MAX - len))
-                .ok_or_else(|| format!("'{text}' has no comparison (== != < <= > >=)"))?;
-            let path = text[..at].trim().to_owned();
-            let raw = text[at + len..].trim();
-            if path.is_empty() || raw.is_empty() {
-                return Err(format!("write `expect:state:<path>{}<value>`", op.text()));
-            }
-            let value = serde_json::from_str(raw).unwrap_or_else(|_| Value::String(raw.to_owned()));
+            let (path, op, value) = comparison(&rest(1), "state:")?;
             Ok(Expect::State { path, op, value })
+        }
+        "timings" => {
+            let (path, op, value) = comparison(&rest(1), "timings:")?;
+            Ok(Expect::Timings { path, op, value })
         }
         _ => Err(format!("'{kind}' is not an expectation; {USAGE}")),
     }
+}
+
+/// Records `value <op> expected` at `path` of `of` (named `what`).
+fn check_path(
+    r: &mut ExpectResult,
+    of: &Value,
+    what: &str,
+    prefix: &str,
+    path: &str,
+    op: Op,
+    expected: &Value,
+) {
+    check_value(r, at_path(of, path), what, prefix, path, op, expected);
+}
+
+fn check_value(
+    r: &mut ExpectResult,
+    at: Option<&Value>,
+    what: &str,
+    prefix: &str,
+    path: &str,
+    op: Op,
+    expected: &Value,
+) {
+    r.expected = json!(format!("{} {}", op.text(), expected));
+    match at {
+        None => {
+            r.observed = Value::Null;
+            r.status = Status::Fail;
+            r.reason = format!("{what} has no '{path}'");
+        }
+        Some(v) => {
+            r.observed = v.clone();
+            if !compare(v, op, expected) {
+                r.status = Status::Fail;
+                r.reason = format!("{prefix}{path} {} {expected} does not hold", op.text());
+            }
+        }
+    }
+}
+
+/// A field of an entity's dump by dotted path, where a component's name
+/// may itself hold dots (`og.Transform.position.y`): the longest key that
+/// matches is taken at each level.
+fn dump_path<'v>(value: &'v Value, path: &str) -> Option<&'v Value> {
+    if path.is_empty() {
+        return Some(value);
+    }
+    let Value::Object(m) = value else {
+        return at_path(value, path);
+    };
+    let parts: Vec<&str> = path.split('.').collect();
+    for n in (1..=parts.len()).rev() {
+        let key = parts[..n].join(".");
+        if let Some(v) = m.get(&key) {
+            return dump_path(v, &parts[n..].join("."));
+        }
+    }
+    None
 }
 
 /// A fact by dotted path (`a.b.0`).
@@ -680,23 +771,49 @@ impl Probe {
                 }
             }
             Expect::State { path, op, value } => {
-                r.expected = json!(format!("{} {}", op.text(), value));
                 let facts = self.facts.as_ref().map_or(Value::Null, |f| f(world));
-                match at_path(&facts, &path) {
-                    None => {
-                        r.observed = Value::Null;
-                        fail(&mut r, format!("state().facts has no '{path}'"));
-                    }
-                    Some(v) => {
-                        r.observed = v.clone();
-                        if !compare(v, op, &value) {
-                            fail(
-                                &mut r,
-                                format!("facts.{path} {} {value} does not hold", op.text()),
-                            );
-                        }
+                check_path(&mut r, &facts, "state().facts", "facts.", &path, op, &value);
+            }
+            Expect::Timings { path, op, value } => {
+                let state = self.state(world);
+                check_path(
+                    &mut r,
+                    &state["timings"],
+                    "state().timings",
+                    "timings.",
+                    &path,
+                    op,
+                    &value,
+                );
+            }
+            Expect::Field {
+                id,
+                path,
+                op,
+                value,
+            } => {
+                let Some(e) = self.names.resolve(world, &id) else {
+                    fail(&mut r, format!("no live entity '{id}'"));
+                    return Ok(self.record(r));
+                };
+                let mut dump = self.dump_entity(world, e);
+                // `og.Transform.position` as well as `components.og.Transform...`.
+                let found = at_path(&dump, &path).is_some();
+                if !found && let Some(components) = dump["components"].as_object().cloned() {
+                    for (name, fields) in components {
+                        dump[name] = fields;
                     }
                 }
+                let at = dump_path(&dump, &path);
+                check_value(
+                    &mut r,
+                    at,
+                    &format!("dump_entity of '{id}'"),
+                    "",
+                    &path,
+                    op,
+                    &value,
+                );
             }
         }
         Ok(self.record(r))
@@ -798,6 +915,18 @@ pub(crate) struct Watch {
 mod tests {
     use super::*;
 
+    /// A component name with dots is one key of an entity's dump.
+    #[test]
+    fn dump_paths_take_dotted_component_names() {
+        let dump = json!({"render": {"lod": 2}, "og.Transform": {"position": {"y": 1.5}}});
+        assert_eq!(dump_path(&dump, "render.lod"), Some(&json!(2)));
+        assert_eq!(
+            dump_path(&dump, "og.Transform.position.y"),
+            Some(&json!(1.5))
+        );
+        assert_eq!(dump_path(&dump, "og.Mesh.x"), None);
+    }
+
     fn args(s: &str) -> Vec<String> {
         s.split(':').map(str::to_owned).collect()
     }
@@ -859,6 +988,24 @@ mod tests {
                 value: json!(0.6)
             }
         );
+        assert_eq!(
+            parse(&args("entity:tree-1990:render.lod==2")).unwrap(),
+            Expect::Field {
+                id: "tree-1990".into(),
+                path: "render.lod".into(),
+                op: Op::Eq,
+                value: json!(2)
+            }
+        );
+        assert_eq!(
+            parse(&args("timings:triangles<=1500000")).unwrap(),
+            Expect::Timings {
+                path: "triangles".into(),
+                op: Op::Le,
+                value: json!(1500000)
+            }
+        );
+        assert!(parse(&args("entity:crate:nothing")).is_err());
         assert!(parse(&args("state:started")).is_err());
         assert!(parse(&args("region:1,2:color:#fff")).is_err());
         assert!(parse(&args("nothing")).is_err());
