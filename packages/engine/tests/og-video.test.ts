@@ -15,6 +15,11 @@
 // frame is nearest its own player's source frame. Broken before: they
 // shared the video's texture, which showed the first player's frame.
 //
+// The frame is a Texture like any other (the fixture's `surfaces`): the
+// player's texture as the map of an unlit og.Mesh plane on the left half
+// and on an og.ui image on the right half each show the source's frame 90,
+// neither black (never rendered before, the video stream's "Left out").
+//
 // Ways this could fail: the player's time accumulates in f32 to 2.9999998 s
 // and shows frame 89; the texture is not replaced when the frame changes
 // (frame 0 forever) or lags a tick behind; the sound starts at 0 after a
@@ -125,6 +130,33 @@ test.skipIf(!hasFfmpeg)("two players of one video at different times show differ
     expect(rmse(right, s105)).toBeLessThan(rmse(right, s90));
     expect(rmse(left, s90)).toBeLessThan(0.15);
     expect(rmse(right, s105)).toBeLessThan(0.15);
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+}, 300_000);
+
+test.skipIf(!hasFfmpeg)("a video frame shows as an og.Mesh material map and on an og.ui image", () => {
+  const out = mkdtempSync(join(tmpdir(), "og-video-surfaces-"));
+  try {
+    const script = "0.5:surfaces;3:screenshot:surfaces.png;3:dump_entity:screen:a.json;3.1:quit";
+    const r = Bun.spawnSync([ogBin(), "run", "--headless", fixture, "--commands", script, "--out", out, "--json"], { cwd: repo });
+    if (r.exitCode !== 0) throw new Error(`og run exited ${r.exitCode}: ${text(r.stderr)}`);
+    const run = JSON.parse(text(r.stdout).trim().split("\n").pop()!) as { tier: string; warnings: string[] };
+    expect(run.warnings).toEqual([]);
+    expect((JSON.parse(readFileSync(join(out, "a.json"), "utf8")) as Dump).components["og.VideoPlayer"]!.frame).toBe(90);
+    if (run.tier === "none") return;
+    // The plane fills the left half of the middle band, the UI image the right half.
+    const shot = join(out, "surfaces.png");
+    const half = (x: string) => rgb(["-i", shot], `crop=iw/2:ih/2:${x}:ih/4,`);
+    const source = join(fixture, "assets/clips/count.mp4");
+    const s90 = rgb(["-i", source], "select=eq(n\\,90),");
+    const s30 = rgb(["-i", source], "select=eq(n\\,30),");
+    const mean = (a: Uint8Array) => a.reduce((s, v) => s + v, 0) / a.length;
+    for (const [name, region] of [["mesh", half("0")], ["ui image", half("iw/2")]] as const) {
+      expect(mean(region), name).toBeGreaterThan(60);
+      expect(rmse(region, s90), name).toBeLessThan(rmse(region, s30));
+      expect(rmse(region, s90), name).toBeLessThan(0.15);
+    }
   } finally {
     rmSync(out, { recursive: true, force: true });
   }
