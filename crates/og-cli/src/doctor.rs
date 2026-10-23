@@ -183,6 +183,19 @@ pub fn run(args: &[&str]) -> ExitCode {
             );
         }
     }
+    // ffprobe: the cook reads a `type video` source's length and size with it.
+    let probe = og_cook::cook::video::ffprobe_bin();
+    match version_of_dash(&probe) {
+        Some(v) => println!(
+            "ok       {:<13} {v} ({}; og cook reads footage)",
+            "ffprobe",
+            probe.display()
+        ),
+        None => println!(
+            "optional {:<13} not found (OG_FFPROBE or PATH): og cook refuses `type video` assets",
+            "ffprobe"
+        ),
+    }
     problems += engine_checks(&cwd);
     if problems == 0 {
         println!("all tools present.");
@@ -191,6 +204,22 @@ pub fn run(args: &[&str]) -> ExitCode {
         println!("{problems} problem(s); each line above names its fix.");
         ExitCode::FAILURE
     }
+}
+
+/// The third word of `<tool> -version`'s first line (ffmpeg's tools).
+fn version_of_dash(tool: &Path) -> Option<String> {
+    let out = Command::new(tool).arg("-version").output().ok()?;
+    let text = String::from_utf8_lossy(&out.stdout);
+    out.status
+        .success()
+        .then(|| {
+            text.lines()
+                .next()?
+                .split_whitespace()
+                .nth(2)
+                .map(str::to_string)
+        })
+        .flatten()
 }
 
 /// The first dotted version number in `<tool> --version`.
