@@ -47,6 +47,9 @@ pub(crate) struct ViewState {
     /// Post passes by Post handle index, and the asset each came from.
     pub posts: Vec<og_render::PostHandle>,
     pub post_paths: BTreeMap<String, usize>,
+    /// The entity of each of the frame's views, by index in
+    /// `RenderScene::views` (the probe's `describe` names them).
+    pub entities: Vec<u64>,
 }
 
 // ── og.render.renderTarget ──────────────────────────────────────────────────
@@ -297,6 +300,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
 
     // Views.
     scene.views.clear();
+    rs.views.entities.clear();
     let targets = &rs.views.targets;
     let target = |v: &Value| index(&v["target"]).and_then(|i| targets.get(i).copied());
     for (e, v) in sorted_rows(world, rs.draw.views.camera_view.as_ref()) {
@@ -322,6 +326,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
             every: every(&v),
             mirror: None,
         });
+        rs.views.entities.push(e);
     }
     for (e, v) in sorted_rows(world, rs.draw.views.mirror.as_ref()) {
         if !on(&v, "active", true) {
@@ -343,6 +348,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
                 height: f(&v, "height", 1.0),
             }),
         });
+        rs.views.entities.push(e);
     }
 
     // PostEffects.custom1..4, in order, the slots left 0 skipped.

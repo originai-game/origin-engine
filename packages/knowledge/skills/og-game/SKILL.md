@@ -2212,6 +2212,13 @@ when `object.layers & camera.layers` is not 0. `og.render.raycast`'s
 Shadow maps take every caster whatever its layers, so a hidden object
 still casts a shadow. Give it `castShadow: false` if it should not.
 
+The probe's `describe` lists what the main camera shows, and each
+og.CameraView and og.Mirror under `views` with what its own image shows,
+on its layers. An entity on a layer only a view sees is found under that
+view, not in `entities`. A main-camera entity names the views that also
+show it in its `views`. `pick` and `expect:entity:...:within` read the
+main camera.
+
 **Full custom shaders.** `mode full lit` (or `mode full unlit`) in a `type
 shader` asset replaces the lit shader's stages with your own entries:
 ```wgsl

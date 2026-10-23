@@ -72,6 +72,7 @@ module probe {
 | [`ScreenBox`](#type-ScreenBox) | struct | A box on the play surface. |
 | [`ScreenPoint`](#type-ScreenPoint) | struct | A point on the play surface. |
 | [`DescribedEntity`](#type-DescribedEntity) | struct | One entity the frame shows, from the entity-id pass (a CPU rasterisation of the frame's meshes, skinned meshes and world sprites at a quarter of its pixels). |
+| [`DescribedView`](#type-DescribedView) | struct | A secondary camera (og.CameraView, og.Mirror) and what its image shows: its own entity-id pass, from its eye and on its layers, at a quarter of its image's pixels, whatever its `every`. An entity only its layers admit (a layer the main camera leaves out) is listed here and not in Description.entities. |
 | [`DescribedUi`](#type-DescribedUi) | struct | One UI element as describe lists it (the tree dump_ui writes). |
 | [`DescribedCamera`](#type-DescribedCamera) | struct | The camera as drawn, with its shake. |
 | [`PassSize`](#type-PassSize) | struct | The entity-id pass's size. |
@@ -98,7 +99,7 @@ interface RuntimeProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 12730</sub>
+<sub>`api.ogt` line 12741</sub>
 
 <a id="member-RuntimeProbe-version"></a>
 
@@ -118,7 +119,7 @@ prop version u32 "PROBE_VERSION." {
 }
 ```
 
-<sub>`api.ogt` line 12734</sub>
+<sub>`api.ogt` line 12745</sub>
 
 <a id="member-RuntimeProbe-tick"></a>
 
@@ -142,7 +143,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 12737</sub>
+<sub>`api.ogt` line 12748</sub>
 
 <a id="member-RuntimeProbe-state"></a>
 
@@ -166,7 +167,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 12742</sub>
+<sub>`api.ogt` line 12753</sub>
 
 <a id="member-RuntimeProbe-advance"></a>
 
@@ -194,7 +195,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 12747</sub>
+<sub>`api.ogt` line 12758</sub>
 
 <a id="member-RuntimeProbe-pause"></a>
 
@@ -217,7 +218,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 12752</sub>
+<sub>`api.ogt` line 12763</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -240,7 +241,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 12756</sub>
+<sub>`api.ogt` line 12767</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -269,7 +270,7 @@ fn input {
 }
 ```
 
-<sub>`api.ogt` line 12760</sub>
+<sub>`api.ogt` line 12771</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -292,7 +293,7 @@ fn accepted {
 }
 ```
 
-<sub>`api.ogt` line 12766</sub>
+<sub>`api.ogt` line 12777</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
@@ -323,7 +324,7 @@ fn pick {
 }
 ```
 
-<sub>`api.ogt` line 12770</sub>
+<sub>`api.ogt` line 12781</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -352,7 +353,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 12777</sub>
+<sub>`api.ogt` line 12788</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
@@ -380,7 +381,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 12783</sub>
+<sub>`api.ogt` line 12794</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -412,7 +413,7 @@ fn patch {
 }
 ```
 
-<sub>`api.ogt` line 12788</sub>
+<sub>`api.ogt` line 12799</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -440,7 +441,7 @@ fn run {
 }
 ```
 
-<sub>`api.ogt` line 12795</sub>
+<sub>`api.ogt` line 12806</sub>
 
 <a id="type-EngineProbe"></a>
 
@@ -458,7 +459,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 12802</sub>
+<sub>`api.ogt` line 12813</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -482,7 +483,7 @@ fn hello {
 }
 ```
 
-<sub>`api.ogt` line 12807</sub>
+<sub>`api.ogt` line 12818</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -523,7 +524,7 @@ fn capture {
 }
 ```
 
-<sub>`api.ogt` line 12812</sub>
+<sub>`api.ogt` line 12823</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -553,7 +554,7 @@ fn sweep {
 }
 ```
 
-<sub>`api.ogt` line 12825</sub>
+<sub>`api.ogt` line 12836</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -576,7 +577,7 @@ fn reload {
 }
 ```
 
-<sub>`api.ogt` line 12832</sub>
+<sub>`api.ogt` line 12843</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -599,7 +600,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 12836</sub>
+<sub>`api.ogt` line 12847</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -627,7 +628,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 12840</sub>
+<sub>`api.ogt` line 12851</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -657,7 +658,7 @@ fn dump {
 }
 ```
 
-<sub>`api.ogt` line 12845</sub>
+<sub>`api.ogt` line 12856</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -685,7 +686,7 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 12852</sub>
+<sub>`api.ogt` line 12863</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -715,7 +716,7 @@ fn listen {
 }
 ```
 
-<sub>`api.ogt` line 12857</sub>
+<sub>`api.ogt` line 12868</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -738,7 +739,7 @@ fn memory {
 }
 ```
 
-<sub>`api.ogt` line 12864</sub>
+<sub>`api.ogt` line 12875</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -761,7 +762,7 @@ fn describe {
 }
 ```
 
-<sub>`api.ogt` line 12868</sub>
+<sub>`api.ogt` line 12879</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -789,7 +790,7 @@ fn expect {
 }
 ```
 
-<sub>`api.ogt` line 12872</sub>
+<sub>`api.ogt` line 12883</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -812,7 +813,7 @@ fn expectations {
 }
 ```
 
-<sub>`api.ogt` line 12877</sub>
+<sub>`api.ogt` line 12888</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -842,7 +843,7 @@ fn saveScene {
 }
 ```
 
-<sub>`api.ogt` line 12881</sub>
+<sub>`api.ogt` line 12892</sub>
 
 ## Types
 
@@ -1922,6 +1923,7 @@ One entity the frame shows, from the entity-id pass (a CPU rasterisation of the 
 | `depth` | `number` | `0` | — | `m` | — | From the camera to its nearest visible point, along the view. |
 | `coverage` | `number` | `0` | — | `ratio` | — | Its visible share of the surface. |
 | `occlusion` | `number` | `0` | — | `ratio` | — | The share of what it covers alone that something else hides. |
+| `views` | `readonly string[]` | `[]` | — | — | — | The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty). |
 
 ```ogt
 struct DescribedEntity {
@@ -1943,10 +1945,38 @@ struct DescribedEntity {
   field occlusion f32 "The share of what it covers alone that something else hides." {
     unit ratio
   }
+  field views List.String "The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty)."
 }
 ```
 
 <sub>`api.ogt` line 12622</sub>
+
+<a id="type-DescribedView"></a>
+
+### `DescribedView` (struct)
+
+A secondary camera (og.CameraView, og.Mirror) and what its image shows: its own entity-id pass, from its eye and on its layers, at a quarter of its image's pixels, whatever its `every`. An entity only its layers admit (a layer the main camera leaves out) is listed here and not in Description.entities.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `id` | `string` | `""` | — | — | — | The view entity's probe id. |
+| `name` | `string \| null` | `null` | — | — | — | Its name. |
+| `kind` | `string` | `""` | — | — | — | `camera` (og.CameraView) or `mirror` (og.Mirror). |
+| `size` | `PassSize` | `{ width: 0, height: 0 }` | — | — | — | The pixels its image covers: its render target's, or its viewport's rect of the frame. |
+| `entities` | `readonly DescribedEntity[]` | `[]` | — | — | — | What it shows, nearest its eye first, boxes and points in its image's pixels. |
+
+```ogt
+struct DescribedView {
+  doc "A secondary camera (og.CameraView, og.Mirror) and what its image shows: its own entity-id pass, from its eye and on its layers, at a quarter of its image's pixels, whatever its `every`. An entity only its layers admit (a layer the main camera leaves out) is listed here and not in Description.entities."
+  field id String "The view entity's probe id."
+  field name Option.String "Its name."
+  field kind String "`camera` (og.CameraView) or `mirror` (og.Mirror)."
+  field size PassSize "The pixels its image covers: its render target's, or its viewport's rect of the frame."
+  field entities List.DescribedEntity "What it shows, nearest its eye first, boxes and points in its image's pixels."
+}
+```
+
+<sub>`api.ogt` line 12644</sub>
 
 <a id="type-DescribedUi"></a>
 
@@ -1979,7 +2009,7 @@ struct DescribedUi {
 }
 ```
 
-<sub>`api.ogt` line 12643</sub>
+<sub>`api.ogt` line 12653</sub>
 
 <a id="type-DescribedCamera"></a>
 
@@ -2020,7 +2050,7 @@ struct DescribedCamera {
 }
 ```
 
-<sub>`api.ogt` line 12655</sub>
+<sub>`api.ogt` line 12665</sub>
 
 <a id="type-PassSize"></a>
 
@@ -2041,7 +2071,7 @@ struct PassSize {
 }
 ```
 
-<sub>`api.ogt` line 12675</sub>
+<sub>`api.ogt` line 12685</sub>
 
 <a id="type-Description"></a>
 
@@ -2055,7 +2085,8 @@ The frame as data: deterministic, the same JSON on every host and backend for th
 | `surface` | `UiSurface \| null` | `null` | — | — | — | The play surface. |
 | `pass` | `PassSize \| null` | `null` | — | — | — | The entity-id pass; null without a scene. |
 | `camera` | `DescribedCamera \| null` | `null` | — | — | — | The camera; null without a scene. |
-| `entities` | `readonly DescribedEntity[]` | `[]` | — | — | — | The visible entities, nearest first. |
+| `entities` | `readonly DescribedEntity[]` | `[]` | — | — | — | The entities the main camera shows, nearest first (each names the views that also show it). |
+| `views` | `readonly DescribedView[]` | `[]` | — | — | — | The secondary cameras the frame draws, in its view order, each with what it shows. |
 | `ui` | `readonly DescribedUi[]` | `[]` | — | — | — | The UI elements in draw order. |
 
 ```ogt
@@ -2065,12 +2096,13 @@ struct Description {
   field surface Option.UiSurface "The play surface."
   field pass Option.PassSize "The entity-id pass; null without a scene."
   field camera Option.DescribedCamera "The camera; null without a scene."
-  field entities List.DescribedEntity "The visible entities, nearest first."
+  field entities List.DescribedEntity "The entities the main camera shows, nearest first (each names the views that also show it)."
+  field views List.DescribedView "The secondary cameras the frame draws, in its view order, each with what it shows."
   field ui List.DescribedUi "The UI elements in draw order."
 }
 ```
 
-<sub>`api.ogt` line 12681</sub>
+<sub>`api.ogt` line 12691</sub>
 
 <a id="type-ExpectStatus"></a>
 
@@ -2095,7 +2127,7 @@ enum ExpectStatus {
 }
 ```
 
-<sub>`api.ogt` line 12691</sub>
+<sub>`api.ogt` line 12702</sub>
 
 <a id="type-ExpectResult"></a>
 
@@ -2130,7 +2162,7 @@ struct ExpectResult {
 }
 ```
 
-<sub>`api.ogt` line 12698</sub>
+<sub>`api.ogt` line 12709</sub>
 
 <a id="type-ExpectReport"></a>
 
@@ -2155,7 +2187,7 @@ struct ExpectReport {
 }
 ```
 
-<sub>`api.ogt` line 12712</sub>
+<sub>`api.ogt` line 12723</sub>
 
 <a id="type-SavedScene"></a>
 
@@ -2184,7 +2216,7 @@ struct SavedScene {
 }
 ```
 
-<sub>`api.ogt` line 12720</sub>
+<sub>`api.ogt` line 12731</sub>
 
 ## Constants
 

@@ -220,8 +220,10 @@ pub(crate) fn plan(
 
 /// The camera a mirror draws with: the eye reflected in the quad's plane,
 /// looking through the quad with an off-axis frustum fitted to its corners
-/// (Kooima's generalised perspective projection), its near plane on the
-/// mirror (nothing behind the glass is drawn). Seen from behind, the quad's
+/// (Kooima's generalised perspective projection), its near plane a hair
+/// past the mirror (nothing behind the glass is drawn, nor the glass
+/// itself: a quad on the near plane is kept or clipped by rounding alone,
+/// and the probe's CPU id pass keeps it, seeing only the glass). Seen from behind, the quad's
 /// +x runs to the image's left: the resolve writes it mirrored, so the
 /// target's u runs along +x. `None` when the eye is behind the mirror.
 pub(crate) fn mirror_frame(eye: &Camera, m: &MirrorQuad) -> Option<(CameraFrame, Vec3, f32)> {
@@ -253,7 +255,7 @@ pub(crate) fn mirror_frame(eye: &Camera, m: &MirrorQuad) -> Option<(CameraFrame,
     if dist <= 1e-4 {
         return None;
     }
-    let near = dist.max(1e-3);
+    let near = (dist * (1.0 + 1e-3)).max(1e-3);
     let far = eye.far.max(near * 2.0);
     let s = near / dist;
     let l = vr.dot(va) * s;
@@ -927,15 +929,16 @@ mod tests {
         };
         let (f, pe, near) = mirror_frame(&eye, &quad).expect("in front");
         assert!((pe - Vec3::new(0.7, 1.3, -4.0)).length() < 1e-5);
-        assert!((near - 4.0).abs() < 1e-4);
+        assert!((near - 4.004).abs() < 1e-4);
         let ndc = |p: Vec3| f.view_proj.project_point3(p);
         // The quad's +x end is the image's left (x = -1) before the flip.
         let a = ndc(Vec3::new(1.2, 0.5, 0.0));
         let c = ndc(Vec3::new(-0.8, 1.5, 0.0));
         assert!((a.x + 1.0).abs() < 1e-4 && (a.y + 1.0).abs() < 1e-4, "{a}");
         assert!((c.x - 1.0).abs() < 1e-4 && (c.y - 1.0).abs() < 1e-4, "{c}");
-        // On the glass: depth 0; the room in front of it is beyond.
-        assert!(a.z.abs() < 1e-4);
+        // The glass itself is in front of the near plane (clipped); the
+        // room in front of the mirror is beyond it.
+        assert!(a.z < 0.0, "{a}");
         assert!(ndc(Vec3::new(0.2, 1.0, 2.0)).z > 0.0);
         // Behind the mirror, no reflection.
         let behind = Camera {

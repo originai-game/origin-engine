@@ -38,7 +38,7 @@ pub use command::{
 pub use expect::{ExpectResult, Status};
 pub use hooks::{
     Capture, Frame, Pick, RawFrame, Rebuilt, Reloader, SavedScene, SceneView, SceneWriter, Seen,
-    Shown, StaticUi, UiElement, UiTree,
+    SeenView, Shown, StaticUi, UiElement, UiTree,
 };
 pub use input::{InjectedInput, Input, InputSink, WorldInput};
 pub use names::Names;

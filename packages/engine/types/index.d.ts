@@ -18808,7 +18808,7 @@ export interface AlertDesc {
  * - `"resume"`: `resume`: release the clock.
  * - `"advance"`: `advance:<ticks>`: take fixed steps.
  * - `"quit"`: `quit`: exit.
- * - `"describe"`: `describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, the UI elements with rects and text, the camera.
+ * - `"describe"`: `describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera.
  * - `"expect"`: `expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked.
  * - `"save_scene"`: `save_scene[:path]`: write the boot scene's `.ogt` back from the world, only the lines whose values changed (comments and order kept) and the fields set or patch tuned; to the scene's source, or with a path to that file under the output directory.
  * - `"help"`: `help`: list every action the channel knows, core and registered.
@@ -19600,6 +19600,26 @@ export interface DescribedEntity {
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly occlusion: number;
+  /**
+   * The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty).
+   */
+  readonly views: readonly string[];
+}
+
+/**
+ * A secondary camera (og.CameraView, og.Mirror) and what its image shows: its own entity-id pass, from its eye and on its layers, at a quarter of its image's pixels, whatever its `every`. An entity only its layers admit (a layer the main camera leaves out) is listed here and not in Description.entities.
+ */
+export interface DescribedView {
+  /** The view entity's probe id. */
+  readonly id: string;
+  /** Its name. */
+  readonly name: string | null;
+  /** `camera` (og.CameraView) or `mirror` (og.Mirror). */
+  readonly kind: string;
+  /** The pixels its image covers: its render target's, or its viewport's rect of the frame. */
+  readonly size: PassSize;
+  /** What it shows, nearest its eye first, boxes and points in its image's pixels. */
+  readonly entities: readonly DescribedEntity[];
 }
 
 /** One UI element as describe lists it (the tree dump_ui writes). */
@@ -19678,8 +19698,12 @@ export interface Description {
   readonly pass: PassSize | null;
   /** The camera; null without a scene. */
   readonly camera: DescribedCamera | null;
-  /** The visible entities, nearest first. */
+  /**
+   * The entities the main camera shows, nearest first (each names the views that also show it).
+   */
   readonly entities: readonly DescribedEntity[];
+  /** The secondary cameras the frame draws, in its view order, each with what it shows. */
+  readonly views: readonly DescribedView[];
   /** The UI elements in draw order. */
   readonly ui: readonly DescribedUi[];
 }

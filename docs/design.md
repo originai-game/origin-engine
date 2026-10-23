@@ -362,8 +362,10 @@ do.
 - A mirror reflects the main eye in its plane. It draws through an
   off-axis frustum fitted to the quad's corners (Kooima), with the near
   plane on the glass.
-- The id pass (`id_pass.rs`) and the probe always describe the main
-  camera.
+- The id pass (`id_pass.rs`) draws from any camera on its layers
+  (`render_ids_from`, `view_id_cameras`). The probe's `describe` lists the
+  main camera's entities, each naming the views that also show it
+  (`views`), and each view with what its own pass shows (§3.4).
 
 **Layers.** Layers are three.js masks: bit n is layer n, everything
 defaults to 1, and a camera draws an object when `a & b != 0`.
@@ -814,6 +816,15 @@ reading pixels:
   without a GPU describes the same frame. `pick` answers from the same pass
   when the game has no picker, so a box `describe` gives contains the point
   `pick` names.
+- **What the secondary cameras show.** The id pass runs again for each
+  og.CameraView and og.Mirror, from its eye and on its layers, at a
+  quarter of its image's pixels. `describe` lists the views (`views`: id,
+  kind, image size and its entities, boxes in the image's pixels), and
+  every main-camera entity names the views that also show it (its
+  `views`). An entity on a layer only a view admits is invisible to the
+  main pass and `pick`, and is found under its view: describe reports
+  visibility per camera, never a merge. `expect:entity:...:within` and
+  `pick` read the main camera.
 - **Expectations.** `expect` operations run as actions (`expect:<op>`) and
   as a probe program step, and are evaluated at their tick:
   `entity:<id>:within:x,y,w,h` (its described box inside a screen box) or

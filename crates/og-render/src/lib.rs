@@ -131,7 +131,10 @@ pub use hooks::{
     MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderMode, ShaderParam,
     lit_module_source, physical_module_source, shadow_module_source,
 };
-pub use id_pass::{IdFrame, IdObject, IdSources, id_pass_size, projection_name, render_ids};
+pub use id_pass::{
+    IdCamera, IdFrame, IdObject, IdSources, id_pass_size, projection_name, render_ids,
+    render_ids_from, view_id_cameras,
+};
 pub use lightmap::{BakedLighting, LightmapPages, LightmapUvs, PROBE_VOLUMES, Probe, ProbeVolume};
 pub use lines::{LineLayer, LineMode, Lines, wire_edges};
 pub use material::{PhysicalExtensions, Side, StandardMaterial};

@@ -40,6 +40,7 @@ impl SceneView for FixedView {
                 shown(crate_, [40.0, 10.0, 10.0, 10.0], 9.0, 0.25),
                 shown(player, [10.0, 10.0, 8.0, 12.0], 4.0, 0.0),
             ],
+            views: Vec::new(),
         })
     }
 
@@ -207,4 +208,75 @@ fn describe_orders_entities_nearest_first_with_ui_and_pick_falls_back_to_the_vie
     run(&mut h, 1);
     let out = h.probe.take_outputs();
     assert_eq!(out[0].file_name(), "frame.json");
+}
+
+/// The main camera sees the player; a monitor's camera (the entity
+/// "cctv") sees the player and the crate, which only its layers admit.
+struct ViewedScene;
+
+impl SceneView for ViewedScene {
+    fn seen(&mut self, world: &World) -> Option<Seen> {
+        let player = world.find("player")?;
+        let crate_ = world.find("crate")?;
+        let cctv = world.find("cctv")?;
+        let shown = |entity, rect: [f32; 4], depth: f32| Shown {
+            entity,
+            rect,
+            drawn: rect,
+            point: [rect[0] + rect[2] / 2.0, rect[1] + rect[3] / 2.0],
+            depth,
+            coverage: 0.01,
+            occlusion: 0.0,
+            labels: vec!["mesh".into()],
+        };
+        Some(Seen {
+            pass: (32, 18),
+            camera: json!({"projection": "perspective"}),
+            entities: vec![shown(player, [10.0, 10.0, 8.0, 12.0], 4.0)],
+            views: vec![og_probe::SeenView {
+                entity: cctv,
+                mirror: false,
+                size: (480, 270),
+                entities: vec![
+                    shown(crate_, [300.0, 100.0, 40.0, 40.0], 3.0),
+                    shown(player, [100.0, 90.0, 30.0, 60.0], 6.0),
+                ],
+            }],
+        })
+    }
+
+    fn pick(&mut self, _: &World, _: f32, _: f32) -> Option<Pick> {
+        None
+    }
+}
+
+/// describe reports the main camera's entities, each naming the views
+/// that also show it, and each view with what it shows: an entity only a
+/// view's layers admit is found under that view.
+#[test]
+fn describe_names_the_views_each_entity_shows_in() {
+    let mut h = build(1, false);
+    let cctv = h
+        .world
+        .spawn((support::Transform::at(3.0, 2.0, 3.0),))
+        .unwrap();
+    h.world.set_name(cctv, "cctv").unwrap();
+    h.probe.set_scene_view(Box::new(ViewedScene));
+    let d = h.result("describe", json!({}));
+    let ids = |v: &Value| -> Vec<String> {
+        v.as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e["id"].as_str().unwrap().to_string())
+            .collect()
+    };
+    assert_eq!(ids(&d["entities"]), ["player"]);
+    assert_eq!(d["entities"][0]["views"], json!(["cctv"]));
+    let view = &d["views"][0];
+    assert_eq!(view["id"], json!("cctv"));
+    assert_eq!(view["kind"], json!("camera"));
+    assert_eq!(view["size"], json!({"width": 480, "height": 270}));
+    // Nearest first from the view's own eye.
+    assert_eq!(ids(&view["entities"]), ["crate", "player"]);
+    assert_eq!(view["entities"][0]["box"]["x"], json!(300.0));
 }
