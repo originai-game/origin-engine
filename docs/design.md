@@ -220,6 +220,40 @@ lighting falls back to a forward tile table built on the CPU).
   `capture` on both hosts; on the web it reads the OffscreenCanvas target, so
   no `preserveDrawingBuffer`.
 
+Runtime geometry and debug draw (depth S1). Games can make geometry from
+attribute arrays (`og.render.bufferGeometry`, three.js BufferGeometry's
+attributes, with normals computed when they are missing) and from three.js's
+primitives: cylinder, cone, capsule, torus, ring, circle, and a tube along a
+centripetal Catmull-Rom curve. A dynamic geometry is rewritten in place
+each tick (`updateGeometry`). A made geometry is also a physics mesh
+under its handle, so an og.Collider can use it as its `mesh`. Each geometry
+has a BVH, built when it is made or updated and lazily for loaded ones;
+`og.render.raycast` uses it to test what is drawn rather than the
+colliders. Inside a system, the raycast reads the meshes as the probe
+recorded them at the tick's start.
+
+Lines and points are one pass (`lines.rs`, `points.rs`,
+`shaders/lines.wgsl`). Each segment or point is an instance of a quad in
+screen space with a feathered edge, so widths in pixels or in world units
+and dashes behave the same on WebGPU and WebGL2. WebGL2 has no wide lines
+and WebGPU no line width at all. Material `wireframe` draws its instances'
+unique triangle edges through the same pass, and the edges are computed
+once per mesh revision. The pass draws in two places:
+
+- **Scene**: in the main pass after the transparent meshes and particles,
+  depth tested or not.
+- **Overlay**: over the finished frame, after every post effect and before
+  the UI. Debug draw (`og.debug`), the debug views and screen lines draw
+  here, so they read the same in every capture.
+
+The debug views are a `RenderOptions.debugView` enum (none, physics, nav,
+bounds) that later streams add variants to; the command channel's `debug:`
+action switches them. The physics view is rapier's debug render of the
+last step: collider shapes, joints and contacts. The nav view draws the
+grids, navmesh polygons and agents' paths, and the bounds view draws mesh
+bounds. Debug draw is rendering: it is not world state, it never feeds the
+tick, and the `debug` module is left out of publish builds.
+
 ### 2.7 Animation, physics, navigation, audio, UI **(D)**
 
 - **Animation**: glTF skins and clips, a blend tree asset (`.ogt`), state

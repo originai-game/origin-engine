@@ -61,7 +61,11 @@ export const debug = Object.freeze({
     abi().og_debug_text(world.id, JSON.stringify(position), text, json(desc)),
   clear: (world: W) => abi().og_debug_clear(world.id),
   setView: (world: W, view: string) => abi().og_debug_set_view(world.id, JSON.stringify(view)),
-  view: (world: W) => parse(abi().og_debug_view(world.id)),
+  // A publish build answers every debug member with a refusal: the view is none there.
+  view: (world: W) => {
+    const v = parse<unknown>(abi().og_debug_view(world.id));
+    return typeof v === "string" ? v : "none";
+  },
   setEnabled: (world: W, enabled: boolean) => abi().og_debug_set_enabled(world.id, enabled),
   enabled: (world: W) => abi().og_debug_enabled(world.id),
 });

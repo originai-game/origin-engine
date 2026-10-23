@@ -1576,7 +1576,87 @@ Test either across a relaunch with a playtest's `store: "keep"` and
 tape of inputs) and a ghost (a tape of poses) are og-core §2's
 "Recording, replaying and ghosts".
 
-## 18. Where to look things up
+## 18. Geometry made at run time, lines, points and debug draw
+
+Meshes need not come from a file. `og.render.bufferGeometry(world, desc)`
+takes three.js BufferGeometry's attributes: `positions` (a Float32Array of
+x y z), and optionally `normals`, `uvs` (v down the image), `colors`
+(r g b or r g b a, multiplied into the material), `tangents` and `indices`
+(a Uint32Array, counter-clockwise from the front). Missing normals are
+computed as `computeVertexNormals` does. The geometry draws as any other
+through `og.Mesh`, and it is a `Collider.mesh` at once (`physics` is true by
+default), so a procedural level collides with what is drawn:
+
+```ts
+const terrain = must(og.render.bufferGeometry(world, { positions, colors, indices, dynamic: true }));
+world.insert(e, og.Mesh, { geometry: terrain, material });
+world.insert(e, og.RigidBody, { kind: BODY_STATIC });
+world.insert(e, og.Collider, { shape: 5 /* SHAPE_MESH */, mesh: terrain });
+// Each tick (water, a deforming surface): every attribute again.
+must(og.render.updateGeometry(world, terrain, { positions, colors, indices }));
+```
+
+Only a geometry made with `dynamic: true` can be updated. The same vertex
+and index counts rewrite it in place, and other counts reallocate it. Its
+physics mesh is re-registered, and its colliders are rebuilt at the next
+step. `og.render.geometryInfo` answers the counts and bounds of any
+geometry.
+
+Beside `boxGeometry`, `planeGeometry` and `sphereGeometry`, three.js's
+primitives keep their parameters and defaults: `cylinderGeometry`,
+`coneGeometry`, `capsuleGeometry` (an og.Collider capsule of the same
+radius and `height` matches it), `torusGeometry`, `ringGeometry`,
+`circleGeometry` and `tubeGeometry`. A tube follows a centripetal
+Catmull-Rom curve through `points`, for pipes, rails, cables and a path
+drawn as geometry. Rings and circles are one-sided, so use
+`side: "double"` to see them from behind. `wireframe: true` on a
+standard material draws the triangle edges instead of the faces, one pixel
+wide on every tier.
+
+**Lines and points.** `og.render.lines(world, desc)` and
+`og.render.points(world, desc)` are immediate mode, like
+`og.render.sprite`: submit them every tick they should show.
+- Lines: `mode` is `strip`, `segments` or `loop`. `width` is in CSS
+  pixels, or in world units with `worldUnits`. They also take `colors` per
+  point, `depthTest` (false draws over the scene), `dashed` with `dashSize`
+  and `gapSize`, and `screen: true`. Screen lines use CSS pixels from the
+  top left of the play surface and draw over the finished frame, under
+  the UI.
+- Points: `sizeAttenuation` makes `size` a size in world units; without it
+  `size` is a fixed size in CSS pixels.
+- A static set is data: the `og.Lines` and `og.Points` components draw a
+  geometry's vertices in order at the entity's transform. Make the
+  geometry with `bufferGeometry({ positions, colors, physics: false })`,
+  unindexed, any count.
+
+**What is under the cursor.** `og.render.raycast(world, ray, desc)` tests
+what is drawn (every og.Mesh and og.Model at its world transform), not the
+colliders. It goes through a BVH per geometry and answers every hit,
+nearest first; `first: true` answers only the nearest. Each hit has
+`entity`, `geometry`, `distance`, `point`, `normal` (the face's, in world
+space), `uv` and `faceIndex`. Inside a system it reads the meshes as the
+tick started, as `og.physics.raycast` does. Use it for picking, decals on
+detailed meshes, and line of sight against geometry without colliders.
+
+**Debug draw.** `og.debug.line`, `box`, `sphere`, `arrow`, `axes` and
+`text` (a label above a world point, in the UI's body font) each take
+`{ color, width, duration, rotation }`. `duration` is in ticks; 0 shows the
+shape this frame only, so draw it every tick. Debug draws show over the
+finished frame and never hide behind geometry, so they read in every
+capture. The command channel switches the views:
+- `debug:physics` shows the colliders, joints and contacts.
+- `debug:nav` shows the grids' blocked cells, the navmesh polygons and
+  every agent's path.
+- `debug:bounds` shows every drawn mesh's box.
+- `debug:none` shows only the draws; `debug:off` and `debug:on` hide and
+  show everything.
+
+`og.debug.setView` does the same from code, and `RenderOptions.debugView`
+picks a view from the first frame. A publish build drops all of it, so
+debug draws may stay in the code. Debug draws are not world state:
+snapshots and replays do not carry them.
+
+## 19. Where to look things up
 
 `reference/index.md` (the generated wiki shipped with this skill) maps every
 module (grouped by skill, as in §1), type and function to its page, with the IDL text, defaults, ranges
