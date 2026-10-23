@@ -93,6 +93,17 @@ export const PAGE_PREFERENCES = [
   ["reducedTransparency", "(prefers-reduced-transparency: reduce)"],
 ] as const;
 
+/**
+ * What carries og.platform's rooms on the web (docs/design.md §2.8): the engine's room ops
+ * (`{ op: "create" | "join" | "leave" | "send", ... }`, og-net's protocol) in, its room events
+ * (`joined`, `peer_joined`, `peer_left`, `message`, `left`, `error`) out, in order.
+ */
+export interface RoomHost {
+  /** og.platform.roomInfo's `host`: `player` for the Player's rooms. */
+  readonly host: string;
+  handle(ops: readonly Record<string, unknown>[], deliver: (events: unknown[]) => void): void;
+}
+
 /** The page's motion, contrast and transparency preferences and the platform's editing keys, as the viewport carries them to og-ui. */
 export function pagePreferences(): { reducedMotion: boolean; highContrast: boolean; reducedTransparency: boolean; macKeys: boolean } {
   const query = (q: string) => globalThis.matchMedia?.(q).matches ?? false;
@@ -203,6 +214,7 @@ export class Shell {
   /** When the deadline was last looked at: a late look means the page itself was blocked. */
   #watched = 0;
   #watchdog: ReturnType<typeof setInterval> | undefined;
+  #rooms: RoomHost | null = null;
   #platform: PlatformHost = localPlatform(storagePersistence(`og.platform:${globalThis.location?.pathname ?? "/"}`));
 
   private constructor(worker: Worker, ready: Ready, rpc: RpcRings | undefined) {
@@ -248,6 +260,14 @@ export class Shell {
       }
       if (m.type === "rpc" && m.frame !== undefined) {
         this.#answer(m.frame);
+        return;
+      }
+      if (m.type === "room") {
+        const ops = (m as unknown as { ops: Record<string, unknown>[] }).ops ?? [];
+        const deliver = (events: unknown[]) => worker.postMessage({ type: "room-events", events });
+        if (this.#rooms) this.#rooms.handle(ops, deliver);
+        // No room host: what asked for a room hears so (the engine refuses first while its host is none).
+        else deliver(ops.filter((o) => o["op"] === "create" || o["op"] === "join").map((o) => ({ type: "error", op: o["op"], code: "unavailable", message: "this page carries no rooms" })));
         return;
       }
       if (m.type === "platform") {
@@ -423,6 +443,16 @@ export class Shell {
       this.#pending.set(id, { resolve, reject });
       this.worker.postMessage({ type: "call", id, method, args });
     });
+  }
+
+  /**
+   * What carries og.platform's rooms from now on (og.platform.roomInfo's `host`); null for
+   * none, where roomCreate and roomJoin are refused. A host already carrying a room keeps it
+   * until its `left`: the engine is told the new host only for its next room.
+   */
+  setRooms(host: RoomHost | null): void {
+    this.#rooms = host;
+    this.worker.postMessage({ type: "room-host", host: host ? host.host : "none" });
   }
 
   /** What answers og.platform's calls from now on (og.platform.info reports its host and capabilities). */

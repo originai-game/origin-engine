@@ -34,7 +34,7 @@ import { pollGamepads } from "../src/web/gamepad.ts";
 import { mountWire } from "./wire.ts";
 import { connectPlayer } from "./player.ts";
 import { connectPage, pageGame, type PageConnection, type PageInfo } from "./transport.ts";
-import { deferredPlatform, HELLO_WAIT_MS, playerPlatform, storagePersistence } from "./platform.ts";
+import { deferredPlatform, HELLO_WAIT_MS, playerPlatform, playerRooms, storagePersistence } from "./platform.ts";
 import { localPlatform, memoryPersistence, type PlatformHost } from "../src/platform-local.ts";
 
 /** The page's configuration (`<script type="application/json" id="og-config">`, written by og build). */
@@ -576,6 +576,10 @@ export async function play(): Promise<PlayHandle> {
     helloForPlatform();
     // What it answers may have changed with this hello.
     shell.setPlatform(playerPlatform(player, platformStore));
+    // Rooms ride the Player's postMessage link (pushed events): a framed Player's, never the HTTP page's.
+    const rooms = playerRooms(player);
+    shell.setRooms(rooms);
+    playerEvents.room = (e) => rooms?.push(e);
     pausedByPlayer = m.paused;
     if (m.started && phase === "gate") start();
   };
