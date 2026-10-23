@@ -1605,6 +1605,7 @@ pub fn og_render_capabilities(world: u32) -> String {
                 "ssr": tier != "webgl2",
                 "reflectionProbes": og_render::MAX_REFLECTION_PROBES,
                 "volumetricFog": if tier == "webgl2" { "raymarch" } else { "froxel" },
+                "gpuTimestamps": b.gpu_timing_absent().is_none(),
             })
         })
         .map(|mut c| {
@@ -1614,7 +1615,7 @@ pub fn og_render_capabilities(world: u32) -> String {
             c
         })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch" }))
+    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "gpuTimestamps": false }))
         .to_string()
 }
 

@@ -17169,6 +17169,10 @@
         "volumetricFog": {
           "$ref": "#/$defs/VolumetricFog",
           "description": "How Fog.volumetric is drawn on this device: a froxel grid lit by the sun and the clustered point, spot and rect lights (the full tier), or a raymarch of the sun alone along each pixel's view ray (WebGL2)."
+        },
+        "gpuTimestamps": {
+          "type": "boolean",
+          "description": "Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true."
         }
       },
       "required": [
@@ -17186,7 +17190,8 @@
         "renderTargetDepth",
         "maxRenderTargetSize",
         "maxCustomPosts",
-        "volumetricFog"
+        "volumetricFog",
+        "gpuTimestamps"
       ],
       "additionalProperties": false
     },
@@ -32927,7 +32932,14 @@
           "items": {
             "$ref": "#/$defs/ProbeTiming"
           },
-          "description": "The last rendered frame's render passes in the render graph's order, each with its milliseconds (CPU encode time; empty without a renderer)."
+          "description": "The last rendered frame's render passes in the render graph's order, each with its milliseconds of CPU encoding (empty without a renderer)."
+        },
+        "gpuPasses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProbeTiming"
+          },
+          "description": "The render passes of the newest frame the GPU's timestamps were read back for (a frame or two behind `passes`), each with the GPU's milliseconds from the end of the pass before it to its own end; empty where the device has no timestamp queries (RenderCapabilities.gpuTimestamps) or without a renderer."
         },
         "triangles": {
           "type": "integer",
@@ -32942,6 +32954,7 @@
         "frameMs",
         "systems",
         "passes",
+        "gpuPasses",
         "triangles"
       ],
       "additionalProperties": false

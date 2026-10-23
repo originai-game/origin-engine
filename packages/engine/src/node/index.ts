@@ -65,8 +65,8 @@ export interface NativeExtras {
   og_node_render_restore(engine: number, snapshot: Uint8Array): string;
   /** `og run --trace`: turns the engine's trace on or off. */
   og_node_trace(engine: number, on: boolean): void;
-  /** The trace's spans since the last take: `{ now, events }` (ms on the engine's clock). */
-  og_node_trace_take(engine: number): string;
+  /** The trace's spans since the last take: `{ now, events }`, Chrome trace events on the engine's clock (src/trace.ts); `last` waits for the GPU's frames in flight. */
+  og_node_trace_take(engine: number, last: boolean): string;
 }
 
 let extras: NativeExtras | null = null;

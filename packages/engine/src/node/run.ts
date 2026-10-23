@@ -29,10 +29,12 @@
 //   surface keeps --size, a `screenshot` writes no PNG and is listed in
 //   --json's `unchecked` ("no renderer, frame unchecked"), the tier is
 //   `none`, and the exit status does not change.
-// - With --trace: the run in the Chrome trace format (crates/og-cli/src/trace.rs
-//   has the lanes): each tick with its systems, each frame with its render
-//   passes, each load; --trace-append adds them to the file og wrote first
-//   (its metadata, its origin and the cook's spans).
+// - With --trace: the run in the Chrome trace format (src/trace.ts and
+//   crates/og-runtime/src/trace.rs have the threads): each tick with its
+//   systems, each frame with its render passes' CPU encoding and their GPU
+//   time, each load, og-lanes' jobs on their pool threads, every span where
+//   it ran; --trace-append adds them to the file og wrote first (its
+//   metadata, its origin and the cook's spans).
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -41,6 +43,7 @@ import { pathToFileURL } from "node:url";
 import { loadNativeHost, native } from "./index.ts";
 import { openAudio, type AudioSink } from "./audio.ts";
 import { nativePlatform } from "./platform.ts";
+import { Trace, unixMs, type TraceDocument } from "../trace.ts";
 import { beginBundle, boundHost, createEngine, fixedClock, type Engine, type GameToken } from "../runtime.ts";
 
 const argv = process.argv.slice(2);
@@ -113,43 +116,15 @@ if (port !== undefined && (!Number.isInteger(port) || port < 0 || port > 65535))
 loadNativeHost();
 const extras = native();
 
-// --trace: the Chrome trace's events, on Unix milliseconds less the origin.
-type TraceSpan = { kind: "tick" | "render" | "load"; name: string; tick?: number; start: number; ms: number; bytes?: number; children?: { name: string; ms: number }[] };
-const traceEvents: Record<string, unknown>[] = [];
-let traceOrigin = performance.timeOrigin + performance.now();
-const LANES: Record<TraceSpan["kind"], number> = { tick: 1, render: 2, load: 3 };
-if (tracePath && traceAppend && existsSync(tracePath)) {
-  const prior = JSON.parse(readFileSync(tracePath, "utf8")) as { traceEvents?: Record<string, unknown>[]; otherData?: { originUnixMs?: number } };
-  traceEvents.push(...(prior.traceEvents ?? []));
-  if (typeof prior.otherData?.originUnixMs === "number") traceOrigin = prior.otherData.originUnixMs;
-} else if (tracePath) {
-  traceEvents.push({ name: "process_name", ph: "M", pid: 1, tid: 0, args: { name: "og run" } });
-  for (const [tid, name] of [[1, "engine"], [2, "render"], [3, "load"], [4, "cook"]] as const) {
-    traceEvents.push({ name: "thread_name", ph: "M", pid: 1, tid, args: { name } });
-    traceEvents.push({ name: "thread_sort_index", ph: "M", pid: 1, tid, args: { sort_index: tid } });
-  }
-}
-const us = (ms: number) => Math.round(ms * 1000);
-/** Takes the engine's spans and places them: a span's children (systems, passes) laid end to end from its start, in run order. */
-function takeTrace(engineId: number): void {
-  if (!tracePath) return;
-  const taken = JSON.parse(extras.og_node_trace_take(engineId)) as { now: number; events: TraceSpan[] };
-  const offset = performance.timeOrigin + performance.now() - taken.now - traceOrigin;
-  for (const s of taken.events) {
-    const tid = LANES[s.kind];
-    const ts = s.start + offset;
-    const args: Record<string, unknown> = {};
-    if (s.tick !== undefined) args.tick = s.tick;
-    if (s.bytes !== undefined) args.bytes = s.bytes;
-    traceEvents.push({ name: s.name, cat: s.kind, ph: "X", pid: 1, tid, ts: us(ts), dur: us(s.ms), args });
-    // Whole microseconds end to end, so rounding never overlaps neighbours.
-    let at = us(ts);
-    for (const c of s.children ?? []) {
-      const dur = us(c.ms);
-      traceEvents.push({ name: c.name, cat: s.kind === "tick" ? "system" : "pass", ph: "X", pid: 1, tid, ts: at, dur, args: s.tick === undefined ? {} : { tick: s.tick } });
-      at += dur;
-    }
-  }
+// --trace: the Chrome trace (src/trace.ts), continuing og's prelude (the cook) when appending.
+const trace = tracePath
+  ? new Trace({ producer: "og run --trace", process: "og run", ...(traceAppend && existsSync(tracePath) ? { prior: JSON.parse(readFileSync(tracePath, "utf8")) as Partial<TraceDocument> } : {}) })
+  : undefined;
+/** Takes the engine's spans (each where it ran) onto the trace; `last` waits for the GPU's frames in flight. */
+function takeTrace(engineId: number, last = false): void {
+  if (!trace) return;
+  const taken = extras.og_node_trace_take(engineId, last);
+  trace.append(taken, unixMs());
 }
 let version = 0;
 /**
@@ -402,9 +377,9 @@ if (!probing) {
 const ms = performance.now() - t0;
 drain();
 if (tracePath) {
-  takeTrace(engine.id);
+  takeTrace(engine.id, true);
   mkdirSync(dirname(tracePath), { recursive: true });
-  writeFileSync(tracePath, JSON.stringify({ traceEvents, displayTimeUnit: "ms", otherData: { originUnixMs: traceOrigin, producer: "og run --trace" } }));
+  writeFileSync(tracePath, JSON.stringify(trace!.document()));
   outputs.push(tracePath);
 }
 let wavSha256: string | undefined;
@@ -464,6 +439,8 @@ const summary = {
   systems,
   runtime: typeof Bun !== "undefined" ? `bun ${Bun.version}` : `node ${process.version}`,
   tier,
+  // Whether the device timed each render pass on the GPU (RenderCapabilities.gpuTimestamps): the trace's gpu thread and ProbeTimings.gpuPasses.
+  gpuTimestamps: (JSON.parse(boundHost()!.abi.og_render_capabilities(engine.id)) as { gpuTimestamps?: boolean }).gpuTimestamps ?? false,
   quit,
   unchecked,
   audio: { mode: audioMode, commands: audioStats.commands, receivedHash: audioStats.receivedHash, wavSha256 },

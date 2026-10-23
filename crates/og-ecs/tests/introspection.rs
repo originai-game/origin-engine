@@ -138,6 +138,9 @@ fn systems_are_timed_with_the_world_clock() {
     w.step().unwrap();
     let info = w.system_info();
     assert_eq!(info[0].ms, Some(1.5));
+    // The second run began at the clock's third reading (the first run
+    // read it twice): where a trace lays it, not where the last run ended.
+    assert_eq!(info[0].start, Some(3.0));
     assert_eq!((info[0].total_ms, info[0].runs), (3.0, 2));
     let mut plain = world();
     plain

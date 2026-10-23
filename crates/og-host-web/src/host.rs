@@ -22,6 +22,7 @@ impl Lifecycle for WebHost {
     fn og_host_set_dispatcher(&self, dispatcher: Self::Function) {
         rt::set_hooks(Rc::new(WebHooks { dispatcher }));
         rt::set_physics_clock(crate::clock_ms);
+        og_lanes::set_trace_clock(crate::epoch_ms);
     }
     fn og_engine_create(&self, game: u32, options: String) -> String {
         rt::og_engine_create(game, options)

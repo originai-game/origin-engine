@@ -221,6 +221,7 @@ pub struct Probe {
     /// The last tick's milliseconds per system and per render pass.
     systems_ms: Vec<(String, f64)>,
     passes_ms: Vec<(String, f64)>,
+    gpu_passes_ms: Vec<(String, f64)>,
     commands: BTreeMap<String, Registered>,
     queue: BTreeMap<(u64, u64), Queued>,
     seq: u64,
@@ -441,6 +442,7 @@ impl Probe {
             tuned: BTreeSet::new(),
             systems_ms: Vec::new(),
             passes_ms: Vec::new(),
+            gpu_passes_ms: Vec::new(),
             listen: None,
             memory: None,
             stamp: 0.0,
@@ -617,9 +619,17 @@ impl Probe {
     /// The last tick's milliseconds per system (in run order) and the last
     /// frame's per render pass (in the graph's order), for
     /// `state().timings.systems` and `.passes`.
-    pub fn set_timing_detail(&mut self, systems: Vec<(String, f64)>, passes: Vec<(String, f64)>) {
+    /// `gpu`: the GPU's milliseconds per pass of the newest frame its
+    /// timestamps were read back for (`.gpuPasses`; empty without them).
+    pub fn set_timing_detail(
+        &mut self,
+        systems: Vec<(String, f64)>,
+        passes: Vec<(String, f64)>,
+        gpu: Vec<(String, f64)>,
+    ) {
         self.systems_ms = systems;
         self.passes_ms = passes;
+        self.gpu_passes_ms = gpu;
     }
 
     /// Probe ids over the world's names (`World::set_name` names entities).
@@ -1926,6 +1936,7 @@ impl Probe {
                 "systems": self.systems_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
                 "triangles": self.triangles,
                 "passes": self.passes_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
+                "gpuPasses": self.gpu_passes_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
             },
             "entities": entities,
             "facts": self.facts.as_ref().map_or(Value::Null, |f| f(world)),

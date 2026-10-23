@@ -454,10 +454,12 @@ pub fn og_node_trace(engine: u32, on: bool) {
     og_runtime::trace_set(engine, on);
 }
 
-/// The trace's spans since the last take, as JSON (`{ now, events }`).
+/// The trace's spans since the last take, as JSON (`{ now, events }`, the
+/// events Chrome trace events on the engine's clock); `last` waits for the
+/// GPU's frames in flight first.
 #[napi(js_name = "og_node_trace_take")]
-pub fn og_node_trace_take(engine: u32) -> String {
-    og_runtime::trace_take(engine)
+pub fn og_node_trace_take(engine: u32, last: bool) -> String {
+    og_runtime::trace_take(engine, last)
 }
 
 /// Whether column views alias engine memory (`"alias"`) or are copied in
@@ -507,8 +509,14 @@ impl RenderBackend for OffscreenBackend {
     fn set_clock(&mut self, clock: Option<fn() -> f64>) {
         self.renderer.set_clock(clock);
     }
-    fn pass_timings(&self) -> Vec<(String, f64)> {
+    fn pass_timings(&self) -> Vec<og_render::PassTiming> {
         self.renderer.pass_timings().to_vec()
+    }
+    fn gpu_timings(&mut self, wait: bool) -> Vec<og_render::GpuFrame> {
+        self.renderer.gpu_timings(wait)
+    }
+    fn gpu_timing_absent(&self) -> Option<&'static str> {
+        self.renderer.gpu_timing_absent()
     }
     fn triangles(&self) -> u64 {
         self.triangles

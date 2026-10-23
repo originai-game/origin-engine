@@ -6330,6 +6330,10 @@ export interface RenderCapabilities {
    * How Fog.volumetric is drawn on this device: a froxel grid lit by the sun and the clustered point, spot and rect lights (the full tier), or a raymarch of the sun alone along each pixel's view ray (WebGL2).
    */
   readonly volumetricFog: VolumetricFog;
+  /**
+   * Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true.
+   */
+  readonly gpuTimestamps: boolean;
 }
 
 /**
@@ -18972,9 +18976,13 @@ export interface ProbeTimings {
   /** The last tick's systems in run order, each with its milliseconds. */
   readonly systems: readonly ProbeTiming[];
   /**
-   * The last rendered frame's render passes in the render graph's order, each with its milliseconds (CPU encode time; empty without a renderer).
+   * The last rendered frame's render passes in the render graph's order, each with its milliseconds of CPU encoding (empty without a renderer).
    */
   readonly passes: readonly ProbeTiming[];
+  /**
+   * The render passes of the newest frame the GPU's timestamps were read back for (a frame or two behind `passes`), each with the GPU's milliseconds from the end of the pass before it to its own end; empty where the device has no timestamp queries (RenderCapabilities.gpuTimestamps) or without a renderer.
+   */
+  readonly gpuPasses: readonly ProbeTiming[];
   /**
    * Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer.
    */

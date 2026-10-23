@@ -863,13 +863,19 @@ reading pixels:
   exits 1 on any failure; a playtest may be expectations alone. A frame
   expectation without a renderer is unchecked, never a failure.
 - **Trace.** `og run --trace out.json` writes the run in the Chrome trace
-  format (Perfetto opens it): lanes are threads — engine (each tick, its
-  systems inside it from the world's clock), render (each frame, its
-  render-graph passes), load (each cooked output read), cook (the cook and
-  the outputs it cooked). Systems and passes are laid end to end inside
-  their parent, since the engine records their lengths. Pass times are CPU
-  encoding, not GPU time. The live probe's `state().timings` carries the
-  last tick's `systems[]` and the last frame's `passes[]` (name, ms).
+  format (Perfetto opens it; `packages/engine/src/trace.ts` builds it on
+  both hosts and checks it); every span carries the start it was timed
+  at, so it lies where it ran. Threads: engine (each tick, its systems
+  inside it from the world's clock), render (each frame, its render-graph
+  passes' CPU encoding), gpu (the same passes from timestamp queries,
+  where the device has them, `RenderCapabilities.gpuTimestamps`: each
+  frame anchored at its submit, after the frame before it, since the
+  GPU's clock is its own), load (each cooked output read), cook (the
+  cook) and `cook N` (each output on the cook thread that made it), and
+  `lane N` (each job og-lanes ran on pool thread N, with its site). The
+  live probe's `state().timings` carries the last tick's `systems[]`, the
+  last frame's `passes[]` and the GPU's `gpuPasses[]` of the newest frame
+  read back (name, ms).
 - **Scene write-back.** `save_scene` (member, and `save_scene[:path]`)
   rewrites the boot scene's `.ogt` from the world, line by line: a field
   line changes only when its value, rounded as the cook rounds it, differs;

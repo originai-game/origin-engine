@@ -176,7 +176,9 @@ pub(crate) fn with_probe<T>(
             .into_iter()
             .filter_map(|s| s.ms.map(|ms| (s.name, ms)))
             .collect();
-        probe.set_timing_detail(systems, eng.state.borrow().pass_ms.clone());
+        let st = eng.state.borrow();
+        let passes = st.pass_ms.iter().map(|p| (p.name.clone(), p.ms)).collect();
+        probe.set_timing_detail(systems, passes, st.gpu_ms.clone());
     }
     let out = f(&mut probe, world);
     flush_names(eng);

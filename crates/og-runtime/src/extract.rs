@@ -57,10 +57,22 @@ pub trait RenderBackend {
     /// Times each render-graph pass's encoding with `clock` (og-render's
     /// `Renderer::set_clock`); a backend without passes ignores it.
     fn set_clock(&mut self, _clock: Option<fn() -> f64>) {}
-    /// The last frame's passes in execution order with their milliseconds
-    /// (og-render's `Renderer::pass_timings`); empty without a clock.
-    fn pass_timings(&self) -> Vec<(String, f64)> {
+    /// The last frame's passes in execution order, each with the start
+    /// and length of its CPU encoding (og-render's
+    /// `Renderer::pass_timings`); empty without a clock.
+    fn pass_timings(&self) -> Vec<og_render::PassTiming> {
         Vec::new()
+    }
+    /// The frames timed on the GPU read back since the last call, oldest
+    /// first (og-render's `Renderer::gpu_timings`; `wait` waits for those
+    /// in flight, natively); empty without a clock or timestamp queries.
+    fn gpu_timings(&mut self, _wait: bool) -> Vec<og_render::GpuFrame> {
+        Vec::new()
+    }
+    /// Why passes are not timed on the GPU here (og-render's
+    /// `Renderer::gpu_timing_absent`), or `None` when they are.
+    fn gpu_timing_absent(&self) -> Option<&'static str> {
+        Some("this backend has no GPU passes")
     }
     /// The last frame's main-pass triangles (og-render's
     /// `FrameStats::triangles`): `ProbeTimings.triangles`.

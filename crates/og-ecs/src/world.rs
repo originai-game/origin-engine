@@ -854,6 +854,7 @@ impl World {
                     matched: s.matched.iter().sum(),
                     query_matched: s.matched.clone(),
                     last_tick: s.last_tick,
+                    start: s.start,
                     ms: s.ms,
                     total_ms: s.total_ms,
                     runs: s.runs,
@@ -932,6 +933,7 @@ impl World {
             if let (Some(now), Some(t0)) = (self.clock, t0) {
                 let ms = (now() - t0).max(0.0);
                 let s = &mut self.systems[i];
+                s.start = Some(t0);
                 s.ms = Some(ms);
                 s.total_ms += ms;
                 s.runs += 1;

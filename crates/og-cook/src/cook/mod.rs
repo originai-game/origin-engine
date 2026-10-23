@@ -274,6 +274,12 @@ pub struct OutputReport {
     /// The file on disk changed.
     pub written: bool,
     pub ms: f64,
+    /// When its cook began, in milliseconds after the cook's start, and
+    /// the cook thread that ran it (0 to the thread count less one): the
+    /// trace lays each output where it ran (`og run --trace`). 0 and 0 for
+    /// an output that did not cook.
+    pub start_ms: f64,
+    pub worker: u32,
 }
 
 /// One source asset in the report.
@@ -1531,23 +1537,26 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
     }
 
     // Cook what is stale, in parallel; results land by plan index.
-    type Done = (Result<(Vec<u8>, Vec<String>), CookError>, f64);
+    type Done = (Result<(Vec<u8>, Vec<String>), CookError>, f64, f64, u32);
     let results: Vec<Mutex<Option<Done>>> = plan.iter().map(|_| Mutex::new(None)).collect();
     let todo: Vec<usize> = (0..plan.len())
         .filter(|&i| plan[i].work.is_some())
         .collect();
     let next = std::sync::atomic::AtomicUsize::new(0);
     std::thread::scope(|scope| {
-        for _ in 0..threads.min(todo.len()) {
-            scope.spawn(|| {
+        for worker in 0..threads.min(todo.len()) {
+            let (next, results, plan, schemas, known, todo) =
+                (&next, &results, &plan, &schemas, &known, &todo);
+            scope.spawn(move || {
                 loop {
                     let k = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     let Some(&i) = todo.get(k) else { break };
                     let p = &plan[i];
                     let t = Instant::now();
-                    let r = run(p, options, threads, &schemas, &known);
+                    let start = t.duration_since(started).as_secs_f64() * 1000.0;
+                    let r = run(p, options, threads, schemas, known);
                     *results[i].lock().expect("no poisoning") =
-                        Some((r, t.elapsed().as_secs_f64() * 1000.0));
+                        Some((r, t.elapsed().as_secs_f64() * 1000.0, start, worker as u32));
                 }
             });
         }
@@ -1587,17 +1596,18 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
     let mut new_outputs: BTreeMap<usize, Vec<NewOutput>> = BTreeMap::new();
     for (i, p) in plan.iter().enumerate() {
         let r = &mut reports[p.source];
-        let (bytes, cooked, ms) = match results[i].lock().expect("no poisoning").take() {
-            Some((Ok((bytes, notes)), ms)) => {
-                r.notes.extend(notes);
-                (Some(bytes), true, ms)
-            }
-            Some((Err(e), _)) => {
-                r.error = Some(e.0);
-                continue;
-            }
-            None => (None, false, 0.0),
-        };
+        let (bytes, cooked, ms, start_ms, worker) =
+            match results[i].lock().expect("no poisoning").take() {
+                Some((Ok((bytes, notes)), ms, start, worker)) => {
+                    r.notes.extend(notes);
+                    (Some(bytes), true, ms, start, worker)
+                }
+                Some((Err(e), ..)) => {
+                    r.error = Some(e.0);
+                    continue;
+                }
+                None => (None, false, 0.0, 0.0, 0),
+            };
         let (size, hash) = match &bytes {
             Some(b) => (b.len() as u64, hash_bytes(b)),
             None => {
@@ -1624,6 +1634,8 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                 cooked,
                 written: false,
                 ms,
+                start_ms,
+                worker,
             },
         ));
     }

@@ -2034,11 +2034,15 @@ These are the checks to use before opening frames. All of them run from
   region expectation is unchecked, never failed. Take screen boxes from a
   `describe` of a good run, with a margin.
 - **`og run --trace out.json`** writes the run in the Chrome trace format;
-  open it in Perfetto (ui.perfetto.dev). The engine lane holds each tick
-  with its systems, render holds each frame with its render passes (CPU
-  encode time), load holds each cooked file read, and cook holds the
-  cook. The probe's `state().timings.systems` and `.passes` give the last
-  tick's and frame's numbers live.
+  open it in Perfetto (ui.perfetto.dev). Every span lies where it ran.
+  The engine thread holds each tick with its systems, render each frame
+  with its render passes (CPU encoding), gpu the same passes as the GPU
+  ran them (where `og.render.capabilities(world).gpuTimestamps`), load
+  each cooked file read, cook the cook and each output on the cook thread
+  that made it, and `lane N` the jobs og-lanes ran on pool thread N
+  (physics, cull, anim, extract). The probe's `state().timings.systems`,
+  `.passes` and `.gpuPasses` give the last tick's and frame's numbers
+  live.
 - **`save_scene[:path]`** (probe `saveScene(write)`) writes the boot
   scene back after `teleport`, `set` or the Tune panel moved things. Only
   the lines whose values changed are rewritten; comments and order stay,
