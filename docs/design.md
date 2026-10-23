@@ -665,7 +665,9 @@ video is a command script played headless and recorded (docs/depth.md §3).
   encodes them and makes one Texture of a frame's size (og-render's
   `FrameTexture`) whose contents become the frame shown, so a material
   map, an `og.Sprite` or a UI image draws footage as any texture, at one
-  frame's GPU memory. `og.VideoPlayer` (`video`, `playing`, `time`,
+  frame's GPU memory. Each further player of a video gets a view of its
+  own over the same decoded frames (`VideoPlayer.texture`), so players at
+  different times show different frames. `og.VideoPlayer` (`video`, `playing`, `time`,
   `speed`, `loop`) is played by the `og.video` system by the tick (not the
   time scale) and keeps the entity's `og.AudioSource` in step: its
   `startOffset` is the video's time, and a seek stops it for a tick and

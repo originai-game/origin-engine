@@ -20562,7 +20562,7 @@ export interface VideoInfo {
 }
 
 /**
- * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Several players of one video share its texture, which shows the first player's frame in query order; cook a second asset to show two moments of one clip.
+ * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Each player has a texture of its own (written to `texture`): the first player of a video takes VideoInfo.texture, each further one a texture the og.video system makes for it over the same decoded frames (one frame of GPU memory each), so two players at different times show different frames. Show a player's `texture`, not VideoInfo.texture, once a video has more than one player.
  *
  * The value of the `VideoPlayer` component (token `og.VideoPlayer`).
  */
@@ -20605,7 +20605,7 @@ export interface VideoPlayer {
    */
   readonly finished: boolean;
   /**
-   * Written: the video's texture (VideoInfo.texture), for a material or sprite set up from the player.
+   * Written: this player's texture (VideoInfo.texture for the video's first player, a texture of its own for each further one), for a material, sprite or UI image set up from the player. It keeps it while it lives.
    *
    * @readonly written by the engine
    */
@@ -23835,7 +23835,7 @@ export declare namespace og {
     function setBudget(world: World, bytes: number): Result<void>;
   }
   /**
-   * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Several players of one video share its texture, which shows the first player's frame in query order; cook a second asset to show two moments of one clip.
+   * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Each player has a texture of its own (written to `texture`): the first player of a video takes VideoInfo.texture, each further one a texture the og.video system makes for it over the same decoded frames (one frame of GPU memory each), so two players at different times show different frames. Show a player's `texture`, not VideoInfo.texture, once a video has more than one player.
    */
   const VideoPlayer: ComponentType<{ readonly video: FieldSpec<"Video">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly frame: FieldSpec<"u32">; readonly finished: FieldSpec<"bool">; readonly texture: FieldSpec<"Texture"> }, VideoPlayer>;
   /**

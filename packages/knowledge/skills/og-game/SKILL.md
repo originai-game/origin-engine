@@ -1947,9 +1947,11 @@ picture stays with its sound): with a 30 Hz tick, tick 90 shows the
 frame 3 s in, the same in every run and after a restore. Write
 `VideoPlayer.time` to seek (the sound starts again there on the next
 tick), `playing` to pause, `speed` for slow motion (the pitch follows).
-`frame` and `finished` are written for you. Several players of one video
-show the same frame (the first player's); cook a second asset for a
-second moment of one clip. Every field and the loaders are in `reference/video.md`.
+`frame` and `finished` are written for you, and so is `texture`: each
+player of a video has a texture of its own (the first takes
+`info.texture`, each further one a texture made for it over the same
+frames), so two players at different times show different frames. With
+more than one player, draw each player's `VideoPlayer.texture`. Every field and the loaders are in `reference/video.md`.
 
 **Videos out.** `og render` plays a command script headless and makes a
 video of it: a frame every `tick / fps` ticks (the fps divides the tick
