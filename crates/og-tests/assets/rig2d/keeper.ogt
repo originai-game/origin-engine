@@ -1,0 +1,252 @@
+type rig2d
+version 1
+---
+# The lamp keeper (templates/game-2d): a 2D rig drawn as textured triangles.
+# Bones are pixels with +y up, unit 20 pixels to a world unit; the legs are
+# two-bone IK chains planted on the ramp by og.IkTarget2D (src/main.ts, Plant),
+# the cape a weighted mesh over the hip and two cape bones, fluttered by the
+# idle clip's deform keys. Written by hand (og-game §8, the rig2d grammar).
+texture "keeper.png"
+size 64 64
+filter nearest
+unit 20
+bone root {
+}
+bone hip {
+  parent root
+  at 0 22
+  rotation 90
+  length 16
+}
+bone head {
+  parent hip
+  at 16 0
+  rotation -90
+}
+bone arm {
+  parent hip
+  at 14 -5
+  rotation 180
+  length 13
+}
+bone thigh-b {
+  parent hip
+  at 0 2
+  rotation 180
+  length 11
+}
+bone shin-b {
+  parent thigh-b
+  at 11 0
+  length 11
+}
+bone thigh-f {
+  parent hip
+  at 0 -2
+  rotation 180
+  length 11
+}
+bone shin-f {
+  parent thigh-f
+  at 11 0
+  length 11
+}
+bone cape-1 {
+  parent hip
+  at 15 4
+  rotation 180
+  length 12
+}
+bone cape-2 {
+  parent cape-1
+  at 12 0
+  length 12
+}
+bone foot-b {
+  parent root
+  at -3 0
+}
+bone foot-f {
+  parent root
+  at 3 0
+}
+slot cape {
+  bone hip
+  attachment cape
+}
+slot thigh-b {
+  bone thigh-b
+  attachment thigh-b
+  color 0.72 0.72 0.8 1
+}
+slot shin-b {
+  bone shin-b
+  attachment shin-b
+  color 0.72 0.72 0.8 1
+}
+slot boot-b {
+  bone shin-b
+  attachment boot-b
+  color 0.72 0.72 0.8 1
+}
+slot torso {
+  bone hip
+  attachment torso
+}
+slot thigh-f {
+  bone thigh-f
+  attachment thigh-f
+}
+slot shin-f {
+  bone shin-f
+  attachment shin-f
+}
+slot boot-f {
+  bone shin-f
+  attachment boot-f
+}
+slot head {
+  bone head
+  attachment head
+}
+slot arm {
+  bone arm
+  attachment arm
+}
+slot lantern {
+  bone arm
+  attachment lantern
+}
+region torso {
+  slot torso
+  rect 0 0 12 20
+  at 8 0
+  rotation -90
+  size 12 20
+}
+region head {
+  slot head
+  rect 15 0 14 12
+  at 0 5
+  rotation 0
+  size 14 12
+}
+region arm {
+  slot arm
+  rect 32 16 4 14
+  at 6.5 0
+  rotation 90
+  size 4 14
+}
+region lantern {
+  slot lantern
+  rect 52 16 8 10
+  at 15 0
+  rotation 90
+  size 8 10
+}
+region thigh-b {
+  slot thigh-b
+  rect 32 0 5 12
+  at 5.5 0
+  rotation 90
+  size 5 12
+}
+region shin-b {
+  slot shin-b
+  rect 40 0 5 12
+  at 5.5 0
+  rotation 90
+  size 5 12
+}
+region boot-b {
+  slot boot-b
+  rect 48 0 10 5
+  at 10.5 2
+  rotation 90
+  size 10 5
+}
+region thigh-f {
+  slot thigh-f
+  rect 32 0 5 12
+  at 5.5 0
+  rotation 90
+  size 5 12
+}
+region shin-f {
+  slot shin-f
+  rect 40 0 5 12
+  at 5.5 0
+  rotation 90
+  size 5 12
+}
+region boot-f {
+  slot boot-f
+  rect 48 0 10 5
+  at 10.5 2
+  rotation 90
+  size 10 5
+}
+mesh cape {
+  slot cape
+  vertex 0 32 hip 16.000 16.000 1
+  vertex 6 32 hip 16.000 9.000 1
+  vertex 12 32 hip 16.000 2.000 1
+  vertex 0 40 hip 7.000 16.000 0.4 cape-1 8.000 -12.000 0.6
+  vertex 6 40 hip 7.000 9.000 0.4 cape-1 8.000 -5.000 0.6
+  vertex 12 40 hip 7.000 2.000 0.4 cape-1 8.000 2.000 0.6
+  vertex 0 48 cape-1 17.000 -12.000 0.5 cape-2 5.000 -12.000 0.5
+  vertex 6 48 cape-1 17.000 -5.000 0.5 cape-2 5.000 -5.000 0.5
+  vertex 12 48 cape-1 17.000 2.000 0.5 cape-2 5.000 2.000 0.5
+  vertex 0 56 cape-2 14.000 -12.000 1
+  vertex 6 56 cape-2 14.000 -5.000 1
+  vertex 12 56 cape-2 14.000 2.000 1
+  triangles 0 3 1 1 3 4 1 4 2 2 4 5 3 6 4 4 6 7 4 7 5 5 7 8 6 9 7 7 9 10 7 10 8 8 10 11
+}
+ik leg-b {
+  bones thigh-b shin-b
+  target foot-b
+  bend clockwise
+}
+ik leg-f {
+  bones thigh-f shin-f
+  target foot-f
+  bend clockwise
+}
+clip idle {
+  duration 2
+  loop true
+  bone hip {
+    translate 0 0 0
+    translate 1 0 -1.5
+    translate 2 0 0
+  }
+  bone head {
+    rotate 0 0
+    rotate 1 4
+    rotate 2 0
+  }
+  bone arm {
+    rotate 0 4
+    rotate 1 -8
+    rotate 2 4
+  }
+  bone cape-1 {
+    rotate 0 -4
+    rotate 1 8
+    rotate 2 -4
+  }
+  bone cape-2 {
+    rotate 0 -6
+    rotate 1 12
+    rotate 2 -6
+  }
+  deform cape {
+    key 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+    key 0.5 0 0 0 0 0 0 0 -1 0 -1 0 -1 0 -1 0 -1 0 -1 0 -3 0 -3 0 -3 0 -3 0 -3 0 -3 0 -5 0 -5 0 -5
+    key 1 0 0 0 0 0 0 0 1 0 1 0 1 0 1 0 1 0 1 0 2 0 2 0 2 0 2 0 2 0 2 0 3 0 3 0 3
+    key 1.5 0 0 0 0 0 0 0 -1 0 -1 0 -1 0 -1 0 -1 0 -1 0 -3.5 0 -3.5 0 -3.5 0 -3.5 0 -3.5 0 -3.5 0 -6 0 -6 0 -6
+    key 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  }
+  event 0 "inhale"
+}

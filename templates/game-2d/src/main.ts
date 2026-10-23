@@ -38,8 +38,9 @@ const LIVES = 3;
 const RAMP = { x0: 4.5, y0: 2, x1: 7.6, slope: 0.21256, sinHalf: 0.104528, cosHalf: 0.994522 } as const;
 /** The ramp's top at x. */
 const rampY = (x: number): number => RAMP.y0 + RAMP.slope * (x - RAMP.x0);
-/** The keeper's ankles above the ground, the lantern from its feet, in world units. */
+/** The keeper's ankles and its root above the ramp (its legs reach 1.1 from a hip 1.1 up: a slight bend), the lantern from its feet, in world units. */
 const ANKLE = 0.12;
+const LIFT = 0.08;
 const LANTERN = { x: 0.25, y: 1.0 } as const;
 
 /** The courier. */
@@ -267,7 +268,7 @@ function spawnKeeper(world: World, rig: Rig2DInfo): void {
   // The plank is a region of the keeper's texture (pixels 24..64 x 32..40 of 64 x 64).
   must(world.insert(plank, og.Sprite, { texture: rig.texture, width: RAMP.x1 - RAMP.x0, height: 0.4, uvMin: { x: 0.375, y: 0.5 }, uvMax: { x: 1, y: 0.625 }, layer: 1 }));
   const x = 6;
-  const keeper = must(world.spawn({ name: "keeper", position: { x, y: rampY(x), z: 0 } }));
+  const keeper = must(world.spawn({ name: "keeper", position: { x, y: rampY(x) + LIFT, z: 0 } }));
   must(world.insert(keeper, og.Skeleton2D, { rig: rig.rig, clip: idle, flipX: true, layer: 1 }));
   for (const [name, side] of [["leg-f", -0.15], ["leg-b", 0.15]] as const) {
     const constraint = rig.constraints.indexOf(name);
@@ -276,7 +277,7 @@ function spawnKeeper(world: World, rig: Rig2DInfo): void {
     must(world.insert(foot, og.IkTarget2D, { skeleton: keeper, constraint, target: { x: x + side, y: rampY(x + side) + ANKLE }, tolerance: 0.02 }));
     must(world.insert(foot, Plant, { dx: side }));
   }
-  const light = must(world.spawn({ name: "lantern", position: { x: x + LANTERN.x, y: rampY(x) + LANTERN.y, z: 0 } }));
+  const light = must(world.spawn({ name: "lantern", position: { x: x + LANTERN.x, y: rampY(x) + LIFT + LANTERN.y, z: 0 } }));
   must(world.insert(light, og.Light2D, { color: { r: 1, g: 0.72, b: 0.35 }, intensity: 1.6, radius: 4, castShadows: false }));
   const lighting = must(world.resource(og.Lighting2D));
   lighting.enabled = true;
@@ -372,7 +373,7 @@ export default og.game({
       const keeper = world.find("keeper");
       const x = Math.max(RAMP.x0 + 0.4, Math.min(RAMP.x1 - 0.4, Number(args[0])));
       if (keeper === null || !Number.isFinite(x)) throw new Error("write keeper:<x>");
-      must(world.set(keeper, og.Transform, { position: { x, y: rampY(x), z: 0 } }));
+      must(world.set(keeper, og.Transform, { position: { x, y: rampY(x) + LIFT, z: 0 } }));
     },
   },
   commandHelp: {

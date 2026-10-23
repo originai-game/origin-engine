@@ -1342,6 +1342,56 @@ fn skinning_matches_its_reference() {
     assert_eq!((s.skinned_instances, s.joints), (5, 20));
 }
 
+/// `skeleton-2d` (S9; reference `skeleton-2d.png`): a 2D rig posed by
+/// og-anim on three planks (flat, rising, falling; the third mirrored by
+/// flipX) and drawn as sprite-batch triangles under 2D lighting. The planks
+/// are one sprite run and each rig its own triangle run; the cape, a
+/// weighted mesh, hangs behind each keeper: left of the two facing right,
+/// right of the mirrored one. Drawn without the triangle path the capes are
+/// missing; with flipX ignored the third cape is on the wrong side.
+#[test]
+fn skeleton_2d_draws_rigs_as_sprite_triangles() {
+    let s = check("skeleton-2d").stats;
+    assert_eq!(
+        (s.sprites, s.sprite_draws),
+        (3, 4),
+        "three planks in one run, three rigs"
+    );
+    assert_eq!(s.lights_2d, 1);
+    let img = gfx::render("skeleton-2d").expect("render").image;
+    // The cape's crimson (the coat is teal, the plank brown, the face pale).
+    let cape = |p: &[u8]| {
+        p[0] > 110 && u32::from(p[1]) * 2 < u32::from(p[0]) && u32::from(p[2]) * 2 < u32::from(p[0])
+    };
+    // Each keeper stands at x -4, 0, 4 of a 6-unit-high frame: 120 px a unit.
+    for (band, keeper, behind_left) in [
+        (0..427u32, 160.0, true),
+        (427..853, 640.0, true),
+        (853..1280, 1120.0, false),
+    ] {
+        let (mut sx, mut n) = (0.0f64, 0.0f64);
+        for y in 0..img.height {
+            for x in band.clone() {
+                let i = ((y * img.width + x) * 4) as usize;
+                if cape(&img.pixels[i..i + 3]) {
+                    sx += f64::from(x);
+                    n += 1.0;
+                }
+            }
+        }
+        assert!(
+            n > 1500.0,
+            "the cape of the keeper at {keeper} px: {n} pixels"
+        );
+        let cx = sx / n;
+        assert_eq!(
+            cx < keeper,
+            behind_left,
+            "the cape of the keeper at {keeper} px is centred at {cx:.0}"
+        );
+    }
+}
+
 /// `vox-keyframes` (owed row 63): a `.vox` whose block sits under a
 /// transform keyed at frames 0 and 2, cooked and posed at each key side by
 /// side, matches its reference, and the frame shows the block at both

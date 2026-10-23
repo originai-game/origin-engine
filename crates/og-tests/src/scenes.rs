@@ -111,7 +111,7 @@ pub const SCENES: &[&str] = &[
 /// both): their content is cooked by og-cook at build time, which the
 /// browser's wasm build of the scenes does not carry.
 #[cfg(not(target_arch = "wasm32"))]
-pub const NATIVE_SCENES: &[&str] = &["vox-keyframes"];
+pub const NATIVE_SCENES: &[&str] = &["vox-keyframes", "skeleton-2d"];
 
 /// Which backend tiers a scene has a reference for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -528,6 +528,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // posed at frames 0 and 2 side by side.
         #[cfg(not(target_arch = "wasm32"))]
         "vox-keyframes" => g.scene = crate::vox_scenes::keyframes_scene()?,
+        // A 2D rig posed by og-anim on three slopes (IK feet, a deformed
+        // mesh cape), drawn as sprite-batch triangles under 2D lighting.
+        #[cfg(not(target_arch = "wasm32"))]
+        "skeleton-2d" => g.scene = crate::skeleton_scenes::skeleton_scene()?,
         "stylise-toon-physical" => g.scene = crate::stylise_scenes::toon_physical_scene(),
         "stylise-bands-tint" => g.scene = crate::stylise_scenes::bands_tint_scene(),
         // Untonemapped sprites under TAA (its history carries the alpha).
