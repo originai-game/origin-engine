@@ -214,11 +214,57 @@ fn pins() -> (String, String) {
     (rust, bindgen)
 }
 
+// The doctor tests and their environment. `og doctor` reads the shell's
+// `OG_TSRS` and `OG_ENGINE_PACKAGE`, and finds tsrs the way og check does
+// (check::locate_tsrs): `OG_TSRS`, then `node_modules/@tsrs/<platform>/tsrs`
+// beside the engine package (any ancestor of packages/engine, so a `bun
+// install` in the package or the repository root), then PATH. The tests
+// below take both variables away themselves and, when an installed tsrs
+// package sits beside the engine, skip and say so: a doctor that finds it
+// is right, and the test cannot take it away. HOME and the locale play no
+// part. A failure here is the doctor's, never the environment's.
+
+/// `node_modules/@tsrs/<platform>/tsrs` beside `engine` or one of its
+/// ancestors: the tsrs og doctor finds before PATH.
+fn tsrs_installed_beside(engine: &Path) -> Option<PathBuf> {
+    engine.ancestors().find_map(|d| {
+        std::fs::read_dir(d.join("node_modules/@tsrs"))
+            .ok()?
+            .flatten()
+            .map(|e| e.path().join("tsrs"))
+            .find(|p| p.is_file())
+    })
+}
+
+/// The reason a doctor test that expects no tsrs cannot run here, if any.
+fn skip_with_installed_tsrs() -> bool {
+    match tsrs_installed_beside(&repo().join("packages/engine")) {
+        Some(p) => {
+            eprintln!(
+                "skipped: {} exists (a bun install beside the engine package); og doctor finds it before PATH, so this test cannot show a missing tsrs. Remove that node_modules/@tsrs to run it.",
+                p.display()
+            );
+            true
+        }
+        None => false,
+    }
+}
+
+/// `og doctor` with the shell's tsrs and engine overrides taken away: the
+/// tests say which they set.
+fn doctor() -> Command {
+    let mut c = og();
+    c.arg("doctor")
+        .env_remove("OG_TSRS")
+        .env_remove("OG_ENGINE_PACKAGE");
+    c
+}
+
 #[test]
 #[cfg(unix)]
 fn doctor_reports_the_pins_and_each_tool() {
     let (rust, _) = pins();
-    let out = og().arg("doctor").current_dir(repo()).output().unwrap();
+    let out = doctor().current_dir(repo()).output().unwrap();
     let t = text(&out);
     assert!(
         t.contains(&format!("pinned      rust {rust} (rust-toolchain.toml)")),
@@ -240,8 +286,7 @@ fn doctor_reports_the_pins_and_each_tool() {
     // Inside the repository the version found is held to the pin.
     let dir = std::env::temp_dir().join(format!("og-cli-doctor-tsrs-{}", std::process::id()));
     let fake = fake_tsrs(&dir, "9.9.9", "", 0, true);
-    let out = og()
-        .arg("doctor")
+    let out = doctor()
         .current_dir(repo())
         .env("OG_TSRS", &fake)
         .output()
@@ -258,11 +303,13 @@ fn doctor_reports_the_pins_and_each_tool() {
 
 #[test]
 fn doctor_names_a_fix_for_every_missing_tool() {
+    if skip_with_installed_tsrs() {
+        return;
+    }
     let empty = std::env::temp_dir().join(format!("og-cli-empty-path-{}", std::process::id()));
     std::fs::create_dir_all(&empty).unwrap();
     let (rust, bindgen) = pins();
-    let out = og()
-        .arg("doctor")
+    let out = doctor()
         .current_dir(repo())
         .env("PATH", &empty)
         .output()
@@ -375,20 +422,25 @@ fn build_refuses_a_bad_publish_setting_by_line() {
 #[test]
 #[cfg(unix)]
 fn doctor_outside_the_repository_needs_only_bun_and_the_engine() {
+    if skip_with_installed_tsrs() {
+        return;
+    }
     let Some(bun) = std::env::var_os("PATH").and_then(|p| {
         std::env::split_paths(&p)
             .map(|d| d.join("bun"))
             .find(|b| b.is_file())
     }) else {
-        panic!("this test needs bun on PATH");
+        eprintln!(
+            "skipped: no bun on PATH (https://bun.sh/install); the test symlinks the shell's bun into an otherwise empty PATH"
+        );
+        return;
     };
     let dir = scratch_root();
     std::fs::remove_dir_all(dir.join("crates")).unwrap();
     let bin = dir.join("bin");
     std::fs::create_dir_all(&bin).unwrap();
     std::os::unix::fs::symlink(&bun, bin.join("bun")).unwrap();
-    let out = og()
-        .arg("doctor")
+    let out = doctor()
         .current_dir(&dir)
         .env("PATH", &bin)
         .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
@@ -415,8 +467,7 @@ fn doctor_outside_the_repository_needs_only_bun_and_the_engine() {
     let fake = fake_tsrs(&fake_dir, "9.9.9", "", 0, true);
     let other = scratch_root();
     std::fs::remove_dir_all(other.join("crates")).unwrap();
-    let out = og()
-        .arg("doctor")
+    let out = doctor()
         .current_dir(&other)
         .env("PATH", bun.parent().unwrap())
         .env("OG_TSRS", &fake)
