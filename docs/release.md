@@ -152,7 +152,7 @@ step of the path, all local:
 scripts/release.sh bump <version>     # every occurrence of the version, CHANGELOG.md's heading
 scripts/release.sh pack               # OG_RELEASE=1 pack.sh --linux-x64 (the engine with knowledge/, the platform packages), then create-game: dist/release/<version>/*.tgz + manifest.json (sizes, sha256)
 scripts/release.sh verify [--registry] [--instabox]  # the install test (below) from the tarballs, or from the registry after publishing; --instabox once more inside an InstaBox machine
-scripts/release.sh publish            # npm publish, platform packages first, then engine, create-game; git tag v<version>; prints the install line
+scripts/release.sh publish            # npm publish, the three platform packages first (win32-x64 packed on the Windows host, its tarball copied into dist/release/<version>/), then engine, create-game; git tag v<version>; prints the install line
 ```
 
 `pack` holds the gate lock (a release build compiles beside nothing) and

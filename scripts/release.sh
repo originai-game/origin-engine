@@ -13,7 +13,8 @@
 #                                               machine (tests/install/instabox.ts, the development sandbox; INSTABOX_API_KEY, billed by
 #                                               the minute); records each pass in manifest.json
 #   scripts/release.sh publish [--dry-run] [--otp <code>]
-#                                               npm publish each tarball (platform packages, engine, create-game), tag v<version>;
+#                                               npm publish each tarball (the three platform packages, the win32-x64 one copied in from
+#                                               the Windows host's pack, then engine, create-game), tag v<version>;
 #                                               refuses a dirty tree, a manifest not verified on both platforms, a HEAD whose packaged inputs
 #                                               (crates, packages, templates, Cargo.lock, the wasm and tool scripts) differ from the manifest's commit, a version on the registry with other bytes, or no npm login. Resumable:
 #                                               a package already published with these bytes is skipped. npm's two-factor prompt (a URL
@@ -152,7 +153,10 @@ cmd_publish() {
   og_say "release: publishing $v as $who"
   # Resumable: a package already on the registry at this version is skipped
   # when its bytes are these (npm's sha512 integrity), refused when they differ.
-  local pkgs="engine-darwin-arm64 engine-linux-x64 engine create-game" name tgz published local_sum
+  # Platform packages first (the engine's optionalDependencies name them at this
+  # version); the win32-x64 tarball is packed on the Windows host and copied into
+  # dist/release/<v>/ beside the Mac's (tests/evidence/release/windows-x64.md).
+  local pkgs="engine-darwin-arm64 engine-linux-x64 engine-win32-x64 engine create-game" name tgz published local_sum
   for name in $pkgs; do
     tgz="$out/origingame-$name-$v.tgz"
     [ -f "$tgz" ] || { og_err "release: no $tgz"; return 1; }
