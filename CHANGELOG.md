@@ -66,6 +66,45 @@ minor bump, §3), by stream:
   are byte-identical and `--jobs` matches one job. `og doctor` reports
   ffmpeg and ffprobe.
 
+Depth wave 2 (`docs/depth.md` §4, §5 and §9, merged 2026-10-23), API
+additions (a minor bump, §3), by stream:
+
+- `probe-depth` (S5), module probe: `describe` (the frame as data, a
+  `Description` of `DescribedEntity` boxes with depth and occlusion from a
+  CPU entity-id pass at a quarter of the pixels, `DescribedUi` and
+  `DescribedCamera`); `expect` with six operations (`ExpectOperation`),
+  as `expect:` script steps, a program op or members; `expectations`
+  (`ExpectReport`, `ExpectResult`, `ExpectStatus`); `saveScene`
+  (`SavedScene`: the boot scene's `.ogt` written back line by line from
+  the world, comments, order and spelling kept); `state().timings.systems`
+  and `.passes` (`ProbeTiming`). `og run --json` carries the expectations
+  and exits 1 on a failure, and a playtest may be `expect` steps only.
+  `og run --trace out.json` writes the run in the Chrome trace format;
+  `og cook --report` writes `og-out/cook-report.json` and `og doctor
+  --project <dir> [--json]` checks it against project.ogt's `budgets { }`.
+- `two-d-math` (S9), new module `math` (`host false`): three.js's methods
+  as pure functions over the plain structs, with `Box3`, `Sphere`, `Plane`
+  and `Frustum`. Module anim: `og.load.rig2d` (the `Rig2D` column, an
+  `.ogt` of `type rig2d` or a DragonBones 5.5 export), the `og.Skeleton2D`
+  and `og.IkTarget2D` components, the `og.Skeleton2DEvent` event,
+  `og.anim.rig2dInfo` (`Rig2DInfo`, `Rig2DClipInfo`) and `clip`; a
+  skeleton draws as sprite meshes in the sprite order. New template
+  `templates/game-2d` (the lamp keeper).
+- `rooms` (S4), module platform: `roomCreate`, `roomJoin`, `roomLeave`,
+  `roomSend`, `roomPeers`, `roomInfo` and `roomMessage` (`RoomDesc`,
+  `RoomPeer`, `RoomInfo`, `RoomMessageData`; the events `RoomJoined`,
+  `RoomPeerJoined`, `RoomPeerLeft`, `RoomMessage`). New module `net`:
+  `og.Lockstep`, the `og.PlayerInput` component, the `og.Desync` event,
+  `submit`, `status` and `hash` (`InputDesc`, `LockstepSeat`,
+  `LockstepStatus`); the probe's `dump_desync` (`DesyncDump`) names the
+  first divergent tick, entity, component and field with both values.
+  `og relay [--port] [--host]` and `og run --room
+  ws://127.0.0.1:P/<room>`; `PlaytestDesc.room` runs a playtest as several
+  processes through a relay it starts. New archetype
+  `templates/archetypes/arena` (Coin Duel). On the web, rooms go through
+  the Player's `room.*` (platform-asks #16): until the platform lands it,
+  `roomInfo` answers `host: none`.
+
 ## 0.2.0 (2026-10-23)
 
 API additions and changes (a minor bump, §3), by the stream that landed

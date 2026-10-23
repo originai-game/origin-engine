@@ -154,6 +154,53 @@ IDL changes are the CHANGELOG's `## Unreleased` depth wave 1 entry.
   untested; the wasm build, its size and the browser tiers run at the
   wave's end, not here.
 
+## Depth wave 2: probe-depth, two-d-math, rooms (2026-10-23)
+
+The three streams resumed on main 24116264 the moment wave 1 was pushed
+and reported the same day, S4 first, then S9, then S5. The coordinator
+merged them in §10's order on this machine, S5 (c447ff93), S9 (01b0f526)
+and S4 (409662ad). S5 merged clean. S9 conflicted only in generated
+outputs (bindings.json and the wiki), api.ogt itself merged; the outputs
+were regenerated. S4 conflicted with S5 in og-cli's `run.rs` (`--trace`
+beside `--room`, in the doc comment, the usage line and the flag match),
+in `run.ts` (both flags; the exit code stays 1 on a failed expectation,
+and a room closes before it) and in `playtest-run.ts` (one `Summary`
+with S4's `netHash` and `lockstep` and S5's `expectations`; a run whose
+only failure is its expectations is still a check, not a failed run).
+S4's bbce63bc (the IDL, "WIP (stream deferred)") builds only with the
+commit after it; the branch is merged as pushed, its tip builds. What
+each stream landed, its frames and its numbers are in
+`tests/evidence/depth/{probe-depth,two-d-math,rooms}/NOTES.md`; the IDL
+changes are the CHANGELOG's `## Unreleased` depth wave 2 entry.
+
+- **Metal reference** (f1d1090f): og-tests' `skeleton-2d.png`, the one
+  gfx frame the wave added. Read beside S9's lavapipe frame: the same
+  three keepers, on a flat plank facing right, on a rising plank facing
+  right, and on a falling plank facing left with the cape on the right;
+  the lanterns lit, the capes behind the coats. S4's arena frame (peer 1
+  at tick 360, "Red 2 / Blue 3", "You are Blue", one coin above the two
+  avatars) and S5's `first-frame`, `smoke-tick120` and `broken-tick120`
+  are evidence, not references; the game-2d keeper playtest checks its
+  frame's size and the rig's dumps, not a reference.
+- **Integration the streams could not see.** `packages/engine`'s
+  typecheck failed after S5: `run.ts` cast the probe's `expectations()`
+  to a hand-written copy of `ExpectReport` whose `results` was mutable
+  where the generated one is `readonly`; the generated type is the one
+  used now (8b404e6b). The og-game skill had two `## 21.`: S4's §20 and
+  S5's §21 both landed before "Where to look things up", which §1's
+  references expect last; it is §22 now, and the knowledge validate
+  passes. The wiki, bindings and schema were regenerated after each
+  merge (`og api gen`, `--wiki`, `api check`).
+- **Owed to the wave's end**, beyond wave 1's list: the platform side of
+  rooms (platform-asks #16), a browser two-page room run, the `?room=`
+  Play link and rollback (S4); the trace is native-only, lays systems and
+  passes end to end from their lengths, and its pass times are CPU encode
+  time, not GPU time; write-back covers the boot scene and skips tuned
+  resources; occlusion in `describe` ignores UI overlays (S5); Spine
+  import, DragonBones skew, colour offsets, zOrder, IK timelines and
+  nested armatures, Bézier curves played as linear, IK of more than two
+  bones, and a walk cycle for the keeper (S9).
+
 ## Main gate, wave 13 (2026-10-21)
 
 Wave 13 started as wave 12's streams merged, on the web dogfood's twelve
