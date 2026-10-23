@@ -514,3 +514,20 @@ og_runtime lost) into the export shims.
    changes; the frame's code under the default features is unchanged but
    for `pick` no longer running the views' id passes, which never fed the
    main camera's answer).
+
+## The size gate at the branch's head
+
+`scripts/check.sh --only size-gate` (wasm-build, wasm-opt, size-gate;
+the gate's `wasm-gate` profile, codegen-units 16, so an upper bound on
+the shipping numbers above), PASS in 638 s:
+
+| wasm | download | bytes | brotli -q 11 |
+|---|---|---:|---:|
+| og_host_web-lanes.wasm | 3D lanes | 14,502,417 | 3,695,892 (88 %) |
+| og_host_web-lanes2d.wasm | 2D lanes | 13,623,969 | 3,477,181 (82 %) |
+| og_host_web-publish.wasm | 3D publish | 14,072,622 | 3,650,101 (87 %) |
+| og_host_web-publish2d.wasm | 2D publish | 13,183,167 | 3,424,420 (81 %) |
+
+The gate's profile was not measured at ad903b18 in this orb, so these
+have no before of their own; the shipping profile's before and after
+are the tables above (3D publish 84.2 → 82.4 %, 2D 80.1 → 77.3 %).
