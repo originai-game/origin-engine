@@ -4767,7 +4767,7 @@ impl Renderer {
         );
         self.views.stale = false;
         self.views.retain(scene.views.len());
-        let view_skinned: Vec<Vec<Batch>> = view_plans
+        let mut view_skinned: Vec<Vec<Batch>> = view_plans
             .iter()
             .map(|p| {
                 let f = Frustum::from_view_proj(p.frame.view_proj);
@@ -4830,12 +4830,19 @@ impl Renderer {
                 b.effects = true;
                 b.derivatives |= decals;
             }
-            for b in skinned_visible.iter_mut() {
+            for b in skinned_visible
+                .iter_mut()
+                .chain(view_skinned.iter_mut().flatten())
+            {
                 b.effects = true;
                 b.derivatives |= decals;
             }
         }
         self.ensure_pipelines(&batches, &skinned_batches, prepass);
+        // A view may draw a skinned batch the main camera culled or hides.
+        for v in &view_skinned {
+            self.ensure_pipelines(&[], v, false);
+        }
         // A pattern in object space: the object pass after the prepass.
         let object_space = prepass && scene.stylise.in_object_space();
         if object_space {
