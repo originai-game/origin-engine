@@ -25,7 +25,7 @@
 //! - anchors ignore the safe area; touch controls come out under 44 px;
 //! - an anchored group sits under the host's own control (the web shell's
 //!   Back, `Viewport::covered`) instead of beside it;
-//! - a game accent leaves the token palette's derived tones stale;
+//! - a game accent leaves the style palette's derived tones stale;
 //! - the gamepad stick repeats at the wrong ticks.
 
 mod support;
@@ -814,11 +814,11 @@ fn a_meter_label_takes_the_ink_that_reads_over_the_fill_and_over_the_track() {
     let ink = |c: Srgba| c.linear();
     assert_eq!(
         over_fill.0,
-        ink(p.fg_inverse),
+        ink(p.ink_inverse),
         "the inverse ink on the deep green"
     );
-    assert_eq!(over_track.0, ink(p.fg), "the ink on the pale track");
-    assert!(p.fg_inverse.contrast(p.success) > p.fg.contrast(p.success));
+    assert_eq!(over_track.0, ink(p.ink), "the ink on the pale track");
+    assert!(p.ink_inverse.contrast(p.health) > p.ink.contrast(p.health));
 }
 
 #[test]
@@ -1071,27 +1071,49 @@ fn anchors_sit_in_the_safe_area_and_touch_controls_keep_44px() {
     assert!(!rig.state.active && rig.state.x == 0.0);
 }
 
+/// A game's own primary colour: hover and press move it towards opposite
+/// ends of the scale (a dark one lightens hovered, a light one darkens),
+/// and the ink on it is whichever of the palette's inks reads better.
+///
+/// Ways it could fail: the hover and press tones swapped for a light
+/// primary, the ink picked by luminance alone, the soft wash losing the
+/// palette's alpha.
 #[test]
-fn a_game_accent_derives_its_tones_the_way_the_tokens_derive_amber() {
+fn a_game_primary_derives_its_hover_press_and_ink() {
     let dark = Theme::dark();
-    let same = dark.with_accent(dark.palette.accent);
-    assert_eq!(
-        same.palette, dark.palette,
-        "amber in, the token palette out"
-    );
-    let light = Theme::light();
-    assert_eq!(
-        light.with_accent(light.palette.accent).palette,
-        light.palette
-    );
-    let blue = dark.with_hue(HueName::Blue);
-    assert_eq!(blue.palette.accent, dark.hues.blue);
+    let navy = dark.with_primary(Srgba::rgb(0x20, 0x30, 0x80));
+    let p = navy.palette;
+    assert_eq!(p.primary, Srgba::rgb(0x20, 0x30, 0x80));
     assert!(
-        blue.palette.accent_hover.luminance() > blue.palette.accent.luminance(),
-        "dark hover is lighter, as amber's"
+        p.primary_hover.luminance() > p.primary.luminance(),
+        "a dark primary lightens hovered"
+    );
+    assert!(
+        p.primary_active.luminance() < p.primary.luminance(),
+        "and darkens pressed"
+    );
+    assert_eq!(p.on_primary, dark.palette.ink, "light ink on navy");
+    assert_eq!(p.primary_soft.alpha, dark.palette.primary_soft.alpha);
+    assert_eq!(p.primary_soft.rgb, p.primary.rgb);
+    let lemon = dark.with_primary(Srgba::rgb(0xf0, 0xe0, 0x60)).palette;
+    assert!(
+        lemon.primary_hover.luminance() < lemon.primary.luminance(),
+        "a light primary darkens hovered"
+    );
+    assert!(lemon.primary_active.luminance() > lemon.primary.luminance());
+    assert_eq!(
+        lemon.on_primary, dark.palette.ink_inverse,
+        "dark ink on lemon"
+    );
+    assert_eq!(
+        lemon.highlight, dark.palette.highlight,
+        "highlight is the style's own"
     );
     let hc = Theme::high_contrast(Scheme::Dark);
-    assert_eq!(hc.palette.fg_muted, dark.palette.fg, "muted ink takes fg");
+    assert_eq!(
+        hc.palette.ink_muted, dark.palette.ink,
+        "muted ink takes ink"
+    );
     assert!(hc.outline);
 }
 

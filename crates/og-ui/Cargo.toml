@@ -4,7 +4,7 @@ version = "0.2.0"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine UI: an immediate-mode toolkit with Clay-style layout, themed by the platform design tokens, drawn through og-render's sprite and text batches, addressable by the probe."
+description = "Origin Engine UI: an immediate-mode toolkit with Clay-style layout, styled by each game's own UI style, drawn through og-render's sprite and text batches, addressable by the probe."
 
 [features]
 default = ["shaping"]
@@ -36,8 +36,3 @@ serde_json = "1"
 image = { workspace = true }
 # tests/text_gfx.rs cooks the UI kit's fonts (kerning, shaped scripts) to draw with.
 og-cook = { path = "../og-cook" }
-
-# The theme generator (scripts/gen-theme.sh runs it).
-[[example]]
-name = "gen-theme"
-path = "scripts/gen_theme.rs"

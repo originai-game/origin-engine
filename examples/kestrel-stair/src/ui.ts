@@ -233,18 +233,18 @@ function looks(world: World, g: GameV): void {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "surface" } }, build);
+  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
 }
 
 function hud(world: World, g: GameV): { bag: boolean; pause: boolean } {
   og.ui.setNavigation(false);
   og.ui.anchor("Status", { anchor: "topLeft", direction: "column", gap: S.sm }, () => {
     capsule("Health", () => {
-      og.ui.icon("Heart", "heart", { size: 22, tint: { token: g.hp < 30 ? "danger" : "accent" } });
+      og.ui.icon("Heart", "heart", { size: 22, tint: { token: g.hp < 30 ? "danger" : "primary" } });
       og.ui.meter("Strength", g.hp, MAX_HP, { kind: "health", width: px(150) });
     });
     capsule("Sigils", () => {
-      for (let i = 0; i < 3; i++) og.ui.icon(`Sigil${i}`, "gem", { size: 20, tint: { token: (g.sigils & (1 << i)) !== 0 ? "accent" : "fillStrong" } });
+      for (let i = 0; i < 3; i++) og.ui.icon(`Sigil${i}`, "gem", { size: 20, tint: { token: (g.sigils & (1 << i)) !== 0 ? "primary" : "controlStrong" } });
       og.ui.label("Count", say(world, "hud.sigils", { n: [0, 1, 2].filter((b) => (g.sigils & (1 << b)) !== 0).length }), { font: "mono", nowrap: true });
     });
   });
@@ -253,9 +253,9 @@ function hud(world: World, g: GameV): { bag: boolean; pause: boolean } {
   og.ui.anchor("Dusk", { anchor: "topRight", gap: S.sm, cross: "center" }, () => {
     capsule("Clock", () => {
       const left = 1 - (g.hour - HOURS.start) / (HOURS.night - HOURS.start);
-      og.ui.icon("Sun", "clock", { size: 20, tint: { token: left < 0.2 ? "danger" : "fg" } });
+      og.ui.icon("Sun", "clock", { size: 20, tint: { token: left < 0.2 ? "danger" : "ink" } });
       og.ui.label("Hour", clockText(g.hour), { font: "mono", nowrap: true, width: px(48) });
-      og.ui.meter("Daylight", Math.max(0, left), 1, { kind: "accent", width: px(90) });
+      og.ui.meter("Daylight", Math.max(0, left), 1, { kind: "primary", width: px(90) });
     });
     if (og.ui.actionButton("Bag", say(world, "hud.bag"), { icon: "bag", size: 48 }).clicked) bag = true;
     if (og.ui.actionButton("Pause", say(world, "hud.pause"), { icon: "pause", size: 48 }).clicked) pause = true;
@@ -267,7 +267,7 @@ function hud(world: World, g: GameV): { bag: boolean; pause: boolean } {
   og.ui.anchor("Prompt", { anchor: "bottom", offsetY: -28, direction: "column", cross: "center" }, () => {
     og.ui.transition("Hint", prompt !== "", { kind: "pop" }, () => {
       capsule("Capsule", () => {
-        og.ui.icon("Key", g.nearKind === Near.Gate && (g.sigils & 7) !== 7 ? "lock" : "flag", { size: 18, tint: { token: "accent" } });
+        og.ui.icon("Key", g.nearKind === Near.Gate && (g.sigils & 7) !== 7 ? "lock" : "flag", { size: 18, tint: { token: "primary" } });
         og.ui.label("Text", shownPrompt, { nowrap: true });
       });
       // A refused F shakes the prompt with the error sound (og-ui §6), never the camera.

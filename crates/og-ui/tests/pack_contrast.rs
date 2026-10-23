@@ -1,6 +1,6 @@
 //! button_contrast.rs for the style packs and the games' skins: every
-//! button role's label, in every state, the three label inks (`fg`,
-//! `fgMuted`, `fgSubtle`), a text field's placeholder (`fgSubtle` on the
+//! button role's label, in every state, the three label inks (`ink`,
+//! `inkMuted`, `inkFaint`), a text field's placeholder (`inkFaint` on the
 //! field's frame) and typed text, at rest and focused, a stack's count on
 //! a bag slot, a meter's label over each kind's fill and over its track,
 //! and a badge in every tone, as og-ui draws them with a skin, read against
@@ -40,13 +40,13 @@
 //! only; a hovered or pressed state darker than its rest; a translucent
 //! piece that reads over one ground only; a placeholder under 4.5:1 (the
 //! fantasy pack's read 4.40:1 here and 2.93:1 in lantern-vale's polish
-//! frame, FINDINGS #29; pixel 4.22, cartoon 4.13, before their fgSubtle
+//! frame, FINDINGS #29; pixel 4.22, cartoon 4.13, before their inkFaint
 //! moved), or the focus ring showing through a focused field's frame
 //! (scifi 3.52:1 and neon 3.00:1 on the ring's colour, before og-ui cut
 //! the ring under every control); an accent badge under 4.5:1 in a panel
 //! (pixel 3.90, cartoon 3.78, fantasy and ember 4.12, scifi 4.37 before
-//! pixel's and scifi's accentSoft thinned and cartoon's and fantasy's
-//! accentInk darkened).
+//! pixel's and scifi's primarySoft thinned and cartoon's and fantasy's
+//! highlight darkened).
 
 mod support;
 
@@ -281,10 +281,10 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
         let tex = atlas_handle();
         let theme = file.theme(Some(tex), [0; 6]);
         let p = theme.palette;
-        let bg = rgb(p.bg);
+        let bg = rgb(p.backdrop);
         // A button straight on the screen and inside a panel (a menu card or
         // a dialog), every role in every state.
-        for (ground_name, panel) in [("screen", None), ("panel", Some(p.surface))] {
+        for (ground_name, panel) in [("screen", None), ("panel", Some(p.panel))] {
             for (label, _) in ROLES {
                 for state in ["rest", "hovered", "pressed"] {
                     let mut scene = RenderScene::new();
@@ -394,11 +394,11 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
             }
         }
         // The three label inks, on the screen and in a panel.
-        for (ground_name, panel) in [("screen", None), ("panel", Some(p.surface))] {
+        for (ground_name, panel) in [("screen", None), ("panel", Some(p.panel))] {
             for (ink_name, ink) in [
-                ("fg", p.fg),
-                ("fgMuted", p.fg_muted),
-                ("fgSubtle", p.fg_subtle),
+                ("fg", p.ink),
+                ("fgMuted", p.ink_muted),
+                ("fgSubtle", p.ink_faint),
             ] {
                 let mut scene = RenderScene::new();
                 let mut ui = ui_with_font(add_test_font(&mut scene));
@@ -446,10 +446,10 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                 }
             }
         }
-        // A text field's placeholder (fgSubtle on the field's fill and
+        // A text field's placeholder (inkFaint on the field's fill and
         // frame), and its typed text (fg), unfocused and focused, on the
         // screen and in a panel: the pack's own settings screens show both.
-        for (ground_name, panel) in [("screen", None), ("panel", Some(p.surface))] {
+        for (ground_name, panel) in [("screen", None), ("panel", Some(p.panel))] {
             for (what, value) in [("placeholder", ""), ("text", "Ada")] {
                 for focused in [false, true] {
                     let mut scene = RenderScene::new();
@@ -531,7 +531,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                 }
             }
         }
-        // A stack's count on a bag slot (the inventory screen's `fgMuted`
+        // A stack's count on a bag slot (the inventory screen's `inkMuted`
         // label, xs), in a slot at rest and in the selected one, in a panel.
         {
             let mut scene = RenderScene::new();
@@ -544,7 +544,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                 ui.panel(
                     "G",
                     PanelDesc {
-                        background: Some(p.surface),
+                        background: Some(p.panel),
                         ..PanelDesc::default()
                     },
                     |ui| {
@@ -562,7 +562,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                                     if k == 0 { "12" } else { "34" },
                                     LabelDesc {
                                         step: Some(xs),
-                                        color: Some(p.fg_muted),
+                                        color: Some(p.ink_muted),
                                         ..LabelDesc::default()
                                     },
                                 );
@@ -596,7 +596,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
             ("danger", MeterKind::Custom(p.danger), 1.0),
             ("mana", MeterKind::Mana, 1.0),
             ("xp", MeterKind::Xp, 1.0),
-            ("accent", MeterKind::Accent, 1.0),
+            ("accent", MeterKind::Primary, 1.0),
             ("track", MeterKind::Health, 0.0),
         ] {
             let mut scene = RenderScene::new();
@@ -608,7 +608,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                 ui.panel(
                     "G",
                     PanelDesc {
-                        background: Some(p.surface),
+                        background: Some(p.panel),
                         ..PanelDesc::default()
                     },
                     |ui| {
@@ -651,13 +651,13 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
 /// sit) the status tones and the accent hold it with the palette's own
 /// ink: the tones are the colours meters, toasts and status dots share, so
 /// the light packs' are deep (cartoon's warn read 1.63:1 on its panel at
-/// #f2a516, now #7b5102) and the dark packs' light; the tint mixes as the
-/// platform's CSS mixes it (`Srgba::tint_over`: a linear 16 % lifted a dark
+/// #f2a516, now #7b5102) and the dark packs' light; the tint mixes in sRGB as a
+/// CSS wash would (`Srgba::tint_over`: a linear 16 % lifted a dark
 /// ground so far that no ink, white included, reached 4.5:1 on the pixel
 /// pack's panel). On the other side of the scale, a light pack's badge on
 /// its dark stage (cartoon's success read 1.98:1 there, fantasy's danger
 /// 1.54:1), the badge moves its ink (`Srgba::readable_on`); so does the
-/// neutral badge, `fgMuted` on `fill`, whose ground scifi's and neon's mid
+/// neutral badge, `inkMuted` on `control`, whose ground scifi's and neon's mid
 /// fills made 2.15:1 and 2.81:1 (scifi's moves its fill: no ink reaches
 /// 4.5:1 on it from the light side).
 #[test]
@@ -674,18 +674,18 @@ fn every_skin_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel() {
         let tex = atlas_handle();
         let theme = file.theme(Some(tex), [0; 6]);
         let p = theme.palette;
-        let bg = rgb(p.bg);
+        let bg = rgb(p.backdrop);
         // The accent badge is the results screen's "New best" (it read
         // 4.12:1 here in the fantasy pack and 4.03:1 in Lantern Vale's
-        // polish frame before accentInk moved).
-        for (ground_name, panel) in [("screen", None), ("panel", Some(p.surface))] {
+        // polish frame before highlight moved).
+        for (ground_name, panel) in [("screen", None), ("panel", Some(p.panel))] {
             for (tone_name, tone) in [
                 ("neutral", Tone::Neutral),
                 ("success", Tone::Success),
                 ("warn", Tone::Warn),
                 ("danger", Tone::Danger),
                 ("info", Tone::Info),
-                ("accent", Tone::Accent),
+                ("accent", Tone::Primary),
                 ("inverse", Tone::Inverse),
             ] {
                 let mut scene = RenderScene::new();
@@ -725,7 +725,7 @@ fn every_skin_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel() {
                     Tone::Warn => Some(p.warn),
                     Tone::Danger => Some(p.danger),
                     Tone::Info => Some(p.info),
-                    Tone::Accent => Some(p.accent_ink),
+                    Tone::Primary => Some(p.highlight),
                     _ => None,
                 };
                 if let Some(own) = own
@@ -963,7 +963,7 @@ fn every_pack_draws_its_primary_and_secondary_labels_at_4_5_to_1_in_the_frame() 
                 let vp = Viewport::new(640.0, 360.0);
                 let step = |ui: &mut Ui, input: InputFrame| {
                     ui.begin(input, vp);
-                    let surface = ui.theme().palette.surface;
+                    let surface = ui.theme().palette.panel;
                     ui.panel(
                         "G",
                         PanelDesc {
@@ -1029,7 +1029,7 @@ fn every_pack_draws_its_primary_and_secondary_labels_at_4_5_to_1_in_the_frame() 
                     &mut overlay,
                 );
                 scene.overlay = Some(overlay);
-                let bg = ui.theme().palette.bg.linear();
+                let bg = ui.theme().palette.backdrop.linear();
                 scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
                 scene.post.tonemap = Tonemap::None;
                 let desc = RenderDesc {

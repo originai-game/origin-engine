@@ -36,17 +36,17 @@ export function mainMenu(id: string, desc: Api.MainMenuDesc = {}): Api.MenuResul
     cross: "center",
     width: phone ? grow() : px(380),
     padding: all(phone ? t.lg : t.xl),
-    background: token("materialThick"),
+    background: token("hud"),
     radius: t.panel,
     instant: desc.instant ?? false,
   }, () => {
     kit.column("Heading", { gap: t.xs, cross: "center", width: grow() }, () => {
       kit.label("Title", desc.title ?? "", { step: phone ? "displayMd" : "displayLg", font: "display", align: "center", width: grow(), heading: true });
-      if (desc.subtitle) kit.label("Subtitle", desc.subtitle, { color: token("fgMuted"), align: "center", width: grow() });
+      if (desc.subtitle) kit.label("Subtitle", desc.subtitle, { color: token("inkMuted"), align: "center", width: grow() });
     });
     // A title menu is not a dialog, so it takes the focus itself: Enter and the pad's A answer at once.
     chosen = menuColumn("Items", items, grow(), true);
-    if (desc.footer) kit.label("Footer", desc.footer, { step: "meta", color: token("fgSubtle"), align: "center", width: grow() });
+    if (desc.footer) kit.label("Footer", desc.footer, { step: "meta", color: token("inkFaint"), align: "center", width: grow() });
   });
   if (chosen !== null) desc.onSelect?.(chosen);
   return { selected: chosen };
@@ -68,7 +68,7 @@ export function confirmDialog(id: string, desc: Api.ConfirmDesc = {}): Api.Confi
   let confirmed = false;
   let cancelled = false;
   const m = kit.modal(id, desc.open ?? false, { title: desc.title ?? "" }, () => {
-    if (desc.message) kit.richText("Message", desc.message, { step: "reading", color: token("fgMuted"), width: grow() });
+    if (desc.message) kit.richText("Message", desc.message, { step: "reading", color: token("inkMuted"), width: grow() });
     kit.row("Actions", { width: grow(), gap: t.sm, align: "end", padding: { left: 0, top: t.sm, right: 0, bottom: 0 } }, () => {
       if ((kit.button("Cancel", desc.cancelLabel ?? "Cancel", {}) as Api.Response).clicked) cancelled = true;
       if ((kit.button("Confirm", desc.confirmLabel ?? "Confirm", { variant: desc.danger ? "danger" : "primary" }) as Api.Response).clicked) confirmed = true;
@@ -82,7 +82,7 @@ export function alertDialog(id: string, desc: Api.AlertDesc = {}): boolean {
   const { t } = frame();
   let done = false;
   const m = kit.modal(id, desc.open ?? false, { title: desc.title ?? "" }, () => {
-    if (desc.message) kit.richText("Message", desc.message, { step: "reading", color: token("fgMuted"), width: grow() });
+    if (desc.message) kit.richText("Message", desc.message, { step: "reading", color: token("inkMuted"), width: grow() });
     kit.row("Actions", { width: grow(), align: "end", padding: { left: 0, top: t.sm, right: 0, bottom: 0 } }, () => {
       if ((kit.button("Ok", desc.okLabel ?? "OK", { variant: "primary" }) as Api.Response).clicked) done = true;
     });
@@ -94,7 +94,7 @@ export function loadingScreen(id: string, desc: Api.LoadingDesc = {}): void {
   const { t } = frame();
   const tips = desc.tips ?? [];
   const tip = tips.length > 0 ? tips[Math.floor(kit.seconds() / Math.max(1, desc.tipSeconds ?? 4)) % tips.length]! : "";
-  kit.modal(id, true, { locked: true, bare: true, backdrop: token("bg"), transition: "fade", width: px(Math.min(380, frame().viewport.width - 32)) }, () => {
+  kit.modal(id, true, { locked: true, bare: true, backdrop: token("backdrop"), transition: "fade", width: px(Math.min(380, frame().viewport.width - 32)) }, () => {
     kit.label("Title", desc.title ?? "Loading", { step: "xl", align: "center", width: grow(), heading: true });
     const p = desc.progress;
     if (p === null || p === undefined) {
@@ -103,10 +103,10 @@ export function loadingScreen(id: string, desc: Api.LoadingDesc = {}): void {
       // A real value only: the bar never runs ahead of what loaded.
       kit.row("Bar", { width: grow(), gap: t.md, cross: "center" }, () => {
         kit.progress("Progress", p, { width: grow() });
-        kit.label("Percent", `${Math.floor(Math.max(0, Math.min(1, p)) * 100)}%`, { step: "meta", font: "mono", color: token("fgMuted"), nowrap: true });
+        kit.label("Percent", `${Math.floor(Math.max(0, Math.min(1, p)) * 100)}%`, { step: "meta", font: "mono", color: token("inkMuted"), nowrap: true });
       });
     }
-    if (tip) kit.label("Tip", tip, { step: "reading", color: token("fgMuted"), align: "center", width: grow() });
+    if (tip) kit.label("Tip", tip, { step: "reading", color: token("inkMuted"), align: "center", width: grow() });
   });
 }
 
@@ -118,7 +118,7 @@ function stars(id: string, earned: number, max: number, since: number, size: num
       const shown = kit.seconds() - since >= 0.3 * (k + 1);
       const on = k < earned;
       kit.transition(kit.idi("Star", k), shown, { kind: "scale", instant: false }, () => {
-        iconOr("Mark", "star", size, token(on ? "accent" : "fillStrong"));
+        iconOr("Mark", "star", size, token(on ? "primary" : "controlStrong"));
         if (on) kit.burst({ delayMs: 120 });
       });
       if (!shown) kit.spacer(kit.idi("Gap", k), px(size));
@@ -147,7 +147,7 @@ export function resultsScreen(id: string, desc: Api.ResultsDesc = {}): Api.MenuR
     const max = desc.maxStars ?? 3;
     if (max > 0) kit.row("StarRow", { width: grow(), align: "center" }, () => stars("Stars", desc.stars ?? 0, max, since, 44));
     kit.column("ScoreBlock", { width: grow(), cross: "center", gap: t.xxs }, () => {
-      if (desc.scoreLabel) kit.label("ScoreLabel", desc.scoreLabel, { step: "meta", color: token("fgMuted"), align: "center", width: grow(), nowrap: true });
+      if (desc.scoreLabel) kit.label("ScoreLabel", desc.scoreLabel, { step: "meta", color: token("inkMuted"), align: "center", width: grow(), nowrap: true });
       if (time) {
         // A time counts up as a clock (ease-out cubic over the same 0.9 s), the headline in m:ss.mmm.
         const k = open ? Math.min(1, Math.max(0, (kit.seconds() - since) / 0.9)) : 1;
@@ -158,8 +158,8 @@ export function resultsScreen(id: string, desc: Api.ResultsDesc = {}): Api.MenuR
       }
       if (!time || best > 0 || desc.newBest) {
         kit.row("BestRow", { gap: t.sm, cross: "center" }, () => {
-          if (!time || best > 0) kit.label("Best", (desc.bestLabel ?? "Best {best}").replaceAll("{best}", time ? lapTime(best) : fmt(best)), { step: "meta", color: token("fgMuted"), nowrap: true });
-          if (desc.newBest) kit.transition("Reveal", landed, { kind: "pop" }, () => kit.badge("NewBest", desc.newBestLabel ?? "New best", "accent"));
+          if (!time || best > 0) kit.label("Best", (desc.bestLabel ?? "Best {best}").replaceAll("{best}", time ? lapTime(best) : fmt(best)), { step: "meta", color: token("inkMuted"), nowrap: true });
+          if (desc.newBest) kit.transition("Reveal", landed, { kind: "pop" }, () => kit.badge("NewBest", desc.newBestLabel ?? "New best", "primary"));
         });
       }
     });

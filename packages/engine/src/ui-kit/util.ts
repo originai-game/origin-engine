@@ -25,7 +25,7 @@ export function frame(): { theme: Api.UiTheme; viewport: Api.Viewport; t: Tokens
 
 export interface Tokens {
   xxs: number; xs: number; sm: number; md: number; lg: number; xl: number; xxl: number; xl3: number;
-  card: number; panel: number; block: number; button: number;
+  small: number; control: number; bar: number; panel: number;
   controlSm: number; controlMd: number; controlLg: number; gutter: number; row: number;
 }
 
@@ -34,7 +34,7 @@ function tokens(t: Api.UiTheme): Tokens {
   const r = (k: string): number => t.radius[k] ?? 0;
   return {
     xxs: s("xxs"), xs: s("xs"), sm: s("sm"), md: s("md"), lg: s("lg"), xl: s("xl"), xxl: s("xxl"), xl3: s("xl3"),
-    card: r("card"), panel: r("panel"), block: r("block"), button: r("button"),
+    small: r("small"), control: r("control"), bar: r("bar"), panel: r("panel"),
     controlSm: t.sizes.controlSm, controlMd: t.sizes.controlMd, controlLg: t.sizes.controlLg, gutter: t.sizes.gutter, row: t.sizes.row,
   };
 }
@@ -81,8 +81,8 @@ export function capsule(id: string, build: () => void, desc: { gap?: number; pad
     height: px(desc.height ?? t.controlMd),
     gap: desc.gap ?? t.sm,
     cross: "center",
-    background: token("materialThick"),
-    radius: t.button,
+    background: token("hud"),
+    radius: t.control,
     frame: "capsule",
   }, build) as Api.Response;
 }

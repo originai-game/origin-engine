@@ -550,13 +550,13 @@ impl UiFrame {
     }
 }
 
-/// Button looks (`docs/design-language.md` §Button).
+/// Button roles: how a style draws each.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ButtonVariant {
     /// A clear lens: neutral fill (the default).
     #[default]
     Secondary,
-    /// The amber action: one per screen.
+    /// The primary action: one per screen.
     Primary,
     /// Text until hovered.
     Quiet,
@@ -564,7 +564,7 @@ pub enum ButtonVariant {
     Danger,
 }
 
-/// Control heights from the density (`h-control-sm/md/lg`).
+/// Control heights from the density (`controlSm/md/lg`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ControlSize {
     Small,
@@ -590,7 +590,7 @@ pub struct ButtonDesc {
 pub struct LabelDesc {
     /// `None`: `text-body`.
     pub step: Option<TypeStep>,
-    /// `None`: `fg`.
+    /// `None`: `ink`.
     pub color: Option<Srgba>,
     pub align: TextAlign,
     /// Keep on one line (break only at `\n`).
@@ -620,7 +620,7 @@ pub struct PanelDesc {
     pub gap: Option<f32>,
     pub align: Align,
     pub cross: Cross,
-    /// `None`: `surface`.
+    /// `None`: `panel`.
     pub background: Option<Srgba>,
 }
 
@@ -742,7 +742,7 @@ pub struct Ui {
     pub(crate) text_target: Option<TextTarget>,
     /// This frame's screen-transition cover.
     pub(crate) cover: Option<crate::juice::Cover>,
-    /// The configured skin's name (empty: the tokens).
+    /// The configured skin's name (empty: the style).
     pub(crate) skin_name: String,
     /// Two touches move a scroller or zoom view this tick: the primary
     /// pointer presses nothing.
@@ -1022,7 +1022,7 @@ impl Ui {
         self.theme = effective_theme(theme, &self.viewport);
     }
 
-    /// The configured skin's name, for the theme the host reports (empty: the tokens).
+    /// The configured skin's name, for the theme the host reports (empty: the style).
     pub fn skin_name(&self) -> &str {
         &self.skin_name
     }
@@ -1383,7 +1383,7 @@ impl Ui {
         );
     }
 
-    /// A card: `surface`, `radius.card`, padded and spaced by the tokens.
+    /// A card: `panel`, `radius.panel`, padded and spaced by the style.
     pub fn panel(&mut self, id: impl Into<Id>, desc: PanelDesc, f: impl FnOnce(&mut Ui)) {
         self.open_panel(id, desc);
         f(self);
@@ -1407,8 +1407,8 @@ impl Ui {
             gap: desc.gap.unwrap_or(t.space.md),
             align: desc.align,
             cross: desc.cross,
-            background: Some(desc.background.unwrap_or(t.palette.surface)),
-            radius: t.radius.card,
+            background: Some(desc.background.unwrap_or(t.palette.panel)),
+            radius: t.radius.panel,
             skin: Some(crate::skin::SkinPart::Card),
             ..Element::default()
         };
@@ -1476,7 +1476,7 @@ impl Ui {
         n.content = Content::Text(TextContent {
             text: text.to_owned(),
             step: desc.step.unwrap_or(t.type_ramp.body),
-            color: desc.color.unwrap_or(t.palette.fg),
+            color: desc.color.unwrap_or(t.palette.ink),
             align: desc.align,
             wrap: !desc.nowrap,
             font: desc.font,
@@ -1511,7 +1511,7 @@ impl Ui {
                 padding: Insets::xy(pad, 0.0),
                 // A skin that shakes a refused press hears presses on a disabled button.
                 interactive: !desc.disabled || t.skin.motion.shake > 0.0,
-                radius: t.radius.button,
+                radius: t.radius.control,
                 ..Element::default()
             },
         );
@@ -1535,31 +1535,30 @@ impl Ui {
         }
         let p = &t.palette;
         let (bg, fg) = if desc.disabled {
-            (Some(p.fill), p.fg_subtle)
+            (Some(p.control), p.ink_faint)
         } else {
             match desc.variant {
                 ButtonVariant::Primary => (
                     Some(if r.pressed {
-                        p.accent_active
+                        p.primary_active
                     } else if r.hovered {
-                        p.accent_hover
+                        p.primary_hover
                     } else {
-                        p.accent
+                        p.primary
                     }),
-                    p.accent_fg,
+                    p.on_primary,
                 ),
                 ButtonVariant::Secondary => (
                     Some(if r.hovered || r.pressed {
-                        p.fill_strong
+                        p.control_strong
                     } else {
-                        p.fill
+                        p.control
                     }),
-                    p.fg,
+                    p.ink,
                 ),
-                ButtonVariant::Quiet => ((r.hovered || r.pressed).then_some(p.fill), p.fg),
-                // The platform's danger button: danger ink on the danger
-                // tint (bg-danger/10 at rest, /15 hovered), composited in
-                // sRGB over what is behind it as browsers do, so its label
+                ButtonVariant::Quiet => ((r.hovered || r.pressed).then_some(p.control), p.ink),
+                // Danger ink on the danger tint (10 % at rest, 15 %
+                // hovered), composited in sRGB over what is behind it, so its label
                 // reads at 4.5:1 on every ground.
                 ButtonVariant::Danger => (
                     Some(
@@ -1880,7 +1879,7 @@ impl Ui {
             *on = !*on;
             r.changed = true;
         }
-        let mut content = self.text_content(label, t.type_ramp.body, t.palette.fg);
+        let mut content = self.text_content(label, t.type_ramp.body, t.palette.ink);
         content.wrap = false;
         let n = &mut self.nodes[i];
         n.content = Content::Text(content);
@@ -1917,7 +1916,7 @@ impl Ui {
                 height: Size::Fixed(sizes.control_md),
                 padding: Insets::xy(t.space.md, 0.0),
                 interactive: true,
-                radius: t.radius.field,
+                radius: t.radius.control,
                 skin: Some(SkinPart::Field),
                 ..Element::default()
             },
@@ -1957,18 +1956,18 @@ impl Ui {
             shown
         };
         let color = if placeholder {
-            t.palette.fg_subtle
+            t.palette.ink_faint
         } else {
-            t.palette.fg
+            t.palette.ink
         };
         let mut content = self.text_content(&shown, step, color);
         content.wrap = false;
         let edit = self.edit_view(key, focused, value, composition, false);
         let n = &mut self.nodes[i];
         n.el.background = Some(if focused {
-            t.palette.surface
+            t.palette.panel
         } else {
-            t.palette.fill
+            t.palette.control
         });
         n.content = Content::Text(content);
         n.widget = Widget::Field(edit);
@@ -2014,7 +2013,7 @@ impl Ui {
                 height: Size::Fixed(rows as f32 * lh + pad.vertical()),
                 padding: pad,
                 interactive: true,
-                radius: t.radius.field,
+                radius: t.radius.control,
                 skin: Some(SkinPart::Field),
                 ..Element::default()
             },
@@ -2048,9 +2047,9 @@ impl Ui {
         let edit = self.edit_view(key, focused, value, composition, true);
         let n = &mut self.nodes[i];
         n.el.background = Some(if focused {
-            t.palette.surface
+            t.palette.panel
         } else {
-            t.palette.fill
+            t.palette.control
         });
         n.widget = Widget::TextArea {
             edit,
@@ -2151,13 +2150,13 @@ impl Ui {
             NONE,
             Element {
                 padding: Insets::xy(t.space.sm, t.space.xs),
-                background: Some(t.palette.surface_raised),
+                background: Some(t.palette.panel_raised),
                 radius: t.radius.control,
                 skin: Some(SkinPart::Tooltip),
                 ..Element::default()
             },
         );
-        let mut content = self.text_content(text, t.type_ramp.meta, t.palette.fg);
+        let mut content = self.text_content(text, t.type_ramp.meta, t.palette.ink);
         content.wrap = false;
         node.content = Content::Text(content);
         node.widget = Widget::Tooltip;
@@ -3001,8 +3000,8 @@ impl Ui {
                     let h = t.space.xs;
                     cmds.push(DrawCmd::Quad {
                         rect: Rect::new(x, track.bottom() - h - t.space.xxs, bar_w, h).snapped(dpr),
-                        radius: h / 2.0,
-                        color: p.fill_strong.linear(),
+                        radius: t.radius.bar,
+                        color: p.control_strong.linear(),
                         clip: sn.clip.intersect(&sn.rect),
                     });
                 }
@@ -3022,8 +3021,8 @@ impl Ui {
                     let w = t.space.xs;
                     cmds.push(DrawCmd::Quad {
                         rect: Rect::new(track.right() - w - t.space.xxs, y, w, bar_h).snapped(dpr),
-                        radius: w / 2.0,
-                        color: p.fill_strong.linear(),
+                        radius: t.radius.bar,
+                        color: p.control_strong.linear(),
                         clip: sn.clip.intersect(&sn.rect),
                     });
                 }
@@ -3075,7 +3074,7 @@ impl Ui {
             let color = if field_ring || n.ring {
                 p.focus
             } else {
-                p.border_strong
+                p.line_strong
             };
             let gap = if field_ring || !n.ring {
                 0.0
@@ -3085,7 +3084,7 @@ impl Ui {
             cmds.push(quad(rect.outset(w + gap), n.el.radius + w + gap, color));
             // Cut always: a field's skinned frame is not wholly opaque, and
             // the ring under it tinted its text's ground (the scifi pack's
-            // focused placeholder read 3.5:1 on amber-tinted navy).
+            // focused placeholder read 3.5:1 on primary-tinted navy).
             cmds.push(quad(rect.outset(gap), n.el.radius + gap, behind));
         }
         if let Some(bg) = n.el.background {
@@ -3117,11 +3116,7 @@ impl Ui {
                     } else {
                         rect
                     };
-                    if self.has_edge(n, bg) {
-                        self.edge_light(r, n.el.radius, bg, alpha, clip, cmds);
-                    } else {
-                        cmds.push(quad(r, n.el.radius, bg));
-                    }
+                    cmds.push(quad(r, n.el.radius, bg));
                 }
             }
         }
@@ -3148,8 +3143,8 @@ impl Ui {
                         SkinPart::Track,
                         s,
                         rect,
-                        rect.height / 2.0,
-                        p.fill_strong,
+                        t.radius.bar,
+                        p.control_strong,
                         alpha,
                         clip,
                         cmds,
@@ -3163,8 +3158,8 @@ impl Ui {
                         SkinPart::Fill,
                         s,
                         r,
-                        rect.height / 2.0,
-                        p.accent,
+                        t.radius.bar,
+                        p.primary,
                         alpha,
                         clip,
                         cmds,
@@ -3172,13 +3167,13 @@ impl Ui {
                 }
             }
             Widget::Progress { value } => {
-                cmds.push(quad(rect, rect.height / 2.0, p.fill_strong));
+                cmds.push(quad(rect, t.radius.bar, p.control_strong));
                 if value > 0.0 {
-                    let w = (rect.width * value).max(rect.height);
+                    let w = (rect.width * value).max(t.radius.bar * 2.0);
                     cmds.push(quad(
                         Rect::new(rect.x, rect.y, w, rect.height).snapped(dpr),
-                        rect.height / 2.0,
-                        p.accent,
+                        t.radius.bar,
+                        p.primary,
                     ));
                 }
             }
@@ -3187,18 +3182,18 @@ impl Ui {
                 let track_h = t.space.xs;
                 let cy = rect.y + rect.height / 2.0;
                 let track = Rect::new(rect.x, cy - track_h / 2.0, rect.width, track_h).snapped(dpr);
-                cmds.push(quad(track, track_h / 2.0, p.fill_strong));
+                cmds.push(quad(track, t.radius.bar, p.control_strong));
                 let tx = rect.x + v * (rect.width - thumb).max(0.0);
                 cmds.push(quad(
                     Rect::new(rect.x, track.y, tx + thumb / 2.0 - rect.x, track_h).snapped(dpr),
-                    track_h / 2.0,
-                    p.accent,
+                    t.radius.bar,
+                    p.primary,
                 ));
                 let mut knob = Rect::new(tx, cy - thumb / 2.0, thumb, thumb);
                 if active {
                     knob = knob.scaled(t.press_scale);
                 }
-                cmds.push(quad(knob.snapped(dpr), thumb / 2.0, p.thumb));
+                cmds.push(quad(knob.snapped(dpr), t.radius.control, p.knob));
             }
             Widget::Toggle { on } => {
                 let (sw, sh) = self.switch_size();
@@ -3206,8 +3201,8 @@ impl Ui {
                     Rect::new(rect.x, rect.y + (rect.height - sh) / 2.0, sw, sh).snapped(dpr);
                 cmds.push(quad(
                     track,
-                    sh / 2.0,
-                    if on { p.accent } else { p.fill_strong },
+                    t.radius.control,
+                    if on { p.primary } else { p.control_strong },
                 ));
                 let inset = t.space.xxs;
                 let k = sh - 2.0 * inset;
@@ -3218,8 +3213,8 @@ impl Ui {
                 };
                 cmds.push(quad(
                     Rect::new(kx, track.y + inset, k, k).snapped(dpr),
-                    k / 2.0,
-                    p.thumb,
+                    (t.radius.control - inset).max(0.0),
+                    p.knob,
                 ));
             }
             _ => {}
@@ -3268,7 +3263,7 @@ impl Ui {
                             };
                         // A focused field: scrolled, its selection under the text.
                         let x = match &field {
-                            Some(e) if e.focused && tc.color != p.fg_subtle => {
+                            Some(e) if e.focused && tc.color != p.ink_faint => {
                                 let x = x - e.scroll;
                                 self.edit_marks(
                                     &EditMarks {
@@ -3372,7 +3367,7 @@ impl Ui {
                         && e.focused
                     {
                         // The composition's underline and the caret, over the text.
-                        let text = if tc.color != p.fg_subtle {
+                        let text = if tc.color != p.ink_faint {
                             tc.text.as_str()
                         } else {
                             ""
@@ -3422,68 +3417,6 @@ impl Ui {
         self.shape_commands(n, cmds);
     }
 
-    /// Whether a node's plain background takes the card edge
-    /// (`Theme::edge`): an opaque surface (a dialog or screen panel, a
-    /// card, a tooltip) in the token look (no skin atlas).
-    fn has_edge(&self, n: &Node, bg: Srgba) -> bool {
-        use crate::skin::SkinPart;
-        let t = &self.theme;
-        !t.edge.is_empty()
-            && t.skin.atlas.is_none()
-            && bg.alpha >= 0.999
-            && matches!(
-                n.el.skin,
-                Some(SkinPart::Panel | SkinPart::Card | SkinPart::Tooltip)
-            )
-    }
-
-    /// A surface with the card edge: the fill with every layer over it,
-    /// then, inside each layer's hole (the surface moved by its offset, or
-    /// shrunk by its spread), the fill with only the layers that reach
-    /// there: in dark a 0.5 px highlight along the top and a 0.5 px
-    /// hairline all round (`shadow-edge`).
-    fn edge_light(
-        &self,
-        rect: Rect,
-        radius: f32,
-        bg: Srgba,
-        alpha: f32,
-        clip: Rect,
-        cmds: &mut Vec<DrawCmd>,
-    ) {
-        let layers = self.theme.edge;
-        let quad = |rect: Rect, radius: f32, color: Srgba| DrawCmd::Quad {
-            rect,
-            radius: radius.max(0.0),
-            color: color.fade(alpha).linear(),
-            clip,
-        };
-        let over = |kinds: &mut dyn Iterator<Item = &crate::theme::InsetShadow>| {
-            kinds.fold(bg, |c, l| l.color.over(c))
-        };
-        cmds.push(quad(rect, radius, over(&mut layers.iter())));
-        // The offset layers' holes: the spread layers still reach there.
-        for l in layers.iter().filter(|l| l.dx != 0.0 || l.dy != 0.0) {
-            let hole = Rect::new(
-                rect.x + l.dx.max(0.0),
-                rect.y + l.dy.max(0.0),
-                rect.width - l.dx.abs(),
-                rect.height - l.dy.abs(),
-            );
-            let c = over(&mut layers.iter().filter(|k| k.spread > 0.0));
-            cmds.push(quad(hole, radius, c));
-        }
-        // The spread layers' holes: the fill.
-        if let Some(s) = layers.iter().map(|l| l.spread).reduce(f32::max)
-            && s > 0.0
-        {
-            cmds.push(quad(rect.outset(-s), radius - s, bg));
-        }
-    }
-
-    /// A text control's marks on one line: under the text, the selection
-    /// (a neutral fill over each selected glyph, merged where they touch);
-    /// over it, the composition's underline and the caret while it shows.
     pub(crate) fn edit_marks(&self, mk: &EditMarks<'_>, cmds: &mut Vec<DrawCmd>) {
         let p = &self.theme.palette;
         let dpr = self.viewport.dpr();
@@ -3519,12 +3452,12 @@ impl Ui {
         let ch = mk.size + self.theme.space.xxs * 2.0;
         let cy = mk.top + (mk.line_h - ch) / 2.0;
         if mk.under {
-            span(e.selection, cmds, cy, ch, p.fill_strong);
+            span(e.selection, cmds, cy, ch, p.control_strong);
             return;
         }
         if let Some(c) = e.composition {
             let th = (mk.size * 0.07).max(1.0 / dpr);
-            span(c, cmds, cy + ch - th, th, p.fg);
+            span(c, cmds, cy + ch - th, th, p.ink);
         }
         if e.caret_on && mk.caret_here && e.caret >= mk.first && e.caret <= mk.first + n {
             let cx = mk.x + crate::edit::caret_x(&boxes, e.caret - mk.first);
@@ -3532,7 +3465,7 @@ impl Ui {
             cmds.push(DrawCmd::Quad {
                 rect: Rect::new(cx, cy, caret_w, ch).snapped(dpr),
                 radius: 0.0,
-                color: p.accent.fade(mk.alpha).linear(),
+                color: p.primary.fade(mk.alpha).linear(),
                 clip: mk.clip,
             });
         }
@@ -3555,9 +3488,9 @@ impl Ui {
         let p = &t.palette;
         let step = t.type_ramp.body;
         let (shown, color) = if text.is_empty() {
-            (placeholder.as_str(), p.fg_subtle)
+            (placeholder.as_str(), p.ink_faint)
         } else {
-            (text.as_str(), p.fg)
+            (text.as_str(), p.ink)
         };
         let font = self.fonts.for_text(FontRole::Body, shown);
         if font.handle.is_none() {
@@ -3645,7 +3578,7 @@ impl Ui {
     }
 
     /// A skinned background: the part's shadow and glow, its nine-slice
-    /// frame (tinted by `bg`), the tiled texture and the corner ornaments.
+    /// frame (tinted by `backdrop`), the tiled texture and the corner ornaments.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn dress(
         &self,
@@ -3805,7 +3738,7 @@ impl Ui {
             }
             j = self.nodes[j].parent;
         }
-        let mut c = self.theme.palette.bg;
+        let mut c = self.theme.palette.backdrop;
         for f in fills.iter().rev() {
             c = f.over(c);
         }

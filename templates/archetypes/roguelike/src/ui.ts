@@ -167,7 +167,7 @@ function platform(world: World, g: GameV, p: PrefsV): void {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "surface" } }, build);
+  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
 }
 
 function hud(world: World, g: GameV): void {
@@ -176,7 +176,7 @@ function hud(world: World, g: GameV): void {
   og.ui.setNavigation(false);
   og.ui.anchor("Status", { anchor: "topLeft", direction: "column", gap: S.sm }, () => {
     capsule("Health", () => {
-      og.ui.icon("Heart", "heart", { size: 22, tint: { token: g.hp * 3 <= g.hpMax ? "danger" : "fg" } });
+      og.ui.icon("Heart", "heart", { size: 22, tint: { token: g.hp * 3 <= g.hpMax ? "danger" : "ink" } });
       og.ui.meter("Bar", g.hp, g.hpMax, { kind: "health", label: `${g.hp}/${g.hpMax}`, width: px(touch ? 110 : 150) });
     });
     capsule("Stats", () => {
@@ -184,7 +184,7 @@ function hud(world: World, g: GameV): void {
       og.ui.counter("Attack", g.attack, { font: "mono", width: px(22) });
       og.ui.icon("Shield", "shield", { size: 20 });
       og.ui.counter("Armour", g.armour, { font: "mono", width: px(22) });
-      og.ui.icon("Coin", "coin", { size: 20, tint: { token: "accent" } });
+      og.ui.icon("Coin", "coin", { size: 20, tint: { token: "gold" } });
       og.ui.counter("Gold", g.gold, { font: "mono", width: px(40) });
     });
   });
@@ -229,7 +229,7 @@ function settings(world: World, g: GameV, p: PrefsV): void {
     p.master = slider("Master", "settings.master", p.master);
     p.music = slider("Music", "settings.music", p.music);
     p.effects = slider("Effects", "settings.effects", p.effects);
-    og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "fgMuted" } });
+    og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "inkMuted" } });
     const r = og.ui.radio("Language", LANGUAGES.map((l) => say(world, l.key)), p.language, { horizontal: true });
     if (r.selected !== p.language) setLanguage(world, p, r.selected);
     p.reducedMotion = og.ui.toggle("Motion", p.reducedMotion, say(world, "settings.motion")).on;
@@ -250,7 +250,7 @@ function summary(world: World, g: GameV): "again" | "menu" | null {
   let chose: "again" | "menu" | null = null;
   og.ui.modal("Summary", g.phase === Phase.Over, { title: g.won ? say(world, "over.won") : say(world, "over.lost", { n: g.floor }), locked: true, width: px(Math.min(400, og.ui.frameViewport().width - 32)) }, () => {
     og.ui.row("Mark", { width: grow, align: "center" }, () => {
-      og.ui.transition("Icon", true, { kind: "pop" }, () => og.ui.icon("Glyph", g.won ? "crown" : "skull", { size: 48, tint: { token: g.won ? "accent" : "fgMuted" } }));
+      og.ui.transition("Icon", true, { kind: "pop" }, () => og.ui.icon("Glyph", g.won ? "crown" : "skull", { size: 48, tint: { token: g.won ? "primary" : "inkMuted" } }));
       if (g.won && g.overTicks === OVER_DELAY + 20) og.ui.burst({ count: 12 });
     });
     og.ui.column("Stats", { width: grow, gap: 0 }, () => {
@@ -261,7 +261,7 @@ function summary(world: World, g: GameV): "again" | "menu" | null {
       og.ui.keyValue("Finds", say(world, "over.finds"), `${g.finds}`, true);
       if (!g.won) og.ui.keyValue("By", say(world, "over.by"), say(world, g.killedBy >= 0 ? `foe.${FOES[g.killedBy]}` : "foe.none"), false);
     });
-    og.ui.label("Record", say(world, "over.record", { dives: g.dives, relics: g.relics }), { color: { token: "fgMuted" }, align: "center", width: grow });
+    og.ui.label("Record", say(world, "over.record", { dives: g.dives, relics: g.relics }), { color: { token: "inkMuted" }, align: "center", width: grow });
     og.ui.row("Actions", { width: grow, gap: S.sm }, () => {
       if (og.ui.button("Again", say(world, "over.again"), { variant: "primary", width: grow }).clicked) chose = "again";
       if (og.ui.button("Menu", say(world, "over.menu"), { width: grow }).clicked) chose = "menu";

@@ -181,7 +181,7 @@ function levels(world: World, g: GameV): void {
 const S = { xs: 4, sm: 8, md: 12 } as const;
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "surface" } }, build);
+  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
 }
 
 /**
@@ -195,7 +195,7 @@ function hud(world: World, g: GameV): void {
   let paused = false;
   og.ui.anchor("Hud", { anchor: "topRight", direction: "row", gap: S.sm, cross: "center" }, () => {
     capsule("Count", () => {
-      og.ui.icon("Gear", "gear", { size: 20, tint: { token: "accent" } });
+      og.ui.icon("Gear", "gear", { size: 20, tint: { token: "primary" } });
       og.ui.label("Gears", say(world, "hud.gears", { n: g.gears, of: GEARS[g.level] }), { step: "lg", nowrap: true });
     });
     capsule("Name", () => {

@@ -66,7 +66,7 @@ export const Menu = defineSystem("Menu", { reads: [Spin, og.Input], writes: [Run
   const started = run.value.started;
   og.ui.column("Hud", { padding: { left: 24, top: 24, right: 24, bottom: 24 } }, () => og.ui.panel("Menu", { padding: { left: 20, top: 16, right: 20, bottom: 16 } }, () => {
     og.ui.label("Title", og.i18n.t(world, "menu.title"), { step: "displaySm" });
-    og.ui.label("Status", started ? og.i18n.t(world, "menu.spinning", { speed: speed.toFixed(1) }) : og.i18n.t(world, "menu.prompt"), { color: { token: started ? "accentInk" : "fgMuted" } });
+    og.ui.label("Status", started ? og.i18n.t(world, "menu.spinning", { speed: speed.toFixed(1) }) : og.i18n.t(world, "menu.prompt"), { color: { token: started ? "highlight" : "inkMuted" } });
     const start = og.ui.button("Start", og.i18n.t(world, started ? "menu.started" : "menu.start"), { variant: "primary", size: "large", disabled: started });
     if (!started && (start.clicked || input.value.pressed("KeyS") || input.value.pressed("Enter"))) run.value.started = true;
   }));

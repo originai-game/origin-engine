@@ -16,4 +16,6 @@ og-tween = { path = "../og-tween" }
 og-input = { path = "../og-input" }
 og-physics = { path = "../og-physics" }
 og-audio = { path = "../og-audio" }
+# ThemeColor names og-ui's palette roles (tests/modules.rs).
+og-ui = { path = "../og-ui", default-features = false }
 serde_json = "1"

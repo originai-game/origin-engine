@@ -204,7 +204,7 @@ export function grade(acc: number): string {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.sm, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "surface" } }, build);
+  og.ui.row(id, { gap: S.sm, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
 }
 
 function hud(world: World, g: GameV): void {
@@ -215,11 +215,11 @@ function hud(world: World, g: GameV): void {
   og.ui.setNavigation(g.paused || g.settingsOpen);
   og.ui.anchor("Status", { anchor: "topLeft", direction: "column", gap: S.sm }, () => {
     capsule("Score", () => {
-      og.ui.label("Label", say(world, "hud.score"), { step: "caption", color: { token: "fgMuted" }, nowrap: true });
+      og.ui.label("Label", say(world, "hud.score"), { step: "caption", color: { token: "inkMuted" }, nowrap: true });
       og.ui.counter("Value", g.score, { step: "xl", font: "display", durationMs: 300, width: px(phone ? 104 : 130) });
     });
     capsule("Groove", () => {
-      og.ui.label("Label", say(world, "hud.groove"), { step: "caption", color: { token: "fgMuted" }, nowrap: true });
+      og.ui.label("Label", say(world, "hud.groove"), { step: "caption", color: { token: "inkMuted" }, nowrap: true });
       og.ui.meter("Bar", g.groove, 1, { kind: "health", width: px(phone ? 90 : 130) });
     });
   });
@@ -233,8 +233,8 @@ function hud(world: World, g: GameV): void {
   og.ui.anchor("Combo", { anchor: phone ? "top" : "right", offsetY: phone ? 64 : 40, offsetX: phone ? 0 : -48, direction: "column", cross: "center", gap: S.xxs }, () => {
     og.ui.counter("Count", g.combo, { step: "displaySm", font: "display", durationMs: 120, align: "center", width: px(96) });
     og.ui.row("Head", { gap: S.xs, cross: "center" }, () => {
-      og.ui.label("Label", say(world, "hud.combo"), { step: "caption", color: { token: "fgMuted" }, nowrap: true });
-      og.ui.label("Multiplier", say(world, "hud.multiplier", { n: multiplier }), { step: "caption", color: { token: "accent" }, nowrap: true });
+      og.ui.label("Label", say(world, "hud.combo"), { step: "caption", color: { token: "inkMuted" }, nowrap: true });
+      og.ui.label("Multiplier", say(world, "hud.multiplier", { n: multiplier }), { step: "caption", color: { token: "primary" }, nowrap: true });
     });
     og.ui.meter("Next", multiplier >= 4 ? 1 : (g.combo % t.comboStep) / t.comboStep, 1, { width: px(96) });
   });
@@ -258,7 +258,7 @@ function settings(world: World, g: GameV, p: PrefsV): void {
     p.music = slider("Music", "settings.music", p.music);
     p.effects = slider("Effects", "settings.effects", p.effects);
     p.offsetMs = slider("Offset", "settings.offset", p.offsetMs, -200, 200, 5, (v) => say(world, "settings.ms", { n: Math.round(v) }));
-    og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "fgMuted" } });
+    og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "inkMuted" } });
     const r = og.ui.radio("Language", LANGUAGES.map((l) => say(world, l.key)), p.language, { horizontal: true });
     if (r.selected !== p.language) setLanguage(world, p, r.selected);
     p.reducedMotion = og.ui.toggle("Motion", p.reducedMotion, say(world, "settings.motion")).on;
@@ -284,7 +284,7 @@ function calibration(world: World, g: GameV, p: PrefsV): void {
     og.ui.label("Body", say(world, "cal.body"), { width: grow });
     og.ui.row("Taps", { width: grow, gap: S.md, cross: "center" }, () => {
       og.ui.label("Count", say(world, "cal.taps", { n: g.calTaps }), { nowrap: true, width: grow });
-      og.ui.label("Offset", say(world, "cal.offset", { n: Math.round(measured) }), { font: "mono", nowrap: true, color: { token: "accent" } });
+      og.ui.label("Offset", say(world, "cal.offset", { n: Math.round(measured) }), { font: "mono", nowrap: true, color: { token: "primary" } });
     });
     og.ui.meter("Progress", g.calTaps, 8, { width: grow });
     og.ui.row("Actions", { width: grow, gap: S.sm, align: "end" }, () => {
@@ -312,8 +312,8 @@ function results(world: World, g: GameV): "again" | "title" | null {
   const acc = accuracy(g);
   og.ui.modal("Results", true, { title: say(world, g.cleared ? "results.cleared" : "results.failed"), locked: true, width: px(Math.min(420, og.ui.frameViewport().width - 32)) }, () => {
     og.ui.row("Mark", { width: grow, align: "center", gap: S.md, cross: "center" }, () => {
-      og.ui.transition("Grade", true, { kind: "pop" }, () => og.ui.label("Letter", g.cleared ? grade(acc) : "–", { step: "displayMd", font: "display", color: { token: g.cleared ? "accent" : "fgMuted" } }));
-      if (g.newBest) og.ui.label("NewBest", say(world, "results.newBest"), { color: { token: "accent" }, nowrap: true });
+      og.ui.transition("Grade", true, { kind: "pop" }, () => og.ui.label("Letter", g.cleared ? grade(acc) : "–", { step: "displayMd", font: "display", color: { token: g.cleared ? "primary" : "inkMuted" } }));
+      if (g.newBest) og.ui.label("NewBest", say(world, "results.newBest"), { color: { token: "primary" }, nowrap: true });
     });
     og.ui.column("Stats", { width: grow, gap: 0 }, () => {
       og.ui.keyValue("Score", say(world, "results.score"), `${g.score}`, true);
@@ -324,7 +324,7 @@ function results(world: World, g: GameV): "again" | "title" | null {
       og.ui.keyValue("Good", say(world, "results.good"), `${g.good}`, true);
       og.ui.keyValue("Miss", say(world, "results.miss"), `${g.miss}`, true);
     });
-    og.ui.label("Best", say(world, "results.best", { n: g.best }), { color: { token: "fgMuted" }, align: "center", width: grow });
+    og.ui.label("Best", say(world, "results.best", { n: g.best }), { color: { token: "inkMuted" }, align: "center", width: grow });
     og.ui.row("Actions", { width: grow, gap: S.sm }, () => {
       if (og.ui.button("Again", say(world, "results.again"), { variant: "primary", width: grow }).clicked) chose = "again";
       if (og.ui.button("Title", say(world, "results.title"), { width: grow }).clicked) chose = "title";

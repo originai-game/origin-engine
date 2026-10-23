@@ -13593,7 +13593,7 @@ export interface LocaleInfo {
 
 
 // ── ui ──────────────────────────────────────────────────────────
-// The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
+// The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the placeholder prototype style until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
 // The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.
 // Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi("Slot", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it.
 
@@ -13635,14 +13635,14 @@ export type TextAlign = "start" | "center" | "end";
  * - `"body"`: The body font.
  * - `"display"`: The display font.
  * - `"mono"`: The monospaced font.
- * - `"rounded"`: The rounded font, for levels and scores (the design language's font-rounded).
+ * - `"rounded"`: The rounded font, for levels and scores.
  */
 export type FontRole = "body" | "display" | "mono" | "rounded";
 
 /**
- * Button looks, as the design language's buttons.
+ * Button roles: how the style draws each.
  * - `"secondary"`: A neutral fill (the default).
- * - `"primary"`: The amber action: one per screen.
+ * - `"primary"`: The primary action: one per screen.
  * - `"quiet"`: Text until hovered.
  * - `"danger"`: A destructive action: danger ink on the danger tint.
  */
@@ -13664,87 +13664,75 @@ export type ControlSize = "medium" | "small" | "large";
 export type Scheme = "dark" | "light";
 
 /**
- * Control sizes: auto picks touch sizes on a coarse pointer or a play surface under 768 px, compact otherwise.
- * - `"auto"`: Touch sizes on a coarse pointer or a narrow surface, compact otherwise.
- * - `"compact"`: Compact controls.
- * - `"comfortable"`: Comfortable controls.
- * - `"touch"`: Touch-sized controls.
+ * Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise.
+ * - `"auto"`: Touch sizes on a coarse pointer or a narrow surface, mouse sizes otherwise.
+ * - `"mouse"`: A mouse and keyboard: the tightest controls.
+ * - `"pad"`: A gamepad across a room: larger controls, rows and gutters that read from a couch.
+ * - `"touch"`: A finger: every control at least 44 CSS px.
  */
-export type DensityMode = "auto" | "compact" | "comfortable" | "touch";
+export type DensityMode = "auto" | "mouse" | "pad" | "touch";
 
 /**
- * A semantic colour of the design tokens (tokens.json `color`, in the current scheme).
- * - `"accent"`: accent: the amber action colour.
- * - `"accentActive"`: accent-active.
- * - `"accentFg"`: accent-fg: ink on the accent.
- * - `"accentHover"`: accent-hover.
- * - `"accentInk"`: accent-ink: the accent as text.
- * - `"accentSoft"`: accent-soft: a translucent accent wash.
- * - `"bg"`: bg: the page.
- * - `"bgSubtle"`: bg-subtle.
- * - `"border"`: border.
- * - `"borderStrong"`: border-strong.
- * - `"danger"`: danger.
- * - `"fg"`: fg: the primary ink.
- * - `"fgInverse"`: fg-inverse.
- * - `"fgMuted"`: fg-muted.
- * - `"fgSubtle"`: fg-subtle: placeholders.
- * - `"fill"`: fill: neutral control fills.
- * - `"fillStrong"`: fill-strong.
- * - `"focus"`: focus: the focus ring.
- * - `"info"`: info.
- * - `"materialControl"`: material-control.
- * - `"materialControlHover"`: material-control-hover.
- * - `"materialEdge"`: material-edge.
- * - `"materialGlow"`: material-glow.
- * - `"materialRegular"`: material-regular.
- * - `"materialRimSoft"`: material-rim-soft.
- * - `"materialSheen"`: material-sheen.
- * - `"materialShine"`: material-shine.
- * - `"materialThick"`: material-thick.
- * - `"materialThin"`: material-thin.
- * - `"scrim"`: scrim.
- * - `"shadow"`: shadow.
- * - `"sheen"`: sheen.
- * - `"stage"`: stage: the game stage.
- * - `"stageBorder"`: stage-border.
- * - `"stageDanger"`: stage-danger.
- * - `"stageFg"`: stage-fg.
- * - `"stageMuted"`: stage-muted.
- * - `"stageRaised"`: stage-raised.
- * - `"stageSurface"`: stage-surface.
- * - `"success"`: success.
- * - `"surface"`: surface: cards and panels.
- * - `"surfaceHover"`: surface-hover.
- * - `"surfaceRaised"`: surface-raised: tooltips.
- * - `"thumb"`: thumb: slider and switch thumbs.
- * - `"warn"`: warn.
+ * A colour role of the UI style in effect (the game's style, or the prototype style before it picks one).
+ * - `"backdrop"`: The screen behind the UI where nothing else is.
+ * - `"well"`: A recessed ground inside a panel: wells, map frames, empty slots.
+ * - `"panel"`: Panels and cards.
+ * - `"panelHover"`: A panel under the pointer.
+ * - `"panelRaised"`: Dialogs, menus and tooltips.
+ * - `"line"`: Hairlines and frames.
+ * - `"lineStrong"`: Stronger frames: high contrast, map borders, scrollbars.
+ * - `"ink"`: The main ink.
+ * - `"inkMuted"`: Secondary ink: captions, keys, inactive tabs.
+ * - `"inkFaint"`: The faintest ink that still reads: placeholders, hints.
+ * - `"inkInverse"`: Ink on a ground of ink (a selected chip).
+ * - `"control"`: Neutral control fills: secondary buttons, tracks, fields.
+ * - `"controlStrong"`: A neutral control hovered or pressed; selection.
+ * - `"primary"`: The one directed action: primary buttons, a slider's fill, a switch that is on, the caret.
+ * - `"primaryHover"`: primary hovered.
+ * - `"primaryActive"`: primary pressed.
+ * - `"onPrimary"`: Ink on primary.
+ * - `"primarySoft"`: A translucent wash of primary.
+ * - `"highlight"`: Emphasised ink: a speaker's name, a price, a link, the player's map dot.
+ * - `"focus"`: The focus ring of key and pad navigation.
+ * - `"knob"`: Slider and switch knobs.
+ * - `"hud"`: HUD capsules over the game (scores, timers, toasts).
+ * - `"scrim"`: Behind a dialog.
+ * - `"shadow"`: Drop shadows.
+ * - `"sheen"`: A skeleton's passing sheen.
+ * - `"success"`: Success.
+ * - `"warn"`: Warnings.
+ * - `"danger"`: Danger and errors.
+ * - `"info"`: Information.
+ * - `"health"`: A health meter.
+ * - `"mana"`: A mana meter.
+ * - `"xp"`: An experience meter.
+ * - `"gold"`: Currency: coins, gold, prices that can be paid.
  */
-export type ThemeColor = "accent" | "accentActive" | "accentFg" | "accentHover" | "accentInk" | "accentSoft" | "bg" | "bgSubtle" | "border" | "borderStrong" | "danger" | "fg" | "fgInverse" | "fgMuted" | "fgSubtle" | "fill" | "fillStrong" | "focus" | "info" | "materialControl" | "materialControlHover" | "materialEdge" | "materialGlow" | "materialRegular" | "materialRimSoft" | "materialSheen" | "materialShine" | "materialThick" | "materialThin" | "scrim" | "shadow" | "sheen" | "stage" | "stageBorder" | "stageDanger" | "stageFg" | "stageMuted" | "stageRaised" | "stageSurface" | "success" | "surface" | "surfaceHover" | "surfaceRaised" | "thumb" | "warn";
+export type ThemeColor = "backdrop" | "well" | "panel" | "panelHover" | "panelRaised" | "line" | "lineStrong" | "ink" | "inkMuted" | "inkFaint" | "inkInverse" | "control" | "controlStrong" | "primary" | "primaryHover" | "primaryActive" | "onPrimary" | "primarySoft" | "highlight" | "focus" | "knob" | "hud" | "scrim" | "shadow" | "sheen" | "success" | "warn" | "danger" | "info" | "health" | "mana" | "xp" | "gold";
 
 /**
- * A step of the type ramp (tokens.json `font.scale`).
- * - `"body"`: text-body, the default.
- * - `"xs"`: text-xs.
- * - `"meta"`: text-meta.
- * - `"caption"`: text-caption.
- * - `"sm"`: text-sm.
- * - `"reading"`: text-reading.
- * - `"base"`: text-base.
- * - `"lg"`: text-lg.
- * - `"xl"`: text-xl.
- * - `"xl2"`: text-2xl.
- * - `"xl3"`: text-3xl.
- * - `"xl4"`: text-4xl.
- * - `"xl5"`: text-5xl.
- * - `"xl6"`: text-6xl.
- * - `"xl7"`: text-7xl.
- * - `"xl8"`: text-8xl.
- * - `"displaySm"`: text-display-sm.
- * - `"displayMd"`: text-display-md.
- * - `"displayLg"`: text-display-lg.
- * - `"displayXl"`: text-display-xl.
- * - `"displayXl2"`: text-display-2xl.
+ * A step of the style's type ramp.
+ * - `"body"`: The default step.
+ * - `"xs"`: A step of the ramp.
+ * - `"meta"`: A step of the ramp.
+ * - `"caption"`: A step of the ramp.
+ * - `"sm"`: A step of the ramp.
+ * - `"reading"`: A step of the ramp.
+ * - `"base"`: A step of the ramp.
+ * - `"lg"`: A step of the ramp.
+ * - `"xl"`: A step of the ramp.
+ * - `"xl2"`: A step of the ramp.
+ * - `"xl3"`: A step of the ramp.
+ * - `"xl4"`: A step of the ramp.
+ * - `"xl5"`: A step of the ramp.
+ * - `"xl6"`: A step of the ramp.
+ * - `"xl7"`: A step of the ramp.
+ * - `"xl8"`: A step of the ramp.
+ * - `"displaySm"`: A step of the ramp.
+ * - `"displayMd"`: A step of the ramp.
+ * - `"displayLg"`: A step of the ramp.
+ * - `"displayXl"`: A step of the ramp.
+ * - `"displayXl2"`: A step of the ramp.
  */
 export type TypeStepName = "body" | "xs" | "meta" | "caption" | "sm" | "reading" | "base" | "lg" | "xl" | "xl2" | "xl3" | "xl4" | "xl5" | "xl6" | "xl7" | "xl8" | "displaySm" | "displayMd" | "displayLg" | "displayXl" | "displayXl2";
 
@@ -13964,7 +13952,7 @@ export interface LabelDesc {
    */
   readonly step?: TypeStepName | null;
   /**
-   * The ink; null is fg.
+   * The ink; null is ink.
    *
    * @default null
    */
@@ -14052,7 +14040,7 @@ export interface ButtonDesc {
 }
 
 /**
- * A card: surface, the card radius, padded and spaced by the tokens.
+ * A card: panel, the panel radius, padded and spaced by the style.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -14100,7 +14088,7 @@ export interface PanelDesc {
    */
   readonly cross?: Cross;
   /**
-   * Its fill; null is surface.
+   * Its fill; null is panel.
    *
    * @default null
    */
@@ -14484,7 +14472,7 @@ export interface Viewport {
 }
 
 /**
- * How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it.
+ * How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -14538,17 +14526,11 @@ export interface UiDesc {
    */
   readonly contrast?: Contrast;
   /**
-   * A token hue as the game's accent (its hover, active, ink and focus tones derived as the tokens derive amber's); null keeps amber.
+   * An sRGB colour as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's.
    *
    * @default null
    */
-  readonly accentHue?: HueName | null;
-  /**
-   * An sRGB colour as the game's accent, when no hue is given.
-   *
-   * @default null
-   */
-  readonly accentColor?: Color | null;
+  readonly primaryColor?: Color | null;
   /**
    * Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion).
    *
@@ -14556,7 +14538,7 @@ export interface UiDesc {
    */
   readonly reducedMotion?: boolean;
   /**
-   * Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over bg and the translucent fills (fill, fillStrong, accentSoft, the material grounds) the opaque colours they make over surface. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on.
+   * Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on.
    *
    * @default false
    */
@@ -14574,7 +14556,7 @@ export interface UiDesc {
    */
   readonly toastAnchor?: Anchor | null;
   /**
-   * A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the token look (fonts, icons and an accent given here still win); null is the platform tokens.
+   * A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style.
    *
    * @default null
    */
@@ -14671,19 +14653,19 @@ export interface TypeStep {
 /** The control, row and header heights and the gutter of the density in effect. */
 export interface ControlSizes {
   /**
-   * h-control-sm.
+   * A small control's height.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly controlSm: number;
   /**
-   * h-control-md.
+   * A control's height.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly controlMd: number;
   /**
-   * h-control-lg.
+   * A large control's height.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
@@ -14714,7 +14696,7 @@ export interface ControlSizes {
   readonly section: number;
 }
 
-/** The design tokens the UI draws with, read-only. */
+/** The style values the UI draws with, read-only. */
 export interface UiTheme {
   /** The palette in use. */
   readonly scheme: Scheme;
@@ -14722,9 +14704,7 @@ export interface UiTheme {
   readonly palette: Readonly<Record<string, string>>;
   /** The spacing scale by name (xxs, xs, sm, md, lg, xl, xxl, xl3), in CSS pixels. */
   readonly space: Readonly<Record<string, number>>;
-  /**
-   * The radius scale by name (control, field, block, card, panel, sheet, button), in CSS pixels.
-   */
+  /** The corner radii by name (small, control, bar, panel), in CSS pixels. */
   readonly radius: Readonly<Record<string, number>>;
   /** Each TypeStepName's step. */
   readonly typeRamp: Readonly<Record<string, TypeStep>>;
@@ -14734,7 +14714,7 @@ export interface UiTheme {
    * The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds.
    */
   readonly durationsMs: Readonly<Record<string, number>>;
-  /** The configured skin's name; empty for the platform tokens. */
+  /** The configured skin's name; empty for the prototype style. */
   readonly skin: string;
   /**
    * The variant in effect: high when the game asked for it or the page prefers more contrast.
@@ -14745,7 +14725,7 @@ export interface UiTheme {
    */
   readonly reducedMotion: boolean;
   /**
-   * Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over the surface (the scrim over bg) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too.
+   * Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too.
    */
   readonly reducedTransparency: boolean;
 }
@@ -14777,7 +14757,7 @@ export interface RichTextDesc {
    */
   readonly step?: TypeStepName | null;
   /**
-   * The ink; null is fg.
+   * The ink; null is ink.
    *
    * @default null
    */
@@ -14857,25 +14837,25 @@ export type Anchor = "topLeft" | "top" | "topRight" | "left" | "center" | "right
 export type TransitionKind = "fade" | "slideUp" | "slideDown" | "slideLeft" | "slideRight" | "scale" | "pop";
 
 /**
- * A status tone, as the design language's badges and toasts.
- * - `"neutral"`: Neutral: fill and muted ink.
+ * A status tone of badges, toasts and map markers.
+ * - `"neutral"`: Neutral: control fill and muted ink.
  * - `"success"`: Success.
  * - `"warn"`: Warning (orange).
  * - `"danger"`: Danger.
  * - `"info"`: Information.
- * - `"accent"`: Amber identity: the soft accent and amber ink.
- * - `"inverse"`: Neutral emphasis: fg fill, inverse ink.
+ * - `"primary"`: The game's identity: the primary's soft wash and highlight ink.
+ * - `"inverse"`: Neutral emphasis: ink fill, inverse ink.
  */
-export type Tone = "neutral" | "success" | "warn" | "danger" | "info" | "accent" | "inverse";
+export type Tone = "neutral" | "success" | "warn" | "danger" | "info" | "primary" | "inverse";
 
 /**
  * What a meter measures, which sets its colour.
- * - `"health"`: Green, warning orange under 30 %, danger red under 15 %.
- * - `"mana"`: The blue hue.
- * - `"xp"`: The purple hue.
- * - `"accent"`: The accent.
+ * - `"health"`: health; warn under 30 %, danger under 15 %.
+ * - `"mana"`: mana.
+ * - `"xp"`: xp.
+ * - `"primary"`: primary.
  */
-export type MeterKind = "health" | "mana" | "xp" | "accent";
+export type MeterKind = "health" | "mana" | "xp" | "primary";
 
 /**
  * The play surface's size class.
@@ -14887,28 +14867,11 @@ export type MeterKind = "health" | "mana" | "xp" | "accent";
 export type Breakpoint = "desktop" | "tablet" | "phoneLandscape" | "phonePortrait";
 
 /**
- * The theme variant: high contrast remaps muted inks, fills and borders to stronger tokens and outlines every control (no new colour).
- * - `"standard"`: The token palette as it is.
+ * The theme variant: high contrast remaps muted inks, fills and lines to the style's stronger ones and outlines every control (no new colour).
+ * - `"standard"`: The style's palette as it is.
  * - `"high"`: Stronger inks, fills and edges.
  */
 export type Contrast = "standard" | "high";
-
-/**
- * One of the twelve category hues of the tokens, for a game's accent.
- * - `"red"`: hue-red.
- * - `"orange"`: hue-orange.
- * - `"yellow"`: hue-yellow.
- * - `"green"`: hue-green.
- * - `"mint"`: hue-mint.
- * - `"teal"`: hue-teal.
- * - `"cyan"`: hue-cyan.
- * - `"blue"`: hue-blue.
- * - `"indigo"`: hue-indigo.
- * - `"purple"`: hue-purple.
- * - `"pink"`: hue-pink.
- * - `"brown"`: hue-brown.
- */
-export type HueName = "red" | "orange" | "yellow" | "green" | "mint" | "teal" | "cyan" | "blue" | "indigo" | "purple" | "pink" | "brown";
 
 /**
  * A focus-navigation intent, as the arrow keys, Tab, Enter, Space, Escape and a gamepad's d-pad, stick, A and B give.
@@ -15100,7 +15063,7 @@ export interface AnchorDesc {
 }
 
 /**
- * How a transition moves, timed in ticks from the motion tokens.
+ * How a transition moves, timed in ticks from the style's motion.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -15271,7 +15234,7 @@ export interface ListDesc {
    */
   readonly padding?: Insets;
   /**
-   * The selected row (fill-strong), for og.ui.list.
+   * The selected row (controlStrong), for og.ui.list.
    *
    * @default null
    */
@@ -15529,7 +15492,7 @@ export interface ToastDesc {
  */
 export interface ChipDesc {
   /**
-   * Selected: inverted to fg.
+   * Selected: inverted to ink.
    *
    * @default false
    */
@@ -15543,7 +15506,7 @@ export interface ChipDesc {
 }
 
 /**
- * A meter: a capsule track with a fill that animates its changes by the tick.
+ * A meter: a track with a fill that animates its changes by the tick.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -15631,7 +15594,7 @@ export interface IconDesc {
    */
   readonly size?: number;
   /**
-   * Its ink; null is fg.
+   * Its ink; null is ink.
    *
    * @default null
    */
@@ -15671,7 +15634,7 @@ export interface MapMarker {
    */
   readonly tone?: Tone;
   /**
-   * The player: the accent, larger, ringed.
+   * The player: the primary, larger, ringed.
    *
    * @default false
    */
@@ -15725,7 +15688,7 @@ export interface MinimapDesc {
  */
 export interface DialogueDesc {
   /**
-   * Who speaks (amber ink).
+   * Who speaks (primary ink).
    *
    * @default ""
    */
@@ -15856,7 +15819,7 @@ export interface ActionButtonDesc {
    */
   readonly size?: number;
   /**
-   * The amber button (one per screen).
+   * The primary button (one per screen).
    *
    * @default false
    */
@@ -16057,7 +16020,7 @@ export interface CounterDesc {
    */
   readonly font?: FontRole;
   /**
-   * The ink; null is fg.
+   * The ink; null is ink.
    *
    * @default null
    */
@@ -16122,7 +16085,7 @@ export interface BurstDesc {
    */
   readonly count?: number;
   /**
-   * Their ink; null is the accent.
+   * Their ink; null is the primary.
    *
    * @default null
    */
@@ -16225,7 +16188,7 @@ export interface ScreenTransitionDesc {
    */
   readonly durationMs?: number;
   /**
-   * The cover's colour (the texture's tint); null is bg.
+   * The cover's colour (the texture's tint); null is backdrop.
    *
    * @default null
    */
@@ -16309,7 +16272,7 @@ export interface MenuItem {
    */
   readonly disabled?: boolean;
   /**
-   * The amber action (one per screen).
+   * The primary action (one per screen).
    *
    * @default false
    */
@@ -22259,13 +22222,13 @@ export declare namespace og {
     function has(world: World, key: string): boolean;
   }
   /**
-   * The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
+   * The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the placeholder prototype style until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
    * The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.
    * Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi("Slot", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it.
    */
   namespace ui {
     /**
-     * Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the platform tokens). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text.
+     * Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the prototype style). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text.
      *
      * @param world The world whose UI is configured.
      * @param desc The fields to change; the others keep their values.
@@ -22279,7 +22242,7 @@ export declare namespace og {
      */
     function viewport(world: World): Viewport;
     /**
-     * The design tokens the UI draws with.
+     * The style values the UI draws with.
      *
      * @param world The world.
      */
@@ -22362,7 +22325,7 @@ export declare namespace og {
      */
     function label(id: string, text: string, desc?: LabelDesc): void;
     /**
-     * A capsule button with a label; `clicked` is a press and a release inside it. The probe reads its label.
+     * A button with a label; `clicked` is a press and a release inside it. The probe reads its label.
      *
      * @param id Its id.
      * @param text The label.
@@ -22384,7 +22347,7 @@ export declare namespace og {
      */
     function zoomView(id: string, desc?: ZoomViewDesc): ZoomResult;
     /**
-     * A capsule track filled to a fraction.
+     * A track filled to a fraction.
      *
      * @param id Its id.
      * @param value How full it is, from 0 to 1.
@@ -22455,7 +22418,7 @@ export declare namespace og {
      */
     function seconds(): number;
     /**
-     * The design tokens of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates).
+     * The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates).
      */
     function frameTheme(): UiTheme;
     /**
@@ -22482,7 +22445,7 @@ export declare namespace og {
      */
     function openTransition(id: string, show: boolean, desc?: TransitionDesc): Presence;
     /**
-     * Content that enters and leaves: fade, slide or scale by the tick from the motion tokens. `build` runs while it is visible.
+     * Content that enters and leaves: fade, slide or scale by the tick from the style's motion. `build` runs while it is visible.
      *
      * @param id Its id.
      * @param show Whether it should be shown.
@@ -22510,7 +22473,7 @@ export declare namespace og {
      */
     function modal(id: string, open: boolean, desc: ModalDesc, build: UiBuild): ModalResult;
     /**
-     * A spotlight over everything (a tutorial step): the scrim on four sides of the hole, an amber edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`.
+     * A spotlight over everything (a tutorial step): the scrim on four sides of the hole, a primary edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`.
      *
      * @param id Its id.
      * @param hole The rectangle to leave lit, as og.ui.bounds answers; null dims everything.
@@ -22541,14 +22504,14 @@ export declare namespace og {
      * Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`.
      *
      * @param index Its index.
-     * @param selected Drawn selected (fill-strong).
+     * @param selected Drawn selected (controlStrong).
      */
     function listItem(index: number, selected: boolean): Response;
     /**
-     * Open cell `index` of the open grid (`Cell#index`): a slot on fill, focusable; its content follows until close(). Drops answer `dropped` as listItem's.
+     * Open cell `index` of the open grid (`Cell#index`): a slot on control, focusable; its content follows until close(). Drops answer `dropped` as listItem's.
      *
      * @param index Its index.
-     * @param selected Drawn selected (fill-strong with an amber bar).
+     * @param selected Drawn selected (controlStrong with a primary bar).
      */
     function gridItem(index: number, selected: boolean): Response;
     /** Close a list or grid opened with openList or openGrid. */
@@ -22602,7 +22565,7 @@ export declare namespace og {
      */
     function stepper(id: string, value: number, desc?: StepperDesc): StepperResult;
     /**
-     * A radio group of `Option#i` rows: a ring, filled amber when chosen, and a label.
+     * A radio group of `Option#i` rows: a ring, filled primary when chosen, and a label.
      *
      * @param id Its id.
      * @param options The option labels.
@@ -22627,7 +22590,7 @@ export declare namespace og {
      */
     function checkboxList(id: string, labels: readonly string[], values: readonly boolean[]): CheckListResult;
     /**
-     * A chip: a capsule on fill; selected inverts to fg. For filters and tags.
+     * A chip: a control-filled tag; selected inverts to ink. For filters and tags.
      *
      * @param id Its id.
      * @param text The label.
@@ -22635,7 +22598,7 @@ export declare namespace og {
      */
     function chip(id: string, text: string, desc?: ChipDesc): Response;
     /**
-     * A badge: a small status capsule in its tone.
+     * A badge: a small status tag in its tone.
      *
      * @param id Its id.
      * @param text The label (a count, a word).
@@ -22657,7 +22620,7 @@ export declare namespace og {
      */
     function spacer(id: string, size: Size | null): void;
     /**
-     * A key (fg-muted) and its value (fg, at the end) on one row: stats, settings summaries, receipts.
+     * A key (inkMuted) and its value (ink, at the end) on one row: stats, settings summaries, receipts.
      *
      * @param id Its id.
      * @param key The key.
@@ -22697,7 +22660,7 @@ export declare namespace og {
      */
     function meter(id: string, value: number, max: number, desc?: MeterDesc): void;
     /**
-     * A cooldown: a disc whose amber ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not).
+     * A cooldown: a disc whose primary ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not).
      *
      * @param id Its id.
      * @param remaining How much of the cooldown is left, 0 to 1: 1 just used, 0 ready.
@@ -22705,14 +22668,14 @@ export declare namespace og {
      */
     function cooldown(id: string, remaining: number, desc?: CooldownDesc): Response;
     /**
-     * A mini-map frame: the map in a border-strong frame, markers as dots (the player amber and ringed), an N mark and a zone label.
+     * A mini-map frame: the map in a lineStrong frame, markers as dots (the player primary and ringed), an N mark and a zone label.
      *
      * @param id Its id.
      * @param desc Map, markers and label.
      */
     function minimap(id: string, desc?: MinimapDesc): void;
     /**
-     * A dialogue box: a portrait slot, the speaker in amber ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown.
+     * A dialogue box: a portrait slot, the speaker in primary ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown.
      *
      * @param id Its id.
      * @param desc Speaker, text, portrait and speed.

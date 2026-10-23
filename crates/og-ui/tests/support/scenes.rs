@@ -61,7 +61,7 @@ pub fn sample_screen(ui: &mut Ui, s: &mut Sample) {
             height: Size::grow(),
             padding: Insets::all(t.space.xl),
             gap: t.space.lg,
-            background: Some(t.palette.bg),
+            background: Some(t.palette.backdrop),
             ..Element::default()
         },
         |ui| {
@@ -86,7 +86,7 @@ pub fn sample_screen(ui: &mut Ui, s: &mut Sample) {
                         "A small game made with Origin Engine.",
                         LabelDesc {
                             step: Some(t.type_ramp.meta),
-                            color: Some(t.palette.fg_muted),
+                            color: Some(t.palette.ink_muted),
                             ..LabelDesc::default()
                         },
                     );
@@ -147,7 +147,7 @@ pub fn sample_screen(ui: &mut Ui, s: &mut Sample) {
                                 "Engine",
                                 "原点引擎",
                                 LabelDesc {
-                                    color: Some(t.palette.fg_muted),
+                                    color: Some(t.palette.ink_muted),
                                     width: Size::grow(),
                                     ..LabelDesc::default()
                                 },
@@ -157,7 +157,7 @@ pub fn sample_screen(ui: &mut Ui, s: &mut Sample) {
                                 "1250 coins",
                                 LabelDesc {
                                     step: Some(t.type_ramp.meta),
-                                    color: Some(t.palette.accent_ink),
+                                    color: Some(t.palette.highlight),
                                     nowrap: true,
                                     ..LabelDesc::default()
                                 },
@@ -191,8 +191,8 @@ pub fn sample_screen(ui: &mut Ui, s: &mut Sample) {
                                         width: Size::grow(),
                                         padding: Insets::xy(t.space.md, t.space.xs),
                                         cross: Cross::Center,
-                                        background: Some(t.palette.fill),
-                                        radius: t.radius.block,
+                                        background: Some(t.palette.control),
+                                        radius: t.radius.small,
                                         ..Element::default()
                                     },
                                     |ui| {
@@ -344,7 +344,7 @@ pub fn shot(ui: Ui, mut scene: RenderScene, atlas: og_render::TextureHandle, vp:
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
     ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
     scene.overlay = Some(overlay);
-    let bg = ui.theme().palette.bg.linear();
+    let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
@@ -445,7 +445,7 @@ pub fn kit_screen(ui: &mut Ui, s: &mut Kit) {
             height: Size::grow(),
             padding: Insets::all(t.space.lg),
             gap: t.space.lg,
-            background: Some(t.palette.bg),
+            background: Some(t.palette.backdrop),
             ..Element::default()
         },
         |ui| {
@@ -518,7 +518,7 @@ pub fn kit_screen(ui: &mut Ui, s: &mut Kit) {
                                 },
                             );
                             ui.chip("Weapons", "Weapons", ChipDesc::default());
-                            ui.badge("New", "New", Tone::Accent);
+                            ui.badge("New", "New", Tone::Primary);
                             ui.badge("Sale", "-20%", Tone::Success);
                         },
                     );
@@ -747,7 +747,7 @@ pub fn text_fields_shot(font: &FontFiles) -> Shot {
         .emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
     ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
     scene.overlay = Some(overlay);
-    let bg = ui.theme().palette.bg.linear();
+    let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
@@ -902,7 +902,7 @@ pub fn mixed_runs_ui(fonts: Fonts, vp: Viewport) -> Ui {
                 );
                 ui.rich_text(
                     "Rich",
-                    "[b]Rank 3[/b] 冒険 [color=accent]مغامرة[/color]",
+                    "[b]Rank 3[/b] 冒険 [color=primary]مغامرة[/color]",
                     RichTextDesc::default(),
                 );
                 ui.text_field(
@@ -954,7 +954,7 @@ pub fn glow_scene(font: &FontFiles, glow: bool, labels: usize) -> (RenderScene, 
     if glow {
         theme.skin.text_glows[0] = Some(og_ui::skin::Glow {
             size: 2.0,
-            ink: og_ui::skin::Ink::Accent,
+            ink: og_ui::skin::Ink::Primary,
             alpha: 0.8,
         });
     }
@@ -968,7 +968,7 @@ pub fn glow_scene(font: &FontFiles, glow: bool, labels: usize) -> (RenderScene, 
                 width: Size::grow(),
                 height: Size::grow(),
                 padding: Insets::all(t.space.lg),
-                background: Some(t.palette.bg),
+                background: Some(t.palette.backdrop),
                 ..Element::default()
             },
             |ui| {
@@ -989,7 +989,7 @@ pub fn glow_scene(font: &FontFiles, glow: bool, labels: usize) -> (RenderScene, 
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
     ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
     scene.overlay = Some(overlay);
-    let bg = ui.theme().palette.bg.linear();
+    let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
@@ -1043,7 +1043,7 @@ pub fn glass_panel() -> og_render::Glass {
     }
 }
 
-/// Overlay content around the reference glass panel: an amber bar on the
+/// Overlay content around the reference glass panel: an orange bar on the
 /// overlay layer below it, crossing the panel (y 92..108, x 40..280), and
 /// a small cyan square on the layer above it, inside the panel at
 /// (190, 60), 16 px. The panel blurs the bar where it covers it and

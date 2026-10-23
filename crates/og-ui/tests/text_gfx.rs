@@ -182,7 +182,7 @@ fn check(name: &str, uis: &[&Ui], mut scene: RenderScene) -> og_render::FrameSta
         ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
     }
     scene.overlay = Some(overlay);
-    let bg = uis[0].theme().palette.bg.linear();
+    let bg = uis[0].theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
@@ -281,7 +281,7 @@ fn bidi_scene(fonts: &[CookedFont]) {
             ui.label("Mixed", "Level 1-2: مغامرة صغيرة!", LabelDesc::default());
             ui.rich_text(
                 "Span",
-                "[color=accent]Go مغامرة صغيرة now[/color], then [b]العب[/b] 2",
+                "[color=primary]Go مغامرة صغيرة now[/color], then [b]العب[/b] 2",
                 RichTextDesc::default(),
             );
             ui.label(

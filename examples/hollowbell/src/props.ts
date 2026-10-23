@@ -89,7 +89,7 @@ export const Pickups = defineSystem(
           g.sfx |= Sound.Chime;
           fx(g, FxKind.Chime, x, y);
           og.camera.punch(world, 0.06);
-          og.ui.toast(world, say(world, "toast.chime", { n: g.chimes }), { tone: "accent" });
+          og.ui.toast(world, say(world, "toast.chime", { n: g.chimes }), { tone: "primary" });
         } else {
           g.heartMask |= 1 << index;
           g.hearts = Math.min(HEARTS, g.hearts + 1);

@@ -488,19 +488,13 @@ fn the_pages_motion_and_contrast_preferences_reach_the_theme() {
         assert_eq!(t.contrast == Contrast::High, high, "high contrast {high}");
         if high {
             assert_eq!(
-                t.palette.fg_muted, t.palette.fg,
+                t.palette.ink_muted, t.palette.ink,
                 "high contrast inks muted text as fg"
             );
         }
         // Reduced transparency flattens the scrim and the translucent fills.
         let p = t.palette;
-        let flat = [
-            p.scrim,
-            p.fill,
-            p.fill_strong,
-            p.accent_soft,
-            p.material_thick,
-        ];
+        let flat = [p.scrim, p.control, p.control_strong, p.primary_soft, p.hud];
         assert_eq!(
             flat.iter().all(|c| c.alpha == 1.0),
             reduced,
@@ -509,12 +503,12 @@ fn the_pages_motion_and_contrast_preferences_reach_the_theme() {
         if reduced && !high {
             let c = configured.palette;
             assert_eq!(
-                p.fill,
-                c.fill.over(c.surface),
+                p.control,
+                c.control.over(c.panel),
                 "a fill as it looks on a surface"
             );
-            assert_eq!(p.scrim, c.scrim.over(c.bg));
-            assert_eq!(p.fg, c.fg, "opaque inks unchanged");
+            assert_eq!(p.scrim, c.scrim.over(c.backdrop));
+            assert_eq!(p.ink, c.ink, "opaque inks unchanged");
         }
     }
     assert_eq!(*ui.theme(), configured, "the configured theme is back");

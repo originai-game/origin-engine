@@ -2,7 +2,7 @@
 
 # The `ui` module
 
-The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
+The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the placeholder prototype style until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
 
 The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.
 
@@ -29,12 +29,12 @@ module ui {
 | [`Cross`](#type-Cross) | enum | Where children sit across the main axis. |
 | [`TextAlign`](#type-TextAlign) | enum | How the lines of a label align. |
 | [`FontRole`](#type-FontRole) | enum | Which configured font text uses; display and mono fall back to body, rounded to display, then body. |
-| [`ButtonVariant`](#type-ButtonVariant) | enum | Button looks, as the design language's buttons. |
+| [`ButtonVariant`](#type-ButtonVariant) | enum | Button roles: how the style draws each. |
 | [`ControlSize`](#type-ControlSize) | enum | Control heights from the density (h-control-sm, -md, -lg). |
 | [`Scheme`](#type-Scheme) | enum | The palette: games run on a stage, so dark is the default. |
-| [`DensityMode`](#type-DensityMode) | enum | Control sizes: auto picks touch sizes on a coarse pointer or a play surface under 768 px, compact otherwise. |
-| [`ThemeColor`](#type-ThemeColor) | enum | A semantic colour of the design tokens (tokens.json `color`, in the current scheme). |
-| [`TypeStepName`](#type-TypeStepName) | enum | A step of the type ramp (tokens.json `font.scale`). |
+| [`DensityMode`](#type-DensityMode) | enum | Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise. |
+| [`ThemeColor`](#type-ThemeColor) | enum | A colour role of the UI style in effect (the game's style, or the prototype style before it picks one). |
+| [`TypeStepName`](#type-TypeStepName) | enum | A step of the style's type ramp. |
 | [`SizeRange`](#type-SizeRange) | struct | The bounds of a fit or grow size. |
 | [`FixedSize`](#type-FixedSize) | struct | A fixed size. |
 | [`PercentSize`](#type-PercentSize) | struct | A size relative to the parent. |
@@ -44,7 +44,7 @@ module ui {
 | [`ElementDesc`](#type-ElementDesc) | desc struct | A container: its layout and its look. |
 | [`LabelDesc`](#type-LabelDesc) | desc struct | How a label draws its text. |
 | [`ButtonDesc`](#type-ButtonDesc) | desc struct | A button's look. |
-| [`PanelDesc`](#type-PanelDesc) | desc struct | A card: surface, the card radius, padded and spaced by the tokens. |
+| [`PanelDesc`](#type-PanelDesc) | desc struct | A card: panel, the panel radius, padded and spaced by the style. |
 | [`ScrollAxes`](#type-ScrollAxes) | enum | Which ways a scroll container scrolls. |
 | [`ScrollDesc`](#type-ScrollDesc) | desc struct | A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); it clips its content; a scrollbar on each scrolling axis shows the position, and a press on one grabs and drags it. Nested containers hand off: what the innermost under the pointer cannot take (it reached its end, or does not scroll that way) goes to the one around it. |
 | [`ImageDesc`](#type-ImageDesc) | desc struct | A texture region, or a solid rectangle without a texture. |
@@ -59,16 +59,16 @@ module ui {
 | [`ToggleResult`](#type-ToggleResult) | struct | A toggle's response and its state after this tick's input. |
 | [`FieldResult`](#type-FieldResult) | struct | A text field's response and its text after this tick's input. |
 | [`Viewport`](#type-Viewport) | struct | The play surface the UI lays out in. |
-| [`UiDesc`](#type-UiDesc) | desc struct | How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it. |
+| [`UiDesc`](#type-UiDesc) | desc struct | How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it. |
 | [`UiSounds`](#type-UiSounds) | desc struct | Sounds the UI plays through og-audio (the ui bus) on its events; null is silent. |
 | [`SkinPart`](#type-SkinPart) | enum | An element class a skin dresses with a nine-slice frame. |
 | [`TypeStep`](#type-TypeStep) | struct | One step of the type ramp. |
 | [`ControlSizes`](#type-ControlSizes) | struct | The control, row and header heights and the gutter of the density in effect. |
-| [`UiTheme`](#type-UiTheme) | struct | The design tokens the UI draws with, read-only. |
+| [`UiTheme`](#type-UiTheme) | struct | The style values the UI draws with, read-only. |
 | [`UiBuild`](#type-UiBuild) | callback | Builds a container's children: ui calls made inside it nest under the container. |
-| [`og.ui.configure`](#fn-configure) | function | Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the platform tokens). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text. |
+| [`og.ui.configure`](#fn-configure) | function | Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the prototype style). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text. |
 | [`og.ui.viewport`](#fn-viewport) | function | This tick's play surface: the render target's size in CSS pixels, its DPR and safe area, as the host reports them. |
-| [`og.ui.theme`](#fn-theme) | function | The design tokens the UI draws with. |
+| [`og.ui.theme`](#fn-theme) | function | The style values the UI draws with. |
 | [`og.ui.open`](#fn-open) | function | Open a container; the calls until its close() build its children. |
 | [`og.ui.openPanel`](#fn-openPanel) | function | Open a card, closed by close(): og.ui.panel without the callback. |
 | [`og.ui.openScroll`](#fn-openScroll) | function | Open a vertical scroll container, closed by close(): og.ui.scroll without the callback. |
@@ -81,10 +81,10 @@ module ui {
 | [`RichTextResult`](#type-RichTextResult) | struct | What a rich text's links did this tick. |
 | [`og.ui.richText`](#fn-richText) | function | A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the skin), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning. |
 | [`og.ui.label`](#fn-label) | function | MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text. |
-| [`og.ui.button`](#fn-button) | function | A capsule button with a label; `clicked` is a press and a release inside it. The probe reads its label. |
+| [`og.ui.button`](#fn-button) | function | A button with a label; `clicked` is a press and a release inside it. The probe reads its label. |
 | [`og.ui.image`](#fn-image) | function | A texture region, or a solid rectangle; with ImageDesc.aspect, a fitting side follows the other. |
 | [`og.ui.zoomView`](#fn-zoomView) | function | A zoomable picture (a map, an artwork): two fingers pinch it to zoom about their centre and pan it as they move (og.Pointers), the wheel zooms about the pointer, a drag pans; Tab or a pad focuses it, and then + (= and the keypad's) and - zoom it about its centre, 0 fits it again and the arrows pan it a tenth of its size. It stays on its picture and within its zoom limits; its zoom and centre are UI state (snapshots carry them). Two fingers over a scroll container scroll it the same way, and fling it as they lift. The probe reads its zoom as its value. |
-| [`og.ui.progress`](#fn-progress) | function | A capsule track filled to a fraction. |
+| [`og.ui.progress`](#fn-progress) | function | A track filled to a fraction. |
 | [`og.ui.slider`](#fn-slider) | function | A track with a fill and a thumb: a press anywhere on it sets the value and dragging follows. Pass back the value it answers next tick. |
 | [`og.ui.toggle`](#fn-toggle) | function | A switch with a label; a click flips it. Pass back the state it answers next tick. The probe reads its label. |
 | [`og.ui.textField`](#fn-textField) | function | One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text (og.input's TextInput events: the page's typing, the probe's type: and commit:; until a world has had one, a printable key pressed types its US-layout character, and after it keys only edit) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects, Alt or Ctrl with them moves or deletes by words (Ctrl with Home and End: the text's ends); Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell), with Z undoes and with Shift+Z or Y redoes (a history of 100 steps per field, typing undone a word at a time; a text the game sets starts it again); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty. |
@@ -93,16 +93,15 @@ module ui {
 | [`og.ui.idi`](#fn-idi) | function | The id of the index-th of several siblings of one name: `idi("Slot", 3)` is `Slot#3`. |
 | [`Anchor`](#type-Anchor) | enum | A point of the safe area an anchored group sits at. |
 | [`TransitionKind`](#type-TransitionKind) | enum | How a transition moves its content in and out. Under reduced motion every kind only fades. |
-| [`Tone`](#type-Tone) | enum | A status tone, as the design language's badges and toasts. |
+| [`Tone`](#type-Tone) | enum | A status tone of badges, toasts and map markers. |
 | [`MeterKind`](#type-MeterKind) | enum | What a meter measures, which sets its colour. |
 | [`Breakpoint`](#type-Breakpoint) | enum | The play surface's size class. |
-| [`Contrast`](#type-Contrast) | enum | The theme variant: high contrast remaps muted inks, fills and borders to stronger tokens and outlines every control (no new colour). |
-| [`HueName`](#type-HueName) | enum | One of the twelve category hues of the tokens, for a game's accent. |
+| [`Contrast`](#type-Contrast) | enum | The theme variant: high contrast remaps muted inks, fills and lines to the style's stronger ones and outlines every control (no new colour). |
 | [`NavIntent`](#type-NavIntent) | enum | A focus-navigation intent, as the arrow keys, Tab, Enter, Space, Escape and a gamepad's d-pad, stick, A and B give. |
 | [`UiRect`](#type-UiRect) | struct | A rectangle of the play surface. |
 | [`IconAtlasDesc`](#type-IconAtlasDesc) | desc struct | The icon atlas: a texture of equal cells in a grid, named in reading order, or an icon set cooked like a font (font). |
 | [`AnchorDesc`](#type-AnchorDesc) | desc struct | An anchored group: a layer at a point of the safe area, over the tree (HUD corners, a centred title, a bar of touch controls). |
-| [`TransitionDesc`](#type-TransitionDesc) | desc struct | How a transition moves, timed in ticks from the motion tokens. |
+| [`TransitionDesc`](#type-TransitionDesc) | desc struct | How a transition moves, timed in ticks from the style's motion. |
 | [`Presence`](#type-Presence) | struct | Where a transition or dialog is this tick. |
 | [`ModalDesc`](#type-ModalDesc) | desc struct | A dialog: a scrim over everything and a centred panel. Focus moves in and stays while it is the topmost; Back and the backdrop dismiss it unless locked. |
 | [`ModalResult`](#type-ModalResult) | struct | A dialog's answer this tick. |
@@ -120,7 +119,7 @@ module ui {
 | [`CheckListResult`](#type-CheckListResult) | struct | A checkbox list's response and values after this tick's input. |
 | [`ToastDesc`](#type-ToastDesc) | desc struct | A toast's tone and time. |
 | [`ChipDesc`](#type-ChipDesc) | desc struct | A chip's state. |
-| [`MeterDesc`](#type-MeterDesc) | desc struct | A meter: a capsule track with a fill that animates its changes by the tick. |
+| [`MeterDesc`](#type-MeterDesc) | desc struct | A meter: a track with a fill that animates its changes by the tick. |
 | [`CooldownDesc`](#type-CooldownDesc) | desc struct | A cooldown ring's size and centre. |
 | [`IconDesc`](#type-IconDesc) | desc struct | An icon's size, ink and name. |
 | [`MapMarker`](#type-MapMarker) | desc struct | A marker on a mini-map. |
@@ -138,20 +137,20 @@ module ui {
 | [`og.ui.frameViewport`](#fn-frameViewport) | function | The play surface of the frame being built: og.ui.viewport without the world, for code that only builds UI. |
 | [`og.ui.hasIcon`](#fn-hasIcon) | function | Whether the icon atlas has an icon of this name (templates draw a fallback otherwise). |
 | [`og.ui.seconds`](#fn-seconds) | function | The UI's clock in seconds: frames built over the tick rate (simulation time, never the wall clock). |
-| [`og.ui.frameTheme`](#fn-frameTheme) | function | The design tokens of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates). |
+| [`og.ui.frameTheme`](#fn-frameTheme) | function | The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates). |
 | [`og.ui.openAnchor`](#fn-openAnchor) | function | Open an anchored group, closed by close(): og.ui.anchor without the callback. |
 | [`og.ui.anchor`](#fn-anchor) | function | An anchored group built by `build`: a layer at a point of the safe area, over the tree, for HUD corners and touch controls. |
 | [`og.ui.openTransition`](#fn-openTransition) | function | Open a transition container (a column), closed by close(); build its children only while the answer is visible: it stays visible while it leaves. Its content takes no input while it moves. |
-| [`og.ui.transition`](#fn-transition) | function | Content that enters and leaves: fade, slide or scale by the tick from the motion tokens. `build` runs while it is visible. |
+| [`og.ui.transition`](#fn-transition) | function | Content that enters and leaves: fade, slide or scale by the tick from the style's motion. `build` runs while it is visible. |
 | [`og.ui.openModal`](#fn-openModal) | function | Open a dialog, closed by closeModal(); build its content only while the answer is visible. The probe sees the backdrop as `<id>` and the panel as `<id>/Panel`. |
 | [`og.ui.closeModal`](#fn-closeModal) | function | Close a dialog opened with openModal (its panel and backdrop). |
 | [`og.ui.modal`](#fn-modal) | function | A dialog built by `build` while visible: scrim, centred panel, focus kept inside, Back and the backdrop dismiss it unless locked. Set your open flag false on `dismissed`. |
-| [`og.ui.spotlight`](#fn-spotlight) | function | A spotlight over everything (a tutorial step): the scrim on four sides of the hole, an amber edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`. |
+| [`og.ui.spotlight`](#fn-spotlight) | function | A spotlight over everything (a tutorial step): the scrim on four sides of the hole, a primary edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`. |
 | [`og.ui.bounds`](#fn-bounds) | function | Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it. |
 | [`og.ui.openList`](#fn-openList) | function | Open a virtualised list (a scroll column) and learn which rows to build: listItem(i) and close() for each, then closeList(). |
 | [`og.ui.openGrid`](#fn-openGrid) | function | Open a virtualised grid and learn which cells to build: gridItem(i) and close() for each, then closeList(). |
 | [`og.ui.listItem`](#fn-listItem) | function | Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`. |
-| [`og.ui.gridItem`](#fn-gridItem) | function | Open cell `index` of the open grid (`Cell#index`): a slot on fill, focusable; its content follows until close(). Drops answer `dropped` as listItem's. |
+| [`og.ui.gridItem`](#fn-gridItem) | function | Open cell `index` of the open grid (`Cell#index`): a slot on control, focusable; its content follows until close(). Drops answer `dropped` as listItem's. |
 | [`og.ui.closeList`](#fn-closeList) | function | Close a list or grid opened with openList or openGrid. |
 | [`og.ui.dragging`](#fn-dragging) | function | The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer. |
 | [`og.ui.list`](#fn-list) | function | A virtualised list built by `build(index)` for the rows in view. |
@@ -159,21 +158,21 @@ module ui {
 | [`og.ui.tabs`](#fn-tabs) | function | A segmented control: a neutral track, the chosen tab on the thumb. Tabs are `Tab#i` and the probe reads their labels. |
 | [`og.ui.select`](#fn-select) | function | A select: a field-like trigger with the chosen label and a chevron; a press or Activate opens its menu `<id>.menu` (options `Option#i`) under it, a focus scope; choosing closes it with changed. Back or a press outside closes it. |
 | [`og.ui.stepper`](#fn-stepper) | function | A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused; a screen reader's increment and decrement on the stepper itself (its spinbutton, which the web shell mirrors as an adjustable range) step it too. |
-| [`og.ui.radio`](#fn-radio) | function | A radio group of `Option#i` rows: a ring, filled amber when chosen, and a label. |
+| [`og.ui.radio`](#fn-radio) | function | A radio group of `Option#i` rows: a ring, filled primary when chosen, and a label. |
 | [`og.ui.checkbox`](#fn-checkbox) | function | A checkbox with a label; a press flips it. |
 | [`og.ui.checkboxList`](#fn-checkboxList) | function | Checkboxes in a column (`Option#i`). |
-| [`og.ui.chip`](#fn-chip) | function | A chip: a capsule on fill; selected inverts to fg. For filters and tags. |
-| [`og.ui.badge`](#fn-badge) | function | A badge: a small status capsule in its tone. |
+| [`og.ui.chip`](#fn-chip) | function | A chip: a control-filled tag; selected inverts to ink. For filters and tags. |
+| [`og.ui.badge`](#fn-badge) | function | A badge: a small status tag in its tone. |
 | [`og.ui.divider`](#fn-divider) | function | A hairline in the border colour across its parent. |
 | [`og.ui.spacer`](#fn-spacer) | function | Empty space. |
-| [`og.ui.keyValue`](#fn-keyValue) | function | A key (fg-muted) and its value (fg, at the end) on one row: stats, settings summaries, receipts. |
+| [`og.ui.keyValue`](#fn-keyValue) | function | A key (inkMuted) and its value (ink, at the end) on one row: stats, settings summaries, receipts. |
 | [`og.ui.skeleton`](#fn-skeleton) | function | A skeleton: the neutral fill standing in for content that is loading, with a sheen that passes every 1.6 s (still under reduced motion). |
 | [`og.ui.spinner`](#fn-spinner) | function | A loading spinner: eight dots around a circle, the bright one turning by the tick. |
 | [`og.ui.icon`](#fn-icon) | function | An icon of the atlas (UiDesc.icons) by name: a texture cell, or an icon set's distance-field glyph fitted to its square; an unknown name draws an empty slot and warns. Rich text takes the same icons inline with `[icon=name]`. The probe reads the name. |
 | [`og.ui.meter`](#fn-meter) | function | A health, mana or xp bar. A drop shows at once and leaves a pale trail that follows after a beat; a rise grows into place with a ghost of the target; both by the tick. |
-| [`og.ui.cooldown`](#fn-cooldown) | function | A cooldown: a disc whose amber ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not). |
-| [`og.ui.minimap`](#fn-minimap) | function | A mini-map frame: the map in a border-strong frame, markers as dots (the player amber and ringed), an N mark and a zone label. |
-| [`og.ui.dialogue`](#fn-dialogue) | function | A dialogue box: a portrait slot, the speaker in amber ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown. |
+| [`og.ui.cooldown`](#fn-cooldown) | function | A cooldown: a disc whose primary ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not). |
+| [`og.ui.minimap`](#fn-minimap) | function | A mini-map frame: the map in a lineStrong frame, markers as dots (the player primary and ringed), an N mark and a zone label. |
+| [`og.ui.dialogue`](#fn-dialogue) | function | A dialogue box: a portrait slot, the speaker in primary ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown. |
 | [`og.ui.joystick`](#fn-joystick) | function | A virtual joystick: a base and a knob that follows a press that started on it. It keeps the finger that grabbed it (any of og.Pointers), so another finger can hold an action button at the same time. |
 | [`og.ui.dpad`](#fn-dpad) | function | A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px. |
 | [`og.ui.actionButton`](#fn-actionButton) | function | A round touch action button: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px. |
@@ -275,7 +274,7 @@ module ui {
 
 ### `og.ui.configure`
 
-Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the platform tokens). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text.
+Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the prototype style). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text.
 
 ```ts
 og.ui.configure(world: World, desc?: UiDesc): Result<void>
@@ -292,14 +291,14 @@ Binding symbol `og_ui_configure` · publish builds: kept
 
 ```ogt
 fn configure {
-  doc "Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the platform tokens). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text."
+  doc "Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the prototype style). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text."
   param world World "The world whose UI is configured."
   param desc UiDesc "The fields to change; the others keep their values."
   returns Result.Void "Refused for a dead font or skin, or a desc that is not an object."
 }
 ```
 
-<sub>`api.ogt` line 9656</sub>
+<sub>`api.ogt` line 9643</sub>
 
 <a id="fn-viewport"></a>
 
@@ -327,13 +326,13 @@ fn viewport {
 }
 ```
 
-<sub>`api.ogt` line 9663</sub>
+<sub>`api.ogt` line 9650</sub>
 
 <a id="fn-theme"></a>
 
 ### `og.ui.theme`
 
-The design tokens the UI draws with.
+The style values the UI draws with.
 
 ```ts
 og.ui.theme(world: World): UiTheme
@@ -349,13 +348,13 @@ Binding symbol `og_ui_theme` · publish builds: kept
 
 ```ogt
 fn theme {
-  doc "The design tokens the UI draws with."
+  doc "The style values the UI draws with."
   param world World "The world."
   returns UiTheme
 }
 ```
 
-<sub>`api.ogt` line 9669</sub>
+<sub>`api.ogt` line 9656</sub>
 
 <a id="fn-open"></a>
 
@@ -385,7 +384,7 @@ fn open {
 }
 ```
 
-<sub>`api.ogt` line 9675</sub>
+<sub>`api.ogt` line 9662</sub>
 
 <a id="fn-openPanel"></a>
 
@@ -415,7 +414,7 @@ fn openPanel {
 }
 ```
 
-<sub>`api.ogt` line 9682</sub>
+<sub>`api.ogt` line 9669</sub>
 
 <a id="fn-openScroll"></a>
 
@@ -445,7 +444,7 @@ fn openScroll {
 }
 ```
 
-<sub>`api.ogt` line 9689</sub>
+<sub>`api.ogt` line 9676</sub>
 
 <a id="fn-close"></a>
 
@@ -468,7 +467,7 @@ fn close {
 }
 ```
 
-<sub>`api.ogt` line 9696</sub>
+<sub>`api.ogt` line 9683</sub>
 
 <a id="fn-row"></a>
 
@@ -501,7 +500,7 @@ fn row {
 }
 ```
 
-<sub>`api.ogt` line 9701</sub>
+<sub>`api.ogt` line 9688</sub>
 
 <a id="fn-column"></a>
 
@@ -534,7 +533,7 @@ fn column {
 }
 ```
 
-<sub>`api.ogt` line 9710</sub>
+<sub>`api.ogt` line 9697</sub>
 
 <a id="fn-panel"></a>
 
@@ -567,7 +566,7 @@ fn panel {
 }
 ```
 
-<sub>`api.ogt` line 9719</sub>
+<sub>`api.ogt` line 9706</sub>
 
 <a id="fn-scroll"></a>
 
@@ -600,7 +599,7 @@ fn scroll {
 }
 ```
 
-<sub>`api.ogt` line 9728</sub>
+<sub>`api.ogt` line 9715</sub>
 
 <a id="fn-richText"></a>
 
@@ -632,7 +631,7 @@ fn richText {
 }
 ```
 
-<sub>`api.ogt` line 9755</sub>
+<sub>`api.ogt` line 9742</sub>
 
 <a id="fn-label"></a>
 
@@ -664,13 +663,13 @@ fn label {
 }
 ```
 
-<sub>`api.ogt` line 9763</sub>
+<sub>`api.ogt` line 9750</sub>
 
 <a id="fn-button"></a>
 
 ### `og.ui.button`
 
-A capsule button with a label; `clicked` is a press and a release inside it. The probe reads its label.
+A button with a label; `clicked` is a press and a release inside it. The probe reads its label.
 
 ```ts
 og.ui.button(id: string, text: string, desc?: ButtonDesc): Response
@@ -688,7 +687,7 @@ Binding symbol `og_ui_button` · publish builds: kept
 
 ```ogt
 fn button {
-  doc "A capsule button with a label; `clicked` is a press and a release inside it. The probe reads its label."
+  doc "A button with a label; `clicked` is a press and a release inside it. The probe reads its label."
   param id String "Its id."
   param text String "The label."
   param desc ButtonDesc "Variant, size, disabled and width."
@@ -696,7 +695,7 @@ fn button {
 }
 ```
 
-<sub>`api.ogt` line 9771</sub>
+<sub>`api.ogt` line 9758</sub>
 
 <a id="fn-image"></a>
 
@@ -726,7 +725,7 @@ fn image {
 }
 ```
 
-<sub>`api.ogt` line 9779</sub>
+<sub>`api.ogt` line 9766</sub>
 
 <a id="fn-zoomView"></a>
 
@@ -756,13 +755,13 @@ fn zoomView {
 }
 ```
 
-<sub>`api.ogt` line 9786</sub>
+<sub>`api.ogt` line 9773</sub>
 
 <a id="fn-progress"></a>
 
 ### `og.ui.progress`
 
-A capsule track filled to a fraction.
+A track filled to a fraction.
 
 ```ts
 og.ui.progress(id: string, value: number, desc?: ProgressDesc): void
@@ -780,7 +779,7 @@ Binding symbol `og_ui_progress` · publish builds: kept
 
 ```ogt
 fn progress {
-  doc "A capsule track filled to a fraction."
+  doc "A track filled to a fraction."
   param id String "Its id."
   param value f32 "How full it is, from 0 to 1."
   param desc ProgressDesc "Its width."
@@ -788,7 +787,7 @@ fn progress {
 }
 ```
 
-<sub>`api.ogt` line 9793</sub>
+<sub>`api.ogt` line 9780</sub>
 
 <a id="fn-slider"></a>
 
@@ -820,7 +819,7 @@ fn slider {
 }
 ```
 
-<sub>`api.ogt` line 9801</sub>
+<sub>`api.ogt` line 9788</sub>
 
 <a id="fn-toggle"></a>
 
@@ -852,7 +851,7 @@ fn toggle {
 }
 ```
 
-<sub>`api.ogt` line 9809</sub>
+<sub>`api.ogt` line 9796</sub>
 
 <a id="fn-textField"></a>
 
@@ -884,7 +883,7 @@ fn textField {
 }
 ```
 
-<sub>`api.ogt` line 9817</sub>
+<sub>`api.ogt` line 9804</sub>
 
 <a id="fn-textArea"></a>
 
@@ -916,7 +915,7 @@ fn textArea {
 }
 ```
 
-<sub>`api.ogt` line 9825</sub>
+<sub>`api.ogt` line 9812</sub>
 
 <a id="fn-tooltip"></a>
 
@@ -944,7 +943,7 @@ fn tooltip {
 }
 ```
 
-<sub>`api.ogt` line 9833</sub>
+<sub>`api.ogt` line 9820</sub>
 
 <a id="fn-idi"></a>
 
@@ -975,7 +974,7 @@ fn idi {
 }
 ```
 
-<sub>`api.ogt` line 9839</sub>
+<sub>`api.ogt` line 9826</sub>
 
 <a id="fn-breakpoint"></a>
 
@@ -998,7 +997,7 @@ fn breakpoint {
 }
 ```
 
-<sub>`api.ogt` line 10320</sub>
+<sub>`api.ogt` line 10291</sub>
 
 <a id="fn-frameViewport"></a>
 
@@ -1021,7 +1020,7 @@ fn frameViewport {
 }
 ```
 
-<sub>`api.ogt` line 10325</sub>
+<sub>`api.ogt` line 10296</sub>
 
 <a id="fn-hasIcon"></a>
 
@@ -1049,7 +1048,7 @@ fn hasIcon {
 }
 ```
 
-<sub>`api.ogt` line 10330</sub>
+<sub>`api.ogt` line 10301</sub>
 
 <a id="fn-seconds"></a>
 
@@ -1072,13 +1071,13 @@ fn seconds {
 }
 ```
 
-<sub>`api.ogt` line 10336</sub>
+<sub>`api.ogt` line 10307</sub>
 
 <a id="fn-frameTheme"></a>
 
 ### `og.ui.frameTheme`
 
-The design tokens of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates).
+The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates).
 
 ```ts
 og.ui.frameTheme(): UiTheme
@@ -1090,12 +1089,12 @@ Binding symbol `og_ui_frame_theme` · publish builds: kept
 
 ```ogt
 fn frameTheme {
-  doc "The design tokens of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates)."
+  doc "The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates)."
   returns UiTheme
 }
 ```
 
-<sub>`api.ogt` line 10341</sub>
+<sub>`api.ogt` line 10312</sub>
 
 <a id="fn-openAnchor"></a>
 
@@ -1125,7 +1124,7 @@ fn openAnchor {
 }
 ```
 
-<sub>`api.ogt` line 10346</sub>
+<sub>`api.ogt` line 10317</sub>
 
 <a id="fn-anchor"></a>
 
@@ -1158,7 +1157,7 @@ fn anchor {
 }
 ```
 
-<sub>`api.ogt` line 10353</sub>
+<sub>`api.ogt` line 10324</sub>
 
 <a id="fn-openTransition"></a>
 
@@ -1190,13 +1189,13 @@ fn openTransition {
 }
 ```
 
-<sub>`api.ogt` line 10362</sub>
+<sub>`api.ogt` line 10333</sub>
 
 <a id="fn-transition"></a>
 
 ### `og.ui.transition`
 
-Content that enters and leaves: fade, slide or scale by the tick from the motion tokens. `build` runs while it is visible.
+Content that enters and leaves: fade, slide or scale by the tick from the style's motion. `build` runs while it is visible.
 
 ```ts
 og.ui.transition(id: string, show: boolean, desc: TransitionDesc, build: UiBuild): Presence
@@ -1215,7 +1214,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn transition {
-  doc "Content that enters and leaves: fade, slide or scale by the tick from the motion tokens. `build` runs while it is visible."
+  doc "Content that enters and leaves: fade, slide or scale by the tick from the style's motion. `build` runs while it is visible."
   host false
   param id String "Its id."
   param show bool "Whether it should be shown."
@@ -1225,7 +1224,7 @@ fn transition {
 }
 ```
 
-<sub>`api.ogt` line 10370</sub>
+<sub>`api.ogt` line 10341</sub>
 
 <a id="fn-openModal"></a>
 
@@ -1257,7 +1256,7 @@ fn openModal {
 }
 ```
 
-<sub>`api.ogt` line 10380</sub>
+<sub>`api.ogt` line 10351</sub>
 
 <a id="fn-closeModal"></a>
 
@@ -1280,7 +1279,7 @@ fn closeModal {
 }
 ```
 
-<sub>`api.ogt` line 10388</sub>
+<sub>`api.ogt` line 10359</sub>
 
 <a id="fn-modal"></a>
 
@@ -1315,13 +1314,13 @@ fn modal {
 }
 ```
 
-<sub>`api.ogt` line 10393</sub>
+<sub>`api.ogt` line 10364</sub>
 
 <a id="fn-spotlight"></a>
 
 ### `og.ui.spotlight`
 
-A spotlight over everything (a tutorial step): the scrim on four sides of the hole, an amber edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`.
+A spotlight over everything (a tutorial step): the scrim on four sides of the hole, a primary edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`.
 
 ```ts
 og.ui.spotlight(id: string, hole: UiRect | null, desc?: SpotlightDesc): Response
@@ -1339,7 +1338,7 @@ Binding symbol `og_ui_spotlight` · publish builds: kept
 
 ```ogt
 fn spotlight {
-  doc "A spotlight over everything (a tutorial step): the scrim on four sides of the hole, an amber edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`."
+  doc "A spotlight over everything (a tutorial step): the scrim on four sides of the hole, a primary edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`."
   param id String "Its id."
   param hole Option.UiRect "The rectangle to leave lit, as og.ui.bounds answers; null dims everything."
   param desc SpotlightDesc "Room around the hole."
@@ -1347,7 +1346,7 @@ fn spotlight {
 }
 ```
 
-<sub>`api.ogt` line 10403</sub>
+<sub>`api.ogt` line 10374</sub>
 
 <a id="fn-bounds"></a>
 
@@ -1375,7 +1374,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 10411</sub>
+<sub>`api.ogt` line 10382</sub>
 
 <a id="fn-openList"></a>
 
@@ -1405,7 +1404,7 @@ fn openList {
 }
 ```
 
-<sub>`api.ogt` line 10417</sub>
+<sub>`api.ogt` line 10388</sub>
 
 <a id="fn-openGrid"></a>
 
@@ -1435,7 +1434,7 @@ fn openGrid {
 }
 ```
 
-<sub>`api.ogt` line 10424</sub>
+<sub>`api.ogt` line 10395</sub>
 
 <a id="fn-listItem"></a>
 
@@ -1450,7 +1449,7 @@ og.ui.listItem(index: number, selected: boolean): Response
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `index` | `number` | no | Its index. |
-| `selected` | `boolean` | no | Drawn selected (fill-strong). |
+| `selected` | `boolean` | no | Drawn selected (controlStrong). |
 
 **Returns** `Response`.
 
@@ -1460,18 +1459,18 @@ Binding symbol `og_ui_list_item` · publish builds: kept
 fn listItem {
   doc "Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`."
   param index u32 "Its index."
-  param selected bool "Drawn selected (fill-strong)."
+  param selected bool "Drawn selected (controlStrong)."
   returns Response
 }
 ```
 
-<sub>`api.ogt` line 10431</sub>
+<sub>`api.ogt` line 10402</sub>
 
 <a id="fn-gridItem"></a>
 
 ### `og.ui.gridItem`
 
-Open cell `index` of the open grid (`Cell#index`): a slot on fill, focusable; its content follows until close(). Drops answer `dropped` as listItem's.
+Open cell `index` of the open grid (`Cell#index`): a slot on control, focusable; its content follows until close(). Drops answer `dropped` as listItem's.
 
 ```ts
 og.ui.gridItem(index: number, selected: boolean): Response
@@ -1480,7 +1479,7 @@ og.ui.gridItem(index: number, selected: boolean): Response
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `index` | `number` | no | Its index. |
-| `selected` | `boolean` | no | Drawn selected (fill-strong with an amber bar). |
+| `selected` | `boolean` | no | Drawn selected (controlStrong with a primary bar). |
 
 **Returns** `Response`.
 
@@ -1488,14 +1487,14 @@ Binding symbol `og_ui_grid_item` · publish builds: kept
 
 ```ogt
 fn gridItem {
-  doc "Open cell `index` of the open grid (`Cell#index`): a slot on fill, focusable; its content follows until close(). Drops answer `dropped` as listItem's."
+  doc "Open cell `index` of the open grid (`Cell#index`): a slot on control, focusable; its content follows until close(). Drops answer `dropped` as listItem's."
   param index u32 "Its index."
-  param selected bool "Drawn selected (fill-strong with an amber bar)."
+  param selected bool "Drawn selected (controlStrong with a primary bar)."
   returns Response
 }
 ```
 
-<sub>`api.ogt` line 10438</sub>
+<sub>`api.ogt` line 10409</sub>
 
 <a id="fn-closeList"></a>
 
@@ -1518,7 +1517,7 @@ fn closeList {
 }
 ```
 
-<sub>`api.ogt` line 10445</sub>
+<sub>`api.ogt` line 10416</sub>
 
 <a id="fn-dragging"></a>
 
@@ -1546,7 +1545,7 @@ fn dragging {
 }
 ```
 
-<sub>`api.ogt` line 10450</sub>
+<sub>`api.ogt` line 10421</sub>
 
 <a id="fn-list"></a>
 
@@ -1579,7 +1578,7 @@ fn list {
 }
 ```
 
-<sub>`api.ogt` line 10456</sub>
+<sub>`api.ogt` line 10427</sub>
 
 <a id="fn-grid"></a>
 
@@ -1612,7 +1611,7 @@ fn grid {
 }
 ```
 
-<sub>`api.ogt` line 10465</sub>
+<sub>`api.ogt` line 10436</sub>
 
 <a id="fn-tabs"></a>
 
@@ -1646,7 +1645,7 @@ fn tabs {
 }
 ```
 
-<sub>`api.ogt` line 10474</sub>
+<sub>`api.ogt` line 10445</sub>
 
 <a id="fn-select"></a>
 
@@ -1680,7 +1679,7 @@ fn select {
 }
 ```
 
-<sub>`api.ogt` line 10483</sub>
+<sub>`api.ogt` line 10454</sub>
 
 <a id="fn-stepper"></a>
 
@@ -1712,13 +1711,13 @@ fn stepper {
 }
 ```
 
-<sub>`api.ogt` line 10492</sub>
+<sub>`api.ogt` line 10463</sub>
 
 <a id="fn-radio"></a>
 
 ### `og.ui.radio`
 
-A radio group of `Option#i` rows: a ring, filled amber when chosen, and a label.
+A radio group of `Option#i` rows: a ring, filled primary when chosen, and a label.
 
 ```ts
 og.ui.radio(id: string, options: readonly string[], selected: number, desc?: RadioDesc): ChoiceResult
@@ -1737,7 +1736,7 @@ Binding symbol `og_ui_radio` · publish builds: kept
 
 ```ogt
 fn radio {
-  doc "A radio group of `Option#i` rows: a ring, filled amber when chosen, and a label."
+  doc "A radio group of `Option#i` rows: a ring, filled primary when chosen, and a label."
   param id String "Its id."
   param options List.String "The option labels."
   param selected u32 "The chosen index from game state."
@@ -1746,7 +1745,7 @@ fn radio {
 }
 ```
 
-<sub>`api.ogt` line 10500</sub>
+<sub>`api.ogt` line 10471</sub>
 
 <a id="fn-checkbox"></a>
 
@@ -1778,7 +1777,7 @@ fn checkbox {
 }
 ```
 
-<sub>`api.ogt` line 10509</sub>
+<sub>`api.ogt` line 10480</sub>
 
 <a id="fn-checkboxList"></a>
 
@@ -1810,13 +1809,13 @@ fn checkboxList {
 }
 ```
 
-<sub>`api.ogt` line 10517</sub>
+<sub>`api.ogt` line 10488</sub>
 
 <a id="fn-chip"></a>
 
 ### `og.ui.chip`
 
-A chip: a capsule on fill; selected inverts to fg. For filters and tags.
+A chip: a control-filled tag; selected inverts to ink. For filters and tags.
 
 ```ts
 og.ui.chip(id: string, text: string, desc?: ChipDesc): Response
@@ -1834,7 +1833,7 @@ Binding symbol `og_ui_chip` · publish builds: kept
 
 ```ogt
 fn chip {
-  doc "A chip: a capsule on fill; selected inverts to fg. For filters and tags."
+  doc "A chip: a control-filled tag; selected inverts to ink. For filters and tags."
   param id String "Its id."
   param text String "The label."
   param desc ChipDesc "Selected and disabled."
@@ -1842,13 +1841,13 @@ fn chip {
 }
 ```
 
-<sub>`api.ogt` line 10525</sub>
+<sub>`api.ogt` line 10496</sub>
 
 <a id="fn-badge"></a>
 
 ### `og.ui.badge`
 
-A badge: a small status capsule in its tone.
+A badge: a small status tag in its tone.
 
 ```ts
 og.ui.badge(id: string, text: string, tone: Tone): void
@@ -1866,7 +1865,7 @@ Binding symbol `og_ui_badge` · publish builds: kept
 
 ```ogt
 fn badge {
-  doc "A badge: a small status capsule in its tone."
+  doc "A badge: a small status tag in its tone."
   param id String "Its id."
   param text String "The label (a count, a word)."
   param tone Tone "Its tone."
@@ -1874,7 +1873,7 @@ fn badge {
 }
 ```
 
-<sub>`api.ogt` line 10533</sub>
+<sub>`api.ogt` line 10504</sub>
 
 <a id="fn-divider"></a>
 
@@ -1904,7 +1903,7 @@ fn divider {
 }
 ```
 
-<sub>`api.ogt` line 10541</sub>
+<sub>`api.ogt` line 10512</sub>
 
 <a id="fn-spacer"></a>
 
@@ -1934,13 +1933,13 @@ fn spacer {
 }
 ```
 
-<sub>`api.ogt` line 10548</sub>
+<sub>`api.ogt` line 10519</sub>
 
 <a id="fn-keyValue"></a>
 
 ### `og.ui.keyValue`
 
-A key (fg-muted) and its value (fg, at the end) on one row: stats, settings summaries, receipts.
+A key (inkMuted) and its value (ink, at the end) on one row: stats, settings summaries, receipts.
 
 ```ts
 og.ui.keyValue(id: string, key: string, value: string, mono: boolean): void
@@ -1959,7 +1958,7 @@ Binding symbol `og_ui_key_value` · publish builds: kept
 
 ```ogt
 fn keyValue {
-  doc "A key (fg-muted) and its value (fg, at the end) on one row: stats, settings summaries, receipts."
+  doc "A key (inkMuted) and its value (ink, at the end) on one row: stats, settings summaries, receipts."
   param id String "Its id."
   param key String "The key."
   param value String "The value."
@@ -1968,7 +1967,7 @@ fn keyValue {
 }
 ```
 
-<sub>`api.ogt` line 10555</sub>
+<sub>`api.ogt` line 10526</sub>
 
 <a id="fn-skeleton"></a>
 
@@ -1998,7 +1997,7 @@ fn skeleton {
 }
 ```
 
-<sub>`api.ogt` line 10564</sub>
+<sub>`api.ogt` line 10535</sub>
 
 <a id="fn-spinner"></a>
 
@@ -2028,7 +2027,7 @@ fn spinner {
 }
 ```
 
-<sub>`api.ogt` line 10571</sub>
+<sub>`api.ogt` line 10542</sub>
 
 <a id="fn-icon"></a>
 
@@ -2060,7 +2059,7 @@ fn icon {
 }
 ```
 
-<sub>`api.ogt` line 10578</sub>
+<sub>`api.ogt` line 10549</sub>
 
 <a id="fn-meter"></a>
 
@@ -2094,13 +2093,13 @@ fn meter {
 }
 ```
 
-<sub>`api.ogt` line 10586</sub>
+<sub>`api.ogt` line 10557</sub>
 
 <a id="fn-cooldown"></a>
 
 ### `og.ui.cooldown`
 
-A cooldown: a disc whose amber ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not).
+A cooldown: a disc whose primary ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not).
 
 ```ts
 og.ui.cooldown(id: string, remaining: number, desc?: CooldownDesc): Response
@@ -2118,7 +2117,7 @@ Binding symbol `og_ui_cooldown` · publish builds: kept
 
 ```ogt
 fn cooldown {
-  doc "A cooldown: a disc whose amber ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not)."
+  doc "A cooldown: a disc whose primary ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not)."
   param id String "Its id."
   param remaining f32 "How much of the cooldown is left, 0 to 1: 1 just used, 0 ready."
   param desc CooldownDesc "Size, label and icon."
@@ -2126,13 +2125,13 @@ fn cooldown {
 }
 ```
 
-<sub>`api.ogt` line 10595</sub>
+<sub>`api.ogt` line 10566</sub>
 
 <a id="fn-minimap"></a>
 
 ### `og.ui.minimap`
 
-A mini-map frame: the map in a border-strong frame, markers as dots (the player amber and ringed), an N mark and a zone label.
+A mini-map frame: the map in a lineStrong frame, markers as dots (the player primary and ringed), an N mark and a zone label.
 
 ```ts
 og.ui.minimap(id: string, desc?: MinimapDesc): void
@@ -2149,20 +2148,20 @@ Binding symbol `og_ui_minimap` · publish builds: kept
 
 ```ogt
 fn minimap {
-  doc "A mini-map frame: the map in a border-strong frame, markers as dots (the player amber and ringed), an N mark and a zone label."
+  doc "A mini-map frame: the map in a lineStrong frame, markers as dots (the player primary and ringed), an N mark and a zone label."
   param id String "Its id."
   param desc MinimapDesc "Map, markers and label."
   returns Void
 }
 ```
 
-<sub>`api.ogt` line 10603</sub>
+<sub>`api.ogt` line 10574</sub>
 
 <a id="fn-dialogue"></a>
 
 ### `og.ui.dialogue`
 
-A dialogue box: a portrait slot, the speaker in amber ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown.
+A dialogue box: a portrait slot, the speaker in primary ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown.
 
 ```ts
 og.ui.dialogue(id: string, desc?: DialogueDesc): DialogueResult
@@ -2179,14 +2178,14 @@ Binding symbol `og_ui_dialogue` · publish builds: kept
 
 ```ogt
 fn dialogue {
-  doc "A dialogue box: a portrait slot, the speaker in amber ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown."
+  doc "A dialogue box: a portrait slot, the speaker in primary ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown."
   param id String "Its id."
   param desc DialogueDesc "Speaker, text, portrait and speed."
   returns DialogueResult
 }
 ```
 
-<sub>`api.ogt` line 10610</sub>
+<sub>`api.ogt` line 10581</sub>
 
 <a id="fn-joystick"></a>
 
@@ -2216,7 +2215,7 @@ fn joystick {
 }
 ```
 
-<sub>`api.ogt` line 10617</sub>
+<sub>`api.ogt` line 10588</sub>
 
 <a id="fn-dpad"></a>
 
@@ -2246,7 +2245,7 @@ fn dpad {
 }
 ```
 
-<sub>`api.ogt` line 10624</sub>
+<sub>`api.ogt` line 10595</sub>
 
 <a id="fn-actionButton"></a>
 
@@ -2278,7 +2277,7 @@ fn actionButton {
 }
 ```
 
-<sub>`api.ogt` line 10631</sub>
+<sub>`api.ogt` line 10602</sub>
 
 <a id="fn-toast"></a>
 
@@ -2310,7 +2309,7 @@ fn toast {
 }
 ```
 
-<sub>`api.ogt` line 10639</sub>
+<sub>`api.ogt` line 10610</sub>
 
 <a id="fn-dismissToast"></a>
 
@@ -2340,7 +2339,7 @@ fn dismissToast {
 }
 ```
 
-<sub>`api.ogt` line 10647</sub>
+<sub>`api.ogt` line 10618</sub>
 
 <a id="fn-navigate"></a>
 
@@ -2370,7 +2369,7 @@ fn navigate {
 }
 ```
 
-<sub>`api.ogt` line 10654</sub>
+<sub>`api.ogt` line 10625</sub>
 
 <a id="fn-back"></a>
 
@@ -2393,7 +2392,7 @@ fn back {
 }
 ```
 
-<sub>`api.ogt` line 10661</sub>
+<sub>`api.ogt` line 10632</sub>
 
 <a id="fn-setPlayers"></a>
 
@@ -2421,7 +2420,7 @@ fn setPlayers {
 }
 ```
 
-<sub>`api.ogt` line 10666</sub>
+<sub>`api.ogt` line 10637</sub>
 
 <a id="fn-focus"></a>
 
@@ -2449,7 +2448,7 @@ fn focus {
 }
 ```
 
-<sub>`api.ogt` line 10672</sub>
+<sub>`api.ogt` line 10643</sub>
 
 <a id="fn-a11y"></a>
 
@@ -2472,7 +2471,7 @@ fn a11y {
 }
 ```
 
-<sub>`api.ogt` line 10711</sub>
+<sub>`api.ogt` line 10682</sub>
 
 <a id="fn-setNavigation"></a>
 
@@ -2500,7 +2499,7 @@ fn setNavigation {
 }
 ```
 
-<sub>`api.ogt` line 10716</sub>
+<sub>`api.ogt` line 10687</sub>
 
 <a id="fn-memory"></a>
 
@@ -2530,7 +2529,7 @@ fn memory {
 }
 ```
 
-<sub>`api.ogt` line 10722</sub>
+<sub>`api.ogt` line 10693</sub>
 
 <a id="fn-remember"></a>
 
@@ -2560,7 +2559,7 @@ fn remember {
 }
 ```
 
-<sub>`api.ogt` line 10729</sub>
+<sub>`api.ogt` line 10700</sub>
 
 <a id="fn-tick"></a>
 
@@ -2583,7 +2582,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 10736</sub>
+<sub>`api.ogt` line 10707</sub>
 
 <a id="fn-counter"></a>
 
@@ -2615,7 +2614,7 @@ fn counter {
 }
 ```
 
-<sub>`api.ogt` line 10759</sub>
+<sub>`api.ogt` line 10730</sub>
 
 <a id="fn-burst"></a>
 
@@ -2643,7 +2642,7 @@ fn burst {
 }
 ```
 
-<sub>`api.ogt` line 10786</sub>
+<sub>`api.ogt` line 10757</sub>
 
 <a id="fn-shake"></a>
 
@@ -2671,7 +2670,7 @@ fn shake {
 }
 ```
 
-<sub>`api.ogt` line 10806</sub>
+<sub>`api.ogt` line 10777</sub>
 
 <a id="fn-screenTransition"></a>
 
@@ -2703,7 +2702,7 @@ fn screenTransition {
 }
 ```
 
-<sub>`api.ogt` line 10852</sub>
+<sub>`api.ogt` line 10823</sub>
 
 <a id="fn-previewViewport"></a>
 
@@ -2733,7 +2732,7 @@ fn previewViewport {
 }
 ```
 
-<sub>`api.ogt` line 10860</sub>
+<sub>`api.ogt` line 10831</sub>
 
 <a id="fn-mainMenu"></a>
 
@@ -2764,7 +2763,7 @@ fn mainMenu {
 }
 ```
 
-<sub>`api.ogt` line 11587</sub>
+<sub>`api.ogt` line 11558</sub>
 
 <a id="fn-pauseMenu"></a>
 
@@ -2795,7 +2794,7 @@ fn pauseMenu {
 }
 ```
 
-<sub>`api.ogt` line 11595</sub>
+<sub>`api.ogt` line 11566</sub>
 
 <a id="fn-settingsScreen"></a>
 
@@ -2826,7 +2825,7 @@ fn settingsScreen {
 }
 ```
 
-<sub>`api.ogt` line 11603</sub>
+<sub>`api.ogt` line 11574</sub>
 
 <a id="fn-platformerHud"></a>
 
@@ -2857,7 +2856,7 @@ fn platformerHud {
 }
 ```
 
-<sub>`api.ogt` line 11611</sub>
+<sub>`api.ogt` line 11582</sub>
 
 <a id="fn-shooterHud"></a>
 
@@ -2888,7 +2887,7 @@ fn shooterHud {
 }
 ```
 
-<sub>`api.ogt` line 11619</sub>
+<sub>`api.ogt` line 11590</sub>
 
 <a id="fn-puzzleHud"></a>
 
@@ -2919,7 +2918,7 @@ fn puzzleHud {
 }
 ```
 
-<sub>`api.ogt` line 11627</sub>
+<sub>`api.ogt` line 11598</sub>
 
 <a id="fn-idleHud"></a>
 
@@ -2950,7 +2949,7 @@ fn idleHud {
 }
 ```
 
-<sub>`api.ogt` line 11635</sub>
+<sub>`api.ogt` line 11606</sub>
 
 <a id="fn-racingHud"></a>
 
@@ -2981,7 +2980,7 @@ fn racingHud {
 }
 ```
 
-<sub>`api.ogt` line 11643</sub>
+<sub>`api.ogt` line 11614</sub>
 
 <a id="fn-cutscene"></a>
 
@@ -3012,7 +3011,7 @@ fn cutscene {
 }
 ```
 
-<sub>`api.ogt` line 11651</sub>
+<sub>`api.ogt` line 11622</sub>
 
 <a id="fn-shopScreen"></a>
 
@@ -3043,7 +3042,7 @@ fn shopScreen {
 }
 ```
 
-<sub>`api.ogt` line 11659</sub>
+<sub>`api.ogt` line 11630</sub>
 
 <a id="fn-inventoryScreen"></a>
 
@@ -3074,7 +3073,7 @@ fn inventoryScreen {
 }
 ```
 
-<sub>`api.ogt` line 11667</sub>
+<sub>`api.ogt` line 11638</sub>
 
 <a id="fn-levelSelect"></a>
 
@@ -3105,7 +3104,7 @@ fn levelSelect {
 }
 ```
 
-<sub>`api.ogt` line 11675</sub>
+<sub>`api.ogt` line 11646</sub>
 
 <a id="fn-resultsScreen"></a>
 
@@ -3136,7 +3135,7 @@ fn resultsScreen {
 }
 ```
 
-<sub>`api.ogt` line 11683</sub>
+<sub>`api.ogt` line 11654</sub>
 
 <a id="fn-leaderboardScreen"></a>
 
@@ -3167,7 +3166,7 @@ fn leaderboardScreen {
 }
 ```
 
-<sub>`api.ogt` line 11691</sub>
+<sub>`api.ogt` line 11662</sub>
 
 <a id="fn-tutorialOverlay"></a>
 
@@ -3198,7 +3197,7 @@ fn tutorialOverlay {
 }
 ```
 
-<sub>`api.ogt` line 11699</sub>
+<sub>`api.ogt` line 11670</sub>
 
 <a id="fn-loadingScreen"></a>
 
@@ -3229,7 +3228,7 @@ fn loadingScreen {
 }
 ```
 
-<sub>`api.ogt` line 11707</sub>
+<sub>`api.ogt` line 11678</sub>
 
 <a id="fn-confirmDialog"></a>
 
@@ -3260,7 +3259,7 @@ fn confirmDialog {
 }
 ```
 
-<sub>`api.ogt` line 11715</sub>
+<sub>`api.ogt` line 11686</sub>
 
 <a id="fn-alertDialog"></a>
 
@@ -3291,7 +3290,7 @@ fn alertDialog {
 }
 ```
 
-<sub>`api.ogt` line 11723</sub>
+<sub>`api.ogt` line 11694</sub>
 
 ## Types
 
@@ -3410,7 +3409,7 @@ A string: one of the variants below. The zero value is `"body"`.
 | `"body"` | The body font. |
 | `"display"` | The display font. |
 | `"mono"` | The monospaced font. |
-| `"rounded"` | The rounded font, for levels and scores (the design language's font-rounded). |
+| `"rounded"` | The rounded font, for levels and scores. |
 
 ```ogt
 enum FontRole {
@@ -3418,7 +3417,7 @@ enum FontRole {
   variant body "The body font."
   variant display "The display font."
   variant mono "The monospaced font."
-  variant rounded "The rounded font, for levels and scores (the design language's font-rounded)."
+  variant rounded "The rounded font, for levels and scores."
 }
 ```
 
@@ -3428,22 +3427,22 @@ enum FontRole {
 
 ### `ButtonVariant` (enum)
 
-Button looks, as the design language's buttons.
+Button roles: how the style draws each.
 
 A string: one of the variants below. The zero value is `"secondary"`.
 
 | Variant | Doc |
 |---|---|
 | `"secondary"` | A neutral fill (the default). |
-| `"primary"` | The amber action: one per screen. |
+| `"primary"` | The primary action: one per screen. |
 | `"quiet"` | Text until hovered. |
 | `"danger"` | A destructive action: danger ink on the danger tint. |
 
 ```ogt
 enum ButtonVariant {
-  doc "Button looks, as the design language's buttons."
+  doc "Button roles: how the style draws each."
   variant secondary "A neutral fill (the default)."
-  variant primary "The amber action: one per screen."
+  variant primary "The primary action: one per screen."
   variant quiet "Text until hovered."
   variant danger "A destructive action: danger ink on the danger tint."
 }
@@ -3503,24 +3502,24 @@ enum Scheme {
 
 ### `DensityMode` (enum)
 
-Control sizes: auto picks touch sizes on a coarse pointer or a play surface under 768 px, compact otherwise.
+Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise.
 
 A string: one of the variants below. The zero value is `"auto"`.
 
 | Variant | Doc |
 |---|---|
-| `"auto"` | Touch sizes on a coarse pointer or a narrow surface, compact otherwise. |
-| `"compact"` | Compact controls. |
-| `"comfortable"` | Comfortable controls. |
-| `"touch"` | Touch-sized controls. |
+| `"auto"` | Touch sizes on a coarse pointer or a narrow surface, mouse sizes otherwise. |
+| `"mouse"` | A mouse and keyboard: the tightest controls. |
+| `"pad"` | A gamepad across a room: larger controls, rows and gutters that read from a couch. |
+| `"touch"` | A finger: every control at least 44 CSS px. |
 
 ```ogt
 enum DensityMode {
-  doc "Control sizes: auto picks touch sizes on a coarse pointer or a play surface under 768 px, compact otherwise."
-  variant auto "Touch sizes on a coarse pointer or a narrow surface, compact otherwise."
-  variant compact "Compact controls."
-  variant comfortable "Comfortable controls."
-  variant touch "Touch-sized controls."
+  doc "Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise."
+  variant auto "Touch sizes on a coarse pointer or a narrow surface, mouse sizes otherwise."
+  variant mouse "A mouse and keyboard: the tightest controls."
+  variant pad "A gamepad across a room: larger controls, rows and gutters that read from a couch."
+  variant touch "A finger: every control at least 44 CSS px."
 }
 ```
 
@@ -3530,106 +3529,82 @@ enum DensityMode {
 
 ### `ThemeColor` (enum)
 
-A semantic colour of the design tokens (tokens.json `color`, in the current scheme).
+A colour role of the UI style in effect (the game's style, or the prototype style before it picks one).
 
-A string: one of the variants below. The zero value is `"accent"`.
+A string: one of the variants below. The zero value is `"backdrop"`.
 
 | Variant | Doc |
 |---|---|
-| `"accent"` | accent: the amber action colour. |
-| `"accentActive"` | accent-active. |
-| `"accentFg"` | accent-fg: ink on the accent. |
-| `"accentHover"` | accent-hover. |
-| `"accentInk"` | accent-ink: the accent as text. |
-| `"accentSoft"` | accent-soft: a translucent accent wash. |
-| `"bg"` | bg: the page. |
-| `"bgSubtle"` | bg-subtle. |
-| `"border"` | border. |
-| `"borderStrong"` | border-strong. |
-| `"danger"` | danger. |
-| `"fg"` | fg: the primary ink. |
-| `"fgInverse"` | fg-inverse. |
-| `"fgMuted"` | fg-muted. |
-| `"fgSubtle"` | fg-subtle: placeholders. |
-| `"fill"` | fill: neutral control fills. |
-| `"fillStrong"` | fill-strong. |
-| `"focus"` | focus: the focus ring. |
-| `"info"` | info. |
-| `"materialControl"` | material-control. |
-| `"materialControlHover"` | material-control-hover. |
-| `"materialEdge"` | material-edge. |
-| `"materialGlow"` | material-glow. |
-| `"materialRegular"` | material-regular. |
-| `"materialRimSoft"` | material-rim-soft. |
-| `"materialSheen"` | material-sheen. |
-| `"materialShine"` | material-shine. |
-| `"materialThick"` | material-thick. |
-| `"materialThin"` | material-thin. |
-| `"scrim"` | scrim. |
-| `"shadow"` | shadow. |
-| `"sheen"` | sheen. |
-| `"stage"` | stage: the game stage. |
-| `"stageBorder"` | stage-border. |
-| `"stageDanger"` | stage-danger. |
-| `"stageFg"` | stage-fg. |
-| `"stageMuted"` | stage-muted. |
-| `"stageRaised"` | stage-raised. |
-| `"stageSurface"` | stage-surface. |
-| `"success"` | success. |
-| `"surface"` | surface: cards and panels. |
-| `"surfaceHover"` | surface-hover. |
-| `"surfaceRaised"` | surface-raised: tooltips. |
-| `"thumb"` | thumb: slider and switch thumbs. |
-| `"warn"` | warn. |
+| `"backdrop"` | The screen behind the UI where nothing else is. |
+| `"well"` | A recessed ground inside a panel: wells, map frames, empty slots. |
+| `"panel"` | Panels and cards. |
+| `"panelHover"` | A panel under the pointer. |
+| `"panelRaised"` | Dialogs, menus and tooltips. |
+| `"line"` | Hairlines and frames. |
+| `"lineStrong"` | Stronger frames: high contrast, map borders, scrollbars. |
+| `"ink"` | The main ink. |
+| `"inkMuted"` | Secondary ink: captions, keys, inactive tabs. |
+| `"inkFaint"` | The faintest ink that still reads: placeholders, hints. |
+| `"inkInverse"` | Ink on a ground of ink (a selected chip). |
+| `"control"` | Neutral control fills: secondary buttons, tracks, fields. |
+| `"controlStrong"` | A neutral control hovered or pressed; selection. |
+| `"primary"` | The one directed action: primary buttons, a slider's fill, a switch that is on, the caret. |
+| `"primaryHover"` | primary hovered. |
+| `"primaryActive"` | primary pressed. |
+| `"onPrimary"` | Ink on primary. |
+| `"primarySoft"` | A translucent wash of primary. |
+| `"highlight"` | Emphasised ink: a speaker's name, a price, a link, the player's map dot. |
+| `"focus"` | The focus ring of key and pad navigation. |
+| `"knob"` | Slider and switch knobs. |
+| `"hud"` | HUD capsules over the game (scores, timers, toasts). |
+| `"scrim"` | Behind a dialog. |
+| `"shadow"` | Drop shadows. |
+| `"sheen"` | A skeleton's passing sheen. |
+| `"success"` | Success. |
+| `"warn"` | Warnings. |
+| `"danger"` | Danger and errors. |
+| `"info"` | Information. |
+| `"health"` | A health meter. |
+| `"mana"` | A mana meter. |
+| `"xp"` | An experience meter. |
+| `"gold"` | Currency: coins, gold, prices that can be paid. |
 
 ```ogt
 enum ThemeColor {
-  doc "A semantic colour of the design tokens (tokens.json `color`, in the current scheme)."
-  variant accent "accent: the amber action colour."
-  variant accentActive "accent-active."
-  variant accentFg "accent-fg: ink on the accent."
-  variant accentHover "accent-hover."
-  variant accentInk "accent-ink: the accent as text."
-  variant accentSoft "accent-soft: a translucent accent wash."
-  variant bg "bg: the page."
-  variant bgSubtle "bg-subtle."
-  variant border "border."
-  variant borderStrong "border-strong."
-  variant danger "danger."
-  variant fg "fg: the primary ink."
-  variant fgInverse "fg-inverse."
-  variant fgMuted "fg-muted."
-  variant fgSubtle "fg-subtle: placeholders."
-  variant fill "fill: neutral control fills."
-  variant fillStrong "fill-strong."
-  variant focus "focus: the focus ring."
-  variant info "info."
-  variant materialControl "material-control."
-  variant materialControlHover "material-control-hover."
-  variant materialEdge "material-edge."
-  variant materialGlow "material-glow."
-  variant materialRegular "material-regular."
-  variant materialRimSoft "material-rim-soft."
-  variant materialSheen "material-sheen."
-  variant materialShine "material-shine."
-  variant materialThick "material-thick."
-  variant materialThin "material-thin."
-  variant scrim "scrim."
-  variant shadow "shadow."
-  variant sheen "sheen."
-  variant stage "stage: the game stage."
-  variant stageBorder "stage-border."
-  variant stageDanger "stage-danger."
-  variant stageFg "stage-fg."
-  variant stageMuted "stage-muted."
-  variant stageRaised "stage-raised."
-  variant stageSurface "stage-surface."
-  variant success "success."
-  variant surface "surface: cards and panels."
-  variant surfaceHover "surface-hover."
-  variant surfaceRaised "surface-raised: tooltips."
-  variant thumb "thumb: slider and switch thumbs."
-  variant warn "warn."
+  doc "A colour role of the UI style in effect (the game's style, or the prototype style before it picks one)."
+  variant backdrop "The screen behind the UI where nothing else is."
+  variant well "A recessed ground inside a panel: wells, map frames, empty slots."
+  variant panel "Panels and cards."
+  variant panelHover "A panel under the pointer."
+  variant panelRaised "Dialogs, menus and tooltips."
+  variant line "Hairlines and frames."
+  variant lineStrong "Stronger frames: high contrast, map borders, scrollbars."
+  variant ink "The main ink."
+  variant inkMuted "Secondary ink: captions, keys, inactive tabs."
+  variant inkFaint "The faintest ink that still reads: placeholders, hints."
+  variant inkInverse "Ink on a ground of ink (a selected chip)."
+  variant control "Neutral control fills: secondary buttons, tracks, fields."
+  variant controlStrong "A neutral control hovered or pressed; selection."
+  variant primary "The one directed action: primary buttons, a slider's fill, a switch that is on, the caret."
+  variant primaryHover "primary hovered."
+  variant primaryActive "primary pressed."
+  variant onPrimary "Ink on primary."
+  variant primarySoft "A translucent wash of primary."
+  variant highlight "Emphasised ink: a speaker's name, a price, a link, the player's map dot."
+  variant focus "The focus ring of key and pad navigation."
+  variant knob "Slider and switch knobs."
+  variant hud "HUD capsules over the game (scores, timers, toasts)."
+  variant scrim "Behind a dialog."
+  variant shadow "Drop shadows."
+  variant sheen "A skeleton's passing sheen."
+  variant success "Success."
+  variant warn "Warnings."
+  variant danger "Danger and errors."
+  variant info "Information."
+  variant health "A health meter."
+  variant mana "A mana meter."
+  variant xp "An experience meter."
+  variant gold "Currency: coins, gold, prices that can be paid."
 }
 ```
 
@@ -3639,62 +3614,62 @@ enum ThemeColor {
 
 ### `TypeStepName` (enum)
 
-A step of the type ramp (tokens.json `font.scale`).
+A step of the style's type ramp.
 
 A string: one of the variants below. The zero value is `"body"`.
 
 | Variant | Doc |
 |---|---|
-| `"body"` | text-body, the default. |
-| `"xs"` | text-xs. |
-| `"meta"` | text-meta. |
-| `"caption"` | text-caption. |
-| `"sm"` | text-sm. |
-| `"reading"` | text-reading. |
-| `"base"` | text-base. |
-| `"lg"` | text-lg. |
-| `"xl"` | text-xl. |
-| `"xl2"` | text-2xl. |
-| `"xl3"` | text-3xl. |
-| `"xl4"` | text-4xl. |
-| `"xl5"` | text-5xl. |
-| `"xl6"` | text-6xl. |
-| `"xl7"` | text-7xl. |
-| `"xl8"` | text-8xl. |
-| `"displaySm"` | text-display-sm. |
-| `"displayMd"` | text-display-md. |
-| `"displayLg"` | text-display-lg. |
-| `"displayXl"` | text-display-xl. |
-| `"displayXl2"` | text-display-2xl. |
+| `"body"` | The default step. |
+| `"xs"` | A step of the ramp. |
+| `"meta"` | A step of the ramp. |
+| `"caption"` | A step of the ramp. |
+| `"sm"` | A step of the ramp. |
+| `"reading"` | A step of the ramp. |
+| `"base"` | A step of the ramp. |
+| `"lg"` | A step of the ramp. |
+| `"xl"` | A step of the ramp. |
+| `"xl2"` | A step of the ramp. |
+| `"xl3"` | A step of the ramp. |
+| `"xl4"` | A step of the ramp. |
+| `"xl5"` | A step of the ramp. |
+| `"xl6"` | A step of the ramp. |
+| `"xl7"` | A step of the ramp. |
+| `"xl8"` | A step of the ramp. |
+| `"displaySm"` | A step of the ramp. |
+| `"displayMd"` | A step of the ramp. |
+| `"displayLg"` | A step of the ramp. |
+| `"displayXl"` | A step of the ramp. |
+| `"displayXl2"` | A step of the ramp. |
 
 ```ogt
 enum TypeStepName {
-  doc "A step of the type ramp (tokens.json `font.scale`)."
-  variant body "text-body, the default."
-  variant xs "text-xs."
-  variant meta "text-meta."
-  variant caption "text-caption."
-  variant sm "text-sm."
-  variant reading "text-reading."
-  variant base "text-base."
-  variant lg "text-lg."
-  variant xl "text-xl."
-  variant xl2 "text-2xl."
-  variant xl3 "text-3xl."
-  variant xl4 "text-4xl."
-  variant xl5 "text-5xl."
-  variant xl6 "text-6xl."
-  variant xl7 "text-7xl."
-  variant xl8 "text-8xl."
-  variant displaySm "text-display-sm."
-  variant displayMd "text-display-md."
-  variant displayLg "text-display-lg."
-  variant displayXl "text-display-xl."
-  variant displayXl2 "text-display-2xl."
+  doc "A step of the style's type ramp."
+  variant body "The default step."
+  variant xs "A step of the ramp."
+  variant meta "A step of the ramp."
+  variant caption "A step of the ramp."
+  variant sm "A step of the ramp."
+  variant reading "A step of the ramp."
+  variant base "A step of the ramp."
+  variant lg "A step of the ramp."
+  variant xl "A step of the ramp."
+  variant xl2 "A step of the ramp."
+  variant xl3 "A step of the ramp."
+  variant xl4 "A step of the ramp."
+  variant xl5 "A step of the ramp."
+  variant xl6 "A step of the ramp."
+  variant xl7 "A step of the ramp."
+  variant xl8 "A step of the ramp."
+  variant displaySm "A step of the ramp."
+  variant displayMd "A step of the ramp."
+  variant displayLg "A step of the ramp."
+  variant displayXl "A step of the ramp."
+  variant displayXl2 "A step of the ramp."
 }
 ```
 
-<sub>`api.ogt` line 9248</sub>
+<sub>`api.ogt` line 9236</sub>
 
 <a id="type-SizeRange"></a>
 
@@ -3721,7 +3696,7 @@ struct SizeRange {
 }
 ```
 
-<sub>`api.ogt` line 9273</sub>
+<sub>`api.ogt` line 9261</sub>
 
 <a id="type-FixedSize"></a>
 
@@ -3742,7 +3717,7 @@ struct FixedSize {
 }
 ```
 
-<sub>`api.ogt` line 9285</sub>
+<sub>`api.ogt` line 9273</sub>
 
 <a id="type-PercentSize"></a>
 
@@ -3763,7 +3738,7 @@ struct PercentSize {
 }
 ```
 
-<sub>`api.ogt` line 9292</sub>
+<sub>`api.ogt` line 9280</sub>
 
 <a id="type-Size"></a>
 
@@ -3791,7 +3766,7 @@ union Size {
 }
 ```
 
-<sub>`api.ogt` line 9299</sub>
+<sub>`api.ogt` line 9287</sub>
 
 <a id="type-Insets"></a>
 
@@ -3824,7 +3799,7 @@ struct Insets {
 }
 ```
 
-<sub>`api.ogt` line 9308</sub>
+<sub>`api.ogt` line 9296</sub>
 
 <a id="type-Paint"></a>
 
@@ -3854,7 +3829,7 @@ struct Paint {
 }
 ```
 
-<sub>`api.ogt` line 9324</sub>
+<sub>`api.ogt` line 9312</sub>
 
 <a id="type-ElementDesc"></a>
 
@@ -3910,7 +3885,7 @@ struct ElementDesc {
 }
 ```
 
-<sub>`api.ogt` line 9336</sub>
+<sub>`api.ogt` line 9324</sub>
 
 <a id="type-LabelDesc"></a>
 
@@ -3923,7 +3898,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `step` | `TypeStepName \| null` | `null` | — | — | — | The type step; null is body. |
-| `color` | `Paint \| null` | `null` | — | — | — | The ink; null is fg. |
+| `color` | `Paint \| null` | `null` | — | — | — | The ink; null is ink. |
 | `align` | `TextAlign` | `"start"` | — | — | — | How the lines align. |
 | `nowrap` | `boolean` | `false` | — | — | — | Keep to one line (breaking only at `\n`). |
 | `width` | `Size \| null` | `null` | — | — | — | Its width; null fits the text. |
@@ -3937,7 +3912,7 @@ struct LabelDesc {
   doc "How a label draws its text."
   desc true
   field step Option.TypeStepName "The type step; null is body."
-  field color Option.Paint "The ink; null is fg."
+  field color Option.Paint "The ink; null is ink."
   field align TextAlign "How the lines align."
   field nowrap bool "Keep to one line (breaking only at `\\n`)."
   field width Option.Size "Its width; null fits the text."
@@ -3948,7 +3923,7 @@ struct LabelDesc {
 }
 ```
 
-<sub>`api.ogt` line 9362</sub>
+<sub>`api.ogt` line 9350</sub>
 
 <a id="type-ButtonDesc"></a>
 
@@ -3978,13 +3953,13 @@ struct ButtonDesc {
 }
 ```
 
-<sub>`api.ogt` line 9376</sub>
+<sub>`api.ogt` line 9364</sub>
 
 <a id="type-PanelDesc"></a>
 
 ### `PanelDesc` (desc struct)
 
-A card: surface, the card radius, padded and spaced by the tokens.
+A card: panel, the panel radius, padded and spaced by the style.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -3997,11 +3972,11 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `gap` | `number \| null` | `null` | — | — | — | Space between children; null is space.md. |
 | `align` | `Align` | `"start"` | — | — | — | Where children sit along the main axis. |
 | `cross` | `Cross` | `"start"` | — | — | — | Where children sit across it. |
-| `background` | `Paint \| null` | `null` | — | — | — | Its fill; null is surface. |
+| `background` | `Paint \| null` | `null` | — | — | — | Its fill; null is panel. |
 
 ```ogt
 struct PanelDesc {
-  doc "A card: surface, the card radius, padded and spaced by the tokens."
+  doc "A card: panel, the panel radius, padded and spaced by the style."
   desc true
   field row bool "Lay children left to right (the default is top to bottom)."
   field width Option.Size "Its width; null fits the content."
@@ -4010,11 +3985,11 @@ struct PanelDesc {
   field gap Option.f32 "Space between children; null is space.md."
   field align Align "Where children sit along the main axis."
   field cross Cross "Where children sit across it."
-  field background Option.Paint "Its fill; null is surface."
+  field background Option.Paint "Its fill; null is panel."
 }
 ```
 
-<sub>`api.ogt` line 9386</sub>
+<sub>`api.ogt` line 9374</sub>
 
 <a id="type-ScrollAxes"></a>
 
@@ -4039,7 +4014,7 @@ enum ScrollAxes {
 }
 ```
 
-<sub>`api.ogt` line 9399</sub>
+<sub>`api.ogt` line 9387</sub>
 
 <a id="type-ScrollDesc"></a>
 
@@ -4071,7 +4046,7 @@ struct ScrollDesc {
 }
 ```
 
-<sub>`api.ogt` line 9406</sub>
+<sub>`api.ogt` line 9394</sub>
 
 <a id="type-ImageDesc"></a>
 
@@ -4107,7 +4082,7 @@ struct ImageDesc {
 }
 ```
 
-<sub>`api.ogt` line 9418</sub>
+<sub>`api.ogt` line 9406</sub>
 
 <a id="type-ZoomViewDesc"></a>
 
@@ -4149,7 +4124,7 @@ struct ZoomViewDesc {
 }
 ```
 
-<sub>`api.ogt` line 9432</sub>
+<sub>`api.ogt` line 9420</sub>
 
 <a id="type-ZoomResult"></a>
 
@@ -4172,7 +4147,7 @@ struct ZoomResult {
 }
 ```
 
-<sub>`api.ogt` line 9451</sub>
+<sub>`api.ogt` line 9439</sub>
 
 <a id="type-ProgressDesc"></a>
 
@@ -4194,7 +4169,7 @@ struct ProgressDesc {
 }
 ```
 
-<sub>`api.ogt` line 9458</sub>
+<sub>`api.ogt` line 9446</sub>
 
 <a id="type-SliderDesc"></a>
 
@@ -4224,7 +4199,7 @@ struct SliderDesc {
 }
 ```
 
-<sub>`api.ogt` line 9464</sub>
+<sub>`api.ogt` line 9452</sub>
 
 <a id="type-FieldDesc"></a>
 
@@ -4250,7 +4225,7 @@ struct FieldDesc {
 }
 ```
 
-<sub>`api.ogt` line 9475</sub>
+<sub>`api.ogt` line 9463</sub>
 
 <a id="type-TextAreaDesc"></a>
 
@@ -4278,7 +4253,7 @@ struct TextAreaDesc {
 }
 ```
 
-<sub>`api.ogt` line 9483</sub>
+<sub>`api.ogt` line 9471</sub>
 
 <a id="type-Response"></a>
 
@@ -4313,7 +4288,7 @@ struct Response {
 }
 ```
 
-<sub>`api.ogt` line 9492</sub>
+<sub>`api.ogt` line 9480</sub>
 
 <a id="type-SliderResult"></a>
 
@@ -4334,7 +4309,7 @@ struct SliderResult {
 }
 ```
 
-<sub>`api.ogt` line 9505</sub>
+<sub>`api.ogt` line 9493</sub>
 
 <a id="type-ToggleResult"></a>
 
@@ -4355,7 +4330,7 @@ struct ToggleResult {
 }
 ```
 
-<sub>`api.ogt` line 9511</sub>
+<sub>`api.ogt` line 9499</sub>
 
 <a id="type-FieldResult"></a>
 
@@ -4376,7 +4351,7 @@ struct FieldResult {
 }
 ```
 
-<sub>`api.ogt` line 9517</sub>
+<sub>`api.ogt` line 9505</sub>
 
 <a id="type-Viewport"></a>
 
@@ -4431,13 +4406,13 @@ struct Viewport {
 }
 ```
 
-<sub>`api.ogt` line 9523</sub>
+<sub>`api.ogt` line 9511</sub>
 
 <a id="type-UiDesc"></a>
 
 ### `UiDesc` (desc struct)
 
-How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it.
+How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -4451,18 +4426,17 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `roundedFont` | `Font \| null` | `null` | — | — | — | The rounded font (levels and scores); null uses the display font, then the body font. |
 | `fallbackFonts` | `readonly Font[]` | `[]` | — | — | — | Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole. A text mixing scripts takes each run from the first font that has it (the role's for its Latin, a fallback for its CJK or Arabic), one label in several fonts. |
 | `contrast` | `Contrast` | `"standard"` | — | — | — | Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast). |
-| `accentHue` | `HueName \| null` | `null` | — | — | — | A token hue as the game's accent (its hover, active, ink and focus tones derived as the tokens derive amber's); null keeps amber. |
-| `accentColor` | `Color \| null` | `null` | — | — | — | An sRGB colour as the game's accent, when no hue is given. |
+| `primaryColor` | `Color \| null` | `null` | — | — | — | An sRGB colour as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's. |
 | `reducedMotion` | `boolean` | `false` | — | — | — | Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion). |
-| `reducedTransparency` | `boolean` | `false` | — | — | — | Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over bg and the translucent fills (fill, fillStrong, accentSoft, the material grounds) the opaque colours they make over surface. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on. |
+| `reducedTransparency` | `boolean` | `false` | — | — | — | Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on. |
 | `icons` | `IconAtlasDesc \| null` | `null` | — | — | — | The icon atlas og.ui.icon draws from; null takes the skin's. |
 | `toastAnchor` | `Anchor \| null` | `null` | — | — | — | Where toasts stack; null is the bottom centre. |
-| `skin` | `Skin \| null` | `null` | — | — | — | A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the token look (fonts, icons and an accent given here still win); null is the platform tokens. |
+| `skin` | `Skin \| null` | `null` | — | — | — | A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style. |
 | `sounds` | `UiSounds \| null` | `null` | — | — | — | Sounds for UI events (they win over the skin's). |
 
 ```ogt
 struct UiDesc {
-  doc "How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it."
+  doc "How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it."
   desc true
   field scheme Scheme "The palette."
   field density DensityMode "The control sizes."
@@ -4472,18 +4446,17 @@ struct UiDesc {
   field roundedFont Option.Font "The rounded font (levels and scores); null uses the display font, then the body font."
   field fallbackFonts List.Font "Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole. A text mixing scripts takes each run from the first font that has it (the role's for its Latin, a fallback for its CJK or Arabic), one label in several fonts."
   field contrast Contrast "Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast)."
-  field accentHue Option.HueName "A token hue as the game's accent (its hover, active, ink and focus tones derived as the tokens derive amber's); null keeps amber."
-  field accentColor Option.Color "An sRGB colour as the game's accent, when no hue is given."
+  field primaryColor Option.Color "An sRGB colour as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's."
   field reducedMotion bool "Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion)."
-  field reducedTransparency bool "Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over bg and the translucent fills (fill, fillStrong, accentSoft, the material grounds) the opaque colours they make over surface. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on."
+  field reducedTransparency bool "Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on."
   field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from; null takes the skin's."
   field toastAnchor Option.Anchor "Where toasts stack; null is the bottom centre."
-  field skin Option.Skin "A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the token look (fonts, icons and an accent given here still win); null is the platform tokens."
+  field skin Option.Skin "A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style."
   field sounds Option.UiSounds "Sounds for UI events (they win over the skin's)."
 }
 ```
 
-<sub>`api.ogt` line 9554</sub>
+<sub>`api.ogt` line 9542</sub>
 
 <a id="type-UiSounds"></a>
 
@@ -4515,7 +4488,7 @@ struct UiSounds {
 }
 ```
 
-<sub>`api.ogt` line 9575</sub>
+<sub>`api.ogt` line 9562</sub>
 
 <a id="type-SkinPart"></a>
 
@@ -4550,7 +4523,7 @@ enum SkinPart {
 }
 ```
 
-<sub>`api.ogt` line 9586</sub>
+<sub>`api.ogt` line 9573</sub>
 
 <a id="type-TypeStep"></a>
 
@@ -4581,7 +4554,7 @@ struct TypeStep {
 }
 ```
 
-<sub>`api.ogt` line 9598</sub>
+<sub>`api.ogt` line 9585</sub>
 
 <a id="type-ControlSizes"></a>
 
@@ -4591,9 +4564,9 @@ The control, row and header heights and the gutter of the density in effect.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `controlSm` | `number` | `0` | — | `cssPx` | — | h-control-sm. |
-| `controlMd` | `number` | `0` | — | `cssPx` | — | h-control-md. |
-| `controlLg` | `number` | `0` | — | `cssPx` | — | h-control-lg. |
+| `controlSm` | `number` | `0` | — | `cssPx` | — | A small control's height. |
+| `controlMd` | `number` | `0` | — | `cssPx` | — | A control's height. |
+| `controlLg` | `number` | `0` | — | `cssPx` | — | A large control's height. |
 | `gutter` | `number` | `0` | — | `cssPx` | — | The gutter. |
 | `header` | `number` | `0` | — | `cssPx` | — | The header height. |
 | `row` | `number` | `0` | — | `cssPx` | — | The row height. |
@@ -4602,13 +4575,13 @@ The control, row and header heights and the gutter of the density in effect.
 ```ogt
 struct ControlSizes {
   doc "The control, row and header heights and the gutter of the density in effect."
-  field controlSm f32 "h-control-sm." {
+  field controlSm f32 "A small control's height." {
     unit cssPx
   }
-  field controlMd f32 "h-control-md." {
+  field controlMd f32 "A control's height." {
     unit cssPx
   }
-  field controlLg f32 "h-control-lg." {
+  field controlLg f32 "A large control's height." {
     unit cssPx
   }
   field gutter f32 "The gutter." {
@@ -4626,46 +4599,46 @@ struct ControlSizes {
 }
 ```
 
-<sub>`api.ogt` line 9612</sub>
+<sub>`api.ogt` line 9599</sub>
 
 <a id="type-UiTheme"></a>
 
 ### `UiTheme` (struct)
 
-The design tokens the UI draws with, read-only.
+The style values the UI draws with, read-only.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `scheme` | `Scheme` | `"dark"` | — | — | — | The palette in use. |
 | `palette` | `Readonly<Record<string, string>>` | `{}` | — | — | — | Each ThemeColor as `#rrggbb` or `#rrggbbaa` (sRGB as authored). |
 | `space` | `Readonly<Record<string, number>>` | `{}` | — | — | — | The spacing scale by name (xxs, xs, sm, md, lg, xl, xxl, xl3), in CSS pixels. |
-| `radius` | `Readonly<Record<string, number>>` | `{}` | — | — | — | The radius scale by name (control, field, block, card, panel, sheet, button), in CSS pixels. |
+| `radius` | `Readonly<Record<string, number>>` | `{}` | — | — | — | The corner radii by name (small, control, bar, panel), in CSS pixels. |
 | `typeRamp` | `Readonly<Record<string, TypeStep>>` | `{}` | — | — | — | Each TypeStepName's step. |
 | `sizes` | `ControlSizes` | `{ controlSm: 0, controlMd: 0, controlLg: 0, gutter: 0, header: 0, row: 0, section: 0 }` | — | — | — | The control sizes of the density in effect. |
 | `durationsMs` | `Readonly<Record<string, number>>` | `{}` | — | — | — | The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds. |
-| `skin` | `string` | `""` | — | — | — | The configured skin's name; empty for the platform tokens. |
+| `skin` | `string` | `""` | — | — | — | The configured skin's name; empty for the prototype style. |
 | `contrast` | `Contrast` | `"standard"` | — | — | — | The variant in effect: high when the game asked for it or the page prefers more contrast. |
 | `reducedMotion` | `boolean` | `false` | — | — | — | Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement. |
-| `reducedTransparency` | `boolean` | `false` | — | — | — | Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over the surface (the scrim over bg) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too. |
+| `reducedTransparency` | `boolean` | `false` | — | — | — | Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too. |
 
 ```ogt
 struct UiTheme {
-  doc "The design tokens the UI draws with, read-only."
+  doc "The style values the UI draws with, read-only."
   field scheme Scheme "The palette in use."
   field palette Map.String "Each ThemeColor as `#rrggbb` or `#rrggbbaa` (sRGB as authored)."
   field space Map.f32 "The spacing scale by name (xxs, xs, sm, md, lg, xl, xxl, xl3), in CSS pixels."
-  field radius Map.f32 "The radius scale by name (control, field, block, card, panel, sheet, button), in CSS pixels."
+  field radius Map.f32 "The corner radii by name (small, control, bar, panel), in CSS pixels."
   field typeRamp Map.TypeStep "Each TypeStepName's step."
   field sizes ControlSizes "The control sizes of the density in effect."
   field durationsMs Map.f32 "The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds."
-  field skin String "The configured skin's name; empty for the platform tokens."
+  field skin String "The configured skin's name; empty for the prototype style."
   field contrast Contrast "The variant in effect: high when the game asked for it or the page prefers more contrast."
   field reducedMotion bool "Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement."
-  field reducedTransparency bool "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over the surface (the scrim over bg) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
+  field reducedTransparency bool "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
 }
 ```
 
-<sub>`api.ogt` line 9637</sub>
+<sub>`api.ogt` line 9624</sub>
 
 <a id="type-UiBuild"></a>
 
@@ -4685,7 +4658,7 @@ callback UiBuild {
 }
 ```
 
-<sub>`api.ogt` line 9652</sub>
+<sub>`api.ogt` line 9639</sub>
 
 <a id="type-RichTextDesc"></a>
 
@@ -4698,7 +4671,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `step` | `TypeStepName \| null` | `null` | — | — | — | The type step; null is body. |
-| `color` | `Paint \| null` | `null` | — | — | — | The ink; null is fg. |
+| `color` | `Paint \| null` | `null` | — | — | — | The ink; null is ink. |
 | `align` | `TextAlign` | `"start"` | — | — | — | How the lines align. |
 | `nowrap` | `boolean` | `false` | — | — | — | Keep to one line (breaking only at `\n`). |
 | `width` | `Size \| null` | `null` | — | — | — | Its width; null fits the text. |
@@ -4709,7 +4682,7 @@ struct RichTextDesc {
   doc "How a rich text paragraph draws: its defaults, which its markup's spans override."
   desc true
   field step Option.TypeStepName "The type step; null is body."
-  field color Option.Paint "The ink; null is fg."
+  field color Option.Paint "The ink; null is ink."
   field align TextAlign "How the lines align."
   field nowrap bool "Keep to one line (breaking only at `\\n`)."
   field width Option.Size "Its width; null fits the text."
@@ -4717,7 +4690,7 @@ struct RichTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 9737</sub>
+<sub>`api.ogt` line 9724</sub>
 
 <a id="type-RichTextResult"></a>
 
@@ -4740,7 +4713,7 @@ struct RichTextResult {
 }
 ```
 
-<sub>`api.ogt` line 9748</sub>
+<sub>`api.ogt` line 9735</sub>
 
 <a id="type-Anchor"></a>
 
@@ -4777,7 +4750,7 @@ enum Anchor {
 }
 ```
 
-<sub>`api.ogt` line 9849</sub>
+<sub>`api.ogt` line 9836</sub>
 
 <a id="type-TransitionKind"></a>
 
@@ -4810,40 +4783,40 @@ enum TransitionKind {
 }
 ```
 
-<sub>`api.ogt` line 9862</sub>
+<sub>`api.ogt` line 9849</sub>
 
 <a id="type-Tone"></a>
 
 ### `Tone` (enum)
 
-A status tone, as the design language's badges and toasts.
+A status tone of badges, toasts and map markers.
 
 A string: one of the variants below. The zero value is `"neutral"`.
 
 | Variant | Doc |
 |---|---|
-| `"neutral"` | Neutral: fill and muted ink. |
+| `"neutral"` | Neutral: control fill and muted ink. |
 | `"success"` | Success. |
 | `"warn"` | Warning (orange). |
 | `"danger"` | Danger. |
 | `"info"` | Information. |
-| `"accent"` | Amber identity: the soft accent and amber ink. |
-| `"inverse"` | Neutral emphasis: fg fill, inverse ink. |
+| `"primary"` | The game's identity: the primary's soft wash and highlight ink. |
+| `"inverse"` | Neutral emphasis: ink fill, inverse ink. |
 
 ```ogt
 enum Tone {
-  doc "A status tone, as the design language's badges and toasts."
-  variant neutral "Neutral: fill and muted ink."
+  doc "A status tone of badges, toasts and map markers."
+  variant neutral "Neutral: control fill and muted ink."
   variant success "Success."
   variant warn "Warning (orange)."
   variant danger "Danger."
   variant info "Information."
-  variant accent "Amber identity: the soft accent and amber ink."
-  variant inverse "Neutral emphasis: fg fill, inverse ink."
+  variant primary "The game's identity: the primary's soft wash and highlight ink."
+  variant inverse "Neutral emphasis: ink fill, inverse ink."
 }
 ```
 
-<sub>`api.ogt` line 9873</sub>
+<sub>`api.ogt` line 9860</sub>
 
 <a id="type-MeterKind"></a>
 
@@ -4855,22 +4828,22 @@ A string: one of the variants below. The zero value is `"health"`.
 
 | Variant | Doc |
 |---|---|
-| `"health"` | Green, warning orange under 30 %, danger red under 15 %. |
-| `"mana"` | The blue hue. |
-| `"xp"` | The purple hue. |
-| `"accent"` | The accent. |
+| `"health"` | health; warn under 30 %, danger under 15 %. |
+| `"mana"` | mana. |
+| `"xp"` | xp. |
+| `"primary"` | primary. |
 
 ```ogt
 enum MeterKind {
   doc "What a meter measures, which sets its colour."
-  variant health "Green, warning orange under 30 %, danger red under 15 %."
-  variant mana "The blue hue."
-  variant xp "The purple hue."
-  variant accent "The accent."
+  variant health "health; warn under 30 %, danger under 15 %."
+  variant mana "mana."
+  variant xp "xp."
+  variant primary "primary."
 }
 ```
 
-<sub>`api.ogt` line 9884</sub>
+<sub>`api.ogt` line 9871</sub>
 
 <a id="type-Breakpoint"></a>
 
@@ -4897,73 +4870,30 @@ enum Breakpoint {
 }
 ```
 
-<sub>`api.ogt` line 9892</sub>
+<sub>`api.ogt` line 9879</sub>
 
 <a id="type-Contrast"></a>
 
 ### `Contrast` (enum)
 
-The theme variant: high contrast remaps muted inks, fills and borders to stronger tokens and outlines every control (no new colour).
+The theme variant: high contrast remaps muted inks, fills and lines to the style's stronger ones and outlines every control (no new colour).
 
 A string: one of the variants below. The zero value is `"standard"`.
 
 | Variant | Doc |
 |---|---|
-| `"standard"` | The token palette as it is. |
+| `"standard"` | The style's palette as it is. |
 | `"high"` | Stronger inks, fills and edges. |
 
 ```ogt
 enum Contrast {
-  doc "The theme variant: high contrast remaps muted inks, fills and borders to stronger tokens and outlines every control (no new colour)."
-  variant standard "The token palette as it is."
+  doc "The theme variant: high contrast remaps muted inks, fills and lines to the style's stronger ones and outlines every control (no new colour)."
+  variant standard "The style's palette as it is."
   variant high "Stronger inks, fills and edges."
 }
 ```
 
-<sub>`api.ogt` line 9900</sub>
-
-<a id="type-HueName"></a>
-
-### `HueName` (enum)
-
-One of the twelve category hues of the tokens, for a game's accent.
-
-A string: one of the variants below. The zero value is `"red"`.
-
-| Variant | Doc |
-|---|---|
-| `"red"` | hue-red. |
-| `"orange"` | hue-orange. |
-| `"yellow"` | hue-yellow. |
-| `"green"` | hue-green. |
-| `"mint"` | hue-mint. |
-| `"teal"` | hue-teal. |
-| `"cyan"` | hue-cyan. |
-| `"blue"` | hue-blue. |
-| `"indigo"` | hue-indigo. |
-| `"purple"` | hue-purple. |
-| `"pink"` | hue-pink. |
-| `"brown"` | hue-brown. |
-
-```ogt
-enum HueName {
-  doc "One of the twelve category hues of the tokens, for a game's accent."
-  variant red "hue-red."
-  variant orange "hue-orange."
-  variant yellow "hue-yellow."
-  variant green "hue-green."
-  variant mint "hue-mint."
-  variant teal "hue-teal."
-  variant cyan "hue-cyan."
-  variant blue "hue-blue."
-  variant indigo "hue-indigo."
-  variant purple "hue-purple."
-  variant pink "hue-pink."
-  variant brown "hue-brown."
-}
-```
-
-<sub>`api.ogt` line 9906</sub>
+<sub>`api.ogt` line 9887</sub>
 
 <a id="type-NavIntent"></a>
 
@@ -4998,7 +4928,7 @@ enum NavIntent {
 }
 ```
 
-<sub>`api.ogt` line 9922</sub>
+<sub>`api.ogt` line 9893</sub>
 
 <a id="type-UiRect"></a>
 
@@ -5031,7 +4961,7 @@ struct UiRect {
 }
 ```
 
-<sub>`api.ogt` line 9934</sub>
+<sub>`api.ogt` line 9905</sub>
 
 <a id="type-IconAtlasDesc"></a>
 
@@ -5067,7 +4997,7 @@ struct IconAtlasDesc {
 }
 ```
 
-<sub>`api.ogt` line 9950</sub>
+<sub>`api.ogt` line 9921</sub>
 
 <a id="type-AnchorDesc"></a>
 
@@ -5127,13 +5057,13 @@ struct AnchorDesc {
 }
 ```
 
-<sub>`api.ogt` line 9966</sub>
+<sub>`api.ogt` line 9937</sub>
 
 <a id="type-TransitionDesc"></a>
 
 ### `TransitionDesc` (desc struct)
 
-How a transition moves, timed in ticks from the motion tokens.
+How a transition moves, timed in ticks from the style's motion.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -5146,7 +5076,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct TransitionDesc {
-  doc "How a transition moves, timed in ticks from the motion tokens."
+  doc "How a transition moves, timed in ticks from the style's motion."
   desc true
   field kind TransitionKind "The movement."
   field durationMs f32 "How long entering and leaving take; 0 is motion.duration.base (240 ms)." {
@@ -5161,7 +5091,7 @@ struct TransitionDesc {
 }
 ```
 
-<sub>`api.ogt` line 9995</sub>
+<sub>`api.ogt` line 9966</sub>
 
 <a id="type-Presence"></a>
 
@@ -5188,7 +5118,7 @@ struct Presence {
 }
 ```
 
-<sub>`api.ogt` line 10010</sub>
+<sub>`api.ogt` line 9981</sub>
 
 <a id="type-ModalDesc"></a>
 
@@ -5222,7 +5152,7 @@ struct ModalDesc {
 }
 ```
 
-<sub>`api.ogt` line 10020</sub>
+<sub>`api.ogt` line 9991</sub>
 
 <a id="type-ModalResult"></a>
 
@@ -5243,7 +5173,7 @@ struct ModalResult {
 }
 ```
 
-<sub>`api.ogt` line 10032</sub>
+<sub>`api.ogt` line 10003</sub>
 
 <a id="type-SpotlightDesc"></a>
 
@@ -5268,7 +5198,7 @@ struct SpotlightDesc {
 }
 ```
 
-<sub>`api.ogt` line 10038</sub>
+<sub>`api.ogt` line 10009</sub>
 
 <a id="type-ListDesc"></a>
 
@@ -5286,7 +5216,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `width` | `Size \| null` | `null` | — | — | — | Its width; null fits. |
 | `height` | `Size \| null` | `null` | — | — | — | Its height (it scrolls inside); null grows. |
 | `padding` | `Insets` | `{ left: 0, top: 0, right: 0, bottom: 0 }` | — | — | — | Space inside. |
-| `selected` | `number \| null` | `null` | — | — | — | The selected row (fill-strong), for og.ui.list. |
+| `selected` | `number \| null` | `null` | — | — | — | The selected row (controlStrong), for og.ui.list. |
 
 ```ogt
 struct ListDesc {
@@ -5303,11 +5233,11 @@ struct ListDesc {
   field width Option.Size "Its width; null fits."
   field height Option.Size "Its height (it scrolls inside); null grows."
   field padding Insets "Space inside."
-  field selected Option.u32 "The selected row (fill-strong), for og.ui.list."
+  field selected Option.u32 "The selected row (controlStrong), for og.ui.list."
 }
 ```
 
-<sub>`api.ogt` line 10047</sub>
+<sub>`api.ogt` line 10018</sub>
 
 <a id="type-ListRange"></a>
 
@@ -5328,7 +5258,7 @@ struct ListRange {
 }
 ```
 
-<sub>`api.ogt` line 10064</sub>
+<sub>`api.ogt` line 10035</sub>
 
 <a id="type-ListResult"></a>
 
@@ -5351,7 +5281,7 @@ struct ListResult {
 }
 ```
 
-<sub>`api.ogt` line 10070</sub>
+<sub>`api.ogt` line 10041</sub>
 
 <a id="type-GridDesc"></a>
 
@@ -5398,7 +5328,7 @@ struct GridDesc {
 }
 ```
 
-<sub>`api.ogt` line 10077</sub>
+<sub>`api.ogt` line 10048</sub>
 
 <a id="type-TabsDesc"></a>
 
@@ -5424,7 +5354,7 @@ struct TabsDesc {
 }
 ```
 
-<sub>`api.ogt` line 10100</sub>
+<sub>`api.ogt` line 10071</sub>
 
 <a id="type-ChoiceResult"></a>
 
@@ -5445,7 +5375,7 @@ struct ChoiceResult {
 }
 ```
 
-<sub>`api.ogt` line 10108</sub>
+<sub>`api.ogt` line 10079</sub>
 
 <a id="type-SelectDesc"></a>
 
@@ -5473,7 +5403,7 @@ struct SelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 10114</sub>
+<sub>`api.ogt` line 10085</sub>
 
 <a id="type-StepperDesc"></a>
 
@@ -5505,7 +5435,7 @@ struct StepperDesc {
 }
 ```
 
-<sub>`api.ogt` line 10123</sub>
+<sub>`api.ogt` line 10094</sub>
 
 <a id="type-StepperResult"></a>
 
@@ -5526,7 +5456,7 @@ struct StepperResult {
 }
 ```
 
-<sub>`api.ogt` line 10136</sub>
+<sub>`api.ogt` line 10107</sub>
 
 <a id="type-RadioDesc"></a>
 
@@ -5550,7 +5480,7 @@ struct RadioDesc {
 }
 ```
 
-<sub>`api.ogt` line 10142</sub>
+<sub>`api.ogt` line 10113</sub>
 
 <a id="type-CheckListResult"></a>
 
@@ -5571,7 +5501,7 @@ struct CheckListResult {
 }
 ```
 
-<sub>`api.ogt` line 10149</sub>
+<sub>`api.ogt` line 10120</sub>
 
 <a id="type-ToastDesc"></a>
 
@@ -5598,7 +5528,7 @@ struct ToastDesc {
 }
 ```
 
-<sub>`api.ogt` line 10155</sub>
+<sub>`api.ogt` line 10126</sub>
 
 <a id="type-ChipDesc"></a>
 
@@ -5610,25 +5540,25 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `selected` | `boolean` | `false` | — | — | — | Selected: inverted to fg. |
+| `selected` | `boolean` | `false` | — | — | — | Selected: inverted to ink. |
 | `disabled` | `boolean` | `false` | — | — | — | Neutral and inert. |
 
 ```ogt
 struct ChipDesc {
   doc "A chip's state."
   desc true
-  field selected bool "Selected: inverted to fg."
+  field selected bool "Selected: inverted to ink."
   field disabled bool "Neutral and inert."
 }
 ```
 
-<sub>`api.ogt` line 10165</sub>
+<sub>`api.ogt` line 10136</sub>
 
 <a id="type-MeterDesc"></a>
 
 ### `MeterDesc` (desc struct)
 
-A meter: a capsule track with a fill that animates its changes by the tick.
+A meter: a track with a fill that animates its changes by the tick.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -5643,7 +5573,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct MeterDesc {
-  doc "A meter: a capsule track with a fill that animates its changes by the tick."
+  doc "A meter: a track with a fill that animates its changes by the tick."
   desc true
   field kind MeterKind "What it measures, which sets its colour."
   field color Option.Paint "A colour of your own instead of the kind's."
@@ -5657,7 +5587,7 @@ struct MeterDesc {
 }
 ```
 
-<sub>`api.ogt` line 10172</sub>
+<sub>`api.ogt` line 10143</sub>
 
 <a id="type-CooldownDesc"></a>
 
@@ -5686,7 +5616,7 @@ struct CooldownDesc {
 }
 ```
 
-<sub>`api.ogt` line 10186</sub>
+<sub>`api.ogt` line 10157</sub>
 
 <a id="type-IconDesc"></a>
 
@@ -5699,7 +5629,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `size` | `number` | `0` | ≥ 0 | `cssPx` | — | Its size; 0 is 24. |
-| `tint` | `Paint \| null` | `null` | — | — | — | Its ink; null is fg. |
+| `tint` | `Paint \| null` | `null` | — | — | — | Its ink; null is ink. |
 | `label` | `string \| null` | `null` | — | — | — | What a screen reader calls it (and the probe's text): null is the icon's name in the atlas (an English word: `star`); empty is decoration, named by nothing, so a card or button it sits on is named by its other text. A localised game names a meaningful icon from its string table. |
 
 ```ogt
@@ -5710,12 +5640,12 @@ struct IconDesc {
     unit cssPx
     min 0
   }
-  field tint Option.Paint "Its ink; null is fg."
+  field tint Option.Paint "Its ink; null is ink."
   field label Option.String "What a screen reader calls it (and the probe's text): null is the icon's name in the atlas (an English word: `star`); empty is decoration, named by nothing, so a card or button it sits on is named by its other text. A localised game names a meaningful icon from its string table."
 }
 ```
 
-<sub>`api.ogt` line 10197</sub>
+<sub>`api.ogt` line 10168</sub>
 
 <a id="type-MapMarker"></a>
 
@@ -5730,7 +5660,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `x` | `number` | `0` | — | `ratio` | — | Across the map, 0 to 1. |
 | `y` | `number` | `0` | — | `ratio` | — | Down the map, 0 to 1. |
 | `tone` | `Tone` | `"neutral"` | — | — | — | Its colour; neutral is the stage ink. |
-| `player` | `boolean` | `false` | — | — | — | The player: the accent, larger, ringed. |
+| `player` | `boolean` | `false` | — | — | — | The player: the primary, larger, ringed. |
 
 ```ogt
 struct MapMarker {
@@ -5743,11 +5673,11 @@ struct MapMarker {
     unit ratio
   }
   field tone Tone "Its colour; neutral is the stage ink."
-  field player bool "The player: the accent, larger, ringed."
+  field player bool "The player: the primary, larger, ringed."
 }
 ```
 
-<sub>`api.ogt` line 10208</sub>
+<sub>`api.ogt` line 10179</sub>
 
 <a id="type-MinimapDesc"></a>
 
@@ -5780,7 +5710,7 @@ struct MinimapDesc {
 }
 ```
 
-<sub>`api.ogt` line 10221</sub>
+<sub>`api.ogt` line 10192</sub>
 
 <a id="type-DialogueDesc"></a>
 
@@ -5792,7 +5722,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `speaker` | `string` | `""` | — | — | — | Who speaks (amber ink). |
+| `speaker` | `string` | `""` | — | — | — | Who speaks (primary ink). |
 | `text` | `string` | `""` | — | — | — | The line. A new text starts typing again. |
 | `portrait` | `Texture \| null` | `null` | — | — | — | A portrait texture; null is the speaker's initial. |
 | `portraitUv` | `[number, number, number, number] \| null` | `null` | — | — | — | The portrait's region of the texture; null is the whole texture. |
@@ -5804,7 +5734,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct DialogueDesc {
   doc "A dialogue box: a portrait slot, the speaker and the line typed out by the tick."
   desc true
-  field speaker String "Who speaks (amber ink)."
+  field speaker String "Who speaks (primary ink)."
   field text String "The line. A new text starts typing again."
   field portrait Option.Texture "A portrait texture; null is the speaker's initial."
   field portraitUv Option.Array.f32.4 "The portrait's region of the texture; null is the whole texture."
@@ -5816,7 +5746,7 @@ struct DialogueDesc {
 }
 ```
 
-<sub>`api.ogt` line 10234</sub>
+<sub>`api.ogt` line 10205</sub>
 
 <a id="type-DialogueResult"></a>
 
@@ -5839,7 +5769,7 @@ struct DialogueResult {
 }
 ```
 
-<sub>`api.ogt` line 10248</sub>
+<sub>`api.ogt` line 10219</sub>
 
 <a id="type-JoystickDesc"></a>
 
@@ -5870,7 +5800,7 @@ struct JoystickDesc {
 }
 ```
 
-<sub>`api.ogt` line 10255</sub>
+<sub>`api.ogt` line 10226</sub>
 
 <a id="type-JoystickResult"></a>
 
@@ -5893,7 +5823,7 @@ struct JoystickResult {
 }
 ```
 
-<sub>`api.ogt` line 10269</sub>
+<sub>`api.ogt` line 10240</sub>
 
 <a id="type-DpadDesc"></a>
 
@@ -5918,7 +5848,7 @@ struct DpadDesc {
 }
 ```
 
-<sub>`api.ogt` line 10276</sub>
+<sub>`api.ogt` line 10247</sub>
 
 <a id="type-DpadResult"></a>
 
@@ -5943,7 +5873,7 @@ struct DpadResult {
 }
 ```
 
-<sub>`api.ogt` line 10285</sub>
+<sub>`api.ogt` line 10256</sub>
 
 <a id="type-ActionButtonDesc"></a>
 
@@ -5956,7 +5886,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `size` | `number` | `0` | ≥ 0 | `cssPx` | — | Its diameter; 0 is 64 (never under 44). |
-| `primary` | `boolean` | `false` | — | — | — | The amber button (one per screen). |
+| `primary` | `boolean` | `false` | — | — | — | The primary button (one per screen). |
 | `icon` | `string` | `""` | — | — | — | An icon of the atlas by name, instead of the label; empty is the label. |
 
 ```ogt
@@ -5967,12 +5897,12 @@ struct ActionButtonDesc {
     unit cssPx
     min 0
   }
-  field primary bool "The amber button (one per screen)."
+  field primary bool "The primary button (one per screen)."
   field icon String "An icon of the atlas by name, instead of the label; empty is the label."
 }
 ```
 
-<sub>`api.ogt` line 10293</sub>
+<sub>`api.ogt` line 10264</sub>
 
 <a id="type-SkeletonDesc"></a>
 
@@ -6001,7 +5931,7 @@ struct SkeletonDesc {
 }
 ```
 
-<sub>`api.ogt` line 10304</sub>
+<sub>`api.ogt` line 10275</sub>
 
 <a id="type-UiItemBuild"></a>
 
@@ -6026,7 +5956,7 @@ callback UiItemBuild {
 }
 ```
 
-<sub>`api.ogt` line 10315</sub>
+<sub>`api.ogt` line 10286</sub>
 
 <a id="type-A11yNode"></a>
 
@@ -6079,7 +6009,7 @@ struct A11yNode {
 }
 ```
 
-<sub>`api.ogt` line 10678</sub>
+<sub>`api.ogt` line 10649</sub>
 
 <a id="type-A11yTree"></a>
 
@@ -6102,7 +6032,7 @@ struct A11yTree {
 }
 ```
 
-<sub>`api.ogt` line 10704</sub>
+<sub>`api.ogt` line 10675</sub>
 
 <a id="type-CounterDesc"></a>
 
@@ -6116,7 +6046,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `step` | `TypeStepName \| null` | `null` | — | — | — | The type step; null is body. |
 | `font` | `FontRole` | `"body"` | — | — | — | Which font: mono (the numeric role) for counts in a row, display for a big score. |
-| `color` | `Paint \| null` | `null` | — | — | — | The ink; null is fg. |
+| `color` | `Paint \| null` | `null` | — | — | — | The ink; null is ink. |
 | `align` | `TextAlign` | `"start"` | — | — | — | How it aligns in its width. |
 | `width` | `Size \| null` | `null` | — | — | — | Its width; null fits the text. |
 | `durationMs` | `number` | `0` | ≥ 0 | `ms` | — | How long a change takes to count; 0 is 900 ms. |
@@ -6131,7 +6061,7 @@ struct CounterDesc {
   desc true
   field step Option.TypeStepName "The type step; null is body."
   field font FontRole "Which font: mono (the numeric role) for counts in a row, display for a big score."
-  field color Option.Paint "The ink; null is fg."
+  field color Option.Paint "The ink; null is ink."
   field align TextAlign "How it aligns in its width."
   field width Option.Size "Its width; null fits the text."
   field durationMs f32 "How long a change takes to count; 0 is 900 ms." {
@@ -6145,7 +6075,7 @@ struct CounterDesc {
 }
 ```
 
-<sub>`api.ogt` line 10741</sub>
+<sub>`api.ogt` line 10712</sub>
 
 <a id="type-BurstDesc"></a>
 
@@ -6158,7 +6088,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `count` | `number` | `0` | — | — | — | Rays; 0 is 8. |
-| `color` | `Paint \| null` | `null` | — | — | — | Their ink; null is the accent. |
+| `color` | `Paint \| null` | `null` | — | — | — | Their ink; null is the primary. |
 | `radius` | `number` | `0` | ≥ 0 | `cssPx` | — | How far they fly from the element's centre; 0 is 1.4 times its size. |
 | `durationMs` | `number` | `0` | ≥ 0 | `ms` | — | How long they fly; 0 is motion.duration.slow plus base. |
 | `delayMs` | `number` | `0` | ≥ 0 | `ms` | — | Wait this long after the element first appears. |
@@ -6168,7 +6098,7 @@ struct BurstDesc {
   doc "Rays and sparks thrown from an element."
   desc true
   field count u32 "Rays; 0 is 8."
-  field color Option.Paint "Their ink; null is the accent."
+  field color Option.Paint "Their ink; null is the primary."
   field radius f32 "How far they fly from the element's centre; 0 is 1.4 times its size." {
     unit cssPx
     min 0
@@ -6184,7 +6114,7 @@ struct BurstDesc {
 }
 ```
 
-<sub>`api.ogt` line 10767</sub>
+<sub>`api.ogt` line 10738</sub>
 
 <a id="type-ShakeDesc"></a>
 
@@ -6216,7 +6146,7 @@ struct ShakeDesc {
 }
 ```
 
-<sub>`api.ogt` line 10792</sub>
+<sub>`api.ogt` line 10763</sub>
 
 <a id="type-ScreenWipe"></a>
 
@@ -6245,7 +6175,7 @@ enum ScreenWipe {
 }
 ```
 
-<sub>`api.ogt` line 10812</sub>
+<sub>`api.ogt` line 10783</sub>
 
 <a id="type-WipeSide"></a>
 
@@ -6272,7 +6202,7 @@ enum WipeSide {
 }
 ```
 
-<sub>`api.ogt` line 10821</sub>
+<sub>`api.ogt` line 10792</sub>
 
 <a id="type-ScreenTransitionDesc"></a>
 
@@ -6286,7 +6216,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `kind` | `ScreenWipe` | `"fade"` | — | — | — | The movement. |
 | `durationMs` | `number` | `0` | ≥ 0 | `ms` | — | Cover and reveal together; 0 is twice motion.duration.slow. |
-| `color` | `Paint \| null` | `null` | — | — | — | The cover's colour (the texture's tint); null is bg. |
+| `color` | `Paint \| null` | `null` | — | — | — | The cover's colour (the texture's tint); null is backdrop. |
 | `texture` | `Texture \| null` | `null` | — | — | — | A texture stretched over the surface as the cover; null is the flat colour. |
 | `from` | `WipeSide` | `"left"` | — | — | — | Where a wipe or a slide comes from. |
 
@@ -6299,13 +6229,13 @@ struct ScreenTransitionDesc {
     unit ms
     min 0
   }
-  field color Option.Paint "The cover's colour (the texture's tint); null is bg."
+  field color Option.Paint "The cover's colour (the texture's tint); null is backdrop."
   field texture Option.Texture "A texture stretched over the surface as the cover; null is the flat colour."
   field from WipeSide "Where a wipe or a slide comes from."
 }
 ```
 
-<sub>`api.ogt` line 10829</sub>
+<sub>`api.ogt` line 10800</sub>
 
 <a id="type-ScreenTransitionResult"></a>
 
@@ -6332,7 +6262,7 @@ struct ScreenTransitionResult {
 }
 ```
 
-<sub>`api.ogt` line 10842</sub>
+<sub>`api.ogt` line 10813</sub>
 
 <a id="type-GraphicsQuality"></a>
 
@@ -6357,7 +6287,7 @@ enum GraphicsQuality {
 }
 ```
 
-<sub>`api.ogt` line 10869</sub>
+<sub>`api.ogt` line 10840</sub>
 
 <a id="type-UiAction"></a>
 
@@ -6382,7 +6312,7 @@ callback UiAction {
 }
 ```
 
-<sub>`api.ogt` line 10876</sub>
+<sub>`api.ogt` line 10847</sub>
 
 <a id="type-SettingsChanged"></a>
 
@@ -6407,7 +6337,7 @@ callback SettingsChanged {
 }
 ```
 
-<sub>`api.ogt` line 10881</sub>
+<sub>`api.ogt` line 10852</sub>
 
 <a id="type-MenuItem"></a>
 
@@ -6422,7 +6352,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `id` | `string` | `""` | — | — | — | The id answered when it is chosen; also its probe id. |
 | `label` | `string` | `""` | — | — | — | What it says. |
 | `disabled` | `boolean` | `false` | — | — | — | Shown but inert. |
-| `primary` | `boolean` | `false` | — | — | — | The amber action (one per screen). |
+| `primary` | `boolean` | `false` | — | — | — | The primary action (one per screen). |
 
 ```ogt
 struct MenuItem {
@@ -6431,11 +6361,11 @@ struct MenuItem {
   field id String "The id answered when it is chosen; also its probe id."
   field label String "What it says."
   field disabled bool "Shown but inert."
-  field primary bool "The amber action (one per screen)."
+  field primary bool "The primary action (one per screen)."
 }
 ```
 
-<sub>`api.ogt` line 10886</sub>
+<sub>`api.ogt` line 10857</sub>
 
 <a id="type-MenuResult"></a>
 
@@ -6454,7 +6384,7 @@ struct MenuResult {
 }
 ```
 
-<sub>`api.ogt` line 10895</sub>
+<sub>`api.ogt` line 10866</sub>
 
 <a id="type-MainMenuDesc"></a>
 
@@ -6486,7 +6416,7 @@ struct MainMenuDesc {
 }
 ```
 
-<sub>`api.ogt` line 10900</sub>
+<sub>`api.ogt` line 10871</sub>
 
 <a id="type-PauseMenuDesc"></a>
 
@@ -6516,7 +6446,7 @@ struct PauseMenuDesc {
 }
 ```
 
-<sub>`api.ogt` line 10911</sub>
+<sub>`api.ogt` line 10882</sub>
 
 <a id="type-KeyBinding"></a>
 
@@ -6542,7 +6472,7 @@ struct KeyBinding {
 }
 ```
 
-<sub>`api.ogt` line 10922</sub>
+<sub>`api.ogt` line 10893</sub>
 
 <a id="type-LanguageOption"></a>
 
@@ -6566,7 +6496,7 @@ struct LanguageOption {
 }
 ```
 
-<sub>`api.ogt` line 10930</sub>
+<sub>`api.ogt` line 10901</sub>
 
 <a id="type-GameSettings"></a>
 
@@ -6635,7 +6565,7 @@ struct GameSettings {
 }
 ```
 
-<sub>`api.ogt` line 10937</sub>
+<sub>`api.ogt` line 10908</sub>
 
 <a id="type-SettingsDesc"></a>
 
@@ -6753,7 +6683,7 @@ struct SettingsDesc {
 }
 ```
 
-<sub>`api.ogt` line 10978</sub>
+<sub>`api.ogt` line 10949</sub>
 
 <a id="type-SettingsResult"></a>
 
@@ -6776,7 +6706,7 @@ struct SettingsResult {
 }
 ```
 
-<sub>`api.ogt` line 11054</sub>
+<sub>`api.ogt` line 11025</sub>
 
 <a id="type-Ability"></a>
 
@@ -6806,7 +6736,7 @@ struct Ability {
 }
 ```
 
-<sub>`api.ogt` line 11061</sub>
+<sub>`api.ogt` line 11032</sub>
 
 <a id="type-PlatformerHudDesc"></a>
 
@@ -6852,7 +6782,7 @@ struct PlatformerHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 11072</sub>
+<sub>`api.ogt` line 11043</sub>
 
 <a id="type-HudResult"></a>
 
@@ -6879,7 +6809,7 @@ struct HudResult {
 }
 ```
 
-<sub>`api.ogt` line 11093</sub>
+<sub>`api.ogt` line 11064</sub>
 
 <a id="type-ShooterHudDesc"></a>
 
@@ -6941,7 +6871,7 @@ struct ShooterHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 11102</sub>
+<sub>`api.ogt` line 11073</sub>
 
 <a id="type-PuzzleHudDesc"></a>
 
@@ -6987,7 +6917,7 @@ struct PuzzleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 11133</sub>
+<sub>`api.ogt` line 11104</sub>
 
 <a id="type-Currency"></a>
 
@@ -7017,7 +6947,7 @@ struct Currency {
 }
 ```
 
-<sub>`api.ogt` line 11155</sub>
+<sub>`api.ogt` line 11126</sub>
 
 <a id="type-Generator"></a>
 
@@ -7053,7 +6983,7 @@ struct Generator {
 }
 ```
 
-<sub>`api.ogt` line 11165</sub>
+<sub>`api.ogt` line 11136</sub>
 
 <a id="type-IdleHudDesc"></a>
 
@@ -7093,7 +7023,7 @@ struct IdleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 11179</sub>
+<sub>`api.ogt` line 11150</sub>
 
 <a id="type-RaceSplit"></a>
 
@@ -7119,7 +7049,7 @@ struct RaceSplit {
 }
 ```
 
-<sub>`api.ogt` line 11198</sub>
+<sub>`api.ogt` line 11169</sub>
 
 <a id="type-RacingHudDesc"></a>
 
@@ -7215,7 +7145,7 @@ struct RacingHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 11206</sub>
+<sub>`api.ogt` line 11177</sub>
 
 <a id="type-DialogueLine"></a>
 
@@ -7241,7 +7171,7 @@ struct DialogueLine {
 }
 ```
 
-<sub>`api.ogt` line 11264</sub>
+<sub>`api.ogt` line 11235</sub>
 
 <a id="type-CutsceneDesc"></a>
 
@@ -7279,7 +7209,7 @@ struct CutsceneDesc {
 }
 ```
 
-<sub>`api.ogt` line 11272</sub>
+<sub>`api.ogt` line 11243</sub>
 
 <a id="type-CutsceneResult"></a>
 
@@ -7302,7 +7232,7 @@ struct CutsceneResult {
 }
 ```
 
-<sub>`api.ogt` line 11289</sub>
+<sub>`api.ogt` line 11260</sub>
 
 <a id="type-ShopItem"></a>
 
@@ -7336,7 +7266,7 @@ struct ShopItem {
 }
 ```
 
-<sub>`api.ogt` line 11296</sub>
+<sub>`api.ogt` line 11267</sub>
 
 <a id="type-ShopDesc"></a>
 
@@ -7394,7 +7324,7 @@ struct ShopDesc {
 }
 ```
 
-<sub>`api.ogt` line 11308</sub>
+<sub>`api.ogt` line 11279</sub>
 
 <a id="type-ShopResult"></a>
 
@@ -7417,7 +7347,7 @@ struct ShopResult {
 }
 ```
 
-<sub>`api.ogt` line 11339</sub>
+<sub>`api.ogt` line 11310</sub>
 
 <a id="type-InventoryItem"></a>
 
@@ -7449,7 +7379,7 @@ struct InventoryItem {
 }
 ```
 
-<sub>`api.ogt` line 11346</sub>
+<sub>`api.ogt` line 11317</sub>
 
 <a id="type-InventoryDesc"></a>
 
@@ -7493,7 +7423,7 @@ struct InventoryDesc {
 }
 ```
 
-<sub>`api.ogt` line 11357</sub>
+<sub>`api.ogt` line 11328</sub>
 
 <a id="type-SlotMove"></a>
 
@@ -7514,7 +7444,7 @@ struct SlotMove {
 }
 ```
 
-<sub>`api.ogt` line 11379</sub>
+<sub>`api.ogt` line 11350</sub>
 
 <a id="type-InventoryResult"></a>
 
@@ -7539,7 +7469,7 @@ struct InventoryResult {
 }
 ```
 
-<sub>`api.ogt` line 11385</sub>
+<sub>`api.ogt` line 11356</sub>
 
 <a id="type-LevelInfo"></a>
 
@@ -7567,7 +7497,7 @@ struct LevelInfo {
 }
 ```
 
-<sub>`api.ogt` line 11393</sub>
+<sub>`api.ogt` line 11364</sub>
 
 <a id="type-LevelSelectDesc"></a>
 
@@ -7607,7 +7537,7 @@ struct LevelSelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 11402</sub>
+<sub>`api.ogt` line 11373</sub>
 
 <a id="type-LevelSelectResult"></a>
 
@@ -7628,7 +7558,7 @@ struct LevelSelectResult {
 }
 ```
 
-<sub>`api.ogt` line 11421</sub>
+<sub>`api.ogt` line 11392</sub>
 
 <a id="type-StatRow"></a>
 
@@ -7652,7 +7582,7 @@ struct StatRow {
 }
 ```
 
-<sub>`api.ogt` line 11427</sub>
+<sub>`api.ogt` line 11398</sub>
 
 <a id="type-ScoreFormat"></a>
 
@@ -7675,7 +7605,7 @@ enum ScoreFormat {
 }
 ```
 
-<sub>`api.ogt` line 11434</sub>
+<sub>`api.ogt` line 11405</sub>
 
 <a id="type-ResultsDesc"></a>
 
@@ -7737,7 +7667,7 @@ struct ResultsDesc {
 }
 ```
 
-<sub>`api.ogt` line 11440</sub>
+<sub>`api.ogt` line 11411</sub>
 
 <a id="type-LeaderboardEntry"></a>
 
@@ -7765,7 +7695,7 @@ struct LeaderboardEntry {
 }
 ```
 
-<sub>`api.ogt` line 11471</sub>
+<sub>`api.ogt` line 11442</sub>
 
 <a id="type-LeaderboardDesc"></a>
 
@@ -7805,7 +7735,7 @@ struct LeaderboardDesc {
 }
 ```
 
-<sub>`api.ogt` line 11480</sub>
+<sub>`api.ogt` line 11451</sub>
 
 <a id="type-LeaderboardResult"></a>
 
@@ -7830,7 +7760,7 @@ struct LeaderboardResult {
 }
 ```
 
-<sub>`api.ogt` line 11498</sub>
+<sub>`api.ogt` line 11469</sub>
 
 <a id="type-TutorialStep"></a>
 
@@ -7856,7 +7786,7 @@ struct TutorialStep {
 }
 ```
 
-<sub>`api.ogt` line 11506</sub>
+<sub>`api.ogt` line 11477</sub>
 
 <a id="type-TutorialDesc"></a>
 
@@ -7898,7 +7828,7 @@ struct TutorialDesc {
 }
 ```
 
-<sub>`api.ogt` line 11514</sub>
+<sub>`api.ogt` line 11485</sub>
 
 <a id="type-TutorialResult"></a>
 
@@ -7921,7 +7851,7 @@ struct TutorialResult {
 }
 ```
 
-<sub>`api.ogt` line 11534</sub>
+<sub>`api.ogt` line 11505</sub>
 
 <a id="type-LoadingDesc"></a>
 
@@ -7954,7 +7884,7 @@ struct LoadingDesc {
 }
 ```
 
-<sub>`api.ogt` line 11541</sub>
+<sub>`api.ogt` line 11512</sub>
 
 <a id="type-ConfirmDesc"></a>
 
@@ -7990,7 +7920,7 @@ struct ConfirmDesc {
 }
 ```
 
-<sub>`api.ogt` line 11555</sub>
+<sub>`api.ogt` line 11526</sub>
 
 <a id="type-ConfirmResult"></a>
 
@@ -8011,7 +7941,7 @@ struct ConfirmResult {
 }
 ```
 
-<sub>`api.ogt` line 11570</sub>
+<sub>`api.ogt` line 11541</sub>
 
 <a id="type-AlertDesc"></a>
 
@@ -8041,4 +7971,4 @@ struct AlertDesc {
 }
 ```
 
-<sub>`api.ogt` line 11576</sub>
+<sub>`api.ogt` line 11547</sub>

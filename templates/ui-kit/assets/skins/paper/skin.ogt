@@ -7,30 +7,28 @@ base light
 atlas "atlas.png" 384 256
 scale 1
 palette {
-  bg "#e8e2d4"
-  bgSubtle "#ded7c6"
-  surface "#fbf8f0"
-  surfaceRaised "#fbf8f0"
-  surfaceHover "#f3eee2"
-  materialThick "#fbf8f0f5"
-  materialRegular "#fbf8f0eb"
-  materialThin "#fbf8f0dd"
-  fg "#1c1a17"
-  fgMuted "#57524a"
-  fgSubtle "#68635a"
-  fgInverse "#fbf8f0"
-  fill "#efe9dc"
-  fillStrong "#e2dac8"
-  border "#cfc6b2"
-  borderStrong "#1c1a17"
-  accent "#a02b1a"
-  accentHover "#942717"
-  accentActive "#85220f"
-  accentFg "#fffaf3"
-  accentInk "#a8321f"
-  accentSoft "#a02b1a26"
+  backdrop "#e8e2d4"
+  well "#ded7c6"
+  panel "#fbf8f0"
+  panelRaised "#fbf8f0"
+  panelHover "#f3eee2"
+  hud "#fbf8f0f5"
+  ink "#1c1a17"
+  inkMuted "#57524a"
+  inkFaint "#68635a"
+  inkInverse "#fbf8f0"
+  control "#efe9dc"
+  controlStrong "#e2dac8"
+  line "#cfc6b2"
+  lineStrong "#1c1a17"
+  primary "#a02b1a"
+  primaryHover "#942717"
+  primaryActive "#85220f"
+  onPrimary "#fffaf3"
+  highlight "#a8321f"
+  primarySoft "#a02b1a26"
   focus "#2b5cc8"
-  thumb "#fbf8f0"
+  knob "#fbf8f0"
   scrim "#2a261f73"
   success "#1a6034"
   warn "#7b4802"
@@ -39,13 +37,10 @@ palette {
   shadow "#2a261f40"
 }
 radius {
-  control 6
-  field 4
-  block 6
-  card 6
-  panel 8
-  sheet 8
-  button 8
+  small 4
+  control 4
+  bar 4
+  panel 6
 }
 ramp {
   body 15 22
@@ -87,8 +82,8 @@ slice capsule 144 104 32 32 14 tint
 slice track 180 104 32 16 7 tint
 slice fill 216 104 32 16 7 tint
 soft 252 104 64 64 24
-divider 4 172 128 24 120 18 fg
-flourish 136 172 64 24 22 10 accent 2
+divider 4 172 128 24 120 18 ink
+flourish 136 172 64 24 22 10 primary 2
 tile 204 172 64 64 64 64 0.6 4 panel card
 shadow panel 0 6 16 0 "#2a261f3a"
 shadow card 0 3 8 0 "#2a261f2e"

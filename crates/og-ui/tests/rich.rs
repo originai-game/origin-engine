@@ -129,7 +129,7 @@ fn spans_keep_their_style_and_links_are_elements() {
     );
     assert_eq!(
         find("read more").3,
-        theme.palette.accent_ink.linear(),
+        theme.palette.highlight.linear(),
         "a link is in accent ink"
     );
     let same_baseline = t.iter().map(|x| x.2).fold(f32::NAN, |a, b| {

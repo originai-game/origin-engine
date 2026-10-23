@@ -63,7 +63,7 @@ pub(crate) struct RichLine {
 pub struct RichTextDesc {
     /// `None`: `text-body`.
     pub step: Option<TypeStep>,
-    /// `None`: `fg`.
+    /// `None`: `ink`.
     pub color: Option<Srgba>,
     pub align: TextAlign,
     pub nowrap: bool,
@@ -395,7 +395,7 @@ pub(crate) fn sine(x: f32) -> f32 {
 
 impl Ui {
     /// A paragraph of rich text from markup ([`crate::markup`]): spans of
-    /// colour (`[color=accent]`, `[color=#ff8800]`), weight (`[b]`), size
+    /// colour (`[color=primary]`, `[color=#ff8800]`), weight (`[b]`), size
     /// (`[size=lg]`), font (`[font=mono]`), inline icons (`[icon=coin]`),
     /// links (`[link=shop]Shop[/link]`) and per-glyph motion (`[wave]`,
     /// `[shake]`, `[pulse]`). Pass a string-table message (og.i18n) so a
@@ -411,7 +411,7 @@ impl Ui {
         let (parsed, warnings) = parse_markup(markup);
         self.warnings.extend(warnings);
         let base_step = desc.step.unwrap_or(t.type_ramp.body);
-        let base_color = desc.color.unwrap_or(t.palette.fg);
+        let base_color = desc.color.unwrap_or(t.palette.ink);
         let mut spans = Vec::with_capacity(parsed.len());
         for s in &parsed {
             let mut step = base_step;
@@ -425,7 +425,7 @@ impl Ui {
                 }
             }
             let mut color = if s.link.is_some() {
-                t.palette.accent_ink
+                t.palette.highlight
             } else {
                 base_color
             };
@@ -637,7 +637,7 @@ impl Ui {
             let size = s.step.size * n.scale;
             let link_key = s.link.as_deref().map(|l| child_key(n.key, l));
             let hot = link_key.is_some_and(|lk| self.state.hot == lk);
-            let color = if hot { p.accent_hover } else { s.color };
+            let color = if hot { p.primary_hover } else { s.color };
             if let Some(cell) = s.icon {
                 let side = s.step.size * n.scale;
                 if let Some((font, ch)) = self.icons.glyph(cell) {

@@ -8,30 +8,28 @@ base dark
 atlas "skins/lampdive/atlas.png" 384 256
 scale 1
 palette {
-  bg "#100c14"
-  bgSubtle "#17121d"
-  surface "#2a2131"
-  surfaceRaised "#2a2131"
-  surfaceHover "#382c41"
-  materialThick "#211a28f2"
-  materialRegular "#211a28e6"
-  materialThin "#211a28cc"
-  fg "#f4f1de"
-  fgMuted "#c9c2a8"
-  fgSubtle "#b8b29a"
-  fgInverse "#14111f"
-  fill "#4c3d58"
-  fillStrong "#5e4b6b"
-  border "#5a4866"
-  borderStrong "#a990b8"
-  accent "#ffb347"
-  accentHover "#ffc56e"
-  accentActive "#e69a2e"
-  accentFg "#14111f"
-  accentInk "#ffc56e"
-  accentSoft "#ffb34724"
+  backdrop "#100c14"
+  well "#17121d"
+  panel "#2a2131"
+  panelRaised "#2a2131"
+  panelHover "#382c41"
+  hud "#211a28f2"
+  ink "#f4f1de"
+  inkMuted "#c9c2a8"
+  inkFaint "#b8b29a"
+  inkInverse "#14111f"
+  control "#4c3d58"
+  controlStrong "#5e4b6b"
+  line "#5a4866"
+  lineStrong "#a990b8"
+  primary "#ffb347"
+  primaryHover "#ffc56e"
+  primaryActive "#e69a2e"
+  onPrimary "#14111f"
+  highlight "#ffc56e"
+  primarySoft "#ffb34724"
   focus "#ffb347"
-  thumb "#5a4866"
+  knob "#5a4866"
   scrim "#08060bb8"
   success "#6fad74"
   warn "#ffa53d"
@@ -40,13 +38,10 @@ palette {
   shadow "#00000099"
 }
 radius {
+  small 0
   control 0
-  field 0
-  block 0
-  card 0
+  bar 0
   panel 0
-  sheet 0
-  button 0
 }
 ramp {
   xs 12 16
@@ -92,8 +87,8 @@ slice capsule 144 104 32 32 4 tint
 slice track 180 104 32 16 4 tint
 slice fill 216 104 32 16 4 tint
 soft 252 104 64 64 24
-divider 4 172 128 24 128 24 border
-flourish 136 172 64 24 32 12 accent 0
+divider 4 172 128 24 128 24 line
+flourish 136 172 64 24 32 12 primary 0
 tile 204 172 64 64 16 16 0.06 6 panel
 shadow panel 6 6 0 0 "#000000b0"
 shadow card 4 4 0 0 "#00000080"

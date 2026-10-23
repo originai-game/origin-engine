@@ -166,7 +166,7 @@ function platform(world: World, g: GameV, p: PrefsV): void {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "surface" } }, build);
+  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
 }
 
 function hud(world: World, g: GameV): void {
@@ -176,13 +176,13 @@ function hud(world: World, g: GameV): void {
   og.ui.setNavigation(false);
   og.ui.anchor("Wallet", { anchor: "topLeft", direction: "column", gap: S.xs }, () => {
     capsule("Sparks", () => {
-      og.ui.icon("Icon", "star", { size: 24, tint: { token: "accentInk" } });
+      og.ui.icon("Icon", "star", { size: 24, tint: { token: "highlight" } });
       // The sparks change every tick, so they are a label in the locale's words, not a counter
       // (a counter re-counts from where it is on every change); counters show what jumps.
       og.ui.label("Amount", big(world, g.sparks), { step: "xl", font: "display", nowrap: true });
     });
     og.ui.row("RateRow", { padding: { left: S.sm, top: 0, right: 0, bottom: 0 } }, () => {
-      og.ui.label("Rate", say(world, "hud.rate", { n: big(world, g.rate) }), { step: "body", color: { token: "fgMuted" }, nowrap: true });
+      og.ui.label("Rate", say(world, "hud.rate", { n: big(world, g.rate) }), { step: "body", color: { token: "inkMuted" }, nowrap: true });
     });
   });
   let paused = false;
@@ -213,10 +213,10 @@ function hud(world: World, g: GameV): void {
         if (g.refusedSlot === i && g.refusedTick === world.tick - 1) og.ui.shake({ sound: true });
         if (g.milestoneSlot === i && g.milestoneTick === world.tick - 1) og.ui.burst({ count: 10 });
         og.ui.row("Head", { gap: S.xxs, cross: "center" }, () => {
-          og.ui.label("Name", say(world, `gen.${name}`), { step: "body", color: { token: g.selected === i ? "accentInk" : "fg" }, nowrap: true });
-          og.ui.counter("Owned", n, { font: "mono", prefix: "×", color: { token: "fgMuted" } });
+          og.ui.label("Name", say(world, `gen.${name}`), { step: "body", color: { token: g.selected === i ? "highlight" : "ink" }, nowrap: true });
+          og.ui.counter("Owned", n, { font: "mono", prefix: "×", color: { token: "inkMuted" } });
         });
-        og.ui.label("Cost", big(world, cost), { font: "mono", color: { token: can ? "accentInk" : "fgMuted" }, nowrap: true });
+        og.ui.label("Cost", big(world, cost), { font: "mono", color: { token: can ? "highlight" : "inkMuted" }, nowrap: true });
       });
     });
   });
@@ -226,9 +226,9 @@ function hud(world: World, g: GameV): void {
   og.ui.anchor("Nova", { anchor: phone ? "topRight" : "bottomRight", offsetY: phone ? 64 : 0, direction: "column", cross: "center", gap: S.xxs }, () => {
     if (gain >= 1) {
       if (og.ui.actionButton("Supernova", say(world, "hud.nova"), { icon: "bolt", size: 64, primary: true }).clicked) g.confirmNova = true;
-      og.ui.label("Gain", say(world, "hud.novaGain", { n: gain }), { color: { token: "accentInk" }, nowrap: true });
+      og.ui.label("Gain", say(world, "hud.novaGain", { n: gain }), { color: { token: "highlight" }, nowrap: true });
     } else if (g.runEarned > 0) {
-      og.ui.label("At", say(world, "hud.novaAt", { n: big(world, novaAt(t)) }), { step: "caption", color: { token: "fgMuted" }, nowrap: true });
+      og.ui.label("At", say(world, "hud.novaAt", { n: big(world, novaAt(t)) }), { step: "caption", color: { token: "inkMuted" }, nowrap: true });
       og.ui.meter("Progress", Math.min(g.runEarned, novaAt(t)), novaAt(t), { width: px(phone ? 110 : 140) });
     }
   });
@@ -250,7 +250,7 @@ function settings(world: World, g: GameV, p: PrefsV): void {
     p.master = slider("Master", "settings.master", p.master);
     p.music = slider("Music", "settings.music", p.music);
     p.effects = slider("Effects", "settings.effects", p.effects);
-    og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "fgMuted" } });
+    og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "inkMuted" } });
     const r = og.ui.radio("Language", LANGUAGES.map((l) => say(world, l.key)), p.language, { horizontal: true });
     if (r.selected !== p.language) setLanguage(world, p, r.selected);
     p.reducedMotion = og.ui.toggle("Motion", p.reducedMotion, say(world, "settings.motion")).on;
@@ -287,7 +287,7 @@ function dialogs(world: World, g: GameV): void {
   }
   let collect = false;
   const w = og.ui.modal("Welcome", g.welcome, { title: say(world, "welcome.title"), width }, () => {
-    og.ui.row("Mark", { width: grow, align: "center" }, () => og.ui.icon("Icon", "clock", { size: 40, tint: { token: "accentInk" } }));
+    og.ui.row("Mark", { width: grow, align: "center" }, () => og.ui.icon("Icon", "clock", { size: 40, tint: { token: "highlight" } }));
     og.ui.label("Body", say(world, "welcome.body", { time: duration(world, g.away), n: big(world, g.offline) }), { width: grow, align: "center" });
     og.ui.row("Actions", { width: grow, align: "center" }, () => {
       if (og.ui.button("Collect", say(world, "welcome.collect"), { variant: "primary" }).clicked) collect = true;

@@ -1,17 +1,14 @@
 //! Every og-ui button role's label against the fill it is drawn on, in the
 //! light and dark themes, at rest, hovered and pressed, on each ground a
-//! button sits on (the screen's `bg`, a `bgSubtle` well, a `surface` panel,
-//! a `surfaceRaised` dialog): WCAG 1.4.3's 4.5:1 for normal text, as the
-//! platform's tokens test holds its own buttons (packages/tokens'
-//! button-contrast test). Read from the frame og-ui draws: the label's text
+//! button sits on (the screen's `backdrop`, a `well` well, a `panel` panel,
+//! a `panelRaised` dialog): WCAG 1.4.3's 4.5:1 for normal text. Read from the frame og-ui draws: the label's text
 //! command over the button's fill quad over the ground's quad, composited
 //! in linear light as the renderer blends.
 //!
 //! Ways this could fail: a role's ink and fill tokens too close (the danger
 //! button was red ink on a grey fill: 4.05:1 hovered on a dark dialog); a
 //! translucent fill that reads on one ground only; a hovered or pressed
-//! state darker or lighter than its rest state by enough to fall under;
-//! the tokens' copy out of date with the platform's.
+//! state darker or lighter than its rest state by enough to fall under.
 
 mod support;
 
@@ -130,10 +127,10 @@ fn every_button_role_reads_at_4_5_to_1_on_its_fill_in_both_themes_and_every_stat
     for (theme_name, theme) in [("light", Theme::light()), ("dark", Theme::dark())] {
         let p = theme.palette;
         let grounds = [
-            ("bg", None, p.bg),
-            ("bgSubtle", Some(p.bg_subtle), p.bg_subtle),
-            ("surface", Some(p.surface), p.surface),
-            ("surfaceRaised", Some(p.surface_raised), p.surface_raised),
+            ("bg", None, p.backdrop),
+            ("bgSubtle", Some(p.well), p.well),
+            ("surface", Some(p.panel), p.panel),
+            ("surfaceRaised", Some(p.panel_raised), p.panel_raised),
         ];
         for (ground_name, panel, ground) in grounds {
             for (label, _) in ROLES {

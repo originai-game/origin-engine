@@ -336,7 +336,7 @@ fn rich_frame(markup: &str, step: StepOf) -> (Vec<u8>, usize, usize, [u8; 3]) {
                 height: Size::grow(),
                 padding: Insets::all(t.space.md),
                 gap: t.space.md,
-                background: Some(t.palette.bg),
+                background: Some(t.palette.backdrop),
                 ..Element::default()
             },
             |ui| {
@@ -356,7 +356,7 @@ fn rich_frame(markup: &str, step: StepOf) -> (Vec<u8>, usize, usize, [u8; 3]) {
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
     ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
     scene.overlay = Some(overlay);
-    let bg = ui.theme().palette.bg.linear();
+    let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
@@ -523,7 +523,7 @@ fn rendered(scene: &RenderScene, desc: &RenderDesc) -> (Vec<u8>, og_render::Fram
 }
 
 /// Glass over overlay content: the panel blurs the overlay layers drawn
-/// below it as it blurs the scene (the amber bar of
+/// below it as it blurs the scene (the orange bar of
 /// `glass_overlay_content`, on the layer under the panel, spreads into the
 /// stripes inside the panel and stays sharp outside it), what is drawn
 /// above it (the cyan square) stays sharp, and the frame matches
@@ -554,17 +554,17 @@ fn a_glass_panel_blurs_the_overlay_layers_below_it() {
         px(&plain, 60, 100),
         "the bar outside the panel"
     );
-    let amber = px(&plain, 60, 100);
+    let orange = px(&plain, 60, 100);
     assert!(
-        amber[0] > 240 && amber[2] < 20,
-        "the bar is amber ({amber:?})"
+        orange[0] > 240 && orange[2] < 20,
+        "the bar is orange ({orange:?})"
     );
     assert_eq!(
         px(&glass, 60, 86),
         px(&plain, 60, 86),
         "and the stripes above it"
     );
-    // Inside the panel the bar is blurred: its amber reaches 8 px above
+    // Inside the panel the bar is blurred: its primary reaches 8 px above
     // its edge, where the plain frame has grey stripes.
     for x in [150, 154, 158] {
         let (g, p) = (px(&glass, x, 84), px(&plain, x, 84));

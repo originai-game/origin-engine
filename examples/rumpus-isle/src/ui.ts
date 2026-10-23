@@ -64,17 +64,17 @@ function title(world: World, g: GameV): void {
 // ------------------------------------------------------------------ lobby
 
 function seatCard(world: World, g: GameV, k: number, s: Seat): void {
-  og.ui.column(og.ui.idi("Seat", k), { width: { kind: "grow" }, gap: S.xs, cross: "center", padding: { left: S.sm, top: S.md, right: S.sm, bottom: S.md }, background: { token: "bgSubtle" }, radius: 18 }, () => {
+  og.ui.column(og.ui.idi("Seat", k), { width: { kind: "grow" }, gap: S.xs, cross: "center", padding: { left: S.sm, top: S.md, right: S.sm, bottom: S.md }, background: { token: "well" }, radius: 18 }, () => {
     if (!s.joined) {
-      og.ui.label("Name", `P${k + 1}`, { step: "lg", font: "display", color: { token: "fgInverse" }, nowrap: true });
-      og.ui.label("Join", say(world, "lobby.join"), { color: { token: "fgInverse" }, align: "center", width: { kind: "grow" } });
+      og.ui.label("Name", `P${k + 1}`, { step: "lg", font: "display", color: { token: "inkInverse" }, nowrap: true });
+      og.ui.label("Join", say(world, "lobby.join"), { color: { token: "inkInverse" }, align: "center", width: { kind: "grow" } });
       return;
     }
     og.ui.row("Who", { gap: S.xs, cross: "center" }, () => {
       og.ui.icon("Dot", "person", { size: 22, tint: ink(s.colour) });
       og.ui.label("Name", nameOf(k, s), { step: "lg", font: "display", color: ink(s.colour), nowrap: true });
     });
-    og.ui.label("Source", sourceName(world, s.source), { step: "meta", color: { token: "fgInverse" }, nowrap: true });
+    og.ui.label("Source", sourceName(world, s.source), { step: "meta", color: { token: "inkInverse" }, nowrap: true });
     og.ui.badge("State", say(world, s.ready ? "lobby.ready" : "lobby.choosing"), s.ready ? "success" : "neutral");
   });
 }
@@ -93,16 +93,16 @@ function lobby(world: World, g: GameV, sfx: Value<typeof Sfx>): void {
     width: phone ? { kind: "grow" } : { kind: "fixed", px: 860 },
     padding: { left: S.xl, top: S.lg, right: S.xl, bottom: S.lg },
     frame: "panel",
-    background: { token: "surface" },
+    background: { token: "panel" },
   }, () => {
     og.ui.label("Title", say(world, "lobby.title"), { step: "xl2", font: "display", heading: true });
-    og.ui.richText("Hint", say(world, "lobby.hint"), { color: { token: "fgMuted" }, width: { kind: "grow" } });
+    og.ui.richText("Hint", say(world, "lobby.hint"), { color: { token: "inkMuted" }, width: { kind: "grow" } });
     og.ui.row("Seats", { gap: S.sm, width: { kind: "grow" }, wrap: phone }, () => {
       for (let k = 0; k < MAX_PLAYERS; k++) seatCard(world, g, k, all[k]!);
     });
     // The colours: a pad's ring presses one for its own player (Response.pad).
     og.ui.row("Colours", { gap: S.xs, width: { kind: "grow" }, wrap: true, cross: "center" }, () => {
-      og.ui.label("Label", say(world, "lobby.colour"), { color: { token: "fgMuted" }, nowrap: true });
+      og.ui.label("Label", say(world, "lobby.colour"), { color: { token: "inkMuted" }, nowrap: true });
       COLOURS.forEach((c, i) => {
         const taken = all.some((s) => s.joined && s.colour === i);
         const r = og.ui.button(og.ui.idi("Colour", i), say(world, c.key), { size: "small", disabled: taken });
@@ -124,7 +124,7 @@ function lobby(world: World, g: GameV, sfx: Value<typeof Sfx>): void {
         }
       }
       og.ui.spacer("Gap", { kind: "grow" });
-      if (g.launch > 0) og.ui.label("Launch", say(world, "lobby.starting", { n: Math.ceil((LAUNCH_TICKS - g.launch) / 60) }), { step: "lg", font: "display", color: { token: "accentInk" }, nowrap: true });
+      if (g.launch > 0) og.ui.label("Launch", say(world, "lobby.starting", { n: Math.ceil((LAUNCH_TICKS - g.launch) / 60) }), { step: "lg", font: "display", color: { token: "highlight" }, nowrap: true });
       if (og.ui.button("Back", say(world, "lobby.back"), { variant: "secondary" }).clicked) g.ask = Ask.Title;
       const start = og.ui.button("Start", say(world, "lobby.start"), { variant: "primary", disabled: who.length < 2 });
       if (start.clicked && who.length >= 2) g.ask = Ask.Match;
@@ -145,9 +145,9 @@ function hud(world: World, g: GameV): boolean {
   const roundName = say(world, ROUND_KEYS[g.round]!);
   // The top: the round and its clock, in the middle (the top-left corner is the web shell's Back).
   og.ui.anchor("Top", { anchor: "top", direction: "row", gap: S.sm, cross: "center" }, () => {
-    og.ui.row("Round", { gap: S.sm, cross: "center", padding: { left: S.md, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "surface" } }, () => {
+    og.ui.row("Round", { gap: S.sm, cross: "center", padding: { left: S.md, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, () => {
       og.ui.label("Name", say(world, "hud.round", { n: g.round + 1, of: ROUNDS, name: roundName }), { step: "lg", font: "display", nowrap: true });
-      og.ui.icon("ClockIcon", "clock", { size: 20, tint: { token: "fgMuted" } });
+      og.ui.icon("ClockIcon", "clock", { size: 20, tint: { token: "inkMuted" } });
       og.ui.label("Clock", clock(g.phase === Phase.Intro ? g.left : g.ticks / 60), { step: "lg", font: "mono", nowrap: true });
     });
     if (og.ui.button("Pause", say(world, "hud.pause"), { size: "small", variant: "secondary" }).clicked) paused = true;
@@ -156,11 +156,11 @@ function hud(world: World, g: GameV): boolean {
   og.ui.anchor("Players", { anchor: "bottom", direction: "row", gap: S.sm, cross: "center" }, () => {
     seats(g).forEach((s, k) => {
       if (!s.joined) return;
-      og.ui.row(og.ui.idi("Player", k), { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "surface" } }, () => {
+      og.ui.row(og.ui.idi("Player", k), { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, () => {
         og.ui.icon("Dot", g.round === Round.Berry ? "apple" : s.alive ? "person" : "drop", { size: 22, tint: ink(s.colour) });
-        og.ui.label("Name", COLOURS[s.colour]!.name, { font: "display", color: { token: "fg" }, nowrap: true });
+        og.ui.label("Name", COLOURS[s.colour]!.name, { font: "display", color: { token: "ink" }, nowrap: true });
         const v = value(world, g, s);
-        if (v !== "") og.ui.label("Value", v, { step: "lg", font: "mono", color: { token: "accentInk" }, nowrap: true });
+        if (v !== "") og.ui.label("Value", v, { step: "lg", font: "mono", color: { token: "highlight" }, nowrap: true });
       });
     });
   });
@@ -171,12 +171,12 @@ function hud(world: World, g: GameV): boolean {
 function intro(world: World, g: GameV): void {
   const left = g.ticks;
   const count = left > 180 ? -1 : Math.ceil(left / 60);
-  og.ui.anchor("Card", { anchor: "center", direction: "column", gap: S.sm, cross: "center", padding: { left: S.xl, top: S.lg, right: S.xl, bottom: S.lg }, frame: "panel", background: { token: "surface" } }, () => {
-    og.ui.label("Round", say(world, "intro.round", { n: g.round + 1, of: ROUNDS }), { step: "lg", color: { token: "fgMuted" } });
+  og.ui.anchor("Card", { anchor: "center", direction: "column", gap: S.sm, cross: "center", padding: { left: S.xl, top: S.lg, right: S.xl, bottom: S.lg }, frame: "panel", background: { token: "panel" } }, () => {
+    og.ui.label("Round", say(world, "intro.round", { n: g.round + 1, of: ROUNDS }), { step: "lg", color: { token: "inkMuted" } });
     og.ui.label("Name", say(world, ROUND_KEYS[g.round]!), { step: "displayMd", font: "display", heading: true });
     og.ui.label("How", say(world, `${ROUND_KEYS[g.round]}.how`), { align: "center", width: { kind: "fixed", px: 420 } });
     og.ui.transition(og.ui.idi("Count", count), count > 0, { kind: "pop", durationMs: 220 }, () => {
-      og.ui.label("Number", `${count}`, { step: "displayLg", font: "display", color: { token: "accentInk" } });
+      og.ui.label("Number", `${count}`, { step: "displayLg", font: "display", color: { token: "highlight" } });
     });
   });
   void INTRO_TICKS;
@@ -187,9 +187,9 @@ function over(world: World, g: GameV): void {
   const all = seats(g);
   const winners = joined(g).filter((k) => all[k]!.place === 1);
   og.ui.transition("Banner", true, { kind: "pop" }, () => {
-    og.ui.anchor("Winner", { anchor: "center", direction: "column", cross: "center", gap: S.xs, padding: { left: S.xl, top: S.md, right: S.xl, bottom: S.md }, frame: "panel", background: { token: "surface" } }, () => {
+    og.ui.anchor("Winner", { anchor: "center", direction: "column", cross: "center", gap: S.xs, padding: { left: S.xl, top: S.md, right: S.xl, bottom: S.md }, frame: "panel", background: { token: "panel" } }, () => {
       const names = winners.map((k) => COLOURS[all[k]!.colour]!.name);
-      og.ui.label("Text", winners.length === 1 ? say(world, "over.one", { name: names[0]! }) : say(world, "over.tie", { names: names.join(" & ") }), { step: "displaySm", font: "display", color: winners.length === 1 ? ink(all[winners[0]!]!.colour) : { token: "fg" }, heading: true });
+      og.ui.label("Text", winners.length === 1 ? say(world, "over.one", { name: names[0]! }) : say(world, "over.tie", { names: names.join(" & ") }), { step: "displaySm", font: "display", color: winners.length === 1 ? ink(all[winners[0]!]!.colour) : { token: "ink" }, heading: true });
     });
   });
 }
@@ -232,13 +232,13 @@ function table(world: World, g: GameV, total: boolean): void {
   og.ui.column("Table", { gap: S.xs, width: { kind: "grow" } }, () => {
     order.forEach((k, i) => {
       const s = all[k]!;
-      og.ui.row(og.ui.idi("Row", i), { gap: S.sm, cross: "center", width: { kind: "grow" }, padding: { left: S.md, top: S.xs, right: S.md, bottom: S.xs }, background: { token: "fill" }, radius: 14 }, () => {
+      og.ui.row(og.ui.idi("Row", i), { gap: S.sm, cross: "center", width: { kind: "grow" }, padding: { left: S.md, top: S.xs, right: S.md, bottom: S.xs }, background: { token: "control" }, radius: 14 }, () => {
         const place = total ? 1 + order.filter((o) => all[o]!.points > s.points).length : s.place;
-        og.ui.label("Place", place > 0 ? say(world, "place.short", { n: place }) : "–", { step: "lg", font: "display", color: { token: "fgMuted" }, width: { kind: "fixed", px: 52 } });
+        og.ui.label("Place", place > 0 ? say(world, "place.short", { n: place }) : "–", { step: "lg", font: "display", color: { token: "inkMuted" }, width: { kind: "fixed", px: 52 } });
         og.ui.icon("Dot", "person", { size: 22, tint: ink(s.colour) });
         og.ui.label("Name", nameOf(k, s), { step: "lg", font: "display", width: { kind: "grow" }, nowrap: true });
-        if (!total && g.round === Round.Berry) og.ui.label("Berries", say(world, "scores.berries", { n: s.berries }), { color: { token: "fgMuted" }, nowrap: true });
-        if (!total && g.round === Round.Crumble && s.lasted > 0) og.ui.label("Lasted", say(world, "scores.lasted", { s: s.lasted.toFixed(1) }), { color: { token: "fgMuted" }, nowrap: true });
+        if (!total && g.round === Round.Berry) og.ui.label("Berries", say(world, "scores.berries", { n: s.berries }), { color: { token: "inkMuted" }, nowrap: true });
+        if (!total && g.round === Round.Crumble && s.lasted > 0) og.ui.label("Lasted", say(world, "scores.lasted", { s: s.lasted.toFixed(1) }), { color: { token: "inkMuted" }, nowrap: true });
         if (!total) og.ui.badge("Gained", `+${s.gained}`, s.gained > 0 ? "success" : "neutral");
         og.ui.counter("Points", s.points, { from: total ? 0 : s.points - s.gained, step: "xl", font: "display", durationMs: 700, suffix: ` ${say(world, "scores.pts")}` });
       });
@@ -249,14 +249,14 @@ function table(world: World, g: GameV, total: boolean): void {
 function scores(world: World, g: GameV): void {
   og.ui.setPlayers(MAX_PLAYERS);
   const last = g.round + 1 >= ROUNDS;
-  og.ui.anchor("Scores", { anchor: "center", direction: "column", gap: S.md, width: { kind: "fixed", px: 620 }, padding: { left: S.xl, top: S.lg, right: S.xl, bottom: S.lg }, frame: "panel", background: { token: "surface" } }, () => {
+  og.ui.anchor("Scores", { anchor: "center", direction: "column", gap: S.md, width: { kind: "fixed", px: 620 }, padding: { left: S.xl, top: S.lg, right: S.xl, bottom: S.lg }, frame: "panel", background: { token: "panel" } }, () => {
     og.ui.label("Title", say(world, "scores.title", { n: g.round + 1, name: say(world, ROUND_KEYS[g.round]!) }), { step: "xl2", font: "display", heading: true });
     table(world, g, false);
     if (g.newRecord) {
-      og.ui.badge("Record", g.round === Round.Berry ? say(world, "scores.recordBerries", { n: g.bestBerries }) : say(world, "scores.recordTiles", { s: g.bestCrumble.toFixed(1) }), "accent");
+      og.ui.badge("Record", g.round === Round.Berry ? say(world, "scores.recordBerries", { n: g.bestBerries }) : say(world, "scores.recordTiles", { s: g.bestCrumble.toFixed(1) }), "primary");
       og.ui.burst({ count: 12 });
     }
-    og.ui.label("DropIn", say(world, "scores.dropIn"), { step: "meta", color: { token: "fgMuted" }, width: { kind: "grow" } });
+    og.ui.label("DropIn", say(world, "scores.dropIn"), { step: "meta", color: { token: "inkMuted" }, width: { kind: "grow" } });
     const next = og.ui.button("Next", say(world, last ? "scores.podium" : "scores.next"), { variant: "primary", size: "large", autofocus: true, width: { kind: "grow" } });
     if (next.clicked) g.ask = Ask.Next;
   });
@@ -268,9 +268,9 @@ function podium(world: World, g: GameV): void {
   const who = joined(g);
   const top = Math.max(...who.map((k) => all[k]!.points));
   const winners = who.filter((k) => all[k]!.points === top);
-  og.ui.anchor("Podium", { anchor: "bottom", direction: "column", gap: S.md, width: { kind: "fixed", px: 640 }, padding: { left: S.xl, top: S.lg, right: S.xl, bottom: S.lg }, frame: "panel", background: { token: "surface" } }, () => {
+  og.ui.anchor("Podium", { anchor: "bottom", direction: "column", gap: S.md, width: { kind: "fixed", px: 640 }, padding: { left: S.xl, top: S.lg, right: S.xl, bottom: S.lg }, frame: "panel", background: { token: "panel" } }, () => {
     const names = winners.map((k) => COLOURS[all[k]!.colour]!.name);
-    og.ui.label("Title", winners.length === 1 ? say(world, "podium.one", { name: names[0]! }) : say(world, "podium.tie", { names: names.join(" & ") }), { step: "xl3", font: "display", heading: true, color: winners.length === 1 ? ink(all[winners[0]!]!.colour) : { token: "fg" } });
+    og.ui.label("Title", winners.length === 1 ? say(world, "podium.one", { name: names[0]! }) : say(world, "podium.tie", { names: names.join(" & ") }), { step: "xl3", font: "display", heading: true, color: winners.length === 1 ? ink(all[winners[0]!]!.colour) : { token: "ink" } });
     table(world, g, true);
     og.ui.row("Actions", { gap: S.sm, width: { kind: "grow" } }, () => {
       if (og.ui.button("Again", say(world, "podium.again"), { variant: "primary", autofocus: true, width: { kind: "grow" } }).clicked) g.ask = Ask.Again;

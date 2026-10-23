@@ -30,12 +30,12 @@ use og_physics::{
 use og_ui::{
     ActionButtonDesc, Align, Anchor, AnchorDesc, ButtonDesc, ButtonVariant, ChipDesc, ControlSize,
     CooldownDesc, Cross, DensityMode, DialogueDesc, Direction, DpadDesc, Element, FieldDesc,
-    FontRole, Fonts, GridDesc, HueName, IconAtlas, IconDesc, ImageDesc, InputFrame, Insets,
-    JoystickDesc, LabelDesc, ListDesc, ListRange, MapMarker, MeterDesc, MeterKind, MinimapDesc,
-    ModalDesc, Nav, PanelDesc, Presence, ProgressDesc, RadioDesc, Response, Scheme, ScrollDesc,
-    SelectDesc, SharedUi, Size, SkeletonDesc, SkinPart, SliderDesc, SpotlightDesc, Srgba,
-    StepperDesc, TabsDesc, TextAlign, Theme, ToastDesc, Tone, TransitionDesc, TransitionKind,
-    TypeStep, Ui, UiDesc, UiFont, Viewport,
+    FontRole, Fonts, GridDesc, IconAtlas, IconDesc, ImageDesc, InputFrame, Insets, JoystickDesc,
+    LabelDesc, ListDesc, ListRange, MapMarker, MeterDesc, MeterKind, MinimapDesc, ModalDesc, Nav,
+    PanelDesc, Presence, ProgressDesc, RadioDesc, Response, Scheme, ScrollDesc, SelectDesc,
+    SharedUi, Size, SkeletonDesc, SkinPart, SliderDesc, SpotlightDesc, Srgba, StepperDesc,
+    TabsDesc, TextAlign, Theme, ToastDesc, Tone, TransitionDesc, TransitionKind, TypeStep, Ui,
+    UiDesc, UiFont, Viewport,
 };
 use serde_json::{Map, Value, json};
 use std::any::Any;
@@ -576,105 +576,11 @@ fn size_or(v: &Value, d: Size) -> Size {
 
 /// A palette colour by its ThemeColor name.
 fn token(theme: &Theme, name: &str) -> Option<Srgba> {
-    let p = &theme.palette;
-    Some(match name {
-        "accent" => p.accent,
-        "accentActive" => p.accent_active,
-        "accentFg" => p.accent_fg,
-        "accentHover" => p.accent_hover,
-        "accentInk" => p.accent_ink,
-        "accentSoft" => p.accent_soft,
-        "bg" => p.bg,
-        "bgSubtle" => p.bg_subtle,
-        "border" => p.border,
-        "borderStrong" => p.border_strong,
-        "danger" => p.danger,
-        "fg" => p.fg,
-        "fgInverse" => p.fg_inverse,
-        "fgMuted" => p.fg_muted,
-        "fgSubtle" => p.fg_subtle,
-        "fill" => p.fill,
-        "fillStrong" => p.fill_strong,
-        "focus" => p.focus,
-        "info" => p.info,
-        "materialControl" => p.material_control,
-        "materialControlHover" => p.material_control_hover,
-        "materialEdge" => p.material_edge,
-        "materialGlow" => p.material_glow,
-        "materialRegular" => p.material_regular,
-        "materialRimSoft" => p.material_rim_soft,
-        "materialSheen" => p.material_sheen,
-        "materialShine" => p.material_shine,
-        "materialThick" => p.material_thick,
-        "materialThin" => p.material_thin,
-        "scrim" => p.scrim,
-        "shadow" => p.shadow,
-        "sheen" => p.sheen,
-        "stage" => p.stage,
-        "stageBorder" => p.stage_border,
-        "stageDanger" => p.stage_danger,
-        "stageFg" => p.stage_fg,
-        "stageMuted" => p.stage_muted,
-        "stageRaised" => p.stage_raised,
-        "stageSurface" => p.stage_surface,
-        "success" => p.success,
-        "surface" => p.surface,
-        "surfaceHover" => p.surface_hover,
-        "surfaceRaised" => p.surface_raised,
-        "thumb" => p.thumb,
-        "warn" => p.warn,
-        _ => return None,
-    })
+    theme.palette.get(name)
 }
 
 /// Every ThemeColor name, in the IDL's order.
-pub const THEME_COLORS: &[&str] = &[
-    "accent",
-    "accentActive",
-    "accentFg",
-    "accentHover",
-    "accentInk",
-    "accentSoft",
-    "bg",
-    "bgSubtle",
-    "border",
-    "borderStrong",
-    "danger",
-    "fg",
-    "fgInverse",
-    "fgMuted",
-    "fgSubtle",
-    "fill",
-    "fillStrong",
-    "focus",
-    "info",
-    "materialControl",
-    "materialControlHover",
-    "materialEdge",
-    "materialGlow",
-    "materialRegular",
-    "materialRimSoft",
-    "materialSheen",
-    "materialShine",
-    "materialThick",
-    "materialThin",
-    "scrim",
-    "shadow",
-    "sheen",
-    "stage",
-    "stageBorder",
-    "stageDanger",
-    "stageFg",
-    "stageMuted",
-    "stageRaised",
-    "stageSurface",
-    "success",
-    "surface",
-    "surfaceHover",
-    "surfaceRaised",
-    "thumb",
-    "warn",
-];
+pub const THEME_COLORS: &[&str] = og_ui::Palette::NAMES;
 
 /// A type step by its TypeStepName.
 pub(crate) fn step(theme: &Theme, name: &str) -> Option<TypeStep> {
@@ -872,21 +778,17 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         if d["contrast"].as_str() == Some("high") {
             theme = theme.to_high_contrast();
         }
-        if let Some(h) = d["accentHue"].as_str().and_then(HueName::from_name) {
-            theme = theme.with_hue(h);
-        } else if d["accentColor"].is_object() {
-            let c = &d["accentColor"];
+        if d["primaryColor"].is_object() {
+            let c = &d["primaryColor"];
             let ch = |k: &str| (f(c, k, 1.0).clamp(0.0, 1.0) * 255.0).round() as u8;
-            theme = theme.with_accent(Srgba::rgb(ch("r"), ch("g"), ch("b")));
+            theme = theme.with_primary(Srgba::rgb(ch("r"), ch("g"), ch("b")));
         }
         theme.reduced_motion = d["reducedMotion"].as_bool().unwrap_or(false);
         theme.reduced_transparency = d["reducedTransparency"].as_bool().unwrap_or(false);
-        theme.density = match d["density"].as_str() {
-            Some("compact") => DensityMode::Compact,
-            Some("comfortable") => DensityMode::Comfortable,
-            Some("touch") => DensityMode::Touch,
-            _ => DensityMode::Auto,
-        };
+        theme.density = d["density"]
+            .as_str()
+            .and_then(DensityMode::from_name)
+            .unwrap_or_default();
         let sounds = &d["sounds"];
         if sounds.is_object() {
             for e in og_ui::UiSound::ALL {
@@ -1244,7 +1146,7 @@ fn theme_json(theme: Theme, sizes: og_ui::Density, skin: &str) -> String {
         "scheme": if theme.scheme == Scheme::Light { "light" } else { "dark" },
         "palette": palette,
         "space": { "xxs": sp.xxs, "xs": sp.xs, "sm": sp.sm, "md": sp.md, "lg": sp.lg, "xl": sp.xl, "xxl": sp.xxl, "xl3": sp.xl3 },
-        "radius": { "control": r.control, "field": r.field, "block": r.block, "card": r.card, "panel": r.panel, "sheet": r.sheet, "button": r.button },
+        "radius": { "small": r.small, "control": r.control, "bar": r.bar, "panel": r.panel },
         "typeRamp": ramp,
         "sizes": { "controlSm": sizes.control_sm, "controlMd": sizes.control_md, "controlLg": sizes.control_lg, "gutter": sizes.gutter, "header": sizes.header, "row": sizes.row, "section": sizes.section },
         "durationsMs": { "instant": d.instant, "fast": d.fast, "base": d.base, "slow": d.slow, "spring": d.spring, "bounce": d.bounce },
@@ -1663,7 +1565,7 @@ fn tone(v: &Value) -> Tone {
         Some("warn") => Tone::Warn,
         Some("danger") => Tone::Danger,
         Some("info") => Tone::Info,
-        Some("accent") => Tone::Accent,
+        Some("primary") => Tone::Primary,
         Some("inverse") => Tone::Inverse,
         _ => Tone::Neutral,
     }
@@ -2077,7 +1979,7 @@ pub fn og_ui_meter(id: String, value: f64, max: f64, desc: Option<String>) {
             (Some(c), _) => MeterKind::Custom(c),
             (None, Some("mana")) => MeterKind::Mana,
             (None, Some("xp")) => MeterKind::Xp,
-            (None, Some("accent")) => MeterKind::Accent,
+            (None, Some("primary")) => MeterKind::Primary,
             _ => MeterKind::Health,
         };
         ui.meter(

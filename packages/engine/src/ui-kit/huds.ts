@@ -27,7 +27,7 @@ function pauseButton(out: Hud, label: string): void {
 function stat(id: string, value: string, caption: string, step: Api.TypeStepName = "xl3", align: Api.TextAlign = "start"): void {
   kit.column(id, { gap: 0, cross: align === "end" ? "end" : align === "center" ? "center" : "start" }, () => {
     kit.label("Value", value, { step, font: "mono", nowrap: true, align });
-    kit.label("Caption", caption, { step: "meta", color: token("fgMuted"), nowrap: true, align });
+    kit.label("Caption", caption, { step: "meta", color: token("inkMuted"), nowrap: true, align });
   });
 }
 
@@ -68,22 +68,22 @@ export function platformerHud(id: string, desc: Api.PlatformerHudDesc = {}): Api
       if (health !== null) capsule("Lives", () => kit.meter("Health", health, 1, { width: px(120) }));
       else if (maxLives > 0) {
         capsule("Lives", () => {
-          for (let i = 0; i < maxLives; i++) iconOr(kit.idi("Life", i), "heart", 20, token(i < (desc.lives ?? 0) ? "danger" : "fillStrong"));
+          for (let i = 0; i < maxLives; i++) iconOr(kit.idi("Life", i), "heart", 20, token(i < (desc.lives ?? 0) ? "danger" : "controlStrong"));
         });
       }
-      if (desc.level) kit.label("Level", desc.level, { step: "meta", color: token("fgMuted"), nowrap: true });
+      if (desc.level) kit.label("Level", desc.level, { step: "meta", color: token("inkMuted"), nowrap: true });
     });
   }
   if (desc.timeLeft !== null && desc.timeLeft !== undefined) {
     const low = desc.timeLeft <= 10;
     kit.anchor(`${id}.top`, { anchor: "top" }, () => {
-      capsule("Timer", () => kit.label("Time", clock(desc.timeLeft!), { step: "lg", font: "mono", color: token(low ? "danger" : "fg"), nowrap: true }));
+      capsule("Timer", () => kit.label("Time", clock(desc.timeLeft!), { step: "lg", font: "mono", color: token(low ? "danger" : "ink"), nowrap: true }));
     });
   }
   kit.anchor(`${id}.right`, { anchor: "topRight", gap: t.sm, cross: "center" }, () => {
     if (coins !== null) {
       capsule("Coins", () => {
-        iconOr("Coin", "coin", 20, token("accent"));
+        iconOr("Coin", "coin", 20, token("gold"));
         kit.label("Count", fmt(coins), { font: "mono", nowrap: true });
       });
     }
@@ -96,7 +96,7 @@ export function platformerHud(id: string, desc: Api.PlatformerHudDesc = {}): Api
 
 /** A crosshair at the centre: four short strokes and a gap. */
 function crosshair(): void {
-  const ink = token("fg", 0.9);
+  const ink = token("ink", 0.9);
   const bar = (id: string, w: number, h: number): void => kit.image(id, { tint: ink, width: px(w), height: px(h) });
   kit.anchor("Crosshair", { anchor: "center", direction: "column", cross: "center", gap: 6 }, () => {
     bar("N", 2, 8);
@@ -123,7 +123,7 @@ export function shooterHud(id: string, desc: Api.ShooterHudDesc = {}): Api.HudRe
   kit.anchor(`${id}.top`, { anchor: "topRight", gap: t.sm, cross: "center" }, () => {
     capsule("Kills", () => {
       kit.label("Count", fmt(desc.kills ?? 0), { font: "mono", nowrap: true });
-      kit.label("Unit", desc.killsLabel ?? "kills", { step: "meta", color: token("fgMuted"), nowrap: true });
+      kit.label("Unit", desc.killsLabel ?? "kills", { step: "meta", color: token("inkMuted"), nowrap: true });
     });
     pauseButton(out, desc.pauseLabel ?? "Pause");
   });
@@ -131,10 +131,10 @@ export function shooterHud(id: string, desc: Api.ShooterHudDesc = {}): Api.HudRe
     const mag = desc.magazine ?? 0;
     const ammo = desc.ammo ?? 0;
     kit.row("Rounds", { gap: t.xs, cross: "end" }, () => {
-      kit.label("Ammo", `${ammo}`, { step: "xl5", font: "mono", color: token(mag > 0 && ammo <= Math.floor(mag / 4) ? "warn" : "fg"), nowrap: true });
-      kit.label("Reserve", `/ ${desc.reserve ?? 0}`, { step: "lg", font: "mono", color: token("fgMuted"), nowrap: true });
+      kit.label("Ammo", `${ammo}`, { step: "xl5", font: "mono", color: token(mag > 0 && ammo <= Math.floor(mag / 4) ? "warn" : "ink"), nowrap: true });
+      kit.label("Reserve", `/ ${desc.reserve ?? 0}`, { step: "lg", font: "mono", color: token("inkMuted"), nowrap: true });
     });
-    if (desc.weapon) kit.label("Weapon", desc.weapon, { step: "meta", color: token("fgMuted"), nowrap: true });
+    if (desc.weapon) kit.label("Weapon", desc.weapon, { step: "meta", color: token("inkMuted"), nowrap: true });
   });
   const abilities = desc.abilities ?? [];
   if (abilities.length > 0) {
@@ -158,20 +158,20 @@ export function puzzleHud(id: string, desc: Api.PuzzleHudDesc = {}): Api.HudResu
   const score = desc.score ?? 0;
   const marks = desc.stars && desc.stars.length > 0 ? desc.stars : [Math.round(target / 3), Math.round((2 * target) / 3), target];
   kit.anchor(`${id}.left`, { anchor: "topLeft", direction: "column", gap: t.xs }, () => {
-    if (desc.level) kit.label("Level", desc.level, { step: "meta", color: token("fgMuted"), nowrap: true });
+    if (desc.level) kit.label("Level", desc.level, { step: "meta", color: token("inkMuted"), nowrap: true });
     if (desc.moves !== null && desc.moves !== undefined) stat("Moves", `${desc.moves}`, desc.movesLabel ?? "moves left", "xl3");
   });
   kit.anchor(`${id}.score`, { anchor: "top", direction: "column", cross: "center", gap: t.xs, width: px(260) }, () => {
     kit.label("Score", fmt(score), { step: "displaySm", font: "display", align: "center", width: grow() });
-    kit.meter("Progress", score, target, { kind: "accent", width: grow(), segments: 3 });
+    kit.meter("Progress", score, target, { kind: "primary", width: grow(), segments: 3 });
     kit.row("Stars", { gap: t.sm, cross: "center" }, () => {
-      marks.slice(0, 3).forEach((m, i) => iconOr(kit.idi("Star", i), "star", 20, token(score >= m ? "accent" : "fillStrong")));
-      kit.label("Target", (desc.targetLabel ?? "Target {target}").replaceAll("{target}", fmt(target)), { step: "meta", color: token("fgMuted"), nowrap: true });
+      marks.slice(0, 3).forEach((m, i) => iconOr(kit.idi("Star", i), "star", 20, token(score >= m ? "primary" : "controlStrong")));
+      kit.label("Target", (desc.targetLabel ?? "Target {target}").replaceAll("{target}", fmt(target)), { step: "meta", color: token("inkMuted"), nowrap: true });
     });
   });
   kit.anchor(`${id}.right`, { anchor: "topRight", gap: t.sm, cross: "center" }, () => {
     if (desc.timeLeft !== null && desc.timeLeft !== undefined) {
-      capsule("Timer", () => kit.label("Time", clock(desc.timeLeft!), { font: "mono", color: token(desc.timeLeft! <= 10 ? "danger" : "fg"), nowrap: true }));
+      capsule("Timer", () => kit.label("Time", clock(desc.timeLeft!), { font: "mono", color: token(desc.timeLeft! <= 10 ? "danger" : "ink"), nowrap: true }));
     }
     pauseButton(out, desc.pauseLabel ?? "Pause");
   });
@@ -186,7 +186,7 @@ export function idleHud(id: string, desc: Api.IdleHudDesc = {}): Api.HudResult {
   kit.anchor(`${id}.wallet`, { anchor: "top", gap: t.sm, cross: "center" }, () => {
     currencies.forEach((c, i) => {
       capsule(c.id ?? kit.idi("Currency", i), () => {
-        if (c.icon) iconOr("Icon", c.icon, 20, token("accent"));
+        if (c.icon) iconOr("Icon", c.icon, 20, token("primary"));
         kit.label("Amount", fmt(c.amount ?? 0), { step: i === 0 ? "lg" : "body", font: "mono", nowrap: true });
         if ((c.perSecond ?? 0) !== 0) kit.label("Rate", (desc.rateLabel ?? "+{rate}/s").replaceAll("{rate}", fmt(c.perSecond ?? 0)), { step: "meta", color: token("success"), nowrap: true });
       }, { height: i === 0 ? t.controlLg : t.controlMd });
@@ -204,13 +204,13 @@ export function idleHud(id: string, desc: Api.IdleHudDesc = {}): Api.HudResult {
     kit.panel("Generators", { width: grow(), padding: all(t.sm), gap: t.xs }, () => {
       kit.list("List", { count: generators.length, rowHeight: 64, gap: t.xs, height: fit(0, listHeight), width: grow() }, (i) => {
         const g = generators[i]!;
-        if (g.icon) iconOr("Icon", g.icon, 32, token("fg"));
+        if (g.icon) iconOr("Icon", g.icon, 32, token("ink"));
         kit.column("Text", { width: grow(), gap: t.xxs }, () => {
           kit.row("Head", { gap: t.sm, cross: "center", width: grow() }, () => {
             kit.label("Name", g.name ?? g.id ?? "", { step: "lg", nowrap: true, width: grow() });
             kit.badge("Level", (desc.levelLabel ?? "Lv {level}").replaceAll("{level}", `${g.level ?? 0}`), "neutral");
           });
-          kit.meter("Cycle", g.progress ?? 0, 1, { kind: "accent", height: 4, width: grow() });
+          kit.meter("Cycle", g.progress ?? 0, 1, { kind: "primary", height: 4, width: grow() });
         });
         const buy = kit.button("Buy", fmt(g.cost ?? 0), { size: "small", variant: g.affordable ? "primary" : "secondary", disabled: !g.affordable }) as Api.Response;
         if (buy.clicked) out.action = `buy:${g.id ?? i}`;
@@ -229,7 +229,7 @@ function deltaText(seconds: number): string {
 
 /** A delta's ink: ahead (negative) success, behind danger, even muted. */
 function deltaInk(seconds: number): Api.Paint {
-  return token(seconds < 0 ? "success" : seconds > 0 ? "danger" : "fgMuted");
+  return token(seconds < 0 ? "success" : seconds > 0 ? "danger" : "inkMuted");
 }
 
 export function racingHud(id: string, desc: Api.RacingHudDesc = {}): Api.HudResult {
@@ -244,7 +244,7 @@ export function racingHud(id: string, desc: Api.RacingHudDesc = {}): Api.HudResu
     if (racers > 0) {
       kit.row("Position", { gap: t.xxs, cross: "end" }, () => {
         kit.label("Place", `${desc.position ?? 1}`, { step: "displayXl", font: "display", nowrap: true });
-        kit.label("Of", `/${racers}`, { step: "xl", font: "mono", color: token("fgMuted"), nowrap: true });
+        kit.label("Of", `/${racers}`, { step: "xl", font: "mono", color: token("inkMuted"), nowrap: true });
       });
     }
     stat("Lap", `${Math.min(desc.lap ?? 1, desc.laps ?? 3)}/${desc.laps ?? 3}`, desc.lapLabel ?? "lap", "xl3");
@@ -258,16 +258,16 @@ export function racingHud(id: string, desc: Api.RacingHudDesc = {}): Api.HudResu
     if (delta !== null) kit.label("Delta", deltaText(delta), { step: "lg", font: "mono", color: deltaInk(delta), nowrap: true });
     if (desc.best !== null && desc.best !== undefined) {
       // A finished lap: m:ss.mmm as lapTime cuts it (30.717 s is 0:30.717, where the running clock's floor reads 0:30.716).
-      kit.label("Best", (desc.bestLabel ?? "Best {best}").replaceAll("{best}", lapTime(desc.best)), { step: "meta", font: "mono", color: token("fgMuted"), nowrap: true });
+      kit.label("Best", (desc.bestLabel ?? "Best {best}").replaceAll("{best}", lapTime(desc.best)), { step: "meta", font: "mono", color: token("inkMuted"), nowrap: true });
     }
     const splits = desc.splits ?? [];
     if (splits.length > 0) {
       kit.column("Splits", { gap: 0, cross: "end" }, () => {
         splits.forEach((sp, i) => {
           kit.row(kit.idi("Split", i), { gap: t.sm, cross: "center" }, () => {
-            kit.label("Label", sp.label ?? "", { step: "meta", color: token("fgMuted"), nowrap: true });
+            kit.label("Label", sp.label ?? "", { step: "meta", color: token("inkMuted"), nowrap: true });
             const time = sp.time ?? null;
-            kit.label("Time", time === null ? "-:--.---" : lapTime(time), { step: "meta", font: "mono", color: token(time === null ? "fgSubtle" : "fg"), nowrap: true });
+            kit.label("Time", time === null ? "-:--.---" : lapTime(time), { step: "meta", font: "mono", color: token(time === null ? "inkFaint" : "ink"), nowrap: true });
             const d = sp.delta ?? null;
             if (d !== null) kit.label("Delta", deltaText(d), { step: "meta", font: "mono", color: deltaInk(d), nowrap: true });
           });
@@ -280,11 +280,11 @@ export function racingHud(id: string, desc: Api.RacingHudDesc = {}): Api.HudResu
     kit.row("Speed", { gap: t.sm, cross: "end", width: grow(), align: "end" }, () => {
       kit.label("Value", `${Math.round(desc.speed ?? 0)}`, { step: "displayXl2", font: "display", nowrap: true });
       kit.column("Side", { cross: "end" }, () => {
-        kit.label("Gear", desc.gear ?? "N", { step: "xl", font: "mono", color: token("accentInk"), nowrap: true });
-        kit.label("Unit", desc.unit ?? "km/h", { step: "meta", color: token("fgMuted"), nowrap: true });
+        kit.label("Gear", desc.gear ?? "N", { step: "xl", font: "mono", color: token("highlight"), nowrap: true });
+        kit.label("Unit", desc.unit ?? "km/h", { step: "meta", color: token("inkMuted"), nowrap: true });
       });
     });
-    kit.meter("Rev", desc.speed ?? 0, desc.maxSpeed ?? 300, { kind: "accent", width: grow(), height: 6 });
+    kit.meter("Rev", desc.speed ?? 0, desc.maxSpeed ?? 300, { kind: "primary", width: grow(), height: 6 });
     if (boost !== null) kit.meter("Boost", boost, 1, { color: token("info"), label: boostLabel, width: grow(), segments: 4 });
   });
   if (showTouch) {

@@ -9,7 +9,7 @@
 //! declares go into the [`Theme`] fields themselves; the skin is the rest.
 //!
 //! [`Skin::default`] dresses nothing and moves nothing: every draw path
-//! checks for a slice, an ornament or a motion value first, so the token look
+//! checks for a slice, an ornament or a motion value first, so the prototype style
 //! is exactly what it was without a skin.
 //!
 //! A skin is an `.ogt` of `type skin` (the grammar is [`parse_skin`]'s); the
@@ -136,7 +136,7 @@ pub struct Slice {
     /// How the edges and the centre fill their length.
     pub fill: SliceFill,
     /// The middle of the region on screen (its width and height between
-    /// the corners), CSS px: one tile when `fill` tiles.
+    /// the corners), CSS px: one tile when `control` tiles.
     pub middle: [f32; 2],
 }
 
@@ -146,10 +146,10 @@ pub enum Ink {
     /// The art's own colours.
     #[default]
     Authored,
-    Accent,
-    Fg,
+    Primary,
+    Ink,
     Muted,
-    Border,
+    Line,
     Focus,
 }
 
@@ -157,10 +157,10 @@ impl Ink {
     fn parse(w: &str) -> Option<Ink> {
         Some(match w {
             "authored" => Ink::Authored,
-            "accent" => Ink::Accent,
-            "fg" => Ink::Fg,
+            "primary" => Ink::Primary,
+            "ink" => Ink::Ink,
             "muted" => Ink::Muted,
-            "border" => Ink::Border,
+            "line" => Ink::Line,
             "focus" => Ink::Focus,
             _ => return None,
         })
@@ -169,10 +169,10 @@ impl Ink {
     pub fn color(self, p: &Palette) -> Srgba {
         match self {
             Ink::Authored => Srgba::WHITE,
-            Ink::Accent => p.accent,
-            Ink::Fg => p.fg,
-            Ink::Muted => p.fg_muted,
-            Ink::Border => p.border_strong,
+            Ink::Primary => p.primary,
+            Ink::Ink => p.ink,
+            Ink::Muted => p.ink_muted,
+            Ink::Line => p.line_strong,
             Ink::Focus => p.focus,
         }
     }
@@ -205,7 +205,7 @@ pub struct Tile {
 }
 
 /// A glass part: the frame under it blurred (og-render's glass), tinted by
-/// the part's fill, under the part's own frame drawn at `fill` opacity.
+/// the part's fill, under the part's own frame drawn at `control` opacity.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Glass {
     /// The blur's radius in CSS px.
@@ -271,7 +271,7 @@ pub struct SkinMotion {
     /// Counters pop by this fraction when they finish (0: no pop).
     pub pop: f32,
     /// The spring the hover lift moves on (`None`: `motion.spring.default`
-    /// of the tokens, damping 1 and 350 ms: it settles without overshoot).
+    /// of the style, damping 1 and 350 ms: it settles without overshoot).
     pub hover_spring: Option<crate::theme::Spring>,
     /// The spring the press squash moves on (`None`: damping 0.55 over
     /// `motion.duration.instant`: in at once, a small bounce on release).
@@ -315,7 +315,7 @@ impl UiSound {
     }
 }
 
-/// A game's look beyond the tokens (see the module docs). Copy: the theme
+/// A game's look beyond the style (see the module docs). Copy: the theme
 /// carries it by value.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Skin {
@@ -476,56 +476,9 @@ pub fn resolve_reference(skin_id: &str, reference: &str, exists: impl Fn(&str) -
     }
 }
 
-/// A palette colour by its ThemeColor name (`accent`, `fgMuted`, `surfaceRaised`).
+/// A palette colour by its ThemeColor name (`primary`, `inkMuted`, `panelRaised`).
 pub fn palette_color<'a>(p: &'a mut Palette, name: &str) -> Option<&'a mut Srgba> {
-    Some(match name {
-        "accent" => &mut p.accent,
-        "accentActive" => &mut p.accent_active,
-        "accentFg" => &mut p.accent_fg,
-        "accentHover" => &mut p.accent_hover,
-        "accentInk" => &mut p.accent_ink,
-        "accentSoft" => &mut p.accent_soft,
-        "bg" => &mut p.bg,
-        "bgSubtle" => &mut p.bg_subtle,
-        "border" => &mut p.border,
-        "borderStrong" => &mut p.border_strong,
-        "danger" => &mut p.danger,
-        "fg" => &mut p.fg,
-        "fgInverse" => &mut p.fg_inverse,
-        "fgMuted" => &mut p.fg_muted,
-        "fgSubtle" => &mut p.fg_subtle,
-        "fill" => &mut p.fill,
-        "fillStrong" => &mut p.fill_strong,
-        "focus" => &mut p.focus,
-        "info" => &mut p.info,
-        "materialControl" => &mut p.material_control,
-        "materialControlHover" => &mut p.material_control_hover,
-        "materialEdge" => &mut p.material_edge,
-        "materialGlow" => &mut p.material_glow,
-        "materialRegular" => &mut p.material_regular,
-        "materialRimSoft" => &mut p.material_rim_soft,
-        "materialSheen" => &mut p.material_sheen,
-        "materialShine" => &mut p.material_shine,
-        "materialThick" => &mut p.material_thick,
-        "materialThin" => &mut p.material_thin,
-        "scrim" => &mut p.scrim,
-        "shadow" => &mut p.shadow,
-        "sheen" => &mut p.sheen,
-        "stage" => &mut p.stage,
-        "stageBorder" => &mut p.stage_border,
-        "stageDanger" => &mut p.stage_danger,
-        "stageFg" => &mut p.stage_fg,
-        "stageMuted" => &mut p.stage_muted,
-        "stageRaised" => &mut p.stage_raised,
-        "stageSurface" => &mut p.stage_surface,
-        "success" => &mut p.success,
-        "surface" => &mut p.surface,
-        "surfaceHover" => &mut p.surface_hover,
-        "surfaceRaised" => &mut p.surface_raised,
-        "thumb" => &mut p.thumb,
-        "warn" => &mut p.warn,
-        _ => return None,
-    })
+    p.get_mut(name)
 }
 
 /// A type step by its TypeStepName (`body`, `xl2`, `displayLg`).
@@ -558,13 +511,10 @@ pub fn ramp_step<'a>(r: &'a mut TypeRamp, name: &str) -> Option<&'a mut TypeStep
 
 fn radius_slot<'a>(r: &'a mut Radius, name: &str) -> Option<&'a mut f32> {
     Some(match name {
-        "block" => &mut r.block,
-        "button" => &mut r.button,
-        "card" => &mut r.card,
+        "small" => &mut r.small,
         "control" => &mut r.control,
-        "field" => &mut r.field,
+        "bar" => &mut r.bar,
         "panel" => &mut r.panel,
-        "sheet" => &mut r.sheet,
         _ => return None,
     })
 }
@@ -704,7 +654,7 @@ fn role_index(p: &P, w: &str) -> Result<usize, String> {
 /// version 1
 /// ---
 /// name "fantasy"
-/// base dark                                  # the token palette the colours below change
+/// base dark                                  # the style palette the colours below change
 /// atlas "skins/fantasy/atlas.png" 256 256    # its asset id and size in texels
 /// palette {                                # ThemeColor names; a block's lines are one per line
 ///   surface "#f2e4c4"

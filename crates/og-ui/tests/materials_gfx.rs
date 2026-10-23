@@ -1,6 +1,6 @@
 //! og-ui's materials frame (`references/<tier>/materials.png`), rendered
 //! headless and compared under og-tests' tolerance (`OG_UI_CAPTURE=1`
-//! records this tier's): a card in the dark token look with its edge light
+//! records this tier's): a card in the dark prototype style with its edge light
 //! (a 0.5 px highlight along the top and a hairline inside), a row of the
 //! UI kit's iconoir icons cooked by og-cook's icon cook (a distance-field
 //! set drawn as glyphs, at 24 and 48 px, in two inks) and one inline in
@@ -192,9 +192,9 @@ fn build(ui: &mut Ui, tex: og_render::TextureHandle) -> ZoomResponse {
                             IconDesc {
                                 size: if i == 0 { 48.0 } else { 24.0 },
                                 tint: Some(if accent {
-                                    t.palette.accent
+                                    t.palette.primary
                                 } else {
-                                    t.palette.fg_muted
+                                    t.palette.ink_muted
                                 }),
                                 ..IconDesc::default()
                             },
@@ -405,7 +405,7 @@ fn the_materials_frame_matches_its_reference() {
     let mut overlay = og_render::Overlay::new(v.width, v.height, v.dpr);
     ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
     scene.overlay = Some(overlay);
-    let bg = ui.theme().palette.bg.linear();
+    let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.post.tonemap = Tonemap::None;
     let desc = RenderDesc {

@@ -33,7 +33,7 @@ pub struct CounterDesc {
     pub step: Option<TypeStep>,
     /// The numeric role (`Mono`) suits counts in a row; a big score takes `Display`.
     pub font: FontRole,
-    /// `None`: `fg`.
+    /// `None`: `ink`.
     pub color: Option<Srgba>,
     pub align: TextAlign,
     pub width: Size,
@@ -92,7 +92,7 @@ pub struct ScreenTransitionDesc {
     pub kind: ScreenWipe,
     /// Cover and reveal together; 0: `motion.duration.slow` × 2.
     pub duration_ms: f32,
-    /// `None`: `bg`.
+    /// `None`: `backdrop`.
     pub color: Option<Srgba>,
     /// Covers with a texture region `[u0, v0, u1, v1]` stretched over the
     /// surface (tinted by `color`) instead of a flat colour.
@@ -245,7 +245,7 @@ impl Ui {
         n.content = Content::Text(crate::layout::TextContent {
             text: text.clone(),
             step: desc.step.unwrap_or(t.type_ramp.body),
-            color: desc.color.unwrap_or(t.palette.fg),
+            color: desc.color.unwrap_or(t.palette.ink),
             align: desc.align,
             wrap: false,
             font: desc.font,
@@ -305,7 +305,7 @@ impl Ui {
             1.4 * size
         };
         let count = if desc.count == 0 { 8 } else { desc.count };
-        let color = desc.color.unwrap_or(t.palette.accent);
+        let color = desc.color.unwrap_or(t.palette.primary);
         let e = ease_out(k);
         let fade = 1.0 - k * k;
         let mut shapes = Vec::new();
@@ -474,7 +474,7 @@ impl Ui {
                 from: desc.from,
                 e: smooth(answer.cover),
                 revealing: answer.revealing,
-                color: desc.color.unwrap_or(t.palette.bg),
+                color: desc.color.unwrap_or(t.palette.backdrop),
                 texture: desc.texture,
             });
         }
@@ -505,7 +505,7 @@ impl Ui {
             from: desc.from,
             e: smooth(amount),
             revealing,
-            color: desc.color.unwrap_or(t.palette.bg),
+            color: desc.color.unwrap_or(t.palette.backdrop),
             texture: desc.texture,
         });
     }

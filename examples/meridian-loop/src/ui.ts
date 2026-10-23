@@ -86,7 +86,7 @@ function saveSettings(world: World, p: PrefsV): void {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.sm, cross: "center", padding: { left: S.md, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "surface" } }, build);
+  og.ui.row(id, { gap: S.sm, cross: "center", padding: { left: S.md, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
 }
 
 /** The lap's sectors as the HUD's splits: each one's time once crossed, and its delta against the record's sector. */
@@ -141,8 +141,8 @@ function hud(world: World, r: RaceV, p: PrefsV): { pause: boolean } {
   if (r.phase === Phase.Countdown) {
     const n = Math.ceil(r.countdown / 60);
     og.ui.anchor("Count", { anchor: "center", direction: "column", cross: "center" }, () => {
-      og.ui.label("Number", `${n}`, { font: "display", step: "displayLg", nowrap: true, color: { token: "accentInk" } });
-      og.ui.label("Hint", say(world, "hud.ready"), { nowrap: true, color: { token: "fgMuted" } });
+      og.ui.label("Number", `${n}`, { font: "display", step: "displayLg", nowrap: true, color: { token: "highlight" } });
+      og.ui.label("Hint", say(world, "hud.ready"), { nowrap: true, color: { token: "inkMuted" } });
     });
   }
   const go = r.phase === Phase.Racing && r.clock < 50;
@@ -153,11 +153,11 @@ function hud(world: World, r: RaceV, p: PrefsV): { pause: boolean } {
     og.ui.transition("WrongWay", r.wrongWay > 45, { kind: "pop" }, () => capsule("WrongCapsule", () => og.ui.label("WrongText", say(world, "hud.wrongWay"), { step: "xl", nowrap: true, color: { token: "danger" } })));
   });
   og.ui.anchor("Keys", { anchor: "bottomLeft", direction: "column", gap: S.xs }, () => {
-    if (!touch && r.clock < 600 && r.lap === 1) og.ui.label("KeysText", say(world, "hud.keys"), { step: "meta", nowrap: true, color: { token: "fgMuted" } });
-    if (!p.ghost) og.ui.label("GhostOff", say(world, "hud.ghostOff"), { step: "meta", nowrap: true, color: { token: "fgSubtle" } });
+    if (!touch && r.clock < 600 && r.lap === 1) og.ui.label("KeysText", say(world, "hud.keys"), { step: "meta", nowrap: true, color: { token: "inkMuted" } });
+    if (!p.ghost) og.ui.label("GhostOff", say(world, "hud.ghostOff"), { step: "meta", nowrap: true, color: { token: "inkFaint" } });
   });
   og.ui.anchor("ReplayTag", { anchor: "left", direction: "column", gap: S.xs }, () => {
-    if (r.replaying) capsule("ReplayCapsule", () => og.ui.label("ReplayText", say(world, "hud.replay"), { step: "lg", nowrap: true, color: { token: "accentInk" } }));
+    if (r.replaying) capsule("ReplayCapsule", () => og.ui.label("ReplayText", say(world, "hud.replay"), { step: "lg", nowrap: true, color: { token: "highlight" } }));
   });
   return { pause: h.paused };
 }

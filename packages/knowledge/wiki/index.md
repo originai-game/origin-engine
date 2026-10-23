@@ -81,7 +81,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 
 | Module | TypeScript | Publish builds | Summary |
 |---|---|---|---|
-| [`ui`](ui.md) | `og.ui.*` | kept | The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it. |
+| [`ui`](ui.md) | `og.ui.*` | kept | The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the placeholder prototype style until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it. |
 
 ### `og-build`
 
@@ -119,7 +119,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1133 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1132 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -342,7 +342,6 @@ Field units the docs and Tune use.
 | [`Heard`](probe.md#type-Heard) | struct | probe | — |
 | [`Hello`](probe.md#type-Hello) | struct | probe | — |
 | [`HudResult`](ui.md#type-HudResult) | struct | ui | — |
-| [`HueName`](ui.md#type-HueName) | enum | ui | — |
 | [`HumanBone`](anim.md#type-HumanBone) | struct | anim | — |
 | [`Humanoid`](anim.md#type-Humanoid) | struct | anim | — |
 | [`HumanoidDesc`](anim.md#type-HumanoidDesc) | desc struct | anim | — |

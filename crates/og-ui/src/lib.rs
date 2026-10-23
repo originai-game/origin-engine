@@ -1,6 +1,7 @@
 //! Origin Engine UI (`docs/design.md` §2.7): an immediate-mode toolkit whose
-//! tree is declared every tick, laid out Clay-style in one pass, themed by the
-//! platform's design tokens, drawn through og-render's screen-space overlay
+//! tree is declared every tick, laid out Clay-style in one pass, styled by
+//! the game's own UI style (the placeholder `prototype` until it picks
+//! one; never the platform's design language), drawn through og-render's screen-space overlay
 //! (sprites and MSDF text over the finished frame), and addressable by the probe through stable string ids.
 //!
 //! ```ignore
@@ -59,8 +60,8 @@ pub use probe::{SharedUi, UiProbe};
 pub use rich::{RichTextDesc, RichTextResponse};
 pub use skin::{Skin, SkinFile, SkinPart, Slice, SliceFill, UiSound, parse_skin};
 pub use style::{
-    Breakpoint, Contrast, Density, DensityMode, Durations, HueName, Hues, Palette, READABLE,
-    Radius, Scheme, Space, Spring, Srgba, Theme, TypeRamp, TypeStep,
+    Breakpoint, Contrast, Density, DensityMode, Durations, Palette, READABLE, Radius, Scheme,
+    Space, Spring, Srgba, Theme, TypeRamp, TypeStep,
 };
 pub use text::{FontMetrics, UiFont, VisualGlyph, bidi_runs, needs_visual};
 pub use ui::{

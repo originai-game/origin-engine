@@ -2,11 +2,11 @@
 //! and atlas.png) parse, and every pack keeps body text legible: each ink a
 //! template puts on a skinned surface reaches WCAG's 4.5:1 against what is
 //! really drawn there (the frame's art multiplied by its tint, composited
-//! over the pack's `bg`, measured over the frame's middle).
+//! over the pack's `backdrop`, measured over the frame's middle).
 //!
 //! Ways this could fail: a pack whose palette reads on paper but whose
 //! frame art darkens or lightens the fill under the text; a translucent
-//! panel whose ink only reads over one backdrop; a selected tab (`thumb`)
+//! panel whose ink only reads over one backdrop; a selected tab (`knob`)
 //! in the same tone as its text; a pack missing, or a typo in its file.
 
 use og_ui::skin::{SkinPart, Slice};
@@ -50,7 +50,7 @@ fn over(top: [f32; 3], a: f32, below: [f32; 3]) -> [f32; 3] {
 }
 
 /// What a frame draws under its text: the mean of its middle (inside the
-/// corner insets), tinted, over `bg`.
+/// corner insets), tinted, over `backdrop`.
 fn under(atlas: &image::RgbaImage, s: &Slice, tint: Srgba, bg: [f32; 3]) -> [f32; 3] {
     let (w, h) = (atlas.width() as f32, atlas.height() as f32);
     let x0 = ((s.uv[0] + s.border_uv[0]) * w).ceil() as u32;
@@ -108,7 +108,7 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
             .to_rgba8();
         let t = file.theme;
         let p = t.palette;
-        let bg = linear(p.bg);
+        let bg = linear(p.backdrop);
         let skin = t.skin;
         let slice = |part: SkinPart| {
             skin.slices[part.index()]
@@ -120,61 +120,56 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
         let checks: Vec<Check> = vec![
             (
                 "dialog",
-                p.surface_raised,
+                p.panel_raised,
                 SkinPart::Panel,
-                vec![("fg", p.fg), ("fgMuted", p.fg_muted)],
+                vec![("fg", p.ink), ("fgMuted", p.ink_muted)],
             ),
             (
                 "screen panel",
-                p.material_thick,
+                p.hud,
                 SkinPart::Panel,
-                vec![("fg", p.fg), ("fgMuted", p.fg_muted)],
+                vec![("fg", p.ink), ("fgMuted", p.ink_muted)],
             ),
             (
                 "gallery panel",
-                p.surface,
+                p.panel,
                 SkinPart::Panel,
-                vec![("fg", p.fg), ("fgMuted", p.fg_muted)],
+                vec![("fg", p.ink), ("fgMuted", p.ink_muted)],
             ),
             (
                 "card",
-                p.surface,
+                p.panel,
                 SkinPart::Card,
-                vec![("fg", p.fg), ("fgMuted", p.fg_muted)],
+                vec![("fg", p.ink), ("fgMuted", p.ink_muted)],
             ),
-            ("button", p.fill, SkinPart::Button, vec![("fg", p.fg)]),
+            ("button", p.control, SkinPart::Button, vec![("fg", p.ink)]),
             (
                 "hovered button",
-                p.fill_strong,
+                p.control_strong,
                 SkinPart::ButtonHover,
-                vec![("fg", p.fg)],
+                vec![("fg", p.ink)],
             ),
             (
                 "primary button",
-                p.accent,
+                p.primary,
                 SkinPart::Button,
-                vec![("accentFg", p.accent_fg)],
+                vec![("accentFg", p.on_primary)],
             ),
             (
                 "hovered primary",
-                p.accent_hover,
+                p.primary_hover,
                 SkinPart::ButtonHover,
-                vec![("accentFg", p.accent_fg)],
+                vec![("accentFg", p.on_primary)],
             ),
-            (
-                "HUD capsule",
-                p.material_thick,
-                SkinPart::Capsule,
-                vec![("fg", p.fg)],
-            ),
+            ("HUD capsule", p.hud, SkinPart::Capsule, vec![("fg", p.ink)]),
             (
                 "tooltip",
-                p.surface_raised,
+                p.panel_raised,
                 SkinPart::Tooltip,
-                vec![("fg", p.fg)],
+                vec![("fg", p.ink)],
             ),
-            ("field", p.fill, SkinPart::Field, vec![("fg", p.fg)]),
-            ("slot", p.fill, SkinPart::Slot, vec![("fg", p.fg)]),
+            ("field", p.control, SkinPart::Field, vec![("fg", p.ink)]),
+            ("slot", p.control, SkinPart::Slot, vec![("fg", p.ink)]),
         ];
         for (what, fill, part, inks) in checks {
             let ground = under(&atlas, &slice(part), fill, bg);
@@ -189,9 +184,9 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
             }
         }
         // A selected tab: fg on thumb, over the dialog.
-        let dialog = under(&atlas, &slice(SkinPart::Panel), p.surface_raised, bg);
-        let tab = over(linear(p.thumb), p.thumb.alpha, dialog);
-        let r = ratio(linear(p.fg), tab);
+        let dialog = under(&atlas, &slice(SkinPart::Panel), p.panel_raised, bg);
+        let tab = over(linear(p.knob), p.knob.alpha, dialog);
+        let r = ratio(linear(p.ink), tab);
         report.push(format!("{name:8} fg        on selected tab     {r:5.2}:1"));
         if r < 4.5 {
             failures.push(format!(

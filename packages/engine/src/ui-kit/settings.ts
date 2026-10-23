@@ -40,7 +40,7 @@ function sliderRow(id: string, label: string, value: number, desc: Api.SliderDes
     kit.label("Label", label, { width: px(phone ? 96 : 140), nowrap: true });
     const r = kit.slider("Slider", value, desc) as Api.SliderResult;
     out = r.value;
-    kit.label("Value", shown, { width: px(48), align: "end", font: "mono", color: token("fgMuted"), nowrap: true });
+    kit.label("Value", shown, { width: px(48), align: "end", font: "mono", color: token("inkMuted"), nowrap: true });
   });
   return out;
 }
@@ -82,7 +82,7 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
         }
         case "graphics": {
           const quality = desc.qualityLabel ?? "Quality";
-          kit.label("QualityLabel", quality, { step: "meta", color: token("fgMuted") });
+          kit.label("QualityLabel", quality, { step: "meta", color: token("inkMuted") });
           const levels = [desc.lowLabel ?? "Low", desc.mediumLabel ?? "Medium", desc.highLabel ?? "High"];
           const q = kit.radio("Quality", levels, QUALITIES.indexOf(s.quality), { horizontal: !phone, label: quality });
           s.quality = QUALITIES[q.selected] ?? "medium";

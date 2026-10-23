@@ -141,7 +141,7 @@ export function continueRun(world: World, g: GameV, p: PrefsV): boolean {
   g.warpY = g.checkY;
   g.area = -1;
   g.loads += 1;
-  og.ui.toast(world, say(world, "toast.welcome", { name: p.name === "" ? say(world, "name.placeholder") : p.name }), { tone: "accent" });
+  og.ui.toast(world, say(world, "toast.welcome", { name: p.name === "" ? say(world, "name.placeholder") : p.name }), { tone: "primary" });
   return true;
 }
 
@@ -151,7 +151,7 @@ export function score(g: GameV): number {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "surface" } }, build);
+  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
 }
 
 function hud(world: World, g: GameV): void {
@@ -159,10 +159,10 @@ function hud(world: World, g: GameV): void {
   og.ui.setNavigation(g.talking || g.shopping);
   og.ui.anchor("Status", { anchor: "topLeft", direction: "row", gap: S.sm, cross: "center" }, () => {
     capsule("Hearts", () => {
-      for (let i = 0; i < HEARTS; i++) og.ui.icon(og.ui.idi("Heart", i), "heart", { size: 22, tint: { token: i < g.hearts ? "danger" : "fillStrong" } });
+      for (let i = 0; i < HEARTS; i++) og.ui.icon(og.ui.idi("Heart", i), "heart", { size: 22, tint: { token: i < g.hearts ? "danger" : "controlStrong" } });
     });
     capsule("Glimmers", () => {
-      og.ui.icon("Coin", "coin", { size: 20, tint: { token: "accent" } });
+      og.ui.icon("Coin", "coin", { size: 20, tint: { token: "gold" } });
       og.ui.label("Count", `${g.glimmers}`, { step: "lg", font: "mono", nowrap: true, width: px(34) });
     });
   });
@@ -199,7 +199,7 @@ function hud(world: World, g: GameV): void {
   if (prompt !== "" && g.respawn === 0) {
     og.ui.anchor("Prompt", { anchor: "bottom", offsetY: -24 }, () => {
       capsule("Hint", () => {
-        og.ui.icon("Glyph", prompt === "hud.ring" ? "music" : "bag", { size: 18, tint: { token: "accent" } });
+        og.ui.icon("Glyph", prompt === "hud.ring" ? "music" : "bag", { size: 18, tint: { token: "primary" } });
         og.ui.label("Text", say(world, prompt), { nowrap: true });
       });
     });
@@ -302,7 +302,7 @@ function settings(world: World, g: GameV, p: PrefsV): void {
   const before = g.settingsOpen ? JSON.stringify(prefsValue(p)) : "";
   const m = og.ui.modal("Settings", g.settingsOpen, { title: say(world, "settings.title"), width: px(Math.min(460, og.ui.frameViewport().width - 32)) }, () => {
     // A label mixing scripts: the Latin in the skin's pixel face, the Chinese from the game's subset.
-    og.ui.label("About", say(world, "settings.about"), { color: { token: "fgMuted" }, width: grow });
+    og.ui.label("About", say(world, "settings.about"), { color: { token: "inkMuted" }, width: grow });
     const slider = (id: string, key: string, value: number): number => {
       let out = value;
       og.ui.row(id, { width: grow, gap: S.md, cross: "center" }, () => {
@@ -314,7 +314,7 @@ function settings(world: World, g: GameV, p: PrefsV): void {
     };
     p.music = slider("Music", "settings.music", p.music);
     p.effects = slider("Effects", "settings.effects", p.effects);
-    og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "fgMuted" } });
+    og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "inkMuted" } });
     const r = og.ui.radio("Language", LANGUAGES.map((l) => say(world, l.key)), p.language, { horizontal: true });
     if (r.selected !== p.language) setLanguage(world, p, LANGUAGES[r.selected]!.code);
     const motion = og.ui.toggle("Motion", p.reducedMotion, say(world, "settings.motion")).on;
@@ -445,7 +445,7 @@ export const Ui = defineSystem(
       if (saved !== null) {
         og.ui.anchor("Slot", { anchor: "bottomLeft" }, () => {
           capsule("Saved", () => {
-            og.ui.icon("Glyph", "music", { size: 18, tint: { token: "accent" } });
+            og.ui.icon("Glyph", "music", { size: 18, tint: { token: "primary" } });
             og.ui.label("Text", say(world, "title.saved", { name: saved.name === "" ? say(world, "name.placeholder") : saved.name, n: chimesIn(saved) }), { nowrap: true });
           });
         });

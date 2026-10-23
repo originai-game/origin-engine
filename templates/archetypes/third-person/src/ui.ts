@@ -216,7 +216,7 @@ function clock(world: World, g: GameV, dt: number): void {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "surface" } }, build);
+  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
 }
 
 function clockText(g: GameV): string {
@@ -232,10 +232,10 @@ function hud(world: World, g: GameV): void {
   og.ui.setNavigation(false);
   og.ui.anchor("Status", { anchor: "topLeft", direction: "column", gap: S.sm }, () => {
     capsule("Hearts", () => {
-      for (let i = 0; i < HEARTS; i++) og.ui.icon(`Heart${i}`, "heart", { size: 22, tint: { token: i < g.hearts ? "danger" : "fillStrong" } });
+      for (let i = 0; i < HEARTS; i++) og.ui.icon(`Heart${i}`, "heart", { size: 22, tint: { token: i < g.hearts ? "danger" : "controlStrong" } });
     });
     capsule("Beacons", () => {
-      og.ui.icon("Fire", "fire", { size: 22, tint: { token: "accent" } });
+      og.ui.icon("Fire", "fire", { size: 22, tint: { token: "primary" } });
       og.ui.label("Count", say(world, "hud.beacons", { n: g.lit, total: BEACONS }), { step: "lg", font: "mono", nowrap: true });
     });
   });
@@ -243,9 +243,9 @@ function hud(world: World, g: GameV): void {
   og.ui.anchor("Dusk", { anchor: "topRight", gap: S.sm, cross: "center" }, () => {
     capsule("Clock", () => {
       const left = 1 - (g.hour - HOURS.start) / (HOURS.night - HOURS.start);
-      og.ui.icon("Glyph", "clock", { size: 20, tint: { token: left < 0.25 ? "danger" : "fg" } });
+      og.ui.icon("Glyph", "clock", { size: 20, tint: { token: left < 0.25 ? "danger" : "ink" } });
       og.ui.label("Hour", clockText(g), { font: "mono", nowrap: true, width: px(48) });
-      og.ui.meter("Left", Math.max(0, left), 1, { kind: "accent", width: px(touch ? 70 : 110) });
+      og.ui.meter("Left", Math.max(0, left), 1, { kind: "primary", width: px(touch ? 70 : 110) });
     });
     if (og.ui.actionButton("Pause", say(world, "hud.pause"), { icon: "pause", size: 48 }).clicked) paused = true;
   });
@@ -254,7 +254,7 @@ function hud(world: World, g: GameV): void {
   if (g.near >= 0 && g.ending === Ending.None) {
     og.ui.anchor("Prompt", { anchor: "bottom", offsetY: touch ? -150 : -24, direction: "column", cross: "center", gap: S.xs }, () => {
       capsule("Hint", () => {
-        og.ui.icon("Fire", "fire", { size: 18, tint: { token: "accent" } });
+        og.ui.icon("Fire", "fire", { size: 18, tint: { token: "primary" } });
         const pad = must(world.resource(og.Gamepad)).connected();
         og.ui.label("Text", say(world, touch ? "hud.hint.touch" : pad ? "hud.hint.pad" : "hud.hint.keys"), { nowrap: true });
       });
@@ -346,7 +346,7 @@ function settings(world: World, g: GameV, p: PrefsV): void {
     p.master = slider("Master", "settings.master", p.master);
     p.music = slider("Music", "settings.music", p.music);
     p.effects = slider("Effects", "settings.effects", p.effects);
-    og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "fgMuted" } });
+    og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "inkMuted" } });
     const r = og.ui.radio("Language", LANGUAGES.map((l) => say(world, l.key)), p.language, { horizontal: true });
     if (r.selected !== p.language) setLanguage(world, p, r.selected);
     p.reducedMotion = og.ui.toggle("Motion", p.reducedMotion, say(world, "settings.motion")).on;
@@ -375,7 +375,7 @@ function summary(world: World, g: GameV): "again" | "menu" | null {
   const title = won ? "over.won" : g.ending === Ending.Caught ? "over.caught" : "over.night";
   og.ui.modal("Summary", g.phase === Phase.Over, { title: say(world, title), locked: true, width: px(Math.min(400, og.ui.frameViewport().width - 32)) }, () => {
     og.ui.row("Mark", { width: grow, align: "center" }, () => {
-      og.ui.transition("Icon", true, { kind: "pop" }, () => og.ui.icon("Glyph", won ? "fire" : g.ending === Ending.Caught ? "skull" : "clock", { size: 48, tint: { token: won ? "accent" : "fgMuted" } }));
+      og.ui.transition("Icon", true, { kind: "pop" }, () => og.ui.icon("Glyph", won ? "fire" : g.ending === Ending.Caught ? "skull" : "clock", { size: 48, tint: { token: won ? "primary" : "inkMuted" } }));
       // From a third of a second into the summary, every frame: a burst plays only while it is called.
       if (won && g.overTicks >= OVER_DELAY + 20) og.ui.burst({ count: 14 });
     });
@@ -385,7 +385,7 @@ function summary(world: World, g: GameV): "again" | "menu" | null {
       og.ui.keyValue("Hurts", say(world, "over.hurts"), `${g.hurts}`, true);
       og.ui.keyValue("Best", say(world, "over.best"), g.best > 0 ? seconds(g.best) + (g.newBest ? " ★" : "") : say(world, "over.none"), false);
     });
-    og.ui.label("Record", say(world, "over.record", { runs: g.runs, wins: g.wins }), { color: { token: "fgMuted" }, align: "center", width: grow });
+    og.ui.label("Record", say(world, "over.record", { runs: g.runs, wins: g.wins }), { color: { token: "inkMuted" }, align: "center", width: grow });
     og.ui.row("Actions", { width: grow, gap: S.sm }, () => {
       if (og.ui.button("Again", say(world, "over.again"), { variant: "primary", width: grow }).clicked) chose = "again";
       if (og.ui.button("Menu", say(world, "over.menu"), { width: grow }).clicked) chose = "menu";

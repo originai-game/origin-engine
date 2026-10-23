@@ -6,10 +6,10 @@ name "handmade"
 base dark
 atlas "skins/handmade/atlas.png" 64 64
 palette {
-  accent "#ffb000"
+  primary "#ffb000"
 }
 slice panel 0 0 8 8 2
 slice button 8 0 8 8 2 tint repeat
 soft 16 0 8 8 3
-corner 24 0 8 8 12 12 accent 2
+corner 24 0 8 8 12 12 primary 2
 corners panel

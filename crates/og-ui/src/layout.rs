@@ -485,7 +485,7 @@ pub enum FontRole {
     Display,
     /// Code, ids and prices (falls back to `Body`).
     Mono,
-    /// Levels and scores (the design language's `font-rounded`; falls back
+    /// Levels and scores (falls back
     /// to `Display`, then `Body`).
     Rounded,
 }

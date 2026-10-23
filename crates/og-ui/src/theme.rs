@@ -1,263 +1,214 @@
-//! GENERATED from the platform design tokens (`packages/tokens/tokens.json`,
-//! vendored verbatim as `crates/og-ui/tokens/tokens.json`) by
-//! `crates/og-ui/scripts/gen-theme.sh`. Do not edit: change the tokens in the
-//! platform, run the script, commit both files. `tests/theme.rs` fails when
-//! this file differs from what the generator writes.
+//! The engine's own UI values: the colour roles of a game UI and the
+//! `prototype` style, the look a game has before it chooses one. These are
+//! owned here and by no one else: the platform's design language styles the
+//! platform's pages and the player shell, never a game's screens.
+//!
+//! `prototype` is deliberately a placeholder: greys, square corners, no
+//! glass, a single wireframe cyan for focus and highlights. A game that
+//! ships it looks unfinished, and `og polish` says so. A game's own look is
+//! a style (`crate::skin`, `type style`), usually the one its look names.
 //!
 //! Lengths are CSS pixels, durations milliseconds, colours sRGB as authored
 //! (straight alpha); `crate::style` converts them for the renderer.
 
-/// FNV-1a 64 of the token file this was generated from.
-pub const SOURCE_FNV1A64: u64 = 0xe4ffc80fff9e3990;
-
-/// An sRGB colour as the tokens author it: 8-bit channels, straight alpha.
+/// An sRGB colour as a style authors it: 8-bit channels, straight alpha.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Srgba {
     pub rgb: [u8; 3],
     pub alpha: f32,
 }
 
-/// The semantic colours (`color` in tokens.json; `docs/design-language.md` §Colour).
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Palette {
-    /// `accent`
-    pub accent: Srgba,
-    /// `accent-active`
-    pub accent_active: Srgba,
-    /// `accent-fg`
-    pub accent_fg: Srgba,
-    /// `accent-hover`
-    pub accent_hover: Srgba,
-    /// `accent-ink`
-    pub accent_ink: Srgba,
-    /// `accent-soft`
-    pub accent_soft: Srgba,
-    /// `bg`
-    pub bg: Srgba,
-    /// `bg-subtle`
-    pub bg_subtle: Srgba,
-    /// `border`
-    pub border: Srgba,
-    /// `border-strong`
-    pub border_strong: Srgba,
-    /// `danger`
-    pub danger: Srgba,
-    /// `fg`
-    pub fg: Srgba,
-    /// `fg-inverse`
-    pub fg_inverse: Srgba,
-    /// `fg-muted`
-    pub fg_muted: Srgba,
-    /// `fg-subtle`
-    pub fg_subtle: Srgba,
-    /// `fill`
-    pub fill: Srgba,
-    /// `fill-strong`
-    pub fill_strong: Srgba,
-    /// `focus`
-    pub focus: Srgba,
-    /// `info`
-    pub info: Srgba,
-    /// `material-control`
-    pub material_control: Srgba,
-    /// `material-control-hover`
-    pub material_control_hover: Srgba,
-    /// `material-edge`
-    pub material_edge: Srgba,
-    /// `material-glow`
-    pub material_glow: Srgba,
-    /// `material-regular`
-    pub material_regular: Srgba,
-    /// `material-rim-soft`
-    pub material_rim_soft: Srgba,
-    /// `material-sheen`
-    pub material_sheen: Srgba,
-    /// `material-shine`
-    pub material_shine: Srgba,
-    /// `material-thick`
-    pub material_thick: Srgba,
-    /// `material-thin`
-    pub material_thin: Srgba,
-    /// `scrim`
-    pub scrim: Srgba,
-    /// `shadow`
-    pub shadow: Srgba,
-    /// `sheen`
-    pub sheen: Srgba,
-    /// `stage`
-    pub stage: Srgba,
-    /// `stage-border`
-    pub stage_border: Srgba,
-    /// `stage-danger`
-    pub stage_danger: Srgba,
-    /// `stage-fg`
-    pub stage_fg: Srgba,
-    /// `stage-muted`
-    pub stage_muted: Srgba,
-    /// `stage-raised`
-    pub stage_raised: Srgba,
-    /// `stage-surface`
-    pub stage_surface: Srgba,
-    /// `success`
-    pub success: Srgba,
-    /// `surface`
-    pub surface: Srgba,
-    /// `surface-hover`
-    pub surface_hover: Srgba,
-    /// `surface-raised`
-    pub surface_raised: Srgba,
-    /// `thumb`
-    pub thumb: Srgba,
-    /// `warn`
-    pub warn: Srgba,
+const fn c(r: u8, g: u8, b: u8) -> Srgba {
+    Srgba {
+        rgb: [r, g, b],
+        alpha: 1.0,
+    }
 }
 
-/// The light palette (`color`).
+const fn ca(r: u8, g: u8, b: u8, alpha: f32) -> Srgba {
+    Srgba { rgb: [r, g, b], alpha }
+}
+
+macro_rules! palette {
+    ($($(#[doc = $doc:literal])* $field:ident $name:literal,)*) => {
+        /// The colour roles of a game UI. Every widget reads its colours
+        /// here; a style sets every one of them (`palette { … }`), and
+        /// `[color=<role>]`, `{ token: "<role>" }` name them.
+        #[derive(Clone, Copy, Debug, PartialEq)]
+        pub struct Palette {
+            $($(#[doc = $doc])* pub $field: Srgba,)*
+        }
+
+        impl Palette {
+            /// Every role's name (the IDL's ThemeColor), in this order.
+            pub const NAMES: &'static [&'static str] = &[$($name,)*];
+
+            /// A role by its name.
+            pub fn get_mut(&mut self, name: &str) -> Option<&mut Srgba> {
+                match name {
+                    $($name => Some(&mut self.$field),)*
+                    _ => None,
+                }
+            }
+
+            /// A role by its name.
+            pub fn get(&self, name: &str) -> Option<Srgba> {
+                match name {
+                    $($name => Some(self.$field),)*
+                    _ => None,
+                }
+            }
+        }
+    };
+}
+
+palette! {
+    /// The screen behind the UI where nothing else is: a menu's ground, a
+    /// dialog's surroundings once the scrim is over them.
+    backdrop "backdrop",
+    /// A recessed ground inside a panel: wells, map frames, empty slots.
+    well "well",
+    /// Panels and cards.
+    panel "panel",
+    /// A panel under the pointer (list rows, selectable cards).
+    panel_hover "panelHover",
+    /// Dialogs, menus, tooltips: what sits above a panel.
+    panel_raised "panelRaised",
+    /// Hairlines and frames.
+    line "line",
+    /// Stronger frames: high contrast, map borders, scrollbars.
+    line_strong "lineStrong",
+    /// The main ink.
+    ink "ink",
+    /// Secondary ink: captions, keys, inactive tabs.
+    ink_muted "inkMuted",
+    /// The faintest ink that still reads: placeholders, hints.
+    ink_faint "inkFaint",
+    /// Ink on a ground of `ink` (a selected chip).
+    ink_inverse "inkInverse",
+    /// Neutral control fills: secondary buttons, tracks, fields.
+    control "control",
+    /// A neutral control hovered or pressed; selection.
+    control_strong "controlStrong",
+    /// The one directed action: primary buttons, a slider's fill, a switch
+    /// that is on, the caret.
+    primary "primary",
+    /// `primary` hovered.
+    primary_hover "primaryHover",
+    /// `primary` pressed.
+    primary_active "primaryActive",
+    /// Ink on `primary`.
+    on_primary "onPrimary",
+    /// A translucent wash of `primary` (a selected row).
+    primary_soft "primarySoft",
+    /// Emphasised ink: a speaker's name, a price, a link, the player's dot.
+    highlight "highlight",
+    /// The focus ring of keyboard and gamepad navigation.
+    focus "focus",
+    /// Slider and switch knobs.
+    knob "knob",
+    /// HUD capsules over the game (scores, timers, toasts).
+    hud "hud",
+    /// Behind a dialog.
+    scrim "scrim",
+    /// Drop shadows.
+    shadow "shadow",
+    /// The passing sheen of a skeleton.
+    sheen "sheen",
+    /// Success.
+    success "success",
+    /// Warnings.
+    warn "warn",
+    /// Danger and errors.
+    danger "danger",
+    /// Information.
+    info "info",
+    /// A health meter.
+    health "health",
+    /// A mana meter.
+    mana "mana",
+    /// An experience meter.
+    xp "xp",
+    /// Currency: coins, gold, prices that can be paid.
+    gold "gold",
+}
+
+/// The prototype style's light variant.
 pub const LIGHT: Palette = Palette {
-    accent: Srgba { rgb: [0xf5, 0xa3, 0x0a], alpha: 1.0 },
-    accent_active: Srgba { rgb: [0xc7, 0x7d, 0x00], alpha: 1.0 },
-    accent_fg: Srgba { rgb: [0x1d, 0x13, 0x00], alpha: 1.0 },
-    accent_hover: Srgba { rgb: [0xe6, 0x95, 0x00], alpha: 1.0 },
-    accent_ink: Srgba { rgb: [0x8f, 0x56, 0x00], alpha: 1.0 },
-    accent_soft: Srgba { rgb: [0xf5, 0xa3, 0x0a], alpha: 0.14 },
-    bg: Srgba { rgb: [0xf2, 0xf2, 0xf7], alpha: 1.0 },
-    bg_subtle: Srgba { rgb: [0xe9, 0xe9, 0xee], alpha: 1.0 },
-    border: Srgba { rgb: [0xdc, 0xdc, 0xe1], alpha: 1.0 },
-    border_strong: Srgba { rgb: [0xc4, 0xc4, 0xc9], alpha: 1.0 },
-    danger: Srgba { rgb: [0xb2, 0x00, 0x11], alpha: 1.0 },
-    fg: Srgba { rgb: [0x18, 0x18, 0x1a], alpha: 1.0 },
-    fg_inverse: Srgba { rgb: [0xfa, 0xfa, 0xfa], alpha: 1.0 },
-    fg_muted: Srgba { rgb: [0x5f, 0x5f, 0x66], alpha: 1.0 },
-    fg_subtle: Srgba { rgb: [0x63, 0x63, 0x69], alpha: 1.0 },
-    fill: Srgba { rgb: [0x78, 0x78, 0x80], alpha: 0.12 },
-    fill_strong: Srgba { rgb: [0x78, 0x78, 0x80], alpha: 0.2 },
-    focus: Srgba { rgb: [0xb8, 0x72, 0x00], alpha: 1.0 },
-    info: Srgba { rgb: [0x00, 0x62, 0xc4], alpha: 1.0 },
-    material_control: Srgba { rgb: [0x78, 0x78, 0x80], alpha: 0.16 },
-    material_control_hover: Srgba { rgb: [0x78, 0x78, 0x80], alpha: 0.09 },
-    material_edge: Srgba { rgb: [0x00, 0x00, 0x00], alpha: 0.07 },
-    material_glow: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.6 },
-    material_regular: Srgba { rgb: [0xfa, 0xfa, 0xfc], alpha: 0.58 },
-    material_rim_soft: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.6 },
-    material_sheen: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.5 },
-    material_shine: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.95 },
-    material_thick: Srgba { rgb: [0xf6, 0xf6, 0xf8], alpha: 0.8 },
-    material_thin: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.36 },
-    scrim: Srgba { rgb: [0x00, 0x00, 0x00], alpha: 0.22 },
-    shadow: Srgba { rgb: [0x00, 0x00, 0x00], alpha: 1.0 },
-    sheen: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.32 },
-    stage: Srgba { rgb: [0x00, 0x00, 0x00], alpha: 1.0 },
-    stage_border: Srgba { rgb: [0x2c, 0x2c, 0x2e], alpha: 1.0 },
-    stage_danger: Srgba { rgb: [0xff, 0x6b, 0x5e], alpha: 1.0 },
-    stage_fg: Srgba { rgb: [0xf5, 0xf5, 0xf7], alpha: 1.0 },
-    stage_muted: Srgba { rgb: [0xa1, 0xa1, 0xa6], alpha: 1.0 },
-    stage_raised: Srgba { rgb: [0x1c, 0x1c, 0x1e], alpha: 1.0 },
-    stage_surface: Srgba { rgb: [0x14, 0x14, 0x16], alpha: 1.0 },
-    success: Srgba { rgb: [0x1a, 0x7a, 0x37], alpha: 1.0 },
-    surface: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 1.0 },
-    surface_hover: Srgba { rgb: [0xe5, 0xe5, 0xea], alpha: 1.0 },
-    surface_raised: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 1.0 },
-    thumb: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 1.0 },
-    warn: Srgba { rgb: [0xc2, 0x41, 0x0c], alpha: 1.0 },
+    backdrop: c(0xe4, 0xe4, 0xe4),
+    well: c(0xd8, 0xd8, 0xd8),
+    panel: c(0xf4, 0xf4, 0xf4),
+    panel_hover: c(0xe8, 0xe8, 0xe8),
+    panel_raised: c(0xff, 0xff, 0xff),
+    line: c(0xc4, 0xc4, 0xc4),
+    line_strong: c(0x8c, 0x8c, 0x8c),
+    ink: c(0x16, 0x16, 0x16),
+    ink_muted: c(0x50, 0x50, 0x50),
+    ink_faint: c(0x60, 0x60, 0x60),
+    ink_inverse: c(0xf4, 0xf4, 0xf4),
+    control: ca(0x00, 0x00, 0x00, 0.08),
+    control_strong: ca(0x00, 0x00, 0x00, 0.16),
+    primary: c(0x1e, 0x1e, 0x1e),
+    primary_hover: c(0x38, 0x38, 0x38),
+    primary_active: c(0x00, 0x00, 0x00),
+    on_primary: c(0xf4, 0xf4, 0xf4),
+    primary_soft: ca(0x1e, 0x1e, 0x1e, 0.10),
+    highlight: c(0x00, 0x62, 0x7a),
+    focus: c(0x00, 0x7c, 0x99),
+    knob: c(0xff, 0xff, 0xff),
+    hud: ca(0xf4, 0xf4, 0xf4, 0.88),
+    scrim: ca(0x00, 0x00, 0x00, 0.35),
+    shadow: c(0x00, 0x00, 0x00),
+    sheen: ca(0xff, 0xff, 0xff, 0.32),
+    success: c(0x16, 0x6e, 0x3a),
+    warn: c(0x9a, 0x4a, 0x00),
+    danger: c(0x9a, 0x0c, 0x14),
+    info: c(0x10, 0x52, 0xa8),
+    health: c(0x1c, 0x74, 0x32),
+    mana: c(0x23, 0x5c, 0xd6),
+    xp: c(0x7a, 0x3c, 0xc8),
+    gold: c(0x8a, 0x62, 0x00),
 };
 
-/// The dark palette (`color` overlaid with `dark.color`).
+/// The prototype style's dark variant (the default: games run on a dark
+/// screen more often than not).
 pub const DARK: Palette = Palette {
-    accent: Srgba { rgb: [0xff, 0xb2, 0x24], alpha: 1.0 },
-    accent_active: Srgba { rgb: [0xff, 0xd3, 0x8a], alpha: 1.0 },
-    accent_fg: Srgba { rgb: [0x1d, 0x13, 0x00], alpha: 1.0 },
-    accent_hover: Srgba { rgb: [0xff, 0xc0, 0x4d], alpha: 1.0 },
-    accent_ink: Srgba { rgb: [0xff, 0xb2, 0x24], alpha: 1.0 },
-    accent_soft: Srgba { rgb: [0xff, 0xb2, 0x24], alpha: 0.16 },
-    bg: Srgba { rgb: [0x00, 0x00, 0x00], alpha: 1.0 },
-    bg_subtle: Srgba { rgb: [0x11, 0x11, 0x13], alpha: 1.0 },
-    border: Srgba { rgb: [0x38, 0x38, 0x3a], alpha: 1.0 },
-    border_strong: Srgba { rgb: [0x54, 0x54, 0x58], alpha: 1.0 },
-    danger: Srgba { rgb: [0xff, 0x8a, 0x82], alpha: 1.0 },
-    fg: Srgba { rgb: [0xf5, 0xf5, 0xf7], alpha: 1.0 },
-    fg_inverse: Srgba { rgb: [0x18, 0x18, 0x1a], alpha: 1.0 },
-    fg_muted: Srgba { rgb: [0xae, 0xae, 0xb2], alpha: 1.0 },
-    fg_subtle: Srgba { rgb: [0x98, 0x98, 0x9d], alpha: 1.0 },
-    fill: Srgba { rgb: [0x78, 0x78, 0x80], alpha: 0.24 },
-    fill_strong: Srgba { rgb: [0x78, 0x78, 0x80], alpha: 0.36 },
-    focus: Srgba { rgb: [0xff, 0xb2, 0x24], alpha: 1.0 },
-    info: Srgba { rgb: [0x5c, 0xc8, 0xff], alpha: 1.0 },
-    material_control: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.13 },
-    material_control_hover: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.07 },
-    material_edge: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.08 },
-    material_glow: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.1 },
-    material_regular: Srgba { rgb: [0x1e, 0x1e, 0x22], alpha: 0.52 },
-    material_rim_soft: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.13 },
-    material_sheen: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.08 },
-    material_shine: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.34 },
-    material_thick: Srgba { rgb: [0x1c, 0x1c, 0x1e], alpha: 0.78 },
-    material_thin: Srgba { rgb: [0x2c, 0x2c, 0x30], alpha: 0.28 },
-    scrim: Srgba { rgb: [0x00, 0x00, 0x00], alpha: 0.42 },
-    shadow: Srgba { rgb: [0x00, 0x00, 0x00], alpha: 1.0 },
-    sheen: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.32 },
-    stage: Srgba { rgb: [0x00, 0x00, 0x00], alpha: 1.0 },
-    stage_border: Srgba { rgb: [0x2c, 0x2c, 0x2e], alpha: 1.0 },
-    stage_danger: Srgba { rgb: [0xff, 0x6b, 0x5e], alpha: 1.0 },
-    stage_fg: Srgba { rgb: [0xf5, 0xf5, 0xf7], alpha: 1.0 },
-    stage_muted: Srgba { rgb: [0xa1, 0xa1, 0xa6], alpha: 1.0 },
-    stage_raised: Srgba { rgb: [0x1c, 0x1c, 0x1e], alpha: 1.0 },
-    stage_surface: Srgba { rgb: [0x14, 0x14, 0x16], alpha: 1.0 },
-    success: Srgba { rgb: [0x3d, 0xd6, 0x8c], alpha: 1.0 },
-    surface: Srgba { rgb: [0x1c, 0x1c, 0x1e], alpha: 1.0 },
-    surface_hover: Srgba { rgb: [0x3a, 0x3a, 0x3c], alpha: 1.0 },
-    surface_raised: Srgba { rgb: [0x2c, 0x2c, 0x2e], alpha: 1.0 },
-    thumb: Srgba { rgb: [0x63, 0x63, 0x66], alpha: 1.0 },
-    warn: Srgba { rgb: [0xff, 0x8a, 0x3d], alpha: 1.0 },
+    backdrop: c(0x10, 0x10, 0x10),
+    well: c(0x16, 0x16, 0x16),
+    panel: c(0x1e, 0x1e, 0x1e),
+    panel_hover: c(0x2a, 0x2a, 0x2a),
+    panel_raised: c(0x26, 0x26, 0x26),
+    line: c(0x3a, 0x3a, 0x3a),
+    line_strong: c(0x60, 0x60, 0x60),
+    ink: c(0xf0, 0xf0, 0xf0),
+    ink_muted: c(0xb4, 0xb4, 0xb4),
+    ink_faint: c(0x9c, 0x9c, 0x9c),
+    ink_inverse: c(0x16, 0x16, 0x16),
+    control: ca(0xff, 0xff, 0xff, 0.06),
+    control_strong: ca(0xff, 0xff, 0xff, 0.10),
+    primary: c(0xe8, 0xe8, 0xe8),
+    primary_hover: c(0xff, 0xff, 0xff),
+    primary_active: c(0xc8, 0xc8, 0xc8),
+    on_primary: c(0x16, 0x16, 0x16),
+    primary_soft: ca(0xff, 0xff, 0xff, 0.12),
+    highlight: c(0x6a, 0xd8, 0xec),
+    focus: c(0x5a, 0xd1, 0xe6),
+    knob: c(0xf0, 0xf0, 0xf0),
+    hud: ca(0x10, 0x10, 0x10, 0.82),
+    scrim: ca(0x00, 0x00, 0x00, 0.55),
+    shadow: c(0x00, 0x00, 0x00),
+    sheen: ca(0xff, 0xff, 0xff, 0.24),
+    success: c(0x4c, 0xc3, 0x8a),
+    warn: c(0xf0, 0xa0, 0x50),
+    danger: c(0xff, 0x8a, 0x82),
+    info: c(0x7a, 0xb8, 0xff),
+    health: c(0x5c, 0xcf, 0x6e),
+    mana: c(0x5a, 0x9c, 0xff),
+    xp: c(0xb0, 0x7c, 0xff),
+    gold: c(0xf2, 0xc1, 0x4e),
 };
 
-/// The twelve category hues (`hue`): categories, levels, badges, series. Never body text.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Hues {
-    pub blue: Srgba,
-    pub brown: Srgba,
-    pub cyan: Srgba,
-    pub green: Srgba,
-    pub indigo: Srgba,
-    pub mint: Srgba,
-    pub orange: Srgba,
-    pub pink: Srgba,
-    pub purple: Srgba,
-    pub red: Srgba,
-    pub teal: Srgba,
-    pub yellow: Srgba,
-}
-
-pub const HUES_LIGHT: Hues = Hues {
-    blue: Srgba { rgb: [0x00, 0x7a, 0xff], alpha: 1.0 },
-    brown: Srgba { rgb: [0xa2, 0x84, 0x5e], alpha: 1.0 },
-    cyan: Srgba { rgb: [0x32, 0xad, 0xe6], alpha: 1.0 },
-    green: Srgba { rgb: [0x34, 0xc7, 0x59], alpha: 1.0 },
-    indigo: Srgba { rgb: [0x58, 0x56, 0xd6], alpha: 1.0 },
-    mint: Srgba { rgb: [0x00, 0xc7, 0xbe], alpha: 1.0 },
-    orange: Srgba { rgb: [0xff, 0x95, 0x00], alpha: 1.0 },
-    pink: Srgba { rgb: [0xff, 0x2d, 0x55], alpha: 1.0 },
-    purple: Srgba { rgb: [0xaf, 0x52, 0xde], alpha: 1.0 },
-    red: Srgba { rgb: [0xff, 0x3b, 0x30], alpha: 1.0 },
-    teal: Srgba { rgb: [0x30, 0xb0, 0xc7], alpha: 1.0 },
-    yellow: Srgba { rgb: [0xff, 0xcc, 0x00], alpha: 1.0 },
-};
-
-pub const HUES_DARK: Hues = Hues {
-    blue: Srgba { rgb: [0x0a, 0x84, 0xff], alpha: 1.0 },
-    brown: Srgba { rgb: [0xac, 0x8e, 0x68], alpha: 1.0 },
-    cyan: Srgba { rgb: [0x64, 0xd2, 0xff], alpha: 1.0 },
-    green: Srgba { rgb: [0x30, 0xd1, 0x58], alpha: 1.0 },
-    indigo: Srgba { rgb: [0x5e, 0x5c, 0xe6], alpha: 1.0 },
-    mint: Srgba { rgb: [0x63, 0xe6, 0xe2], alpha: 1.0 },
-    orange: Srgba { rgb: [0xff, 0x9f, 0x0a], alpha: 1.0 },
-    pink: Srgba { rgb: [0xff, 0x37, 0x5f], alpha: 1.0 },
-    purple: Srgba { rgb: [0xbf, 0x5a, 0xf2], alpha: 1.0 },
-    red: Srgba { rgb: [0xff, 0x45, 0x3a], alpha: 1.0 },
-    teal: Srgba { rgb: [0x40, 0xc8, 0xe0], alpha: 1.0 },
-    yellow: Srgba { rgb: [0xff, 0xd6, 0x0a], alpha: 1.0 },
-};
-
-/// The 4px spacing scale (`space`), CSS pixels.
+/// The spacing scale, CSS pixels.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Space {
     pub xl3: f32,
@@ -281,30 +232,30 @@ pub const SPACE: Space = Space {
     xxs: 2.0,
 };
 
-/// The concentric radius scale (`radius`), CSS pixels; `button` is the capsule.
+/// The corner radii, CSS pixels. A style sets them; the prototype's are
+/// nearly square. A radius at or past half an element's short side draws
+/// it round, so a style that wants pills says so with a large `control`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Radius {
-    pub block: f32,
-    pub button: f32,
-    pub card: f32,
+    /// Small parts: checkboxes, slots, tiles, the minimap.
+    pub small: f32,
+    /// Controls: buttons, fields, chips, badges, tabs, switches.
     pub control: f32,
-    pub field: f32,
+    /// Bars: progress, meters, slider tracks, scrollbars.
+    pub bar: f32,
+    /// Panels, cards, dialogs, tooltips.
     pub panel: f32,
-    pub sheet: f32,
 }
 
 pub const RADIUS: Radius = Radius {
-    block: 10.0,
-    button: 9999.0,
-    card: 14.0,
-    control: 6.0,
-    field: 8.0,
-    panel: 18.0,
-    sheet: 22.0,
+    small: 1.0,
+    control: 2.0,
+    bar: 1.0,
+    panel: 3.0,
 };
 
-/// One step of the type ramp (`font.scale`): size and leading in CSS pixels,
-/// Latin tracking in em, and the leading Chinese text takes (`font.cjk`).
+/// One step of the type ramp: size and leading in CSS pixels, Latin
+/// tracking in em, and the leading Chinese, Japanese and Korean text takes.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypeStep {
     pub size: f32,
@@ -313,78 +264,67 @@ pub struct TypeStep {
     pub cjk_line_height: f32,
 }
 
-/// The type ramp (`font.scale`).
+/// The type ramp.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypeRamp {
-    /// `text-2xl`
     pub xl2: TypeStep,
-    /// `text-3xl`
     pub xl3: TypeStep,
-    /// `text-4xl`
     pub xl4: TypeStep,
-    /// `text-5xl`
     pub xl5: TypeStep,
-    /// `text-6xl`
     pub xl6: TypeStep,
-    /// `text-7xl`
     pub xl7: TypeStep,
-    /// `text-8xl`
     pub xl8: TypeStep,
-    /// `text-base`
     pub base: TypeStep,
-    /// `text-body`
+    /// The default step.
     pub body: TypeStep,
-    /// `text-caption`
     pub caption: TypeStep,
-    /// `text-display-2xl`
     pub display_xl2: TypeStep,
-    /// `text-display-lg`
     pub display_lg: TypeStep,
-    /// `text-display-md`
     pub display_md: TypeStep,
-    /// `text-display-sm`
     pub display_sm: TypeStep,
-    /// `text-display-xl`
     pub display_xl: TypeStep,
-    /// `text-lg`
     pub lg: TypeStep,
-    /// `text-meta`
     pub meta: TypeStep,
-    /// `text-reading`
     pub reading: TypeStep,
-    /// `text-sm`
     pub sm: TypeStep,
-    /// `text-xl`
     pub xl: TypeStep,
-    /// `text-xs`
     pub xs: TypeStep,
 }
 
+const fn step(size: f32, line_height: f32, cjk_line_height: f32) -> TypeStep {
+    TypeStep {
+        size,
+        line_height,
+        tracking_em: 0.0,
+        cjk_line_height,
+    }
+}
+
 pub const TYPE_RAMP: TypeRamp = TypeRamp {
-    xl2: TypeStep { size: 22.0, line_height: 28.0, tracking_em: -0.015, cjk_line_height: 32.0 },
-    xl3: TypeStep { size: 26.0, line_height: 32.0, tracking_em: -0.02, cjk_line_height: 36.0 },
-    xl4: TypeStep { size: 30.0, line_height: 36.0, tracking_em: -0.022, cjk_line_height: 40.0 },
-    xl5: TypeStep { size: 36.0, line_height: 40.0, tracking_em: -0.025, cjk_line_height: 46.0 },
-    xl6: TypeStep { size: 44.0, line_height: 48.0, tracking_em: -0.03, cjk_line_height: 54.0 },
-    xl7: TypeStep { size: 52.0, line_height: 56.0, tracking_em: -0.032, cjk_line_height: 62.0 },
-    xl8: TypeStep { size: 64.0, line_height: 64.0, tracking_em: -0.035, cjk_line_height: 74.0 },
-    base: TypeStep { size: 16.0, line_height: 24.0, tracking_em: 0.0, cjk_line_height: 24.0 },
-    body: TypeStep { size: 14.0, line_height: 20.0, tracking_em: 0.0, cjk_line_height: 20.0 },
-    caption: TypeStep { size: 13.0, line_height: 18.0, tracking_em: 0.0, cjk_line_height: 18.0 },
-    display_xl2: TypeStep { size: 56.0, line_height: 60.0, tracking_em: -0.025, cjk_line_height: 68.0 },
-    display_lg: TypeStep { size: 40.0, line_height: 44.0, tracking_em: -0.02, cjk_line_height: 50.0 },
-    display_md: TypeStep { size: 34.0, line_height: 38.0, tracking_em: -0.016, cjk_line_height: 44.0 },
-    display_sm: TypeStep { size: 28.0, line_height: 32.0, tracking_em: -0.012, cjk_line_height: 38.0 },
-    display_xl: TypeStep { size: 48.0, line_height: 52.0, tracking_em: -0.022, cjk_line_height: 60.0 },
-    lg: TypeStep { size: 18.0, line_height: 26.0, tracking_em: 0.0, cjk_line_height: 26.0 },
-    meta: TypeStep { size: 13.0, line_height: 18.0, tracking_em: 0.0, cjk_line_height: 18.0 },
-    reading: TypeStep { size: 15.0, line_height: 24.0, tracking_em: 0.0, cjk_line_height: 24.0 },
-    sm: TypeStep { size: 14.0, line_height: 20.0, tracking_em: 0.0, cjk_line_height: 20.0 },
-    xl: TypeStep { size: 20.0, line_height: 28.0, tracking_em: -0.01, cjk_line_height: 30.0 },
-    xs: TypeStep { size: 12.0, line_height: 16.0, tracking_em: 0.0, cjk_line_height: 16.0 },
+    xl2: step(22.0, 28.0, 32.0),
+    xl3: step(26.0, 32.0, 36.0),
+    xl4: step(30.0, 36.0, 40.0),
+    xl5: step(36.0, 40.0, 46.0),
+    xl6: step(44.0, 48.0, 54.0),
+    xl7: step(52.0, 56.0, 62.0),
+    xl8: step(64.0, 64.0, 74.0),
+    base: step(16.0, 24.0, 24.0),
+    body: step(14.0, 20.0, 20.0),
+    caption: step(13.0, 18.0, 18.0),
+    display_xl2: step(56.0, 60.0, 68.0),
+    display_lg: step(40.0, 44.0, 50.0),
+    display_md: step(34.0, 38.0, 44.0),
+    display_sm: step(28.0, 32.0, 38.0),
+    display_xl: step(48.0, 52.0, 60.0),
+    lg: step(18.0, 26.0, 26.0),
+    meta: step(13.0, 18.0, 18.0),
+    reading: step(15.0, 24.0, 24.0),
+    sm: step(14.0, 20.0, 20.0),
+    xl: step(20.0, 28.0, 30.0),
+    xs: step(12.0, 16.0, 16.0),
 };
 
-/// Control, row and header heights and the gutter (`density`), CSS pixels.
+/// Control, row and header heights and the gutter, CSS pixels.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Density {
     pub control_lg: f32,
@@ -396,8 +336,8 @@ pub struct Density {
     pub section: f32,
 }
 
-/// Compact density (`density.compact`), the default for tools.
-pub const COMPACT: Density = Density {
+/// A mouse and keyboard: the tightest sizes.
+pub const MOUSE: Density = Density {
     control_lg: 36.0,
     control_md: 32.0,
     control_sm: 28.0,
@@ -407,19 +347,19 @@ pub const COMPACT: Density = Density {
     section: 24.0,
 };
 
-/// Comfortable density (`density.comfortable`), for browsing surfaces.
-pub const COMFORTABLE: Density = Density {
-    control_lg: 40.0,
-    control_md: 36.0,
-    control_sm: 32.0,
-    gutter: 24.0,
-    header: 56.0,
-    row: 44.0,
+/// A gamepad across a room: larger controls and rows, wider gutters, so
+/// a focused control reads from a couch.
+pub const PAD: Density = Density {
+    control_lg: 52.0,
+    control_md: 48.0,
+    control_sm: 40.0,
+    gutter: 32.0,
+    header: 64.0,
+    row: 52.0,
     section: 40.0,
 };
 
-/// Touch density (`density.touch`): coarse pointers and widths under 768px.
-/// Keys the tokens do not raise (`gutter`, `section`) keep the compact value.
+/// Touch: every control at least 44 CSS px, a finger's target.
 pub const TOUCH: Density = Density {
     control_lg: 48.0,
     control_md: 44.0,
@@ -430,7 +370,7 @@ pub const TOUCH: Density = Density {
     section: 24.0,
 };
 
-/// Motion durations (`motion.duration`), milliseconds.
+/// Motion durations, milliseconds.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Durations {
     pub base: f32,
@@ -450,52 +390,29 @@ pub const DURATIONS_MS: Durations = Durations {
     spring: 520.0,
 };
 
-/// A spring (`motion.spring`): damping ratio and response in milliseconds.
-///
-/// Springs as damping ratio (1 = critically damped, below 1 overshoots) and
-/// response (seconds to reach the target; not a duration), the parameters Apple
-/// ships. build.mjs emits --ease-spring-<name> (a linear() easing),
-/// --dur-spring-<name> (its settle time) and --spring-<name>-damping/-response
-/// for the runtime spring (ui-svelte motion/spring.ts); Swift gets the pair for
-/// .spring(response:dampingFraction:). default: overlays, menus, highlights;
-/// sheet: sheets and drawers; momentum: releases that carried velocity (a
-/// flick, a throw).
+/// A spring: damping ratio (1 critically damped, below 1 overshoots) and
+/// response (the time to reach the target, not a duration), milliseconds.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Spring {
     pub damping: f32,
     pub response_ms: f32,
 }
 
-pub const SPRING_DEFAULT: Spring = Spring { damping: 1.0, response_ms: 350.0 };
-pub const SPRING_MOMENTUM: Spring = Spring { damping: 0.8, response_ms: 400.0 };
-pub const SPRING_SHEET: Spring = Spring { damping: 0.85, response_ms: 300.0 };
+/// Hover lifts and highlights: no overshoot.
+pub const SPRING_DEFAULT: Spring = Spring {
+    damping: 1.0,
+    response_ms: 350.0,
+};
+/// A fling's release.
+pub const SPRING_MOMENTUM: Spring = Spring {
+    damping: 0.8,
+    response_ms: 400.0,
+};
 
-/// `motion.easing.exit`: cubic Bézier control points (x1, y1, x2, y2).
+/// Leaving: cubic Bézier control points (x1, y1, x2, y2).
 pub const EASE_EXIT: [f32; 4] = [0.4, 0.0, 1.0, 1.0];
-/// `motion.easing.out`: cubic Bézier control points (x1, y1, x2, y2).
+/// Entering: cubic Bézier control points (x1, y1, x2, y2).
 pub const EASE_OUT: [f32; 4] = [0.23, 1.0, 0.32, 1.0];
 
-/// One inset layer of a `shadow-*` token, drawn inside a surface's edge:
-/// the surface less itself moved by (`dx`, `dy`) and shrunk by `spread`,
-/// in `color` (CSS px; the tokens' edge layers have no blur).
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct InsetShadow {
-    pub dx: f32,
-    pub dy: f32,
-    pub spread: f32,
-    pub color: Srgba,
-}
-
-/// `shadow.edge`: the card edge's inset layers.
-pub const SHADOW_EDGE_LIGHT: &[InsetShadow] = &[
-    InsetShadow { dx: 0.0, dy: 0.0, spread: 0.5, color: Srgba { rgb: [0x00, 0x00, 0x00], alpha: 0.06 } },
-];
-
-/// `dark.shadow.edge`: the card edge's inset layers.
-pub const SHADOW_EDGE_DARK: &[InsetShadow] = &[
-    InsetShadow { dx: 0.0, dy: 0.5, spread: 0.0, color: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.1 } },
-    InsetShadow { dx: 0.0, dy: 0.0, spread: 0.5, color: Srgba { rgb: [0xff, 0xff, 0xff], alpha: 0.07 } },
-];
-
-/// `vars.press-scale`: how far a pressed control shrinks.
+/// How far a pressed control shrinks.
 pub const PRESS_SCALE: f32 = 0.96;

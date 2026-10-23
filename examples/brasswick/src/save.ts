@@ -90,7 +90,7 @@ export const Answers = defineSystem("Answers", { writes: [Game, Prefs, og.Audio]
     g.writeNow = g.settingsNow = g.saveNow = g.rewrite = false;
     g.paused = g.settingsOpen = g.levelsOpen = false;
     askAll(world, g);
-    og.ui.toast(world, say(world, "toast.welcome"), { tone: "accent" });
+    og.ui.toast(world, say(world, "toast.welcome"), { tone: "primary" });
   } else if (time.tick === 0) askAll(world, g);
 
   if (g.settingsRequest !== 0) {

@@ -191,7 +191,7 @@ function stream(world: World, g: GameV): void {
 }
 
 function capsule(id: string, build: () => void): void {
-  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "surface" } }, build);
+  og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "capsule", background: { token: "panel" } }, build);
 }
 
 function clockText(hour: number): string {
@@ -205,10 +205,10 @@ function hud(world: World, g: GameV): void {
   og.ui.setNavigation(false);
   og.ui.anchor("Status", { anchor: "topLeft", direction: "column", gap: S.sm }, () => {
     capsule("Hearts", () => {
-      for (let i = 0; i < HEARTS; i++) og.ui.icon(`Heart${i}`, "heart", { size: 22, tint: { token: i < g.hearts ? "danger" : "fillStrong" } });
+      for (let i = 0; i < HEARTS; i++) og.ui.icon(`Heart${i}`, "heart", { size: 22, tint: { token: i < g.hearts ? "danger" : "controlStrong" } });
     });
     capsule("Lanterns", () => {
-      og.ui.icon("Fire", "fire", { size: 22, tint: { token: "accent" } });
+      og.ui.icon("Fire", "fire", { size: 22, tint: { token: "primary" } });
       og.ui.label("Count", say(world, "hud.lanterns", { n: g.lit, total: LANTERN_COUNT }), { step: "lg", font: "mono", nowrap: true });
     });
   });
@@ -216,9 +216,9 @@ function hud(world: World, g: GameV): void {
   og.ui.anchor("Dusk", { anchor: "topRight", gap: S.sm, cross: "center" }, () => {
     capsule("Clock", () => {
       const left = 1 - (g.hour - HOURS.start) / (HOURS.night - HOURS.start);
-      og.ui.icon("Glyph", "clock", { size: 20, tint: { token: left < 0.25 ? "danger" : "fg" } });
+      og.ui.icon("Glyph", "clock", { size: 20, tint: { token: left < 0.25 ? "danger" : "ink" } });
       og.ui.label("Hour", clockText(g.hour), { font: "mono", nowrap: true, width: px(52) });
-      og.ui.meter("Left", Math.max(0, left), 1, { kind: "accent", width: px(110) });
+      og.ui.meter("Left", Math.max(0, left), 1, { kind: "primary", width: px(110) });
     });
     if (og.ui.actionButton("Pause", say(world, "hud.pause"), { icon: "pause", size: 48 }).clicked) paused = true;
   });
@@ -226,7 +226,7 @@ function hud(world: World, g: GameV): void {
   if (g.near >= 0 && g.ending === Ending.None) {
     og.ui.anchor("Prompt", { anchor: "bottom", offsetY: -24, direction: "column", cross: "center", gap: S.xs }, () => {
       capsule("Hint", () => {
-        og.ui.icon("Fire", "fire", { size: 18, tint: { token: "accent" } });
+        og.ui.icon("Fire", "fire", { size: 18, tint: { token: "primary" } });
         og.ui.label("Text", say(world, "hud.hint"), { nowrap: true });
       });
       if (g.kindle > 0) og.ui.progress("Kindle", g.kindle / t.kindleSeconds, { width: px(200) });
@@ -239,7 +239,7 @@ function settings(world: World, g: GameV, p: PrefsV): void {
   const before = g.settingsOpen ? JSON.stringify(prefsValue(p)) : "";
   const m = og.ui.modal("Settings", g.settingsOpen, { title: say(world, "settings.title"), width: px(Math.min(440, og.ui.frameViewport().width - 32)) }, () => {
     // A label mixing scripts: the Latin in the skin's face, the Chinese from the fallback.
-    og.ui.label("About", say(world, "settings.about"), { color: { token: "fgMuted" }, width: grow });
+    og.ui.label("About", say(world, "settings.about"), { color: { token: "inkMuted" }, width: grow });
     const slider = (id: string, key: string, value: number): number => {
       let out = value;
       og.ui.row(id, { width: grow, gap: S.md, cross: "center" }, () => {
@@ -256,7 +256,7 @@ function settings(world: World, g: GameV, p: PrefsV): void {
       const f = og.ui.textField("Name", p.name, { placeholder: say(world, "settings.namePlaceholder"), maxChars: NAME_CHARS });
       if (f.value !== p.name) setName(p, f.value);
     });
-    og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "fgMuted" } });
+    og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "inkMuted" } });
     const r = og.ui.radio("Language", LANGUAGES.map((l) => say(world, l.key)), p.language, { horizontal: true });
     if (r.selected !== p.language) setLanguage(world, p, r.selected);
     const motion = og.ui.toggle("Motion", p.reducedMotion, say(world, "settings.motion")).on;

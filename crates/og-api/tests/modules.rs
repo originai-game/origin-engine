@@ -2,7 +2,7 @@
 //! layout first and og-physics and og-audio adopt it only when the name, the
 //! field order, the names, the storage types and an enum's variants agree
 //! (og-ecs refuses the engine otherwise). And the UI's ThemeColor enum names
-//! every colour of the design tokens og-ui is generated from.
+//! every colour role of og-ui's palette, in its order.
 
 use og_api::host::{RECORDS, RecordDecl};
 use og_core::reflect::{FieldSchema, FieldType, Reflect, Schema};
@@ -114,37 +114,10 @@ fn physics_audio_animation_and_input_records_have_the_idl_layouts() {
 }
 
 #[test]
-fn theme_color_names_every_token_colour() {
+fn theme_color_names_every_palette_role() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let tokens: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(root.join("crates/og-ui/tokens/tokens.json")).unwrap(),
-    )
-    .unwrap();
-    let camel = |k: &str| {
-        let mut out = String::new();
-        let mut up = false;
-        for c in k.chars() {
-            if c == '-' {
-                up = true;
-            } else if up {
-                out.extend(c.to_uppercase());
-                up = false;
-            } else {
-                out.push(c);
-            }
-        }
-        out
-    };
-    let mut want: Vec<String> = tokens["color"]
-        .as_object()
-        .unwrap()
-        .keys()
-        .filter(|k| !k.starts_with('_'))
-        .map(|k| camel(k))
-        .collect();
-    want.sort();
     let api = og_idl::read(&root.join(og_idl::IDL_PATH)).unwrap();
-    let mut have: Vec<String> = api
+    let have: Vec<String> = api
         .modules
         .iter()
         .flat_map(|m| m.items.iter())
@@ -158,6 +131,9 @@ fn theme_color_names_every_token_colour() {
             _ => None,
         })
         .expect("api.ogt declares ThemeColor");
-    have.sort();
-    assert_eq!(have, want, "ThemeColor and tokens.json `color` differ");
+    assert_eq!(
+        have,
+        og_ui::Palette::NAMES,
+        "ThemeColor and og-ui's palette roles differ (names or order)"
+    );
 }

@@ -486,14 +486,14 @@ function skin(): void {
   };
   text = text.replace(/^name "paper"/m, 'name "kestrel"');
   text = text.replace(/^# The paper style pack.*$/m, "# The Kestrel Stair's skin: the engine's paper style pack (templates/ui-kit/assets/skins/paper), copied and retinted by tools/make-assets.ts.");
-  swap("bg", "#efe6d2");
-  swap("bgSubtle", "#e4d9c1");
-  swap("accent", "#9c2a1d");
-  swap("accentHover", "#8f2618");
-  swap("accentActive", "#7f2013");
-  swap("accentInk", "#86210f");
+  swap("backdrop", "#efe6d2");
+  swap("well", "#e4d9c1");
+  swap("primary", "#9c2a1d");
+  swap("primaryHover", "#8f2618");
+  swap("primaryActive", "#7f2013");
+  swap("highlight", "#86210f");
   // The pack's fgSubtle measures 3.5:1 as an item's count on a slot (og polish): a shade darker.
-  swap("fgSubtle", "#57524a");
+  swap("inkFaint", "#57524a");
   swap("fallback", "fonts/NotoSansJP-kestrel.otf");
   writeFileSync(join(to, "skin.ogt"), text);
   // The copy's licences: the pack's, its fallback named as this game's.

@@ -252,19 +252,19 @@ function playersScreen(d: DemoState): void {
     gap: t.space.md,
     width: phone ? grow : { kind: "fixed", px: 640 },
     padding: { left: t.space.xl, top: t.space.xl, right: t.space.xl, bottom: t.space.xl },
-    background: { token: "surface" },
+    background: { token: "panel" },
     radius: t.radius.panel,
   }, () => {
     og.ui.label("Title", "Players", { step: "xl2", font: "display", heading: true });
     // Rich text: the button in bold, a link (a child element Hint/join, focusable by every pad).
-    const hint = og.ui.richText("Hint", "Each pad moves its own ring; [b]A[/b] picks a hero for that player. [link=join]How to join[/link]", { color: { token: "fgMuted" }, width: grow });
+    const hint = og.ui.richText("Hint", "Each pad moves its own ring; [b]A[/b] picks a hero for that player. [link=join]How to join[/link]", { color: { token: "inkMuted" }, width: grow });
     if (hint.link === "join") d.rules += 1;
     // The player cards sit on bgSubtle, darker than the panel, so each player's ink and "Press A" read at 4.5:1.
     og.ui.row("Cards", { gap: t.space.sm, width: grow, wrap: phone }, () => {
       for (let p = 0; p < 4; p++) {
-        og.ui.column(og.ui.idi("Player", p), { width: grow, gap: t.space.xxs, cross: "center", padding: { left: t.space.sm, top: t.space.sm, right: t.space.sm, bottom: t.space.sm }, background: { token: "bgSubtle" }, radius: t.radius.card }, () => {
+        og.ui.column(og.ui.idi("Player", p), { width: grow, gap: t.space.xxs, cross: "center", padding: { left: t.space.sm, top: t.space.sm, right: t.space.sm, bottom: t.space.sm }, background: { token: "well" }, radius: t.radius.panel }, () => {
           og.ui.label("Name", `P${p + 1}`, { step: "lg", font: "display", color: { token: PLAYER_INKS[p]! }, nowrap: true });
-          og.ui.label("Pick", picks[p] ? HEROES[picks[p]! - 1]! : "Press A", { color: { token: picks[p] ? "fg" : "fgMuted" }, nowrap: true });
+          og.ui.label("Pick", picks[p] ? HEROES[picks[p]! - 1]! : "Press A", { color: { token: picks[p] ? "ink" : "inkMuted" }, nowrap: true });
         });
       }
     });
@@ -420,17 +420,17 @@ function gallery(d: DemoState): void {
     gap: t.space.md,
     width: phone ? { kind: "grow" } : { kind: "fixed", px: 560 },
     padding: { left: t.space.xl, top: t.space.xl, right: t.space.xl, bottom: t.space.lg },
-    background: { token: "surface" },
+    background: { token: "panel" },
     radius: t.radius.panel,
   }, () => {
     og.ui.label("Title", "UI kit", { step: "displayMd", font: "display" });
-    og.ui.label("Subtitle", "Templates and widgets for game screens, themed by the platform tokens.", { color: { token: "fgMuted" }, width: { kind: "grow" } });
+    og.ui.label("Subtitle", "Templates and widgets for game screens, themed by the platform tokens.", { color: { token: "inkMuted" }, width: { kind: "grow" } });
     const height = Math.min(phone ? vp.height - 260 : 460, vp.height - 200);
     const r = og.ui.list("Screens", { count: SCREENS.length - 1, rowHeight: 52, height: { kind: "fixed", px: height }, width: { kind: "grow" } }, (i) => {
       const s = SCREENS[i + 1]!;
       og.ui.column("Text", { width: { kind: "grow" }, gap: 0 }, () => {
         og.ui.label("Name", s, { nowrap: true });
-        og.ui.label("Blurb", BLURBS[s], { step: "meta", color: { token: "fgMuted" }, nowrap: true });
+        og.ui.label("Blurb", BLURBS[s], { step: "meta", color: { token: "inkMuted" }, nowrap: true });
       });
     });
     if (r.clicked !== null) d.screen = r.clicked + 1;
@@ -465,7 +465,7 @@ function textScreen(world: World): void {
     gap: t.space.sm,
     width: phone ? grow : { kind: "fixed", px: 640 },
     padding: { left: t.space.xl, top: t.space.lg, right: t.space.xl, bottom: t.space.lg },
-    background: { token: "surface" },
+    background: { token: "panel" },
     radius: t.radius.panel,
   }, () => {
     og.ui.label("Title", "Type and scripts", { step: "displaySm", font: "display", heading: true });
@@ -474,9 +474,9 @@ function textScreen(world: World): void {
       og.ui.label("Score", "Level 12 · 48 350", { step: "xl", font: "rounded", nowrap: true });
     });
     og.ui.label("Cut", "A sentence far too long for its one line ends in an ellipsis where it meets the edge, instead of running out of its box", { nowrap: true, ellipsis: true, width: grow });
-    og.ui.label("Clamp", "A paragraph clamped to two lines keeps what fits on them and ends the second with an ellipsis where the rest is left out: this sentence, and the one after it, go on well past the two lines the label shows, so the cut is easy to see.", { ellipsis: true, maxLines: 2, width: grow, color: { token: "fgMuted" } });
+    og.ui.label("Clamp", "A paragraph clamped to two lines keeps what fits on them and ends the second with an ellipsis where the rest is left out: this sentence, and the one after it, go on well past the two lines the label shows, so the cut is easy to see.", { ellipsis: true, maxLines: 2, width: grow, color: { token: "inkMuted" } });
     og.ui.label("Arabic", "Level 1-2: مغامرة صغيرة!", { nowrap: true });
-    og.ui.richText("Mixed", "Press [b]العب[/b] for [color=accent]مغامرة صغيرة 2[/color] now", { width: grow });
+    og.ui.richText("Mixed", "Press [b]العب[/b] for [color=primary]مغامرة صغيرة 2[/color] now", { width: grow });
     og.ui.row("Scripts", { gap: t.space.lg, width: grow }, () => {
       og.ui.label("Hebrew", "שלום עולם", { nowrap: true });
       og.ui.label("Devanagari", "नमस्ते दुनिया", { nowrap: true });
@@ -514,12 +514,12 @@ function materialsScreen(d: DemoState): void {
     gap: t.space.md,
     width: phone ? grow : { kind: "fixed", px: 900 },
     padding: { left: t.space.xl, top: t.space.lg, right: t.space.xl, bottom: t.space.lg },
-    background: { token: "surface" },
+    background: { token: "panel" },
     radius: t.radius.panel,
   }, () => {
     og.ui.label("Title", "Icons, pictures and gestures", { step: "xl", font: "display", heading: true });
     og.ui.row("Icons", { gap: t.space.sm, wrap: true, width: grow }, () => {
-      ICONOIR.slice(0, phone ? 16 : 32).forEach((name, i) => og.ui.icon(og.ui.idi("Icon", i), name, { size: i % 8 === 0 ? 32 : 24, tint: { token: i % 8 === 0 ? "accent" : "fgMuted" } }));
+      ICONOIR.slice(0, phone ? 16 : 32).forEach((name, i) => og.ui.icon(og.ui.idi("Icon", i), name, { size: i % 8 === 0 ? 32 : 24, tint: { token: i % 8 === 0 ? "primary" : "inkMuted" } }));
     });
     og.ui.richText("Rich", "Collect [icon=coins] coins and [icon=heart] hearts, then [b]claim[/b] the [icon=trophy] trophy.", { width: grow });
     // On a phone the two pictures share a line and the list takes the next.
@@ -527,16 +527,16 @@ function materialsScreen(d: DemoState): void {
     const half = Math.floor((vp.width - 2 * inner - 2 * t.space.xl - t.space.md) / 2);
     og.ui.row("Pictures", { gap: t.space.md, width: grow, wrap: phone }, () => {
       og.ui.column("Left", { width: phone ? { kind: "fixed", px: half } : grow, gap: t.space.xs }, () => {
-        og.ui.label("PictureLabel", "A 16:9 picture", { step: "meta", color: { token: "fgMuted" } });
+        og.ui.label("PictureLabel", "A 16:9 picture", { step: "meta", color: { token: "inkMuted" } });
         og.ui.image("Picture", { texture: d.backdrop ? (d.backdrop as never) : null, width: grow, aspect: 16 / 9 });
       });
       og.ui.column("Middle", { width: phone ? { kind: "fixed", px: half } : grow, gap: t.space.xs }, () => {
-        og.ui.label("MapLabel", `Pinch or wheel: ${Math.round(d.zoom * 100)}%`, { step: "meta", color: { token: "fgMuted" } });
+        og.ui.label("MapLabel", `Pinch or wheel: ${Math.round(d.zoom * 100)}%`, { step: "meta", color: { token: "inkMuted" } });
         const z = og.ui.zoomView("Map", { texture: d.backdrop ? (d.backdrop as never) : null, width: grow, aspect: 16 / 9, maxZoom: 4 });
         d.zoom = z.zoom;
       });
       og.ui.column("Right", { width: phone ? { kind: "fixed", px: 2 * half + t.space.md } : { kind: "fixed", px: 200 }, gap: t.space.xs }, () => {
-        og.ui.label("QuestsLabel", "Two fingers scroll", { step: "meta", color: { token: "fgMuted" } });
+        og.ui.label("QuestsLabel", "Two fingers scroll", { step: "meta", color: { token: "inkMuted" } });
         og.ui.scroll("Quests", { width: grow, height: { kind: "fixed", px: phone ? 220 : 200 }, gap: t.space.xs, padding: { left: 0, top: 0, right: t.space.md, bottom: 0 } }, () => {
           for (let i = 0; i < 12; i++) {
             if (og.ui.button(og.ui.idi("Quest", i), `Quest ${i + 1}`, { width: grow, size: "small" }).clicked) d.quests += 1;
@@ -568,7 +568,7 @@ function widgetsScreen(world: World, d: DemoState): void {
     direction: "column",
     gap: t.space.md,
     padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg },
-    background: { token: "surface" },
+    background: { token: "panel" },
     radius: t.radius.panel,
   }, () => {
     og.ui.scroll("Body", { width: grow, height: { kind: "fixed", px: phone ? vp.height - 380 : vp.height - 120 }, gap: t.space.md, padding: { left: 0, top: 0, right: t.space.md, bottom: 0 } }, () => {
@@ -586,7 +586,7 @@ function widgetsScreen(world: World, d: DemoState): void {
         ["All", "Weapons", "Armor"].forEach((c, i) => {
           if (og.ui.chip(og.ui.idi("Chip", i), c, { selected: d.chip === i }).clicked) d.chip = i;
         });
-        og.ui.badge("New", "New", "accent");
+        og.ui.badge("New", "New", "primary");
         og.ui.badge("Sale", "-20%", "success");
         og.ui.badge("Rare", "Rare", "info");
       });
@@ -724,7 +724,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       // Chinese font draws them from its outlines at run time (runtime true).
       if (screen === "mainMenu") {
         og.ui.anchor("Greeting", { anchor: "top", direction: "column", padding: { left: 0, top: 24, right: 0, bottom: 0 } }, () => {
-          og.ui.label("Text", tr(world, "menu.greeting"), { step: "lg", color: { token: "fgMuted" }, nowrap: true });
+          og.ui.label("Text", tr(world, "menu.greeting"), { step: "lg", color: { token: "inkMuted" }, nowrap: true });
         });
       }
       if (r.selected === "play") d.screen = screenIndex("platformer");
@@ -1046,7 +1046,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       break;
     case "toasts": {
       const t = og.ui.frameTheme();
-      og.ui.anchor("ToastDemo", { anchor: "center", direction: "column", gap: t.space.sm, width: { kind: "fixed", px: 300 }, padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg }, background: { token: "surface" }, radius: t.radius.panel }, () => {
+      og.ui.anchor("ToastDemo", { anchor: "center", direction: "column", gap: t.space.sm, width: { kind: "fixed", px: 300 }, padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg }, background: { token: "panel" }, radius: t.radius.panel }, () => {
         og.ui.label("Title", "Toasts", { step: "xl" });
         for (const [tone, text] of [["neutral", "Checkpoint reached"], ["success", "Achievement unlocked"], ["warn", "Low battery"], ["danger", "Connection lost"], ["info", "New version available"]] as const) {
           if (og.ui.button(tone, text, { width: { kind: "grow" } }).clicked) og.ui.toast(world, text, { tone });

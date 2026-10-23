@@ -1289,14 +1289,13 @@ function skin(): void {
   for (const f of ["atlas.png", "atlas.png.ogt", "icons.png", "icons.png.ogt", "Cinzel-Bold.ttf", "Cinzel-Bold.ttf.ogt", "Newsreader-Medium.ttf", "Newsreader-Medium.ttf.ogt", "OFL.txt", "LICENSES.md"]) copyFileSync(join(from, f), join(to, f));
   let text = readFileSync(join(from, "skin.ogt"), "utf8");
   const colours: Record<string, string> = {
-    bg: "#14110d",
-    bgSubtle: "#1d1812",
-    accent: "#7a4f12",
-    accentHover: "#6e470f",
-    accentActive: "#5f3d0c",
-    accentInk: "#6a440e",
+    backdrop: "#14110d",
+    well: "#1d1812",
+    primary: "#7a4f12",
+    primaryHover: "#6e470f",
+    primaryActive: "#5f3d0c",
+    highlight: "#6a440e",
     focus: "#1f6a5c",
-    stage: "#14110d",
   };
   for (const [k, v] of Object.entries(colours)) text = text.replace(new RegExp(`^(  ${k}) "#[0-9a-fA-F]+"`, "m"), `$1 "${v}"`);
   text = text.replace(/^name "fantasy"$/m, 'name "brasswick"');

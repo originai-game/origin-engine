@@ -6723,7 +6723,7 @@
     },
     {
       "name": "ui",
-      "doc": "The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.\nThe engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.\nLengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi(\"Slot\", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it.",
+      "doc": "The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the placeholder prototype style until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.\nThe engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.\nLengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi(\"Slot\", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -6776,7 +6776,6 @@
         "MeterKind",
         "Breakpoint",
         "Contrast",
-        "HueName",
         "NavIntent",
         "UiRect",
         "IconAtlasDesc",
@@ -6872,7 +6871,7 @@
       "functions": [
         {
           "name": "configure",
-          "doc": "Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the platform tokens). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text.",
+          "doc": "Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the prototype style). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text.",
           "params": [
             {
               "name": "world",
@@ -6907,7 +6906,7 @@
         },
         {
           "name": "theme",
-          "doc": "The design tokens the UI draws with.",
+          "doc": "The style values the UI draws with.",
           "params": [
             {
               "name": "world",
@@ -7151,7 +7150,7 @@
         },
         {
           "name": "button",
-          "doc": "A capsule button with a label; `clicked` is a press and a release inside it. The probe reads its label.",
+          "doc": "A button with a label; `clicked` is a press and a release inside it. The probe reads its label.",
           "params": [
             {
               "name": "id",
@@ -7217,7 +7216,7 @@
         },
         {
           "name": "progress",
-          "doc": "A capsule track filled to a fraction.",
+          "doc": "A track filled to a fraction.",
           "params": [
             {
               "name": "id",
@@ -7417,7 +7416,7 @@
         },
         {
           "name": "frameTheme",
-          "doc": "The design tokens of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates).",
+          "doc": "The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates).",
           "params": [],
           "returns": "UiTheme",
           "publish": true
@@ -7497,7 +7496,7 @@
         },
         {
           "name": "transition",
-          "doc": "Content that enters and leaves: fade, slide or scale by the tick from the motion tokens. `build` runs while it is visible.",
+          "doc": "Content that enters and leaves: fade, slide or scale by the tick from the style's motion. `build` runs while it is visible.",
           "params": [
             {
               "name": "id",
@@ -7596,7 +7595,7 @@
         },
         {
           "name": "spotlight",
-          "doc": "A spotlight over everything (a tutorial step): the scrim on four sides of the hole, an amber edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`.",
+          "doc": "A spotlight over everything (a tutorial step): the scrim on four sides of the hole, a primary edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`.",
           "params": [
             {
               "name": "id",
@@ -7688,7 +7687,7 @@
               "name": "selected",
               "type": "bool",
               "optional": false,
-              "doc": "Drawn selected (fill-strong)."
+              "doc": "Drawn selected (controlStrong)."
             }
           ],
           "returns": "Response",
@@ -7696,7 +7695,7 @@
         },
         {
           "name": "gridItem",
-          "doc": "Open cell `index` of the open grid (`Cell#index`): a slot on fill, focusable; its content follows until close(). Drops answer `dropped` as listItem's.",
+          "doc": "Open cell `index` of the open grid (`Cell#index`): a slot on control, focusable; its content follows until close(). Drops answer `dropped` as listItem's.",
           "params": [
             {
               "name": "index",
@@ -7708,7 +7707,7 @@
               "name": "selected",
               "type": "bool",
               "optional": false,
-              "doc": "Drawn selected (fill-strong with an amber bar)."
+              "doc": "Drawn selected (controlStrong with a primary bar)."
             }
           ],
           "returns": "Response",
@@ -7881,7 +7880,7 @@
         },
         {
           "name": "radio",
-          "doc": "A radio group of `Option#i` rows: a ring, filled amber when chosen, and a label.",
+          "doc": "A radio group of `Option#i` rows: a ring, filled primary when chosen, and a label.",
           "params": [
             {
               "name": "id",
@@ -7965,7 +7964,7 @@
         },
         {
           "name": "chip",
-          "doc": "A chip: a capsule on fill; selected inverts to fg. For filters and tags.",
+          "doc": "A chip: a control-filled tag; selected inverts to ink. For filters and tags.",
           "params": [
             {
               "name": "id",
@@ -7991,7 +7990,7 @@
         },
         {
           "name": "badge",
-          "doc": "A badge: a small status capsule in its tone.",
+          "doc": "A badge: a small status tag in its tone.",
           "params": [
             {
               "name": "id",
@@ -8057,7 +8056,7 @@
         },
         {
           "name": "keyValue",
-          "doc": "A key (fg-muted) and its value (fg, at the end) on one row: stats, settings summaries, receipts.",
+          "doc": "A key (inkMuted) and its value (ink, at the end) on one row: stats, settings summaries, receipts.",
           "params": [
             {
               "name": "id",
@@ -8187,7 +8186,7 @@
         },
         {
           "name": "cooldown",
-          "doc": "A cooldown: a disc whose amber ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not).",
+          "doc": "A cooldown: a disc whose primary ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not).",
           "params": [
             {
               "name": "id",
@@ -8213,7 +8212,7 @@
         },
         {
           "name": "minimap",
-          "doc": "A mini-map frame: the map in a border-strong frame, markers as dots (the player amber and ringed), an N mark and a zone label.",
+          "doc": "A mini-map frame: the map in a lineStrong frame, markers as dots (the player primary and ringed), an N mark and a zone label.",
           "params": [
             {
               "name": "id",
@@ -8233,7 +8232,7 @@
         },
         {
           "name": "dialogue",
-          "doc": "A dialogue box: a portrait slot, the speaker in amber ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown.",
+          "doc": "A dialogue box: a portrait slot, the speaker in primary ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown.",
           "params": [
             {
               "name": "id",
@@ -25758,13 +25757,13 @@
         "body": "The body font.",
         "display": "The display font.",
         "mono": "The monospaced font.",
-        "rounded": "The rounded font, for levels and scores (the design language's font-rounded)."
+        "rounded": "The rounded font, for levels and scores."
       }
     },
     "ButtonVariant": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "Button looks, as the design language's buttons.",
+      "description": "Button roles: how the style draws each.",
       "type": "string",
       "enum": [
         "secondary",
@@ -25774,7 +25773,7 @@
       ],
       "x-og-variants": {
         "secondary": "A neutral fill (the default).",
-        "primary": "The amber action: one per screen.",
+        "primary": "The primary action: one per screen.",
         "quiet": "Text until hovered.",
         "danger": "A destructive action: danger ink on the danger tint."
       }
@@ -25812,125 +25811,101 @@
     "DensityMode": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "Control sizes: auto picks touch sizes on a coarse pointer or a play surface under 768 px, compact otherwise.",
+      "description": "Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise.",
       "type": "string",
       "enum": [
         "auto",
-        "compact",
-        "comfortable",
+        "mouse",
+        "pad",
         "touch"
       ],
       "x-og-variants": {
-        "auto": "Touch sizes on a coarse pointer or a narrow surface, compact otherwise.",
-        "compact": "Compact controls.",
-        "comfortable": "Comfortable controls.",
-        "touch": "Touch-sized controls."
+        "auto": "Touch sizes on a coarse pointer or a narrow surface, mouse sizes otherwise.",
+        "mouse": "A mouse and keyboard: the tightest controls.",
+        "pad": "A gamepad across a room: larger controls, rows and gutters that read from a couch.",
+        "touch": "A finger: every control at least 44 CSS px."
       }
     },
     "ThemeColor": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "A semantic colour of the design tokens (tokens.json `color`, in the current scheme).",
+      "description": "A colour role of the UI style in effect (the game's style, or the prototype style before it picks one).",
       "type": "string",
       "enum": [
-        "accent",
-        "accentActive",
-        "accentFg",
-        "accentHover",
-        "accentInk",
-        "accentSoft",
-        "bg",
-        "bgSubtle",
-        "border",
-        "borderStrong",
-        "danger",
-        "fg",
-        "fgInverse",
-        "fgMuted",
-        "fgSubtle",
-        "fill",
-        "fillStrong",
+        "backdrop",
+        "well",
+        "panel",
+        "panelHover",
+        "panelRaised",
+        "line",
+        "lineStrong",
+        "ink",
+        "inkMuted",
+        "inkFaint",
+        "inkInverse",
+        "control",
+        "controlStrong",
+        "primary",
+        "primaryHover",
+        "primaryActive",
+        "onPrimary",
+        "primarySoft",
+        "highlight",
         "focus",
-        "info",
-        "materialControl",
-        "materialControlHover",
-        "materialEdge",
-        "materialGlow",
-        "materialRegular",
-        "materialRimSoft",
-        "materialSheen",
-        "materialShine",
-        "materialThick",
-        "materialThin",
+        "knob",
+        "hud",
         "scrim",
         "shadow",
         "sheen",
-        "stage",
-        "stageBorder",
-        "stageDanger",
-        "stageFg",
-        "stageMuted",
-        "stageRaised",
-        "stageSurface",
         "success",
-        "surface",
-        "surfaceHover",
-        "surfaceRaised",
-        "thumb",
-        "warn"
+        "warn",
+        "danger",
+        "info",
+        "health",
+        "mana",
+        "xp",
+        "gold"
       ],
       "x-og-variants": {
-        "accent": "accent: the amber action colour.",
-        "accentActive": "accent-active.",
-        "accentFg": "accent-fg: ink on the accent.",
-        "accentHover": "accent-hover.",
-        "accentInk": "accent-ink: the accent as text.",
-        "accentSoft": "accent-soft: a translucent accent wash.",
-        "bg": "bg: the page.",
-        "bgSubtle": "bg-subtle.",
-        "border": "border.",
-        "borderStrong": "border-strong.",
-        "danger": "danger.",
-        "fg": "fg: the primary ink.",
-        "fgInverse": "fg-inverse.",
-        "fgMuted": "fg-muted.",
-        "fgSubtle": "fg-subtle: placeholders.",
-        "fill": "fill: neutral control fills.",
-        "fillStrong": "fill-strong.",
-        "focus": "focus: the focus ring.",
-        "info": "info.",
-        "materialControl": "material-control.",
-        "materialControlHover": "material-control-hover.",
-        "materialEdge": "material-edge.",
-        "materialGlow": "material-glow.",
-        "materialRegular": "material-regular.",
-        "materialRimSoft": "material-rim-soft.",
-        "materialSheen": "material-sheen.",
-        "materialShine": "material-shine.",
-        "materialThick": "material-thick.",
-        "materialThin": "material-thin.",
-        "scrim": "scrim.",
-        "shadow": "shadow.",
-        "sheen": "sheen.",
-        "stage": "stage: the game stage.",
-        "stageBorder": "stage-border.",
-        "stageDanger": "stage-danger.",
-        "stageFg": "stage-fg.",
-        "stageMuted": "stage-muted.",
-        "stageRaised": "stage-raised.",
-        "stageSurface": "stage-surface.",
-        "success": "success.",
-        "surface": "surface: cards and panels.",
-        "surfaceHover": "surface-hover.",
-        "surfaceRaised": "surface-raised: tooltips.",
-        "thumb": "thumb: slider and switch thumbs.",
-        "warn": "warn."
+        "backdrop": "The screen behind the UI where nothing else is.",
+        "well": "A recessed ground inside a panel: wells, map frames, empty slots.",
+        "panel": "Panels and cards.",
+        "panelHover": "A panel under the pointer.",
+        "panelRaised": "Dialogs, menus and tooltips.",
+        "line": "Hairlines and frames.",
+        "lineStrong": "Stronger frames: high contrast, map borders, scrollbars.",
+        "ink": "The main ink.",
+        "inkMuted": "Secondary ink: captions, keys, inactive tabs.",
+        "inkFaint": "The faintest ink that still reads: placeholders, hints.",
+        "inkInverse": "Ink on a ground of ink (a selected chip).",
+        "control": "Neutral control fills: secondary buttons, tracks, fields.",
+        "controlStrong": "A neutral control hovered or pressed; selection.",
+        "primary": "The one directed action: primary buttons, a slider's fill, a switch that is on, the caret.",
+        "primaryHover": "primary hovered.",
+        "primaryActive": "primary pressed.",
+        "onPrimary": "Ink on primary.",
+        "primarySoft": "A translucent wash of primary.",
+        "highlight": "Emphasised ink: a speaker's name, a price, a link, the player's map dot.",
+        "focus": "The focus ring of key and pad navigation.",
+        "knob": "Slider and switch knobs.",
+        "hud": "HUD capsules over the game (scores, timers, toasts).",
+        "scrim": "Behind a dialog.",
+        "shadow": "Drop shadows.",
+        "sheen": "A skeleton's passing sheen.",
+        "success": "Success.",
+        "warn": "Warnings.",
+        "danger": "Danger and errors.",
+        "info": "Information.",
+        "health": "A health meter.",
+        "mana": "A mana meter.",
+        "xp": "An experience meter.",
+        "gold": "Currency: coins, gold, prices that can be paid."
       }
     },
     "TypeStepName": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "A step of the type ramp (tokens.json `font.scale`).",
+      "description": "A step of the style's type ramp.",
       "type": "string",
       "enum": [
         "body",
@@ -25956,27 +25931,27 @@
         "displayXl2"
       ],
       "x-og-variants": {
-        "body": "text-body, the default.",
-        "xs": "text-xs.",
-        "meta": "text-meta.",
-        "caption": "text-caption.",
-        "sm": "text-sm.",
-        "reading": "text-reading.",
-        "base": "text-base.",
-        "lg": "text-lg.",
-        "xl": "text-xl.",
-        "xl2": "text-2xl.",
-        "xl3": "text-3xl.",
-        "xl4": "text-4xl.",
-        "xl5": "text-5xl.",
-        "xl6": "text-6xl.",
-        "xl7": "text-7xl.",
-        "xl8": "text-8xl.",
-        "displaySm": "text-display-sm.",
-        "displayMd": "text-display-md.",
-        "displayLg": "text-display-lg.",
-        "displayXl": "text-display-xl.",
-        "displayXl2": "text-display-2xl."
+        "body": "The default step.",
+        "xs": "A step of the ramp.",
+        "meta": "A step of the ramp.",
+        "caption": "A step of the ramp.",
+        "sm": "A step of the ramp.",
+        "reading": "A step of the ramp.",
+        "base": "A step of the ramp.",
+        "lg": "A step of the ramp.",
+        "xl": "A step of the ramp.",
+        "xl2": "A step of the ramp.",
+        "xl3": "A step of the ramp.",
+        "xl4": "A step of the ramp.",
+        "xl5": "A step of the ramp.",
+        "xl6": "A step of the ramp.",
+        "xl7": "A step of the ramp.",
+        "xl8": "A step of the ramp.",
+        "displaySm": "A step of the ramp.",
+        "displayMd": "A step of the ramp.",
+        "displayLg": "A step of the ramp.",
+        "displayXl": "A step of the ramp.",
+        "displayXl2": "A step of the ramp."
       }
     },
     "SizeRange": {
@@ -26350,7 +26325,7 @@
               "type": "null"
             }
           ],
-          "description": "The ink; null is fg.",
+          "description": "The ink; null is ink.",
           "default": null
         },
         "align": {
@@ -26444,7 +26419,7 @@
     "PanelDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A card: surface, the card radius, padded and spaced by the tokens.",
+      "description": "A card: panel, the panel radius, padded and spaced by the style.",
       "type": "object",
       "properties": {
         "row": {
@@ -26519,7 +26494,7 @@
               "type": "null"
             }
           ],
-          "description": "Its fill; null is surface.",
+          "description": "Its fill; null is panel.",
           "default": null
         }
       },
@@ -27135,7 +27110,7 @@
     "UiDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it.",
+      "description": "How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it.",
       "type": "object",
       "properties": {
         "scheme": {
@@ -27209,19 +27184,7 @@
           "description": "Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast).",
           "default": "standard"
         },
-        "accentHue": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/HueName"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "A token hue as the game's accent (its hover, active, ink and focus tones derived as the tokens derive amber's); null keeps amber.",
-          "default": null
-        },
-        "accentColor": {
+        "primaryColor": {
           "anyOf": [
             {
               "$ref": "#/$defs/Color"
@@ -27230,7 +27193,7 @@
               "type": "null"
             }
           ],
-          "description": "An sRGB colour as the game's accent, when no hue is given.",
+          "description": "An sRGB colour as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's.",
           "default": null
         },
         "reducedMotion": {
@@ -27240,7 +27203,7 @@
         },
         "reducedTransparency": {
           "type": "boolean",
-          "description": "Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over bg and the translucent fills (fill, fillStrong, accentSoft, the material grounds) the opaque colours they make over surface. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on.",
+          "description": "Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on.",
           "default": false
         },
         "icons": {
@@ -27276,7 +27239,7 @@
               "type": "null"
             }
           ],
-          "description": "A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the token look (fonts, icons and an accent given here still win); null is the platform tokens.",
+          "description": "A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style.",
           "default": null
         },
         "sounds": {
@@ -27443,17 +27406,17 @@
       "properties": {
         "controlSm": {
           "type": "number",
-          "description": "h-control-sm.",
+          "description": "A small control's height.",
           "x-og-unit": "cssPx"
         },
         "controlMd": {
           "type": "number",
-          "description": "h-control-md.",
+          "description": "A control's height.",
           "x-og-unit": "cssPx"
         },
         "controlLg": {
           "type": "number",
-          "description": "h-control-lg.",
+          "description": "A large control's height.",
           "x-og-unit": "cssPx"
         },
         "gutter": {
@@ -27491,7 +27454,7 @@
     "UiTheme": {
       "x-og-kind": "struct",
       "x-og-module": "ui",
-      "description": "The design tokens the UI draws with, read-only.",
+      "description": "The style values the UI draws with, read-only.",
       "type": "object",
       "properties": {
         "scheme": {
@@ -27517,7 +27480,7 @@
           "additionalProperties": {
             "type": "number"
           },
-          "description": "The radius scale by name (control, field, block, card, panel, sheet, button), in CSS pixels."
+          "description": "The corner radii by name (small, control, bar, panel), in CSS pixels."
         },
         "typeRamp": {
           "type": "object",
@@ -27539,7 +27502,7 @@
         },
         "skin": {
           "type": "string",
-          "description": "The configured skin's name; empty for the platform tokens."
+          "description": "The configured skin's name; empty for the prototype style."
         },
         "contrast": {
           "$ref": "#/$defs/Contrast",
@@ -27551,7 +27514,7 @@
         },
         "reducedTransparency": {
           "type": "boolean",
-          "description": "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over the surface (the scrim over bg) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
+          "description": "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
         }
       },
       "required": [
@@ -27596,7 +27559,7 @@
               "type": "null"
             }
           ],
-          "description": "The ink; null is fg.",
+          "description": "The ink; null is ink.",
           "default": null
         },
         "align": {
@@ -27724,7 +27687,7 @@
     "Tone": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "A status tone, as the design language's badges and toasts.",
+      "description": "A status tone of badges, toasts and map markers.",
       "type": "string",
       "enum": [
         "neutral",
@@ -27732,17 +27695,17 @@
         "warn",
         "danger",
         "info",
-        "accent",
+        "primary",
         "inverse"
       ],
       "x-og-variants": {
-        "neutral": "Neutral: fill and muted ink.",
+        "neutral": "Neutral: control fill and muted ink.",
         "success": "Success.",
         "warn": "Warning (orange).",
         "danger": "Danger.",
         "info": "Information.",
-        "accent": "Amber identity: the soft accent and amber ink.",
-        "inverse": "Neutral emphasis: fg fill, inverse ink."
+        "primary": "The game's identity: the primary's soft wash and highlight ink.",
+        "inverse": "Neutral emphasis: ink fill, inverse ink."
       }
     },
     "MeterKind": {
@@ -27754,13 +27717,13 @@
         "health",
         "mana",
         "xp",
-        "accent"
+        "primary"
       ],
       "x-og-variants": {
-        "health": "Green, warning orange under 30 %, danger red under 15 %.",
-        "mana": "The blue hue.",
-        "xp": "The purple hue.",
-        "accent": "The accent."
+        "health": "health; warn under 30 %, danger under 15 %.",
+        "mana": "mana.",
+        "xp": "xp.",
+        "primary": "primary."
       }
     },
     "Breakpoint": {
@@ -27784,49 +27747,15 @@
     "Contrast": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "The theme variant: high contrast remaps muted inks, fills and borders to stronger tokens and outlines every control (no new colour).",
+      "description": "The theme variant: high contrast remaps muted inks, fills and lines to the style's stronger ones and outlines every control (no new colour).",
       "type": "string",
       "enum": [
         "standard",
         "high"
       ],
       "x-og-variants": {
-        "standard": "The token palette as it is.",
+        "standard": "The style's palette as it is.",
         "high": "Stronger inks, fills and edges."
-      }
-    },
-    "HueName": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "One of the twelve category hues of the tokens, for a game's accent.",
-      "type": "string",
-      "enum": [
-        "red",
-        "orange",
-        "yellow",
-        "green",
-        "mint",
-        "teal",
-        "cyan",
-        "blue",
-        "indigo",
-        "purple",
-        "pink",
-        "brown"
-      ],
-      "x-og-variants": {
-        "red": "hue-red.",
-        "orange": "hue-orange.",
-        "yellow": "hue-yellow.",
-        "green": "hue-green.",
-        "mint": "hue-mint.",
-        "teal": "hue-teal.",
-        "cyan": "hue-cyan.",
-        "blue": "hue-blue.",
-        "indigo": "hue-indigo.",
-        "purple": "hue-purple.",
-        "pink": "hue-pink.",
-        "brown": "hue-brown."
       }
     },
     "NavIntent": {
@@ -28083,7 +28012,7 @@
     "TransitionDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "How a transition moves, timed in ticks from the motion tokens.",
+      "description": "How a transition moves, timed in ticks from the style's motion.",
       "type": "object",
       "properties": {
         "kind": {
@@ -28318,7 +28247,7 @@
               "type": "null"
             }
           ],
-          "description": "The selected row (fill-strong), for og.ui.list.",
+          "description": "The selected row (controlStrong), for og.ui.list.",
           "default": null
         }
       },
@@ -28710,7 +28639,7 @@
       "properties": {
         "selected": {
           "type": "boolean",
-          "description": "Selected: inverted to fg.",
+          "description": "Selected: inverted to ink.",
           "default": false
         },
         "disabled": {
@@ -28724,7 +28653,7 @@
     "MeterDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A meter: a capsule track with a fill that animates its changes by the tick.",
+      "description": "A meter: a track with a fill that animates its changes by the tick.",
       "type": "object",
       "properties": {
         "kind": {
@@ -28826,7 +28755,7 @@
               "type": "null"
             }
           ],
-          "description": "Its ink; null is fg.",
+          "description": "Its ink; null is ink.",
           "default": null
         },
         "label": {
@@ -28869,7 +28798,7 @@
         },
         "player": {
           "type": "boolean",
-          "description": "The player: the accent, larger, ringed.",
+          "description": "The player: the primary, larger, ringed.",
           "default": false
         }
       },
@@ -28941,7 +28870,7 @@
       "properties": {
         "speaker": {
           "type": "string",
-          "description": "Who speaks (amber ink).",
+          "description": "Who speaks (primary ink).",
           "default": ""
         },
         "text": {
@@ -29137,7 +29066,7 @@
         },
         "primary": {
           "type": "boolean",
-          "description": "The amber button (one per screen).",
+          "description": "The primary button (one per screen).",
           "default": false
         },
         "icon": {
@@ -29356,7 +29285,7 @@
               "type": "null"
             }
           ],
-          "description": "The ink; null is fg.",
+          "description": "The ink; null is ink.",
           "default": null
         },
         "align": {
@@ -29437,7 +29366,7 @@
               "type": "null"
             }
           ],
-          "description": "Their ink; null is the accent.",
+          "description": "Their ink; null is the primary.",
           "default": null
         },
         "radius": {
@@ -29557,7 +29486,7 @@
               "type": "null"
             }
           ],
-          "description": "The cover's colour (the texture's tint); null is bg.",
+          "description": "The cover's colour (the texture's tint); null is backdrop.",
           "default": null
         },
         "texture": {
@@ -29651,7 +29580,7 @@
         },
         "primary": {
           "type": "boolean",
-          "description": "The amber action (one per screen).",
+          "description": "The primary action (one per screen).",
           "default": false
         }
       },

@@ -8,30 +8,28 @@ base dark
 atlas "skins/lanebeat/atlas.png" 384 256
 scale 1
 palette {
-  bg "#03080f"
-  bgSubtle "#071220"
-  surface "#0f2a3d"
-  surfaceRaised "#0f2a3d"
-  surfaceHover "#16384f"
-  materialThick "#0f2a3d"
-  materialRegular "#0f2a3de6"
-  materialThin "#0f2a3dcc"
-  fg "#e2f7ff"
-  fgMuted "#a6cde0"
-  fgSubtle "#8fb3c6"
-  fgInverse "#03080f"
-  fill "#3f8fb3"
-  fillStrong "#5aaed4"
-  border "#2c6a88"
-  borderStrong "#6fd3f5"
-  accent "#38e1ff"
-  accentHover "#30d4f0"
-  accentActive "#16c4e6"
-  accentFg "#e2f7ff"
-  accentInk "#7fecff"
-  accentSoft "#38e1ff2a"
+  backdrop "#03080f"
+  well "#071220"
+  panel "#0f2a3d"
+  panelRaised "#0f2a3d"
+  panelHover "#16384f"
+  hud "#0f2a3d"
+  ink "#e2f7ff"
+  inkMuted "#a6cde0"
+  inkFaint "#8fb3c6"
+  inkInverse "#03080f"
+  control "#3f8fb3"
+  controlStrong "#5aaed4"
+  line "#2c6a88"
+  lineStrong "#6fd3f5"
+  primary "#38e1ff"
+  primaryHover "#30d4f0"
+  primaryActive "#16c4e6"
+  onPrimary "#e2f7ff"
+  highlight "#7fecff"
+  primarySoft "#38e1ff2a"
   focus "#ffd23f"
-  thumb "#2f7194"
+  knob "#2f7194"
   scrim "#010409cc"
   success "#3dffa0"
   warn "#ffc53d"
@@ -40,13 +38,10 @@ palette {
   shadow "#00000099"
 }
 radius {
+  small 2
   control 2
-  field 2
-  block 2
-  card 2
+  bar 2
   panel 2
-  sheet 2
-  button 2
 }
 ramp {
   body 16 22
@@ -88,16 +83,16 @@ slice capsule 144 104 32 32 10 tint
 slice track 180 104 32 16 5 tint
 slice fill 216 104 32 16 2 tint
 soft 252 104 64 64 24
-corner 320 104 32 32 18 18 accent 4
+corner 320 104 32 32 18 18 primary 4
 corners panel card slot
-divider 4 172 128 24 128 24 accent
-flourish 136 172 64 24 32 14 accent 0
+divider 4 172 128 24 128 24 primary
+flourish 136 172 64 24 32 14 primary 0
 tile 204 172 64 64 64 64 0.08 3 panel
 shadow panel 0 0 18 0 "#000000aa"
-glow button 5 accent 0.22
-glow panel 10 accent 0.12
-glow capsule 4 accent 0.18
-textGlow display 1.5 accent 0.55
+glow button 5 primary 0.22
+glow panel 10 primary 0.12
+glow capsule 4 primary 0.18
+textGlow display 1.5 primary 0.55
 press 0.98 0.98 0
 hover 0 1.02
 motion {

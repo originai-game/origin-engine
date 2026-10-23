@@ -9126,7 +9126,7 @@ module i18n {
 
 module ui {
   skill og-ui
-  doc "The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, themes it with the platform's design tokens, draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it."
+  doc "The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the placeholder prototype style until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it."
   doc "The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick."
   doc "Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi(\"Slot\", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it."
 
@@ -9164,13 +9164,13 @@ module ui {
     variant body "The body font."
     variant display "The display font."
     variant mono "The monospaced font."
-    variant rounded "The rounded font, for levels and scores (the design language's font-rounded)."
+    variant rounded "The rounded font, for levels and scores."
   }
 
   enum ButtonVariant {
-    doc "Button looks, as the design language's buttons."
+    doc "Button roles: how the style draws each."
     variant secondary "A neutral fill (the default)."
-    variant primary "The amber action: one per screen."
+    variant primary "The primary action: one per screen."
     variant quiet "Text until hovered."
     variant danger "A destructive action: danger ink on the danger tint."
   }
@@ -9189,85 +9189,73 @@ module ui {
   }
 
   enum DensityMode {
-    doc "Control sizes: auto picks touch sizes on a coarse pointer or a play surface under 768 px, compact otherwise."
-    variant auto "Touch sizes on a coarse pointer or a narrow surface, compact otherwise."
-    variant compact "Compact controls."
-    variant comfortable "Comfortable controls."
-    variant touch "Touch-sized controls."
+    doc "Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise."
+    variant auto "Touch sizes on a coarse pointer or a narrow surface, mouse sizes otherwise."
+    variant mouse "A mouse and keyboard: the tightest controls."
+    variant pad "A gamepad across a room: larger controls, rows and gutters that read from a couch."
+    variant touch "A finger: every control at least 44 CSS px."
   }
 
   enum ThemeColor {
-    doc "A semantic colour of the design tokens (tokens.json `color`, in the current scheme)."
-    variant accent "accent: the amber action colour."
-    variant accentActive "accent-active."
-    variant accentFg "accent-fg: ink on the accent."
-    variant accentHover "accent-hover."
-    variant accentInk "accent-ink: the accent as text."
-    variant accentSoft "accent-soft: a translucent accent wash."
-    variant bg "bg: the page."
-    variant bgSubtle "bg-subtle."
-    variant border "border."
-    variant borderStrong "border-strong."
-    variant danger "danger."
-    variant fg "fg: the primary ink."
-    variant fgInverse "fg-inverse."
-    variant fgMuted "fg-muted."
-    variant fgSubtle "fg-subtle: placeholders."
-    variant fill "fill: neutral control fills."
-    variant fillStrong "fill-strong."
-    variant focus "focus: the focus ring."
-    variant info "info."
-    variant materialControl "material-control."
-    variant materialControlHover "material-control-hover."
-    variant materialEdge "material-edge."
-    variant materialGlow "material-glow."
-    variant materialRegular "material-regular."
-    variant materialRimSoft "material-rim-soft."
-    variant materialSheen "material-sheen."
-    variant materialShine "material-shine."
-    variant materialThick "material-thick."
-    variant materialThin "material-thin."
-    variant scrim "scrim."
-    variant shadow "shadow."
-    variant sheen "sheen."
-    variant stage "stage: the game stage."
-    variant stageBorder "stage-border."
-    variant stageDanger "stage-danger."
-    variant stageFg "stage-fg."
-    variant stageMuted "stage-muted."
-    variant stageRaised "stage-raised."
-    variant stageSurface "stage-surface."
-    variant success "success."
-    variant surface "surface: cards and panels."
-    variant surfaceHover "surface-hover."
-    variant surfaceRaised "surface-raised: tooltips."
-    variant thumb "thumb: slider and switch thumbs."
-    variant warn "warn."
+    doc "A colour role of the UI style in effect (the game's style, or the prototype style before it picks one)."
+    variant backdrop "The screen behind the UI where nothing else is."
+    variant well "A recessed ground inside a panel: wells, map frames, empty slots."
+    variant panel "Panels and cards."
+    variant panelHover "A panel under the pointer."
+    variant panelRaised "Dialogs, menus and tooltips."
+    variant line "Hairlines and frames."
+    variant lineStrong "Stronger frames: high contrast, map borders, scrollbars."
+    variant ink "The main ink."
+    variant inkMuted "Secondary ink: captions, keys, inactive tabs."
+    variant inkFaint "The faintest ink that still reads: placeholders, hints."
+    variant inkInverse "Ink on a ground of ink (a selected chip)."
+    variant control "Neutral control fills: secondary buttons, tracks, fields."
+    variant controlStrong "A neutral control hovered or pressed; selection."
+    variant primary "The one directed action: primary buttons, a slider's fill, a switch that is on, the caret."
+    variant primaryHover "primary hovered."
+    variant primaryActive "primary pressed."
+    variant onPrimary "Ink on primary."
+    variant primarySoft "A translucent wash of primary."
+    variant highlight "Emphasised ink: a speaker's name, a price, a link, the player's map dot."
+    variant focus "The focus ring of key and pad navigation."
+    variant knob "Slider and switch knobs."
+    variant hud "HUD capsules over the game (scores, timers, toasts)."
+    variant scrim "Behind a dialog."
+    variant shadow "Drop shadows."
+    variant sheen "A skeleton's passing sheen."
+    variant success "Success."
+    variant warn "Warnings."
+    variant danger "Danger and errors."
+    variant info "Information."
+    variant health "A health meter."
+    variant mana "A mana meter."
+    variant xp "An experience meter."
+    variant gold "Currency: coins, gold, prices that can be paid."
   }
 
   enum TypeStepName {
-    doc "A step of the type ramp (tokens.json `font.scale`)."
-    variant body "text-body, the default."
-    variant xs "text-xs."
-    variant meta "text-meta."
-    variant caption "text-caption."
-    variant sm "text-sm."
-    variant reading "text-reading."
-    variant base "text-base."
-    variant lg "text-lg."
-    variant xl "text-xl."
-    variant xl2 "text-2xl."
-    variant xl3 "text-3xl."
-    variant xl4 "text-4xl."
-    variant xl5 "text-5xl."
-    variant xl6 "text-6xl."
-    variant xl7 "text-7xl."
-    variant xl8 "text-8xl."
-    variant displaySm "text-display-sm."
-    variant displayMd "text-display-md."
-    variant displayLg "text-display-lg."
-    variant displayXl "text-display-xl."
-    variant displayXl2 "text-display-2xl."
+    doc "A step of the style's type ramp."
+    variant body "The default step."
+    variant xs "A step of the ramp."
+    variant meta "A step of the ramp."
+    variant caption "A step of the ramp."
+    variant sm "A step of the ramp."
+    variant reading "A step of the ramp."
+    variant base "A step of the ramp."
+    variant lg "A step of the ramp."
+    variant xl "A step of the ramp."
+    variant xl2 "A step of the ramp."
+    variant xl3 "A step of the ramp."
+    variant xl4 "A step of the ramp."
+    variant xl5 "A step of the ramp."
+    variant xl6 "A step of the ramp."
+    variant xl7 "A step of the ramp."
+    variant xl8 "A step of the ramp."
+    variant displaySm "A step of the ramp."
+    variant displayMd "A step of the ramp."
+    variant displayLg "A step of the ramp."
+    variant displayXl "A step of the ramp."
+    variant displayXl2 "A step of the ramp."
   }
 
   struct SizeRange {
@@ -9363,7 +9351,7 @@ module ui {
     doc "How a label draws its text."
     desc true
     field step Option.TypeStepName "The type step; null is body."
-    field color Option.Paint "The ink; null is fg."
+    field color Option.Paint "The ink; null is ink."
     field align TextAlign "How the lines align."
     field nowrap bool "Keep to one line (breaking only at `\\n`)."
     field width Option.Size "Its width; null fits the text."
@@ -9384,7 +9372,7 @@ module ui {
   }
 
   struct PanelDesc {
-    doc "A card: surface, the card radius, padded and spaced by the tokens."
+    doc "A card: panel, the panel radius, padded and spaced by the style."
     desc true
     field row bool "Lay children left to right (the default is top to bottom)."
     field width Option.Size "Its width; null fits the content."
@@ -9393,7 +9381,7 @@ module ui {
     field gap Option.f32 "Space between children; null is space.md."
     field align Align "Where children sit along the main axis."
     field cross Cross "Where children sit across it."
-    field background Option.Paint "Its fill; null is surface."
+    field background Option.Paint "Its fill; null is panel."
   }
 
   enum ScrollAxes {
@@ -9552,7 +9540,7 @@ module ui {
   }
 
   struct UiDesc {
-    doc "How the UI looks: the scheme, the density, its fonts, the contrast, the game's accent, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it."
+    doc "How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the skin and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's skin) gave it, null clears it."
     desc true
     field scheme Scheme "The palette."
     field density DensityMode "The control sizes."
@@ -9562,13 +9550,12 @@ module ui {
     field roundedFont Option.Font "The rounded font (levels and scores); null uses the display font, then the body font."
     field fallbackFonts List.Font "Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole. A text mixing scripts takes each run from the first font that has it (the role's for its Latin, a fallback for its CJK or Arabic), one label in several fonts."
     field contrast Contrast "Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast)."
-    field accentHue Option.HueName "A token hue as the game's accent (its hover, active, ink and focus tones derived as the tokens derive amber's); null keeps amber."
-    field accentColor Option.Color "An sRGB colour as the game's accent, when no hue is given."
+    field primaryColor Option.Color "An sRGB colour as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's."
     field reducedMotion bool "Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion)."
-    field reducedTransparency bool "Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over bg and the translucent fills (fill, fillStrong, accentSoft, the material grounds) the opaque colours they make over surface. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on."
+    field reducedTransparency bool "Nothing is see-through: glass parts (a skin's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on."
     field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from; null takes the skin's."
     field toastAnchor Option.Anchor "Where toasts stack; null is the bottom centre."
-    field skin Option.Skin "A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the token look (fonts, icons and an accent given here still win); null is the platform tokens."
+    field skin Option.Skin "A skin from og.load.skin: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style."
     field sounds Option.UiSounds "Sounds for UI events (they win over the skin's)."
   }
 
@@ -9611,13 +9598,13 @@ module ui {
 
   struct ControlSizes {
     doc "The control, row and header heights and the gutter of the density in effect."
-    field controlSm f32 "h-control-sm." {
+    field controlSm f32 "A small control's height." {
       unit cssPx
     }
-    field controlMd f32 "h-control-md." {
+    field controlMd f32 "A control's height." {
       unit cssPx
     }
-    field controlLg f32 "h-control-lg." {
+    field controlLg f32 "A large control's height." {
       unit cssPx
     }
     field gutter f32 "The gutter." {
@@ -9635,18 +9622,18 @@ module ui {
   }
 
   struct UiTheme {
-    doc "The design tokens the UI draws with, read-only."
+    doc "The style values the UI draws with, read-only."
     field scheme Scheme "The palette in use."
     field palette Map.String "Each ThemeColor as `#rrggbb` or `#rrggbbaa` (sRGB as authored)."
     field space Map.f32 "The spacing scale by name (xxs, xs, sm, md, lg, xl, xxl, xl3), in CSS pixels."
-    field radius Map.f32 "The radius scale by name (control, field, block, card, panel, sheet, button), in CSS pixels."
+    field radius Map.f32 "The corner radii by name (small, control, bar, panel), in CSS pixels."
     field typeRamp Map.TypeStep "Each TypeStepName's step."
     field sizes ControlSizes "The control sizes of the density in effect."
     field durationsMs Map.f32 "The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds."
-    field skin String "The configured skin's name; empty for the platform tokens."
+    field skin String "The configured skin's name; empty for the prototype style."
     field contrast Contrast "The variant in effect: high when the game asked for it or the page prefers more contrast."
     field reducedMotion bool "Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement."
-    field reducedTransparency bool "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over the surface (the scrim over bg) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
+    field reducedTransparency bool "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
   }
 
   callback UiBuild {
@@ -9654,7 +9641,7 @@ module ui {
   }
 
   fn configure {
-    doc "Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the platform tokens). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text."
+    doc "Set how the UI looks (the scheme, density, fonts, skin, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's skin (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the skin and the fonts; null clears a field to its default (`skin: null` goes back to the prototype style). A UI left with no font at all (no font, no skin with fonts, no fallback or locale font) warns: it would draw no text."
     param world World "The world whose UI is configured."
     param desc UiDesc "The fields to change; the others keep their values."
     returns Result.Void "Refused for a dead font or skin, or a desc that is not an object."
@@ -9667,7 +9654,7 @@ module ui {
   }
 
   fn theme {
-    doc "The design tokens the UI draws with."
+    doc "The style values the UI draws with."
     param world World "The world."
     returns UiTheme
   }
@@ -9738,7 +9725,7 @@ module ui {
     doc "How a rich text paragraph draws: its defaults, which its markup's spans override."
     desc true
     field step Option.TypeStepName "The type step; null is body."
-    field color Option.Paint "The ink; null is fg."
+    field color Option.Paint "The ink; null is ink."
     field align TextAlign "How the lines align."
     field nowrap bool "Keep to one line (breaking only at `\\n`)."
     field width Option.Size "Its width; null fits the text."
@@ -9769,7 +9756,7 @@ module ui {
   }
 
   fn button {
-    doc "A capsule button with a label; `clicked` is a press and a release inside it. The probe reads its label."
+    doc "A button with a label; `clicked` is a press and a release inside it. The probe reads its label."
     param id String "Its id."
     param text String "The label."
     param desc ButtonDesc "Variant, size, disabled and width."
@@ -9791,7 +9778,7 @@ module ui {
   }
 
   fn progress {
-    doc "A capsule track filled to a fraction."
+    doc "A track filled to a fraction."
     param id String "Its id."
     param value f32 "How full it is, from 0 to 1."
     param desc ProgressDesc "Its width."
@@ -9871,22 +9858,22 @@ module ui {
   }
 
   enum Tone {
-    doc "A status tone, as the design language's badges and toasts."
-    variant neutral "Neutral: fill and muted ink."
+    doc "A status tone of badges, toasts and map markers."
+    variant neutral "Neutral: control fill and muted ink."
     variant success "Success."
     variant warn "Warning (orange)."
     variant danger "Danger."
     variant info "Information."
-    variant accent "Amber identity: the soft accent and amber ink."
-    variant inverse "Neutral emphasis: fg fill, inverse ink."
+    variant primary "The game's identity: the primary's soft wash and highlight ink."
+    variant inverse "Neutral emphasis: ink fill, inverse ink."
   }
 
   enum MeterKind {
     doc "What a meter measures, which sets its colour."
-    variant health "Green, warning orange under 30 %, danger red under 15 %."
-    variant mana "The blue hue."
-    variant xp "The purple hue."
-    variant accent "The accent."
+    variant health "health; warn under 30 %, danger under 15 %."
+    variant mana "mana."
+    variant xp "xp."
+    variant primary "primary."
   }
 
   enum Breakpoint {
@@ -9898,25 +9885,9 @@ module ui {
   }
 
   enum Contrast {
-    doc "The theme variant: high contrast remaps muted inks, fills and borders to stronger tokens and outlines every control (no new colour)."
-    variant standard "The token palette as it is."
+    doc "The theme variant: high contrast remaps muted inks, fills and lines to the style's stronger ones and outlines every control (no new colour)."
+    variant standard "The style's palette as it is."
     variant high "Stronger inks, fills and edges."
-  }
-
-  enum HueName {
-    doc "One of the twelve category hues of the tokens, for a game's accent."
-    variant red "hue-red."
-    variant orange "hue-orange."
-    variant yellow "hue-yellow."
-    variant green "hue-green."
-    variant mint "hue-mint."
-    variant teal "hue-teal."
-    variant cyan "hue-cyan."
-    variant blue "hue-blue."
-    variant indigo "hue-indigo."
-    variant purple "hue-purple."
-    variant pink "hue-pink."
-    variant brown "hue-brown."
   }
 
   enum NavIntent {
@@ -9993,7 +9964,7 @@ module ui {
   }
 
   struct TransitionDesc {
-    doc "How a transition moves, timed in ticks from the motion tokens."
+    doc "How a transition moves, timed in ticks from the style's motion."
     desc true
     field kind TransitionKind "The movement."
     field durationMs f32 "How long entering and leaving take; 0 is motion.duration.base (240 ms)." {
@@ -10058,7 +10029,7 @@ module ui {
     field width Option.Size "Its width; null fits."
     field height Option.Size "Its height (it scrolls inside); null grows."
     field padding Insets "Space inside."
-    field selected Option.u32 "The selected row (fill-strong), for og.ui.list."
+    field selected Option.u32 "The selected row (controlStrong), for og.ui.list."
   }
 
   struct ListRange {
@@ -10165,12 +10136,12 @@ module ui {
   struct ChipDesc {
     doc "A chip's state."
     desc true
-    field selected bool "Selected: inverted to fg."
+    field selected bool "Selected: inverted to ink."
     field disabled bool "Neutral and inert."
   }
 
   struct MeterDesc {
-    doc "A meter: a capsule track with a fill that animates its changes by the tick."
+    doc "A meter: a track with a fill that animates its changes by the tick."
     desc true
     field kind MeterKind "What it measures, which sets its colour."
     field color Option.Paint "A colour of your own instead of the kind's."
@@ -10201,7 +10172,7 @@ module ui {
       unit cssPx
       min 0
     }
-    field tint Option.Paint "Its ink; null is fg."
+    field tint Option.Paint "Its ink; null is ink."
     field label Option.String "What a screen reader calls it (and the probe's text): null is the icon's name in the atlas (an English word: `star`); empty is decoration, named by nothing, so a card or button it sits on is named by its other text. A localised game names a meaningful icon from its string table."
   }
 
@@ -10215,7 +10186,7 @@ module ui {
       unit ratio
     }
     field tone Tone "Its colour; neutral is the stage ink."
-    field player bool "The player: the accent, larger, ringed."
+    field player bool "The player: the primary, larger, ringed."
   }
 
   struct MinimapDesc {
@@ -10234,7 +10205,7 @@ module ui {
   struct DialogueDesc {
     doc "A dialogue box: a portrait slot, the speaker and the line typed out by the tick."
     desc true
-    field speaker String "Who speaks (amber ink)."
+    field speaker String "Who speaks (primary ink)."
     field text String "The line. A new text starts typing again."
     field portrait Option.Texture "A portrait texture; null is the speaker's initial."
     field portraitUv Option.Array.f32.4 "The portrait's region of the texture; null is the whole texture."
@@ -10297,7 +10268,7 @@ module ui {
       unit cssPx
       min 0
     }
-    field primary bool "The amber button (one per screen)."
+    field primary bool "The primary button (one per screen)."
     field icon String "An icon of the atlas by name, instead of the label; empty is the label."
   }
 
@@ -10339,7 +10310,7 @@ module ui {
   }
 
   fn frameTheme {
-    doc "The design tokens of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates)."
+    doc "The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates)."
     returns UiTheme
   }
 
@@ -10368,7 +10339,7 @@ module ui {
   }
 
   fn transition {
-    doc "Content that enters and leaves: fade, slide or scale by the tick from the motion tokens. `build` runs while it is visible."
+    doc "Content that enters and leaves: fade, slide or scale by the tick from the style's motion. `build` runs while it is visible."
     host false
     param id String "Its id."
     param show bool "Whether it should be shown."
@@ -10401,7 +10372,7 @@ module ui {
   }
 
   fn spotlight {
-    doc "A spotlight over everything (a tutorial step): the scrim on four sides of the hole, an amber edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`."
+    doc "A spotlight over everything (a tutorial step): the scrim on four sides of the hole, a primary edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`."
     param id String "Its id."
     param hole Option.UiRect "The rectangle to leave lit, as og.ui.bounds answers; null dims everything."
     param desc SpotlightDesc "Room around the hole."
@@ -10431,14 +10402,14 @@ module ui {
   fn listItem {
     doc "Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`."
     param index u32 "Its index."
-    param selected bool "Drawn selected (fill-strong)."
+    param selected bool "Drawn selected (controlStrong)."
     returns Response
   }
 
   fn gridItem {
-    doc "Open cell `index` of the open grid (`Cell#index`): a slot on fill, focusable; its content follows until close(). Drops answer `dropped` as listItem's."
+    doc "Open cell `index` of the open grid (`Cell#index`): a slot on control, focusable; its content follows until close(). Drops answer `dropped` as listItem's."
     param index u32 "Its index."
-    param selected bool "Drawn selected (fill-strong with an amber bar)."
+    param selected bool "Drawn selected (controlStrong with a primary bar)."
     returns Response
   }
 
@@ -10498,7 +10469,7 @@ module ui {
   }
 
   fn radio {
-    doc "A radio group of `Option#i` rows: a ring, filled amber when chosen, and a label."
+    doc "A radio group of `Option#i` rows: a ring, filled primary when chosen, and a label."
     param id String "Its id."
     param options List.String "The option labels."
     param selected u32 "The chosen index from game state."
@@ -10523,7 +10494,7 @@ module ui {
   }
 
   fn chip {
-    doc "A chip: a capsule on fill; selected inverts to fg. For filters and tags."
+    doc "A chip: a control-filled tag; selected inverts to ink. For filters and tags."
     param id String "Its id."
     param text String "The label."
     param desc ChipDesc "Selected and disabled."
@@ -10531,7 +10502,7 @@ module ui {
   }
 
   fn badge {
-    doc "A badge: a small status capsule in its tone."
+    doc "A badge: a small status tag in its tone."
     param id String "Its id."
     param text String "The label (a count, a word)."
     param tone Tone "Its tone."
@@ -10553,7 +10524,7 @@ module ui {
   }
 
   fn keyValue {
-    doc "A key (fg-muted) and its value (fg, at the end) on one row: stats, settings summaries, receipts."
+    doc "A key (inkMuted) and its value (ink, at the end) on one row: stats, settings summaries, receipts."
     param id String "Its id."
     param key String "The key."
     param value String "The value."
@@ -10593,7 +10564,7 @@ module ui {
   }
 
   fn cooldown {
-    doc "A cooldown: a disc whose amber ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not)."
+    doc "A cooldown: a disc whose primary ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not)."
     param id String "Its id."
     param remaining f32 "How much of the cooldown is left, 0 to 1: 1 just used, 0 ready."
     param desc CooldownDesc "Size, label and icon."
@@ -10601,14 +10572,14 @@ module ui {
   }
 
   fn minimap {
-    doc "A mini-map frame: the map in a border-strong frame, markers as dots (the player amber and ringed), an N mark and a zone label."
+    doc "A mini-map frame: the map in a lineStrong frame, markers as dots (the player primary and ringed), an N mark and a zone label."
     param id String "Its id."
     param desc MinimapDesc "Map, markers and label."
     returns Void
   }
 
   fn dialogue {
-    doc "A dialogue box: a portrait slot, the speaker in amber ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown."
+    doc "A dialogue box: a portrait slot, the speaker in primary ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown."
     param id String "Its id."
     param desc DialogueDesc "Speaker, text, portrait and speed."
     returns DialogueResult
@@ -10743,7 +10714,7 @@ module ui {
     desc true
     field step Option.TypeStepName "The type step; null is body."
     field font FontRole "Which font: mono (the numeric role) for counts in a row, display for a big score."
-    field color Option.Paint "The ink; null is fg."
+    field color Option.Paint "The ink; null is ink."
     field align TextAlign "How it aligns in its width."
     field width Option.Size "Its width; null fits the text."
     field durationMs f32 "How long a change takes to count; 0 is 900 ms." {
@@ -10768,7 +10739,7 @@ module ui {
     doc "Rays and sparks thrown from an element."
     desc true
     field count u32 "Rays; 0 is 8."
-    field color Option.Paint "Their ink; null is the accent."
+    field color Option.Paint "Their ink; null is the primary."
     field radius f32 "How far they fly from the element's centre; 0 is 1.4 times its size." {
       unit cssPx
       min 0
@@ -10834,7 +10805,7 @@ module ui {
       unit ms
       min 0
     }
-    field color Option.Paint "The cover's colour (the texture's tint); null is bg."
+    field color Option.Paint "The cover's colour (the texture's tint); null is backdrop."
     field texture Option.Texture "A texture stretched over the surface as the cover; null is the flat colour."
     field from WipeSide "Where a wipe or a slide comes from."
   }
@@ -10889,7 +10860,7 @@ module ui {
     field id String "The id answered when it is chosen; also its probe id."
     field label String "What it says."
     field disabled bool "Shown but inert."
-    field primary bool "The amber action (one per screen)."
+    field primary bool "The primary action (one per screen)."
   }
 
   struct MenuResult {

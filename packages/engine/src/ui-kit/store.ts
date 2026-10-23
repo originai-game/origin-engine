@@ -16,7 +16,7 @@ function screen(id: string, title: string, width: number, build: () => void, scr
 /** An item's picture: its icon, else its initial on the slot. */
 function picture(id: string, icon: string | undefined, name: string, size: number): void {
   if (icon && kit.hasIcon(icon)) kit.icon(id, icon, { size });
-  else kit.label(id, name.slice(0, 1).toUpperCase(), { step: "xl2", font: "display", color: token("fgMuted"), nowrap: true });
+  else kit.label(id, name.slice(0, 1).toUpperCase(), { step: "xl2", font: "display", color: token("inkMuted"), nowrap: true });
 }
 
 export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult {
@@ -38,9 +38,9 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
         kit.spacer("Gap", null);
       }
       capsule("Balance", () => {
-        if (desc.currencyIcon) iconOr("Icon", desc.currencyIcon, 18, token("accent"));
+        if (desc.currencyIcon) iconOr("Icon", desc.currencyIcon, 18, token("gold"));
         kit.counter("Amount", balance, { font: "mono", step: "base" });
-        kit.label("Unit", desc.currency ?? "coins", { step: "base", color: token("fgMuted"), nowrap: true });
+        kit.label("Unit", desc.currency ?? "coins", { step: "base", color: token("inkMuted"), nowrap: true });
       });
     });
     const body = (): void => {
@@ -49,17 +49,17 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
         picture("Picture", it.icon, it.name ?? "", 36);
         kit.label("Name", it.name ?? "", { step: "base", nowrap: true });
         if (it.owned) kit.badge("Owned", desc.ownedLabel ?? "Owned", "success");
-        else kit.label("Price", fmt(it.price ?? 0), { step: "meta", font: "mono", color: token(balance >= (it.price ?? 0) ? "accentInk" : "fgSubtle"), nowrap: true });
+        else kit.label("Price", fmt(it.price ?? 0), { step: "meta", font: "mono", color: token(balance >= (it.price ?? 0) ? "highlight" : "inkFaint"), nowrap: true });
       });
       if (g.clicked !== null && g.clicked !== undefined) sel = g.clicked;
       const it = items[sel];
       kit.column("Detail", { width: phone ? grow() : px(220), gap: t.sm }, () => {
         if (!it) {
-          kit.label("Empty", desc.emptyLabel ?? "Nothing for sale here", { color: token("fgMuted") });
+          kit.label("Empty", desc.emptyLabel ?? "Nothing for sale here", { color: token("inkMuted") });
           return;
         }
         kit.label("Name", it.name ?? "", { step: "lg", width: grow() });
-        if (it.description) kit.label("Description", it.description, { step: "meta", color: token("fgMuted"), width: grow() });
+        if (it.description) kit.label("Description", it.description, { step: "meta", color: token("inkMuted"), width: grow() });
         kit.keyValue("Price", desc.priceLabel ?? "Price", `${fmt(it.price ?? 0)} ${desc.currency ?? "coins"}`, true);
         const short = balance < (it.price ?? 0);
         // Short of the price, Buy still answers: it refuses, shaking with the error sound.
@@ -101,7 +101,7 @@ export function inventoryScreen(id: string, desc: Api.InventoryDesc = {}): Api.I
         const it = bySlot.get(i);
         if (!it) return;
         picture("Picture", it.icon, it.name ?? "", cell * 0.5);
-        if ((it.count ?? 0) > 1) kit.label("Count", `${it.count}`, { step: "xs", font: "mono", color: token("fgMuted"), nowrap: true });
+        if ((it.count ?? 0) > 1) kit.label("Count", `${it.count}`, { step: "xs", font: "mono", color: token("inkMuted"), nowrap: true });
       });
       if (g.clicked !== null && g.clicked !== undefined) sel = g.clicked;
       if (g.dropFrom !== null && g.dropFrom !== undefined && g.dropTo !== null && g.dropTo !== undefined && bySlot.has(g.dropFrom)) {
@@ -111,11 +111,11 @@ export function inventoryScreen(id: string, desc: Api.InventoryDesc = {}): Api.I
       const it = sel >= 0 ? bySlot.get(sel) : undefined;
       kit.column("Detail", { width: phone ? grow() : px(200), gap: t.sm }, () => {
         if (!it) {
-          kit.label("Hint", desc.hintLabel ?? "Select an item. Drag it to another slot to move it.", { step: "meta", color: token("fgMuted"), width: grow() });
+          kit.label("Hint", desc.hintLabel ?? "Select an item. Drag it to another slot to move it.", { step: "meta", color: token("inkMuted"), width: grow() });
           return;
         }
         kit.label("Name", it.name ?? "", { step: "lg", width: grow() });
-        if (it.description) kit.label("Description", it.description, { step: "meta", color: token("fgMuted"), width: grow() });
+        if (it.description) kit.label("Description", it.description, { step: "meta", color: token("inkMuted"), width: grow() });
         if ((it.count ?? 0) > 1) kit.keyValue("Count", desc.countLabel ?? "Count", `${it.count}`, true);
         if (desc.useLabel !== "") {
           if ((kit.button("Use", desc.useLabel ?? "Use", { variant: "primary", width: grow() }) as Api.Response).clicked) out.used = it.id ?? null;
@@ -143,8 +143,8 @@ export function levelSelect(id: string, desc: Api.LevelSelectDesc = {}): Api.Lev
   // Back from every input: the button, a press on the scrim, Escape, B.
   out.closed = screen(id, desc.title ?? "Levels", 720, () => {
     kit.row("Total", { gap: t.xs, cross: "center" }, () => {
-      iconOr("Star", "star", 18, token("accent"), starsLabel(earned, levels.length * 3));
-      kit.label("Count", `${earned} / ${levels.length * 3}`, { font: "mono", color: token("fgMuted"), nowrap: true });
+      iconOr("Star", "star", 18, token("primary"), starsLabel(earned, levels.length * 3));
+      kit.label("Count", `${earned} / ${levels.length * 3}`, { font: "mono", color: token("inkMuted"), nowrap: true });
     });
     // A numeral is the card's face, in display type on a square card; a
     // name takes a wider card and a smaller step, wrapped to two lines (cut
@@ -157,14 +157,14 @@ export function levelSelect(id: string, desc: Api.LevelSelectDesc = {}): Api.Lev
       const l = levels[i]!;
       const name = l.name ?? `${i + 1}`;
       if (l.locked) {
-        iconOr("Lock", "lock", 28, token("fgSubtle"), (desc.lockedLabel ?? "{name}, locked").replaceAll("{name}", name));
+        iconOr("Lock", "lock", 28, token("inkFaint"), (desc.lockedLabel ?? "{name}, locked").replaceAll("{name}", name));
         return;
       }
       if ([...name].length > 3) kit.label("Name", name, { step: phone ? "base" : "lg", font: "display", align: "center", width: grow(), maxLines: 2, ellipsis: true });
       else kit.label("Name", name, { step: "xl3", font: "display", nowrap: true });
       const stars = Math.min(3, l.stars ?? 0);
       kit.row("Stars", { gap: 2 }, () => {
-        for (let k = 0; k < 3; k++) iconOr(kit.idi("Star", k), "star", 14, token(k < stars ? "accent" : "fillStrong"), k === 0 ? starsLabel(stars, 3) : "");
+        for (let k = 0; k < 3; k++) iconOr(kit.idi("Star", k), "star", 14, token(k < stars ? "primary" : "controlStrong"), k === 0 ? starsLabel(stars, 3) : "");
       });
     });
     if (g.clicked !== null && g.clicked !== undefined && !levels[g.clicked]?.locked) out.chosen = g.clicked;
@@ -176,7 +176,7 @@ export function levelSelect(id: string, desc: Api.LevelSelectDesc = {}): Api.Lev
   return out;
 }
 
-const MEDALS: readonly Api.ThemeColor[] = ["warn", "fgMuted", "accentInk"];
+const MEDALS: readonly Api.ThemeColor[] = ["warn", "inkMuted", "highlight"];
 
 export function leaderboardScreen(id: string, desc: Api.LeaderboardDesc = {}): Api.LeaderboardResult {
   const { t, phone } = frame();
@@ -203,14 +203,14 @@ export function leaderboardScreen(id: string, desc: Api.LeaderboardDesc = {}): A
       });
     } else if (entries.length === 0) {
       kit.column("Empty", { width: grow(), height, align: "center", cross: "center" }, () => {
-        kit.label("Message", desc.empty ?? "No scores yet", { color: token("fgMuted"), align: "center", width: grow() });
+        kit.label("Message", desc.empty ?? "No scores yet", { color: token("inkMuted"), align: "center", width: grow() });
       });
     } else {
       const player = entries.findIndex((e) => e.player);
       kit.list("Rows", { count: entries.length, rowHeight: t.row, height, width: grow(), selected: player >= 0 ? player : null }, (i) => {
         const e = entries[i]!;
         const rank = e.rank ?? i + 1;
-        kit.label("Rank", `${rank}`, { width: px(40), font: "mono", step: rank <= 3 ? "lg" : "body", color: token(rank <= 3 ? MEDALS[rank - 1]! : "fgMuted"), nowrap: true });
+        kit.label("Rank", `${rank}`, { width: px(40), font: "mono", step: rank <= 3 ? "lg" : "body", color: token(rank <= 3 ? MEDALS[rank - 1]! : "inkMuted"), nowrap: true });
         kit.label("Name", e.name ?? "", { width: grow(), nowrap: true });
         kit.label("Score", e.score ?? "", { font: "mono", nowrap: true });
       });

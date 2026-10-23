@@ -194,9 +194,9 @@ function platform(world: World, g: GameV, p: PrefsV): void {
 }
 
 /** One HUD capsule: an icon and a number counting to its value. */
-function capsule(t: Theme, id: string, icon: string, value: number, tone: "accent" | "danger" | "fg"): void {
-  og.ui.row(id, { gap: t.space.xs, cross: "center", padding: { left: t.space.sm, top: t.space.xs, right: t.space.md, bottom: t.space.xs }, frame: "capsule", background: { token: "surface" }, radius: 999 }, () => {
-    og.ui.icon("Icon", icon, { size: 26, tint: { token: tone === "fg" ? "fg" : tone } });
+function capsule(t: Theme, id: string, icon: string, value: number, tone: "gold" | "danger" | "ink"): void {
+  og.ui.row(id, { gap: t.space.xs, cross: "center", padding: { left: t.space.sm, top: t.space.xs, right: t.space.md, bottom: t.space.xs }, frame: "capsule", background: { token: "panel" }, radius: 999 }, () => {
+    og.ui.icon("Icon", icon, { size: 26, tint: { token: tone } });
     og.ui.counter("Value", value, { step: "xl", font: "display", durationMs: 300, width: px(56), align: "center" });
   });
 }
@@ -205,14 +205,14 @@ function hud(world: World, theme: Theme, g: GameV, t: TuneV): void {
   const small = phone();
   og.ui.setNavigation(false);
   og.ui.anchor("Purse", { anchor: "topLeft", gap: theme.space.sm }, () => {
-    capsule(theme, "Light", "heart", g.lives, g.lives <= 3 ? "danger" : "fg");
-    capsule(theme, "Coins", "coin", g.gold, "accent");
+    capsule(theme, "Light", "heart", g.lives, g.lives <= 3 ? "danger" : "ink");
+    capsule(theme, "Coins", "coin", g.gold, "gold");
     // A refused placement shakes the purse once, with the error sound (og-ui §6).
     if (g.refusedTick === world.tick) og.ui.shake({ sound: true });
   });
   let paused = false;
   og.ui.anchor("Waves", { anchor: "topRight", gap: theme.space.sm, cross: "center" }, () => {
-    og.ui.row("Wave", { cross: "center", padding: { left: theme.space.md, top: theme.space.xs, right: theme.space.md, bottom: theme.space.xs }, frame: "capsule", background: { token: "surface" }, radius: 999 }, () => {
+    og.ui.row("Wave", { cross: "center", padding: { left: theme.space.md, top: theme.space.xs, right: theme.space.md, bottom: theme.space.xs }, frame: "capsule", background: { token: "panel" }, radius: 999 }, () => {
       og.ui.label("Label", say(world, "hud.wave", { n: Math.max(1, g.wave), total: WAVES.length }), { step: "lg", font: "display", nowrap: true });
     });
     if (og.ui.actionButton("Pause", say(world, "hud.pause"), { icon: "pause", size: 48 }).clicked) paused = true;
@@ -223,11 +223,11 @@ function hud(world: World, theme: Theme, g: GameV, t: TuneV): void {
     PLANTS.forEach((name, kind) => {
       const price = cost(t, kind);
       const chosen = g.selected === kind;
-      og.ui.column(og.ui.idi("Plant", kind), { cross: "center", gap: theme.space.xxs, padding: { left: theme.space.sm, top: theme.space.xs, right: theme.space.sm, bottom: theme.space.sm }, frame: "card", background: { token: "surface" }, radius: 18 }, () => {
+      og.ui.column(og.ui.idi("Plant", kind), { cross: "center", gap: theme.space.xxs, padding: { left: theme.space.sm, top: theme.space.xs, right: theme.space.sm, bottom: theme.space.sm }, frame: "card", background: { token: "panel" }, radius: 18 }, () => {
         og.ui.row("Top", { cross: "center", gap: theme.space.xs }, () => {
           og.ui.image("Picture", { texture: g.sheet as unknown as never, uv: uvOf(PICTURE[kind]!), width: px(small ? 32 : 44), height: px(small ? 32 : 44) });
           // The price: muted when the purse covers it, in danger's ink when it does not.
-          og.ui.label("Price", `${price}`, { step: "lg", font: "display", color: { token: g.gold >= price ? "fgMuted" : "danger" }, nowrap: true, width: px(40), align: "center" });
+          og.ui.label("Price", `${price}`, { step: "lg", font: "display", color: { token: g.gold >= price ? "inkMuted" : "danger" }, nowrap: true, width: px(40), align: "center" });
         });
         if (og.ui.button("Pick", say(world, `tower.${name}`), { variant: chosen ? "primary" : "secondary", size: small ? "medium" : "small", width: px(small ? 86 : 104) }).clicked) g.selected = kind;
       });
@@ -237,7 +237,7 @@ function hud(world: World, theme: Theme, g: GameV, t: TuneV): void {
   // On a phone the call for the next wave sits over the tray, in the thumb's reach.
   if (small) og.ui.anchor("Call", { anchor: "bottom", offsetY: -112 }, () => callButton(world, g, small));
   if (g.wave === 0 && !small) {
-    og.ui.anchor("Hint", { anchor: "bottom", padding: { left: theme.space.md, top: theme.space.xs, right: theme.space.md, bottom: theme.space.xs }, frame: "capsule", background: { token: "surface" }, radius: 999 }, () => {
+    og.ui.anchor("Hint", { anchor: "bottom", padding: { left: theme.space.md, top: theme.space.xs, right: theme.space.md, bottom: theme.space.xs }, frame: "capsule", background: { token: "panel" }, radius: 999 }, () => {
       og.ui.label("Text", say(world, "hud.hint"), { nowrap: true });
     });
   }
@@ -267,7 +267,7 @@ function settings(world: World, theme: Theme, g: GameV, p: PrefsV): void {
     p.master = slider("Master", "settings.master", p.master);
     p.music = slider("Music", "settings.music", p.music);
     p.effects = slider("Effects", "settings.effects", p.effects);
-    og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "fgMuted" } });
+    og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "inkMuted" } });
     const r = og.ui.radio("Language", LANGUAGES.map((l) => say(world, l.key)), p.language, { horizontal: true });
     if (r.selected !== p.language) setLanguage(world, p, r.selected);
     p.reducedMotion = og.ui.toggle("Motion", p.reducedMotion, say(world, "settings.motion")).on;
@@ -293,15 +293,15 @@ function endCard(world: World, theme: Theme, g: GameV, t: TuneV): "retry" | "men
       for (let k = 0; k < 3; k++) {
         const lit = k < stars && since >= 20 + k * 12;
         og.ui.transition(og.ui.idi("Star", k), true, { kind: "scale" }, () => {
-          og.ui.icon("Mark", "star", { size: 40, tint: { token: lit ? "accent" : "fillStrong" } });
+          og.ui.icon("Mark", "star", { size: 40, tint: { token: lit ? "primary" : "controlStrong" } });
         });
         if (lit && since === 20 + k * 12) og.ui.burst({ count: 10 });
       }
     });
     og.ui.counter("Score", g.score, { from: 0, durationMs: 900, step: "displayMd", font: "display", align: "center", width: grow });
     og.ui.row("BestRow", { width: grow, align: "center", gap: theme.space.sm, cross: "center" }, () => {
-      og.ui.label("Best", say(world, "over.best", { n: g.best }), { color: { token: "fgMuted" }, nowrap: true });
-      if (g.newBest) og.ui.transition("NewBest", since > 50, { kind: "pop" }, () => og.ui.badge("Badge", say(world, "over.newBest"), "accent"));
+      og.ui.label("Best", say(world, "over.best", { n: g.best }), { color: { token: "inkMuted" }, nowrap: true });
+      if (g.newBest) og.ui.transition("NewBest", since > 50, { kind: "pop" }, () => og.ui.badge("Badge", say(world, "over.newBest"), "primary"));
     });
     og.ui.column("Stats", { width: grow, gap: 0 }, () => {
       og.ui.keyValue("Waves", say(world, "over.waves"), `${g.won ? g.wave : Math.max(0, g.wave - 1)}/${WAVES.length}`, true);

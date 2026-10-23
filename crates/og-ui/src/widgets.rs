@@ -181,7 +181,7 @@ pub struct RadioDesc {
     pub label: String,
 }
 
-/// Status tones (`docs/design-language.md`: Badge, Toast).
+/// Status tones (badges, toasts, map markers).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Tone {
     #[default]
@@ -190,7 +190,7 @@ pub enum Tone {
     Warn,
     Danger,
     Info,
-    Accent,
+    Primary,
     Inverse,
 }
 
@@ -206,7 +206,7 @@ impl Tone {
             Tone::Warn,
             Tone::Danger,
             Tone::Info,
-            Tone::Accent,
+            Tone::Primary,
             Tone::Inverse,
         ]
         .get(i as usize)
@@ -218,7 +218,7 @@ impl Tone {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ToastDesc {
     pub tone: Tone,
-    /// 0: 3200 ms (6000 for danger), as the platform's toasts.
+    /// 0: 3200 ms (6000 for danger).
     pub duration_ms: f32,
 }
 
@@ -231,15 +231,15 @@ pub struct ChipDesc {
 /// What a meter measures, which sets its colour.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum MeterKind {
-    /// Green, warning orange under 30 %, danger red under 15 %.
+    /// `health`, `warn` under 30 %, `danger` under 15 %.
     #[default]
     Health,
-    /// The blue hue.
+    /// `mana`.
     Mana,
-    /// The purple hue.
+    /// `xp`.
     Xp,
-    /// The accent.
-    Accent,
+    /// `primary`.
+    Primary,
     Custom(Srgba),
 }
 
@@ -269,7 +269,7 @@ pub struct CooldownDesc {
 pub struct IconDesc {
     /// 0: 24 CSS px.
     pub size: f32,
-    /// `None`: `fg`.
+    /// `None`: `ink`.
     pub tint: Option<Srgba>,
     /// What a screen reader calls it (and the probe's text): `None` is the
     /// icon's name; empty is decoration, named by nothing, so a card it
@@ -404,7 +404,7 @@ fn hash_str(s: &str) -> u64 {
 }
 
 impl Ui {
-    /// The touch target floor: `h-control-sm` of the touch density (44).
+    /// The touch target floor: `controlSm` of the touch density (44).
     pub fn min_target(&self) -> f32 {
         crate::theme::TOUCH.control_sm
     }
@@ -610,7 +610,7 @@ impl Ui {
     }
 
     /// Opens a dialog: a scrim backdrop over everything with a centred
-    /// panel (`surface-raised`, `radius.panel`). Its content follows until
+    /// panel (`panelRaised`, `radius.panel`). Its content follows until
     /// [`Ui::close`]; build it only while `visible`. Focus moves into it and
     /// stays there while it is the topmost; Back and the backdrop dismiss it
     /// unless `locked`. The probe sees the backdrop as `<id>` and the panel
@@ -687,7 +687,7 @@ impl Ui {
                     Insets::all(t.space.xl)
                 },
                 gap: t.space.md,
-                background: (!desc.bare).then_some(t.palette.surface_raised),
+                background: (!desc.bare).then_some(t.palette.panel_raised),
                 radius: t.radius.panel,
                 skin: Some(crate::skin::SkinPart::Panel),
                 interactive: !desc.bare,
@@ -877,8 +877,8 @@ impl Ui {
                     padding: Insets::xy(t.space.lg, 0.0),
                     gap: t.space.sm,
                     cross: Cross::Center,
-                    background: Some(t.palette.surface_raised),
-                    radius: t.radius.button,
+                    background: Some(t.palette.panel_raised),
+                    radius: t.radius.control,
                     interactive: true,
                     skin: Some(crate::skin::SkinPart::Capsule),
                     ..Element::default()
@@ -933,14 +933,14 @@ impl Ui {
             Tone::Warn => p.warn,
             Tone::Danger => p.danger,
             Tone::Info => p.info,
-            Tone::Accent => p.accent,
-            Tone::Inverse => p.fg,
-            Tone::Neutral => p.fg_muted,
+            Tone::Primary => p.primary,
+            Tone::Inverse => p.ink,
+            Tone::Neutral => p.ink_muted,
         }
     }
 
     /// A spotlight over everything (a tutorial step): the scrim on four
-    /// sides of `hole` (CSS px; `None`: the whole surface dimmed), an amber
+    /// sides of `hole` (CSS px; `None`: the whole surface dimmed), a primary
     /// edge around it. Presses on the dimmed parts stop there (`clicked`);
     /// presses in the hole reach what is under it. Focus stays with the
     /// controls under the hole and the layers above it. The probe sees the
@@ -1176,9 +1176,9 @@ impl Ui {
         r.dropped = self.drag_and_drop(list, i, index);
         let p = &t.palette;
         self.nodes[i].el.background = if selected {
-            Some(p.fill_strong)
+            Some(p.control_strong)
         } else if r.hovered || r.pressed {
-            Some(p.fill)
+            Some(p.control)
         } else {
             None
         };
@@ -1335,8 +1335,8 @@ impl Ui {
         ListRange { first, last }
     }
 
-    /// Opens cell `index` of the open grid (`Cell#index`): a slot on `fill`
-    /// (`fill-strong` and the accent ring when selected), focusable; its
+    /// Opens cell `index` of the open grid (`Cell#index`): a slot on `control`
+    /// (`controlStrong` and the accent ring when selected), focusable; its
     /// content follows until [`Ui::close`].
     pub fn grid_item(&mut self, index: u32, selected: bool) -> Response {
         let t = self.theme;
@@ -1353,7 +1353,7 @@ impl Ui {
                 cross: Cross::Center,
                 padding: Insets::all(t.space.xs),
                 interactive: true,
-                radius: t.radius.block,
+                radius: t.radius.small,
                 skin: Some(crate::skin::SkinPart::Slot),
                 ..Element::default()
             },
@@ -1365,11 +1365,11 @@ impl Ui {
         r.dropped = self.drag_and_drop(grid, i, index);
         let p = &t.palette;
         self.nodes[i].el.background = Some(if selected || r.pressed {
-            p.fill_strong
+            p.control_strong
         } else if r.hovered {
-            p.surface_hover.fade(0.6).over(p.fill.over(p.surface))
+            p.panel_hover.fade(0.6).over(p.control.over(p.panel))
         } else {
-            p.fill
+            p.control
         });
         if self.drop_target(grid, i) {
             self.nodes[i].ring = true;
@@ -1387,7 +1387,7 @@ impl Ui {
                     ..Frame::default()
                 },
                 radius: w,
-                color: p.accent,
+                color: p.primary,
             });
         }
         r
@@ -1416,7 +1416,7 @@ impl Ui {
 
     // ── selection ──────────────────────────────────────────────────────────
 
-    /// A segmented control: a neutral track, the selected tab on `thumb`.
+    /// A segmented control: a neutral track, the selected tab on `knob`.
     /// Tabs are `Tab#i` (the probe reads their labels); a click or Activate
     /// selects. `changed` when the selection moved.
     pub fn tabs(
@@ -1438,8 +1438,8 @@ impl Ui {
                 height: Size::Fixed(h),
                 padding: Insets::all(t.space.xxs),
                 gap: t.space.xxs,
-                background: Some(t.palette.fill),
-                radius: t.radius.button,
+                background: Some(t.palette.control),
+                radius: t.radius.control,
                 ..Element::default()
             },
         );
@@ -1458,7 +1458,7 @@ impl Ui {
                     height: Size::grow(),
                     padding: Insets::xy(t.space.md, 0.0),
                     interactive: true,
-                    radius: t.radius.button,
+                    radius: t.radius.control,
                     ..Element::default()
                 },
             );
@@ -1473,15 +1473,18 @@ impl Ui {
             out.clicked |= r.clicked;
             let on = *selected == k;
             let p = &t.palette;
-            let mut c =
-                self.text_content(label, t.type_ramp.body, if on { p.fg } else { p.fg_muted });
+            let mut c = self.text_content(
+                label,
+                t.type_ramp.body,
+                if on { p.ink } else { p.ink_muted },
+            );
             c.align = TextAlign::Center;
             c.wrap = false;
             let n = &mut self.nodes[i];
             n.el.background = if on {
-                Some(p.thumb)
+                Some(p.knob)
             } else if r.hovered {
-                Some(p.fill)
+                Some(p.control)
             } else {
                 None
             };
@@ -1524,8 +1527,8 @@ impl Ui {
                     ..Insets::default()
                 },
                 interactive: !desc.disabled,
-                radius: t.radius.field,
-                background: Some(p.fill),
+                radius: t.radius.control,
+                background: Some(p.control),
                 ..Element::default()
             },
         );
@@ -1570,9 +1573,9 @@ impl Ui {
             text,
             t.type_ramp.body,
             if shown.is_empty() || desc.disabled {
-                p.fg_subtle
+                p.ink_faint
             } else {
-                p.fg
+                p.ink
             },
         );
         c.wrap = false;
@@ -1588,13 +1591,13 @@ impl Ui {
             n.a11y.value = Some(shown.to_owned());
             n.a11y.expanded = Some(open);
             if r.hovered && !desc.disabled {
-                n.el.background = Some(p.fill_strong);
+                n.el.background = Some(p.control_strong);
             }
             // The chevron: two short bars.
             let ink = if desc.disabled {
-                p.fg_subtle
+                p.ink_faint
             } else {
-                p.fg_muted
+                p.ink_muted
             };
             let (len, w) = (t.space.sm, 1.5);
             let flip = if open { -1.0 } else { 1.0 };
@@ -1623,8 +1626,8 @@ impl Ui {
                     direction: Direction::Column,
                     padding: Insets::all(t.space.xs),
                     gap: t.space.xxs,
-                    background: Some(p.surface_raised),
-                    radius: t.radius.block + t.space.xs,
+                    background: Some(p.panel_raised),
+                    radius: t.radius.small + t.space.xs,
                     cross: Cross::Stretch,
                     ..Element::default()
                 },
@@ -1647,7 +1650,7 @@ impl Ui {
                         height: Size::Fixed(self.sizes().control_md),
                         padding: Insets::xy(t.space.md, 0.0),
                         interactive: true,
-                        radius: t.radius.block,
+                        radius: t.radius.small,
                         ..Element::default()
                     },
                 );
@@ -1655,14 +1658,14 @@ impl Ui {
                 if or.clicked {
                     chosen = Some(k);
                 }
-                let mut c = self.text_content(label, t.type_ramp.body, p.fg);
+                let mut c = self.text_content(label, t.type_ramp.body, p.ink);
                 c.wrap = false;
                 let n = &mut self.nodes[o];
                 n.content = Content::Text(c);
                 n.probe_text = (*label).to_owned();
                 n.a11y.selected = Some(k == *selected);
                 n.el.background = if k == *selected || or.hovered {
-                    Some(p.fill_strong)
+                    Some(p.control_strong)
                 } else {
                     None
                 };
@@ -1739,8 +1742,8 @@ impl Ui {
                     width: Size::Fixed(h),
                     height: Size::Fixed(h),
                     interactive: !at_end,
-                    radius: t.radius.button,
-                    background: Some(t.palette.fill),
+                    radius: t.radius.control,
+                    background: Some(t.palette.control),
                     ..Element::default()
                 },
             );
@@ -1759,10 +1762,10 @@ impl Ui {
             out.focused |= r.focused;
             out.clicked |= r.clicked;
             let p = t.palette;
-            let ink = if at_end { p.fg_subtle } else { p.fg };
+            let ink = if at_end { p.ink_faint } else { p.ink };
             let n = &mut self.nodes[i];
             if r.hovered || r.pressed {
-                n.el.background = Some(p.fill_strong);
+                n.el.background = Some(p.control_strong);
             }
             n.probe_text = if sign < 0 { "−".into() } else { "+".into() };
             n.a11y.name = Some(if sign < 0 { "Decrease" } else { "Increase" }.into());
@@ -1802,7 +1805,7 @@ impl Ui {
         out
     }
 
-    /// A radio group: `Option#i` rows with a ring (filled amber when chosen)
+    /// A radio group: `Option#i` rows with a ring (filled primary when chosen)
     /// and a label.
     pub fn radio(
         &mut self,
@@ -1918,7 +1921,7 @@ impl Ui {
             },
         );
         let r = self.nav_target(i, false);
-        let mut c = self.text_content(label, t.type_ramp.body, p.fg);
+        let mut c = self.text_content(label, t.type_ramp.body, p.ink);
         c.wrap = false;
         let n = &mut self.nodes[i];
         n.content = Content::Text(c);
@@ -1936,7 +1939,11 @@ impl Ui {
             n.shapes.push(Shape::Rect {
                 frame,
                 radius,
-                color: if r.pressed { p.accent_active } else { p.accent },
+                color: if r.pressed {
+                    p.primary_active
+                } else {
+                    p.primary
+                },
             });
             if round {
                 let dot = box_ * 0.4;
@@ -1950,7 +1957,7 @@ impl Ui {
                         ..Frame::default()
                     },
                     radius: dot,
-                    color: p.accent_fg,
+                    color: p.on_primary,
                 });
             } else {
                 // The check: a short and a long stroke.
@@ -1966,7 +1973,7 @@ impl Ui {
                         ..Frame::default()
                     },
                     angle: FRAC_PI_4,
-                    color: p.accent_fg,
+                    color: p.on_primary,
                 });
                 n.shapes.push(Shape::Bar {
                     frame: Frame {
@@ -1978,14 +1985,14 @@ impl Ui {
                         ..Frame::default()
                     },
                     angle: -FRAC_PI_4,
-                    color: p.accent_fg,
+                    color: p.on_primary,
                 });
             }
         } else {
             n.shapes.push(Shape::Rect {
                 frame,
                 radius,
-                color: p.border_strong,
+                color: p.line_strong,
             });
             let inset = 1.5;
             n.shapes.push(Shape::Rect {
@@ -1999,16 +2006,16 @@ impl Ui {
                 },
                 radius: (radius - inset).max(0.0),
                 color: if r.hovered {
-                    p.surface_hover
+                    p.panel_hover
                 } else {
-                    p.surface_raised
+                    p.panel_raised
                 },
             });
         }
         r
     }
 
-    /// A chip: a capsule on `fill`; selected inverts to `fg` ink-on-light.
+    /// A chip: a capsule on `control`; selected inverts to `ink` ink-on-light.
     pub fn chip(&mut self, id: impl Into<Id>, text: &str, desc: ChipDesc) -> Response {
         let t = self.theme;
         let p = t.palette;
@@ -2020,7 +2027,7 @@ impl Ui {
                 height: Size::Fixed(h),
                 padding: Insets::xy(t.space.md, 0.0),
                 interactive: !desc.disabled,
-                radius: t.radius.button,
+                radius: t.radius.control,
                 ..Element::default()
             },
         );
@@ -2031,13 +2038,13 @@ impl Ui {
             self.nav_target(i, false)
         };
         let (bg, fg) = if desc.disabled {
-            (p.fill, p.fg_subtle)
+            (p.control, p.ink_faint)
         } else if desc.selected {
-            (p.fg, p.fg_inverse)
+            (p.ink, p.ink_inverse)
         } else if r.hovered || r.pressed {
-            (p.fill_strong, p.fg)
+            (p.control_strong, p.ink)
         } else {
-            (p.fill, p.fg)
+            (p.control, p.ink)
         };
         let mut c = self.text_content(text, t.type_ramp.meta, fg);
         c.wrap = false;
@@ -2055,22 +2062,22 @@ impl Ui {
     /// Its ink reads [`READABLE`] on what it is drawn on. The tones and the
     /// accent are the palette's, made for its panels (where the packs' test
     /// holds them); on a ground on the other side of the scale from the
-    /// palette's `surface` (a light pack's deep status colours on its dark
+    /// palette's `panel` (a light pack's deep status colours on its dark
     /// stage) the ink moves towards its own end of the scale until it reads
     /// there (a deep green lightens on a dark screen; in the cream panel it
-    /// stays deep). The neutral badge's ground is its own flat `fill`, so
-    /// its `fgMuted` moves wherever it does not read on it, and where even
+    /// stays deep). The neutral badge's ground is its own flat `control`, so
+    /// its `inkMuted` moves wherever it does not read on it, and where even
     /// white or black would not, the fill moves away from the ink instead
     /// (scifi's mid-blue fill darkens under its pale ink). og-taste §3.
     pub fn badge(&mut self, id: impl Into<Id>, text: &str, tone: Tone) {
         let t = self.theme;
         let p = t.palette;
         let (bg, fg) = match tone {
-            Tone::Neutral => (p.fill, p.fg_muted),
-            Tone::Accent => (p.accent_soft, p.accent_ink),
-            Tone::Inverse => (p.fg, p.fg_inverse),
-            // The status tones: the tone's own ink on its 16 % tint, mixed as
-            // the platform's CSS mixes it (Srgba::tint_over, once the badge
+            Tone::Neutral => (p.control, p.ink_muted),
+            Tone::Primary => (p.primary_soft, p.highlight),
+            Tone::Inverse => (p.ink, p.ink_inverse),
+            // The status tones: the tone's own ink on its 16 % tint, mixed in
+            // sRGB as a CSS wash would be (Srgba::tint_over, once the badge
             // knows what is behind it), so each pack's tones read 4.5:1.
             other => {
                 let c = self.tone_dot(other);
@@ -2084,7 +2091,7 @@ impl Ui {
                 height: Size::Fixed(t.type_ramp.xs.line_height + t.space.xs),
                 padding: Insets::xy(t.space.sm, 0.0),
                 background: Some(bg),
-                radius: t.radius.button,
+                radius: t.radius.control,
                 ..Element::default()
             },
         );
@@ -2100,7 +2107,7 @@ impl Ui {
         let dark = |c: Srgba| Srgba::WHITE.contrast(c) > Srgba::BLACK.contrast(c);
         let moves = match tone {
             Tone::Neutral => true,
-            _ => dark(ground) != dark(p.surface),
+            _ => dark(ground) != dark(p.panel),
         };
         // The ground is an estimate in bytes (the tint's sRGB mix), so a
         // moved ink aims a little over the bar.
@@ -2124,9 +2131,9 @@ impl Ui {
         n.probe_text = text.to_owned();
     }
 
-    /// A hairline (`border`) across its parent; `vertical` stands it up.
+    /// A hairline (`line`) across its parent; `vertical` stands it up.
     pub fn divider(&mut self, id: impl Into<Id>, vertical: bool) {
-        let c = self.theme.palette.border;
+        let c = self.theme.palette.line;
         let px = 1.0 / self.viewport.dpr().max(1.0);
         let px = px.max(0.5);
         self.leaf(
@@ -2164,7 +2171,7 @@ impl Ui {
         self.nodes[i].widget = Widget::Spacer;
     }
 
-    /// A key and its value on one row (`fg-muted` key, `fg` value at the end).
+    /// A key and its value on one row (`inkMuted` key, `ink` value at the end).
     pub fn key_value(&mut self, id: impl Into<Id>, key: &str, value: &str, mono: bool) {
         let t = self.theme;
         let h = self.sizes().row;
@@ -2187,7 +2194,7 @@ impl Ui {
             "Key",
             key,
             crate::LabelDesc {
-                color: Some(t.palette.fg_muted),
+                color: Some(t.palette.ink_muted),
                 nowrap: true,
                 ..Default::default()
             },
@@ -2238,7 +2245,7 @@ impl Ui {
                         Size::grow()
                     },
                     height: Size::Fixed(h),
-                    background: Some(t.palette.fill),
+                    background: Some(t.palette.control),
                     radius: t.radius.control,
                     ..Element::default()
                 },
@@ -2291,7 +2298,7 @@ impl Ui {
             self.nodes[i].shapes.push(Shape::Rect {
                 frame: Frame::centered(dx, dy, dot, dot),
                 radius: dot,
-                color: t.palette.fg.fade(1.0 - age / 9.0),
+                color: t.palette.ink.fade(1.0 - age / 9.0),
             });
         }
     }
@@ -2315,7 +2322,7 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let tint = desc.tint.unwrap_or(self.theme.palette.fg);
+        let tint = desc.tint.unwrap_or(self.theme.palette.ink);
         match index.map(|k| (k, self.icons.glyph(k))) {
             Some((_, Some((font, ch)))) => self.nodes[i].shapes.push(Shape::Glyph {
                 frame: Frame::FULL,
@@ -2384,8 +2391,8 @@ impl Ui {
             Element {
                 width: desc.width.unwrap_or(Size::grow()),
                 height: Size::Fixed(h),
-                background: Some(p.fill_strong),
-                radius: t.radius.button,
+                background: Some(p.control_strong),
+                radius: t.radius.bar,
                 ..Element::default()
             },
         );
@@ -2427,13 +2434,13 @@ impl Ui {
         let color = match desc.kind {
             MeterKind::Health if frac < 0.15 => p.danger,
             MeterKind::Health if frac < 0.3 => p.warn,
-            MeterKind::Health => p.success,
-            MeterKind::Mana => self.theme.hues.blue,
-            MeterKind::Xp => self.theme.hues.purple,
-            MeterKind::Accent => p.accent,
+            MeterKind::Health => p.health,
+            MeterKind::Mana => self.theme.palette.mana,
+            MeterKind::Xp => self.theme.palette.xp,
+            MeterKind::Primary => p.primary,
             MeterKind::Custom(c) => c,
         };
-        // The label in two inks, each the one of fg and fgInverse that reads
+        // The label in two inks, each the one of fg and inkInverse that reads
         // on what it is drawn over: the fill left of its edge, the track
         // right of it (a light pack's deep status colours take the inverse).
         // Where neither reaches the bar (a mid blue or purple hue, a mid
@@ -2442,25 +2449,25 @@ impl Ui {
         let behind = self.behind(i);
         let ink = |under: Srgba| {
             let under = under.over(behind);
-            let (ink, other) = if p.fg_inverse.contrast(under) > p.fg.contrast(under) {
-                (p.fg_inverse, p.fg)
+            let (ink, other) = if p.ink_inverse.contrast(under) > p.ink.contrast(under) {
+                (p.ink_inverse, p.ink)
             } else {
-                (p.fg, p.fg_inverse)
+                (p.ink, p.ink_inverse)
             };
             ink.readable_on(under, READABLE)
                 .or_else(|| other.readable_on(under, READABLE))
                 .unwrap_or(ink)
         };
-        let (fill_ink, track_ink) = (ink(color), ink(p.fill_strong));
+        let (fill_ink, track_ink) = (ink(color), ink(p.control_strong));
         let n = &mut self.nodes[i];
         let seg = |from: f32, to: f32, c: Srgba| Shape::Rect {
             frame: Frame::left(from, to),
-            radius: h / 2.0,
+            radius: t.radius.bar,
             color: c,
         };
         if ghost > main {
             let trail = if a.b < a.a || frac < ghost {
-                p.fg.fade(0.55)
+                p.ink.fade(0.55)
             } else {
                 color.fade(0.4)
             };
@@ -2481,7 +2488,7 @@ impl Ui {
                         ..Frame::default()
                     },
                     radius: 0.0,
-                    color: p.bg.fade(0.55),
+                    color: p.backdrop.fade(0.55),
                 });
             }
         }
@@ -2511,7 +2518,7 @@ impl Ui {
         });
     }
 
-    /// A cooldown: a disc whose amber ring fills clockwise from the top as
+    /// A cooldown: a disc whose primary ring fills clockwise from the top as
     /// the cooldown runs out (`remaining` 1 → 0), with a label or icon in
     /// the middle; full and bright when ready. A press reports `clicked`
     /// (ready or not: the game decides).
@@ -2538,13 +2545,13 @@ impl Ui {
         };
         let done = 1.0 - rem;
         let behind = self.behind(i);
-        let track = p.fill_strong.over(p.surface_raised.over(behind));
+        let track = p.control_strong.over(p.panel_raised.over(behind));
         let fill = if rem <= 0.0 {
-            p.accent
+            p.primary
         } else {
-            p.accent.mix(track, 0.25)
+            p.primary.mix(track, 0.25)
         };
-        let inner = p.surface_raised.over(behind);
+        let inner = p.panel_raised.over(behind);
         let full = Frame::centered(0.0, 0.0, size, size);
         let mut shapes = vec![Shape::Rect {
             frame: full,
@@ -2567,7 +2574,7 @@ impl Ui {
                 color: fill,
             });
             if done <= 0.5 {
-                // Half a pixel larger, so no amber fringe shows at its edge.
+                // Half a pixel larger, so no primary fringe shows at its edge.
                 shapes.push(Shape::Half {
                     frame: Frame::centered(0.0, 0.0, size + 1.0, size + 1.0),
                     angle: turn,
@@ -2587,12 +2594,12 @@ impl Ui {
             frame: Frame::centered(0.0, 0.0, core, core),
             radius: core,
             color: if r.pressed {
-                p.surface_hover.over(behind)
+                p.panel_hover.over(behind)
             } else {
                 inner
             },
         });
-        let ink = if rem <= 0.0 { p.fg } else { p.fg_muted };
+        let ink = if rem <= 0.0 { p.ink } else { p.ink_muted };
         if !desc.icon.is_empty() {
             let s = core * 0.55;
             shapes.extend(self.icon_shape(&desc.icon, Frame::centered(0.0, 0.0, s, s), ink));
@@ -2685,7 +2692,7 @@ impl Ui {
     }
 
     /// A mini-map frame: the map texture (or the stage colour) in a
-    /// `border-strong` frame, markers as dots (the player amber and ringed),
+    /// `lineStrong` frame, markers as dots (the player primary and ringed),
     /// and an optional zone label under it.
     pub fn minimap(&mut self, id: impl Into<Id>, desc: &MinimapDesc) {
         let t = self.theme;
@@ -2707,8 +2714,8 @@ impl Ui {
                 width: Size::Fixed(size),
                 height: Size::Fixed(size),
                 padding: Insets::all(2.0),
-                background: Some(p.border_strong),
-                radius: t.radius.block,
+                background: Some(p.line_strong),
+                radius: t.radius.small,
                 ..Element::default()
             },
         );
@@ -2723,8 +2730,8 @@ impl Ui {
         };
         let mut shapes = vec![Shape::Rect {
             frame: inner,
-            radius: t.radius.block - 2.0,
-            color: p.stage_surface,
+            radius: t.radius.small - 2.0,
+            color: p.well,
         }];
         if let Some(tex) = desc.texture {
             shapes.push(Shape::Image {
@@ -2753,17 +2760,17 @@ impl Ui {
                 shapes.push(Shape::Rect {
                     frame: Frame::centered(x, y, d + 4.0, d + 4.0),
                     radius: d,
-                    color: p.stage,
+                    color: p.backdrop,
                 });
                 shapes.push(Shape::Rect {
                     frame: Frame::centered(x, y, d, d),
                     radius: d,
-                    color: p.accent,
+                    color: p.primary,
                 });
             } else {
                 let d = t.space.sm;
                 let c = if m.tone == Tone::Neutral {
-                    p.stage_fg
+                    p.ink
                 } else {
                     self.tone_dot(m.tone)
                 };
@@ -2785,7 +2792,7 @@ impl Ui {
             },
             text: "N".into(),
             step: t.type_ramp.xs,
-            color: p.stage_muted,
+            color: p.ink_muted,
             font: FontRole::Body,
             clip: Frame::FULL,
         });
@@ -2796,7 +2803,7 @@ impl Ui {
                 &desc.label,
                 crate::LabelDesc {
                     step: Some(t.type_ramp.meta),
-                    color: Some(p.fg_muted),
+                    color: Some(p.ink_muted),
                     nowrap: true,
                     ..Default::default()
                 },
@@ -2805,7 +2812,7 @@ impl Ui {
         self.close();
     }
 
-    /// A dialogue box: a portrait slot, the speaker in amber ink, and the
+    /// A dialogue box: a portrait slot, the speaker in primary ink, and the
     /// line typed out by the tick at `chars_per_second`. A press (or
     /// Activate) while typing shows the whole line; once shown, it answers
     /// `advanced`. A new `text` starts typing again.
@@ -2821,7 +2828,7 @@ impl Ui {
                 padding: Insets::all(t.space.lg),
                 gap: t.space.lg,
                 cross: Cross::Start,
-                background: Some(p.surface_raised),
+                background: Some(p.panel_raised),
                 radius: t.radius.panel,
                 interactive: true,
                 ..Element::default()
@@ -2881,8 +2888,8 @@ impl Ui {
                 Element {
                     width: Size::Fixed(portrait),
                     height: Size::Fixed(portrait),
-                    background: Some(p.fill),
-                    radius: t.radius.card,
+                    background: Some(p.control),
+                    radius: t.radius.panel,
                     ..Element::default()
                 },
             );
@@ -2892,7 +2899,7 @@ impl Ui {
                 ui.icon_shape(
                     &desc.portrait_icon,
                     Frame::centered(0.0, 0.0, portrait * 0.7, portrait * 0.7),
-                    p.fg,
+                    p.ink,
                 )
             };
             match (desc.portrait, icon) {
@@ -2910,7 +2917,7 @@ impl Ui {
                         frame: Frame::FULL,
                         text: initial,
                         step: t.type_ramp.display_sm,
-                        color: p.fg_muted,
+                        color: p.ink_muted,
                         font: FontRole::Display,
                         clip: Frame::FULL,
                     });
@@ -2939,7 +2946,7 @@ impl Ui {
                 &desc.speaker,
                 crate::LabelDesc {
                     step: Some(t.type_ramp.meta),
-                    color: Some(p.accent_ink),
+                    color: Some(p.highlight),
                     nowrap: true,
                     ..Default::default()
                 },
@@ -2978,7 +2985,7 @@ impl Ui {
                         ..Frame::default()
                     },
                     angle: side * FRAC_PI_4,
-                    color: p.fg_muted,
+                    color: p.ink_muted,
                 });
             }
         }
@@ -3005,7 +3012,7 @@ impl Ui {
                 height: Size::Fixed(size),
                 interactive: true,
                 radius: size / 2.0,
-                background: Some(p.material_thick),
+                background: Some(p.hud),
                 ..Element::default()
             },
         );
@@ -3049,15 +3056,15 @@ impl Ui {
         n.shapes.push(Shape::Rect {
             frame: Frame::centered(0.0, 0.0, size - 2.0 * t.space.lg, size - 2.0 * t.space.lg),
             radius: size,
-            color: p.fill,
+            color: p.control,
         });
         n.shapes.push(Shape::Rect {
             frame: Frame::centered(kx * travel, ky * travel, knob, knob),
             radius: knob,
             color: if r.pressed {
-                p.fg
+                p.ink
             } else {
-                p.thumb.mix(p.fg, 0.35)
+                p.knob.mix(p.ink, 0.35)
             },
         });
         out
@@ -3105,7 +3112,7 @@ impl Ui {
                         Element {
                             width: Size::Fixed(arm),
                             height: Size::Fixed(arm),
-                            background: centre.then_some(p.material_thick),
+                            background: centre.then_some(p.hud),
                             ..Element::default()
                         },
                     );
@@ -3119,8 +3126,8 @@ impl Ui {
                             width: Size::Fixed(arm),
                             height: Size::Fixed(arm),
                             interactive: true,
-                            radius: t.radius.block,
-                            background: Some(p.material_thick),
+                            radius: t.radius.small,
+                            background: Some(p.hud),
                             ..Element::default()
                         },
                     );
@@ -3133,10 +3140,10 @@ impl Ui {
                         "Left" => out.left = held,
                         _ => out.right = held,
                     }
-                    let ink = if held { p.accent } else { p.fg };
+                    let ink = if held { p.primary } else { p.ink };
                     let n = &mut self.nodes[i];
                     if held {
-                        n.el.background = Some(p.fill_strong.over(p.material_thick.over(p.bg)));
+                        n.el.background = Some(p.control_strong.over(p.hud.over(p.backdrop)));
                     }
                     n.probe_text = (*name).to_owned();
                     // A chevron pointing `angle`: two strokes meeting at its tip.
@@ -3192,17 +3199,21 @@ impl Ui {
         }
         let (bg, ink) = if desc.primary {
             (
-                if r.pressed { p.accent_active } else { p.accent },
-                p.accent_fg,
+                if r.pressed {
+                    p.primary_active
+                } else {
+                    p.primary
+                },
+                p.on_primary,
             )
         } else {
             (
                 if r.pressed {
-                    p.fill_strong.over(p.material_thick.over(p.bg))
+                    p.control_strong.over(p.hud.over(p.backdrop))
                 } else {
-                    p.material_thick
+                    p.hud
                 },
-                p.fg,
+                p.ink,
             )
         };
         let icon = if desc.icon.is_empty() {

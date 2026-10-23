@@ -34,12 +34,13 @@ name "test"
 base dark
 atlas "skins/test/atlas.png" 128 64
 palette {
-  surface "#203040"
-  fg "#f0f0f0"
+  panel "#203040"
+  ink "#f0f0f0"
 }
 radius {
+  control 4
+  bar 4
   panel 4
-  button 4
 }
 slice panel 0 0 32 32 8
 slice card 0 0 32 32 8
@@ -47,10 +48,10 @@ slice button 32 0 32 32 6 tint
 slice fill 64 0 16 16 4
 slice track 80 0 16 16 4
 soft 96 0 32 32 12
-corner 0 32 16 16 16 16 accent 2
+corner 0 32 16 16 16 16 primary 2
 corners panel card
 shadow card 0 6 10 0 "#00000080"
-glow button 4 accent 0.5
+glow button 4 primary 0.5
 press 1.04 0.92 2
 hover -2 1.02
 motion {
@@ -197,7 +198,7 @@ fn a_skin_file_names_the_line_that_is_wrong() {
     let e = parse_skin(&colour).unwrap_err();
     assert!(e.contains("#rrggbb"), "{e}");
     let file = parse_skin(SKIN).unwrap();
-    assert_eq!(file.theme.palette.surface, Srgba::rgb(0x20, 0x30, 0x40));
+    assert_eq!(file.theme.palette.panel, Srgba::rgb(0x20, 0x30, 0x40));
     assert_eq!(file.theme.radius.panel, 4.0);
     assert_eq!(file.references(), vec!["skins/test/atlas.png".to_string()]);
 }
@@ -715,7 +716,7 @@ fn game_code_shakes_an_element_once_and_it_comes_to_rest_by_itself() {
 }
 
 /// The atlas pieces a 100×60 panel draws in a skin whose panel slice
-/// fills its edges with `fill` (a 32×32 region with 8 px corners: a 16 px
+/// fills its edges with `control` (a 32×32 region with 8 px corners: a 16 px
 /// middle), as (rect, uv), only those inside the panel.
 fn panel_pieces(fill: &str) -> (Rect, Vec<(Rect, [f32; 4])>) {
     let text = format!(
@@ -834,7 +835,7 @@ fn the_probe_names_each_elements_kind_and_a_disabled_control() {
 /// panel is dressed as): the part draws a
 /// glass panel (og-render's blurred frame) of its own rectangle and
 /// radius under its nine-slice, tinted by its fill colour, and its
-/// nine-slice at `fill` of its opacity; a skin without it draws no glass.
+/// nine-slice at `control` of its opacity; a skin without it draws no glass.
 ///
 /// Ways it could fail: the line is not read, the glass is drawn over the
 /// panel's frame (a later painter level) or at another rectangle, or the
@@ -897,7 +898,7 @@ fn a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice() {
             })
             .next()
             .expect("the panel's centre piece");
-        (menu, glass, centre, ui.theme().radius.card)
+        (menu, glass, centre, ui.theme().radius.panel)
     };
     let (_, none, (_, solid), _) = frame_of(SKIN, false);
     assert!(none.is_empty(), "no glass without the line");

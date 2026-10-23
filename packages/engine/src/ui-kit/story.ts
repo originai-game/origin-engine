@@ -16,7 +16,7 @@ export function cutscene(id: string, desc: Api.CutsceneDesc = {}): Api.CutsceneR
   const letterbox = desc.letterbox ?? true;
   if (letterbox) {
     for (const [name, anchor] of [["Top", "top"], ["Bottom", "bottom"]] as const) {
-      kit.anchor(`${id}.${name}`, { anchor, margin: 0, width: grow(), height: pct(0.1), background: token("stage") }, () => {});
+      kit.anchor(`${id}.${name}`, { anchor, margin: 0, width: grow(), height: pct(0.1), background: token("backdrop") }, () => {});
     }
   }
   const line = lines[index]!;
@@ -68,13 +68,13 @@ export function tutorialOverlay(id: string, desc: Api.TutorialDesc = {}): Api.Tu
     direction: "column",
     gap: t.sm,
     padding: all(t.lg),
-    background: token("surfaceRaised"),
+    background: token("panelRaised"),
     radius: t.panel,
   }, () => {
     const count = (desc.stepLabel ?? "{step} of {count}").replaceAll("{step}", `${index + 1}`).replaceAll("{count}", `${steps.length}`);
-    kit.label("Count", count, { step: "meta", color: token("fgMuted") });
+    kit.label("Count", count, { step: "meta", color: token("inkMuted") });
     if (step.title) kit.label("Title", step.title, { step: "lg", width: grow() });
-    if (step.text) kit.label("Text", step.text, { step: "reading", color: token("fgMuted"), width: grow() });
+    if (step.text) kit.label("Text", step.text, { step: "reading", color: token("inkMuted"), width: grow() });
     kit.row("Actions", { width: grow(), gap: t.sm, align: "spaceBetween", cross: "center" }, () => {
       if ((kit.button("Skip", desc.skipLabel ?? "Skip", { variant: "quiet", size: "small" }) as Api.Response).clicked) out.skipped = true;
       const lastStep = index + 1 >= steps.length;
