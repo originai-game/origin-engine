@@ -5,7 +5,8 @@
 //   bun src/node/run.ts --entry <game.js|.ts> [--root <project>] [--ticks N] [--seed S]
 //       [--setup action[:arg...]]... [--commands "t:action[:args];..."] [--out <dir>]
 //       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render]
-//       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json]
+//       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>]
+//       [--trace <out.json> [--trace-append]] [--json]
 //
 // - Without --commands, --port or --watch: advance --ticks N at once and print
 //   the world hash (M2's hello world).
@@ -24,6 +25,10 @@
 //   surface keeps --size, a `screenshot` writes no PNG and is listed in
 //   --json's `unchecked` ("no renderer, frame unchecked"), the tier is
 //   `none`, and the exit status does not change.
+// - With --trace: the run in the Chrome trace format (crates/og-cli/src/trace.rs
+//   has the lanes): each tick with its systems, each frame with its render
+//   passes, each load; --trace-append adds them to the file og wrote first
+//   (its metadata, its origin and the cook's spans).
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -51,6 +56,8 @@ let audioOut = "null";
 let platformStore: string | undefined;
 let locale: string | undefined;
 let clock: number | undefined;
+let tracePath: string | undefined;
+let traceAppend = false;
 const setup: string[] = [];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i]!;
@@ -79,6 +86,8 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--platform-store") platformStore = resolve(next());
   else if (a === "--locale") locale = next();
   else if (a === "--clock") clock = Number(next());
+  else if (a === "--trace") tracePath = resolve(next());
+  else if (a === "--trace-append") traceAppend = true;
   else if (a === "--headless") {
     // Native runs are always headless; accepted for `og run --headless`.
   } else fail(`unknown argument '${a}'`);
@@ -97,6 +106,45 @@ if (port !== undefined && (!Number.isInteger(port) || port < 0 || port > 65535))
 
 loadNativeHost();
 const extras = native();
+
+// --trace: the Chrome trace's events, on Unix milliseconds less the origin.
+type TraceSpan = { kind: "tick" | "render" | "load"; name: string; tick?: number; start: number; ms: number; bytes?: number; children?: { name: string; ms: number }[] };
+const traceEvents: Record<string, unknown>[] = [];
+let traceOrigin = performance.timeOrigin + performance.now();
+const LANES: Record<TraceSpan["kind"], number> = { tick: 1, render: 2, load: 3 };
+if (tracePath && traceAppend && existsSync(tracePath)) {
+  const prior = JSON.parse(readFileSync(tracePath, "utf8")) as { traceEvents?: Record<string, unknown>[]; otherData?: { originUnixMs?: number } };
+  traceEvents.push(...(prior.traceEvents ?? []));
+  if (typeof prior.otherData?.originUnixMs === "number") traceOrigin = prior.otherData.originUnixMs;
+} else if (tracePath) {
+  traceEvents.push({ name: "process_name", ph: "M", pid: 1, tid: 0, args: { name: "og run" } });
+  for (const [tid, name] of [[1, "engine"], [2, "render"], [3, "load"], [4, "cook"]] as const) {
+    traceEvents.push({ name: "thread_name", ph: "M", pid: 1, tid, args: { name } });
+    traceEvents.push({ name: "thread_sort_index", ph: "M", pid: 1, tid, args: { sort_index: tid } });
+  }
+}
+const us = (ms: number) => Math.round(ms * 1000);
+/** Takes the engine's spans and places them: a span's children (systems, passes) laid end to end from its start, in run order. */
+function takeTrace(engineId: number): void {
+  if (!tracePath) return;
+  const taken = JSON.parse(extras.og_node_trace_take(engineId)) as { now: number; events: TraceSpan[] };
+  const offset = performance.timeOrigin + performance.now() - taken.now - traceOrigin;
+  for (const s of taken.events) {
+    const tid = LANES[s.kind];
+    const ts = s.start + offset;
+    const args: Record<string, unknown> = {};
+    if (s.tick !== undefined) args.tick = s.tick;
+    if (s.bytes !== undefined) args.bytes = s.bytes;
+    traceEvents.push({ name: s.name, cat: s.kind, ph: "X", pid: 1, tid, ts: us(ts), dur: us(s.ms), args });
+    // Whole microseconds end to end, so rounding never overlaps neighbours.
+    let at = us(ts);
+    for (const c of s.children ?? []) {
+      const dur = us(c.ms);
+      traceEvents.push({ name: c.name, cat: s.kind === "tick" ? "system" : "pass", ph: "X", pid: 1, tid, ts: at, dur, args: s.tick === undefined ? {} : { tick: s.tick } });
+      at += dur;
+    }
+  }
+}
 let version = 0;
 /**
  * Import a bundle as a fresh module. A re-import goes through a copy under
@@ -131,6 +179,9 @@ function projectProfile(text: string | undefined): "2d" | "3d" | undefined {
 }
 
 const game = await importGame(entry);
+// Loads made while the engine is created (its boot scene's) are traced too.
+const BEFORE_ENGINE = 0xffffffff;
+if (tracePath) extras.og_node_trace(BEFORE_ENGINE, true);
 const project = projectText(root);
 const profile = projectProfile(project);
 const probing = commands !== undefined || port !== undefined || watchFile !== undefined;
@@ -140,6 +191,10 @@ const deferStart = probing && render;
 const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}), ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(locale ? { locale } : {}), ...(deferStart ? { deferStart } : {}) });
 if (!created.ok) fail(`${entry}: ${created.reason}`);
 const engine: Engine = created.value;
+if (tracePath) {
+  extras.og_node_trace(engine.id, true);
+  extras.og_node_trace(BEFORE_ENGINE, false);
+}
 // og.platform: the local store, in memory unless --platform-store names a file;
 // its clock the system's, or with --clock one that starts there and moves with the ticks.
 if (clock !== undefined) engine.setClock(fixedClock(engine, clock));
@@ -297,6 +352,7 @@ if (!probing) {
     }
     sink.pump();
     if (listening !== undefined) extras.og_node_probe_serve(engine.id);
+    takeTrace(engine.id);
     drain();
     const tick = answer.tick ?? 0;
     if (answer.quit) {
@@ -314,6 +370,12 @@ if (!probing) {
 }
 const ms = performance.now() - t0;
 drain();
+if (tracePath) {
+  takeTrace(engine.id);
+  mkdirSync(dirname(tracePath), { recursive: true });
+  writeFileSync(tracePath, JSON.stringify({ traceEvents, displayTimeUnit: "ms", otherData: { originUnixMs: traceOrigin, producer: "og run --trace" } }));
+  outputs.push(tracePath);
+}
 let wavSha256: string | undefined;
 if (audioMode === "capture") {
   const wavPath = resolve(audioOut);

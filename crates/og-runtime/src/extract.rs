@@ -54,6 +54,14 @@ pub trait RenderBackend {
     fn missing_glyphs(&self) -> u32 {
         0
     }
+    /// Times each render-graph pass's encoding with `clock` (og-render's
+    /// `Renderer::set_clock`); a backend without passes ignores it.
+    fn set_clock(&mut self, _clock: Option<fn() -> f64>) {}
+    /// The last frame's passes in execution order with their milliseconds
+    /// (og-render's `Renderer::pass_timings`); empty without a clock.
+    fn pass_timings(&self) -> Vec<(String, f64)> {
+        Vec::new()
+    }
     /// Draw the scene offscreen at `width`×`height` (0×0: the target's size)
     /// and read it back. Native hosts block on the readback; the web host
     /// answers a frame it requested earlier (request on tick N, answer on

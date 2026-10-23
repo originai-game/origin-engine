@@ -1,0 +1,5 @@
+events 10520 threads {1: 'engine', 2: 'render', 3: 'load', 4: 'cook'}
+spans by (tid, cat) {(4, 'cook'): 1, (1, 'tick'): 300, (1, 'system'): 8400, (2, 'render'): 300, (2, 'pass'): 1500, (3, 'load'): 10}
+ticks 300 first tick 1 last tick 300
+overlapping (not nested) spans 0
+errors 0 []

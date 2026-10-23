@@ -24,6 +24,7 @@ mod run;
 mod sfx;
 mod skin;
 mod test;
+mod trace;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;

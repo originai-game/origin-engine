@@ -1284,6 +1284,10 @@ pub struct Renderer {
     samples: u32,
     persistent: post::Persistent,
     graph: post::FrameGraph,
+    /// Measures each graph pass's encoding (`set_clock`); measurement only.
+    clock: Option<fn() -> f64>,
+    /// The last frame's `(pass, ms)` in execution order (`pass_timings`).
+    pass_ms: Vec<(String, f64)>,
     /// The CPU cull's per-instance scratch ([`Renderer::cull`]), kept
     /// between frames so no pass allocates it.
     /// The sorted instances, kept across frames (`instances.rs`).
@@ -1974,6 +1978,21 @@ fn shadow_pipeline(
 }
 
 impl Renderer {
+    /// Times each render-graph pass's CPU encoding with `clock` (ms);
+    /// `None` stops timing. Measurement only: nothing drawn depends on it.
+    pub fn set_clock(&mut self, clock: Option<fn() -> f64>) {
+        self.clock = clock;
+        if clock.is_none() {
+            self.pass_ms.clear();
+        }
+    }
+
+    /// The last frame's render-graph passes in execution order with the
+    /// milliseconds their encoding took; empty without a clock.
+    pub fn pass_timings(&self) -> &[(String, f64)] {
+        &self.pass_ms
+    }
+
     /// A headless renderer (draws to [`RenderTarget::Offscreen`] or caller views).
     /// On the web, WebGL2 needs a canvas: use [`Renderer::with_surface`].
     pub async fn new(desc: &RenderDesc) -> Result<Renderer, RenderError> {
@@ -2701,6 +2720,8 @@ impl Renderer {
             samples,
             persistent,
             graph: post::FrameGraph::default(),
+            clock: None,
+            pass_ms: Vec::new(),
             cull_inside: Vec::new(),
             sorted: instances::SortedInstances::default(),
             post,
@@ -6642,7 +6663,11 @@ impl Renderer {
             );
             stats.draw_calls += n;
         };
+        // Per-pass CPU encode time, with a clock (`Renderer::set_clock`).
+        let clock = self.clock;
+        let mut pass_ms: Vec<(String, f64)> = Vec::new();
         for &pass in self.graph.order() {
+            let t0 = clock.map(|c| c());
             match pass {
                 FramePass::Cascade(i) => shadow_pass(
                     &mut encoder,
@@ -7423,7 +7448,11 @@ impl Renderer {
                     );
                 }
             }
+            if let (Some(c), Some(t0)) = (clock, t0) {
+                pass_ms.push((pass.name(), c() - t0));
+            }
         }
+        self.pass_ms = pass_ms;
         // Glass over overlay content (src/glass.rs): when overlay runs come
         // before a glass run, the overlay draws into the glass source, the
         // pyramid is rebuilt before each such glass run, and the source is

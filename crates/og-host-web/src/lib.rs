@@ -677,6 +677,12 @@ mod canvas {
         fn missing_glyphs(&self) -> u32 {
             self.missing
         }
+        fn set_clock(&mut self, clock: Option<fn() -> f64>) {
+            self.renderer.set_clock(clock);
+        }
+        fn pass_timings(&self) -> Vec<(String, f64)> {
+            self.renderer.pass_timings().to_vec()
+        }
         /// Request on one call, answer on a later one: the first call draws
         /// offscreen and starts the readback; a later call at the same size
         /// answers the frame once the copy has landed (the scene as it was

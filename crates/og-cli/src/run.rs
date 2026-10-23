@@ -1,6 +1,6 @@
 //! `og run [project|entry] [--headless] [--commands "t:action[:args];..."] [--seed S]
 //! [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]...
-//! [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json] [--no-check]`
+//! [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--json] [--no-check]`
 //!
 //! Cooks the project, type-checks it (crate::check: a type error stops the
 //! run before anything is bundled, its diagnostics printed, or with
@@ -17,7 +17,9 @@
 //! answered from a local store, in memory unless `--platform-store
 //! file.json` keeps it in a file; `og.platform.now` reads the system clock,
 //! or with `--clock <UTC ms>` a clock that starts there and moves with the
-//! ticks (reproducible, as playtests run). `--locale ja` is the locale og.i18n is
+//! ticks (reproducible, as playtests run). `--trace out.json` writes the
+//! run in the Chrome trace format (`trace.rs`): the cook, each tick with its
+//! systems, each frame with its render passes, each load. `--locale ja` is the locale og.i18n is
 //! asked for (default: none, the base table). Native runs
 //! are always headless: `--headless` is accepted, and without it the run is
 //! paced by the wall clock instead of as fast as it can go.
@@ -32,7 +34,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--json] [--no-check]\n       og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--json] [--no-check]\n       og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -46,6 +48,8 @@ pub struct RunArgs {
     pub json: bool,
     /// `--device`: the browser target and device.ts's own options.
     pub device: Option<crate::device::DeviceArgs>,
+    /// `--trace`: the Chrome trace's path (absolute).
+    pub trace: Option<std::path::PathBuf>,
     /// Native-only options given (refused with `--device`).
     native: Vec<String>,
 }
@@ -60,6 +64,7 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
         check: true,
         json: false,
         device: None,
+        trace: None,
         native: Vec::new(),
     };
     let mut device_forward = Vec::new();
@@ -109,13 +114,19 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                 i += 1;
             }
             flag @ ("--ticks" | "--seed" | "--setup" | "--commands" | "--size" | "--out"
-            | "--port" | "--audio" | "--platform-store" | "--clock" | "--locale") => {
+            | "--port" | "--audio" | "--platform-store" | "--clock" | "--locale"
+            | "--trace") => {
                 let Some(v) = args.get(i + 1) else {
                     return Err(format!("{flag} needs a value. {USAGE}"));
                 };
                 match flag {
                     "--out" => r.out = Some(v.to_string()),
                     "--port" => r.port = Some(v.to_string()),
+                    "--trace" => {
+                        r.trace =
+                            Some(std::path::absolute(v).map_err(|e| format!("--trace {v}: {e}"))?);
+                        r.native.push(flag.into());
+                    }
                     "--size" => {
                         r.forward.extend([flag.into(), v.to_string()]);
                         device_forward.extend([flag.to_string(), v.to_string()]);
@@ -178,8 +189,23 @@ pub fn prepare(
     check: bool,
     json: bool,
 ) -> Result<std::path::PathBuf, String> {
+    prepare_traced(p, package, check, json, None)
+}
+
+/// [`prepare`], and with `trace` the trace's first part written there: its
+/// origin (now) and the cook's spans (`trace.rs`).
+pub fn prepare_traced(
+    p: &Project,
+    package: &Path,
+    check: bool,
+    json: bool,
+    trace: Option<&Path>,
+) -> Result<std::path::PathBuf, String> {
+    let origin = crate::trace::epoch_ms();
+    let mut cook_spans = Vec::new();
     if p.has_assets() {
         let report = crate::cook::cook(&p.root, 0)?;
+        cook_spans = crate::trace::cook_events(&report, origin, origin);
         let cooked = report
             .assets
             .iter()
@@ -189,6 +215,9 @@ pub fn prepare(
         if cooked > 0 {
             eprintln!("{}", crate::cook::summary(&report));
         }
+    }
+    if let Some(path) = trace {
+        crate::trace::write_prelude(path, cook_spans, origin)?;
     }
     if check {
         crate::check::require(p, package, json)?;
@@ -221,7 +250,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     if let Some(n) = project::pin_notice(&p, &package) {
         eprintln!("og run: {n}");
     }
-    let bundle = match prepare(&p, &package, a.check, a.json) {
+    let bundle = match prepare_traced(&p, &package, a.check, a.json, a.trace.as_deref()) {
         Ok(b) => b,
         Err(e) => {
             eprintln!("og run: {e}");
@@ -243,6 +272,9 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
     if !a.headless {
         cmd.arg("--realtime");
+    }
+    if let Some(trace) = &a.trace {
+        cmd.arg("--trace").arg(trace).arg("--trace-append");
     }
     supervise(cmd, a.port.is_some())
 }

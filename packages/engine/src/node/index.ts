@@ -56,6 +56,10 @@ export interface NativeExtras {
   og_node_render_snapshot(engine: number): Uint8Array;
   /** Restores a render snapshot another process took: a wire Result of its tick. */
   og_node_render_restore(engine: number, snapshot: Uint8Array): string;
+  /** `og run --trace`: turns the engine's trace on or off. */
+  og_node_trace(engine: number, on: boolean): void;
+  /** The trace's spans since the last take: `{ now, events }` (ms on the engine's clock). */
+  og_node_trace_take(engine: number): string;
 }
 
 let extras: NativeExtras | null = null;

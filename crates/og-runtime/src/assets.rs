@@ -271,8 +271,12 @@ impl Assets {
             return Ok((aligned(self.stream.file(group, &out.file)?), bundle));
         }
         let path = format!("{dir}/{}", out.file);
+        let start = super::trace::start();
         match read(&path) {
-            Fetch::Ready(bytes) => Ok((og_blob_bytes::Aligned::new(bytes), bundle)),
+            Fetch::Ready(bytes) => {
+                super::trace::load(id, start, bytes.len());
+                Ok((og_blob_bytes::Aligned::new(bytes), bundle))
+            }
             Fetch::Pending => Err(format!(
                 "{path} is still being fetched; load it once its bundle is ready"
             )),

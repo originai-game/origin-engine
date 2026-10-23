@@ -436,6 +436,8 @@ pub(crate) struct State {
     pub ui_desc: Value,
     pub step_ms: f64,
     pub render_ms: f64,
+    /// The last frame's render-graph passes and their encode milliseconds.
+    pub pass_ms: Vec<(String, f64)>,
     pub warnings: Vec<String>,
     /// Log lines for `og_engine_take_log`.
     pub log: Vec<Value>,
@@ -1145,6 +1147,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         ui_desc: Value::Null,
         step_ms: 0.0,
         render_ms: 0.0,
+        pass_ms: Vec::new(),
         // A GameDesc mistake is logged at once (the others answer the call that meets them).
         log: a
             .warnings
@@ -1582,13 +1585,16 @@ fn render(eng: &Engine) -> Result<bool, String> {
     let t0 = rprobe::now_ms();
     // The tick this frame shows: its notes (and a missing glyph) are this tick's.
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
+    let mut passes = Vec::new();
     let notes = {
         let world = eng.world()?;
         let mut rs = eng.render.borrow_mut();
         super::extract::extract(world, &mut rs);
         let rs = &mut *rs;
         if let Some(b) = rs.backend.as_mut() {
+            b.set_clock(Some(rprobe::now_ms));
             b.render(&rs.scene)?;
+            passes = b.pass_timings();
             if b.missing_glyphs() > 0 {
                 let assets = eng.assets.borrow();
                 let named = |handle: og_render::FontHandle| {
@@ -1607,6 +1613,8 @@ fn render(eng: &Engine) -> Result<bool, String> {
     };
     let mut st = eng.state.borrow_mut();
     st.render_ms = rprobe::now_ms() - t0;
+    super::trace::frame(eng.id, tick, t0, st.render_ms, &passes);
+    st.pass_ms = passes;
     for n in notes {
         if st.ui_warned.insert(n.clone()) {
             st.log
