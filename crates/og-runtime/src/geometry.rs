@@ -672,7 +672,7 @@ pub fn og_render_raycast(world: u32, ray: String, desc: Option<String>) -> Strin
                 hits.push((
                     hit.t,
                     json!({
-                        "entity": t.entity as f64,
+                        "entity": t.entity,
                         "geometry": if t.geometry == usize::MAX { 0.0 } else { assets::handle(t.geometry) as f64 },
                         "distance": hit.t,
                         "point": { "x": p.x, "y": p.y, "z": p.z },
