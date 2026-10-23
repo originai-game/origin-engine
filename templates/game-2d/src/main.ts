@@ -11,11 +11,17 @@
 // Everything the starter shows is in og-game §8 (sprites, flipbooks,
 // tilemaps), §13 (the controller) and og-feel §12 (its tunables).
 //
+// Beside the spawn a lamp keeper stands on a ramp: a 2D skeletal rig
+// (assets/rigs/keeper.ogt, og.Skeleton2D) whose cape is a weighted mesh the
+// idle clip deforms, whose feet two-bone IK planted on the slope
+// (og.IkTarget2D, the Plant system), and whose lantern lights the sprite
+// layers through og.Lighting2D (og-game §8; og-anim's 2D skeletons).
+//
 // The frame's look is data: GameDesc.look names a file under assets/looks/
 // that extends a preset of the style catalogue, applied before start runs.
 
 import { og, defineComponent, defineResource, defineSystem, bool, f32, u32, SHAPE_BOX } from "@origingame/engine";
-import type { FlipbookInfo, Result, TileObject } from "@origingame/engine";
+import type { FlipbookInfo, Result, Rig2DInfo, TileObject, World } from "@origingame/engine";
 
 /** The courier's clips, in the sheet's file order (og-game §8): `start` checks them. */
 const CLIP = { idle: 0, run: 1, jump: 2, fall: 3 } as const;
@@ -28,12 +34,22 @@ const BOX = { w: 0.9, h: 1.9 } as const;
 /** Below this the courier fell into the pit. */
 const FALL_Y = -3;
 const LIVES = 3;
+/** The keeper's ramp: a plank from (x0, y0) on the roof rising at `slope` (tan 12°) to x1. */
+const RAMP = { x0: 4.5, y0: 2, x1: 7.6, slope: 0.21256, sinHalf: 0.104528, cosHalf: 0.994522 } as const;
+/** The ramp's top at x. */
+const rampY = (x: number): number => RAMP.y0 + RAMP.slope * (x - RAMP.x0);
+/** The keeper's ankles above the ground, the lantern from its feet, in world units. */
+const ANKLE = 0.12;
+const LANTERN = { x: 0.25, y: 1.0 } as const;
 
 /** The courier. */
 export const Hero = defineComponent("Hero", { spawnX: f32(0, { unit: "m" }), spawnY: f32(0, { unit: "m" }) });
 
 /** A coin of the map's `coin` objects; taken once. */
 export const Coin = defineComponent("Coin", { taken: bool() });
+
+/** One of the keeper's feet: its IK target stays on the ramp `dx` from the keeper. */
+export const Plant = defineComponent("Plant", { dx: f32(0, { unit: "m" }) });
 
 /** A voice: the sound bit (Sound) it plays when Game.sfx asks for it. */
 export const Voice = defineComponent("Voice", { bit: u32() });
@@ -58,6 +74,8 @@ export const Game = defineResource("Game", {
   /** The HUD's touch controls this tick (a phone): the run and the held jump. */
   touchX: f32(0, { min: -1, max: 1 }),
   touchJump: bool(),
+  /** The keeper's breaths: og.Skeleton2DEvent "inhale" (the idle clip's event at 0). */
+  inhales: u32(),
 });
 
 function must<T>(r: Result<T>): T {
@@ -161,6 +179,30 @@ export const Animate = defineSystem("Animate", { reads: [Hero, og.PlatformerCont
   }
 });
 
+/**
+ * Plants the keeper's feet on the ramp under them (og.IkTarget2D: the legs'
+ * two-bone IK reaches the target, the knees bend as the hip bobs), keeps the
+ * lantern's light at its hand, and counts the idle clip's breaths.
+ */
+export const Plant2D = defineSystem("Plant", { reads: [Plant, og.Skeleton2DEvent], writes: [Game, og.IkTarget2D, og.Transform], after: ["Control"] }, (q, _time, world) => {
+  const keeper = world.find("keeper");
+  if (keeper === null) return;
+  const at = must(world.get(keeper, og.Transform)).position;
+  for (const a of q.archetypes()) {
+    const plant = a.column(Plant);
+    const target = a.column(og.IkTarget2D).target;
+    for (let i = 0; i < a.count; i++) {
+      const x = at.x + plant.dx[i]!;
+      target[i * 2] = x;
+      target[i * 2 + 1] = rampY(x) + ANKLE;
+    }
+  }
+  const lantern = world.find("lantern");
+  if (lantern !== null) must(world.set(lantern, og.Transform, { position: { x: at.x + LANTERN.x, y: at.y + LANTERN.y, z: 0 } }));
+  const g = must(world.resource(Game));
+  for (const e of world.events(og.Skeleton2DEvent)) if (e.name === "inhale") g.inhales += 1;
+});
+
 /** Plays each sound asked for once: a voice still playing is stopped this tick and played again the next. */
 export const Voices = defineSystem("Voices", { reads: [Voice], writes: [Game, og.AudioSource], after: ["Pickups"] }, (q, _time, world) => {
   const g = must(world.resource(Game));
@@ -212,6 +254,37 @@ export const Hud = defineSystem("Hud", { writes: [Game] }, (_q, _time, world) =>
   }
 });
 
+/**
+ * The lamp keeper: a plank ramp, the rig on it facing the spawn, a foot
+ * target per leg, and its lantern's light; og.Lighting2D lights layers 1
+ * and 2 (the keeper, the courier, the coins), the city stays as drawn.
+ */
+function spawnKeeper(world: World, rig: Rig2DInfo): void {
+  const idle = og.anim.clip(rig, "idle");
+  if (idle < 0) throw new Error("rigs/keeper.ogt has no clip idle");
+  const mid = (RAMP.x0 + RAMP.x1) / 2;
+  const plank = must(world.spawn({ name: "ramp", position: { x: mid, y: rampY(mid) - 0.2, z: 0 }, quaternion: { x: 0, y: 0, z: RAMP.sinHalf, w: RAMP.cosHalf } }));
+  // The plank is a region of the keeper's texture (pixels 24..64 x 32..40 of 64 x 64).
+  must(world.insert(plank, og.Sprite, { texture: rig.texture, width: RAMP.x1 - RAMP.x0, height: 0.4, uvMin: { x: 0.375, y: 0.5 }, uvMax: { x: 1, y: 0.625 }, layer: 1 }));
+  const x = 6;
+  const keeper = must(world.spawn({ name: "keeper", position: { x, y: rampY(x), z: 0 } }));
+  must(world.insert(keeper, og.Skeleton2D, { rig: rig.rig, clip: idle, flipX: true, layer: 1 }));
+  for (const [name, side] of [["leg-f", -0.15], ["leg-b", 0.15]] as const) {
+    const constraint = rig.constraints.indexOf(name);
+    if (constraint < 0) throw new Error(`rigs/keeper.ogt has no ik ${name}`);
+    const foot = must(world.spawn({ name: `keeper-${name}` }));
+    must(world.insert(foot, og.IkTarget2D, { skeleton: keeper, constraint, target: { x: x + side, y: rampY(x + side) + ANKLE }, tolerance: 0.02 }));
+    must(world.insert(foot, Plant, { dx: side }));
+  }
+  const light = must(world.spawn({ name: "lantern", position: { x: x + LANTERN.x, y: rampY(x) + LANTERN.y, z: 0 } }));
+  must(world.insert(light, og.Light2D, { color: { r: 1, g: 0.72, b: 0.35 }, intensity: 1.6, radius: 4, castShadows: false }));
+  const lighting = must(world.resource(og.Lighting2D));
+  lighting.enabled = true;
+  lighting.ambient = { r: 0.62, g: 0.64, b: 0.78 };
+  lighting.minLayer = 1;
+  lighting.maxLayer = 2;
+}
+
 function checkClips(info: FlipbookInfo): void {
   for (const [name, index] of Object.entries(CLIP)) {
     const at = og.anim.clip(info, name);
@@ -230,12 +303,13 @@ export default og.game({
   tick: 60,
   seed: 1,
   resources: [Game],
-  systems: [Hud, Control, Pickups, Animate, Voices],
+  systems: [Hud, Control, Pickups, Animate, Plant2D, Voices],
   start(world) {
     const map = must(og.load.tilemap(world, "maps/level.ogt"));
     const courier = must(og.load.flipbook(world, "sprites/courier.ogt"));
     checkClips(courier);
     const coin = must(og.load.flipbook(world, "sprites/coin.ogt"));
+    spawnKeeper(world, must(og.load.rig2d(world, "rigs/keeper.ogt")));
     const height = map.height * map.tileHeight;
 
     const camera = must(world.resource(og.Camera));
@@ -293,13 +367,21 @@ export default og.game({
       if (hero === null || !Number.isFinite(x) || !Number.isFinite(y)) throw new Error("write warp:<x>:<y>");
       must(world.set(hero, og.Transform, { position: { x, y, z: 0 } }));
     },
+    /** `keeper:<x>`: walk the keeper along the ramp (its feet stay planted on it). */
+    keeper: (world, args) => {
+      const keeper = world.find("keeper");
+      const x = Math.max(RAMP.x0 + 0.4, Math.min(RAMP.x1 - 0.4, Number(args[0])));
+      if (keeper === null || !Number.isFinite(x)) throw new Error("write keeper:<x>");
+      must(world.set(keeper, og.Transform, { position: { x, y: rampY(x), z: 0 } }));
+    },
   },
   commandHelp: {
     warp: { usage: "<x>:<y>", doc: "Put the courier's feet at a world point." },
+    keeper: { usage: "<x>", doc: "Move the lamp keeper along its ramp." },
   },
   facts: (world) => {
     const g = world.resource(Game);
     if (!g.ok) return {};
-    return { coins: g.value.coins, total: g.value.total, lives: g.value.lives, won: g.value.won, x: g.value.heroX, y: g.value.heroY };
+    return { coins: g.value.coins, total: g.value.total, lives: g.value.lives, won: g.value.won, inhales: g.value.inhales, x: g.value.heroX, y: g.value.heroY };
   },
 });

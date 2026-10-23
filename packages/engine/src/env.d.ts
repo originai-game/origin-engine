@@ -52,6 +52,8 @@ declare module "bun:test" {
   export namespace test {
     /** The test runs unless `condition` holds (then it is reported skipped). */
     function skipIf(condition: boolean): (name: string, body: Body, timeout?: number) => void;
+    /** One test per row, the row spread into the body (`%s` in the name is the row's first value). */
+    function each<T extends readonly unknown[]>(rows: readonly T[]): (name: string, body: (...row: [...T]) => unknown, timeout?: number) => void;
   }
   export function describe(name: string, body: () => void): void;
   export function beforeAll(body: Body): void;

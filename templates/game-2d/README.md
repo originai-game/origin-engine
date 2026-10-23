@@ -5,11 +5,12 @@ a premise that says 2D, platformer, side-scroller, metroidvania or pixel
 art): the smallest whole 2D Origin Engine project. A courier runs and jumps
 the rooftops of one level, takes coins, jumps up through one-way ledges and
 lands on them, loses a life in the pit and clears the level at the far
-wall; Escape (or the HUD's Pause) opens the pause menu.
+wall; Escape (or the HUD's Pause) opens the pause menu. Beside the spawn a
+lamp keeper, a 2D skeletal rig, breathes on a ramp with its feet planted.
 
 ```sh
 og run .     # headless with the probe; og dev . reloads on save
-og test .    # tests/smoke.og.ts
+og test .    # tests/smoke.og.ts, tests/keeper.og.ts
 og build .   # the play page
 ```
 
@@ -20,6 +21,7 @@ og build .   # the play page
 | The project in the 2D profile: an orthographic camera, sprites, 2D physics | `project.ogt`, `start` in `src/main.ts` | og-game §2, §8 |
 | A hand-written tilemap over a tileset: a parallax skyline, roofs that collide, ledges on their own collider layer (`colliderLayers 2`) that the controller makes one-way | `assets/maps/level.ogt`, `assets/tiles/city.ogt` | og-game §8 (the grammar) |
 | A flipbook sheet, its clips numbered in file order and checked against the code | `assets/sprites/courier.ogt`, `CLIP`, `checkClips` | og-game §8 |
+| A 2D skeletal rig: bones, slots, region attachments, a weighted-mesh cape the idle clip deforms, two-bone IK legs planted on a slope (og.IkTarget2D), its clip event read as og.Skeleton2DEvent, its lantern an og.Light2D under og.Lighting2D (layers 1 and 2) | `assets/rigs/keeper.ogt`, `spawnKeeper`, `Plant`, `tests/keeper.og.ts` | og-game §8 |
 | og.PlatformerController: run, jump (held for the full height), coyote time, the jump buffer, one-way ledges, Down to drop | `Control`, the hero in `start` | og-game §13; og-feel §12 |
 | The map's objects: the spawn, the coins, the goal | `start`, `Pickups` | og-game §8 |
 | Input on the press's tick: keys, a pad, the HUD's touch controls on a phone | `Control`, `Hud` | og-feel §1; og-ui §5 |
