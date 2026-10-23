@@ -23,8 +23,10 @@
 //! An entry left out takes the built-in one (`standard_vertex`,
 //! `standard_surface`). `lit` shaders return a surface (albedo and alpha,
 //! normal, metalness, roughness, emission) lit by the sun with its
-//! cascades, the clustered point and spot lights with their shadows, the
-//! image-based light and fog; `unlit` ones return the colour drawn. The
+//! cascades, the clustered point, spot and rect lights with their
+//! shadows (a rect light through linearly transformed cosines and its
+//! soft shadow, area.wgsl's `surface_local_light`, as terrain and the
+//! scattered copies are lit), the image-based light and fog; `unlit` ones return the colour drawn. The
 //! engine projects `VertexOutput.world` with each pass's camera, so the
 //! depth prepass, every shadow pass, the water's reflection and every view
 //! draw the mesh through the same vertex entry, and a surface alpha below
@@ -85,7 +87,7 @@ pub(crate) fn lit_source(
     tables: LightTables,
 ) -> String {
     format!(
-        "const CUSTOM_LIT: bool = {lit};\n{}{}{}{}{}{}{}{}{}{}{}{LIT_WGSL}",
+        "const CUSTOM_LIT: bool = {lit};\n{}{}{}{}{}{}{}{}{}{}{}{}{LIT_WGSL}",
         crate::FRAME_WGSL,
         tables.wgsl(),
         crate::particles_gpu::NOISE_WGSL,
@@ -94,6 +96,7 @@ pub(crate) fn lit_source(
         crate::MATERIAL_DISSOLVE_WGSL,
         palette.wgsl(3),
         crate::LIGHTING_WGSL,
+        crate::AREA_WGSL,
         crate::INSTANCE_WGSL,
         fx_section(),
         user_section(shader),

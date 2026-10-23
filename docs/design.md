@@ -502,8 +502,8 @@ Baked lighting, volumetrics and area lights (depth S7).
   by the panel's extent, and receivers past 75° from the normal stay
   unshadowed. Terrain, scattered copies and 3D fluids shade them with
   LTC and their shadow too (and take point and spot cookies), through one
-  shared `surface_local_light` in `area.wgsl`; a full custom shader
-  (`custom_lit.wgsl`) still lights them as a point.
+  shared `surface_local_light` in `area.wgsl`, and so does a full custom
+  shader's lit surface (`custom_lit.wgsl`).
 - **Light cookies** (`SpotLight.cookie`, `PointLight.cookie`, a cube of
   six faces stacked in one texture). A small pass draws each cookie from
   its uploaded texture, in whatever format was cooked, into layers of the

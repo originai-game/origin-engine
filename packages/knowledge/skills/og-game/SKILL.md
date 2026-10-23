@@ -2340,8 +2340,9 @@ fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput                  // f:
 // standard_surface(f), noise3(p).
 ```
 An entry you leave out is the standard one.
-- `lit` surfaces are lit by the sun's cascades, the point and spot lights
-  with their shadows, the environment and the fog. `unlit` surfaces draw
+- `lit` surfaces are lit by the sun's cascades, the point, spot and rect
+  lights with their shadows and cookies (a rect light as an area, as on a
+  standard material), the environment and the fog. `unlit` surfaces draw
   as returned.
 - The depth prepass, every shadow pass and every view run the same
   entries, and alpha under the material's `alphaTest` is cut in each of

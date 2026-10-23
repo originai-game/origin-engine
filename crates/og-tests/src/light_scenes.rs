@@ -8,8 +8,9 @@
 
 use glam::{Mat3, Mat4, Quat, Vec3};
 use og_render::{
-    Background, Camera, ColorSpace, Environment, Exposure, Light, LightCookie, LightKind, MeshData,
-    Mips, RenderScene, StandardMaterial, TextureData, VolumetricFog, shapes,
+    Background, Camera, ColorSpace, Environment, Exposure, Light, LightCookie, LightKind,
+    MaterialShader, MeshData, Mips, RenderScene, ShaderMode, StandardMaterial, TextureData,
+    VolumetricFog, shapes,
 };
 
 /// A mesh with every vertex moved by `m` (positions, normals).
@@ -839,4 +840,25 @@ pub fn rect_shadow_scene(cast: bool) -> (RenderScene, [Vec3; 2]) {
         ..Default::default()
     };
     (scene, [Vec3::new(0.45, 0.0, 0.0), Vec3::new(2.1, 0.0, 0.0)])
+}
+
+/// [`rect_shadow_scene`] with the floor and the post drawn by a full
+/// custom lit shader that keeps the standard entries (`custom_lit.wgsl`):
+/// lit as the standard material is, the rect light as an area with its
+/// soft shadow. Lit as a point at the panel's centre without its shadow,
+/// as before the debt round 2, the floor reads otherwise and the post
+/// throws nothing.
+pub fn rect_shadow_custom_scene(cast: bool) -> (RenderScene, [Vec3; 2]) {
+    let (mut scene, points) = rect_shadow_scene(cast);
+    let shader = scene.add_shader(MaterialShader {
+        name: "standard-full".into(),
+        code: String::new(),
+        params: Vec::new(),
+        mode: ShaderMode::Full { lit: true },
+    });
+    let drawn: Vec<_> = scene.instances[..2].iter().map(|i| i.material).collect();
+    for m in drawn {
+        assert!(scene.set_material_shader(m, Some(shader)));
+    }
+    (scene, points)
 }
