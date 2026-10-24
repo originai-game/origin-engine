@@ -48,6 +48,13 @@ round 3").
   histogram, land fraction and river length and writes its height and
   control maps under `og-out/terrain-maps/`. The og-game skill §11; the
   og-tests gfx scene `terrain-generated`; fx-showcase's `islands` station.
+- `model-review`: `og run --commands` review cameras `view:<entity>:front|
+  back|side|top|orbit[:deg]`, `view:off` and `turntable:<entity>:<n>[:prefix]`
+  (held in render state, never written to og.Camera; not in publish);
+  `og compare` prints silhouette IoU and ΔE00 (mean and p95) per mask
+  region and writes one sheet (reference | render | silhouettes), with
+  `--align` and `--json`; the `og-model` skill (intake, eight passes with
+  gates, generator recipes, budgets) and design §2.11.
 - Fixes at the round's first wave-end: the 2D web modules' world carries
   the `og.terrain` state block (no edits) the full build writes, so a 2D
   save and world hash are the same bytes on every host, and a save with

@@ -6330,8 +6330,19 @@ frame; both were real and are fixed on main.
   red Start button at the frame's left edge was the 1,572 "red" pixels
   before the edit); the handle-read cost test counts ABI reads instead
   of timing a ratio under gate load.
-The lane reruns `--only bun-test` (the 2D lanes module rebuilt) and
-`web-reference` at 765949f2; the result is below.
+The lane reran `--only bun-test` (the 2D lanes module rebuilt: wasm-build
+188 s, wasm-opt 152 s, bun-test 94 s) and `web-reference` (394 s) at
+765949f2; both passed. The beacon on WebGPU reads 0.028 % outliers,
+RMSE 0.00429 against the new Metal frame; on WebGL2, RMSE 0 against its
+own re-recorded reference. Batch 1's wave-end is green.
+
+Batch 2 merges, each through the functional lane:
+- `model-review` merged at 85a3a44a (a clean merge of adf61556; api.ogt
+  unchanged, `og api check` OK; the lane passed 5/5 in 147 s, the GPU
+  reference tests skipped as path-aware since no renderer input moved).
+  `view` and `turntable` stay registered commands beside `debug`, not
+  members of `commands.CoreAction`; an og-build pointer to `og compare`
+  and og-model's `type model` route wait for `geom-2`.
 
 ### Status 2026-10-19, E5 round
 
