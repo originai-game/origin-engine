@@ -39,8 +39,9 @@
 // the harness asks, so every step lands on its tick and every capture is of
 // the tick it names, as `og run` does natively; nothing of the build is
 // changed, and everything else on the page (the shell, the platform, the
-// lanes pool, the GPU) runs on real time. Input steps go in after tick T−1,
-// so tick T reads them; a capture waits for its readback with the clock held.
+// lanes pool, the GPU) runs on real time. Input steps go in at the command
+// channel's boundary: at tick T, before the next world step. A capture
+// waits for its readback with the clock held.
 //
 // What a run proves, each a check in published.json: the game boots on the
 // published page, its title node is in the accessibility mirror behind the
@@ -664,9 +665,10 @@ async function play(n: number, steps: readonly Step[], ran: Array<{ launch: numb
   for (const s of steps) {
     if (s.action === "quit") break;
     if (INPUT.has(s.action)) {
-      // In after tick T−1: tick T reads it.
-      const at = await advanceTo(s.tick - 1);
-      ran.push({ launch: n, step: s.text, tick: at + 1 });
+      // Probe::pump delivers a command at world.time().tick == T, before
+      // the next world step, not before the step that reaches T.
+      const at = await advanceTo(s.tick);
+      ran.push({ launch: n, step: s.text, tick: at });
       switch (s.action) {
         case "key_down":
         case "key_up": {
