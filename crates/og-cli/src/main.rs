@@ -3,7 +3,8 @@
 //! One binary for the author's loop: `og run` (native host, probe, command
 //! channel; `--device` times the publish build in a real browser), `og probe` (a WebSocket client of the probe), `og dev` (watch,
 //! rebuild, hot reload), `og check` (type-check with tsrs), `og test` (bun tests and playtests), `og polish`
-//! (playtests scored against og-taste and og-feel), `og build`
+//! (playtests scored against og-taste and og-feel), `og compare` (a model
+//! review's silhouette IoU, ΔE00 and sheet), `og build`
 //! (the play page), `og cook`, `og doctor` and `og api` (the IDL outputs).
 
 mod api;
@@ -11,6 +12,7 @@ mod bake_lightmaps;
 mod bake_probes;
 mod bundle;
 mod check;
+mod compare;
 mod contact_sheet;
 mod cook;
 mod dev;
@@ -60,6 +62,11 @@ commands:
                       render the script to frames, a video (ffmpeg: H.264 or VP9, the capture
                       mixer's audio with --audio), frames.json (tick, time, sha256 per frame) and a
                       contact sheet; the fps divides the tick rate; --jobs splits the range
+  compare <reference.png> <render.png> [--mask <mask.png>] [--align] [--key <ΔE00>] [--sheet <out.png>]
+      [--json]
+                      a model review's numbers: silhouette IoU and ΔE00 per mask region (or over the
+                      overlap) of a captured frame against a reference image, and one sheet PNG of
+                      the reference beside the render beside their silhouettes (og-model skill)
   probe <method> [params-json] [--port P] [--out file.png] [--raw]
                       one probe call to a running `og run --port P` / `og dev` (JSON-RPC over WebSocket)
   dev [project] [--port P] [--exit-after N] [--json]
@@ -129,6 +136,7 @@ fn main() -> ExitCode {
         ["doctor", rest @ ..] => doctor::run(rest),
         ["run", rest @ ..] => run::run(rest),
         ["render", rest @ ..] => render::run(rest),
+        ["compare", rest @ ..] => compare::run(rest),
         ["relay", rest @ ..] => serve_relay::run(rest),
         ["probe", rest @ ..] => probe::run(rest),
         ["dev", rest @ ..] => dev::run(rest),

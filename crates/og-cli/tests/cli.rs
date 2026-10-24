@@ -1582,3 +1582,49 @@ fn dev_reports_the_check_of_each_save_and_reloads_anyway() {
     assert_eq!(check["diagnostics"][0]["file"], "src/main.ts", "{check}");
     assert!(status.success(), "{status:?}");
 }
+
+#[test]
+fn compare_prints_the_iou_and_delta_e_and_writes_the_sheet() {
+    let dir = scratch_root();
+    let square = |x0: u32, w: u32, h: u32| {
+        image::RgbaImage::from_fn(w, h, |x, y| {
+            let inside = (x0..x0 + 40).contains(&x) && (20..60).contains(&y);
+            image::Rgba(if inside {
+                [255, 0, 0, 255]
+            } else {
+                [0, 0, 0, 255]
+            })
+        })
+    };
+    square(20, 100, 80).save(dir.join("ref.png")).unwrap();
+    square(30, 100, 80).save(dir.join("shot.png")).unwrap();
+    let out = og()
+        .args(["compare", "ref.png", "shot.png", "--json"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["iou"], serde_json::json!(0.6), "{v}");
+    assert_eq!(v["deltaE00"]["mean"], serde_json::json!(0.0));
+    let sheet = image::open(dir.join("shot.sheet.png")).unwrap();
+    assert_eq!(
+        (sheet.width(), sheet.height()),
+        (8 + 3 * 108, 8 + 80 + 22 + 8)
+    );
+
+    // Another shape is refused, naming the size to render at.
+    square(30, 160, 80).save(dir.join("wide.png")).unwrap();
+    let out = og()
+        .args(["compare", "ref.png", "wide.png"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        text(&out).contains("og run --size 100x80"),
+        "{}",
+        text(&out)
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -116,6 +116,7 @@ Mistakes the games made, or would have, before reading the right page:
 | **og-feel** | how much: hit stop, shake, squash, easing, floating text, the camera, frame rates, sorting, parallax, controller tunables | time, tween, camera, systems |
 | **og-ui** | screens and HUDs: templates, widgets, focus, phones, UI styles and motion | ui |
 | **og-taste** | the look: a style from the premise, composition, colour, type, motion, feedback, atmosphere by intent, the done checklist | — (it uses ui and atmosphere) |
+| **og-model** | a 3D model built as code from a reference image: the detail inventory, eight gated passes, the generators' recipes (§18 has their fields), budgets, the review frames and `og compare` | — (it uses render and shapes) |
 | **og-ai** | enemies and NPCs: navigation and minds as data | nav, ai |
 | **og-audio** | sound: events, presets, UI sounds, the mix, music, space | audio |
 | **og-i18n** | languages: string tables, messages, fonts, line breaking, right to left | i18n |

@@ -265,6 +265,8 @@ pub(crate) struct RenderState {
     pub views: super::views::ViewState,
     /// Baked lighting of the scenes instantiated (`super::baked`).
     pub baked: super::baked::BakedState,
+    /// The review camera in force (`view`, `turntable`: `super::review`).
+    pub review: Option<super::review::ReviewView>,
 }
 
 impl RenderState {
@@ -307,6 +309,7 @@ impl RenderState {
             ids: Default::default(),
             views: Default::default(),
             baked: Default::default(),
+            review: None,
         }
     }
 }
@@ -606,6 +609,21 @@ impl Hierarchy {
         }
     }
 
+    /// Whether `e` is `ancestor` or under it through og.Parent (bits).
+    pub(crate) fn descends(&self, e: u64, ancestor: u64) -> bool {
+        let mut cur = e;
+        for _ in 0..=256 {
+            if cur == ancestor {
+                return true;
+            }
+            match self.parent.get(&cur) {
+                Some(&p) => cur = p,
+                None => return false,
+            }
+        }
+        false
+    }
+
     /// The world matrix of an entity's parent (the identity for a root).
     pub(crate) fn parent_world(&mut self, e: u64) -> Mat4 {
         match self.parent.get(&e).copied() {
@@ -845,13 +863,24 @@ pub(crate) struct DrawLayouts {
     pub engine: u32,
 }
 
+/// The render target's size, (1, 1) without a renderer.
+fn backend_size(rs: &RenderState) -> (u32, u32) {
+    rs.backend.as_ref().map_or((1, 1), |b| b.size())
+}
+
 /// Rebuild the per-frame part of `rs.scene` from the world as of its tick.
 pub(crate) fn extract(world: &World, rs: &mut RenderState) {
+    let mut h = std::mem::take(&mut rs.hierarchy);
+    h.refresh(world);
+    // A review camera frames what the last frame drew for its entity, so
+    // the models below pick their levels for it (once more at the end).
+    let ids = std::mem::take(&mut rs.ids.instances);
+    let framed = super::review::bounds(rs, &h, &ids);
+    rs.ids.instances = ids;
+    let size = backend_size(rs);
     let layouts = &rs.draw;
     let camera = resource(world, rs.camera.as_ref());
     let settings = resource(world, rs.settings.as_ref());
-    let mut h = std::mem::take(&mut rs.hierarchy);
-    h.refresh(world);
     rs.atmo.palettes.clear();
     rs.ids.sprites.clear();
     let scene = &mut rs.scene;
@@ -926,6 +955,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         exposure = f(c, "exposure", 1.0).max(0.0);
         scene.environment.background = og_render::Background::Color(color(&c["background"], 0.0));
     }
+    super::review::apply(&mut scene.camera, rs.review.as_ref(), size, framed);
 
     // Settings: environment, sky, bloom, exposure, tone mapping.
     if let Some(s) = &settings {
@@ -1312,6 +1342,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
 
     // Sprites and ribbons queued this tick.
     super::fx::queued(rs, fresh, vp);
+    // The review camera on this frame's instances of its entity.
+    if rs.review.is_some() {
+        let ids: Vec<u64> = keys.iter().map(|k| k.0).collect();
+        let framed = super::review::bounds(rs, &h, &ids);
+        super::review::apply(&mut rs.scene.camera, rs.review.as_ref(), size, framed);
+    }
     // Lines, points and debug draw (after every instance is in, for the
     // bounds view).
     super::geometry::extract(world, rs, &mut h, vp);

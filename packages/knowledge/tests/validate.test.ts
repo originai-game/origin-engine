@@ -44,7 +44,7 @@ const edit = (path: string, f: (s: string) => string) => writeFileSync(path, f(r
 test("the committed package is valid against the platform rules", () => {
   expect(validate(real)).toEqual([]);
   const names = Object.keys(packs(payload(real)));
-  expect(names).toEqual(["scaffold:origin-engine-ts", "skill:og-ai", "skill:og-audio", "skill:og-build", "skill:og-core", "skill:og-feel", "skill:og-game", "skill:og-i18n", "skill:og-platform-sdk", "skill:og-taste", "skill:og-ui"]);
+  expect(names).toEqual(["scaffold:origin-engine-ts", "skill:og-ai", "skill:og-audio", "skill:og-build", "skill:og-core", "skill:og-feel", "skill:og-game", "skill:og-i18n", "skill:og-model", "skill:og-platform-sdk", "skill:og-taste", "skill:og-ui"]);
 });
 
 test("the bundle is the platform's production layout, text only", () => {
@@ -281,4 +281,20 @@ test("every phase 4 API is taught by its skill", () => {
     for (const n of names) if (!text.includes(n)) missing.push(`${skill}: ${n}`);
   }
   expect(missing).toEqual([]);
+});
+
+/** The model review's commands, tool and generators: og-model teaches each (og-game §18 owns the generators' fields). */
+const MODEL_REVIEW = [
+  "view:<entity>:front", "view:<entity>:back", "view:<entity>:side", "view:<entity>:top", "view:<entity>:orbit:<degrees>", "view:off", "turntable:<entity>:<n>",
+  "og compare", "--mask", "--align", "--key", "--sheet", "silhouette IoU", "ΔE00",
+  "og.render.shapeGeometry", "og.render.extrudeGeometry", "og.render.latheGeometry", "og.render.sweepGeometry", "og.render.csgGeometry", "og.render.mergeGeometries", "og.render.icosahedronGeometry", "og.Shape", "og.Path2",
+  "Blockout", "Structure", "Form", "Material", "Surface detail", "Lighting", "Interaction", "Optimisation",
+];
+
+test("og-model teaches the model review: the views, og compare, the generators and the eight passes", () => {
+  const text = bundle(real).files["game/skills/og-model/SKILL.md"]!;
+  expect(MODEL_REVIEW.filter((n) => !text.includes(n))).toEqual([]);
+  // A generator name it writes must exist: a typo is refused like any skill's.
+  const p = added((r) => edit(join(r.pkg, "skills/og-model/SKILL.md"), (s) => s.replace("og.render.sweepGeometry`", "og.render.sweptGeometry`")));
+  expect(p).toEqual(["skills/og-model/SKILL.md: names `og.render.sweptGeometry`, which the generated API (api.ogt) does not have; check the name in reference/ or packages/engine/types/index.d.ts"]);
 });

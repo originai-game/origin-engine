@@ -59,6 +59,7 @@ mod polish;
 mod probe;
 #[cfg(not(feature = "publish"))]
 mod record;
+mod review;
 mod save;
 #[cfg(not(feature = "publish"))]
 mod scene_save;
