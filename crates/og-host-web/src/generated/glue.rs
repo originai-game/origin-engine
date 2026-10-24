@@ -559,6 +559,11 @@ pub fn og_render_apply_look(world: u32, look: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_render_apply_quality(world: u32, preset: String) -> String {
+    <Host as RenderApi>::og_render_apply_quality(&Host, world, preset)
+}
+
+#[wasm_bindgen]
 pub fn og_render_look(world: u32) -> String {
     <Host as RenderApi>::og_render_look(&Host, world)
 }

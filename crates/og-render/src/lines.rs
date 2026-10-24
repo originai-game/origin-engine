@@ -19,7 +19,7 @@
 //! (scene, depth tested, one CSS pixel) instead of their triangles: the
 //! unique edges of a mesh are found once per mesh revision.
 
-use crate::deferred::Deferred;
+use crate::deferred::Sampled;
 use crate::scene::{MeshData, RenderScene};
 use glam::{Mat4, Vec3};
 use std::collections::HashMap;
@@ -253,11 +253,11 @@ pub(crate) struct LineRenderer {
     overlay_group: wgpu::BindGroup,
     buffer: wgpu::Buffer,
     /// Scene pipelines: depth tested, and drawn over the scene.
-    depth: Deferred<wgpu::RenderPipeline>,
-    over: Deferred<wgpu::RenderPipeline>,
+    depth: Sampled<wgpu::RenderPipeline>,
+    over: Sampled<wgpu::RenderPipeline>,
     /// Overlay pipelines: in the output's format and its sRGB view's.
-    output: Deferred<wgpu::RenderPipeline>,
-    linear: Option<Deferred<wgpu::RenderPipeline>>,
+    output: Sampled<wgpu::RenderPipeline>,
+    linear: Option<Sampled<wgpu::RenderPipeline>>,
     /// Per mesh index: its revision and unique edges (wireframe).
     edges: HashMap<usize, (u64, Edges)>,
 }
@@ -316,7 +316,7 @@ impl LineRenderer {
                         depth: Option<wgpu::CompareFunction>,
                         samples: u32| {
             let (device, pl, module) = (device.clone(), pl.clone(), module.clone());
-            Deferred::new(move || {
+            Sampled::new(samples, move |samples| {
                 use crate::deferred::AsModule;
                 device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                     label: Some(label),
@@ -383,6 +383,13 @@ impl LineRenderer {
             linear: linear_format.map(|f| pipeline("lines (overlay, sRGB view)", f, None, 1)),
             edges: HashMap::new(),
         }
+    }
+
+    /// Draw the scene's lines into a target of `samples` per pixel from
+    /// now on (the overlay's are one sample whatever the scene's).
+    pub fn set_samples(&self, samples: u32) {
+        self.depth.set_samples(samples);
+        self.over.set_samples(samples);
     }
 
     /// Makes one of its pipelines no frame used yet (Renderer::warm).

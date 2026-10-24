@@ -115,6 +115,9 @@ pub(crate) fn mount_front(
         },
     )
     .map_err(err)?;
+    // The 2D profile has no terrain, so no height field (terrain_absent.rs).
+    #[cfg(feature = "profile2d")]
+    physics.refuse_heightfields(super::terrain::ABSENT);
     let (desc, run) = physics.query_system();
     world.add_system(desc, run).map_err(err)?;
     let shared = ui.clone();

@@ -155,7 +155,14 @@ beside the rebuild: the reload still happens, the `reload` event carries a
 and a `check` event with the diagnostics follows; `og test --json` ends
 with a `test` event whose `check` object has the same three. Read the
 diagnostics and fix them before anything else; `--no-check` skips the
-check (never for `og build --publish`). A created project's
+check (never for `og build --publish`). A `2d` project's publish build
+leaves the 3D world out (terrain, planar water, scattered copies, the 3D
+fluids, volumetric fog: `og.render.capabilities(world).world3d` is false
+there), so `og build --publish` refuses one whose scenes hold `Terrain`,
+`TerrainScatter`, `Water`, `WaterSurface` or `Fluid3D`, naming each
+`scene.ogt:line`, and there `og.terrain.*` and a `SHAPE_HEIGHTFIELD`
+collider answer a refusal naming `world3d`: remove them, or make the
+project `profile "3d"`. A created project's
 `tsconfig.json` resolves `@origingame/engine` (the generated
 `types/index.d.ts`) and `@origingame/engine/playtest` from `node_modules`.
 An example inside the engine repository has no `node_modules`: its
@@ -1388,7 +1395,8 @@ render sprite 12
   `underwaterDensity` and the surface from below shows the sky only
   straight up (on by default; set the density to 0 to see through).
 
-**Terrain** (`reference/terrain.md`) is a height field cooked from a
+**Terrain** (`reference/terrain.md`, 3D projects only: a `2d` project's
+publish build has none, §2) is a height field cooked from a
 `type terrain` .ogt beside a 16-bit grey PNG (or an EXR in metres):
 
 ```text
@@ -1766,6 +1774,35 @@ og.render.look(world)?.name;                                              // the
   stays sharper under camera motion and `taaSharpen` (0–1) restores
   detail TAA softens. `RenderCapabilities.antialias` says what the device
   resolved it to.
+- **Graphics quality** is RenderSettings' quality fields, read every
+  frame: `rectShadows`, `shadowedLights`, `shadowMapScale`,
+  `volumetricFog`, `softParticles`, `screenSpaceReflections`,
+  `ambientOcclusion`, `msaaSamples` (4, or 1 for FXAA where the
+  antialiasing multisamples). `og.render.applyQuality(world, preset)`
+  writes a preset's row of them and records it in
+  `RenderSettings.quality` (`none` before any):
+
+  | Field | low | medium | high |
+  |---|---|---|---|
+  | rectShadows | false | true | true |
+  | shadowedLights | 2 | 8 | 8 |
+  | shadowMapScale | 0.5 | 1 | 2 |
+  | volumetricFog, softParticles, screenSpaceReflections, ambientOcclusion | false | true | true |
+  | msaaSamples | 1 | 4 | 4 |
+
+  Medium is the defaults, the frame drawn before any preset. The renderer
+  reads the fields and nothing else, so `og run --commands
+  "0.5:get:og.RenderSettings"` shows what is drawn, and a field set after
+  the preset wins. The switches only take away: the scene's PostEffects
+  and lights keep their settings. The settings screen applies the
+  player's pick when given the world (`og.ui.settingsScreen(id, { world,
+  settings, ... })`); apply a saved preset yourself at start:
+
+  ```ts
+  start(world) { og.render.applyQuality(world, save.settings.quality ?? "medium"); }
+  ```
+
+  Inside a system, declare `og.RenderSettings` among its writes.
 
 ## 17. Saving progress
 

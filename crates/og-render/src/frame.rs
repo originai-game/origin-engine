@@ -376,6 +376,9 @@ fn local_near(range: f32) -> f32 {
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct LocalShadowBudget {
     pub max_shadowed: usize,
+    /// Rect lights' shadows ([`crate::RenderQuality::rect_shadows`]):
+    /// false leaves every rect light unshadowed.
+    pub rect_shadows: bool,
     pub point: PointShadows,
     pub shadow_size: u32,
 }
@@ -394,7 +397,7 @@ pub(crate) fn local_lights(
     let shadowed: Vec<usize> = (0..kept.len())
         .filter(|&k| {
             let l = &lights[kept[k]];
-            l.cast_shadows
+            l.cast_shadows && (budget.rect_shadows || !matches!(l.kind, LightKind::Rect { .. }))
         })
         .collect();
     let mut chosen = vec![false; kept.len()];

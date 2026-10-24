@@ -216,7 +216,7 @@ struct Slot {
 /// surface, kept across frames.
 pub(crate) struct WaterRenderer {
     layout: wgpu::BindGroupLayout,
-    pub(crate) pipeline: crate::deferred::Deferred<wgpu::RenderPipeline>,
+    pub(crate) pipeline: crate::deferred::Sampled<wgpu::RenderPipeline>,
     sampler: wgpu::Sampler,
     flat: wgpu::TextureView,
     slots: Vec<Slot>,
@@ -285,7 +285,7 @@ impl WaterRenderer {
             bind_group_layouts: &[Some(frame_layout), Some(&layout)],
             immediate_size: 0,
         });
-        let pipeline = crate::deferred_hdr(device, &pl, module, move |layout, module| {
+        let pipeline = crate::deferred_hdr(device, &pl, module, samples, move |layout, module| {
             crate::HdrPipeline {
                 label: "water",
                 layout,

@@ -2,8 +2,11 @@
 // game's GameSettings. The game owns the values (a resource, a save); the
 // screen answers the new ones every tick and calls the hooks: onChange on
 // every change (apply it at once), onSave when it closes after changes.
+// A new graphics preset is applied to SettingsDesc.world by the screen
+// itself (og.render.applyQuality) before onChange.
 
 import type * as Api from "@origingame/engine";
+import { render } from "../runtime.ts";
 import { kit } from "./bind.ts";
 import { frame, grow, px, token } from "./util.ts";
 
@@ -119,6 +122,12 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
   const changed = JSON.stringify(s) !== JSON.stringify(before);
   if (changed) {
     dirty = true;
+    // The preset is RenderSettings' quality fields (og.render.applyQuality):
+    // the next frame draws it, and the probe reads what is drawn.
+    if (s.quality !== before.quality && desc.world) {
+      const r = render.applyQuality(desc.world as unknown as Parameters<typeof render.applyQuality>[0], s.quality) as Api.Result<void>;
+      if (!r.ok) throw new Error(`og.ui.settingsScreen: ${r.reason}`);
+    }
     desc.onChange?.(s);
   }
   if (closed && dirty) {

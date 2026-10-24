@@ -417,6 +417,100 @@ fn build_refuses_a_bad_publish_setting_by_line() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// A 2D project's publish build refuses the 3D world in its scenes (the 2D
+/// publish module leaves terrain, planar water, scattered copies and 3D
+/// fluids out: RenderCapabilities.world3d), naming each by scene and line,
+/// before anything is cooked or exported; a 2D project without them, its
+/// dev build, and a 3D project with them build as before.
+#[test]
+fn a_2d_publish_build_refuses_the_3d_world_by_scene_and_line() {
+    let dir = scratch_root();
+    std::fs::remove_dir_all(dir.join("crates")).unwrap();
+    // A stand-in engine package: the exporter leaves a mark when it runs.
+    let engine = dir.join("engine");
+    std::fs::create_dir_all(engine.join("src/node")).unwrap();
+    let mark = dir.join("exported");
+    std::fs::write(
+        engine.join("src/node/web-build.ts"),
+        format!("await Bun.write({:?}, '');\n", mark.to_str().unwrap()),
+    )
+    .unwrap();
+    let game = dir.join("game");
+    std::fs::create_dir_all(game.join("src")).unwrap();
+    std::fs::create_dir_all(game.join("assets/scenes")).unwrap();
+    std::fs::write(game.join("src/main.ts"), "export default 0;\n").unwrap();
+    let project = |profile: &str| {
+        std::fs::write(
+            game.join("project.ogt"),
+            format!(
+                "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\nprofile \"{profile}\"\n"
+            ),
+        )
+        .unwrap();
+    };
+    let scene = |with_3d: bool| {
+        let extra = if with_3d {
+            "  Terrain {\n    castShadows false\n  }\n  entity \"pond\" {\n    Water {\n    }\n  }\n"
+        } else {
+            ""
+        };
+        std::fs::write(
+            game.join("assets/scenes/main.ogt"),
+            format!(
+                "type scene\nversion 1\n---\nname \"Main\"\nentity \"ground\" {{\n  Transform {{\n    position 0 0 0\n  }}\n{extra}}}\n"
+            ),
+        )
+        .unwrap();
+    };
+    let build = |args: &[&str]| {
+        let _ = std::fs::remove_file(&mark);
+        let out = og()
+            .args(args)
+            .arg(&game)
+            .env("OG_ENGINE_PACKAGE", &engine)
+            .output()
+            .unwrap();
+        (out.status.code(), text(&out), mark.exists())
+    };
+
+    project("2d");
+    scene(true);
+    let (code, t, exported) = build(&["build", "--publish"]);
+    assert_eq!(code, Some(1), "{t}");
+    assert!(!exported, "the exporter ran past the refusal: {t}");
+    // Nothing was cooked or exported: the project holds what it was given.
+    let mut made: Vec<String> = std::fs::read_dir(&game)
+        .unwrap()
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .collect();
+    made.sort();
+    assert_eq!(made, ["assets", "project.ogt", "src"], "{t}");
+    let assets: Vec<_> = std::fs::read_dir(game.join("assets")).unwrap().collect();
+    assert_eq!(assets.len(), 1, "{t}");
+    for line in [
+        "assets/scenes/main.ogt:9: Terrain (a terrain)",
+        "assets/scenes/main.ogt:13: Water (planar water)",
+    ] {
+        assert!(t.contains(line), "{line}: {t}");
+    }
+    assert!(t.contains("RenderCapabilities.world3d is false"), "{t}");
+    assert!(t.contains("profile \"3d\""), "{t}");
+
+    // The dev build has every subsystem; a 3D project's publish keeps them.
+    let (code, t, exported) = build(&["build"]);
+    assert_eq!((code, exported), (Some(0), true), "{t}");
+    project("3d");
+    let (code, t, exported) = build(&["build", "--publish"]);
+    assert_eq!((code, exported), (Some(0), true), "{t}");
+    // A 2D project without them publishes as before.
+    project("2d");
+    scene(false);
+    let (code, t, exported) = build(&["build", "--publish"]);
+    assert_eq!((code, exported), (Some(0), true), "{t}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// An executor (outside the repository, bun but no node, no Rust): the
 /// build toolchain is skipped and node is optional, so neither is a problem.
 #[test]

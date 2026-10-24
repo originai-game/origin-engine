@@ -62,6 +62,63 @@ impl<T> DerefMut for Deferred<T> {
     }
 }
 
+/// A pipeline (or anything else) that depends on the renderer's samples
+/// per pixel: made on first use at the current count, as a [`Deferred`],
+/// and again at the first use after [`Sampled::set_samples`] changed the
+/// count (`RenderQuality::msaa_samples`). One is kept per count (one
+/// sample, [`crate::MSAA_SAMPLES`]), so going back costs nothing.
+pub(crate) struct Sampled<T> {
+    samples: Cell<u32>,
+    made: [OnceCell<T>; 2],
+    make: Box<dyn Fn(u32) -> T>,
+}
+
+impl<T> Sampled<T> {
+    pub(crate) fn new(samples: u32, make: impl Fn(u32) -> T + 'static) -> Sampled<T> {
+        Sampled {
+            samples: Cell::new(samples),
+            made: [OnceCell::new(), OnceCell::new()],
+            make: Box::new(make),
+        }
+    }
+
+    fn slot(&self) -> &OnceCell<T> {
+        &self.made[(self.samples.get() > 1) as usize]
+    }
+
+    /// The value at the current count, made now if it was not yet.
+    pub(crate) fn get(&self) -> &T {
+        self.slot().get_or_init(|| (self.make)(self.samples.get()))
+    }
+
+    /// Draw at `samples` per pixel from now on.
+    pub(crate) fn set_samples(&self, samples: u32) {
+        self.samples.set(samples);
+    }
+
+    /// Whether the value at the current count has been made.
+    pub(crate) fn made(&self) -> bool {
+        self.slot().get().is_some()
+    }
+}
+
+impl<T> Deref for Sampled<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        self.get()
+    }
+}
+
+impl<T> Warm for Sampled<T> {
+    fn warm(&self) -> bool {
+        if self.made() {
+            return false;
+        }
+        self.get();
+        true
+    }
+}
+
 /// A shader module parsed when the first pipeline that uses it is made.
 pub(crate) type Module = Rc<Deferred<wgpu::ShaderModule>>;
 

@@ -196,6 +196,14 @@ lighting falls back to a forward tile table built on the CPU).
   WebGPU), antialiasing by tier: TAA on the full tier (optional
   Catmull-Rom history and sharpening), 4× MSAA on WebGL2, FXAA on any tier
   and where the HDR target cannot be multisampled.
+- What a frame may cost is data the renderer reads every frame:
+  RenderSettings' quality fields (rect-light shadows, the number of
+  shadowed lights, the shadow maps' scale, volumetric fog, soft particles,
+  SSR, AO, MSAA samples), og-render's `RenderQuality`. A graphics preset
+  (`GraphicsQuality`: low, medium, high) is a row of them that
+  `og.render.applyQuality` writes and `RenderSettings.quality` records;
+  no preset state lies behind the fields, so the probe reads what is
+  drawn. Medium is the defaults, the full frame.
 - Stylisation, as data a look composes (`og.Stylise`, `og.MaterialStyle`,
   a `type look` asset): a logical pixel grid scaled up by whole numbers
   with the camera and sprites snapped to it, posterise and palette
@@ -1156,7 +1164,13 @@ publish variant of its game's physics profile (3D or 2D) or, on a
 cross-origin isolated page, the lanes variant, so each module is held to
 it and the figure that counts is the largest one a player downloads, never
 the sum of the modules a build ships (docs/web-export.md §Variants,
-docs/ci.md §Updating a budget).
+docs/ci.md §Updating a budget). The 2D profile's modules leave the 3D
+world out as well as rapier3d (og-render's and og-runtime's `profile2d`:
+terrain, planar water, the 3D fluids, scattered copies and volumetric
+fog; `RenderCapabilities.world3d` is false, and `og.terrain`'s calls and
+a `SHAPE_HEIGHTFIELD` collider answer a refusal naming it), so `og build
+--publish` refuses a 2D project whose scenes hold them, by scene file and
+line.
 
 ## 8. Platform matrix
 

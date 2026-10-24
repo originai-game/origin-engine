@@ -669,6 +669,12 @@ pub fn og_render_apply_look(env: Env, world: u32, look: f64) -> String {
     <Host as RenderApi>::og_render_apply_look(&Host, world, look)
 }
 
+#[napi(js_name = "og_render_apply_quality")]
+pub fn og_render_apply_quality(env: Env, world: u32, preset: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_apply_quality(&Host, world, preset)
+}
+
 #[napi(js_name = "og_render_look")]
 pub fn og_render_look(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);

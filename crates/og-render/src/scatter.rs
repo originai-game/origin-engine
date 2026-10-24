@@ -467,6 +467,15 @@ pub(crate) struct ScatterRenderer {
 }
 
 impl ScatterRenderer {
+    /// Draw the lit pass into a target of `samples` per pixel from now on:
+    /// its pipelines are made again as they are next used.
+    pub(crate) fn set_samples(&mut self, samples: u32) {
+        if self.samples != samples {
+            self.samples = samples;
+            self.pipelines.clear();
+        }
+    }
+
     pub(crate) fn new(device: &wgpu::Device, p: ScatterPipelines) -> ScatterRenderer {
         let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("scatter"),

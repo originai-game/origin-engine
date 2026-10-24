@@ -1123,7 +1123,9 @@ pub(crate) fn extract_layouts(eng: &Engine) -> (Option<Layout>, Option<Layout>, 
             fx: super::fx::FxLayouts::from(get),
             atmo: super::atmosphere::AtmoLayouts::from(get, st.physics.clone()),
             environment: get("og.Environment"),
+            #[cfg(not(feature = "profile2d"))]
             terrain: get("og.Terrain"),
+            #[cfg(not(feature = "profile2d"))]
             scatter: get("og.TerrainScatter"),
             collider: get("og.Collider"),
             lines: get("og.Lines"),

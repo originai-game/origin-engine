@@ -50,6 +50,11 @@ pub fn run(project: &str, out: Option<&str>, port: Option<&str>, a: &DeviceArgs)
             return ExitCode::FAILURE;
         }
     };
+    // The device plays the publish build.
+    if let Err(e) = crate::publish::refuse_3d_world(&p.root, &settings) {
+        eprintln!("og run --device: {e}");
+        return ExitCode::FAILURE;
+    }
     let Some(package) = project::engine_package(Some(&p.root)) else {
         eprintln!("og run --device: {}", project::NO_ENGINE);
         return ExitCode::FAILURE;

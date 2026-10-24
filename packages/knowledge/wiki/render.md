@@ -39,7 +39,10 @@ module render {
 | [`og.SpotLight`](#record-SpotLight) | component | A cone of light along the entity's local -Z, as three.js SpotLight. |
 | [`ToneMapping`](#type-ToneMapping) | enum | The curve from the lit HDR image to the display, as three.js toneMapping. RenderSettings.toneMapped false clamps instead, whichever is chosen. |
 | [`ToneMapping()`](#column-ToneMapping) | column kind | A ToneMapping field: the variant's index. |
-| [`og.RenderSettings`](#record-RenderSettings) | resource | The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure. |
+| [`GraphicsQuality`](#type-GraphicsQuality) | enum | A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). The settings screen (og.ui.settingsScreen) offers the three. |
+| [`QualityPreset`](#type-QualityPreset) | enum | The preset RenderSettings' quality fields were last written with (RenderSettings.quality). |
+| [`QualityPreset()`](#column-QualityPreset) | column kind | A QualityPreset field: the variant's index. |
+| [`og.RenderSettings`](#record-RenderSettings) | resource | The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to msaaSamples) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure. |
 | [`Lut`](#type-Lut) | handle | A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file). |
 | [`EnvironmentMap`](#type-EnvironmentMap) | handle | A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`, a KTX2 cube map, or six face images). |
 | [`ParticleEmitter`](#type-ParticleEmitter) | handle | A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`). |
@@ -109,6 +112,7 @@ module render {
 | [`og.render.setMaterialShader`](#fn-setMaterialShader) | function | Give an existing material a material shader, or take it away with null: a loaded model's material (GltfInfo.materials) draws its skinned or static meshes through the hooks, with the shader's parameters at their defaults. Every mesh drawn with that material changes. |
 | [`og.render.setShaderParam`](#fn-setShaderParam) | function | Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color. |
 | [`og.render.applyLook`](#fn-applyLook) | function | Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its style, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes. A look that switches the stylisation (a Stylise pass on or off, the pixel grid, retro 3D, the material style) starts TAA's history over, as a camera cut does, so its first frame holds no ghost of the old look. |
+| [`og.render.applyQuality`](#fn-applyQuality) | function | Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. The settings screen calls it when the player picks a preset (SettingsDesc.world); a game applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows: |
 | [`og.render.look`](#fn-look) | function | The look last applied (by og.render.applyLook or GameDesc.look), as og.load.lookInfo describes it; null before any. |
 | [`og.render.capabilities`](#fn-capabilities) | function | The renderer's tier and limits on this device. |
 | [`og.render.text`](#fn-text) | function | Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout. |
@@ -131,30 +135,6 @@ module render {
 | [`og.render.ringGeometry`](#fn-ringGeometry) | function | Make a ring geometry for og.Mesh (one-sided: give it a double-sided material to see it from behind). |
 | [`og.render.circleGeometry`](#fn-circleGeometry) | function | Make a circle geometry for og.Mesh (one-sided, as ringGeometry). |
 | [`og.render.tubeGeometry`](#fn-tubeGeometry) | function | Make a tube along a curve through points for og.Mesh: pipes, cables, rails, a path shown as a ribbon of geometry. Physics can use it as a triangle-mesh Collider.mesh. |
-| [`ShapePoints`](#type-ShapePoints) | struct | A shape as points, what og.Shape.extractPoints returns and what shapeGeometry, extrudeGeometry and sweepGeometry read: the outline, then each hole. A repeated closing point is dropped, as three.js drops it. |
-| [`ShapeGeometryDesc`](#type-ShapeGeometryDesc) | desc struct | A flat shape with holes in the xy plane facing +Z, as three.js ShapeGeometry(shapes, curveSegments): triangulated by earcut (three.js's own port), the outline made clockwise and the holes counter-clockwise first, so its vertices and triangles are three.js's for the same shape. uvs are world x and y (v flipped to run down the image). |
-| [`ExtrudeGeometryDesc`](#type-ExtrudeGeometryDesc) | desc struct | Shapes pushed along +Z, or along a path, as three.js ExtrudeGeometry(shapes, options) with its option names and defaults: a closed solid, its lids from earcut and its walls ring by ring, rounded by a bevel of bevelSegments rings at each face. Unindexed as three.js's (every triangle its own vertices, flat normals), three.js's vertex order and counts; uvs from three.js's WorldUVGenerator (v flipped to run down the image). |
-| [`LatheGeometryDesc`](#type-LatheGeometryDesc) | desc struct | A profile turned round +Y, as three.js LatheGeometry(points, segments, phiStart, phiLength): vases, bottles, columns, wheels. three.js's vertices, indices and smooth normals; u round the axis, v along the profile (flipped to run down the image). A whole turn's seam meets exactly. |
-| [`PolyhedronGeometryDesc`](#type-PolyhedronGeometryDesc) | desc struct | A polyhedron from vertices and faces, every face subdivided `detail` times and every vertex pushed onto the sphere of `radius`, as three.js PolyhedronGeometry(vertices, indices, radius, detail): unindexed, flat normals at detail 0 and the sphere's above, three.js's spherical uvs. |
-| [`SolidGeometryDesc`](#type-SolidGeometryDesc) | desc struct | A regular solid, as three.js IcosahedronGeometry, DodecahedronGeometry, OctahedronGeometry and TetrahedronGeometry(radius, detail): PolyhedronGeometryDesc with the solid's own vertices and faces. An icosahedron at detail 2 or more is a sphere with even triangles. |
-| [`SweepKey`](#type-SweepKey) | struct | A value at a fraction of a sweep's path: linear between keys, held before the first and past the last. |
-| [`SweepGeometryDesc`](#type-SweepGeometryDesc) | desc struct | A section swept along a path, scaled and twisted over it: horns, tusks, handles, blades, tapered pipes, twisted columns (img2threejs's tapered sweep; three.js has no class for it). The section's x lies along the path's normal and y along its binormal (three.js's Frenet frames), rings evenly spaced along the path's length; u runs along the path, v round the section (flipped to run down the image), the sides smooth. An open path's ends are capped. |
-| [`MirrorAxis`](#type-MirrorAxis) | enum | The world axis a part is mirrored along, after its placement. |
-| [`GeometryPart`](#type-GeometryPart) | desc struct | A geometry placed as an Object3D is (scale, then rotate, then move), then mirrored: one part of og.render.mergeGeometries or an operand of og.render.csgGeometry. |
-| [`CsgOp`](#type-CsgOp) | enum | A boolean operation on two solids. |
-| [`CsgGeometryDesc`](#type-CsgGeometryDesc) | desc struct | Two closed geometries combined by a boolean operation, each placed first: a box with a hole bored through it, a dice, a window cut in a wall. The result is closed when both are (every edge shared by two triangles, wound opposite), every piece keeps its source's normals, uvs and colours (b's turned inside out where it is subtracted). Where a plane side or an edge crossing is decided, the decision is exact (Shewchuk's predicates), so every host makes the same cuts; faces that coincide keep one copy or none, as the operation says. |
-| [`MergeGeometriesDesc`](#type-MergeGeometriesDesc) | desc struct | Geometries placed and merged into one, as three.js BufferGeometryUtils.mergeGeometries after applying each part's matrix: a prop of parts drawn in one draw, a mirrored half, an array (the same part at several placements). Normals follow each placement; a mirrored part turns its triangles so they still face out. Vertex colours are kept when any part has them. |
-| [`og.render.shapeGeometry`](#fn-shapeGeometry) | function | Make a flat shape for og.Mesh (one-sided, as circleGeometry): an og.Shape with holes, or a points array. Physics can use it as a triangle-mesh Collider.mesh. |
-| [`og.render.extrudeGeometry`](#fn-extrudeGeometry) | function | Make an extruded solid for og.Mesh: a three.js extrusion is a paste (`og.render.extrudeGeometry(world, { shapes: shape, depth: 0.2, bevelEnabled: true })`). Gears, signs, keys, logos, cookie cutters; along a path, a rail or a moulding. |
-| [`og.render.latheGeometry`](#fn-latheGeometry) | function | Make a solid of revolution for og.Mesh: a profile turned round +Y. |
-| [`og.render.polyhedronGeometry`](#fn-polyhedronGeometry) | function | Make a polyhedron from vertices and faces for og.Mesh, subdivided onto a sphere. |
-| [`og.render.icosahedronGeometry`](#fn-icosahedronGeometry) | function | Make an icosahedron (twenty faces) for og.Mesh; with detail, a geodesic sphere. |
-| [`og.render.dodecahedronGeometry`](#fn-dodecahedronGeometry) | function | Make a dodecahedron (twelve pentagons, thirty-six triangles) for og.Mesh. |
-| [`og.render.octahedronGeometry`](#fn-octahedronGeometry) | function | Make an octahedron (eight faces) for og.Mesh. |
-| [`og.render.tetrahedronGeometry`](#fn-tetrahedronGeometry) | function | Make a tetrahedron (four faces) for og.Mesh. |
-| [`og.render.sweepGeometry`](#fn-sweepGeometry) | function | Make a section swept along a path for og.Mesh, tapered and twisted by keys. |
-| [`og.render.csgGeometry`](#fn-csgGeometry) | function | Make the union, difference or intersection of two placed geometries for og.Mesh. Chain calls for more operands (a cube minus six spheres is six calls); each result is a geometry like any other. |
-| [`og.render.mergeGeometries`](#fn-mergeGeometries) | function | Make one geometry of several placed ones for og.Mesh: one draw instead of many, mirrored halves, arrays. |
 | [`LineMode`](#type-LineMode) | enum | How a line set's points join, as three.js's three line objects. |
 | [`LineMode()`](#column-LineMode) | column kind | A LineMode field: the variant's index. |
 | [`LinesDesc`](#type-LinesDesc) | desc struct | Lines through points, drawn this frame only (immediate mode, as og.render.sprite): submit them every tick they should show. three.js Line, LineSegments and LineLoop with a LineBasicMaterial or LineDashedMaterial, but any width on every tier (each segment is a quad in screen space with a feathered edge, so WebGL2's one-pixel lines do not apply). |
@@ -216,7 +196,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 3531</sub>
+<sub>`api.ogt` line 3584</sub>
 
 <a id="fn-sprite"></a>
 
@@ -246,7 +226,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 3659</sub>
+<sub>`api.ogt` line 3712</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -276,7 +256,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3839</sub>
+<sub>`api.ogt` line 3892</sub>
 
 <a id="fn-measureText"></a>
 
@@ -306,7 +286,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3846</sub>
+<sub>`api.ogt` line 3899</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -336,7 +316,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3915</sub>
+<sub>`api.ogt` line 3968</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -366,7 +346,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3922</sub>
+<sub>`api.ogt` line 3975</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -396,7 +376,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3929</sub>
+<sub>`api.ogt` line 3982</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -426,7 +406,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4011</sub>
+<sub>`api.ogt` line 4064</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -458,7 +438,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4018</sub>
+<sub>`api.ogt` line 4071</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -490,7 +470,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4028</sub>
+<sub>`api.ogt` line 4081</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -522,7 +502,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 4036</sub>
+<sub>`api.ogt` line 4089</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -556,7 +536,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 4044</sub>
+<sub>`api.ogt` line 4097</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -586,7 +566,61 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 4053</sub>
+<sub>`api.ogt` line 4106</sub>
+
+<a id="fn-applyQuality"></a>
+
+### `og.render.applyQuality`
+
+Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. The settings screen calls it when the player picks a preset (SettingsDesc.world); a game applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:
+
+| Field | low | medium | high |
+|---|---|---|---|
+| rectShadows | false | true | true |
+| shadowedLights | 2 | 8 | 8 |
+| shadowMapScale | 0.5 | 1 | 2 |
+| volumetricFog | false | true | true |
+| softParticles | false | true | true |
+| screenSpaceReflections | false | true | true |
+| ambientOcclusion | false | true | true |
+| msaaSamples | 1 | 4 | 4 |
+
+Medium is every field's default, the frame drawn before any preset.
+
+```ts
+og.render.applyQuality(world: World, preset: GraphicsQuality): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose RenderSettings change. |
+| `preset` | `GraphicsQuality` | no | The preset. |
+
+**Returns** `Result<void>`: Refused for a world that is not alive, or inside a system that did not declare RenderSettings among its writes.
+
+Binding symbol `og_render_apply_quality` · publish builds: kept
+
+```ogt
+fn applyQuality {
+  doc "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. The settings screen calls it when the player picks a preset (SettingsDesc.world); a game applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:"
+  doc "| Field | low | medium | high |"
+  doc "|---|---|---|---|"
+  doc "| rectShadows | false | true | true |"
+  doc "| shadowedLights | 2 | 8 | 8 |"
+  doc "| shadowMapScale | 0.5 | 1 | 2 |"
+  doc "| volumetricFog | false | true | true |"
+  doc "| softParticles | false | true | true |"
+  doc "| screenSpaceReflections | false | true | true |"
+  doc "| ambientOcclusion | false | true | true |"
+  doc "| msaaSamples | 1 | 4 | 4 |"
+  doc "Medium is every field's default, the frame drawn before any preset."
+  param world World "The world whose RenderSettings change."
+  param preset GraphicsQuality "The preset."
+  returns Result.Void "Refused for a world that is not alive, or inside a system that did not declare RenderSettings among its writes."
+}
+```
+
+<sub>`api.ogt` line 4113</sub>
 
 <a id="fn-look"></a>
 
@@ -614,7 +648,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 4060</sub>
+<sub>`api.ogt` line 4131</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -642,7 +676,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 4066</sub>
+<sub>`api.ogt` line 4137</sub>
 
 <a id="fn-text"></a>
 
@@ -672,7 +706,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 4072</sub>
+<sub>`api.ogt` line 4143</sub>
 
 <a id="fn-bufferGeometry"></a>
 
@@ -702,7 +736,7 @@ fn bufferGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4110</sub>
+<sub>`api.ogt` line 4181</sub>
 
 <a id="fn-updateGeometry"></a>
 
@@ -734,7 +768,7 @@ fn updateGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4117</sub>
+<sub>`api.ogt` line 4188</sub>
 
 <a id="fn-geometryInfo"></a>
 
@@ -764,7 +798,7 @@ fn geometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 4125</sub>
+<sub>`api.ogt` line 4196</sub>
 
 <a id="fn-cylinderGeometry"></a>
 
@@ -794,7 +828,7 @@ fn cylinderGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4320</sub>
+<sub>`api.ogt` line 4391</sub>
 
 <a id="fn-coneGeometry"></a>
 
@@ -824,7 +858,7 @@ fn coneGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4327</sub>
+<sub>`api.ogt` line 4398</sub>
 
 <a id="fn-capsuleGeometry"></a>
 
@@ -854,7 +888,7 @@ fn capsuleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4334</sub>
+<sub>`api.ogt` line 4405</sub>
 
 <a id="fn-torusGeometry"></a>
 
@@ -884,7 +918,7 @@ fn torusGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4341</sub>
+<sub>`api.ogt` line 4412</sub>
 
 <a id="fn-ringGeometry"></a>
 
@@ -914,7 +948,7 @@ fn ringGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4348</sub>
+<sub>`api.ogt` line 4419</sub>
 
 <a id="fn-circleGeometry"></a>
 
@@ -944,7 +978,7 @@ fn circleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4355</sub>
+<sub>`api.ogt` line 4426</sub>
 
 <a id="fn-tubeGeometry"></a>
 
@@ -974,337 +1008,7 @@ fn tubeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4362</sub>
-
-<a id="fn-shapeGeometry"></a>
-
-### `og.render.shapeGeometry`
-
-Make a flat shape for og.Mesh (one-sided, as circleGeometry): an og.Shape with holes, or a points array. Physics can use it as a triangle-mesh Collider.mesh.
-
-```ts
-og.render.shapeGeometry(world: World, desc?: ShapeGeometryDesc): Result<Geometry>
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `world` | `World` | no | The world whose renderer owns the geometry. |
-| `desc` | `ShapeGeometryDesc` | yes | The shapes and their tessellation. |
-
-**Returns** `Result<Geometry>`: Refused for a shape whose points are not finite or that triangulates to nothing.
-
-Binding symbol `og_render_shape_geometry` · publish builds: kept
-
-```ogt
-fn shapeGeometry {
-  doc "Make a flat shape for og.Mesh (one-sided, as circleGeometry): an og.Shape with holes, or a points array. Physics can use it as a triangle-mesh Collider.mesh."
-  param world World "The world whose renderer owns the geometry."
-  param desc ShapeGeometryDesc "The shapes and their tessellation."
-  returns Result.Geometry "Refused for a shape whose points are not finite or that triangulates to nothing."
-}
-```
-
-<sub>`api.ogt` line 4576</sub>
-
-<a id="fn-extrudeGeometry"></a>
-
-### `og.render.extrudeGeometry`
-
-Make an extruded solid for og.Mesh: a three.js extrusion is a paste (`og.render.extrudeGeometry(world, { shapes: shape, depth: 0.2, bevelEnabled: true })`). Gears, signs, keys, logos, cookie cutters; along a path, a rail or a moulding.
-
-```ts
-og.render.extrudeGeometry(world: World, desc?: ExtrudeGeometryDesc): Result<Geometry>
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `world` | `World` | no | The world whose renderer owns the geometry. |
-| `desc` | `ExtrudeGeometryDesc` | yes | The shapes, depth, bevel and path. |
-
-**Returns** `Result<Geometry>`: Refused for a shape whose points are not finite or that triangulates to nothing, or an extrudePath that is not alive.
-
-Binding symbol `og_render_extrude_geometry` · publish builds: kept
-
-```ogt
-fn extrudeGeometry {
-  doc "Make an extruded solid for og.Mesh: a three.js extrusion is a paste (`og.render.extrudeGeometry(world, { shapes: shape, depth: 0.2, bevelEnabled: true })`). Gears, signs, keys, logos, cookie cutters; along a path, a rail or a moulding."
-  param world World "The world whose renderer owns the geometry."
-  param desc ExtrudeGeometryDesc "The shapes, depth, bevel and path."
-  returns Result.Geometry "Refused for a shape whose points are not finite or that triangulates to nothing, or an extrudePath that is not alive."
-}
-```
-
-<sub>`api.ogt` line 4583</sub>
-
-<a id="fn-latheGeometry"></a>
-
-### `og.render.latheGeometry`
-
-Make a solid of revolution for og.Mesh: a profile turned round +Y.
-
-```ts
-og.render.latheGeometry(world: World, desc?: LatheGeometryDesc): Result<Geometry>
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `world` | `World` | no | The world whose renderer owns the geometry. |
-| `desc` | `LatheGeometryDesc` | yes | The profile and the turn. |
-
-**Returns** `Result<Geometry>`: Refused for fewer than two points or one that is not finite.
-
-Binding symbol `og_render_lathe_geometry` · publish builds: kept
-
-```ogt
-fn latheGeometry {
-  doc "Make a solid of revolution for og.Mesh: a profile turned round +Y."
-  param world World "The world whose renderer owns the geometry."
-  param desc LatheGeometryDesc "The profile and the turn."
-  returns Result.Geometry "Refused for fewer than two points or one that is not finite."
-}
-```
-
-<sub>`api.ogt` line 4590</sub>
-
-<a id="fn-polyhedronGeometry"></a>
-
-### `og.render.polyhedronGeometry`
-
-Make a polyhedron from vertices and faces for og.Mesh, subdivided onto a sphere.
-
-```ts
-og.render.polyhedronGeometry(world: World, desc?: PolyhedronGeometryDesc): Result<Geometry>
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `world` | `World` | no | The world whose renderer owns the geometry. |
-| `desc` | `PolyhedronGeometryDesc` | yes | The vertices, faces, radius and detail. |
-
-**Returns** `Result<Geometry>`: Refused for no faces, an index past the vertices, or a count that is not a multiple of three.
-
-Binding symbol `og_render_polyhedron_geometry` · publish builds: kept
-
-```ogt
-fn polyhedronGeometry {
-  doc "Make a polyhedron from vertices and faces for og.Mesh, subdivided onto a sphere."
-  param world World "The world whose renderer owns the geometry."
-  param desc PolyhedronGeometryDesc "The vertices, faces, radius and detail."
-  returns Result.Geometry "Refused for no faces, an index past the vertices, or a count that is not a multiple of three."
-}
-```
-
-<sub>`api.ogt` line 4597</sub>
-
-<a id="fn-icosahedronGeometry"></a>
-
-### `og.render.icosahedronGeometry`
-
-Make an icosahedron (twenty faces) for og.Mesh; with detail, a geodesic sphere.
-
-```ts
-og.render.icosahedronGeometry(world: World, desc?: SolidGeometryDesc): Result<Geometry>
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `world` | `World` | no | The world whose renderer owns the geometry. |
-| `desc` | `SolidGeometryDesc` | yes | Its radius and detail. |
-
-**Returns** `Result<Geometry>`.
-
-Binding symbol `og_render_icosahedron_geometry` · publish builds: kept
-
-```ogt
-fn icosahedronGeometry {
-  doc "Make an icosahedron (twenty faces) for og.Mesh; with detail, a geodesic sphere."
-  param world World "The world whose renderer owns the geometry."
-  param desc SolidGeometryDesc "Its radius and detail."
-  returns Result.Geometry
-}
-```
-
-<sub>`api.ogt` line 4604</sub>
-
-<a id="fn-dodecahedronGeometry"></a>
-
-### `og.render.dodecahedronGeometry`
-
-Make a dodecahedron (twelve pentagons, thirty-six triangles) for og.Mesh.
-
-```ts
-og.render.dodecahedronGeometry(world: World, desc?: SolidGeometryDesc): Result<Geometry>
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `world` | `World` | no | The world whose renderer owns the geometry. |
-| `desc` | `SolidGeometryDesc` | yes | Its radius and detail. |
-
-**Returns** `Result<Geometry>`.
-
-Binding symbol `og_render_dodecahedron_geometry` · publish builds: kept
-
-```ogt
-fn dodecahedronGeometry {
-  doc "Make a dodecahedron (twelve pentagons, thirty-six triangles) for og.Mesh."
-  param world World "The world whose renderer owns the geometry."
-  param desc SolidGeometryDesc "Its radius and detail."
-  returns Result.Geometry
-}
-```
-
-<sub>`api.ogt` line 4611</sub>
-
-<a id="fn-octahedronGeometry"></a>
-
-### `og.render.octahedronGeometry`
-
-Make an octahedron (eight faces) for og.Mesh.
-
-```ts
-og.render.octahedronGeometry(world: World, desc?: SolidGeometryDesc): Result<Geometry>
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `world` | `World` | no | The world whose renderer owns the geometry. |
-| `desc` | `SolidGeometryDesc` | yes | Its radius and detail. |
-
-**Returns** `Result<Geometry>`.
-
-Binding symbol `og_render_octahedron_geometry` · publish builds: kept
-
-```ogt
-fn octahedronGeometry {
-  doc "Make an octahedron (eight faces) for og.Mesh."
-  param world World "The world whose renderer owns the geometry."
-  param desc SolidGeometryDesc "Its radius and detail."
-  returns Result.Geometry
-}
-```
-
-<sub>`api.ogt` line 4618</sub>
-
-<a id="fn-tetrahedronGeometry"></a>
-
-### `og.render.tetrahedronGeometry`
-
-Make a tetrahedron (four faces) for og.Mesh.
-
-```ts
-og.render.tetrahedronGeometry(world: World, desc?: SolidGeometryDesc): Result<Geometry>
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `world` | `World` | no | The world whose renderer owns the geometry. |
-| `desc` | `SolidGeometryDesc` | yes | Its radius and detail. |
-
-**Returns** `Result<Geometry>`.
-
-Binding symbol `og_render_tetrahedron_geometry` · publish builds: kept
-
-```ogt
-fn tetrahedronGeometry {
-  doc "Make a tetrahedron (four faces) for og.Mesh."
-  param world World "The world whose renderer owns the geometry."
-  param desc SolidGeometryDesc "Its radius and detail."
-  returns Result.Geometry
-}
-```
-
-<sub>`api.ogt` line 4625</sub>
-
-<a id="fn-sweepGeometry"></a>
-
-### `og.render.sweepGeometry`
-
-Make a section swept along a path for og.Mesh, tapered and twisted by keys.
-
-```ts
-og.render.sweepGeometry(world: World, desc?: SweepGeometryDesc): Result<Geometry>
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `world` | `World` | no | The world whose renderer owns the geometry. |
-| `desc` | `SweepGeometryDesc` | yes | The section, path, keys and caps. |
-
-**Returns** `Result<Geometry>`: Refused for a path that is not alive, a section of fewer than three points or of no area, or a value that is not finite.
-
-Binding symbol `og_render_sweep_geometry` · publish builds: kept
-
-```ogt
-fn sweepGeometry {
-  doc "Make a section swept along a path for og.Mesh, tapered and twisted by keys."
-  param world World "The world whose renderer owns the geometry."
-  param desc SweepGeometryDesc "The section, path, keys and caps."
-  returns Result.Geometry "Refused for a path that is not alive, a section of fewer than three points or of no area, or a value that is not finite."
-}
-```
-
-<sub>`api.ogt` line 4632</sub>
-
-<a id="fn-csgGeometry"></a>
-
-### `og.render.csgGeometry`
-
-Make the union, difference or intersection of two placed geometries for og.Mesh. Chain calls for more operands (a cube minus six spheres is six calls); each result is a geometry like any other.
-
-```ts
-og.render.csgGeometry(world: World, desc?: CsgGeometryDesc): Result<Geometry>
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `world` | `World` | no | The world whose renderer owns the geometry. |
-| `desc` | `CsgGeometryDesc` | yes | The operation and its operands. |
-
-**Returns** `Result<Geometry>`: Refused for a dead geometry, a placement with a zero scale, or a position that is not finite.
-
-Binding symbol `og_render_csg_geometry` · publish builds: kept
-
-```ogt
-fn csgGeometry {
-  doc "Make the union, difference or intersection of two placed geometries for og.Mesh. Chain calls for more operands (a cube minus six spheres is six calls); each result is a geometry like any other."
-  param world World "The world whose renderer owns the geometry."
-  param desc CsgGeometryDesc "The operation and its operands."
-  returns Result.Geometry "Refused for a dead geometry, a placement with a zero scale, or a position that is not finite."
-}
-```
-
-<sub>`api.ogt` line 4639</sub>
-
-<a id="fn-mergeGeometries"></a>
-
-### `og.render.mergeGeometries`
-
-Make one geometry of several placed ones for og.Mesh: one draw instead of many, mirrored halves, arrays.
-
-```ts
-og.render.mergeGeometries(world: World, desc?: MergeGeometriesDesc): Result<Geometry>
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `world` | `World` | no | The world whose renderer owns the geometry. |
-| `desc` | `MergeGeometriesDesc` | yes | The parts and their placements. |
-
-**Returns** `Result<Geometry>`: Refused for no parts, a dead geometry, or a placement with a zero scale.
-
-Binding symbol `og_render_merge_geometries` · publish builds: kept
-
-```ogt
-fn mergeGeometries {
-  doc "Make one geometry of several placed ones for og.Mesh: one draw instead of many, mirrored halves, arrays."
-  param world World "The world whose renderer owns the geometry."
-  param desc MergeGeometriesDesc "The parts and their placements."
-  returns Result.Geometry "Refused for no parts, a dead geometry, or a placement with a zero scale."
-}
-```
-
-<sub>`api.ogt` line 4646</sub>
+<sub>`api.ogt` line 4433</sub>
 
 <a id="fn-lines"></a>
 
@@ -1334,7 +1038,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 4704</sub>
+<sub>`api.ogt` line 4491</sub>
 
 <a id="fn-points"></a>
 
@@ -1364,7 +1068,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 4739</sub>
+<sub>`api.ogt` line 4526</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1396,7 +1100,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 4843</sub>
+<sub>`api.ogt` line 4630</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1426,7 +1130,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4899</sub>
+<sub>`api.ogt` line 4686</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1460,7 +1164,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 5011</sub>
+<sub>`api.ogt` line 4798</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1488,7 +1192,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 5026</sub>
+<sub>`api.ogt` line 4813</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1516,7 +1220,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 5094</sub>
+<sub>`api.ogt` line 4881</sub>
 
 ## Components, resources and events
 
@@ -1732,7 +1436,7 @@ component SpotLight {
 
 ### `og.RenderSettings` (resource)
 
-The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
+The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to msaaSamples) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
 
 Token `og.RenderSettings`, registered under the schema name `og.RenderSettings`; its value type is `RenderSettings`.
 
@@ -1753,10 +1457,19 @@ Token `og.RenderSettings`, registered under the schema name `og.RenderSettings`;
 | `decalAtlas` | `Texture` | `0` | — | — | — | The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour. |
 | `lodBias` | `number` | `1` | 0 … 16 | — | tunable | A multiplier on every model's projected level-of-detail error when its level is picked (og.Model.lodBias multiplies it again): a level is drawn while its error, measured by the cook against the full mesh, covers less than a pixel on the screen. 1 is the engine's choice, 2 keeps full meshes twice as far, 0.5 simplifies sooner; 0 draws every model at its full mesh. |
 | `bakedLighting` | `boolean` | `true` | — | — | — | Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map: to compare, or to see the realtime lights alone. |
+| `quality` | `QualityPreset` | `"none"` | — | — | — | The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to msaaSamples), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set. |
+| `rectShadows` | `boolean` | `true` | — | — | — | Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off: a rect light's shadow is the costliest light in the frame. |
+| `shadowedLights` | `number` | `8` | 0 … 8 | — | — | At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.shadowedLights caps it); 0 casts none. The directional light's cascades are not counted. |
+| `shadowMapScale` | `number` | `1` | 0.125 … 4 | — | — | The shadow maps at this fraction of their full side: the directional light's cascades (2048 texels by default) and the local lights' layers (512), each kept within 64 texels and the device's limit (4096 for the cascades). Changing it makes the maps again at the next frame; RenderCapabilities.shadowMapSize is the cascades' side drawn. |
+| `volumetricFog` | `boolean` | `true` | — | — | — | An og.VolumetricFog is drawn lit, with its light shafts; false draws the same medium as plain distance and height fog. |
+| `softParticles` | `boolean` | `true` | — | — | — | Particles with a softDistance fade against the scene behind them; false draws them hard-edged and asks no depth prepass for them. |
+| `screenSpaceReflections` | `boolean` | `true` | — | — | — | PostEffects.ssr draws (on the full tier); false leaves smooth surfaces the reflection probes' and the environment's reflection. PostEffects keeps its settings either way. |
+| `ambientOcclusion` | `boolean` | `true` | — | — | — | PostEffects.ao darkens creases; false draws none. PostEffects keeps its settings either way. |
+| `msaaSamples` | `number` | `4` | 1 … 4 | — | — | Samples per pixel where the antialiasing multisamples (msaa, the WebGL2 tier's choice; RenderCapabilities.antialias): 4, or 1, which draws FXAA instead. TAA, FXAA and no antialiasing take one sample whatever it says. Changing it makes the multisampled targets and pipelines again at the next frame. |
 
 ```ogt
 resource RenderSettings {
-  doc "The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure."
+  doc "The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to msaaSamples) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure."
   field environmentIntensity f32 "The strength of the image-based ambient light from the sky; og.Environment.intensity takes its place while an environment map is set." {
     default 0.55
     min 0
@@ -1811,10 +1524,41 @@ resource RenderSettings {
   field bakedLighting bool "Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map: to compare, or to see the realtime lights alone." {
     default true
   }
+  field quality QualityPreset "The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to msaaSamples), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set."
+  field rectShadows bool "Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off: a rect light's shadow is the costliest light in the frame." {
+    default true
+  }
+  field shadowedLights u32 "At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.shadowedLights caps it); 0 casts none. The directional light's cascades are not counted." {
+    default 8
+    min 0
+    max 8
+  }
+  field shadowMapScale f32 "The shadow maps at this fraction of their full side: the directional light's cascades (2048 texels by default) and the local lights' layers (512), each kept within 64 texels and the device's limit (4096 for the cascades). Changing it makes the maps again at the next frame; RenderCapabilities.shadowMapSize is the cascades' side drawn." {
+    default 1
+    min 0.125
+    max 4
+  }
+  field volumetricFog bool "An og.VolumetricFog is drawn lit, with its light shafts; false draws the same medium as plain distance and height fog." {
+    default true
+  }
+  field softParticles bool "Particles with a softDistance fade against the scene behind them; false draws them hard-edged and asks no depth prepass for them." {
+    default true
+  }
+  field screenSpaceReflections bool "PostEffects.ssr draws (on the full tier); false leaves smooth surfaces the reflection probes' and the environment's reflection. PostEffects keeps its settings either way." {
+    default true
+  }
+  field ambientOcclusion bool "PostEffects.ao darkens creases; false draws none. PostEffects keeps its settings either way." {
+    default true
+  }
+  field msaaSamples u32 "Samples per pixel where the antialiasing multisamples (msaa, the WebGL2 tier's choice; RenderCapabilities.antialias): 4, or 1, which draws FXAA instead. TAA, FXAA and no antialiasing take one sample whatever it says. Changing it makes the multisampled targets and pipelines again at the next frame." {
+    default 4
+    min 1
+    max 4
+  }
 }
 ```
 
-<sub>`api.ogt` line 2640</sub>
+<sub>`api.ogt` line 2662</sub>
 
 <a id="record-Environment"></a>
 
@@ -1854,7 +1598,7 @@ resource Environment {
 }
 ```
 
-<sub>`api.ogt` line 2725</sub>
+<sub>`api.ogt` line 2778</sub>
 
 <a id="record-PostEffects"></a>
 
@@ -2129,7 +1873,7 @@ resource PostEffects {
 }
 ```
 
-<sub>`api.ogt` line 2805</sub>
+<sub>`api.ogt` line 2858</sub>
 
 <a id="record-Stylise"></a>
 
@@ -2384,7 +2128,7 @@ resource Stylise {
 }
 ```
 
-<sub>`api.ogt` line 3054</sub>
+<sub>`api.ogt` line 3107</sub>
 
 <a id="record-MaterialStyle"></a>
 
@@ -2449,7 +2193,7 @@ resource MaterialStyle {
 }
 ```
 
-<sub>`api.ogt` line 3247</sub>
+<sub>`api.ogt` line 3300</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -2488,7 +2232,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 3297</sub>
+<sub>`api.ogt` line 3350</sub>
 
 <a id="record-Light2D"></a>
 
@@ -2539,7 +2283,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 3316</sub>
+<sub>`api.ogt` line 3369</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -2570,7 +2314,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 3346</sub>
+<sub>`api.ogt` line 3399</sub>
 
 <a id="record-Decal"></a>
 
@@ -2625,7 +2369,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 3360</sub>
+<sub>`api.ogt` line 3413</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -2662,7 +2406,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 3394</sub>
+<sub>`api.ogt` line 3447</sub>
 
 <a id="record-Trail"></a>
 
@@ -2738,7 +2482,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 3410</sub>
+<sub>`api.ogt` line 3463</sub>
 
 <a id="record-Beam"></a>
 
@@ -2804,7 +2548,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 3458</sub>
+<sub>`api.ogt` line 3511</sub>
 
 <a id="record-Sprite"></a>
 
@@ -2939,7 +2683,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 3666</sub>
+<sub>`api.ogt` line 3719</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -2987,7 +2731,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 3754</sub>
+<sub>`api.ogt` line 3807</sub>
 
 <a id="record-ReflectionProbe"></a>
 
@@ -3040,7 +2784,7 @@ component ReflectionProbe {
 }
 ```
 
-<sub>`api.ogt` line 3979</sub>
+<sub>`api.ogt` line 4032</sub>
 
 <a id="record-Lines"></a>
 
@@ -3103,7 +2847,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 4746</sub>
+<sub>`api.ogt` line 4533</sub>
 
 <a id="record-Points"></a>
 
@@ -3157,7 +2901,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 4783</sub>
+<sub>`api.ogt` line 4570</sub>
 
 <a id="record-CameraView"></a>
 
@@ -3264,7 +3008,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 4906</sub>
+<sub>`api.ogt` line 4693</sub>
 
 <a id="record-Mirror"></a>
 
@@ -3309,7 +3053,7 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 4978</sub>
+<sub>`api.ogt` line 4765</sub>
 
 <a id="record-RectLight"></a>
 
@@ -3359,7 +3103,7 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 5040</sub>
+<sub>`api.ogt` line 4827</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -3393,7 +3137,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 5067</sub>
+<sub>`api.ogt` line 4854</sub>
 
 ## Types
 
@@ -3936,6 +3680,58 @@ enum ToneMapping {
 
 <sub>`api.ogt` line 2626</sub>
 
+<a id="type-GraphicsQuality"></a>
+
+### `GraphicsQuality` (enum)
+
+A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). The settings screen (og.ui.settingsScreen) offers the three.
+
+A string: one of the variants below. The zero value is `"medium"`.
+
+| Variant | Doc |
+|---|---|
+| `"medium"` | The full frame: every quality field at its default. |
+| `"low"` | The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections or ambient occlusion, FXAA for MSAA. |
+| `"high"` | The full frame with the shadow maps at twice their side. |
+
+```ogt
+enum GraphicsQuality {
+  doc "A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). The settings screen (og.ui.settingsScreen) offers the three."
+  variant medium "The full frame: every quality field at its default."
+  variant low "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections or ambient occlusion, FXAA for MSAA."
+  variant high "The full frame with the shadow maps at twice their side."
+}
+```
+
+<sub>`api.ogt` line 2640</sub>
+
+<a id="type-QualityPreset"></a>
+
+### `QualityPreset` (enum)
+
+The preset RenderSettings' quality fields were last written with (RenderSettings.quality).
+
+A string: one of the variants below. The zero value is `"none"`.
+
+| Variant | Doc |
+|---|---|
+| `"none"` | No preset applied: the fields are their defaults or the game's own. |
+| `"low"` | og.render.applyQuality(world, "low"). |
+| `"medium"` | og.render.applyQuality(world, "medium"). |
+| `"high"` | og.render.applyQuality(world, "high"). |
+
+```ogt
+enum QualityPreset {
+  doc "The preset RenderSettings' quality fields were last written with (RenderSettings.quality)."
+  variant none "No preset applied: the fields are their defaults or the game's own."
+  variant low "og.render.applyQuality(world, \"low\")."
+  variant medium "og.render.applyQuality(world, \"medium\")."
+  variant high "og.render.applyQuality(world, \"high\")."
+}
+```
+
+<sub>`api.ogt` line 2647</sub>
+
 <a id="type-Lut"></a>
 
 ### `Lut` (handle)
@@ -3948,7 +3744,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
 ```
 
-<sub>`api.ogt` line 2700</sub>
+<sub>`api.ogt` line 2753</sub>
 
 <a id="type-EnvironmentMap"></a>
 
@@ -3962,7 +3758,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle EnvironmentMap "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`, a KTX2 cube map, or six face images)."
 ```
 
-<sub>`api.ogt` line 2701</sub>
+<sub>`api.ogt` line 2754</sub>
 
 <a id="type-ParticleEmitter"></a>
 
@@ -3976,7 +3772,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
 ```
 
-<sub>`api.ogt` line 2702</sub>
+<sub>`api.ogt` line 2755</sub>
 
 <a id="type-AoMethod"></a>
 
@@ -4001,7 +3797,7 @@ enum AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 2752</sub>
+<sub>`api.ogt` line 2805</sub>
 
 <a id="type-DofQuality"></a>
 
@@ -4024,7 +3820,7 @@ enum DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2766</sub>
+<sub>`api.ogt` line 2819</sub>
 
 <a id="type-SpriteBlend"></a>
 
@@ -4047,7 +3843,7 @@ enum SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2779</sub>
+<sub>`api.ogt` line 2832</sub>
 
 <a id="type-StripBlend"></a>
 
@@ -4070,7 +3866,7 @@ enum StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2792</sub>
+<sub>`api.ogt` line 2845</sub>
 
 <a id="type-Palette"></a>
 
@@ -4084,7 +3880,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Palette "A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours)."
 ```
 
-<sub>`api.ogt` line 3013</sub>
+<sub>`api.ogt` line 3066</sub>
 
 <a id="type-Look"></a>
 
@@ -4098,7 +3894,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Look "A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook."
 ```
 
-<sub>`api.ogt` line 3014</sub>
+<sub>`api.ogt` line 3067</sub>
 
 <a id="type-DitherPattern"></a>
 
@@ -4129,7 +3925,7 @@ enum DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 3023</sub>
+<sub>`api.ogt` line 3076</sub>
 
 <a id="type-StyliseSpace"></a>
 
@@ -4154,7 +3950,7 @@ enum StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 3040</sub>
+<sub>`api.ogt` line 3093</sub>
 
 <a id="type-LookInfo"></a>
 
@@ -4185,7 +3981,7 @@ struct LookInfo {
 }
 ```
 
-<sub>`api.ogt` line 3286</sub>
+<sub>`api.ogt` line 3339</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -4225,7 +4021,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 3498</sub>
+<sub>`api.ogt` line 3551</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -4256,7 +4052,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 3519</sub>
+<sub>`api.ogt` line 3572</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -4318,7 +4114,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3538</sub>
+<sub>`api.ogt` line 3591</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -4347,7 +4143,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 3572</sub>
+<sub>`api.ogt` line 3625</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -4370,7 +4166,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 3583</sub>
+<sub>`api.ogt` line 3636</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -4481,7 +4277,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 3590</sub>
+<sub>`api.ogt` line 3643</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -4569,7 +4365,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3781</sub>
+<sub>`api.ogt` line 3834</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -4611,7 +4407,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3853</sub>
+<sub>`api.ogt` line 3906</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -4647,7 +4443,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3876</sub>
+<sub>`api.ogt` line 3929</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -4687,7 +4483,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3894</sub>
+<sub>`api.ogt` line 3947</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -4716,7 +4512,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 | `maxLightCookies` | `number` | `0` | — | — | — | The most light cookie layers one frame draws (24 on every tier): a SpotLight.cookie takes one, a PointLight.cookie six (its cube's faces), and a texture several lights of one kind share takes its layers once. Cookies past it, in the order of their lights' entities, are not drawn: those lights shine without them, and the log names them in a warning. |
 | `gpuTimestamps` | `boolean` | `false` | — | — | — | Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2, and never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true. |
 | `spriteAnisotropy` | `number` | `0` | — | — | — | The anisotropic filtering of sprites and og.ui's images (text is not filtered anisotropically: its distance field would lose its edge): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, WebGL2 with EXT_texture_filter_anisotropic), 1 where it has none and on a software rasterizer (the vulkan-cpu tier: lavapipe's anisotropic filter softens even an image drawn 1:1), 0 without a renderer. Above 1, an image squeezed along one axis keeps the other axis's detail: a style's nine-slice middle squeezed into a short button keeps its outline as crisp as the corners. At 1 the squeezed piece reads a smaller mip level and blurs; og.ui bounds a middle's squeeze at twice its art, so the outline there is one mip level softer than the corners. |
-| `world3d` | `boolean` | `false` | — | — | — | Whether the renderer draws the 3D world subsystems: terrain, planar water (og.Water), the 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, which leave them out (a scene's are not drawn); true in the 3D modules, the dev module and the native host. |
+| `world3d` | `boolean` | `false` | — | — | — | Whether the renderer draws the 3D world subsystems: terrain, planar water (og.Water), the 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, which leave them out (a scene's are not drawn, og.terrain's calls and a SHAPE_HEIGHTFIELD collider answer a refusal naming this field, and `og build --publish` refuses a 2D project whose scenes hold og.Terrain, og.TerrainScatter, og.Water, og.WaterSurface or og.Fluid3D, by scene file and line); true in the 3D modules, the dev module and the native host. |
 
 ```ogt
 struct RenderCapabilities {
@@ -4740,11 +4536,11 @@ struct RenderCapabilities {
   field maxLightCookies u32 "The most light cookie layers one frame draws (24 on every tier): a SpotLight.cookie takes one, a PointLight.cookie six (its cube's faces), and a texture several lights of one kind share takes its layers once. Cookies past it, in the order of their lights' entities, are not drawn: those lights shine without them, and the log names them in a warning."
   field gpuTimestamps bool "Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never WebGL2, and never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true."
   field spriteAnisotropy u32 "The anisotropic filtering of sprites and og.ui's images (text is not filtered anisotropically: its distance field would lose its edge): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, WebGL2 with EXT_texture_filter_anisotropic), 1 where it has none and on a software rasterizer (the vulkan-cpu tier: lavapipe's anisotropic filter softens even an image drawn 1:1), 0 without a renderer. Above 1, an image squeezed along one axis keeps the other axis's detail: a style's nine-slice middle squeezed into a short button keeps its outline as crisp as the corners. At 1 the squeezed piece reads a smaller mip level and blurs; og.ui bounds a middle's squeeze at twice its art, so the outline there is one mip level softer than the corners."
-  field world3d bool "Whether the renderer draws the 3D world subsystems: terrain, planar water (og.Water), the 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, which leave them out (a scene's are not drawn); true in the 3D modules, the dev module and the native host."
+  field world3d bool "Whether the renderer draws the 3D world subsystems: terrain, planar water (og.Water), the 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, which leave them out (a scene's are not drawn, og.terrain's calls and a SHAPE_HEIGHTFIELD collider answer a refusal naming this field, and `og build --publish` refuses a 2D project whose scenes hold og.Terrain, og.TerrainScatter, og.Water, og.WaterSurface or og.Fluid3D, by scene file and line); true in the 3D modules, the dev module and the native host."
 }
 ```
 
-<sub>`api.ogt` line 3940</sub>
+<sub>`api.ogt` line 3993</sub>
 
 <a id="type-ReflectionProbeMode"></a>
 
@@ -4767,7 +4563,7 @@ enum ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 3966</sub>
+<sub>`api.ogt` line 4019</sub>
 
 <a id="type-Shader"></a>
 
@@ -4781,7 +4577,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read."
 ```
 
-<sub>`api.ogt` line 4026</sub>
+<sub>`api.ogt` line 4079</sub>
 
 <a id="type-BufferGeometryDesc"></a>
 
@@ -4822,7 +4618,7 @@ struct BufferGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4081</sub>
+<sub>`api.ogt` line 4152</sub>
 
 <a id="type-GeometryInfo"></a>
 
@@ -4853,7 +4649,7 @@ struct GeometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 4097</sub>
+<sub>`api.ogt` line 4168</sub>
 
 <a id="type-CylinderGeometryDesc"></a>
 
@@ -4912,7 +4708,7 @@ struct CylinderGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4132</sub>
+<sub>`api.ogt` line 4203</sub>
 
 <a id="type-ConeGeometryDesc"></a>
 
@@ -4956,7 +4752,7 @@ struct ConeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4168</sub>
+<sub>`api.ogt` line 4239</sub>
 
 <a id="type-CapsuleGeometryDesc"></a>
 
@@ -5003,7 +4799,7 @@ struct CapsuleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4192</sub>
+<sub>`api.ogt` line 4263</sub>
 
 <a id="type-TorusGeometryDesc"></a>
 
@@ -5050,7 +4846,7 @@ struct TorusGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4219</sub>
+<sub>`api.ogt` line 4290</sub>
 
 <a id="type-RingGeometryDesc"></a>
 
@@ -5101,7 +4897,7 @@ struct RingGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4246</sub>
+<sub>`api.ogt` line 4317</sub>
 
 <a id="type-CircleGeometryDesc"></a>
 
@@ -5141,7 +4937,7 @@ struct CircleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4276</sub>
+<sub>`api.ogt` line 4347</sub>
 
 <a id="type-TubeGeometryDesc"></a>
 
@@ -5185,468 +4981,7 @@ struct TubeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4297</sub>
-
-<a id="type-ShapePoints"></a>
-
-### `ShapePoints` (struct)
-
-A shape as points, what og.Shape.extractPoints returns and what shapeGeometry, extrudeGeometry and sweepGeometry read: the outline, then each hole. A repeated closing point is dropped, as three.js drops it.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `shape` | `readonly Vector2[]` | `[]` | — | — | — | The outline's points, in order. |
-| `holes` | `readonly (readonly Vector2[])[]` | `[]` | — | — | — | Each hole's points, in order. |
-
-```ogt
-struct ShapePoints {
-  doc "A shape as points, what og.Shape.extractPoints returns and what shapeGeometry, extrudeGeometry and sweepGeometry read: the outline, then each hole. A repeated closing point is dropped, as three.js drops it."
-  field shape List.Vector2 "The outline's points, in order."
-  field holes List.List.Vector2 "Each hole's points, in order."
-}
-```
-
-<sub>`api.ogt` line 4371</sub>
-
-<a id="type-ShapeGeometryDesc"></a>
-
-### `ShapeGeometryDesc` (desc struct)
-
-A flat shape with holes in the xy plane facing +Z, as three.js ShapeGeometry(shapes, curveSegments): triangulated by earcut (three.js's own port), the outline made clockwise and the holes counter-clockwise first, so its vertices and triangles are three.js's for the same shape. uvs are world x and y (v flipped to run down the image).
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `shapes` | `Path2 \| readonly Path2[] \| readonly Vector2[] \| null` | `null` | — | — | — | One og.Shape (an og.Path2 is a shape without holes), a list of them, or the outline's points. Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5). |
-| `curveSegments` | `number` | `12` | ≥ 1 | — | — | Points per curve when an og.Shape's curves are flattened (three.js extractPoints(curveSegments); an ellipse takes twice as many, a spline as many per point). |
-| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too (BufferGeometryDesc.physics). |
-| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later (BufferGeometryDesc.dynamic). |
-
-```ogt
-struct ShapeGeometryDesc {
-  doc "A flat shape with holes in the xy plane facing +Z, as three.js ShapeGeometry(shapes, curveSegments): triangulated by earcut (three.js's own port), the outline made clockwise and the holes counter-clockwise first, so its vertices and triangles are three.js's for the same shape. uvs are world x and y (v flipped to run down the image)."
-  desc true
-  field shapes Option.OneOf.Path2.OneOf.List.Path2.List.Vector2 "One og.Shape (an og.Path2 is a shape without holes), a list of them, or the outline's points. Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5)."
-  field curveSegments u32 "Points per curve when an og.Shape's curves are flattened (three.js extractPoints(curveSegments); an ellipse takes twice as many, a spline as many per point)." {
-    default 12
-    min 1
-  }
-  field physics bool "Register it as a physics mesh too (BufferGeometryDesc.physics)." {
-    default true
-  }
-  field dynamic bool "Whether og.render.updateGeometry may rewrite it later (BufferGeometryDesc.dynamic)."
-}
-```
-
-<sub>`api.ogt` line 4377</sub>
-
-<a id="type-ExtrudeGeometryDesc"></a>
-
-### `ExtrudeGeometryDesc` (desc struct)
-
-Shapes pushed along +Z, or along a path, as three.js ExtrudeGeometry(shapes, options) with its option names and defaults: a closed solid, its lids from earcut and its walls ring by ring, rounded by a bevel of bevelSegments rings at each face. Unindexed as three.js's (every triangle its own vertices, flat normals), three.js's vertex order and counts; uvs from three.js's WorldUVGenerator (v flipped to run down the image).
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `shapes` | `Path2 \| readonly Path2[] \| readonly Vector2[] \| null` | `null` | — | — | — | One og.Shape, a list of them, or the outline's points. Without it, three.js's default square of side 1. |
-| `depth` | `number` | `1` | ≥ 0 | `m` | — | How far the shape is pushed along +Z (without extrudePath). |
-| `steps` | `number` | `1` | ≥ 1 | — | — | Rings along the depth or the path. |
-| `bevelEnabled` | `boolean` | `true` | — | — | — | Round the edges of both faces. |
-| `bevelThickness` | `number` | `0.2` | ≥ 0 | `m` | — | How far the bevel reaches beyond each face, along z. |
-| `bevelSize` | `number` | `0.1` | — | `m` | — | How far the bevel reaches out from the outline. Unset, bevelThickness - 0.1 (three.js's default; 0.1 with the default thickness). |
-| `bevelOffset` | `number` | `0` | — | `m` | — | How far the bevel starts out from the outline. |
-| `bevelSegments` | `number` | `3` | ≥ 1 | — | — | Rings in each bevel. |
-| `curveSegments` | `number` | `12` | ≥ 1 | — | — | Points per curve when an og.Shape's curves are flattened. |
-| `extrudePath` | `Path` | `0` | — | — | — | A path (og.path.create or og.path.find) to extrude along instead of +Z: the shape's x along the path's normal and y along its binormal (three.js's Frenet frames), steps rings evenly spaced along it. A path turns the bevel off, as three.js. 0 extrudes along +Z. |
-| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
-| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
-
-```ogt
-struct ExtrudeGeometryDesc {
-  doc "Shapes pushed along +Z, or along a path, as three.js ExtrudeGeometry(shapes, options) with its option names and defaults: a closed solid, its lids from earcut and its walls ring by ring, rounded by a bevel of bevelSegments rings at each face. Unindexed as three.js's (every triangle its own vertices, flat normals), three.js's vertex order and counts; uvs from three.js's WorldUVGenerator (v flipped to run down the image)."
-  desc true
-  field shapes Option.OneOf.Path2.OneOf.List.Path2.List.Vector2 "One og.Shape, a list of them, or the outline's points. Without it, three.js's default square of side 1."
-  field depth f32 "How far the shape is pushed along +Z (without extrudePath)." {
-    default 1
-    min 0
-    unit m
-  }
-  field steps u32 "Rings along the depth or the path." {
-    default 1
-    min 1
-  }
-  field bevelEnabled bool "Round the edges of both faces." {
-    default true
-  }
-  field bevelThickness f32 "How far the bevel reaches beyond each face, along z." {
-    default 0.2
-    min 0
-    unit m
-  }
-  field bevelSize f32 "How far the bevel reaches out from the outline. Unset, bevelThickness - 0.1 (three.js's default; 0.1 with the default thickness)." {
-    default 0.1
-    unit m
-  }
-  field bevelOffset f32 "How far the bevel starts out from the outline." {
-    unit m
-  }
-  field bevelSegments u32 "Rings in each bevel." {
-    default 3
-    min 1
-  }
-  field curveSegments u32 "Points per curve when an og.Shape's curves are flattened." {
-    default 12
-    min 1
-  }
-  field extrudePath Path "A path (og.path.create or og.path.find) to extrude along instead of +Z: the shape's x along the path's normal and y along its binormal (three.js's Frenet frames), steps rings evenly spaced along it. A path turns the bevel off, as three.js. 0 extrudes along +Z."
-  field physics bool "Register it as a physics mesh too." {
-    default true
-  }
-  field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
-}
-```
-
-<sub>`api.ogt` line 4391</sub>
-
-<a id="type-LatheGeometryDesc"></a>
-
-### `LatheGeometryDesc` (desc struct)
-
-A profile turned round +Y, as three.js LatheGeometry(points, segments, phiStart, phiLength): vases, bottles, columns, wheels. three.js's vertices, indices and smooth normals; u round the axis, v along the profile (flipped to run down the image). A whole turn's seam meets exactly.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `points` | `readonly Vector2[]` | `[]` | — | `m` | — | The profile, x the distance from the axis and y the height, in order (at least two). Without it, three.js's default (0, -0.5), (0.5, 0), (0, 0.5). |
-| `segments` | `number` | `12` | ≥ 1 | — | — | Segments round the axis. |
-| `phiStart` | `number` | `0` | — | `rad` | — | Where the turn starts, from +Z towards +X. |
-| `phiLength` | `number` | `6.283185307179586` | — | `rad` | — | How far it turns; 2 pi is whole (clamped to it). |
-| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
-| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
-
-```ogt
-struct LatheGeometryDesc {
-  doc "A profile turned round +Y, as three.js LatheGeometry(points, segments, phiStart, phiLength): vases, bottles, columns, wheels. three.js's vertices, indices and smooth normals; u round the axis, v along the profile (flipped to run down the image). A whole turn's seam meets exactly."
-  desc true
-  field points List.Vector2 "The profile, x the distance from the axis and y the height, in order (at least two). Without it, three.js's default (0, -0.5), (0.5, 0), (0, 0.5)." {
-    unit m
-  }
-  field segments u32 "Segments round the axis." {
-    default 12
-    min 1
-  }
-  field phiStart f32 "Where the turn starts, from +Z towards +X." {
-    unit rad
-  }
-  field phiLength f32 "How far it turns; 2 pi is whole (clamped to it)." {
-    default 6.283185307179586
-    unit rad
-  }
-  field physics bool "Register it as a physics mesh too." {
-    default true
-  }
-  field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
-}
-```
-
-<sub>`api.ogt` line 4434</sub>
-
-<a id="type-PolyhedronGeometryDesc"></a>
-
-### `PolyhedronGeometryDesc` (desc struct)
-
-A polyhedron from vertices and faces, every face subdivided `detail` times and every vertex pushed onto the sphere of `radius`, as three.js PolyhedronGeometry(vertices, indices, radius, detail): unindexed, flat normals at detail 0 and the sphere's above, three.js's spherical uvs.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `vertices` | `readonly number[]` | `[]` | — | — | — | The corners, x y z each (three.js's flat array). |
-| `indices` | `readonly number[]` | `[]` | — | — | — | The faces, three corner indices each, counter-clockwise seen from outside. |
-| `radius` | `number` | `1` | ≥ 0 | `m` | — | The sphere the vertices are pushed onto. |
-| `detail` | `number` | `0` | ≤ 64 | — | — | Subdivisions of each face: (detail + 1)² triangles a face. |
-| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
-| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
-
-```ogt
-struct PolyhedronGeometryDesc {
-  doc "A polyhedron from vertices and faces, every face subdivided `detail` times and every vertex pushed onto the sphere of `radius`, as three.js PolyhedronGeometry(vertices, indices, radius, detail): unindexed, flat normals at detail 0 and the sphere's above, three.js's spherical uvs."
-  desc true
-  field vertices List.f32 "The corners, x y z each (three.js's flat array)."
-  field indices List.u32 "The faces, three corner indices each, counter-clockwise seen from outside."
-  field radius f32 "The sphere the vertices are pushed onto." {
-    default 1
-    min 0
-    unit m
-  }
-  field detail u32 "Subdivisions of each face: (detail + 1)² triangles a face." {
-    max 64
-  }
-  field physics bool "Register it as a physics mesh too." {
-    default true
-  }
-  field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
-}
-```
-
-<sub>`api.ogt` line 4457</sub>
-
-<a id="type-SolidGeometryDesc"></a>
-
-### `SolidGeometryDesc` (desc struct)
-
-A regular solid, as three.js IcosahedronGeometry, DodecahedronGeometry, OctahedronGeometry and TetrahedronGeometry(radius, detail): PolyhedronGeometryDesc with the solid's own vertices and faces. An icosahedron at detail 2 or more is a sphere with even triangles.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `radius` | `number` | `1` | ≥ 0 | `m` | — | The radius. |
-| `detail` | `number` | `0` | ≤ 64 | — | — | Subdivisions of each face. |
-| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
-| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
-
-```ogt
-struct SolidGeometryDesc {
-  doc "A regular solid, as three.js IcosahedronGeometry, DodecahedronGeometry, OctahedronGeometry and TetrahedronGeometry(radius, detail): PolyhedronGeometryDesc with the solid's own vertices and faces. An icosahedron at detail 2 or more is a sphere with even triangles."
-  desc true
-  field radius f32 "The radius." {
-    default 1
-    min 0
-    unit m
-  }
-  field detail u32 "Subdivisions of each face." {
-    max 64
-  }
-  field physics bool "Register it as a physics mesh too." {
-    default true
-  }
-  field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
-}
-```
-
-<sub>`api.ogt` line 4476</sub>
-
-<a id="type-SweepKey"></a>
-
-### `SweepKey` (struct)
-
-A value at a fraction of a sweep's path: linear between keys, held before the first and past the last.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `t` | `number` | `0` | — | `ratio` | — | The fraction of the path's length, 0 to 1. |
-| `value` | `number` | `0` | — | — | — | The value there. |
-
-```ogt
-struct SweepKey {
-  doc "A value at a fraction of a sweep's path: linear between keys, held before the first and past the last."
-  field t f32 "The fraction of the path's length, 0 to 1." {
-    unit ratio
-  }
-  field value f32 "The value there."
-}
-```
-
-<sub>`api.ogt` line 4493</sub>
-
-<a id="type-SweepGeometryDesc"></a>
-
-### `SweepGeometryDesc` (desc struct)
-
-A section swept along a path, scaled and twisted over it: horns, tusks, handles, blades, tapered pipes, twisted columns (img2threejs's tapered sweep; three.js has no class for it). The section's x lies along the path's normal and y along its binormal (three.js's Frenet frames), rings evenly spaced along the path's length; u runs along the path, v round the section (flipped to run down the image), the sides smooth. An open path's ends are capped.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `section` | `Path2 \| readonly Vector2[] \| null` | `null` | — | — | — | The section's outline: an og.Shape or og.Path2 (flattened by curveSegments; holes are not swept) or its points, at least three, either winding. |
-| `path` | `Path` | `0` | — | — | — | The path (og.path.create or og.path.find). |
-| `steps` | `number` | `64` | ≥ 1 | — | — | Rings along the path, less one. |
-| `scale` | `readonly SweepKey[]` | `[]` | — | — | — | The section's scale over the path (none: 1 throughout). A horn: [{ t: 0, value: 1 }, { t: 1, value: 0.05 }]. |
-| `twist` | `readonly SweepKey[]` | `[]` | — | — | — | The section's turn round the path over its length, in radians (none: 0). |
-| `caps` | `boolean` | `true` | — | — | — | Close the ends of an open path. |
-| `curveSegments` | `number` | `12` | ≥ 1 | — | — | Points per curve when an og.Shape section is flattened. |
-| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
-| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
-
-```ogt
-struct SweepGeometryDesc {
-  doc "A section swept along a path, scaled and twisted over it: horns, tusks, handles, blades, tapered pipes, twisted columns (img2threejs's tapered sweep; three.js has no class for it). The section's x lies along the path's normal and y along its binormal (three.js's Frenet frames), rings evenly spaced along the path's length; u runs along the path, v round the section (flipped to run down the image), the sides smooth. An open path's ends are capped."
-  desc true
-  field section Option.OneOf.Path2.List.Vector2 "The section's outline: an og.Shape or og.Path2 (flattened by curveSegments; holes are not swept) or its points, at least three, either winding."
-  field path Path "The path (og.path.create or og.path.find)."
-  field steps u32 "Rings along the path, less one." {
-    default 64
-    min 1
-  }
-  field scale List.SweepKey "The section's scale over the path (none: 1 throughout). A horn: [{ t: 0, value: 1 }, { t: 1, value: 0.05 }]."
-  field twist List.SweepKey "The section's turn round the path over its length, in radians (none: 0)."
-  field caps bool "Close the ends of an open path." {
-    default true
-  }
-  field curveSegments u32 "Points per curve when an og.Shape section is flattened." {
-    default 12
-    min 1
-  }
-  field physics bool "Register it as a physics mesh too." {
-    default true
-  }
-  field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
-}
-```
-
-<sub>`api.ogt` line 4501</sub>
-
-<a id="type-MirrorAxis"></a>
-
-### `MirrorAxis` (enum)
-
-The world axis a part is mirrored along, after its placement.
-
-A string: one of the variants below. The zero value is `"none"`.
-
-| Variant | Doc |
-|---|---|
-| `"none"` | Not mirrored. |
-| `"x"` | x negated: the mirror image across the yz plane. |
-| `"y"` | y negated: across the xz plane. |
-| `"z"` | z negated: across the xy plane. |
-
-```ogt
-enum MirrorAxis {
-  doc "The world axis a part is mirrored along, after its placement."
-  variant none "Not mirrored."
-  variant x "x negated: the mirror image across the yz plane."
-  variant y "y negated: across the xz plane."
-  variant z "z negated: across the xy plane."
-}
-```
-
-<sub>`api.ogt` line 4525</sub>
-
-<a id="type-GeometryPart"></a>
-
-### `GeometryPart` (desc struct)
-
-A geometry placed as an Object3D is (scale, then rotate, then move), then mirrored: one part of og.render.mergeGeometries or an operand of og.render.csgGeometry.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `geometry` | `Geometry` | `0` | — | — | — | Any geometry: made, a primitive or a loaded glTF's. |
-| `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where it goes. |
-| `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | How it turns. |
-| `scale` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | — | — | — | Its scale (a negative component mirrors it as `mirror` does). |
-| `mirror` | `MirrorAxis` | `"none"` | — | — | — | Mirror it along a world axis after placing it: a symmetric prop is one half twice, the second mirrored. |
-
-```ogt
-struct GeometryPart {
-  doc "A geometry placed as an Object3D is (scale, then rotate, then move), then mirrored: one part of og.render.mergeGeometries or an operand of og.render.csgGeometry."
-  desc true
-  field geometry Geometry "Any geometry: made, a primitive or a loaded glTF's."
-  field position Vector3 "Where it goes." {
-    unit m
-  }
-  field quaternion Quaternion "How it turns."
-  field scale Vector3 "Its scale (a negative component mirrors it as `mirror` does)." {
-    default 1 1 1
-  }
-  field mirror MirrorAxis "Mirror it along a world axis after placing it: a symmetric prop is one half twice, the second mirrored."
-}
-```
-
-<sub>`api.ogt` line 4533</sub>
-
-<a id="type-CsgOp"></a>
-
-### `CsgOp` (enum)
-
-A boolean operation on two solids.
-
-A string: one of the variants below. The zero value is `"union"`.
-
-| Variant | Doc |
-|---|---|
-| `"union"` | Everything in either: a + b. |
-| `"subtract"` | What of a is not in b: a - b (holes, notches, a dice's pips). |
-| `"intersect"` | What is in both. |
-
-```ogt
-enum CsgOp {
-  doc "A boolean operation on two solids."
-  variant union "Everything in either: a + b."
-  variant subtract "What of a is not in b: a - b (holes, notches, a dice's pips)."
-  variant intersect "What is in both."
-}
-```
-
-<sub>`api.ogt` line 4547</sub>
-
-<a id="type-CsgGeometryDesc"></a>
-
-### `CsgGeometryDesc` (desc struct)
-
-Two closed geometries combined by a boolean operation, each placed first: a box with a hole bored through it, a dice, a window cut in a wall. The result is closed when both are (every edge shared by two triangles, wound opposite), every piece keeps its source's normals, uvs and colours (b's turned inside out where it is subtracted). Where a plane side or an edge crossing is decided, the decision is exact (Shewchuk's predicates), so every host makes the same cuts; faces that coincide keep one copy or none, as the operation says.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `op` | `CsgOp` | `"union"` | — | — | — | The operation. |
-| `a` | `GeometryPart` | `{}` | — | — | — | The first operand. |
-| `b` | `GeometryPart` | `{}` | — | — | — | The second operand. |
-| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
-| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
-
-```ogt
-struct CsgGeometryDesc {
-  doc "Two closed geometries combined by a boolean operation, each placed first: a box with a hole bored through it, a dice, a window cut in a wall. The result is closed when both are (every edge shared by two triangles, wound opposite), every piece keeps its source's normals, uvs and colours (b's turned inside out where it is subtracted). Where a plane side or an edge crossing is decided, the decision is exact (Shewchuk's predicates), so every host makes the same cuts; faces that coincide keep one copy or none, as the operation says."
-  desc true
-  field op CsgOp "The operation."
-  field a GeometryPart "The first operand."
-  field b GeometryPart "The second operand."
-  field physics bool "Register it as a physics mesh too." {
-    default true
-  }
-  field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
-}
-```
-
-<sub>`api.ogt` line 4554</sub>
-
-<a id="type-MergeGeometriesDesc"></a>
-
-### `MergeGeometriesDesc` (desc struct)
-
-Geometries placed and merged into one, as three.js BufferGeometryUtils.mergeGeometries after applying each part's matrix: a prop of parts drawn in one draw, a mirrored half, an array (the same part at several placements). Normals follow each placement; a mirrored part turns its triangles so they still face out. Vertex colours are kept when any part has them.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `parts` | `readonly GeometryPart[]` | `[]` | — | — | — | The parts, in order (at least one). |
-| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
-| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
-
-```ogt
-struct MergeGeometriesDesc {
-  doc "Geometries placed and merged into one, as three.js BufferGeometryUtils.mergeGeometries after applying each part's matrix: a prop of parts drawn in one draw, a mirrored half, an array (the same part at several placements). Normals follow each placement; a mirrored part turns its triangles so they still face out. Vertex colours are kept when any part has them."
-  desc true
-  field parts List.GeometryPart "The parts, in order (at least one)."
-  field physics bool "Register it as a physics mesh too." {
-    default true
-  }
-  field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
-}
-```
-
-<sub>`api.ogt` line 4566</sub>
+<sub>`api.ogt` line 4368</sub>
 
 <a id="type-LineMode"></a>
 
@@ -5671,7 +5006,7 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4653</sub>
+<sub>`api.ogt` line 4440</sub>
 
 <a id="type-LinesDesc"></a>
 
@@ -5737,7 +5072,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 4667</sub>
+<sub>`api.ogt` line 4454</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -5788,7 +5123,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 4711</sub>
+<sub>`api.ogt` line 4498</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -5821,7 +5156,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4814</sub>
+<sub>`api.ogt` line 4601</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -5856,7 +5191,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 4828</sub>
+<sub>`api.ogt` line 4615</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -5879,7 +5214,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4853</sub>
+<sub>`api.ogt` line 4640</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -5893,7 +5228,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 4866</sub>
+<sub>`api.ogt` line 4653</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -5927,7 +5262,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 4875</sub>
+<sub>`api.ogt` line 4662</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -5954,7 +5289,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 4890</sub>
+<sub>`api.ogt` line 4677</sub>
 
 <a id="type-Post"></a>
 
@@ -5968,7 +5303,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 5002</sub>
+<sub>`api.ogt` line 4789</sub>
 
 <a id="type-PostError"></a>
 
@@ -5989,7 +5324,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 5020</sub>
+<sub>`api.ogt` line 4807</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -6012,7 +5347,7 @@ enum VolumetricFog {
 }
 ```
 
-<sub>`api.ogt` line 5034</sub>
+<sub>`api.ogt` line 4821</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -6045,7 +5380,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 5082</sub>
+<sub>`api.ogt` line 4869</sub>
 
 ## Column kinds
 
@@ -6056,6 +5391,7 @@ Each is a factory, `Geometry(value?, options?)`, that makes one field of a compo
 | <a id="column-Geometry"></a>`Geometry` | `Geometry` | `Uint32Array` | 2 | A Geometry handle field. |
 | <a id="column-Material"></a>`Material` | `Material` | `Uint32Array` | 2 | A Material handle field. |
 | <a id="column-ToneMapping"></a>`ToneMapping` | `ToneMapping` | `Uint32Array` | 1 | A ToneMapping field: the variant's index. |
+| <a id="column-QualityPreset"></a>`QualityPreset` | `QualityPreset` | `Uint32Array` | 1 | A QualityPreset field: the variant's index. |
 | <a id="column-Texture"></a>`Texture` | `Texture` | `Uint32Array` | 2 | A Texture handle field (0 is none). |
 | <a id="column-Lut"></a>`Lut` | `Lut` | `Uint32Array` | 2 | A Lut handle field (0 is none). |
 | <a id="column-EnvironmentMap"></a>`EnvironmentMap` | `EnvironmentMap` | `Uint32Array` | 2 | An EnvironmentMap handle field (0 is none). |
@@ -6107,6 +5443,17 @@ column ToneMapping {
 <sub>`api.ogt` line 2633</sub>
 
 ```ogt
+column QualityPreset {
+  doc "A QualityPreset field: the variant's index."
+  array Uint32Array
+  stride 1
+  value QualityPreset
+}
+```
+
+<sub>`api.ogt` line 2655</sub>
+
+```ogt
 column Texture {
   doc "A Texture handle field (0 is none)."
   array Uint32Array
@@ -6115,7 +5462,7 @@ column Texture {
 }
 ```
 
-<sub>`api.ogt` line 2704</sub>
+<sub>`api.ogt` line 2757</sub>
 
 ```ogt
 column Lut {
@@ -6126,7 +5473,7 @@ column Lut {
 }
 ```
 
-<sub>`api.ogt` line 2711</sub>
+<sub>`api.ogt` line 2764</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -6137,7 +5484,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>`api.ogt` line 2718</sub>
+<sub>`api.ogt` line 2771</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -6148,7 +5495,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>`api.ogt` line 2745</sub>
+<sub>`api.ogt` line 2798</sub>
 
 ```ogt
 column AoMethod {
@@ -6159,7 +5506,7 @@ column AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 2759</sub>
+<sub>`api.ogt` line 2812</sub>
 
 ```ogt
 column DofQuality {
@@ -6170,7 +5517,7 @@ column DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2772</sub>
+<sub>`api.ogt` line 2825</sub>
 
 ```ogt
 column SpriteBlend {
@@ -6181,7 +5528,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2785</sub>
+<sub>`api.ogt` line 2838</sub>
 
 ```ogt
 column StripBlend {
@@ -6192,7 +5539,7 @@ column StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2798</sub>
+<sub>`api.ogt` line 2851</sub>
 
 ```ogt
 column Palette {
@@ -6203,7 +5550,7 @@ column Palette {
 }
 ```
 
-<sub>`api.ogt` line 3016</sub>
+<sub>`api.ogt` line 3069</sub>
 
 ```ogt
 column DitherPattern {
@@ -6214,7 +5561,7 @@ column DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 3033</sub>
+<sub>`api.ogt` line 3086</sub>
 
 ```ogt
 column StyliseSpace {
@@ -6225,7 +5572,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 3047</sub>
+<sub>`api.ogt` line 3100</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -6236,7 +5583,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 3972</sub>
+<sub>`api.ogt` line 4025</sub>
 
 ```ogt
 column LineMode {
@@ -6247,7 +5594,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4660</sub>
+<sub>`api.ogt` line 4447</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -6258,7 +5605,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4859</sub>
+<sub>`api.ogt` line 4646</sub>
 
 ```ogt
 column RenderTarget {
@@ -6269,7 +5616,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4868</sub>
+<sub>`api.ogt` line 4655</sub>
 
 ```ogt
 column Post {
@@ -6280,7 +5627,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 5004</sub>
+<sub>`api.ogt` line 4791</sub>
 
 ## Constants
 
@@ -6296,28 +5643,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>`api.ogt` line 3392</sub>
+<sub>`api.ogt` line 3445</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3936</sub>
+<sub>`api.ogt` line 3989</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3937</sub>
+<sub>`api.ogt` line 3990</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
 ```
 
-<sub>`api.ogt` line 3938</sub>
+<sub>`api.ogt` line 3991</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>`api.ogt` line 3964</sub>
+<sub>`api.ogt` line 4017</sub>

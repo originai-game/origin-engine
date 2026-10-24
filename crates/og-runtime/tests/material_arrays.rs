@@ -213,6 +213,7 @@ fn a_material_samples_arrays_and_each_mesh_picks_its_layer() {
 }
 
 #[test]
+#[cfg(not(feature = "profile2d"))] // the 2D profile has no terrain (tests/profile2d.rs)
 fn a_terrain_samples_its_layer_arrays() {
     let (engine, seen) = engine();
     let info = value(og_runtime::og_terrain_load(

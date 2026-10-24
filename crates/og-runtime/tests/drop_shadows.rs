@@ -11,6 +11,9 @@
 //! slope handed on); an explicit dropShadowHeight above the terrain is
 //! overridden by the lower terrain; a sprite off the terrain gets the
 //! terrain's edge; og.render.sprite drops its dropShadowHeight.
+//!
+//! The 2D profile has no terrain (tests/profile2d.rs).
+#![cfg(not(feature = "profile2d"))]
 
 use og_render::{RenderScene, ShadowGround, Sprite};
 use og_runtime::{

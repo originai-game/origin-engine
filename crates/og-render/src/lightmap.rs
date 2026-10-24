@@ -560,6 +560,12 @@ impl Lightmaps {
         Some((m.pages, &self.pages.get(&m.pages)?.1))
     }
 
+    /// Forgets the lit pipelines: the renderer's samples per pixel changed
+    /// (each is made again by its next [`Self::ensure_pipeline`]).
+    pub fn forget_pipelines(&mut self) {
+        self.pipelines.clear();
+    }
+
     /// Makes the lightmapped pipeline of `family` for `key` from `module`
     /// (the family's lit module), its groups 1 and 2 laid out as
     /// `material` and `fx`.

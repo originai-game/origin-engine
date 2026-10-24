@@ -329,6 +329,40 @@ fn a_shadowed_rect_light_casts_a_soft_shadow() {
     );
 }
 
+/// The low graphics preset turns rect-light shadows off
+/// (`RenderQuality::rect_shadows`, what `og.render.applyQuality(world,
+/// low)` writes into RenderSettings): the panel that casts a shadow at
+/// the medium preset lights the post's foot as an unshadowed one does.
+/// Before the profile-quality round the preset was a UI-kit setting
+/// nothing in the engine read, and the shadow stayed.
+#[test]
+fn the_low_quality_preset_turns_rect_light_shadows_off() {
+    use og_render::{QualityPreset, RenderQuality};
+    let read = |cast: bool, preset: QualityPreset| {
+        let (mut scene, points) = og_tests::light_scenes::rect_shadow_scene(cast);
+        scene.quality = RenderQuality::preset(preset);
+        let mut built = og_tests::scenes::build("baked-cornell").expect("build");
+        built.scene = scene;
+        let img = gfx::render_built(&mut built).expect("render").image;
+        let [foot, _] = points;
+        let (x, y) = project(&built.scene.camera, foot);
+        let c = mean(&img, x - 4, y - 3, x + 4, y + 3);
+        0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    };
+    let open = read(false, QualityPreset::Medium);
+    let medium = read(true, QualityPreset::Medium);
+    let low = read(true, QualityPreset::Low);
+    println!("post's foot: unshadowed {open:.1}, medium {medium:.1}, low {low:.1}");
+    assert!(
+        medium < 0.35 * open,
+        "the medium preset draws the rect light's shadow ({medium:.1} against {open:.1})"
+    );
+    assert!(
+        (low - open).abs() <= 0.1 * open + 2.0,
+        "the low preset draws no rect-light shadow ({low:.1} against {open:.1} unshadowed)"
+    );
+}
+
 /// A full custom lit shader lights a rect light as the standard material
 /// does: as an area (the floor under the panel within a few percent of
 /// the standard floor's) with its soft shadow (the post's foot dark).

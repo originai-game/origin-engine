@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 34 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 33 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -30,7 +30,6 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`transform`](transform.md) | `og.transform.*` | kept | Transforms in the three.js vocabulary: position, quaternion and scale, composed into matrixWorld down the parent chain. |
 | [`input`](input.md) | types and tokens | kept | Input as the game sees it: the Input resource for polling, events for edges. |
 | [`render`](render.md) | `og.render.*` | kept | What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call. |
-| [`shapes`](shapes.md) | types and tokens | kept | Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js's Shape and Path, built by the same calls (moveTo, lineTo, quadraticCurveTo, bezierCurveTo, splineThru, arc, absarc, ellipse, absellipse, closePath) and flattened to points by getPoints, so a three.js outline is a paste. og.render.shapeGeometry, extrudeGeometry and sweepGeometry take them; only their points cross to the engine. |
 | [`load`](load.md) | `og.load.*` | kept | Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/. |
 | [`physics`](physics.md) | `og.physics.*` | kept | Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back. |
 | [`atmosphere`](atmosphere.md) | `og.atmosphere.*` | kept | Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before. |
@@ -120,7 +119,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1210 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1164 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -231,8 +230,6 @@ Field units the docs and Tune use.
 | [`CoreAction`](commands.md#type-CoreAction) | enum | commands | — |
 | [`CounterDesc`](ui.md#type-CounterDesc) | desc struct | ui | — |
 | [`Cross`](ui.md#type-Cross) | enum | ui | — |
-| [`CsgGeometryDesc`](render.md#type-CsgGeometryDesc) | desc struct | render | — |
-| [`CsgOp`](render.md#type-CsgOp) | enum | render | — |
 | [`Currency`](ui.md#type-Currency) | desc struct | ui | — |
 | [`CurveDesc`](path.md#type-CurveDesc) | desc struct | path | — |
 | [`CutsceneDesc`](ui.md#type-CutsceneDesc) | desc struct | ui | — |
@@ -293,7 +290,6 @@ Field units the docs and Tune use.
 | [`ExpectReport`](probe.md#type-ExpectReport) | struct | probe | — |
 | [`ExpectResult`](probe.md#type-ExpectResult) | struct | probe | — |
 | [`ExpectStatus`](probe.md#type-ExpectStatus) | enum | probe | — |
-| [`ExtrudeGeometryDesc`](render.md#type-ExtrudeGeometryDesc) | desc struct | render | — |
 | [`f32()`](reflect.md#column-f32) | column kind | reflect | — |
 | [`f64()`](reflect.md#column-f64) | column kind | reflect | — |
 | [`FactsFn`](game.md#type-FactsFn) | callback | game | — |
@@ -338,13 +334,12 @@ Field units the docs and Tune use.
 | [`Geometry()`](render.md#column-Geometry) | column kind | render | — |
 | [`GeometryHit`](render.md#type-GeometryHit) | struct | render | — |
 | [`GeometryInfo`](render.md#type-GeometryInfo) | struct | render | — |
-| [`GeometryPart`](render.md#type-GeometryPart) | desc struct | render | — |
 | [`GltfDesc`](load.md#type-GltfDesc) | desc struct | load | — |
 | [`GltfInfo`](load.md#type-GltfInfo) | struct | load | — |
 | [`GraphAsset`](anim.md#type-GraphAsset) | handle | anim | — |
 | [`GraphAsset()`](anim.md#column-GraphAsset) | column kind | anim | — |
 | [`GraphDesc`](anim.md#type-GraphDesc) | desc struct | anim | — |
-| [`GraphicsQuality`](ui.md#type-GraphicsQuality) | enum | ui | — |
+| [`GraphicsQuality`](render.md#type-GraphicsQuality) | enum | render | — |
 | [`GridDesc`](ui.md#type-GridDesc) | desc struct | ui | — |
 | [`Heard`](probe.md#type-Heard) | struct | probe | — |
 | [`Hello`](probe.md#type-Hello) | struct | probe | — |
@@ -389,7 +384,6 @@ Field units the docs and Tune use.
 | [`KeyInput`](input.md#type-KeyInput) | struct | input | — |
 | [`LabelDesc`](ui.md#type-LabelDesc) | desc struct | ui | — |
 | [`LanguageOption`](ui.md#type-LanguageOption) | desc struct | ui | — |
-| [`LatheGeometryDesc`](render.md#type-LatheGeometryDesc) | desc struct | render | — |
 | [`LeaderboardDesc`](ui.md#type-LeaderboardDesc) | desc struct | ui | — |
 | [`LeaderboardEntry`](ui.md#type-LeaderboardEntry) | desc struct | ui | — |
 | [`LeaderboardQueryDesc`](platform.md#type-LeaderboardQueryDesc) | desc struct | platform | — |
@@ -441,12 +435,10 @@ Field units the docs and Tune use.
 | [`MAX_REFLECTION_PROBES`](render.md#const-MAX_REFLECTION_PROBES) | constant | render | — |
 | [`MenuItem`](ui.md#type-MenuItem) | desc struct | ui | — |
 | [`MenuResult`](ui.md#type-MenuResult) | struct | ui | — |
-| [`MergeGeometriesDesc`](render.md#type-MergeGeometriesDesc) | desc struct | render | — |
 | [`MeshDesc`](physics.md#type-MeshDesc) | desc struct | physics | — |
 | [`MeterDesc`](ui.md#type-MeterDesc) | desc struct | ui | — |
 | [`MeterKind`](ui.md#type-MeterKind) | enum | ui | — |
 | [`MinimapDesc`](ui.md#type-MinimapDesc) | desc struct | ui | — |
-| [`MirrorAxis`](render.md#type-MirrorAxis) | enum | render | — |
 | [`ModalDesc`](ui.md#type-ModalDesc) | desc struct | ui | — |
 | [`ModalResult`](ui.md#type-ModalResult) | struct | ui | — |
 | [`Modifiers`](input.md#type-Modifiers) | struct | input | — |
@@ -625,7 +617,6 @@ Field units the docs and Tune use.
 | [`og.path.length`](path.md#fn-length) | function | path | `og_path_length` |
 | [`og.path.nearest`](path.md#fn-nearest) | function | path | `og_path_nearest` |
 | [`og.path.sample`](path.md#fn-sample) | function | path | `og_path_sample` |
-| [`og.Path2`](shapes.md#value-Path2) | value | shapes | — |
 | [`og.PathFollower`](path.md#record-PathFollower) | component | path | — |
 | [`og.Perceivable`](ai.md#record-Perceivable) | component | ai | — |
 | [`og.Perception`](ai.md#record-Perception) | component | ai | — |
@@ -685,6 +676,7 @@ Field units the docs and Tune use.
 | [`og.RectLight`](render.md#record-RectLight) | component | render | — |
 | [`og.ReflectionProbe`](render.md#record-ReflectionProbe) | component | render | — |
 | [`og.render.applyLook`](render.md#fn-applyLook) | function | render | `og_render_apply_look` |
+| [`og.render.applyQuality`](render.md#fn-applyQuality) | function | render | `og_render_apply_quality` |
 | [`og.render.bakedLighting`](render.md#fn-bakedLighting) | function | render | `og_render_baked_lighting` |
 | [`og.render.boxGeometry`](render.md#fn-boxGeometry) | function | render | `og_render_box_geometry` |
 | [`og.render.bufferGeometry`](render.md#fn-bufferGeometry) | function | render | `og_render_buffer_geometry` |
@@ -692,22 +684,14 @@ Field units the docs and Tune use.
 | [`og.render.capsuleGeometry`](render.md#fn-capsuleGeometry) | function | render | `og_render_capsule_geometry` |
 | [`og.render.circleGeometry`](render.md#fn-circleGeometry) | function | render | `og_render_circle_geometry` |
 | [`og.render.coneGeometry`](render.md#fn-coneGeometry) | function | render | `og_render_cone_geometry` |
-| [`og.render.csgGeometry`](render.md#fn-csgGeometry) | function | render | `og_render_csg_geometry` |
 | [`og.render.cylinderGeometry`](render.md#fn-cylinderGeometry) | function | render | `og_render_cylinder_geometry` |
-| [`og.render.dodecahedronGeometry`](render.md#fn-dodecahedronGeometry) | function | render | `og_render_dodecahedron_geometry` |
-| [`og.render.extrudeGeometry`](render.md#fn-extrudeGeometry) | function | render | `og_render_extrude_geometry` |
 | [`og.render.floatingText`](render.md#fn-floatingText) | function | render | `og_render_floating_text` |
 | [`og.render.geometryInfo`](render.md#fn-geometryInfo) | function | render | `og_render_geometry_info` |
-| [`og.render.icosahedronGeometry`](render.md#fn-icosahedronGeometry) | function | render | `og_render_icosahedron_geometry` |
-| [`og.render.latheGeometry`](render.md#fn-latheGeometry) | function | render | `og_render_lathe_geometry` |
 | [`og.render.lines`](render.md#fn-lines) | function | render | `og_render_lines` |
 | [`og.render.look`](render.md#fn-look) | function | render | `og_render_look` |
 | [`og.render.measureText`](render.md#fn-measureText) | function | render | `og_render_measure_text` |
-| [`og.render.mergeGeometries`](render.md#fn-mergeGeometries) | function | render | `og_render_merge_geometries` |
-| [`og.render.octahedronGeometry`](render.md#fn-octahedronGeometry) | function | render | `og_render_octahedron_geometry` |
 | [`og.render.planeGeometry`](render.md#fn-planeGeometry) | function | render | `og_render_plane_geometry` |
 | [`og.render.points`](render.md#fn-points) | function | render | `og_render_points` |
-| [`og.render.polyhedronGeometry`](render.md#fn-polyhedronGeometry) | function | render | `og_render_polyhedron_geometry` |
 | [`og.render.postErrors`](render.md#fn-postErrors) | function | render | `og_render_post_errors` |
 | [`og.render.raycast`](render.md#fn-raycast) | function | render | `og_render_raycast` |
 | [`og.render.renderTarget`](render.md#fn-renderTarget) | function | render | `og_render_render_target` |
@@ -717,12 +701,9 @@ Field units the docs and Tune use.
 | [`og.render.setPostParam`](render.md#fn-setPostParam) | function | render | `og_render_set_post_param` |
 | [`og.render.setShaderParam`](render.md#fn-setShaderParam) | function | render | `og_render_set_shader_param` |
 | [`og.render.shaderMaterial`](render.md#fn-shaderMaterial) | function | render | `og_render_shader_material` |
-| [`og.render.shapeGeometry`](render.md#fn-shapeGeometry) | function | render | `og_render_shape_geometry` |
 | [`og.render.sphereGeometry`](render.md#fn-sphereGeometry) | function | render | `og_render_sphere_geometry` |
 | [`og.render.sprite`](render.md#fn-sprite) | function | render | `og_render_sprite` |
 | [`og.render.standardMaterial`](render.md#fn-standardMaterial) | function | render | `og_render_standard_material` |
-| [`og.render.sweepGeometry`](render.md#fn-sweepGeometry) | function | render | `og_render_sweep_geometry` |
-| [`og.render.tetrahedronGeometry`](render.md#fn-tetrahedronGeometry) | function | render | `og_render_tetrahedron_geometry` |
 | [`og.render.text`](render.md#fn-text) | function | render | `og_render_text` |
 | [`og.render.torusGeometry`](render.md#fn-torusGeometry) | function | render | `og_render_torus_geometry` |
 | [`og.render.tubeGeometry`](render.md#fn-tubeGeometry) | function | render | `og_render_tube_geometry` |
@@ -739,7 +720,6 @@ Field units the docs and Tune use.
 | [`og.Rope`](physics.md#record-Rope) | component | physics | — |
 | [`og.SensorEntered`](physics.md#record-SensorEntered) | event | physics | — |
 | [`og.SensorExited`](physics.md#record-SensorExited) | event | physics | — |
-| [`og.Shape`](shapes.md#value-Shape) | value | shapes | — |
 | [`og.Skeleton`](anim.md#record-Skeleton) | component | anim | — |
 | [`og.Skeleton2D`](anim.md#record-Skeleton2D) | component | anim | — |
 | [`og.Skeleton2DEvent`](anim.md#record-Skeleton2DEvent) | event | anim | — |
@@ -920,27 +900,9 @@ Field units the docs and Tune use.
 | [`PassSize`](probe.md#type-PassSize) | struct | probe | — |
 | [`Path`](path.md#type-Path) | handle | path | — |
 | [`Path()`](path.md#column-Path) | column kind | path | — |
-| [`Path2`](shapes.md#type-Path2) | interface | shapes | — |
-| [`Path2.absarc`](shapes.md#member-Path2-absarc) | method | shapes | — |
-| [`Path2.absellipse`](shapes.md#member-Path2-absellipse) | method | shapes | — |
-| [`Path2.arc`](shapes.md#member-Path2-arc) | method | shapes | — |
-| [`Path2.bezierCurveTo`](shapes.md#member-Path2-bezierCurveTo) | method | shapes | — |
-| [`Path2.closePath`](shapes.md#member-Path2-closePath) | method | shapes | — |
-| [`Path2.ellipse`](shapes.md#member-Path2-ellipse) | method | shapes | — |
-| [`Path2.getPoints`](shapes.md#member-Path2-getPoints) | method | shapes | — |
-| [`Path2.lineTo`](shapes.md#member-Path2-lineTo) | method | shapes | — |
-| [`Path2.moveTo`](shapes.md#member-Path2-moveTo) | method | shapes | — |
-| [`Path2.quadraticCurveTo`](shapes.md#member-Path2-quadraticCurveTo) | method | shapes | — |
-| [`Path2.setFromPoints`](shapes.md#member-Path2-setFromPoints) | method | shapes | — |
-| [`Path2.splineThru`](shapes.md#member-Path2-splineThru) | method | shapes | — |
-| [`Path2Class`](shapes.md#type-Path2Class) | interface | shapes | — |
-| [`Path2Class.new`](shapes.md#member-Path2Class-new) | method | shapes | — |
 | [`PathDesc`](nav.md#type-PathDesc) | desc struct | nav | — |
 | [`PathKind`](path.md#type-PathKind) | enum | path | — |
 | [`PathKind()`](path.md#column-PathKind) | column kind | path | — |
-| [`PathList`](shapes.md#type-PathList) | interface | shapes | — |
-| [`PathList.length`](shapes.md#member-PathList-length) | property | shapes | — |
-| [`PathList.push`](shapes.md#member-PathList-push) | method | shapes | — |
 | [`PathNearest`](path.md#type-PathNearest) | struct | path | — |
 | [`PathSample`](path.md#type-PathSample) | struct | path | — |
 | [`PauseMenuDesc`](ui.md#type-PauseMenuDesc) | desc struct | ui | — |
@@ -982,7 +944,6 @@ Field units the docs and Tune use.
 | [`Pointers.start`](input.md#member-Pointers-start) | method | input | `og_pointers_start` |
 | [`PointsDesc`](render.md#type-PointsDesc) | desc struct | render | — |
 | [`PointShadows`](render.md#type-PointShadows) | enum | render | — |
-| [`PolyhedronGeometryDesc`](render.md#type-PolyhedronGeometryDesc) | desc struct | render | — |
 | [`Post`](render.md#type-Post) | handle | render | — |
 | [`Post()`](render.md#column-Post) | column kind | render | — |
 | [`PostError`](render.md#type-PostError) | struct | render | — |
@@ -1006,6 +967,8 @@ Field units the docs and Tune use.
 | [`PROFILE_3D`](physics.md#const-PROFILE_3D) | constant | physics | — |
 | [`ProgressDesc`](ui.md#type-ProgressDesc) | desc struct | ui | — |
 | [`PuzzleHudDesc`](ui.md#type-PuzzleHudDesc) | desc struct | ui | — |
+| [`QualityPreset`](render.md#type-QualityPreset) | enum | render | — |
+| [`QualityPreset()`](render.md#column-QualityPreset) | column kind | render | — |
 | [`quat`](math.md#value-quat) | value | math | — |
 | [`Quaternion`](math.md#type-Quaternion) | struct | math | — |
 | [`Quaternion()`](reflect.md#column-Quaternion) | column kind | reflect | — |
@@ -1115,9 +1078,6 @@ Field units the docs and Tune use.
 | [`SettingsResult`](ui.md#type-SettingsResult) | struct | ui | — |
 | [`Shader`](render.md#type-Shader) | handle | render | — |
 | [`ShakeDesc`](ui.md#type-ShakeDesc) | desc struct | ui | — |
-| [`Shape`](shapes.md#type-Shape) | interface | shapes | — |
-| [`Shape.extractPoints`](shapes.md#member-Shape-extractPoints) | method | shapes | — |
-| [`Shape.holes`](shapes.md#member-Shape-holes) | property | shapes | — |
 | [`SHAPE_BOX`](physics.md#const-SHAPE_BOX) | constant | physics | — |
 | [`SHAPE_CAPSULE`](physics.md#const-SHAPE_CAPSULE) | constant | physics | — |
 | [`SHAPE_CONVEX`](physics.md#const-SHAPE_CONVEX) | constant | physics | — |
@@ -1127,11 +1087,7 @@ Field units the docs and Tune use.
 | [`SHAPE_TRIMESH`](physics.md#const-SHAPE_TRIMESH) | constant | physics | — |
 | [`ShapeCastDesc`](physics.md#type-ShapeCastDesc) | desc struct | physics | — |
 | [`ShapeCastHit`](physics.md#type-ShapeCastHit) | struct | physics | — |
-| [`ShapeClass`](shapes.md#type-ShapeClass) | interface | shapes | — |
-| [`ShapeClass.new`](shapes.md#member-ShapeClass-new) | method | shapes | — |
 | [`ShapeDesc`](physics.md#type-ShapeDesc) | desc struct | physics | — |
-| [`ShapeGeometryDesc`](render.md#type-ShapeGeometryDesc) | desc struct | render | — |
-| [`ShapePoints`](render.md#type-ShapePoints) | struct | render | — |
 | [`ShooterHudDesc`](ui.md#type-ShooterHudDesc) | desc struct | ui | — |
 | [`ShopDesc`](ui.md#type-ShopDesc) | desc struct | ui | — |
 | [`ShopItem`](ui.md#type-ShopItem) | desc struct | ui | — |
@@ -1147,7 +1103,6 @@ Field units the docs and Tune use.
 | [`SliderResult`](ui.md#type-SliderResult) | struct | ui | — |
 | [`SlotMove`](ui.md#type-SlotMove) | struct | ui | — |
 | [`SnapshotInfo`](probe.md#type-SnapshotInfo) | struct | probe | — |
-| [`SolidGeometryDesc`](render.md#type-SolidGeometryDesc) | desc struct | render | — |
 | [`Sound`](load.md#type-Sound) | handle | load | — |
 | [`Sound()`](load.md#column-Sound) | column kind | load | — |
 | [`SOUND_CULLED`](audio.md#const-SOUND_CULLED) | constant | audio | — |
@@ -1196,8 +1151,6 @@ Field units the docs and Tune use.
 | [`StyliseSpace()`](render.md#column-StyliseSpace) | column kind | render | — |
 | [`SweepDesc`](probe.md#type-SweepDesc) | desc struct | probe | — |
 | [`SweepFrame`](probe.md#type-SweepFrame) | struct | probe | — |
-| [`SweepGeometryDesc`](render.md#type-SweepGeometryDesc) | desc struct | render | — |
-| [`SweepKey`](render.md#type-SweepKey) | struct | render | — |
 | [`SweepResult`](probe.md#type-SweepResult) | struct | probe | — |
 | [`System`](system.md#type-System) | interface | system | — |
 | [`System.name`](system.md#member-System-name) | property | system | `og_system_get_name` |

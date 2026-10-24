@@ -74,6 +74,10 @@ pub fn run(args: &[&str]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    if publish && let Err(e) = crate::publish::refuse_3d_world(&p.root, &settings) {
+        eprintln!("og build --publish: {e}");
+        return ExitCode::FAILURE;
+    }
     let Some(package) = project::engine_package(Some(&p.root)) else {
         eprintln!("og build: {}", project::NO_ENGINE);
         return ExitCode::FAILURE;

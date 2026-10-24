@@ -135,3 +135,81 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
         "publish": publish,
     }))
 }
+
+/// The components the 2D profile's publish module leaves out
+/// (`RenderCapabilities.world3d` is false there: og-render's `profile2d`),
+/// by the names scenes give them, each with what it is.
+const WORLD_3D: [(&str, &str); 5] = [
+    ("Terrain", "a terrain"),
+    ("TerrainScatter", "scattered copies"),
+    ("Water", "planar water"),
+    ("WaterSurface", "planar water's height field"),
+    ("Fluid3D", "a 3D fluid"),
+];
+
+/// A publish build of the 2D profile (`og build --publish`, `og run
+/// --device`) refuses a project whose scenes hold the 3D world: its module
+/// has none of it, so it would neither draw nor load there. `Err` names
+/// every such component by scene file and line. A 3D project, and a 2D
+/// one without them, passes.
+pub fn refuse_3d_world(root: &Path, settings: &Value) -> Result<(), String> {
+    if settings["profile"] != "2d" {
+        return Ok(());
+    }
+    fn files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
+        let Ok(read) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for e in read.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                files(&p, out);
+            } else if p.extension().is_some_and(|x| x == "ogt") {
+                out.push(p);
+            }
+        }
+    }
+    fn walk(b: &Block, file: &str, hits: &mut Vec<String>) {
+        for e in &b.entries {
+            let Some(block) = &e.block else { continue };
+            if e.key == "entity" {
+                walk(block, file, hits);
+            } else if let Some((name, what)) = WORLD_3D.iter().find(|(n, _)| *n == e.key) {
+                hits.push(format!("  {file}:{}: {name} ({what})", e.line));
+            }
+        }
+    }
+    let mut scenes = Vec::new();
+    files(&root.join("assets"), &mut scenes);
+    scenes.sort();
+    let mut hits = Vec::new();
+    for path in scenes {
+        // A scene that does not parse is the cook's to report.
+        let Ok(doc) = std::fs::read_to_string(&path)
+            .map_err(|_| ())
+            .and_then(|t| og_core::ogt::parse(&t).map_err(|_| ()))
+        else {
+            continue;
+        };
+        if doc.ty != "scene" {
+            continue;
+        }
+        let file = path
+            .strip_prefix(root)
+            .unwrap_or(&path)
+            .display()
+            .to_string();
+        for e in doc.body.get_all("entity") {
+            if let Some(b) = &e.block {
+                walk(b, &file, &mut hits);
+            }
+        }
+    }
+    if hits.is_empty() {
+        return Ok(());
+    }
+    Err(format!(
+        "the 2D profile's publish module has no 3D world (RenderCapabilities.world3d is false: terrain, planar water, scattered copies and 3D fluids are left out of it), and these scenes hold it:\n{}\nremove them from the scenes, or make the project 3D (project.ogt: profile \"3d\")",
+        hits.join("\n")
+    ))
+}

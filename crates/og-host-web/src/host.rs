@@ -487,6 +487,10 @@ impl RenderApi for WebHost {
     fn og_render_apply_look(&self, world: u32, look: f64) -> String {
         rt::og_render_apply_look(world, look)
     }
+
+    fn og_render_apply_quality(&self, world: u32, preset: String) -> String {
+        rt::og_render_apply_quality(world, preset)
+    }
     fn og_render_look(&self, world: u32) -> String {
         rt::og_render_look(world)
     }

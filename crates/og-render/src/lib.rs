@@ -89,6 +89,7 @@ pub mod lod;
 mod probe_content;
 mod probe_select;
 mod probes;
+mod quality;
 mod ssr;
 pub use probe_content::{ProbeContent, ProbeRoom};
 pub use probes::{
@@ -177,6 +178,7 @@ pub use particles::{
 };
 pub use points::Points;
 pub use post_custom::{MAX_CUSTOM_POSTS, PostHandle, PostShader, example_crt, post_module_source};
+pub use quality::{QualityPreset, RenderQuality};
 pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailStyleHandle};
 pub use scatter::ScatterDraw;
 pub use scene::*;
@@ -214,7 +216,7 @@ pub use weather::{
 /// The wgpu this crate is built on, for hosts that create surfaces or pass views.
 pub use wgpu;
 
-use deferred::{AsModule, Deferred};
+use deferred::{AsModule, Deferred, Sampled};
 use frame::{CASCADES, Cascade, Frustum};
 use glam::{Mat4, Vec2, Vec3};
 use material::MaterialUniform;
@@ -1421,6 +1423,15 @@ pub struct Renderer {
     post: post::PostPasses,
     cascade_map: ShadowMap,
     local_map: ShadowMap,
+    /// The cascades' side at [`RenderQuality::shadow_map_scale`] 1 (the
+    /// [`RenderDesc`]'s, clamped); [`RenderInfo::shadow_map_size`] is the
+    /// side drawn now.
+    full_shadow_size: u32,
+    /// The local lights' layers' side now ([`LOCAL_SHADOW_SIZE`] at scale 1).
+    local_shadow_size: u32,
+    /// The device resolved the antialiasing to MSAA: [`RenderQuality::msaa_samples`]
+    /// switches it between MSAA and FXAA (anything else takes one sample).
+    multisampled: bool,
     material_sampler: wgpu::Sampler,
     sprite_sampler: wgpu::Sampler,
     sprite_sampler_nearest: wgpu::Sampler,
@@ -1475,9 +1486,9 @@ pub struct Renderer {
     /// Stylise's object pass, made the first frame a pattern is laid in
     /// object space (`stylise_object.rs`).
     stylise_object: Option<stylise_object::ObjectPass>,
-    sky_pipeline: Deferred<wgpu::RenderPipeline>,
+    sky_pipeline: Sampled<wgpu::RenderPipeline>,
     /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
-    sky_look_pipeline: Deferred<wgpu::RenderPipeline>,
+    sky_look_pipeline: Sampled<wgpu::RenderPipeline>,
     water: water::WaterRenderer,
     fluid3d: fluid3d::Fluid3dRenderer,
     terrain: terrain::TerrainRenderer,
@@ -1487,16 +1498,16 @@ pub struct Renderer {
     ibl: ibl::IblGenerator,
     /// Reflection probes' cubes and frame uniforms (`probes.rs`).
     probes: probes::Probes,
-    sprite_pipeline: Deferred<wgpu::RenderPipeline>,
-    sprite_additive_pipeline: Deferred<wgpu::RenderPipeline>,
+    sprite_pipeline: Sampled<wgpu::RenderPipeline>,
+    sprite_additive_pipeline: Sampled<wgpu::RenderPipeline>,
     /// Alpha-blended sprites kept out of the tone curve, and the cover
     /// that sets the HDR alpha to 1 before the first of them
     /// ([`UNTONEMAPPED_BLEND`]).
-    sprite_untonemapped_pipeline: Deferred<wgpu::RenderPipeline>,
-    sprite_cover_pipeline: Deferred<wgpu::RenderPipeline>,
+    sprite_untonemapped_pipeline: Sampled<wgpu::RenderPipeline>,
+    sprite_cover_pipeline: Sampled<wgpu::RenderPipeline>,
     sprite_glow_pipeline: Deferred<wgpu::RenderPipeline>,
-    msdf_pipeline: Deferred<wgpu::RenderPipeline>,
-    ribbon_pipelines: [Deferred<wgpu::RenderPipeline>; 2],
+    msdf_pipeline: Sampled<wgpu::RenderPipeline>,
+    ribbon_pipelines: [Sampled<wgpu::RenderPipeline>; 2],
     fx_layout: wgpu::BindGroupLayout,
     fx_buffer: wgpu::Buffer,
     sprite_fx_layout: wgpu::BindGroupLayout,
@@ -1738,17 +1749,28 @@ pub(crate) fn hdr_pipeline(device: &wgpu::Device, p: HdrPipeline) -> wgpu::Rende
     hdr_pipeline_with(device, &[], p)
 }
 
-/// [`hdr_pipeline`] made when a pass first sets it (deferred.rs): `state`
-/// describes it over the layout and module it is handed.
+/// [`hdr_pipeline`] made when a pass first sets it (deferred.rs), at
+/// `samples` per pixel and again at the renderer's count after it changes
+/// ([`Sampled::set_samples`]): `state` describes it over the layout and
+/// module it is handed (its `samples` is the count it is made at).
 pub(crate) fn deferred_hdr(
     device: &wgpu::Device,
     layout: &wgpu::PipelineLayout,
     module: impl AsModule + 'static,
-    state: impl for<'a> FnOnce(&'a wgpu::PipelineLayout, &'a wgpu::ShaderModule) -> HdrPipeline<'a>
+    samples: u32,
+    state: impl for<'a> Fn(&'a wgpu::PipelineLayout, &'a wgpu::ShaderModule) -> HdrPipeline<'a>
     + 'static,
-) -> Deferred<wgpu::RenderPipeline> {
+) -> Sampled<wgpu::RenderPipeline> {
     let (device, layout) = (device.clone(), layout.clone());
-    Deferred::new(move || hdr_pipeline(&device, state(&layout, module.module())))
+    Sampled::new(samples, move |samples| {
+        hdr_pipeline(
+            &device,
+            HdrPipeline {
+                samples,
+                ..state(&layout, module.module())
+            },
+        )
+    })
 }
 
 /// The sprite pass's vertex buffers.
@@ -2683,6 +2705,7 @@ impl Renderer {
                 &device,
                 &sky_pl,
                 sky_shader.clone(),
+                samples,
                 move |layout, module| HdrPipeline {
                     label: "sky",
                     layout,
@@ -2728,6 +2751,7 @@ impl Renderer {
                 &device,
                 &sprite_pl,
                 sprite_shader.clone(),
+                samples,
                 move |layout, module| HdrPipeline {
                     label,
                     layout,
@@ -2758,6 +2782,7 @@ impl Renderer {
             &device,
             &cover_pl,
             sprite_shader.clone(),
+            samples,
             move |layout, module| HdrPipeline {
                 label: "sprite cover",
                 layout,
@@ -2824,6 +2849,7 @@ impl Renderer {
                 &device,
                 &ribbon_pl,
                 ribbon_shader.clone(),
+                samples,
                 move |layout, module| HdrPipeline {
                     label: "ribbon",
                     layout,
@@ -2981,6 +3007,9 @@ impl Renderer {
             post,
             cascade_map,
             local_map,
+            full_shadow_size: shadow_size,
+            local_shadow_size: LOCAL_SHADOW_SIZE,
+            multisampled: antialias == Antialias::Msaa4,
             material_sampler,
             sprite_sampler,
             sprite_sampler_nearest,
@@ -3131,6 +3160,104 @@ impl Renderer {
             config.height = height;
             surface.configure(&self.device, config);
         }
+    }
+
+    /// Brings the shadow maps and the samples per pixel to the frame's
+    /// quality ([`RenderScene::quality`]): another
+    /// [`RenderQuality::shadow_map_scale`] makes the shadow maps again at
+    /// their new sides, another [`RenderQuality::msaa_samples`] switches
+    /// MSAA and FXAA; the same quality changes nothing.
+    fn apply_quality(&mut self, q: &RenderQuality) {
+        let max = self.device.limits().max_texture_dimension_2d;
+        let cascade = q.shadow_side(
+            self.full_shadow_size,
+            max.min(self.full_shadow_size.max(4096)),
+        );
+        let local = q.shadow_side(LOCAL_SHADOW_SIZE, max);
+        if (cascade, local) != (self.info.shadow_map_size, self.local_shadow_size) {
+            self.info.shadow_map_size = cascade;
+            self.local_shadow_size = local;
+            self.cascade_map =
+                ShadowMap::new(&self.device, "cascades", cascade, self.info.shadow_cascades);
+            self.local_map = ShadowMap::new(
+                &self.device,
+                "local shadows",
+                local,
+                self.local_map.layers.len() as u32,
+            );
+            // The frame groups bind them: ensure_environment makes them again.
+            self.environment = None;
+        }
+        if self.multisampled {
+            let samples = if q.multisample() { MSAA_SAMPLES } else { 1 };
+            if samples != self.samples {
+                self.set_samples(samples);
+            }
+        }
+    }
+
+    /// Draws the scene at `samples` per pixel from now on: MSAA at
+    /// [`MSAA_SAMPLES`], else one sample and FXAA ([`RenderInfo::antialias`]
+    /// says which). Every pipeline that draws into the scene's target is
+    /// made again at the count as it is next used (each kept at both
+    /// counts where it is a [`Sampled`]), and the frame's targets with it.
+    fn set_samples(&mut self, samples: u32) {
+        self.samples = samples;
+        self.info.antialias = if samples > 1 {
+            Antialias::Msaa4
+        } else {
+            Antialias::Fxaa
+        };
+        self.graph.invalidate();
+        // Made at a count, told the new one.
+        for p in [
+            &self.sky_pipeline,
+            &self.sky_look_pipeline,
+            &self.sprite_pipeline,
+            &self.sprite_additive_pipeline,
+            &self.sprite_untonemapped_pipeline,
+            &self.sprite_cover_pipeline,
+            &self.msdf_pipeline,
+        ]
+        .into_iter()
+        .chain(&self.ribbon_pipelines)
+        {
+            p.set_samples(samples);
+        }
+        self.water.pipeline.set_samples(samples);
+        self.metaballs.set_samples(samples);
+        self.fluid3d.set_samples(samples);
+        self.lines.set_samples(samples);
+        self.terrain.set_samples(samples);
+        self.scatter.set_samples(samples);
+        if let Some(a) = &self.sprite_arrays {
+            a.set_samples(samples);
+        }
+        // Made as batches need them: made again at the new count. The
+        // plain lit pipeline is the one some passes take without a batch.
+        self.pbr_pipelines.clear();
+        let key = (Side::Front, false, false, false);
+        self.pbr_pipelines.insert(
+            key,
+            pbr_pipeline(
+                &self.device,
+                (&self.pbr_layout, &self.pbr_skinned_layout),
+                &self.pbr_shader,
+                key,
+                samples,
+            ),
+        );
+        self.lean_pipelines.clear();
+        self.cache.hook_pipelines.clear();
+        self.cache.physical_hook_pipelines.clear();
+        if let Some(a) = &mut self.array_maps {
+            a.lit.clear();
+        }
+        if let Some(p) = &mut self.physical {
+            p.pipelines.clear();
+        }
+        self.lightmaps.forget_pipelines();
+        self.sprite_meshes = None;
     }
 
     /// The size the scene is drawn at this frame: the output's, or the
@@ -4212,7 +4339,7 @@ impl Renderer {
         self.local_map = ShadowMap::new(
             &self.device,
             "local shadows",
-            LOCAL_SHADOW_SIZE,
+            self.local_shadow_size,
             if cookies > 0 { needed } else { capacity } as u32,
         );
         self.environment = None;
@@ -5003,6 +5130,7 @@ impl Renderer {
             return Err(RenderError::InvalidHandle(stale));
         }
         self.sync(scene)?;
+        self.apply_quality(&scene.quality);
         // A look that switches the stylisation on or off (passes added or
         // removed, the pixel grid, the material style) is a cut: no ghost of
         // the old look in the first frame of the new one.
@@ -5082,10 +5210,10 @@ impl Renderer {
         // mirrored in it, clipped at the surface by an oblique near plane).
         let under = water::underwater(scene_water, camera.position);
         // Volumetric fog replaces the plain fog (volumetric.rs): above
-        // water, for a perspective camera.
-        let volumetric_fog = scene
-            .volumetric_fog
-            .filter(|_| WORLD_3D && under.is_none() && !cam.orthographic);
+        // water, for a perspective camera, where the quality lets it.
+        let volumetric_fog = scene.volumetric_fog.filter(|_| {
+            WORLD_3D && scene.quality.volumetric_fog && under.is_none() && !cam.orthographic
+        });
         let frame_fog = match under {
             Some(i) => Some(water::underwater_fog(&scene_water[i])),
             None if volumetric_fog.is_some() => None,
@@ -5158,7 +5286,9 @@ impl Renderer {
             camera.position,
             cam.forward,
         )?;
-        let ao = post_fx.ao.filter(|a| a.intensity > 0.0 && a.radius > 0.0);
+        let ao = post_fx
+            .ao
+            .filter(|a| scene.quality.ambient_occlusion && a.intensity > 0.0 && a.radius > 0.0);
         let outline = post_fx.outline.is_some()
             || batches
                 .iter()
@@ -5177,7 +5307,7 @@ impl Renderer {
         // probes and the environment), read from the prepass (ssr.rs).
         let ssr = post_fx
             .ssr
-            .filter(|s| s.intensity > 0.0 && self.info.tier == Tier::Full);
+            .filter(|s| scene.quality.ssr && s.intensity > 0.0 && self.info.tier == Tier::Full);
         // Custom post passes (post_custom.rs) that compiled; they read the
         // prepass's depth and normals.
         let custom_posts = self.custom_posts.prepare(&self.device, scene);
@@ -6017,9 +6147,10 @@ impl Renderer {
             &self.clusters.kept,
             camera.position,
             frame::LocalShadowBudget {
-                max_shadowed: self.info.shadowed_lights as usize,
+                max_shadowed: self.info.shadowed_lights.min(scene.quality.shadowed_lights) as usize,
+                rect_shadows: scene.quality.rect_shadows,
                 point: self.info.point_shadows,
-                shadow_size: LOCAL_SHADOW_SIZE,
+                shadow_size: self.local_shadow_size,
             },
         );
         debug_assert!(
@@ -6300,7 +6431,7 @@ impl Renderer {
             ],
             view_forward: cam
                 .forward
-                .extend(1.0 / LOCAL_SHADOW_SIZE as f32)
+                .extend(1.0 / self.local_shadow_size as f32)
                 .to_array(),
             cascade_view_proj: [[[0.0; 4]; 4]; CASCADES],
             cascade_bias: [[0.0; 4]; CASCADES],
@@ -6393,7 +6524,7 @@ impl Renderer {
                         [
                             1.0,
                             if face == 0 { 1.0 } else { -1.0 },
-                            LOCAL_SHADOW_SIZE as f32,
+                            self.local_shadow_size as f32,
                             shadows::PARABOLOID_SCALE,
                         ]
                     } else {

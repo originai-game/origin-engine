@@ -1301,8 +1301,12 @@ pub struct RenderScene {
     /// Fog over the main pass (`None`: none).
     pub fog: Option<crate::Fog>,
     /// Fog lit as a participating medium (`volumetric.rs`; `None`: none).
-    /// It replaces [`RenderScene::fog`] over the frame while it is set.
+    /// It replaces [`RenderScene::fog`] over the frame while it is set
+    /// (and [`crate::RenderQuality::volumetric_fog`] lets it).
     pub volumetric_fog: Option<crate::VolumetricFog>,
+    /// What the frame may cost: switches and sizes over what the rest of
+    /// the scene asks for (`quality.rs`). The default draws all of it.
+    pub quality: crate::RenderQuality,
     /// Baked lighting: lightmap pages, the lightmap uvs of the meshes drawn
     /// with them, light volumes (`lightmap.rs`). Empty by default.
     pub baked: crate::BakedLighting,
@@ -1481,6 +1485,7 @@ impl RenderScene {
             overlay: None,
             fog: None,
             volumetric_fog: None,
+            quality: crate::RenderQuality::default(),
             baked: crate::BakedLighting::default(),
             light_cookies: Vec::new(),
             water: Vec::new(),
