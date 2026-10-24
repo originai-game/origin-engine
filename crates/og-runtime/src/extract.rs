@@ -966,8 +966,22 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         } else {
             og_render::Exposure::linear(exposure)
         };
+        // The quality fields, one to one (og.render.applyQuality writes a
+        // preset's row of them; RenderSettings.quality is only its record).
+        let full = og_render::RenderQuality::default();
+        scene.quality = og_render::RenderQuality {
+            rect_shadows: on(s, "rectShadows", full.rect_shadows),
+            shadowed_lights: f(s, "shadowedLights", full.shadowed_lights as f32).max(0.0) as u32,
+            shadow_map_scale: f(s, "shadowMapScale", full.shadow_map_scale),
+            volumetric_fog: on(s, "volumetricFog", full.volumetric_fog),
+            soft_particles: on(s, "softParticles", full.soft_particles),
+            ssr: on(s, "screenSpaceReflections", full.ssr),
+            ambient_occlusion: on(s, "ambientOcclusion", full.ambient_occlusion),
+            msaa_samples: f(s, "msaaSamples", full.msaa_samples as f32).max(1.0) as u32,
+        };
     } else {
         scene.camera.exposure = og_render::Exposure::linear(exposure);
+        scene.quality = og_render::RenderQuality::default();
     }
 
     // Baked lighting (RenderSettings.bakedLighting, on by default).

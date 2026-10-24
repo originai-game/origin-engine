@@ -137,6 +137,8 @@ export interface ColumnKinds {
   Material: { readonly array: Uint32Array; readonly stride: 2; readonly value: Material };
   /** A ToneMapping field: the variant's index. */
   ToneMapping: { readonly array: Uint32Array; readonly stride: 1; readonly value: ToneMapping };
+  /** A QualityPreset field: the variant's index. */
+  QualityPreset: { readonly array: Uint32Array; readonly stride: 1; readonly value: QualityPreset };
   /** A Texture handle field (0 is none). */
   Texture: { readonly array: Uint32Array; readonly stride: 2; readonly value: Texture };
   /** A Lut handle field (0 is none). */
@@ -4061,7 +4063,33 @@ export type ToneMapping = "aces" | "agx" | "none";
 export declare function ToneMapping(value?: ToneMapping, options?: FieldOptions): FieldSpec<"ToneMapping">;
 
 /**
- * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
+ * A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). The settings screen (og.ui.settingsScreen) offers the three.
+ * - `"medium"`: The full frame: every quality field at its default.
+ * - `"low"`: The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections or ambient occlusion, FXAA for MSAA.
+ * - `"high"`: The full frame with the shadow maps at twice their side.
+ */
+export type GraphicsQuality = "medium" | "low" | "high";
+
+/**
+ * The preset RenderSettings' quality fields were last written with (RenderSettings.quality).
+ * - `"none"`: No preset applied: the fields are their defaults or the game's own.
+ * - `"low"`: og.render.applyQuality(world, "low").
+ * - `"medium"`: og.render.applyQuality(world, "medium").
+ * - `"high"`: og.render.applyQuality(world, "high").
+ */
+export type QualityPreset = "none" | "low" | "medium" | "high";
+
+/**
+ * A QualityPreset field: the variant's index.
+ *
+ * A `QualityPreset` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function QualityPreset(value?: QualityPreset, options?: FieldOptions): FieldSpec<"QualityPreset">;
+
+/**
+ * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to msaaSamples) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
  *
  * The `RenderSettings` resource (token `og.RenderSettings`).
  */
@@ -4159,6 +4187,61 @@ export interface RenderSettings {
    * @default true
    */
   bakedLighting: boolean;
+  /**
+   * The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to msaaSamples), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set.
+   */
+  quality: QualityPreset;
+  /**
+   * Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off: a rect light's shadow is the costliest light in the frame.
+   *
+   * @default true
+   */
+  rectShadows: boolean;
+  /**
+   * At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.shadowedLights caps it); 0 casts none. The directional light's cascades are not counted.
+   *
+   * @default 8
+   * @range 0..8
+   */
+  shadowedLights: number;
+  /**
+   * The shadow maps at this fraction of their full side: the directional light's cascades (2048 texels by default) and the local lights' layers (512), each kept within 64 texels and the device's limit (4096 for the cascades). Changing it makes the maps again at the next frame; RenderCapabilities.shadowMapSize is the cascades' side drawn.
+   *
+   * @default 1
+   * @range 0.125..4
+   */
+  shadowMapScale: number;
+  /**
+   * An og.VolumetricFog is drawn lit, with its light shafts; false draws the same medium as plain distance and height fog.
+   *
+   * @default true
+   */
+  volumetricFog: boolean;
+  /**
+   * Particles with a softDistance fade against the scene behind them; false draws them hard-edged and asks no depth prepass for them.
+   *
+   * @default true
+   */
+  softParticles: boolean;
+  /**
+   * PostEffects.ssr draws (on the full tier); false leaves smooth surfaces the reflection probes' and the environment's reflection. PostEffects keeps its settings either way.
+   *
+   * @default true
+   */
+  screenSpaceReflections: boolean;
+  /**
+   * PostEffects.ao darkens creases; false draws none. PostEffects keeps its settings either way.
+   *
+   * @default true
+   */
+  ambientOcclusion: boolean;
+  /**
+   * Samples per pixel where the antialiasing multisamples (msaa, the WebGL2 tier's choice; RenderCapabilities.antialias): 4, or 1, which draws FXAA instead. TAA, FXAA and no antialiasing take one sample whatever it says. Changing it makes the multisampled targets and pipelines again at the next frame.
+   *
+   * @default 4
+   * @range 1..4
+   */
+  msaaSamples: number;
 }
 
 /**
@@ -6455,6 +6538,7 @@ export interface ReflectionProbe {
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
 export type Shader = number & { readonly [handleType]: "Shader" };
+
 
 
 
@@ -16950,14 +17034,6 @@ export interface ScreenTransitionResult {
 
 
 /**
- * A graphics quality preset.
- * - `"medium"`: Medium.
- * - `"low"`: Low: the fewest effects.
- * - `"high"`: High: every effect.
- */
-export type GraphicsQuality = "medium" | "low" | "high";
-
-/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -17260,6 +17336,12 @@ export interface SettingsDesc {
    * @default null
    */
   readonly onSave?: SettingsChanged | null;
+  /**
+   * The world the graphics preset is drawn in: when the player picks another preset the screen calls og.render.applyQuality(world, preset) before onChange. Null leaves applying it to the game. Inside a system, the system declares RenderSettings among its writes.
+   *
+   * @default null
+   */
+  readonly world?: World | null;
   /**
    * The dialog's title. Every word of the screen is a field with its English default: a localised game passes its string table's (og.i18n.t).
    *
@@ -21454,9 +21536,9 @@ export declare namespace og {
   /** A cone of light along the entity's local -Z, as three.js SpotLight. */
   const SpotLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly angle: FieldSpec<"f32">; readonly penumbra: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture"> }, SpotLight>;
   /**
-   * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
+   * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to msaaSamples) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    */
-  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool"> }, RenderSettings>;
+  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly msaaSamples: FieldSpec<"u32"> }, RenderSettings>;
   /**
    * Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.
    */
@@ -21652,6 +21734,25 @@ export declare namespace og {
      * @returns Refused for a look not loaded in this world, one in a streaming group that is not resident (the reason names it), or a resource the system did not declare.
      */
     function applyLook(world: World, look: Look): Result<void>;
+    /**
+     * Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. The settings screen calls it when the player picks a preset (SettingsDesc.world); a game applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:
+     * | Field | low | medium | high |
+     * |---|---|---|---|
+     * | rectShadows | false | true | true |
+     * | shadowedLights | 2 | 8 | 8 |
+     * | shadowMapScale | 0.5 | 1 | 2 |
+     * | volumetricFog | false | true | true |
+     * | softParticles | false | true | true |
+     * | screenSpaceReflections | false | true | true |
+     * | ambientOcclusion | false | true | true |
+     * | msaaSamples | 1 | 4 | 4 |
+     * Medium is every field's default, the frame drawn before any preset.
+     *
+     * @param world The world whose RenderSettings change.
+     * @param preset The preset.
+     * @returns Refused for a world that is not alive, or inside a system that did not declare RenderSettings among its writes.
+     */
+    function applyQuality(world: World, preset: GraphicsQuality): Result<void>;
     /**
      * The look last applied (by og.render.applyLook or GameDesc.look), as og.load.lookInfo describes it; null before any.
      *

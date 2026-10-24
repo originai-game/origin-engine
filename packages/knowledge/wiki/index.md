@@ -119,7 +119,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1161 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1164 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -339,7 +339,7 @@ Field units the docs and Tune use.
 | [`GraphAsset`](anim.md#type-GraphAsset) | handle | anim | — |
 | [`GraphAsset()`](anim.md#column-GraphAsset) | column kind | anim | — |
 | [`GraphDesc`](anim.md#type-GraphDesc) | desc struct | anim | — |
-| [`GraphicsQuality`](ui.md#type-GraphicsQuality) | enum | ui | — |
+| [`GraphicsQuality`](render.md#type-GraphicsQuality) | enum | render | — |
 | [`GridDesc`](ui.md#type-GridDesc) | desc struct | ui | — |
 | [`Heard`](probe.md#type-Heard) | struct | probe | — |
 | [`Hello`](probe.md#type-Hello) | struct | probe | — |
@@ -676,6 +676,7 @@ Field units the docs and Tune use.
 | [`og.RectLight`](render.md#record-RectLight) | component | render | — |
 | [`og.ReflectionProbe`](render.md#record-ReflectionProbe) | component | render | — |
 | [`og.render.applyLook`](render.md#fn-applyLook) | function | render | `og_render_apply_look` |
+| [`og.render.applyQuality`](render.md#fn-applyQuality) | function | render | `og_render_apply_quality` |
 | [`og.render.bakedLighting`](render.md#fn-bakedLighting) | function | render | `og_render_baked_lighting` |
 | [`og.render.boxGeometry`](render.md#fn-boxGeometry) | function | render | `og_render_box_geometry` |
 | [`og.render.bufferGeometry`](render.md#fn-bufferGeometry) | function | render | `og_render_buffer_geometry` |
@@ -966,6 +967,8 @@ Field units the docs and Tune use.
 | [`PROFILE_3D`](physics.md#const-PROFILE_3D) | constant | physics | — |
 | [`ProgressDesc`](ui.md#type-ProgressDesc) | desc struct | ui | — |
 | [`PuzzleHudDesc`](ui.md#type-PuzzleHudDesc) | desc struct | ui | — |
+| [`QualityPreset`](render.md#type-QualityPreset) | enum | render | — |
+| [`QualityPreset()`](render.md#column-QualityPreset) | column kind | render | — |
 | [`quat`](math.md#value-quat) | value | math | — |
 | [`Quaternion`](math.md#type-Quaternion) | struct | math | — |
 | [`Quaternion()`](reflect.md#column-Quaternion) | column kind | reflect | — |

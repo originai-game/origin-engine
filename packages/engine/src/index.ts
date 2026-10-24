@@ -61,6 +61,7 @@ export const Entity = ((value = 0 as Api.Entity, options) => spec("Entity", valu
 export const Geometry = ((value = 0 as Api.Geometry, options) => spec("Geometry", value, options)) as typeof Api.Geometry;
 export const Material = ((value = 0 as Api.Material, options) => spec("Material", value, options)) as typeof Api.Material;
 export const ToneMapping = ((value = "aces" as Api.ToneMapping, options) => spec("ToneMapping", value, options)) as typeof Api.ToneMapping;
+export const QualityPreset = ((value = "none" as Api.QualityPreset, options) => spec("QualityPreset", value, options)) as typeof Api.QualityPreset;
 export const Texture = ((value = 0 as Api.Texture, options) => spec("Texture", value, options)) as typeof Api.Texture;
 export const Lut = ((value = 0 as Api.Lut, options) => spec("Lut", value, options)) as typeof Api.Lut;
 export const EnvironmentMap = ((value = 0 as Api.EnvironmentMap, options) => spec("EnvironmentMap", value, options)) as typeof Api.EnvironmentMap;

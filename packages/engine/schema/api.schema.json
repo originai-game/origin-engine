@@ -2754,6 +2754,9 @@
         "SpotLight",
         "ToneMapping",
         "ToneMapping",
+        "GraphicsQuality",
+        "QualityPreset",
+        "QualityPreset",
         "RenderSettings",
         "Lut",
         "EnvironmentMap",
@@ -3169,6 +3172,27 @@
           ],
           "returns": "Result<Void>",
           "returnsDoc": "Refused for a look not loaded in this world, one in a streaming group that is not resident (the reason names it), or a resource the system did not declare.",
+          "publish": true
+        },
+        {
+          "name": "applyQuality",
+          "doc": "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. The settings screen calls it when the player picks a preset (SettingsDesc.world); a game applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:\n| Field | low | medium | high |\n|---|---|---|---|\n| rectShadows | false | true | true |\n| shadowedLights | 2 | 8 | 8 |\n| shadowMapScale | 0.5 | 1 | 2 |\n| volumetricFog | false | true | true |\n| softParticles | false | true | true |\n| screenSpaceReflections | false | true | true |\n| ambientOcclusion | false | true | true |\n| msaaSamples | 1 | 4 | 4 |\nMedium is every field's default, the frame drawn before any preset.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose RenderSettings change."
+            },
+            {
+              "name": "preset",
+              "type": "GraphicsQuality",
+              "optional": false,
+              "doc": "The preset."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a world that is not alive, or inside a system that did not declare RenderSettings among its writes.",
           "publish": true
         },
         {
@@ -6970,7 +6994,6 @@
         "WipeSide",
         "ScreenTransitionDesc",
         "ScreenTransitionResult",
-        "GraphicsQuality",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -14522,10 +14545,44 @@
         "none": "No curve: the exposed linear colour is clamped to 0..1, so 2D colours come out exactly as authored at exposure 1 (the same as toneMapped false)."
       }
     },
+    "GraphicsQuality": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). The settings screen (og.ui.settingsScreen) offers the three.",
+      "type": "string",
+      "enum": [
+        "medium",
+        "low",
+        "high"
+      ],
+      "x-og-variants": {
+        "medium": "The full frame: every quality field at its default.",
+        "low": "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections or ambient occlusion, FXAA for MSAA.",
+        "high": "The full frame with the shadow maps at twice their side."
+      }
+    },
+    "QualityPreset": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "The preset RenderSettings' quality fields were last written with (RenderSettings.quality).",
+      "type": "string",
+      "enum": [
+        "none",
+        "low",
+        "medium",
+        "high"
+      ],
+      "x-og-variants": {
+        "none": "No preset applied: the fields are their defaults or the game's own.",
+        "low": "og.render.applyQuality(world, \"low\").",
+        "medium": "og.render.applyQuality(world, \"medium\").",
+        "high": "og.render.applyQuality(world, \"high\")."
+      }
+    },
     "RenderSettings": {
       "x-og-kind": "resource",
       "x-og-module": "render",
-      "description": "The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.",
+      "description": "The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to msaaSamples) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.",
       "type": "object",
       "properties": {
         "environmentIntensity": {
@@ -14623,6 +14680,61 @@
           "type": "boolean",
           "description": "Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map: to compare, or to see the realtime lights alone.",
           "default": true
+        },
+        "quality": {
+          "$ref": "#/$defs/QualityPreset",
+          "description": "The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to msaaSamples), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set.",
+          "default": "none"
+        },
+        "rectShadows": {
+          "type": "boolean",
+          "description": "Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off: a rect light's shadow is the costliest light in the frame.",
+          "default": true
+        },
+        "shadowedLights": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.shadowedLights caps it); 0 casts none. The directional light's cascades are not counted.",
+          "default": 8,
+          "minimum": 0,
+          "maximum": 8
+        },
+        "shadowMapScale": {
+          "type": "number",
+          "description": "The shadow maps at this fraction of their full side: the directional light's cascades (2048 texels by default) and the local lights' layers (512), each kept within 64 texels and the device's limit (4096 for the cascades). Changing it makes the maps again at the next frame; RenderCapabilities.shadowMapSize is the cascades' side drawn.",
+          "default": 1,
+          "minimum": 0.125,
+          "maximum": 4
+        },
+        "volumetricFog": {
+          "type": "boolean",
+          "description": "An og.VolumetricFog is drawn lit, with its light shafts; false draws the same medium as plain distance and height fog.",
+          "default": true
+        },
+        "softParticles": {
+          "type": "boolean",
+          "description": "Particles with a softDistance fade against the scene behind them; false draws them hard-edged and asks no depth prepass for them.",
+          "default": true
+        },
+        "screenSpaceReflections": {
+          "type": "boolean",
+          "description": "PostEffects.ssr draws (on the full tier); false leaves smooth surfaces the reflection probes' and the environment's reflection. PostEffects keeps its settings either way.",
+          "default": true
+        },
+        "ambientOcclusion": {
+          "type": "boolean",
+          "description": "PostEffects.ao darkens creases; false draws none. PostEffects keeps its settings either way.",
+          "default": true
+        },
+        "msaaSamples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Samples per pixel where the antialiasing multisamples (msaa, the WebGL2 tier's choice; RenderCapabilities.antialias): 4, or 1, which draws FXAA instead. TAA, FXAA and no antialiasing take one sample whatever it says. Changing it makes the multisampled targets and pipelines again at the next frame.",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 4
         }
       },
       "additionalProperties": false
@@ -30528,22 +30640,6 @@
       ],
       "additionalProperties": false
     },
-    "GraphicsQuality": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "A graphics quality preset.",
-      "type": "string",
-      "enum": [
-        "medium",
-        "low",
-        "high"
-      ],
-      "x-og-variants": {
-        "medium": "Medium.",
-        "low": "Low: the fewest effects.",
-        "high": "High: every effect."
-      }
-    },
     "MenuItem": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
@@ -30861,6 +30957,18 @@
             }
           ],
           "description": "Called when the screen closes after changes (persist here).",
+          "default": null
+        },
+        "world": {
+          "anyOf": [
+            {
+              "x-og-type": "World"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The world the graphics preset is drawn in: when the player picks another preset the screen calls og.render.applyQuality(world, preset) before onChange. Null leaves applying it to the game. Inside a system, the system declares RenderSettings among its writes.",
           "default": null
         },
         "title": {

@@ -134,10 +134,17 @@ fn code(s: &str) -> String {
     }
 }
 
+/// Each doc line is a paragraph, except that consecutive lines starting
+/// with `|` are the rows of one table.
 fn paragraphs(out: &mut String, doc: &[String]) {
-    for d in doc {
+    for (i, d) in doc.iter().enumerate() {
         out.push_str(d);
-        out.push_str("\n\n");
+        let row = |l: Option<&String>| l.is_some_and(|l| l.starts_with('|'));
+        out.push_str(if row(Some(d)) && row(doc.get(i + 1)) {
+            "\n"
+        } else {
+            "\n\n"
+        });
     }
 }
 

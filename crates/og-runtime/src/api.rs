@@ -2157,6 +2157,39 @@ pub fn og_render_apply_look(world: u32, look: f64) -> String {
     result_void(engine(world).and_then(|eng| super::look::apply(&eng, super::look::index(look)?)))
 }
 
+/// `og.render.applyQuality`: the preset's row of RenderSettings' quality
+/// fields (og-render's [`og_render::RenderQuality::preset`], the table in
+/// api.ogt's doc), written as the game would write them.
+pub fn og_render_apply_quality(world: u32, preset: String) -> String {
+    let row = match preset.as_str() {
+        "low" => og_render::QualityPreset::Low,
+        "medium" => og_render::QualityPreset::Medium,
+        "high" => og_render::QualityPreset::High,
+        other => {
+            return refuse(format!(
+                "'{other}' is not a graphics preset (low, medium or high)"
+            ));
+        }
+    };
+    let q = og_render::RenderQuality::preset(row);
+    let fields = json!({
+        "quality": preset,
+        "rectShadows": q.rect_shadows,
+        "shadowedLights": q.shadowed_lights,
+        "shadowMapScale": q.shadow_map_scale,
+        "volumetricFog": q.volumetric_fog,
+        "softParticles": q.soft_particles,
+        "screenSpaceReflections": q.ssr,
+        "ambientOcclusion": q.ambient_occlusion,
+        "msaaSamples": q.msaa_samples,
+    });
+    result_void(
+        engine(world).and_then(|eng| {
+            super::engine::write_resource_value(eng.id, "og.RenderSettings", &fields)
+        }),
+    )
+}
+
 pub fn og_render_look(world: u32) -> String {
     let info = engine(world).ok().and_then(|eng| {
         let applied = eng.render.borrow().fx.look.applied;
