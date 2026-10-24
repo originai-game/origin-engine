@@ -379,6 +379,31 @@ impl Reloader for RuntimeReloader {
             project.as_ref(),
             previous,
         )?;
+        // State blocks resolve asset handles while decoding the snapshot,
+        // before the rebuilt world can be committed.
+        {
+            let st = eng.state.borrow();
+            st.anim_assets.replay(&a.anim);
+            st.feel_assets.replay(&a.feel);
+            for (&handle, mesh) in &st.physics_meshes {
+                a.mounted
+                    .physics
+                    .set_mesh(handle, mesh.clone())
+                    .map_err(|e| e.reason().to_string())?;
+            }
+            for (&handle, field) in &st.physics_heightfields {
+                a.mounted
+                    .physics
+                    .set_heightfield(handle, field.clone())
+                    .map_err(|e| e.reason().to_string())?;
+            }
+        }
+        for (&e, kept) in &eng.render.borrow().atmo.rigs {
+            a.mounted
+                .physics
+                .set_ragdoll_rig(og_ecs::Entity::from_bits(e), kept.rig.clone())
+                .map_err(|e| e.reason().to_string())?;
+        }
         a.probe = None;
         let world = std::mem::replace(
             &mut a.world,
@@ -418,7 +443,7 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
             .map(|(k, v)| (k.clone(), v.usage.clone(), v.doc.clone()))
             .collect()
     };
-    let meshes = {
+    {
         let mut st = eng.state.borrow_mut();
         super::engine::bump_layout_epoch();
         st.layouts = a.layouts;
@@ -432,26 +457,6 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
         st.ui = Some(a.mounted.ui.clone());
         st.anim = Some(a.anim.clone());
         st.feel = Some(a.feel.clone());
-        (st.physics_meshes.clone(), st.physics_heightfields.clone())
-    };
-    let (meshes, heightfields) = meshes;
-    // Animation assets too: the new og.anim gets every skeleton, clip and graph.
-    eng.state.borrow().anim_assets.replay(&a.anim);
-    eng.state.borrow().feel_assets.replay(&a.feel);
-    // Meshes are assets: the new physics gets every one the old one had.
-    for (handle, mesh) in meshes {
-        let _ = a.mounted.physics.set_mesh(handle, mesh);
-    }
-    // And terrains' height fields.
-    for (handle, field) in heightfields {
-        let _ = a.mounted.physics.set_heightfield(handle, field);
-    }
-    // So are ragdoll rigs.
-    for (&e, kept) in &eng.render.borrow().atmo.rigs {
-        let _ = a
-            .mounted
-            .physics
-            .set_ragdoll_rig(og_ecs::Entity::from_bits(e), kept.rig.clone());
     }
     og_audio::publish_link(eng.id, a.mounted.audio.clone());
     eng.render.borrow_mut().ui = Some(a.mounted.ui.clone());
