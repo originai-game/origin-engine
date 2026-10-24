@@ -6306,6 +6306,33 @@ create's `test` script packs first (as engine's runs `build.sh`), and
 run (docs/ci.md §Lanes). The wave-end runs again in the measure lane on
 the merged main.
 
+The wave-end at b86bcb91 (batch 1 merged; 1,247 s: gate 840 s, web
+407 s): every gate step passed but bun-test, and web failed on one
+frame; both were real and are fixed on main.
+- `hosts.test`'s 2D lanes module gave a snapshot 22 bytes shorter than
+  the native host's at tick 600 (the same bodies and tally): under
+  `profile2d` terrain_absent's `mount` added no state block, so the 2D
+  world lacked the `og.terrain` block (its name and an empty edit log)
+  the full build writes, in the save and in the world hash. The block is
+  now added with no edits, a save carrying one is refused naming the
+  profile (4a6e2ad1; tests/profile2d.rs fails on the old code).
+- The third-person `beacon` was over tolerance on both browser tiers
+  (webgpu RMSE 0.01033, webgl2 0.01002 against 0.01): the ember sparks
+  are sprites squeezed along their flight, and through the anisotropic
+  sprite sampler (ui-aniso) they read their soft art instead of a coarse
+  mip's flat rectangle. On Metal the frame moved 0.443 % outliers, RMSE
+  0.00949, within the native tolerance, so the playtest never said so.
+  Re-recorded on Metal (title and dawn with it, RMSE 0.0026 each) and on
+  WebGL2 (765949f2); the WebGL2 beacon reads 0.687 % outliers, RMSE
+  0.01677 against the new Metal frame (was 0.809 %, 0.0165).
+- Two test fixes from the earlier run landed in 396035c5: `reload-asset`
+  counts red pixels in the frame's middle half (the scaffolded title's
+  red Start button at the frame's left edge was the 1,572 "red" pixels
+  before the edit); the handle-read cost test counts ABI reads instead
+  of timing a ratio under gate load.
+The lane reruns `--only bun-test` (the 2D lanes module rebuilt) and
+`web-reference` at 765949f2; the result is below.
+
 ### Status 2026-10-19, E5 round
 
 - **Atmosphere, water, material shaders and physics beyond rigid bodies**

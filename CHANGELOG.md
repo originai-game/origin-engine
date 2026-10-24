@@ -48,6 +48,12 @@ round 3").
   histogram, land fraction and river length and writes its height and
   control maps under `og-out/terrain-maps/`. The og-game skill §11; the
   og-tests gfx scene `terrain-generated`; fx-showcase's `islands` station.
+- Fixes at the round's first wave-end: the 2D web modules' world carries
+  the `og.terrain` state block (no edits) the full build writes, so a 2D
+  save and world hash are the same bytes on every host, and a save with
+  terrain edits is refused there naming the profile; the third-person
+  `beacon`, `title` and `dawn` frames re-recorded on Metal and the
+  beacon on WebGL2 after the sprite sampler's anisotropy (ui-aniso).
 
 Debt round 2 (`docs/phase-1.md`, "Plan 2026-10-23, debt round 2").
 
