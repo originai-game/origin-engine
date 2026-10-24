@@ -279,8 +279,26 @@ fn asset_stats(bundle: &Bundle, outputs: &[(String, String, u64)]) -> Value {
                             .fold(0.0, f32::max)
                     })
                     .collect();
+                // What the default scene draws: every placed primitive (a
+                // part), and the distinct primitives among them (a draw:
+                // the renderer batches a primitive's placements into one
+                // instanced draw).
+                let mut drawn = std::collections::BTreeSet::new();
+                let mut parts = 0usize;
+                if let Some(s) = m.default_scene {
+                    for n in m.scene_nodes(s) {
+                        if let Some(mesh) = m.nodes[n].mesh {
+                            for p in m.meshes[mesh].primitives.clone() {
+                                parts += 1;
+                                drawn.insert(p);
+                            }
+                        }
+                    }
+                }
                 model = json!({
                     "triangles": per_lod.first().copied().unwrap_or(0),
+                    "parts": parts,
+                    "draws": drawn.len(),
                     "vertices": m.primitives.iter().map(|p| p.vertices.len() as u64).sum::<u64>(),
                     "lods": per_lod,
                     "lodErrors": lod_errors,

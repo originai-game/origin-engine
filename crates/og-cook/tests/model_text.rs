@@ -374,3 +374,41 @@ fn a_bad_model_says_where() {
         assert!(errors.contains(want), "{want}: {errors}");
     }
 }
+
+/// `og cook --report` of a text model: its triangles, its parts and the
+/// draws they batch into (the three bolts are one), its BVH's share.
+#[test]
+fn the_report_counts_its_triangles_draws_and_bvh() {
+    let root = project(
+        "og-cook-model-text-report",
+        &[("models/gear.ogt", gear_text().as_bytes())],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let budgets = og_cook::cook::stats::Budgets::default();
+    let json = og_cook::cook::stats::cook_report_json(&report, &root.join("cooked"), &budgets);
+    let gear = json["assets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|a| a["source"] == "models/gear.ogt")
+        .expect("the model's entry");
+    assert_eq!(gear["kind"], "model");
+    let m = &gear["model"];
+    assert_eq!(m["parts"], 5, "{m}");
+    assert_eq!(m["draws"], 3, "{m}");
+    let model = Bundle::open(&root.join("cooked"))
+        .unwrap()
+        .load_model("models/gear.ogt")
+        .unwrap();
+    let lod0: u64 = model
+        .primitives
+        .iter()
+        .map(|p| p.triangle_count(0) as u64)
+        .sum();
+    assert_eq!(m["triangles"], lod0);
+    assert!(
+        m["bvhBytes"].as_u64().unwrap() > 0 && m["bvhShare"].as_f64().unwrap() > 0.0,
+        "{m}"
+    );
+}
