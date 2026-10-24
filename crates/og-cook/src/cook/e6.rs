@@ -308,12 +308,10 @@ fn terrain_triangles(
     let text = std::fs::read_to_string(root.join(rel))
         .map_err(|_| "does not exist under assets/".to_string())?;
     let doc = super::terrain::parse(rel, root, &text)?;
-    let bytes = std::fs::read(root.join(&doc.heightmap))
-        .map_err(|_| format!("its heightmap '{}' does not exist", doc.heightmap))?;
-    let map = super::terrain::decode_heightmap(&doc.heightmap, &bytes)?;
-    let heights = super::terrain::heights(&doc, &map);
-    let (cols, rows) = (map.columns as usize, map.rows as usize);
-    let size = doc.size.unwrap_or([(cols - 1) as f32, (rows - 1) as f32]);
+    let field = super::terrain::field(&doc, root)?;
+    let heights = field.heights;
+    let (cols, rows) = (field.columns as usize, field.rows as usize);
+    let size = field.size;
     let cell = (size[0] / (cols - 1) as f32, size[1] / (rows - 1) as f32);
     let at = |c: usize, r: usize| {
         let (c, r) = (c.min(cols - 1), r.min(rows - 1));

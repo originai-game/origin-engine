@@ -2660,6 +2660,9 @@ pub struct CookedTerrain {
     pub cast_shadows: bool,
     /// Whether the game gets a height-field collider for it.
     pub collision: bool,
+    /// A generated terrain's sea level (`generate { sea <m> }`), metres
+    /// above its origin.
+    pub sea_level: Option<f32>,
     tiles: std::sync::Arc<TerrainTiles>,
 }
 
@@ -2942,6 +2945,7 @@ impl Bundle {
             },
             cast_shadows: m.cast_shadows != 0,
             collision: m.collision != 0,
+            sea_level: (m.sea != 0).then_some(m.sea_level),
             tiles: std::sync::Arc::new(TerrainTiles {
                 rows: tiles,
                 heights,

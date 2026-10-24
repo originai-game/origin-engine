@@ -1374,7 +1374,7 @@ impl BlobKind for Lightmap {
 
 row!(
     /// The root of a terrain blob (an `.ogt` of `type terrain`).
-    TerrainMeta, "og.Terrain", 3 {
+    TerrainMeta, "og.Terrain", 4 {
         /// Extent along x and z in metres, centred on the terrain's origin.
         size_x: f32,
         size_z: f32,
@@ -1408,6 +1408,14 @@ row!(
         albedo_array_len: u32,
         normal_array_at: u32,
         normal_array_len: u32,
+        /// 1: the field was made by `generate`, not read from a heightmap.
+        generated: u32,
+        /// 1: a generated terrain's `sea`, at `sea_level` metres above the
+        /// origin (og.terrain.load's TerrainInfo.seaLevel).
+        sea: u32,
+        sea_level: f32,
+        /// A generated terrain's rivers, in metres along their samples.
+        river_length: f32,
     }
 );
 

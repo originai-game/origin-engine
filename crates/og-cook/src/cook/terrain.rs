@@ -44,6 +44,79 @@
 //! }
 //! ```
 //!
+//! Or the terrain makes its field instead of reading one: a `generate`
+//! block in place of `heightmap` (refused beside it), whose samples are a
+//! heightmap's (`height` and `size` keep their meaning: the field is
+//! normalised so its lowest sample stands at `height`'s low and its
+//! highest at its high, before erosion, rivers and the shore, and no
+//! sample leaves that range), built by
+//! `terrain_generate` with only IEEE-exact arithmetic, so every host makes
+//! the same field. With `biome` rules it writes the control map (refused
+//! beside `control`); without them there is none, and the layers' own
+//! slope and altitude rules place them. Every line, with its default:
+//!
+//! ```text
+//! generate {
+//!   samples 257 257          # columns and rows (2 to 4097)
+//!   seed 1                   # a whole number: another seed, another terrain
+//!   noise {
+//!     octaves 6              # 1 to 12
+//!     frequency 3            # features across the terrain's longer side
+//!     lacunarity 2           # each octave's frequency over the last's (1 to 8)
+//!     gain 0.5               # each octave's amplitude over the last's (0 to 1)
+//!     warp 0                 # domain warp, in features (0: none)
+//!   }
+//!   mask island 0.4          # land fades to the low over this share of the half size
+//!                            # or: mask ridge 1 (that share of the noise ridged); default no mask
+//!   erosion {                # hydraulic erosion by seeded drops (absent: none)
+//!     drops 40000
+//!     lifetime 30            # steps a drop lives
+//!     radius 3               # samples a drop erodes around it
+//!     inertia 0.05           # 0: down the slope, 1: straight on
+//!     capacity 4             # sediment carried per unit of speed, water and drop
+//!     deposition 0.3         # share of the excess sediment dropped per step
+//!     erosion 0.3            # share of the free capacity eroded per step
+//!     evaporation 0.01       # share of the water lost per step
+//!     gravity 4
+//!   }
+//!   thermal {                # thermal erosion (absent: none)
+//!     talus 35               # degrees: steeper slopes slump
+//!     iterations 20
+//!     rate 0.5               # share of the excess moved per iteration
+//!   }
+//!   terraces {               # (absent: none)
+//!     step 10                # metres between terraces
+//!     blend 0.4              # 0: hard steps, 1: smooth ramps
+//!   }
+//!   sea 0                    # metres above the origin (absent: no sea); og.terrain.load's seaLevel
+//!   shore 2                  # metres either side of the sea level flattened (needs sea)
+//!   rivers {                 # flow gathered over the filled field, carved (absent: none)
+//!     threshold 400          # samples draining through a sample before it is a river
+//!     depth 2                # metres carved where the river is full
+//!     width 6                # metres across where it is full
+//!   }
+//!   moisture {               # what a biome's moisture reads, 0 to 1
+//!     flow 1                 # weight of the flow gathered (a / (a + scale))
+//!     scale 64               # samples draining through for half the flow's share
+//!     noise 0.5              # weight of a noise
+//!     frequency 6            # its features across the terrain
+//!   }
+//!   biome {                  # any number; each writes its layer's control channel
+//!     layer 0                # the layer it writes (0 to 3), required
+//!     weight 1               # the channel where every rule holds (0 to 1)
+//!     altitude -1000000 1000000   # metres above the origin
+//!     altitudeFade 2
+//!     slope 0 90             # degrees from flat
+//!     slopeFade 4
+//!     moisture 0 1
+//!     moistureFade 0.1
+//!   }
+//! }
+//! ```
+//!
+//! A channel is the most any of its layer's biomes gives a sample (its
+//! weight times its three bands); the control map has the field's samples.
+//!
 //! The heightmap and the control map are read relative to the terrain file
 //! (or, failing that, `assets/`); they are part of the terrain, not
 //! textures of their own.
@@ -220,7 +293,9 @@ pub(super) fn decode_heightmap(name: &str, bytes: &[u8]) -> Result<Heightmap, St
 
 /// A terrain file's settings, read and checked.
 pub(super) struct TerrainDoc {
-    pub heightmap: String,
+    /// The heightmap (an asset path), or none: `generate` makes the field.
+    pub heightmap: Option<String>,
+    pub generate: Option<super::terrain_generate::Generate>,
     pub control: Option<String>,
     pub height: [f32; 2],
     pub size: Option<[f32; 2]>,
@@ -236,8 +311,9 @@ pub(super) struct TerrainDoc {
     pub normal_array: Option<String>,
 }
 
-const KEYS: [&str; 12] = [
+const KEYS: [&str; 13] = [
     "heightmap",
+    "generate",
     "height",
     "size",
     "control",
@@ -279,9 +355,23 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
             ));
         }
     }
-    let heightmap = string_of(body, "heightmap")
-        .ok_or("a terrain names its heightmap: heightmap \"<file>.png\" (16-bit grey) or .exr")?;
-    let exr = heightmap.to_ascii_lowercase().ends_with(".exr");
+    let heightmap = string_of(body, "heightmap");
+    let generate = match (body.get("generate"), body.get("heightmap")) {
+        (Some(g), Some(h)) => {
+            return Err(format!(
+                "line {}: a terrain makes its field (generate) or reads it (heightmap, line {}), not both",
+                g.line, h.line
+            ));
+        }
+        (Some(g), None) => Some(super::terrain_generate::parse(g)?),
+        (None, _) => None,
+    };
+    if heightmap.is_none() && generate.is_none() {
+        return Err("a terrain names its heightmap: heightmap \"<file>.png\" (16-bit grey) or .exr, or makes it: generate { ... }".into());
+    }
+    let exr = heightmap
+        .as_ref()
+        .is_some_and(|h| h.to_ascii_lowercase().ends_with(".exr"));
     let height = pair(body, "height", if exr { [0.0, 1.0] } else { [0.0, 100.0] })?;
     let size = match numbers(body, "size") {
         None => None,
@@ -394,8 +484,25 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
             layers.len()
         ));
     }
+    if let Some(g) = &generate {
+        if let (Some(b), Some(c)) = (g.biomes.first(), body.get("control")) {
+            return Err(format!(
+                "line {}: biomes write the terrain's control map: drop 'control' (line {}) or the biomes",
+                b.line, c.line
+            ));
+        }
+        if let Some(b) = g.biomes.iter().find(|b| b.layer as usize >= layers.len()) {
+            return Err(format!(
+                "line {}: the biome writes layer {} but the terrain has {} layer(s)",
+                b.line,
+                b.layer,
+                layers.len()
+            ));
+        }
+    }
     Ok(TerrainDoc {
-        heightmap: resolve(rel, root, &heightmap),
+        heightmap: heightmap.map(|h| resolve(rel, root, &h)),
+        generate,
         control: string_of(body, "control").map(|c| resolve(rel, root, &c)),
         height,
         size,
@@ -411,11 +518,83 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
     })
 }
 
-/// The heights in metres a terrain file's heightmap stands for (what the
-/// runtime's terrain draws, before quantisation): `min + v · (max - min)`.
-pub(super) fn heights(doc: &TerrainDoc, map: &Heightmap) -> Vec<f32> {
+/// A terrain's samples, read from its heightmap (and control map) or made
+/// by its generator.
+pub(super) struct Field {
+    pub columns: u32,
+    pub rows: u32,
+    /// Metres above the origin (what the runtime's terrain draws, before
+    /// quantisation): a heightmap's `min + v · (max - min)`.
+    pub heights: Vec<f32>,
+    pub control: Option<og_render::TerrainControl>,
+    /// Its extent: `size`, or a metre per sample.
+    pub size: [f32; 2],
+    pub exr: bool,
+    /// Made by `generate`: its sea level and its rivers' length in metres.
+    pub generated: Option<(Option<f32>, f32)>,
+}
+
+/// Reads (or makes) a terrain file's samples.
+pub(super) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
+    let read = |rel: &str, what: &str| {
+        std::fs::read(root.join(rel)).map_err(|_| {
+            format!("the {what} '{rel}' does not exist beside the terrain or under assets/")
+        })
+    };
+    let control = || -> Result<Option<og_render::TerrainControl>, String> {
+        match &doc.control {
+            None => Ok(None),
+            Some(c) => {
+                let img = super::texture::decode(&read(c, "control map")?)
+                    .map_err(|e| format!("{c}: {e}"))?;
+                Ok(Some(og_render::TerrainControl {
+                    width: img.width,
+                    height: img.height,
+                    rgba: img.rgba.into(),
+                }))
+            }
+        }
+    };
+    let size_of = |columns: u32, rows: u32| {
+        doc.size
+            .unwrap_or([(columns - 1) as f32, (rows - 1) as f32])
+    };
+    if let Some(g) = &doc.generate {
+        let size = size_of(g.columns, g.rows);
+        let made = super::terrain_generate::generate(g, size, doc.height);
+        let control = match made.control {
+            Some(rgba) => Some(og_render::TerrainControl {
+                width: g.columns,
+                height: g.rows,
+                rgba: rgba.into(),
+            }),
+            None => control()?,
+        };
+        return Ok(Field {
+            columns: g.columns,
+            rows: g.rows,
+            heights: made.heights,
+            control,
+            size,
+            exr: false,
+            generated: Some((g.sea, made.river_length)),
+        });
+    }
+    let name = doc
+        .heightmap
+        .as_deref()
+        .expect("parse: a heightmap or generate");
+    let map = decode_heightmap(name, &read(name, "heightmap")?)?;
     let [lo, hi] = doc.height;
-    map.values.iter().map(|v| lo + v * (hi - lo)).collect()
+    Ok(Field {
+        columns: map.columns,
+        rows: map.rows,
+        heights: map.values.iter().map(|v| lo + v * (hi - lo)).collect(),
+        control: control()?,
+        size: size_of(map.columns, map.rows),
+        exr: map.exr,
+        generated: None,
+    })
 }
 
 pub(super) fn cook_terrain(
@@ -427,20 +606,9 @@ pub(super) fn cook_terrain(
         std::str::from_utf8(&s.bytes).map_err(|_| CookError("a terrain is text (UTF-8)".into()))?;
     let root = assets_root(s);
     let doc = parse(&s.rel, &root, text).map_err(CookError)?;
-    let read = |rel: &str, what: &str| {
-        std::fs::read(root.join(rel)).map_err(|_| {
-            CookError(format!(
-                "the {what} '{rel}' does not exist beside the terrain or under assets/"
-            ))
-        })
-    };
-    let map =
-        decode_heightmap(&doc.heightmap, &read(&doc.heightmap, "heightmap")?).map_err(CookError)?;
-    let h = heights(&doc, &map);
-    let (columns, rows) = (map.columns, map.rows);
-    let size = doc
-        .size
-        .unwrap_or([(columns - 1) as f32, (rows - 1) as f32]);
+    let source = field(&doc, &root).map_err(CookError)?;
+    let (columns, rows, size) = (source.columns, source.rows, source.size);
+    let (sea, river_length) = source.generated.unwrap_or((None, 0.0));
     let mut missing = Vec::new();
     for (a, n, _) in &doc.layers {
         for t in [a, n].into_iter().flatten() {
@@ -461,24 +629,13 @@ pub(super) fn cook_terrain(
         )));
     }
 
-    let control = match &doc.control {
-        None => None,
-        Some(c) => {
-            let img = super::texture::decode(&read(c, "control map")?)
-                .map_err(|e| CookError(format!("{c}: {e}")))?;
-            Some(og_render::TerrainControl {
-                width: img.width,
-                height: img.height,
-                rgba: img.rgba.into(),
-            })
-        }
-    };
+    let control = source.control;
     let (control_w, control_h) = control.as_ref().map_or((0, 0), |c| (c.width, c.height));
     let field = og_render::TerrainData {
         size: glam::Vec2::new(size[0], size[1]),
         columns,
         rows,
-        heights: h.into(),
+        heights: source.heights.into(),
         control,
     };
     field.check().map_err(CookError)?;
@@ -595,6 +752,10 @@ pub(super) fn cook_terrain(
         albedo_array_len,
         normal_array_at,
         normal_array_len,
+        generated: u32::from(source.generated.is_some()),
+        sea: u32::from(sea.is_some()),
+        sea_level: sea.unwrap_or(0.0),
+        river_length,
     };
     let mut w = BlobWriter::new(
         format::Terrain::type_hash(),
@@ -629,8 +790,16 @@ pub(super) fn cook_terrain(
             String::new()
         }
     )];
-    if map.exr {
+    if source.exr {
         notes.push("heights from an EXR's first channel".into());
+    }
+    if let Some(g) = &doc.generate {
+        notes.push(format!(
+            "generated: seed {}, {}{} m of rivers",
+            g.seed,
+            sea.map_or(String::new(), |s| format!("sea at {s} m, ")),
+            river_length.round()
+        ));
     }
     Ok((w.finish(), notes))
 }
