@@ -135,6 +135,30 @@ module render {
 | [`og.render.ringGeometry`](#fn-ringGeometry) | function | Make a ring geometry for og.Mesh (one-sided: give it a double-sided material to see it from behind). |
 | [`og.render.circleGeometry`](#fn-circleGeometry) | function | Make a circle geometry for og.Mesh (one-sided, as ringGeometry). |
 | [`og.render.tubeGeometry`](#fn-tubeGeometry) | function | Make a tube along a curve through points for og.Mesh: pipes, cables, rails, a path shown as a ribbon of geometry. Physics can use it as a triangle-mesh Collider.mesh. |
+| [`ShapePoints`](#type-ShapePoints) | struct | A shape as points, what og.Shape.extractPoints returns and what shapeGeometry, extrudeGeometry and sweepGeometry read: the outline, then each hole. A repeated closing point is dropped, as three.js drops it. |
+| [`ShapeGeometryDesc`](#type-ShapeGeometryDesc) | desc struct | A flat shape with holes in the xy plane facing +Z, as three.js ShapeGeometry(shapes, curveSegments): triangulated by earcut (three.js's own port), the outline made clockwise and the holes counter-clockwise first, so its vertices and triangles are three.js's for the same shape. uvs are world x and y (v flipped to run down the image). |
+| [`ExtrudeGeometryDesc`](#type-ExtrudeGeometryDesc) | desc struct | Shapes pushed along +Z, or along a path, as three.js ExtrudeGeometry(shapes, options) with its option names and defaults: a closed solid, its lids from earcut and its walls ring by ring, rounded by a bevel of bevelSegments rings at each face. Unindexed as three.js's (every triangle its own vertices, flat normals), three.js's vertex order and counts; uvs from three.js's WorldUVGenerator (v flipped to run down the image). |
+| [`LatheGeometryDesc`](#type-LatheGeometryDesc) | desc struct | A profile turned round +Y, as three.js LatheGeometry(points, segments, phiStart, phiLength): vases, bottles, columns, wheels. three.js's vertices, indices and smooth normals; u round the axis, v along the profile (flipped to run down the image). A whole turn's seam meets exactly. |
+| [`PolyhedronGeometryDesc`](#type-PolyhedronGeometryDesc) | desc struct | A polyhedron from vertices and faces, every face subdivided `detail` times and every vertex pushed onto the sphere of `radius`, as three.js PolyhedronGeometry(vertices, indices, radius, detail): unindexed, flat normals at detail 0 and the sphere's above, three.js's spherical uvs. |
+| [`SolidGeometryDesc`](#type-SolidGeometryDesc) | desc struct | A regular solid, as three.js IcosahedronGeometry, DodecahedronGeometry, OctahedronGeometry and TetrahedronGeometry(radius, detail): PolyhedronGeometryDesc with the solid's own vertices and faces. An icosahedron at detail 2 or more is a sphere with even triangles. |
+| [`SweepKey`](#type-SweepKey) | struct | A value at a fraction of a sweep's path: linear between keys, held before the first and past the last. |
+| [`SweepGeometryDesc`](#type-SweepGeometryDesc) | desc struct | A section swept along a path, scaled and twisted over it: horns, tusks, handles, blades, tapered pipes, twisted columns (img2threejs's tapered sweep; three.js has no class for it). The section's x lies along the path's normal and y along its binormal (three.js's Frenet frames), rings evenly spaced along the path's length; u runs along the path, v round the section (flipped to run down the image), the sides smooth. An open path's ends are capped. |
+| [`MirrorAxis`](#type-MirrorAxis) | enum | The world axis a part is mirrored along, after its placement. |
+| [`GeometryPart`](#type-GeometryPart) | desc struct | A geometry placed as an Object3D is (scale, then rotate, then move), then mirrored: one part of og.render.mergeGeometries or an operand of og.render.csgGeometry. |
+| [`CsgOp`](#type-CsgOp) | enum | A boolean operation on two solids. |
+| [`CsgGeometryDesc`](#type-CsgGeometryDesc) | desc struct | Two closed geometries combined by a boolean operation, each placed first: a box with a hole bored through it, a dice, a window cut in a wall. The result is closed when both are (every edge shared by two triangles, wound opposite), every piece keeps its source's normals, uvs and colours (b's turned inside out where it is subtracted). Where a plane side or an edge crossing is decided, the decision is exact (Shewchuk's predicates), so every host makes the same cuts; faces that coincide keep one copy or none, as the operation says. |
+| [`MergeGeometriesDesc`](#type-MergeGeometriesDesc) | desc struct | Geometries placed and merged into one, as three.js BufferGeometryUtils.mergeGeometries after applying each part's matrix: a prop of parts drawn in one draw, a mirrored half, an array (the same part at several placements). Normals follow each placement; a mirrored part turns its triangles so they still face out. Vertex colours are kept when any part has them. |
+| [`og.render.shapeGeometry`](#fn-shapeGeometry) | function | Make a flat shape for og.Mesh (one-sided, as circleGeometry): an og.Shape with holes, or a points array. Physics can use it as a triangle-mesh Collider.mesh. |
+| [`og.render.extrudeGeometry`](#fn-extrudeGeometry) | function | Make an extruded solid for og.Mesh: a three.js extrusion is a paste (`og.render.extrudeGeometry(world, { shapes: shape, depth: 0.2, bevelEnabled: true })`). Gears, signs, keys, logos, cookie cutters; along a path, a rail or a moulding. |
+| [`og.render.latheGeometry`](#fn-latheGeometry) | function | Make a solid of revolution for og.Mesh: a profile turned round +Y. |
+| [`og.render.polyhedronGeometry`](#fn-polyhedronGeometry) | function | Make a polyhedron from vertices and faces for og.Mesh, subdivided onto a sphere. |
+| [`og.render.icosahedronGeometry`](#fn-icosahedronGeometry) | function | Make an icosahedron (twenty faces) for og.Mesh; with detail, a geodesic sphere. |
+| [`og.render.dodecahedronGeometry`](#fn-dodecahedronGeometry) | function | Make a dodecahedron (twelve pentagons, thirty-six triangles) for og.Mesh. |
+| [`og.render.octahedronGeometry`](#fn-octahedronGeometry) | function | Make an octahedron (eight faces) for og.Mesh. |
+| [`og.render.tetrahedronGeometry`](#fn-tetrahedronGeometry) | function | Make a tetrahedron (four faces) for og.Mesh. |
+| [`og.render.sweepGeometry`](#fn-sweepGeometry) | function | Make a section swept along a path for og.Mesh, tapered and twisted by keys. |
+| [`og.render.csgGeometry`](#fn-csgGeometry) | function | Make the union, difference or intersection of two placed geometries for og.Mesh. Chain calls for more operands (a cube minus six spheres is six calls); each result is a geometry like any other. |
+| [`og.render.mergeGeometries`](#fn-mergeGeometries) | function | Make one geometry of several placed ones for og.Mesh: one draw instead of many, mirrored halves, arrays. |
 | [`LineMode`](#type-LineMode) | enum | How a line set's points join, as three.js's three line objects. |
 | [`LineMode()`](#column-LineMode) | column kind | A LineMode field: the variant's index. |
 | [`LinesDesc`](#type-LinesDesc) | desc struct | Lines through points, drawn this frame only (immediate mode, as og.render.sprite): submit them every tick they should show. three.js Line, LineSegments and LineLoop with a LineBasicMaterial or LineDashedMaterial, but any width on every tier (each segment is a quad in screen space with a feathered edge, so WebGL2's one-pixel lines do not apply). |
@@ -1010,6 +1034,336 @@ fn tubeGeometry {
 
 <sub>`api.ogt` line 4433</sub>
 
+<a id="fn-shapeGeometry"></a>
+
+### `og.render.shapeGeometry`
+
+Make a flat shape for og.Mesh (one-sided, as circleGeometry): an og.Shape with holes, or a points array. Physics can use it as a triangle-mesh Collider.mesh.
+
+```ts
+og.render.shapeGeometry(world: World, desc?: ShapeGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `ShapeGeometryDesc` | yes | The shapes and their tessellation. |
+
+**Returns** `Result<Geometry>`: Refused for a shape whose points are not finite or that triangulates to nothing.
+
+Binding symbol `og_render_shape_geometry` · publish builds: kept
+
+```ogt
+fn shapeGeometry {
+  doc "Make a flat shape for og.Mesh (one-sided, as circleGeometry): an og.Shape with holes, or a points array. Physics can use it as a triangle-mesh Collider.mesh."
+  param world World "The world whose renderer owns the geometry."
+  param desc ShapeGeometryDesc "The shapes and their tessellation."
+  returns Result.Geometry "Refused for a shape whose points are not finite or that triangulates to nothing."
+}
+```
+
+<sub>`api.ogt` line 4647</sub>
+
+<a id="fn-extrudeGeometry"></a>
+
+### `og.render.extrudeGeometry`
+
+Make an extruded solid for og.Mesh: a three.js extrusion is a paste (`og.render.extrudeGeometry(world, { shapes: shape, depth: 0.2, bevelEnabled: true })`). Gears, signs, keys, logos, cookie cutters; along a path, a rail or a moulding.
+
+```ts
+og.render.extrudeGeometry(world: World, desc?: ExtrudeGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `ExtrudeGeometryDesc` | yes | The shapes, depth, bevel and path. |
+
+**Returns** `Result<Geometry>`: Refused for a shape whose points are not finite or that triangulates to nothing, or an extrudePath that is not alive.
+
+Binding symbol `og_render_extrude_geometry` · publish builds: kept
+
+```ogt
+fn extrudeGeometry {
+  doc "Make an extruded solid for og.Mesh: a three.js extrusion is a paste (`og.render.extrudeGeometry(world, { shapes: shape, depth: 0.2, bevelEnabled: true })`). Gears, signs, keys, logos, cookie cutters; along a path, a rail or a moulding."
+  param world World "The world whose renderer owns the geometry."
+  param desc ExtrudeGeometryDesc "The shapes, depth, bevel and path."
+  returns Result.Geometry "Refused for a shape whose points are not finite or that triangulates to nothing, or an extrudePath that is not alive."
+}
+```
+
+<sub>`api.ogt` line 4654</sub>
+
+<a id="fn-latheGeometry"></a>
+
+### `og.render.latheGeometry`
+
+Make a solid of revolution for og.Mesh: a profile turned round +Y.
+
+```ts
+og.render.latheGeometry(world: World, desc?: LatheGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `LatheGeometryDesc` | yes | The profile and the turn. |
+
+**Returns** `Result<Geometry>`: Refused for fewer than two points or one that is not finite.
+
+Binding symbol `og_render_lathe_geometry` · publish builds: kept
+
+```ogt
+fn latheGeometry {
+  doc "Make a solid of revolution for og.Mesh: a profile turned round +Y."
+  param world World "The world whose renderer owns the geometry."
+  param desc LatheGeometryDesc "The profile and the turn."
+  returns Result.Geometry "Refused for fewer than two points or one that is not finite."
+}
+```
+
+<sub>`api.ogt` line 4661</sub>
+
+<a id="fn-polyhedronGeometry"></a>
+
+### `og.render.polyhedronGeometry`
+
+Make a polyhedron from vertices and faces for og.Mesh, subdivided onto a sphere.
+
+```ts
+og.render.polyhedronGeometry(world: World, desc?: PolyhedronGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `PolyhedronGeometryDesc` | yes | The vertices, faces, radius and detail. |
+
+**Returns** `Result<Geometry>`: Refused for no faces, an index past the vertices, or a count that is not a multiple of three.
+
+Binding symbol `og_render_polyhedron_geometry` · publish builds: kept
+
+```ogt
+fn polyhedronGeometry {
+  doc "Make a polyhedron from vertices and faces for og.Mesh, subdivided onto a sphere."
+  param world World "The world whose renderer owns the geometry."
+  param desc PolyhedronGeometryDesc "The vertices, faces, radius and detail."
+  returns Result.Geometry "Refused for no faces, an index past the vertices, or a count that is not a multiple of three."
+}
+```
+
+<sub>`api.ogt` line 4668</sub>
+
+<a id="fn-icosahedronGeometry"></a>
+
+### `og.render.icosahedronGeometry`
+
+Make an icosahedron (twenty faces) for og.Mesh; with detail, a geodesic sphere.
+
+```ts
+og.render.icosahedronGeometry(world: World, desc?: SolidGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `SolidGeometryDesc` | yes | Its radius and detail. |
+
+**Returns** `Result<Geometry>`.
+
+Binding symbol `og_render_icosahedron_geometry` · publish builds: kept
+
+```ogt
+fn icosahedronGeometry {
+  doc "Make an icosahedron (twenty faces) for og.Mesh; with detail, a geodesic sphere."
+  param world World "The world whose renderer owns the geometry."
+  param desc SolidGeometryDesc "Its radius and detail."
+  returns Result.Geometry
+}
+```
+
+<sub>`api.ogt` line 4675</sub>
+
+<a id="fn-dodecahedronGeometry"></a>
+
+### `og.render.dodecahedronGeometry`
+
+Make a dodecahedron (twelve pentagons, thirty-six triangles) for og.Mesh.
+
+```ts
+og.render.dodecahedronGeometry(world: World, desc?: SolidGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `SolidGeometryDesc` | yes | Its radius and detail. |
+
+**Returns** `Result<Geometry>`.
+
+Binding symbol `og_render_dodecahedron_geometry` · publish builds: kept
+
+```ogt
+fn dodecahedronGeometry {
+  doc "Make a dodecahedron (twelve pentagons, thirty-six triangles) for og.Mesh."
+  param world World "The world whose renderer owns the geometry."
+  param desc SolidGeometryDesc "Its radius and detail."
+  returns Result.Geometry
+}
+```
+
+<sub>`api.ogt` line 4682</sub>
+
+<a id="fn-octahedronGeometry"></a>
+
+### `og.render.octahedronGeometry`
+
+Make an octahedron (eight faces) for og.Mesh.
+
+```ts
+og.render.octahedronGeometry(world: World, desc?: SolidGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `SolidGeometryDesc` | yes | Its radius and detail. |
+
+**Returns** `Result<Geometry>`.
+
+Binding symbol `og_render_octahedron_geometry` · publish builds: kept
+
+```ogt
+fn octahedronGeometry {
+  doc "Make an octahedron (eight faces) for og.Mesh."
+  param world World "The world whose renderer owns the geometry."
+  param desc SolidGeometryDesc "Its radius and detail."
+  returns Result.Geometry
+}
+```
+
+<sub>`api.ogt` line 4689</sub>
+
+<a id="fn-tetrahedronGeometry"></a>
+
+### `og.render.tetrahedronGeometry`
+
+Make a tetrahedron (four faces) for og.Mesh.
+
+```ts
+og.render.tetrahedronGeometry(world: World, desc?: SolidGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `SolidGeometryDesc` | yes | Its radius and detail. |
+
+**Returns** `Result<Geometry>`.
+
+Binding symbol `og_render_tetrahedron_geometry` · publish builds: kept
+
+```ogt
+fn tetrahedronGeometry {
+  doc "Make a tetrahedron (four faces) for og.Mesh."
+  param world World "The world whose renderer owns the geometry."
+  param desc SolidGeometryDesc "Its radius and detail."
+  returns Result.Geometry
+}
+```
+
+<sub>`api.ogt` line 4696</sub>
+
+<a id="fn-sweepGeometry"></a>
+
+### `og.render.sweepGeometry`
+
+Make a section swept along a path for og.Mesh, tapered and twisted by keys.
+
+```ts
+og.render.sweepGeometry(world: World, desc?: SweepGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `SweepGeometryDesc` | yes | The section, path, keys and caps. |
+
+**Returns** `Result<Geometry>`: Refused for a path that is not alive, a section of fewer than three points or of no area, or a value that is not finite.
+
+Binding symbol `og_render_sweep_geometry` · publish builds: kept
+
+```ogt
+fn sweepGeometry {
+  doc "Make a section swept along a path for og.Mesh, tapered and twisted by keys."
+  param world World "The world whose renderer owns the geometry."
+  param desc SweepGeometryDesc "The section, path, keys and caps."
+  returns Result.Geometry "Refused for a path that is not alive, a section of fewer than three points or of no area, or a value that is not finite."
+}
+```
+
+<sub>`api.ogt` line 4703</sub>
+
+<a id="fn-csgGeometry"></a>
+
+### `og.render.csgGeometry`
+
+Make the union, difference or intersection of two placed geometries for og.Mesh. Chain calls for more operands (a cube minus six spheres is six calls); each result is a geometry like any other.
+
+```ts
+og.render.csgGeometry(world: World, desc?: CsgGeometryDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `CsgGeometryDesc` | yes | The operation and its operands. |
+
+**Returns** `Result<Geometry>`: Refused for a dead geometry, a placement with a zero scale, or a position that is not finite.
+
+Binding symbol `og_render_csg_geometry` · publish builds: kept
+
+```ogt
+fn csgGeometry {
+  doc "Make the union, difference or intersection of two placed geometries for og.Mesh. Chain calls for more operands (a cube minus six spheres is six calls); each result is a geometry like any other."
+  param world World "The world whose renderer owns the geometry."
+  param desc CsgGeometryDesc "The operation and its operands."
+  returns Result.Geometry "Refused for a dead geometry, a placement with a zero scale, or a position that is not finite."
+}
+```
+
+<sub>`api.ogt` line 4710</sub>
+
+<a id="fn-mergeGeometries"></a>
+
+### `og.render.mergeGeometries`
+
+Make one geometry of several placed ones for og.Mesh: one draw instead of many, mirrored halves, arrays.
+
+```ts
+og.render.mergeGeometries(world: World, desc?: MergeGeometriesDesc): Result<Geometry>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns the geometry. |
+| `desc` | `MergeGeometriesDesc` | yes | The parts and their placements. |
+
+**Returns** `Result<Geometry>`: Refused for no parts, a dead geometry, or a placement with a zero scale.
+
+Binding symbol `og_render_merge_geometries` · publish builds: kept
+
+```ogt
+fn mergeGeometries {
+  doc "Make one geometry of several placed ones for og.Mesh: one draw instead of many, mirrored halves, arrays."
+  param world World "The world whose renderer owns the geometry."
+  param desc MergeGeometriesDesc "The parts and their placements."
+  returns Result.Geometry "Refused for no parts, a dead geometry, or a placement with a zero scale."
+}
+```
+
+<sub>`api.ogt` line 4717</sub>
+
 <a id="fn-lines"></a>
 
 ### `og.render.lines`
@@ -1038,7 +1392,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 4491</sub>
+<sub>`api.ogt` line 4775</sub>
 
 <a id="fn-points"></a>
 
@@ -1068,7 +1422,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 4526</sub>
+<sub>`api.ogt` line 4810</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1100,7 +1454,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 4630</sub>
+<sub>`api.ogt` line 4914</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1130,7 +1484,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4686</sub>
+<sub>`api.ogt` line 4970</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1164,7 +1518,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 4798</sub>
+<sub>`api.ogt` line 5082</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1192,7 +1546,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 4813</sub>
+<sub>`api.ogt` line 5097</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1220,7 +1574,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 4881</sub>
+<sub>`api.ogt` line 5165</sub>
 
 ## Components, resources and events
 
@@ -2847,7 +3201,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 4533</sub>
+<sub>`api.ogt` line 4817</sub>
 
 <a id="record-Points"></a>
 
@@ -2901,7 +3255,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 4570</sub>
+<sub>`api.ogt` line 4854</sub>
 
 <a id="record-CameraView"></a>
 
@@ -3008,7 +3362,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 4693</sub>
+<sub>`api.ogt` line 4977</sub>
 
 <a id="record-Mirror"></a>
 
@@ -3053,7 +3407,7 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 4765</sub>
+<sub>`api.ogt` line 5049</sub>
 
 <a id="record-RectLight"></a>
 
@@ -3103,7 +3457,7 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 4827</sub>
+<sub>`api.ogt` line 5111</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -3137,7 +3491,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 4854</sub>
+<sub>`api.ogt` line 5138</sub>
 
 ## Types
 
@@ -4983,6 +5337,467 @@ struct TubeGeometryDesc {
 
 <sub>`api.ogt` line 4368</sub>
 
+<a id="type-ShapePoints"></a>
+
+### `ShapePoints` (struct)
+
+A shape as points, what og.Shape.extractPoints returns and what shapeGeometry, extrudeGeometry and sweepGeometry read: the outline, then each hole. A repeated closing point is dropped, as three.js drops it.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `shape` | `readonly Vector2[]` | `[]` | — | — | — | The outline's points, in order. |
+| `holes` | `readonly (readonly Vector2[])[]` | `[]` | — | — | — | Each hole's points, in order. |
+
+```ogt
+struct ShapePoints {
+  doc "A shape as points, what og.Shape.extractPoints returns and what shapeGeometry, extrudeGeometry and sweepGeometry read: the outline, then each hole. A repeated closing point is dropped, as three.js drops it."
+  field shape List.Vector2 "The outline's points, in order."
+  field holes List.List.Vector2 "Each hole's points, in order."
+}
+```
+
+<sub>`api.ogt` line 4442</sub>
+
+<a id="type-ShapeGeometryDesc"></a>
+
+### `ShapeGeometryDesc` (desc struct)
+
+A flat shape with holes in the xy plane facing +Z, as three.js ShapeGeometry(shapes, curveSegments): triangulated by earcut (three.js's own port), the outline made clockwise and the holes counter-clockwise first, so its vertices and triangles are three.js's for the same shape. uvs are world x and y (v flipped to run down the image).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `shapes` | `Path2 \| readonly Path2[] \| readonly Vector2[] \| null` | `null` | — | — | — | One og.Shape (an og.Path2 is a shape without holes), a list of them, or the outline's points. Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5). |
+| `curveSegments` | `number` | `12` | ≥ 1 | — | — | Points per curve when an og.Shape's curves are flattened (three.js extractPoints(curveSegments); an ellipse takes twice as many, a spline as many per point). |
+| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too (BufferGeometryDesc.physics). |
+| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later (BufferGeometryDesc.dynamic). |
+
+```ogt
+struct ShapeGeometryDesc {
+  doc "A flat shape with holes in the xy plane facing +Z, as three.js ShapeGeometry(shapes, curveSegments): triangulated by earcut (three.js's own port), the outline made clockwise and the holes counter-clockwise first, so its vertices and triangles are three.js's for the same shape. uvs are world x and y (v flipped to run down the image)."
+  desc true
+  field shapes Option.OneOf.Path2.OneOf.List.Path2.List.Vector2 "One og.Shape (an og.Path2 is a shape without holes), a list of them, or the outline's points. Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5)."
+  field curveSegments u32 "Points per curve when an og.Shape's curves are flattened (three.js extractPoints(curveSegments); an ellipse takes twice as many, a spline as many per point)." {
+    default 12
+    min 1
+  }
+  field physics bool "Register it as a physics mesh too (BufferGeometryDesc.physics)." {
+    default true
+  }
+  field dynamic bool "Whether og.render.updateGeometry may rewrite it later (BufferGeometryDesc.dynamic)."
+}
+```
+
+<sub>`api.ogt` line 4448</sub>
+
+<a id="type-ExtrudeGeometryDesc"></a>
+
+### `ExtrudeGeometryDesc` (desc struct)
+
+Shapes pushed along +Z, or along a path, as three.js ExtrudeGeometry(shapes, options) with its option names and defaults: a closed solid, its lids from earcut and its walls ring by ring, rounded by a bevel of bevelSegments rings at each face. Unindexed as three.js's (every triangle its own vertices, flat normals), three.js's vertex order and counts; uvs from three.js's WorldUVGenerator (v flipped to run down the image).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `shapes` | `Path2 \| readonly Path2[] \| readonly Vector2[] \| null` | `null` | — | — | — | One og.Shape, a list of them, or the outline's points. Without it, three.js's default square of side 1. |
+| `depth` | `number` | `1` | ≥ 0 | `m` | — | How far the shape is pushed along +Z (without extrudePath). |
+| `steps` | `number` | `1` | ≥ 1 | — | — | Rings along the depth or the path. |
+| `bevelEnabled` | `boolean` | `true` | — | — | — | Round the edges of both faces. |
+| `bevelThickness` | `number` | `0.2` | ≥ 0 | `m` | — | How far the bevel reaches beyond each face, along z. |
+| `bevelSize` | `number` | `0.1` | — | `m` | — | How far the bevel reaches out from the outline. Unset, bevelThickness - 0.1 (three.js's default; 0.1 with the default thickness). |
+| `bevelOffset` | `number` | `0` | — | `m` | — | How far the bevel starts out from the outline. |
+| `bevelSegments` | `number` | `3` | ≥ 1 | — | — | Rings in each bevel. |
+| `curveSegments` | `number` | `12` | ≥ 1 | — | — | Points per curve when an og.Shape's curves are flattened. |
+| `extrudePath` | `Path` | `0` | — | — | — | A path (og.path.create or og.path.find) to extrude along instead of +Z: the shape's x along the path's normal and y along its binormal (three.js's Frenet frames), steps rings evenly spaced along it. A path turns the bevel off, as three.js. 0 extrudes along +Z. |
+| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
+| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
+
+```ogt
+struct ExtrudeGeometryDesc {
+  doc "Shapes pushed along +Z, or along a path, as three.js ExtrudeGeometry(shapes, options) with its option names and defaults: a closed solid, its lids from earcut and its walls ring by ring, rounded by a bevel of bevelSegments rings at each face. Unindexed as three.js's (every triangle its own vertices, flat normals), three.js's vertex order and counts; uvs from three.js's WorldUVGenerator (v flipped to run down the image)."
+  desc true
+  field shapes Option.OneOf.Path2.OneOf.List.Path2.List.Vector2 "One og.Shape, a list of them, or the outline's points. Without it, three.js's default square of side 1."
+  field depth f32 "How far the shape is pushed along +Z (without extrudePath)." {
+    default 1
+    min 0
+    unit m
+  }
+  field steps u32 "Rings along the depth or the path." {
+    default 1
+    min 1
+  }
+  field bevelEnabled bool "Round the edges of both faces." {
+    default true
+  }
+  field bevelThickness f32 "How far the bevel reaches beyond each face, along z." {
+    default 0.2
+    min 0
+    unit m
+  }
+  field bevelSize f32 "How far the bevel reaches out from the outline. Unset, bevelThickness - 0.1 (three.js's default; 0.1 with the default thickness)." {
+    default 0.1
+    unit m
+  }
+  field bevelOffset f32 "How far the bevel starts out from the outline." {
+    unit m
+  }
+  field bevelSegments u32 "Rings in each bevel." {
+    default 3
+    min 1
+  }
+  field curveSegments u32 "Points per curve when an og.Shape's curves are flattened." {
+    default 12
+    min 1
+  }
+  field extrudePath Path "A path (og.path.create or og.path.find) to extrude along instead of +Z: the shape's x along the path's normal and y along its binormal (three.js's Frenet frames), steps rings evenly spaced along it. A path turns the bevel off, as three.js. 0 extrudes along +Z."
+  field physics bool "Register it as a physics mesh too." {
+    default true
+  }
+  field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
+}
+```
+
+<sub>`api.ogt` line 4462</sub>
+
+<a id="type-LatheGeometryDesc"></a>
+
+### `LatheGeometryDesc` (desc struct)
+
+A profile turned round +Y, as three.js LatheGeometry(points, segments, phiStart, phiLength): vases, bottles, columns, wheels. three.js's vertices, indices and smooth normals; u round the axis, v along the profile (flipped to run down the image). A whole turn's seam meets exactly.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `points` | `readonly Vector2[]` | `[]` | — | `m` | — | The profile, x the distance from the axis and y the height, in order (at least two). Without it, three.js's default (0, -0.5), (0.5, 0), (0, 0.5). |
+| `segments` | `number` | `12` | ≥ 1 | — | — | Segments round the axis. |
+| `phiStart` | `number` | `0` | — | `rad` | — | Where the turn starts, from +Z towards +X. |
+| `phiLength` | `number` | `6.283185307179586` | — | `rad` | — | How far it turns; 2 pi is whole (clamped to it). |
+| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
+| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
+
+```ogt
+struct LatheGeometryDesc {
+  doc "A profile turned round +Y, as three.js LatheGeometry(points, segments, phiStart, phiLength): vases, bottles, columns, wheels. three.js's vertices, indices and smooth normals; u round the axis, v along the profile (flipped to run down the image). A whole turn's seam meets exactly."
+  desc true
+  field points List.Vector2 "The profile, x the distance from the axis and y the height, in order (at least two). Without it, three.js's default (0, -0.5), (0.5, 0), (0, 0.5)." {
+    unit m
+  }
+  field segments u32 "Segments round the axis." {
+    default 12
+    min 1
+  }
+  field phiStart f32 "Where the turn starts, from +Z towards +X." {
+    unit rad
+  }
+  field phiLength f32 "How far it turns; 2 pi is whole (clamped to it)." {
+    default 6.283185307179586
+    unit rad
+  }
+  field physics bool "Register it as a physics mesh too." {
+    default true
+  }
+  field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
+}
+```
+
+<sub>`api.ogt` line 4505</sub>
+
+<a id="type-PolyhedronGeometryDesc"></a>
+
+### `PolyhedronGeometryDesc` (desc struct)
+
+A polyhedron from vertices and faces, every face subdivided `detail` times and every vertex pushed onto the sphere of `radius`, as three.js PolyhedronGeometry(vertices, indices, radius, detail): unindexed, flat normals at detail 0 and the sphere's above, three.js's spherical uvs.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `vertices` | `readonly number[]` | `[]` | — | — | — | The corners, x y z each (three.js's flat array). |
+| `indices` | `readonly number[]` | `[]` | — | — | — | The faces, three corner indices each, counter-clockwise seen from outside. |
+| `radius` | `number` | `1` | ≥ 0 | `m` | — | The sphere the vertices are pushed onto. |
+| `detail` | `number` | `0` | ≤ 64 | — | — | Subdivisions of each face: (detail + 1)² triangles a face. |
+| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
+| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
+
+```ogt
+struct PolyhedronGeometryDesc {
+  doc "A polyhedron from vertices and faces, every face subdivided `detail` times and every vertex pushed onto the sphere of `radius`, as three.js PolyhedronGeometry(vertices, indices, radius, detail): unindexed, flat normals at detail 0 and the sphere's above, three.js's spherical uvs."
+  desc true
+  field vertices List.f32 "The corners, x y z each (three.js's flat array)."
+  field indices List.u32 "The faces, three corner indices each, counter-clockwise seen from outside."
+  field radius f32 "The sphere the vertices are pushed onto." {
+    default 1
+    min 0
+    unit m
+  }
+  field detail u32 "Subdivisions of each face: (detail + 1)² triangles a face." {
+    max 64
+  }
+  field physics bool "Register it as a physics mesh too." {
+    default true
+  }
+  field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
+}
+```
+
+<sub>`api.ogt` line 4528</sub>
+
+<a id="type-SolidGeometryDesc"></a>
+
+### `SolidGeometryDesc` (desc struct)
+
+A regular solid, as three.js IcosahedronGeometry, DodecahedronGeometry, OctahedronGeometry and TetrahedronGeometry(radius, detail): PolyhedronGeometryDesc with the solid's own vertices and faces. An icosahedron at detail 2 or more is a sphere with even triangles.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `radius` | `number` | `1` | ≥ 0 | `m` | — | The radius. |
+| `detail` | `number` | `0` | ≤ 64 | — | — | Subdivisions of each face. |
+| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
+| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
+
+```ogt
+struct SolidGeometryDesc {
+  doc "A regular solid, as three.js IcosahedronGeometry, DodecahedronGeometry, OctahedronGeometry and TetrahedronGeometry(radius, detail): PolyhedronGeometryDesc with the solid's own vertices and faces. An icosahedron at detail 2 or more is a sphere with even triangles."
+  desc true
+  field radius f32 "The radius." {
+    default 1
+    min 0
+    unit m
+  }
+  field detail u32 "Subdivisions of each face." {
+    max 64
+  }
+  field physics bool "Register it as a physics mesh too." {
+    default true
+  }
+  field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
+}
+```
+
+<sub>`api.ogt` line 4547</sub>
+
+<a id="type-SweepKey"></a>
+
+### `SweepKey` (struct)
+
+A value at a fraction of a sweep's path: linear between keys, held before the first and past the last.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `t` | `number` | `0` | — | `ratio` | — | The fraction of the path's length, 0 to 1. |
+| `value` | `number` | `0` | — | — | — | The value there. |
+
+```ogt
+struct SweepKey {
+  doc "A value at a fraction of a sweep's path: linear between keys, held before the first and past the last."
+  field t f32 "The fraction of the path's length, 0 to 1." {
+    unit ratio
+  }
+  field value f32 "The value there."
+}
+```
+
+<sub>`api.ogt` line 4564</sub>
+
+<a id="type-SweepGeometryDesc"></a>
+
+### `SweepGeometryDesc` (desc struct)
+
+A section swept along a path, scaled and twisted over it: horns, tusks, handles, blades, tapered pipes, twisted columns (img2threejs's tapered sweep; three.js has no class for it). The section's x lies along the path's normal and y along its binormal (three.js's Frenet frames), rings evenly spaced along the path's length; u runs along the path, v round the section (flipped to run down the image), the sides smooth. An open path's ends are capped.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `section` | `Path2 \| readonly Vector2[] \| null` | `null` | — | — | — | The section's outline: an og.Shape or og.Path2 (flattened by curveSegments; holes are not swept) or its points, at least three, either winding. |
+| `path` | `Path` | `0` | — | — | — | The path (og.path.create or og.path.find). |
+| `steps` | `number` | `64` | ≥ 1 | — | — | Rings along the path, less one. |
+| `scale` | `readonly SweepKey[]` | `[]` | — | — | — | The section's scale over the path (none: 1 throughout). A horn: [{ t: 0, value: 1 }, { t: 1, value: 0.05 }]. |
+| `twist` | `readonly SweepKey[]` | `[]` | — | — | — | The section's turn round the path over its length, in radians (none: 0). |
+| `caps` | `boolean` | `true` | — | — | — | Close the ends of an open path. |
+| `curveSegments` | `number` | `12` | ≥ 1 | — | — | Points per curve when an og.Shape section is flattened. |
+| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
+| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
+
+```ogt
+struct SweepGeometryDesc {
+  doc "A section swept along a path, scaled and twisted over it: horns, tusks, handles, blades, tapered pipes, twisted columns (img2threejs's tapered sweep; three.js has no class for it). The section's x lies along the path's normal and y along its binormal (three.js's Frenet frames), rings evenly spaced along the path's length; u runs along the path, v round the section (flipped to run down the image), the sides smooth. An open path's ends are capped."
+  desc true
+  field section Option.OneOf.Path2.List.Vector2 "The section's outline: an og.Shape or og.Path2 (flattened by curveSegments; holes are not swept) or its points, at least three, either winding."
+  field path Path "The path (og.path.create or og.path.find)."
+  field steps u32 "Rings along the path, less one." {
+    default 64
+    min 1
+  }
+  field scale List.SweepKey "The section's scale over the path (none: 1 throughout). A horn: [{ t: 0, value: 1 }, { t: 1, value: 0.05 }]."
+  field twist List.SweepKey "The section's turn round the path over its length, in radians (none: 0)."
+  field caps bool "Close the ends of an open path." {
+    default true
+  }
+  field curveSegments u32 "Points per curve when an og.Shape section is flattened." {
+    default 12
+    min 1
+  }
+  field physics bool "Register it as a physics mesh too." {
+    default true
+  }
+  field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
+}
+```
+
+<sub>`api.ogt` line 4572</sub>
+
+<a id="type-MirrorAxis"></a>
+
+### `MirrorAxis` (enum)
+
+The world axis a part is mirrored along, after its placement.
+
+A string: one of the variants below. The zero value is `"none"`.
+
+| Variant | Doc |
+|---|---|
+| `"none"` | Not mirrored. |
+| `"x"` | x negated: the mirror image across the yz plane. |
+| `"y"` | y negated: across the xz plane. |
+| `"z"` | z negated: across the xy plane. |
+
+```ogt
+enum MirrorAxis {
+  doc "The world axis a part is mirrored along, after its placement."
+  variant none "Not mirrored."
+  variant x "x negated: the mirror image across the yz plane."
+  variant y "y negated: across the xz plane."
+  variant z "z negated: across the xy plane."
+}
+```
+
+<sub>`api.ogt` line 4596</sub>
+
+<a id="type-GeometryPart"></a>
+
+### `GeometryPart` (desc struct)
+
+A geometry placed as an Object3D is (scale, then rotate, then move), then mirrored: one part of og.render.mergeGeometries or an operand of og.render.csgGeometry.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `geometry` | `Geometry` | `0` | — | — | — | Any geometry: made, a primitive or a loaded glTF's. |
+| `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where it goes. |
+| `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | How it turns. |
+| `scale` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | — | — | — | Its scale (a negative component mirrors it as `mirror` does). |
+| `mirror` | `MirrorAxis` | `"none"` | — | — | — | Mirror it along a world axis after placing it: a symmetric prop is one half twice, the second mirrored. |
+
+```ogt
+struct GeometryPart {
+  doc "A geometry placed as an Object3D is (scale, then rotate, then move), then mirrored: one part of og.render.mergeGeometries or an operand of og.render.csgGeometry."
+  desc true
+  field geometry Geometry "Any geometry: made, a primitive or a loaded glTF's."
+  field position Vector3 "Where it goes." {
+    unit m
+  }
+  field quaternion Quaternion "How it turns."
+  field scale Vector3 "Its scale (a negative component mirrors it as `mirror` does)." {
+    default 1 1 1
+  }
+  field mirror MirrorAxis "Mirror it along a world axis after placing it: a symmetric prop is one half twice, the second mirrored."
+}
+```
+
+<sub>`api.ogt` line 4604</sub>
+
+<a id="type-CsgOp"></a>
+
+### `CsgOp` (enum)
+
+A boolean operation on two solids.
+
+A string: one of the variants below. The zero value is `"union"`.
+
+| Variant | Doc |
+|---|---|
+| `"union"` | Everything in either: a + b. |
+| `"subtract"` | What of a is not in b: a - b (holes, notches, a dice's pips). |
+| `"intersect"` | What is in both. |
+
+```ogt
+enum CsgOp {
+  doc "A boolean operation on two solids."
+  variant union "Everything in either: a + b."
+  variant subtract "What of a is not in b: a - b (holes, notches, a dice's pips)."
+  variant intersect "What is in both."
+}
+```
+
+<sub>`api.ogt` line 4618</sub>
+
+<a id="type-CsgGeometryDesc"></a>
+
+### `CsgGeometryDesc` (desc struct)
+
+Two closed geometries combined by a boolean operation, each placed first: a box with a hole bored through it, a dice, a window cut in a wall. The result is closed when both are (every edge shared by two triangles, wound opposite), every piece keeps its source's normals, uvs and colours (b's turned inside out where it is subtracted). Where a plane side or an edge crossing is decided, the decision is exact (Shewchuk's predicates), so every host makes the same cuts; faces that coincide keep one copy or none, as the operation says.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `op` | `CsgOp` | `"union"` | — | — | — | The operation. |
+| `a` | `GeometryPart` | `{}` | — | — | — | The first operand. |
+| `b` | `GeometryPart` | `{}` | — | — | — | The second operand. |
+| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
+| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
+
+```ogt
+struct CsgGeometryDesc {
+  doc "Two closed geometries combined by a boolean operation, each placed first: a box with a hole bored through it, a dice, a window cut in a wall. The result is closed when both are (every edge shared by two triangles, wound opposite), every piece keeps its source's normals, uvs and colours (b's turned inside out where it is subtracted). Where a plane side or an edge crossing is decided, the decision is exact (Shewchuk's predicates), so every host makes the same cuts; faces that coincide keep one copy or none, as the operation says."
+  desc true
+  field op CsgOp "The operation."
+  field a GeometryPart "The first operand."
+  field b GeometryPart "The second operand."
+  field physics bool "Register it as a physics mesh too." {
+    default true
+  }
+  field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
+}
+```
+
+<sub>`api.ogt` line 4625</sub>
+
+<a id="type-MergeGeometriesDesc"></a>
+
+### `MergeGeometriesDesc` (desc struct)
+
+Geometries placed and merged into one, as three.js BufferGeometryUtils.mergeGeometries after applying each part's matrix: a prop of parts drawn in one draw, a mirrored half, an array (the same part at several placements). Normals follow each placement; a mirrored part turns its triangles so they still face out. Vertex colours are kept when any part has them.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `parts` | `readonly GeometryPart[]` | `[]` | — | — | — | The parts, in order (at least one). |
+| `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
+| `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
+
+```ogt
+struct MergeGeometriesDesc {
+  doc "Geometries placed and merged into one, as three.js BufferGeometryUtils.mergeGeometries after applying each part's matrix: a prop of parts drawn in one draw, a mirrored half, an array (the same part at several placements). Normals follow each placement; a mirrored part turns its triangles so they still face out. Vertex colours are kept when any part has them."
+  desc true
+  field parts List.GeometryPart "The parts, in order (at least one)."
+  field physics bool "Register it as a physics mesh too." {
+    default true
+  }
+  field dynamic bool "Whether og.render.updateGeometry may rewrite it later."
+}
+```
+
+<sub>`api.ogt` line 4637</sub>
+
 <a id="type-LineMode"></a>
 
 ### `LineMode` (enum)
@@ -5006,7 +5821,7 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4440</sub>
+<sub>`api.ogt` line 4724</sub>
 
 <a id="type-LinesDesc"></a>
 
@@ -5072,7 +5887,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 4454</sub>
+<sub>`api.ogt` line 4738</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -5123,7 +5938,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 4498</sub>
+<sub>`api.ogt` line 4782</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -5156,7 +5971,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4601</sub>
+<sub>`api.ogt` line 4885</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -5191,7 +6006,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 4615</sub>
+<sub>`api.ogt` line 4899</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -5214,7 +6029,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4640</sub>
+<sub>`api.ogt` line 4924</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -5228,7 +6043,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 4653</sub>
+<sub>`api.ogt` line 4937</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -5262,7 +6077,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 4662</sub>
+<sub>`api.ogt` line 4946</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -5289,7 +6104,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 4677</sub>
+<sub>`api.ogt` line 4961</sub>
 
 <a id="type-Post"></a>
 
@@ -5303,7 +6118,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 4789</sub>
+<sub>`api.ogt` line 5073</sub>
 
 <a id="type-PostError"></a>
 
@@ -5324,7 +6139,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 4807</sub>
+<sub>`api.ogt` line 5091</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -5347,7 +6162,7 @@ enum VolumetricFog {
 }
 ```
 
-<sub>`api.ogt` line 4821</sub>
+<sub>`api.ogt` line 5105</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -5380,7 +6195,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 4869</sub>
+<sub>`api.ogt` line 5153</sub>
 
 ## Column kinds
 
@@ -5594,7 +6409,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4447</sub>
+<sub>`api.ogt` line 4731</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -5605,7 +6420,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4646</sub>
+<sub>`api.ogt` line 4930</sub>
 
 ```ogt
 column RenderTarget {
@@ -5616,7 +6431,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4655</sub>
+<sub>`api.ogt` line 4939</sub>
 
 ```ogt
 column Post {
@@ -5627,7 +6442,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 4791</sub>
+<sub>`api.ogt` line 5075</sub>
 
 ## Constants
 
