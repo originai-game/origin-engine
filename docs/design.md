@@ -211,7 +211,13 @@ lighting falls back to a forward tile table built on the CPU).
 - Particles: GPU simulation on WebGPU, CPU on GL; one emitter asset format.
   Collision against the depth buffer in compute, against the scene's
   colliders (ground, boxes, spheres, terrain height fields) on the CPU.
-- Terrain: clipmap heightfield with splat materials. Decals: deferred-style
+- Terrain: clipmap heightfield with splat materials, its field read from a
+  heightmap or made by the cook (`generate`: fractal noise, an island or
+  ridge mask, hydraulic and thermal erosion, terraces, a sea with its
+  shore, rivers along the routed flow, biome rules writing the control
+  map), with IEEE-exact arithmetic and the generator's own PCG32 so every
+  host makes the same field; both routes write the same tile pyramid, and
+  `TerrainInfo.seaLevel` places the water. Decals: deferred-style
   projection in the forward pass.
 - Text: MSDF for UI and world text, kerned from the font's GPOS pairs;
   CJK coverage through the platform's subset fonts, and characters outside
@@ -1030,7 +1036,9 @@ reading pixels:
   polygons and vertices; a timeline its tracks and seconds; a string
   table its locale and keys; a style, behaviour, tileset, tilemap, rig,
   flipbook, shader, post pass, emitter, look, palette, LUT, environment
-  map, video, terrain and stream pack theirs. `og doctor --project <dir>
+  map, video, terrain and stream pack theirs (a generated terrain its
+  height histogram, land above the sea and river length, with its height
+  and control maps as PNGs beside the report). `og doctor --project <dir>
   [--json]` checks it against the budgets project.ogt sets (`budgets {
   triangles vertices textureSize bones clips assetBytes totalBytes
   soundSeconds videoSeconds fontGlyphs navPolygons sceneEntities
