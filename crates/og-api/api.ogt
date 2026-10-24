@@ -4453,6 +4453,9 @@ module render {
       default 12
       min 1
     }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
     field physics bool "Register it as a physics mesh too (BufferGeometryDesc.physics)." {
       default true
     }
@@ -4480,8 +4483,7 @@ module render {
       min 0
       unit m
     }
-    field bevelSize f32 "How far the bevel reaches out from the outline. Unset, bevelThickness - 0.1 (three.js's default; 0.1 with the default thickness)." {
-      default 0.1
+    field bevelSize Option.f32 "How far the bevel reaches out from the outline. Null or unset, bevelThickness - 0.1, as three.js derives it (0.1 at the default thickness, 0 at a thickness of 0.1)." {
       unit m
     }
     field bevelOffset f32 "How far the bevel starts out from the outline." {
@@ -4496,6 +4498,9 @@ module render {
       min 1
     }
     field extrudePath Path "A path (og.path.create or og.path.find) to extrude along instead of +Z: the shape's x along the path's normal and y along its binormal (three.js's Frenet frames), steps rings evenly spaced along it. A path turns the bevel off, as three.js. 0 extrudes along +Z."
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
     field physics bool "Register it as a physics mesh too." {
       default true
     }
@@ -4519,6 +4524,9 @@ module render {
       default 6.283185307179586
       unit rad
     }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
     field physics bool "Register it as a physics mesh too." {
       default true
     }
@@ -4538,6 +4546,9 @@ module render {
     field detail u32 "Subdivisions of each face: (detail + 1)² triangles a face." {
       max 64
     }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
     field physics bool "Register it as a physics mesh too." {
       default true
     }
@@ -4554,6 +4565,9 @@ module render {
     }
     field detail u32 "Subdivisions of each face." {
       max 64
+    }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
     }
     field physics bool "Register it as a physics mesh too." {
       default true
@@ -4586,6 +4600,9 @@ module render {
     field curveSegments u32 "Points per curve when an og.Shape section is flattened." {
       default 12
       min 1
+    }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
     }
     field physics bool "Register it as a physics mesh too." {
       default true
@@ -4628,6 +4645,9 @@ module render {
     field op CsgOp "The operation."
     field a GeometryPart "The first operand."
     field b GeometryPart "The second operand."
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
     field physics bool "Register it as a physics mesh too." {
       default true
     }
@@ -4638,6 +4658,9 @@ module render {
     doc "Geometries placed and merged into one, as three.js BufferGeometryUtils.mergeGeometries after applying each part's matrix: a prop of parts drawn in one draw, a mirrored half, an array (the same part at several placements). Normals follow each placement; a mirrored part turns its triangles so they still face out. Vertex colours are kept when any part has them."
     desc true
     field parts List.GeometryPart "The parts, in order (at least one)."
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
     field physics bool "Register it as a physics mesh too." {
       default true
     }
@@ -5175,6 +5198,7 @@ module shapes {
   skill og-game
   doc "Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js's Shape and Path, built by the same calls (moveTo, lineTo, quadraticCurveTo, bezierCurveTo, splineThru, arc, absarc, ellipse, absellipse, closePath) and flattened to points by getPoints, so a three.js outline is a paste. og.render.shapeGeometry, extrudeGeometry and sweepGeometry take them; only their points cross to the engine."
   doc "They are TypeScript values, not world state: make them in start or a command and let the geometry made from them be what the world keeps. Points come from basic arithmetic (no Math.sin), so they are the same on every host."
+  doc "A prop of these parts belongs in an asset: an `.ogt` of `type model` names each part's geometry by its og.render call (`extrudeGeometry { shape { absarc 0 0 1 0 6.283185307179586 false } depth 0.2 }`), its shapes as og.Shape's calls one a line with `hole { }` blocks, places parts as mergeGeometries does (`position`, `quaternion`, `scale`, `mirror`, or several `at { }` blocks: one mesh drawn instanced), gives each a `material` and hangs it from a named `pivot` (a node). og cook builds it into the model blob a glTF cooks to (levels of detail, raycast BVH, nodes), refuses it past project.ogt's triangle and vertex budgets, and og dev re-cooks it on an edit; og.load.gltf and a scene's `model` line take it as any model. The og-game skill §18 has a whole example."
   place root
 
   interface PathList {

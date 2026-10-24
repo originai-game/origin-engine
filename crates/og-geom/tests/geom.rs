@@ -502,3 +502,95 @@ fn two_builds_are_byte_identical() {
         "extrude, lathe, sweep, icosahedron, dodecahedron, csg"
     );
 }
+
+// ── og.Path2 and og.Shape flattened in Rust, as the TypeScript runtime does ─
+
+fn fnv_points(points: &[DVec2]) -> u64 {
+    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    for p in points {
+        for v in [p.x, p.y] {
+            for byte in v.to_le_bytes() {
+                h ^= byte as u64;
+                h = h.wrapping_mul(0x100_0000_01b3);
+            }
+        }
+    }
+    h
+}
+
+/// The same calls as packages/engine/src/geom.ts's og.Path2 and og.Shape
+/// make, with the counts and FNV hashes of the f64 points bun printed for
+/// them (angles written as numbers, as a `type model` part names them): a
+/// `.ogt` shape and a TypeScript one flatten to the same bits.
+// The angles are written as numbers on purpose: a `.ogt` names them so.
+#[allow(clippy::approx_constant)]
+#[test]
+fn path2_flattens_to_the_typescript_runtime_s_points() {
+    let v = |x: f64, y: f64| DVec2::new(x, y);
+    let mut arcs = Path2::new();
+    arcs.move_to(1.0, 0.0)
+        .absarc(
+            0.0,
+            0.0,
+            1.0,
+            -0.7853981633974483,
+            3.9269908169872414,
+            false,
+        )
+        .line_to(0.2, -0.4)
+        .arc(0.1, 0.1, 0.3, 0.0, 3.141592653589793, true);
+    let mut curves = Path2::new();
+    curves
+        .move_to(0.0, 0.0)
+        .quadratic_curve_to(0.5, 1.0, 1.0, 0.0)
+        .bezier_curve_to(v(1.2, -0.5), v(1.8, 0.4), 2.0, 0.0)
+        .spline_thru(&[v(2.5, 0.5), v(3.0, -0.2), v(3.4, 0.1)])
+        .close_path();
+    let mut ellipse = Path2::new();
+    ellipse
+        .absellipse(v(0.5, 0.25), v(2.0, 1.0), 0.3, -0.3, true, 0.7)
+        .ellipse(
+            v(1.0, 1.0),
+            v(0.5, 0.25),
+            -0.7853981633974483,
+            0.7853981633974483,
+            false,
+            0.0,
+        );
+    let mut shape = Shape::default();
+    shape
+        .path
+        .absarc(0.0, 0.0, 1.0, 0.0, 6.283185307179586, false);
+    let mut hole = Path2::new();
+    hole.absarc(0.0, 0.0, 0.3, 0.0, 6.283185307179586, true);
+    shape.holes.push(hole);
+    let e = shape.extract_points(12);
+    let mut holed = e.points.clone();
+    holed.extend_from_slice(&e.holes[0]);
+    let mut from_points = Path2::new();
+    from_points.set_from_points(&[v(0.0, 0.0), v(1.0, 0.0), v(1.0, 1.0), v(1.0, 1.0)]);
+    let got: Vec<(usize, String)> = [
+        arcs.get_points(5),
+        curves.get_points(7),
+        ellipse.get_points(12),
+        holed,
+        from_points.get_points(3),
+    ]
+    .iter()
+    .map(|p| (p.len(), format!("{:016x}", fnv_points(p))))
+    .collect();
+    let want: Vec<(usize, String)> = [
+        (23, "ea23d9a8a5cb3a2a"),
+        (44, "33e053fbf600b013"),
+        (50, "93b7c449378d949c"),
+        (50, "5c8c6a9a4e4fec9e"),
+        (3, "328e239e448cbc18"),
+    ]
+    .iter()
+    .map(|(n, h)| (*n, h.to_string()))
+    .collect();
+    assert_eq!(
+        got, want,
+        "arcs, curves, ellipse, a shape with a hole, set_from_points"
+    );
+}

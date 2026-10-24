@@ -24,7 +24,8 @@
 // depth wave the geometry station (src/geometry.ts): geometry, the views
 // station (src/views.ts): views (render targets, a mirror, split-screen), and
 // the light stations (src/light.ts): baked, volumetric (`baked:off` draws unbaked);
-// round 3 the generated terrain station (src/islands.ts): islands.
+// round 3 the generated terrain station (src/islands.ts): islands, and
+// the procedural modelling station (src/models.ts): models.
 //
 // Commands: station:<name> (or station:<1-25>). `dump_entity:stage` reads
 // the Stage component (the station, the frame counter of the pulses);
@@ -44,10 +45,11 @@ import { DEPTH_STATIONS, buildDepth, resetDepth, showDepth, type DepthStation } 
 import { VW_STATIONS, buildVW, resetVW, showVW, type VWStation } from "./views.ts";
 import { LIGHT_STATIONS, LightShow, buildLight, resetLight, setBaked, showLight, type LightStation } from "./light.ts";
 import { GEN_STATIONS, resetGen, showGen, type GenStation } from "./islands.ts";
+import { MODEL_STATIONS, ModelsProbe, resetModels, showModels, type ModelStation } from "./models.ts";
 import { LOOK_PRESETS, LOOK_STATIONS, applyLookPreset, buildLooks, resetLooks, showLooks, type LookStation } from "./looks.ts";
 
 /** The first five stations, then the E5 round's (src/e5.ts) and phase 2's (src/p2.ts, src/anim-physics.ts, src/render.ts, src/sph.ts). */
-export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS, ...P2_STATIONS, ...AP_STATIONS, ...RD_STATIONS, ...SPH_STATIONS, ...PM_STATIONS, ...IBL_STATIONS, ...LOOK_STATIONS, ...GEO_STATIONS, ...DEPTH_STATIONS, ...VW_STATIONS, ...LIGHT_STATIONS, ...GEN_STATIONS] as const;
+export const STATIONS = ["post", "lens", "fx", "2d", "stylised", ...E5_STATIONS, ...P2_STATIONS, ...AP_STATIONS, ...RD_STATIONS, ...SPH_STATIONS, ...PM_STATIONS, ...IBL_STATIONS, ...LOOK_STATIONS, ...GEO_STATIONS, ...DEPTH_STATIONS, ...VW_STATIONS, ...LIGHT_STATIONS, ...GEN_STATIONS, ...MODEL_STATIONS] as const;
 export type Station = (typeof STATIONS)[number];
 
 /** The showcase's state, on one entity named "stage". */
@@ -213,7 +215,7 @@ function hud(world: World, font: Font, station: Station, look: number): void {
   const ap = p2 - P2_STATIONS.length;
   const rd = ap - AP_STATIONS.length;
   const pm = rd - RD_STATIONS.length - SPH_STATIONS.length;
-  const label = i < 5 ? `station ${i + 1}/5  ${station}` : p2 < 0 ? `E5 station ${e5 + 1}/${E5_STATIONS.length}  ${station}` : ap < 0 ? `P2 station ${p2 + 1}/${P2_STATIONS.length}  ${station}` : rd < 0 ? `P2 station ${ap + 1}/${AP_STATIONS.length}  ${station}` : pm < 0 ? `phase 2 station  ${station}` : (GEO_STATIONS as readonly string[]).includes(station) || (DEPTH_STATIONS as readonly string[]).includes(station) || (VW_STATIONS as readonly string[]).includes(station) || (LIGHT_STATIONS as readonly string[]).includes(station) ? `depth station  ${station}` : (IBL_STATIONS as readonly string[]).includes(station) ? `phase 4 station  ${station}` : (GEN_STATIONS as readonly string[]).includes(station) ? `round 3 station  ${station}` : `P4 station  ${station}`;
+  const label = i < 5 ? `station ${i + 1}/5  ${station}` : p2 < 0 ? `E5 station ${e5 + 1}/${E5_STATIONS.length}  ${station}` : ap < 0 ? `P2 station ${p2 + 1}/${P2_STATIONS.length}  ${station}` : rd < 0 ? `P2 station ${ap + 1}/${AP_STATIONS.length}  ${station}` : pm < 0 ? `phase 2 station  ${station}` : (GEO_STATIONS as readonly string[]).includes(station) || (DEPTH_STATIONS as readonly string[]).includes(station) || (VW_STATIONS as readonly string[]).includes(station) || (LIGHT_STATIONS as readonly string[]).includes(station) ? `depth station  ${station}` : (IBL_STATIONS as readonly string[]).includes(station) ? `phase 4 station  ${station}` : (GEN_STATIONS as readonly string[]).includes(station) || (MODEL_STATIONS as readonly string[]).includes(station) ? `round 3 station  ${station}` : `P4 station  ${station}`;
   const line = looks ? `${label}  ${LOOK_PRESETS[look - 1] ?? "none"}` : label;
   og.render.text(world, { font, text: line, position: { x: 34, y: 76, z: 0 }, size: 18, color: { r: 1, g: 0.72, b: 0.3 }, screen: true, layer: 2 });
   og.ui.anchor("Badge", { anchor: "bottomRight" }, () => og.ui.panel("BadgePanel", { padding: { left: 12, top: 8, right: 12, bottom: 8 } }, () => og.ui.label("BadgeText", "og.ui over the frame", {})));
@@ -249,6 +251,7 @@ function show(world: World, station: Station): void {
   resetVW(world);
   resetLight(world);
   resetGen(world);
+  resetModels(world);
   cam.orthographic = false;
   cam.fov = 50;
   settings.toneMapped = true;
@@ -336,6 +339,7 @@ function show(world: World, station: Station): void {
       else if ((VW_STATIONS as readonly string[]).includes(station)) showVW(world, station as VWStation);
       else if ((LIGHT_STATIONS as readonly string[]).includes(station)) showLight(world, station as LightStation);
       else if ((GEN_STATIONS as readonly string[]).includes(station)) showGen(world, station as GenStation);
+      else if ((MODEL_STATIONS as readonly string[]).includes(station)) showModels(world, station as ModelStation);
       else showE5(world, station as E5Station);
   }
 }
@@ -497,7 +501,7 @@ function build(world: World): void {
 export default og.game({
   tick: 60,
   seed: 1,
-  systems: [Orbiter, Blink, Show, E5Show, PlatformMove, P2Show, APShow, SPHShow, GEOShow, LightShow],
+  systems: [Orbiter, Blink, Show, E5Show, PlatformMove, P2Show, APShow, SPHShow, GEOShow, LightShow, ModelsProbe],
   render: { antialias: "taa" },
   start(world) {
     build(world);
@@ -517,7 +521,7 @@ export default og.game({
       if (stage !== null) world.set(stage, Stage, { look: LOOK_PRESETS.indexOf(slug as (typeof LOOK_PRESETS)[number]) + 1 });
     },
   },
-  commandHelp: { station: { usage: "<name|1-33>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, the render round's four (lights, moon, materials, skinned), the 3D fluid station (fluids3d), P4's physical materials (physical) and the image-based lighting station (environment), the looks station (looks), and the depth wave's geometry station (geometry: runtime geometry, lines, points, debug draw), lod (2,000 trees in levels of detail), reflections (a reflection probe and SSR on a wet floor), views (a security monitor, a mirror and split-screen, from render targets and secondary cameras), and its light stations (baked: a lightmapped Cornell box; volumetric: sun shafts through a window, a rect light and cookies in volumetric fog), and round 3's islands (a terrain the cook generates, its sea at the terrain's seaLevel)." }, baked: { usage: "<on|off>", doc: "RenderSettings.bakedLighting: off draws the baked station's Cornell box unbaked." }, look: { usage: "<slug|none>", doc: "On the looks station: apply one of the engine's look presets (templates/looks/<slug>.ogt) to the diorama, or none." } },
+  commandHelp: { station: { usage: "<name|1-33>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, the render round's four (lights, moon, materials, skinned), the 3D fluid station (fluids3d), P4's physical materials (physical) and the image-based lighting station (environment), the looks station (looks), and the depth wave's geometry station (geometry: runtime geometry, lines, points, debug draw), lod (2,000 trees in levels of detail), reflections (a reflection probe and SSR on a wet floor), views (a security monitor, a mirror and split-screen, from render targets and secondary cameras), and its light stations (baked: a lightmapped Cornell box; volumetric: sun shafts through a window, a rect light and cookies in volumetric fog), and round 3's islands (a terrain the cook generates, its sea at the terrain's seaLevel) and models (a `type model` of og-geom parts the cook built: a gear, bolts, a vase, a horn, a dice)." }, baked: { usage: "<on|off>", doc: "RenderSettings.bakedLighting: off draws the baked station's Cornell box unbaked." }, look: { usage: "<slug|none>", doc: "On the looks station: apply one of the engine's look presets (templates/looks/<slug>.ogt) to the diorama, or none." } },
   facts: (world) => {
     const e = world.find("stage");
     const s = e === null ? null : world.get(e, Stage);

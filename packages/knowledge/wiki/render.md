@@ -1062,7 +1062,7 @@ fn shapeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4647</sub>
+<sub>`api.ogt` line 4670</sub>
 
 <a id="fn-extrudeGeometry"></a>
 
@@ -1092,7 +1092,7 @@ fn extrudeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4654</sub>
+<sub>`api.ogt` line 4677</sub>
 
 <a id="fn-latheGeometry"></a>
 
@@ -1122,7 +1122,7 @@ fn latheGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4661</sub>
+<sub>`api.ogt` line 4684</sub>
 
 <a id="fn-polyhedronGeometry"></a>
 
@@ -1152,7 +1152,7 @@ fn polyhedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4668</sub>
+<sub>`api.ogt` line 4691</sub>
 
 <a id="fn-icosahedronGeometry"></a>
 
@@ -1182,7 +1182,7 @@ fn icosahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4675</sub>
+<sub>`api.ogt` line 4698</sub>
 
 <a id="fn-dodecahedronGeometry"></a>
 
@@ -1212,7 +1212,7 @@ fn dodecahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4682</sub>
+<sub>`api.ogt` line 4705</sub>
 
 <a id="fn-octahedronGeometry"></a>
 
@@ -1242,7 +1242,7 @@ fn octahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4689</sub>
+<sub>`api.ogt` line 4712</sub>
 
 <a id="fn-tetrahedronGeometry"></a>
 
@@ -1272,7 +1272,7 @@ fn tetrahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4696</sub>
+<sub>`api.ogt` line 4719</sub>
 
 <a id="fn-sweepGeometry"></a>
 
@@ -1302,7 +1302,7 @@ fn sweepGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4703</sub>
+<sub>`api.ogt` line 4726</sub>
 
 <a id="fn-csgGeometry"></a>
 
@@ -1332,7 +1332,7 @@ fn csgGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4710</sub>
+<sub>`api.ogt` line 4733</sub>
 
 <a id="fn-mergeGeometries"></a>
 
@@ -1362,7 +1362,7 @@ fn mergeGeometries {
 }
 ```
 
-<sub>`api.ogt` line 4717</sub>
+<sub>`api.ogt` line 4740</sub>
 
 <a id="fn-lines"></a>
 
@@ -1392,7 +1392,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 4775</sub>
+<sub>`api.ogt` line 4798</sub>
 
 <a id="fn-points"></a>
 
@@ -1422,7 +1422,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 4810</sub>
+<sub>`api.ogt` line 4833</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1454,7 +1454,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 4914</sub>
+<sub>`api.ogt` line 4937</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1484,7 +1484,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4970</sub>
+<sub>`api.ogt` line 4993</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1518,7 +1518,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 5082</sub>
+<sub>`api.ogt` line 5105</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1546,7 +1546,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 5097</sub>
+<sub>`api.ogt` line 5120</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1574,7 +1574,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 5165</sub>
+<sub>`api.ogt` line 5188</sub>
 
 ## Components, resources and events
 
@@ -3201,7 +3201,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 4817</sub>
+<sub>`api.ogt` line 4840</sub>
 
 <a id="record-Points"></a>
 
@@ -3255,7 +3255,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 4854</sub>
+<sub>`api.ogt` line 4877</sub>
 
 <a id="record-CameraView"></a>
 
@@ -3362,7 +3362,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 4977</sub>
+<sub>`api.ogt` line 5000</sub>
 
 <a id="record-Mirror"></a>
 
@@ -3407,7 +3407,7 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 5049</sub>
+<sub>`api.ogt` line 5072</sub>
 
 <a id="record-RectLight"></a>
 
@@ -3457,7 +3457,7 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 5111</sub>
+<sub>`api.ogt` line 5134</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -3491,7 +3491,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 5138</sub>
+<sub>`api.ogt` line 5161</sub>
 
 ## Types
 
@@ -5370,6 +5370,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `shapes` | `Path2 \| readonly Path2[] \| readonly Vector2[] \| null` | `null` | — | — | — | One og.Shape (an og.Path2 is a shape without holes), a list of them, or the outline's points. Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5). |
 | `curveSegments` | `number` | `12` | ≥ 1 | — | — | Points per curve when an og.Shape's curves are flattened (three.js extractPoints(curveSegments); an ellipse takes twice as many, a spline as many per point). |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). |
 | `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too (BufferGeometryDesc.physics). |
 | `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later (BufferGeometryDesc.dynamic). |
 
@@ -5381,6 +5382,9 @@ struct ShapeGeometryDesc {
   field curveSegments u32 "Points per curve when an og.Shape's curves are flattened (three.js extractPoints(curveSegments); an ellipse takes twice as many, a spline as many per point)." {
     default 12
     min 1
+  }
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+    default 1 1
   }
   field physics bool "Register it as a physics mesh too (BufferGeometryDesc.physics)." {
     default true
@@ -5406,11 +5410,12 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `steps` | `number` | `1` | ≥ 1 | — | — | Rings along the depth or the path. |
 | `bevelEnabled` | `boolean` | `true` | — | — | — | Round the edges of both faces. |
 | `bevelThickness` | `number` | `0.2` | ≥ 0 | `m` | — | How far the bevel reaches beyond each face, along z. |
-| `bevelSize` | `number` | `0.1` | — | `m` | — | How far the bevel reaches out from the outline. Unset, bevelThickness - 0.1 (three.js's default; 0.1 with the default thickness). |
+| `bevelSize` | `number \| null` | `null` | — | `m` | — | How far the bevel reaches out from the outline. Null or unset, bevelThickness - 0.1, as three.js derives it (0.1 at the default thickness, 0 at a thickness of 0.1). |
 | `bevelOffset` | `number` | `0` | — | `m` | — | How far the bevel starts out from the outline. |
 | `bevelSegments` | `number` | `3` | ≥ 1 | — | — | Rings in each bevel. |
 | `curveSegments` | `number` | `12` | ≥ 1 | — | — | Points per curve when an og.Shape's curves are flattened. |
 | `extrudePath` | `Path` | `0` | — | — | — | A path (og.path.create or og.path.find) to extrude along instead of +Z: the shape's x along the path's normal and y along its binormal (three.js's Frenet frames), steps rings evenly spaced along it. A path turns the bevel off, as three.js. 0 extrudes along +Z. |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). |
 | `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
 | `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
 
@@ -5436,8 +5441,7 @@ struct ExtrudeGeometryDesc {
     min 0
     unit m
   }
-  field bevelSize f32 "How far the bevel reaches out from the outline. Unset, bevelThickness - 0.1 (three.js's default; 0.1 with the default thickness)." {
-    default 0.1
+  field bevelSize Option.f32 "How far the bevel reaches out from the outline. Null or unset, bevelThickness - 0.1, as three.js derives it (0.1 at the default thickness, 0 at a thickness of 0.1)." {
     unit m
   }
   field bevelOffset f32 "How far the bevel starts out from the outline." {
@@ -5452,6 +5456,9 @@ struct ExtrudeGeometryDesc {
     min 1
   }
   field extrudePath Path "A path (og.path.create or og.path.find) to extrude along instead of +Z: the shape's x along the path's normal and y along its binormal (three.js's Frenet frames), steps rings evenly spaced along it. A path turns the bevel off, as three.js. 0 extrudes along +Z."
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+    default 1 1
+  }
   field physics bool "Register it as a physics mesh too." {
     default true
   }
@@ -5459,7 +5466,7 @@ struct ExtrudeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4462</sub>
+<sub>`api.ogt` line 4465</sub>
 
 <a id="type-LatheGeometryDesc"></a>
 
@@ -5475,6 +5482,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `segments` | `number` | `12` | ≥ 1 | — | — | Segments round the axis. |
 | `phiStart` | `number` | `0` | — | `rad` | — | Where the turn starts, from +Z towards +X. |
 | `phiLength` | `number` | `6.283185307179586` | — | `rad` | — | How far it turns; 2 pi is whole (clamped to it). |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). |
 | `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
 | `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
 
@@ -5496,6 +5504,9 @@ struct LatheGeometryDesc {
     default 6.283185307179586
     unit rad
   }
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+    default 1 1
+  }
   field physics bool "Register it as a physics mesh too." {
     default true
   }
@@ -5503,7 +5514,7 @@ struct LatheGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4505</sub>
+<sub>`api.ogt` line 4510</sub>
 
 <a id="type-PolyhedronGeometryDesc"></a>
 
@@ -5519,6 +5530,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `indices` | `readonly number[]` | `[]` | — | — | — | The faces, three corner indices each, counter-clockwise seen from outside. |
 | `radius` | `number` | `1` | ≥ 0 | `m` | — | The sphere the vertices are pushed onto. |
 | `detail` | `number` | `0` | ≤ 64 | — | — | Subdivisions of each face: (detail + 1)² triangles a face. |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). |
 | `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
 | `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
 
@@ -5536,6 +5548,9 @@ struct PolyhedronGeometryDesc {
   field detail u32 "Subdivisions of each face: (detail + 1)² triangles a face." {
     max 64
   }
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+    default 1 1
+  }
   field physics bool "Register it as a physics mesh too." {
     default true
   }
@@ -5543,7 +5558,7 @@ struct PolyhedronGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4528</sub>
+<sub>`api.ogt` line 4536</sub>
 
 <a id="type-SolidGeometryDesc"></a>
 
@@ -5557,6 +5572,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `radius` | `number` | `1` | ≥ 0 | `m` | — | The radius. |
 | `detail` | `number` | `0` | ≤ 64 | — | — | Subdivisions of each face. |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). |
 | `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
 | `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
 
@@ -5572,6 +5588,9 @@ struct SolidGeometryDesc {
   field detail u32 "Subdivisions of each face." {
     max 64
   }
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+    default 1 1
+  }
   field physics bool "Register it as a physics mesh too." {
     default true
   }
@@ -5579,7 +5598,7 @@ struct SolidGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4547</sub>
+<sub>`api.ogt` line 4558</sub>
 
 <a id="type-SweepKey"></a>
 
@@ -5602,7 +5621,7 @@ struct SweepKey {
 }
 ```
 
-<sub>`api.ogt` line 4564</sub>
+<sub>`api.ogt` line 4578</sub>
 
 <a id="type-SweepGeometryDesc"></a>
 
@@ -5621,6 +5640,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `twist` | `readonly SweepKey[]` | `[]` | — | — | — | The section's turn round the path over its length, in radians (none: 0). |
 | `caps` | `boolean` | `true` | — | — | — | Close the ends of an open path. |
 | `curveSegments` | `number` | `12` | ≥ 1 | — | — | Points per curve when an og.Shape section is flattened. |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). |
 | `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
 | `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
 
@@ -5643,6 +5663,9 @@ struct SweepGeometryDesc {
     default 12
     min 1
   }
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+    default 1 1
+  }
   field physics bool "Register it as a physics mesh too." {
     default true
   }
@@ -5650,7 +5673,7 @@ struct SweepGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4572</sub>
+<sub>`api.ogt` line 4586</sub>
 
 <a id="type-MirrorAxis"></a>
 
@@ -5677,7 +5700,7 @@ enum MirrorAxis {
 }
 ```
 
-<sub>`api.ogt` line 4596</sub>
+<sub>`api.ogt` line 4613</sub>
 
 <a id="type-GeometryPart"></a>
 
@@ -5711,7 +5734,7 @@ struct GeometryPart {
 }
 ```
 
-<sub>`api.ogt` line 4604</sub>
+<sub>`api.ogt` line 4621</sub>
 
 <a id="type-CsgOp"></a>
 
@@ -5736,7 +5759,7 @@ enum CsgOp {
 }
 ```
 
-<sub>`api.ogt` line 4618</sub>
+<sub>`api.ogt` line 4635</sub>
 
 <a id="type-CsgGeometryDesc"></a>
 
@@ -5751,6 +5774,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `op` | `CsgOp` | `"union"` | — | — | — | The operation. |
 | `a` | `GeometryPart` | `{}` | — | — | — | The first operand. |
 | `b` | `GeometryPart` | `{}` | — | — | — | The second operand. |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). |
 | `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
 | `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
 
@@ -5761,6 +5785,9 @@ struct CsgGeometryDesc {
   field op CsgOp "The operation."
   field a GeometryPart "The first operand."
   field b GeometryPart "The second operand."
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+    default 1 1
+  }
   field physics bool "Register it as a physics mesh too." {
     default true
   }
@@ -5768,7 +5795,7 @@ struct CsgGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4625</sub>
+<sub>`api.ogt` line 4642</sub>
 
 <a id="type-MergeGeometriesDesc"></a>
 
@@ -5781,6 +5808,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `parts` | `readonly GeometryPart[]` | `[]` | — | — | — | The parts, in order (at least one). |
+| `uvRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping). |
 | `physics` | `boolean` | `true` | — | — | — | Register it as a physics mesh too. |
 | `dynamic` | `boolean` | `false` | — | — | — | Whether og.render.updateGeometry may rewrite it later. |
 
@@ -5789,6 +5817,9 @@ struct MergeGeometriesDesc {
   doc "Geometries placed and merged into one, as three.js BufferGeometryUtils.mergeGeometries after applying each part's matrix: a prop of parts drawn in one draw, a mirrored half, an array (the same part at several placements). Normals follow each placement; a mirrored part turns its triangles so they still face out. Vertex colours are kept when any part has them."
   desc true
   field parts List.GeometryPart "The parts, in order (at least one)."
+  field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+    default 1 1
+  }
   field physics bool "Register it as a physics mesh too." {
     default true
   }
@@ -5796,7 +5827,7 @@ struct MergeGeometriesDesc {
 }
 ```
 
-<sub>`api.ogt` line 4637</sub>
+<sub>`api.ogt` line 4657</sub>
 
 <a id="type-LineMode"></a>
 
@@ -5821,7 +5852,7 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4724</sub>
+<sub>`api.ogt` line 4747</sub>
 
 <a id="type-LinesDesc"></a>
 
@@ -5887,7 +5918,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 4738</sub>
+<sub>`api.ogt` line 4761</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -5938,7 +5969,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 4782</sub>
+<sub>`api.ogt` line 4805</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -5971,7 +6002,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4885</sub>
+<sub>`api.ogt` line 4908</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -6006,7 +6037,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 4899</sub>
+<sub>`api.ogt` line 4922</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -6029,7 +6060,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4924</sub>
+<sub>`api.ogt` line 4947</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -6043,7 +6074,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 4937</sub>
+<sub>`api.ogt` line 4960</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -6077,7 +6108,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 4946</sub>
+<sub>`api.ogt` line 4969</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -6104,7 +6135,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 4961</sub>
+<sub>`api.ogt` line 4984</sub>
 
 <a id="type-Post"></a>
 
@@ -6118,7 +6149,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 5073</sub>
+<sub>`api.ogt` line 5096</sub>
 
 <a id="type-PostError"></a>
 
@@ -6139,7 +6170,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 5091</sub>
+<sub>`api.ogt` line 5114</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -6162,7 +6193,7 @@ enum VolumetricFog {
 }
 ```
 
-<sub>`api.ogt` line 5105</sub>
+<sub>`api.ogt` line 5128</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -6195,7 +6226,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 5153</sub>
+<sub>`api.ogt` line 5176</sub>
 
 ## Column kinds
 
@@ -6409,7 +6440,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4731</sub>
+<sub>`api.ogt` line 4754</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -6420,7 +6451,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4930</sub>
+<sub>`api.ogt` line 4953</sub>
 
 ```ogt
 column RenderTarget {
@@ -6431,7 +6462,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4939</sub>
+<sub>`api.ogt` line 4962</sub>
 
 ```ogt
 column Post {
@@ -6442,7 +6473,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 5075</sub>
+<sub>`api.ogt` line 5098</sub>
 
 ## Constants
 

@@ -7000,6 +7000,12 @@ export interface ShapeGeometryDesc {
    */
   readonly curveSegments?: number;
   /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
+  /**
    * Register it as a physics mesh too (BufferGeometryDesc.physics).
    *
    * @default true
@@ -7055,12 +7061,12 @@ export interface ExtrudeGeometryDesc {
    */
   readonly bevelThickness?: number;
   /**
-   * How far the bevel reaches out from the outline. Unset, bevelThickness - 0.1 (three.js's default; 0.1 with the default thickness).
+   * How far the bevel reaches out from the outline. Null or unset, bevelThickness - 0.1, as three.js derives it (0.1 at the default thickness, 0 at a thickness of 0.1).
    *
-   * @default 0.1
+   * @default null
    * @unit m (metres)
    */
-  readonly bevelSize?: number;
+  readonly bevelSize?: number | null;
   /**
    * How far the bevel starts out from the outline.
    *
@@ -7088,6 +7094,12 @@ export interface ExtrudeGeometryDesc {
    * @default 0
    */
   readonly extrudePath?: Path;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
   /**
    * Register it as a physics mesh too.
    *
@@ -7137,6 +7149,12 @@ export interface LatheGeometryDesc {
    */
   readonly phiLength?: number;
   /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
+  /**
    * Register it as a physics mesh too.
    *
    * @default true
@@ -7184,6 +7202,12 @@ export interface PolyhedronGeometryDesc {
    */
   readonly detail?: number;
   /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
+  /**
    * Register it as a physics mesh too.
    *
    * @default true
@@ -7218,6 +7242,12 @@ export interface SolidGeometryDesc {
    * @range ..64
    */
   readonly detail?: number;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
   /**
    * Register it as a physics mesh too.
    *
@@ -7296,6 +7326,12 @@ export interface SweepGeometryDesc {
    * @range 1..
    */
   readonly curveSegments?: number;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
   /**
    * Register it as a physics mesh too.
    *
@@ -7391,6 +7427,12 @@ export interface CsgGeometryDesc {
    */
   readonly b?: GeometryPart;
   /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
+  /**
    * Register it as a physics mesh too.
    *
    * @default true
@@ -7416,6 +7458,12 @@ export interface MergeGeometriesDesc {
    * @default []
    */
   readonly parts?: readonly GeometryPart[];
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
   /**
    * Register it as a physics mesh too.
    *
@@ -8163,6 +8211,7 @@ export interface BakedScene {
 // ── shapes ──────────────────────────────────────────────────────
 // Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js's Shape and Path, built by the same calls (moveTo, lineTo, quadraticCurveTo, bezierCurveTo, splineThru, arc, absarc, ellipse, absellipse, closePath) and flattened to points by getPoints, so a three.js outline is a paste. og.render.shapeGeometry, extrudeGeometry and sweepGeometry take them; only their points cross to the engine.
 // They are TypeScript values, not world state: make them in start or a command and let the geometry made from them be what the world keeps. Points come from basic arithmetic (no Math.sin), so they are the same on every host.
+// A prop of these parts belongs in an asset: an `.ogt` of `type model` names each part's geometry by its og.render call (`extrudeGeometry { shape { absarc 0 0 1 0 6.283185307179586 false } depth 0.2 }`), its shapes as og.Shape's calls one a line with `hole { }` blocks, places parts as mergeGeometries does (`position`, `quaternion`, `scale`, `mirror`, or several `at { }` blocks: one mesh drawn instanced), gives each a `material` and hangs it from a named `pivot` (a node). og cook builds it into the model blob a glTF cooks to (levels of detail, raycast BVH, nodes), refuses it past project.ogt's triangle and vertex budgets, and og dev re-cooks it on an edit; og.load.gltf and a scene's `model` line take it as any model. The og-game skill §18 has a whole example.
 
 /** A shape's holes, as three.js Shape.holes: an array; push a path to add a hole. */
 export interface PathList {

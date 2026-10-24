@@ -270,6 +270,19 @@ indices, never from libm. `og.Shape` and `og.Path2` are TypeScript
 (three.js's Shape and Path); they flatten to points before they cross the
 ABI.
 
+A model can be written as text from the same parts: an `.ogt` of `type
+model` (og-cook's `cook/model_text.rs`) names each part's geometry by its
+og.render call and desc fields, places it as mergeGeometries does, gives
+it a material and hangs it from a named pivot. The cook writes it as a
+glTF binary (the writer `.vox` uses) before the model path reads it, so
+it becomes the one model blob a glTF does: meshopt, the LOD chain with
+measured errors, the raycast BVH, the node graph. A part placed several
+times is one mesh under several nodes, drawn instanced; a mirrored
+placement is baked. The cook refuses it past the project's triangle and
+vertex budgets. og-geom's `path2.rs` flattens the text's og.Shape calls
+with the TypeScript runtime's formulas and series, so a shape written in
+either place gives the same points, bit for bit.
+
 Lines and points are one pass (`lines.rs`, `points.rs`,
 `shaders/lines.wgsl`). Each segment or point is an instance of a quad in
 screen space with a feathered edge, so widths in pixels or in world units

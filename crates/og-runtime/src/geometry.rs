@@ -571,9 +571,11 @@ fn generated(
         if mesh.positions.iter().flatten().any(|x| !x.is_finite()) {
             return Err("the geometry made holds a position that is not finite".into());
         }
+        let mut data = mesh_data(mesh);
+        uv_repeat(&d, &mut data)?;
         make(
             world,
-            mesh_data(mesh),
+            data,
             flag(&d, "physics", true),
             flag(&d, "dynamic", false),
         )
