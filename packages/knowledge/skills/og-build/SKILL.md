@@ -257,7 +257,13 @@ playtest written in input steps (`key_down`, `type`, `touch_move_to` an
 id, `move_to_text`, `touch_start`) and `screenshot` steps runs there as it
 runs under `og test`, each frame compared with the same references; a
 game command (warp, give) has no channel there and is refused, so keep
-the steps a published check needs free of them. The engine runs this on
+the steps a published check needs free of them. The page shows the
+Player's Back over the canvas's top-left corner (12, 12, 40 by 40 CSS px
+on a desktop page; og-ui §5), which anchored HUD groups keep out of, so
+a playtest the page is held to gives its native run the same cover with
+`setup: "cover:12,12,40,40"` (`PlaytestDesc.setup`: command steps run
+once after `start`, before the first tick, never part of the page's
+script) and its frames lay out as the page's. The engine runs this on
 the published build of its own games (its `tests/web/published.ts`: the
 boot, the title, a press, a typed name and a frame against the metal
 reference, with a clean console).

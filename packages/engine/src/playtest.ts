@@ -127,6 +127,14 @@ export interface PlaytestDesc {
   readonly seed?: number;
   /** The render target, `WIDTHxHEIGHT` (default 1280x720). */
   readonly size?: string;
+  /**
+   * `action[:args];...` run once through the command channel after `start`, before the first
+   * tick (`og run --setup`), in every process of the playtest: the stand-ins for what a host does
+   * around the game, such as `cover:12,12,40,40`, the published page's Back over the play surface
+   * (`Viewport.covered`), so the frames lay out as the page's. Not part of `commands`: the
+   * published page plays a script without it and covers itself.
+   */
+  readonly setup?: string;
   /** Run the script this many times in fresh processes (default 1) and report every end hash in `run.hashes`: a determinism check. The files are the first run's. */
   readonly runs?: number;
   /**

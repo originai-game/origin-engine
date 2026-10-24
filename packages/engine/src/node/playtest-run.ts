@@ -112,6 +112,7 @@ const command = (commands: string, dir: string, clock: number, room?: { url: str
   if (root) c.push("--root", root);
   if (desc!.seed !== undefined) c.push("--seed", String(desc!.seed));
   if (desc!.size) c.push("--size", desc!.size);
+  for (const step of (desc!.setup ?? "").split(";").map((s) => s.trim()).filter((s) => s !== "")) c.push("--setup", step);
   const store = storeOf(room?.place ?? 0);
   if (store) c.push("--platform-store", store);
   return c;

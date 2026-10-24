@@ -100,6 +100,30 @@ test("og.ui.racingHud: its place keeps out of the shell's Back (Viewport.covered
   expect(og.ui.frameViewport).toBeDefined();
 });
 
+test("the command channel's cover lays a native run out as the published page (Viewport.covered without a host)", () => {
+  const Race = defineSystem("UcRace", {}, (_q, _t, _world: World) => {
+    og.ui.racingHud("Hud", { position: 1, racers: 1, lap: 1, laps: 3, time: 3 });
+  });
+  const engine = start(og.game({ systems: [Race] }));
+  engine.advance(2);
+  const free = elements(engine).find((e) => e.id === "Hud.place")!;
+  expect(free.x).toBeLessThan(40);
+  // The page's Back: 40 CSS px square at (12, 12) on a desktop page (shell.css).
+  const covered = engine.command("cover", ["12,12,40,40"]);
+  expect(covered.ok).toBeTrue();
+  engine.advance(2);
+  const moved = elements(engine).find((e) => e.id === "Hud.place")!;
+  expect(moved.x).toBeGreaterThanOrEqual(52);
+  expect(moved.y).toBeCloseTo(free.y, 3);
+  // Cleared, the place comes back; a malformed rectangle is refused with the usage.
+  expect(engine.command("cover", ["none"]).ok).toBeTrue();
+  engine.advance(2);
+  expect(elements(engine).find((e) => e.id === "Hud.place")!.x).toBeCloseTo(free.x, 3);
+  const refused = engine.command("cover", ["12,12,40"]);
+  expect(refused.ok).toBeFalse();
+  if (!refused.ok) expect(refused.reason).toContain("x,y,width,height");
+});
+
 const Results = defineSystem("UrResults", {}, (_q, _t, _world: World) => {
   og.ui.resultsScreen("Results", {
     open: true,

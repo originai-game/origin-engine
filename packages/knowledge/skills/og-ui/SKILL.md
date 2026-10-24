@@ -259,7 +259,11 @@ phone), down past it. Every HUD template and any HUD built from
 `og.ui.anchor` groups gets this; a corner drawn another way (screen
 sprites, a row placed by hand) reads `covered` itself, so put a game's own
 HUD in anchored groups. Preview it
-with `og.ui.previewViewport(world, { ..., covered: { x: 12, y: 12, width: 40, height: 40 } })`.
+with `og.ui.previewViewport(world, { ..., covered: { x: 12, y: 12, width: 40, height: 40 } })`,
+or give a native run the page's cover from outside the game with the
+command `cover:12,12,40,40` (`og run --setup cover:12,12,40,40`; a
+playtest's `setup: "cover:12,12,40,40"`, og-build §6), `cover:none`
+clearing it.
 `og.ui.frameViewport().breakpoint` is `phonePortrait`, `phoneLandscape`,
 `tablet` or `desktop`; templates rearrange themselves by it (tabs become a
 select, side panels move under, touch controls appear when `touch` is set).

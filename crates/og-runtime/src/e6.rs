@@ -258,6 +258,15 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
             Ok(())
         },
     );
+    #[cfg(not(feature = "publish"))]
+    let _ = probe.register_command(
+        "cover",
+        og_probe::CommandDesc {
+            usage: "cover:<x>,<y>,<width>,<height>|none".into(),
+            doc: "where a host's own control covers the play surface (Viewport.covered, CSS pixels), as the published page's Back does: cover:12,12,40,40 lays a native run out as the page; none clears it".into(),
+        },
+        move |_world, args| super::modules::set_cover(engine, args),
+    );
     let _ = probe.register_dump(
         "dump_platform",
         og_probe::CommandDesc {

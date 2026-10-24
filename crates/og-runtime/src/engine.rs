@@ -1886,17 +1886,37 @@ pub fn command(id: u32, action: &str, args: &str) -> String {
         Ok(e) => e,
         Err(e) => return refuse(e),
     };
-    let handler = eng.state.borrow().commands.get(action).map(|c| c.handler);
-    let Some(handler) = handler else {
-        let known: Vec<String> = eng.state.borrow().commands.keys().cloned().collect();
-        return refuse(format!(
-            "no command action '{action}'; the game registers {known:?}"
-        ));
-    };
     let args = match parse(Some(args)) {
         Ok(Value::Array(a)) => Value::Array(a),
         Ok(Value::Null) => json!([]),
         _ => return refuse("command arguments are a JSON list of strings"),
+    };
+    let handler = eng.state.borrow().commands.get(action).map(|c| c.handler);
+    let Some(handler) = handler else {
+        // Not the game's: a module's action registered with the probe
+        // (locale, view, cover), run on the world now.
+        let words: Option<Vec<String>> = args
+            .as_array()
+            .and_then(|a| a.iter().map(|v| v.as_str().map(str::to_owned)).collect());
+        let Some(words) = words else {
+            return refuse("command arguments are a JSON list of strings");
+        };
+        let world = match eng.world() {
+            Ok(w) => w,
+            Err(e) => return refuse(e),
+        };
+        return match eng.probe.borrow_mut().act(world, action, &words) {
+            Some(Ok(())) => super::ok_void(),
+            Some(Err(e)) => refuse(format!("command '{action}': {e}")),
+            None => {
+                let mut known: Vec<String> = eng.state.borrow().commands.keys().cloned().collect();
+                known.extend(eng.probe.borrow().registered());
+                known.sort();
+                refuse(format!(
+                    "no command action '{action}'; the game and its modules register {known:?}"
+                ))
+            }
+        };
     };
     match call(&eng, 1, handler, args.to_string()) {
         Ok(_) => super::ok_void(),

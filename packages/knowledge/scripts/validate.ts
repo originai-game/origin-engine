@@ -429,6 +429,7 @@ export const NOT_FIELDS: Record<string, string> = {
   runs: "PlaytestDesc.runs (packages/engine/src/playtest.ts)",
   then: "PlaytestDesc.then (packages/engine/src/playtest.ts)",
   store: "PlaytestRun.store (packages/engine/src/playtest.ts)",
+  setup: "PlaytestDesc.setup (packages/engine/src/playtest.ts)",
 };
 
 export function readApiNames(engine: string): ApiNames | undefined {

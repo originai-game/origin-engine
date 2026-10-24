@@ -827,6 +827,28 @@ impl Probe {
             || self.commands.contains_key(action)
     }
 
+    /// Runs a registered action now, outside the schedule (a host's
+    /// `engine.command`, `og run --setup`). `None` for a name nothing
+    /// registered; a dump refuses, since its output belongs to a script.
+    pub fn act(
+        &mut self,
+        world: &mut World,
+        action: &str,
+        args: &[String],
+    ) -> Option<Result<(), String>> {
+        match self.commands.get(action).map(|r| r.handler.clone())? {
+            Handler::Act(handler) => Some(handler(world, args)),
+            Handler::Dump(..) => Some(Err(format!(
+                "`{action}` is a dump; run it through a commands script"
+            ))),
+        }
+    }
+
+    /// The registered actions' names, for a refusal that lists them.
+    pub fn registered(&self) -> Vec<String> {
+        self.commands.keys().cloned().collect()
+    }
+
     /// Schedule a script on simulation time from the current tick: a step at
     /// `t` seconds runs at the start of tick `now + round(t · rate)`.
     pub fn schedule(&mut self, world: &World, script: &str) -> Result<CommandsReport, ParseError> {

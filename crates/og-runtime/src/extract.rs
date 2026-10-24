@@ -234,6 +234,10 @@ pub(crate) struct RenderState {
     /// The play surface the host reported (`set_viewport`); `None` uses the
     /// render target at one CSS pixel per device pixel.
     pub viewport: Option<og_ui::Viewport>,
+    /// The command channel's `cover`: where a host's control would cover
+    /// the surface (`Viewport.covered`), over whatever the host reports,
+    /// so a native run lays out as the published page with its Back does.
+    pub cover: Option<og_ui::Rect>,
     /// The engine's UI, drawn over every frame, and its atlas once added.
     pub ui: Option<og_ui::SharedUi>,
     pub ui_atlas: Option<og_render::TextureHandle>,
@@ -294,6 +298,7 @@ impl RenderState {
             draw: DrawLayouts::default(),
             options,
             viewport: None,
+            cover: None,
             ui: None,
             ui_atlas: None,
             ui_pages: BTreeMap::new(),

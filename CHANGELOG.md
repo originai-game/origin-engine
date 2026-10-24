@@ -109,6 +109,17 @@ round 3").
   terrain edits is refused there naming the profile; the third-person
   `beacon`, `title` and `dawn` frames re-recorded on Metal and the
   beacon on WebGL2 after the sprite sampler's anisotropy (ui-aniso).
+- Fixes at the round's third batch: `engine.command` (and so `og run
+  --setup`) reaches the actions the engine's modules register with the
+  probe (`locale`, `view`, `cover`), not only the game's; the command
+  `cover:<x>,<y>,<width>,<height>|none` sets `Viewport.covered` on a
+  native run as a host's own control would (the published page's Back);
+  `PlaytestDesc.setup` runs such steps once after `start` in every process
+  of a playtest. Meridian Loop's published playtest covers the page's
+  Back rectangle and drives the straight without the steering tap that
+  put the car into the wall; its four Metal `pub-*` frames re-recorded.
+  `device.ts` finds the engine module the page loaded (`-lanes` where it
+  is cross-origin isolated) for its COOP/COEP check.
 
 Debt round 2 (`docs/phase-1.md`, "Plan 2026-10-23, debt round 2").
 

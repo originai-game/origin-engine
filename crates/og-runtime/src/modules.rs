@@ -268,24 +268,53 @@ impl StateBlock for UiState {
 /// The play surface an engine's UI lays out in: what the host set with
 /// [`set_viewport`], else the render target at 1 CSS pixel per device
 /// pixel, else 1280×720; a native host (which sets none) on macOS edits
-/// text with the Mac's keys ([`native_keys`]).
+/// text with the Mac's keys ([`native_keys`]). A `cover` command's
+/// rectangle ([`set_cover`]) is its `covered`, whichever of these it is.
 pub(crate) fn viewport_of(engine_id: u32) -> Viewport {
-    if let Some(v) = preview_of(engine_id) {
-        return v;
-    }
     let Ok(eng) = engine(engine_id) else {
-        return native_keys(Viewport::default());
+        return preview_of(engine_id).unwrap_or_else(|| native_keys(Viewport::default()));
     };
     let Ok(rs) = eng.render.try_borrow() else {
-        return native_keys(Viewport::default());
+        return preview_of(engine_id).unwrap_or_else(|| native_keys(Viewport::default()));
     };
-    if let Some(v) = rs.viewport {
-        return v;
+    let mut v = preview_of(engine_id).or(rs.viewport).unwrap_or_else(|| {
+        native_keys(match rs.backend.as_ref().map(|b| b.size()) {
+            Some((w, h)) if w > 0 && h > 0 => Viewport::new(w as f32, h as f32),
+            _ => Viewport::default(),
+        })
+    });
+    if let Some(c) = rs.cover {
+        v.covered = c;
     }
-    native_keys(match rs.backend.as_ref().map(|b| b.size()) {
-        Some((w, h)) if w > 0 && h > 0 => Viewport::new(w as f32, h as f32),
-        _ => Viewport::default(),
-    })
+    v
+}
+
+/// The command channel's `cover:<x>,<y>,<width>,<height>` (CSS pixels) or
+/// `cover:none`: where a host's own control covers the play surface
+/// (`Viewport.covered`), kept over whatever the host reports until
+/// cleared. A native run has no shell, so a playtest the published page
+/// is held to covers the page's Back (12, 12, 40 by 40 on a desktop page)
+/// and its frames lay out as the page's do.
+// A publish build registers no command, so nothing reaches it there.
+#[cfg_attr(feature = "publish", allow(dead_code))]
+pub(crate) fn set_cover(engine_id: u32, args: &[String]) -> Result<(), String> {
+    let arg = args
+        .first()
+        .filter(|a| !a.is_empty())
+        .ok_or("write cover:<x>,<y>,<width>,<height> (CSS pixels, such as cover:12,12,40,40) or cover:none")?;
+    let cover = if arg == "none" {
+        None
+    } else {
+        let n: Vec<f32> = arg
+            .split(',')
+            .map(|s| s.trim().parse::<f32>().ok().filter(|x| x.is_finite() && *x >= 0.0))
+            .collect::<Option<_>>()
+            .filter(|n: &Vec<f32>| n.len() == 4)
+            .ok_or_else(|| format!("cover:{arg}: write four numbers, x,y,width,height in CSS pixels (such as 12,12,40,40), or none"))?;
+        Some(og_ui::Rect::new(n[0], n[1], n[2], n[3]))
+    };
+    engine(engine_id)?.render.borrow_mut().cover = cover;
+    Ok(())
 }
 
 /// A native host's viewport takes the platform's editing keys: on macOS
