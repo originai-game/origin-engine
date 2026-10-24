@@ -74,3 +74,30 @@ bloom of the track's emissive edge along it.
   this Linux orb rewrote the committed `assets/models/track.glb` with the
   same size and different bytes; it was restored before the `msaa4` runs
   and does not move the title frame.)
+
+## Coordinator acceptance, 2026-10-24
+
+On the Mac measure lane at ad677e36 with the published-input correction
+in 98cf9a82, recorded the ten `tests/frames.og.ts` stations with:
+
+    bun tests/web/reference.ts --project examples/meridian-loop --playtest tests/frames.og.ts --webgl --record
+
+Inspected all ten frames: title, jump, slide, countdown, race, ghost,
+pause, results, board and German settings render intact. A second run
+without `--record` passed 10/10, all RMSE 0.
+
+The published harness had separately delivered input one tick before
+`Probe::pump` does. Delivering at tick T instead of T−1 fixes WebGPU's
+`pub-straight`: RMSE 0.02575 → 0.00792 against the unchanged Metal
+reference; 22/22 published checks pass. No renderer or tolerance changed.
+
+After that correction, WebGL2's title, countdown and straight still
+exceed Metal's tolerance (RMSE 0.04949, 0.01994, 0.04848). Their stronger
+neon halos agree with the AA investigation above; their menu, countdown,
+race timer and HUD match the native states. Kept these three inspected
+captures from `published.ts --project examples/meridian-loop --webgl`
+as `references/webgl2/pub-*.png`. Kept no copy of `pub-pause`, which
+passes against Metal (RMSE 0.00985). A fresh published run passed 22/22;
+the three new reference comparisons have RMSE 0. The German setting
+persists through a reload, and the page and Workers report no warnings
+or errors. `device.ts --project examples/meridian-loop` passes 27/27.
