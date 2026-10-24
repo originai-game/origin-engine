@@ -5966,7 +5966,7 @@ resource only the owner can give.
 | 55 | Stylise in surface space: the octave fade shows as faint bands on a long receding floor (the footprint is measured across the pixel, not along the depth gradient) | P4 stylisation 3 | S | engine, phase 4 | closed at 725b9a4e (Wave 13, vox-stylise): the footprint measured along the depth gradient; three stylise frames re-recorded |
 | 56 | Compressed animation clips are rebuilt to f32 at load, so a resident clip is no smaller in memory; og-anim sampling the quantised keys would be | P4 cook-anim | M | engine, phase 4 | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open |
 | 57 | The CPU frustum cull's lane grain: natively with lanes on it splits from 2,048 bounds and then costs two to three times its serial time on a loaded machine (`tests/evidence/P4/web-host-tools/culling-threshold.md`, noted, not changed) | P4 web host | S | engine, phase 4 | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open |
-| 58 | og-ui's cooked-font text frames in the browser tiers (`text-bidi`, `text-kerning`, `text-edit`, `text-mixed-runs` cook their fonts, which og-tests-web cannot) | P4 UI text | M | engine, phase 4 | the engine's part done at 7d786817 (release-f2): the four scenes in `crates/og-ui/tests/support/text_scenes.rs`, included by og-tests-web as `og-ui/<name>`; `reference-gfx.ts` cooks their fonts (`crates/og-ui/tests/text-fonts` through `og cook`, `tests/web/text-fonts.ts`) and hands the module the blobs; the native frames byte-identical through the same byte path. Open for the coordinator: their first webgpu and webgl2 runs (`bun tests/web/reference-gfx.ts [--webgl] --scene og-ui/text-bidi,og-ui/text-kerning,og-ui/text-edit,og-ui/text-mixed-runs`), judged against `metal` (`tests/evidence/r3/release-f2/NOTES.md`) |
+| 58 | og-ui's cooked-font text frames in the browser tiers (`text-bidi`, `text-kerning`, `text-edit`, `text-mixed-runs` cook their fonts, which og-tests-web cannot) | P4 UI text | M | engine, phase 4 | the engine's part done at 7d786817 (release-f2): the four scenes in `crates/og-ui/tests/support/text_scenes.rs`, included by og-tests-web as `og-ui/<name>`; `reference-gfx.ts` cooks their fonts (`crates/og-ui/tests/text-fonts` through `og cook`, `tests/web/text-fonts.ts`) and hands the module the blobs; the native frames byte-identical through the same byte path. Closed: their first webgpu and webgl2 runs (measure lane at de11947c, `bun tests/web/reference-gfx.ts [--webgl] --scene og-ui/text-bidi,og-ui/text-kerning,og-ui/text-edit,og-ui/text-mixed-runs`) pass 4/4 on each tier against `metal`, so og-ui keeps no browser copy of them (`tests/evidence/r3/release-f2/NOTES.md`) |
 | 59 | og-ui text, what the UI text, fields and UI four rounds left (og-ui README §What phase 2 owes): the caret and Backspace step by character, not grapheme cluster; a mixed text's runs share the role face's baseline; word moves are logical in right-to-left runs; emacs keys beyond Ctrl+A/E; native hosts on macOS edit with Ctrl; a `[wave]`, `[shake]` or `[pulse]` span that mixes faces is drawn still | P4 UI fields, UI four | M | engine, phase 4 | closed at e6c445bc (Wave 13, ui-five) and 284b32c2 (release-f2: the emacs kill buffer, Ctrl+K/U/W into it, Ctrl+Y yanking, Ctrl+T; ← and → moving visually across a bidi edge, the caret's place at the edge kept) |
 | 60 | og-ui accessibility: the slider's and spinbutton's mirror carry no `aria-valuemin`/`-max` (the tree has no bounds); a reader's adjust checked through the native range's `input` event in Chrome, not with VoiceOver itself | P4 UI shell, UI four | S | engine, phase 4 | closed at e6c445bc (Wave 13, ui-five): the tree carries valueMin/valueMax/valueNow, the mirror writes the aria range |
 | 61 | og-ui materials and input: an icon set's single-channel distance rounds miter joins; the kit's other screens keep the 32-cell PNG icon grid; each glass layer with overlay content under it rebuilds the blur pyramid, and the glass cost wants a quieter rerun (`tests/evidence/P4/ui-shell/glass-cost.md`); no fling after a two-finger scroll; a zoom view takes no keys | P4 UI shell | M | engine, phase 4 | closed at e6c445bc (Wave 13, ui-five) for the joins, the icon set, the fling and the zoom view; the glass blur pyramid's cost deferred with the optimisation rows |
@@ -6450,6 +6450,71 @@ Batch 3 merges, each through the functional lane:
   Loop's ten Metal frames hold within tolerance with the new gold (RMSE
   ≤ 0.0029), Brasswick's moved by ≤ 0.0032 and are re-recorded with the
   two above.
+
+#### Round 3 closeout, 2026-10-24
+
+The remaining acceptance found two defects in the preceding
+batch. Both have regression coverage:
+
+- `98cf9a82` aligns published input with `Probe::pump`. The command
+  channel injects at world tick T before the next step; the browser test
+  injected at T−1. Meridian's existing straight capture then passes
+  against Metal without a new WebGPU reference or a tolerance change.
+- `6ec1e4e8` releases the mutable probe borrow before an unknown
+  `engine.command` action reads the registered actions for its refusal.
+  The first full gate aborted the native test process on this borrow.
+  The existing refusal test now also checks that the message lists both
+  game and module actions. The repaired functional lane passes all five
+  steps, with drift skipped by its unchanged inputs.
+
+The next full run found a watcher-test assumption, not another command
+failure: `dev_reports_the_check_of_each_save_and_reloads_anyway` read
+exactly two output lines, but received two reload notifications before
+the type check. `27649c3a` reads through shutdown and still requires a
+successful reload, the saved source's TS2322 diagnostic, and a successful
+exit. Its functional lane passed in 115 s.
+
+`b81a338b` records Meridian's ten regular WebGL2 frames and three
+published frames after inspection. The independent native-MSAA
+investigation in `tests/evidence/r3/meridian-webgl2/NOTES.md` explains
+their bloom difference from Metal's TAA. Fresh runs pass 10/10 regular
+frames and 22/22 published checks. The published pause still compares
+to Metal; no extra reference was needed.
+
+Manual browser checks on the measure lane, with the corrected input:
+
+| Project | Published WebGPU | Published WebGL2 | Device checks |
+|---|---|---|---|
+| Brasswick | 21/21 | 21/21 | 27/27 |
+| Meridian Loop | 22/22 | 22/22 | 27/27 |
+| Hollowbell, control | 13/13 | 13/13 | not rerun |
+| UI kit, control | 18/18 | 18/18 | not rerun |
+
+Final acceptance used the measure lane:
+
+- `scripts/check.sh` at `27649c3a` passed 9/9 steps in 374 s after the
+  two failed full runs above. Rust: 1,256 passed, 14 skipped. Engine
+  Bun: 312 passed, 8 skipped. Create: 15 passed. Knowledge: 48 passed.
+  Determinism was path-aware skipped here after passing in the preceding
+  `--all` run; none of its inputs changed. No failing check was skipped.
+- The final gate's largest wasm download was 3,787,011 B brotli, 90%
+  of the 4,194,304 B limit. Every profile passed the size gate.
+- `scripts/wave-end.sh --stages gate,web,conformance` at `6ec1e4e8`
+  passed web in 478 s and conformance in 14 s; its gate failed on the
+  watcher test and was repaired by the run above. The only later code
+  change is that test. The full browser suite includes the new games
+  and all four cooked-font scenes. Conformance missed none of tsgo's
+  23 corpus diagnostics. This is not recorded as a single green wave-end.
+- The four new-game published runs were repeated at `27649c3a` after
+  the final gate, retaining the results in the table above.
+
+Both new games retain settings through a page reload and report no
+console warnings or errors. F2's four cooked-font scenes pass on both
+browser tiers against Metal, closing row 58. F2 and F4 are closed in
+`docs/release.md`. The `release` packaging/install stage remains deferred
+to the next version's release checks; this closeout does not publish a
+package or update a deployment. F3, F5, Windows registry acceptance and
+the deferred optimisation rows remain separate work.
 
 ### Status 2026-10-19, E5 round
 

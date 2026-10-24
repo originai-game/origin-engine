@@ -120,6 +120,14 @@ round 3").
   put the car into the wall; its four Metal `pub-*` frames re-recorded.
   `device.ts` finds the engine module the page loaded (`-lanes` where it
   is cross-origin isolated) for its COOP/COEP check.
+- Browser acceptance: published input now enters at the same tick boundary
+  as the native command channel, rather than one tick early. Meridian
+  Loop's WebGPU published frames pass against Metal unchanged. Its WebGL2
+  references retain the tier's MSAA/bloom appearance (ten regular frames
+  and three published frames); the published pause still compares to Metal.
+- Unknown `engine.command` actions return their refusal and the available
+  game and module actions without a conflicting probe borrow panicking
+  in the native addon.
 
 Debt round 2 (`docs/phase-1.md`, "Plan 2026-10-23, debt round 2").
 
