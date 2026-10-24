@@ -5351,13 +5351,29 @@ impl Renderer {
             || view_plans
                 .iter()
                 .any(|p| matches!(p.dest, views::Dest::Texture { depth: Some(_), .. }));
-        self.ensure_pipelines(&batches, &skinned_batches, prepass || view_depth);
+        // A due capture's faces draw their own depth prepass for the water
+        // and 3D fluids over them, which also show the copy of the face
+        // drawn so far through them, and for their soft particles to fade
+        // against (probes.rs `FaceTargets`): only when a capture is due.
+        let due = !probe_frame.due.is_empty();
+        let face_fluid = due && fluids_3d;
+        let face_copy = due && (!scene_water.is_empty() || fluids_3d);
+        let face_depth = face_copy || (due && particle_frame.soft);
+        if face_depth {
+            self.probes
+                .ensure_targets(&self.device, &probe_frame, face_copy, face_fluid);
+        }
+        self.ensure_pipelines(
+            &batches,
+            &skinned_batches,
+            prepass || view_depth || face_depth,
+        );
         // A view may draw a skinned batch the main camera culled or hides.
         for v in &view_skinned {
             self.ensure_pipelines(&[], v, view_depth);
         }
         for v in &probe_skinned {
-            self.ensure_pipelines(&[], v, false);
+            self.ensure_pipelines(&[], v, face_depth);
         }
         // Lightmapped batches (lightmap.rs): their family's pipeline, and a
         // physical one's standard family too (passes without the physical
@@ -7402,16 +7418,25 @@ impl Renderer {
             ),
             _ => Vec::new(),
         };
-        // The water as the due probe faces draw it (water.rs `face_draws`).
-        let face_water = if water_draws.is_empty() || probe_frame.due.is_empty() {
+        // The water as each due capture's faces draw it, through the face's
+        // copy and over its depth (water.rs `face_draws`).
+        let face_water: Vec<Vec<water::WaterDraw>> = if water_draws.is_empty() {
             Vec::new()
         } else {
-            self.water.face_draws(
-                &self.device,
-                &scene.water,
-                &self.default_white,
-                &self.post.far_depth,
-            )
+            probe_frame
+                .due
+                .iter()
+                .map(|&(slot, _)| {
+                    let t = self.probes.targets_of(slot);
+                    self.water.face_draws(
+                        &self.device,
+                        scene_water,
+                        t.size,
+                        t.copy.as_ref().expect("made with the water"),
+                        &t.prepass.lindepth,
+                    )
+                })
+                .collect()
         };
         // The 3D fluids' bounding sphere: the reflection probe their one
         // composite draw samples.
@@ -7437,6 +7462,39 @@ impl Renderer {
                 &views,
             ),
             _ => None,
+        };
+        // The 3D fluids as each due capture face draws them: the frame's
+        // particles through the face camera into the face's own targets,
+        // over its depth and through its copy (fluid3d.rs `camera_frame`).
+        let face_fluids: Vec<Option<fluid3d::Fluid3dFrame>> = match &fluid_frame {
+            Some(main) if face_fluid => probe_frame
+                .due
+                .iter()
+                .enumerate()
+                .flat_map(|(d, &(slot, _))| {
+                    let t = self.probes.targets_of(slot);
+                    probe_faces[d].iter().map(move |f| (t, f))
+                })
+                .map(|(t, f)| {
+                    let views = t.fluid.as_ref().expect("made with the fluids").views(
+                        &t.prepass.lindepth,
+                        t.copy.as_ref().expect("made with the fluids"),
+                    );
+                    self.fluid3d.camera_frame(
+                        &self.device,
+                        &scene.fluids_3d,
+                        main,
+                        &fluid3d::Fluid3dCamera {
+                            view: f.view,
+                            proj: f.proj,
+                            orthographic: f.orthographic,
+                        },
+                        (t.size, t.size),
+                        &views,
+                    )
+                })
+                .collect(),
+            _ => Vec::new(),
         };
         // The planar reflection's effect group: its decals, no AO.
         let reflection_fx_group = reflection.as_ref().map(|_| {
@@ -7507,17 +7565,23 @@ impl Renderer {
             })
             .collect();
         // Each due probe face's particle and line groups over its own
-        // camera's uniforms (probes.rs); no depth of its own to soften
-        // particles against.
+        // camera's uniforms (probes.rs); soft particles fade against the
+        // face's own depth prepass.
         let (face_particle_groups, face_line_groups): (Vec<_>, Vec<_>) = probe_faces
             .iter()
             .enumerate()
             .flat_map(|(d, cams)| {
-                let size = active_probes[probe_frame.due[d].1].face_size();
-                let position = active_probes[probe_frame.due[d].1].position;
-                cams.iter().map(move |f| (f, position, size))
+                let (slot, i) = probe_frame.due[d];
+                let size = active_probes[i].face_size();
+                let position = active_probes[i].position;
+                let depth = if face_depth {
+                    &self.probes.targets_of(slot).prepass.lindepth
+                } else {
+                    &self.post.far_depth
+                };
+                cams.iter().map(move |f| (f, position, size, depth))
             })
-            .map(|(f, position, size)| {
+            .map(|(f, position, size, depth)| {
                 let (particles, lines) =
                     views::camera_gpu(f, position, (size, size), scene.css_height);
                 let buffer = |label, contents: &[u8]| {
@@ -7531,10 +7595,8 @@ impl Renderer {
                 let pb = buffer("probe face particles", bytemuck::bytes_of(&particles));
                 let lb = buffer("probe face lines", bytemuck::bytes_of(&lines));
                 (
-                    (!particle_frame.systems.is_empty()).then(|| {
-                        self.particles
-                            .draw_group_of(&self.device, &pb, &self.post.far_depth)
-                    }),
+                    (!particle_frame.systems.is_empty())
+                        .then(|| self.particles.draw_group_of(&self.device, &pb, depth)),
                     self.lines.view_group(&self.device, &lb),
                 )
             })
@@ -8024,8 +8086,115 @@ impl Renderer {
             }
             draws
         };
-        // One shadow pass: a cascade or a local light's face.
         let terrain_indices = self.terrain.index_buffer();
+        // The depth prepass of a camera other than the main one (a view's,
+        // a probe face's: views.rs, probes.rs): its opaque `list`, its
+        // opaque skinned batches, the terrain in `frustum` and the
+        // scattered copies `scatter` keeps, through the main prepass's
+        // pipelines (group 0 and 2: `groups`) into `pre`. Returns the draws.
+        let depth_prepass = |encoder: &mut crate::Encoder,
+                             label: &str,
+                             pre: &views::DepthPrepass,
+                             groups: (&wgpu::BindGroup, &wgpu::BindGroup),
+                             list: &DrawList,
+                             skinned: &[Batch],
+                             frustum: &Frustum,
+                             scatter: Option<&dyn Fn(Vec3, f32) -> bool>|
+         -> u32 {
+            let attachment = |view, clear: f64| {
+                Some(wgpu::RenderPassColorAttachment {
+                    view,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: clear,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 0.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })
+            };
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some(label),
+                color_attachments: &[
+                    attachment(&pre.gbuffer, 0.0),
+                    attachment(&pre.lindepth, post::FAR_DEPTH as f64),
+                    attachment(&pre.outline, 0.0),
+                ],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &pre.depth,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            pass.set_bind_group(0, groups.0, &[]);
+            pass.set_bind_group(2, groups.1, &[]);
+            let mut draws = 0;
+            for &(b, first, count) in &list.ranges {
+                let batch = &batches[b as usize];
+                let Some(pipeline) = self.prepass_pipeline_of(batch, false) else {
+                    continue;
+                };
+                pass.set_pipeline(pipeline);
+                let m = &self.cache.materials[batch.material];
+                pass.set_bind_group(1, m.array.as_ref().unwrap_or(&m.bind_group), &[]);
+                let mesh = &self.cache.meshes[batch.mesh];
+                let start = first as u64 * INSTANCE_STRIDE;
+                let range = start..start + count as u64 * INSTANCE_STRIDE;
+                pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
+                pass.set_vertex_buffer(1, self.instance_buffer.slice(range.clone()));
+                pass.set_vertex_buffer(2, self.instance_buffer.slice(range));
+                pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..count);
+                draws += 1;
+            }
+            let opaque: Vec<Batch> = skinned
+                .iter()
+                .filter(|b| !b.transparent && self.prepass_pipeline_of(b, true).is_some())
+                .map(|b| Batch { ..*b })
+                .collect();
+            let pipelines: Vec<&wgpu::RenderPipeline> = opaque
+                .iter()
+                .filter_map(|b| self.prepass_pipeline_of(b, true))
+                .collect();
+            draws += draw_skinned(&mut pass, &opaque, false, 1, 3, &pipelines, None, None);
+            if let Some(indices) = terrain_indices {
+                draws += terrain::draw_levels(
+                    &mut pass,
+                    &terrain_draws,
+                    indices,
+                    terrain::TerrainPass::Prepass,
+                    |c, rad| frustum.intersects_sphere(c, rad),
+                    None,
+                )
+                .0;
+            }
+            if let Some(keep) = scatter {
+                draws += self
+                    .scatter
+                    .draw(
+                        &mut pass,
+                        scatter::ScatterPass::Prepass,
+                        &scatter_batches,
+                        scatter_material,
+                        scatter_mesh,
+                        keep,
+                        None,
+                    )
+                    .0;
+            }
+            draws
+        };
+        // One shadow pass: a cascade or a local light's face.
         let shadow_pass = |encoder: &mut crate::Encoder,
                            color: &wgpu::TextureView,
                            depth: &wgpu::TextureView,
@@ -8391,46 +8560,108 @@ impl Renderer {
                     };
                     for (d, &(slot, _)) in probe_frame.due.iter().enumerate() {
                         let s = &self.probes.slots[slot];
-                        for face in 0..6 {
+                        // The faces' depth and copy (probes.rs `FaceTargets`),
+                        // and the water drawn through them.
+                        let targets = face_depth.then(|| self.probes.targets_of(slot));
+                        let water = face_water.get(d).filter(|w| !w.is_empty());
+                        let split = water.is_some() || !face_fluids.is_empty();
+                        for (face, cam) in probe_faces[d].iter().enumerate() {
+                            let k = 6 * d + face;
+                            let frustum = Frustum::from_view_proj(cam.view_proj);
+                            // Scattered copies near the box only: farther,
+                            // a blade is under a texel of the face.
+                            let near = probe_select::near_box(
+                                active_probes[probe_frame.due[d].1].bounds(),
+                            );
+                            let scattered =
+                                |c: Vec3, r: f32| near(c, r) && frustum.intersects_sphere(c, r);
+                            // Its linear depth, before its pass reads it: the
+                            // depth prepass a view draws (`depth_prepass`).
+                            if let Some(t) = targets {
+                                stats.draw_calls += depth_prepass(
+                                    &mut encoder,
+                                    "reflection probe face depth",
+                                    &t.prepass,
+                                    (&face_groups[k], fx_group),
+                                    &probe_lists[k],
+                                    &probe_skinned[k],
+                                    &frustum,
+                                    Some(&scattered),
+                                );
+                            }
+                            // Its 3D fluids' depth, thickness and smoothing.
+                            let fluid = face_fluids.get(k).and_then(Option::as_ref);
+                            if let (Some(f), Some(t)) = (fluid, targets) {
+                                let views = t.fluid.as_ref().expect("made with the fluids").views(
+                                    &t.prepass.lindepth,
+                                    t.copy.as_ref().expect("made with the fluids"),
+                                );
+                                stats.draw_calls +=
+                                    self.fluid3d
+                                        .encode(&mut encoder, f, &face_groups[k], &views);
+                            }
                             let (view, resolve_target) = match &s.msaa {
                                 Some(m) => (m, Some(&s.faces[face])),
                                 None => (&s.faces[face], None),
                             };
-                            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                                label: Some("reflection probe face"),
-                                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                                    view,
-                                    depth_slice: None,
-                                    resolve_target,
-                                    ops: wgpu::Operations {
-                                        load: wgpu::LoadOp::Clear(clear),
-                                        store: if resolve_target.is_some() {
-                                            wgpu::StoreOp::Discard
-                                        } else {
-                                            wgpu::StoreOp::Store
-                                        },
-                                    },
-                                })],
-                                depth_stencil_attachment: Some(
-                                    wgpu::RenderPassDepthStencilAttachment {
-                                        view: &s.depth,
-                                        depth_ops: Some(wgpu::Operations {
-                                            load: wgpu::LoadOp::Clear(1.0),
-                                            store: wgpu::StoreOp::Discard,
-                                        }),
-                                        stencil_ops: None,
-                                    },
-                                ),
-                                timestamp_writes: None,
-                                occlusion_query_set: None,
-                                multiview_mask: None,
-                            });
+                            // The face's pass; with water it ends after the
+                            // sky (`first`), keeping its colour and depth,
+                            // and goes on over the face's copy.
+                            let begin = |encoder: &mut Encoder, first: bool| {
+                                let keep = split && first;
+                                encoder
+                                    .begin_render_pass(&wgpu::RenderPassDescriptor {
+                                        label: Some("reflection probe face"),
+                                        color_attachments: &[Some(
+                                            wgpu::RenderPassColorAttachment {
+                                                view,
+                                                depth_slice: None,
+                                                resolve_target,
+                                                ops: wgpu::Operations {
+                                                    load: if first {
+                                                        wgpu::LoadOp::Clear(clear)
+                                                    } else {
+                                                        wgpu::LoadOp::Load
+                                                    },
+                                                    store: if resolve_target.is_none() || keep {
+                                                        wgpu::StoreOp::Store
+                                                    } else {
+                                                        wgpu::StoreOp::Discard
+                                                    },
+                                                },
+                                            },
+                                        )],
+                                        depth_stencil_attachment: Some(
+                                            wgpu::RenderPassDepthStencilAttachment {
+                                                view: &s.depth,
+                                                depth_ops: Some(wgpu::Operations {
+                                                    load: if first {
+                                                        wgpu::LoadOp::Clear(1.0)
+                                                    } else {
+                                                        wgpu::LoadOp::Load
+                                                    },
+                                                    store: if keep {
+                                                        wgpu::StoreOp::Store
+                                                    } else {
+                                                        wgpu::StoreOp::Discard
+                                                    },
+                                                }),
+                                                stencil_ops: None,
+                                            },
+                                        ),
+                                        timestamp_writes: None,
+                                        occlusion_query_set: None,
+                                        multiview_mask: None,
+                                    })
+                                    .forget_lifetime()
+                            };
+                            let mut pass = begin(&mut encoder, true);
                             pass.set_pipeline(
                                 &self.pbr_pipelines[&(Side::Front, false, false, false)],
                             );
-                            pass.set_bind_group(0, &face_groups[6 * d + face], &[]);
+                            pass.set_bind_group(0, &face_groups[k], &[]);
                             pass.set_bind_group(2, fx_group, &[]);
-                            let list = &probe_lists[6 * d + face];
+                            let list = &probe_lists[k];
                             draw_list(
                                 &mut pass,
                                 list,
@@ -8452,8 +8683,6 @@ impl Renderer {
                             stats.draw_calls += list.ranges.len() as u32;
                             // Skinned meshes in their pose, terrain and
                             // scattered copies, as the main pass draws them.
-                            let k = 6 * d + face;
-                            let frustum = Frustum::from_view_proj(probe_faces[d][face].view_proj);
                             let skinned: Vec<&wgpu::RenderPipeline> = probe_skinned[k]
                                 .iter()
                                 .map(|b| self.lit_pipeline_of(b, true, false))
@@ -8479,18 +8708,13 @@ impl Renderer {
                                 )
                                 .0;
                             }
-                            // Scattered copies near the box only: farther,
-                            // a blade is under a texel of the face.
-                            let near = probe_select::near_box(
-                                active_probes[probe_frame.due[d].1].bounds(),
-                            );
                             let (n, _) = self.scatter.draw(
                                 &mut pass,
                                 scatter::ScatterPass::Lit,
                                 &scatter_batches,
                                 scatter_material,
                                 scatter_mesh,
-                                |c, r| near(c, r) && frustum.intersects_sphere(c, r),
+                                scattered,
                                 None,
                             );
                             if n > 0 {
@@ -8503,14 +8727,43 @@ impl Renderer {
                                 pass.draw(0..3, 0..1);
                                 stats.draw_calls += 1;
                             }
-                            // Water over the opaque capture and the sky, as
-                            // the main pass draws it before its transparents.
-                            if !face_water.is_empty() {
-                                stats.draw_calls += self.water.draw(
-                                    &mut pass,
-                                    &face_water,
-                                    &mut probe_select::Binder::new(None),
+                            // Water and the 3D fluids over the opaque capture
+                            // and the sky, as the main pass draws them before
+                            // its transparents: through the copy of the face
+                            // drawn so far.
+                            if let (true, Some(t)) = (split, targets) {
+                                drop(pass);
+                                let copy = t.copy.as_ref().expect("made with the water");
+                                encoder.copy_texture_to_texture(
+                                    wgpu::TexelCopyTextureInfo {
+                                        texture: &s.capture,
+                                        mip_level: 0,
+                                        origin: wgpu::Origin3d {
+                                            x: 0,
+                                            y: 0,
+                                            z: face as u32,
+                                        },
+                                        aspect: wgpu::TextureAspect::All,
+                                    },
+                                    copy.texture().as_image_copy(),
+                                    wgpu::Extent3d {
+                                        width: s.size,
+                                        height: s.size,
+                                        depth_or_array_layers: 1,
+                                    },
                                 );
+                                pass = begin(&mut encoder, false);
+                                pass.set_bind_group(0, &face_groups[k], &[]);
+                                if let Some(water) = water {
+                                    stats.draw_calls += self.water.draw(
+                                        &mut pass,
+                                        water,
+                                        &mut probe_select::Binder::new(None),
+                                    );
+                                }
+                                if let Some(f) = fluid {
+                                    stats.draw_calls += self.fluid3d.draw(&mut pass, f);
+                                }
                                 pass.set_bind_group(2, fx_group, &[]);
                             }
                             // Transparent meshes, back to front from the
@@ -8710,90 +8963,16 @@ impl Renderer {
                         .as_ref()
                         .and_then(|s| s.prepass.as_ref())
                     {
-                        let attachment = |view, clear: f64| {
-                            Some(wgpu::RenderPassColorAttachment {
-                                view,
-                                depth_slice: None,
-                                resolve_target: None,
-                                ops: wgpu::Operations {
-                                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                                        r: clear,
-                                        g: 0.0,
-                                        b: 0.0,
-                                        a: 0.0,
-                                    }),
-                                    store: wgpu::StoreOp::Store,
-                                },
-                            })
-                        };
-                        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                            label: Some("view depth"),
-                            color_attachments: &[
-                                attachment(&pre.gbuffer, 0.0),
-                                attachment(&pre.lindepth, post::FAR_DEPTH as f64),
-                                attachment(&pre.outline, 0.0),
-                            ],
-                            depth_stencil_attachment: Some(
-                                wgpu::RenderPassDepthStencilAttachment {
-                                    view: &pre.depth,
-                                    depth_ops: Some(wgpu::Operations {
-                                        load: wgpu::LoadOp::Clear(1.0),
-                                        store: wgpu::StoreOp::Discard,
-                                    }),
-                                    stencil_ops: None,
-                                },
-                            ),
-                            timestamp_writes: None,
-                            occlusion_query_set: None,
-                            multiview_mask: None,
-                        });
-                        pass.set_bind_group(0, &view_groups[i].0, &[]);
-                        pass.set_bind_group(2, &view_groups[i].1, &[]);
-                        for &(b, first, count) in &view_lists[i].ranges {
-                            let batch = &batches[b as usize];
-                            let Some(pipeline) = self.prepass_pipeline_of(batch, false) else {
-                                continue;
-                            };
-                            pass.set_pipeline(pipeline);
-                            let m = &self.cache.materials[batch.material];
-                            pass.set_bind_group(1, m.array.as_ref().unwrap_or(&m.bind_group), &[]);
-                            let mesh = &self.cache.meshes[batch.mesh];
-                            let start = first as u64 * INSTANCE_STRIDE;
-                            let range = start..start + count as u64 * INSTANCE_STRIDE;
-                            pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
-                            pass.set_vertex_buffer(1, self.instance_buffer.slice(range.clone()));
-                            pass.set_vertex_buffer(2, self.instance_buffer.slice(range));
-                            pass.set_index_buffer(
-                                mesh.indices.slice(..),
-                                wgpu::IndexFormat::Uint32,
-                            );
-                            pass.draw_indexed(0..mesh.index_count, 0, 0..count);
-                            stats.draw_calls += 1;
-                        }
-                        let opaque: Vec<Batch> = view_skinned[i]
-                            .iter()
-                            .filter(|b| {
-                                !b.transparent && self.prepass_pipeline_of(b, true).is_some()
-                            })
-                            .map(|b| Batch { ..*b })
-                            .collect();
-                        let pipelines: Vec<&wgpu::RenderPipeline> = opaque
-                            .iter()
-                            .filter_map(|b| self.prepass_pipeline_of(b, true))
-                            .collect();
-                        stats.draw_calls +=
-                            draw_skinned(&mut pass, &opaque, false, 1, 3, &pipelines, None, None);
-                        if let Some(indices) = terrain_indices {
-                            stats.draw_calls += terrain::draw_levels(
-                                &mut pass,
-                                &terrain_draws,
-                                indices,
-                                terrain::TerrainPass::Prepass,
-                                |c, rad| frustum.intersects_sphere(c, rad),
-                                None,
-                            )
-                            .0;
-                        }
+                        stats.draw_calls += depth_prepass(
+                            &mut encoder,
+                            "view depth",
+                            pre,
+                            (&view_groups[i].0, &view_groups[i].1),
+                            &view_lists[i],
+                            &view_skinned[i],
+                            &frustum,
+                            None,
+                        );
                     }
                     {
                         let mut pass = self.views.begin(&mut encoder, p, clear);

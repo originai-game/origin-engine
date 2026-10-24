@@ -466,3 +466,108 @@ pub fn probe_water_scene(on: bool) -> RenderScene {
     }
     scene
 }
+
+/// The probe of [`probe_floor_scene`]: its id and capture point, 1.2 m
+/// over a yellow floor.
+pub const FLOOR_PROBE: (u64, Vec3) = (7, Vec3::new(0.0, 1.2, 0.0));
+
+/// A yellow floor 10 m square (its top at y 0) under a high sun and a dark
+/// grey background, with a baked probe at [`FLOOR_PROBE`]: its -y face sees
+/// the floor. The scenes of the probe faces' depth (`tests/probes.rs`) put
+/// water, soft particles or a 3D fluid between the probe and the floor.
+pub fn probe_floor_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    scene.light = DirectionalLight {
+        direction_to_light: Vec3::new(0.3, 1.0, 0.2),
+        intensity: 3.0,
+        cast_shadows: false,
+        ..Default::default()
+    };
+    scene.environment.intensity = 0.6;
+    scene.environment.background = Background::Color(Vec3::splat(0.05));
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 3.0, 6.0),
+        target: Vec3::ZERO,
+        ..Default::default()
+    };
+    boxed(
+        &mut scene,
+        mat(Vec3::new(0.9, 0.75, 0.05), 0.0, 0.9),
+        Vec3::new(0.0, -0.1, 0.0),
+        Vec3::new(10.0, 0.2, 10.0),
+    );
+    let (id, at) = FLOOR_PROBE;
+    scene
+        .reflection_probes
+        .push(ReflectionProbe::new(id, at, Vec3::new(10.0, 4.0, 10.0)));
+    scene
+}
+
+/// Clear water 0.15 m deep over [`probe_floor_scene`]'s floor, 6 m square,
+/// its deep colour a dark blue and no foam: seen through, it shows the
+/// floor's yellow; with no depth below, its deep colour.
+pub fn add_floor_water(scene: &mut RenderScene) {
+    scene.water.push(og_render::Water {
+        transform: Mat4::from_translation(Vec3::new(0.0, 0.15, 0.0)),
+        size: Vec2::new(6.0, 6.0),
+        shallow: Vec3::ONE,
+        deep: Vec3::new(0.02, 0.05, 0.3),
+        foam_width: 0.0,
+        ..Default::default()
+    });
+}
+
+/// A few green particles 1.2 m wide hovering 0.1 to 0.2 m over
+/// [`probe_floor_scene`]'s floor, under the probe; `soft`: they fade over
+/// 2 m of the depth behind them, so against the floor they nearly vanish.
+pub fn add_floor_particles(scene: &mut RenderScene, soft: bool) {
+    let e = scene.add_emitter(og_render::ParticleEmitter {
+        shape: og_render::EmitterShape::Cone {
+            angle_degrees: 0.0,
+            radius: 0.6,
+        },
+        rate: 6.0,
+        lifetime: [1.8, 2.0],
+        speed: [0.1, 0.1],
+        size: [1.2, 1.2],
+        gravity: Vec3::ZERO,
+        color: [0.1, 0.95, 0.15, 1.0],
+        blend: og_render::ParticleBlend::Alpha,
+        soft_distance: if soft { 2.0 } else { 0.0 },
+        ..Default::default()
+    });
+    scene.particles.push(og_render::ParticleSystem::new(
+        12,
+        e,
+        Mat4::from_translation(Vec3::new(0.0, 0.1, 0.0)),
+        0x50f7,
+        0,
+    ));
+    crate::fx_scenes::tick_all(scene, 60);
+}
+
+/// A red 3D fluid ball 0.7 m in radius 1.5 m to the +x side of
+/// [`probe_floor_scene`]'s probe, at its height: its +x face sees the
+/// fluid where it saw the dark background and the floor.
+pub fn add_floor_fluid(scene: &mut RenderScene) {
+    let spacing = 0.1;
+    let centre = FLOOR_PROBE.1 + Vec3::new(1.5, 0.0, 0.0);
+    let n = (0.7 / spacing) as i32;
+    let particles: Vec<Vec3> = (-n..=n)
+        .flat_map(|x| {
+            (-n..=n).flat_map(move |y| {
+                (-n..=n).map(move |z| Vec3::new(x as f32, y as f32, z as f32) * spacing)
+            })
+        })
+        .filter(|p| p.length() <= 0.7)
+        .map(|p| centre + p)
+        .collect();
+    scene.fluids_3d.push(og_render::Fluid3d {
+        particles: particles.into(),
+        color: Vec3::new(0.9, 0.08, 0.05),
+        opacity: 0.9,
+        radius: 0.12,
+        volume: spacing * spacing * spacing,
+        ..Default::default()
+    });
+}

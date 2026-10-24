@@ -416,6 +416,38 @@ pub(crate) struct DepthPrepass {
     pub depth: wgpu::TextureView,
 }
 
+impl DepthPrepass {
+    /// The attachments of a camera of `size` (`label`: whose they are).
+    pub fn new(device: &wgpu::Device, (w, h): (u32, u32), label: &str) -> DepthPrepass {
+        let make = |what: &str, format, usage| {
+            device
+                .create_texture(&wgpu::TextureDescriptor {
+                    label: Some(&format!("{label} prepass {what}")),
+                    size: wgpu::Extent3d {
+                        width: w,
+                        height: h,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format,
+                    usage,
+                    view_formats: &[],
+                })
+                .create_view(&Default::default())
+        };
+        let attach = wgpu::TextureUsages::RENDER_ATTACHMENT;
+        let bind = wgpu::TextureUsages::TEXTURE_BINDING;
+        DepthPrepass {
+            gbuffer: make("normals", crate::post::GBUFFER_FORMAT, attach),
+            lindepth: make("depth", crate::post::LINDEPTH_FORMAT, attach | bind),
+            outline: make("outline", crate::post::OUTLINE_FORMAT, attach),
+            depth: make("depth buffer", crate::DEPTH_FORMAT, attach),
+        }
+    }
+}
+
 /// A view's glow buffer: half its size with a mip chain, its glowing
 /// sprites drawn into level 0, the levels added onto its HDR image.
 pub(crate) struct ViewGlow {
@@ -954,27 +986,7 @@ fn textures(
     let hdr = make("view hdr", crate::HDR_FORMAT, 1, attach | bind);
     let msaa = (samples > 1).then(|| make("view hdr (msaa)", crate::HDR_FORMAT, samples, attach));
     let depth = make("view depth", crate::DEPTH_FORMAT, samples, attach);
-    let prepass = depth_drawn.then(|| DepthPrepass {
-        gbuffer: make(
-            "view prepass normals",
-            crate::post::GBUFFER_FORMAT,
-            1,
-            attach,
-        ),
-        lindepth: make(
-            "view prepass depth",
-            crate::post::LINDEPTH_FORMAT,
-            1,
-            attach | bind,
-        ),
-        outline: make(
-            "view prepass outline",
-            crate::post::OUTLINE_FORMAT,
-            1,
-            attach,
-        ),
-        depth: make("view prepass depth buffer", crate::DEPTH_FORMAT, 1, attach),
-    });
+    let prepass = depth_drawn.then(|| DepthPrepass::new(device, (w, h), "view"));
     (hdr, msaa, depth, prepass)
 }
 
