@@ -6343,6 +6343,24 @@ Batch 2 merges, each through the functional lane:
   `view` and `turntable` stay registered commands beside `debug`, not
   members of `commands.CoreAction`; an og-build pointer to `og compare`
   and og-model's `type model` route wait for `geom-2`.
+- `probe-faces` merged at ec5a608b (a clean merge of 288a40d5; no
+  api.ogt or shader change). The lane passed 5/5 in 222 s with the GPU
+  reference tests on Metal: probe-two-rooms, probe-outdoor, fluid-3d,
+  the water scenes and every views-* frame within tolerance. Every
+  og-tests reference re-recorded on Metal at the head is pixel-identical
+  to a render of 765949f2 in the measure lane (terrain-grass and
+  showcase checked directly), so the change moved no frame there; three
+  references that had drifted since 2026-10-19 within tolerance
+  (terrain-grass's boulders 2,715 px over 12, showcase and overlay 383
+  px) are refreshed, since the same renderer draws them before and after
+  this merge. `og test templates/fx-showcase` on Metal: 29 suites pass,
+  islands RMSE 0, reflections, views, volumetric and water within
+  tolerance; nothing to re-record. Decisions: faces keep reading the
+  clusters a face does not have in fluid3d.wgsl, terrain_lit and scatter
+  (pre-existing for the last two; a per-face light loop is a later row),
+  and the per-size `FaceTargets` stay allocated after a baked probe's
+  capture (0.4–1.1 MB at 128², 71 MB at 1024²; freeing them is a later
+  row if a game bakes at 1024).
 
 ### Status 2026-10-19, E5 round
 

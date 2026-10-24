@@ -55,6 +55,13 @@ round 3").
   region and writes one sheet (reference | render | silhouettes), with
   `--align` and `--json`; the `og-model` skill (intake, eight passes with
   gates, generator recipes, budgets) and design §2.11.
+- `probe-faces`: a probe capture's faces draw 3D fluids, and each face
+  gets its own depth prepass (the views' prepass, shared), so water in a
+  face refracts what lies below it and soft particles fade against the
+  face's depth; a Depth32Float attachment cannot be loaded on GLSL ES, so
+  a face's depth is a linear-depth colour target like a view's. Nothing
+  runs without a due capture; per face, water adds a prepass and a copy,
+  fluids six passes.
 - Fixes at the round's first wave-end: the 2D web modules' world carries
   the `og.terrain` state block (no edits) the full build writes, so a 2D
   save and world hash are the same bytes on every host, and a save with
