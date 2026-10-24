@@ -324,7 +324,15 @@ og-physics' `physics2d` and `physics3d` features, and og-render's
 `profile2d` in the 2D modules, which leaves out the 3D world's renderer
 (terrain, planar water, the 3D fluids, scattered copies and volumetric
 fog: their shaders and their per-frame work; a scene's are not drawn,
-`RenderCapabilities.world3d` is false). The rest of the renderer, lit
+`RenderCapabilities.world3d` is false), and og-runtime's `profile2d`,
+which leaves its terrain and tile streaming out with them: there every
+`og.terrain` call and a `SHAPE_HEIGHTFIELD` collider answer a refusal
+naming `world3d`. So that nothing ships that would not draw, `og build
+--publish` (and `og run --device`, which plays the publish build) refuses
+a `2d` project whose scenes hold `Terrain`, `TerrainScatter`, `Water`,
+`WaterSurface` or `Fluid3D`, naming each by scene file and line, before
+anything is cooked or exported; a 2D dev build and a 3D project keep
+them (og-cli's `publish::refuse_3d_world`). The rest of the renderer, lit
 meshes included, is in both. A world of the other profile is refused when
 it is created ("og.Physics.profile 2: this engine was built without the
 physics2d feature"), which `og build` never ships; the lanes modules

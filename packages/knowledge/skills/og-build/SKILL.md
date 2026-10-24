@@ -237,7 +237,11 @@ run it again after the fix: the report is the evidence.
 `og build .` bundles `src/` to `dist/game.js`, cooks, and copies the engine
 runtime and wasm next to it. `og build . --publish` produces the published
 form: the probe keeps only its player-facing members (hello, tick, state,
-pick, entity, input, capture) and the command channel is gone.
+pick, entity, input, capture) and the command channel is gone. A `2d`
+project publishes the 2D module, which has no 3D world
+(`RenderCapabilities.world3d` false): the build refuses scenes holding
+`Terrain`, `TerrainScatter`, `Water`, `WaterSurface` or `Fluid3D`, naming
+each by scene file and line (og-game §2).
 What ships is still checked by script, through what it keeps: real input
 on the published page and the probe's `tick`, `state` and `capture`. A
 playtest written in input steps (`key_down`, `type`, `touch_move_to` an

@@ -155,7 +155,14 @@ beside the rebuild: the reload still happens, the `reload` event carries a
 and a `check` event with the diagnostics follows; `og test --json` ends
 with a `test` event whose `check` object has the same three. Read the
 diagnostics and fix them before anything else; `--no-check` skips the
-check (never for `og build --publish`). A created project's
+check (never for `og build --publish`). A `2d` project's publish build
+leaves the 3D world out (terrain, planar water, scattered copies, the 3D
+fluids, volumetric fog: `og.render.capabilities(world).world3d` is false
+there), so `og build --publish` refuses one whose scenes hold `Terrain`,
+`TerrainScatter`, `Water`, `WaterSurface` or `Fluid3D`, naming each
+`scene.ogt:line`, and there `og.terrain.*` and a `SHAPE_HEIGHTFIELD`
+collider answer a refusal naming `world3d`: remove them, or make the
+project `profile "3d"`. A created project's
 `tsconfig.json` resolves `@origingame/engine` (the generated
 `types/index.d.ts`) and `@origingame/engine/playtest` from `node_modules`.
 An example inside the engine repository has no `node_modules`: its
@@ -1388,7 +1395,8 @@ render sprite 12
   `underwaterDensity` and the surface from below shows the sky only
   straight up (on by default; set the density to 0 to see through).
 
-**Terrain** (`reference/terrain.md`) is a height field cooked from a
+**Terrain** (`reference/terrain.md`, 3D projects only: a `2d` project's
+publish build has none, §2) is a height field cooked from a
 `type terrain` .ogt beside a 16-bit grey PNG (or an EXR in metres):
 
 ```text
