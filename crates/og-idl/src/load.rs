@@ -438,13 +438,15 @@ impl Loader {
                         ty,
                         doc: self.inline(child, 2),
                         publish: None,
+                        host: true,
                         line: child.line,
                     };
                     for g in children(child) {
                         match g.key.as_str() {
                             "doc" => prop.doc.extend(self.doc_line(g)),
                             "publish" => prop.publish = self.bool_value(g),
-                            other => self.error(g.line, format!("unknown key `{other}` in prop: expected doc or publish")),
+                            "host" => prop.host = self.bool_value(g).unwrap_or(true),
+                            other => self.error(g.line, format!("unknown key `{other}` in prop: expected doc, publish or host")),
                         }
                     }
                     i.members.push(Member::Prop(prop));

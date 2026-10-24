@@ -747,6 +747,72 @@ pub fn og_render_tube_geometry(env: Env, world: u32, desc: Option<String>) -> St
     <Host as RenderApi>::og_render_tube_geometry(&Host, world, desc)
 }
 
+#[napi(js_name = "og_render_shape_geometry")]
+pub fn og_render_shape_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_shape_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_extrude_geometry")]
+pub fn og_render_extrude_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_extrude_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_lathe_geometry")]
+pub fn og_render_lathe_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_lathe_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_polyhedron_geometry")]
+pub fn og_render_polyhedron_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_polyhedron_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_icosahedron_geometry")]
+pub fn og_render_icosahedron_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_icosahedron_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_dodecahedron_geometry")]
+pub fn og_render_dodecahedron_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_dodecahedron_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_octahedron_geometry")]
+pub fn og_render_octahedron_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_octahedron_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_tetrahedron_geometry")]
+pub fn og_render_tetrahedron_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_tetrahedron_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_sweep_geometry")]
+pub fn og_render_sweep_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_sweep_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_csg_geometry")]
+pub fn og_render_csg_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_csg_geometry(&Host, world, desc)
+}
+
+#[napi(js_name = "og_render_merge_geometries")]
+pub fn og_render_merge_geometries(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_merge_geometries(&Host, world, desc)
+}
+
 #[napi(js_name = "og_render_lines")]
 pub fn og_render_lines(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

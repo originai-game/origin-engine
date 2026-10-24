@@ -19,6 +19,9 @@ pub const PRIMITIVES: &[&str] = &[
     "Uint32Array",
     "Int32Array",
     "Uint8Array",
+    // The receiver of an interface's method, for chains (three.js's Path
+    // methods return `this`): TypeScript's `this` type.
+    "This",
 ];
 
 /// Built-in generic types and their arity.

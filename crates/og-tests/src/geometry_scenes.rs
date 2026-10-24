@@ -499,3 +499,259 @@ pub fn debug_scene() -> Result<RenderScene, String> {
     );
     Ok(scene)
 }
+
+// ── geometry-shapes: og-geom's generators (round 3, geom-1) ─────────────────
+
+/// An og-geom mesh as the renderer holds one (as og-runtime converts it).
+pub fn from_geom(m: og_geom::Mesh) -> MeshData {
+    let vertices = (0..m.positions.len())
+        .map(|i| og_render::Vertex {
+            position: m.positions[i],
+            normal: m.normals[i],
+            uv: m.uvs[i],
+            color: m.colors.get(i).copied().unwrap_or([1.0; 4]),
+            tangent: [0.0; 4],
+        })
+        .collect();
+    MeshData {
+        vertices,
+        indices: m.indices,
+    }
+}
+
+fn to_geom(m: &MeshData) -> og_geom::Mesh {
+    og_geom::Mesh {
+        positions: m.vertices.iter().map(|v| v.position).collect(),
+        normals: m.vertices.iter().map(|v| v.normal).collect(),
+        uvs: m.vertices.iter().map(|v| v.uv).collect(),
+        colors: Vec::new(),
+        indices: m.indices.clone(),
+    }
+}
+
+/// A gear of `teeth` trapezoid teeth with a round hole, as an og.Shape
+/// flattens one.
+pub fn gear_shape(teeth: usize) -> og_geom::ShapePoints {
+    use glam::DVec2;
+    use og_geom::trig::{TAU, sincos};
+    let mut points = Vec::new();
+    for i in 0..teeth {
+        for (f, r) in [(0.0, 0.62), (0.18, 0.8), (0.42, 0.8), (0.6, 0.62)] {
+            let (s, c) = sincos((i as f64 + f) / teeth as f64 * TAU);
+            points.push(DVec2::new(r * c, r * s));
+        }
+    }
+    let hole = |cx: f64, cy: f64, r: f64, n: usize| -> Vec<DVec2> {
+        (0..n)
+            .map(|k| {
+                let (s, c) = sincos(-(k as f64) / n as f64 * TAU);
+                DVec2::new(cx + r * c, cy + r * s)
+            })
+            .collect()
+    };
+    og_geom::ShapePoints {
+        points,
+        holes: vec![
+            hole(0.0, 0.0, 0.16, 24),
+            hole(0.36, 0.0, 0.07, 12),
+            hole(-0.36, 0.0, 0.07, 12),
+        ],
+    }
+}
+
+/// A sphere as a lathe of a half circle (closed exactly, for CSG).
+fn ball(r: f64, segments: u32, rows: u32) -> og_geom::Mesh {
+    use og_geom::trig::{PI, sincos};
+    let points = (0..=rows)
+        .map(|j| {
+            let (s, c) = sincos(j as f64 / rows as f64 * PI);
+            let x = if j == 0 || j == rows { 0.0 } else { r * s };
+            glam::DVec2::new(x, -r * c)
+        })
+        .collect();
+    og_geom::lathe(&og_geom::Lathe {
+        points,
+        segments,
+        ..Default::default()
+    })
+}
+
+/// A die: a unit cube with its 21 pips subtracted, one sphere at a time;
+/// the spheres are black, so the pits they leave are.
+pub fn dice() -> og_geom::Mesh {
+    use glam::DVec3;
+    let mut body = to_geom(&shapes::cuboid(Vec3::ONE));
+    let mut pip = ball(0.11, 20, 10);
+    pip.colors = vec![[0.05, 0.05, 0.06, 1.0]; pip.positions.len()];
+    let s = 0.25;
+    // Pips on a face: (u, v) in the face's plane, by count.
+    let layout = |n: usize| -> Vec<(f64, f64)> {
+        match n {
+            1 => vec![(0.0, 0.0)],
+            2 => vec![(-s, -s), (s, s)],
+            3 => vec![(-s, -s), (0.0, 0.0), (s, s)],
+            4 => vec![(-s, -s), (s, -s), (-s, s), (s, s)],
+            5 => vec![(-s, -s), (s, -s), (0.0, 0.0), (-s, s), (s, s)],
+            _ => vec![(-s, -s), (-s, 0.0), (-s, s), (s, -s), (s, 0.0), (s, s)],
+        }
+    };
+    // Each face: its outward normal, its u and v axes, its count (opposite faces sum to 7).
+    let faces = [
+        (DVec3::Z, DVec3::X, DVec3::Y, 1),
+        (DVec3::NEG_Z, DVec3::X, DVec3::Y, 6),
+        (DVec3::X, DVec3::Z, DVec3::Y, 3),
+        (DVec3::NEG_X, DVec3::Z, DVec3::Y, 4),
+        (DVec3::Y, DVec3::X, DVec3::Z, 2),
+        (DVec3::NEG_Y, DVec3::X, DVec3::Z, 5),
+    ];
+    for (n, u, v, count) in faces {
+        for (a, b) in layout(count) {
+            let at = og_geom::Placement {
+                position: n * 0.54 + u * a + v * b,
+                ..Default::default()
+            };
+            body = og_geom::csg(
+                &body,
+                og_geom::Placement::default(),
+                &pip,
+                at,
+                og_geom::CsgOp::Subtract,
+            )
+            .expect("a pip");
+        }
+    }
+    body
+}
+
+/// A ribbed horn: a ten-lobed section swept along a curve, tapering from 1
+/// to 0.08 and twisting a turn and a half.
+pub fn horn() -> og_geom::Mesh {
+    use glam::{DVec2, DVec3};
+    use og_geom::trig::{TAU, sincos};
+    let section: Vec<DVec2> = (0..40)
+        .map(|k| {
+            let (s, c) = sincos(k as f64 / 40.0 * TAU);
+            let r = 0.22 * (1.0 + 0.12 * sincos(k as f64 / 40.0 * TAU * 10.0).1);
+            DVec2::new(r * c, r * s)
+        })
+        .collect();
+    // A quadratic Bézier rising and curling to the right.
+    let (p0, p1, p2) = (
+        DVec3::new(0.0, 0.0, 0.0),
+        DVec3::new(-0.1, 1.5, 0.0),
+        DVec3::new(0.9, 1.9, 0.3),
+    );
+    let sample = move |t: f64| {
+        let k = 1.0 - t;
+        let p = p0 * (k * k) + p1 * (2.0 * k * t) + p2 * (t * t);
+        let d = (p1 - p0) * (2.0 * k) + (p2 - p1) * (2.0 * t);
+        (p, d.normalize())
+    };
+    og_geom::sweep(
+        &og_geom::Sweep {
+            section,
+            steps: 64,
+            scale: vec![
+                og_geom::Key { t: 0.0, value: 1.0 },
+                og_geom::Key {
+                    t: 1.0,
+                    value: 0.08,
+                },
+            ],
+            twist: vec![
+                og_geom::Key { t: 0.0, value: 0.0 },
+                og_geom::Key { t: 1.0, value: 3.0 },
+            ],
+            caps: true,
+        },
+        &og_geom::extrude::ExtrudePath {
+            sample: &sample,
+            closed: false,
+        },
+    )
+    .expect("a horn")
+}
+
+/// A vase: a profile from the axis at its foot out to a lip, turned.
+pub fn vase() -> og_geom::Mesh {
+    use glam::DVec2;
+    let profile = [
+        (0.0, 0.0),
+        (0.3, 0.0),
+        (0.34, 0.05),
+        (0.42, 0.3),
+        (0.46, 0.55),
+        (0.4, 0.8),
+        (0.26, 1.05),
+        (0.2, 1.25),
+        (0.24, 1.4),
+        (0.3, 1.48),
+    ];
+    og_geom::lathe(&og_geom::Lathe {
+        points: profile.iter().map(|&(x, y)| DVec2::new(x, y)).collect(),
+        segments: 48,
+        ..Default::default()
+    })
+}
+
+/// `geometry-shapes`: og-geom's generators in a row on a lit floor: an
+/// extruded, bevelled gear with three holes standing on edge, a lathed vase
+/// (double-sided: its mouth shows its inside), a swept horn tapering and
+/// twisting along a curve, and a dice made by CSG, a cube less 21 black
+/// spheres.
+pub fn shapes_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    crate::scenes::ground(&mut scene, 40.0, 0.5, 0.85);
+    let gear = og_geom::extrude(
+        &[gear_shape(14)],
+        &og_geom::Extrude {
+            depth: 0.22,
+            bevel_thickness: 0.05,
+            bevel_size: 0.04,
+            bevel_segments: 3,
+            ..Default::default()
+        },
+        None,
+    );
+    put(
+        &mut scene,
+        from_geom(gear),
+        StandardMaterial {
+            metalness: 0.7,
+            roughness: 0.35,
+            ..colour(0.95, 0.55, 0.15)
+        },
+        Mat4::from_translation(Vec3::new(-3.0, 0.88, 0.0)) * Mat4::from_rotation_y(0.35),
+    );
+    put(
+        &mut scene,
+        from_geom(vase()),
+        StandardMaterial {
+            side: 2,
+            roughness: 0.25,
+            ..colour(0.2, 0.45, 0.85)
+        },
+        Mat4::from_translation(Vec3::new(-1.0, 0.0, 0.0)),
+    );
+    put(
+        &mut scene,
+        from_geom(horn()),
+        colour(0.92, 0.86, 0.72),
+        Mat4::from_translation(Vec3::new(0.7, 0.0, 0.0)),
+    );
+    put(
+        &mut scene,
+        from_geom(dice()),
+        StandardMaterial {
+            roughness: 0.4,
+            ..colour(0.95, 0.95, 0.93)
+        },
+        Mat4::from_translation(Vec3::new(3.1, 0.5, 0.0)) * Mat4::from_rotation_y(0.6),
+    );
+    lit(
+        &mut scene,
+        Vec3::new(0.0, 3.4, 6.4),
+        Vec3::new(0.0, 0.75, 0.0),
+    );
+    scene
+}

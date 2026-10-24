@@ -1823,6 +1823,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-geom"
+version = "0.3.0"
+dependencies = [
+ "glam 0.34.1",
+ "robust",
+ "spade",
+]
+
+[[package]]
 name = "og-host-node"
 version = "0.3.0"
 dependencies = [
@@ -1968,6 +1977,7 @@ dependencies = [
  "og-cook",
  "og-core",
  "og-ecs",
+ "og-geom",
  "og-i18n",
  "og-input",
  "og-lanes",
@@ -1993,6 +2003,7 @@ dependencies = [
  "og-bake",
  "og-cook",
  "og-core",
+ "og-geom",
  "og-render",
  "og-tilemap",
 ]

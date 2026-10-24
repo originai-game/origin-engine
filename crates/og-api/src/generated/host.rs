@@ -314,6 +314,28 @@ pub trait RenderApi: Wire {
     fn og_render_circle_geometry(&self, world: u32, desc: Option<String>) -> String;
     /// `og.render.tubeGeometry`
     fn og_render_tube_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.shapeGeometry`
+    fn og_render_shape_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.extrudeGeometry`
+    fn og_render_extrude_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.latheGeometry`
+    fn og_render_lathe_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.polyhedronGeometry`
+    fn og_render_polyhedron_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.icosahedronGeometry`
+    fn og_render_icosahedron_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.dodecahedronGeometry`
+    fn og_render_dodecahedron_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.octahedronGeometry`
+    fn og_render_octahedron_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.tetrahedronGeometry`
+    fn og_render_tetrahedron_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.sweepGeometry`
+    fn og_render_sweep_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.csgGeometry`
+    fn og_render_csg_geometry(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.render.mergeGeometries`
+    fn og_render_merge_geometries(&self, world: u32, desc: Option<String>) -> String;
     /// `og.render.lines`
     fn og_render_lines(&self, world: u32, desc: Option<String>) -> String;
     /// `og.render.points`
@@ -1028,6 +1050,17 @@ pub const SYMBOLS: &[&str] = &[
     "og_render_ring_geometry",
     "og_render_circle_geometry",
     "og_render_tube_geometry",
+    "og_render_shape_geometry",
+    "og_render_extrude_geometry",
+    "og_render_lathe_geometry",
+    "og_render_polyhedron_geometry",
+    "og_render_icosahedron_geometry",
+    "og_render_dodecahedron_geometry",
+    "og_render_octahedron_geometry",
+    "og_render_tetrahedron_geometry",
+    "og_render_sweep_geometry",
+    "og_render_csg_geometry",
+    "og_render_merge_geometries",
     "og_render_lines",
     "og_render_points",
     "og_render_raycast",

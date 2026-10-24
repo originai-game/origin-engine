@@ -2815,6 +2815,19 @@
         "RingGeometryDesc",
         "CircleGeometryDesc",
         "TubeGeometryDesc",
+        "ShapePoints",
+        "ShapeGeometryDesc",
+        "ExtrudeGeometryDesc",
+        "LatheGeometryDesc",
+        "PolyhedronGeometryDesc",
+        "SolidGeometryDesc",
+        "SweepKey",
+        "SweepGeometryDesc",
+        "MirrorAxis",
+        "GeometryPart",
+        "CsgOp",
+        "CsgGeometryDesc",
+        "MergeGeometriesDesc",
         "LineMode",
         "LineMode",
         "LinesDesc",
@@ -3431,6 +3444,233 @@
           "publish": true
         },
         {
+          "name": "shapeGeometry",
+          "doc": "Make a flat shape for og.Mesh (one-sided, as circleGeometry): an og.Shape with holes, or a points array. Physics can use it as a triangle-mesh Collider.mesh.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "ShapeGeometryDesc",
+              "optional": true,
+              "doc": "The shapes and their tessellation."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "returnsDoc": "Refused for a shape whose points are not finite or that triangulates to nothing.",
+          "publish": true
+        },
+        {
+          "name": "extrudeGeometry",
+          "doc": "Make an extruded solid for og.Mesh: a three.js extrusion is a paste (`og.render.extrudeGeometry(world, { shapes: shape, depth: 0.2, bevelEnabled: true })`). Gears, signs, keys, logos, cookie cutters; along a path, a rail or a moulding.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "ExtrudeGeometryDesc",
+              "optional": true,
+              "doc": "The shapes, depth, bevel and path."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "returnsDoc": "Refused for a shape whose points are not finite or that triangulates to nothing, or an extrudePath that is not alive.",
+          "publish": true
+        },
+        {
+          "name": "latheGeometry",
+          "doc": "Make a solid of revolution for og.Mesh: a profile turned round +Y.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "LatheGeometryDesc",
+              "optional": true,
+              "doc": "The profile and the turn."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "returnsDoc": "Refused for fewer than two points or one that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "polyhedronGeometry",
+          "doc": "Make a polyhedron from vertices and faces for og.Mesh, subdivided onto a sphere.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "PolyhedronGeometryDesc",
+              "optional": true,
+              "doc": "The vertices, faces, radius and detail."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "returnsDoc": "Refused for no faces, an index past the vertices, or a count that is not a multiple of three.",
+          "publish": true
+        },
+        {
+          "name": "icosahedronGeometry",
+          "doc": "Make an icosahedron (twenty faces) for og.Mesh; with detail, a geodesic sphere.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "SolidGeometryDesc",
+              "optional": true,
+              "doc": "Its radius and detail."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "publish": true
+        },
+        {
+          "name": "dodecahedronGeometry",
+          "doc": "Make a dodecahedron (twelve pentagons, thirty-six triangles) for og.Mesh.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "SolidGeometryDesc",
+              "optional": true,
+              "doc": "Its radius and detail."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "publish": true
+        },
+        {
+          "name": "octahedronGeometry",
+          "doc": "Make an octahedron (eight faces) for og.Mesh.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "SolidGeometryDesc",
+              "optional": true,
+              "doc": "Its radius and detail."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "publish": true
+        },
+        {
+          "name": "tetrahedronGeometry",
+          "doc": "Make a tetrahedron (four faces) for og.Mesh.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "SolidGeometryDesc",
+              "optional": true,
+              "doc": "Its radius and detail."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "publish": true
+        },
+        {
+          "name": "sweepGeometry",
+          "doc": "Make a section swept along a path for og.Mesh, tapered and twisted by keys.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "SweepGeometryDesc",
+              "optional": true,
+              "doc": "The section, path, keys and caps."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "returnsDoc": "Refused for a path that is not alive, a section of fewer than three points or of no area, or a value that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "csgGeometry",
+          "doc": "Make the union, difference or intersection of two placed geometries for og.Mesh. Chain calls for more operands (a cube minus six spheres is six calls); each result is a geometry like any other.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "CsgGeometryDesc",
+              "optional": true,
+              "doc": "The operation and its operands."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "returnsDoc": "Refused for a dead geometry, a placement with a zero scale, or a position that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "mergeGeometries",
+          "doc": "Make one geometry of several placed ones for og.Mesh: one draw instead of many, mirrored halves, arrays.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the geometry."
+            },
+            {
+              "name": "desc",
+              "type": "MergeGeometriesDesc",
+              "optional": true,
+              "doc": "The parts and their placements."
+            }
+          ],
+          "returns": "Result<Geometry>",
+          "returnsDoc": "Refused for no parts, a dead geometry, or a placement with a zero scale.",
+          "publish": true
+        },
+        {
           "name": "lines",
           "doc": "Draw lines this frame. Systems and commands may call it; the list is cleared at every tick, so submit them every tick they should show (og.Lines keeps a static set).",
           "params": [
@@ -3583,6 +3823,518 @@
         }
       ],
       "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "shapes",
+      "doc": "Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js's Shape and Path, built by the same calls (moveTo, lineTo, quadraticCurveTo, bezierCurveTo, splineThru, arc, absarc, ellipse, absellipse, closePath) and flattened to points by getPoints, so a three.js outline is a paste. og.render.shapeGeometry, extrudeGeometry and sweepGeometry take them; only their points cross to the engine.\nThey are TypeScript values, not world state: make them in start or a command and let the geometry made from them be what the world keeps. Points come from basic arithmetic (no Math.sin), so they are the same on every host.",
+      "place": "root",
+      "publish": true,
+      "types": [],
+      "consts": [],
+      "values": [
+        {
+          "name": "Path2",
+          "type": "Path2Class",
+          "doc": "three.js's Path (named Path2 beside og.path's 3D paths): `new og.Path2().moveTo(0, 0).lineTo(1, 0)`."
+        },
+        {
+          "name": "Shape",
+          "type": "ShapeClass",
+          "doc": "three.js's Shape: `const s = new og.Shape(); s.moveTo(0, 0).lineTo(1, 0).lineTo(0, 1); s.holes.push(hole)`."
+        }
+      ],
+      "functions": [],
+      "interfaces": [
+        {
+          "name": "PathList",
+          "doc": "A shape's holes, as three.js Shape.holes: an array; push a path to add a hole.",
+          "members": [
+            {
+              "name": "length",
+              "prop": "u32",
+              "doc": "How many holes.",
+              "publish": true
+            },
+            {
+              "name": "push",
+              "doc": "Add a hole (Array.push).",
+              "params": [
+                {
+                  "name": "path",
+                  "type": "Path2",
+                  "optional": false,
+                  "doc": "The hole's outline, either winding."
+                }
+              ],
+              "returns": "u32",
+              "publish": true,
+              "host": false
+            }
+          ]
+        },
+        {
+          "name": "Path2",
+          "doc": "An outline of curves, as three.js Path: each call adds a curve from the current point (moveTo only moves it). Every method but getPoints returns the path, so calls chain.",
+          "members": [
+            {
+              "name": "moveTo",
+              "doc": "Move the current point without drawing, as three.js Path.moveTo.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "x."
+                },
+                {
+                  "name": "y",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "y."
+                }
+              ],
+              "returns": "This",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "lineTo",
+              "doc": "A straight line to (x, y), as three.js Path.lineTo.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "x."
+                },
+                {
+                  "name": "y",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "y."
+                }
+              ],
+              "returns": "This",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "quadraticCurveTo",
+              "doc": "A quadratic Bézier curve through one control point to (x, y), as three.js Path.quadraticCurveTo.",
+              "params": [
+                {
+                  "name": "cpX",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The control point's x."
+                },
+                {
+                  "name": "cpY",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The control point's y."
+                },
+                {
+                  "name": "x",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The end's x."
+                },
+                {
+                  "name": "y",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The end's y."
+                }
+              ],
+              "returns": "This",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "bezierCurveTo",
+              "doc": "A cubic Bézier curve through two control points to (x, y), as three.js Path.bezierCurveTo.",
+              "params": [
+                {
+                  "name": "cp1X",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The first control point's x."
+                },
+                {
+                  "name": "cp1Y",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The first control point's y."
+                },
+                {
+                  "name": "cp2X",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The second control point's x."
+                },
+                {
+                  "name": "cp2Y",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The second control point's y."
+                },
+                {
+                  "name": "x",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The end's x."
+                },
+                {
+                  "name": "y",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The end's y."
+                }
+              ],
+              "returns": "This",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "splineThru",
+              "doc": "A Catmull-Rom spline from the current point through the points, as three.js Path.splineThru (a SplineCurve).",
+              "params": [
+                {
+                  "name": "points",
+                  "type": "List<Vector2>",
+                  "optional": false,
+                  "doc": "The points it passes through, in order."
+                }
+              ],
+              "returns": "This",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "arc",
+              "doc": "A circular arc centred at (x, y) from the current point, as three.js Path.arc.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The centre's x, from the current point."
+                },
+                {
+                  "name": "y",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The centre's y, from the current point."
+                },
+                {
+                  "name": "radius",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The radius."
+                },
+                {
+                  "name": "startAngle",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "Where it starts, from +x towards +y."
+                },
+                {
+                  "name": "endAngle",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "Where it ends."
+                },
+                {
+                  "name": "clockwise",
+                  "type": "bool",
+                  "optional": true,
+                  "default": false,
+                  "doc": "Go clockwise."
+                }
+              ],
+              "returns": "This",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "absarc",
+              "doc": "A circular arc centred at (x, y), as three.js Path.absarc: a line joins it to the current point when they differ.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The centre's x."
+                },
+                {
+                  "name": "y",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The centre's y."
+                },
+                {
+                  "name": "radius",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The radius."
+                },
+                {
+                  "name": "startAngle",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "Where it starts, from +x towards +y."
+                },
+                {
+                  "name": "endAngle",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "Where it ends."
+                },
+                {
+                  "name": "clockwise",
+                  "type": "bool",
+                  "optional": true,
+                  "default": false,
+                  "doc": "Go clockwise."
+                }
+              ],
+              "returns": "This",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "ellipse",
+              "doc": "An elliptic arc centred at (x, y) from the current point, as three.js Path.ellipse.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The centre's x, from the current point."
+                },
+                {
+                  "name": "y",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The centre's y, from the current point."
+                },
+                {
+                  "name": "xRadius",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The radius along x."
+                },
+                {
+                  "name": "yRadius",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The radius along y."
+                },
+                {
+                  "name": "startAngle",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "Where it starts."
+                },
+                {
+                  "name": "endAngle",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "Where it ends."
+                },
+                {
+                  "name": "clockwise",
+                  "type": "bool",
+                  "optional": true,
+                  "default": false,
+                  "doc": "Go clockwise."
+                },
+                {
+                  "name": "rotation",
+                  "type": "f32",
+                  "optional": true,
+                  "default": 0,
+                  "doc": "The ellipse's turn round its centre."
+                }
+              ],
+              "returns": "This",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "absellipse",
+              "doc": "An elliptic arc centred at (x, y), as three.js Path.absellipse.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The centre's x."
+                },
+                {
+                  "name": "y",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The centre's y."
+                },
+                {
+                  "name": "xRadius",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The radius along x."
+                },
+                {
+                  "name": "yRadius",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "The radius along y."
+                },
+                {
+                  "name": "startAngle",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "Where it starts."
+                },
+                {
+                  "name": "endAngle",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "Where it ends."
+                },
+                {
+                  "name": "clockwise",
+                  "type": "bool",
+                  "optional": true,
+                  "default": false,
+                  "doc": "Go clockwise."
+                },
+                {
+                  "name": "rotation",
+                  "type": "f32",
+                  "optional": true,
+                  "default": 0,
+                  "doc": "The ellipse's turn round its centre."
+                }
+              ],
+              "returns": "This",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "setFromPoints",
+              "doc": "Start at the first point and draw lines through the rest, as three.js Path.setFromPoints.",
+              "params": [
+                {
+                  "name": "points",
+                  "type": "List<Vector2>",
+                  "optional": false,
+                  "doc": "The points."
+                }
+              ],
+              "returns": "This",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "closePath",
+              "doc": "A line back to the first point when the outline does not end there, as three.js CurvePath.closePath.",
+              "params": [],
+              "returns": "This",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "getPoints",
+              "doc": "The outline as points, as three.js CurvePath.getPoints: each curve divided into `divisions` (an ellipse twice as many, a spline as many per point, a line one), repeated points dropped.",
+              "params": [
+                {
+                  "name": "divisions",
+                  "type": "u32",
+                  "optional": true,
+                  "default": 12,
+                  "doc": "Divisions per curve."
+                }
+              ],
+              "returns": "List<Vector2>",
+              "publish": true,
+              "host": false
+            }
+          ]
+        },
+        {
+          "name": "Shape",
+          "doc": "An outline with holes, as three.js Shape.",
+          "extends": "Path2",
+          "members": [
+            {
+              "name": "holes",
+              "prop": "PathList",
+              "doc": "The holes: `shape.holes.push(hole)`.",
+              "publish": true
+            },
+            {
+              "name": "extractPoints",
+              "doc": "The outline's and the holes' points, as three.js Shape.extractPoints.",
+              "params": [
+                {
+                  "name": "divisions",
+                  "type": "u32",
+                  "optional": true,
+                  "default": 12,
+                  "doc": "Divisions per curve."
+                }
+              ],
+              "returns": "ShapePoints",
+              "publish": true,
+              "host": false
+            }
+          ]
+        },
+        {
+          "name": "Path2Class",
+          "doc": "og.Path2: `new og.Path2(points?)`.",
+          "members": [
+            {
+              "name": "new",
+              "doc": "A path, through the points when given (setFromPoints).",
+              "params": [
+                {
+                  "name": "points",
+                  "type": "Option<List<Vector2>>",
+                  "optional": true,
+                  "doc": "Points to start from."
+                }
+              ],
+              "returns": "Path2",
+              "publish": true,
+              "host": false
+            }
+          ]
+        },
+        {
+          "name": "ShapeClass",
+          "doc": "og.Shape: `new og.Shape(points?)`.",
+          "members": [
+            {
+              "name": "new",
+              "doc": "A shape, through the points when given (setFromPoints).",
+              "params": [
+                {
+                  "name": "points",
+                  "type": "Option<List<Vector2>>",
+                  "optional": true,
+                  "doc": "Points to start from."
+                }
+              ],
+              "returns": "Shape",
+              "publish": true,
+              "host": false
+            }
+          ]
+        }
+      ],
       "callbacks": []
     },
     {
@@ -17777,6 +18529,588 @@
         "closed": {
           "type": "boolean",
           "description": "Join the last point back to the first.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ShapePoints": {
+      "x-og-kind": "struct",
+      "x-og-module": "render",
+      "description": "A shape as points, what og.Shape.extractPoints returns and what shapeGeometry, extrudeGeometry and sweepGeometry read: the outline, then each hole. A repeated closing point is dropped, as three.js drops it.",
+      "type": "object",
+      "properties": {
+        "shape": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector2"
+          },
+          "description": "The outline's points, in order."
+        },
+        "holes": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/Vector2"
+            }
+          },
+          "description": "Each hole's points, in order."
+        }
+      },
+      "required": [
+        "shape",
+        "holes"
+      ],
+      "additionalProperties": false
+    },
+    "ShapeGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A flat shape with holes in the xy plane facing +Z, as three.js ShapeGeometry(shapes, curveSegments): triangulated by earcut (three.js's own port), the outline made clockwise and the holes counter-clockwise first, so its vertices and triangles are three.js's for the same shape. uvs are world x and y (v flipped to run down the image).",
+      "type": "object",
+      "properties": {
+        "shapes": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "x-og-type": "Path2"
+                },
+                {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "x-og-type": "Path2"
+                      }
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/Vector2"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "One og.Shape (an og.Path2 is a shape without holes), a list of them, or the outline's points. Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5).",
+          "default": null
+        },
+        "curveSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Points per curve when an og.Shape's curves are flattened (three.js extractPoints(curveSegments); an ellipse takes twice as many, a spline as many per point).",
+          "default": 12,
+          "minimum": 1
+        },
+        "physics": {
+          "type": "boolean",
+          "description": "Register it as a physics mesh too (BufferGeometryDesc.physics).",
+          "default": true
+        },
+        "dynamic": {
+          "type": "boolean",
+          "description": "Whether og.render.updateGeometry may rewrite it later (BufferGeometryDesc.dynamic).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ExtrudeGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "Shapes pushed along +Z, or along a path, as three.js ExtrudeGeometry(shapes, options) with its option names and defaults: a closed solid, its lids from earcut and its walls ring by ring, rounded by a bevel of bevelSegments rings at each face. Unindexed as three.js's (every triangle its own vertices, flat normals), three.js's vertex order and counts; uvs from three.js's WorldUVGenerator (v flipped to run down the image).",
+      "type": "object",
+      "properties": {
+        "shapes": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "x-og-type": "Path2"
+                },
+                {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "x-og-type": "Path2"
+                      }
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/Vector2"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "One og.Shape, a list of them, or the outline's points. Without it, three.js's default square of side 1.",
+          "default": null
+        },
+        "depth": {
+          "type": "number",
+          "description": "How far the shape is pushed along +Z (without extrudePath).",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "steps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rings along the depth or the path.",
+          "default": 1,
+          "minimum": 1
+        },
+        "bevelEnabled": {
+          "type": "boolean",
+          "description": "Round the edges of both faces.",
+          "default": true
+        },
+        "bevelThickness": {
+          "type": "number",
+          "description": "How far the bevel reaches beyond each face, along z.",
+          "default": 0.2,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "bevelSize": {
+          "type": "number",
+          "description": "How far the bevel reaches out from the outline. Unset, bevelThickness - 0.1 (three.js's default; 0.1 with the default thickness).",
+          "default": 0.1,
+          "x-og-unit": "m"
+        },
+        "bevelOffset": {
+          "type": "number",
+          "description": "How far the bevel starts out from the outline.",
+          "default": 0,
+          "x-og-unit": "m"
+        },
+        "bevelSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rings in each bevel.",
+          "default": 3,
+          "minimum": 1
+        },
+        "curveSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Points per curve when an og.Shape's curves are flattened.",
+          "default": 12,
+          "minimum": 1
+        },
+        "extrudePath": {
+          "$ref": "#/$defs/Path",
+          "description": "A path (og.path.create or og.path.find) to extrude along instead of +Z: the shape's x along the path's normal and y along its binormal (three.js's Frenet frames), steps rings evenly spaced along it. A path turns the bevel off, as three.js. 0 extrudes along +Z.",
+          "default": 0
+        },
+        "physics": {
+          "type": "boolean",
+          "description": "Register it as a physics mesh too.",
+          "default": true
+        },
+        "dynamic": {
+          "type": "boolean",
+          "description": "Whether og.render.updateGeometry may rewrite it later.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "LatheGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A profile turned round +Y, as three.js LatheGeometry(points, segments, phiStart, phiLength): vases, bottles, columns, wheels. three.js's vertices, indices and smooth normals; u round the axis, v along the profile (flipped to run down the image). A whole turn's seam meets exactly.",
+      "type": "object",
+      "properties": {
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector2"
+          },
+          "description": "The profile, x the distance from the axis and y the height, in order (at least two). Without it, three.js's default (0, -0.5), (0.5, 0), (0, 0.5).",
+          "default": [],
+          "x-og-unit": "m"
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Segments round the axis.",
+          "default": 12,
+          "minimum": 1
+        },
+        "phiStart": {
+          "type": "number",
+          "description": "Where the turn starts, from +Z towards +X.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "phiLength": {
+          "type": "number",
+          "description": "How far it turns; 2 pi is whole (clamped to it).",
+          "default": 6.283185307179586,
+          "x-og-unit": "rad"
+        },
+        "physics": {
+          "type": "boolean",
+          "description": "Register it as a physics mesh too.",
+          "default": true
+        },
+        "dynamic": {
+          "type": "boolean",
+          "description": "Whether og.render.updateGeometry may rewrite it later.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "PolyhedronGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A polyhedron from vertices and faces, every face subdivided `detail` times and every vertex pushed onto the sphere of `radius`, as three.js PolyhedronGeometry(vertices, indices, radius, detail): unindexed, flat normals at detail 0 and the sphere's above, three.js's spherical uvs.",
+      "type": "object",
+      "properties": {
+        "vertices": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "The corners, x y z each (three.js's flat array).",
+          "default": []
+        },
+        "indices": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "The faces, three corner indices each, counter-clockwise seen from outside.",
+          "default": []
+        },
+        "radius": {
+          "type": "number",
+          "description": "The sphere the vertices are pushed onto.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "detail": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Subdivisions of each face: (detail + 1)² triangles a face.",
+          "default": 0,
+          "maximum": 64
+        },
+        "physics": {
+          "type": "boolean",
+          "description": "Register it as a physics mesh too.",
+          "default": true
+        },
+        "dynamic": {
+          "type": "boolean",
+          "description": "Whether og.render.updateGeometry may rewrite it later.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "SolidGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A regular solid, as three.js IcosahedronGeometry, DodecahedronGeometry, OctahedronGeometry and TetrahedronGeometry(radius, detail): PolyhedronGeometryDesc with the solid's own vertices and faces. An icosahedron at detail 2 or more is a sphere with even triangles.",
+      "type": "object",
+      "properties": {
+        "radius": {
+          "type": "number",
+          "description": "The radius.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "detail": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Subdivisions of each face.",
+          "default": 0,
+          "maximum": 64
+        },
+        "physics": {
+          "type": "boolean",
+          "description": "Register it as a physics mesh too.",
+          "default": true
+        },
+        "dynamic": {
+          "type": "boolean",
+          "description": "Whether og.render.updateGeometry may rewrite it later.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "SweepKey": {
+      "x-og-kind": "struct",
+      "x-og-module": "render",
+      "description": "A value at a fraction of a sweep's path: linear between keys, held before the first and past the last.",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "number",
+          "description": "The fraction of the path's length, 0 to 1.",
+          "x-og-unit": "ratio"
+        },
+        "value": {
+          "type": "number",
+          "description": "The value there."
+        }
+      },
+      "required": [
+        "t",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "SweepGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A section swept along a path, scaled and twisted over it: horns, tusks, handles, blades, tapered pipes, twisted columns (img2threejs's tapered sweep; three.js has no class for it). The section's x lies along the path's normal and y along its binormal (three.js's Frenet frames), rings evenly spaced along the path's length; u runs along the path, v round the section (flipped to run down the image), the sides smooth. An open path's ends are capped.",
+      "type": "object",
+      "properties": {
+        "section": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "x-og-type": "Path2"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/Vector2"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The section's outline: an og.Shape or og.Path2 (flattened by curveSegments; holes are not swept) or its points, at least three, either winding.",
+          "default": null
+        },
+        "path": {
+          "$ref": "#/$defs/Path",
+          "description": "The path (og.path.create or og.path.find).",
+          "default": 0
+        },
+        "steps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rings along the path, less one.",
+          "default": 64,
+          "minimum": 1
+        },
+        "scale": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SweepKey"
+          },
+          "description": "The section's scale over the path (none: 1 throughout). A horn: [{ t: 0, value: 1 }, { t: 1, value: 0.05 }].",
+          "default": []
+        },
+        "twist": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SweepKey"
+          },
+          "description": "The section's turn round the path over its length, in radians (none: 0).",
+          "default": []
+        },
+        "caps": {
+          "type": "boolean",
+          "description": "Close the ends of an open path.",
+          "default": true
+        },
+        "curveSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Points per curve when an og.Shape section is flattened.",
+          "default": 12,
+          "minimum": 1
+        },
+        "physics": {
+          "type": "boolean",
+          "description": "Register it as a physics mesh too.",
+          "default": true
+        },
+        "dynamic": {
+          "type": "boolean",
+          "description": "Whether og.render.updateGeometry may rewrite it later.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "MirrorAxis": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "The world axis a part is mirrored along, after its placement.",
+      "type": "string",
+      "enum": [
+        "none",
+        "x",
+        "y",
+        "z"
+      ],
+      "x-og-variants": {
+        "none": "Not mirrored.",
+        "x": "x negated: the mirror image across the yz plane.",
+        "y": "y negated: across the xz plane.",
+        "z": "z negated: across the xy plane."
+      }
+    },
+    "GeometryPart": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "A geometry placed as an Object3D is (scale, then rotate, then move), then mirrored: one part of og.render.mergeGeometries or an operand of og.render.csgGeometry.",
+      "type": "object",
+      "properties": {
+        "geometry": {
+          "$ref": "#/$defs/Geometry",
+          "description": "Any geometry: made, a primitive or a loaded glTF's.",
+          "default": 0
+        },
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it goes.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "quaternion": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "How it turns.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scale": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its scale (a negative component mirrors it as `mirror` does).",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "mirror": {
+          "$ref": "#/$defs/MirrorAxis",
+          "description": "Mirror it along a world axis after placing it: a symmetric prop is one half twice, the second mirrored.",
+          "default": "none"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CsgOp": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "A boolean operation on two solids.",
+      "type": "string",
+      "enum": [
+        "union",
+        "subtract",
+        "intersect"
+      ],
+      "x-og-variants": {
+        "union": "Everything in either: a + b.",
+        "subtract": "What of a is not in b: a - b (holes, notches, a dice's pips).",
+        "intersect": "What is in both."
+      }
+    },
+    "CsgGeometryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "Two closed geometries combined by a boolean operation, each placed first: a box with a hole bored through it, a dice, a window cut in a wall. The result is closed when both are (every edge shared by two triangles, wound opposite), every piece keeps its source's normals, uvs and colours (b's turned inside out where it is subtracted). Where a plane side or an edge crossing is decided, the decision is exact (Shewchuk's predicates), so every host makes the same cuts; faces that coincide keep one copy or none, as the operation says.",
+      "type": "object",
+      "properties": {
+        "op": {
+          "$ref": "#/$defs/CsgOp",
+          "description": "The operation.",
+          "default": "union"
+        },
+        "a": {
+          "$ref": "#/$defs/GeometryPart",
+          "description": "The first operand.",
+          "default": {}
+        },
+        "b": {
+          "$ref": "#/$defs/GeometryPart",
+          "description": "The second operand.",
+          "default": {}
+        },
+        "physics": {
+          "type": "boolean",
+          "description": "Register it as a physics mesh too.",
+          "default": true
+        },
+        "dynamic": {
+          "type": "boolean",
+          "description": "Whether og.render.updateGeometry may rewrite it later.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "MergeGeometriesDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "Geometries placed and merged into one, as three.js BufferGeometryUtils.mergeGeometries after applying each part's matrix: a prop of parts drawn in one draw, a mirrored half, an array (the same part at several placements). Normals follow each placement; a mirrored part turns its triangles so they still face out. Vertex colours are kept when any part has them.",
+      "type": "object",
+      "properties": {
+        "parts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GeometryPart"
+          },
+          "description": "The parts, in order (at least one).",
+          "default": []
+        },
+        "physics": {
+          "type": "boolean",
+          "description": "Register it as a physics mesh too.",
+          "default": true
+        },
+        "dynamic": {
+          "type": "boolean",
+          "description": "Whether og.render.updateGeometry may rewrite it later.",
           "default": false
         }
       },

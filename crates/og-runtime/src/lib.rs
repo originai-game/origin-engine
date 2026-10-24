@@ -99,9 +99,13 @@ pub use geometry::{
     og_debug_arrow, og_debug_axes, og_debug_box, og_debug_clear, og_debug_enabled, og_debug_line,
     og_debug_set_enabled, og_debug_set_view, og_debug_sphere, og_debug_text, og_debug_view,
     og_render_buffer_geometry, og_render_capsule_geometry, og_render_circle_geometry,
-    og_render_cone_geometry, og_render_cylinder_geometry, og_render_geometry_info, og_render_lines,
-    og_render_points, og_render_raycast, og_render_ring_geometry, og_render_torus_geometry,
-    og_render_tube_geometry, og_render_update_geometry,
+    og_render_cone_geometry, og_render_csg_geometry, og_render_cylinder_geometry,
+    og_render_dodecahedron_geometry, og_render_extrude_geometry, og_render_geometry_info,
+    og_render_icosahedron_geometry, og_render_lathe_geometry, og_render_lines,
+    og_render_merge_geometries, og_render_octahedron_geometry, og_render_points,
+    og_render_polyhedron_geometry, og_render_raycast, og_render_ring_geometry,
+    og_render_shape_geometry, og_render_sweep_geometry, og_render_tetrahedron_geometry,
+    og_render_torus_geometry, og_render_tube_geometry, og_render_update_geometry,
 };
 pub use i18n::{og_i18n_has, og_i18n_load, og_i18n_locale, og_i18n_set_locale, og_i18n_t};
 pub use memory::memory_report;

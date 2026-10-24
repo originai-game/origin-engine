@@ -1910,6 +1910,58 @@ spaced along the length, as three.js spaces them. Rings and circles are one-side
 standard material draws the triangle edges instead of the faces, one pixel
 wide on every tier.
 
+**Shapes, extrusions, lathes and solids.** Three.js's modelling classes
+keep their names, parameters and defaults, so a three.js extrusion is a
+paste. `og.Shape` and `og.Path2` are three.js's Shape and Path:
+`moveTo`, `lineTo`, `quadraticCurveTo`, `bezierCurveTo`, `splineThru`,
+`arc`, `absarc`, `ellipse`, `absellipse`, `closePath`, `holes` and
+`getPoints(divisions)`. They flatten to points before they cross to the
+engine, so a points array works wherever a shape does
+(`reference/shapes.md`).
+- `shapeGeometry` is a flat shape with holes, one-sided like a circle.
+- `extrudeGeometry` pushes shapes along +Z (`depth`, `steps`) or along an
+  og.path (`extrudePath`). `bevelEnabled`, `bevelThickness`, `bevelSize`,
+  `bevelOffset` and `bevelSegments` round its edges, as in three.js.
+- `latheGeometry` turns a profile of `points` round +Y (`segments`,
+  `phiStart`, `phiLength`), for vases, bottles and columns.
+- `polyhedronGeometry` takes `vertices`, `indices`, `radius` and `detail`.
+  `icosahedronGeometry`, `dodecahedronGeometry`, `octahedronGeometry` and
+  `tetrahedronGeometry` take `radius` and `detail`.
+- `sweepGeometry` sweeps a 2D `section` along an og.path. Its `scale` and
+  `twist` are keyed over the path's length from 0 to 1, for horns, tusks,
+  handles and twisted columns.
+- `mergeGeometries` places `parts` (each a geometry with `position`,
+  `quaternion`, `scale` and a `mirror` axis) into one draw. Write an
+  array as the same part at several placements.
+- `csgGeometry` is `union`, `subtract` or `intersect` of two placed
+  closed geometries. Chain calls for more operands.
+
+Every result is a geometry like `bufferGeometry`'s, with a BVH, `physics`
+and `dynamic`, and answered by `geometryInfo`:
+
+```ts
+const gear = new og.Shape().absarc(0, 0, 1, 0, Math.PI * 2, false);
+gear.holes.push(new og.Path2().absarc(0, 0, 0.3, 0, Math.PI * 2, true));
+const disc = must(og.render.extrudeGeometry(world, {
+  shapes: gear, depth: 0.2, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05,
+}));
+const vase = must(og.render.latheGeometry(world, {
+  points: [{ x: 0, y: 0 }, { x: 0.5, y: 0.1 }, { x: 0.3, y: 1 }, { x: 0.4, y: 1.4 }],
+  segments: 32,
+}));
+const cube = must(og.render.boxGeometry(world, { width: 1, height: 1, depth: 1 }));
+const ball = must(og.render.sphereGeometry(world, { radius: 0.15 }));
+const dice = must(og.render.csgGeometry(world, {
+  op: "subtract", a: { geometry: cube }, b: { geometry: ball, position: { x: 0, y: 0, z: 0.5 } },
+}));
+```
+
+The generators and the CSG decide every cut with exact predicates and use
+no platform trigonometry, so every host makes the same triangles. A CSG
+operand must be closed (every edge shared by two triangles). Its cost
+grows with the product of the two triangle counts where their boxes
+overlap, so cut low-poly operands at load, not every tick.
+
 **Lines and points.** `og.render.lines(world, desc)` and
 `og.render.points(world, desc)` are immediate mode, like
 `og.render.sprite`: submit them every tick they should show.

@@ -88,6 +88,10 @@ function owners(): Record<string, object> {
     Camera: must(world.resource(og.Camera)),
     RuntimeProbe: engine.probe,
     EngineProbe: engine.probe,
+    // og.Path2 and og.Shape instances; Shape.holes is a plain array (PathList
+    // declares the two members a game uses, push and length).
+    Path2: new og.Path2(),
+    Shape: new og.Shape(),
   };
 }
 

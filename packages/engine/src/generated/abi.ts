@@ -253,6 +253,28 @@ export interface HostAbi<A, V> {
   og_render_circle_geometry(world: number, desc: string | undefined): string;
   /** `og.render.tubeGeometry` */
   og_render_tube_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.shapeGeometry` */
+  og_render_shape_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.extrudeGeometry` */
+  og_render_extrude_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.latheGeometry` */
+  og_render_lathe_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.polyhedronGeometry` */
+  og_render_polyhedron_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.icosahedronGeometry` */
+  og_render_icosahedron_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.dodecahedronGeometry` */
+  og_render_dodecahedron_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.octahedronGeometry` */
+  og_render_octahedron_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.tetrahedronGeometry` */
+  og_render_tetrahedron_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.sweepGeometry` */
+  og_render_sweep_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.csgGeometry` */
+  og_render_csg_geometry(world: number, desc: string | undefined): string;
+  /** `og.render.mergeGeometries` */
+  og_render_merge_geometries(world: number, desc: string | undefined): string;
   /** `og.render.lines` */
   og_render_lines(world: number, desc: string | undefined): string;
   /** `og.render.points` */
@@ -882,6 +904,17 @@ export const SYMBOLS: readonly string[] = [
   "og_render_ring_geometry",
   "og_render_circle_geometry",
   "og_render_tube_geometry",
+  "og_render_shape_geometry",
+  "og_render_extrude_geometry",
+  "og_render_lathe_geometry",
+  "og_render_polyhedron_geometry",
+  "og_render_icosahedron_geometry",
+  "og_render_dodecahedron_geometry",
+  "og_render_octahedron_geometry",
+  "og_render_tetrahedron_geometry",
+  "og_render_sweep_geometry",
+  "og_render_csg_geometry",
+  "og_render_merge_geometries",
   "og_render_lines",
   "og_render_points",
   "og_render_raycast",

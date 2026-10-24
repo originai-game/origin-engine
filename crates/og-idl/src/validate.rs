@@ -220,7 +220,15 @@ impl<'a> Validator<'a, '_> {
                                 ),
                             );
                         }
-                        self.name(camel, &v.name, v.line, "value", "lowerCamelCase");
+                        // A class (an interface with a `new` construct
+                        // signature: og.Shape) is named as its instances.
+                        let class = matches!(self.ix.decl(v.ty.name()), Some(TypeDecl::Interface(i))
+                            if i.members.iter().any(|m| m.name() == "new"));
+                        if class {
+                            self.name(pascal, &v.name, v.line, "class value", "PascalCase");
+                        } else {
+                            self.name(camel, &v.name, v.line, "value", "lowerCamelCase");
+                        }
                         self.doc(&v.doc, v.line, || {
                             format!("value `{}.{}`", module.name, v.name)
                         });

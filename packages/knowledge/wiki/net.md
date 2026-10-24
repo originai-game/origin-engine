@@ -18,7 +18,7 @@ module net {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 13773</sub>
+<sub>`api.ogt` line 14245</sub>
 
 ## Contents
 
@@ -64,7 +64,7 @@ fn submit {
 }
 ```
 
-<sub>`api.ogt` line 13871</sub>
+<sub>`api.ogt` line 14343</sub>
 
 <a id="fn-status"></a>
 
@@ -92,7 +92,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 13878</sub>
+<sub>`api.ogt` line 14350</sub>
 
 <a id="fn-hash"></a>
 
@@ -120,7 +120,7 @@ fn hash {
 }
 ```
 
-<sub>`api.ogt` line 13884</sub>
+<sub>`api.ogt` line 14356</sub>
 
 ## Components, resources and events
 
@@ -171,7 +171,7 @@ resource Lockstep {
 }
 ```
 
-<sub>`api.ogt` line 13779</sub>
+<sub>`api.ogt` line 14251</sub>
 
 <a id="record-PlayerInput"></a>
 
@@ -212,7 +212,7 @@ component PlayerInput {
 }
 ```
 
-<sub>`api.ogt` line 13807</sub>
+<sub>`api.ogt` line 14279</sub>
 
 <a id="record-Desync"></a>
 
@@ -237,7 +237,7 @@ event Desync {
 }
 ```
 
-<sub>`api.ogt` line 13826</sub>
+<sub>`api.ogt` line 14298</sub>
 
 ## Types
 
@@ -269,7 +269,7 @@ struct InputDesc {
 }
 ```
 
-<sub>`api.ogt` line 13833</sub>
+<sub>`api.ogt` line 14305</sub>
 
 <a id="type-LockstepSeat"></a>
 
@@ -298,7 +298,7 @@ struct LockstepSeat {
 }
 ```
 
-<sub>`api.ogt` line 13843</sub>
+<sub>`api.ogt` line 14315</sub>
 
 <a id="type-LockstepStatus"></a>
 
@@ -337,4 +337,4 @@ struct LockstepStatus {
 }
 ```
 
-<sub>`api.ogt` line 13855</sub>
+<sub>`api.ogt` line 14327</sub>

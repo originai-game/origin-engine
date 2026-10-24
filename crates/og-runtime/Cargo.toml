@@ -11,6 +11,7 @@ og-api = { path = "../og-api" }
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
 og-render = { path = "../og-render" }
+og-geom = { path = "../og-geom" }
 og-probe = { path = "../og-probe", default-features = false }
 og-cook = { path = "../og-cook", default-features = false, features = ["runtime"] }
 miniz_oxide = "0.8"
