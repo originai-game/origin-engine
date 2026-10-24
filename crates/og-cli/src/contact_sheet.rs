@@ -64,8 +64,9 @@ pub fn label(time: f64, tick: u64) -> String {
     format!("{time:.3}s  t{tick}")
 }
 
-/// Draws `s` at (x, y) in the 5x7 font, each font pixel `scale` pixels.
-fn text(img: &mut RgbaImage, x: u32, y: u32, s: &str, scale: u32) {
+/// Draws `s` at (x, y) in the 5x7 font, each font pixel `scale` pixels
+/// (`og compare`'s sheet labels with it too).
+pub(crate) fn text(img: &mut RgbaImage, x: u32, y: u32, s: &str, scale: u32) {
     let mut cx = x;
     for ch in s.chars() {
         if let Some(rows) = glyph(ch) {
@@ -89,7 +90,8 @@ fn text(img: &mut RgbaImage, x: u32, y: u32, s: &str, scale: u32) {
     }
 }
 
-/// The 5x7 rows of the characters labels use (top row first, bit 4 left).
+/// The 5x7 rows of the characters labels use (top row first, bit 4 left):
+/// the digits, `.`, `s`, `t` and the capitals of `og compare`'s labels.
 fn glyph(c: char) -> Option<[u8; 7]> {
     Some(match c {
         '0' => [0x0e, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0e],
@@ -105,6 +107,13 @@ fn glyph(c: char) -> Option<[u8; 7]> {
         '.' => [0x00, 0x00, 0x00, 0x00, 0x00, 0x0c, 0x0c],
         's' => [0x00, 0x00, 0x0e, 0x10, 0x0e, 0x01, 0x1e],
         't' => [0x08, 0x08, 0x1c, 0x08, 0x08, 0x09, 0x06],
+        'D' => [0x1e, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1e],
+        'E' => [0x1f, 0x10, 0x10, 0x1e, 0x10, 0x10, 0x1f],
+        'F' => [0x1f, 0x10, 0x10, 0x1e, 0x10, 0x10, 0x10],
+        'I' => [0x0e, 0x04, 0x04, 0x04, 0x04, 0x04, 0x0e],
+        'O' => [0x0e, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0e],
+        'R' => [0x1e, 0x11, 0x11, 0x1e, 0x14, 0x12, 0x11],
+        'U' => [0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0e],
         ' ' => [0; 7],
         _ => return None,
     })
