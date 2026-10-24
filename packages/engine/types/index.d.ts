@@ -20224,6 +20224,12 @@ export interface TerrainInfo {
   readonly collision: boolean;
   /** Its terrain file's `castShadows`. */
   readonly castShadows: boolean;
+  /**
+   * A generated terrain's sea level (`generate { sea <m> }`) above its entity: place an og.Water there, the terrain's size; null without a sea.
+   *
+   * @unit m (metres)
+   */
+  readonly seaLevel: number | null;
 }
 
 /**

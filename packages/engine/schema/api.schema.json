@@ -35390,6 +35390,18 @@
         "castShadows": {
           "type": "boolean",
           "description": "Its terrain file's `castShadows`."
+        },
+        "seaLevel": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A generated terrain's sea level (`generate { sea <m> }`) above its entity: place an og.Water there, the terrain's size; null without a sea.",
+          "x-og-unit": "m"
         }
       },
       "required": [
@@ -35402,7 +35414,8 @@
         "maxHeight",
         "layers",
         "collision",
-        "castShadows"
+        "castShadows",
+        "seaLevel"
       ],
       "additionalProperties": false
     },

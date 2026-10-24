@@ -73,7 +73,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 13202</sub>
+<sub>`api.ogt` line 13205</sub>
 
 <a id="fn-sample"></a>
 
@@ -103,7 +103,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 13209</sub>
+<sub>`api.ogt` line 13212</sub>
 
 <a id="fn-bounds"></a>
 
@@ -145,7 +145,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 13216</sub>
+<sub>`api.ogt` line 13219</sub>
 
 <a id="fn-edit"></a>
 
@@ -177,7 +177,7 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 13232</sub>
+<sub>`api.ogt` line 13235</sub>
 
 <a id="fn-layer"></a>
 
@@ -209,7 +209,7 @@ fn layer {
 }
 ```
 
-<sub>`api.ogt` line 13240</sub>
+<sub>`api.ogt` line 13243</sub>
 
 <a id="fn-setLayer"></a>
 
@@ -243,7 +243,7 @@ fn setLayer {
 }
 ```
 
-<sub>`api.ogt` line 13248</sub>
+<sub>`api.ogt` line 13251</sub>
 
 ## Components, resources and events
 
@@ -422,6 +422,7 @@ A loaded terrain.
 | `layers` | `number` | `0` | — | — | — | Its material layers (up to 4). |
 | `collision` | `boolean` | `false` | — | — | — | Whether its terrain file asks for a collider (`collision`, default true). |
 | `castShadows` | `boolean` | `false` | — | — | — | Its terrain file's `castShadows`. |
+| `seaLevel` | `number \| null` | `null` | — | `m` | — | A generated terrain's sea level (`generate { sea <m> }`) above its entity: place an og.Water there, the terrain's size; null without a sea. |
 
 ```ogt
 struct TerrainInfo {
@@ -442,6 +443,9 @@ struct TerrainInfo {
   field layers u32 "Its material layers (up to 4)."
   field collision bool "Whether its terrain file asks for a collider (`collision`, default true)."
   field castShadows bool "Its terrain file's `castShadows`."
+  field seaLevel Option.f32 "A generated terrain's sea level (`generate { sea <m> }`) above its entity: place an og.Water there, the terrain's size; null without a sea." {
+    unit m
+  }
 }
 ```
 
@@ -485,7 +489,7 @@ struct TerrainSampleDesc {
 }
 ```
 
-<sub>`api.ogt` line 13061</sub>
+<sub>`api.ogt` line 13064</sub>
 
 <a id="type-TerrainSample"></a>
 
@@ -514,7 +518,7 @@ struct TerrainSample {
 }
 ```
 
-<sub>`api.ogt` line 13080</sub>
+<sub>`api.ogt` line 13083</sub>
 
 <a id="type-TerrainBounds"></a>
 
@@ -539,7 +543,7 @@ struct TerrainBounds {
 }
 ```
 
-<sub>`api.ogt` line 13092</sub>
+<sub>`api.ogt` line 13095</sub>
 
 <a id="type-TerrainBrush"></a>
 
@@ -597,7 +601,7 @@ struct TerrainBrush {
 }
 ```
 
-<sub>`api.ogt` line 13102</sub>
+<sub>`api.ogt` line 13105</sub>
 
 <a id="type-TerrainEdit"></a>
 
@@ -624,7 +628,7 @@ struct TerrainEdit {
 }
 ```
 
-<sub>`api.ogt` line 13136</sub>
+<sub>`api.ogt` line 13139</sub>
 
 <a id="type-TerrainLayerDesc"></a>
 
@@ -705,7 +709,7 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 13147</sub>
+<sub>`api.ogt` line 13150</sub>
 
 ## Column kinds
 

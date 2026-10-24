@@ -11,6 +11,9 @@
 //! slope handed on); an explicit dropShadowHeight above the terrain is
 //! overridden by the lower terrain; a sprite off the terrain gets the
 //! terrain's edge; og.render.sprite drops its dropShadowHeight.
+//!
+//! The same project has a generated island (`generate { sea 1.5 }`):
+//! og.terrain.load answers its sea level, and none for the ramp.
 
 use og_render::{RenderScene, ShadowGround, Sprite};
 use og_runtime::{
@@ -59,6 +62,10 @@ fn project() -> &'static Path {
         write(
             "terrain/ramp.ogt",
             b"type terrain\nversion 1\n---\nheightmap \"ramp.png\"\nheight 0 8\nsize 32 32\ncollision false\n",
+        );
+        write(
+            "terrain/isle.ogt",
+            b"type terrain\nversion 1\n---\nheight -2 6\nsize 64 64\ncollision false\ngenerate {\n  samples 33 33\n  mask island 0.5\n  sea 1.5\n}\n",
         );
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
@@ -145,6 +152,13 @@ fn drop_shadows_lie_on_the_terrain_or_their_height() {
     set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
     frame(engine);
     let info = value(og_terrain_load(engine, "terrain/ramp.ogt".into()));
+    assert_eq!(info["seaLevel"], Value::Null, "a heightmap has no sea");
+    let isle = value(og_terrain_load(engine, "terrain/isle.ogt".into()));
+    assert_eq!(isle["seaLevel"], json!(1.5), "{isle}");
+    assert_eq!(
+        (isle["minHeight"].as_f64(), isle["columns"].as_u64()),
+        (Some(-2.0), Some(33))
+    );
     spawn(
         engine,
         [0.0, 0.0, 0.0],

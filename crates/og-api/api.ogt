@@ -13056,6 +13056,9 @@ module terrain {
     field layers u32 "Its material layers (up to 4)."
     field collision bool "Whether its terrain file asks for a collider (`collision`, default true)."
     field castShadows bool "Its terrain file's `castShadows`."
+    field seaLevel Option.f32 "A generated terrain's sea level (`generate { sea <m> }`) above its entity: place an og.Water there, the terrain's size; null without a sea." {
+      unit m
+    }
   }
 
   struct TerrainSampleDesc {
