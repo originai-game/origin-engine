@@ -298,3 +298,19 @@ test("og-model teaches the model review: the views, og compare, the generators a
   const p = added((r) => edit(join(r.pkg, "skills/og-model/SKILL.md"), (s) => s.replace("og.render.sweepGeometry`", "og.render.sweptGeometry`")));
   expect(p).toEqual(["skills/og-model/SKILL.md: names `og.render.sweptGeometry`, which the generated API (api.ogt) does not have; check the name in reference/ or packages/engine/types/index.d.ts"]);
 });
+
+/** The two doc rows of threejs-migrate: og-build points to the model review, og-model to the asset route. */
+const ROUTES: Record<string, string[]> = {
+  "og-build": ["og compare <reference.png> <render.png>", "turntable:<entity>:<n>", "og-model §3", "og-model §4"],
+  "og-model": ["type model", "og-game §18", "og.load.gltf(world, \"models/lantern.ogt\")", "og cook --report", "`pivot`"],
+};
+
+test("og-build points to og compare and og-model names the type model route", () => {
+  const b = bundle(real);
+  const missing: string[] = [];
+  for (const [skill, names] of Object.entries(ROUTES)) {
+    const text = b.files[`game/skills/${skill}/SKILL.md`]!;
+    for (const n of names) if (!text.includes(n)) missing.push(`${skill}: ${n}`);
+  }
+  expect(missing).toEqual([]);
+});
