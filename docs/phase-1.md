@@ -6361,6 +6361,24 @@ Batch 2 merges, each through the functional lane:
   and the per-size `FaceTargets` stay allocated after a baked probe's
   capture (0.4–1.1 MB at 128², 71 MB at 1024²; freeing them is a later
   row if a game bakes at 1024).
+- `geom-2` merged at the merge of 01b4e9ca (geometry.rs merged cleanly
+  beside model-review's `mesh_bounds`; api outputs regenerated, `og api
+  check` OK). The lane failed once on `packages/engine`'s typecheck: the
+  new geom.test read the schema through a `URL`, which `readFileSync`'s
+  declaration there refuses; it reads through `fileURLToPath` like the
+  other tests (5d915137, with the models station's Metal reference,
+  recorded and read: the brass gear with its open hole and three bolts,
+  the vase, the horn, the dice's pit, the mirrored fins). The lane then
+  passed 5/5 in 143 s, geometry-shapes unmoved. `og test
+  templates/fx-showcase` on Metal: every other station's frame unmoved
+  (the ModelsProbe system iterates only `Models` archetypes). Decisions:
+  a convex hull per part is not cooked (SHAPE_CONVEX on
+  `gltfInfo.geometries[i]` builds it at load; a cooked hull is a schema
+  bump for no measured need); the budget refusal stays with `type model`
+  and glTFs stay flagged in the report until a game needs the refusal.
+  With it merged, og-build may point to `og compare` and og-model may
+  name the `type model` route: both go into `threejs-migrate`'s batch as
+  doc rows, not a stream.
 
 ### Status 2026-10-19, E5 round
 

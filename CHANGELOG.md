@@ -62,6 +62,17 @@ round 3").
   a face's depth is a linear-depth colour target like a view's. Nothing
   runs without a due capture; per face, water adds a prepass and a copy,
   fluids six passes.
+- `geom-2`: `type model`, a model written as `.ogt` text of og-geom parts
+  (the render descs by name: og-render's primitives, shape, extrude with
+  `extrudePath`, lathe, polyhedron, the four solids, sweep, csg, merge),
+  cooked through a generated glb into the same model blob a glTF gives
+  (meshopt, LODs with measured errors, BVH, nodes; repeated parts one
+  instanced mesh); refused past project.ogt's triangle and vertex
+  budgets; it hot-reloads under its handle. `og cook --report` gains
+  `parts` and `draws` per model. `uvRepeat` on the eight og-geom descs;
+  `bevelSize` is `Option.f32`, bevelThickness − 0.1 when unset. og-geom
+  gains a Rust `Path2`/`Shape` flattening to the TypeScript runtime's
+  points bit for bit. fx-showcase's `models` station; og-game skill §18.
 - Fixes at the round's first wave-end: the 2D web modules' world carries
   the `og.terrain` state block (no edits) the full build writes, so a 2D
   save and world hash are the same bytes on every host, and a save with
