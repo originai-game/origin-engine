@@ -355,3 +355,26 @@ test("a guide is held to the skills' rules: its API names, sections, pages and w
   const unmounted = added((r) => edit(join(r.pkg, "knowledge.json"), (s) => s.replace('"to": "game/skills/og-game/guides/"', '"to": "game/skills/og-game/notes/"')));
   expect(unmounted).toContain("guides/three-to-og.md: missing, or not mounted at game/skills/og-game/guides/ (knowledge.json mounts guides/ there)");
 });
+
+/** A copy laid out as the repository is (packages/knowledge, packages/engine, crates/), so the guide's citers are read. */
+function nested(): Roots {
+  const dir = mkdtempSync(join(tmpdir(), "og-knowledge-repo-"));
+  temps.push(dir);
+  const roots = { pkg: join(dir, "packages/knowledge"), template: join(dir, "template"), engine: join(dir, "packages/engine") };
+  cpSync(real.pkg, roots.pkg, { recursive: true, filter: (s) => !s.includes("node_modules") });
+  cpSync(real.template, roots.template, { recursive: true, filter: (s) => !/\/(cooked|dist|node_modules)(\/|$)/.test(s) });
+  cpSync(join(real.engine, "package.json"), join(roots.engine, "package.json"));
+  cpSync(join(real.engine, "schema/api.schema.json"), join(roots.engine, "schema/api.schema.json"));
+  cpSync(join(real.pkg, "../../crates/og-cli/src/migrate.rs"), join(dir, "crates/og-cli/src/migrate.rs"));
+  return roots;
+}
+
+test("every section og migrate three cites is one the guide has", () => {
+  const roots = nested();
+  const before = new Set(validate(roots));
+  edit(join(roots.pkg, "../../crates/og-cli/src/migrate.rs"), (s) => `${s}\n// see three-to-og §12\n`);
+  const p = validate(roots).filter((x) => !before.has(x));
+  expect(p).toEqual(["crates/og-cli/src/migrate.rs: cites three-to-og §12, which guides/three-to-og.md does not have (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)"]);
+  // And the real source cites some, so the check reads something.
+  expect(readFileSync(join(real.pkg, "../../crates/og-cli/src/migrate.rs"), "utf8")).toMatch(/three-to-og §\d+/);
+});
