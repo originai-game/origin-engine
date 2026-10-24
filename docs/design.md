@@ -237,6 +237,25 @@ reaches the model builds it);
 colliders. Inside a system, the raycast reads the meshes as the probe
 recorded them at the tick's start.
 
+Procedural modelling (`crates/og-geom`) makes three.js's modelling
+geometries: shape (earcut, a port of three.js's own), extrude (bevel, steps,
+along an og.path with Frenet frames), lathe, polyhedron with the four
+regular solids, a section swept along a path with scale and twist keyed
+over its length, merge of placed parts (mirrored, arrayed), and CSG
+(union, subtract, intersect). The crate depends on glam, `robust`
+(Shewchuk's predicates) and `spade` (a constrained Delaunay triangulation
+of each cut face), never on og-render. Its mesh converts into a MeshData
+in og-runtime's `geometry.rs`, and from there it goes the same way as
+`bufferGeometry`: a BVH, `physics`, `dynamic`, `geometryInfo`. The
+counts, vertex orders and uvs are three.js's. Every result is the same on
+every host. The CSG decides each plane side and edge crossing with exact
+orient3d and orient2d. Pieces are classified by a winding number, and
+coincident faces keep one copy or none, as the operation says. The
+generators take sine and cosine from series evaluated on integer segment
+indices, never from libm. `og.Shape` and `og.Path2` are TypeScript
+(three.js's Shape and Path); they flatten to points before they cross the
+ABI.
+
 Lines and points are one pass (`lines.rs`, `points.rs`,
 `shaders/lines.wgsl`). Each segment or point is an instance of a quad in
 screen space with a feathered edge, so widths in pixels or in world units
