@@ -31,6 +31,18 @@ function capture(engine: Engine): Image {
 
 const isWhite = (p: number[]) => p.every((c) => c > 200);
 
+test("GPU waits follow renderer replacement and engine destruction", () => {
+  const engine = start(og.game({}));
+  expect(JSON.parse(native().og_node_wait_gpu(engine.id)).ok).toBeTrue();
+  expect(JSON.parse(native().og_node_attach_offscreen(engine.id, W, H)).ok).toBeTrue();
+  expect(engine.frame(0).ok).toBeTrue();
+  expect(JSON.parse(native().og_node_wait_gpu(engine.id)).ok).toBeTrue();
+  engine.destroy();
+  expect(JSON.parse(native().og_node_wait_gpu(engine.id)).ok).toBeFalse();
+  expect(JSON.parse(native().og_node_attach_offscreen(engine.id, W, H)).ok).toBeFalse();
+  expect(JSON.parse(native().og_node_wait_gpu(engine.id)).ok).toBeFalse();
+});
+
 test("a sprite submitted on some ticks is drawn after those ticks only", () => {
   // Sprites on ticks 0 and 1, none after: the queue must not outlive them.
   const Draw = defineSystem("RtDraw", {}, (_q, _t, world: World) => {

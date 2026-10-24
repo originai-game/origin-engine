@@ -470,12 +470,19 @@ pub fn og_node_views_mode() -> String {
 }
 
 struct OffscreenBackend {
+    engine: u32,
     renderer: og_render::Renderer,
     tier: String,
     /// The last frame's `FrameStats::missing_glyphs`.
     missing: u32,
     /// The last frame's `FrameStats::triangles`.
     triangles: u64,
+}
+
+impl Drop for OffscreenBackend {
+    fn drop(&mut self) {
+        let _ = DEVICES.try_with(|d| d.borrow_mut().remove(&self.engine));
+    }
 }
 
 impl RenderBackend for OffscreenBackend {
@@ -613,16 +620,17 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
         .and_then(|renderer| {
             let tier = renderer.info().backend_tier();
             let device = renderer.device().clone();
-            DEVICES.with(|d| d.borrow_mut().insert(engine, device));
             og_runtime::set_render_backend(
                 engine,
                 Some(Box::new(OffscreenBackend {
+                    engine,
                     renderer,
                     tier: tier.clone(),
                     missing: 0,
                     triangles: 0,
                 })),
             )?;
+            DEVICES.with(|d| d.borrow_mut().insert(engine, device));
             Ok(tier)
         });
     match answer {
