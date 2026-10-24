@@ -314,3 +314,44 @@ test("og-build points to og compare and og-model names the type model route", ()
   }
   expect(missing).toEqual([]);
 });
+
+/** What the three-to-og guide maps (the threejs-migrate row): every name must appear in it. */
+const THREE_TO_OG = [
+  "og.Parent", "og.Transform", "og.MatrixWorld", "world.spawn", "world.find",
+  "og.render.boxGeometry", "og.render.extrudeGeometry", "og.render.latheGeometry", "og.render.bufferGeometry", "og.render.mergeGeometries", "og.render.csgGeometry", "og.render.sweepGeometry", "og.Shape", "og.Path2", "type model",
+  "StandardMaterialDesc", "og.render.standardMaterial", "unlit: true", "color.fromHex", "og.render.updateMaterial",
+  "og.load.gltf", "og.load.texture", "og.load.environment", "world.instantiate",
+  "defineSystem", "time.dt", "og.Rng", "og.Camera",
+  "og.render.raycast", "screenToRay",
+  "ShaderMaterial", "type shader", "InstancedMesh", "OrbitControls", "og.OrbitCamera", "og.systems.cameras",
+  "og migrate three",
+];
+
+test("the three-to-og guide maps three.js's classes and idioms and names the gaps", () => {
+  const text = bundle(real).files["game/skills/og-game/guides/three-to-og.md"];
+  expect(text).toBeDefined();
+  expect(THREE_TO_OG.filter((n) => !text!.includes(n))).toEqual([]);
+});
+
+test("a guide is held to the skills' rules: its API names, sections, pages and who names it", () => {
+  const why = "which the generated API (api.ogt) does not have; check the name in reference/ or packages/engine/types/index.d.ts";
+  const p = added((r) => {
+    edit(join(r.pkg, "guides/three-to-og.md"), (s) => `${s}\nPick with \`og.render.raycasts(world, ray)\`; see §42, og-feel §99 and \`reference/raycast.md\`.\n`);
+    edit(join(r.pkg, "skills/og-ui/SKILL.md"), (s) => `${s}\nThree.js's CSS2DRenderer is in \`guides/three-to-ui.md\`.\n`);
+    writeFileSync(join(r.pkg, "guides/notes.md"), "# Notes\n");
+  });
+  expect(p.sort()).toEqual(
+    [
+      `guides/three-to-og.md: names \`og.render.raycasts\`, ${why}`,
+      "guides/three-to-og.md: names reference/raycast.md, which the generated wiki does not have (a module's page is reference/<module>.md)",
+      "guides/three-to-og.md: refers to its own §42, which it does not have (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)",
+      "guides/three-to-og.md: refers to og-feel §99, which does not exist there (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)",
+      "guides/notes.md: not in GUIDES (scripts/validate.ts); list it there and name it from og-game, or remove it",
+      "skills/og-ui/SKILL.md: names guides/three-to-ui.md, which this package does not ship (its guides: three-to-og)",
+    ].sort(),
+  );
+  const unnamed = added((r) => edit(join(r.pkg, "skills/og-game/SKILL.md"), (s) => s.replaceAll("guides/three-to-og.md", "the guide")));
+  expect(unnamed).toEqual(["skills/og-game/SKILL.md: never names guides/three-to-og.md, so no agent finds the guide; name it where its subject is taught"]);
+  const unmounted = added((r) => edit(join(r.pkg, "knowledge.json"), (s) => s.replace('"to": "game/skills/og-game/guides/"', '"to": "game/skills/og-game/notes/"')));
+  expect(unmounted).toContain("guides/three-to-og.md: missing, or not mounted at game/skills/og-game/guides/ (knowledge.json mounts guides/ there)");
+});

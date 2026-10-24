@@ -46,6 +46,19 @@ export function readRules(pkg: string): Rules {
 /** The skills this package ships. */
 export const SKILLS = ["og-ai", "og-audio", "og-build", "og-core", "og-feel", "og-game", "og-i18n", "og-model", "og-platform-sdk", "og-taste", "og-ui"] as const;
 
+/**
+ * The guides this package ships: hand-written pages in guides/, mounted
+ * beside og-game's SKILL.md (knowledge.json), each named by og-game and
+ * held to the skills' rules (API names, section references, tools).
+ */
+export const GUIDES = ["three-to-og"] as const;
+
+/** Where knowledge.json mounts guides/ in the production tree. */
+export const GUIDE_MOUNT = "game/skills/og-game/guides/";
+
+/** The og-cli source that cites the guides by section, in the engine repository. */
+export const GUIDE_CITERS: readonly string[] = [];
+
 /** What a scaffolded project must contain (scaffold/README.md describes each). */
 export const TEMPLATE_FILES = ["project.ogt", "src/main.ts", "package.json", "tsconfig.json", "tests/smoke.og.ts"] as const;
 
@@ -79,6 +92,7 @@ export function validate(roots: Roots = defaultRoots()): string[] {
   }
 
   skills(rules, files, problems);
+  guideFiles(roots, rules, files, problems);
   coherence(files, problems);
   skinWord(roots, files, problems);
   apiNames(roots, files, problems);
@@ -92,7 +106,7 @@ function packageJson(roots: Roots, problems: string[]): void {
   const p = JSON.parse(readFileSync(join(roots.pkg, "package.json"), "utf8")) as { name?: string; version?: string; files?: string[]; scripts?: Record<string, string> };
   if (p.name !== "@origingame/engine-knowledge") problems.push(`package.json: name is ${p.name}; the package is @origingame/engine-knowledge (design §9)`);
   if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(p.version ?? "")) problems.push(`package.json: version ${p.version} is not semver`);
-  for (const f of ["wiki", "skills", "looks", "scaffold", "rules", "knowledge.json"]) {
+  for (const f of ["wiki", "skills", "guides", "looks", "scaffold", "rules", "knowledge.json"]) {
     if (!p.files?.some((x) => x === f || x === `${f}/`)) problems.push(`package.json: files does not publish ${f}`);
   }
   if (!p.scripts?.test) problems.push("package.json: no test script, so scripts/check.sh bun-test would skip the package");
@@ -164,6 +178,46 @@ function skills(rules: Rules, files: readonly PayloadFile[], problems: string[])
     }
   }
   for (const s of SKILLS) if (!found.has(s)) problems.push(`skills/${s}/SKILL.md: missing`);
+}
+
+/**
+ * The guides as files: guides/ holds exactly GUIDES, each reaches the
+ * payload at GUIDE_MOUNT, names no tool a Session lacks and no wiki page
+ * the IDL does not generate, and every `three-to-og §N` the og-cli source
+ * cites (GUIDE_CITERS: `og migrate three` points to its sections) is a
+ * numbered section of the guide.
+ */
+function guideFiles(roots: Roots, rules: Rules, files: readonly PayloadFile[], problems: string[]): void {
+  const dir = join(roots.pkg, "guides");
+  const present = existsSync(dir) ? readdirSync(dir).filter((n) => n.endsWith(".md")).map((n) => n.slice(0, -3)) : [];
+  for (const g of present) if (!(GUIDES as readonly string[]).includes(g)) problems.push(`guides/${g}.md: not in GUIDES (scripts/validate.ts); list it there and name it from og-game, or remove it`);
+  const pages = new Set(files.map((f) => /^game\/skills\/og-game\/reference\/([^/]+)$/.exec(f.path)?.[1]).filter((n): n is string => n !== undefined));
+  const repo = join(roots.pkg, "..", "..");
+  for (const g of GUIDES) {
+    const f = files.find((x) => x.path === `${GUIDE_MOUNT}${g}.md`);
+    if (!f) {
+      problems.push(`guides/${g}.md: missing, or not mounted at ${GUIDE_MOUNT} (knowledge.json mounts guides/ there)`);
+      continue;
+    }
+    if (!isText(f.bytes)) continue;
+    const text = decoder.decode(f.bytes);
+    for (const t of namedTools(text, rules)) problems.push(`guides/${g}.md: names \`${t}\`, which is no tool a Session can be offered; rename it or put it in a code block if it is not a tool`);
+    for (const page of new Set([...text.matchAll(/\breference\/([a-z0-9-]+\.md)\b/g)].map((m) => m[1]!))) {
+      if (!pages.has(page)) problems.push(`guides/${g}.md: names reference/${page}, which the generated wiki does not have (a module's page is reference/<module>.md)`);
+    }
+    const have = new Set([...text.matchAll(/^## (\d+)\. /gm)].map((m) => m[1]!));
+    for (const citer of GUIDE_CITERS) {
+      const path = join(repo, citer);
+      if (!existsSync(join(repo, "crates"))) break; // the published package: the sources are not beside it
+      if (!existsSync(path)) {
+        problems.push(`${citer}: missing; GUIDE_CITERS in scripts/validate.ts names it`);
+        continue;
+      }
+      for (const m of readFileSync(path, "utf8").matchAll(new RegExp(`${g} §(\\d+)`, "g"))) {
+        if (!have.has(m[1]!)) problems.push(`${citer}: cites ${g} §${m[1]}, which guides/${g}.md does not have (its sections: ${[...have].join(", ")})`);
+      }
+    }
+  }
 }
 
 function scaffold(roots: Roots, rules: Rules, overlay: string, files: readonly PayloadFile[], byPath: Map<string, PayloadFile>, problems: string[]): void {
@@ -256,7 +310,15 @@ function coherence(files: readonly PayloadFile[], problems: string[]): void {
     const t = textOf(`game/skills/${s}/SKILL.md`);
     if (t !== undefined) texts.set(s, t);
   }
-  const sections = new Map([...texts].map(([s, t]) => [s, new Set([...t.matchAll(/^## (\d+)\. /gm)].map((m) => m[1]!))]));
+  // The guides (guides/<name>.md, mounted beside og-game's SKILL.md) are
+  // held to the same section references; their owner names each.
+  const guides = new Map<string, string>();
+  for (const g of GUIDES) {
+    const t = textOf(`${GUIDE_MOUNT}${g}.md`);
+    if (t !== undefined) guides.set(g, t);
+  }
+  const numbered = (t: string) => new Set([...t.matchAll(/^## (\d+)\. /gm)].map((m) => m[1]!));
+  const sections = new Map([...texts, ...guides].map(([s, t]) => [s, numbered(t)]));
   for (const [module, skill] of home) {
     const t = texts.get(skill);
     if (t !== undefined && !t.includes(`reference/${module}.md`)) problems.push(`skills/${skill}/SKILL.md: teaches the ${module} module (wiki/index.md) but never names reference/${module}.md`);
@@ -266,24 +328,47 @@ function coherence(files: readonly PayloadFile[], problems: string[]): void {
       const owner = home.get(m);
       if (owner && owner !== skill) problems.push(`skills/${skill}/SKILL.md: names reference/${m}.md, which ${owner} teaches; point to ${owner} instead, so each module is taught in one place`);
     }
-    const prose = t.replace(/^```[\s\S]*?^```/gm, "");
-    for (const m of prose.matchAll(/(og-[a-z]+(?:-[a-z]+)*) §([A-Za-z][\w ]*)/g)) problems.push(`skills/${skill}/SKILL.md: refers to ${m[1]} §${m[2]!.split(" ")[0]} by name; refer to a skill's sections by their numbers (## N.)`);
-    for (const m of prose.matchAll(/§(\d+)/g)) {
-      // The skill this § belongs to: walk back over a list of §s ("og-feel
-      // §9–§11", "og-taste §4, §10") to the word before it.
-      const before = prose.slice(0, m.index).split(/\s+/);
-      let i = before.length - 1;
-      while (i >= 0 && (before[i] === "" || /^\(?§\d+(\.\d+)?[–,;)]*$/.test(before[i]!) || before[i] === "and" || before[i] === "or")) i--;
-      const word = (before[i] ?? "").replace(/^[(`*]+/, "");
-      let target: string | undefined = skill;
-      if (/^og-[a-z]+(?:-[a-z]+)*$/.test(word)) target = word;
-      else if (/\.md\b|\//.test(word) || /^design/.test(word)) target = undefined;
-      if (target === undefined) continue;
-      const have = sections.get(target);
-      if (!have) problems.push(`skills/${skill}/SKILL.md: refers to ${target} §${m[1]}, and there is no skill ${target}`);
-      else if (!have.has(m[1]!)) problems.push(`skills/${skill}/SKILL.md: refers to ${target === skill ? "its own" : target} §${m[1]}, which ${target === skill ? "it does not have" : "does not exist there"} (its sections: ${[...have].join(", ") || "none numbered"})`);
-    }
   }
+  for (const [name, t] of [...texts, ...guides]) {
+    const at = guides.has(name) ? `guides/${name}.md` : `skills/${name}/SKILL.md`;
+    problems.push(...sectionRefs(at, name, t, sections));
+  }
+  // What the guides say of a page, and who names them.
+  const names = (t: string) => new Set([...t.matchAll(/\bguides\/([a-z0-9-]+)\.md\b/g)].map((m) => m[1]!));
+  for (const [name, t] of [...texts, ...guides]) {
+    const at = guides.has(name) ? `guides/${name}.md` : `skills/${name}/SKILL.md`;
+    for (const g of names(t)) if (!(GUIDES as readonly string[]).includes(g)) problems.push(`${at}: names guides/${g}.md, which this package does not ship (its guides: ${GUIDES.join(", ")})`);
+  }
+  for (const g of guides.keys()) {
+    if (!texts.get("og-game")?.includes(`guides/${g}.md`)) problems.push(`skills/og-game/SKILL.md: never names guides/${g}.md, so no agent finds the guide; name it where its subject is taught`);
+  }
+}
+
+/**
+ * Every section reference of one text (`og-feel §4`, or `§4` for its own,
+ * `three-to-og §2` for a guide's) names a numbered `## N.` section that
+ * exists: `at` names the text in the messages, `own` the text itself.
+ */
+export function sectionRefs(at: string, own: string, text: string, sections: ReadonlyMap<string, ReadonlySet<string>>): string[] {
+  const problems: string[] = [];
+  const prose = text.replace(/^```[\s\S]*?^```/gm, "");
+  for (const m of prose.matchAll(/(og(?:-[a-z]+)+|three-to-og) §([A-Za-z][\w ]*)/g)) problems.push(`${at}: refers to ${m[1]} §${m[2]!.split(" ")[0]} by name; refer to a skill's sections by their numbers (## N.)`);
+  for (const m of prose.matchAll(/§(\d+)/g)) {
+    // The text this § belongs to: walk back over a list of §s ("og-feel
+    // §9–§11", "og-taste §4, §10") to the word before it.
+    const before = prose.slice(0, m.index).split(/\s+/);
+    let i = before.length - 1;
+    while (i >= 0 && (before[i] === "" || /^\(?§\d+(\.\d+)?[–,;)]*$/.test(before[i]!) || before[i] === "and" || before[i] === "or")) i--;
+    const word = (before[i] ?? "").replace(/^[(`*]+/, "");
+    let target: string | undefined = own;
+    if (/^og-[a-z]+(?:-[a-z]+)*$/.test(word) || (GUIDES as readonly string[]).includes(word)) target = word;
+    else if (/\.md\b|\//.test(word) || /^design/.test(word)) target = undefined;
+    if (target === undefined) continue;
+    const have = sections.get(target);
+    if (!have) problems.push(`${at}: refers to ${target} §${m[1]}, and there is no skill ${target}`);
+    else if (!have.has(m[1]!)) problems.push(`${at}: refers to ${target === own ? "its own" : target} §${m[1]}, which ${target === own ? "it does not have" : "does not exist there"} (its sections: ${[...have].join(", ") || "none numbered"})`);
+  }
+  return problems;
 }
 
 /**
@@ -385,8 +470,9 @@ function apiNames(roots: Roots, files: readonly PayloadFile[], problems: string[
   if (!api) return;
   for (const f of files) {
     const m = /^game\/skills\/([^/]+)\/SKILL\.md$/.exec(f.path);
-    if (!m || !isText(f.bytes)) continue;
-    const at = `skills/${m[1]}/SKILL.md`;
+    const guide = f.path.startsWith(GUIDE_MOUNT) && f.path.endsWith(".md") ? f.path.slice(GUIDE_MOUNT.length) : undefined;
+    if ((!m && !guide) || !isText(f.bytes)) continue;
+    const at = guide ? `guides/${guide}` : `skills/${m![1]}/SKILL.md`;
     const text = decoder.decode(f.bytes);
     const bad = new Set<string>();
     for (const x of text.matchAll(/(?<![\w./@-])og\.([A-Za-z_]\w*)(?:\.([A-Za-z_]\w*))?/g)) {

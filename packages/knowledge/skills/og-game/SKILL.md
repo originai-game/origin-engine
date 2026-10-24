@@ -2885,3 +2885,12 @@ textures between lanterns to stay under it.
 `reference/index.md` (the generated wiki shipped with this skill) maps every
 module (grouped by skill, as in §1), type and function to its page, with the IDL text, defaults, ranges
 and units of every field.
+
+`guides/three-to-og.md` (beside this skill) maps three.js's classes and
+idioms to the engine's: the scene graph to entities and og.Parent,
+Object3D to og.Transform, the geometry classes to §18's generators, the
+materials to StandardMaterialDesc, the loaders to og.load, the render
+loop to systems on the tick, Raycaster to `og.render.raycast`, and the
+gaps by name. `og migrate three <file.ts>` rewrites a three.js file's
+mechanical part with those mappings and marks every line it cannot,
+citing the guide's section.
