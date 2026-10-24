@@ -7,9 +7,14 @@ pub const PI: f64 = std::f64::consts::PI;
 pub const TAU: f64 = std::f64::consts::TAU;
 
 /// sin and cos of `x`: reduced to `[-pi/4, pi/4]` and a quadrant, then
-/// Taylor series to x^15 / x^14 (below 1e-15 there).
+/// Taylor series to x^15 / x^14 (below 1e-15 there). The quadrant is
+/// rounded as JavaScript's `Math.round` rounds (a tie up, towards +∞), so
+/// the TypeScript twin (`sincos` of the camera systems, which og.Shape's
+/// arcs read) reduces every angle the same way, -π/4 included.
 pub fn sincos(x: f64) -> (f64, f64) {
-    let q = (x / (PI / 2.0)).round();
+    let k = x / (PI / 2.0);
+    let floor = k.floor();
+    let q = if k - floor >= 0.5 { floor + 1.0 } else { floor };
     let r = x - q * (PI / 2.0);
     let r2 = r * r;
     let mut s = 1.0 / 1_307_674_368_000.0;
