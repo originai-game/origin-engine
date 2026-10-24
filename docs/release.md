@@ -372,10 +372,15 @@ and pending labels in L and D above.
 | Production | Platform workflows install the npm pin without an engine checkout or cargo | No current production image/runtime-config verification in this audit. Image build, deployment and activation require separate authorization |
 
 After the audit, platform commits `30b23ba51` and `ff518833c` implemented
-the Player clock wire stamps and tests locally. The engine coordinator
-reviewed the diff and reran the SDK suite, 29/29. Server correction of
-the framed page's clock remains open; `docs/platform-asks.md` ask 9
-records that distinction. Neither commit is pushed or deployed.
+the Player clock wire stamps and tests locally; `0cb3f8601` adds
+server-offset calibration and `db9ba6680` records its convergence limit.
+The engine consumes hello time at `b7fcbacb`. The coordinator reviewed
+the calibration and reran the SDK suite, 33/33. Stage and verify remain
+on their page clocks, and an already-stamped ahead clock holds until
+server time catches up or the next load uses the stored offset.
+`docs/platform-asks.md` ask 9 records these limits. Windows fixes and
+its process-cleanup test were integrated into platform main through
+`2f0258332`. Nothing in this round is pushed or deployed.
 
 ## 5. The author's and the agent's loop, after this
 

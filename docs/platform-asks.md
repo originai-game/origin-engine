@@ -36,10 +36,17 @@ protocol-2 hello and every success/error result, preserving protocol 1.
 The wire reader keeps the stamp. Framed Player, Stage and verify mode
 stamp at answer time; HTTP stamps its server's time. Contracts, SDK,
 transport and route tests, plus Stage and protocol browser checks passed;
-the engine coordinator reran the SDK suite, 29/29. These commits are not
-pushed or deployed. The framed Player and Stage still default to their
-page's `Date.now`, so cross-device server correction remains open. A
-`clock: player` label alone does not establish a server-corrected clock.
+the engine coordinator reran the SDK suite, initially 29/29 and 33/33
+after calibration landed. Platform `0cb3f8601` adds server correction:
+the framed Player samples same-origin `GET /__og/time` after activation,
+persists the midpoint offset, and never moves its page clock backwards.
+Stage and verify retain the scratch page clock. `db9ba6680` tests and
+documents the convergence limit: a page that first stamped a device
+three hours ahead holds that reading until server time catches up, or
+reloads with the stored offset. Without a usable sample or stored offset,
+device time is the fallback. This is client consistency, not authoritative
+time or immediate cross-device agreement. These commits are local only;
+deployment and fresh engine/platform end-to-end acceptance remain open.
 
 The engine consumes hello time as well as result time at `b7fcbacb`:
 both transports retain it and pass it through the shell and Worker to

@@ -6572,6 +6572,25 @@ was deleted and no release rebuild was started. `cargo search wgpu
 --limit 1` and `cargo search naga --limit 1` on 2026-10-24 both returned
 30.0.1; F5 still waits for upstream 31.
 
+### Debt follow-through verification, 2026-10-24
+
+At `ce2c4b02`, `scripts/check.sh quick` passed in 73 s (987 tests),
+then `scripts/check.sh functional` passed in 102 s: 773 Rust tests and
+321 engine, 15 create and 48 knowledge checks. GPU references and drift
+were reused by the path-aware gate; neither was forced. The focused
+clock suites passed 22/22, including a failing-before attachment control.
+
+`bun packages/engine/tests/web/player.ts` passed all 65 checks in Chrome:
+framed Player, top-level HTTP page, desktop/phone-viewport Stage and
+silent-overlay fallback. Its first attempts could not start because this
+checkout's cached wasm lacked 12 current API symbols. The coordinator
+reused the measure checkout's `27649c3a` publish and 2D publish outputs
+after confirming `crates/`, `Cargo.toml` and `Cargo.lock` are identical;
+no wasm rebuild was needed. This browser suite checks the existing
+Player behavior, not the new hello-time value inside the Worker.
+Logs and JSON: `.amp/in/debt-{quick,functional}.log`,
+`.amp/in/player-clock-browser.{log,json}` (local only).
+
 ### Status 2026-10-19, E5 round
 
 - **Atmosphere, water, material shaders and physics beyond rigid bodies**
