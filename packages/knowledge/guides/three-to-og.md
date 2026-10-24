@@ -361,8 +361,8 @@ mapping above applied:
 - `Vector2`, `Vector3`, `Quaternion` and `Color` constructions to plain
   values; `MathUtils.degToRad` and `radToDeg` to arithmetic;
 - `const x = new THREE.Mesh(g, m)`, `Group` and `Object3D` to a spawn
-  (named after the variable) with og.Mesh; the three lights to a spawn
-  with their component, a directional or spot light's `position.set`
+  (named after the variable) with og.Mesh; the directional, point, spot
+  and rect area lights to a spawn with their component, a directional or spot light's `position.set`
   also aiming it at the origin as three.js's default target does;
 - `add` to og.Parent, the scene's `add` deleted, `remove` to
   `world.remove` or `world.despawn`; `position.set`, `quaternion.set`,
@@ -372,8 +372,9 @@ mapping above applied:
 - the camera to the og.Camera resource handle, its aspect and
   `updateProjectionMatrix` deleted; `scene.background` to the camera's
   background;
-- the scene, the renderer and everything said to the renderer deleted,
-  `document.body.appendChild(renderer.domElement)` too;
+- the scene, the renderer, its size, pixel ratio, shadow map and colour
+  space deleted, `document.body.appendChild(renderer.domElement)` too
+  (its animation loop, tone mapping and clear colour are listed);
 - `TextureLoader` loads of a string to `og.load.texture` of the asset
   id (a leading `./`, `/`, `public/` or `assets/` removed).
 
