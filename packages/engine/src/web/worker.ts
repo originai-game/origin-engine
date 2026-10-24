@@ -115,7 +115,7 @@ type Message =
   | { type: "viewport"; viewport: Viewport }
   | { type: "resize"; width: number; height: number; viewport: Viewport }
   | { type: "platform-answer"; request: number; answer: PlatformAnswer }
-  | { type: "platform-host"; host: string; capabilities: string[] }
+  | { type: "platform-host"; host: string; capabilities: string[]; time?: number }
   | { type: "room-events"; events: unknown[] }
   | { type: "room-host"; host: string; join?: string }
   | AudioMessage
@@ -1073,7 +1073,7 @@ export function startWorker(game: GameToken): void {
       engine.answerPlatform(data.request, data.answer);
       platformCounter.answered();
     }
-    if (data.type === "platform-host") engine.attachPlatform(toPage(data.host, data.capabilities, platformCounter));
+    if (data.type === "platform-host") engine.attachPlatform({ ...toPage(data.host, data.capabilities, platformCounter), time: data.time });
     if (data.type === "room-host") {
       boundHost()?.abi.og_room_set_host(engine.id, JSON.stringify({ host: data.host, ...(data.join ? { join: data.join } : {}) }));
       // A Play link's join leaves now, not with the next frame (the page may be behind its gate).

@@ -59,6 +59,7 @@ function playOrigin(opts: { codes?: Record<string, { token: string; guest: boole
       const code = body["handoff"];
       const redeemed = typeof code === "string" ? (opts.codes?.[code] ?? null) : undefined;
       return json(200, { og: "player", protocol: 2, kind: "hello", locale: "en", region: "global", capabilities: CAPS, started: false, paused: false,
+        time: 1_800_000_123_456,
         ...(redeemed === undefined ? {} : { player: redeemed }),
         page: { title: "Runner", cover: "https://cdn.test/c.jpg", backdrop: "https://cdn.test/c32.jpg", back: "https://portal.test/games/runner", portal: "https://portal.test" } });
     }
@@ -128,6 +129,7 @@ test("a hand-off code leaves the address at once, travels only in the hello's bo
   expect(hello.bearer).toBeNull();
   expect(hello.url).not.toContain("og-h");
   expect(page.capabilities).toEqual(CAPS);
+  expect(playerPlatform(page, memoryPersistence()).time).toBe(1_800_000_123_456);
   expect(page.page?.back).toBe("https://portal.test/games/runner");
   // The account is in memory only, behind the Player's marker.
   expect(page.credential).toBe("ogp_account");

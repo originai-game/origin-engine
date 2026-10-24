@@ -28,6 +28,8 @@ export interface PlatformHost {
   /** `player`, `local` or `none` (og.platform.info). */
   readonly host: string;
   readonly capabilities: readonly string[];
+  /** The Player hello's UTC milliseconds, sampled when this host attaches. */
+  readonly time?: number | undefined;
   /** Handle calls in order; answer every one but `telemetry`, now or later. */
   handle(calls: readonly PlatformCall[], answer: (request: number, result: PlatformAnswer) => void): void;
 }

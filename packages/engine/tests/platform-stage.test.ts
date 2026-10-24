@@ -12,7 +12,7 @@
 import { expect, test } from "bun:test";
 import { connectPlayer, type PlayerResult } from "../shell/player.ts";
 import { playerPlatform } from "../shell/platform.ts";
-import type { LocalPersistence, PlatformAnswer, PlatformCall } from "../src/platform-local.ts";
+import { memoryPersistence, type LocalPersistence, type PlatformAnswer, type PlatformCall } from "../src/platform-local.ts";
 
 type Msg = Record<string, unknown>;
 const g = globalThis as unknown as Record<string, unknown>;
@@ -113,7 +113,7 @@ function overlay(p: ReturnType<typeof page>, capabilities: readonly string[] = S
     if (m["kind"] === "hello" && Array.isArray(m["capabilities"])) return; // its own
     if (m["kind"] === "result" || m["kind"] === "start" || m["kind"] === "gesture" || m["kind"] === "pause" || m["kind"] === "resume") return; // its own
     heard.push(m);
-    if (m["kind"] === "hello") post({ kind: "hello", locale: "en", region: "global", capabilities, started: true, paused: false });
+    if (m["kind"] === "hello") post({ kind: "hello", locale: "en", region: "global", capabilities, started: true, paused: false, time: clock });
     if (m["kind"] === "call") {
       const method = String(m["method"]);
       if (capabilities.includes(method)) post({ kind: "result", id: m["id"], ...answer(method, (m["args"] ?? {}) as Msg), time: (clock += 1000) });
@@ -154,6 +154,7 @@ test("the Stage overlay in the page's own document is its Player: one hello, pla
   await new Promise((r) => setTimeout(r, 600)); // past any repeated hello
   expect(hellos).toEqual([{ started: true, paused: false, capabilities: SCRATCH }]);
   expect(player.started).toBe(true);
+  expect(playerPlatform(player, memoryPersistence()).time).toBe(1_800_000_000_000);
   expect(o.heard.filter((m) => m["kind"] === "hello")).toEqual([{ og: "player", protocol: 2, kind: "hello", substrate: "origin-engine" }]);
   // Readiness reaches the overlay in the same window.
   player.ready();

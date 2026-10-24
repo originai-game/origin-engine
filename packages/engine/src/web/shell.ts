@@ -486,7 +486,7 @@ export class Shell {
   /** What answers og.platform's calls from now on (og.platform.info reports its host and capabilities). */
   setPlatform(host: PlatformHost): void {
     this.#platform = host;
-    this.worker.postMessage({ type: "platform-host", host: host.host, capabilities: host.capabilities });
+    this.worker.postMessage({ type: "platform-host", host: host.host, capabilities: host.capabilities, time: host.time });
   }
 
   /** What stopped the engine (a panic, an error, a hang), or null while it runs. */

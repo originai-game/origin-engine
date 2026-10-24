@@ -15,6 +15,7 @@ import { loadNativeHost } from "../src/node/index.ts";
 import { nativePlatform } from "../src/node/platform.ts";
 import { emptyDocument, localPlatform, memoryPersistence } from "../src/platform-local.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
+import { playerPlatform } from "../shell/platform.ts";
 
 beforeAll(() => {
   loadNativeHost();
@@ -144,6 +145,22 @@ test("og.platform: malformed calls are refused naming the fix, and without a hos
   expect([none.ok, none.error?.code, none.error?.retryable]).toEqual([false, "unavailable", true]);
   const none2 = og.platform.info(w) as { host: string; capabilities: readonly string[] };
   expect([none2.host, none2.capabilities.length]).toEqual(["none", 0]);
+});
+
+test("a Player hello sets the clock before the game's first platform call", () => {
+  const engine = start(og.game({}));
+  engine.setClock({ kind: "fixed", now: () => 1234 });
+  const player = { framed: true, hosted: true, capabilities: [], time: 42, request: async () => ({ ok: true as const, data: null }), event() {} };
+  try {
+    engine.attachPlatform(playerPlatform(player, memoryPersistence()));
+    expect(og.platform.now(engine.world)).toBe(42);
+    expect(og.platform.info(engine.world).clock).toBe("player");
+    engine.attachPlatform(localPlatform(memoryPersistence()));
+    expect(og.platform.now(engine.world)).toBe(1234);
+    expect(og.platform.info(engine.world).clock).toBe("fixed");
+  } finally {
+    engine.destroy();
+  }
 });
 
 test("og.platform: settings saved to the store file are there for the next run", () => {

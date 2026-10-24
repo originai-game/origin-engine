@@ -59,9 +59,9 @@ export type PlayerResult =
   | { readonly ok: true; readonly data: unknown; readonly time?: number }
   | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly retryable: boolean; readonly status?: number; readonly revision?: number }; readonly time?: number };
 
-/** A message's `time` field, when it is a finite number. */
+/** A message's `time` field, when it is finite UTC milliseconds since the epoch. */
 export const timeOf = (m: Record<string, unknown>): { time?: number } =>
-  typeof m["time"] === "number" && Number.isFinite(m["time"]) ? { time: m["time"] } : {};
+  typeof m["time"] === "number" && Number.isFinite(m["time"]) && m["time"] >= 0 ? { time: m["time"] } : {};
 
 /** How long a call waits for its `result` before it fails with `timeout`. */
 export const CALL_TIMEOUT_MS = 15_000;
@@ -93,6 +93,7 @@ export function connectPlayer(events: PlayerEvents) {
   let started = false;
   let paused = false;
   let capabilities: readonly string[] = [];
+  let time: number | undefined;
   let nextCall = 1;
   const calls = new Map<string, (r: PlayerResult) => void>();
 
@@ -116,6 +117,7 @@ export function connectPlayer(events: PlayerEvents) {
         heard = true;
         if (m["started"] === true) started = true;
         paused = m["paused"] === true;
+        time = timeOf(m).time;
         capabilities = Array.isArray(m["capabilities"]) ? (m["capabilities"] as unknown[]).filter((c): c is string => typeof c === "string") : [];
         events.hello?.({ started: m["started"] === true, paused, capabilities });
         break;
@@ -195,6 +197,10 @@ export function connectPlayer(events: PlayerEvents) {
     /** The methods the Player's hello said it answers (empty before it, or with no Player). */
     get capabilities(): readonly string[] {
       return capabilities;
+    },
+    /** The most recent hello's clock, before any calls have been answered. */
+    get time(): number | undefined {
+      return time;
     },
     loading(value: number | null, label?: string) {
       if (readySent) return;

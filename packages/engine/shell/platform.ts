@@ -43,6 +43,7 @@ export interface PlayerLink {
   readonly framed: boolean;
   readonly hosted: boolean;
   readonly capabilities: readonly string[];
+  readonly time?: number | undefined;
   request(method: string, args?: Record<string, unknown>): Promise<PlayerResult>;
   event(name: string, attrs?: Record<string, string | number | boolean | null>): void;
 }
@@ -169,6 +170,7 @@ export function playerPlatform(player: PlayerLink, local: LocalPersistence): Pla
   return {
     host: "player",
     capabilities,
+    time: player.time,
     handle(calls, answer) {
       // In order: a store write through the save reads it first, so calls never interleave.
       for (const call of calls) {
@@ -201,6 +203,9 @@ export function deferredPlatform(ready: Promise<PlatformHost>, capabilities: rea
   return {
     host: "player",
     capabilities,
+    get time() {
+      return real?.time;
+    },
     handle(calls, answer) {
       if (real) real.handle(calls, answer);
       else held.push([calls, answer]);

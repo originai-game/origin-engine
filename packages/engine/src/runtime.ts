@@ -1202,7 +1202,7 @@ export class Engine {
   /** Attach what answers og.platform's calls: the native host's local store, the web shell's Player bridge. */
   attachPlatform(host: PlatformHost): void {
     this.#platform = host;
-    abi().og_platform_set_host(this.id, JSON.stringify({ host: host.host, capabilities: host.capabilities, time: this.#clock.now(), clock: this.#clock.kind }));
+    abi().og_platform_set_host(this.id, JSON.stringify({ host: host.host, capabilities: host.capabilities, time: host.time ?? this.#clock.now(), clock: host.time === undefined ? this.#clock.kind : "player" }));
   }
 
   /** Set the clock og.platform tells the game (before attachPlatform, which tells it the time). */
