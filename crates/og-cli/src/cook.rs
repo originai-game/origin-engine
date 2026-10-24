@@ -12,7 +12,11 @@
 //! clips, bytes cooked and the budget flags against project.ogt's `budgets
 //! { }`, and the warnings: a model whose raycast BVH is past `bvhShare`
 //! of its blob, also printed), at `og-out/cook-report.json` or the `.json`
-//! path given, which `og doctor --project` reads. `--watch` cooks, then cooks again
+//! path given, which `og doctor --project` reads. A generated terrain
+//! (`type terrain` with `generate`) adds its height histogram, land
+//! fraction above the sea and river length, and its height and control
+//! maps as PNGs under the report's directory (`terrain-maps/`), for a
+//! reviewer's eyes, never into assets/. `--watch` cooks, then cooks again
 //! whenever a file under assets/ changes, printing each cooked asset's time
 //! and the cook's against the 300 ms reload budget (`--exit-after N` stops
 //! after N of them; `--json` prints one JSON line per cook).
@@ -47,9 +51,10 @@ pub fn budgets(root: &Path) -> Result<og_cook::cook::stats::Budgets, String> {
 /// assets' warnings (a model's raycast BVH past `budgets.bvhShare`).
 pub fn write_cook_report(root: &Path, report: &Report, path: &Path) -> Result<Vec<String>, String> {
     let budgets = budgets(root)?;
-    let json = og_cook::cook::stats::cook_report_json(report, &root.join("cooked"), &budgets);
+    let mut json = og_cook::cook::stats::cook_report_json(report, &root.join("cooked"), &budgets);
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        og_cook::cook::stats::write_terrain_maps(&mut json, &root.join("cooked"), dir)?;
     }
     let text = serde_json::to_string_pretty(&json).map_err(|e| e.to_string())?;
     std::fs::write(path, text + "\n").map_err(|e| format!("{}: {e}", path.display()))?;

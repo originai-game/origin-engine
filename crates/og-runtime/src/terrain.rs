@@ -458,6 +458,7 @@ fn info(index: usize, t: &LoadedTerrain) -> Value {
         "layers": t.layers.len(),
         "collision": t.collision,
         "castShadows": t.cast_shadows,
+        "seaLevel": t.cooked.sea_level,
     })
 }
 

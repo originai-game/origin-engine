@@ -30,6 +30,7 @@ pub mod sfx;
 pub mod stats;
 mod stream;
 mod terrain;
+mod terrain_generate;
 mod texture;
 pub mod texture_array;
 pub mod tilemap;

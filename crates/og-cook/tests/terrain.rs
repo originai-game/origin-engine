@@ -232,6 +232,157 @@ fn a_terrain_cooks_into_tiles_and_loads_back() {
     assert_eq!(t.height_blend, 0.5);
     assert_eq!((t.lod.spacing, t.lod.ring), (1.5, 96));
     assert!(!t.cast_shadows && t.collision);
+    assert_eq!(t.sea_level, None, "a heightmap has no sea");
+}
+
+/// A generated island: two layers, a sea, rivers and biomes.
+const GENERATED: &str = r#"type terrain
+version 1
+---
+height -20 60
+size 256 256
+generate {
+  samples 129 129
+  seed 5
+  noise {
+    octaves 5
+    warp 0.4
+  }
+  mask island 0.5
+  erosion {
+    drops 4000
+  }
+  sea 4
+  shore 2
+  rivers {
+    threshold 60
+  }
+  biome {
+    layer 0
+    altitude 6 1000
+  }
+  biome {
+    layer 1
+    altitude -1000 6
+  }
+}
+layer {
+  albedo "textures/grass.png"
+}
+layer {
+  albedo "textures/rock.png"
+}
+"#;
+
+/// A `generate` block makes the field the heightmap would have given: the
+/// same tile pyramid, its samples spanning `height`, its biomes' control
+/// map and its sea level in the blob; two cooks agree byte for byte.
+#[test]
+fn a_generated_terrain_cooks_into_the_same_tiles() {
+    let files: Vec<(&str, &[u8])> = vec![
+        ("terrain/gen.ogt", GENERATED.as_bytes()),
+        ("textures/grass.png", &[]),
+        ("textures/rock.png", &[]),
+    ];
+    let grass = rgba(8, 8, |_, _| [40, 160, 40, 255]);
+    let rock = rgba(8, 8, |_, _| [120, 120, 120, 255]);
+    let files: Vec<(&str, &[u8])> = files
+        .into_iter()
+        .map(|(p, b)| match p {
+            "textures/grass.png" => (p, grass.as_slice()),
+            "textures/rock.png" => (p, rock.as_slice()),
+            _ => (p, b),
+        })
+        .collect();
+    let a = project("generated-a", &files);
+    let b = project("generated-b", &files);
+    let report = cook(&a);
+    cook(&b);
+    let read = |root: &Path| std::fs::read(root.join("cooked/terrain/gen.ogt.ogb")).unwrap();
+    assert_eq!(read(&a), read(&b), "two cooks of the same generator");
+    let notes = report.to_markdown();
+    assert!(notes.contains("generated: seed 5, sea at 4 m"), "{notes}");
+
+    let bundle = Bundle::open(&a.join("cooked")).unwrap();
+    let t = bundle.load_terrain("terrain/gen.ogt").unwrap();
+    assert_eq!(t.sea_level, Some(4.0));
+    let data = t.field().unwrap();
+    assert_eq!((data.columns, data.rows), (129, 129));
+    assert_eq!(data.size, glam::Vec2::new(256.0, 256.0));
+    assert_eq!(t.layout.tiles(0), (1, 1), "128 quads in one tile of 128");
+    // The island's edge is the low; its top is near the high (erosion and
+    // rivers only take away).
+    let (lo, hi) = data.range();
+    assert!((lo - -20.0).abs() < 0.01, "lowest {lo}");
+    assert!(hi > 50.0 && hi <= 60.01, "highest {hi}");
+    assert!(data.heights[0] < 4.0 && data.heights[64 * 129 + 64] > 4.0);
+    // The biomes' control map: layer 0 on the land, layer 1 in the sea.
+    let c = data.control.as_ref().expect("biomes write a control map");
+    assert!(c.width > 0 && c.height > 0);
+    let corner = data.control_at(glam::Vec2::new(-120.0, -120.0));
+    assert!(corner[1] > 0.95 && corner[0] < 0.05, "the sea: {corner:?}");
+    let (mut land, mut sea) = (0, 0);
+    for r in (0..129).step_by(4) {
+        for col in (0..129).step_by(4) {
+            let h = data.heights[r * 129 + col];
+            let p = glam::Vec2::new(col as f32 * 2.0 - 128.0, r as f32 * 2.0 - 128.0);
+            let w = data.control_at(p);
+            // The cooked map is resampled for the tiles: away from the
+            // 6 m line (and its 2 m fade) by more than a sample's rise.
+            if h > 16.0 {
+                land += 1;
+                assert!(w[0] > 0.8 && w[1] < 0.2, "land at {h} m: {w:?}");
+            } else if h < -4.0 {
+                sea += 1;
+                assert!(w[1] > 0.8 && w[0] < 0.2, "sea at {h} m: {w:?}");
+            }
+        }
+    }
+    assert!(land > 30 && sea > 30, "{land} land, {sea} sea");
+
+    // The cook report: its histogram, land above the sea and rivers, and
+    // its maps as PNGs beside the report, never under assets/.
+    use og_cook::cook::stats::{Budgets, cook_report_json, write_terrain_maps};
+    let mut json = cook_report_json(&report, &a.join("cooked"), &Budgets::default());
+    let entry = json["assets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["source"] == "terrain/gen.ogt")
+        .unwrap()
+        .clone();
+    let g = &entry["terrain"]["generated"];
+    let bins: Vec<u64> = serde_json::from_value(g["histogram"].clone()).unwrap();
+    assert_eq!(bins.len(), 16);
+    assert_eq!(bins.iter().sum::<u64>(), 129 * 129);
+    let above = data.heights.iter().filter(|h| **h > 4.0).count() as f64 / (129.0 * 129.0);
+    let land_fraction = g["landFraction"].as_f64().unwrap();
+    assert!((land_fraction - above).abs() < 0.001, "{g}");
+    assert!(land_fraction > 0.2 && land_fraction < 0.8, "{g}");
+    assert_eq!(g["seaLevel"], 4.0);
+    assert!(g["riverLength"].as_f64().unwrap() > 50.0, "{g}");
+    let out = a.join("og-out");
+    write_terrain_maps(&mut json, &a.join("cooked"), &out).unwrap();
+    let height = image::open(out.join("terrain-maps/terrain_gen.ogt.height.png")).unwrap();
+    assert_eq!((height.width(), height.height()), (129, 129));
+    let control = image::open(out.join("terrain-maps/terrain_gen.ogt.control.png")).unwrap();
+    assert!(control.width() > 0);
+    let entry = json["assets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["source"] == "terrain/gen.ogt")
+        .unwrap();
+    assert_eq!(
+        entry["terrain"]["generated"]["maps"],
+        serde_json::json!([
+            "terrain-maps/terrain_gen.ogt.height.png",
+            "terrain-maps/terrain_gen.ogt.control.png"
+        ])
+    );
+    let e = write_terrain_maps(&mut json, &a.join("cooked"), &a.join("assets/review")).unwrap_err();
+    assert!(e.contains("not sources"), "{e}");
+    assert!(!a.join("assets/review").exists());
 }
 
 #[test]
@@ -379,6 +530,41 @@ fn refusals_name_the_fix() {
         &[("t/h.png", &height)],
     );
     assert!(e.contains("not under assets/: textures/none.png"), "{e}");
+    // A terrain reads its field or makes it, not both; biomes write the
+    // control map, so not beside one, and only into a layer it has.
+    let e = cook_err(
+        "both",
+        "type terrain\nversion 1\n---\nheightmap \"h.png\"\ngenerate {\n  seed 2\n}\n",
+        &[("t/h.png", &height)],
+    );
+    assert!(
+        e.contains("line 5: a terrain makes its field (generate) or reads it (heightmap, line 4)"),
+        "{e}"
+    );
+    let e = cook_err(
+        "biome-control",
+        "type terrain\nversion 1\n---\ncontrol \"c.png\"\ngenerate {\n  biome {\n    layer 0\n  }\n}\nlayer {\n  tile 2\n}\n",
+        &[],
+    );
+    assert!(
+        e.contains("line 6: biomes write the terrain's control map: drop 'control' (line 4)"),
+        "{e}"
+    );
+    let e = cook_err(
+        "biome-layer",
+        "type terrain\nversion 1\n---\ngenerate {\n  biome {\n    layer 2\n  }\n}\nlayer {\n  tile 2\n}\n",
+        &[],
+    );
+    assert!(
+        e.contains("line 5: the biome writes layer 2 but the terrain has 1 layer(s)"),
+        "{e}"
+    );
+    let e = cook_err(
+        "generate-key",
+        "type terrain\nversion 1\n---\ngenerate {\n  rivers {\n    deep 3\n  }\n}\n",
+        &[],
+    );
+    assert!(e.contains("line 6: 'deep' is not a rivers entry"), "{e}");
 }
 
 /// A terrain whose layers sample two texture arrays (`layers`,
