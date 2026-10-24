@@ -608,6 +608,7 @@ impl<'a> Gen<'a, '_> {
             "String" => "string".into(),
             "Json" => "unknown".into(),
             "Bytes" => "Uint8Array".into(),
+            "This" => "this".into(),
             "List" => format!("readonly {}[]", paren(&arg(0))),
             "Map" => format!("Readonly<Record<string, {}>>", arg(0)),
             "Option" => format!("{} | null", arg(0)),
@@ -638,7 +639,8 @@ impl<'a> Gen<'a, '_> {
 }
 
 fn paren(t: &str) -> String {
-    if t.contains(" | ") || t.contains("=>") || t.contains(" & ") {
+    // `readonly` too: a list of lists is `readonly (readonly T[])[]`.
+    if t.contains(" | ") || t.contains("=>") || t.contains(" & ") || t.starts_with("readonly ") {
         format!("({t})")
     } else {
         t.to_string()

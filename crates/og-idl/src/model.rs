@@ -359,6 +359,9 @@ pub struct Prop {
     pub ty: TypeRef,
     pub doc: Vec<String>,
     pub publish: Option<bool>,
+    /// false: a property the TypeScript runtime holds (og.Shape.holes), with
+    /// no host getter.
+    pub host: bool,
     pub line: usize,
 }
 
