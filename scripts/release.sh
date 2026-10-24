@@ -43,6 +43,10 @@ cmd_bump() {
   local v="${1:?scripts/release.sh bump <version>}"
   bun scripts/release-bump.ts "$v" || return 1
   cargo update --workspace --offline -q || { og_err "release: cargo update --workspace failed (Cargo.lock)"; return 1; }
+  # tools/wasm-determinism is its own workspace with its own lock on the
+  # engine's crates by path; left at the old version, the gate's
+  # determinism step rewrites it (0.3.0 left it at 0.2.0 until 2026-10-24).
+  (cd tools/wasm-determinism && cargo update --workspace --offline -q) || { og_err "release: cargo update in tools/wasm-determinism failed (its Cargo.lock)"; return 1; }
   if ! grep -q "^## $v" CHANGELOG.md; then
     og_err "release: CHANGELOG.md has no \"## $v\" heading; write the entry (one line per IDL member added, changed or removed)"
     return 1
