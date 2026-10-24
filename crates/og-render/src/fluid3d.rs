@@ -153,7 +153,7 @@ pub(crate) struct Fluid3dRenderer {
     depth: Deferred<wgpu::RenderPipeline>,
     thick: Deferred<wgpu::RenderPipeline>,
     blur: Deferred<wgpu::RenderPipeline>,
-    composite: Deferred<wgpu::RenderPipeline>,
+    composite: crate::deferred::Sampled<wgpu::RenderPipeline>,
     sampler: wgpu::Sampler,
     uniform: wgpu::Buffer,
     blur_uniforms: [wgpu::Buffer; 2],
@@ -218,6 +218,11 @@ fn group(
 
 impl Fluid3dRenderer {
     /// Makes one of its pipelines no frame used yet (Renderer::warm).
+    /// Composite into a target of `samples` per pixel from now on.
+    pub(crate) fn set_samples(&self, samples: u32) {
+        self.composite.set_samples(samples);
+    }
+
     pub(crate) fn warm(&self) -> bool {
         crate::deferred::warm_one(&[&self.depth, &self.thick, &self.blur, &self.composite])
     }
@@ -344,22 +349,25 @@ impl Fluid3dRenderer {
             crate::post::LINDEPTH_FORMAT,
             None,
         );
-        let composite =
-            crate::deferred_hdr(device, &composite_pl, module, move |layout, module| {
-                crate::HdrPipeline {
-                    label: "fluid 3d composite",
-                    layout,
-                    module,
-                    vs: "vs_full",
-                    fs: "fs_composite",
-                    buffers: &[],
-                    cull: None,
-                    depth_write: true,
-                    depth_compare: wgpu::CompareFunction::Less,
-                    blend: None,
-                    samples,
-                }
-            });
+        let composite = crate::deferred_hdr(
+            device,
+            &composite_pl,
+            module,
+            samples,
+            move |layout, module| crate::HdrPipeline {
+                label: "fluid 3d composite",
+                layout,
+                module,
+                vs: "vs_full",
+                fs: "fs_composite",
+                buffers: &[],
+                cull: None,
+                depth_write: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                blend: None,
+                samples,
+            },
+        );
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("fluid 3d"),
             mag_filter: wgpu::FilterMode::Linear,

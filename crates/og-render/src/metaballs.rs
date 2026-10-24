@@ -158,7 +158,7 @@ const BLOB_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout 
 
 pub(crate) struct MetaballRenderer {
     field_pipeline: Deferred<wgpu::RenderPipeline>,
-    composite_pipeline: Deferred<wgpu::RenderPipeline>,
+    composite_pipeline: crate::deferred::Sampled<wgpu::RenderPipeline>,
     layout: wgpu::BindGroupLayout,
     blobs: wgpu::Buffer,
     params: wgpu::Buffer,
@@ -170,6 +170,11 @@ pub(crate) struct MetaballRenderer {
 
 impl MetaballRenderer {
     /// Makes one of its pipelines no frame used yet (Renderer::warm).
+    /// Composite into a target of `samples` per pixel from now on.
+    pub(crate) fn set_samples(&self, samples: u32) {
+        self.composite_pipeline.set_samples(samples);
+    }
+
     pub(crate) fn warm(&self) -> bool {
         crate::deferred::warm_one(&[&self.field_pipeline, &self.composite_pipeline])
     }
@@ -262,22 +267,25 @@ impl MetaballRenderer {
             bind_group_layouts: &[Some(frame_layout), Some(&layout)],
             immediate_size: 0,
         });
-        let composite_pipeline =
-            crate::deferred_hdr(device, &composite_layout, module, move |layout, module| {
-                crate::HdrPipeline {
-                    label: "metaball composite",
-                    layout,
-                    module,
-                    vs: "vs_composite",
-                    fs: "fs_composite",
-                    buffers: &[],
-                    cull: None,
-                    depth_write: false,
-                    depth_compare: wgpu::CompareFunction::Always,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    samples,
-                }
-            });
+        let composite_pipeline = crate::deferred_hdr(
+            device,
+            &composite_layout,
+            module,
+            samples,
+            move |layout, module| crate::HdrPipeline {
+                label: "metaball composite",
+                layout,
+                module,
+                vs: "vs_composite",
+                fs: "fs_composite",
+                buffers: &[],
+                cull: None,
+                depth_write: false,
+                depth_compare: wgpu::CompareFunction::Always,
+                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                samples,
+            },
+        );
         let blobs = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("metaballs"),
             size: 4096,

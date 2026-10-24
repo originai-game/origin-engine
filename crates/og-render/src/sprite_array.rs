@@ -10,6 +10,7 @@
 //! that draws one (the overlay's on the first frame with an overlay array
 //! sprite), so a renderer that never does pays nothing.
 
+use crate::deferred::Sampled;
 use crate::effects::SpriteBlend;
 use crate::sprites::SPRITE_ARRAY_LAYOUT;
 
@@ -29,10 +30,10 @@ pub(crate) fn source() -> String {
 /// layout; the overlay's are made by [`SpriteArrayPipelines::overlay`].
 pub(crate) struct SpriteArrayPipelines {
     pub layout: wgpu::BindGroupLayout,
-    alpha: wgpu::RenderPipeline,
-    additive: wgpu::RenderPipeline,
+    alpha: Sampled<wgpu::RenderPipeline>,
+    additive: Sampled<wgpu::RenderPipeline>,
     /// Alpha-blended and untonemapped ([`crate::UNTONEMAPPED_BLEND`]).
-    untonemapped: wgpu::RenderPipeline,
+    untonemapped: Sampled<wgpu::RenderPipeline>,
     pub glow: wgpu::RenderPipeline,
     /// The overlay's: in the output's format, and in its sRGB view's.
     overlay: Option<(wgpu::RenderPipeline, Option<wgpu::RenderPipeline>)>,
@@ -78,23 +79,27 @@ impl SpriteArrayPipelines {
             source: wgpu::ShaderSource::Wgsl(source().into()),
         });
         let buffers = [Some(SPRITE_ARRAY_LAYOUT)];
-        let pipeline = |label, fs, blend| {
-            crate::hdr_pipeline(
-                device,
-                crate::HdrPipeline {
-                    label,
-                    layout: &pl,
-                    module: &module,
-                    vs: "vs",
-                    fs,
-                    buffers: &buffers,
-                    cull: None,
-                    depth_write: false,
-                    depth_compare: wgpu::CompareFunction::LessEqual,
-                    blend: Some(blend),
-                    samples,
-                },
-            )
+        // Into the scene's HDR target: at the renderer's samples per pixel.
+        let pipeline = |label: &'static str, fs: &'static str, blend: wgpu::BlendState| {
+            let (device, pl, module) = (device.clone(), pl.clone(), module.clone());
+            Sampled::new(samples, move |samples| {
+                crate::hdr_pipeline(
+                    &device,
+                    crate::HdrPipeline {
+                        label,
+                        layout: &pl,
+                        module: &module,
+                        vs: "vs",
+                        fs,
+                        buffers: &[Some(SPRITE_ARRAY_LAYOUT)],
+                        cull: None,
+                        depth_write: false,
+                        depth_compare: wgpu::CompareFunction::LessEqual,
+                        blend: Some(blend),
+                        samples,
+                    },
+                )
+            })
         };
         let additive = wgpu::BlendState {
             color: wgpu::BlendComponent {
@@ -153,6 +158,13 @@ impl SpriteArrayPipelines {
             glow,
             overlay: None,
             layout,
+        }
+    }
+
+    /// Draw into a target of `samples` per pixel from now on.
+    pub fn set_samples(&self, samples: u32) {
+        for p in [&self.alpha, &self.additive, &self.untonemapped] {
+            p.set_samples(samples);
         }
     }
 

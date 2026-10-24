@@ -690,6 +690,16 @@ pub(crate) struct TerrainPipelines<'a> {
 }
 
 impl TerrainRenderer {
+    /// Draw the lit pass into a target of `samples` per pixel from now on
+    /// (the layer-array variant, made later, too).
+    pub(crate) fn set_samples(&mut self, samples: u32) {
+        self.samples = samples;
+        self.passes.lit.set_samples(samples);
+        if let Some((_, passes)) = &self.arrays {
+            passes.lit.set_samples(samples);
+        }
+    }
+
     /// Makes one of its pipelines no frame used yet (Renderer::warm).
     pub(crate) fn warm(&self) -> bool {
         let p = &self.passes;
@@ -1700,9 +1710,9 @@ pub(crate) fn draw_levels(
         // Each terrain's own pipeline: the standard one, or the layer-array
         // variant's.
         pass.set_pipeline(match which {
-            TerrainPass::Lit => &d.passes.lit,
-            TerrainPass::Prepass => &d.passes.prepass,
-            TerrainPass::Shadow => &d.passes.shadow,
+            TerrainPass::Lit => d.passes.lit.get(),
+            TerrainPass::Prepass => d.passes.prepass.get(),
+            TerrainPass::Shadow => d.passes.shadow.get(),
         });
         for l in &d.levels {
             if !visible(l.center, l.radius) {
@@ -1727,7 +1737,7 @@ pub(crate) fn draw_levels(
 /// standard one, or the layer-array variant's ([`TerrainRenderer`]).
 #[derive(Clone)]
 pub(crate) struct TerrainPasses {
-    pub lit: Rc<Deferred<wgpu::RenderPipeline>>,
+    pub lit: Rc<crate::deferred::Sampled<wgpu::RenderPipeline>>,
     pub prepass: Rc<Deferred<wgpu::RenderPipeline>>,
     pub shadow: Rc<Deferred<wgpu::RenderPipeline>>,
 }
@@ -1767,6 +1777,7 @@ fn terrain_passes(
         device,
         &lit_layout,
         lit_module.clone(),
+        samples,
         move |layout, module| crate::HdrPipeline {
             label: "terrain",
             layout,

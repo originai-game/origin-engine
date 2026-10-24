@@ -76,6 +76,7 @@ fn emitter_gpu(
     points: u32,
     textured: bool,
     collide: bool,
+    soft: f32,
 ) -> EmitterGpu {
     let (kind, a, b) = match e.shape {
         EmitterShape::Point => (0.0, 0.0, 0.0),
@@ -168,7 +169,7 @@ fn emitter_gpu(
         render: [
             align,
             stretch,
-            e.soft_distance.max(0.0),
+            soft,
             match e.blend {
                 ParticleBlend::Additive => 0.0,
                 ParticleBlend::Alpha => 1.0,
@@ -514,8 +515,15 @@ impl ParticleRenderer {
             let depth = (sys.transform.w_axis.truncate() - eye).dot(forward);
             let textured = e.texture.is_some();
             let collide = gpu && e.collision.is_some() && e.space == SimulationSpace::World;
-            out.needs_depth |= e.soft_distance > 0.0 || collide;
-            out.soft |= e.soft_distance > 0.0;
+            // Soft particles fade against the depth behind them, where the
+            // frame's quality lets them (RenderQuality::soft_particles).
+            let soft = if scene.quality.soft_particles {
+                e.soft_distance.max(0.0)
+            } else {
+                0.0
+            };
+            out.needs_depth |= soft > 0.0 || collide;
+            out.soft |= soft > 0.0;
             let first_entry = entries.len() as u32;
             if gpu {
                 let g = state.gpu.get_or_insert_with(|| GpuSystem {
@@ -553,6 +561,7 @@ impl ParticleRenderer {
                         n_points,
                         textured,
                         collide,
+                        soft,
                     ));
                 }
                 entries.push(emitter_gpu(
@@ -564,6 +573,7 @@ impl ParticleRenderer {
                     n_points,
                     textured,
                     collide,
+                    soft,
                 ));
                 out.ticks += steps.len() as u32;
                 out.any_gpu = true;
@@ -600,6 +610,7 @@ impl ParticleRenderer {
                     0,
                     textured,
                     false,
+                    soft,
                 ));
                 out.systems.push(FrameSystem {
                     id: sys.id,
