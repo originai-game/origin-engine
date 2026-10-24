@@ -18722,6 +18722,14 @@
           "default": 12,
           "minimum": 1
         },
+        "uvRepeat": {
+          "$ref": "#/$defs/Vector2",
+          "description": "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).",
+          "default": {
+            "x": 1,
+            "y": 1
+          }
+        },
         "physics": {
           "type": "boolean",
           "description": "Register it as a physics mesh too (BufferGeometryDesc.physics).",
@@ -18833,6 +18841,14 @@
           "description": "A path (og.path.create or og.path.find) to extrude along instead of +Z: the shape's x along the path's normal and y along its binormal (three.js's Frenet frames), steps rings evenly spaced along it. A path turns the bevel off, as three.js. 0 extrudes along +Z.",
           "default": 0
         },
+        "uvRepeat": {
+          "$ref": "#/$defs/Vector2",
+          "description": "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).",
+          "default": {
+            "x": 1,
+            "y": 1
+          }
+        },
         "physics": {
           "type": "boolean",
           "description": "Register it as a physics mesh too.",
@@ -18880,6 +18896,14 @@
           "description": "How far it turns; 2 pi is whole (clamped to it).",
           "default": 6.283185307179586,
           "x-og-unit": "rad"
+        },
+        "uvRepeat": {
+          "$ref": "#/$defs/Vector2",
+          "description": "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).",
+          "default": {
+            "x": 1,
+            "y": 1
+          }
         },
         "physics": {
           "type": "boolean",
@@ -18933,6 +18957,14 @@
           "default": 0,
           "maximum": 64
         },
+        "uvRepeat": {
+          "$ref": "#/$defs/Vector2",
+          "description": "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).",
+          "default": {
+            "x": 1,
+            "y": 1
+          }
+        },
         "physics": {
           "type": "boolean",
           "description": "Register it as a physics mesh too.",
@@ -18966,6 +18998,14 @@
           "description": "Subdivisions of each face.",
           "default": 0,
           "maximum": 64
+        },
+        "uvRepeat": {
+          "$ref": "#/$defs/Vector2",
+          "description": "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).",
+          "default": {
+            "x": 1,
+            "y": 1
+          }
         },
         "physics": {
           "type": "boolean",
@@ -19071,6 +19111,14 @@
           "description": "Points per curve when an og.Shape section is flattened.",
           "default": 12,
           "minimum": 1
+        },
+        "uvRepeat": {
+          "$ref": "#/$defs/Vector2",
+          "description": "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).",
+          "default": {
+            "x": 1,
+            "y": 1
+          }
         },
         "physics": {
           "type": "boolean",
@@ -19188,6 +19236,14 @@
           "description": "The second operand.",
           "default": {}
         },
+        "uvRepeat": {
+          "$ref": "#/$defs/Vector2",
+          "description": "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).",
+          "default": {
+            "x": 1,
+            "y": 1
+          }
+        },
         "physics": {
           "type": "boolean",
           "description": "Register it as a physics mesh too.",
@@ -19214,6 +19270,14 @@
           },
           "description": "The parts, in order (at least one).",
           "default": []
+        },
+        "uvRepeat": {
+          "$ref": "#/$defs/Vector2",
+          "description": "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).",
+          "default": {
+            "x": 1,
+            "y": 1
+          }
         },
         "physics": {
           "type": "boolean",

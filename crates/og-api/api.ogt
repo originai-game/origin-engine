@@ -4453,6 +4453,9 @@ module render {
       default 12
       min 1
     }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
     field physics bool "Register it as a physics mesh too (BufferGeometryDesc.physics)." {
       default true
     }
@@ -4496,6 +4499,9 @@ module render {
       min 1
     }
     field extrudePath Path "A path (og.path.create or og.path.find) to extrude along instead of +Z: the shape's x along the path's normal and y along its binormal (three.js's Frenet frames), steps rings evenly spaced along it. A path turns the bevel off, as three.js. 0 extrudes along +Z."
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
     field physics bool "Register it as a physics mesh too." {
       default true
     }
@@ -4519,6 +4525,9 @@ module render {
       default 6.283185307179586
       unit rad
     }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
     field physics bool "Register it as a physics mesh too." {
       default true
     }
@@ -4538,6 +4547,9 @@ module render {
     field detail u32 "Subdivisions of each face: (detail + 1)² triangles a face." {
       max 64
     }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
     field physics bool "Register it as a physics mesh too." {
       default true
     }
@@ -4554,6 +4566,9 @@ module render {
     }
     field detail u32 "Subdivisions of each face." {
       max 64
+    }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
     }
     field physics bool "Register it as a physics mesh too." {
       default true
@@ -4586,6 +4601,9 @@ module render {
     field curveSegments u32 "Points per curve when an og.Shape section is flattened." {
       default 12
       min 1
+    }
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
     }
     field physics bool "Register it as a physics mesh too." {
       default true
@@ -4628,6 +4646,9 @@ module render {
     field op CsgOp "The operation."
     field a GeometryPart "The first operand."
     field b GeometryPart "The second operand."
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
     field physics bool "Register it as a physics mesh too." {
       default true
     }
@@ -4638,6 +4659,9 @@ module render {
     doc "Geometries placed and merged into one, as three.js BufferGeometryUtils.mergeGeometries after applying each part's matrix: a prop of parts drawn in one draw, a mirrored half, an array (the same part at several placements). Normals follow each placement; a mirrored part turns its triangles so they still face out. Vertex colours are kept when any part has them."
     desc true
     field parts List.GeometryPart "The parts, in order (at least one)."
+    field uvRepeat Vector2 "How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping)." {
+      default 1 1
+    }
     field physics bool "Register it as a physics mesh too." {
       default true
     }

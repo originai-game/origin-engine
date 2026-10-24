@@ -7000,6 +7000,12 @@ export interface ShapeGeometryDesc {
    */
   readonly curveSegments?: number;
   /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
+  /**
    * Register it as a physics mesh too (BufferGeometryDesc.physics).
    *
    * @default true
@@ -7089,6 +7095,12 @@ export interface ExtrudeGeometryDesc {
    */
   readonly extrudePath?: Path;
   /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
+  /**
    * Register it as a physics mesh too.
    *
    * @default true
@@ -7137,6 +7149,12 @@ export interface LatheGeometryDesc {
    */
   readonly phiLength?: number;
   /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
+  /**
    * Register it as a physics mesh too.
    *
    * @default true
@@ -7184,6 +7202,12 @@ export interface PolyhedronGeometryDesc {
    */
   readonly detail?: number;
   /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
+  /**
    * Register it as a physics mesh too.
    *
    * @default true
@@ -7218,6 +7242,12 @@ export interface SolidGeometryDesc {
    * @range ..64
    */
   readonly detail?: number;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
   /**
    * Register it as a physics mesh too.
    *
@@ -7296,6 +7326,12 @@ export interface SweepGeometryDesc {
    * @range 1..
    */
   readonly curveSegments?: number;
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
   /**
    * Register it as a physics mesh too.
    *
@@ -7391,6 +7427,12 @@ export interface CsgGeometryDesc {
    */
   readonly b?: GeometryPart;
   /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
+  /**
    * Register it as a physics mesh too.
    *
    * @default true
@@ -7416,6 +7458,12 @@ export interface MergeGeometriesDesc {
    * @default []
    */
   readonly parts?: readonly GeometryPart[];
+  /**
+   * How many times a texture repeats across it, along u and v: its UVs scaled by uvRepeat (three.js texture.repeat, here on the geometry; material textures sample with repeat wrapping).
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly uvRepeat?: Vector2;
   /**
    * Register it as a physics mesh too.
    *
