@@ -120,11 +120,10 @@ platform, and public when the owner decides (§6).
 |---|---|---|
 | `@origingame/engine` | the TypeScript API and runtime (`src/`, `types/*.d.ts`, `schema/api.schema.json`, `bindings.json`), the web hosts (`dist/web`, `dist/web-publish`, `dist/web-publish-2d`, each publish directory with its lanes variant), the player shell, the Basis transcoder, `bin/og.mjs` (runs the platform package's `og` with this package as `OG_ENGINE_PACKAGE`), and `knowledge/`: `skills/og-*` (ten), `wiki/` (generated from `api.ogt`), `looks/catalogue.json`, `scaffold/` (`origin-engine.json`, `distribution.json`, the template's text), `knowledge.json`, `scripts/mount.ts` and `validate.ts` (copied from `packages/knowledge` at pack); no native code | `packages/engine/scripts/pack.sh` (`OG_RELEASE=1 build.sh --linux-x64` first) |
 | `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64` | `origin-engine.node` (napi addon, `crates/og-host-node`) and `og` (`crates/og-cli`), release profile, `os`/`cpu`/`libc` so only the matching one installs, as `optionalDependencies` of the main package | the same |
-| `@origingame/engine-win32-x64` (candidate; F7) | `origin-engine.node` (MSVC napi addon) and `og.exe`, release profile, `os: win32`, `cpu: x64`; the same API, DX12 renderer, tsgo checker fallback | `OG_RELEASE=1 sh packages/engine/scripts/pack.sh` on Windows in Git Bash |
+| `@origingame/engine-win32-x64` | `origin-engine.node` (MSVC napi addon) and `og.exe`, release profile, `os: win32`, `cpu: x64`; the same API, DX12 renderer, tsgo checker fallback | `OG_RELEASE=1 sh packages/engine/scripts/pack.sh` on Windows in Git Bash |
 | `@origingame/create-game` | `bin/create.ts` (`npm create @origingame/game` runs it: npm and bun map `create @scope/name` to `@scope/create-name`, which is why the package is `create-game`, not `create`), `template/` (`templates/game`, the 3D template), `template-2d/` (`templates/game-2d`, the 2D starter `--profile 2d` writes), `archetypes/` (the eight), `looks/` (the catalogue) | `packages/create` `prepack` |
 
-Not shipped yet: Windows x64 (§4 F7, with the platform runner's Windows
-host) and linux-arm64 (design §12 item 5); `og.mjs` says so when the
+Not shipped yet: linux-arm64 (design §12 item 5); `og.mjs` says so when the
 platform package is missing. `@tsrs/*` are someone else's
 packages, pinned at `TSRS_VERSION` of `scripts/install-tools.sh`, not at
 the engine's version.
@@ -286,13 +285,17 @@ optimisation rows (§P) after them.
 | F7 | **Started 2026-10-22 on the `studio-win` runner**; **native MSVC candidate verified 2026-10-23**, branch `windows-x64` (the coordinator merges). Release `@origingame/engine-win32-x64` carries `og.exe` and `origin-engine.node`, with embedded DXC. Workspace check/clippy pass; nextest runs every crate: 939 passed, five Metal-reference failures, 12 skipped. All 84 DX12 gfx scenes render; six exceed Metal tolerance, no new tier references committed. The 0.2.0 packed-tarball install test passes in 87.1 s (3D starter, runner, 2D starter, publish wasm, knowledge mount/check). Doctor reports `renderer dx12` and the explicit `tsgo 7.0.2 through bun x` fallback. Windows paths, LF/HDR checkout, process fixtures and mount permissions are portable; one TypeScript API. Evidence and exact frame differences: `tests/evidence/release/windows-x64.md`; device row `windows` below. No cloud path changed | **Merged 2026-10-23**; the six DX12 frame differences reviewed by the coordinator (`windows-x64.md` §The coordinator's review: star, texel-edge and caustic dither, nothing moved; no DX12 reference tier). The win32-x64 package's first publish landed with 0.3.0 (2026-10-23, packed on `studio-win` from d8bcf2d2, its tarball install test 115.3 s on DX12; `tests/evidence/release/0.3.0.md`). Still owed: the install test from the registry on Windows and one engine thread on the platform runner's Windows host; the Mac's registry run passed (76.9 s, Metal, `0.3.0.md`) |
 | F8 | **The depth wave** (`docs/depth.md`, started 2026-10-22): nine streams on branches `depth/<stream>`, each an orb thread, merged serially by the coordinator on `macrunner`: S1 runtime geometry, lines, points, debug draw and mesh raycast; S2 paths and the timeline asset; S3 the video producer (`og render`, `type video`); S4 the room ABI and deterministic lockstep with desync diagnosis; S5 the semantic frame, `expect`, trace, scene write-back and `cook --report`; S6 mesh LOD, reflection probes and SSR; S7 baked lightmaps, irradiance volumes, volumetric fog, area lights and cookies; S8 render targets, secondary cameras, layers, full custom shaders and custom post passes; S9 2D skeletal animation and the math layer | each stream merged through the functional lane with its Metal references recorded and its round in `docs/phase-1.md`; `docs/depth.md` §10's order; the wave's end measured once |
 
-**F7 update, 2026-10-24:** the Windows registry install test now passes
+**F7 complete, 2026-10-24:** the Windows registry install test now passes
 (117.0 s, DX12, published 0.3.0 packages only). The real-engine runner
 tests pass 2/2 and runner library tests 62/62 after two local platform
 fixes: selecting `og.exe` and waiting for the stopped service's leader.
-`tests/evidence/release/0.3.0.md` records commands and limitations. The
-remaining F7 acceptance is a real Agent Server thread on a registered
-Windows runner; that shared-state action is not authorized or run.
+`tests/evidence/release/0.3.0.md` records commands and limitations. After
+the authorized Identity and Agent Service fixes, a fresh registered
+Windows runner completed scaffold/start/probe/capture/edit/reload/stop
+and pushed its branch. A fresh clone verified all eight LFS objects.
+Registrations, tokens, processes and tunnels were cleaned up; test
+repositories were archived. `tests/evidence/release/0.4.0.md` records the
+real-thread receipt separately from the 0.4.0 package checks.
 
 ### T. The test matrix (what runs where, when; standing)
 
