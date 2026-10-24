@@ -207,8 +207,9 @@ fn grid_segments(water: &Water) -> u32 {
 
 struct Slot {
     uniform: wgpu::Buffer,
-    /// The surface as a reflection probe's faces draw it (`face_draws`).
-    face_uniform: wgpu::Buffer,
+    /// The surface as a reflection probe's faces draw it (`face_draws`),
+    /// but for the face's size.
+    face: WaterGpu,
     heights: Option<(u32, wgpu::Texture, wgpu::TextureView)>,
 }
 
@@ -341,12 +342,7 @@ impl WaterRenderer {
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                     mapped_at_creation: false,
                 }),
-                face_uniform: device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("water (probe face)"),
-                    size: std::mem::size_of::<WaterGpu>() as u64,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                }),
+                face: bytemuck::Zeroable::zeroed(),
                 heights: None,
             });
         }
@@ -414,13 +410,12 @@ impl WaterRenderer {
                 under: water.underwater_color.extend(0.0).to_array(),
             };
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
-            // A probe face has no scene copy, depth or planar reflection of
-            // its own: no screen-space or planar reflection there.
-            let mut face = gpu;
-            face.look[1] = 0.0;
-            face.extra[1] = 0.0;
-            face.screen = [1.0; 4];
-            queue.write_buffer(&slot.face_uniform, 0, bytemuck::bytes_of(&face));
+            // A probe face has no planar reflection of its own, and its
+            // screen-space reflection is left out: the probe's capture point
+            // sees what the surface would mirror only from one point.
+            slot.face = gpu;
+            slot.face.look[1] = 0.0;
+            slot.face.extra[1] = 0.0;
             let heights = match (&slot.heights, field) {
                 (Some((_, _, v)), Some(_)) => v,
                 _ => &self.flat,
@@ -468,20 +463,22 @@ impl WaterRenderer {
         draws
     }
 
-    /// The surfaces as a reflection probe's faces draw them (after
-    /// [`WaterRenderer::prepare`]): no scene copy or depth below of their
-    /// own, so `scene_depth` is the far plane (1x1, the shader clamps its
-    /// loads) and `below` what shows through (the water's shallow colour
-    /// times it): the deep colour over the reflected environment and the
-    /// sun's highlight, without refraction, foam at edges or screen-space
-    /// and planar reflections.
+    /// The surfaces as the faces of a reflection probe's capture of face
+    /// size `size` draw them (after [`WaterRenderer::prepare`]): through
+    /// `below`, the copy of the face drawn so far, and over `scene_depth`,
+    /// the face's depth prepass, so the face refracts what lies below and
+    /// foams at the edges as the frame does; without screen-space or
+    /// planar reflections.
     pub(crate) fn face_draws(
         &self,
         device: &wgpu::Device,
         waters: &[Water],
+        size: u32,
         below: &wgpu::TextureView,
         scene_depth: &wgpu::TextureView,
     ) -> Vec<WaterDraw> {
+        use wgpu::util::DeviceExt;
+        let n = size as f32;
         waters
             .iter()
             .zip(&self.slots)
@@ -490,9 +487,16 @@ impl WaterRenderer {
                     (Some((_, _, v)), Some(_)) => v,
                     _ => &self.flat,
                 };
+                let mut face = slot.face;
+                face.screen = [n, n, 1.0 / n, 1.0 / n];
+                let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("water (probe face)"),
+                    contents: bytemuck::bytes_of(&face),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
                 let tex = wgpu::BindingResource::TextureView;
                 let entries = [
-                    slot.face_uniform.as_entire_binding(),
+                    uniform.as_entire_binding(),
                     tex(heights),
                     tex(below),
                     tex(scene_depth),

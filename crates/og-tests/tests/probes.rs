@@ -7,8 +7,8 @@
 use og_render::{RenderDesc, RenderTarget, Renderer, RgbaImage};
 use og_tests::gfx;
 use og_tests::probe_scenes::{
-    Outdoor, SsrFloor, outdoor_scene, posed_figure_scene, probe_effects_scene, probe_water_scene,
-    ssr_floor_scene, two_rooms_scene,
+    FLOOR_PROBE, Outdoor, SsrFloor, add_floor_water, outdoor_scene, posed_figure_scene,
+    probe_effects_scene, probe_floor_scene, probe_water_scene, ssr_floor_scene, two_rooms_scene,
 };
 use og_tests::scenes;
 use std::path::PathBuf;
@@ -269,6 +269,28 @@ fn a_capture_draws_water() {
     assert!(
         ny[0] > ny[1] * 1.5 && ny0[1] > ny0[0],
         "the pond on -y: {ny:?} against the meadow {ny0:?}"
+    );
+}
+
+/// Water in a capture shows what lies below it: over the yellow floor,
+/// 0.15 m of clear water leaves the -y face yellow, its red and green near
+/// the bare floor's, as the frame's water does. Before the faces had a depth prepass
+/// and a copy of themselves, the water there read the far plane below and
+/// white through it, so the face took the water's dark blue deep colour.
+#[test]
+fn water_in_a_capture_shows_the_floor_below() {
+    let desc = scenes::base_desc();
+    let mut scene = probe_floor_scene();
+    let (_, bare) = render(&desc, &scene, Some(FLOOR_PROBE.0));
+    add_floor_water(&mut scene);
+    let (_, with) = render(&desc, &scene, Some(FLOOR_PROBE.0));
+    let (ny, ny0) = (face_mean(&with.unwrap(), 3), face_mean(&bare.unwrap(), 3));
+    println!("-y {ny:?} / bare floor {ny0:?}");
+    let yellow = |c: [f32; 3]| c[0] > 3.0 * c[2] && c[1] > 2.5 * c[2];
+    assert!(yellow(ny0), "the bare floor on -y: {ny0:?}");
+    assert!(
+        yellow(ny) && (0..2).all(|k| ny[k] > 0.6 * ny0[k] && ny[k] < 1.3 * ny0[k]),
+        "the floor through the water on -y: {ny:?} against the bare floor {ny0:?}"
     );
 }
 

@@ -466,3 +466,53 @@ pub fn probe_water_scene(on: bool) -> RenderScene {
     }
     scene
 }
+
+/// The probe of [`probe_floor_scene`]: its id and capture point, 1.2 m
+/// over a yellow floor.
+pub const FLOOR_PROBE: (u64, Vec3) = (7, Vec3::new(0.0, 1.2, 0.0));
+
+/// A yellow floor 10 m square (its top at y 0) under a high sun and a dark
+/// grey background, with a baked probe at [`FLOOR_PROBE`]: its -y face sees
+/// the floor. The scenes of the probe faces' depth (`tests/probes.rs`) put
+/// water, soft particles or a 3D fluid between the probe and the floor.
+pub fn probe_floor_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    scene.light = DirectionalLight {
+        direction_to_light: Vec3::new(0.3, 1.0, 0.2),
+        intensity: 3.0,
+        cast_shadows: false,
+        ..Default::default()
+    };
+    scene.environment.intensity = 0.6;
+    scene.environment.background = Background::Color(Vec3::splat(0.05));
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 3.0, 6.0),
+        target: Vec3::ZERO,
+        ..Default::default()
+    };
+    boxed(
+        &mut scene,
+        mat(Vec3::new(0.9, 0.75, 0.05), 0.0, 0.9),
+        Vec3::new(0.0, -0.1, 0.0),
+        Vec3::new(10.0, 0.2, 10.0),
+    );
+    let (id, at) = FLOOR_PROBE;
+    scene
+        .reflection_probes
+        .push(ReflectionProbe::new(id, at, Vec3::new(10.0, 4.0, 10.0)));
+    scene
+}
+
+/// Clear water 0.15 m deep over [`probe_floor_scene`]'s floor, 6 m square,
+/// its deep colour a dark blue and no foam: seen through, it shows the
+/// floor's yellow; with no depth below, its deep colour.
+pub fn add_floor_water(scene: &mut RenderScene) {
+    scene.water.push(og_render::Water {
+        transform: Mat4::from_translation(Vec3::new(0.0, 0.15, 0.0)),
+        size: Vec2::new(6.0, 6.0),
+        shallow: Vec3::ONE,
+        deep: Vec3::new(0.02, 0.05, 0.3),
+        foam_width: 0.0,
+        ..Default::default()
+    });
+}

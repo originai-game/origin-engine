@@ -9,8 +9,14 @@
 //! and world sprites and text on every layer; `lib.rs`'s probe pass),
 //! copied into a radiance cube with mips and GGX-prefiltered into
 //! [`crate::ENVIRONMENT_MAP_LEVELS`] levels like the environment's own
-//! (`ibl.rs`). A baked probe draws its capture once, the first frame it is
-//! in a scene, unless it brings one ([`ReflectionProbe::baked`], an
+//! (`ibl.rs`). A face with water draws its own depth prepass first (the
+//! view prepass's draws, `lib.rs`'s `depth_prepass`) and ends its pass
+//! after the sky to copy itself, so the water there refracts the face
+//! drawn so far and darkens and foams by the depth below as the frame's
+//! does ([`FaceTargets`], one set per face size, made the first time a
+//! capture needs it and drawn only while one is due). A baked probe
+//! draws its capture once, the first frame it is in a scene, unless it
+//! brings one ([`ReflectionProbe::baked`], an
 //! environment map `og bake probes` wrote); a realtime probe draws it again
 //! every [`ReflectionProbe::interval`] ticks.
 //!
@@ -155,6 +161,9 @@ pub(crate) struct ProbeSlot {
     /// The six faces as drawn (one level): each one's view, the MSAA
     /// target it resolves from and the depth.
     pub faces: [wgpu::TextureView; 6],
+    /// The six faces' texture (a face is copied out of it for the water
+    /// drawn over it: [`FaceTargets::copy`]).
+    pub capture: wgpu::Texture,
     pub msaa: Option<wgpu::TextureView>,
     pub depth: wgpu::TextureView,
     pub filter: crate::ibl::ProbeFilter,
@@ -201,7 +210,16 @@ impl ProbeSlot {
         samples: u32,
     ) -> ProbeSlot {
         let attach = wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING;
-        let capture = texture(device, "probe capture", size, 6, 1, 1, HDR_FORMAT, attach);
+        let capture = texture(
+            device,
+            "probe capture",
+            size,
+            6,
+            1,
+            1,
+            HDR_FORMAT,
+            attach | wgpu::TextureUsages::COPY_SRC,
+        );
         let radiance = texture(
             device,
             "probe radiance",
@@ -261,7 +279,7 @@ impl ProbeSlot {
         });
         let depth_view = depth.create_view(&Default::default());
         let msaa_view = msaa.as_ref().map(|t| t.create_view(&Default::default()));
-        let mut textures = vec![capture, radiance, depth];
+        let mut textures = vec![radiance, depth];
         textures.extend(msaa);
         ProbeSlot {
             id,
@@ -269,6 +287,7 @@ impl ProbeSlot {
             samples,
             captured: None,
             faces,
+            capture,
             msaa: msaa_view,
             depth: depth_view,
             filter,
@@ -277,6 +296,18 @@ impl ProbeSlot {
             _textures: textures,
         }
     }
+}
+
+/// What a due face draws besides its capture, for the captures of one face
+/// size: its depth prepass (the linear depth water and soft particles read)
+/// and the copy of the face drawn so far (what water shows through). One
+/// set serves every face of that size, as the faces are drawn one after
+/// the other; made the first frame a capture needs it, kept while a probe
+/// of that size is.
+pub(crate) struct FaceTargets {
+    pub size: u32,
+    pub prepass: crate::views::DepthPrepass,
+    pub copy: Option<wgpu::TextureView>,
 }
 
 /// What the frame does with its probes ([`Probes::prepare`]).
@@ -296,6 +327,8 @@ pub(crate) struct Probes {
     pub slots: Vec<ProbeSlot>,
     /// Frame uniforms: one per active probe, then six per due capture.
     pub uniforms: Option<(wgpu::Buffer, u64)>,
+    /// The due faces' depth and copy, by face size.
+    pub targets: Vec<FaceTargets>,
 }
 
 impl Probes {
@@ -359,6 +392,8 @@ impl Probes {
             }
             frame.active.push((*p, Some(slot)));
         }
+        let sizes: Vec<u32> = self.slots.iter().map(|s| s.size).collect();
+        self.targets.retain(|t| sizes.contains(&t.size));
         let slots = frame.active.len() + 6 * frame.due.len();
         let stride = (std::mem::size_of::<FrameUniform>() as u64)
             .next_multiple_of(device.limits().min_uniform_buffer_offset_alignment as u64);
@@ -379,6 +414,46 @@ impl Probes {
             ));
         }
         frame
+    }
+
+    /// Makes the depth prepass (and with `copy`, the face copy) of every
+    /// face size `frame` captures at. Only due captures pay: nothing is
+    /// made or drawn in a frame without one.
+    pub fn ensure_targets(&mut self, device: &wgpu::Device, frame: &ProbeFrame, copy: bool) {
+        for &(slot, _) in &frame.due {
+            let size = self.slots[slot].size;
+            let at = match self.targets.iter().position(|t| t.size == size) {
+                Some(at) => at,
+                None => {
+                    self.targets.push(FaceTargets {
+                        size,
+                        prepass: crate::views::DepthPrepass::new(
+                            device,
+                            (size, size),
+                            "probe face",
+                        ),
+                        copy: None,
+                    });
+                    self.targets.len() - 1
+                }
+            };
+            let t = &mut self.targets[at];
+            if copy && t.copy.is_none() {
+                let usage = wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST;
+                let copy = texture(device, "probe face copy", size, 1, 1, 1, HDR_FORMAT, usage);
+                t.copy = Some(copy.create_view(&Default::default()));
+            }
+        }
+    }
+
+    /// The targets of the faces of due capture `slot` (after
+    /// [`Probes::ensure_targets`]).
+    pub fn targets_of(&self, slot: usize) -> &FaceTargets {
+        let size = self.slots[slot].size;
+        self.targets
+            .iter()
+            .find(|t| t.size == size)
+            .expect("made by ensure_targets")
     }
 
     /// The uniform binding of slot `k` of the frame's uniforms.
