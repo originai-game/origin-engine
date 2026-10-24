@@ -27,9 +27,11 @@ fn scene() -> RenderScene {
     scene
 }
 
+// The feature's capability: a 2D build says it has no 3D world.
+const _: () = assert!(!WORLD_3D);
+
 #[test]
 fn water_and_volumetric_fog_are_not_drawn_in_the_2d_profile() {
-    assert!(!WORLD_3D);
     let desc = RenderDesc {
         width: 96,
         height: 64,

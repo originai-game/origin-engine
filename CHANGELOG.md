@@ -25,6 +25,18 @@ round 3").
   flattened to points on the wire. The IDL gains `This`, `prop { host
   false }` and class values. The og-game skill §18 and
   `reference/shapes.md`; the og-tests gfx scene `geometry-shapes`.
+- `profile-quality`: `og build --publish` and `og run --device` refuse
+  a `profile "2d"` project whose scenes hold Terrain, TerrainScatter,
+  Water, WaterSurface or Fluid3D, one `<scene>:<line>: <Component>` per
+  hit; under `profile2d` og-runtime's terrain is absent (`og.terrain.*`
+  and heightfield colliders refuse, naming `RenderCapabilities.world3d`).
+  `GraphicsQuality` moved from module ui to render and is read by the
+  renderer: `RenderSettings` gains `rectShadows`, `shadowedLights`,
+  `shadowMapScale`, `volumetricFog`, `softParticles`, `ssr`, `ao`,
+  `msaaSamples` and `quality: QualityPreset`;
+  `og.render.applyQuality(world, preset)` writes a preset's row (the
+  table is in its doc); `SettingsDesc.world` makes the UI kit's settings
+  screen apply a picked preset.
 
 Debt round 2 (`docs/phase-1.md`, "Plan 2026-10-23, debt round 2").
 
