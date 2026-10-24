@@ -30,6 +30,26 @@ asks for each where the Player's hello lists it (`docs/web-export.md`
 |---|---|---|---|
 | 9 | The Player's `hello` carries `time` (UTC ms, the Player's clock), and every answer carries `time` when the Player answered it | `og.platform.now` and `PlatformResult.time` (Phase 2, core round) are the host's clock handed to the game as host input, recorded in replays like a key press; an idle game credits the time away from a store answer's `time`. The Player's clock (one the platform can correct, the same for every device of a player) should be the one games read, not each browser's. | The engine's Worker (`packages/engine/src/web/worker.ts`) gives og.platform the browser's clock (`Date.now()` when the platform attaches and when each answer arrives) and says so: `og.platform.info(world).clock` is `browser`. An answer the page hands back with its own `time` is taken as is and `clock` reads `player`, so when this lands the shell's bridge (`packages/engine/shell/platform.ts`) only passes the field on. |
 
+**2026-10-24, clock transport implemented locally on the platform:**
+`30b23ba51` and `ff518833c` add optional finite, non-negative `time` to the
+protocol-2 hello and every success/error result, preserving protocol 1.
+The wire reader keeps the stamp. Framed Player, Stage and verify mode
+stamp at answer time; HTTP stamps its server's time. Contracts, SDK,
+transport and route tests, plus Stage and protocol browser checks passed;
+the engine coordinator reran the SDK suite, 29/29. These commits are not
+pushed or deployed. The framed Player and Stage still default to their
+page's `Date.now`, so cross-device server correction remains open. A
+`clock: player` label alone does not establish a server-corrected clock.
+
+The engine consumes hello time as well as result time at `b7fcbacb`:
+both transports retain it and pass it through the shell and Worker to
+`attachPlatform`. An unstamped hello retains the host-clock fallback.
+The 22 focused platform tests and all three package typechecks pass;
+removing attachment propagation makes the regression read 1234 instead
+of the Player's 42. The Rust runtime retains its existing positive-time
+rule (zero is its absent-time sentinel). No wasm rebuild or real-browser
+hello handoff test was run for this change.
+
 Nothing here carries a credential: every method is a name and arguments,
 and the Player owns the session, as protocol 2 already requires.
 

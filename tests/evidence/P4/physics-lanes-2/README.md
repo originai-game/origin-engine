@@ -189,8 +189,51 @@ eight (11,327 parallel calls each): the hash of
 `tests/evidence/P4/physics-lanes/determinism.md`, unchanged.
 og-physics's `tests/lanes.rs` checks the same per test run.
 
-## Not measured here
+## Chrome acceptance, 2026-10-24
 
-The lanes wasm: `bun bench/lanes.ts --chrome --pile` (1,000 and 2,000
-boxes, the three Chrome modes, the same capture in each) is the
-coordinator's run, as are its hashes.
+The coordinator ran the measure checkout at `27649c3a`, using its full
+gate's publish wasm, Chrome for Testing 150, WebGPU, and a 1280×720 canvas
+on the 12-core M4 Pro. No wasm rebuild or threshold change was needed.
+From `packages/engine`, five rounds of:
+
+```sh
+bun bench/lanes.ts --chrome --pile --bodies 1000,2000 --frames 600 --out <round-directory>
+```
+
+Each round runs non-isolated, isolated with lanes off, then isolated with
+lanes on for each pile. Each process warms for 60 frames and measures
+600. `chrome-2026-10-24.json` retains all 30 runs and their frame samples.
+The table shows the median and range of the five per-run p50 values,
+in milliseconds. Frame time is the Worker call's round trip, not a GPU
+completion fence. Step is the engine's whole simulation step.
+
+| Bodies | Mode | Frame p50 median | Frame p50 range | Step p50 median |
+|---|---|---:|---|---:|
+| 1,000 | Not isolated | 5.400 | 5.300 to 5.500 | 4.900 |
+| 1,000 | Isolated, lanes off | 5.420 | 5.350 to 5.465 | 4.985 |
+| 1,000 | Isolated, eight lanes | 5.565 | 5.540 to 5.650 | 5.130 |
+| 2,000 | Not isolated | 11.400 | 11.400 to 11.500 | 10.800 |
+| 2,000 | Isolated, lanes off | 11.430 | 11.340 to 11.435 | 10.835 |
+| 2,000 | Isolated, eight lanes | 6.400 | 6.345 to 6.630 | 5.845 |
+
+The 2,000-body lanes runs report `pool: web-workers`, eight threads and
+1,921 parallel calls each. The 1,000-body runs report zero parallel calls:
+the eight-thread threshold is 1,500 bodies in `og-physics/src/lanes.rs`.
+They are a serial control, not evidence of parallel physics at 1,000.
+Simulation accounts for most measured frame time; no CPU profile was
+taken to separate Rapier, synchronization and component work. Load samples
+during rounds 2 through 5 ranged from 6.63 to 11.70, above row 89's idle
+limit. These timings describe this run and do not justify retuning grains
+or claiming an idle-machine performance budget passed.
+
+All modes and rounds captured tick 660 with the same RGBA SHA-256 per pile:
+
+- 1,000: `200390c7afbf30c1028a27038d855ab5eda150ed647b1d36813fa87f457ffa22`
+- 2,000: `5a65e93417f80efc45344a8a82463f0aebf481b06455c912243af8a5c1b58784`
+
+The coordinator inspected the eight-lane captures of both piles: orange
+boxes render on the ground, with no blank or error frame. Every frame
+call succeeded. These are pixel hashes, not whole-world hashes; publish
+strips the world dump. The direct web `og.physics.stats` acceptance and
+whole-world Chrome parity remain unverified, so owed row 52 stays partly
+open.

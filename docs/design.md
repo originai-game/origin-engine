@@ -1373,6 +1373,14 @@ on macOS and Linux, the package ships `darwin-arm64` and `linux-x64`
 addons, nothing for Windows). Owed row 44's reading of the wasm budget per
 download (§7) is the engine's, written here, and awaits the owner's word.
 
+**Coverage audit, 2026-10-24.** The phase 2 and 3 table in
+`docs/phase-1.md` §F3 coverage audit and terrain acceptance maps every
+required feature to code and archived checks. The phone, capture and
+executor-image budgets above remain unverified. The native-platform
+status above is historical: Windows x64 with DX12 shipped in 0.3.0;
+registry and platform-runner acceptance are tracked in release F7.
+Cloud CI is paused by owner decision, not enforcing the perf baselines.
+
 ## 12. Open decisions (owner)
 
 1. ~~Licence~~ **Decided 2026-10-17: MIT** (`LICENSE`). The platform services

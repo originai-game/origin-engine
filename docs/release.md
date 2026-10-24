@@ -279,12 +279,20 @@ optimisation rows (§P) after them.
 |---|---|---|
 | F1 | **All three merged and Metal-verified** (`kit-words` a61fd4f4, `platformer-2d` c9845b1e, `dogfood-7` 7aa1b801). The missing `PARTICLES_ARMED` runtime export was fixed in ff952176. Meridian Loop's eleven moved frames were inspected, recorded in d07963ef and reproduced at RMSE 0; the HUD, air-yaw retune and later captures explain the changes. Brasswick's eight suites passed with all nine frames unchanged at RMSE 0. Rumpus Isle's eleven Metal references landed in e9b69719 after inspection, all nine suites passed (239 checks, frames RMSE 0), and the functional lane passed in 91 s (`docs/phase-1.md`, F1 sections; two presentation debts recorded in the game's FINDINGS) | each merged through the functional lane; Meridian Loop's ten suites, Brasswick's eight and Rumpus Isle's nine green on Metal |
 | F2 | **Closed 2026-10-24.** Row 58's four cooked-font scenes pass on WebGPU and WebGL2 against Metal. Row 63's `_loop` and playback range landed in 1ef30b48; row 59's kill buffer and visual bidi movement in 284b32c2. The visibility-track optimisation remains deferred | each feature row closed in `docs/phase-1.md`; browser acceptance in the round 3 closeout |
-| F3 | Design §11 phase 2 and 3 checked item by item against the waves that landed them (Tune is the probe's `set` and bounds over the reflected schema, read by the platform's Stage; splats optional and not planned); what is missing becomes a row here | the table in `docs/phase-1.md` names, for each §11 item, the round that landed it or this row's number |
+| F3 | **Audit closed 2026-10-24.** Every non-optional phase 2 and 3 feature has an implementation and historical checks. Tune is the reflected probe contract, not an engine UI; splats remain optional and unplanned. The full §7 acceptance is still open: real phones, current reference-scene and Chrome lanes measurements, capture latency and executor image size | `docs/phase-1.md` §F3 coverage audit and terrain acceptance maps each §11 item to its source and evidence; it does not claim the unmeasured budgets passed |
 | F4 | **Closed 2026-10-24.** Brasswick's nine and Meridian Loop's ten frames pass on both browser tiers. Published-page checks pass 21/21 and 22/22 respectively on each tier; device checks pass 27/27 for each game. Meridian's WebGL2 references account for its MSAA/bloom difference, not a renderer defect | `tests/evidence/r3/meridian-webgl2/NOTES.md` and `docs/phase-1.md` round 3 closeout; `published.ts` stays a manual check |
-| F5 | wgpu and naga 31 when published (row 35), kept only if every reference frame passes unchanged | a wave end at the new version with every frame unmoved, or the row stays open with the date |
+| F5 | wgpu and naga 31 when published (row 35), kept only if every reference frame passes unchanged. **Still upstream-blocked 2026-10-24:** `cargo search` lists 30.0.1 for both | a wave end at the new version with every frame unmoved, or the row stays open with the date |
 | F6 | Each wave's end: `scripts/wave-end.sh` (`gate`, `web`, `conformance`, `release`), summary in `docs/phase-1.md` | the wave's section records the four stages |
 | F7 | **Started 2026-10-22 on the `studio-win` runner**; **native MSVC candidate verified 2026-10-23**, branch `windows-x64` (the coordinator merges). Release `@origingame/engine-win32-x64` carries `og.exe` and `origin-engine.node`, with embedded DXC. Workspace check/clippy pass; nextest runs every crate: 939 passed, five Metal-reference failures, 12 skipped. All 84 DX12 gfx scenes render; six exceed Metal tolerance, no new tier references committed. The 0.2.0 packed-tarball install test passes in 87.1 s (3D starter, runner, 2D starter, publish wasm, knowledge mount/check). Doctor reports `renderer dx12` and the explicit `tsgo 7.0.2 through bun x` fallback. Windows paths, LF/HDR checkout, process fixtures and mount permissions are portable; one TypeScript API. Evidence and exact frame differences: `tests/evidence/release/windows-x64.md`; device row `windows` below. No cloud path changed | **Merged 2026-10-23**; the six DX12 frame differences reviewed by the coordinator (`windows-x64.md` §The coordinator's review: star, texel-edge and caustic dither, nothing moved; no DX12 reference tier). The win32-x64 package's first publish landed with 0.3.0 (2026-10-23, packed on `studio-win` from d8bcf2d2, its tarball install test 115.3 s on DX12; `tests/evidence/release/0.3.0.md`). Still owed: the install test from the registry on Windows and one engine thread on the platform runner's Windows host; the Mac's registry run passed (76.9 s, Metal, `0.3.0.md`) |
 | F8 | **The depth wave** (`docs/depth.md`, started 2026-10-22): nine streams on branches `depth/<stream>`, each an orb thread, merged serially by the coordinator on `macrunner`: S1 runtime geometry, lines, points, debug draw and mesh raycast; S2 paths and the timeline asset; S3 the video producer (`og render`, `type video`); S4 the room ABI and deterministic lockstep with desync diagnosis; S5 the semantic frame, `expect`, trace, scene write-back and `cook --report`; S6 mesh LOD, reflection probes and SSR; S7 baked lightmaps, irradiance volumes, volumetric fog, area lights and cookies; S8 render targets, secondary cameras, layers, full custom shaders and custom post passes; S9 2D skeletal animation and the math layer | each stream merged through the functional lane with its Metal references recorded and its round in `docs/phase-1.md`; `docs/depth.md` §10's order; the wave's end measured once |
+
+**F7 update, 2026-10-24:** the Windows registry install test now passes
+(117.0 s, DX12, published 0.3.0 packages only). The real-engine runner
+tests pass 2/2 and runner library tests 62/62 after two local platform
+fixes: selecting `og.exe` and waiting for the stopped service's leader.
+`tests/evidence/release/0.3.0.md` records commands and limitations. The
+remaining F7 acceptance is a real Agent Server thread on a registered
+Windows runner; that shared-state action is not authorized or run.
 
 ### T. The test matrix (what runs where, when; standing)
 
@@ -323,22 +331,51 @@ the version.
 Owed rows 14 and 44 (the publish wasm under 65 %, the budget's meaning
 the owner's), 51 and 52 (the three.js comparison and the lanes physics in
 Chrome), 56 (quantised clips resident), 57 (the cull's lane grain), 88
-(a terrain streaming test whose tiles arrive late), 89 and 90 (perf-games'
+(the web first-frame settle cost; the native late-arrival test passed on
+2026-10-24 at `195cd595`), 89 and 90 (perf-games'
 idle-machine tables and follow-ups; branch `perf-2`). Each is taken up as
 the product needs it, measured at a wave's end, and never holds a merge
 or a release.
 
-One of them is the next round's first stream: row 99, the size stream.
-The depth and debt rounds took the publish wasm from 63 % to 83 and 84 %
-of the 4 MiB budget (`docs/web-export.md`'s table), so another feature
-round would cross it. In order: the platform serves one content-addressed
-engine wasm URL per version, shared by every game (a browser downloads
-the engine once; the platform's `plan.md` row 44); then the `publish`
-trims (GPU timestamp queries, the describe and views id pass, the BVH
-loader where nothing raycasts, 3D WGSL sources in the 2D host), each
-measured per crate with twiggy first; then per-profile trimming beyond
-physics. Still a number read at a wave's end: it holds neither a merge
-nor the 0.2.x releases.
+Row 99 remains open, but several proposed trims already landed. The
+debt2 size stream (`c8d7c2b3`, `tests/evidence/debt2/size/NOTES.md`) removed
+GPU timestamp queries and tool-only probe code from publish and excluded
+3D world subsystems from the 2D renderer. Round 3's profile-quality stream
+also removed the 2D runtime's terrain implementation. The latest gate's
+largest download is 3,787,011 B brotli, 90% of 4 MiB, recorded in the round
+3 closeout. Further cuts need a new profile, not a repeat of those tasks.
+
+The platform already routes standalone CAS wasm through a content hash
+and basename in `server/src/play/serve.ts`. Its current test uses a PNG,
+not two engine games in a browser. Relative redirects on distinct game
+origins do not establish one shared absolute URL, and `.br` and `.gz`
+paths remain release-scoped. Cross-game wasm download reuse therefore
+still needs implementation or evidence, as the platform audit below
+records. Neither the size target nor that audit authorizes deployment.
+
+### Platform audit, 2026-10-24
+
+Read-only audit of platform `main` at `ffd54d999`, with a clean worktree.
+These are source and archived-receipt findings, not fresh test runs or
+claims about deployed production state. They supersede the older version
+and pending labels in L and D above.
+
+| Item | Current evidence | Remaining work |
+|---|---|---|
+| L1, L3 | `agent-server/scripts/e2b/origin-engine.json` pins 0.3.0. `goals/origin-engine/evidence/pin-0.3.0.md` records runner 2/2, Stage 12/12, real Portal desktop/phone-viewport checks in plain and isolated modes | Agent-server 450/451, with a staff-route failure also on unchanged main. The `deploy` scenario still calls retired `search`/`execute deploy_create` and `deploy_update`; migrate the acceptance to the current Wizard `publish` contract rather than restore the retired tools |
+| L5, D5 | No `m7-local-*` or `m7-instabox-*` receipt found. `workspace:stack deploy` uses fixtures and uploads no bytes | One engine thread must make, publish and read back a prototype through a real local Portal, then repeat on InstaBox |
+| D2, D3 | Provider and four 0.1.1 snapshots have real receipts in `instabox-0.1.1.md`; `agent-server/scripts/instabox/dev.env` still names those snapshots | Build/check the current pin's snapshots with approval. Natural 30-minute idle pause was not observed; provider-driven pause/resume was. D4's 0.3.0 package install is not a platform snapshot or M7 acceptance |
+| Rooms, ask 16 | `room.ticket` and `?room=` propagation exist | Create/join/leave/send relay and an event transport are absent. The engine channel's 16 MiB bound differs from the HTTP call's 320 KiB limit; implement explicit semantics and two-player acceptance |
+| Player clock, ask 9 | In-page Stage stamps results through `player-core.ts`'s optional clock | Hello, framed Player, HTTP responses and the wire readers need one contract and success/error coverage |
+| Creation style, ask 12 | `og-taste` catalogue and authoring guidance are mounted | No executable style-step/blind-critic chain found. The current Wizard adapts and deploys an existing game; the creation entry point needs a product decision before adding a style-changing step there |
+| Shared wasm, row 99 | `server/src/play/serve.ts` has a CAS shared route, covered by `serve.test.ts` with a PNG | Verify wasm bytes and actual cache reuse across two game origins, including compressed exports and browser cache partitioning |
+| Production | Platform workflows install the npm pin without an engine checkout or cargo | No current production image/runtime-config verification in this audit. Image build, deployment and activation require separate authorization |
+
+After the audit, platform commits `30b23ba51` and `ff518833c` implemented
+the Player clock wire stamps and tests locally. The engine coordinator
+reviewed the diff and reran the SDK suite, 29/29. Server correction of
+the framed page's clock remains open; `docs/platform-asks.md` ask 9
+records that distinction. Neither commit is pushed or deployed.
 
 ## 5. The author's and the agent's loop, after this
 
