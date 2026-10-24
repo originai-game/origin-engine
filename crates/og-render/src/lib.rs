@@ -8024,8 +8024,115 @@ impl Renderer {
             }
             draws
         };
-        // One shadow pass: a cascade or a local light's face.
         let terrain_indices = self.terrain.index_buffer();
+        // The depth prepass of a camera other than the main one (a view's,
+        // a probe face's: views.rs, probes.rs): its opaque `list`, its
+        // opaque skinned batches, the terrain in `frustum` and the
+        // scattered copies `scatter` keeps, through the main prepass's
+        // pipelines (group 0 and 2: `groups`) into `pre`. Returns the draws.
+        let depth_prepass = |encoder: &mut crate::Encoder,
+                             label: &str,
+                             pre: &views::DepthPrepass,
+                             groups: (&wgpu::BindGroup, &wgpu::BindGroup),
+                             list: &DrawList,
+                             skinned: &[Batch],
+                             frustum: &Frustum,
+                             scatter: Option<&dyn Fn(Vec3, f32) -> bool>|
+         -> u32 {
+            let attachment = |view, clear: f64| {
+                Some(wgpu::RenderPassColorAttachment {
+                    view,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: clear,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 0.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })
+            };
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some(label),
+                color_attachments: &[
+                    attachment(&pre.gbuffer, 0.0),
+                    attachment(&pre.lindepth, post::FAR_DEPTH as f64),
+                    attachment(&pre.outline, 0.0),
+                ],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &pre.depth,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            pass.set_bind_group(0, groups.0, &[]);
+            pass.set_bind_group(2, groups.1, &[]);
+            let mut draws = 0;
+            for &(b, first, count) in &list.ranges {
+                let batch = &batches[b as usize];
+                let Some(pipeline) = self.prepass_pipeline_of(batch, false) else {
+                    continue;
+                };
+                pass.set_pipeline(pipeline);
+                let m = &self.cache.materials[batch.material];
+                pass.set_bind_group(1, m.array.as_ref().unwrap_or(&m.bind_group), &[]);
+                let mesh = &self.cache.meshes[batch.mesh];
+                let start = first as u64 * INSTANCE_STRIDE;
+                let range = start..start + count as u64 * INSTANCE_STRIDE;
+                pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
+                pass.set_vertex_buffer(1, self.instance_buffer.slice(range.clone()));
+                pass.set_vertex_buffer(2, self.instance_buffer.slice(range));
+                pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..count);
+                draws += 1;
+            }
+            let opaque: Vec<Batch> = skinned
+                .iter()
+                .filter(|b| !b.transparent && self.prepass_pipeline_of(b, true).is_some())
+                .map(|b| Batch { ..*b })
+                .collect();
+            let pipelines: Vec<&wgpu::RenderPipeline> = opaque
+                .iter()
+                .filter_map(|b| self.prepass_pipeline_of(b, true))
+                .collect();
+            draws += draw_skinned(&mut pass, &opaque, false, 1, 3, &pipelines, None, None);
+            if let Some(indices) = terrain_indices {
+                draws += terrain::draw_levels(
+                    &mut pass,
+                    &terrain_draws,
+                    indices,
+                    terrain::TerrainPass::Prepass,
+                    |c, rad| frustum.intersects_sphere(c, rad),
+                    None,
+                )
+                .0;
+            }
+            if let Some(keep) = scatter {
+                draws += self
+                    .scatter
+                    .draw(
+                        &mut pass,
+                        scatter::ScatterPass::Prepass,
+                        &scatter_batches,
+                        scatter_material,
+                        scatter_mesh,
+                        keep,
+                        None,
+                    )
+                    .0;
+            }
+            draws
+        };
+        // One shadow pass: a cascade or a local light's face.
         let shadow_pass = |encoder: &mut crate::Encoder,
                            color: &wgpu::TextureView,
                            depth: &wgpu::TextureView,
@@ -8710,90 +8817,16 @@ impl Renderer {
                         .as_ref()
                         .and_then(|s| s.prepass.as_ref())
                     {
-                        let attachment = |view, clear: f64| {
-                            Some(wgpu::RenderPassColorAttachment {
-                                view,
-                                depth_slice: None,
-                                resolve_target: None,
-                                ops: wgpu::Operations {
-                                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                                        r: clear,
-                                        g: 0.0,
-                                        b: 0.0,
-                                        a: 0.0,
-                                    }),
-                                    store: wgpu::StoreOp::Store,
-                                },
-                            })
-                        };
-                        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                            label: Some("view depth"),
-                            color_attachments: &[
-                                attachment(&pre.gbuffer, 0.0),
-                                attachment(&pre.lindepth, post::FAR_DEPTH as f64),
-                                attachment(&pre.outline, 0.0),
-                            ],
-                            depth_stencil_attachment: Some(
-                                wgpu::RenderPassDepthStencilAttachment {
-                                    view: &pre.depth,
-                                    depth_ops: Some(wgpu::Operations {
-                                        load: wgpu::LoadOp::Clear(1.0),
-                                        store: wgpu::StoreOp::Discard,
-                                    }),
-                                    stencil_ops: None,
-                                },
-                            ),
-                            timestamp_writes: None,
-                            occlusion_query_set: None,
-                            multiview_mask: None,
-                        });
-                        pass.set_bind_group(0, &view_groups[i].0, &[]);
-                        pass.set_bind_group(2, &view_groups[i].1, &[]);
-                        for &(b, first, count) in &view_lists[i].ranges {
-                            let batch = &batches[b as usize];
-                            let Some(pipeline) = self.prepass_pipeline_of(batch, false) else {
-                                continue;
-                            };
-                            pass.set_pipeline(pipeline);
-                            let m = &self.cache.materials[batch.material];
-                            pass.set_bind_group(1, m.array.as_ref().unwrap_or(&m.bind_group), &[]);
-                            let mesh = &self.cache.meshes[batch.mesh];
-                            let start = first as u64 * INSTANCE_STRIDE;
-                            let range = start..start + count as u64 * INSTANCE_STRIDE;
-                            pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
-                            pass.set_vertex_buffer(1, self.instance_buffer.slice(range.clone()));
-                            pass.set_vertex_buffer(2, self.instance_buffer.slice(range));
-                            pass.set_index_buffer(
-                                mesh.indices.slice(..),
-                                wgpu::IndexFormat::Uint32,
-                            );
-                            pass.draw_indexed(0..mesh.index_count, 0, 0..count);
-                            stats.draw_calls += 1;
-                        }
-                        let opaque: Vec<Batch> = view_skinned[i]
-                            .iter()
-                            .filter(|b| {
-                                !b.transparent && self.prepass_pipeline_of(b, true).is_some()
-                            })
-                            .map(|b| Batch { ..*b })
-                            .collect();
-                        let pipelines: Vec<&wgpu::RenderPipeline> = opaque
-                            .iter()
-                            .filter_map(|b| self.prepass_pipeline_of(b, true))
-                            .collect();
-                        stats.draw_calls +=
-                            draw_skinned(&mut pass, &opaque, false, 1, 3, &pipelines, None, None);
-                        if let Some(indices) = terrain_indices {
-                            stats.draw_calls += terrain::draw_levels(
-                                &mut pass,
-                                &terrain_draws,
-                                indices,
-                                terrain::TerrainPass::Prepass,
-                                |c, rad| frustum.intersects_sphere(c, rad),
-                                None,
-                            )
-                            .0;
-                        }
+                        stats.draw_calls += depth_prepass(
+                            &mut encoder,
+                            "view depth",
+                            pre,
+                            (&view_groups[i].0, &view_groups[i].1),
+                            &view_lists[i],
+                            &view_skinned[i],
+                            &frustum,
+                            None,
+                        );
                     }
                     {
                         let mut pass = self.views.begin(&mut encoder, p, clear);
