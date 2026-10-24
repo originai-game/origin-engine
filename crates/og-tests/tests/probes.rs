@@ -7,9 +7,9 @@
 use og_render::{RenderDesc, RenderTarget, Renderer, RgbaImage};
 use og_tests::gfx;
 use og_tests::probe_scenes::{
-    FLOOR_PROBE, Outdoor, SsrFloor, add_floor_particles, add_floor_water, outdoor_scene,
-    posed_figure_scene, probe_effects_scene, probe_floor_scene, probe_water_scene, ssr_floor_scene,
-    two_rooms_scene,
+    FLOOR_PROBE, Outdoor, SsrFloor, add_floor_fluid, add_floor_particles, add_floor_water,
+    outdoor_scene, posed_figure_scene, probe_effects_scene, probe_floor_scene, probe_water_scene,
+    ssr_floor_scene, two_rooms_scene,
 };
 use og_tests::scenes;
 use std::path::PathBuf;
@@ -324,6 +324,25 @@ fn soft_particles_in_a_capture_fade_against_the_floor() {
     assert!(
         off(soft) < 0.4 * off(hard),
         "the soft particles on -y: {soft:?}, hard {hard:?}, bare floor {bare:?}"
+    );
+}
+
+/// A capture draws 3D fluids: the +x face of the probe beside a red fluid
+/// ball turns red where it showed the dark background and the yellow
+/// floor (its green falls, red leads it more than twofold). Before, a
+/// capture left 3D fluids out and the face stayed bare.
+#[test]
+fn a_capture_draws_3d_fluids() {
+    let desc = scenes::base_desc();
+    let mut scene = probe_floor_scene();
+    let (_, bare) = render(&desc, &scene, Some(FLOOR_PROBE.0));
+    add_floor_fluid(&mut scene);
+    let (_, with) = render(&desc, &scene, Some(FLOOR_PROBE.0));
+    let (px, px0) = (face_mean(&with.unwrap(), 0), face_mean(&bare.unwrap(), 0));
+    println!("+x {px:?} / bare {px0:?}");
+    assert!(
+        px[0] > 2.0 * px[1] && px[0] > 2.0 * px[2] && px[1] < 0.6 * px0[1],
+        "the red fluid on +x: {px:?} against the bare face {px0:?}"
     );
 }
 

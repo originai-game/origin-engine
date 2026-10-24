@@ -545,3 +545,29 @@ pub fn add_floor_particles(scene: &mut RenderScene, soft: bool) {
     ));
     crate::fx_scenes::tick_all(scene, 60);
 }
+
+/// A red 3D fluid ball 0.7 m in radius 1.5 m to the +x side of
+/// [`probe_floor_scene`]'s probe, at its height: its +x face sees the
+/// fluid where it saw the dark background and the floor.
+pub fn add_floor_fluid(scene: &mut RenderScene) {
+    let spacing = 0.1;
+    let centre = FLOOR_PROBE.1 + Vec3::new(1.5, 0.0, 0.0);
+    let n = (0.7 / spacing) as i32;
+    let particles: Vec<Vec3> = (-n..=n)
+        .flat_map(|x| {
+            (-n..=n).flat_map(move |y| {
+                (-n..=n).map(move |z| Vec3::new(x as f32, y as f32, z as f32) * spacing)
+            })
+        })
+        .filter(|p| p.length() <= 0.7)
+        .map(|p| centre + p)
+        .collect();
+    scene.fluids_3d.push(og_render::Fluid3d {
+        particles: particles.into(),
+        color: Vec3::new(0.9, 0.08, 0.05),
+        opacity: 0.9,
+        radius: 0.12,
+        volume: spacing * spacing * spacing,
+        ..Default::default()
+    });
+}

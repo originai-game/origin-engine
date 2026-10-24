@@ -327,11 +327,14 @@ S6).
   six 90° views drawn with the lit pipelines in a `reflection-probes`
   graph pass before the main pass: the opaque meshes, skinned meshes in
   their current pose, terrain, scattered copies within the box's half
-  extent of it, the sky, water (as the main pass draws it: a face with
-  water first draws its own depth prepass, the views' `depth_prepass`,
-  and ends its pass after the sky to copy itself, so the water refracts
-  the face drawn so far and darkens and foams by the depth below; no
-  screen-space or planar reflections; `WaterRenderer::face_draws`, the
+  extent of it, the sky, water and 3D fluids (as the main pass draws
+  them: a face with either first draws its own depth prepass, the views'
+  `depth_prepass`, then the fluids' depth, thickness and smoothing
+  through the face camera into face-sized targets, and ends its pass
+  after the sky to copy itself, so the water and the fluids refract the
+  face drawn so far and the water darkens and foams by the depth below;
+  no screen-space or planar reflections on the water;
+  `WaterRenderer::face_draws`, `Fluid3dRenderer::camera_frame`, the
   targets one set per face size in `Probes`, made the first time a capture
   needs them and drawn only while one is due), then transparent meshes
   sorted back to front from the probe, the particle systems (billboards facing each face, through

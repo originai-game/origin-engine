@@ -18,6 +18,11 @@
 //!    image-based light and the clustered local lights, reflects the
 //!    environment and writes depth.
 //!
+//! A reflection probe's due faces draw the same passes through their own
+//! cameras into face-sized targets ([`Fluid3dTargets`],
+//! [`Fluid3dRenderer::camera_frame`]: uniforms of their own over the
+//! frame's instances), over each face's depth prepass and copy (probes.rs).
+//!
 //! All the frame's fluids share the surface: they merge where they meet,
 //! each particle carrying its own colour and density; the look (how much
 //! it reflects and refracts, how much it is smoothed) is the first fluid's.
@@ -129,6 +134,67 @@ pub(crate) fn views<'a>(
         blur: graph.try_view("fluid.blur")?,
         smooth: graph.try_view("fluid.smooth")?,
     })
+}
+
+/// The fluid's targets for a camera outside the frame graph (a reflection
+/// probe's faces: probes.rs), of one square size.
+pub(crate) struct Fluid3dTargets {
+    depth: wgpu::TextureView,
+    zbuf: wgpu::TextureView,
+    thick: wgpu::TextureView,
+    blur: wgpu::TextureView,
+    smooth: wgpu::TextureView,
+}
+
+impl Fluid3dTargets {
+    pub fn new(device: &wgpu::Device, size: u32) -> Fluid3dTargets {
+        let make = |label, format, usage| {
+            device
+                .create_texture(&wgpu::TextureDescriptor {
+                    label: Some(label),
+                    size: wgpu::Extent3d {
+                        width: size,
+                        height: size,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format,
+                    usage,
+                    view_formats: &[],
+                })
+                .create_view(&Default::default())
+        };
+        let attach = wgpu::TextureUsages::RENDER_ATTACHMENT;
+        let both = attach | wgpu::TextureUsages::TEXTURE_BINDING;
+        let lindepth = crate::post::LINDEPTH_FORMAT;
+        Fluid3dTargets {
+            depth: make("fluid 3d depth (face)", lindepth, both),
+            zbuf: make("fluid 3d zbuf (face)", crate::DEPTH_FORMAT, attach),
+            thick: make("fluid 3d thickness (face)", crate::HDR_FORMAT, both),
+            blur: make("fluid 3d blur (face)", lindepth, both),
+            smooth: make("fluid 3d smooth (face)", lindepth, both),
+        }
+    }
+
+    /// Its targets with what the camera's fluid reads: its depth prepass and
+    /// the copy of its image drawn so far.
+    pub fn views<'a>(
+        &'a self,
+        scene_depth: &'a wgpu::TextureView,
+        scene_color: &'a wgpu::TextureView,
+    ) -> Fluid3dViews<'a> {
+        Fluid3dViews {
+            scene_depth,
+            scene_color,
+            depth: &self.depth,
+            zbuf: &self.zbuf,
+            thick: &self.thick,
+            blur: &self.blur,
+            smooth: &self.smooth,
+        }
+    }
 }
 
 /// The camera as the fluid needs it.
@@ -445,35 +511,58 @@ impl Fluid3dRenderer {
             self.instances = instance_buffer(device, self.capacity);
         }
         queue.write_buffer(&self.instances, 0, bytemuck::cast_slice(&self.scratch));
-        let (w, h) = (screen.0 as f32, screen.1 as f32);
-        let screen_v = [w, h, 1.0 / w.max(1.0), 1.0 / h.max(1.0)];
-        let right = camera.view.row(0).truncate();
-        let up = camera.view.row(1).truncate();
-        // Pixels per metre at view depth 1 (per metre when orthographic).
-        let scale = camera.proj.y_axis.y.abs() * h * 0.5;
-        let ortho = f32::from(camera.orthographic);
-        let gpu = FluidGpu {
-            right: right.extend(scale).to_array(),
-            up: up.extend(first.reflectivity.max(0.0)).to_array(),
-            screen: screen_v,
-            look: [first.refraction.max(0.0), ortho, 0.0, 0.0],
-        };
+        let (gpu, blur) = camera_uniforms(first, camera, screen);
         queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&gpu));
-        let radius = first.radius.max(1e-4) * first.smoothing.max(0.0);
-        for (buffer, dir) in self.blur_uniforms.iter().zip([[1.0, 0.0], [0.0, 1.0]]) {
-            let b = BlurGpu {
-                dir: [dir[0], dir[1], ortho, MAX_BLUR_PX],
-                params: [scale, radius, first.radius.max(1e-4) * 2.0, 0.0],
-                screen: screen_v,
-            };
-            queue.write_buffer(buffer, 0, bytemuck::bytes_of(&b));
+        for (buffer, b) in self.blur_uniforms.iter().zip(&blur) {
+            queue.write_buffer(buffer, 0, bytemuck::bytes_of(b));
         }
+        let [x, y] = &self.blur_uniforms;
+        Some(self.frame(device, &self.uniform, [x, y], views, count as u32))
+    }
+
+    /// The frame's fluid as another camera draws it (a reflection probe's
+    /// face: probes.rs), into `views` of `screen` pixels, after
+    /// [`Fluid3dRenderer::prepare`] uploaded the particles for `main`:
+    /// uniforms of its own over the same instances.
+    pub(crate) fn camera_frame(
+        &self,
+        device: &wgpu::Device,
+        fluids: &[Fluid3d],
+        main: &Fluid3dFrame,
+        camera: &Fluid3dCamera,
+        screen: (u32, u32),
+        views: &Fluid3dViews,
+    ) -> Option<Fluid3dFrame> {
+        use wgpu::util::DeviceExt;
+        let first = fluids.iter().find(|f| !f.particles.is_empty())?;
+        let (gpu, blur) = camera_uniforms(first, camera, screen);
+        let buffer = |label, contents: &[u8]| {
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(label),
+                contents,
+                usage: wgpu::BufferUsages::UNIFORM,
+            })
+        };
+        let uniform = buffer("fluid 3d (camera)", bytemuck::bytes_of(&gpu));
+        let [x, y] = blur.map(|b| buffer("fluid 3d blur (camera)", bytemuck::bytes_of(&b)));
+        Some(self.frame(device, &uniform, [&x, &y], views, main.instances))
+    }
+
+    /// The bind groups of a camera's fluid over its uniforms and targets.
+    fn frame(
+        &self,
+        device: &wgpu::Device,
+        uniform: &wgpu::Buffer,
+        blur_uniforms: [&wgpu::Buffer; 2],
+        views: &Fluid3dViews,
+        instances: u32,
+    ) -> Fluid3dFrame {
         let tex = wgpu::BindingResource::TextureView;
         let spheres = group(
             device,
             &self.sphere_layout,
             &[
-                (0, self.uniform.as_entire_binding()),
+                (0, uniform.as_entire_binding()),
                 (5, tex(views.scene_depth)),
             ],
         );
@@ -481,17 +570,14 @@ impl Fluid3dRenderer {
             group(
                 device,
                 &self.blur_layout,
-                &[
-                    (0, self.blur_uniforms[i].as_entire_binding()),
-                    (1, tex(src)),
-                ],
+                &[(0, blur_uniforms[i].as_entire_binding()), (1, tex(src))],
             )
         });
         let composite = group(
             device,
             &self.composite_layout,
             &[
-                (0, self.uniform.as_entire_binding()),
+                (0, uniform.as_entire_binding()),
                 (1, tex(views.smooth)),
                 (2, tex(views.thick)),
                 (3, tex(views.scene_color)),
@@ -499,12 +585,12 @@ impl Fluid3dRenderer {
                 (5, tex(views.scene_depth)),
             ],
         );
-        Some(Fluid3dFrame {
-            instances: count as u32,
+        Fluid3dFrame {
+            instances,
             spheres,
             blur,
             composite,
-        })
+        }
     }
 
     /// Records the depth, thickness and smoothing passes. Returns the draw
@@ -591,6 +677,35 @@ impl Fluid3dRenderer {
         pass.draw(0..3, 0..1);
         1
     }
+}
+
+/// The fluid's and its blur's uniforms for `camera` drawing `screen`
+/// pixels, with the look of the frame's first fluid.
+fn camera_uniforms(
+    first: &Fluid3d,
+    camera: &Fluid3dCamera,
+    screen: (u32, u32),
+) -> (FluidGpu, [BlurGpu; 2]) {
+    let (w, h) = (screen.0 as f32, screen.1 as f32);
+    let screen_v = [w, h, 1.0 / w.max(1.0), 1.0 / h.max(1.0)];
+    let right = camera.view.row(0).truncate();
+    let up = camera.view.row(1).truncate();
+    // Pixels per metre at view depth 1 (per metre when orthographic).
+    let scale = camera.proj.y_axis.y.abs() * h * 0.5;
+    let ortho = f32::from(camera.orthographic);
+    let gpu = FluidGpu {
+        right: right.extend(scale).to_array(),
+        up: up.extend(first.reflectivity.max(0.0)).to_array(),
+        screen: screen_v,
+        look: [first.refraction.max(0.0), ortho, 0.0, 0.0],
+    };
+    let radius = first.radius.max(1e-4) * first.smoothing.max(0.0);
+    let blur = [[1.0, 0.0], [0.0, 1.0]].map(|dir| BlurGpu {
+        dir: [dir[0], dir[1], ortho, MAX_BLUR_PX],
+        params: [scale, radius, first.radius.max(1e-4) * 2.0, 0.0],
+        screen: screen_v,
+    });
+    (gpu, blur)
 }
 
 /// The 3D fluid's module after `shared` (the frame group, the light

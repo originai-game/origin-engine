@@ -5352,14 +5352,16 @@ impl Renderer {
                 .iter()
                 .any(|p| matches!(p.dest, views::Dest::Texture { depth: Some(_), .. }));
         // A due capture's faces draw their own depth prepass for the water
-        // over them, which also shows the copy of the face drawn so far
-        // through it, and for their soft particles to fade against
-        // (probes.rs `FaceTargets`): only when a capture is due.
-        let face_copy = !probe_frame.due.is_empty() && !scene_water.is_empty();
-        let face_depth = face_copy || (!probe_frame.due.is_empty() && particle_frame.soft);
+        // and 3D fluids over them, which also show the copy of the face
+        // drawn so far through them, and for their soft particles to fade
+        // against (probes.rs `FaceTargets`): only when a capture is due.
+        let due = !probe_frame.due.is_empty();
+        let face_fluid = due && fluids_3d;
+        let face_copy = due && (!scene_water.is_empty() || fluids_3d);
+        let face_depth = face_copy || (due && particle_frame.soft);
         if face_depth {
             self.probes
-                .ensure_targets(&self.device, &probe_frame, face_copy);
+                .ensure_targets(&self.device, &probe_frame, face_copy, face_fluid);
         }
         self.ensure_pipelines(
             &batches,
@@ -7461,6 +7463,39 @@ impl Renderer {
             ),
             _ => None,
         };
+        // The 3D fluids as each due capture face draws them: the frame's
+        // particles through the face camera into the face's own targets,
+        // over its depth and through its copy (fluid3d.rs `camera_frame`).
+        let face_fluids: Vec<Option<fluid3d::Fluid3dFrame>> = match &fluid_frame {
+            Some(main) if face_fluid => probe_frame
+                .due
+                .iter()
+                .enumerate()
+                .flat_map(|(d, &(slot, _))| {
+                    let t = self.probes.targets_of(slot);
+                    probe_faces[d].iter().map(move |f| (t, f))
+                })
+                .map(|(t, f)| {
+                    let views = t.fluid.as_ref().expect("made with the fluids").views(
+                        &t.prepass.lindepth,
+                        t.copy.as_ref().expect("made with the fluids"),
+                    );
+                    self.fluid3d.camera_frame(
+                        &self.device,
+                        &scene.fluids_3d,
+                        main,
+                        &fluid3d::Fluid3dCamera {
+                            view: f.view,
+                            proj: f.proj,
+                            orthographic: f.orthographic,
+                        },
+                        (t.size, t.size),
+                        &views,
+                    )
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
         // The planar reflection's effect group: its decals, no AO.
         let reflection_fx_group = reflection.as_ref().map(|_| {
             let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
@@ -8529,7 +8564,7 @@ impl Renderer {
                         // and the water drawn through them.
                         let targets = face_depth.then(|| self.probes.targets_of(slot));
                         let water = face_water.get(d).filter(|w| !w.is_empty());
-                        let split = water.is_some();
+                        let split = water.is_some() || !face_fluids.is_empty();
                         for (face, cam) in probe_faces[d].iter().enumerate() {
                             let k = 6 * d + face;
                             let frustum = Frustum::from_view_proj(cam.view_proj);
@@ -8553,6 +8588,17 @@ impl Renderer {
                                     &frustum,
                                     Some(&scattered),
                                 );
+                            }
+                            // Its 3D fluids' depth, thickness and smoothing.
+                            let fluid = face_fluids.get(k).and_then(Option::as_ref);
+                            if let (Some(f), Some(t)) = (fluid, targets) {
+                                let views = t.fluid.as_ref().expect("made with the fluids").views(
+                                    &t.prepass.lindepth,
+                                    t.copy.as_ref().expect("made with the fluids"),
+                                );
+                                stats.draw_calls +=
+                                    self.fluid3d
+                                        .encode(&mut encoder, f, &face_groups[k], &views);
                             }
                             let (view, resolve_target) = match &s.msaa {
                                 Some(m) => (m, Some(&s.faces[face])),
@@ -8681,10 +8727,11 @@ impl Renderer {
                                 pass.draw(0..3, 0..1);
                                 stats.draw_calls += 1;
                             }
-                            // Water over the opaque capture and the sky, as
-                            // the main pass draws it before its transparents:
-                            // through the copy of the face drawn so far.
-                            if let (Some(water), Some(t)) = (water, targets) {
+                            // Water and the 3D fluids over the opaque capture
+                            // and the sky, as the main pass draws them before
+                            // its transparents: through the copy of the face
+                            // drawn so far.
+                            if let (true, Some(t)) = (split, targets) {
                                 drop(pass);
                                 let copy = t.copy.as_ref().expect("made with the water");
                                 encoder.copy_texture_to_texture(
@@ -8707,11 +8754,16 @@ impl Renderer {
                                 );
                                 pass = begin(&mut encoder, false);
                                 pass.set_bind_group(0, &face_groups[k], &[]);
-                                stats.draw_calls += self.water.draw(
-                                    &mut pass,
-                                    water,
-                                    &mut probe_select::Binder::new(None),
-                                );
+                                if let Some(water) = water {
+                                    stats.draw_calls += self.water.draw(
+                                        &mut pass,
+                                        water,
+                                        &mut probe_select::Binder::new(None),
+                                    );
+                                }
+                                if let Some(f) = fluid {
+                                    stats.draw_calls += self.fluid3d.draw(&mut pass, f);
+                                }
                                 pass.set_bind_group(2, fx_group, &[]);
                             }
                             // Transparent meshes, back to front from the

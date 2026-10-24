@@ -5,21 +5,27 @@
 //! A probe's capture is six 90° views of the scene from its position, drawn
 //! with the lit pipelines into a cube (the sun, the environment, every
 //! local light and the sky over the opaque, skinned and transparent
-//! meshes, terrain, scattered copies and water, then particles, lines and points
-//! and world sprites and text on every layer; `lib.rs`'s probe pass),
-//! copied into a radiance cube with mips and GGX-prefiltered into
-//! [`crate::ENVIRONMENT_MAP_LEVELS`] levels like the environment's own
-//! (`ibl.rs`). A face with water or soft particles draws its own depth
-//! prepass first (the view prepass's draws, `lib.rs`'s `depth_prepass`),
-//! which its soft particles fade against; with water it ends its pass
-//! after the sky to copy itself, so the water there refracts the face
-//! drawn so far and darkens and foams by the depth below as the frame's
-//! does ([`FaceTargets`], one set per face size, made the first time a
-//! capture needs it and drawn only while one is due). A baked probe
-//! draws its capture once, the first frame it is in a scene, unless it
-//! brings one ([`ReflectionProbe::baked`], an
-//! environment map `og bake probes` wrote); a realtime probe draws it again
-//! every [`ReflectionProbe::interval`] ticks.
+//! meshes, terrain, scattered copies, water and 3D fluids, then particles,
+//! lines and points and world sprites and text on every layer; `lib.rs`'s
+//! probe pass), copied into a radiance cube with mips and GGX-prefiltered
+//! into [`crate::ENVIRONMENT_MAP_LEVELS`] levels like the environment's
+//! own (`ibl.rs`).
+//!
+//! A face with water, 3D fluids or soft particles first draws its own
+//! depth prepass (the view prepass's draws, `lib.rs`'s `depth_prepass`),
+//! which its soft particles fade against, and its 3D fluids' depth,
+//! thickness and smoothing through its camera
+//! (`Fluid3dRenderer::camera_frame`). With water or fluids it ends its
+//! pass after the sky to copy itself, so the water and fluids there
+//! refract the face drawn so far and the water darkens and foams by the
+//! depth below, as in the frame. The targets ([`FaceTargets`]) are one
+//! set per face size, made the first time a capture needs them and drawn
+//! only while one is due: a frame without a due capture pays nothing.
+//!
+//! A baked probe draws its capture once, the first frame it is in a
+//! scene, unless it brings one ([`ReflectionProbe::baked`], an environment
+//! map `og bake probes` wrote); a realtime probe draws it again every
+//! [`ReflectionProbe::interval`] ticks.
 //!
 //! Sampling costs no texture slot (WebGL2's skinned lit pipeline has none
 //! left): a draw whose bounds fall in a probe's box binds the probe's frame
@@ -300,8 +306,9 @@ impl ProbeSlot {
 }
 
 /// What a due face draws besides its capture, for the captures of one face
-/// size: its depth prepass (the linear depth water and soft particles read)
-/// and the copy of the face drawn so far (what water shows through). One
+/// size: its depth prepass (the linear depth water, soft particles and 3D
+/// fluids read), the copy of the face drawn so far (what water and 3D
+/// fluids show through) and the 3D fluids' own targets. One
 /// set serves every face of that size, as the faces are drawn one after
 /// the other; made the first frame a capture needs it, kept while a probe
 /// of that size is.
@@ -309,6 +316,8 @@ pub(crate) struct FaceTargets {
     pub size: u32,
     pub prepass: crate::views::DepthPrepass,
     pub copy: Option<wgpu::TextureView>,
+    /// The 3D fluids' depth, thickness and smoothing targets.
+    pub fluid: Option<crate::fluid3d::Fluid3dTargets>,
 }
 
 /// What the frame does with its probes ([`Probes::prepare`]).
@@ -417,10 +426,16 @@ impl Probes {
         frame
     }
 
-    /// Makes the depth prepass (and with `copy`, the face copy) of every
-    /// face size `frame` captures at. Only due captures pay: nothing is
-    /// made or drawn in a frame without one.
-    pub fn ensure_targets(&mut self, device: &wgpu::Device, frame: &ProbeFrame, copy: bool) {
+    /// Makes the depth prepass (with `copy`, the face copy; with `fluid`,
+    /// the 3D fluids' targets) of every face size `frame` captures at. Only
+    /// due captures pay: nothing is made or drawn in a frame without one.
+    pub fn ensure_targets(
+        &mut self,
+        device: &wgpu::Device,
+        frame: &ProbeFrame,
+        copy: bool,
+        fluid: bool,
+    ) {
         for &(slot, _) in &frame.due {
             let size = self.slots[slot].size;
             let at = match self.targets.iter().position(|t| t.size == size) {
@@ -434,6 +449,7 @@ impl Probes {
                             "probe face",
                         ),
                         copy: None,
+                        fluid: None,
                     });
                     self.targets.len() - 1
                 }
@@ -443,6 +459,9 @@ impl Probes {
                 let usage = wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST;
                 let copy = texture(device, "probe face copy", size, 1, 1, 1, HDR_FORMAT, usage);
                 t.copy = Some(copy.create_view(&Default::default()));
+            }
+            if fluid && t.fluid.is_none() {
+                t.fluid = Some(crate::fluid3d::Fluid3dTargets::new(device, size));
             }
         }
     }
