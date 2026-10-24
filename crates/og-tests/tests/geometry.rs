@@ -44,6 +44,11 @@ fn debug_overlay_matches_its_reference() {
     check("debug-overlay");
 }
 
+#[test]
+fn geometry_shapes_matches_its_reference() {
+    check("geometry-shapes");
+}
+
 fn px(img: &og_render::RgbaImage, x: u32, y: u32) -> [u8; 3] {
     let p = &img.pixels[((y * img.width + x) * 4) as usize..][..3];
     [p[0], p[1], p[2]]

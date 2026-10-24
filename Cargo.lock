@@ -2003,6 +2003,7 @@ dependencies = [
  "og-bake",
  "og-cook",
  "og-core",
+ "og-geom",
  "og-render",
  "og-tilemap",
 ]

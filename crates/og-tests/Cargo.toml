@@ -10,6 +10,7 @@ publish = false
 [dependencies]
 og-render = { path = "../og-render", features = ["gltf", "bake"] }
 og-core = { path = "../og-core" }
+og-geom = { path = "../og-geom" }
 og-tilemap = { path = "../og-tilemap" }
 glam = { workspace = true }
 # hdr: the environment-map scene's equirectangular image (assets/env).
