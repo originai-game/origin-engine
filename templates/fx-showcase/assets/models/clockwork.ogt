@@ -1,0 +1,180 @@
+type model
+version 1
+---
+# A model written as text (og-game §18, type model): og-geom parts by
+# their og.render names, placed, a material each, hung from pivots. The
+# cook writes it as the model blob a glTF cooks to, with its levels of
+# detail, its raycast BVH and its nodes; the station draws it with
+# world.instantiate as any model.
+material "brass" {
+  color 0.78 0.52 0.16
+  metalness 1
+  roughness 0.32
+}
+material "steel" {
+  color 0.62 0.64 0.68
+  metalness 1
+  roughness 0.25
+}
+material "glaze" {
+  color 0.12 0.34 0.72
+  roughness 0.3
+}
+material "ivory" {
+  color 0.86 0.82 0.72
+  roughness 0.55
+}
+material "bone" {
+  color 0.92 0.92 0.9
+  roughness 0.4
+}
+material "stone" {
+  color 0.34 0.33 0.31
+  roughness 0.9
+}
+pivot "axle" {
+  position 0 1.25 0
+}
+part "plinth" {
+  material "stone"
+  position 0 0.15 0
+  boxGeometry {
+    width 6.4
+    height 0.3
+    depth 2.4
+    uvRepeat 8 3
+  }
+}
+part "gear" {
+  pivot "axle"
+  material "brass"
+  position 0 0 -0.1
+  extrudeGeometry {
+    shape {
+      points 0.9000 0.0000 1.0781 0.0648 1.0409 0.2881 0.8514 0.2916 0.8315 0.3444 0.9712 0.4724 0.8514 0.6645 0.6750 0.5953 0.6364 0.6364 0.7165 0.8081 0.5323 0.9397 0.3958 0.8083 0.3444 0.8315 0.3527 1.0208 0.1322 1.0719 0.0564 0.8982 0.0000 0.9000 -0.0648 1.0781 -0.2881 1.0409 -0.2916 0.8514 -0.3444 0.8315 -0.4724 0.9712 -0.6645 0.8514 -0.5953 0.6750 -0.6364 0.6364 -0.8081 0.7165 -0.9397 0.5323 -0.8083 0.3958 -0.8315 0.3444 -1.0208 0.3527 -1.0719 0.1322 -0.8982 0.0564 -0.9000 0.0000 -1.0781 -0.0648 -1.0409 -0.2881 -0.8514 -0.2916 -0.8315 -0.3444 -0.9712 -0.4724 -0.8514 -0.6645 -0.6750 -0.5953 -0.6364 -0.6364 -0.7165 -0.8081 -0.5323 -0.9397 -0.3958 -0.8083 -0.3444 -0.8315 -0.3527 -1.0208 -0.1322 -1.0719 -0.0564 -0.8982 -0.0000 -0.9000 0.0648 -1.0781 0.2881 -1.0409 0.2916 -0.8514 0.3444 -0.8315 0.4724 -0.9712 0.6645 -0.8514 0.5953 -0.6750 0.6364 -0.6364 0.8081 -0.7165 0.9397 -0.5323 0.8083 -0.3958 0.8315 -0.3444 1.0208 -0.3527 1.0719 -0.1322 0.8982 -0.0564
+      hole {
+        absarc 0 0 0.28 0 6.283185307179586 true
+      }
+    }
+    depth 0.16
+    bevelThickness 0.04
+    bevelSize 0.03
+    bevelSegments 2
+  }
+}
+part "bolt" {
+  pivot "axle"
+  material "steel"
+  cylinderGeometry {
+    radiusTop 0.06
+    radiusBottom 0.06
+    height 0.36
+    radialSegments 16
+  }
+  at {
+    position 0.55 0 0
+    quaternion 0.7071068 0 0 0.7071068
+  }
+  at {
+    position -0.275 0.476 0
+    quaternion 0.7071068 0 0 0.7071068
+  }
+  at {
+    position -0.275 -0.476 0
+    quaternion 0.7071068 0 0 0.7071068
+  }
+}
+part "vase" {
+  material "glaze"
+  position -2.2 0.3 0
+  latheGeometry {
+    points 0 0 0.32 0.04 0.42 0.4 0.24 0.95 0.2 1.1 0.3 1.25 0.27 1.27 0.17 1.12 0.2 0.95 0.38 0.4 0.28 0.07 0 0.05
+    segments 40
+  }
+}
+part "horn" {
+  material "ivory"
+  position 2.2 0.3 0
+  sweepGeometry {
+    section {
+      absarc 0 0 0.22 0 6.283185307179586 false
+    }
+    path {
+      kind catmullRom
+      point 0 0 0
+      point 0.15 0.6 0
+      point -0.1 1.1 0.1
+      point -0.45 1.35 0.15
+    }
+    steps 48
+    scale 0 1
+    scale 1 0.05
+    twist 0 0
+    twist 1 1.5
+  }
+}
+part "dice" {
+  material "bone"
+  position 1.1 0.6 0.55
+  csgGeometry {
+    op subtract
+    a {
+      boxGeometry {
+        width 0.6
+        height 0.6
+        depth 0.6
+      }
+    }
+    b {
+      mergeGeometries {
+        part {
+          position 0 0 0.3
+          icosahedronGeometry {
+            radius 0.08
+            detail 1
+          }
+        }
+        part {
+          position 0.15 0.3 0.15
+          icosahedronGeometry {
+            radius 0.07
+            detail 1
+          }
+        }
+        part {
+          position -0.15 0.3 -0.15
+          icosahedronGeometry {
+            radius 0.07
+            detail 1
+          }
+        }
+      }
+    }
+  }
+}
+part "fin" {
+  material "steel"
+  position -1.1 0.3 0.6
+  mirror none
+  shapeGeometry {
+    shape {
+      moveTo 0 0
+      lineTo 0.5 0
+      quadraticCurveTo 0.45 0.5 0 0.8
+      closePath
+    }
+  }
+}
+part "fin-mirrored" {
+  material "steel"
+  position -1.1 0.3 0.6
+  mirror x
+  shapeGeometry {
+    shape {
+      moveTo 0 0
+      lineTo 0.5 0
+      quadraticCurveTo 0.45 0.5 0 0.8
+      closePath
+    }
+  }
+}
