@@ -872,6 +872,38 @@ cross the room. Lockstep rests on §1's determinism and snapshot.
   `quit` or an `expect` lands on one tick for every peer, and a `then`
   step relaunches every place into a room of its own.
 
+### 2.11 The model review
+
+A model built as code from a reference image (the og-model skill, after
+img2threejs) is judged pass by pass on one sheet. The engine does the
+mechanical half of every judgment, so an agent spends its attention on
+the sheet and nothing else.
+
+- **Fixed cameras.** The command channel's `view:<entity>:front|back|side|top`
+  frames the entity's drawn bounds (its og.Parent children with it)
+  orthographically from +Z, -Z, +X and +Y (the top with the front at the
+  bottom), and `view:<entity>:orbit:<degrees>` in a 30° perspective from
+  20° above the horizon, a tenth of the frame free on each side, until
+  `view:off`. `turntable:<entity>:<n>` queues n orbit views 360/n apart
+  with a screenshot each for the next tick's start, then the view before
+  (`crates/og-runtime/src/review.rs`). The view is render state: it
+  replaces the camera extraction made from og.Camera, which is never
+  written, so no snapshot, replay or hash sees it. The bounds come from
+  the last frame's instances of the entity before the models pick their
+  levels of detail (the level drawn is the one the review camera sees) and
+  again from the frame's own; a skinned model's posed parts are not
+  framed. Not built into publish.
+- **The numbers and the sheet.** `og compare <reference> <render>`
+  (`crates/og-cli/src/compare.rs`) keys each silhouette (alpha where an
+  image has it, else ΔE00 above `--key` from the median border colour),
+  prints the silhouette IoU and the CIEDE2000 difference (sRGB, D65) over
+  the pixels both cover, mean and 95th percentile, per region of a flat
+  colour mask or over the overlap, and writes one PNG: the reference, the
+  render as compared, the silhouettes overlaid, labelled. The render is
+  compared in the reference's frame (resampled when the shapes agree,
+  refused otherwise; `--align` matches the silhouette boxes). No clock,
+  no randomness: two runs give the same numbers and the same bytes.
+
 ## 3. API surface
 
 ### 3.1 One IDL, two hosts **(D)**
