@@ -29,6 +29,6 @@
   ],
   "scripts": {
     "prepack": "bun scripts/pack-template.ts",
-    "test": "bun test ${OG_BUN_TEST_TIMEOUT:+--timeout=$OG_BUN_TEST_TIMEOUT} tests/"
+    "test": "bun scripts/pack-template.ts && bun test ${OG_BUN_TEST_TIMEOUT:+--timeout=$OG_BUN_TEST_TIMEOUT} tests/"
   }
 }

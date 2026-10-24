@@ -524,6 +524,11 @@ step_web_reference() {
   local a b c d e f g h i j k l m n o
   if skip_unchanged web-reference "web-reference" "$(rule_web)"; then return $SKIP; fi
   og_need bun || return 1
+  # The tests cook each project with packages/engine/native's og and serve
+  # dist/web: this checkout's dev og and addon and the gate's wasm, never
+  # what a release build or an older gate left there (the measure lane's
+  # 0.3.0 og refused fx-showcase's newer asset types, 2026-10-24).
+  OG_GATE=1 sh packages/engine/scripts/build.sh || return 1
   (cd packages/engine && bun tests/web/reference.ts); a=$?
   (cd packages/engine && bun tests/web/reference.ts --webgl); b=$?
   # The E5 stations, each a fresh run like its playtest.
