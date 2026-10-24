@@ -79,7 +79,7 @@ and the music. The UI style is the engine's neon pack, copied from
 | `locales.og.ts` | the title, the leaderboard, the HUD, pause, the settings and the results in German, no English of the game's table left, the racing HUD's own words included (`Runde` under the lap, no `lap`, no boost meter; FINDINGS #8 fixed and taken up); no control unnamed |
 | `replay.og.ts` | a session of slides, the jump, resets, pause and the ghost run twice in fresh processes ends on one world hash |
 | `frames.og.ts` | ten reference frames at 1280 x 720 (`references/metal/`): the title, the jump, a slide, the countdown, the sweeper, the ghost, pause, the results, the leaderboard, the German settings |
-| `published.og.ts` | input and screenshots only (Time trial pressed, the countdown, W held up the start straight, Escape): four frames (`pub-*.png`) the published page is held to as well (`packages/engine/tests/web/published.ts --playtest tests/published.og.ts`) |
+| `published.og.ts` | input and screenshots only (Time trial pressed, the countdown, W held straight up the start straight, Escape): four frames (`pub-*.png`) the published page is held to as well (`packages/engine/tests/web/published.ts --playtest tests/published.og.ts`); its `setup` covers the page's Back (`cover:12,12,40,40`), so the HUD lays out here as it does there |
 
 ## Commands (for scripts and agents)
 
