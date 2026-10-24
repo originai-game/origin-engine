@@ -6380,6 +6380,15 @@ Batch 2 merges, each through the functional lane:
   name the `type model` route: both go into `threejs-migrate`'s batch as
   doc rows, not a stream.
 
+Batch 2 is merged and pushed at 34db4fde. Batch 3 started from it, three
+Claude Code threads on Opus 5.5 high: `r3/threejs-migrate` (the row,
+plus the two doc rows above), `r3/release-f2` (owed rows 58, 59's and
+63's remainders) and `r3/release-f4` (the browser frames and the
+published-page harness for Brasswick and Meridian Loop; the frames
+themselves are the coordinator's to record). The wave-end
+`--stages gate,web` runs in the measure lane at 34db4fde meanwhile, with
+the vulkan-cpu reference of fx-showcase's `models` station owed there.
+
 ### Status 2026-10-19, E5 round
 
 - **Atmosphere, water, material shaders and physics beyond rigid bodies**
