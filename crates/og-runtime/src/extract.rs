@@ -825,8 +825,11 @@ pub(crate) struct DrawLayouts {
     pub atmo: super::atmosphere::AtmoLayouts,
     /// og.Environment (`super::environment`).
     pub environment: Option<Layout>,
-    /// og.Terrain and og.TerrainScatter (`super::terrain`).
+    /// og.Terrain and og.TerrainScatter (`super::terrain`; the 2D
+    /// profile draws neither).
+    #[cfg(not(feature = "profile2d"))]
     pub terrain: Option<Layout>,
+    #[cfg(not(feature = "profile2d"))]
     pub scatter: Option<Layout>,
     /// og.Collider: what CPU-simulated particles bounce off.
     pub collider: Option<Layout>,

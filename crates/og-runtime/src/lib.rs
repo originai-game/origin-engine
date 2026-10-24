@@ -63,7 +63,13 @@ mod save;
 #[cfg(not(feature = "publish"))]
 mod scene_save;
 mod stream;
+#[cfg(not(feature = "profile2d"))]
 mod terrain;
+// The 2D profile leaves the 3D world out: its terrain answers the refusal.
+#[cfg(feature = "profile2d")]
+#[path = "terrain_absent.rs"]
+mod terrain;
+#[cfg(not(feature = "profile2d"))]
 mod terrain_stream;
 mod timeline;
 mod trace;

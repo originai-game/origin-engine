@@ -49,6 +49,14 @@ fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp::SharedSha
             format!("og.Transform.scale must be finite, got {scale}"),
         ));
     }
+    if c.shape == SHAPE_HEIGHTFIELD
+        && let Some(why) = shared.heightfields_absent
+    {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            format!("og.Collider.shape 6 (SHAPE_HEIGHTFIELD, a terrain's height field): {why}"),
+        ));
+    }
     if let Some(shape) = primitive(c, s)? {
         return Ok(shape);
     }
