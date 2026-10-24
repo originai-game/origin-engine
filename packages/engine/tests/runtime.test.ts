@@ -210,7 +210,13 @@ test("refusals are Results that name the reason", () => {
   if (!dup.ok) expect(dup.reason).toMatch(/already exists/);
   const dead = engine.world.despawn(12345 as Entity);
   expect(dead.ok).toBeFalse();
-  expect(engine.command("nope").ok).toBeFalse();
+  const unknown = engine.command("nope");
+  expect(unknown.ok).toBeFalse();
+  if (!unknown.ok) {
+    expect(unknown.reason).toContain("no command action 'nope'");
+    expect(unknown.reason).toContain("spawn");
+    expect(unknown.reason).toContain("cover");
+  }
   const rng = engine.world.resource(og.Rng);
   expect(rng.ok).toBeTrue();
 });

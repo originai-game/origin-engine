@@ -1905,7 +1905,8 @@ pub fn command(id: u32, action: &str, args: &str) -> String {
             Ok(w) => w,
             Err(e) => return refuse(e),
         };
-        return match eng.probe.borrow_mut().act(world, action, &words) {
+        let result = eng.probe.borrow_mut().act(world, action, &words);
+        return match result {
             Some(Ok(())) => super::ok_void(),
             Some(Err(e)) => refuse(format!("command '{action}': {e}")),
             None => {
