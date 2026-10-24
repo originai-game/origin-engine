@@ -6,8 +6,9 @@
 // a quarter-MiB tile budget (`terrain_stream:stream:0.25`), and the world
 // hash is the same after every one of those ticks. Since 441f4e6e the first
 // frame that draws a streamed terrain settles its tiles as a capture does,
-// so both runs hold every wanted tile at the station's first frame and the
-// streamed run streams what the walk wants after it.
+// so the camera starts beyond the valley (only its coarse tile is wanted),
+// then returns on tick 2. The new tiles must arrive after that first settle,
+// before the final screenshot can force another settle.
 //
 // Ways this could fail: a tick reads resident tiles (the hero's height,
 // collision or og.terrain.sample changes while tiles are in flight), so the
@@ -37,10 +38,11 @@ const TICKS = 600;
 
 function run(name: string, mode: string): { hashes: string[]; first: Terrain; last: Terrain; ticks: number } {
   const out = join(work, name);
-  const steps = [`0:terrain_stream:${mode}`, "0:station:terrain"];
+  const steps = [`0:terrain_stream:${mode}`, "0:station:terrain", "0:set:og.Camera.position=4000,21,64"];
   // A step at t seconds runs at the start of tick round(60 t): one dump a
   // tick, and the streamer's tiles after the first frame at the station.
   for (let k = 1; k <= TICKS; k++) {
+    if (k === 2) steps.push(`${k / 60}:set:og.Camera.position=2962,21,64`);
     steps.push(`${k / 60}:dump_world:hash-${k}.json`);
     if (k === 1) steps.push(`${k / 60}:dump_stream:first.json`);
   }
@@ -60,7 +62,7 @@ function run(name: string, mode: string): { hashes: string[]; first: Terrain; la
 }
 
 test(
-  "the fx-showcase terrain station hashes the same over 600 ticks with its tiles resident or streamed",
+  "terrain tiles arriving after the first frame leave all 600 simulation hashes unchanged",
   () => {
     rmSync(work, { recursive: true, force: true });
     mkdirSync(work, { recursive: true });
@@ -72,21 +74,21 @@ test(
     // tile on the first frame at the station, and so had the streamed one,
     // because the first frame that draws a streamed terrain settles its
     // tiles as a capture does (web findings #5: no frame draws a terrain
-    // before any of its tiles arrived); its budget is its own, and the
-    // tiles the hero's walk wants after that frame stream within it.
+    // before any of its tiles arrived). Moving the camera back on tick 2
+    // requests tiles that were not part of that first settle.
     expect([resident.first.mode, resident.first.budget, resident.first.terrains]).toEqual(["resident", 0, 1]);
     expect([streamed.first.mode, streamed.first.budget, streamed.first.terrains]).toEqual(["stream", 0.25 * 1048576, 1]);
     expect(resident.first.resident).toBeGreaterThan(0);
     expect([resident.first.waiting, resident.first.inFlight]).toEqual([0, 0]);
     expect([streamed.first.waiting, streamed.first.inFlight]).toEqual([0, 0]);
     expect(streamed.first.resident).toBe(resident.first.resident);
-    // The settle decoded them on the stream's own thread; by the end the
-    // streamed run has nothing waiting (the station's walk stays within
-    // the tiles the first frame wanted, so nothing more streams here).
+    // Read before the screenshot: a capture would settle pending tiles
+    // and could hide a streamer that never catches up on ordinary frames.
     expect(streamed.first.decoded).toBeGreaterThan(0);
-    expect(streamed.last.waiting).toBe(0);
+    expect([streamed.last.waiting, streamed.last.inFlight]).toEqual([0, 0]);
     expect(streamed.last.resident).toBe(resident.last.resident);
-    expect(streamed.last.decoded).toBeGreaterThanOrEqual(streamed.first.decoded);
+    expect(streamed.last.resident).toBeGreaterThan(streamed.first.resident);
+    expect(streamed.last.decoded).toBeGreaterThan(streamed.first.decoded);
 
     expect(resident.ticks).toBeGreaterThan(TICKS - 1);
     expect(resident.hashes.length).toBe(TICKS);
