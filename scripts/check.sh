@@ -554,9 +554,16 @@ step_web_reference() {
   (cd packages/engine && bun tests/web/reference.ts --webgl "${tp[@]}"); j=$?
   # Brasswick's nine frames and Meridian Loop's ten: each game's
   # tests/frames.og.ts itself (--playtest: its commands without its
-  # screenshots and quit, each shot at its screenshot's tick, 60 t).
+  # screenshots and quit, each shot at its screenshot's tick, 60 t). Their
+  # style packs' art and fonts and their music are not committed: a checkout
+  # without them makes them first (tools/make-assets.ts, as wave-end.sh's
+  # stage_prepare and each README say).
   local p=0 game
   for game in brasswick meridian-loop; do
+    if ! ls "examples/$game"/assets/styles/*/atlas.png "examples/$game"/assets/music/*.wav > /dev/null 2>&1; then
+      og_say "web-reference: examples/$game has no generated assets yet: bun tools/make-assets.ts"
+      (cd "examples/$game" && bun tools/make-assets.ts) || p=1
+    fi
     local ex=(--project "examples/$game" --playtest tests/frames.og.ts --out "dist/test-reference/$game")
     (cd packages/engine && bun tests/web/reference.ts "${ex[@]}") || p=1
     (cd packages/engine && bun tests/web/reference.ts --webgl "${ex[@]}") || p=1
