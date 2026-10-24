@@ -39,7 +39,7 @@ palette {
   health "#3dffb0"
   mana "#0a84ff"
   xp "#bf5af2"
-  gold "#d4127f"
+  gold "#c81ebc"
 }
 radius {
   small 6
