@@ -569,10 +569,19 @@ measures exactly as og-render lays out, so measured and drawn text agree.
   emacs keys (§Input). The caret stands between grapheme clusters
   (og-i18n's `graphemes`): ←/→, Backspace, Delete and a press step over a
   base and its marks, an emoji with its modifiers and joiners, at once,
-  and a long word wraps between clusters. ← and → move as they point: on
-  in the text in a right-to-left run (the glyph at the caret's), by
-  clusters and by words alike, and a selection collapses to its side on
-  screen. A mixed text's line is placed by the highest ascender and the
+  and a long word wraps between clusters. ← and → move visually: a
+  cluster on screen, on in the text in a right-to-left run and across a
+  bidi run's edge to the caret stop beside it (a place in the text at a
+  run's edge has two on screen, the end of one run and the start of the
+  other: the caret is drawn at the one it moved to, and of two stops at
+  one place the nearer in the text is taken; at a line's edge an area
+  goes on to the next line as it runs); word moves go as the run under the
+  caret points, and a selection collapses to its side on screen. Under mac
+  keys Control+K, U and W kill into a kill buffer, kills in a row adding
+  up (K after the buffer, U and W before it) and any other edit or move
+  ending the row, Control+Y yanks it over the selection (a field without
+  its line breaks), Control+T transposes the clusters at the caret; the
+  buffer is one for every text control. A mixed text's line is placed by the highest ascender and the
   lowest descender of its faces (`FontMetrics::extents`), every run on
   one baseline. Words are UAX
   #29's (og-i18n's `word_segments`): letters, digits and marks with the
@@ -591,8 +600,8 @@ measures exactly as og-render lays out, so measured and drawn text agree.
   between starts the history again. A drag past a text area's top or bottom (a field's ends) scrolls
   it every tick, a quarter of the distance out per tick between a quarter
   of a line and two lines, and selects to the edge. The caret, anchor,
-  composition, scroll, blink phase, click count and histories are in
-  `save_state` (version 8). `UiFrame::text_input` names the focused text control, its
+  composition, scroll, blink phase, click count, histories, the caret's
+  place at a bidi edge and the kill buffer are in `save_state` (version 9). `UiFrame::text_input` names the focused text control, its
   rectangle and its selection: the web shell keeps its hidden textarea over
   it (an input method's window opens there) and copies the selection on
   the page's copy and cut events.
@@ -745,7 +754,7 @@ OS pins it with `og.ui.previewViewport`):
 | select all, copy, cut, undo, redo | Cmd+A, C, X, Z, Shift+Z (Y) | Ctrl (or Cmd) +A, C, X, Z, Shift+Z, Y |
 | by words (←/→, Backspace, Delete) | Option | Ctrl (or Alt) |
 | the line's ends | Cmd+←/→ (Backspace, Delete delete to them), Ctrl+A/E, Home/End | Home/End |
-| emacs | Ctrl+F/B a character, N/P a line (a field's ends), D/H delete one, K to the paragraph's end, U to its start, W the word before | — |
+| emacs | Ctrl+F/B a character, N/P a line (a field's ends), D/H delete one, K kills to the paragraph's end, U to its start, W the word before, Y yanks the kill buffer, T transposes | — |
 | the text's ends | Cmd+↑/↓ in an area, Ctrl/Cmd+Home/End | Ctrl+Home/End |
 
 The probe's `key_down:Meta+ArrowLeft` holds Command with the key
@@ -841,7 +850,7 @@ cargo check --target wasm32-unknown-unknown -p og-ui
 | `tests/text.rs` | Shift+arrows select and typing replaces the selection, Ctrl/Cmd+A, C (the clipboard) and X; a drag selects from the press and a Shift+press extends; a text area breaks lines on Enter, ↑/↓ move between lines and stay out of focus navigation, it wraps; a composition shows at the caret, replaces the selection as it starts, commits, ends when empty; the caret shows 32 ticks and hides 32 at 60 Hz and never blinks under reduced motion; once a typed-text stream exists keys type nothing; labels cut with an ellipsis on one line and at two lines, the probe reading the whole text; the edit state survives a save and restore |
 | `tests/rtl.rs` | Arabic shaped into joined forms in visual order; UAX #9 orders runs (digits, neutrals at a line's end, brackets mirrored, Hebrew reversed); Devanagari's conjunct and pre-base sign; kerning pairs tighten the measure and the visual layout alike; a right-to-left UI mirrors |
 | `tests/glyphs.rs` | a run-time glyph has ink inside and none outside, rows top to bottom, the same bytes every render; its advance and plane bounds are the font's at the cook's geometry |
-| `tests/fields.rs` | Alt/Ctrl+arrows move by words and punctuation runs, Alt/Ctrl+Backspace and Delete delete one, Shift+Ctrl+Home/End select to the text's ends; a double click selects the word (or spaces), a third press the field, the line between breaks in an area, a drag from a double click extends by words, a slow second press or one after a drag is a first click; undo groups typing by words and Backspaces in a row, a move ends a step, Ctrl+Y and Shift+Z redo, a new edit drops the redo, a cut comes back selected, a text the game set starts again, 100 steps kept, save and restore replay it; a drag below an area scrolls it a little each tick to its last line and stops, back above scrolls up; the `text-fields-2` scene's state; words are UAX #29's (`can't` one, `42` one, each Han character one, a Thai cluster one; a double click on a Han character takes it alone; each IME commit after Han text an undo step, Thai typed on one); under mac keys Cmd+←/→ go to the line's ends, Option moves by words, Ctrl+← one character, Ctrl+A/E the line's ends (not select all), Cmd+A selects all, Cmd+Backspace deletes to the line's start, Cmd+Z undoes (Ctrl+Z not), Cmd+↑/↓ the text's ends; elsewhere Cmd+← moves one character and Cmd+A still selects all; the caret, Backspace, Delete and a press step over a grapheme cluster (a base and its mark, an emoji and its skin tone, a ZWJ family); ← and → (and with Alt by words) move on in the text in a Hebrew field, a selection collapsing to its left side there; under mac keys Ctrl+F, B, N, P, D, H, K, U and W edit as emacs does, elsewhere nothing |
+| `tests/fields.rs` | Alt/Ctrl+arrows move by words and punctuation runs, Alt/Ctrl+Backspace and Delete delete one, Shift+Ctrl+Home/End select to the text's ends; a double click selects the word (or spaces), a third press the field, the line between breaks in an area, a drag from a double click extends by words, a slow second press or one after a drag is a first click; undo groups typing by words and Backspaces in a row, a move ends a step, Ctrl+Y and Shift+Z redo, a new edit drops the redo, a cut comes back selected, a text the game set starts again, 100 steps kept, save and restore replay it; a drag below an area scrolls it a little each tick to its last line and stops, back above scrolls up; the `text-fields-2` scene's state; words are UAX #29's (`can't` one, `42` one, each Han character one, a Thai cluster one; a double click on a Han character takes it alone; each IME commit after Han text an undo step, Thai typed on one); under mac keys Cmd+←/→ go to the line's ends, Option moves by words, Ctrl+← one character, Ctrl+A/E the line's ends (not select all), Cmd+A selects all, Cmd+Backspace deletes to the line's start, Cmd+Z undoes (Ctrl+Z not), Cmd+↑/↓ the text's ends; elsewhere Cmd+← moves one character and Cmd+A still selects all; the caret, Backspace, Delete and a press step over a grapheme cluster (a base and its mark, an emoji and its skin tone, a ZWJ family); ← and → (and with Alt by words) move on in the text in a Hebrew field, a selection collapsing to its left side there; under mac keys Ctrl+F, B, N, P, D, H, K, U and W edit as emacs does, elsewhere nothing; K, U and W kill into a buffer Y yanks (kills in a row add up, a move ends the row, a field yanks without line breaks, a save and restore keeps it), T transposes; ← and → cross a bidi run's edge on screen in a Latin line ending in Hebrew and a Hebrew line ending in Latin, keeping the caret's place at the edge |
 | `tests/runs.rs` | a Latin and CJK label takes each run from the first face that has it and measures as its runs; a base and its combining mark go to one face together, a joiner keeps its letter's face; an Arabic run in a Latin label shaped by the Arabic file, in visual order; neutrals stay with their run; a text one face (or a locale's face) covers whole is not cut, one no face covers is still cut per run; a mixed label draws a command per run in its face, each where the last ended, the same twice; its runs share one baseline centred on every face's extents (a taller fallback face moves it); a `[wave]` span mixing faces moves glyph by glyph, each in its face, and rests under reduced motion |
 | `tests/text_gfx.rs` | `references/<tier>/text-bidi.png`, `text-kerning.png`, `text-edit.png` and `text-mixed-runs.png` from the kit's fonts cooked at test time (og-cook): every script, kerned against unkerned (the title narrower kerned), ellipses, a selection, a composition and a text area; Latin labels mixing Japanese, shaped Arabic, Hebrew and Devanagari a run per face (every character in its face's atlas); no missing glyph |
 | `tests/support/scenes.rs` | not a test: builds the five reference scenes (`sample-screen`, `text-glow`, `glass`, `widget-set`, `text-fields-2`) for `gfx.rs`, `kit_gfx.rs` and, through `#[path]`, `crates/og-tests-web`, so the browser draws the same scenes; and the `text-mixed-runs` UI `text_gfx.rs` draws with cooked faces |
@@ -896,9 +905,10 @@ committed MSDF atlas (Noto Sans SC subset, OFL).
   and Myanmar move a grapheme cluster at a time, Han and Hiragana a
   character at a time, a Katakana run as one word. Backspace takes a whole
   grapheme cluster in every script (some platforms take an Indic or Thai
-  cluster's last mark alone); ← and → move as the run under the caret
-  points, not visually across a bidi run's edge; the emacs kill buffer
-  (Ctrl+Y, Ctrl+T) is not kept. (The caret and Backspace by grapheme
+  cluster's last mark alone). A press at a bidi run's edge lands on the
+  stop's leading place, and ↑/↓ keep that place's x. (The kill buffer with
+  Ctrl+Y and Ctrl+T, and ← and → moving visually across a bidi edge, owed
+  row 59's remainder, landed in release-f2. The caret and Backspace by grapheme
   clusters, ←/→ and word moves as they point in right-to-left runs, the
   emacs keys F, B, N, P, D, H, K, U and W under mac keys, mac keys on a
   native host on macOS, a mixed text's line placed by every face's extents

@@ -342,6 +342,16 @@ pub(crate) struct State {
     pub composition: String,
     /// The focused text control's scroll: a field's across, an area's down.
     pub edit_scroll: f32,
+    /// The caret is drawn at the trailing edge of the glyph before it, not
+    /// the leading edge of the glyph after: one of the two places a caret
+    /// at a bidi run's edge has, where ← or → put it on screen.
+    pub caret_upstream: bool,
+    /// The emacs kill buffer (Control+K, U and W under mac keys put what
+    /// they delete in it, Control+Y yanks it), shared by every text control.
+    pub kill: String,
+    /// The last edit was a kill: the next kill adds to the buffer (after it
+    /// for K, before it for U and W) instead of replacing it.
+    pub killing: bool,
     /// The world has had a typed-text stream (`og.TextInput`): key presses
     /// type nothing from then on.
     pub typed_stream: bool,
@@ -758,7 +768,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 8;
+const STATE_VERSION: u32 = 9;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,
@@ -2122,6 +2132,7 @@ impl Ui {
             composition,
             scroll: self.state.edit_scroll,
             caret_on: self.caret_shown(),
+            upstream: self.state.caret_upstream && n == 0,
         }
     }
 
@@ -3464,7 +3475,7 @@ impl Ui {
             span(c, cmds, cy + ch - th, th, p.ink);
         }
         if e.caret_on && mk.caret_here && e.caret >= mk.first && e.caret <= mk.first + n {
-            let cx = mk.x + crate::edit::caret_x(&boxes, e.caret - mk.first);
+            let cx = mk.x + crate::edit::caret_x_at(&boxes, e.caret - mk.first, e.upstream);
             let caret_w = 1.0f32.max(1.0 / dpr);
             cmds.push(DrawCmd::Quad {
                 rect: Rect::new(cx, cy, caret_w, ch).snapped(dpr),
@@ -4045,6 +4056,8 @@ impl Ui {
                 }
             }
         }
+        b.push(u8::from(s.caret_upstream) | u8::from(s.killing) << 1);
+        text(&mut b, &s.kill);
         b
     }
 
@@ -4417,6 +4430,10 @@ impl Reader<'_> {
             }
             s.histories.insert(k, h);
         }
+        let flags = self.u8()?;
+        s.caret_upstream = flags & 1 != 0;
+        s.killing = flags & 2 != 0;
+        s.kill = self.string()?;
         Some(s)
     }
 }

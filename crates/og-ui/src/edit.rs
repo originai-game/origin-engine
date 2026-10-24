@@ -16,15 +16,20 @@
 //! deletes to them with Backspace and Delete, ↑/↓ the text's ends in an
 //! area), Option moves and deletes by words, and Control takes the emacs
 //! keys (A and E the line's ends, F and B a character, N and P a line, D
-//! and H delete a character, K to the paragraph's end, U to its start, W
-//! the word before); elsewhere Control is the shortcut key and moves by
-//! words (Alt too), and Command only takes the shortcuts.
+//! and H delete a character, K kills to the paragraph's end, U to its
+//! start, W the word before, each into a kill buffer Y yanks, kills in a
+//! row adding up; T transposes the characters at the caret); elsewhere
+//! Control is the shortcut key and moves by words (Alt too), and Command
+//! only takes the shortcuts.
 //!
 //! The caret stands between grapheme clusters ([`clusters`]): an arrow,
 //! Backspace and Delete step over a base and its marks, an emoji with its
 //! modifiers and joiners, at once, and a press lands beside one. ← and →
-//! move as they point: on in the text in a right-to-left run, by clusters
-//! and by words alike (word moves stay UAX #29's words).
+//! move visually, a cluster at a time on screen ([`visual_step`]): on in
+//! the text in a right-to-left run, and across a bidi run's edge to the
+//! stop beside the caret, where one logical place has two on screen (the
+//! caret keeps the one it moved to, `State::caret_upstream`). Word moves go
+//! as the run under the caret points (UAX #29's words).
 //!
 //! Positions come from the same visual layout the text is drawn with
 //! (`FontMetrics::visual`: kerning, bidi runs, shaped clusters), so a press
@@ -86,6 +91,74 @@ pub(crate) fn caret_x(boxes: &[GlyphBox], k: usize) -> f32 {
         Some(b) => b.x1,
         None => 0.0,
     }
+}
+
+/// The caret's slot on a line: the place between glyph boxes `slot - 1`
+/// and `slot` in visual order (0 before the first, `boxes.len()` after the
+/// last) where the caret before logical character `k` stands, as
+/// [`caret_x`] places it; with `upstream` at the trailing edge of the glyph
+/// before `k` (after it in a left-to-right run, before it in a
+/// right-to-left one) instead: the other of the two places a caret at a
+/// bidi run's edge has, the same one anywhere else.
+pub(crate) fn caret_slot(boxes: &[GlyphBox], k: usize, upstream: bool) -> usize {
+    let before = boxes
+        .iter()
+        .enumerate()
+        .filter(|(_, b)| b.index < k)
+        .max_by_key(|(_, b)| b.index);
+    if upstream && let Some((i, b)) = before {
+        return if b.rtl { i } else { i + 1 };
+    }
+    if let Some(i) = boxes.iter().position(|b| b.index == k) {
+        return if boxes[i].rtl { i + 1 } else { i };
+    }
+    match before {
+        Some((i, b)) if b.rtl => i,
+        Some((i, _)) => i + 1,
+        None => 0,
+    }
+}
+
+/// Where [`caret_slot`] puts the caret on a line (CSS px from its start).
+pub(crate) fn caret_x_at(boxes: &[GlyphBox], k: usize, upstream: bool) -> f32 {
+    let s = caret_slot(boxes, k, upstream);
+    match boxes.get(s) {
+        Some(b) => b.x0,
+        None => boxes.last().map_or(0.0, |b| b.x1),
+    }
+}
+
+/// The caret stop next to the caret before `k` (its place `upstream`) on a
+/// line, rightwards or leftwards on screen: of every grapheme cluster
+/// boundary's places ([`caret_slot`], both at a bidi edge) the nearest
+/// beyond it in visual order, of two at one slot the one nearer `k` in the
+/// text (then the leading edge). `None` at the line's edge.
+pub(crate) fn visual_step(
+    boxes: &[GlyphBox],
+    line: &[char],
+    k: usize,
+    upstream: bool,
+    right: bool,
+) -> Option<(usize, bool)> {
+    let from = caret_slot(boxes, k, upstream) as isize;
+    let mut best: Option<(usize, bool, isize)> = None;
+    for c in clusters(line) {
+        for up in [false, true] {
+            let at = caret_slot(boxes, c, up) as isize;
+            let d = if right { at - from } else { from - at };
+            if d <= 0 {
+                continue;
+            }
+            let better = match best {
+                None => true,
+                Some((bc, _, bd)) => d < bd || (d == bd && c.abs_diff(k) < bc.abs_diff(k)),
+            };
+            if better {
+                best = Some((c, up, d));
+            }
+        }
+    }
+    best.map(|(c, up, _)| (c, up))
 }
 
 /// The grapheme cluster boundary of a line (0 to its length) whose caret
@@ -545,10 +618,15 @@ impl Ui {
             self.state.composition.clear();
             self.state.edit_scroll = 0.0;
             self.state.edit_tick = tick;
+            self.state.caret_upstream = false;
+            self.state.killing = false;
         }
         let mut caret = self.state.caret.min(chars.len());
         let mut anchor = self.state.anchor.min(chars.len());
         let mut sel_before = (caret, anchor);
+        let mut upstream = self.state.caret_upstream;
+        let mut killing = self.state.killing;
+        let mut kill = std::mem::take(&mut self.state.kill);
         let mut composition = std::mem::take(&mut self.state.composition);
         let mut clipboard = None;
         // This control's history; a text the game set since starts it again.
@@ -669,6 +747,8 @@ impl Ui {
                     3 => (0, chars.len()),
                     _ => (k, k),
                 };
+                upstream = false;
+                killing = false;
                 if pressed_here {
                     let near = (p - click.at).length() <= CLICK_SLOP;
                     let soon =
@@ -718,6 +798,10 @@ impl Ui {
                     anchor = a;
                     note(&mut kind, EditKind::Typing);
                 }
+                if !c.is_empty() {
+                    upstream = false;
+                    killing = false;
+                }
                 composition = c.clone();
             }
             // Typed text replaces the selection.
@@ -738,6 +822,8 @@ impl Ui {
                     }
                 }
                 anchor = caret;
+                upstream = false;
+                killing = false;
                 note(&mut kind, EditKind::Typing);
             }
             let shift = self.input.shift;
@@ -755,7 +841,8 @@ impl Ui {
             // honours (A and E the line's ends, F and B a character on and
             // back, N and P a line down and up, D and H delete a character
             // on and back, K to the line's end, U to its start, W the word
-            // before the caret).
+            // before the caret, each into the kill buffer Y yanks, T
+            // transposes the characters at the caret).
             let emacs = mac && ctrl && !meta;
             // The line holding the caret: its start and end.
             let line_of = |chars: &[char], caret: usize| {
@@ -787,10 +874,38 @@ impl Ui {
                 };
                 run.unwrap_or(og_i18n::paragraph_direction(&line, dir) == Direction::Rtl)
             };
+            // The caret stop beside the caret on screen (← and →): within
+            // its line, else the next line's start or the previous line's
+            // end as the line runs (none in a field).
+            let visual = |chars: &[char], k: usize, up: bool, right: bool| {
+                let lines = layout(chars);
+                let li = lines
+                    .iter()
+                    .rposition(|l| l.0 <= k && k <= l.1)
+                    .unwrap_or(0);
+                let (a, b, bx) = &lines[li];
+                if let Some((c, up)) = visual_step(bx, &chars[*a..*b], k - a, up, right) {
+                    return (a + c, up);
+                }
+                let line: String = chars[*a..*b].iter().collect();
+                let rtl = og_i18n::paragraph_direction(&line, dir) == Direction::Rtl;
+                if right != rtl {
+                    lines.get(li + 1).map_or((k, up), |l| (l.0, false))
+                } else {
+                    li.checked_sub(1).map_or((k, up), |p| (lines[p].1, false))
+                }
+            };
             for k in self.input.keys.iter().copied() {
                 let (a, b) = (caret.min(anchor), caret.max(anchor));
                 let selected = a != b;
                 let mut moved = None;
+                // A visual move's place at a bidi edge; any other change of
+                // the caret or the text puts it at the leading edge.
+                let mut moved_up = None;
+                let at_key = (caret, chars.clone());
+                // A kill right after a kill adds to the buffer.
+                let chained = killing;
+                killing = false;
                 // The emacs keys that are another key's edit.
                 let k = match k {
                     UiKey::KeyD if emacs => UiKey::Delete,
@@ -858,10 +973,12 @@ impl Ui {
                             }
                         } else if selected && !shift {
                             if on { b } else { a }
-                        } else if on {
-                            next_cluster(&chars, caret)
                         } else {
-                            prev_cluster(&chars, caret)
+                            // A cluster on screen: across a bidi run's edge
+                            // too, where the caret has two places.
+                            let (to, up) = visual(&chars, caret, upstream, k == UiKey::Right);
+                            moved_up = Some(up);
+                            to
                         });
                     }
                     // Control+F and B under mac keys: a cluster on and back
@@ -883,10 +1000,12 @@ impl Ui {
                     // Control+N and P in a field: the text's ends.
                     UiKey::KeyN if emacs => moved = Some(chars.len()),
                     UiKey::KeyP if emacs => moved = Some(0),
-                    // Control+K, U and W under mac keys: delete to the
+                    // Control+K, U and W under mac keys: kill to the
                     // paragraph's end (its line break when the caret is at
                     // it), to its start, the word before the caret; a
-                    // selection goes first.
+                    // selection goes first. What they take goes into the
+                    // kill buffer, after it (K) or before it (U, W) when
+                    // the last edit was a kill too.
                     UiKey::KeyK | UiKey::KeyU | UiKey::KeyW if emacs => {
                         let (from, to) = if selected {
                             (a, b)
@@ -899,8 +1018,14 @@ impl Ui {
                                 _ => (word_left(&chars, caret), caret),
                             }
                         };
+                        killing = true;
                         if from < to {
-                            chars.drain(from..to);
+                            let taken: String = chars.drain(from..to).collect();
+                            kill = match (chained, k) {
+                                (false, _) => taken,
+                                (true, UiKey::KeyK) => kill + &taken,
+                                (true, _) => taken + &kill,
+                            };
                             caret = from;
                             anchor = from;
                             note(
@@ -911,6 +1036,40 @@ impl Ui {
                                     EditKind::Back
                                 },
                             );
+                        }
+                    }
+                    // Control+Y under mac keys: yank the kill buffer over the
+                    // selection (a field takes it without line breaks).
+                    UiKey::KeyY if emacs && !kill.is_empty() => {
+                        chars.drain(a..b);
+                        caret = a;
+                        for c in kill.chars().filter(|&c| d.multiline || c != '\n') {
+                            if d.max_chars == 0 || chars.len() < d.max_chars as usize {
+                                chars.insert(caret, c);
+                                caret += 1;
+                            }
+                        }
+                        anchor = caret;
+                        note(&mut kind, EditKind::Other);
+                    }
+                    // Control+T under mac keys: transpose the clusters on
+                    // either side of the caret (the two before it at the
+                    // paragraph's end), the caret after them.
+                    UiKey::KeyT if emacs && !selected => {
+                        let (start, end) = line_at(&chars, caret);
+                        let mid = if caret == end && caret > start {
+                            prev_cluster(&chars, caret)
+                        } else {
+                            caret
+                        };
+                        let (l, r) = (prev_cluster(&chars, mid), next_cluster(&chars, mid));
+                        if start <= l && l < mid && mid < r && r <= end {
+                            let left: Vec<char> = chars[l..mid].to_vec();
+                            let right: Vec<char> = chars[mid..r].to_vec();
+                            chars.splice(l..r, right.into_iter().chain(left));
+                            caret = r;
+                            anchor = r;
+                            note(&mut kind, EditKind::Other);
                         }
                     }
                     // Ctrl (or Command) with Home and End: the text's ends.
@@ -1001,6 +1160,11 @@ impl Ui {
                         anchor = to;
                     }
                 }
+                if let Some(up) = moved_up {
+                    upstream = up;
+                } else if (caret, &chars) != (at_key.0, &at_key.1) {
+                    upstream = false;
+                }
             }
             // Keep the caret in view: horizontally in a field, by lines in an
             // area (not while a drag past the edge scrolls it).
@@ -1081,6 +1245,9 @@ impl Ui {
         }
         self.state.caret = caret;
         self.state.anchor = anchor;
+        self.state.caret_upstream = upstream;
+        self.state.killing = killing;
+        self.state.kill = kill;
         self.state.composition = composition;
         if clipboard.is_some() {
             self.clipboard = clipboard;

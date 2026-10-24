@@ -648,6 +648,8 @@ pub(crate) struct EditView {
     pub scroll: f32,
     /// The caret shows this tick (its blink).
     pub caret_on: bool,
+    /// The caret is drawn after the glyph before it (`caret_x_at`).
+    pub upstream: bool,
 }
 
 pub(crate) const NONE: usize = usize::MAX;
