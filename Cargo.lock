@@ -1977,6 +1977,7 @@ dependencies = [
  "og-cook",
  "og-core",
  "og-ecs",
+ "og-geom",
  "og-i18n",
  "og-input",
  "og-lanes",

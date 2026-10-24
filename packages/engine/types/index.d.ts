@@ -6887,6 +6887,477 @@ export interface TubeGeometryDesc {
 
 
 /**
+ * A shape as points, what og.Shape.extractPoints returns and what shapeGeometry, extrudeGeometry and sweepGeometry read: the outline, then each hole. A repeated closing point is dropped, as three.js drops it.
+ */
+export interface ShapePoints {
+  /** The outline's points, in order. */
+  readonly shape: readonly Vector2[];
+  /** Each hole's points, in order. */
+  readonly holes: readonly (readonly Vector2[])[];
+}
+
+/**
+ * A flat shape with holes in the xy plane facing +Z, as three.js ShapeGeometry(shapes, curveSegments): triangulated by earcut (three.js's own port), the outline made clockwise and the holes counter-clockwise first, so its vertices and triangles are three.js's for the same shape. uvs are world x and y (v flipped to run down the image).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ShapeGeometryDesc {
+  /**
+   * One og.Shape (an og.Path2 is a shape without holes), a list of them, or the outline's points. Without it, three.js's default triangle (0, 0.5), (-0.5, -0.5), (0.5, -0.5).
+   *
+   * @default null
+   */
+  readonly shapes?: Path2 | readonly Path2[] | readonly Vector2[] | null;
+  /**
+   * Points per curve when an og.Shape's curves are flattened (three.js extractPoints(curveSegments); an ellipse takes twice as many, a spline as many per point).
+   *
+   * @default 12
+   * @range 1..
+   */
+  readonly curveSegments?: number;
+  /**
+   * Register it as a physics mesh too (BufferGeometryDesc.physics).
+   *
+   * @default true
+   */
+  readonly physics?: boolean;
+  /**
+   * Whether og.render.updateGeometry may rewrite it later (BufferGeometryDesc.dynamic).
+   *
+   * @default false
+   */
+  readonly dynamic?: boolean;
+}
+
+/**
+ * Shapes pushed along +Z, or along a path, as three.js ExtrudeGeometry(shapes, options) with its option names and defaults: a closed solid, its lids from earcut and its walls ring by ring, rounded by a bevel of bevelSegments rings at each face. Unindexed as three.js's (every triangle its own vertices, flat normals), three.js's vertex order and counts; uvs from three.js's WorldUVGenerator (v flipped to run down the image).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ExtrudeGeometryDesc {
+  /**
+   * One og.Shape, a list of them, or the outline's points. Without it, three.js's default square of side 1.
+   *
+   * @default null
+   */
+  readonly shapes?: Path2 | readonly Path2[] | readonly Vector2[] | null;
+  /**
+   * How far the shape is pushed along +Z (without extrudePath).
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly depth?: number;
+  /**
+   * Rings along the depth or the path.
+   *
+   * @default 1
+   * @range 1..
+   */
+  readonly steps?: number;
+  /**
+   * Round the edges of both faces.
+   *
+   * @default true
+   */
+  readonly bevelEnabled?: boolean;
+  /**
+   * How far the bevel reaches beyond each face, along z.
+   *
+   * @default 0.2
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly bevelThickness?: number;
+  /**
+   * How far the bevel reaches out from the outline. Unset, bevelThickness - 0.1 (three.js's default; 0.1 with the default thickness).
+   *
+   * @default 0.1
+   * @unit m (metres)
+   */
+  readonly bevelSize?: number;
+  /**
+   * How far the bevel starts out from the outline.
+   *
+   * @default 0
+   * @unit m (metres)
+   */
+  readonly bevelOffset?: number;
+  /**
+   * Rings in each bevel.
+   *
+   * @default 3
+   * @range 1..
+   */
+  readonly bevelSegments?: number;
+  /**
+   * Points per curve when an og.Shape's curves are flattened.
+   *
+   * @default 12
+   * @range 1..
+   */
+  readonly curveSegments?: number;
+  /**
+   * A path (og.path.create or og.path.find) to extrude along instead of +Z: the shape's x along the path's normal and y along its binormal (three.js's Frenet frames), steps rings evenly spaced along it. A path turns the bevel off, as three.js. 0 extrudes along +Z.
+   *
+   * @default 0
+   */
+  readonly extrudePath?: Path;
+  /**
+   * Register it as a physics mesh too.
+   *
+   * @default true
+   */
+  readonly physics?: boolean;
+  /**
+   * Whether og.render.updateGeometry may rewrite it later.
+   *
+   * @default false
+   */
+  readonly dynamic?: boolean;
+}
+
+/**
+ * A profile turned round +Y, as three.js LatheGeometry(points, segments, phiStart, phiLength): vases, bottles, columns, wheels. three.js's vertices, indices and smooth normals; u round the axis, v along the profile (flipped to run down the image). A whole turn's seam meets exactly.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LatheGeometryDesc {
+  /**
+   * The profile, x the distance from the axis and y the height, in order (at least two). Without it, three.js's default (0, -0.5), (0.5, 0), (0, 0.5).
+   *
+   * @default []
+   * @unit m (metres)
+   */
+  readonly points?: readonly Vector2[];
+  /**
+   * Segments round the axis.
+   *
+   * @default 12
+   * @range 1..
+   */
+  readonly segments?: number;
+  /**
+   * Where the turn starts, from +Z towards +X.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly phiStart?: number;
+  /**
+   * How far it turns; 2 pi is whole (clamped to it).
+   *
+   * @default 6.283185307179586
+   * @unit rad (radians)
+   */
+  readonly phiLength?: number;
+  /**
+   * Register it as a physics mesh too.
+   *
+   * @default true
+   */
+  readonly physics?: boolean;
+  /**
+   * Whether og.render.updateGeometry may rewrite it later.
+   *
+   * @default false
+   */
+  readonly dynamic?: boolean;
+}
+
+/**
+ * A polyhedron from vertices and faces, every face subdivided `detail` times and every vertex pushed onto the sphere of `radius`, as three.js PolyhedronGeometry(vertices, indices, radius, detail): unindexed, flat normals at detail 0 and the sphere's above, three.js's spherical uvs.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PolyhedronGeometryDesc {
+  /**
+   * The corners, x y z each (three.js's flat array).
+   *
+   * @default []
+   */
+  readonly vertices?: readonly number[];
+  /**
+   * The faces, three corner indices each, counter-clockwise seen from outside.
+   *
+   * @default []
+   */
+  readonly indices?: readonly number[];
+  /**
+   * The sphere the vertices are pushed onto.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly radius?: number;
+  /**
+   * Subdivisions of each face: (detail + 1)² triangles a face.
+   *
+   * @default 0
+   * @range ..64
+   */
+  readonly detail?: number;
+  /**
+   * Register it as a physics mesh too.
+   *
+   * @default true
+   */
+  readonly physics?: boolean;
+  /**
+   * Whether og.render.updateGeometry may rewrite it later.
+   *
+   * @default false
+   */
+  readonly dynamic?: boolean;
+}
+
+/**
+ * A regular solid, as three.js IcosahedronGeometry, DodecahedronGeometry, OctahedronGeometry and TetrahedronGeometry(radius, detail): PolyhedronGeometryDesc with the solid's own vertices and faces. An icosahedron at detail 2 or more is a sphere with even triangles.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SolidGeometryDesc {
+  /**
+   * The radius.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly radius?: number;
+  /**
+   * Subdivisions of each face.
+   *
+   * @default 0
+   * @range ..64
+   */
+  readonly detail?: number;
+  /**
+   * Register it as a physics mesh too.
+   *
+   * @default true
+   */
+  readonly physics?: boolean;
+  /**
+   * Whether og.render.updateGeometry may rewrite it later.
+   *
+   * @default false
+   */
+  readonly dynamic?: boolean;
+}
+
+/**
+ * A value at a fraction of a sweep's path: linear between keys, held before the first and past the last.
+ */
+export interface SweepKey {
+  /**
+   * The fraction of the path's length, 0 to 1.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly t: number;
+  /** The value there. */
+  readonly value: number;
+}
+
+/**
+ * A section swept along a path, scaled and twisted over it: horns, tusks, handles, blades, tapered pipes, twisted columns (img2threejs's tapered sweep; three.js has no class for it). The section's x lies along the path's normal and y along its binormal (three.js's Frenet frames), rings evenly spaced along the path's length; u runs along the path, v round the section (flipped to run down the image), the sides smooth. An open path's ends are capped.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SweepGeometryDesc {
+  /**
+   * The section's outline: an og.Shape or og.Path2 (flattened by curveSegments; holes are not swept) or its points, at least three, either winding.
+   *
+   * @default null
+   */
+  readonly section?: Path2 | readonly Vector2[] | null;
+  /**
+   * The path (og.path.create or og.path.find).
+   *
+   * @default 0
+   */
+  readonly path?: Path;
+  /**
+   * Rings along the path, less one.
+   *
+   * @default 64
+   * @range 1..
+   */
+  readonly steps?: number;
+  /**
+   * The section's scale over the path (none: 1 throughout). A horn: [{ t: 0, value: 1 }, { t: 1, value: 0.05 }].
+   *
+   * @default []
+   */
+  readonly scale?: readonly SweepKey[];
+  /**
+   * The section's turn round the path over its length, in radians (none: 0).
+   *
+   * @default []
+   */
+  readonly twist?: readonly SweepKey[];
+  /**
+   * Close the ends of an open path.
+   *
+   * @default true
+   */
+  readonly caps?: boolean;
+  /**
+   * Points per curve when an og.Shape section is flattened.
+   *
+   * @default 12
+   * @range 1..
+   */
+  readonly curveSegments?: number;
+  /**
+   * Register it as a physics mesh too.
+   *
+   * @default true
+   */
+  readonly physics?: boolean;
+  /**
+   * Whether og.render.updateGeometry may rewrite it later.
+   *
+   * @default false
+   */
+  readonly dynamic?: boolean;
+}
+
+/**
+ * The world axis a part is mirrored along, after its placement.
+ * - `"none"`: Not mirrored.
+ * - `"x"`: x negated: the mirror image across the yz plane.
+ * - `"y"`: y negated: across the xz plane.
+ * - `"z"`: z negated: across the xy plane.
+ */
+export type MirrorAxis = "none" | "x" | "y" | "z";
+
+/**
+ * A geometry placed as an Object3D is (scale, then rotate, then move), then mirrored: one part of og.render.mergeGeometries or an operand of og.render.csgGeometry.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GeometryPart {
+  /**
+   * Any geometry: made, a primitive or a loaded glTF's.
+   *
+   * @default 0
+   */
+  readonly geometry?: Geometry;
+  /**
+   * Where it goes.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly position?: Vector3;
+  /**
+   * How it turns.
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly quaternion?: Quaternion;
+  /**
+   * Its scale (a negative component mirrors it as `mirror` does).
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   */
+  readonly scale?: Vector3;
+  /**
+   * Mirror it along a world axis after placing it: a symmetric prop is one half twice, the second mirrored.
+   *
+   * @default "none"
+   */
+  readonly mirror?: MirrorAxis;
+}
+
+/**
+ * A boolean operation on two solids.
+ * - `"union"`: Everything in either: a + b.
+ * - `"subtract"`: What of a is not in b: a - b (holes, notches, a dice's pips).
+ * - `"intersect"`: What is in both.
+ */
+export type CsgOp = "union" | "subtract" | "intersect";
+
+/**
+ * Two closed geometries combined by a boolean operation, each placed first: a box with a hole bored through it, a dice, a window cut in a wall. The result is closed when both are (every edge shared by two triangles, wound opposite), every piece keeps its source's normals, uvs and colours (b's turned inside out where it is subtracted). Where a plane side or an edge crossing is decided, the decision is exact (Shewchuk's predicates), so every host makes the same cuts; faces that coincide keep one copy or none, as the operation says.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CsgGeometryDesc {
+  /**
+   * The operation.
+   *
+   * @default "union"
+   */
+  readonly op?: CsgOp;
+  /**
+   * The first operand.
+   *
+   * @default {}
+   */
+  readonly a?: GeometryPart;
+  /**
+   * The second operand.
+   *
+   * @default {}
+   */
+  readonly b?: GeometryPart;
+  /**
+   * Register it as a physics mesh too.
+   *
+   * @default true
+   */
+  readonly physics?: boolean;
+  /**
+   * Whether og.render.updateGeometry may rewrite it later.
+   *
+   * @default false
+   */
+  readonly dynamic?: boolean;
+}
+
+/**
+ * Geometries placed and merged into one, as three.js BufferGeometryUtils.mergeGeometries after applying each part's matrix: a prop of parts drawn in one draw, a mirrored half, an array (the same part at several placements). Normals follow each placement; a mirrored part turns its triangles so they still face out. Vertex colours are kept when any part has them.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MergeGeometriesDesc {
+  /**
+   * The parts, in order (at least one).
+   *
+   * @default []
+   */
+  readonly parts?: readonly GeometryPart[];
+  /**
+   * Register it as a physics mesh too.
+   *
+   * @default true
+   */
+  readonly physics?: boolean;
+  /**
+   * Whether og.render.updateGeometry may rewrite it later.
+   *
+   * @default false
+   */
+  readonly dynamic?: boolean;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/**
  * How a line set's points join, as three.js's three line objects.
  * - `"strip"`: One polyline through every point, as three.js Line.
  * - `"segments"`: Pairs of points, each its own segment, as three.js LineSegments.
@@ -7604,6 +8075,164 @@ export interface BakedScene {
   readonly probes: number;
 }
 
+
+// ── shapes ──────────────────────────────────────────────────────
+// Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js's Shape and Path, built by the same calls (moveTo, lineTo, quadraticCurveTo, bezierCurveTo, splineThru, arc, absarc, ellipse, absellipse, closePath) and flattened to points by getPoints, so a three.js outline is a paste. og.render.shapeGeometry, extrudeGeometry and sweepGeometry take them; only their points cross to the engine.
+// They are TypeScript values, not world state: make them in start or a command and let the geometry made from them be what the world keeps. Points come from basic arithmetic (no Math.sin), so they are the same on every host.
+
+/** A shape's holes, as three.js Shape.holes: an array; push a path to add a hole. */
+export interface PathList {
+  /** How many holes. */
+  readonly length: number;
+  /**
+   * Add a hole (Array.push).
+   *
+   * @param path The hole's outline, either winding.
+   */
+  push(path: Path2): number;
+}
+
+/**
+ * An outline of curves, as three.js Path: each call adds a curve from the current point (moveTo only moves it). Every method but getPoints returns the path, so calls chain.
+ */
+export interface Path2 {
+  /**
+   * Move the current point without drawing, as three.js Path.moveTo.
+   *
+   * @param x x.
+   * @param y y.
+   */
+  moveTo(x: number, y: number): this;
+  /**
+   * A straight line to (x, y), as three.js Path.lineTo.
+   *
+   * @param x x.
+   * @param y y.
+   */
+  lineTo(x: number, y: number): this;
+  /**
+   * A quadratic Bézier curve through one control point to (x, y), as three.js Path.quadraticCurveTo.
+   *
+   * @param cpX The control point's x.
+   * @param cpY The control point's y.
+   * @param x The end's x.
+   * @param y The end's y.
+   */
+  quadraticCurveTo(cpX: number, cpY: number, x: number, y: number): this;
+  /**
+   * A cubic Bézier curve through two control points to (x, y), as three.js Path.bezierCurveTo.
+   *
+   * @param cp1X The first control point's x.
+   * @param cp1Y The first control point's y.
+   * @param cp2X The second control point's x.
+   * @param cp2Y The second control point's y.
+   * @param x The end's x.
+   * @param y The end's y.
+   */
+  bezierCurveTo(cp1X: number, cp1Y: number, cp2X: number, cp2Y: number, x: number, y: number): this;
+  /**
+   * A Catmull-Rom spline from the current point through the points, as three.js Path.splineThru (a SplineCurve).
+   *
+   * @param points The points it passes through, in order.
+   */
+  splineThru(points: readonly Vector2[]): this;
+  /**
+   * A circular arc centred at (x, y) from the current point, as three.js Path.arc.
+   *
+   * @param x The centre's x, from the current point.
+   * @param y The centre's y, from the current point.
+   * @param radius The radius.
+   * @param startAngle Where it starts, from +x towards +y.
+   * @param endAngle Where it ends.
+   * @param clockwise Go clockwise. Default `false`.
+   */
+  arc(x: number, y: number, radius: number, startAngle: number, endAngle: number, clockwise?: boolean): this;
+  /**
+   * A circular arc centred at (x, y), as three.js Path.absarc: a line joins it to the current point when they differ.
+   *
+   * @param x The centre's x.
+   * @param y The centre's y.
+   * @param radius The radius.
+   * @param startAngle Where it starts, from +x towards +y.
+   * @param endAngle Where it ends.
+   * @param clockwise Go clockwise. Default `false`.
+   */
+  absarc(x: number, y: number, radius: number, startAngle: number, endAngle: number, clockwise?: boolean): this;
+  /**
+   * An elliptic arc centred at (x, y) from the current point, as three.js Path.ellipse.
+   *
+   * @param x The centre's x, from the current point.
+   * @param y The centre's y, from the current point.
+   * @param xRadius The radius along x.
+   * @param yRadius The radius along y.
+   * @param startAngle Where it starts.
+   * @param endAngle Where it ends.
+   * @param clockwise Go clockwise. Default `false`.
+   * @param rotation The ellipse's turn round its centre. Default `0`.
+   */
+  ellipse(x: number, y: number, xRadius: number, yRadius: number, startAngle: number, endAngle: number, clockwise?: boolean, rotation?: number): this;
+  /**
+   * An elliptic arc centred at (x, y), as three.js Path.absellipse.
+   *
+   * @param x The centre's x.
+   * @param y The centre's y.
+   * @param xRadius The radius along x.
+   * @param yRadius The radius along y.
+   * @param startAngle Where it starts.
+   * @param endAngle Where it ends.
+   * @param clockwise Go clockwise. Default `false`.
+   * @param rotation The ellipse's turn round its centre. Default `0`.
+   */
+  absellipse(x: number, y: number, xRadius: number, yRadius: number, startAngle: number, endAngle: number, clockwise?: boolean, rotation?: number): this;
+  /**
+   * Start at the first point and draw lines through the rest, as three.js Path.setFromPoints.
+   *
+   * @param points The points.
+   */
+  setFromPoints(points: readonly Vector2[]): this;
+  /**
+   * A line back to the first point when the outline does not end there, as three.js CurvePath.closePath.
+   */
+  closePath(): this;
+  /**
+   * The outline as points, as three.js CurvePath.getPoints: each curve divided into `divisions` (an ellipse twice as many, a spline as many per point, a line one), repeated points dropped.
+   *
+   * @param divisions Divisions per curve. Default `12`.
+   */
+  getPoints(divisions?: number): readonly Vector2[];
+}
+
+/** An outline with holes, as three.js Shape. */
+export interface Shape extends Path2 {
+  /** The holes: `shape.holes.push(hole)`. */
+  readonly holes: PathList;
+  /**
+   * The outline's and the holes' points, as three.js Shape.extractPoints.
+   *
+   * @param divisions Divisions per curve. Default `12`.
+   */
+  extractPoints(divisions?: number): ShapePoints;
+}
+
+/** og.Path2: `new og.Path2(points?)`. */
+export interface Path2Class {
+  /**
+   * A path, through the points when given (setFromPoints).
+   *
+   * @param points Points to start from.
+   */
+  new(points?: readonly Vector2[] | null): Path2;
+}
+
+/** og.Shape: `new og.Shape(points?)`. */
+export interface ShapeClass {
+  /**
+   * A shape, through the points when given (setFromPoints).
+   *
+   * @param points Points to start from.
+   */
+  new(points?: readonly Vector2[] | null): Shape;
+}
 
 // ── load ────────────────────────────────────────────────────────
 // Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/.
@@ -21748,6 +22377,90 @@ export declare namespace og {
      */
     function tubeGeometry(world: World, desc?: TubeGeometryDesc): Result<Geometry>;
     /**
+     * Make a flat shape for og.Mesh (one-sided, as circleGeometry): an og.Shape with holes, or a points array. Physics can use it as a triangle-mesh Collider.mesh.
+     *
+     * @param world The world whose renderer owns the geometry.
+     * @param desc The shapes and their tessellation.
+     * @returns Refused for a shape whose points are not finite or that triangulates to nothing.
+     */
+    function shapeGeometry(world: World, desc?: ShapeGeometryDesc): Result<Geometry>;
+    /**
+     * Make an extruded solid for og.Mesh: a three.js extrusion is a paste (`og.render.extrudeGeometry(world, { shapes: shape, depth: 0.2, bevelEnabled: true })`). Gears, signs, keys, logos, cookie cutters; along a path, a rail or a moulding.
+     *
+     * @param world The world whose renderer owns the geometry.
+     * @param desc The shapes, depth, bevel and path.
+     * @returns Refused for a shape whose points are not finite or that triangulates to nothing, or an extrudePath that is not alive.
+     */
+    function extrudeGeometry(world: World, desc?: ExtrudeGeometryDesc): Result<Geometry>;
+    /**
+     * Make a solid of revolution for og.Mesh: a profile turned round +Y.
+     *
+     * @param world The world whose renderer owns the geometry.
+     * @param desc The profile and the turn.
+     * @returns Refused for fewer than two points or one that is not finite.
+     */
+    function latheGeometry(world: World, desc?: LatheGeometryDesc): Result<Geometry>;
+    /**
+     * Make a polyhedron from vertices and faces for og.Mesh, subdivided onto a sphere.
+     *
+     * @param world The world whose renderer owns the geometry.
+     * @param desc The vertices, faces, radius and detail.
+     * @returns Refused for no faces, an index past the vertices, or a count that is not a multiple of three.
+     */
+    function polyhedronGeometry(world: World, desc?: PolyhedronGeometryDesc): Result<Geometry>;
+    /**
+     * Make an icosahedron (twenty faces) for og.Mesh; with detail, a geodesic sphere.
+     *
+     * @param world The world whose renderer owns the geometry.
+     * @param desc Its radius and detail.
+     */
+    function icosahedronGeometry(world: World, desc?: SolidGeometryDesc): Result<Geometry>;
+    /**
+     * Make a dodecahedron (twelve pentagons, thirty-six triangles) for og.Mesh.
+     *
+     * @param world The world whose renderer owns the geometry.
+     * @param desc Its radius and detail.
+     */
+    function dodecahedronGeometry(world: World, desc?: SolidGeometryDesc): Result<Geometry>;
+    /**
+     * Make an octahedron (eight faces) for og.Mesh.
+     *
+     * @param world The world whose renderer owns the geometry.
+     * @param desc Its radius and detail.
+     */
+    function octahedronGeometry(world: World, desc?: SolidGeometryDesc): Result<Geometry>;
+    /**
+     * Make a tetrahedron (four faces) for og.Mesh.
+     *
+     * @param world The world whose renderer owns the geometry.
+     * @param desc Its radius and detail.
+     */
+    function tetrahedronGeometry(world: World, desc?: SolidGeometryDesc): Result<Geometry>;
+    /**
+     * Make a section swept along a path for og.Mesh, tapered and twisted by keys.
+     *
+     * @param world The world whose renderer owns the geometry.
+     * @param desc The section, path, keys and caps.
+     * @returns Refused for a path that is not alive, a section of fewer than three points or of no area, or a value that is not finite.
+     */
+    function sweepGeometry(world: World, desc?: SweepGeometryDesc): Result<Geometry>;
+    /**
+     * Make the union, difference or intersection of two placed geometries for og.Mesh. Chain calls for more operands (a cube minus six spheres is six calls); each result is a geometry like any other.
+     *
+     * @param world The world whose renderer owns the geometry.
+     * @param desc The operation and its operands.
+     * @returns Refused for a dead geometry, a placement with a zero scale, or a position that is not finite.
+     */
+    function csgGeometry(world: World, desc?: CsgGeometryDesc): Result<Geometry>;
+    /**
+     * Make one geometry of several placed ones for og.Mesh: one draw instead of many, mirrored halves, arrays.
+     *
+     * @param world The world whose renderer owns the geometry.
+     * @param desc The parts and their placements.
+     * @returns Refused for no parts, a dead geometry, or a placement with a zero scale.
+     */
+    function mergeGeometries(world: World, desc?: MergeGeometriesDesc): Result<Geometry>;
+    /**
      * Draw lines this frame. Systems and commands may call it; the list is cleared at every tick, so submit them every tick they should show (og.Lines keeps a static set).
      *
      * @param world The world whose renderer draws them.
@@ -21803,6 +22516,14 @@ export declare namespace og {
      */
     function bakedLighting(world: World): readonly BakedScene[];
   }
+  /**
+   * three.js's Path (named Path2 beside og.path's 3D paths): `new og.Path2().moveTo(0, 0).lineTo(1, 0)`.
+   */
+  const Path2: Path2Class;
+  /**
+   * three.js's Shape: `const s = new og.Shape(); s.moveTo(0, 0).lineTo(1, 0).lineTo(0, 1); s.holes.push(hole)`.
+   */
+  const Shape: ShapeClass;
   /**
    * Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
    * The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck.

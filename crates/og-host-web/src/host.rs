@@ -409,6 +409,39 @@ impl RenderApi for WebHost {
     fn og_render_tube_geometry(&self, world: u32, desc: Option<String>) -> String {
         rt::og_render_tube_geometry(world, desc)
     }
+    fn og_render_shape_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_shape_geometry(world, desc)
+    }
+    fn og_render_extrude_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_extrude_geometry(world, desc)
+    }
+    fn og_render_lathe_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_lathe_geometry(world, desc)
+    }
+    fn og_render_polyhedron_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_polyhedron_geometry(world, desc)
+    }
+    fn og_render_icosahedron_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_icosahedron_geometry(world, desc)
+    }
+    fn og_render_dodecahedron_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_dodecahedron_geometry(world, desc)
+    }
+    fn og_render_octahedron_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_octahedron_geometry(world, desc)
+    }
+    fn og_render_tetrahedron_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_tetrahedron_geometry(world, desc)
+    }
+    fn og_render_sweep_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_sweep_geometry(world, desc)
+    }
+    fn og_render_csg_geometry(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_csg_geometry(world, desc)
+    }
+    fn og_render_merge_geometries(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_render_merge_geometries(world, desc)
+    }
     fn og_render_lines(&self, world: u32, desc: Option<String>) -> String {
         rt::og_render_lines(world, desc)
     }

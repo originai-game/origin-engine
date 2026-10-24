@@ -624,6 +624,61 @@ pub fn og_render_tube_geometry(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_render_shape_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_shape_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_extrude_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_extrude_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_lathe_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_lathe_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_polyhedron_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_polyhedron_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_icosahedron_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_icosahedron_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_dodecahedron_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_dodecahedron_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_octahedron_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_octahedron_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_tetrahedron_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_tetrahedron_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_sweep_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_sweep_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_csg_geometry(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_csg_geometry(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_render_merge_geometries(world: u32, desc: Option<String>) -> String {
+    <Host as RenderApi>::og_render_merge_geometries(&Host, world, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_render_lines(world: u32, desc: Option<String>) -> String {
     <Host as RenderApi>::og_render_lines(&Host, world, desc)
 }
