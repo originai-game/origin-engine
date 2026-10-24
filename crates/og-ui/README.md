@@ -852,7 +852,7 @@ cargo check --target wasm32-unknown-unknown -p og-ui
 | `tests/glyphs.rs` | a run-time glyph has ink inside and none outside, rows top to bottom, the same bytes every render; its advance and plane bounds are the font's at the cook's geometry |
 | `tests/fields.rs` | Alt/Ctrl+arrows move by words and punctuation runs, Alt/Ctrl+Backspace and Delete delete one, Shift+Ctrl+Home/End select to the text's ends; a double click selects the word (or spaces), a third press the field, the line between breaks in an area, a drag from a double click extends by words, a slow second press or one after a drag is a first click; undo groups typing by words and Backspaces in a row, a move ends a step, Ctrl+Y and Shift+Z redo, a new edit drops the redo, a cut comes back selected, a text the game set starts again, 100 steps kept, save and restore replay it; a drag below an area scrolls it a little each tick to its last line and stops, back above scrolls up; the `text-fields-2` scene's state; words are UAX #29's (`can't` one, `42` one, each Han character one, a Thai cluster one; a double click on a Han character takes it alone; each IME commit after Han text an undo step, Thai typed on one); under mac keys Cmd+←/→ go to the line's ends, Option moves by words, Ctrl+← one character, Ctrl+A/E the line's ends (not select all), Cmd+A selects all, Cmd+Backspace deletes to the line's start, Cmd+Z undoes (Ctrl+Z not), Cmd+↑/↓ the text's ends; elsewhere Cmd+← moves one character and Cmd+A still selects all; the caret, Backspace, Delete and a press step over a grapheme cluster (a base and its mark, an emoji and its skin tone, a ZWJ family); ← and → (and with Alt by words) move on in the text in a Hebrew field, a selection collapsing to its left side there; under mac keys Ctrl+F, B, N, P, D, H, K, U and W edit as emacs does, elsewhere nothing; K, U and W kill into a buffer Y yanks (kills in a row add up, a move ends the row, a field yanks without line breaks, a save and restore keeps it), T transposes; ← and → cross a bidi run's edge on screen in a Latin line ending in Hebrew and a Hebrew line ending in Latin, keeping the caret's place at the edge |
 | `tests/runs.rs` | a Latin and CJK label takes each run from the first face that has it and measures as its runs; a base and its combining mark go to one face together, a joiner keeps its letter's face; an Arabic run in a Latin label shaped by the Arabic file, in visual order; neutrals stay with their run; a text one face (or a locale's face) covers whole is not cut, one no face covers is still cut per run; a mixed label draws a command per run in its face, each where the last ended, the same twice; its runs share one baseline centred on every face's extents (a taller fallback face moves it); a `[wave]` span mixing faces moves glyph by glyph, each in its face, and rests under reduced motion |
-| `tests/text_gfx.rs` | `references/<tier>/text-bidi.png`, `text-kerning.png`, `text-edit.png` and `text-mixed-runs.png` from the kit's fonts cooked at test time (og-cook): every script, kerned against unkerned (the title narrower kerned), ellipses, a selection, a composition and a text area; Latin labels mixing Japanese, shaped Arabic, Hebrew and Devanagari a run per face (every character in its face's atlas); no missing glyph |
+| `tests/text_gfx.rs` | `references/<tier>/text-bidi.png`, `text-kerning.png`, `text-edit.png` and `text-mixed-runs.png` from the kit's fonts cooked at test time (og-cook, the project `tests/text-fonts`: the import settings, beside the kit's font files) and decoded from the blobs' bytes, as the browser tiers decode them; the scenes are `tests/support/text_scenes.rs`, which og-tests-web includes: every script, kerned against unkerned (the title narrower kerned), ellipses, a selection, a composition and a text area; Latin labels mixing Japanese, shaped Arabic, Hebrew and Devanagari a run per face (every character in its face's atlas); no missing glyph |
 | `tests/support/scenes.rs` | not a test: builds the five reference scenes (`sample-screen`, `text-glow`, `glass`, `widget-set`, `text-fields-2`) for `gfx.rs`, `kit_gfx.rs` and, through `#[path]`, `crates/og-tests-web`, so the browser draws the same scenes; and the `text-mixed-runs` UI `text_gfx.rs` draws with cooked faces |
 | `tests/gfx.rs` | a glass panel blurs the frame under it and nothing else, and blurs the overlay layer below it (a bright bar spreads inside the panel) while what is above it stays sharp (`references/<tier>/glass.png`); the sample screen rendered headless matches `references/<tier>/sample-screen.png` (og-tests' tolerance: 32/255 per channel, ≤ 0.5 % outliers, RMSE ≤ 0.01) in at most 2 sprite draws per painter level, no missing glyph; `text-fields-2` (a double-clicked word, an undone field, an area a drag scrolled part way) matches its reference with no missing glyph; a scroll container cuts every sprite and text line it draws to its rectangle |
 | `tests/widgets.rs` | focus: arrows pick the aligned neighbour and wrap, Tab/Shift+Tab walk reading order and wrap, Enter and Space press, the gamepad d-pad and A, the stick at once then after 24 and every 11 ticks; a dialog takes focus, keeps Tab inside, blocks presses to what is under it, closes on the backdrop and Back (not when locked) and returns focus; a HUD asking `back()` before an open dialog is built leaves Back to the dialog (a locked one lets it through); an anchored group moves out of `Viewport::covered`; a select opens, chooses (mouse and keys) and closes on a press outside; a 1000-row list builds at most 13 rows, reaches its last row and scrolls a keyboard-focused row into view; toasts cap at three, leave after 3.2 s and come back with a restored state; a transition advances 1/15 per tick, is inert while moving, leaves; a meter's trail follows a drop and two runs draw identical frames; the dialogue types 15 characters in 30 ticks at 30/s, a press finishes, the next advances; anchors keep to the safe area and touch controls to 44 px; a joystick answers (1, 0) at its edge; a game's primary derives its hover, press and ink, high contrast takes `ink` for muted ink; a drag from cell 0 to cell 6 drops once and a click is no drop; two fingers lifting off a list fling it (none under reduced motion); a focused zoom view zooms with + and -, fits with 0 and pans with the arrows, keeping the focus |
@@ -872,9 +872,11 @@ Backspace, the toggle's click). Every reference frame (85: the five scenes,
 the four text scenes, the materials scene, 23 desktop and 22 phone kit
 screens, the text screen's three, 15 locale screens, 12 style sheets of
 21 cells) is committed for `metal` and `vulkan-cpu` (Mesa lavapipe, CI's
-tier), and the browser tiers judge the 77 they run (not the text and
-materials scenes, which cook their fonts and icons, nor the kit's text
-playtest) against `metal`. The fields round added `text-fields-2` and
+tier), and the browser tiers judge the 77 they run (not the materials
+scene, which cooks its icons, nor the kit's text playtest) against
+`metal`, and the four text scenes since release-f2 (their fonts cooked by
+the runner, below; their browser runs and any per-tier references the
+coordinator's, not yet recorded). The fields round added `text-fields-2` and
 `text-mixed-runs` and moved `text-bidi` (its mixed Latin and Arabic line
 is now drawn a run per face). The UI shell round re-recorded the frames its
 edge light, glass, materials screen and pack palettes moved
@@ -886,8 +888,10 @@ with no outlier (RMSE at most 0.0019). A tier without its own reference compares
 in the `og-lavapipe` image with Linux binaries from `cargo zigbuild
 --target x86_64-unknown-linux-gnu.2.31` (the commands are in
 `tests/evidence/P2/ui-tiers/NOTES.md`). The browser tiers come from
-`packages/engine/tests/web/reference-gfx.ts` (the four scenes, compiled
-into og-tests-web) and `reference-ui.ts` (the kit playtests through
+`packages/engine/tests/web/reference-gfx.ts` (the five scenes and the
+four text scenes, compiled into og-tests-web; the text scenes' fonts
+cooked first from `tests/text-fonts` with `og cook` and handed to the
+module as blobs, `tests/web/text-fonts.ts`) and `reference-ui.ts` (the kit playtests through
 reference.ts), both in `scripts/check.sh web-reference`, `--record` to
 re-record (`docs/ci.md` §Browser reference tiers). The other tiers matched
 `metal` within the tolerance everywhere before the text round (the largest
@@ -901,7 +905,10 @@ committed MSDF atlas (Noto Sans SC subset, OFL).
 - **Text**: og-ui's cooked-font text frames in the browser tiers
   (`text-bidi`, `text-kerning`, `text-edit`, `text-mixed-runs` cook their
   fonts, which og-tests-web cannot; `text-fields-2` draws the test font and
-  runs there). Words are UAX #29's without a dictionary: Thai, Lao, Khmer
+  runs there): since release-f2 the browser runner cooks them
+  (`tests/text-fonts` through `og cook`) and og-tests-web draws them from
+  the blobs; their first browser run and references are the
+  coordinator's. Words are UAX #29's without a dictionary: Thai, Lao, Khmer
   and Myanmar move a grapheme cluster at a time, Han and Hiragana a
   character at a time, a Katakana run as one word. Backspace takes a whole
   grapheme cluster in every script (some platforms take an Indic or Thai

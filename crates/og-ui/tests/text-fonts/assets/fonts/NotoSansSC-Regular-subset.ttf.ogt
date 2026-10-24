@@ -1,0 +1,7 @@
+type import
+version 1
+---
+font {
+  charset latin
+  px_range 4
+}

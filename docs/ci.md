@@ -748,7 +748,17 @@ and judged against `crates/og-ui/references/<tier>/<name>.png`, else
 `metal`. Neither browser tier has references of its own for them: they are
 judged against `metal`, which they match exactly (RMSE 0) on both tiers
 (2026-10-19), except `widget-set` at RMSE 0.00046, which is also what the
-native metal run gives against that reference.
+native metal run gives against that reference. `text-fields-2` rides with
+them, and since release-f2 so do the four cooked-font text frames
+(`og-ui/text-bidi`, `text-kerning`, `text-edit`, `text-mixed-runs`,
+`crates/og-ui/tests/support/text_scenes.rs`): the module cannot cook, so
+the runner first cooks `crates/og-ui/tests/text-fonts` (the fonts' import
+settings) with templates/ui-kit's font files through `og cook`
+(`tests/web/text-fonts.ts`, the `og` of `packages/engine/native/` or
+`$OG_BIN`), serves the blobs beside the module and hands each page the
+manifest and files (`og_gfx_text_manifest`, `og_gfx_text_file`), as og-ui's
+native `text_gfx` decodes the same cook from its bytes. They have not run
+in a browser on record yet.
 
 ### og-ui's kit frames in the browser
 

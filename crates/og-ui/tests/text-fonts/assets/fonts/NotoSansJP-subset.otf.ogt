@@ -1,0 +1,8 @@
+type import
+version 1
+---
+font {
+  charset ascii cjk-punct
+  chars "古い水車小屋冒険"
+  px_range 4
+}
