@@ -1409,9 +1409,23 @@ height -20 120             # metres
 size 2048 2048             # metres along x and z, centred on the entity
 control "island-control.png"  # optional RGBA: layer 0 in R, 1 in G, 2 in B, 3 in A
 heightBlend 0.15           # sharpen the blends by each albedo's alpha (its height)
-layer { albedo "textures/grass.png" normal "textures/grass-n.png" tile 6 slope 0 30 }
-layer { albedo "textures/rock.png" tile 12 triplanar true slope 28 90 }
-layer { albedo "textures/snow.png" altitude 90 1000 altitudeFade 10 }
+layer {                    # a block's '}' stands alone on its line
+  albedo "textures/grass.png"
+  normal "textures/grass-n.png"
+  tile 6
+  slope 0 30
+}
+layer {
+  albedo "textures/rock.png"
+  tile 12
+  triplanar true
+  slope 28 90
+}
+layer {
+  albedo "textures/snow.png"
+  altitude 90 1000
+  altitudeFade 10
+}
 ```
 
 A layer shows where its control channel (1 without a map) times its slope
