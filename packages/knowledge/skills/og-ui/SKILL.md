@@ -57,7 +57,7 @@ and every style pack's screens on a phone `kit-style-<pack>-phone.png`.
 |---|---|---|
 | A title screen | `og.ui.mainMenu(id, { title, subtitle, items, footer, instant })` (`instant` while it is the screen the game opens on: §6) | `selected`: the item id |
 | Pause | `og.ui.pauseMenu(id, { open, items })` (Resume, Settings, Quit by default) | `selected`; Back answers `resume` |
-| Settings | `og.ui.settingsScreen(id, { open, settings, languages, onChange, onSave })` | the new `GameSettings`, `changed`, `closed` |
+| Settings | `og.ui.settingsScreen(id, { open, settings, languages, world, onChange, onSave })` (with `world`, a new graphics preset is applied: `og.render.applyQuality`) | the new `GameSettings`, `changed`, `closed` |
 | A platformer HUD | `og.ui.platformerHud(id, { lives, maxLives, coins, score, level, timeLeft, touch })` (what it is not given it does not draw: `maxLives: 0` no hearts, no `coins` or `score` no box for them; the words `pauseLabel`, `jumpLabel` from the string table, og-i18n §2) | `paused`, `moveX`, `action: "jump"` |
 | A shooter HUD | `og.ui.shooterHud(id, { health, armor, ammo, reserve, abilities, map, touch })` (the words `killsLabel`, `fireLabel`, `pauseLabel`) | `paused`, `action` (ability id, `fire`), stick |
 | A puzzle HUD | `og.ui.puzzleHud(id, { level, score, target, stars, moves, timeLeft })` (the words `movesLabel`, `targetLabel` with `{target}`, `pauseLabel`) | `paused` |

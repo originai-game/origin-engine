@@ -196,6 +196,14 @@ lighting falls back to a forward tile table built on the CPU).
   WebGPU), antialiasing by tier: TAA on the full tier (optional
   Catmull-Rom history and sharpening), 4× MSAA on WebGL2, FXAA on any tier
   and where the HDR target cannot be multisampled.
+- What a frame may cost is data the renderer reads every frame:
+  RenderSettings' quality fields (rect-light shadows, the number of
+  shadowed lights, the shadow maps' scale, volumetric fog, soft particles,
+  SSR, AO, MSAA samples), og-render's `RenderQuality`. A graphics preset
+  (`GraphicsQuality`: low, medium, high) is a row of them that
+  `og.render.applyQuality` writes and `RenderSettings.quality` records;
+  no preset state lies behind the fields, so the probe reads what is
+  drawn. Medium is the defaults, the full frame.
 - Stylisation, as data a look composes (`og.Stylise`, `og.MaterialStyle`,
   a `type look` asset): a logical pixel grid scaled up by whole numbers
   with the camera and sprites snapped to it, posterise and palette

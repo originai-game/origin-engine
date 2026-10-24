@@ -12,7 +12,7 @@
 // named `Section`, `Languages` or `Quality` in Spanish.
 import { beforeAll, expect, test } from "bun:test";
 import { og, defineResource, defineSystem, u32 } from "@origingame/engine";
-import type { World } from "@origingame/engine";
+import type { GameSettings, World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 
@@ -131,4 +131,32 @@ test("og.ui.settingsScreen: its tab row, quality presets and language list are n
   engine.advance(5);
   const select = elements(engine).find((e) => e.id === "Section")!;
   expect([select.role, select.name]).toEqual(["combobox", "Apartado"]);
+});
+
+// The quality presets are the engine's (og.render.applyQuality): picking
+// Low on the Graphics tab writes RenderSettings' low row into the world
+// given as SettingsDesc.world, and records it. Fails if the screen only
+// answers the new settings and nothing in the engine reads them.
+let picked: Required<GameSettings>["quality"] | undefined;
+const Quality = defineSystem("UlQuality", { writes: [og.RenderSettings] }, (_q, _t, world: World) => {
+  const r = og.ui.settingsScreen("Settings", { open: true, world, settings: { quality: picked ?? "medium" } });
+  picked = r.settings.quality;
+});
+
+test("og.ui.settingsScreen: picking a graphics preset applies it to the world's RenderSettings", () => {
+  const engine = start(og.game({ systems: [Quality] }));
+  engine.advance(30);
+  engine.probe.commands("0:touch_move_to:Section/Tab#1;0.05:touch_start;0.1:touch_end");
+  engine.advance(20);
+  const before = engine.world.resource(og.RenderSettings);
+  if (!before.ok) throw new Error(before.reason);
+  expect([before.value.quality, before.value.rectShadows]).toEqual(["none", true]);
+  const low = elements(engine).find((e) => e.parent.startsWith("Quality") && e.text === "Low") ?? elements(engine).find((e) => e.text === "Low");
+  expect(low).toBeDefined();
+  engine.probe.commands(`0:touch_move:${Math.round(low!.x + low!.width / 2)},${Math.round(low!.y + low!.height / 2)};0.05:touch_start;0.1:touch_end`);
+  engine.advance(20);
+  expect(picked).toBe("low");
+  const s = engine.world.resource(og.RenderSettings);
+  if (!s.ok) throw new Error(s.reason);
+  expect([s.value.quality, s.value.rectShadows, s.value.shadowedLights, s.value.msaaSamples, s.value.volumetricFog]).toEqual(["low", false, 2, 1, false]);
 });

@@ -1774,6 +1774,35 @@ og.render.look(world)?.name;                                              // the
   stays sharper under camera motion and `taaSharpen` (0–1) restores
   detail TAA softens. `RenderCapabilities.antialias` says what the device
   resolved it to.
+- **Graphics quality** is RenderSettings' quality fields, read every
+  frame: `rectShadows`, `shadowedLights`, `shadowMapScale`,
+  `volumetricFog`, `softParticles`, `screenSpaceReflections`,
+  `ambientOcclusion`, `msaaSamples` (4, or 1 for FXAA where the
+  antialiasing multisamples). `og.render.applyQuality(world, preset)`
+  writes a preset's row of them and records it in
+  `RenderSettings.quality` (`none` before any):
+
+  | Field | low | medium | high |
+  |---|---|---|---|
+  | rectShadows | false | true | true |
+  | shadowedLights | 2 | 8 | 8 |
+  | shadowMapScale | 0.5 | 1 | 2 |
+  | volumetricFog, softParticles, screenSpaceReflections, ambientOcclusion | false | true | true |
+  | msaaSamples | 1 | 4 | 4 |
+
+  Medium is the defaults, the frame drawn before any preset. The renderer
+  reads the fields and nothing else, so `og run --commands
+  "0.5:get:og.RenderSettings"` shows what is drawn, and a field set after
+  the preset wins. The switches only take away: the scene's PostEffects
+  and lights keep their settings. The settings screen applies the
+  player's pick when given the world (`og.ui.settingsScreen(id, { world,
+  settings, ... })`); apply a saved preset yourself at start:
+
+  ```ts
+  start(world) { og.render.applyQuality(world, save.settings.quality ?? "medium"); }
+  ```
+
+  Inside a system, declare `og.RenderSettings` among its writes.
 
 ## 17. Saving progress
 
