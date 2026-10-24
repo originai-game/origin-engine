@@ -10,7 +10,12 @@
 // WebGL2 fallback. A Chrome path that does not exist is refused in one
 // line, exit 1.
 //
-//   bun tests/web/device.ts [--out <dir>] [--chrome <path>] [--seconds N]
+//   bun tests/web/device.ts [--project <dir>] [--out <dir>] [--chrome <path>] [--seconds N]
+//
+// --project (relative to the repository) runs another project's publish
+// build instead of templates/game's: the example games' own device runs,
+// examples/brasswick and examples/meridian-loop (release row F4), whose
+// default output is dist/test-device/<project's name>.
 //
 // Writes <out>/{webgpu,webgl2}/{report.md,device.json} and
 // <out>/device-result.json (default dist/test-device). Exits 1 when a check
@@ -30,11 +35,12 @@ const args = process.argv.slice(2);
 const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const repo = join(pkg, "..", "..");
-const out = resolve(opt("--out") ?? join(pkg, "dist", "test-device"));
+const projectRel = opt("--project");
+const out = resolve(opt("--out") ?? join(pkg, "dist", "test-device", ...(projectRel ? [projectRel.split("/").pop()!] : [])));
 const seconds = opt("--seconds") ?? "3";
 const chrome = chromePath(args);
 const og = ogBin();
-const project = join(repo, "templates", "game");
+const project = join(repo, projectRel ?? join("templates", "game"));
 
 let failures = 0;
 const checks: Array<{ check: string; ok: boolean; detail?: unknown }> = [];
@@ -126,6 +132,6 @@ for (const [name, extra, tiers] of [
 }
 
 mkdirSync(out, { recursive: true });
-writeFileSync(join(out, "device-result.json"), JSON.stringify({ chrome, seconds: Number(seconds), results, checks, failures }, null, 1) + "\n");
+writeFileSync(join(out, "device-result.json"), JSON.stringify({ project: project.slice(repo.length + 1), chrome, seconds: Number(seconds), results, checks, failures }, null, 1) + "\n");
 console.log(`${failures === 0 ? "ok" : "FAIL"}: ${checks.length - failures}/${checks.length} checks; ${join(out, "device-result.json")}`);
 process.exit(failures === 0 ? 0 : 1);
