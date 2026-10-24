@@ -290,6 +290,8 @@ registered schema and refuses a model path that does not exist.
   without it one clip `frames` holds every frame). Each frame is centred on
   its own pivot, as in the editor: give the frames one height (or pad them)
   for a character whose feet stay on the ground.
+- An `.ogt` of `type model` is a model written as text: og-geom parts by
+  their `og.render` names, placed, with materials and pivots (§18).
 - Reusable production assets come through the platform's asset catalog into
   `assets/`; record each file's licence next to it.
 
@@ -2158,6 +2160,149 @@ no platform trigonometry, so every host makes the same triangles. A CSG
 operand must be closed (every edge shared by two triangles). Its cost
 grows with the product of the two triangle counts where their boxes
 overlap, so cut low-poly operands at load, not every tick.
+
+Every generator above takes `uvRepeat` as `boxGeometry` does (its uvs
+scaled, so a texture tiles). `bevelSize` left out (or null) is
+`bevelThickness - 0.1`, as in three.js: 0.1 at the default thickness.
+
+**Models written as text: `type model`.** A prop made of these parts
+belongs in an asset, not in `start`: an `.ogt` of `type model` under
+`assets/` names each part's geometry by its `og.render` call, with the
+desc's field names and defaults, places it as `mergeGeometries` places a
+part, gives it a material and hangs it from a named pivot. `og cook`
+builds it into the same model blob a glTF cooks to: meshopt, levels of
+detail with their measured errors, the raycast BVH, the nodes. Load it
+with `og.load.gltf(world, "models/clockwork.ogt")` and `world.instantiate`,
+or name it in a scene (`model "models/clockwork.ogt"`), as any model.
+
+```
+type model
+version 1
+---
+material "brass" {
+  color 0.78 0.52 0.16       # linear, as glTF's baseColorFactor
+  metalness 1
+  roughness 0.32
+}
+material "glaze" {
+  color 0.12 0.34 0.72
+  roughness 0.3
+}
+pivot "axle" {               # a node: code and animation find it by name
+  position 0 1.25 0
+}
+part "gear" {
+  pivot "axle"               # hangs from the pivot (default: the root)
+  material "brass"
+  position 0 0 -0.1
+  extrudeGeometry {
+    shape {                  # og.Shape's calls, one a line
+      moveTo 1 0
+      absarc 0 0 1 0 6.283185307179586 false
+      hole {
+        absarc 0 0 0.28 0 6.283185307179586 true
+      }
+    }
+    depth 0.16
+    bevelThickness 0.04
+    bevelSize 0.03
+  }
+}
+part "bolt" {                # one mesh under three nodes: drawn instanced
+  pivot "axle"
+  material "brass"
+  cylinderGeometry {
+    radiusTop 0.06
+    radiusBottom 0.06
+    height 0.36
+  }
+  at {
+    position 0.55 0 0
+    quaternion 0.7071068 0 0 0.7071068
+  }
+  at {
+    position -0.275 0.476 0
+    quaternion 0.7071068 0 0 0.7071068
+  }
+  at {
+    position -0.275 -0.476 0
+    quaternion 0.7071068 0 0 0.7071068
+  }
+}
+part "vase" {
+  material "glaze"
+  position -2.2 0 0
+  latheGeometry {
+    points 0 0 0.32 0.04 0.42 0.4 0.24 0.95 0.3 1.25
+    segments 40
+  }
+}
+part "horn" {
+  position 2.2 0 0
+  sweepGeometry {
+    section {
+      absarc 0 0 0.22 0 6.283185307179586 false
+    }
+    path {                   # og.path's lines: kind, closed, tension, point
+      kind catmullRom
+      point 0 0 0
+      point 0.15 0.6 0
+      point -0.45 1.35 0.15
+    }
+    scale 0 1                # t value, repeatable (twist the same)
+    scale 1 0.05
+  }
+}
+part "dice" {
+  position 1.1 0.3 0.55
+  csgGeometry {
+    op subtract
+    a {                      # an operand: a geometry block, placed
+      boxGeometry {
+        width 0.6
+        height 0.6
+        depth 0.6
+      }
+    }
+    b {
+      position 0 0 0.3
+      icosahedronGeometry {
+        radius 0.08
+        detail 1
+      }
+    }
+  }
+}
+```
+
+- Geometries: `boxGeometry`, `planeGeometry`, `sphereGeometry`,
+  `cylinderGeometry`, `coneGeometry`, `capsuleGeometry`, `torusGeometry`,
+  `shapeGeometry`, `extrudeGeometry` (`extrudePath { }` a path block),
+  `latheGeometry` (`points x y x y ...`), `polyhedronGeometry`, the four
+  solids, `sweepGeometry`, `csgGeometry` (`a { }`, `b { }`) and
+  `mergeGeometries` (`part { }` blocks), each with `uvRepeat u v`. A
+  part holds exactly one; combine more with `csgGeometry` or
+  `mergeGeometries`.
+- Shapes: `moveTo`, `lineTo`, `quadraticCurveTo`, `bezierCurveTo`,
+  `splineThru x y ...`, `arc`, `absarc`, `ellipse`, `absellipse` (angles in
+  radians, then `true` for clockwise), `closePath`, `points x y ...`
+  (setFromPoints) and `hole { }`. They flatten to the points og.Shape
+  gives in TypeScript, bit for bit.
+- Placement: `position`, `quaternion x y z w`, `scale`, `mirror x|y|z`,
+  on the part or in `at { }` blocks, one node each. The same part at
+  several placements is one mesh drawn instanced; a mirrored placement is
+  baked into a mesh of its own.
+- Materials: `color`, `opacity`, `metalness` (default 0), `roughness`
+  (default 1), `emissive`, `emissiveIntensity`, `doubleSided`,
+  `alphaTest`. A part without one draws glTF's grey default.
+- `og cook --report` lists the model's `triangles`, `parts`, `draws` (the
+  distinct meshes; instanced placements are one) and `bvhBytes`/`bvhShare`.
+  Past `budgets.triangles` or `budgets.vertices` in project.ogt the cook
+  refuses it, so lower `segments`, `curveSegments`, `steps` or `detail`.
+  Import settings (`models/clockwork.ogt.ogt`, `model { lods ... raycast
+  false }`) apply as to a glTF.
+- `og dev` re-cooks it on an edit and the running game draws the edit
+  under the same asset handle.
 
 **Lines and points.** `og.render.lines(world, desc)` and
 `og.render.points(world, desc)` are immediate mode, like

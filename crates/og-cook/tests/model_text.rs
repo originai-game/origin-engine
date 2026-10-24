@@ -412,3 +412,35 @@ fn the_report_counts_its_triangles_draws_and_bvh() {
         "{m}"
     );
 }
+
+/// The og-game skill's `type model` example (§18) cooks as written.
+#[test]
+fn the_skill_s_example_cooks() {
+    let skill = std::fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../packages/knowledge/skills/og-game/SKILL.md"),
+    )
+    .unwrap();
+    let start = skill
+        .find("```\ntype model\n")
+        .expect("§18 has a type model example")
+        + 4;
+    let end = start + skill[start..].find("```").unwrap();
+    let root = cooked(
+        "og-cook-model-text-skill",
+        &[("models/clockwork.ogt", &skill.as_bytes()[start..end])],
+    );
+    let model = Bundle::open(&root.join("cooked"))
+        .unwrap()
+        .load_model("models/clockwork.ogt")
+        .unwrap();
+    assert!(model.nodes.iter().any(|n| n.name == "axle"));
+    assert_eq!(
+        model
+            .nodes
+            .iter()
+            .filter(|n| n.name.starts_with("bolt["))
+            .count(),
+        3
+    );
+}
