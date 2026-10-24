@@ -98,7 +98,7 @@ changed:
 | wasm-build, wasm-opt, size-gate | `crates/` | the last outputs in `target/og-wasm` are reused (only when every file they list exists; a step that ran upstream in this invocation always runs the next) |
 | drift | `crates/og-api` (`api.ogt`), og-idl and the crates it builds on, `crates/og-cli`, and every generated directory (`og_idl::OUTPUT_DIRS`), so a hand edit to a generated file is still caught | |
 | check-conformance (in no lane; `scripts/check.sh check-conformance`) | `packages/engine`, `templates/`, `examples/`, `crates/og-cli/src/check.rs`, `scripts/tsrs-diff.sh`, `scripts/tsrs-corpus/`, `scripts/install-tools.sh`, `scripts/lib.sh` | |
-| web-reference (`make web-reference`; in no lane) | og-host-web's and og-tests-web's crates for wasm32 (og-tests-web takes og-tests' scenes, assets and references and og-ui's, whose references hold ui-kit's frames), `packages/engine`, `templates/fx-showcase`, `templates/looks`, `templates/ui-kit`, `templates/archetypes/third-person` | |
+| web-reference (`make web-reference`; in no lane) | og-host-web's and og-tests-web's crates for wasm32 (og-tests-web takes og-tests' scenes, assets and references and og-ui's, whose references hold ui-kit's frames), `packages/engine`, `templates/fx-showcase`, `templates/looks`, `templates/ui-kit`, `templates/archetypes/third-person`, `examples/brasswick`, `examples/meridian-loop` | |
 
 A change to `scripts/`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`,
 `.cargo/` or `.config/` reruns every one of them. Each skip prints its
@@ -200,7 +200,7 @@ had grown `target/` to 143 GB.
 | `bun-test` | `bun run test` in each `packages/*` with a `test` script (the engine's files in parallel workers, `bun test --parallel`; the engine's `typecheck` also checks the six templates' `src/` against the generated declarations, `packages/engine/tsconfig.templates.json`; their playtests run under bun in `og test`); `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | | yes | |
 | `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hashes on the host and on wasm32 scalar and simd128 under node, the host release once more with lanes off and once with lanes on (failing when the lanes run did no parallel work), and the lanes wasm once per physics profile (`scripts/wasm-lanes.sh`, og-physics with `physics3d` or `physics2d` alone as the 3D and 2D lanes modules are built, bound by wasm-bindgen and run on one lane under node: the 2D world hash on the 2D lanes build, the 3D ones on the 3D) | full | | | yes (node from `actions/setup-node`) | |
 | perf | `scripts/perf.sh`: `cargo test -p og-tests -p og-runtime --release --no-fail-fast -- --ignored perf` against this machine's baselines (og-tests: `crates/og-tests/perf/<tier>-<adapter>/`, og-runtime: extraction of 20,000 meshes, `crates/og-runtime/perf/<cpu>/`); `--measure` records instead, copies the numbers to `target/evidence/perf/` and restores the tree | `make perf` | | | | `--measure` (below) |
-| `web-reference` | `OG_GATE=1 sh packages/engine/scripts/build.sh` first, so `packages/engine/native` holds this checkout's dev og and addon and `dist/web` the gate's wasm (a release build or an older gate leaves older ones there, and the tests cook every project with that og); then `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), then `bun tests/web/reference.ts --looks` and `--webgl --looks` for its looks station (37 presets in one run), then `bun tests/web/reference-gfx.ts` and `--webgl` for og-tests' gfx scenes and og-ui's four scenes, then `bun tests/web/reference-ui.ts` and `--webgl` for templates/ui-kit's 70 reference frames, then `bun tests/web/reference.ts --project templates/archetypes/third-person` and `--webgl` for Ember Vale's three frames (§Browser reference tiers), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | | |
+| `web-reference` | `OG_GATE=1 sh packages/engine/scripts/build.sh` first, so `packages/engine/native` holds this checkout's dev og and addon and `dist/web` the gate's wasm (a release build or an older gate leaves older ones there, and the tests cook every project with that og); then `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), then `bun tests/web/reference.ts --looks` and `--webgl --looks` for its looks station (37 presets in one run), then `bun tests/web/reference-gfx.ts` and `--webgl` for og-tests' gfx scenes and og-ui's four scenes, then `bun tests/web/reference-ui.ts` and `--webgl` for templates/ui-kit's 70 reference frames, then `bun tests/web/reference.ts --project templates/archetypes/third-person` and `--webgl` for Ember Vale's three frames, then the same with `--project examples/brasswick` and `examples/meridian-loop` and `--playtest tests/frames.og.ts` for their nine and ten (§Browser reference tiers), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | | |
 
 `cargo nextest` runs test binaries in parallel, one process per test.
 Fixtures several tests read are made once across their processes under a
@@ -644,6 +644,20 @@ colliders' exact surfaces rather than off the depth buffer's (with its
 thickness band), so their paths after the first bounce differ. The WebGL2
 beacon was re-recorded (and reproduced at RMSE 0); webgpu's beacon is at
 RMSE 0.00475 against `metal`.
+
+`web-reference` also runs two of the example games on both tiers (release
+row F4): Brasswick's nine frames (`examples/brasswick`: title, levels,
+start, door, stomp, gate, pause, settings-es, results; the last at tick
+1092) and Meridian Loop's ten (`examples/meridian-loop`: title, jump,
+slide, countdown, race, ghost, pause, results, board, settings-de; the
+last at tick 7272, two minutes of race). reference.ts takes them with
+`--project examples/<game> --playtest tests/frames.og.ts --out
+dist/test-reference/<game>`: the script and the shots are read from the
+playtest itself (its commands without screenshots, `quit` and `dump_*`,
+each shot at its screenshot's tick, 60 t), so a retimed playtest moves its
+browser frames with it and no command in `scripts/check.sh` has to follow
+it; `--print` shows what a run would play. Every frame is judged against
+`metal` until a tier needs one of its own for a difference the tier makes.
 
 `bun tests/web/archetype-hashes.ts [--webgl]` compares the three
 archetypes' world hashes across hosts: each replay playtest's script runs

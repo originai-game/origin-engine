@@ -88,7 +88,7 @@ rule_conformance() {
   echo "packages/engine templates examples crates/og-cli/src/check.rs scripts/tsrs-diff.sh scripts/tsrs-corpus scripts/install-tools.sh scripts/lib.sh"
 }
 rule_web() {
-  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) packages/engine templates/fx-showcase templates/looks templates/ui-kit templates/archetypes/third-person $RULE_COMMON"
+  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) packages/engine templates/fx-showcase templates/looks templates/ui-kit templates/archetypes/third-person examples/brasswick examples/meridian-loop $RULE_COMMON"
 }
 
 # skip_unchanged KEY WHAT RULE...: true (and prints why) when KEY may be
@@ -552,6 +552,15 @@ step_web_reference() {
     --shots title@54,beacon@204,dawn@432)
   (cd packages/engine && bun tests/web/reference.ts "${tp[@]}"); i=$?
   (cd packages/engine && bun tests/web/reference.ts --webgl "${tp[@]}"); j=$?
+  # Brasswick's nine frames and Meridian Loop's ten: each game's
+  # tests/frames.og.ts itself (--playtest: its commands without its
+  # screenshots and quit, each shot at its screenshot's tick, 60 t).
+  local p=0 game
+  for game in brasswick meridian-loop; do
+    local ex=(--project "examples/$game" --playtest tests/frames.og.ts --out "dist/test-reference/$game")
+    (cd packages/engine && bun tests/web/reference.ts "${ex[@]}") || p=1
+    (cd packages/engine && bun tests/web/reference.ts --webgl "${ex[@]}") || p=1
+  done
   # A panic inside a lane reaches the page as a crash within 5 s, not a hang
   # (docs/web-export.md §Errors), and the same fault single-threaded.
   (cd packages/engine && bun tests/web/lane-panic.ts); k=$?
@@ -559,7 +568,7 @@ step_web_reference() {
   # reader's click, the live region and the page's preferences.
   (cd packages/engine && bun tests/web/a11y.ts); l=$?
   (cd packages/engine && bun tests/web/a11y.ts --webgl); m=$?
-  return $((a | b | c | d | e | f | g | h | i | j | k | l | m | n | o))
+  return $((a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p))
 }
 
 # --- Scheduling ---------------------------------------------------------------

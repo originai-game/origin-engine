@@ -25,7 +25,13 @@
 // repository) with --script "<og run --commands script>" and
 // --shots name@tick,... (the ticks its screenshots run at); the script runs
 // as it is and each shot is compared with <dir>/references/<tier>/<name>.png
-// (each shot falls back to metal's on its own). --size WxH drives another
+// (each shot falls back to metal's on its own). --playtest <file> (relative
+// to the project) takes the script and shots from a frames playtest instead,
+// as reference-ui.ts does the kit's: its commands without screenshots, `quit`
+// and `dump_*`, each `<t>:screenshot:<file>` a shot at tick round(60 t), its
+// size the canvas's; one process (a playtest with `then`, `room` or `seed`
+// is refused). --print prints the script and shots it would run and exits,
+// with no cook, export or Chrome. --size WxH drives another
 // canvas size (default 1280x720, still DPR 1), --references <dir> (relative
 // to the repository) reads and records the references somewhere else, and
 // --sheet <name>.png,<factor>,<cols> compares each shot, box-filtered by
@@ -56,8 +62,10 @@
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { settingsOf, webBuild } from "../../src/node/web-build.ts";
+import { bundleGame } from "../../src/node/build.ts";
+import type { PlaytestDesc } from "../../src/playtest.ts";
 import { Browser, chromePath } from "./cdp.ts";
 import { serve } from "./serve.ts";
 import { cookProject } from "../support/og-bin.ts";
@@ -82,9 +90,36 @@ const record = args.includes("--record");
 const looks = args.includes("--looks");
 const work = join(pkg, "dist", "test-reference");
 const out = resolve(opt("--out") ?? join(work, looks ? "looks" : "out"));
-const chrome = chromePath(args);
 const TICK_RATE = 60;
-const [WIDTH, HEIGHT] = (opt("--size") ?? "1280x720").split("x").map(Number) as [number, number];
+
+/**
+ * --playtest <file>: the script and shots are the playtest's own (as
+ * reference-ui.ts takes the kit's), so a retimed playtest moves its browser
+ * frames with it: its commands without screenshots, `quit` and `dump_*`,
+ * and each `<t>:screenshot:<file>` a shot at tick round(60 t).
+ */
+const fromPlaytest = opt("--playtest")
+  ? await (async () => {
+      const file = resolve(project, opt("--playtest")!);
+      const bundled = join(pkg, "dist", "test-reference", `.${project.split("/").pop()}.playtest.js`);
+      mkdirSync(dirname(bundled), { recursive: true });
+      const b = await bundleGame(file, bundled, "native");
+      if (!b.ok) throw new Error(`${file} does not bundle: ${b.reason}`);
+      const desc = ((await import(pathToFileURL(bundled).href)) as { default: PlaytestDesc }).default;
+      // One fresh process on the game's own seed: what the page runs.
+      for (const k of ["then", "room", "seed"] as const) if (desc[k] !== undefined) throw new Error(`${opt("--playtest")} sets ${k}: the reference page runs one process of the game's own seed`);
+      if (opt("--script") || opt("--shots")) throw new Error("--playtest takes its script and shots from the playtest: pass neither --script nor --shots");
+      const script: string[] = [];
+      const shots: string[] = [];
+      for (const step of desc.commands.split(";")) {
+        const [at, action, ...rest] = step.split(":");
+        if (action === "screenshot") shots.push(`${rest[0]!.replace(/\.png$/, "")}@${Math.round(Number(at) * TICK_RATE)}`);
+        else if (action !== "quit" && !action!.startsWith("dump_")) script.push(step);
+      }
+      return { script: script.join(";"), shots: shots.join(","), size: desc.size };
+    })()
+  : undefined;
+const [WIDTH, HEIGHT] = (opt("--size") ?? fromPlaytest?.size ?? "1280x720").split("x").map(Number) as [number, number];
 if (!(WIDTH > 0 && HEIGHT > 0)) throw new Error(`--size ${opt("--size")}: write WIDTHxHEIGHT`);
 const refsRoot = opt("--references") ? join(repo, opt("--references")!) : join(project, "references");
 /** --sheet: the sheet's file, the box filter, the cells a row. */
@@ -93,7 +128,7 @@ const SHEET = opt("--sheet")
   : undefined;
 
 /** The playtest's stations (tests/frames.og.ts): switched at `at` seconds, captured at tick `tick`, the tick its `screenshot` runs at. */
-const SHOTS = opt("--shots");
+const SHOTS = fromPlaytest?.shots ?? opt("--shots");
 const STATIONS: ReadonlyArray<{ name: string; at: number; tick: number }> = looks
   ? LOOK_SHOTS.filter((s) => LOOK_FRAMES.includes(s.file)).map((s) => ({
       name: s.file.replace(/\.png$/, ""),
@@ -114,7 +149,12 @@ const STATIONS: ReadonlyArray<{ name: string; at: number; tick: number }> = look
     ];
 const SCRIPT = looks
   ? LOOK_COMMANDS.join(";")
-  : opt("--script") ?? STATIONS.filter((s) => s.at > 0).map((s) => `${s.at}:station:${s.name}`).join(";");
+  : fromPlaytest?.script ?? opt("--script") ?? STATIONS.filter((s) => s.at > 0).map((s) => `${s.at}:station:${s.name}`).join(";");
+if (args.includes("--print")) {
+  console.log(JSON.stringify({ project: project.slice(repo.length + 1), size: `${WIDTH}x${HEIGHT}`, script: SCRIPT, shots: STATIONS.map((s) => `${s.name}@${s.tick}`) }, null, 1));
+  process.exit(0);
+}
+const chrome = chromePath(args);
 
 /** An n× box filter, rounded (templates/ui-kit/tests/styles.ts `shrink`). */
 function shrink(img: Image, n: number): Image {
@@ -165,7 +205,7 @@ const own = join(refsRoot, tier);
 const metal = join(refsRoot, "metal");
 /** The reference a shot (or the sheet) is judged against: this tier's, else metal's. */
 const referenceOf = (file: string) => (record || existsSync(join(own, file)) ? join(own, file) : join(metal, file));
-const result: Record<string, unknown> = { tier, size: `${WIDTH}x${HEIGHT}`, tolerance: TOLERANCE, stations: {} as Record<string, unknown> };
+const result: Record<string, unknown> = { tier, size: `${WIDTH}x${HEIGHT}`, tolerance: TOLERANCE, script: SCRIPT, stations: {} as Record<string, unknown> };
 if (SHEET) result["sheet"] = { ...SHEET, against: referenceOf(SHEET.name).slice(repo.length + 1) };
 const sheetRef = SHEET && !record && existsSync(referenceOf(SHEET.name)) ? decodePng(new Uint8Array(readFileSync(referenceOf(SHEET.name)))) : undefined;
 const cells: Image[] = [];
