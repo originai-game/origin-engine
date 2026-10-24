@@ -55,6 +55,40 @@ change as it is saved: §Cook times).
    delete outputs of removed or failed sources, write
    `cooked/.cook.ogt` when it changed. Return the `Report`.
 
+### Shared texture results
+
+After the per-project manifest check, ordinary standalone and glTF textures
+can reuse a shared on-disk result. Compression settings and quality are
+unchanged. The key is the existing cook stamp (input content, options,
+encoder identity and cooker version), plus the expected type hash and schema
+version. The result is the exact `.ogb` the uncached cook would write.
+Standalone texture stamps also include their asset-relative path, so a
+renamed standalone texture is a miss; a fresh project at another root is not.
+Arrays, video frames and other asset processing do not use this cache.
+
+`OG_TEXTURE_CACHE=/path/to/cache og cook` selects an isolated cache directory;
+`OG_TEXTURE_CACHE=off` (or an empty value) disables it. Otherwise it uses
+`$XDG_CACHE_HOME/origingame/texture-results-v1`, falling back to
+`$LOCALAPPDATA/origingame/texture-results-v1` on Windows, then
+`$HOME/.cache/origingame/texture-results-v1`; without these, it is disabled.
+Rust callers can use `cook::cook_project_with_texture_cache(root, options,
+Some(path))`, or `None` to disable caching without reading or changing the
+environment. The cache tests use this entry point and private temporary paths.
+
+Entries are `.ogb` containers holding the result and its FNV-1a content hash.
+Reads validate that hash, the container, the result's type/schema and its cook
+stamp. Missing, corrupt or unwritable entries fall back to normal cooking.
+Writers exclusively create a sibling temporary file and rename the completed
+entry into place; concurrent cooks may duplicate work but cannot expose a
+partial result. A hit adds `shared texture cache hit` to the asset's notes
+instead of reporting encoder work. The output still counts as processed
+(`cooked: true`), with cache lookup time, and enters the normal project write
+and manifest path. Unchanged project outputs remain `cooked: false`.
+
+This is a disposable, trusted local cache, not an authenticated artifact store.
+There is no eviction policy: remove its directory to reclaim space. Interrupted
+writes may leave unused `.tmp` files; they are never read as entries.
+
 ### Importers
 
 | Source | Output (`cooked/…`) | What happens |

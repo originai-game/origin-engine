@@ -34,6 +34,7 @@ mod terrain;
 mod terrain_generate;
 mod texture;
 pub mod texture_array;
+mod texture_cache;
 pub mod tilemap;
 mod timeline;
 pub mod video;
@@ -874,6 +875,17 @@ fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSettings, String
 /// Cooks `<root>/assets` into `<root>/cooked`. Per-asset failures are in the
 /// report ([`Report::ok`]); an `Err` means the cook could not run at all.
 pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookError> {
+    let cache = texture_cache::default_path();
+    cook_project_with_texture_cache(root, options, cache.as_deref())
+}
+
+/// Cook with an explicit shared texture cache directory, or `None` to disable it.
+/// This does not read cache environment variables; useful for isolated callers/tests.
+pub fn cook_project_with_texture_cache(
+    root: &Path,
+    options: &CookOptions,
+    texture_cache: Option<&Path>,
+) -> Result<Report, CookError> {
     let started = Instant::now();
     let assets_dir = root.join("assets");
     let cooked_dir = root.join("cooked");
@@ -1602,7 +1614,9 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     let p = &plan[i];
                     let t = Instant::now();
                     let start = t.duration_since(started).as_secs_f64() * 1000.0;
-                    let r = run(p, options, threads, schemas, known, budgets);
+                    let r = texture_cache::run(texture_cache, p, || {
+                        run(p, options, threads, schemas, known, budgets)
+                    });
                     *results[i].lock().expect("no poisoning") =
                         Some((r, t.elapsed().as_secs_f64() * 1000.0, start, worker as u32));
                 }
