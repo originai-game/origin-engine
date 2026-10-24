@@ -6,6 +6,7 @@
 // them. Inputs are asymmetric, so a swapped axis or a wrong operation shows.
 import { beforeAll, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { og } from "@origingame/engine";
 import type { Geometry, GeometryInfo, Vector2, World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
@@ -219,7 +220,7 @@ test("a made geometry is dynamic only when asked", () => {
 // The IDL declares no fixed default for it (it said 0.1, true only at the
 // default thickness); unset and null both take the derived value.
 test("extrude's bevelSize is bevelThickness - 0.1 when not given", () => {
-  const schema = JSON.parse(readFileSync(new URL("../schema/api.schema.json", import.meta.url), "utf8"));
+  const schema = JSON.parse(readFileSync(fileURLToPath(new URL("../schema/api.schema.json", import.meta.url)), "utf8"));
   const decl = schema.$defs.ExtrudeGeometryDesc.properties.bevelSize;
   expect(decl.default).toBeNull();
   // The default square (half-width 0.5) grows by the bevel's size.
