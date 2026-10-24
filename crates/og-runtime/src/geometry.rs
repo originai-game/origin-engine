@@ -1529,6 +1529,20 @@ fn nav_view(rs: &mut RenderState) {
     }
 }
 
+/// A mesh's box in its own space, kept per revision (the bounds view's
+/// and the review cameras' `super::review`).
+pub(crate) fn mesh_bounds(rs: &mut RenderState, mesh: MeshHandle) -> Option<(Vec3, Vec3)> {
+    let rev = rs.scene.mesh_revision(mesh.index());
+    if let Some(&(r, a, b)) = rs.geo.bounds.get(&mesh.index())
+        && r == rev
+    {
+        return Some((a, b));
+    }
+    let i = geo::info(rs.scene.mesh(mesh)?);
+    rs.geo.bounds.insert(mesh.index(), (rev, i.min, i.max));
+    Some((i.min, i.max))
+}
+
 fn bounds_view(rs: &mut RenderState) {
     let mut out = Vec::new();
     let instances: Vec<(MeshHandle, Mat4)> = rs
@@ -1538,17 +1552,8 @@ fn bounds_view(rs: &mut RenderState) {
         .map(|i| (i.mesh, i.transform))
         .collect();
     for (mesh, m) in instances {
-        let rev = rs.scene.mesh_revision(mesh.index());
-        let (min, max) = match rs.geo.bounds.get(&mesh.index()) {
-            Some(&(r, a, b)) if r == rev => (a, b),
-            _ => {
-                let Some(data) = rs.scene.mesh(mesh) else {
-                    continue;
-                };
-                let i = geo::info(data);
-                rs.geo.bounds.insert(mesh.index(), (rev, i.min, i.max));
-                (i.min, i.max)
-            }
+        let Some((min, max)) = mesh_bounds(rs, mesh) else {
+            continue;
         };
         let centre = (min + max) * 0.5;
         out.extend(debug::box_edges(

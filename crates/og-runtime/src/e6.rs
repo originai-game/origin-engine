@@ -214,6 +214,8 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
     super::lanes::register(probe, engine);
     super::net::register(probe, engine);
     super::geometry::register(probe, engine);
+    #[cfg(not(feature = "publish"))]
+    super::review::register(probe, engine);
     probe.set_memory(move |world| super::memory::report(engine, world));
     probe.set_listen(move |seconds| {
         let link = og_audio::link(engine)?;
