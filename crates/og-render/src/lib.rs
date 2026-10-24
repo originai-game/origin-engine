@@ -5353,9 +5353,10 @@ impl Renderer {
                 .any(|p| matches!(p.dest, views::Dest::Texture { depth: Some(_), .. }));
         // A due capture's faces draw their own depth prepass for the water
         // over them, which also shows the copy of the face drawn so far
-        // through it (probes.rs `FaceTargets`): only when a capture is due.
+        // through it, and for their soft particles to fade against
+        // (probes.rs `FaceTargets`): only when a capture is due.
         let face_copy = !probe_frame.due.is_empty() && !scene_water.is_empty();
-        let face_depth = face_copy;
+        let face_depth = face_copy || (!probe_frame.due.is_empty() && particle_frame.soft);
         if face_depth {
             self.probes
                 .ensure_targets(&self.device, &probe_frame, face_copy);
@@ -7529,17 +7530,23 @@ impl Renderer {
             })
             .collect();
         // Each due probe face's particle and line groups over its own
-        // camera's uniforms (probes.rs); no depth of its own to soften
-        // particles against.
+        // camera's uniforms (probes.rs); soft particles fade against the
+        // face's own depth prepass.
         let (face_particle_groups, face_line_groups): (Vec<_>, Vec<_>) = probe_faces
             .iter()
             .enumerate()
             .flat_map(|(d, cams)| {
-                let size = active_probes[probe_frame.due[d].1].face_size();
-                let position = active_probes[probe_frame.due[d].1].position;
-                cams.iter().map(move |f| (f, position, size))
+                let (slot, i) = probe_frame.due[d];
+                let size = active_probes[i].face_size();
+                let position = active_probes[i].position;
+                let depth = if face_depth {
+                    &self.probes.targets_of(slot).prepass.lindepth
+                } else {
+                    &self.post.far_depth
+                };
+                cams.iter().map(move |f| (f, position, size, depth))
             })
-            .map(|(f, position, size)| {
+            .map(|(f, position, size, depth)| {
                 let (particles, lines) =
                     views::camera_gpu(f, position, (size, size), scene.css_height);
                 let buffer = |label, contents: &[u8]| {
@@ -7553,10 +7560,8 @@ impl Renderer {
                 let pb = buffer("probe face particles", bytemuck::bytes_of(&particles));
                 let lb = buffer("probe face lines", bytemuck::bytes_of(&lines));
                 (
-                    (!particle_frame.systems.is_empty()).then(|| {
-                        self.particles
-                            .draw_group_of(&self.device, &pb, &self.post.far_depth)
-                    }),
+                    (!particle_frame.systems.is_empty())
+                        .then(|| self.particles.draw_group_of(&self.device, &pb, depth)),
                     self.lines.view_group(&self.device, &lb),
                 )
             })

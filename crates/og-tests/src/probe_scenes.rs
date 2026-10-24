@@ -516,3 +516,32 @@ pub fn add_floor_water(scene: &mut RenderScene) {
         ..Default::default()
     });
 }
+
+/// A few green particles 1.2 m wide hovering 0.1 to 0.2 m over
+/// [`probe_floor_scene`]'s floor, under the probe; `soft`: they fade over
+/// 2 m of the depth behind them, so against the floor they nearly vanish.
+pub fn add_floor_particles(scene: &mut RenderScene, soft: bool) {
+    let e = scene.add_emitter(og_render::ParticleEmitter {
+        shape: og_render::EmitterShape::Cone {
+            angle_degrees: 0.0,
+            radius: 0.6,
+        },
+        rate: 6.0,
+        lifetime: [1.8, 2.0],
+        speed: [0.1, 0.1],
+        size: [1.2, 1.2],
+        gravity: Vec3::ZERO,
+        color: [0.1, 0.95, 0.15, 1.0],
+        blend: og_render::ParticleBlend::Alpha,
+        soft_distance: if soft { 2.0 } else { 0.0 },
+        ..Default::default()
+    });
+    scene.particles.push(og_render::ParticleSystem::new(
+        12,
+        e,
+        Mat4::from_translation(Vec3::new(0.0, 0.1, 0.0)),
+        0x50f7,
+        0,
+    ));
+    crate::fx_scenes::tick_all(scene, 60);
+}

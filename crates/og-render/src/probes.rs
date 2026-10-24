@@ -9,8 +9,9 @@
 //! and world sprites and text on every layer; `lib.rs`'s probe pass),
 //! copied into a radiance cube with mips and GGX-prefiltered into
 //! [`crate::ENVIRONMENT_MAP_LEVELS`] levels like the environment's own
-//! (`ibl.rs`). A face with water draws its own depth prepass first (the
-//! view prepass's draws, `lib.rs`'s `depth_prepass`) and ends its pass
+//! (`ibl.rs`). A face with water or soft particles draws its own depth
+//! prepass first (the view prepass's draws, `lib.rs`'s `depth_prepass`),
+//! which its soft particles fade against; with water it ends its pass
 //! after the sky to copy itself, so the water there refracts the face
 //! drawn so far and darkens and foams by the depth below as the frame's
 //! does ([`FaceTargets`], one set per face size, made the first time a

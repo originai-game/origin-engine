@@ -337,7 +337,8 @@ S6).
   sorted back to front from the probe, the particle systems (billboards facing each face, through
   its own `ParticleViewGpu`), scene lines and points and world sprites and
   text, on every layer (sprites unlit by 2D lights and without glow, soft
-  particles at full strength: a face has no depth to fade against); lit
+  particles fading against the face's own depth prepass, drawn for them
+  while a capture is due); lit
   by the sun and every local light, its own reflections
   the environment's (one bounce). It is then copied and GGX-prefiltered like the
   environment (`ibl.rs`). The lit shaders box-project the reflected ray

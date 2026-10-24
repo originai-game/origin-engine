@@ -7,8 +7,9 @@
 use og_render::{RenderDesc, RenderTarget, Renderer, RgbaImage};
 use og_tests::gfx;
 use og_tests::probe_scenes::{
-    FLOOR_PROBE, Outdoor, SsrFloor, add_floor_water, outdoor_scene, posed_figure_scene,
-    probe_effects_scene, probe_floor_scene, probe_water_scene, ssr_floor_scene, two_rooms_scene,
+    FLOOR_PROBE, Outdoor, SsrFloor, add_floor_particles, add_floor_water, outdoor_scene,
+    posed_figure_scene, probe_effects_scene, probe_floor_scene, probe_water_scene, ssr_floor_scene,
+    two_rooms_scene,
 };
 use og_tests::scenes;
 use std::path::PathBuf;
@@ -291,6 +292,38 @@ fn water_in_a_capture_shows_the_floor_below() {
     assert!(
         yellow(ny) && (0..2).all(|k| ny[k] > 0.6 * ny0[k] && ny[k] < 1.3 * ny0[k]),
         "the floor through the water on -y: {ny:?} against the bare floor {ny0:?}"
+    );
+}
+
+/// Soft particles in a capture fade against the face's depth: green
+/// particles hovering 0.1 to 0.2 m over the floor, fading over 2 m, leave
+/// the -y face near the bare floor's yellow, where the same particles drawn
+/// hard turn it green. Before the faces had a depth prepass, a face's
+/// soft particles read the far plane behind them and drew as hard ones.
+#[test]
+fn soft_particles_in_a_capture_fade_against_the_floor() {
+    let desc = scenes::base_desc();
+    let face = |particles: Option<bool>| {
+        let mut scene = probe_floor_scene();
+        if let Some(soft) = particles {
+            add_floor_particles(&mut scene, soft);
+        }
+        face_mean(&render(&desc, &scene, Some(FLOOR_PROBE.0)).1.unwrap(), 3)
+    };
+    let (bare, hard, soft) = (face(None), face(Some(false)), face(Some(true)));
+    let off = |c: [f32; 3]| (0..3).map(|k| (c[k] - bare[k]).abs()).sum::<f32>();
+    println!(
+        "-y bare {bare:?}, hard {hard:?} ({:.3} off), soft {soft:?} ({:.3} off)",
+        off(hard),
+        off(soft)
+    );
+    assert!(
+        off(hard) > 0.3,
+        "the hard particles on -y: {hard:?} against {bare:?}"
+    );
+    assert!(
+        off(soft) < 0.4 * off(hard),
+        "the soft particles on -y: {soft:?}, hard {hard:?}, bare floor {bare:?}"
     );
 }
 
