@@ -1780,6 +1780,7 @@ dependencies = [
  "og-blob",
  "og-core",
  "og-ecs",
+ "og-geom",
  "og-i18n",
  "og-nav",
  "og-render",

@@ -808,16 +808,21 @@ fn linear(c: u8) -> f32 {
 /// The glTF binary chunk being written: its bytes, buffer views and
 /// accessors.
 #[derive(Default)]
-struct Bin {
-    bytes: Vec<u8>,
-    views: Vec<serde_json::Value>,
-    accessors: Vec<serde_json::Value>,
+pub(super) struct Bin {
+    pub bytes: Vec<u8>,
+    pub views: Vec<serde_json::Value>,
+    pub accessors: Vec<serde_json::Value>,
 }
 
 impl Bin {
     /// Appends `data` (4-aligned) as a buffer view and an accessor over it
     /// (`accessor` gives everything but the view); answers the accessor.
-    fn add(&mut self, data: &[u8], target: Option<u32>, mut accessor: serde_json::Value) -> usize {
+    pub fn add(
+        &mut self,
+        data: &[u8],
+        target: Option<u32>,
+        mut accessor: serde_json::Value,
+    ) -> usize {
         while !self.bytes.len().is_multiple_of(4) {
             self.bytes.push(0);
         }
@@ -1139,29 +1144,37 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
         }
         json["animations"] = animations.into();
     }
-    while !bin.bytes.len().is_multiple_of(4) {
-        bin.bytes.push(0);
+    bin.finish(json)
+}
+
+impl Bin {
+    /// The glTF binary of `json` (its accessors, views and buffer set from
+    /// this chunk) and this chunk.
+    pub fn finish(mut self, mut json: serde_json::Value) -> Result<Vec<u8>, String> {
+        while !self.bytes.len().is_multiple_of(4) {
+            self.bytes.push(0);
+        }
+        json["accessors"] = std::mem::take(&mut self.accessors).into();
+        json["bufferViews"] = std::mem::take(&mut self.views).into();
+        json["buffers"] = serde_json::json!([{ "byteLength": self.bytes.len() }]);
+        let bin = self.bytes;
+        let mut json_bytes = serde_json::to_vec(&json).map_err(|e| e.to_string())?;
+        while !json_bytes.len().is_multiple_of(4) {
+            json_bytes.push(b' ');
+        }
+        let total = 12 + 8 + json_bytes.len() + 8 + bin.len();
+        let mut out = Vec::with_capacity(total);
+        out.extend_from_slice(b"glTF");
+        out.extend_from_slice(&2u32.to_le_bytes());
+        out.extend_from_slice(&(total as u32).to_le_bytes());
+        out.extend_from_slice(&(json_bytes.len() as u32).to_le_bytes());
+        out.extend_from_slice(b"JSON");
+        out.extend_from_slice(&json_bytes);
+        out.extend_from_slice(&(bin.len() as u32).to_le_bytes());
+        out.extend_from_slice(b"BIN\0");
+        out.extend_from_slice(&bin);
+        Ok(out)
     }
-    json["accessors"] = std::mem::take(&mut bin.accessors).into();
-    json["bufferViews"] = std::mem::take(&mut bin.views).into();
-    json["buffers"] = serde_json::json!([{ "byteLength": bin.bytes.len() }]);
-    let bin = bin.bytes;
-    let mut json_bytes = serde_json::to_vec(&json).map_err(|e| e.to_string())?;
-    while !json_bytes.len().is_multiple_of(4) {
-        json_bytes.push(b' ');
-    }
-    let total = 12 + 8 + json_bytes.len() + 8 + bin.len();
-    let mut out = Vec::with_capacity(total);
-    out.extend_from_slice(b"glTF");
-    out.extend_from_slice(&2u32.to_le_bytes());
-    out.extend_from_slice(&(total as u32).to_le_bytes());
-    out.extend_from_slice(&(json_bytes.len() as u32).to_le_bytes());
-    out.extend_from_slice(b"JSON");
-    out.extend_from_slice(&json_bytes);
-    out.extend_from_slice(&(bin.len() as u32).to_le_bytes());
-    out.extend_from_slice(b"BIN\0");
-    out.extend_from_slice(&bin);
-    Ok(out)
 }
 
 /// The quads a `.vox` meshes to, for tests and reports: (quads, triangles).

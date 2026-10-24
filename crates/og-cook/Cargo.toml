@@ -16,7 +16,7 @@ runtime = []
 # transcodes with Binomial's wasm transcoder).
 transcode = ["runtime", "dep:basis-universal", "dep:ruzstd"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["runtime", "og-render/bake", "dep:og-ai", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-api", "og-timeline/import"]
+cook = ["runtime", "og-render/bake", "dep:og-ai", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-api", "og-timeline/import", "dep:og-geom"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["dep:basis-universal", "dep:ruzstd"]
@@ -29,6 +29,8 @@ og-anim = { path = "../og-anim" }
 # The cook validates UI skins with og-ui's parser (the runtime only reads their text).
 og-ui = { path = "../og-ui", optional = true }
 og-tilemap = { path = "../og-tilemap" }
+# `type model`: the cook builds its parts with og-geom's generators.
+og-geom = { path = "../og-geom", optional = true }
 # Timelines and paths: the cook validates and canonicalises them (importing
 # caption files), the runtime parses the canonical text.
 og-timeline = { path = "../og-timeline" }

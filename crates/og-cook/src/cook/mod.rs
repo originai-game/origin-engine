@@ -23,6 +23,7 @@ pub mod ktx2_source;
 mod lightmap;
 pub mod look;
 mod model;
+pub mod model_text;
 pub mod probes;
 mod rig2d;
 mod scene;
@@ -885,6 +886,17 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
         options.threads
     };
     let texture_encoder = texture::encoder_name(&options.texture);
+    // The project's budgets (project.ogt's `budgets { }`, the defaults
+    // without one): a `type model` past them is refused, not cooked.
+    let budgets = std::fs::read_to_string(root.join("project.ogt"))
+        .ok()
+        .and_then(|t| Document::parse(&t).ok())
+        .and_then(|d| stats::Budgets::from_project(&d.body).ok())
+        .unwrap_or_default();
+    let budget_desc = format!(
+        "budgets triangles {} vertices {}",
+        budgets.triangles, budgets.vertices
+    );
 
     // The engine's built-in assets the looks name join the bundle under
     // their reserved ids (`@canvas/paper.png`, every file of
@@ -972,12 +984,13 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     Ok(doc) if doc.ty == crate::look::LOOK_TYPE => Kind::Look,
                     Ok(doc) if doc.ty == texture_array::ARRAY_TYPE => Kind::TextureArray,
                     Ok(doc) if doc.ty == video::VIDEO_TYPE => Kind::Video,
+                    Ok(doc) if doc.ty == model_text::MODEL_TYPE => Kind::Model,
                     Ok(doc) => {
                         early_errors.push((
                             rel.clone(),
                             "scene",
                             format!(
-                                "an .ogt of type '{}' is not a cookable asset (scene, particles, style, icons, tileset, tilemap, flipbook, rig2d, shader, behaviour, navmesh, terrain, timeline, environment, texture-array, video, look, sfx, strings, rig or import)",
+                                "an .ogt of type '{}' is not a cookable asset (scene, model, particles, style, icons, tileset, tilemap, flipbook, rig2d, shader, behaviour, navmesh, terrain, timeline, environment, texture-array, video, look, sfx, strings, rig or import)",
                                 doc.ty
                             ),
                         ));
@@ -1017,6 +1030,17 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             match vox::VoxSettings::parse(settings_block(s, "model"))
                 .and_then(|v| vox::to_glb(&s.bytes, &v))
             {
+                Ok(glb) => s.bytes = glb,
+                Err(e) => {
+                    s.error = Some(e);
+                    continue;
+                }
+            }
+        }
+        // A model written as text (`type model`): its parts built and
+        // written as a glTF binary here, so the rest of the cook sees a .glb.
+        if s.kind == Kind::Model && ext(&s.rel) == "ogt" {
+            match model_text::to_glb(&String::from_utf8_lossy(&s.bytes)) {
                 Ok(glb) => s.bytes = glb,
                 Err(e) => {
                     s.error = Some(e);
@@ -1145,12 +1169,20 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     ));
                     ids.push(id);
                 }
-                let st = stamp(&[
-                    b"model",
-                    mesh_desc.as_bytes(),
-                    &hash,
-                    ids.join("\n").as_bytes(),
-                ]);
+                let joined = ids.join("\n");
+                // A model written as text is refused past the budgets, so
+                // they are among its inputs.
+                let st = if ext(&s.rel) == "ogt" {
+                    stamp(&[
+                        b"model",
+                        mesh_desc.as_bytes(),
+                        &hash,
+                        joined.as_bytes(),
+                        budget_desc.as_bytes(),
+                    ])
+                } else {
+                    stamp(&[b"model", mesh_desc.as_bytes(), &hash, joined.as_bytes()])
+                };
                 outs.insert(
                     0,
                     (s.rel.clone(), format::Model::NAME, st, Work::Model(s, ids)),
@@ -1562,6 +1594,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
         for worker in 0..threads.min(todo.len()) {
             let (next, results, plan, schemas, known, todo) =
                 (&next, &results, &plan, &schemas, &known, &todo);
+            let budgets = &budgets;
             scope.spawn(move || {
                 loop {
                     let k = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -1569,7 +1602,7 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
                     let p = &plan[i];
                     let t = Instant::now();
                     let start = t.duration_since(started).as_secs_f64() * 1000.0;
-                    let r = run(p, options, threads, schemas, known);
+                    let r = run(p, options, threads, schemas, known, budgets);
                     *results[i].lock().expect("no poisoning") =
                         Some((r, t.elapsed().as_secs_f64() * 1000.0, start, worker as u32));
                 }
@@ -1879,6 +1912,7 @@ fn run(
     threads: usize,
     schemas: &BTreeMap<String, Schema>,
     known: &BTreeSet<String>,
+    budgets: &stats::Budgets,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
     match p.work.as_ref().expect("planned work") {
         Work::Model(s, ids) => {
@@ -1887,7 +1921,27 @@ fn run(
                 .mesh
                 .for_model(settings_block(s, "model"))
                 .map_err(CookError)?;
-            model::cook(g, ids, &mesh, p.stamp, false).map(|(b, n)| (b, n.notes))
+            let (blob, n) = model::cook(g, ids, &mesh, p.stamp, false)?;
+            // A model written as text is held to the project's budgets by
+            // the cook itself: past them it is refused, not flagged.
+            if ext(&s.rel) == "ogt" {
+                for (what, value, limit, key) in [
+                    (
+                        "LOD 0 triangles",
+                        n.triangles,
+                        budgets.triangles,
+                        "triangles",
+                    ),
+                    ("vertices", n.vertices, budgets.vertices, "vertices"),
+                ] {
+                    if value as u64 > limit {
+                        return Err(CookError(format!(
+                            "{what}: {value} is over the {key} budget of {limit} (project.ogt's budgets.{key}): lower the parts' segments, curveSegments, steps or detail, or raise the budget"
+                        )));
+                    }
+                }
+            }
+            Ok((blob, n.notes))
         }
         Work::Proxy(s) => {
             let g = s.gltf.as_ref().expect("loaded");

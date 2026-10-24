@@ -193,7 +193,15 @@ fn collect_models(b: &Block, out: &mut Vec<String>) {
 
 /// Every triangle of a glTF's default scene, in its own space times `to_world`.
 fn gltf_triangles(path: &Path, to_world: Mat4, out: &mut Vec<[Vec3; 3]>) -> Result<(), String> {
-    let (doc, buffers, _) = gltf::import(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let at = |e: &dyn std::fmt::Display| format!("{}: {e}", path.display());
+    // A model written as text (`type model`) is read as the glb it cooks from.
+    let (doc, buffers, _) = if path.extension().is_some_and(|e| e == "ogt") {
+        let text = std::fs::read_to_string(path).map_err(|e| at(&e))?;
+        let glb = super::model_text::to_glb(&text).map_err(|e| at(&e))?;
+        gltf::import_slice(glb).map_err(|e| at(&e))?
+    } else {
+        gltf::import(path).map_err(|e| at(&e))?
+    };
     let scene = doc
         .default_scene()
         .or_else(|| doc.scenes().next())

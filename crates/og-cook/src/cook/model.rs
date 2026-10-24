@@ -1043,6 +1043,9 @@ fn texture_kind(k: og_render::gltf::TextureKind) -> u32 {
 /// What a model cook reports besides the blob.
 pub struct ModelNotes {
     pub notes: Vec<String>,
+    /// LOD 0 triangles and vertices of every primitive, summed.
+    pub triangles: usize,
+    pub vertices: usize,
 }
 
 /// Cooks a parsed glTF into a model blob. `texture_ids` are the asset ids
@@ -1388,5 +1391,13 @@ pub fn cook(
         "raycast false: no BVH cooked; the first og.render.raycast that reaches it builds one"
             .into()
     });
-    Ok((w.finish(), ModelNotes { notes }))
+    let vertices = prims.iter().map(|p| p.vertex_count as usize).sum();
+    Ok((
+        w.finish(),
+        ModelNotes {
+            notes,
+            triangles: tris,
+            vertices,
+        },
+    ))
 }
