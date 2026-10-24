@@ -1,0 +1,13 @@
+type project
+version 1
+---
+# The fonts og-ui's cooked-font text frames draw with (text-bidi,
+# text-kerning, text-edit, text-mixed-runs): the import settings only. The
+# font files are templates/ui-kit/assets/fonts' (not copied here); the
+# native test (tests/text_gfx.rs) and the browser harness
+# (packages/engine/tests/web/reference-gfx.ts) each copy this project and
+# those fonts into a scratch directory and cook it, so both tiers draw from
+# the same cook.
+name "og-ui text fonts"
+id "og-ui-text-fonts"
+entry "src/main.ts"

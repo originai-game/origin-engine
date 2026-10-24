@@ -7,15 +7,27 @@
 //! [`og_gfx_render`] draws frames to the renderer's offscreen target exactly
 //! as `og_tests::gfx::render_built` does natively (the scene's update before
 //! each), and [`og_gfx_capture`] reads the last one back as RGBA8.
+//! og-ui's cooked-font text frames (`og-ui/text-bidi`, `text-kerning`,
+//! `text-edit`, `text-mixed-runs`: crates/og-ui/tests/support/text_scenes.rs)
+//! draw with fonts the module cannot cook: the runner cooks
+//! crates/og-ui/tests/text-fonts with `og cook` and hands over the cook's
+//! manifest ([`og_gfx_text_manifest`]) and each file under `cooked/`
+//! ([`og_gfx_text_file`]) before it opens them.
 //! [`og_gfx_cpu_culling`] makes the scenes opened after it cull on the CPU
 //! (`Culling::Cpu`, as `OG_GFX_CULLING=cpu` does natively). The
 //! comparison and the timing are the runner's
 //! (`packages/engine/tests/web/reference-gfx.ts`).
 
+// og-ui's reference scenes, as og-ui's tests build them (`text_scenes`
+// reaches `super::scenes`, as it does in og-ui's `support`).
 #[cfg(target_arch = "wasm32")]
 #[allow(dead_code)]
 #[path = "../../og-ui/tests/support/scenes.rs"]
-mod ui_scenes;
+mod scenes;
+#[cfg(target_arch = "wasm32")]
+#[allow(dead_code)]
+#[path = "../../og-ui/tests/support/text_scenes.rs"]
+mod text_scenes;
 
 #[cfg(target_arch = "wasm32")]
 mod web {
@@ -23,6 +35,7 @@ mod web {
     use og_tests::compare::Tolerance;
     use og_tests::scenes::{self, Applies, GfxScene};
     use std::cell::{Cell, RefCell};
+    use std::collections::BTreeMap;
     use wasm_bindgen::prelude::*;
 
     struct Open {
@@ -34,6 +47,10 @@ mod web {
     thread_local! {
         static OPEN: RefCell<Option<Open>> = const { RefCell::new(None) };
         static CPU_CULLING: Cell<bool> = const { Cell::new(false) };
+        /// The text fonts' cook: its manifest and its files by path under
+        /// `cooked/`.
+        static TEXT_MANIFEST: RefCell<Option<String>> = const { RefCell::new(None) };
+        static TEXT_FILES: RefCell<BTreeMap<String, Vec<u8>>> = const { RefCell::new(BTreeMap::new()) };
     }
 
     fn err(e: impl std::fmt::Display) -> JsValue {
@@ -50,25 +67,48 @@ mod web {
     /// crates/og-ui/references/<tier>/).
     #[wasm_bindgen]
     pub fn og_gfx_ui_scenes() -> Vec<String> {
-        super::ui_scenes::REFERENCE_SCENES
+        super::scenes::REFERENCE_SCENES
             .iter()
+            .chain(super::text_scenes::TEXT_SCENES.iter())
             .map(|s| format!("og-ui/{s}"))
             .collect()
     }
 
+    /// The text fonts' cook manifest (`cooked/.cook.ogt` of
+    /// crates/og-ui/tests/text-fonts, cooked by the runner).
+    #[wasm_bindgen]
+    pub fn og_gfx_text_manifest(text: String) {
+        TEXT_MANIFEST.with(|m| *m.borrow_mut() = Some(text));
+    }
+
+    /// One file of the text fonts' cook, by its path under `cooked/`.
+    #[wasm_bindgen]
+    pub fn og_gfx_text_file(path: String, bytes: Vec<u8>) {
+        TEXT_FILES.with(|f| f.borrow_mut().insert(path, bytes));
+    }
+
+    /// The cooked text fonts, from the manifest and files the runner gave.
+    fn text_fonts() -> Result<Vec<og_cook::runtime::CookedFont>, String> {
+        let manifest = TEXT_MANIFEST.with(|m| m.borrow().clone()).ok_or(
+            "no text fonts: the runner cooks crates/og-ui/tests/text-fonts and calls og_gfx_text_manifest and og_gfx_text_file first",
+        )?;
+        let bundle =
+            og_cook::runtime::Bundle::from_manifest(&manifest).map_err(|e| e.to_string())?;
+        TEXT_FILES.with(|f| {
+            let files = f.borrow();
+            super::text_scenes::fonts_from(&bundle, |path| files.get(path).cloned())
+        })
+    }
+
     /// og-ui's reference scene `name` as a gfx scene: one frame, og-tests'
-    /// default tolerance (og-ui's rule), every tier, the test font compiled in.
+    /// default tolerance (og-ui's rule), every tier; the test font compiled
+    /// in, or for a cooked-font text frame the fonts the runner gave.
     fn ui_scene(name: &str) -> Result<GfxScene, String> {
-        let text = |rel: &str| scenes::asset(rel).map(|b| String::from_utf8_lossy(&b).into_owned());
-        let png = scenes::asset("fonts/noto-sans-sc-msdf.png")?;
-        let json = text("fonts/noto-sans-sc-msdf.json")?;
-        let csv = text("fonts/noto-sans-sc-msdf.csv")?;
-        let font = super::ui_scenes::FontFiles {
-            png: &png,
-            json: &json,
-            csv: &csv,
+        let (scene, desc) = if super::text_scenes::TEXT_SCENES.contains(&name) {
+            super::text_scenes::text_scene(name, &text_fonts()?)?
+        } else {
+            test_font_scene(name)?
         };
-        let (scene, desc) = super::ui_scenes::reference_scene(name, &font)?;
         Ok(GfxScene {
             desc,
             scene,
@@ -77,6 +117,22 @@ mod web {
             update: None,
             applies: Applies::Every,
         })
+    }
+
+    /// One of og-ui's scenes drawn with the test font (compiled in).
+    fn test_font_scene(
+        name: &str,
+    ) -> Result<(og_render::RenderScene, og_render::RenderDesc), String> {
+        let text = |rel: &str| scenes::asset(rel).map(|b| String::from_utf8_lossy(&b).into_owned());
+        let png = scenes::asset("fonts/noto-sans-sc-msdf.png")?;
+        let json = text("fonts/noto-sans-sc-msdf.json")?;
+        let csv = text("fonts/noto-sans-sc-msdf.csv")?;
+        let font = super::scenes::FontFiles {
+            png: &png,
+            json: &json,
+            csv: &csv,
+        };
+        super::scenes::reference_scene(name, &font)
     }
 
     /// Whether the scenes opened from now on cull on the CPU on every tier

@@ -42,7 +42,13 @@
 //! transform: a model whose place changes across frames is skinned to a
 //! joint of its own with a STEP translation channel as well, and a key
 //! that turns it starts a new mesh (a turn is a different set of voxel
-//! faces), swapped in like a frame's model.
+//! faces), swapped in like a frame's model. A node's `_loop` (on an
+//! `nTRN` or an `nSHP`) repeats its keys from the first to the last on
+//! every frame outside them, as the editor and ogt_vox
+//! (`compute_looped_frame_index`) play it; the scene's playback range
+//! (`META`'s `_anim_range`, MagicaVoxel 0.99.7.2) sets the frames walked
+//! (to its last) and the default clip (its frames alone). The editor's
+//! frame rate is not in the file: `voxFps` gives it.
 //!
 //! Greedy meshing: per face direction, per slice, runs of voxels of one
 //! colour merge into rectangles, so a 32³ block of one colour is 12
@@ -273,8 +279,12 @@ pub struct VoxFile {
     pub placements: Vec<Placement>,
     /// Animation frames (0: the file is static): the last key frame of any
     /// animated shape or keyed transform plus one, or a graph-less file's
-    /// model count.
+    /// model count. With a playback range, at least its last frame plus
+    /// one.
     pub frame_count: u32,
+    /// The playback range of an animated file (`META`'s `_anim_range`,
+    /// first and last frame played): the default clip's frames.
+    pub playback: Option<(u32, u32)>,
 }
 
 fn u32_at(b: &[u8], at: usize) -> Result<u32, String> {
@@ -361,14 +371,21 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
     enum Node {
         /// Its key frames, sorted by frame and at least one: (frame,
         /// translation, rotation), each holding until the next.
+        /// `looped`: the node's `_loop`, its keys repeating from the
+        /// first to the last on every frame outside them.
         Transform {
             child: u32,
             keys: Vec<Key>,
+            looped: bool,
         },
         Group(Vec<u32>),
-        /// Its models, each with its `_f` key frame when it has one.
-        Shape(Vec<(u32, Option<u32>)>),
+        /// Its models, each with its `_f` key frame when it has one, and
+        /// its `_loop`.
+        Shape(Vec<(u32, Option<u32>)>, bool),
     }
+    // The scene's playback range (`META`'s `_anim_range`, both frames
+    // played), when the file has one.
+    let mut range: Option<(u32, u32)> = None;
     let mut nodes: BTreeMap<u32, Node> = BTreeMap::new();
     let mut pending_size: Option<[u32; 3]> = None;
     let mut at = 8;
@@ -411,7 +428,8 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
                 let mut p = 0;
                 let node = u32_at(body, p)?;
                 p += 4;
-                let _attrs = dict(body, &mut p)?;
+                let attrs = dict(body, &mut p)?;
+                let looped = looped(&attrs);
                 let child = u32_at(body, p)?;
                 p += 4;
                 let _reserved = i32_at(body, p)?;
@@ -447,7 +465,14 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
                 if keys.is_empty() {
                     keys.push((0, [0; 3], IDENTITY));
                 }
-                nodes.insert(node, Node::Transform { child, keys });
+                nodes.insert(
+                    node,
+                    Node::Transform {
+                        child,
+                        keys,
+                        looped,
+                    },
+                );
             }
             b"nGRP" => {
                 let mut p = 0;
@@ -467,7 +492,7 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
                 let mut p = 0;
                 let node = u32_at(body, p)?;
                 p += 4;
-                let _attrs = dict(body, &mut p)?;
+                let looped = looped(&dict(body, &mut p)?);
                 let n = u32_at(body, p)?;
                 p += 4;
                 let mut ms = Vec::new();
@@ -477,7 +502,23 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
                     let attrs = dict(body, &mut p)?;
                     ms.push((model, attrs.get("_f").and_then(|f| f.parse().ok())));
                 }
-                nodes.insert(node, Node::Shape(ms));
+                nodes.insert(node, Node::Shape(ms, looped));
+            }
+            b"META" => {
+                // `_anim_range "<start> <end>"` (MagicaVoxel 0.99.7.2): the
+                // frames the editor plays; one that ends before it starts,
+                // or is not two whole numbers, is ignored as ogt_vox does.
+                let d = dict(body, &mut 0)?;
+                if let Some(r) = d.get("_anim_range") {
+                    let v: Vec<i64> = r.split(' ').filter_map(|s| s.parse().ok()).collect();
+                    if let [a, b] = v[..]
+                        && 0 <= a
+                        && a <= b
+                        && b <= u32::MAX as i64
+                    {
+                        range = Some((a as u32, b as u32));
+                    }
+                }
             }
             _ => {}
         }
@@ -513,10 +554,16 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
             return;
         }
         match nodes.get(&id) {
-            Some(Node::Transform { child, keys }) => {
-                // The key in force: the last at or before the frame, the
-                // first before any.
-                let k = keys.iter().rev().find(|k| k.0 <= frame).unwrap_or(&keys[0]);
+            Some(Node::Transform {
+                child,
+                keys,
+                looped,
+            }) => {
+                // The key in force: the last at or before the frame (looped
+                // into the keys' span when the node loops), the first before
+                // any.
+                let at = looped_frame(*looped, keys[0].0, keys[keys.len() - 1].0, frame);
+                let k = keys.iter().rev().find(|k| k.0 <= at).unwrap_or(&keys[0]);
                 let (translation, rotation) = (k.1, k.2);
                 // Compose: this frame's translation is in the parent's frame.
                 let mut tt = t;
@@ -535,14 +582,14 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
                     walk(nodes, *c, t, r, frame, out, depth + 1, models);
                 }
             }
-            Some(Node::Shape(ms)) if ms.len() == 1 => {
+            Some(Node::Shape(ms, _)) if ms.len() == 1 => {
                 out.push(Shown {
                     model: Some(ms[0].0 as usize).filter(|m| *m < models),
                     translation: t,
                     rotation: r,
                 });
             }
-            Some(Node::Shape(ms)) => {
+            Some(Node::Shape(ms, looped)) => {
                 // An animated shape: each model from its key frame (`_f`,
                 // else its position in the list) to the next model's.
                 let mut keyed: Vec<(u32, u32)> = ms
@@ -552,10 +599,11 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
                     .collect();
                 keyed.sort();
                 keyed.dedup_by_key(|k| k.0);
+                let at = looped_frame(*looped, keyed[0].0, keyed[keyed.len() - 1].0, frame);
                 let model = keyed
                     .iter()
                     .rev()
-                    .find(|k| k.0 <= frame)
+                    .find(|k| k.0 <= at)
                     .map(|k| k.1 as usize)
                     .filter(|m| *m < models);
                 out.push(Shown {
@@ -567,14 +615,18 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
             None => {}
         }
     }
+    // The frames a graph is walked over (0 without a graph).
+    let mut walked = 0;
     if nodes.contains_key(&0) {
-        // The frames: up to the last key of any animated shape or keyed
-        // transform.
+        // The frames: those of the playback range when the file has one
+        // (its first frame to its last, frames before it walked too: they
+        // are frames of the file, outside the default clip), else up to the
+        // last key of any animated shape or keyed transform.
         let last_key = nodes
             .values()
             .filter_map(|n| match n {
                 Node::Transform { keys, .. } if keys.len() > 1 => keys.last().map(|k| k.0),
-                Node::Shape(ms) if ms.len() > 1 => ms
+                Node::Shape(ms, _) if ms.len() > 1 => ms
                     .iter()
                     .enumerate()
                     .map(|(i, (_, f))| f.unwrap_or(i as u32))
@@ -582,7 +634,12 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
                 _ => None,
             })
             .max();
-        let frames = last_key.map_or(1, |k| k.saturating_add(1));
+        let frames = match (range, last_key) {
+            (_, None) => 1,
+            (Some((_, end)), Some(_)) => end.saturating_add(1),
+            (None, Some(k)) => k.saturating_add(1),
+        };
+        walked = frames;
         let mut at: Vec<Vec<Shown>> = Vec::with_capacity(frames as usize);
         for f in 0..frames {
             let mut shown = Vec::new();
@@ -662,13 +719,35 @@ pub fn parse(bytes: &[u8]) -> Result<VoxFile, String> {
         .filter_map(|p| p.frames.as_ref())
         .map(|f| f.end)
         .max()
-        .unwrap_or(0);
+        .map_or(0, |end| end.max(walked));
     Ok(VoxFile {
         models,
         palette,
         placements,
         frame_count,
+        playback: range.filter(|_| frame_count > 0),
     })
+}
+
+/// A node's `_loop`: ogt_vox's reading, `1` first.
+fn looped(attrs: &BTreeMap<String, String>) -> bool {
+    attrs.get("_loop").is_some_and(|v| v.starts_with('1'))
+}
+
+/// The frame a node's keys are sampled at: `frame` itself, or for a node
+/// that loops (`_loop`) `frame` wrapped into its keys' span `first..=last`,
+/// both ways (a frame before the first key counts back from the last), as
+/// MagicaVoxel and ogt_vox (`compute_looped_frame_index`) play it.
+fn looped_frame(looped: bool, first: u32, last: u32, frame: u32) -> u32 {
+    if !looped {
+        return frame;
+    }
+    let len = last - first + 1;
+    if frame >= first {
+        first + (frame - first) % len
+    } else {
+        last - (first - frame - 1) % len
+    }
 }
 
 /// A greedy-meshed quad: its four corners (voxel units, MagicaVoxel's
@@ -853,7 +932,8 @@ fn clips_of(file: &VoxFile, settings: &VoxSettings) -> Result<Vec<(String, u32, 
         };
     }
     if settings.clips.is_empty() {
-        return Ok(vec![(DEFAULT_CLIP.to_string(), 0, n - 1)]);
+        let (first, last) = file.playback.unwrap_or((0, n - 1));
+        return Ok(vec![(DEFAULT_CLIP.to_string(), first, last)]);
     }
     settings
         .clips
@@ -1735,8 +1815,19 @@ mod tests {
 
     /// An `nTRN` of several frames: per key its `_f`, `_t` and `_r`.
     fn trn_keys(out: &mut Vec<u8>, node: u32, child: u32, keys: &[(u32, [i32; 3], Option<u8>)]) {
+        trn_keys_with(out, node, &[], child, keys);
+    }
+
+    /// [`trn_keys`] with the node's attributes (`_loop`).
+    fn trn_keys_with(
+        out: &mut Vec<u8>,
+        node: u32,
+        attrs: &[(&str, String)],
+        child: u32,
+        keys: &[(u32, [i32; 3], Option<u8>)],
+    ) {
         let mut b = node.to_le_bytes().to_vec();
-        dict_of(&mut b, &[]);
+        dict_of(&mut b, attrs);
         for v in [child, u32::MAX, 0, keys.len() as u32] {
             b.extend_from_slice(&v.to_le_bytes());
         }
@@ -1764,8 +1855,18 @@ mod tests {
     }
 
     fn shp(out: &mut Vec<u8>, node: u32, models: &[(u32, Option<u32>)]) {
+        shp_with(out, node, &[], models);
+    }
+
+    /// [`shp`] with the node's attributes (`_loop`).
+    fn shp_with(
+        out: &mut Vec<u8>,
+        node: u32,
+        attrs: &[(&str, String)],
+        models: &[(u32, Option<u32>)],
+    ) {
         let mut b = node.to_le_bytes().to_vec();
-        dict_of(&mut b, &[]);
+        dict_of(&mut b, attrs);
         b.extend_from_slice(&(models.len() as u32).to_le_bytes());
         for (m, f) in models {
             b.extend_from_slice(&m.to_le_bytes());
@@ -2233,6 +2334,207 @@ mod tests {
         assert_eq!(file.frame_count, 0);
         let a = to_glb(&still, &VoxSettings::default()).unwrap();
         assert_eq!(a, to_glb(&one, &VoxSettings::default()).unwrap());
+    }
+
+    /// A `META` chunk of the scene's attributes (`_anim_range`).
+    fn meta(out: &mut Vec<u8>, attrs: &[(&str, String)]) {
+        let mut b = Vec::new();
+        dict_of(&mut b, attrs);
+        chunk(out, b"META", &b);
+    }
+
+    /// The x scale of each joint's scale channel of a glTF's animation `i`
+    /// (1 where the joint's model shows): one list per animated model.
+    fn shown_frames(glb: &[u8], i: usize) -> Vec<Vec<f32>> {
+        let g = gltf::Gltf::from_slice(glb).unwrap();
+        let blob = g.blob.clone().unwrap();
+        let anim = g.document.animations().nth(i).expect("the clip");
+        anim.channels()
+            .filter_map(|ch| {
+                let r = ch.reader(|_| Some(&blob[..]));
+                match r.read_outputs() {
+                    Some(gltf::animation::util::ReadOutputs::Scales(s)) => {
+                        Some(s.map(|v| v[0]).collect())
+                    }
+                    _ => None,
+                }
+            })
+            .collect()
+    }
+
+    /// `_loop` on a shape and on a keyed transform: their keys repeat from
+    /// the first to the last over the file's frames instead of holding the
+    /// last (MagicaVoxel's and ogt_vox's `compute_looped_frame_index`),
+    /// a frame before the first key counting back from the last.
+    #[test]
+    fn looped_nodes_repeat_their_keys() {
+        let models = vec![
+            ([2, 2, 2], solid([2, 2, 2], 1)),
+            ([2, 2, 3], solid([2, 2, 3], 2)),
+            ([1, 1, 1], solid([1, 1, 1], 3)),
+            ([3, 1, 1], solid([3, 1, 1], 4)),
+        ];
+        let lp = [("_loop", "1".to_string())];
+        let mut graph = Vec::new();
+        trn(&mut graph, 0, 1, [0, 0, 0]);
+        grp(&mut graph, 1, &[2, 4, 6]);
+        // A looped shape of two models, keyed at frames 1 and 2.
+        trn(&mut graph, 2, 3, [0, 0, 0]);
+        shp_with(&mut graph, 3, &lp, &[(0, Some(1)), (1, Some(2))]);
+        // A looped transform keyed at frames 0 and 1.
+        trn_keys_with(
+            &mut graph,
+            4,
+            &lp,
+            5,
+            &[(0, [5, 0, 0], None), (1, [6, 0, 0], None)],
+        );
+        shp(&mut graph, 5, &[(2, None)]);
+        // A transform keyed to frame 5, not looped: the file's frames.
+        trn_keys(
+            &mut graph,
+            6,
+            7,
+            &[(0, [9, 0, 0], None), (5, [10, 0, 0], None)],
+        );
+        shp(&mut graph, 7, &[(3, None)]);
+        let bytes = write_models(&models, &graph);
+        let file = parse(&bytes).unwrap();
+        assert_eq!(file.frame_count, 6);
+        let placed: Vec<_> = file
+            .placements
+            .iter()
+            .map(|p| (p.model, p.frames.clone(), p.track.clone()))
+            .collect();
+        let x = |v: i32| [v, 0, 0];
+        assert_eq!(
+            placed,
+            vec![
+                // Frame 0 is before the first key: looped back from the
+                // last, model 1; then 0, 1, 0, 1, 0.
+                (1, Some(0..1), vec![]),
+                (0, Some(1..2), vec![]),
+                (1, Some(2..3), vec![]),
+                (0, Some(3..4), vec![]),
+                (1, Some(4..5), vec![]),
+                (0, Some(5..6), vec![]),
+                (2, Some(0..6), vec![x(5), x(6), x(5), x(6), x(5), x(6)]),
+                (3, Some(0..6), vec![x(9), x(9), x(9), x(9), x(9), x(10)]),
+            ],
+            "the shape and the looped transform repeat; the other holds"
+        );
+        // The same file without `_loop` holds each node's last key.
+        let mut graph = Vec::new();
+        trn(&mut graph, 0, 1, [0, 0, 0]);
+        grp(&mut graph, 1, &[2, 4]);
+        trn(&mut graph, 2, 3, [0, 0, 0]);
+        shp(&mut graph, 3, &[(0, Some(1)), (1, Some(2))]);
+        trn_keys(
+            &mut graph,
+            4,
+            5,
+            &[(0, [9, 0, 0], None), (5, [10, 0, 0], None)],
+        );
+        shp(&mut graph, 5, &[(3, None)]);
+        let file = parse(&write_models(&models, &graph)).unwrap();
+        let shape: Vec<_> = file
+            .placements
+            .iter()
+            .filter(|p| p.model < 2)
+            .map(|p| (p.model, p.frames.clone()))
+            .collect();
+        assert_eq!(shape, vec![(0, Some(1..2)), (1, Some(2..6))]);
+        // In the cooked clip the looped shape's models alternate.
+        let glb = to_glb(&bytes, &VoxSettings::default()).unwrap();
+        let shown = shown_frames(&glb, 0);
+        // Seven frames' keys: six frames and the clip's end holding the
+        // last; the shape's six runs, each its own joint.
+        assert_eq!(shown[0], vec![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(shown[5], vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0]);
+    }
+
+    /// The scene's playback range (`META`'s `_anim_range`, MagicaVoxel
+    /// 0.99.7.2): the frames walked run to its end, holding the last keys
+    /// past them, and the default clip plays its frames alone. A static
+    /// file with a range (the editor writes one into every file) stays
+    /// static.
+    #[test]
+    fn the_playback_range_is_the_default_clip() {
+        let models = vec![
+            ([2, 2, 2], solid([2, 2, 2], 1)),
+            ([2, 2, 3], solid([2, 2, 3], 2)),
+        ];
+        let file_with = |range: Option<&str>| {
+            let mut graph = Vec::new();
+            if let Some(r) = range {
+                meta(&mut graph, &[("_anim_range", r.to_string())]);
+            }
+            trn(&mut graph, 0, 1, [0, 0, 0]);
+            grp(&mut graph, 1, &[2]);
+            trn(&mut graph, 2, 3, [0, 0, 0]);
+            shp(&mut graph, 3, &[(0, Some(0)), (1, Some(2))]);
+            write_models(&models, &graph)
+        };
+        let ranged = file_with(Some("1 4"));
+        let file = parse(&ranged).unwrap();
+        assert_eq!(file.frame_count, 5, "the range's end, frame 4, plus one");
+        assert_eq!(file.playback, Some((1, 4)));
+        let placed: Vec<_> = file
+            .placements
+            .iter()
+            .map(|p| (p.model, p.frames.clone()))
+            .collect();
+        assert_eq!(placed, vec![(0, Some(0..2)), (1, Some(2..5))]);
+        // The default clip: frames 1 to 4 (four keys and the end's).
+        let glb = to_glb(&ranged, &VoxSettings::default()).unwrap();
+        let g = gltf::Gltf::from_slice(&glb).unwrap();
+        let clip = g.document.animations().next().unwrap();
+        assert_eq!(clip.name(), Some(DEFAULT_CLIP));
+        assert_eq!(
+            shown_frames(&glb, 0),
+            vec![vec![1.0, 0.0, 0.0, 0.0, 0.0], vec![0.0, 1.0, 1.0, 1.0, 1.0]]
+        );
+        // `voxClip` still names any frame of the file, before the range too.
+        let early = VoxSettings {
+            clips: vec![VoxClip {
+                name: "early".into(),
+                first: 0,
+                last: 1,
+            }],
+            ..VoxSettings::default()
+        };
+        assert_eq!(
+            shown_frames(&to_glb(&ranged, &early).unwrap(), 0),
+            vec![vec![1.0, 1.0, 1.0], vec![0.0, 0.0, 0.0]]
+        );
+        // A range ending before the last key cuts the frames there: frames
+        // 0 and 1 show model 0 alone, so the file plays as a static one.
+        let short = parse(&file_with(Some("0 1"))).unwrap();
+        assert_eq!((short.frame_count, short.playback), (0, None));
+        let cut = parse(&file_with(Some("0 2"))).unwrap();
+        assert_eq!((cut.frame_count, cut.playback), (3, Some((0, 2))));
+        // A range that ends before it starts is ignored, as ogt_vox does.
+        let bad = parse(&file_with(Some("3 1"))).unwrap();
+        assert_eq!((bad.frame_count, bad.playback), (3, None));
+        // A static file with the editor's default range stays static,
+        // byte for byte.
+        let still = |range: Option<&str>| {
+            let mut graph = Vec::new();
+            if let Some(r) = range {
+                meta(&mut graph, &[("_anim_range", r.to_string())]);
+            }
+            trn(&mut graph, 0, 1, [0, 0, 0]);
+            grp(&mut graph, 1, &[2]);
+            trn(&mut graph, 2, 3, [1, 2, 3]);
+            shp(&mut graph, 3, &[(0, None)]);
+            write_models(&models[..1], &graph)
+        };
+        let f = parse(&still(Some("0 30"))).unwrap();
+        assert_eq!((f.frame_count, f.playback), (0, None));
+        assert_eq!(
+            to_glb(&still(Some("0 30")), &VoxSettings::default()).unwrap(),
+            to_glb(&still(None), &VoxSettings::default()).unwrap()
+        );
     }
 
     #[test]

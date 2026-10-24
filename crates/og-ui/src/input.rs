@@ -39,14 +39,16 @@ pub enum UiKey {
     KeyX,
     /// With the shortcut key: undo (with Shift: redo).
     KeyZ,
-    /// With the shortcut key: redo.
+    /// With the shortcut key: redo. With Control under mac keys: yank the
+    /// kill buffer (emacs).
     KeyY,
     /// With Control under mac keys: the line's end (emacs).
     KeyE,
     /// With Control under mac keys (emacs): a character on (F) and back
     /// (B), a line down (N) and up (P) (a field's ends), delete a character
-    /// on (D) and back (H), delete to the paragraph's end (K) and start
-    /// (U), delete the word before the caret (W).
+    /// on (D) and back (H), kill to the paragraph's end (K) and start
+    /// (U), kill the word before the caret (W), each into the kill buffer
+    /// Y yanks, transpose the characters at the caret (T).
     KeyF,
     KeyB,
     KeyN,
@@ -56,6 +58,7 @@ pub enum UiKey {
     KeyK,
     KeyU,
     KeyW,
+    KeyT,
     /// A focused zoom view zooms in with `=`/`+` and the keypad's `+`, out
     /// with `-` and the keypad's `-`, and back to its fit with `0`.
     Equal,
@@ -67,7 +70,7 @@ pub enum UiKey {
 }
 
 impl UiKey {
-    pub const ALL: [UiKey; 34] = [
+    pub const ALL: [UiKey; 35] = [
         UiKey::Backspace,
         UiKey::Delete,
         UiKey::Left,
@@ -96,6 +99,7 @@ impl UiKey {
         UiKey::KeyK,
         UiKey::KeyU,
         UiKey::KeyW,
+        UiKey::KeyT,
         UiKey::Equal,
         UiKey::Minus,
         UiKey::Digit0,
@@ -135,6 +139,7 @@ impl UiKey {
             UiKey::KeyK => "KeyK",
             UiKey::KeyU => "KeyU",
             UiKey::KeyW => "KeyW",
+            UiKey::KeyT => "KeyT",
             UiKey::Equal => "Equal",
             UiKey::Minus => "Minus",
             UiKey::Digit0 => "Digit0",

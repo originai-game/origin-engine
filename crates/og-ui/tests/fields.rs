@@ -36,6 +36,14 @@
 //! - the emacs keys beyond Control+A and E doing nothing under mac keys
 //!   (Ctrl+F, B, N, P, D, H, K, U, W), or acting off a Mac →
 //!   `mac_keys_honour_the_emacs_keys`
+//! - Control+K, U and W deleting what they take instead of killing it,
+//!   Control+Y yanking nothing, kills in a row replacing each other (or a
+//!   move between not ending the chain), a line break yanked into a field,
+//!   the buffer lost by a save and restore, Control+T not transposing →
+//!   `mac_keys_keep_an_emacs_kill_buffer`
+//! - ← and → stopping at a bidi run's edge, stepping back and forth across
+//!   it, or forgetting which of its two places the caret took →
+//!   `arrows_move_visually_across_a_bidi_edge`
 
 mod support;
 
@@ -730,8 +738,137 @@ fn mac_keys_honour_the_emacs_keys() {
         UiKey::KeyK,
         UiKey::KeyU,
         UiKey::KeyW,
+        UiKey::KeyT,
+        UiKey::KeyY,
     ] {
         ctrl(&mut rig, k);
     }
     assert_eq!(rig.caret_marked(), "hello world|");
+}
+
+#[test]
+fn mac_keys_keep_an_emacs_kill_buffer() {
+    let ctrl = |rig: &mut Rig, k: UiKey| rig.chord(&[k], false, true, false, false);
+    let option_right = |rig: &mut Rig| rig.chord(&[UiKey::Right], false, false, false, true);
+    let mut rig = Rig::new("hello brave new world", "");
+    rig.vp.mac_keys = true;
+    rig.focus_field();
+    // K kills to the end; Y yanks it back, at the caret, as often as asked.
+    ctrl(&mut rig, UiKey::KeyA);
+    option_right(&mut rig);
+    ctrl(&mut rig, UiKey::KeyK);
+    assert_eq!(rig.value, "hello");
+    ctrl(&mut rig, UiKey::KeyA);
+    ctrl(&mut rig, UiKey::KeyY);
+    assert_eq!(rig.caret_marked(), " brave new world|hello");
+    ctrl(&mut rig, UiKey::KeyE);
+    ctrl(&mut rig, UiKey::KeyY);
+    assert_eq!(rig.value, " brave new worldhello brave new world");
+    // A yank is one undo step.
+    rig.chord(&[UiKey::KeyZ], false, false, true, false);
+    assert_eq!(rig.value, " brave new worldhello");
+    // W in a row: each word before the last, the buffer both of them.
+    let mut rig = Rig::new("one two three", "");
+    rig.vp.mac_keys = true;
+    rig.focus_field();
+    ctrl(&mut rig, UiKey::KeyW);
+    ctrl(&mut rig, UiKey::KeyW);
+    assert_eq!(rig.value, "one ");
+    ctrl(&mut rig, UiKey::KeyY);
+    assert_eq!(rig.value, "one two three");
+    // A move between two kills ends the chain: the second replaces the
+    // buffer.
+    ctrl(&mut rig, UiKey::KeyA);
+    option_right(&mut rig);
+    ctrl(&mut rig, UiKey::KeyK);
+    ctrl(&mut rig, UiKey::KeyA);
+    ctrl(&mut rig, UiKey::KeyK);
+    assert_eq!(rig.value, "");
+    ctrl(&mut rig, UiKey::KeyY);
+    assert_eq!(rig.value, "one");
+    // In an area, K at a line's end kills its break and adds it to the
+    // kill before; a field yanks that without the break.
+    let (x, y, w, _) = rig.rect("Notes");
+    rig.click(Vec2::new(x + w / 2.0, y + 6.0));
+    rig.idle(40);
+    rig.typed("ab\ncd");
+    rig.chord(&[UiKey::Up], false, false, true, false);
+    ctrl(&mut rig, UiKey::KeyK);
+    ctrl(&mut rig, UiKey::KeyK);
+    assert_eq!(rig.area, "cd");
+    ctrl(&mut rig, UiKey::KeyY);
+    assert_eq!(rig.area, "ab\ncd");
+    rig.value = "x".into();
+    rig.focus_field();
+    ctrl(&mut rig, UiKey::KeyY);
+    assert_eq!(rig.value, "xab");
+    // The buffer is UI state: a save and restore keeps it.
+    let saved = rig.ui.save_state();
+    let mut other = Rig::new("y", "");
+    other.vp.mac_keys = true;
+    other.ui.restore_state(&saved).expect("restores");
+    other.step(InputFrame::default());
+    ctrl(&mut other, UiKey::KeyY);
+    assert_eq!(other.value, "yab");
+    // T transposes the characters about the caret, the two before it at
+    // the end; at the start nothing.
+    let mut rig = Rig::new("abcd", "");
+    rig.vp.mac_keys = true;
+    rig.focus_field();
+    ctrl(&mut rig, UiKey::KeyA);
+    ctrl(&mut rig, UiKey::KeyT);
+    assert_eq!(rig.value, "abcd");
+    ctrl(&mut rig, UiKey::KeyF);
+    ctrl(&mut rig, UiKey::KeyT);
+    assert_eq!(rig.caret_marked(), "ba|cd");
+    ctrl(&mut rig, UiKey::KeyE);
+    ctrl(&mut rig, UiKey::KeyT);
+    assert_eq!(rig.caret_marked(), "badc|");
+}
+
+#[test]
+fn arrows_move_visually_across_a_bidi_edge() {
+    // A left-to-right line ending in a Hebrew word: on screen
+    // `abc ` then ג ב א (א rightmost). → from `abc|` goes into the word at
+    // its left edge (the text's end: after the space, the caret drawn at
+    // the space's right), then on screen through it, to its right edge
+    // (before א in the text), and stops there.
+    let mut rig = Rig::new("abc אבג", "");
+    rig.focus_field();
+    rig.keys(&[UiKey::Home], false, false, false);
+    let mut seen = Vec::new();
+    for _ in 0..6 {
+        rig.keys(&[UiKey::Right], true, false, false);
+        seen.push(rig.selection());
+    }
+    assert_eq!(seen, ["a", "ab", "abc", "abc ", "abc אב", "abc א"]);
+    rig.keys(&[UiKey::Right], true, false, false);
+    assert_eq!(rig.selection(), "abc ", "the word's right edge: before א");
+    rig.keys(&[UiKey::Right], true, false, false);
+    assert_eq!(rig.selection(), "abc ", "the line's right edge");
+    // ← back from the right edge (anchored before א): through the word to
+    // its left edge, there the text's end (nearer in the text than the
+    // space's end, at the same place), then into the Latin.
+    rig.keys(&[UiKey::Home], false, false, false);
+    for _ in 0..7 {
+        rig.keys(&[UiKey::Right], false, false, false);
+    }
+    let mut seen = Vec::new();
+    for _ in 0..4 {
+        rig.keys(&[UiKey::Left], true, false, false);
+        seen.push(rig.selection());
+    }
+    assert_eq!(seen, ["א", "אב", "אבג", " "]);
+    // A right-to-left line ending in a Latin word: on screen `cd`, the
+    // space, ב א (א rightmost). ← from its start goes on through the
+    // Hebrew, to the Latin word's right edge, then through it.
+    let mut rig = Rig::new("אב cd", "");
+    rig.focus_field();
+    rig.keys(&[UiKey::Home], false, false, false);
+    let mut seen = Vec::new();
+    for _ in 0..6 {
+        rig.keys(&[UiKey::Left], true, false, false);
+        seen.push(rig.selection());
+    }
+    assert_eq!(seen, ["א", "אב", "אב ", "אב c", "אב ", "אב "]);
 }

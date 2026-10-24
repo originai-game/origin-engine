@@ -119,13 +119,15 @@ wire. On a Mac (`Viewport.macKeys`: the web shell sets it from the
 browser's platform, a native host on macOS) Cmd+A, C, X, Z are the
 shortcuts, Cmd+←/→ go to the line's ends, Option+←/→ (and
 Option+Backspace or Delete) move by words, and Ctrl takes the emacs keys
-(A/E the line's ends, F/B a character, N/P a line, D/H delete one, K to
-the paragraph's end, U to its start, W the word before); elsewhere Ctrl
+(A/E the line's ends, F/B a character, N/P a line, D/H delete one, K
+kills to the paragraph's end, U to its start, W the word before, Y yanks
+what they killed, T transposes); elsewhere Ctrl
 takes the shortcuts and moves by words. Words are Unicode's (UAX #29):
 `can't` is one, each Chinese character is one, Thai moves a cluster at a
 time. The caret and Backspace step over a whole grapheme cluster (`é`
-typed as e and an accent, an emoji with its skin tone), and ←/→ move as
-they point: in Hebrew or Arabic ← goes on in the text. A double click selects a word and a triple
+typed as e and an accent, an emoji with its skin tone), and ←/→ move on
+screen: in Hebrew or Arabic ← goes on in the text, and across the edge of
+a Hebrew word in a Latin line the caret goes where the arrow points. A double click selects a word and a triple
 click the line, Shift+Z or Y redoes (typing undoes a word at a time, an
 input method's commit at a time), and a drag past an area's edge scrolls
 it. A text the game sets starts the field's undo history again. Script a
