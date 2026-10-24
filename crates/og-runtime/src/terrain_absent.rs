@@ -32,9 +32,44 @@ pub(crate) struct TerrainState {
 
 pub(crate) fn retire(_id: u32) {}
 
-/// The og.terrain system and its edit log: nothing to mount.
-pub(crate) fn mount(_world: &mut World, _engine_id: u32) -> Result<(), String> {
-    Ok(())
+/// The edit log's state block, so a world here is the bytes the full build
+/// writes (a save, the world hash; `og_ecs::snapshot`'s blocks section):
+/// never an edit. A save that carries one is a 3D game's and is refused
+/// with the reason, never silently replayed into no terrain.
+struct TerrainBlock;
+
+impl og_ecs::StateBlock for TerrainBlock {
+    fn save(&self, out: &mut Vec<u8>) {
+        out.extend_from_slice(&0u32.to_le_bytes());
+    }
+
+    fn decode(&self, bytes: &[u8]) -> og_core::Result<Box<dyn std::any::Any + Send>> {
+        let edits = bytes
+            .get(..4)
+            .and_then(|b| b.try_into().ok())
+            .map(u32::from_le_bytes);
+        match edits {
+            Some(0) if bytes.len() == 4 => Ok(Box::new(())),
+            Some(n) if n > 0 => Err(og_core::Error::new(
+                og_core::ErrorKind::Invalid,
+                format!("a save with {n} terrain edit(s): {ABSENT}"),
+            )),
+            _ => Err(og_core::Error::new(
+                og_core::ErrorKind::Parse,
+                "a damaged terrain edit log",
+            )),
+        }
+    }
+
+    fn apply(&mut self, _decoded: Option<Box<dyn std::any::Any + Send>>) {}
+}
+
+/// The edit log's state block (the world's state is the same here as in the
+/// full build); the og.terrain system has nothing to replay, so none.
+pub(crate) fn mount(world: &mut World, _engine_id: u32) -> Result<(), String> {
+    world
+        .add_state_block("og.terrain", Box::new(TerrainBlock))
+        .map_err(|e| e.reason().to_string())
 }
 
 pub(crate) fn set_streaming(_engine_id: u32, _args: &[String]) -> Result<(), String> {

@@ -12,7 +12,8 @@
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_take_log, og_game_game,
     og_host_begin_bundle, og_terrain_bounds, og_terrain_edit, og_terrain_layer, og_terrain_load,
-    og_terrain_sample, og_terrain_set_layer, og_world_insert, og_world_spawn, set_hooks,
+    og_terrain_sample, og_terrain_set_layer, og_world_insert, og_world_restore, og_world_snapshot,
+    og_world_spawn, set_hooks,
 };
 use serde_json::{Value, json};
 use std::path::PathBuf;
@@ -116,6 +117,122 @@ fn the_terrain_and_its_height_fields_answer_the_profile() {
         said.contains("og.Collider.shape 6 (SHAPE_HEIGHTFIELD, a terrain's height field)")
             && said.contains("RenderCapabilities.world3d is false"),
         "{said}"
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+const B64: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+fn base64_decode(text: &str) -> Vec<u8> {
+    let mut out = Vec::new();
+    let mut acc = 0u32;
+    let mut bits = 0;
+    for c in text.bytes().filter(|c| *c != b'=') {
+        let v = B64.iter().position(|b| *b == c).expect("base64") as u32;
+        acc = (acc << 6) | v;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((acc >> bits) as u8);
+        }
+    }
+    out
+}
+
+fn base64_encode(bytes: &[u8]) -> String {
+    let mut out = String::new();
+    for chunk in bytes.chunks(3) {
+        let n = chunk.iter().fold(0u32, |n, b| (n << 8) | *b as u32) << (8 * (3 - chunk.len()));
+        for i in 0..4 {
+            if i <= chunk.len() {
+                out.push(B64[((n >> (18 - 6 * i)) & 63) as usize] as char);
+            } else {
+                out.push('=');
+            }
+        }
+    }
+    out
+}
+
+/// The world snapshot inside a save (save.rs: `OGSV`, version, tick, hash,
+/// then the snapshot) and the tick it was taken at.
+fn snapshot_of(save: &str) -> (Vec<u8>, u64) {
+    let payload = miniz_oxide::inflate::decompress_to_vec(&base64_decode(
+        save.strip_prefix("og-save:1:").expect("a save"),
+    ))
+    .expect("a deflated save");
+    assert_eq!(&payload[..4], b"OGSV");
+    let tick = u64::from_le_bytes(payload[8..16].try_into().unwrap());
+    (payload[24..].to_vec(), tick)
+}
+
+fn save_of(snapshot: &[u8], tick: u64) -> String {
+    let mut payload = b"OGSV".to_vec();
+    payload.extend_from_slice(&1u32.to_le_bytes());
+    payload.extend_from_slice(&tick.to_le_bytes());
+    payload.extend_from_slice(&og_core::hash::hash_bytes(snapshot).to_le_bytes());
+    payload.extend_from_slice(snapshot);
+    format!(
+        "og-save:1:{}",
+        base64_encode(&miniz_oxide::deflate::compress_to_vec(&payload, 6))
+    )
+}
+
+fn str_bytes(s: &str) -> Vec<u8> {
+    let mut out = (s.len() as u32).to_le_bytes().to_vec();
+    out.extend_from_slice(s.as_bytes());
+    out
+}
+
+/// A 2D world's save is the bytes the full build writes: it carries the
+/// terrain edit log's state block (og.terrain, no edits), so a save moves
+/// between this module and the native host unchanged. One that carries an
+/// edit is a 3D game's and is refused with the profile's reason.
+#[test]
+fn a_save_carries_the_terrain_block_and_one_with_edits_is_refused() {
+    let root = project();
+    set_hooks(Rc::new(Disk));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let options = json!({ "root": root.to_str().unwrap() }).to_string();
+    let engine = wire(&og_engine_create(game, options))["value"]
+        .as_u64()
+        .unwrap() as u32;
+    wire(&og_engine_frame(engine, 1000.0 / 60.0));
+
+    let saved = wire(&og_world_snapshot(engine));
+    assert_eq!(saved["ok"], json!(true), "{saved}");
+    let (snapshot, tick) = snapshot_of(saved["value"].as_str().unwrap());
+    // The block as the full build's terrain.rs writes it with no edits:
+    // str "og.terrain", then str of a u32 count 0.
+    let mut empty = str_bytes("og.terrain");
+    empty.extend_from_slice(&str_bytes("\0\0\0\0"));
+    let at = snapshot
+        .windows(empty.len())
+        .position(|w| w == empty)
+        .expect("the save carries the og.terrain state block with no edits");
+    let restored = og_world_restore(engine, saved["value"].as_str().unwrap().into(), None);
+    assert_eq!(wire(&restored)["ok"], json!(true), "{restored}");
+
+    // The same save with one edit in the block.
+    let mut edits = 1u32.to_le_bytes().to_vec();
+    edits.extend(str_bytes("terrain/hill.ogt"));
+    edits.extend(str_bytes(r#"{"x":0,"z":0,"radius":2,"strength":1}"#));
+    let mut block = str_bytes("og.terrain");
+    block.extend_from_slice(&(edits.len() as u32).to_le_bytes());
+    block.extend(edits);
+    let mut edited = snapshot[..at].to_vec();
+    edited.extend(block);
+    edited.extend_from_slice(&snapshot[at + empty.len()..]);
+    let refused = og_world_restore(engine, save_of(&edited, tick), None);
+    let v = wire(&refused);
+    assert_eq!(v["ok"], json!(false), "{refused}");
+    let reason = v["reason"].as_str().unwrap_or_default();
+    assert!(
+        reason.contains("state block 'og.terrain'")
+            && reason.contains("a save with 1 terrain edit(s)")
+            && reason.contains("terrain is not built into this module"),
+        "{refused}"
     );
     let _ = std::fs::remove_dir_all(&root);
 }
