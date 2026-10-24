@@ -1561,14 +1561,21 @@ fn dev_reports_the_check_of_each_save_and_reloads_anyway() {
         "export const n: number = \"one\";\nexport default 0;\n",
     )
     .unwrap();
-    let (a, b) = (next(), next());
+    // A file write can produce more than one watched modification. Read
+    // through shutdown: --exit-after waits for the pending check to land.
+    let events: Vec<serde_json::Value> = lines
+        .map(|line| serde_json::from_str(&line.unwrap()).unwrap())
+        .collect();
     let status = child.wait().unwrap();
     let _ = std::fs::remove_dir_all(&dir);
-    let (reload, check) = if a["event"] == "reload" {
-        (a, b)
-    } else {
-        (b, a)
-    };
+    let reload = events
+        .iter()
+        .find(|event| event["event"] == "reload")
+        .expect("the saved source reloads");
+    let check = events
+        .iter()
+        .rfind(|event| event["event"] == "check")
+        .expect("the saved source is checked before shutdown");
     assert_eq!(reload["event"], "reload", "{reload}");
     assert_eq!(reload["ok"], true, "the reload went through: {reload}");
     assert!(
