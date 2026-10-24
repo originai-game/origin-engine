@@ -73,6 +73,36 @@ round 3").
   `bevelSize` is `Option.f32`, bevelThickness − 0.1 when unset. og-geom
   gains a Rust `Path2`/`Shape` flattening to the TypeScript runtime's
   points bit for bit. fx-showcase's `models` station; og-game skill §18.
+- `threejs-migrate`: the knowledge guide `three-to-og` (eleven sections,
+  three.js's classes and idioms to og's, the gaps named) mounted in
+  og-game's pack and held to the skills' rules by the validator; `og
+  migrate three <file.ts> [--out|--write] [--json]` rewrites what is
+  mechanical (imports, the geometry constructors with named arguments,
+  materials, colours, vectors, meshes, groups and lights to spawns, the
+  transforms, the camera, texture loads) and leaves the rest under an
+  `// og migrate: … (three-to-og §N)` line, listed with its line. og-build
+  §4 points to `og compare` and the review views; og-model names the
+  `type model` route.
+- release F2: og-cook's `.vox` reads a node's `_loop` and `META`'s
+  `_anim_range` (the frames walked, the default clip's `frames`); og-ui
+  under mac keys gains the emacs kill buffer (Ctrl+K/U/W kill into it,
+  kills in a row add up, Ctrl+Y yanks, Ctrl+T transposes) and ← and →
+  move visually across a bidi edge, keeping the caret's place at the
+  edge (`UiKey::KeyT`, save state version 9); og-ui's cooked-font text
+  frames (`text-bidi`, `text-kerning`, `text-edit`, `text-mixed-runs`)
+  run in the browser tiers, `reference-gfx.ts` cooking their fonts with
+  `og cook`.
+- release F4: `web-reference` runs Brasswick's nine and Meridian Loop's
+  ten frames on WebGPU and WebGL2 from each game's frames playtest
+  (`reference.ts --playtest`), making the games' generated assets first
+  on a checkout without them; `published.ts` has plans for both games;
+  `og run --device` runs on another project (`device.ts --project`).
+  Brasswick's Metal `pause` and `settings-es` frames re-recorded (the
+  44 px HUD pause button drew as a circle in the frames recorded before
+  ui-prose's nine-slice fix, a rounded square since), with `title`,
+  `levels` and `results` moved slightly by the games' regenerated
+  `style.ogt` (the fantasy and neon packs' `gold` had changed under the
+  committed copies).
 - Fixes at the round's first wave-end: the 2D web modules' world carries
   the `og.terrain` state block (no edits) the full build writes, so a 2D
   save and world hash are the same bytes on every host, and a save with

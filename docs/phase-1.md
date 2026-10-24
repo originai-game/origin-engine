@@ -6389,6 +6389,68 @@ themselves are the coordinator's to record). The wave-end
 `--stages gate,web` runs in the measure lane at 34db4fde meanwhile, with
 the vulkan-cpu reference of fx-showcase's `models` station owed there.
 
+The wave-end at 34db4fde (batch 2 merged; 1,536 s: gate 1,000 s, web
+536 s) is green: every gate step passed, determinism equal across the
+runs, the size gate at 3D lanes 3,587,300 B brotli (85 % of the
+4,194,304 B download budget, the largest), 2D lanes 3,322,846 B (79 %),
+3D publish 3,557,117 B (84 %), 2D publish 3,285,428 B (78 %);
+web-reference passed on both tiers, fx-showcase's `models` station at
+RMSE 0.00052 on WebGPU and 0.00150 on WebGL2 against its Metal frame.
+
+Batch 3 merges, each through the functional lane:
+- `release-f4` merged at a7f10c57 (from 7f95c254; the lane 5/5 in
+  234 s). `step_web_reference` now runs Brasswick's nine and Meridian
+  Loop's ten frames on both tiers from each game's frames playtest, and
+  makes the games' gitignored art and music with `tools/make-assets.ts`
+  first when they are missing. Decided: Meridian Loop's 7,272-tick run
+  is accepted as web-reference's slowest and measured at the wave's end;
+  `published.ts` stays hand-run, not a gate step; its Meridian Loop
+  plan's first native run passed on Metal (`og test
+  examples/meridian-loop`, 10 suites). The first browser runs of the
+  games' frames (measure lane at a7f10c57): Meridian Loop on WebGPU
+  10/10 (RMSE ≤ 0.0092); Brasswick 8/9 on each tier, with the same
+  numbers on WebGPU and WebGL2, `settings-es` at RMSE 0.01018 against
+  0.01 and `pause` at 0.00975. Metal fails the same frame by the same
+  number, so it was never a tier difference: the two Metal references
+  (recorded at 0ce8c7be, 2026-10-23) show the 44 px HUD pause button as
+  a circle, the nine-slice's middle squeezed to nothing by the old cut,
+  and every renderer since ui-prose's nine-slice fix (613e684d,
+  4adcd6a5) draws it a rounded square, as the same frames' `start.png`
+  already did. Re-recorded on Metal at the merged head (pause,
+  settings-es; title, levels and results moved with them by ≤ 0.0032
+  through the gold below). Meridian Loop on WebGL2 fails all ten frames
+  (RMSE 0.0138–0.0509, outliers up to 5.5 % on `race`, `slide`, `title`,
+  `ghost`): the neon track's grid lines, the horizon's fog band and the
+  buildings' emissive windows under the look's bloom (threshold 0.75,
+  knee 0.4, intensity 0.9) read differently, nothing is missing; which
+  of bloom, fog or sky diverges on GLSL ES is open, and no webgl2
+  reference is recorded until it is (docs/ci.md: a tier reference
+  absorbs a by-design difference, never a defect).
+- `release-f2` merged at af96fc9b (from 231d77ff; the lane failed once
+  on `asset-stream.test`'s 5 s limit while a Chrome reference run shared
+  the machine, 5,063 ms against its usual 1–3.3 s, then 5/5 in 186 s;
+  the API outputs unchanged). Rows 59 and 63 closed by the thread; row
+  58's engine part landed, its four browser frames the coordinator's
+  (below). Decided: the text frames ride in `reference-gfx.ts` beside
+  og-ui's Rust scenes, which now needs an og binary
+  (`packages/engine/native/` or `OG_BIN`) to cook their fonts.
+- `threejs-migrate` merged at e9b63ab4 (from 8cd60bf7; the lane 5/5 in
+  144 s, knowledge 48 tests). Decided: `three-to-og` stays a guide in
+  og-game's pack (an agent migrating a three.js scene is writing a game,
+  so og-game's reader is its reader), the validator's `GUIDE_CITERS` tie
+  to `migrate.rs` stands (a section the migrator cites must exist), and
+  the two documented behaviour differences (og's `receiveShadow` on by
+  default, a DirectionalLight with no `position.set` shining down −Z)
+  stay notes in the guide; the migrator emitting lines for them is a
+  later row if a migrated scene reads wrong for either.
+- The games' `style.ogt` (a copy of the fantasy and neon packs,
+  recoloured by `make-assets.ts`) had drifted under their packs' `gold`
+  (99ef7117): the generator rewrote the tracked file on every
+  web-reference run. The regenerated copies are committed; Meridian
+  Loop's ten Metal frames hold within tolerance with the new gold (RMSE
+  ≤ 0.0029), Brasswick's moved by ≤ 0.0032 and are re-recorded with the
+  two above.
+
 ### Status 2026-10-19, E5 round
 
 - **Atmosphere, water, material shaders and physics beyond rigid bodies**
