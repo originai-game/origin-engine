@@ -4,7 +4,8 @@
 //! channel; `--device` times the publish build in a real browser), `og probe` (a WebSocket client of the probe), `og dev` (watch,
 //! rebuild, hot reload), `og check` (type-check with tsrs), `og test` (bun tests and playtests), `og polish`
 //! (playtests scored against og-taste and og-feel), `og compare` (a model
-//! review's silhouette IoU, ΔE00 and sheet), `og build`
+//! review's silhouette IoU, ΔE00 and sheet), `og migrate three` (a three.js
+//! file rewritten towards og, the rest listed), `og build`
 //! (the play page), `og cook`, `og doctor` and `og api` (the IDL outputs).
 
 mod api;
@@ -19,6 +20,7 @@ mod dev;
 mod device;
 mod doctor;
 mod doctor_project;
+mod migrate;
 mod polish;
 mod probe;
 mod project;
@@ -67,6 +69,10 @@ commands:
                       a model review's numbers: silhouette IoU and ΔE00 per mask region (or over the
                       overlap) of a captured frame against a reference image, and one sheet PNG of
                       the reference beside the render beside their silhouettes (og-model skill)
+  migrate three <file.ts> [--out <file.ts> | --write] [--json]
+                      rewrite a three.js file towards og where the mapping is mechanical (geometries,
+                      materials, meshes, lights, the scene graph, transforms, the camera, texture
+                      loads) and list each line that is not, with the three-to-og guide's section
   probe <method> [params-json] [--port P] [--out file.png] [--raw]
                       one probe call to a running `og run --port P` / `og dev` (JSON-RPC over WebSocket)
   dev [project] [--port P] [--exit-after N] [--json]
@@ -137,6 +143,7 @@ fn main() -> ExitCode {
         ["run", rest @ ..] => run::run(rest),
         ["render", rest @ ..] => render::run(rest),
         ["compare", rest @ ..] => compare::run(rest),
+        ["migrate", rest @ ..] => migrate::run(rest),
         ["relay", rest @ ..] => serve_relay::run(rest),
         ["probe", rest @ ..] => probe::run(rest),
         ["dev", rest @ ..] => dev::run(rest),

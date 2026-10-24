@@ -1628,3 +1628,87 @@ fn compare_prints_the_iou_and_delta_e_and_writes_the_sheet() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn migrate_three_rewrites_a_file_and_lists_what_is_not_mechanical() {
+    let dir = scratch_root();
+    std::fs::write(
+        dir.join("scene.ts"),
+        "import * as THREE from \"three\";\nconst scene = new THREE.Scene();\nconst box = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 3), new THREE.MeshStandardMaterial({ color: 0x336699 }));\nscene.add(box);\nconst clock = new THREE.Clock();\n",
+    )
+    .unwrap();
+    let out = og()
+        .args([
+            "migrate",
+            "three",
+            "scene.ts",
+            "--out",
+            "scene.og.ts",
+            "--json",
+        ])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["event"], "migrate", "{v}");
+    assert_eq!(
+        (
+            v["rewritten"].as_u64(),
+            v["removed"].as_u64(),
+            v["manual"].as_u64()
+        ),
+        (Some(1), Some(3), Some(1)),
+        "{v}"
+    );
+    let manual = v["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["kind"] == "manual")
+        .unwrap();
+    assert_eq!(
+        (manual["line"].as_u64(), manual["section"].as_u64()),
+        (Some(5), Some(8)),
+        "{v}"
+    );
+    let written = std::fs::read_to_string(dir.join("scene.og.ts")).unwrap();
+    assert!(
+        written.starts_with("import { og, color } from \"@origingame/engine\";\n"),
+        "{written}"
+    );
+    assert!(
+        written.contains("world.insert(box, og.Mesh, { geometry: must(og.render.boxGeometry(world, { width: 1, height: 2, depth: 3 })), material: must(og.render.standardMaterial(world, { color: color.fromHex(0x336699) })) });"),
+        "{written}"
+    );
+    assert!(written.contains("// og migrate: Clock:"), "{written}");
+    assert_eq!(
+        std::fs::read_to_string(dir.join("scene.ts"))
+            .unwrap()
+            .lines()
+            .count(),
+        5,
+        "--out leaves the source alone"
+    );
+
+    // A file that imports nothing from three is refused; an unknown kind is a usage error.
+    std::fs::write(dir.join("plain.ts"), "export const a = 1;\n").unwrap();
+    let out = og()
+        .args(["migrate", "three", "plain.ts"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out));
+    assert!(
+        text(&out).contains("imports nothing from three"),
+        "{}",
+        text(&out)
+    );
+    let out = og()
+        .args(["migrate", "babylon", "scene.ts"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(2), "{}", text(&out));
+    let _ = std::fs::remove_dir_all(&dir);
+}

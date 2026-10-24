@@ -1,6 +1,6 @@
 ---
 name: og-model
-description: Building a 3D prop or stylised character for Origin Engine as code from one reference image, the way img2threejs does it — an intake that inventories every identity-defining detail, a spec, eight build passes (blockout, structure, form, material, surface detail, lighting, interaction, optimisation) each closed by a gate, the og-geom generators (latheGeometry, extrudeGeometry with og.Shape and og.Path2, sweepGeometry, csgGeometry, mergeGeometries, shapeGeometry, the polyhedra) and their recipes, the triangle and draw budgets, and the deterministic review — the view and turntable commands and og compare's silhouette IoU, per-region ΔE00 and one reference-beside-render sheet. Use when a game needs a model that is not a downloaded glTF, when asked to rebuild an object from a picture, or when a procedural model looks wrong.
+description: Building a 3D prop or stylised character for Origin Engine as code from one reference image, the way img2threejs does it — an intake that inventories every identity-defining detail, a spec, eight build passes (blockout, structure, form, material, surface detail, lighting, interaction, optimisation) each closed by a gate, the og-geom generators (latheGeometry, extrudeGeometry with og.Shape and og.Path2, sweepGeometry, csgGeometry, mergeGeometries, shapeGeometry, the polyhedra) and their recipes, the triangle and draw budgets, the `type model` asset the cook builds a finished prop into, and the deterministic review — the view and turntable commands and og compare's silhouette IoU, per-region ΔE00 and one reference-beside-render sheet. Use when a game needs a model that is not a downloaded glTF, when asked to rebuild an object from a picture, or when a procedural model looks wrong.
 ---
 
 A model on Origin Engine can be TypeScript: a function that builds an
@@ -204,7 +204,7 @@ hero prop, and write the gate the spec uses.
 | 5 | Surface detail | the inventory's small details: grooves and holes (csgGeometry), rivets and bolts (mergeGeometries), plates and badges (extrudeGeometry, shapeGeometry), bevels | every inventory row ticked on the sheet; no region's ΔE00 worse than pass 4 by more than 1 |
 | 6 | Lighting | the model under the game's light and look (og-taste picks it): the frame the player will see | no critical feature lost in shadow or blown out; ΔE00 recorded, not gated (the game's light is not the photo's) |
 | 7 | Interaction | what moves: hinges and lids turn about their pivots, named parts answer a pick, colliders where the game needs them | a scripted run turns each moving part through its range with no part leaving its joint; `og.render.raycast` at a part answers that part's entity |
-| 8 | Optimisation | the budget (§6): static parts sharing a material merged, segment counts lowered where the silhouette does not need them | within the budget; IoU not below pass 3's by more than 0.01; the turntable unchanged to the eye |
+| 8 | Optimisation | the budget (§6): static parts sharing a material merged, segment counts lowered where the silhouette does not need them; a static prop written as a `type model` asset (§5) | within the budget; IoU not below pass 3's by more than 0.01; the turntable unchanged to the eye |
 
 A gate that fails is a decision (§1), not a reason to move on. When the
 number and the sheet disagree, the sheet's specific defect wins: write it
@@ -319,6 +319,27 @@ export function buildLantern(world: World): Entity {
 Keep the numbers of the spec in the code (the profile's points, the
 heights, the taper's keys) and nowhere else, so a refine-code is an edit
 of a number the spec names.
+
+**The same model as an asset: `type model`.** A prop whose parts depend on
+nothing the game computes belongs in an asset once its passes are
+closed: an `.ogt` of `type model` under `assets/` (og-game §18 has the
+grammar and a whole example) names each part's generator by its
+`og.render` name with the same desc fields, places it as
+`mergeGeometries` places a part (`at { }` blocks for the copies of a
+repeated part), gives it a `material` and hangs it from a named `pivot`,
+the node a lid or a wheel turns about. `og cook` builds it into the
+model blob a glTF cooks to: meshopt, levels of detail with their measured
+errors, the raycast BVH, the nodes, repeated parts drawn instanced. It
+refuses the model past project.ogt's triangle and vertex budgets (write
+§6's row for the model there, so the budget is the cook's, not a
+promise), and `og cook --report` lists its triangles, parts and draws.
+Load it with `og.load.gltf(world, "models/lantern.ogt")` and
+`world.instantiate`, or name it on a scene's `model` line; `og dev`
+re-cooks an edit under the same handle. Keep the TypeScript factory while
+a pass is open (a refine-code is an edit and a rerun), write the asset in
+the optimisation pass, and review the asset's views against the factory's
+with `og compare` before deleting the factory: a region that moved is a
+part the asset places differently.
 
 ## 6. Budgets
 

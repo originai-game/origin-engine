@@ -298,3 +298,83 @@ test("og-model teaches the model review: the views, og compare, the generators a
   const p = added((r) => edit(join(r.pkg, "skills/og-model/SKILL.md"), (s) => s.replace("og.render.sweepGeometry`", "og.render.sweptGeometry`")));
   expect(p).toEqual(["skills/og-model/SKILL.md: names `og.render.sweptGeometry`, which the generated API (api.ogt) does not have; check the name in reference/ or packages/engine/types/index.d.ts"]);
 });
+
+/** The two doc rows of threejs-migrate: og-build points to the model review, og-model to the asset route. */
+const ROUTES: Record<string, string[]> = {
+  "og-build": ["og compare <reference.png> <render.png>", "turntable:<entity>:<n>", "og-model §3", "og-model §4"],
+  "og-model": ["type model", "og-game §18", "og.load.gltf(world, \"models/lantern.ogt\")", "og cook --report", "`pivot`"],
+};
+
+test("og-build points to og compare and og-model names the type model route", () => {
+  const b = bundle(real);
+  const missing: string[] = [];
+  for (const [skill, names] of Object.entries(ROUTES)) {
+    const text = b.files[`game/skills/${skill}/SKILL.md`]!;
+    for (const n of names) if (!text.includes(n)) missing.push(`${skill}: ${n}`);
+  }
+  expect(missing).toEqual([]);
+});
+
+/** What the three-to-og guide maps (the threejs-migrate row): every name must appear in it. */
+const THREE_TO_OG = [
+  "og.Parent", "og.Transform", "og.MatrixWorld", "world.spawn", "world.find",
+  "og.render.boxGeometry", "og.render.extrudeGeometry", "og.render.latheGeometry", "og.render.bufferGeometry", "og.render.mergeGeometries", "og.render.csgGeometry", "og.render.sweepGeometry", "og.Shape", "og.Path2", "type model",
+  "StandardMaterialDesc", "og.render.standardMaterial", "unlit: true", "color.fromHex", "og.render.updateMaterial",
+  "og.load.gltf", "og.load.texture", "og.load.environment", "world.instantiate",
+  "defineSystem", "time.dt", "og.Rng", "og.Camera",
+  "og.render.raycast", "screenToRay",
+  "ShaderMaterial", "type shader", "InstancedMesh", "OrbitControls", "og.OrbitCamera", "og.systems.cameras",
+  "og migrate three",
+];
+
+test("the three-to-og guide maps three.js's classes and idioms and names the gaps", () => {
+  const text = bundle(real).files["game/skills/og-game/guides/three-to-og.md"];
+  expect(text).toBeDefined();
+  expect(THREE_TO_OG.filter((n) => !text!.includes(n))).toEqual([]);
+});
+
+test("a guide is held to the skills' rules: its API names, sections, pages and who names it", () => {
+  const why = "which the generated API (api.ogt) does not have; check the name in reference/ or packages/engine/types/index.d.ts";
+  const p = added((r) => {
+    edit(join(r.pkg, "guides/three-to-og.md"), (s) => `${s}\nPick with \`og.render.raycasts(world, ray)\`; see §42, og-feel §99 and \`reference/raycast.md\`.\n`);
+    edit(join(r.pkg, "skills/og-ui/SKILL.md"), (s) => `${s}\nThree.js's CSS2DRenderer is in \`guides/three-to-ui.md\`.\n`);
+    writeFileSync(join(r.pkg, "guides/notes.md"), "# Notes\n");
+  });
+  expect(p.sort()).toEqual(
+    [
+      `guides/three-to-og.md: names \`og.render.raycasts\`, ${why}`,
+      "guides/three-to-og.md: names reference/raycast.md, which the generated wiki does not have (a module's page is reference/<module>.md)",
+      "guides/three-to-og.md: refers to its own §42, which it does not have (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)",
+      "guides/three-to-og.md: refers to og-feel §99, which does not exist there (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)",
+      "guides/notes.md: not in GUIDES (scripts/validate.ts); list it there and name it from og-game, or remove it",
+      "skills/og-ui/SKILL.md: names guides/three-to-ui.md, which this package does not ship (its guides: three-to-og)",
+    ].sort(),
+  );
+  const unnamed = added((r) => edit(join(r.pkg, "skills/og-game/SKILL.md"), (s) => s.replaceAll("guides/three-to-og.md", "the guide")));
+  expect(unnamed).toEqual(["skills/og-game/SKILL.md: never names guides/three-to-og.md, so no agent finds the guide; name it where its subject is taught"]);
+  const unmounted = added((r) => edit(join(r.pkg, "knowledge.json"), (s) => s.replace('"to": "game/skills/og-game/guides/"', '"to": "game/skills/og-game/notes/"')));
+  expect(unmounted).toContain("guides/three-to-og.md: missing, or not mounted at game/skills/og-game/guides/ (knowledge.json mounts guides/ there)");
+});
+
+/** A copy laid out as the repository is (packages/knowledge, packages/engine, crates/), so the guide's citers are read. */
+function nested(): Roots {
+  const dir = mkdtempSync(join(tmpdir(), "og-knowledge-repo-"));
+  temps.push(dir);
+  const roots = { pkg: join(dir, "packages/knowledge"), template: join(dir, "template"), engine: join(dir, "packages/engine") };
+  cpSync(real.pkg, roots.pkg, { recursive: true, filter: (s) => !s.includes("node_modules") });
+  cpSync(real.template, roots.template, { recursive: true, filter: (s) => !/\/(cooked|dist|node_modules)(\/|$)/.test(s) });
+  cpSync(join(real.engine, "package.json"), join(roots.engine, "package.json"));
+  cpSync(join(real.engine, "schema/api.schema.json"), join(roots.engine, "schema/api.schema.json"));
+  cpSync(join(real.pkg, "../../crates/og-cli/src/migrate.rs"), join(dir, "crates/og-cli/src/migrate.rs"));
+  return roots;
+}
+
+test("every section og migrate three cites is one the guide has", () => {
+  const roots = nested();
+  const before = new Set(validate(roots));
+  edit(join(roots.pkg, "../../crates/og-cli/src/migrate.rs"), (s) => `${s}\n// see three-to-og §12\n`);
+  const p = validate(roots).filter((x) => !before.has(x));
+  expect(p).toEqual(["crates/og-cli/src/migrate.rs: cites three-to-og §12, which guides/three-to-og.md does not have (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)"]);
+  // And the real source cites some, so the check reads something.
+  expect(readFileSync(join(real.pkg, "../../crates/og-cli/src/migrate.rs"), "utf8")).toMatch(/three-to-og §\d+/);
+});

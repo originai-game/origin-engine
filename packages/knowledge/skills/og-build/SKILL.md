@@ -169,6 +169,15 @@ same store, for a relaunch (og-platform-sdk §4).
 - Determinism is checkable: two runs with the same seed and script give the
   same world hash in `dump_world`. When they do not, find the wall-clock
   read or the unseeded randomness before anything else.
+- A model built as code (og-model) is judged on numbers and one sheet,
+  not on a frame read by eye: `view:<entity>:front|back|side|top`,
+  `view:<entity>:orbit:<degrees>` and `turntable:<entity>:<n>` frame it
+  from fixed cameras, and `og compare <reference.png> <render.png>`
+  prints the silhouette IoU and the ΔE00 per mask region and writes the
+  reference beside the render as one sheet PNG (`--mask`, `--align`,
+  `--json`). Two runs give the same numbers and the same sheet bytes, so
+  quote them with the command. og-model §3 has the commands and how to
+  read them, og-model §4 the gate each pass must meet.
 - Report what ran and what did not. A build that compiled is not a game
   that plays.
 
