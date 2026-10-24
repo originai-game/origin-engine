@@ -1823,6 +1823,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-geom"
+version = "0.3.0"
+dependencies = [
+ "glam 0.34.1",
+ "robust",
+ "spade",
+]
+
+[[package]]
 name = "og-host-node"
 version = "0.3.0"
 dependencies = [
