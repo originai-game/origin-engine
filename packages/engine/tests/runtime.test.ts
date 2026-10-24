@@ -277,27 +277,39 @@ test("a handle read in a per-tick system costs one engine call, reads in a loop 
   if (!a.ok) throw new Error(a.reason);
   const h = a.value as { points: number };
   const reads = 20000;
-  // Cold: an engine call between reads (a resource write elsewhere would be one), so each read goes to the engine.
-  let t0 = performance.now();
-  let sum = 0;
-  for (let i = 0; i < reads; i++) {
-    engine.world.alive(0 as Entity);
-    sum += h.points;
+  // The property is the number of engine reads, counted at the host's ABI,
+  // not their time: a timing ratio (warm ten times under cold) failed on a
+  // machine busy with the gate's other steps, at 3.6 µs warm against 7.8 µs
+  // cold. The times are printed for the eye.
+  const binding = boundHost();
+  if (!binding) throw new Error("no host");
+  const real = binding.abi.og_engine_read_resource;
+  let fetched = 0;
+  binding.abi.og_engine_read_resource = (world, name) => {
+    fetched++;
+    return real(world, name);
+  };
+  try {
+    // Cold: an engine call between reads (a resource write elsewhere would be one), so each read goes to the engine.
+    let t0 = performance.now();
+    let sum = 0;
+    for (let i = 0; i < reads; i++) {
+      engine.world.alive(0 as Entity);
+      sum += h.points;
+    }
+    const cold = ((performance.now() - t0) * 1000) / reads;
+    expect(fetched).toBe(reads);
+    // Warm: a loop over rows reading a tuning field, nothing else reaching the engine.
+    fetched = 0;
+    t0 = performance.now();
+    for (let i = 0; i < reads; i++) sum += h.points;
+    const warm = ((performance.now() - t0) * 1000) / reads;
+    expect(sum).toBe(10 * reads);
+    expect(fetched).toBe(0);
+    console.log(`resource handle field read: ${cold.toFixed(2)} µs after an engine call, ${warm.toFixed(3)} µs in a loop`);
+  } finally {
+    binding.abi.og_engine_read_resource = real;
   }
-  const cold = ((performance.now() - t0) * 1000) / reads;
-  // Warm: a loop over rows reading a tuning field, nothing else reaching the engine.
-  t0 = performance.now();
-  for (let i = 0; i < reads; i++) sum += h.points;
-  const warm = ((performance.now() - t0) * 1000) / reads;
-  expect(sum).toBe(10 * reads);
-  console.log(`resource handle field read: ${cold.toFixed(2)} µs after an engine call, ${warm.toFixed(3)} µs in a loop`);
-  expect(cold).toBeLessThan(100);
-  // Warm reads are cached between engine calls: an order of magnitude under
-  // a cold one, whatever the machine's load (a bare absolute bound failed at
-  // 1.6 µs on a machine busy with other builds), and never slower than a few
-  // microseconds.
-  expect(warm * 10).toBeLessThan(cold);
-  expect(warm).toBeLessThan(5);
   engine.destroy();
 });
 

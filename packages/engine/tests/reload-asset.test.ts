@@ -45,11 +45,22 @@ function swap(file: string, from: string, to: string): void {
   writeFileSync(file, bytes);
 }
 
-/** Pixels that read as the red hull (the grey one has none). */
+/**
+ * Pixels of the frame's middle half that read as the red hull (the grey one
+ * has none). The middle half, because the template's camera frames the
+ * dropship at the centre and its UI sits at the edges: the title screen's
+ * Start button is red in the paper style, and counted whole-frame it read
+ * 1,572 pixels before the edit.
+ */
 function red(png: string): number {
-  const { rgba } = decodePng(new Uint8Array(readFileSync(png)));
+  const { width, height, rgba } = decodePng(new Uint8Array(readFileSync(png)));
   let n = 0;
-  for (let i = 0; i < rgba.length; i += 4) if (rgba[i]! > 120 && rgba[i + 1]! < 60 && rgba[i + 2]! < 60) n++;
+  for (let y = height >> 2; y < height - (height >> 2); y++) {
+    for (let x = width >> 2; x < width - (width >> 2); x++) {
+      const i = (y * width + x) * 4;
+      if (rgba[i]! > 120 && rgba[i + 1]! < 60 && rgba[i + 2]! < 60) n++;
+    }
+  }
   return n;
 }
 
