@@ -9,6 +9,23 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+Round 3, procedural modelling (`docs/phase-1.md`, "Plan 2026-10-24,
+round 3").
+
+- `geom-1`: the crate `og-geom` (three.js's generators with three.js's
+  names, defaults, vertex orders and counts; a sweep along a path with
+  scale and twist; merges with a mirror; CSG with exact predicates,
+  deterministic on every host) reached from module render beside
+  `tubeGeometry`: `shapeGeometry`, `extrudeGeometry`, `latheGeometry`,
+  `polyhedronGeometry`, `icosahedronGeometry`, `dodecahedronGeometry`,
+  `octahedronGeometry`, `tetrahedronGeometry`, `sweepGeometry`,
+  `csgGeometry` and `mergeGeometries`, each a Geometry as
+  `bufferGeometry` makes one (BVH, `physics`, `dynamic`). A new root
+  module `shapes`: `og.Shape` and `og.Path2` with three.js's methods,
+  flattened to points on the wire. The IDL gains `This`, `prop { host
+  false }` and class values. The og-game skill §18 and
+  `reference/shapes.md`; the og-tests gfx scene `geometry-shapes`.
+
 Debt round 2 (`docs/phase-1.md`, "Plan 2026-10-23, debt round 2").
 
 - `records-list`: records take a fixed-capacity list column of one number
