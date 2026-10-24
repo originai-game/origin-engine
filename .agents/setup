@@ -10,16 +10,43 @@ step() {
 }
 
 # Cache prerequisites, not a full engine build, in the project snapshot.
-packages=(build-essential pkg-config libasound2-dev mesa-vulkan-drivers brotli shellcheck curl ca-certificates unzip xz-utils)
+packages=(build-essential pkg-config libasound2-dev brotli shellcheck curl ca-certificates unzip xz-utils)
 missing=()
 for package in "${packages[@]}"; do
   if [[ $(dpkg-query -W -f='${Status}' "$package" 2>/dev/null || true) != 'install ok installed' ]]; then
     missing+=("$package")
   fi
 done
-if ((${#missing[@]})); then
+mesa_min=25.0.7
+mesa_version=$(dpkg-query -W -f='${Version}' mesa-vulkan-drivers 2>/dev/null || true)
+mesa_upgrade=false
+mesa_suite=()
+if [[ $(dpkg-query -W -f='${Status}' mesa-vulkan-drivers 2>/dev/null || true) != 'install ok installed' ]] \
+  || ! dpkg --compare-versions "${mesa_version:-0}" ge "$mesa_min"; then
+  mesa_upgrade=true
+  # Bookworm's Mesa 22.3.6 grows RSS every frame and OOMs the intro at 4 GiB.
+  # The same test and pixels pass with 25.0.7 from Debian's backports.
+  # shellcheck disable=SC1091
+  source /etc/os-release
+  if [[ ${ID:-} == debian && ${VERSION_CODENAME:-} == bookworm ]]; then
+    printf '%s\n' 'deb https://deb.debian.org/debian bookworm-backports main' \
+      | sudo tee /etc/apt/sources.list.d/origin-engine-backports.list >/dev/null
+    mesa_suite=(-t bookworm-backports)
+  fi
+fi
+if ((${#missing[@]})) || "$mesa_upgrade"; then
   step sudo apt-get update -qq
+fi
+if ((${#missing[@]})); then
   step sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${missing[@]}"
+fi
+if "$mesa_upgrade"; then
+  step sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${mesa_suite[@]}" mesa-vulkan-drivers
+  mesa_version=$(dpkg-query -W -f='${Version}' mesa-vulkan-drivers)
+  if ! dpkg --compare-versions "$mesa_version" ge "$mesa_min"; then
+    printf 'Mesa %s is too old: Origin Engine orbs need mesa-vulkan-drivers >= %s.\n' "$mesa_version" "$mesa_min" >&2
+    exit 1
+  fi
 fi
 
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"

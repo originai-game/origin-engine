@@ -31,6 +31,7 @@ node, which CI takes from `actions/setup-node`.
 | sccache (the rustc wrapper, `.cargo/config.toml`; not used in CI) | 0.14.0 | `SCCACHE_VERSION` in `scripts/install-tools.sh` |
 | cargo-zigbuild, zig (`build.sh --linux-x64`) | 0.23.4, 0.17.0 here | not pinned; outside the gate |
 | Chrome for Testing (`make web-reference`, browser tests) | 150 | `CHROME_PATH`; outside the gate |
+| Mesa lavapipe (CPU rendering in orbs) | minimum 25.0.7 | `.agents/setup`; Debian bookworm-backports supplies Mesa and apt resolves its dependencies |
 
 wgpu 31 is not on crates.io (2026-10-19, 2026-10-21 and 2026-10-24: `cargo
 search wgpu` and `cargo search naga` list 30.0.1 as the newest), so wgpu
@@ -76,6 +77,21 @@ the same tarball directory. Run `bun tests/install/run.ts --from <dir>
 --version <version> --host-only` there with Bun and Node 22. This is a
 local candidate, not permission to publish. F7's evidence and remaining
 registry/runner work live in `tests/evidence/release/windows-x64.md`.
+
+## Orb CPU renderer
+
+`.agents/setup` upgrades an older Mesa package rather than accepting any
+installed `mesa-vulkan-drivers`. On Debian 12 it uses bookworm-backports
+for that package. A warm setup skips apt when its prerequisites are met.
+
+Debian 12's Mesa 22.3.6 grew resident memory each frame in the published
+0.4.0 3D intro. Under a 4 GiB limit without swap, the kernel killed the
+rendering process. Mesa 25.0.7 passed the same test at the same resolution
+with a 429 MiB peak and identical captured pixels. Increasing the sandbox
+memory, forcing JS collection, or waiting for each GPU frame does not
+replace the driver upgrade. This does not reinstate the retired
+vulkan-cpu reference lane. The [controlled comparison](../tests/evidence/P4/perf/reload-and-orb-memory.md)
+records the OOM receipt, driver controls, reload timings, and setup checks.
 
 ## Lanes
 
