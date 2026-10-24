@@ -115,7 +115,8 @@ for (const [name, extra, tiers] of [
   check(/Chrome\//.test(dev.userAgent) && dev.dpr > 0 && dev.viewport.width > 0 && dev.viewport.height > 0 && (dev.hardwareConcurrency ?? 0) > 0, `${name}: device info (user agent, DPR, viewport, cores)`, dev);
   check(dev.crossOriginIsolated && dev.isSecureContext, `${name}: the page is cross-origin isolated in a secure context`, dev);
   const page = d.served["/"] ?? {};
-  const wasm = d.served["/origin-engine_bg.wasm"] ?? {};
+  // The engine module the page loaded: the lanes module where it was cross-origin isolated, the single-threaded one elsewhere.
+  const wasm = Object.entries(d.served).find(([p]) => /^\/origin-engine(-lanes)?_bg\.wasm$/.test(p))?.[1] ?? {};
   check(
     page["cross-origin-opener-policy"] === "same-origin" && page["cross-origin-embedder-policy"] === "require-corp" && wasm["cross-origin-embedder-policy"] === "require-corp",
     `${name}: COOP/COEP served on the page and the wasm`,
