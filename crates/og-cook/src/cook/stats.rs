@@ -375,6 +375,108 @@ fn milli(x: f64) -> f64 {
     (x * 1000.0).round() / 1000.0
 }
 
+/// Bins of a generated terrain's height histogram, over its height range.
+pub const TERRAIN_HISTOGRAM_BINS: usize = 16;
+
+/// A generated terrain's figures for a reviewer: its heights' histogram
+/// (samples per bin of [`TERRAIN_HISTOGRAM_BINS`] over `heightRange`), the
+/// share of its samples above the sea, its sea level and its rivers' length.
+fn generated_terrain(bundle: &Bundle, id: &str, t: &format::TerrainMeta) -> Result<Value, String> {
+    let field = bundle
+        .load_terrain(id)
+        .and_then(|c| c.field())
+        .map_err(|e| e.to_string())?;
+    let span = (t.height_max - t.height_min).max(f32::MIN_POSITIVE);
+    let mut bins = [0u64; TERRAIN_HISTOGRAM_BINS];
+    for h in field.heights.iter() {
+        let b = ((h - t.height_min) / span * TERRAIN_HISTOGRAM_BINS as f32) as usize;
+        bins[b.min(TERRAIN_HISTOGRAM_BINS - 1)] += 1;
+    }
+    let sea = (t.sea != 0).then_some(t.sea_level);
+    let land = match sea {
+        Some(s) => {
+            field.heights.iter().filter(|h| **h > s).count() as f64 / field.heights.len() as f64
+        }
+        None => 1.0,
+    };
+    Ok(json!({
+        "histogram": bins,
+        "landFraction": milli(land),
+        "seaLevel": sea.map(|s| milli(s as f64)),
+        "riverLength": milli(t.river_length as f64),
+    }))
+}
+
+/// Writes each generated terrain's height map (16-bit grey over its
+/// height range) and control map (RGBA, as cooked) as PNGs under `dir`
+/// (`terrain-maps/<id>.height.png`, `.control.png`, the id's slashes as
+/// `_`), for a reviewer's eyes, and names them in the report's
+/// `terrain.generated.maps` (relative to `dir`). Never under the
+/// project's `assets/`: the cook would take them for sources.
+pub fn write_terrain_maps(report: &mut Value, cooked: &Path, dir: &Path) -> Result<(), String> {
+    if let Some(project) = cooked.parent()
+        && std::path::absolute(dir)
+            .unwrap_or_else(|_| dir.to_path_buf())
+            .starts_with(std::path::absolute(project.join("assets")).unwrap_or_default())
+    {
+        return Err(format!(
+            "{}: the terrain maps are for review, not sources: write the report outside assets/",
+            dir.display()
+        ));
+    }
+    let Ok(bundle) = Bundle::open(cooked) else {
+        return Ok(());
+    };
+    let Some(assets) = report["assets"].as_array_mut() else {
+        return Ok(());
+    };
+    for a in assets {
+        if a["terrain"]["generated"].is_null() {
+            continue;
+        }
+        let Some(id) = a["outputs"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|o| o["type"] == "og.Terrain")
+            .and_then(|o| o["id"].as_str())
+            .map(str::to_owned)
+        else {
+            continue;
+        };
+        let field = bundle
+            .load_terrain(&id)
+            .and_then(|c| c.field())
+            .map_err(|e| format!("{id}: {e}"))?;
+        let maps = dir.join("terrain-maps");
+        std::fs::create_dir_all(&maps).map_err(|e| format!("{}: {e}", maps.display()))?;
+        let stem = id.replace('/', "_");
+        let (lo, hi) = field.range();
+        let span = (hi - lo).max(f32::MIN_POSITIVE);
+        let grey: Vec<u16> = field
+            .heights
+            .iter()
+            .map(|h| ((h - lo) / span * 65535.0).round().clamp(0.0, 65535.0) as u16)
+            .collect();
+        let height = format!("terrain-maps/{stem}.height.png");
+        image::ImageBuffer::<image::Luma<u16>, Vec<u16>>::from_raw(field.columns, field.rows, grey)
+            .ok_or("the height map's size")?
+            .save(dir.join(&height))
+            .map_err(|e| format!("{height}: {e}"))?;
+        let mut written = vec![json!(height)];
+        if let Some(c) = &field.control {
+            let control = format!("terrain-maps/{stem}.control.png");
+            image::RgbaImage::from_raw(c.width, c.height, c.rgba.to_vec())
+                .ok_or("the control map's size")?
+                .save(dir.join(&control))
+                .map_err(|e| format!("{control}: {e}"))?;
+            written.push(json!(control));
+        }
+        a["terrain"]["generated"]["maps"] = Value::Array(written);
+    }
+    Ok(())
+}
+
 /// The `meta` row of the blob of `id`.
 fn meta<K: format::BlobKind, T: og_core::Reflect + bytemuck::Pod>(
     bundle: &Bundle,
@@ -561,18 +663,19 @@ fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Va
         }
         "og.Terrain" => {
             let t = meta::<format::Terrain, format::TerrainMeta>(bundle, id)?;
-            (
-                "terrain",
-                json!({
-                    "size": [milli(t.size_x as f64), milli(t.size_z as f64)],
-                    "columns": t.columns,
-                    "rows": t.rows,
-                    "tile": t.tile,
-                    "levels": t.levels,
-                    "layers": t.layers,
-                    "heightRange": [milli(t.height_min as f64), milli(t.height_max as f64)],
-                }),
-            )
+            let mut v = json!({
+                "size": [milli(t.size_x as f64), milli(t.size_z as f64)],
+                "columns": t.columns,
+                "rows": t.rows,
+                "tile": t.tile,
+                "levels": t.levels,
+                "layers": t.layers,
+                "heightRange": [milli(t.height_min as f64), milli(t.height_max as f64)],
+            });
+            if t.generated != 0 {
+                v["generated"] = generated_terrain(bundle, id, &t)?;
+            }
+            ("terrain", v)
         }
         "og.EnvironmentMap" => {
             let m = meta::<format::EnvironmentMap, format::EnvironmentMeta>(bundle, id)?;

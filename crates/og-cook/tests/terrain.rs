@@ -339,6 +339,50 @@ fn a_generated_terrain_cooks_into_the_same_tiles() {
         }
     }
     assert!(land > 30 && sea > 30, "{land} land, {sea} sea");
+
+    // The cook report: its histogram, land above the sea and rivers, and
+    // its maps as PNGs beside the report, never under assets/.
+    use og_cook::cook::stats::{Budgets, cook_report_json, write_terrain_maps};
+    let mut json = cook_report_json(&report, &a.join("cooked"), &Budgets::default());
+    let entry = json["assets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["source"] == "terrain/gen.ogt")
+        .unwrap()
+        .clone();
+    let g = &entry["terrain"]["generated"];
+    let bins: Vec<u64> = serde_json::from_value(g["histogram"].clone()).unwrap();
+    assert_eq!(bins.len(), 16);
+    assert_eq!(bins.iter().sum::<u64>(), 129 * 129);
+    let above = data.heights.iter().filter(|h| **h > 4.0).count() as f64 / (129.0 * 129.0);
+    let land_fraction = g["landFraction"].as_f64().unwrap();
+    assert!((land_fraction - above).abs() < 0.001, "{g}");
+    assert!(land_fraction > 0.2 && land_fraction < 0.8, "{g}");
+    assert_eq!(g["seaLevel"], 4.0);
+    assert!(g["riverLength"].as_f64().unwrap() > 50.0, "{g}");
+    let out = a.join("og-out");
+    write_terrain_maps(&mut json, &a.join("cooked"), &out).unwrap();
+    let height = image::open(out.join("terrain-maps/terrain_gen.ogt.height.png")).unwrap();
+    assert_eq!((height.width(), height.height()), (129, 129));
+    let control = image::open(out.join("terrain-maps/terrain_gen.ogt.control.png")).unwrap();
+    assert!(control.width() > 0);
+    let entry = json["assets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["source"] == "terrain/gen.ogt")
+        .unwrap();
+    assert_eq!(
+        entry["terrain"]["generated"]["maps"],
+        serde_json::json!([
+            "terrain-maps/terrain_gen.ogt.height.png",
+            "terrain-maps/terrain_gen.ogt.control.png"
+        ])
+    );
+    let e = write_terrain_maps(&mut json, &a.join("cooked"), &a.join("assets/review")).unwrap_err();
+    assert!(e.contains("not sources"), "{e}");
+    assert!(!a.join("assets/review").exists());
 }
 
 #[test]
