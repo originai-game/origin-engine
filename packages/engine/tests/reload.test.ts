@@ -33,18 +33,25 @@ export default og.game({ resources: [Score], systems: [Count], start(world) {
 } });
 `;
 
-test.skipIf(SLOW)("a watched bundle reloads with its new declarations and migrates a changed layout", async () => {
-  const dir = join(pkg, "tests", `.reload-${process.pid}`);
-  mkdirSync(dir, { recursive: true });
-  const entry = join(dir, "game.ts");
-  writeFileSync(entry, game("a: f32(1)"));
-  const child = Bun.spawn(["bun", "src/node/run.ts", "--entry", entry, "--watch", entry, "--ticks", "240", "--realtime", "--no-render", "--json"], { cwd: pkg, stdout: "pipe", stderr: "pipe" });
-  setTimeout(() => writeFileSync(entry, game("a: f32(1), b: f32(2)")), 1500);
-  const out = await new Response(child.stdout).text();
-  await child.exited;
-  rmSync(dir, { recursive: true, force: true });
-  const reloads = out.split("\n").filter((l) => l.startsWith('{"event":"reload"')).map((l) => JSON.parse(l));
-  expect(reloads.length).toBeGreaterThan(0);
-  const last = reloads.at(-1)!;
-  expect(last.ok).toBeTrue();
-}, 60_000);
+for (const render of [false, true]) {
+  test.skipIf(SLOW)(`a watched bundle reloads and migrates a changed layout (render=${render})`, async () => {
+    const dir = join(pkg, "tests", `.reload-${process.pid}-${render}`);
+    mkdirSync(dir, { recursive: true });
+    const entry = join(dir, "game.ts");
+    writeFileSync(entry, game("a: f32(1)"));
+    const child = Bun.spawn(["bun", "src/node/run.ts", "--entry", entry, "--watch", entry, "--ticks", "240", "--realtime", ...(render ? ["--size", "160x90"] : ["--no-render"]), "--json"], { cwd: pkg, stdout: "pipe", stderr: "pipe" });
+    setTimeout(() => writeFileSync(entry, game("a: f32(1), b: f32(2)")), 1500);
+    const out = await new Response(child.stdout).text();
+    expect(await child.exited).toBe(0);
+    rmSync(dir, { recursive: true, force: true });
+    const reloads = out.split("\n").filter((l) => l.startsWith('{"event":"reload"')).map((l) => JSON.parse(l));
+    expect(reloads.length).toBeGreaterThan(0);
+    const last = reloads.at(-1)!;
+    expect(last.ok).toBeTrue();
+    expect(last.rendered).toBe(render);
+    for (const stage of ["importMs", "reloadMs", "frameMs", "gpuWaitMs"]) {
+      expect(Number.isFinite(last.timings[stage])).toBeTrue();
+      expect(last.timings[stage]).toBeGreaterThanOrEqual(0);
+    }
+  }, 60_000);
+}

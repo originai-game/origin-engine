@@ -44,7 +44,7 @@ import { loadNativeHost, native } from "./index.ts";
 import { openAudio, type AudioSink } from "./audio.ts";
 import { nativePlatform } from "./platform.ts";
 import { Trace, unixMs, type TraceDocument } from "../trace.ts";
-import { beginBundle, boundHost, createEngine, fixedClock, type Engine, type GameToken } from "../runtime.ts";
+import { beginBundle, boundHost, createEngine, fixedClock, type Engine, type GameToken, type Result } from "../runtime.ts";
 
 const argv = process.argv.slice(2);
 let entry = "";
@@ -298,7 +298,7 @@ if (!probing) {
   if (!advanced.ok) fail(advanced.reason);
   sink.pump();
 } else {
-  let pendingReload: { mtimeMs: number } | null = null;
+  let pendingReload: { mtimeMs: number; importMs: number } | null = null;
   // Imports in flight: a reload swaps only once the last one has declared
   // everything (a second write of the bundle starts another import, whose
   // beginBundle clears the declarations the first one made).
@@ -313,9 +313,10 @@ if (!probing) {
         const mtimeMs = statSync(watchFile!).mtimeMs;
         importing++;
         try {
+          const started = performance.now();
           beginBundle();
           await importGame(watchFile!);
-          pendingReload = { mtimeMs };
+          pendingReload = { mtimeMs, importMs: performance.now() - started };
         } catch (e) {
           process.stderr.write(`WARN reload: the bundle failed to import (${e instanceof Error ? e.message : String(e)}); the old one keeps running\n`);
         } finally {
@@ -328,13 +329,29 @@ if (!probing) {
   let last = performance.now();
   for (;;) {
     if (pendingReload && importing === 0) {
-      const { mtimeMs } = pendingReload as { mtimeMs: number };
+      const { mtimeMs, importMs } = pendingReload as { mtimeMs: number; importMs: number };
       pendingReload = null;
+      const restoring = performance.now();
       const report = engine.probe.reload() as { ms: number; tick: number } | null;
+      const restored = performance.now();
       const first = engine.frame(0);
-      const captured = render && engine.probe.capture(0, 0) !== null;
+      const submitted = performance.now();
+      let rendered = false;
+      if (first.rendered) {
+        // Measure the completed first frame, without rendering and encoding
+        // an unused second frame through probe.capture.
+        const waited: Result<void> = JSON.parse(extras.og_node_wait_gpu(engine.id));
+        if (!waited.ok) fail(`reload's first frame: ${waited.reason}`);
+        rendered = true;
+      }
+      const timings = {
+        importMs,
+        reloadMs: restored - restoring,
+        frameMs: submitted - restored,
+        gpuWaitMs: performance.now() - submitted,
+      };
       const latencyMs = Date.now() - mtimeMs;
-      process.stdout.write(JSON.stringify({ event: "reload", ok: report !== null, report, tick: first.tick, captured, latencyMs: +latencyMs.toFixed(1) }) + "\n");
+      process.stdout.write(JSON.stringify({ event: "reload", ok: report !== null && first.ok, report, tick: first.tick, rendered, timings, latencyMs: +latencyMs.toFixed(1) }) + "\n");
       drain();
     }
     const elapsed = realtime ? performance.now() - last : tickMs;

@@ -402,6 +402,7 @@ pub fn run(args: &[&str]) -> ExitCode {
                                 "swapMs": swap, "totalMs": (total * 10.0).round() / 10.0,
                                 "budgetMs": BUDGET_MS, "withinBudget": within,
                                 "report": v["report"], "tick": v["tick"], "check": check,
+                                "rendered": v["rendered"], "timings": v["timings"],
                             })
                         );
                     } else {
