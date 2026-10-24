@@ -37,6 +37,17 @@ round 3").
   `og.render.applyQuality(world, preset)` writes a preset's row (the
   table is in its doc); `SettingsDesc.world` makes the UI kit's settings
   screen apply a picked preset.
+- `terrain-generate`: `type terrain` makes its field with a `generate`
+  block instead of reading a heightmap (refused beside one): `seed`,
+  `samples`, fractal noise with a domain warp, `mask island|ridge`,
+  hydraulic and thermal erosion, `terraces`, `sea` with a `shore` band,
+  carved `rivers`, `moisture` and `biome` rules writing the control map;
+  the same tile pyramid comes out, deterministic across hosts. Every
+  cooked terrain recooks once (TerrainMeta v4). `TerrainInfo.seaLevel`
+  (none without `sea`); `og cook --report` reports a generated terrain's
+  histogram, land fraction and river length and writes its height and
+  control maps under `og-out/terrain-maps/`. The og-game skill §11; the
+  og-tests gfx scene `terrain-generated`; fx-showcase's `islands` station.
 
 Debt round 2 (`docs/phase-1.md`, "Plan 2026-10-23, debt round 2").
 
