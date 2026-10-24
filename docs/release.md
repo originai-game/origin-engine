@@ -382,6 +382,14 @@ server time catches up or the next load uses the stored offset.
 its process-cleanup test were integrated into platform main through
 `2f0258332`. Nothing in this round is pushed or deployed.
 
+Platform `ff6eb749a` subsequently migrated the local deploy scenario to
+the `publish` tool and a stand-in Wizard. Its real runner uploaded 44
+files (30.4 MB) of engine publish output to the fixture Portal; all ten
+steps and 49 assertions passed. Removing `source_checkpoint` made the
+publication fail. This closes the retired-tool failure in that scenario,
+not L5/M7: adaptation, models, artwork, cover requirements and readiness
+are not exercised, and the Portal and Identity remain fixtures.
+
 ## 5. The author's and the agent's loop, after this
 
 ```sh
