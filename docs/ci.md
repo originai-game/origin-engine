@@ -658,6 +658,20 @@ each shot at its screenshot's tick, 60 t), so a retimed playtest moves its
 browser frames with it and no command in `scripts/check.sh` has to follow
 it; `--print` shows what a run would play. Every frame is judged against
 `metal` until a tier needs one of its own for a difference the tier makes.
+Meridian Loop's ten need one on WebGL2 (the first runs at a7f10c57: RMSE
+0.0138 to 0.0509, outliers up to 5.50 %, every frame's WebGPU twin within
+0.0092): its look blooms thin emissive lines (the neon grid, the
+windows, the horizon's edge, the car's light) and the bloom reads the
+antialiased image, which is TAA on the full tier and 4× MSAA on WebGL2.
+TAA's luma-weighted, clamped resolve keeps far less of a sub-pixel
+line's energy than MSAA's linear average, so the halos are weaker on
+`metal` (og-render's README, §Shadows and antialiasing by tier, "Bloom
+follows the antialiasing"). On one adapter (lavapipe) the game with
+`antialias` `msaa4` is within RMSE 0.0039 (0.010 % outliers) of the
+WebGL2 title frame and the `taa` one 0.060 from it; sky, fog and the
+frames' areas away from emitters match to a level
+(`tests/evidence/r3/meridian-webgl2/`). The WebGL2 references are
+recorded with `reference.ts --webgl --record` for this difference.
 
 `bun tests/web/archetype-hashes.ts [--webgl]` compares the three
 archetypes' world hashes across hosts: each replay playtest's script runs

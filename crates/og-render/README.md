@@ -354,6 +354,24 @@ and `Msaa4` resolve to it where the HDR target cannot be multisampled
 0.50 and 0.75 ms against 0.41 and 0.67 ms without antialiasing; WebGL2's
 4× MSAA takes 1.11 ms on the same scene) and about 0.1 ms on metal.
 
+**Bloom follows the antialiasing.** Bloom's prefilter reads the lit
+image after antialiasing, so the tier's method decides how much of a
+thin emitter's energy reaches it. The 4× MSAA resolve averages the HDR
+samples linearly and keeps a sub-pixel emissive line's energy; TAA's
+resolve weights each colour by 1 / (1 + luma) and clamps the history to
+the current frame's 3×3 neighbourhood, so a line a jittered frame
+covers in one pixel and misses in the next settles far darker than its
+linear average, and its halo is weaker and narrower. Neither is a
+backend difference: on one adapter (lavapipe) Meridian Loop's title
+frame with `antialias` `msaa4` is within RMSE 0.0039 (0.010 % outliers)
+of the WebGL2 frame and as far from metal's TAA reference (0.0499,
+4.86 %) as the WebGL2 frame is (0.0495, 4.79 %); with `taa` the same
+adapter is 0.060 from the WebGL2 frame, with `off` 0.0128. A look with bloom
+over thin emissive lines (Meridian Loop's neon grid and windows)
+therefore differs between the tiers' `Tier` antialiasing by design, and
+the WebGL2 tier records its own reference for it
+(`tests/evidence/r3/meridian-webgl2/`).
+
 **TAA's history and sharpening** (`RenderDesc::taa_history`,
 `taa_sharpen`; the IDL's `taaHistory` and `taaSharpen`):
 `TaaHistory::CatmullRom` resamples the history with a 9-tap Catmull-Rom
