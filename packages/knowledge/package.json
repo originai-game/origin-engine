@@ -1,6 +1,6 @@
 {
   "name": "@origingame/engine-knowledge",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Origin Engine knowledge for agents: the API wiki generated from api.ogt, the eleven og-* skills, the guides (three-to-og), the style catalogue and the project scaffold description, laid out for the OriginGame platform's knowledge packs. Not published on its own: @origingame/engine carries it as knowledge/ (docs/release.md §2).",
   "license": "MIT",
   "private": true,

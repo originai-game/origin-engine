@@ -3,7 +3,7 @@ version 1
 ---
 name "Hollowbell"
 id "hollowbell"
-engine "0.3.0"
+engine "0.4.0"
 entry "src/main.ts"
 profile "2d"
 tick 60

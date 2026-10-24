@@ -7,7 +7,7 @@ version 1
 name "Origin Game"
 id "origin-game"
 # The engine this game is written against (design §9: upgrades are explicit).
-engine "0.3.0"
+engine "0.4.0"
 entry "src/main.ts"
 # 2d (orthographic camera, sprites, 2D physics) or 3d.
 profile "3d"

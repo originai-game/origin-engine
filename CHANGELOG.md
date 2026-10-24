@@ -9,6 +9,11 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+## 0.4.0 — 2026-10-24
+
+Player hello time now reaches `og.platform` on attachment through both
+web transports. Older Players without a stamp retain the host clock.
+
 Round 3, procedural modelling (`docs/phase-1.md`, "Plan 2026-10-24,
 round 3").
 
