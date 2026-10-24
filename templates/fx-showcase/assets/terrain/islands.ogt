@@ -1,0 +1,78 @@
+type terrain
+version 1
+---
+# The islands station's island: no heightmap, the cook generates it.
+# 512 m square, a sample every 2 m; warped noise faded to the sea floor at
+# the edges, eroded by seeded drops and slumped where steeper than 38
+# degrees, a sea at 2 m whose shore is flattened into beaches, rivers
+# carved where the flow gathers, and biome rules writing the control map
+# (no control map file). og.terrain.load answers seaLevel 2; the station
+# puts its og.Water there.
+height -12 48
+size 512 512
+heightBlend 0.15
+generate {
+  samples 257 257
+  seed 21
+  noise {
+    octaves 6
+    frequency 2
+    gain 0.45
+    warp 0.6
+  }
+  mask island 0.55
+  erosion {
+    drops 40000
+  }
+  thermal {
+    talus 38
+    iterations 8
+  }
+  sea 2
+  shore 1.5
+  rivers {
+    threshold 150
+    depth 1.5
+    width 8
+  }
+  moisture {
+    noise 0
+  }
+  # Grass on the flats above the beach.
+  biome {
+    layer 0
+    altitude 3.5 1000
+    altitudeFade 0.8
+    slope 0 30
+  }
+  # Rock on every slope steeper than 30 degrees.
+  biome {
+    layer 1
+    slope 30 90
+  }
+  # Sand on the shore and the sea floor.
+  biome {
+    layer 2
+    altitude -1000 3.5
+    altitudeFade 0.8
+  }
+  # Sand in the river beds, where the flow gathers.
+  biome {
+    layer 2
+    moisture 0.7 1
+    slope 0 40
+  }
+}
+layer {
+  albedo "textures/terrain-grass.png"
+  tile 5
+}
+layer {
+  albedo "textures/terrain-rock.png"
+  tile 9
+  triplanar true
+}
+layer {
+  albedo "textures/terrain-sand.png"
+  tile 4
+}
