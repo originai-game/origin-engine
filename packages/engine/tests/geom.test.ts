@@ -5,6 +5,7 @@
 // its counts the three.js formula's and its bounds where the inputs put
 // them. Inputs are asymmetric, so a swapped axis or a wrong operation shows.
 import { beforeAll, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { og } from "@origingame/engine";
 import type { Geometry, GeometryInfo, Vector2, World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
@@ -212,4 +213,19 @@ test("a made geometry is dynamic only when asked", () => {
   const g = must(og.render.icosahedronGeometry(world, { radius: 1, detail: 1, dynamic: true }));
   expect(info(g).dynamic).toBe(true);
   expect(info(must(og.render.icosahedronGeometry(world, {}))).dynamic).toBe(false);
+});
+
+// bevelSize, as three.js derives it when not given: bevelThickness - 0.1.
+// The IDL declares no fixed default for it (it said 0.1, true only at the
+// default thickness); unset and null both take the derived value.
+test("extrude's bevelSize is bevelThickness - 0.1 when not given", () => {
+  const schema = JSON.parse(readFileSync(new URL("../schema/api.schema.json", import.meta.url), "utf8"));
+  const decl = schema.$defs.ExtrudeGeometryDesc.properties.bevelSize;
+  expect(decl.default).toBeNull();
+  // The default square (half-width 0.5) grows by the bevel's size.
+  const width = (desc: Record<string, unknown>) => info(must(og.render.extrudeGeometry(world, desc as never))).max.x;
+  expect(width({ bevelThickness: 0.3 })).toBeCloseTo(0.7, 5);
+  expect(width({ bevelThickness: 0.3, bevelSize: null })).toBeCloseTo(0.7, 5);
+  expect(width({ bevelThickness: 0.3, bevelSize: 0.05 })).toBeCloseTo(0.55, 5);
+  expect(width({})).toBeCloseTo(0.6, 5);
 });

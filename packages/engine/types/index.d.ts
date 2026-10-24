@@ -7061,12 +7061,12 @@ export interface ExtrudeGeometryDesc {
    */
   readonly bevelThickness?: number;
   /**
-   * How far the bevel reaches out from the outline. Unset, bevelThickness - 0.1 (three.js's default; 0.1 with the default thickness).
+   * How far the bevel reaches out from the outline. Null or unset, bevelThickness - 0.1, as three.js derives it (0.1 at the default thickness, 0 at a thickness of 0.1).
    *
-   * @default 0.1
+   * @default null
    * @unit m (metres)
    */
-  readonly bevelSize?: number;
+  readonly bevelSize?: number | null;
   /**
    * How far the bevel starts out from the outline.
    *

@@ -4483,8 +4483,7 @@ module render {
       min 0
       unit m
     }
-    field bevelSize f32 "How far the bevel reaches out from the outline. Unset, bevelThickness - 0.1 (three.js's default; 0.1 with the default thickness)." {
-      default 0.1
+    field bevelSize Option.f32 "How far the bevel reaches out from the outline. Null or unset, bevelThickness - 0.1, as three.js derives it (0.1 at the default thickness, 0 at a thickness of 0.1)." {
       unit m
     }
     field bevelOffset f32 "How far the bevel starts out from the outline." {

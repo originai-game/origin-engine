@@ -18809,9 +18809,16 @@
           "x-og-unit": "m"
         },
         "bevelSize": {
-          "type": "number",
-          "description": "How far the bevel reaches out from the outline. Unset, bevelThickness - 0.1 (three.js's default; 0.1 with the default thickness).",
-          "default": 0.1,
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How far the bevel reaches out from the outline. Null or unset, bevelThickness - 0.1, as three.js derives it (0.1 at the default thickness, 0 at a thickness of 0.1).",
+          "default": null,
           "x-og-unit": "m"
         },
         "bevelOffset": {

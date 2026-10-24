@@ -1062,7 +1062,7 @@ fn shapeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4671</sub>
+<sub>`api.ogt` line 4670</sub>
 
 <a id="fn-extrudeGeometry"></a>
 
@@ -1092,7 +1092,7 @@ fn extrudeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4678</sub>
+<sub>`api.ogt` line 4677</sub>
 
 <a id="fn-latheGeometry"></a>
 
@@ -1122,7 +1122,7 @@ fn latheGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4685</sub>
+<sub>`api.ogt` line 4684</sub>
 
 <a id="fn-polyhedronGeometry"></a>
 
@@ -1152,7 +1152,7 @@ fn polyhedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4692</sub>
+<sub>`api.ogt` line 4691</sub>
 
 <a id="fn-icosahedronGeometry"></a>
 
@@ -1182,7 +1182,7 @@ fn icosahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4699</sub>
+<sub>`api.ogt` line 4698</sub>
 
 <a id="fn-dodecahedronGeometry"></a>
 
@@ -1212,7 +1212,7 @@ fn dodecahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4706</sub>
+<sub>`api.ogt` line 4705</sub>
 
 <a id="fn-octahedronGeometry"></a>
 
@@ -1242,7 +1242,7 @@ fn octahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4713</sub>
+<sub>`api.ogt` line 4712</sub>
 
 <a id="fn-tetrahedronGeometry"></a>
 
@@ -1272,7 +1272,7 @@ fn tetrahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4720</sub>
+<sub>`api.ogt` line 4719</sub>
 
 <a id="fn-sweepGeometry"></a>
 
@@ -1302,7 +1302,7 @@ fn sweepGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4727</sub>
+<sub>`api.ogt` line 4726</sub>
 
 <a id="fn-csgGeometry"></a>
 
@@ -1332,7 +1332,7 @@ fn csgGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4734</sub>
+<sub>`api.ogt` line 4733</sub>
 
 <a id="fn-mergeGeometries"></a>
 
@@ -1362,7 +1362,7 @@ fn mergeGeometries {
 }
 ```
 
-<sub>`api.ogt` line 4741</sub>
+<sub>`api.ogt` line 4740</sub>
 
 <a id="fn-lines"></a>
 
@@ -1392,7 +1392,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 4799</sub>
+<sub>`api.ogt` line 4798</sub>
 
 <a id="fn-points"></a>
 
@@ -1422,7 +1422,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 4834</sub>
+<sub>`api.ogt` line 4833</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1454,7 +1454,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 4938</sub>
+<sub>`api.ogt` line 4937</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1484,7 +1484,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4994</sub>
+<sub>`api.ogt` line 4993</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1518,7 +1518,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 5106</sub>
+<sub>`api.ogt` line 5105</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1546,7 +1546,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 5121</sub>
+<sub>`api.ogt` line 5120</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1574,7 +1574,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 5189</sub>
+<sub>`api.ogt` line 5188</sub>
 
 ## Components, resources and events
 
@@ -3201,7 +3201,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 4841</sub>
+<sub>`api.ogt` line 4840</sub>
 
 <a id="record-Points"></a>
 
@@ -3255,7 +3255,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 4878</sub>
+<sub>`api.ogt` line 4877</sub>
 
 <a id="record-CameraView"></a>
 
@@ -3362,7 +3362,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 5001</sub>
+<sub>`api.ogt` line 5000</sub>
 
 <a id="record-Mirror"></a>
 
@@ -3407,7 +3407,7 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 5073</sub>
+<sub>`api.ogt` line 5072</sub>
 
 <a id="record-RectLight"></a>
 
@@ -3457,7 +3457,7 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 5135</sub>
+<sub>`api.ogt` line 5134</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -3491,7 +3491,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 5162</sub>
+<sub>`api.ogt` line 5161</sub>
 
 ## Types
 
@@ -5410,7 +5410,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `steps` | `number` | `1` | ≥ 1 | — | — | Rings along the depth or the path. |
 | `bevelEnabled` | `boolean` | `true` | — | — | — | Round the edges of both faces. |
 | `bevelThickness` | `number` | `0.2` | ≥ 0 | `m` | — | How far the bevel reaches beyond each face, along z. |
-| `bevelSize` | `number` | `0.1` | — | `m` | — | How far the bevel reaches out from the outline. Unset, bevelThickness - 0.1 (three.js's default; 0.1 with the default thickness). |
+| `bevelSize` | `number \| null` | `null` | — | `m` | — | How far the bevel reaches out from the outline. Null or unset, bevelThickness - 0.1, as three.js derives it (0.1 at the default thickness, 0 at a thickness of 0.1). |
 | `bevelOffset` | `number` | `0` | — | `m` | — | How far the bevel starts out from the outline. |
 | `bevelSegments` | `number` | `3` | ≥ 1 | — | — | Rings in each bevel. |
 | `curveSegments` | `number` | `12` | ≥ 1 | — | — | Points per curve when an og.Shape's curves are flattened. |
@@ -5441,8 +5441,7 @@ struct ExtrudeGeometryDesc {
     min 0
     unit m
   }
-  field bevelSize f32 "How far the bevel reaches out from the outline. Unset, bevelThickness - 0.1 (three.js's default; 0.1 with the default thickness)." {
-    default 0.1
+  field bevelSize Option.f32 "How far the bevel reaches out from the outline. Null or unset, bevelThickness - 0.1, as three.js derives it (0.1 at the default thickness, 0 at a thickness of 0.1)." {
     unit m
   }
   field bevelOffset f32 "How far the bevel starts out from the outline." {
@@ -5515,7 +5514,7 @@ struct LatheGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4511</sub>
+<sub>`api.ogt` line 4510</sub>
 
 <a id="type-PolyhedronGeometryDesc"></a>
 
@@ -5559,7 +5558,7 @@ struct PolyhedronGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4537</sub>
+<sub>`api.ogt` line 4536</sub>
 
 <a id="type-SolidGeometryDesc"></a>
 
@@ -5599,7 +5598,7 @@ struct SolidGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4559</sub>
+<sub>`api.ogt` line 4558</sub>
 
 <a id="type-SweepKey"></a>
 
@@ -5622,7 +5621,7 @@ struct SweepKey {
 }
 ```
 
-<sub>`api.ogt` line 4579</sub>
+<sub>`api.ogt` line 4578</sub>
 
 <a id="type-SweepGeometryDesc"></a>
 
@@ -5674,7 +5673,7 @@ struct SweepGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4587</sub>
+<sub>`api.ogt` line 4586</sub>
 
 <a id="type-MirrorAxis"></a>
 
@@ -5701,7 +5700,7 @@ enum MirrorAxis {
 }
 ```
 
-<sub>`api.ogt` line 4614</sub>
+<sub>`api.ogt` line 4613</sub>
 
 <a id="type-GeometryPart"></a>
 
@@ -5735,7 +5734,7 @@ struct GeometryPart {
 }
 ```
 
-<sub>`api.ogt` line 4622</sub>
+<sub>`api.ogt` line 4621</sub>
 
 <a id="type-CsgOp"></a>
 
@@ -5760,7 +5759,7 @@ enum CsgOp {
 }
 ```
 
-<sub>`api.ogt` line 4636</sub>
+<sub>`api.ogt` line 4635</sub>
 
 <a id="type-CsgGeometryDesc"></a>
 
@@ -5796,7 +5795,7 @@ struct CsgGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4643</sub>
+<sub>`api.ogt` line 4642</sub>
 
 <a id="type-MergeGeometriesDesc"></a>
 
@@ -5828,7 +5827,7 @@ struct MergeGeometriesDesc {
 }
 ```
 
-<sub>`api.ogt` line 4658</sub>
+<sub>`api.ogt` line 4657</sub>
 
 <a id="type-LineMode"></a>
 
@@ -5853,7 +5852,7 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4748</sub>
+<sub>`api.ogt` line 4747</sub>
 
 <a id="type-LinesDesc"></a>
 
@@ -5919,7 +5918,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 4762</sub>
+<sub>`api.ogt` line 4761</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -5970,7 +5969,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 4806</sub>
+<sub>`api.ogt` line 4805</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -6003,7 +6002,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4909</sub>
+<sub>`api.ogt` line 4908</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -6038,7 +6037,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 4923</sub>
+<sub>`api.ogt` line 4922</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -6061,7 +6060,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4948</sub>
+<sub>`api.ogt` line 4947</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -6075,7 +6074,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 4961</sub>
+<sub>`api.ogt` line 4960</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -6109,7 +6108,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 4970</sub>
+<sub>`api.ogt` line 4969</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -6136,7 +6135,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 4985</sub>
+<sub>`api.ogt` line 4984</sub>
 
 <a id="type-Post"></a>
 
@@ -6150,7 +6149,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 5097</sub>
+<sub>`api.ogt` line 5096</sub>
 
 <a id="type-PostError"></a>
 
@@ -6171,7 +6170,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 5115</sub>
+<sub>`api.ogt` line 5114</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -6194,7 +6193,7 @@ enum VolumetricFog {
 }
 ```
 
-<sub>`api.ogt` line 5129</sub>
+<sub>`api.ogt` line 5128</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -6227,7 +6226,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 5177</sub>
+<sub>`api.ogt` line 5176</sub>
 
 ## Column kinds
 
@@ -6441,7 +6440,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4755</sub>
+<sub>`api.ogt` line 4754</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -6452,7 +6451,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4954</sub>
+<sub>`api.ogt` line 4953</sub>
 
 ```ogt
 column RenderTarget {
@@ -6463,7 +6462,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4963</sub>
+<sub>`api.ogt` line 4962</sub>
 
 ```ogt
 column Post {
@@ -6474,7 +6473,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 5099</sub>
+<sub>`api.ogt` line 5098</sub>
 
 ## Constants
 
