@@ -6246,6 +6246,51 @@ Left to the next round by this one's merges (rows for its plan):
   per-view light maps and fields (checked through naga only), at the
   wave's end.
 
+### Plan 2026-10-24, round 3: procedural modelling (plan C)
+
+The owner's question (2026-10-24): can an agent build water, terrain and
+models procedurally, the way img2threejs rebuilds an object from one
+reference image as code (a spec first, eight gated passes, one
+reference-beside-render sheet per pass, deterministic scripts for every
+mechanical step), and what must the engine prepare. The answer that
+shapes this round: the engine prepares the loop, not a cleverer
+generator. Three bounds hold throughout: hard-surface props and
+stylised characters are reachable from a reference, photoreal likeness
+and hidden sides are not; terrain and water are a parameter problem (a
+seed and rules make a credible terrain of a kind, never the terrain in
+a picture); and everything an agent writes is `.ogt` text or TypeScript
+against one schema, cooked where it can be, so the review reads the
+same text the agent wrote.
+
+Plan C, chosen over a runtime-only API (A: nothing cooked, nothing
+diffable) and a cook-only format (B: nothing usable until the cook
+lands): one Rust crate, `og-geom`, with no renderer dependency, whose
+generators are reached two ways from one set of desc structs, the
+runtime API (`og.render.*Geometry`, the three.js vocabulary, so an
+img2threejs factory or a three.js scene is a mechanical translation) and
+the cook (`type model`). Branches `r3/<stream>` from main at 2c5fbc5c or
+later, two or three Claude Code threads on Opus 5.5 high at a time,
+merged serially through the functional lane with the Metal references
+recorded per merge; the round's end measured once.
+
+| Stream | Pays | Batch |
+|---|---|---|
+| `geom-1` | The crate `og-geom` (glam only; its mesh converts to og-render's `MeshData` in og-runtime and og-cook) and the runtime API in three.js's words: `og.Shape` and `og.Path2` in the TypeScript runtime with three.js's methods (`moveTo`, `lineTo`, `quadraticCurveTo`, `bezierCurveTo`, `splineThru`, `arc`, `absarc`, `ellipse`, `holes`, `getPoints`) flattening to points on the wire; `shapeGeometry` (earcut with holes), `extrudeGeometry` (depth, steps, bevels, `extrudePath` an og.path), `latheGeometry`, `polyhedronGeometry` with the icosahedron, dodecahedron, octahedron and tetrahedron shorthands, `sweepGeometry` (a section along an og.path with scale and twist over t: img2threejs's tapered sweep, the one generator three.js lacks), `csgGeometry` (union, subtract, intersect of two geometries placed by transforms; exact arithmetic where it decides a split, so two hosts agree), `mergeGeometries` (parts placed by position, quaternion and scale; `mirror` and `array` as its placements). Every result is a Geometry as `bufferGeometry` makes one: BVH, `physics`, `dynamic`. Unit tests on og-geom: vertex and triangle counts equal to three.js's for lathe, extrude and the polyhedra; extrude and every CSG result a closed manifold (every edge twice, Euler characteristic); CSG box-minus-box and lathe-of-a-circle volumes against the analytic value; two builds byte-identical. A new og-tests gfx scene `geometry-shapes` (an extruded gear with holes and bevel, a lathed vase, a swept horn, a CSG dice) read numerically on lavapipe by the thread, its Metal reference the coordinator's; api.ogt, the og-game skill §18 and design.md | 1 |
+| `terrain-generate` | `type terrain` makes its field instead of reading one: a `generate` block (refused beside `heightmap`) with `seed`, fractal noise (`octaves`, `frequency`, `lacunarity`, `gain`, domain `warp`), an `island` or `ridge` mask, hydraulic erosion (seeded drops, own PRNG) and thermal erosion, `rivers` (flow accumulation carved to a depth and width), `terraces`, `sea <m>` with shore flattening, `biome` rules (altitude, slope and moisture from the flow and noise to layer weights) writing the control map where given; the same tile pyramid comes out, so og-render, physics, `og.terrain.sample`, `edit` and the navmesh bake change nothing. Determinism is tested, not hoped: the generator uses only IEEE-exact operations and integer hashes (no libm transcendental), and an og-cook test holds the hash of a 256×256 field the gate checks on macOS and Linux alike. `TerrainInfo.seaLevel` (none without `sea`), and the og-game skill §11 shows the water entity placed at it, size the terrain's; `og cook --report` reports a generated terrain's height histogram, land fraction and river length, and writes its height and control maps as PNGs under the report directory for a reviewer's eyes (never into `assets/`). A new og-tests gfx scene `terrain-generated` (Metal reference the coordinator's) and a `type terrain` example in fx-showcase's terrain station or `templates/game`, whichever the station layout takes | 1 |
+| `profile-quality` | The two rows above together. `publish-2d-refusal`: `og build --publish` for the 2D profile refuses a project whose scenes hold terrain, planar water, scattered copies or the 3D fluids, naming the scene and line, and og-runtime's terrain leaves the 2D host behind an API refusal (`og.terrain.*` and `SHAPE_HEIGHTFIELD` answer the refusal, `RenderCapabilities.world3d` says why). `quality-stream`: `GraphicsQuality` becomes something the engine reads: `og.render.applyQuality(world, preset)` writes the documented RenderSettings and PostEffects fields of the preset (rect shadows, volumetric fog, soft particles, SSR, shadow map size, MSAA, by a table in api.ogt), `RenderSettings.quality` records the preset applied, the UI kit's setting calls it, and nothing is hidden: the probe reads the fields the renderer reads. Tests fail on the old code: the 2D publish of a scene with terrain, and `applyQuality(low)` turning a rect light's shadow off in a frame read | 1 |
+| `geom-2` | `type model`: an `.ogt` of og-geom parts (the same desc structs, by name, with the placements of `mergeGeometries`, a material per part, named pivots as nodes), cooked by og-cook's model path into the one model blob the glTF route writes: meshopt, the LOD chain with measured errors, the BVH, a convex hull per part for physics, instancing of repeated parts; `og.load.model` loads it as any model, a scene names it as any model; `cook --report` reports its triangles, draws and BVH share and refuses past the project's budgets (img2threejs's optimisation pass is a cook refusal, not an agent's discipline); hot reload re-cooks it. Tests: a model cooked twice is byte-identical, a cooked gear raycasts where its triangles are, its LOD errors are measured as a glTF's are | 2 |
+| `model-review` | The deterministic half of img2threejs's review in `og`: `og run --commands` camera presets (orthographic front, side, top, back and a turntable of n frames, framing an entity's bounds), `og compare <reference> <render>` printing silhouette IoU, per-region ΔE00 against a mask and writing one reference-beside-render sheet, both from the probe; an `og-model` skill in `packages/knowledge` (the intake's detail inventory, the eight passes with their gates, the generators' recipes, the budgets) that validates like the others. The agent's tokens then go to the one judgment: pass or fail on one sheet | 2 |
+| `probe-faces` | 3D fluids and depth in probe captures, so water in a face refracts and soft particles fade (the row above) | 2 |
+| `threejs-migrate` | The adapter the owner's opening question asked for: a `three-to-og` page in the knowledge package mapping three.js's classes and idioms to og's (Scene graph to entities and og.Parent, Object3D to Transform, BufferGeometry and the geometry classes to §18 and og-geom, Material classes to StandardMaterialDesc, loaders to `og.load`, the render loop to the tick, raycaster to `og.render.raycast`), the gaps named honestly (ShaderMaterial is a custom shader pass, no InstancedMesh needed, no OrbitControls), and `og migrate three <file.ts>` rewriting what is mechanical and listing what is not | 3 |
+| release F2, F4 | As `docs/release.md` has them | 3 |
+
+The coordinator, no thread: the owed wave-end `--stages gate,web` of
+debt round 2 in the measure lane at 2c5fbc5c (the last run's `web`
+failure was a stale cook of the third-person reference template, blob
+type hash e792c130 against bfa252b3, not a code failure); the Metal
+references of `geometry-shapes` and `terrain-generated`; the merges and
+the functional lane per merge.
+
 ### Status 2026-10-19, E5 round
 
 - **Atmosphere, water, material shaders and physics beyond rigid bodies**
