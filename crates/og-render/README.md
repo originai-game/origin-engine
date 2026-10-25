@@ -2014,6 +2014,25 @@ Still open: object space leaves terrain, scattered copies and vertex-offset
 materials in world space and does not cut alpha holes; a bent shadow
 bridges features narrower than a cell of its 4 × 2 grid.
 
+## Reflection probe faces
+
+A due capture draws six faces (`probes.rs`, `lib.rs`'s probe pass; the
+order and what each face draws: `docs/design.md` §2.6). What the faces
+draw besides the capture itself:
+
+- **Face targets** (`FaceTargets`, one set per face size): the face's
+  depth prepass, its copy (water and 3D fluids refract it) and the 3D
+  fluids' targets, 24, 8 and 36 bytes a texel (25 to 71 MB at 1024²).
+  They are made the first frame a capture of that size needs them and
+  kept only while one is due or a realtime probe of that size draws its
+  own (`face_target_sizes`): a baked probe's go the frame after its
+  capture and are made again if it is ever due again (a new face size or
+  sample count), so a scene of baked probes holds none after its first
+  frame. A realtime probe keeps them between its captures, which would
+  otherwise reallocate them every interval. A capture drawn after the
+  targets were freed and remade is bit for bit the first (checked in the
+  debt round 3); og-render `probes::tests::face_targets_are_kept_for_due_and_realtime_captures_only`.
+
 ## What phase 2 owes
 
 Delivered in P4: clearcoat maps, sheen, transmission (with volume and
