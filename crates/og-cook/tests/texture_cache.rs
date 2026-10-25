@@ -73,6 +73,15 @@ fn shared_texture_results_reuse_invalidate_recover_and_match_uncached_bytes() {
         let (r, bytes) = cook(&second, Some(&cache), &options);
         assert!(hit(&r));
         assert_eq!(bytes, expected);
+        // A hit says what the cook said (its notes), then that it was a hit.
+        let said = |r: &Report| -> Vec<String> {
+            r.assets
+                .iter()
+                .flat_map(|a| a.notes.iter().cloned())
+                .filter(|n| !n.contains("shared texture cache hit"))
+                .collect()
+        };
+        assert_eq!(said(&r), said(&first), "the hit keeps the cook's notes");
         let (r, _) = cook(&second, Some(&cache), &options);
         assert!(!hit(&r));
         assert!(r.cooked_outputs().is_empty(), "project manifest still wins");

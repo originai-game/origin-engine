@@ -36,28 +36,35 @@ pub(super) fn run(
         let (ty, schema) = format::expected_header(p.ty)?;
         Some(dir.join(format!("{:016x}-{ty:016x}-{schema}.ogb", p.stamp)))
     });
-    if let Some(bytes) = path.as_deref().and_then(|path| read(path, p)) {
-        return Ok((bytes, vec![format!("{}: shared texture cache hit", p.id)]));
+    if let Some((bytes, mut notes)) = path.as_deref().and_then(|path| read(path, p)) {
+        // The cook's own notes first (a flip, a swizzle, a source taken as it
+        // is), as the uncached cook would say them, then the hit.
+        notes.push(format!("{}: shared texture cache hit", p.id));
+        return Ok((bytes, notes));
     }
     let result = cook()?;
     if let Some(path) = path {
         // Cache I/O must never turn a successful cook into a failure.
-        let _ = publish(&path, p.stamp, &result.0);
+        let _ = publish(&path, p.stamp, &result.0, &result.1);
     }
     Ok(result)
 }
+
+/// The entry's layout: 2 since the cook's notes are kept beside the result.
+const ENTRY_VERSION: u32 = 2;
 
 fn cache_type() -> u64 {
     hash_bytes(b"og.TextureCache")
 }
 
-fn read(path: &Path, p: &Planned) -> Option<Vec<u8>> {
+fn read(path: &Path, p: &Planned) -> Option<(Vec<u8>, Vec<String>)> {
     let bytes = std::fs::read(path).ok()?;
     let entry = Blob::parse(&bytes, "texture cache").ok()?;
     let h = entry.header();
-    if (h.type_hash, h.schema_version, h.cook_stamp) != (cache_type(), 1, p.stamp) {
+    if (h.type_hash, h.schema_version, h.cook_stamp) != (cache_type(), ENTRY_VERSION, p.stamp) {
         return None;
     }
+    let notes: Vec<String> = serde_json::from_slice(entry.raw("notes").ok()?).ok()?;
     let result = entry.raw("result").ok()?;
     let hash = format!("{:016x}", hash_bytes(result));
     if entry.raw("hash").ok()? != hash.as_bytes() {
@@ -70,16 +77,21 @@ fn read(path: &Path, p: &Planned) -> Option<Vec<u8>> {
     {
         return None;
     }
-    Some(result.to_vec())
+    Some((result.to_vec(), notes))
 }
 
-fn publish(path: &Path, stamp: u64, result: &[u8]) -> std::io::Result<()> {
+fn publish(path: &Path, stamp: u64, result: &[u8], notes: &[String]) -> std::io::Result<()> {
     static NEXT: AtomicU64 = AtomicU64::new(0);
-    let mut entry = BlobWriter::new(cache_type(), 1, stamp);
+    let mut entry = BlobWriter::new(cache_type(), ENTRY_VERSION, stamp);
     entry
         .raw(
             "hash",
             format!("{:016x}", hash_bytes(result)).into_bytes(),
+            1,
+        )
+        .raw(
+            "notes",
+            serde_json::to_vec(notes).map_err(std::io::Error::other)?,
             1,
         )
         .raw("result", result, 16);
