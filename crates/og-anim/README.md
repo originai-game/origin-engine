@@ -404,7 +404,10 @@ a node is drawn when it and every ancestor is visible
 (`SkeletonAsset::drawn`, three.js's and `KHR_node_visibility`'s reading),
 which `AnimOutput::drawn` hands the renderer: og-runtime draws no
 primitive of a node that is not drawn, so a hidden node costs no draw
-(a `.vox` frame folded away, og-cook's `.vox` row).
+(a `.vox` frame folded away, og-cook's `.vox` row). A model drawn without
+a pose reads the same rest flags from its model blob's node rows
+(`NodeRow::visible`), so a glTF node `KHR_node_visibility` hides, and a
+`.vox` frame after 0, is not drawn there either.
 
 A flag is not a quantity, so a blend chooses (`pose.rs`): two poses
 (`lerp_to` by `t`, a fade, a layer, the player over the graph) take the

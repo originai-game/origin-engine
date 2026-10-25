@@ -30,6 +30,12 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
   so those thumbs retarget one bone further in than they did. A `type rig`
   file naming them still wins. The cook's retarget stamp moves to
   `retarget-v3`: models with an `animation { library }` re-cook once.
+- A model drawn without an `og.Skeleton` honours `KHR_node_visibility`:
+  the model blob's node rows (`og.ModelNode` schema 2) carry each node's
+  rest visibility and og-runtime's static draw skips a hidden node and
+  its descendants, so a `.vox` without a skeleton draws frame 0 only
+  (its other frames were zero-size draws). Every model, proxy and `#anim`
+  re-cooks once (the type hash and the `nodes-v2` stamp move).
 - Faster capture PNGs: the probe's `capture`, `sweep` and `screenshot`
   encode with fdeflate (rows filtered `Up`, deflated as they are
   filtered) instead of zlib level 6, 10 to 35 times faster on a

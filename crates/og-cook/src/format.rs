@@ -319,7 +319,8 @@ row!(
 
 row!(
     /// A glTF node in topological order (a parent precedes its children).
-    NodeRow, "og.ModelNode", 1 {
+    /// Version 2 added `visible`.
+    NodeRow, "og.ModelNode", 2 {
         parent: u32,
         mesh: u32,
         name_offset: u32,
@@ -327,6 +328,9 @@ row!(
         tx: f32, ty: f32, tz: f32,
         rx: f32, ry: f32, rz: f32, rw: f32,
         sx: f32, sy: f32, sz: f32,
+        /// 1 shown, 0 hidden at rest (glTF `KHR_node_visibility` `visible:
+        /// false`), and its descendants with it.
+        visible: u32,
     }
 );
 

@@ -92,13 +92,15 @@ pub(crate) struct LoadedLut {
 
 /// One loaded model's primitives, for skinning: the scene mesh of its first
 /// primitive (they are consecutive), the glTF mesh of each primitive, and
-/// the node of each of its parts (`og_cook::runtime::ModelParts::nodes`).
+/// the node of each of its parts (`og_cook::runtime::ModelParts::nodes`)
+/// and whether each is drawn at rest (`ModelParts::shown`).
 #[derive(Clone, Debug)]
 pub(crate) struct ModelInfo {
     pub id: String,
     pub base: usize,
     pub prim_mesh: Vec<u32>,
     pub part_nodes: Vec<usize>,
+    pub part_shown: Vec<bool>,
 }
 
 /// A model's skin and morph data from its `#anim` blob, and the skinned

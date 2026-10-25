@@ -1017,6 +1017,11 @@ pub(super) fn node_order(
             sx: s[0],
             sy: s[1],
             sz: s[2],
+            visible: u32::from(
+                n.extension_value("KHR_node_visibility")
+                    .and_then(|v| v.get("visible")?.as_bool())
+                    != Some(false),
+            ),
         });
     }
     Ok(NodeOrder { new_index, rows })

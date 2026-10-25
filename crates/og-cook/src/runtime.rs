@@ -979,6 +979,9 @@ pub struct CookedNode {
     pub translation: Vec3,
     pub rotation: Quat,
     pub scale: Vec3,
+    /// Shown at rest: false when the glTF hides it (`KHR_node_visibility`),
+    /// which hides its descendants too.
+    pub visible: bool,
 }
 
 impl CookedNode {
@@ -1024,6 +1027,10 @@ pub struct ModelParts {
     /// `#anim` skeleton's node order: a posed model skips the parts of a
     /// node its pose hides).
     pub nodes: Vec<usize>,
+    /// Per part, whether it is drawn at rest: false when its node or an
+    /// ancestor is hidden ([`CookedNode::visible`]). A model drawn without
+    /// a pose skips the others.
+    pub shown: Vec<bool>,
 }
 
 impl ModelParts {
@@ -1242,6 +1249,7 @@ impl CookedModel {
                 translation: Vec3::new(n.tx, n.ty, n.tz),
                 rotation: Quat::from_xyzw(n.rx, n.ry, n.rz, n.rw),
                 scale: Vec3::new(n.sx, n.sy, n.sz),
+                visible: n.visible != 0,
             });
         }
         let mut model_meshes = Vec::with_capacity(meshes.len());
@@ -1300,6 +1308,15 @@ impl CookedModel {
             world.push(parent * n.local());
         }
         world
+    }
+
+    /// Per node, whether it is drawn at rest: it and every ancestor visible.
+    pub fn node_shown(&self) -> Vec<bool> {
+        let mut shown: Vec<bool> = Vec::with_capacity(self.nodes.len());
+        for n in &self.nodes {
+            shown.push(n.visible && n.parent.is_none_or(|p| shown[p]));
+        }
+        shown
     }
 
     /// The nodes of `scene` (all descendants of its roots) in depth-first order.
@@ -1407,19 +1424,26 @@ impl CookedModel {
             .map(|p| scene.add_mesh(p.mesh(0)))
             .collect();
         let world = self.node_world();
+        let node_shown = self.node_shown();
         let mut parts = Vec::new();
         let mut nodes = Vec::new();
+        let mut shown = Vec::new();
         if let Some(s) = self.default_scene {
             for n in self.scene_nodes(s) {
                 if let Some(m) = self.nodes[n].mesh {
                     for p in self.meshes[m].primitives.clone() {
                         parts.push((meshes[p], materials[self.primitives[p].material], world[n]));
                         nodes.push(n);
+                        shown.push(node_shown[n]);
                     }
                 }
             }
         }
-        ModelParts { parts, nodes }
+        ModelParts {
+            parts,
+            nodes,
+            shown,
+        }
     }
 }
 

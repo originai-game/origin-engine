@@ -1133,7 +1133,19 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             continue;
         }
         let levels = model_lods.get(&asset).map(|l| &l.parts);
+        // Drawn without a pose: a part whose node the glTF hides at rest
+        // (KHR_node_visibility, a `.vox` frame after 0) is not drawn, when
+        // the parts are the model's own (not a bake's).
+        let shown = rs
+            .fx
+            .models
+            .get(&asset)
+            .map(|i| &i.part_shown)
+            .filter(|s| s.len() == parts.len());
         for (k, &(mesh, material, local)) in parts.iter().enumerate() {
+            if shown.is_some_and(|s| !s[k]) {
+                continue;
+            }
             // A part with fewer levels than the model draws its coarsest.
             let mesh = match (level, levels.and_then(|l| l.get(k))) {
                 (0, _) | (_, None) => mesh,

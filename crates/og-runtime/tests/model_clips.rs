@@ -14,7 +14,9 @@
 //! Ways this could fail: gltfInfo answers no names (or the static model's
 //! load is refused for its missing `#anim`); a hidden frame still drawn
 //! (two frames or more a tick), or the wrong one shown; the frames'
-//! primitives drawn unskinned.
+//! primitives drawn unskinned; a `.vox` drawn without a skeleton drawing
+//! the frames after 0 (they are hidden at rest: the model blob's node rows
+//! carry `KHR_node_visibility`, which the static draw honours).
 
 use og_render::RenderScene;
 use og_runtime::{
@@ -108,11 +110,24 @@ impl Hooks for Disk {
 }
 
 /// What the last frame's scene drew: per palette, each joint's x scale;
-/// and the height of each skinned instance's mesh.
+/// and the height of each skinned and each plain instance's mesh.
 #[derive(Default)]
 struct Seen {
     palettes: Vec<Vec<f32>>,
     skinned: Vec<f32>,
+    instances: Vec<f32>,
+}
+
+/// The height of `mesh`'s vertices.
+fn height(scene: &RenderScene, mesh: og_render::MeshHandle) -> f32 {
+    let ys = scene
+        .mesh(mesh)
+        .unwrap()
+        .vertices
+        .iter()
+        .map(|v| v.position[1]);
+    let (lo, hi) = ys.fold((f32::MAX, f32::MIN), |(a, b), y| (a.min(y), b.max(y)));
+    hi - lo
 }
 
 struct Recorder(Rc<RefCell<Seen>>);
@@ -134,16 +149,12 @@ impl RenderBackend for Recorder {
         s.skinned = scene
             .skinned_instances
             .iter()
-            .map(|i| {
-                let ys = scene
-                    .mesh(i.mesh)
-                    .unwrap()
-                    .vertices
-                    .iter()
-                    .map(|v| v.position[1]);
-                let (lo, hi) = ys.fold((f32::MAX, f32::MIN), |(a, b), y| (a.min(y), b.max(y)));
-                hi - lo
-            })
+            .map(|i| height(scene, i.mesh))
+            .collect();
+        s.instances = scene
+            .instances
+            .iter()
+            .map(|i| height(scene, i.mesh))
             .collect();
         Ok(())
     }
@@ -250,6 +261,22 @@ fn an_animated_vox_plays_one_frame_at_a_time() {
         vec![vec![2.0], vec![3.0], vec![4.0], vec![2.0]],
         "one skinned draw a tick: frame 0, 1, 2, then frame 0 again (looped)"
     );
+}
+
+#[test]
+fn a_vox_without_a_skeleton_draws_frame_0_only() {
+    let (engine, seen) = engine();
+    for path in ["models/blob.vox", "models/crate.vox"] {
+        let asset = value(og_load_gltf(engine, path.into(), None));
+        value(og_world_instantiate(engine, asset.as_f64().unwrap(), None));
+    }
+    value(og_engine_frame(engine, 1000.0 / 60.0));
+    let mut drawn = seen.borrow().instances.clone();
+    drawn.sort_by(f32::total_cmp);
+    // Frame 0 of the animated one (2 tall) and the static crate (3): the
+    // frames after 0 (3 and 4 tall), hidden at rest, are not drawn.
+    assert_eq!(drawn, vec![2.0, 3.0], "the plain draws");
+    assert!(seen.borrow().skinned.is_empty());
 }
 
 #[test]
