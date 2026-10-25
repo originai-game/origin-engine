@@ -2,3 +2,5 @@
 * text=auto eol=lf
 # Radiance headers can make Git mistake an HDR image for text.
 *.hdr binary
+# QOA sound fixtures: binary.
+*.qoa binary

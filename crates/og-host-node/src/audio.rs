@@ -64,9 +64,19 @@ fn no_link(engine: u32) -> String {
     ))
 }
 
-fn stats_json(mode: &str, s: &SinkStats, sample_rate: u32, dropped: u64) -> String {
+/// The bank's decoding counters as JSON members (og-audio `decode.rs`):
+/// frames the decode thread decoded, frames a voice decoded where it read
+/// them (none had decoded them first), jobs waiting.
+fn decode_members(d: og_audio::DecodeStats) -> String {
     format!(
-        r#"{{"mode":{},"sampleRate":{},"packets":{},"commands":{},"plays":{},"resyncs":{},"receivedHash":"{:016x}","frames":{},"voices":{},"voicesPeak":{},"late":{},"limited":{},"dropped":{}}}"#,
+        r#""decodedAhead":{},"decodeMisses":{},"decodeQueued":{}"#,
+        d.ahead, d.misses, d.queued
+    )
+}
+
+fn stats_json(engine: u32, mode: &str, s: &SinkStats, sample_rate: u32, dropped: u64) -> String {
+    format!(
+        r#"{{"mode":{},"sampleRate":{},"packets":{},"commands":{},"plays":{},"resyncs":{},"receivedHash":"{:016x}","frames":{},"voices":{},"voicesPeak":{},"late":{},"limited":{},"dropped":{},{}}}"#,
         json_str(mode),
         sample_rate,
         s.packets,
@@ -79,7 +89,12 @@ fn stats_json(mode: &str, s: &SinkStats, sample_rate: u32, dropped: u64) -> Stri
         s.mix.voices_peak,
         s.mix.late,
         s.mix.limited,
-        dropped
+        dropped,
+        decode_members(
+            og_audio::link(engine)
+                .map(|l| l.bank().decode_stats())
+                .unwrap_or_default()
+        )
     )
 }
 
@@ -146,8 +161,8 @@ pub fn og_node_audio_pump(engine: u32) -> String {
 fn headless_stats(engine: u32, h: &HeadlessSink) -> String {
     let dropped = og_audio::link(engine).map_or(0, |l| l.dropped());
     match h.sample_rate() {
-        Some(rate) => stats_json("capture", &h.stats(), rate, dropped),
-        None => stats_json("null", &h.stats(), 0, dropped),
+        Some(rate) => stats_json(engine, "capture", &h.stats(), rate, dropped),
+        None => stats_json(engine, "null", &h.stats(), 0, dropped),
     }
 }
 
@@ -329,7 +344,7 @@ mod device {
         pub fn stats_json(&self) -> String {
             let s = self.mixer.lock().map(|m| m.stats()).unwrap_or_default();
             format!(
-                r#"{{"mode":"device","device":{},"sampleRate":{},"frames":{},"commands":{},"voices":{},"voicesPeak":{},"late":{},"reanchors":{},"limited":{},"dropped":{}}}"#,
+                r#"{{"mode":"device","device":{},"sampleRate":{},"frames":{},"commands":{},"voices":{},"voicesPeak":{},"late":{},"reanchors":{},"limited":{},"dropped":{},{}}}"#,
                 super::json_str(&self.name),
                 self.sample_rate,
                 s.frames,
@@ -339,7 +354,8 @@ mod device {
                 s.late,
                 s.reanchors,
                 s.limited,
-                self.link.dropped()
+                self.link.dropped(),
+                super::decode_members(self.link.bank().decode_stats())
             )
         }
     }

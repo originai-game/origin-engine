@@ -6,9 +6,17 @@
 //! SharedArrayBuffer ring the AudioWorklet reads (or posts it to the
 //! worklet's port without cross-origin isolation).
 //!
+//! The sounds' QOA frames are decoded beside the tick, off this Worker
+//! (og-audio's `decode.rs`): `web/audio-decoder.ts` takes the bank's jobs
+//! after each pump (`og_web_audio_decode_jobs`), decodes them on a decoder
+//! Worker and answers each (`og_web_audio_put_decoded`). A frame the mixer
+//! reaches before its answer is decoded here, to the same samples.
+//!
 //! Every member answers wire JSON except `og_web_audio_pump` (a
-//! Float32Array of interleaved stereo frames, empty when nothing is due)
-//! and `og_web_audio_close` (whether a mixer was open).
+//! Float32Array of interleaved stereo frames, empty when nothing is due),
+//! `og_web_audio_close` (whether a mixer was open),
+//! `og_web_audio_decode_jobs` (an Array) and `og_web_audio_put_decoded`
+//! (whether the answer was taken).
 
 use og_audio::{Clock, Mixer};
 use og_core::IdMap;
@@ -122,8 +130,9 @@ pub fn og_web_audio_stats(engine: u32) -> String {
     OUTPUTS.with(|o| match o.borrow().get(&engine) {
         Some(out) => {
             let s = out.mixer.stats();
+            let d = out.link.bank().decode_stats();
             format!(
-                r#"{{"ok":true,"value":{{"sampleRate":{},"frames":{},"commands":{},"voices":{},"voicesPeak":{},"late":{},"limited":{},"skipped":{},"dropped":{},"behind":{}}}}}"#,
+                r#"{{"ok":true,"value":{{"sampleRate":{},"frames":{},"commands":{},"voices":{},"voicesPeak":{},"late":{},"limited":{},"skipped":{},"dropped":{},"behind":{},"decodedAhead":{},"decodeMisses":{},"decodeQueued":{},"decodeInFlight":{}}}}}"#,
                 out.mixer.desc().sample_rate,
                 s.frames,
                 s.commands,
@@ -133,7 +142,11 @@ pub fn og_web_audio_stats(engine: u32) -> String {
                 s.limited,
                 out.skipped,
                 out.link.dropped(),
-                out.mixer.frames_until_tick(out.link.next_tick())
+                out.mixer.frames_until_tick(out.link.next_tick()),
+                d.ahead,
+                d.misses,
+                d.queued,
+                d.in_flight
             )
         }
         None => refuse(&format!("engine {engine} has no open audio output (og_web_audio_open)")),
@@ -162,4 +175,30 @@ pub fn og_web_audio_insert_qoa(engine: u32, id: String, qoa: &[u8]) -> String {
         Ok(handle) => format!(r#"{{"ok":true,"value":{handle}}}"#),
         Err(e) => refuse(e.reason()),
     }
+}
+
+/// Up to `max` of the engine's decode jobs (og-audio `decode.rs`: the
+/// frames the decode-ahead and new sounds want), soonest needed first, for
+/// the decoder Worker: a flat Array `[key, frame, Uint8Array, ...]`, each
+/// Uint8Array a one-frame QOA file. Empty for an engine without audio.
+#[wasm_bindgen]
+pub fn og_web_audio_decode_jobs(engine: u32, max: u32) -> js_sys::Array {
+    let out = js_sys::Array::new();
+    let Some(link) = og_audio::link(engine) else {
+        return out;
+    };
+    for job in link.bank().take_decode_jobs(max as usize) {
+        out.push(&JsValue::from(job.key));
+        out.push(&JsValue::from(job.frame));
+        out.push(&js_sys::Uint8Array::from(&job.qoa[..]));
+    }
+    out
+}
+
+/// The decoder Worker's answer to job `key`: the frame's interleaved
+/// samples. Whether they were taken (false: a key not in flight, samples
+/// of another length, an engine without audio).
+#[wasm_bindgen]
+pub fn og_web_audio_put_decoded(engine: u32, key: u32, samples: &[i16]) -> bool {
+    og_audio::link(engine).is_some_and(|l| l.bank().put_decoded(key, samples))
 }
