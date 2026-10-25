@@ -1,0 +1,83 @@
+diff --git a/crates/og-host-node/src/lib.rs b/crates/og-host-node/src/lib.rs
+index 507825aa..b08cc6b9 100644
+--- a/crates/og-host-node/src/lib.rs
++++ b/crates/og-host-node/src/lib.rs
+@@ -546,10 +546,16 @@ impl RenderBackend for OffscreenBackend {
+         if size != target {
+             self.renderer.resize(size.0, size.1);
+         }
+-        let image = self
+-            .render(scene)
+-            .ok()
+-            .and_then(|_| self.renderer.read_offscreen().ok());
++        let profiling = std::env::var_os("OG_CAPTURE_PROFILE").is_some();
++        let start = std::time::Instant::now();
++        let rendered = self.render(scene).ok();
++        let render_ms = start.elapsed().as_secs_f64() * 1000.0;
++        let start = std::time::Instant::now();
++        let image = rendered.and_then(|_| self.renderer.read_offscreen().ok());
++        let readback_ms = start.elapsed().as_secs_f64() * 1000.0;
++        if profiling {
++            eprintln!("CAPTURE_HOST {render_ms} {readback_ms}");
++        }
+         if size != target {
+             self.renderer.resize(target.0, target.1);
+         }
+diff --git a/crates/og-runtime/src/probe.rs b/crates/og-runtime/src/probe.rs
+index e9abc5e4..28742041 100644
+--- a/crates/og-runtime/src/probe.rs
++++ b/crates/og-runtime/src/probe.rs
+@@ -85,20 +85,28 @@ impl Capture for RuntimeCapture {
+     }
+ 
+     fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
++        let profiling = std::env::var_os("OG_CAPTURE_PROFILE").is_some();
++        let start = std::time::Instant::now();
+         let mut rs = self.render.try_borrow_mut().ok()?;
+         // Captured frames show every wanted terrain tile, whatever the decode timing.
+         rs.terrain.settle = true;
+         extract(world, &mut rs);
+         // Baked probes sample the bakes the frames loaded.
+         super::probes::apply_bakes(&mut rs);
++        let extract_ms = start.elapsed().as_secs_f64() * 1000.0;
+         let rs = &mut *rs;
+         let t0 = now_ms();
+         let image = rs.backend.as_mut()?.capture(&rs.scene, width, height);
++        let start = std::time::Instant::now();
+         let frame = image.map(|image| Frame {
+             width: image.width,
+             height: image.height,
+             png: png(&image),
+         });
++        let png_ms = start.elapsed().as_secs_f64() * 1000.0;
++        if profiling {
++            eprintln!("CAPTURE_RUNTIME {extract_ms} {png_ms}");
++        }
+         // The probe's work, not the game's: the tick's step time leaves it out.
+         rs.capture_ms += now_ms() - t0;
+         frame
+@@ -613,9 +621,10 @@ pub fn png(image: &og_render::RgbaImage) -> Vec<u8> {
+     let (w, h) = (image.width as usize, image.height as usize);
+     let stride = w * 4;
+     let mut raw = Vec::with_capacity((stride + 1) * h);
++    let no_filter = std::env::var_os("OG_CAPTURE_NO_FILTER").is_some();
+     for row in 0..h {
+         let cur = &image.pixels[row * stride..(row + 1) * stride];
+-        if row == 0 {
++        if row == 0 || no_filter {
+             raw.push(0);
+             raw.extend_from_slice(cur);
+         } else {
+@@ -624,7 +633,11 @@ pub fn png(image: &og_render::RgbaImage) -> Vec<u8> {
+             raw.extend(cur.iter().zip(prev).map(|(c, p)| c.wrapping_sub(*p)));
+         }
+     }
+-    let z = miniz_oxide::deflate::compress_to_vec_zlib(&raw, 6);
++    let level = std::env::var("OG_CAPTURE_LEVEL")
++        .ok()
++        .map(|v| v.parse::<u8>().unwrap())
++        .unwrap_or(6);
++    let z = miniz_oxide::deflate::compress_to_vec_zlib(&raw, level);
+     let mut out = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
+     let mut ihdr = Vec::new();
+     ihdr.extend_from_slice(&(w as u32).to_be_bytes());

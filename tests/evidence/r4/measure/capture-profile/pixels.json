@@ -1,0 +1,50 @@
+[
+  {
+    "game": "game",
+    "mode": "default",
+    "rgba_sha256": "2e3f14a42c98941a758e4c70fe3594807327a74a478d7a4ebedc14484698e56d",
+    "png_bytes": 169950
+  },
+  {
+    "game": "game",
+    "mode": "fast-up",
+    "rgba_sha256": "2e3f14a42c98941a758e4c70fe3594807327a74a478d7a4ebedc14484698e56d",
+    "png_bytes": 289225
+  },
+  {
+    "game": "game",
+    "mode": "fast-none",
+    "rgba_sha256": "2e3f14a42c98941a758e4c70fe3594807327a74a478d7a4ebedc14484698e56d",
+    "png_bytes": 245876
+  },
+  {
+    "game": "game",
+    "mode": "store-none",
+    "rgba_sha256": "2e3f14a42c98941a758e4c70fe3594807327a74a478d7a4ebedc14484698e56d",
+    "png_bytes": 3687768
+  },
+  {
+    "game": "meridian",
+    "mode": "default",
+    "rgba_sha256": "d4efdc4400c45cd978c63e895d7b5eb7913072a1da86887de0a053e8f05b3b8c",
+    "png_bytes": 832810
+  },
+  {
+    "game": "meridian",
+    "mode": "fast-up",
+    "rgba_sha256": "d4efdc4400c45cd978c63e895d7b5eb7913072a1da86887de0a053e8f05b3b8c",
+    "png_bytes": 1112594
+  },
+  {
+    "game": "meridian",
+    "mode": "fast-none",
+    "rgba_sha256": "d4efdc4400c45cd978c63e895d7b5eb7913072a1da86887de0a053e8f05b3b8c",
+    "png_bytes": 1210720
+  },
+  {
+    "game": "meridian",
+    "mode": "store-none",
+    "rgba_sha256": "d4efdc4400c45cd978c63e895d7b5eb7913072a1da86887de0a053e8f05b3b8c",
+    "png_bytes": 3687768
+  }
+]
