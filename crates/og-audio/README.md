@@ -587,4 +587,13 @@ retrigger). Still owed:
 
 - Decoding off the engine Worker (the mixer decodes QOA frames as voices
   reach them). (A chunk's fetch is prioritised by how soon its playhead
-  needs it since the cook round three: §Chunked sounds.)
+  needs it since the cook round three: §Chunked sounds.) Not done in
+  round 4 because it does not fit without changing the mixer's observable
+  output: the engine's wasm is single-threaded (`wasm32-unknown-unknown`
+  without atomics, so no second thread shares the bank), and a driven
+  mixer renders each tick's PCM as a function of the stream, so the frame
+  a voice reaches must be decoded at that sample; a decode on another
+  Worker that arrives late would play silence (as a missing chunk does)
+  and make the PCM depend on timing. It needs a decode-ahead the tick can
+  bound (the playheads' next QOA frames, as `chunk_distances` bounds
+  chunks) with a synchronous fallback, and a threaded wasm build.

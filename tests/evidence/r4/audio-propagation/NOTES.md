@@ -128,3 +128,44 @@ against 292 ms linear (bound 1000 ms; the release bound of 50 ms against
 17.5 ms measured on an M4 Pro at linear is for the wave's end to
 re-measure). Retrigger and `virtualize` off cost nothing in the mixer;
 with `linear` the mixer runs the old loop plus one branch per frame.
+
+## 3. Decoding off the engine Worker: left owed
+
+It does not fit without changing the mixer's observable output, so it
+stays in the README's §"What phase 2 owes" with the reason. The engine's
+wasm is `wasm32-unknown-unknown` without atomics, so nothing shares the
+bank across threads. A driven mixer (the Worker, null, capture) renders
+each tick's PCM as a function of the stream alone, so a voice's QOA frame
+must be decoded at the sample the voice reaches it. A decode on another
+Worker that lands late would play silence there, as a missing chunk does,
+and the PCM would depend on timing. A deterministic version needs a
+decode-ahead the tick can bound (the playheads' next frames, as
+`chunk_distances` bounds chunks), a synchronous fallback on a miss, and a
+threaded wasm build. No code changed for it and no CHANGELOG line.
+
+## For the coordinator
+
+- References that move: no committed audio reference (WAV hash) exists
+  outside `tests/evidence`, whose numbers re-record at the wave's end. Any
+  run with pitched voices, or sounds not at the output's rate, renders
+  other samples with the sinc default (`og run --audio` SHA-256s; the
+  bun tests compare two runs, so they still pass). Set
+  `og.Audio.resampler` to `linear` for the old samples. Unpitched 48 kHz
+  sounds with static spatial sources and `equalpower` are bit for bit
+  unchanged.
+- World hashes move for every game with audio: the records' layouts grow
+  (`og.AudioSource`, `og.AudioListener`, `og.Audio`, `og.AudioPlayback`,
+  `og.AudioStream`), and every stream sends one more fx command
+  (`RESAMPLER`) in its first tick, so `AudioStream.hash` changes. Replay
+  tests compare two runs and are unaffected. A save taken before this
+  restores with `migrate`. Moving spatial sources now get Doppler by
+  default (`dopplerFactor` 1), so kestrel-stair's playtest of
+  `og.AudioPlayback.pitch`, if any, would see it; its gains, pans and
+  low-passes do not change.
+- No reference frames: nothing here renders.
+- Not run, per the rules: `scripts/check.sh`, `og test`, the bun suites,
+  web-reference, wasm and release builds. Run here: `cargo test -p
+  og-audio` (all 39 tests, 8 of them new or extended), `cargo test -p og-api --test modules`,
+  `cargo check -p og-runtime`, `cargo fmt`, `cargo clippy -p og-audio
+  --all-targets -D warnings`, `og api gen` then `og api check` (clean),
+  the knowledge `validate` script.
