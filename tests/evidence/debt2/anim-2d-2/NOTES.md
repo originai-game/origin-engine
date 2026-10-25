@@ -129,3 +129,10 @@ The largest IK error over the walk is 0.024 m, the trailing planted foot at the 
 - **A child armature's skins beyond its default** are noted, not imported. Only the top armature takes `Skeleton2D.skin`.
 - **The IK during the paper turn** can miss by up to 0.008 m at the edge-on tick: the narrowed rig cannot quite reach the feet.
 - **Open paths** are extended along their end handles. DragonBones leaves such bones where the last tick put them.
+
+Since (debt3/anim-import, `tests/evidence/debt3/anim-import/NOTES.md`): a
+child's events fire when the parent plays backwards; a child armature's
+skins are imported and worn by the name of the rig's skin; the keeper's
+turn is paced by its feet and the IK reaches them on every tick of it; open
+paths keep extending along their end handles, the reason stated in rig2d's
+module docs.
