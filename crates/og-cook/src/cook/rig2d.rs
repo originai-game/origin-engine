@@ -404,18 +404,11 @@ pub fn dragonbones(
             .ok_or(format!(
                 "an armature display shows `{n}`, not an armature of the export"
             ))?;
+        // Its other skins are its own: it wears the one named as the skin
+        // the rig wears (og-anim's rig2d module docs).
         let (mut a, skins) = armature(raw, ske, &subs, &mut children, notes)
             .map_err(|e| format!("armature {n}: {e}"))?;
-        if !skins.is_empty() {
-            notes.push(format!(
-                "child armature {n} wears its default skin; its other skins are not imported: {}",
-                skins
-                    .iter()
-                    .map(|k| k.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ));
-        }
+        a.skins = skins;
         a.name = n;
         armatures.push(a);
         i += 1;

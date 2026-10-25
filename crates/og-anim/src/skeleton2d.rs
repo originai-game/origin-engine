@@ -276,7 +276,8 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
         let d = clip.duration;
         let step = dt * s.speed.clamp(-10.0, 10.0);
         let mut fired = Vec::new();
-        // The stretches of the clip's time played forward this tick, for child armatures' events.
+        // The stretches of the clip's time played this tick (forward, or
+        // backward when `step` is negative), for child armatures' events.
         let mut spans: Vec<(f32, f32)> = Vec::new();
         if !s.finished {
             let to = s.time + step;
@@ -307,6 +308,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
                                 .iter()
                                 .filter(|(t, _)| *t >= lo.max(0.0) && *t < hi),
                         );
+                        spans.push((lo.max(0.0), hi));
                         if lo >= 0.0 {
                             break;
                         }
@@ -319,9 +321,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
                 let to = to.clamp(0.0, d);
                 let (lo, hi) = if step >= 0.0 { (from, to) } else { (to, from) };
                 fired.extend(clip.events.iter().filter(|(t, _)| *t > lo && *t <= hi));
-                if step >= 0.0 {
-                    spans.push((lo, hi));
-                }
+                spans.push((lo, hi));
                 s.time = to;
                 s.finished = (step > 0.0 && to >= d) || (step < 0.0 && to <= 0.0);
             }
@@ -340,7 +340,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
         if rig.has_children() && spans.iter().any(|(lo, hi)| hi > lo) {
             let pose = rig.pose_in_skin(Some(clip), s.time, &[], s.skin);
             for (arm, c, t, name) in rig
-                .child_events(Some(clip), &spans, &pose)
+                .child_events(Some(clip), &spans, step < 0.0, &pose)
                 .into_iter()
                 .take(MAX_EVENTS)
             {
@@ -566,8 +566,11 @@ mod tests {
         Rig2dAsset::parse(&text).expect("the fixture with events")
     }
 
-    #[test]
-    fn a_child_armatures_events_fire_tagged_with_its_name() {
+    type Logged = (u32, String, u32, String, f32);
+
+    /// 128 ticks at 64 Hz of the nest's `idle` played by `skeleton`: per
+    /// event, its tick, armature tag, clip, name and time.
+    fn played(skeleton: Skeleton2D) -> Vec<Logged> {
         let mut w = World::new(&og_ecs::WorldDesc {
             tick_rate: 64,
             seed: 1,
@@ -581,7 +584,7 @@ mod tests {
                 Skeleton2D {
                     rig: 1,
                     clip: 1,
-                    ..Default::default()
+                    ..skeleton
                 },
             ))
             .unwrap();
@@ -599,6 +602,12 @@ mod tests {
                 ));
             }
         }
+        log
+    }
+
+    #[test]
+    fn a_child_armatures_events_fire_tagged_with_its_name() {
+        let log = played(Skeleton2D::default());
         // 64 ticks a second: the flame plays burn (idle has no clip of its
         // name there) at the parent's time wrapped by 1 s, so its spark
         // fires at 0, 1 and 2 s (ticks 1, 64, 128) and its flick at 0.5
@@ -609,6 +618,32 @@ mod tests {
             log,
             [
                 f(1, "spark", 0.0),
+                f(32, "flick", 0.5),
+                (64, String::new(), 1, "beat".to_string(), 1.0),
+                f(64, "spark", 0.0),
+                f(96, "flick", 0.5),
+                f(128, "spark", 0.0),
+            ]
+        );
+    }
+
+    /// Played backwards from 2 s, the child's events fire as the parent's
+    /// time passes them on the way down: the flame's flick at 1.5 and
+    /// 0.5 s (child time 0.5; ticks 32 and 96) and its spark at 1 and 0 s
+    /// (child time 0; ticks 64 and 128), not at 2 s where it started; the
+    /// parent's beat at 1 s (tick 64). Before, a backward parent fired
+    /// only its own events.
+    #[test]
+    fn a_child_armatures_events_fire_when_its_parent_plays_backwards() {
+        let log = played(Skeleton2D {
+            time: 2.0,
+            speed: -1.0,
+            ..Default::default()
+        });
+        let f = |tick: u32, n: &str, t: f32| (tick, "flame".to_string(), 0u32, n.to_string(), t);
+        assert_eq!(
+            log,
+            [
                 f(32, "flick", 0.5),
                 (64, String::new(), 1, "beat".to_string(), 1.0),
                 f(64, "spark", 0.0),

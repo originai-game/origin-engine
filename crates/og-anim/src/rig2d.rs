@@ -101,7 +101,8 @@
 //! first clip, at the parent's clip time (wrapped by its own duration when
 //! it loops, held at its end otherwise); its IK reaches its own target
 //! bones; its clip's events fire as og.Skeleton2DEvent tagged with the
-//! armature's name. An armature never shows itself, directly or through another.
+//! armature's name, as its parent's time passes them forwards or
+//! backwards. An armature never shows itself, directly or through another.
 //!
 //! **Transform and path constraints**, applied after the IK, each in
 //! file order, to the world transforms (a constrained bone's children
@@ -119,14 +120,22 @@
 //! bone then starting at this one's tip; `chainscale`, the bone stretched
 //! to reach it), plus `rotate`'s degrees; `mix` is rotate then translate.
 //! A closed path wraps; an open one runs on past its ends along its end
-//! handles. A `path` draws nothing and a `deform` key offsets its points.
+//! handles, as Spine's runtime does. DragonBones' `_computeBezierCurve`
+//! instead skips a bone placed past an open path's end (`continue`, a
+//! TODO there), leaving whatever its reused positions array held from an
+//! earlier frame: state outside the pose, which a pose that is a function
+//! of its clip time cannot read, so that behaviour is not followed (the
+//! two agree on every bone placed within the path). A `path` draws
+//! nothing and a `deform` key offsets its points.
 //!
 //! **Skins.** The rig's own attachments are its `default` skin. A `skin
 //! armor { swap torso torso-armor; swap hat none }` block (at the top
 //! level, after the attachments it names) shows, wherever the setup pose
 //! or a clip shows the first attachment, the second (in the same slot) or
 //! nothing; og.Skeleton2D.skin picks one (Rig2DInfo.skins, `default`
-//! first). A child armature wears its own default skin.
+//! first). An `armature` block takes `skin` blocks of its own over its
+//! attachments; a child armature wears its skin of the name the rig wears
+//! (as it plays its parent's clip by name), else its default.
 //!
 //! **Bounding boxes.** A `box` attachment draws nothing: its `polygon` (at
 //! least three x y points in the slot's bone) is data a game queries
@@ -639,6 +648,9 @@ pub struct Armature2d {
     pub transforms: Vec<TransformConstraint2d>,
     pub paths: Vec<PathConstraint2d>,
     pub clips: Vec<Clip2d>,
+    /// Its skins beyond its default (its own attachments): it wears the
+    /// one named as the skin the rig wears, else its default.
+    pub skins: Vec<Skin2d>,
 }
 
 /// A skin: what each slot shows instead of the rig's own (the default
@@ -1410,11 +1422,12 @@ fn parse_body(body: &[Entry], armatures: &[String]) -> Result<Armature2d> {
     Ok(rig)
 }
 
-/// The top level's `skin` blocks: `swap <attachment> <attachment or none>`
-/// lines, each pair in one slot.
-fn parse_skins(body: &[Entry], rig: &Rig2dAsset) -> Result<Vec<Skin2d>> {
+/// A body's `skin` blocks (the top level's, or an armature's):
+/// `swap <attachment> <attachment or none>` lines, each pair in one slot
+/// of that body's `attachments`.
+fn parse_skins(body: &[Entry], attachments: &[Attachment2d]) -> Result<Vec<Skin2d>> {
     let find = |n: &str, line: usize| -> Result<usize> {
-        rig.attachments
+        attachments
             .iter()
             .position(|a| a.name == n)
             .ok_or_else(|| parse_err(line, format!("no attachment `{n}`")))
@@ -1449,7 +1462,7 @@ fn parse_skins(body: &[Entry], rig: &Rig2dAsset) -> Result<Vec<Skin2d>> {
                 "none" => None,
                 t => Some(find(t, c.line)?),
             };
-            if to.is_some_and(|t| rig.attachments[t].slot != rig.attachments[from].slot) {
+            if to.is_some_and(|t| attachments[t].slot != attachments[from].slot) {
                 return Err(parse_err(
                     c.line,
                     format!("skin {}: a swap stays in its slot", skin.name),
@@ -1515,6 +1528,20 @@ fn bend(c: &Entry, i: usize) -> Result<bool> {
 }
 
 /// Writes an armature's bones, slots, attachments, constraints and clips.
+/// `skin` blocks of `skins`, whose swaps index `attachments`.
+fn skins_text(skins: &[Skin2d], attachments: &[Attachment2d]) -> String {
+    let mut s = String::new();
+    for k in skins {
+        s += &format!("skin {} {{\n", quote(&k.name));
+        for (from, to) in &k.swaps {
+            let to = to.map_or("none".to_string(), |t| quote(&attachments[t].name));
+            s += &format!("  swap {} {to}\n", quote(&attachments[*from].name));
+        }
+        s += "}\n";
+    }
+    s
+}
+
 fn body_text(rig: Body<'_>, armatures: &[Armature2d]) -> String {
     let n = num_text;
     let mut s = String::new();
@@ -1949,7 +1976,7 @@ impl Rig2dAsset {
             let entries = &block(e)?.entries;
             if let Some(c) = entries
                 .iter()
-                .find(|c| !BODY_KEYS.contains(&c.key.as_str()))
+                .find(|c| !BODY_KEYS.contains(&c.key.as_str()) && c.key != "skin")
             {
                 return Err(parse_err(
                     c.line,
@@ -1957,6 +1984,12 @@ impl Rig2dAsset {
                 ));
             }
             let mut a = parse_body(entries, &names).map_err(|err| {
+                Error::new(
+                    ErrorKind::Parse,
+                    format!("armature {name}: {}", err.reason()),
+                )
+            })?;
+            a.skins = parse_skins(entries, &a.attachments).map_err(|err| {
                 Error::new(
                     ErrorKind::Parse,
                     format!("armature {name}: {}", err.reason()),
@@ -1982,7 +2015,7 @@ impl Rig2dAsset {
             armatures,
         };
         let mut rig = rig;
-        rig.skins = parse_skins(body, &rig)?;
+        rig.skins = parse_skins(body, &rig.attachments)?;
         rig.check_children()?;
         Ok(rig)
     }
@@ -2060,17 +2093,12 @@ impl Rig2dAsset {
         );
         s += &format!("unit {}\n", num_text(self.unit));
         s += &body_text(self.body(), &self.armatures);
-        for k in &self.skins {
-            s += &format!("skin {} {{\n", quote(&k.name));
-            for (from, to) in &k.swaps {
-                let to = to.map_or("none".to_string(), |t| quote(&self.attachments[t].name));
-                s += &format!("  swap {} {to}\n", quote(&self.attachments[*from].name));
-            }
-            s += "}\n";
-        }
+        s += &skins_text(&self.skins, &self.attachments);
         for a in &self.armatures {
             s += &format!("armature {} {{\n", quote(&a.name));
-            for line in body_text(a.body(), &self.armatures).lines() {
+            let inner =
+                body_text(a.body(), &self.armatures) + &skins_text(&a.skins, &a.attachments);
+            for line in inner.lines() {
                 s += &format!("  {line}\n");
             }
             s += "}\n";
@@ -2099,11 +2127,13 @@ impl Rig2dAsset {
         time: f32,
         targets: &[(usize, [f32; 2], f32)],
     ) -> Pose2d {
-        self.pose_of(self.body(), clip, time, targets, &[])
+        self.pose_of(self.body(), clip, time, targets, &[], "default")
     }
 
     /// [`Rig2dAsset::pose`] wearing skin `skin` (0 the default, `i + 1`
-    /// [`Rig2dAsset::skins`]`[i]`; one past them is the default).
+    /// [`Rig2dAsset::skins`]`[i]`; one past them is the default). Each
+    /// child armature shown wears its own skin of that name, else its
+    /// default.
     pub fn pose_in_skin(
         &self,
         clip: Option<&Clip2d>,
@@ -2111,13 +2141,16 @@ impl Rig2dAsset {
         targets: &[(usize, [f32; 2], f32)],
         skin: u32,
     ) -> Pose2d {
-        let swaps = (skin as usize)
+        let worn = (skin as usize)
             .checked_sub(1)
-            .and_then(|i| self.skins.get(i))
-            .map_or(&[][..], |k| k.swaps.as_slice());
-        self.pose_of(self.body(), clip, time, targets, swaps)
+            .and_then(|i| self.skins.get(i));
+        let swaps = worn.map_or(&[][..], |k| k.swaps.as_slice());
+        let name = worn.map_or("default", |k| k.name.as_str());
+        self.pose_of(self.body(), clip, time, targets, swaps, name)
     }
 
+    /// The pose of `body` wearing `swaps`; its child armatures wear their
+    /// skins named `skin`, else their defaults.
     fn pose_of(
         &self,
         body: Body<'_>,
@@ -2125,6 +2158,7 @@ impl Rig2dAsset {
         time: f32,
         targets: &[(usize, [f32; 2], f32)],
         swaps: &[(usize, Option<usize>)],
+        skin: &str,
     ) -> Pose2d {
         // x, y, rotation, scale x, scale y, skew.
         let mut local: Vec<[f32; 6]> = body
@@ -2302,7 +2336,12 @@ impl Rig2dAsset {
                 Some(c) => time.clamp(0.0, c.duration),
                 None => 0.0,
             };
-            children.push((s, self.pose_of(arm.body(), played, t, &[], &[])));
+            let swaps = arm
+                .skins
+                .iter()
+                .find(|k| k.name == skin)
+                .map_or(&[][..], |k| k.swaps.as_slice());
+            children.push((s, self.pose_of(arm.body(), played, t, &[], swaps, skin)));
         }
         Pose2d {
             world,
@@ -2318,20 +2357,25 @@ impl Rig2dAsset {
 
     /// The events the child armatures shown in `pose` (the pose at the end
     /// of the stretch, nested ones included) pass while their parent's
-    /// clip `clip` plays forward over `spans` of its time (each `(from,
-    /// to]`, a `from` below 0 taking the events at 0 too): (the child
-    /// armature's name, its clip's index, the event's time in it, its
-    /// name), in the order the spans pass them. A child plays at its
-    /// parent's time, wrapped by its own clip's duration when that loops
-    /// and held at its end otherwise, so a span splits where it wraps.
+    /// clip `clip` plays over `spans` of its time: forward, each `(lo,
+    /// hi]` played from `lo` up to `hi` (a `lo` below 0 taking the events
+    /// at 0 too); `backward`, each `[lo, hi)` played from `hi` down to
+    /// `lo` (the event at the time it lands on fires, the one it leaves
+    /// does not, as og.skeleton2d's own looping backward play). Answers
+    /// (the child armature's name, its clip's index, the event's time in
+    /// it, its name), span by span in the order they are played, each
+    /// span's events by time. A child plays at its parent's time, wrapped
+    /// by its own clip's duration when that loops and held at its end
+    /// otherwise, so a span splits where it wraps.
     pub fn child_events(
         &self,
         clip: Option<&Clip2d>,
         spans: &[(f32, f32)],
+        backward: bool,
         pose: &Pose2d,
     ) -> Vec<(String, u32, f32, String)> {
         let mut out = Vec::new();
-        self.collect_child_events(self.body(), clip, spans, pose, &mut out);
+        self.collect_child_events(self.body(), clip, spans, backward, pose, &mut out);
         out
     }
 
@@ -2340,6 +2384,7 @@ impl Rig2dAsset {
         body: Body<'_>,
         clip: Option<&Clip2d>,
         spans: &[(f32, f32)],
+        backward: bool,
         pose: &Pose2d,
         out: &mut Vec<(String, u32, f32, String)>,
     ) {
@@ -2364,14 +2409,27 @@ impl Rig2dAsset {
                 .unwrap_or(0) as u32;
             let inner: Vec<(f32, f32)> = spans
                 .iter()
-                .flat_map(|&(lo, hi)| wrap_span(lo, hi, played))
+                .flat_map(|&(lo, hi)| {
+                    if backward {
+                        wrap_span_back(lo, hi, played)
+                    } else {
+                        wrap_span(lo, hi, played)
+                    }
+                })
                 .collect();
             for &(lo, hi) in &inner {
-                for (t, name) in played.events.iter().filter(|(t, _)| *t > lo && *t <= hi) {
+                let passed = |t: f32| {
+                    if backward {
+                        t >= lo && t < hi
+                    } else {
+                        t > lo && t <= hi
+                    }
+                };
+                for (t, name) in played.events.iter().filter(|(t, _)| passed(*t)) {
                     out.push((arm.name.clone(), index, *t, name.clone()));
                 }
             }
-            self.collect_child_events(arm.body(), Some(played), &inner, child, out);
+            self.collect_child_events(arm.body(), Some(played), &inner, backward, child, out);
         }
     }
 
@@ -2608,6 +2666,36 @@ fn wrap_span(lo: f32, hi: f32, c: &Clip2d) -> Vec<(f32, f32)> {
         }
         base += d;
         l = -1.0;
+    }
+    out
+}
+
+/// A span `[lo, hi)` of a parent's time played backwards (from `hi` down
+/// to `lo`) as spans of a child clip's time, in the order they are played:
+/// split where a looping clip wraps (the piece below a wrap ending short
+/// of the clip's end, as og.skeleton2d's own backward wrap does), clamped
+/// to a one-shot's length.
+fn wrap_span_back(lo: f32, hi: f32, c: &Clip2d) -> Vec<(f32, f32)> {
+    let d = c.duration;
+    let lo = lo.max(0.0);
+    if !c.looping || d <= 0.0 {
+        let (l, h) = (lo.clamp(0.0, d), hi.clamp(0.0, d));
+        return if h > l { vec![(l, h)] } else { Vec::new() };
+    }
+    let mut out = Vec::new();
+    // The cycle holding the times just below `hi`.
+    let mut base = d * ((hi / d).ceil() - 1.0).max(0.0);
+    let mut h = hi - base;
+    for _ in 0..64 {
+        let l = (lo - base).max(0.0);
+        if h > l {
+            out.push((l, h.min(d)));
+        }
+        if lo >= base || base <= 0.0 {
+            break;
+        }
+        base -= d;
+        h = d;
     }
     out
 }
@@ -3780,6 +3868,58 @@ armature flame {
   }
 }
 "#;
+
+    /// An armature's own skins: the flame swaps its fire for an ember in
+    /// its skin `gold`, which it wears while the rig wears its `gold`; in
+    /// the rig's default skin, or one the flame has none of (`silver`), it
+    /// wears its default. Before, an armature took no `skin` block and a
+    /// child always wore its default.
+    #[test]
+    fn a_child_armature_wears_its_skin_of_the_name_the_rig_wears() {
+        let text = NEST
+            .replace(
+                "clip wave {\n  duration 1\n}\n",
+                "skin gold {\n}\nskin silver {\n}\nclip wave {\n  duration 1\n}\n",
+            )
+            .replace(
+                "  box heat {\n",
+                "  region ember {\n    slot fire\n    rect 2 0 2 2\n  }\n  skin gold {\n    swap fire ember\n  }\n  box heat {\n",
+            );
+        let r = Rig2dAsset::parse(&text).expect("an armature's skin");
+        let flame = &r.armatures[0];
+        assert_eq!(flame.skins.len(), 1);
+        let (fire_slot, fire, ember) = (
+            flame.slots.iter().position(|s| s.name == "fire").unwrap(),
+            flame
+                .attachments
+                .iter()
+                .position(|a| a.name == "fire")
+                .unwrap(),
+            flame
+                .attachments
+                .iter()
+                .position(|a| a.name == "ember")
+                .unwrap(),
+        );
+        let shown = |skin: u32| {
+            let p = r.pose_in_skin(Some(&r.clips[1]), 0.5, &[], skin);
+            assert_eq!(p.children.len(), 1, "the lamp shows the flame");
+            p.children[0].1.slots[fire_slot]
+        };
+        assert_eq!(shown(0), Some(fire), "the default");
+        assert_eq!(shown(1), Some(ember), "gold");
+        assert_eq!(shown(2), Some(fire), "silver: the flame has none");
+        // The canonical text keeps the armature's skin.
+        assert_eq!(Rig2dAsset::parse(&r.to_text()).unwrap(), r);
+        let bad = Rig2dAsset::parse(&text.replace("swap fire ember", "swap fire ash"))
+            .unwrap_err()
+            .reason()
+            .to_string();
+        assert!(
+            bad.contains("armature flame") && bad.contains("ash"),
+            "{bad}"
+        );
+    }
 
     /// The centre of quad `q` (four corners from `first`).
     fn centre(v: &[RigVertex], first: usize) -> [f32; 2] {
