@@ -3,9 +3,11 @@
 //! Bullet's btRaycastVehicle; Apache-2.0, Copyright 2020 Dimforge EURL),
 //! carried here so og.Vehicle can set what rapier keeps private: each
 //! wheel's roll influence (`og.Vehicle.rollInfluence`) and its skid info
-//! (read back as `WheelPose.slip`). The algorithm is rapier's, unchanged
-//! but for those two fields being public, `crate::` paths spelled through
-//! the public API, the 2D branch and profiling dropped.
+//! (read back as `WheelPose.slip`). The algorithm is rapier's, with those
+//! two fields public, `crate::` paths spelled through the public API, the
+//! 2D branch and profiling dropped, and its passes regrouped as one pass
+//! per wheel (place, cast, spring; then size the friction; then apply), the
+//! arithmetic in upstream's order so a world's hash is the same.
 
 use rapier3d::dynamics::{RigidBody, RigidBodyHandle, RigidBodySet};
 use rapier3d::geometry::{ColliderHandle, ColliderSet, Ray};
@@ -395,12 +397,7 @@ impl DynamicRayCastVehicleController {
 
     /// Updates the vehicle’s velocity based on its suspension, engine force, and brake.
     pub fn update_vehicle(&mut self, dt: Real, queries: QueryPipelineMut) {
-        let num_wheels = self.wheels.len();
         let chassis = &queries.bodies[self.chassis];
-
-        for i in 0..num_wheels {
-            self.update_wheel_transform(chassis, i);
-        }
 
         self.current_vehicle_speed = chassis.linvel().length();
 
@@ -410,16 +407,15 @@ impl DynamicRayCastVehicleController {
             self.current_vehicle_speed *= -1.0;
         }
 
-        //
-        // simulate suspension
-        //
-
-        for wheel_id in 0..self.wheels.len() {
-            self.ray_cast(&queries.as_ref(), chassis, wheel_id);
-        }
-
+        // One pass per wheel over the chassis as the last step left it:
+        // place the wheel, cast its ray, size its spring. Nothing here
+        // moves a body, so the wheels do not see each other's impulses.
         let chassis_mass = chassis.mass();
-        self.update_suspension(chassis_mass);
+        for wheel_id in 0..self.wheels.len() {
+            self.update_wheel_transform(chassis, wheel_id);
+            self.ray_cast(&queries.as_ref(), chassis, wheel_id);
+            self.wheels[wheel_id].update_suspension(chassis_mass);
+        }
 
         let chassis = queries.bodies.get_mut(self.chassis).unwrap();
 
@@ -429,12 +425,7 @@ impl DynamicRayCastVehicleController {
             }
 
             // apply suspension force
-            let mut suspension_force = wheel.wheel_suspension_force;
-
-            if suspension_force > wheel.max_suspension_force {
-                suspension_force = wheel.max_suspension_force;
-            }
-
+            let suspension_force = wheel.wheel_suspension_force.min(wheel.max_suspension_force);
             let impulse = wheel.raycast_info.contact_normal_ws * suspension_force * dt;
             chassis.apply_impulse_at_point(impulse, wheel.raycast_info.contact_point_ws, false);
         }
@@ -479,44 +470,8 @@ impl DynamicRayCastVehicleController {
         &mut self.wheels
     }
 
-    fn update_suspension(&mut self, chassis_mass: Real) {
-        for w_it in 0..self.wheels.len() {
-            let wheels = &mut self.wheels[w_it];
-
-            if wheels.raycast_info.is_in_contact {
-                let mut force;
-                //	Spring
-                {
-                    let rest_length = wheels.suspension_rest_length;
-                    let current_length = wheels.raycast_info.suspension_length;
-                    let length_diff = rest_length - current_length;
-
-                    force = wheels.suspension_stiffness
-                        * length_diff
-                        * wheels.clipped_inv_contact_dot_suspension;
-                }
-
-                // Damper
-                {
-                    let projected_rel_vel = wheels.suspension_relative_velocity;
-                    {
-                        let susp_damping = if projected_rel_vel < 0.0 {
-                            wheels.damping_compression
-                        } else {
-                            wheels.damping_relaxation
-                        };
-                        force -= susp_damping * projected_rel_vel;
-                    }
-                }
-
-                // RESULT
-                wheels.wheel_suspension_force = (force * chassis_mass).max(0.0);
-            } else {
-                wheels.wheel_suspension_force = 0.0;
-            }
-        }
-    }
-
+    /// Sizes every wheel's side and forward impulses against the bodies'
+    /// velocities as the suspension left them, then applies them all.
     fn update_friction(&mut self, bodies: &mut RigidBodySet, colliders: &ColliderSet, dt: Real) {
         let num_wheels = self.wheels.len();
 
@@ -527,124 +482,67 @@ impl DynamicRayCastVehicleController {
         self.forward_ws.resize(num_wheels, Default::default());
         self.axle.resize(num_wheels, Default::default());
 
-        let mut num_wheels_on_ground = 0;
+        // The rolling friction (coasting and braking) is shared among the
+        // wheels on the ground, so they are counted first.
+        let num_wheels_on_ground = self
+            .wheels
+            .iter()
+            .filter(|w| w.raycast_info.ground_object.is_some())
+            .count();
 
-        //TODO: collapse all those loops into one!
-        for wheel in &mut self.wheels {
-            let ground_object = wheel.raycast_info.ground_object;
-
-            if ground_object.is_some() {
-                num_wheels_on_ground += 1;
-            }
-
+        // One pass per wheel, sizing its impulses: nothing is applied until
+        // every wheel has been sized against the same velocities.
+        let chassis = &bodies[self.chassis];
+        for (i, wheel) in self.wheels.iter_mut().enumerate() {
             wheel.side_impulse = 0.0;
             wheel.forward_impulse = 0.0;
-        }
+            wheel.skid_info = 1.0;
 
-        {
-            for i in 0..num_wheels {
-                let wheel = &mut self.wheels[i];
-                let ground_object = wheel.raycast_info.ground_object;
+            let Some(ground_object) = wheel.raycast_info.ground_object else {
+                continue;
+            };
+            let ground = colliders[ground_object].parent().map(|h| &bodies[h]);
+            let contact_point = wheel.raycast_info.contact_point_ws;
 
-                if ground_object.is_some() {
-                    self.axle[i] = wheel.wheel_axle_ws;
+            // The axle and the rolling direction on the contact plane.
+            let surf_normal_ws = wheel.raycast_info.contact_normal_ws;
+            let axle = wheel.wheel_axle_ws;
+            let axle = (axle - surf_normal_ws * axle.dot(surf_normal_ws)).normalize_or_zero();
+            self.axle[i] = axle;
+            self.forward_ws[i] = surf_normal_ws.cross(axle).normalize_or_zero();
 
-                    let surf_normal_ws = wheel.raycast_info.contact_normal_ws;
-                    let proj = self.axle[i].dot(surf_normal_ws);
-                    self.axle[i] -= surf_normal_ws * proj;
-                    self.axle[i] = self.axle[i].normalize_or_zero();
-                    self.forward_ws[i] = surf_normal_ws.cross(self.axle[i]).normalize_or_zero();
+            // Sideways: take a share of the slide relative to the ground.
+            wheel.side_impulse = side_impulse(
+                chassis,
+                ground.filter(|b| b.is_dynamic()),
+                contact_point,
+                axle,
+            ) * wheel.side_friction_stiffness;
 
-                    if let Some(ground_body) = ground_object
-                        .and_then(|h| colliders[h].parent())
-                        .map(|h| &bodies[h])
-                        .filter(|b| b.is_dynamic())
-                    {
-                        wheel.side_impulse = resolve_single_bilateral(
-                            &bodies[self.chassis],
-                            wheel.raycast_info.contact_point_ws,
-                            ground_body,
-                            wheel.raycast_info.contact_point_ws,
-                            self.axle[i],
-                        );
-                    } else {
-                        wheel.side_impulse = resolve_single_unilateral(
-                            &bodies[self.chassis],
-                            wheel.raycast_info.contact_point_ws,
-                            self.axle[i],
-                        );
-                    }
+            // Forward: the engine's push, or else the rolling friction
+            // (towards no relative velocity, up to the brake's impulse).
+            wheel.forward_impulse = if wheel.engine_force != 0.0 {
+                wheel.engine_force * dt
+            } else {
+                WheelContactPoint::new(
+                    chassis,
+                    ground,
+                    contact_point,
+                    self.forward_ws[i],
+                    wheel.brake,
+                )
+                .calc_rolling_friction(num_wheels_on_ground)
+            };
 
-                    wheel.side_impulse *= wheel.side_friction_stiffness;
-                }
-            }
-        }
+            // The friction circle: past what the suspension's load holds,
+            // the tyre slides and both impulses scale down to the edge.
+            let max_imp = wheel.wheel_suspension_force * dt * wheel.friction_slip;
+            let x = wheel.forward_impulse * FORWARD_GRIP_SHARE;
+            let y = wheel.side_impulse;
+            let impulse_squared = x * x + y * y;
 
-        let side_factor = 1.0;
-        let fwd_factor = 0.5;
-
-        let mut sliding = false;
-        {
-            for wheel_id in 0..num_wheels {
-                let wheel = &mut self.wheels[wheel_id];
-                let ground_object = wheel.raycast_info.ground_object;
-
-                let mut rolling_friction = 0.0;
-
-                if ground_object.is_some() {
-                    if wheel.engine_force != 0.0 {
-                        rolling_friction = wheel.engine_force * dt;
-                    } else {
-                        let default_rolling_friction_impulse = 0.0;
-                        let max_impulse = if wheel.brake != 0.0 {
-                            wheel.brake
-                        } else {
-                            default_rolling_friction_impulse
-                        };
-                        let contact_pt = WheelContactPoint::new(
-                            &bodies[self.chassis],
-                            ground_object
-                                .and_then(|h| colliders[h].parent())
-                                .map(|h| &bodies[h]),
-                            wheel.raycast_info.contact_point_ws,
-                            self.forward_ws[wheel_id],
-                            max_impulse,
-                        );
-                        assert!(num_wheels_on_ground > 0);
-                        rolling_friction = contact_pt.calc_rolling_friction(num_wheels_on_ground);
-                    }
-                }
-
-                //switch between active rolling (throttle), braking and non-active rolling friction (no throttle/break)
-
-                wheel.forward_impulse = 0.0;
-                wheel.skid_info = 1.0;
-
-                if ground_object.is_some() {
-                    let max_imp = wheel.wheel_suspension_force * dt * wheel.friction_slip;
-                    let max_imp_side = max_imp;
-                    let max_imp_squared = max_imp * max_imp_side;
-                    assert!(max_imp_squared >= 0.0);
-
-                    wheel.forward_impulse = rolling_friction;
-
-                    let x = wheel.forward_impulse * fwd_factor;
-                    let y = wheel.side_impulse * side_factor;
-
-                    let impulse_squared = x * x + y * y;
-
-                    if impulse_squared > max_imp_squared {
-                        sliding = true;
-
-                        let factor = max_imp * inv(impulse_squared.sqrt());
-                        wheel.skid_info *= factor;
-                    }
-                }
-            }
-        }
-
-        if sliding {
-            for wheel in &mut self.wheels {
+            if impulse_squared > max_imp * max_imp {
+                wheel.skid_info = max_imp * inv(impulse_squared.sqrt());
                 if wheel.skid_info < 1.0 {
                     wheel.forward_impulse *= wheel.skid_info;
                     wheel.side_impulse *= wheel.skid_info;
@@ -653,43 +551,75 @@ impl DynamicRayCastVehicleController {
         }
 
         // apply the impulses
-        {
-            let chassis = bodies.get_mut(self.chassis).unwrap();
+        let chassis = bodies.get_mut(self.chassis).unwrap();
 
-            for wheel_id in 0..num_wheels {
-                let wheel = &self.wheels[wheel_id];
-                let mut impulse_point = wheel.raycast_info.contact_point_ws;
+        for (wheel_id, wheel) in self.wheels.iter().enumerate() {
+            let mut impulse_point = wheel.raycast_info.contact_point_ws;
 
-                if wheel.forward_impulse != 0.0 {
-                    chassis.apply_impulse_at_point(
-                        self.forward_ws[wheel_id] * wheel.forward_impulse,
-                        impulse_point,
-                        false,
-                    );
-                }
-                if wheel.side_impulse != 0.0 {
-                    let side_impulse = self.axle[wheel_id] * wheel.side_impulse;
+            if wheel.forward_impulse != 0.0 {
+                chassis.apply_impulse_at_point(
+                    self.forward_ws[wheel_id] * wheel.forward_impulse,
+                    impulse_point,
+                    false,
+                );
+            }
+            if wheel.side_impulse != 0.0 {
+                let side_impulse = self.axle[wheel_id] * wheel.side_impulse;
 
-                    let v_chassis_world_up =
-                        chassis.position().rotation * Vector::ith(self.index_up_axis, 1.0);
-                    impulse_point -= v_chassis_world_up
-                        * (v_chassis_world_up.dot(impulse_point - chassis.center_of_mass())
-                            * (1.0 - wheel.roll_influence));
+                let v_chassis_world_up =
+                    chassis.position().rotation * Vector::ith(self.index_up_axis, 1.0);
+                impulse_point -= v_chassis_world_up
+                    * (v_chassis_world_up.dot(impulse_point - chassis.center_of_mass())
+                        * (1.0 - wheel.roll_influence));
 
-                    chassis.apply_impulse_at_point(side_impulse, impulse_point, false);
+                chassis.apply_impulse_at_point(side_impulse, impulse_point, false);
 
-                    // TODO: apply friction impulse on the ground
-                    // let ground_object = self.wheels[wheel_id].raycast_info.ground_object;
-                    // ground_object.apply_impulse_at_point(
-                    //     -side_impulse,
-                    //     wheels.raycast_info.contact_point_ws,
-                    //     false,
-                    // );
-                }
+                // TODO: apply friction impulse on the ground
+                // let ground_object = self.wheels[wheel_id].raycast_info.ground_object;
+                // ground_object.apply_impulse_at_point(
+                //     -side_impulse,
+                //     wheels.raycast_info.contact_point_ws,
+                //     false,
+                // );
             }
         }
     }
 }
+
+impl Wheel {
+    /// The spring and damper's force from the ray's suspension length and
+    /// the chassis's speed along it, in Bullet's units (× the chassis's
+    /// mass); 0 off the ground.
+    fn update_suspension(&mut self, chassis_mass: Real) {
+        if !self.raycast_info.is_in_contact {
+            self.wheel_suspension_force = 0.0;
+            return;
+        }
+        let length_diff = self.suspension_rest_length - self.raycast_info.suspension_length;
+        let spring =
+            self.suspension_stiffness * length_diff * self.clipped_inv_contact_dot_suspension;
+        let projected_rel_vel = self.suspension_relative_velocity;
+        let susp_damping = if projected_rel_vel < 0.0 {
+            self.damping_compression
+        } else {
+            self.damping_relaxation
+        };
+        let force = spring - susp_damping * projected_rel_vel;
+        self.wheel_suspension_force = (force * chassis_mass).max(0.0);
+    }
+}
+
+/// The share of a tyre's sideways velocity relative to the ground that one
+/// update's side impulse removes: Bullet's `contactDamping`, a literal in
+/// upstream's `resolveSingleBilateral`. 1 would stop a sideways slide in one
+/// update; 0.2 lets it decay over about five, the friction circle capping
+/// the impulse as the load allows.
+const SIDE_FRICTION_DAMPING: Real = 0.2;
+
+/// How much the forward impulse weighs against the side impulse on the
+/// friction circle (Bullet's `fwdFactor`): half, so a tyre under full drive
+/// or brake still holds most of its cornering grip.
+const FORWARD_GRIP_SHARE: Real = 0.5;
 
 struct WheelContactPoint<'a> {
     body0: &'a RigidBody,
@@ -752,51 +682,36 @@ impl<'a> WheelContactPoint<'a> {
     }
 }
 
-fn resolve_single_bilateral(
-    body1: &RigidBody,
-    pt1: Vector,
-    body2: &RigidBody,
-    pt2: Vector,
+/// The side impulse along `normal` at `pt` that removes
+/// [`SIDE_FRICTION_DAMPING`] of the chassis's velocity relative to `ground`
+/// there: a dynamic ground body shares the impulse (its inverse mass and
+/// inertia in the denominator); `None` is ground that does not give.
+fn side_impulse(
+    chassis: &RigidBody,
+    ground: Option<&RigidBody>,
+    pt: Vector,
     normal: Vector,
 ) -> Real {
-    let vel1 = body1.velocity_at_point(pt1);
-    let vel2 = body2.velocity_at_point(pt2);
+    let vel1 = chassis.velocity_at_point(pt);
+    let dpt1 = pt - chassis.center_of_mass();
+    let aj = dpt1.gcross(normal);
+    let iaj = chassis.mass_properties().effective_world_inv_inertia * aj;
+    // TODO: take the effective_inv_mass into account?
+    let im1 = chassis.mass_properties().local_mprops.inv_mass;
+
+    let (vel2, im2, ibj_sq) = ground.map_or((Vector::ZERO, 0.0, 0.0), |ground| {
+        let dpt2 = pt - ground.center_of_mass();
+        let bj = dpt2.gcross(-normal);
+        let ibj = ground.mass_properties().effective_world_inv_inertia * bj;
+        // TODO: take the effective_inv_mass into account?
+        let im2 = ground.mass_properties().local_mprops.inv_mass;
+        (ground.velocity_at_point(pt), im2, ibj.gdot(ibj))
+    });
+
     let dvel = vel1 - vel2;
-
-    let dpt1 = pt1 - body1.center_of_mass();
-    let dpt2 = pt2 - body2.center_of_mass();
-    let aj = dpt1.gcross(normal);
-    let bj = dpt2.gcross(-normal);
-    let iaj = body1.mass_properties().effective_world_inv_inertia * aj;
-    let ibj = body2.mass_properties().effective_world_inv_inertia * bj;
-
-    // TODO: take the effective_inv_mass into account?
-    let im1 = body1.mass_properties().local_mprops.inv_mass;
-    let im2 = body2.mass_properties().local_mprops.inv_mass;
-
-    let jac_diag_ab = im1 + im2 + iaj.gdot(iaj) + ibj.gdot(ibj);
+    let jac_diag_ab = im1 + im2 + iaj.gdot(iaj) + ibj_sq;
     let jac_diag_ab_inv = inv(jac_diag_ab);
     let rel_vel = normal.dot(dvel);
 
-    //todo: move this into proper structure
-    let contact_damping = 0.2;
-    -contact_damping * rel_vel * jac_diag_ab_inv
-}
-
-fn resolve_single_unilateral(body1: &RigidBody, pt1: Vector, normal: Vector) -> Real {
-    let vel1 = body1.velocity_at_point(pt1);
-    let dvel = vel1;
-    let dpt1 = pt1 - body1.center_of_mass();
-    let aj = dpt1.gcross(normal);
-    let iaj = body1.mass_properties().effective_world_inv_inertia * aj;
-
-    // TODO: take the effective_inv_mass into account?
-    let im1 = body1.mass_properties().local_mprops.inv_mass;
-    let jac_diag_ab = im1 + iaj.gdot(iaj);
-    let jac_diag_ab_inv = inv(jac_diag_ab);
-    let rel_vel = normal.dot(dvel);
-
-    //todo: move this into proper structure
-    let contact_damping = 0.2;
-    -contact_damping * rel_vel * jac_diag_ab_inv
+    -SIDE_FRICTION_DAMPING * rel_vel * jac_diag_ab_inv
 }
