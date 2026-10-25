@@ -1,0 +1,3 @@
+| scene | mode | p50 ms | p95 ms | sustained ms | fps |
+|---|---|---|---|---|---|
+| spheres | three WebGPU, InstancedMesh | 1.288 | 1.59 | 1.316 | 760 |

@@ -1,0 +1,66 @@
+{
+ "chrome": "/Users/fan/.agent-browser/browsers/chrome-150.0.7871.115/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+ "frames": 600,
+ "warm": 60,
+ "rounds": 2,
+ "size": "1280x720",
+ "summary": [
+  {
+   "scene": "spheres",
+   "mode": "three WebGL2, InstancedMesh",
+   "p50": 2.62,
+   "p95": 2.92,
+   "sustainedMs": 2.586,
+   "fps": 387,
+   "rounds": 2
+  }
+ ],
+ "runs": [
+  {
+   "scene": "spheres",
+   "mode": "three WebGL2, InstancedMesh",
+   "round": 1,
+   "load": "4.68 5.18 8.40",
+   "info": {
+    "renderer": "three WebGLRenderer",
+    "draws": 1,
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 2.625,
+    "p95": 2.9,
+    "p99": 5.16,
+    "max": 7.555,
+    "mean": 2.62
+   },
+   "sustainedMs": 2.62,
+   "fps": 382,
+   "shot": "threejs-spheres-three-webgl2-instancedmesh.png"
+  },
+  {
+   "scene": "spheres",
+   "mode": "three WebGL2, InstancedMesh",
+   "round": 2,
+   "load": "5.34 5.31 8.43",
+   "info": {
+    "renderer": "three WebGLRenderer",
+    "draws": 1,
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 2.615,
+    "p95": 2.94,
+    "p99": 3.97,
+    "max": 4.185,
+    "mean": 2.552
+   },
+   "sustainedMs": 2.552,
+   "fps": 392,
+   "shot": "threejs-spheres-three-webgl2-instancedmesh.png"
+  }
+ ]
+}

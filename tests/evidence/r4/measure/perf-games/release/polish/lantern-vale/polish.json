@@ -1,0 +1,1065 @@
+{
+ "project": "lantern-vale",
+ "date": "2026-10-25",
+ "scores": {
+  "contrast": 100,
+  "textSize": 100,
+  "hud": 100,
+  "transitions": 100,
+  "uiSounds": 100,
+  "latency": 100,
+  "hitFeedback": 100,
+  "idle": 100,
+  "frameTime": 100,
+  "inputSound": 96,
+  "locale": 100,
+  "taste": 100,
+  "feel": 99
+ },
+ "findings": [],
+ "playtests": [
+  {
+   "playtest": "flow",
+   "title": "Set out, walk and run on the terrain, find a lantern by an overlap query, light it with E",
+   "tier": "metal",
+   "ticks": 342,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 3,
+    "withMotion": 3,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 158
+   },
+   "latency": {
+    "inputs": 4,
+    "answered": 4,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 74.32,
+    "sound": 4
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 1,
+    "bursts": 1
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.59,
+    "stepP95Ms": 1.3,
+    "renderMedianMs": 1.21,
+    "renderP95Ms": 1.64,
+    "frameP95Ms": 2.58,
+    "frameMaxMs": 3.73
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 5.7,
+    "peak": 0.24,
+    "rms": 0.0354,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "frames",
+   "title": "the title, a run, a lantern, a slime, the far side, the Chinese settings and the dawn results match their reference frames",
+   "tier": "metal",
+   "ticks": 684,
+   "shots": [
+    {
+     "name": "title",
+     "tick": 60,
+     "frame": "frames/frames-title.png",
+     "menu": true,
+     "hud": 5.83,
+     "centre": 52.83,
+     "texts": 5,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "start",
+     "tick": 132,
+     "frame": null,
+     "menu": false,
+     "hud": 1,
+     "centre": 0,
+     "texts": 3,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "lantern",
+     "tick": 240,
+     "frame": null,
+     "menu": false,
+     "hud": 1.47,
+     "centre": 0,
+     "texts": 5,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "slime",
+     "tick": 276,
+     "frame": null,
+     "menu": false,
+     "hud": 1.47,
+     "centre": 0,
+     "texts": 5,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "far",
+     "tick": 360,
+     "frame": null,
+     "menu": false,
+     "hud": 2.14,
+     "centre": 0,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings-zh",
+     "tick": 420,
+     "frame": null,
+     "menu": true,
+     "hud": 9.97,
+     "centre": 58.81,
+     "texts": 15,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 678,
+     "frame": null,
+     "menu": true,
+     "hud": 6.79,
+     "centre": 40.88,
+     "texts": 14,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 54,
+    "passing": 54,
+    "worst": [
+     {
+      "shot": "results",
+      "id": "NewBest",
+      "text": "New best",
+      "ratio": 4.65
+     },
+     {
+      "shot": "settings-zh",
+      "id": "LanguageLabel",
+      "text": "语言",
+      "ratio": 5.51
+     },
+     {
+      "shot": "settings-zh",
+      "id": "Name",
+      "text": "你的名字",
+      "ratio": 6.04
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 54,
+    "passing": 54,
+    "smallest": [
+     {
+      "shot": "results",
+      "id": "NewBest",
+      "text": "New best",
+      "ink": 9
+     },
+     {
+      "shot": "title",
+      "id": "play",
+      "text": "Set out",
+      "ink": 11
+     },
+     {
+      "shot": "far",
+      "id": "Toast#2",
+      "text": "The far side of the vale stirs",
+      "ink": 11
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 4,
+    "worstShare": 2.14,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 9,
+    "withMotion": 9,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 572
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 86.56,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 2,
+    "hitStop": 2,
+    "shake": 2,
+    "floating": 2,
+    "sound": 2,
+    "flash": 0,
+    "particles": 1,
+    "facts": [
+     "hits",
+     "hp"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 4,
+    "bursts": 4
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.61,
+    "stepP95Ms": 1.23,
+    "renderMedianMs": 1.11,
+    "renderP95Ms": 1.47,
+    "frameP95Ms": 2.48,
+    "frameMaxMs": 437.23
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 11.4,
+    "peak": 0.62,
+    "rms": 0.0628,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "locales",
+   "title": "the title, the HUD, the pause menu and the results in Chinese, then English",
+   "tier": "metal",
+   "ticks": 402,
+   "shots": [
+    {
+     "name": "title-zh",
+     "tick": 54,
+     "frame": "frames/locales-title-zh.png",
+     "menu": true,
+     "hud": 5.25,
+     "centre": 47.55,
+     "texts": 5,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 5,
+    "passing": 5,
+    "worst": [
+     {
+      "shot": "title-zh",
+      "id": "settings",
+      "text": "设置",
+      "ratio": 4.56
+     },
+     {
+      "shot": "title-zh",
+      "id": "play",
+      "text": "出发",
+      "ratio": 7.48
+     },
+     {
+      "shot": "title-zh",
+      "id": "Footer",
+      "text": "WASD 移动 · Shift 奔跑 · 在灯笼旁按住 E 点灯 · Esc 暂",
+      "ratio": 8.13
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 5,
+    "passing": 5,
+    "smallest": [
+     {
+      "shot": "title-zh",
+      "id": "Footer",
+      "text": "WASD 移动 · Shift 奔跑 · 在灯笼旁按住 E 点灯 · Esc 暂",
+      "ink": 12
+     },
+     {
+      "shot": "title-zh",
+      "id": "Subtitle",
+      "text": "在夜幕降临前点亮四盏灯笼",
+      "ink": 15
+     },
+     {
+      "shot": "title-zh",
+      "id": "play",
+      "text": "出发",
+      "ink": 15
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 7,
+    "withMotion": 7,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 363
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 1,
+    "maxTicks": 1,
+    "baselineShare": 89.39,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 4,
+    "bursts": 4
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.61,
+    "stepP95Ms": 1.43,
+    "renderMedianMs": 1.08,
+    "renderP95Ms": 1.42,
+    "frameP95Ms": 2.61,
+    "frameMaxMs": 12.29
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 6.7,
+    "peak": 0.44,
+    "rms": 0.0689,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "lose",
+   "title": "no hearts left, night at dusk's end, Again and Title",
+   "tier": "metal",
+   "ticks": 462,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 7,
+    "withMotion": 7,
+    "presses": 2,
+    "pressesWithSound": 2,
+    "motionTicks": 231
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 50,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 1,
+    "hitStop": 1,
+    "shake": 1,
+    "floating": 1,
+    "sound": 1,
+    "flash": 0,
+    "particles": 0,
+    "facts": [
+     "hits",
+     "hp"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.61,
+    "stepP95Ms": 1.53,
+    "renderMedianMs": 1.04,
+    "renderP95Ms": 1.37,
+    "frameP95Ms": 2.71,
+    "frameMaxMs": 12.83
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 7.7,
+    "peak": 0.6,
+    "rms": 0.0616,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "music",
+   "title": "the chunked music plays from the title, its chunks streamed",
+   "tier": "metal",
+   "ticks": 192,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 0,
+    "withMotion": 0,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 191
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.55,
+    "stepP95Ms": 0.84,
+    "renderMedianMs": 1.32,
+    "renderP95Ms": 1.68,
+    "frameP95Ms": 2.33,
+    "frameMaxMs": 3.42
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 3.2,
+    "peak": 0.04,
+    "rms": 0.0092,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "physics",
+   "title": "the character controller shoves the pile of rocks and is stopped by a trunk",
+   "tier": "metal",
+   "ticks": 270,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 34
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 88.38,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.66,
+    "stepP95Ms": 1.56,
+    "renderMedianMs": 1.21,
+    "renderP95Ms": 1.52,
+    "frameP95Ms": 2.88,
+    "frameMaxMs": 4.69
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 4.5,
+    "peak": 0.05,
+    "rms": 0.0072,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "replay",
+   "title": "a session with the pile, a lantern, a slime's touch, the far side and the results replays to the same hash",
+   "tier": "metal",
+   "ticks": 576,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 5,
+    "withMotion": 5,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 338
+   },
+   "latency": {
+    "inputs": 3,
+    "answered": 3,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 84.57,
+    "sound": 3
+   },
+   "damage": {
+    "moments": 2,
+    "hitStop": 2,
+    "shake": 2,
+    "floating": 2,
+    "sound": 2,
+    "flash": 0,
+    "particles": 1,
+    "facts": [
+     "hits",
+     "hp"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 4,
+    "bursts": 4
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.65,
+    "stepP95Ms": 1.45,
+    "renderMedianMs": 1.21,
+    "renderP95Ms": 1.64,
+    "frameP95Ms": 2.88,
+    "frameMaxMs": 12.16
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 9.6,
+    "peak": 0.6,
+    "rms": 0.0655,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "settings",
+   "title": "pause, then the settings: a slider, a typed name with an input method, a mixed-script label, Chinese, saved",
+   "tier": "metal",
+   "ticks": 282,
+   "shots": [
+    {
+     "name": "settings",
+     "tick": 198,
+     "frame": "frames/settings-settings.png",
+     "menu": true,
+     "hud": 8.87,
+     "centre": 58.11,
+     "texts": 13,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "settings-zh",
+     "tick": 240,
+     "frame": null,
+     "menu": true,
+     "hud": 8.96,
+     "centre": 58.81,
+     "texts": 13,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 26,
+    "passing": 26,
+    "worst": [
+     {
+      "shot": "settings-zh",
+      "id": "LanguageLabel",
+      "text": "语言",
+      "ratio": 5.51
+     },
+     {
+      "shot": "settings-zh",
+      "id": "Done",
+      "text": "完成",
+      "ratio": 7.35
+     },
+     {
+      "shot": "settings-zh",
+      "id": "Label",
+      "text": "音效",
+      "ratio": 7.47
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 26,
+    "passing": 26,
+    "smallest": [
+     {
+      "shot": "settings",
+      "id": "Value",
+      "text": "100",
+      "ink": 11
+     },
+     {
+      "shot": "settings",
+      "id": "Label",
+      "text": "Music",
+      "ink": 12
+     },
+     {
+      "shot": "settings",
+      "id": "Value",
+      "text": "50",
+      "ink": 12
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 6,
+    "withMotion": 6,
+    "presses": 5,
+    "pressesWithSound": 5,
+    "motionTicks": 279
+   },
+   "latency": {
+    "inputs": 7,
+    "answered": 7,
+    "medianTicks": 0,
+    "maxTicks": 1,
+    "baselineShare": 100,
+    "sound": 6
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.62,
+    "stepP95Ms": 1.52,
+    "renderMedianMs": 0.97,
+    "renderP95Ms": 1.41,
+    "frameP95Ms": 2.6,
+    "frameMaxMs": 14.91
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 4.7,
+    "peak": 0.51,
+    "rms": 0.0438,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "slimes",
+   "title": "a slime sees the hero, turns alert and chases on twos, and its touch lands with weight",
+   "tier": "metal",
+   "ticks": 150,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 34
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 40,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 1,
+    "hitStop": 1,
+    "shake": 1,
+    "floating": 1,
+    "sound": 1,
+    "flash": 0,
+    "particles": 0,
+    "facts": [
+     "hits",
+     "hp"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.6,
+    "stepP95Ms": 1.56,
+    "renderMedianMs": 1.25,
+    "renderP95Ms": 1.57,
+    "frameP95Ms": 2.82,
+    "frameMaxMs": 3.31
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 2.5,
+    "peak": 0.47,
+    "rms": 0.0326,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "stream",
+   "title": "the far side's streaming group loads as the camera nears it and unloads as it leaves, replaying the same",
+   "tier": "metal",
+   "ticks": 270,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 2,
+    "withMotion": 2,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 46
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 56.33,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 0,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.56,
+    "stepP95Ms": 1.47,
+    "renderMedianMs": 1.19,
+    "renderP95Ms": 1.53,
+    "frameP95Ms": 2.44,
+    "frameMaxMs": 3.12
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 4.5,
+    "peak": 0.06,
+    "rms": 0.0077,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "win",
+   "title": "four lanterns lit: the results under the dawn look, then Again under the dusk look",
+   "tier": "metal",
+   "ticks": 263,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 6,
+    "withMotion": 6,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 250
+   },
+   "latency": {
+    "inputs": 1,
+    "answered": 1,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 99.09,
+    "sound": 1
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 4,
+    "bursts": 4
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.67,
+    "stepP95Ms": 1.67,
+    "renderMedianMs": 1.06,
+    "renderP95Ms": 1.4,
+    "frameP95Ms": 2.87,
+    "frameMaxMs": 12.3
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 4.4,
+    "peak": 0.43,
+    "rms": 0.0862,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  }
+ ],
+ "warnings": []
+}

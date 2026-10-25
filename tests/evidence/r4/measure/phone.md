@@ -38,12 +38,16 @@ hardware-specific budget without noting the mismatch.
 - A certificate for `192.168.1.40` is needed for the HTTPS run. The iPhone
   must reach that address on the LAN. The owner has installed mkcert and
   reports the root CA trusted on both devices.
-- Close the running EchoPlay simulator game and its simulator, or authorize
-  stopping them. EchoPlay and SimMetalHost were using CPU and GPU during
-  preparation. No owner process was stopped.
 
 The Android USB-debugging authorization was resolved between the two checks.
 The coordinator authorized Android first-frame and CPU measurements, Chrome
 physics hashes and stats, and terrain settle measurements under recorded load.
-Desktop GPU budgets and iPhone frame times remain held pending confirmation
-that the simulator is stopped.
+The later Mac WebDriver session check failed because Allow remote automation
+is disabled (`safari-automation.md`); the owner must enable it in Safari's
+Developer settings. No setting was changed by this thread.
+
+The owner subsequently authorized stopping EchoPlay and SimMetalHost; they
+were stopped, with the authorized simulator shutdown after respawn.
+`GPU.md` contains the completed desktop measurements. The physical iPhone
+and its automation setup remain pending owner action; no iPhone measurement
+is claimed.

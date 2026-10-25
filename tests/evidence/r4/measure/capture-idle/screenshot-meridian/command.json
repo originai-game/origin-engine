@@ -1,0 +1,15 @@
+[
+  "/Volumes/app/origin-engine-measure/packages/engine/native/og.darwin-arm64",
+  "run",
+  "examples/meridian-loop",
+  "--headless",
+  "--ticks",
+  "2042",
+  "--size",
+  "1280x720",
+  "--commands",
+  "2:screenshot:shot-0.png;3:screenshot:shot-1.png;4:screenshot:shot-2.png;5:screenshot:shot-3.png;6:screenshot:shot-4.png;7:screenshot:shot-5.png;8:screenshot:shot-6.png;9:screenshot:shot-7.png;10:screenshot:shot-8.png;11:screenshot:shot-9.png;12:screenshot:shot-10.png;13:screenshot:shot-11.png;14:screenshot:shot-12.png;15:screenshot:shot-13.png;16:screenshot:shot-14.png;17:screenshot:shot-15.png;18:screenshot:shot-16.png;19:screenshot:shot-17.png;20:screenshot:shot-18.png;21:screenshot:shot-19.png;22:screenshot:shot-20.png;23:screenshot:shot-21.png;24:screenshot:shot-22.png;25:screenshot:shot-23.png;26:screenshot:shot-24.png;27:screenshot:shot-25.png;28:screenshot:shot-26.png;29:screenshot:shot-27.png;30:screenshot:shot-28.png;31:screenshot:shot-29.png;32:screenshot:shot-30.png;33:screenshot:shot-31.png;34:screenshot:shot-32.png",
+  "--out",
+  "/Volumes/app/origin-engine-measure/tests/evidence/r4/measure/capture-idle/screenshot-meridian",
+  "--json"
+]

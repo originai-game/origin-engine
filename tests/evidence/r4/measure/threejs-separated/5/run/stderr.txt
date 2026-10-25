@@ -1,0 +1,6 @@
+building spheres (og build --publish's web half) into /Volumes/app/origin-engine-measure/target/tmp/threejs-bench/spheres
+spheres / engine WebGPU / round 1: http://127.0.0.1:56510/bench.html
+spheres / engine WebGPU / round 1: p50 3.695 p95 4.19 ms, sustained 3.643 ms (275 fps); load 3.71 5.44 9.33
+spheres / engine WebGPU / round 2: http://127.0.0.1:56510/bench.html
+spheres / engine WebGPU / round 2: p50 3.645 p95 4.125 ms, sustained 3.572 ms (280 fps); load 5.01 5.68 9.39
+spheres / engine WebGPU: threejs-spheres-engine-webgpu.png

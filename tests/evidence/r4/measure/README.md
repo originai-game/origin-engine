@@ -9,25 +9,28 @@ included here. No budget, baseline, or engine source changed.
 ## Acceptance recorded so far
 
 The coordinator allowed rows 52, 88, and Android measurements under recorded
-load on 2026-10-25. EchoPlay and SimMetalHost were still running. These are
-not idle-GPU acceptance results.
+load on 2026-10-25. EchoPlay and SimMetalHost were still running for that
+first batch. They were subsequently stopped with owner authorization;
+`GPU.md` records the later load-qualified capture, comparison and perf-games
+runs, with a full minute below load 8 before each accepted batch.
 
 | Requested row | Result | Measurement and limit |
 |---|---|---|
-| Probe capture, native and web | Not-measurable yet | Held for idle-GPU confirmation. Limits remain 30 ms native and 60 ms web at 1280×720 |
-| 51, three.js comparison | Not-measurable yet | Held for idle-GPU confirmation. Reference-scene limit remains ≥1.5× three.js frame rate |
-| 89, perf-games and polish | Not-measurable yet | Held for idle-GPU confirmation and load below 8 throughout |
+| Probe capture, native and web | Fail | Meridian p95 102.639 ms native / 150.620 ms web versus 30/60 ms; template p95 26.369/65.080 ms. Native template also has a 31.535 ms maximum. See `GPU.md` for full distributions |
+| 51, three.js comparison | Pass WebGPU; fail WebGL2 reference target | 1.937× / 1.151× against the existing three.js WebGL2 instanced reference comparator, target ≥1.5×. Sphere-field same-tier instanced ratios 0.365× / 0.694×, no separate numeric sphere budget |
+| 89, perf-games and polish | Fail one release target; pass remaining play targets | Lantern unpaced release render p95 8.030 ms versus <8 ms. Every dev step p95 <16 ms. Polish frame scores release 100/100/100, dev 93/100/82; all worst frame p95 <16.7 ms |
 | 88, terrain first-frame settle | Pass, measurement and simulation isolation | Five fresh runs per tier. Five tiles settle at tick 0, no simulation tick or world-hash change. No separate numeric settle budget is specified |
 | 52, Chrome whole-world hashes and physics stats | Pass | 30 runs, 1,000 and 2,000 boxes, three modes, five rounds. Whole-world hashes agree at ticks 60, 360, and 660 |
 | Android first frame | Pass on this device; specified hardware/network not-measurable | Pixel 10, USB localhost: median 1,677 ms, range 1,559–1,836 ms, below 2,000 ms. This is not a 2022 mid-range Android on 4G |
 | Android 10,000-entity TS system | Pass on this device; specified hardware not-measurable | Move system median 0.111 ms per tick, range 0.110–0.117, below 1 ms. Whole engine tick 0.523 ms, range 0.518–0.552 |
-| iPhone first frame and frame times | Not-measurable yet | Physical iPhone Air is offline in Xcode; GPU timings also held. No iPhone 13 result |
+| iPhone first frame and frame times | Not-measurable yet | Last preflight: physical iPhone Air offline in Xcode, Mac Safari Remote Automation disabled. Owner action remains pending; no iPhone 13 result |
 
 `summary.json` contains the calculated tables. `bun
 tests/evidence/r4/measure/summarize.mjs` regenerates them and checks the
 world hashes, physics pool usage, terrain residency, tick counts, and
-Android entity movement. Every completed process returned exit 0 unless
-explicitly recorded as a diagnostic failure below.
+Android entity movement. `summarize-gpu.mjs` generates the later
+`gpu-summary.json`, including load qualification. Unsuccessful and
+load-disqualified attempts are retained and labeled, not counted as passes.
 
 ## Terrain cost is outside the tick
 

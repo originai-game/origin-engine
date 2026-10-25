@@ -1,0 +1,6 @@
+building reference (og build --publish's web half) into /Volumes/app/origin-engine-measure/target/tmp/threejs-bench/reference
+reference / three WebGL2, one Mesh each / round 1: http://127.0.0.1:56384/three-page.html?scene=reference&naive=1
+reference / three WebGL2, one Mesh each / round 1: p50 2.41 p95 4.7 ms, sustained 3.045 ms (328 fps); load 2.97 6.03 10.00
+reference / three WebGL2, one Mesh each / round 2: http://127.0.0.1:56384/three-page.html?scene=reference&naive=1
+reference / three WebGL2, one Mesh each / round 2: p50 2.295 p95 4.77 ms, sustained 3.057 ms (327 fps); load 3.22 6.03 9.98
+reference / three WebGL2, one Mesh each: threejs-reference-three-webgl2-one-mesh-each.png

@@ -1,0 +1,3 @@
+bash -c set\ -e\;\ for\ pair\ in\ \"game\ templates/game\"\ \"meridian\ examples/meridian-loop\"\;\ do\ set\ --\ \$pair\;\ bun\ tests/evidence/r4/measure/capture-native.mjs\ \"\$2\"\ \"tests/evidence/r4/measure/capture-idle/native-\$1\"\;\ bun\ tests/evidence/r4/measure/web.mjs\ capture\ \"\$2\"\ \"tests/evidence/r4/measure/capture-idle/web-\$1\"\;\ bun\ tests/evidence/r4/measure/screenshot-cli.mjs\ \"\$2\"\ \"tests/evidence/r4/measure/capture-idle/screenshot-\$1\"\;\ done 
+base=1bb341e51b22bdcdaf69a3eb60aac5265366196f
+head=e4b40fe25628e7c4e55c95fee62f85bba6cf4138

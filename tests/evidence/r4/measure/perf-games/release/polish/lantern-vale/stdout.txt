@@ -1,0 +1,12 @@
+og polish: flow (342 ticks, 953 ms)
+og polish: frames (684 ticks, 3328 ms)
+og polish: locales (402 ticks, 1321 ms)
+og polish: lose (462 ticks, 1176 ms)
+og polish: music (192 ticks, 600 ms)
+og polish: physics (270 ticks, 799 ms)
+og polish: replay (576 ticks, 1565 ms)
+og polish: settings (282 ticks, 1186 ms)
+og polish: slimes (150 ticks, 509 ms)
+og polish: stream (270 ticks, 758 ms)
+og polish: win (263 ticks, 771 ms)
+{"project":"lantern-vale","scores":{"contrast":100,"textSize":100,"hud":100,"transitions":100,"uiSounds":100,"latency":100,"hitFeedback":100,"idle":100,"frameTime":100,"inputSound":96,"locale":100,"taste":100,"feel":99},"findings":0,"report":"/Volumes/app/origin-engine-measure/tests/evidence/r4/measure/perf-games/release/polish/lantern-vale/report.md"}

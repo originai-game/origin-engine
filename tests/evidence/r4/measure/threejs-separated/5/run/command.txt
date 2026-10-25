@@ -1,0 +1,3 @@
+env OG_ENGINE_PACKAGE=/Volumes/app/origin-engine-measure/packages/engine bun tools/bench/threejs-compare.ts --frames 600 --warm 60 --rounds 2 --only spheres --mode engine\ WebGPU --out tests/evidence/r4/measure/threejs-separated/5/results 
+base=1bb341e51b22bdcdaf69a3eb60aac5265366196f
+head=e4b40fe25628e7c4e55c95fee62f85bba6cf4138
