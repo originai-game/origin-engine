@@ -45,3 +45,9 @@ serde_json = "1"
 wgpu = { workspace = true }
 wasm-bindgen-futures = "=0.4.79"
 web-sys = { version = "=0.3.106", features = ["OffscreenCanvas"] }
+# No logger is installed in the web module (nothing calls log::set_logger),
+# so every log macro of wgpu, naga and og-render discards its record at run
+# time; off at compile time, their formatting (wgpu-core's and naga's Debug
+# impls) is not built in (tests/evidence/r4/size-3). A wasm32-only feature:
+# native builds keep the log crate as it is.
+log = { workspace = true, features = ["max_level_off"] }
