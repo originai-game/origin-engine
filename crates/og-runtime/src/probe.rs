@@ -18,7 +18,7 @@ use super::engine::{DECL, assemble};
 use super::engine::{Engine, call, engine, extract_layouts, hooks, invalidate};
 use super::extract::{RenderState, extract};
 use og_ecs::{Entity, World};
-use og_probe::{Capture, Frame, Probe};
+use og_probe::{Capture, Frame, Probe, base64};
 #[cfg(not(feature = "publish"))]
 use og_probe::{Rebuilt, Reloader};
 use serde_json::{Value, json};
@@ -582,13 +582,13 @@ pub(crate) fn outputs_json(outputs: Vec<og_probe::Output>) -> Value {
             .into_iter()
             .map(|o| {
                 let (kind, data) = match &o.payload {
-                    og_probe::Payload::Png { bytes, .. } => ("png", json!(base64(bytes))),
+                    og_probe::Payload::Png { bytes, .. } => ("png", json!(base64::encode(bytes))),
                     og_probe::Payload::Json(_) => (
                         "json",
                         json!(String::from_utf8_lossy(&o.bytes()).into_owned()),
                     ),
                     og_probe::Payload::Text(t) => ("text", json!(t)),
-                    og_probe::Payload::Wav(bytes) => ("wav", json!(base64(bytes))),
+                    og_probe::Payload::Wav(bytes) => ("wav", json!(base64::encode(bytes))),
                 };
                 json!({ "tick": o.tick, "action": o.action, "file": o.file_name(), "kind": kind, "data": data })
             })
@@ -599,25 +599,4 @@ pub(crate) fn outputs_json(outputs: Vec<og_probe::Output>) -> Value {
 /// The wall clock, for timings only.
 pub(crate) fn now_ms() -> f64 {
     hooks().map_or(0.0, |h| h.now_ms())
-}
-
-pub(crate) fn base64(bytes: &[u8]) -> String {
-    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
-    for chunk in bytes.chunks(3) {
-        let b = [
-            chunk[0],
-            *chunk.get(1).unwrap_or(&0),
-            *chunk.get(2).unwrap_or(&0),
-        ];
-        let n = (u32::from(b[0]) << 16) | (u32::from(b[1]) << 8) | u32::from(b[2]);
-        for (i, shift) in [18, 12, 6, 0].iter().enumerate() {
-            if i <= chunk.len() {
-                out.push(T[((n >> shift) & 63) as usize] as char);
-            } else {
-                out.push('=');
-            }
-        }
-    }
-    out
 }

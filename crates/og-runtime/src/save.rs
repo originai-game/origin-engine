@@ -72,7 +72,7 @@ fn encode(snapshot: &[u8], tick: u64) -> String {
     payload.extend_from_slice(&hash.to_le_bytes());
     payload.extend_from_slice(snapshot);
     let deflated = miniz_oxide::deflate::compress_to_vec(&payload, 6);
-    format!("{PREFIX}{VERSION}:{}", super::probe::base64(&deflated))
+    format!("{PREFIX}{VERSION}:{}", og_probe::base64::encode(&deflated))
 }
 
 /// What a save holds: the world snapshot.
@@ -322,10 +322,7 @@ mod tests {
     fn base64_round_trips_every_length() {
         for n in 0..70u8 {
             let bytes: Vec<u8> = (0..n).map(|i| i.wrapping_mul(37) ^ n).collect();
-            assert_eq!(
-                unbase64(&super::super::probe::base64(&bytes)).unwrap(),
-                bytes
-            );
+            assert_eq!(unbase64(&og_probe::base64::encode(&bytes)).unwrap(), bytes);
         }
         assert!(unbase64("ab!c").is_none());
     }

@@ -24,7 +24,7 @@
 // What only the compiled-out members read is unused in a publish build.
 #![cfg_attr(feature = "publish", allow(dead_code, unused_imports))]
 
-mod base64;
+pub mod base64;
 pub mod command;
 mod describe;
 pub mod expect;
