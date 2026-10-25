@@ -49,6 +49,9 @@ module anim {
 | [`SpringSpace`](#type-SpringSpace) | enum | Where a spring bone's tails move. |
 | [`SpringSpace()`](#column-SpringSpace) | column kind | A SpringSpace field: the variant's index. |
 | [`og.SpringBone`](#record-SpringBone) | component | A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint of the chain; for the last joint its first child, or its parent bone continued at the same length) is a point pulled towards where the animated pose puts it by a damped spring (`frequency`, `damping`), under `gravity`, held at the bone's length, and the joint turns to point at it. Applied after og.IkChain and og.LookAt, top joint first; put it on its own entity (a tail, an ear, a strand of hair, a single jiggling node), one per chain. Deterministic under the fixed tick; the tails' positions and velocities are world state (the `og.anim` state block), so a restore continues a swing exactly. A changed chain (another skeleton, length or space) restarts at the animated pose. |
+| [`SpringColliderShape`](#type-SpringColliderShape) | enum | The shape of a spring collider. |
+| [`SpringColliderShape()`](#column-SpringColliderShape) | column kind | A SpringColliderShape field: the variant's index. |
+| [`og.SpringCollider`](#record-SpringCollider) | component | A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton (a head, a chest, an upper arm), so hair, ears and tails do not swing through the body. Each tick, after a tail of an og.SpringBone of the same skeleton has stepped and before its joint turns, the tail is pushed out of every collider whose `layers` meet the spring's `colliders` (in query order) to `radius` plus the spring's `radius`, keeping its bone's length. Put it on its own entity, one per shape; colliders follow the pose as it is when a chain is swung, so one on a joint an earlier chain swung follows that swing. |
 | [`og.AnimationEvent`](#record-AnimationEvent) | event | A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers. |
 | [`ClipInfo`](#type-ClipInfo) | struct | One clip of a loaded animation. |
 | [`Animation`](#type-Animation) | struct | What og.load.animation registered from a model's `#anim` blob. |
@@ -115,7 +118,7 @@ fn graph {
 }
 ```
 
-<sub>`api.ogt` line 8243</sub>
+<sub>`api.ogt` line 8300</sub>
 
 <a id="fn-humanoid"></a>
 
@@ -145,7 +148,7 @@ fn humanoid {
 }
 ```
 
-<sub>`api.ogt` line 8278</sub>
+<sub>`api.ogt` line 8335</sub>
 
 <a id="fn-retarget"></a>
 
@@ -175,7 +178,7 @@ fn retarget {
 }
 ```
 
-<sub>`api.ogt` line 8298</sub>
+<sub>`api.ogt` line 8355</sub>
 
 <a id="fn-mirror"></a>
 
@@ -205,7 +208,7 @@ fn mirror {
 }
 ```
 
-<sub>`api.ogt` line 8312</sub>
+<sub>`api.ogt` line 8369</sub>
 
 <a id="fn-clip"></a>
 
@@ -236,7 +239,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 8397</sub>
+<sub>`api.ogt` line 8454</sub>
 
 <a id="fn-clip-2"></a>
 
@@ -267,7 +270,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 8405</sub>
+<sub>`api.ogt` line 8462</sub>
 
 <a id="fn-clip-3"></a>
 
@@ -298,7 +301,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 8413</sub>
+<sub>`api.ogt` line 8470</sub>
 
 <a id="fn-rig2dInfo"></a>
 
@@ -328,7 +331,7 @@ fn rig2dInfo {
 }
 ```
 
-<sub>`api.ogt` line 8523</sub>
+<sub>`api.ogt` line 8580</sub>
 
 <a id="fn-skeleton2dBoxes"></a>
 
@@ -358,7 +361,7 @@ fn skeleton2dBoxes {
 }
 ```
 
-<sub>`api.ogt` line 8537</sub>
+<sub>`api.ogt` line 8594</sub>
 
 ## Components, resources and events
 
@@ -878,9 +881,13 @@ Token `og.SpringBone`, registered under the schema name `og.SpringBone`; its val
 | `bones` | `number` | `1` | 1 … 16 | — | — | How many joints swing: `joint` and its parents (1 is the joint alone). |
 | `frequency` | `number` | `3` | 0 … 30 | `hz` | tunable | How fast a tail springs back to its animated place: the spring's natural frequency (0: no spring, it only hangs and swings). |
 | `damping` | `number` | `0.3` | 0 … 2 | — | tunable | The damping ratio: 0 swings on, 1 settles without overshooting (critical damping). |
+| `tipFrequency` | `number` | `1` | 0 … 4 | — | tunable | The last joint's frequency as a multiple of `frequency`, the joints between in proportion along the chain (1: every joint alike; 0.25: the tip springs back four times slower than the top, a soft strand on a stiff root). |
+| `tipDamping` | `number` | `1` | 0 … 4 | — | tunable | The last joint's damping ratio as a multiple of `damping`, the joints between in proportion along the chain (1: every joint alike). |
 | `gravity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | — | An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop. |
 | `space` | `SpringSpace` | `"world"` | — | — | — | Where the tails move: world (the frame the skeleton entity's og.Transform is in, so the chain lags behind the entity's motion) or model (only the animation moves it). |
 | `weight` | `number` | `1` | 0 … 1 | — | tunable | How much of the swing is applied (0 = the animated pose, 1 = the spring's). |
+| `radius` | `number` | `0` | ≥ 0 | `m` | tunable | The tails' radius against og.SpringCollider (three-vrm's hitRadius): a tail stays this far outside every collider it meets (0: a point). |
+| `colliders` | `number` | `4294967295` | — | — | — | The og.SpringCollider layers the tails are pushed out of, as bits: a collider on the same skeleton counts when its `layers` meet these. |
 | `lag` | `number` | `0` | — | `m` | read only | Written: the farthest a tail is from its animated place this tick. |
 
 ```ogt
@@ -908,6 +915,18 @@ component SpringBone {
     max 2
     tunable true
   }
+  field tipFrequency f32 "The last joint's frequency as a multiple of `frequency`, the joints between in proportion along the chain (1: every joint alike; 0.25: the tip springs back four times slower than the top, a soft strand on a stiff root)." {
+    default 1
+    min 0
+    max 4
+    tunable true
+  }
+  field tipDamping f32 "The last joint's damping ratio as a multiple of `damping`, the joints between in proportion along the chain (1: every joint alike)." {
+    default 1
+    min 0
+    max 4
+    tunable true
+  }
   field gravity Vector3 "An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop." {
     unit mps2
   }
@@ -918,6 +937,14 @@ component SpringBone {
     max 1
     tunable true
   }
+  field radius f32 "The tails' radius against og.SpringCollider (three-vrm's hitRadius): a tail stays this far outside every collider it meets (0: a point)." {
+    min 0
+    unit m
+    tunable true
+  }
+  field colliders u32 "The og.SpringCollider layers the tails are pushed out of, as bits: a collider on the same skeleton counts when its `layers` meet these." {
+    default 4294967295
+  }
   field lag f32 "Written: the farthest a tail is from its animated place this tick." {
     readonly true
     unit m
@@ -926,6 +953,52 @@ component SpringBone {
 ```
 
 <sub>`api.ogt` line 8166</sub>
+
+<a id="record-SpringCollider"></a>
+
+### `og.SpringCollider` (component)
+
+A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton (a head, a chest, an upper arm), so hair, ears and tails do not swing through the body. Each tick, after a tail of an og.SpringBone of the same skeleton has stepped and before its joint turns, the tail is pushed out of every collider whose `layers` meet the spring's `colliders` (in query order) to `radius` plus the spring's `radius`, keeping its bone's length. Put it on its own entity, one per shape; colliders follow the pose as it is when a chain is swung, so one on a joint an earlier chain swung follows that swing.
+
+Token `og.SpringCollider`, registered under the schema name `og.SpringCollider`; its value type is `SpringCollider`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `skeleton` | `Entity` | `0` | — | — | — | The entity with the og.Skeleton whose spring bones this keeps out. |
+| `joint` | `number` | `0` | ≥ 0 | — | — | The joint the collider rides on (an index into the skin's joints). |
+| `shape` | `SpringColliderShape` | `"sphere"` | — | — | — | A sphere about `offset`, or a capsule from `offset` to `tail`. |
+| `offset` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The sphere's centre, or the capsule's first end, in the joint's frame. |
+| `tail` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The capsule's other end, in the joint's frame (a sphere ignores it). |
+| `radius` | `number` | `0.1` | ≥ 0 | `m` | tunable | The radius, in metres of the skeleton's model space (the joint's own scale does not apply). |
+| `layers` | `number` | `1` | — | — | — | The layers this collider is on, as bits (a spring bone's `colliders` picks them). |
+
+```ogt
+component SpringCollider {
+  doc "A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton (a head, a chest, an upper arm), so hair, ears and tails do not swing through the body. Each tick, after a tail of an og.SpringBone of the same skeleton has stepped and before its joint turns, the tail is pushed out of every collider whose `layers` meet the spring's `colliders` (in query order) to `radius` plus the spring's `radius`, keeping its bone's length. Put it on its own entity, one per shape; colliders follow the pose as it is when a chain is swung, so one on a joint an earlier chain swung follows that swing."
+  field skeleton Entity "The entity with the og.Skeleton whose spring bones this keeps out."
+  field joint u32 "The joint the collider rides on (an index into the skin's joints)." {
+    min 0
+  }
+  field shape SpringColliderShape "A sphere about `offset`, or a capsule from `offset` to `tail`."
+  field offset Vector3 "The sphere's centre, or the capsule's first end, in the joint's frame." {
+    unit m
+  }
+  field tail Vector3 "The capsule's other end, in the joint's frame (a sphere ignores it)." {
+    unit m
+  }
+  field radius f32 "The radius, in metres of the skeleton's model space (the joint's own scale does not apply)." {
+    default 0.1
+    min 0
+    unit m
+    tunable true
+  }
+  field layers u32 "The layers this collider is on, as bits (a spring bone's `colliders` picks them)." {
+    default 1
+  }
+}
+```
+
+<sub>`api.ogt` line 8239</sub>
 
 <a id="record-AnimationEvent"></a>
 
@@ -956,7 +1029,7 @@ event AnimationEvent {
 }
 ```
 
-<sub>`api.ogt` line 8206</sub>
+<sub>`api.ogt` line 8263</sub>
 
 <a id="record-Flipbook"></a>
 
@@ -1012,7 +1085,7 @@ component Flipbook {
 }
 ```
 
-<sub>`api.ogt` line 8335</sub>
+<sub>`api.ogt` line 8392</sub>
 
 <a id="record-FlipbookEvent"></a>
 
@@ -1039,7 +1112,7 @@ event FlipbookEvent {
 }
 ```
 
-<sub>`api.ogt` line 8366</sub>
+<sub>`api.ogt` line 8423</sub>
 
 <a id="record-Skeleton2D"></a>
 
@@ -1095,7 +1168,7 @@ component Skeleton2D {
 }
 ```
 
-<sub>`api.ogt` line 8430</sub>
+<sub>`api.ogt` line 8487</sub>
 
 <a id="record-Skeleton2DEvent"></a>
 
@@ -1126,7 +1199,7 @@ event Skeleton2DEvent {
 }
 ```
 
-<sub>`api.ogt` line 8460</sub>
+<sub>`api.ogt` line 8517</sub>
 
 <a id="record-IkTarget2D"></a>
 
@@ -1177,7 +1250,7 @@ component IkTarget2D {
 }
 ```
 
-<sub>`api.ogt` line 8471</sub>
+<sub>`api.ogt` line 8528</sub>
 
 ## Types
 
@@ -1340,6 +1413,29 @@ enum SpringSpace {
 
 <sub>`api.ogt` line 8153</sub>
 
+<a id="type-SpringColliderShape"></a>
+
+### `SpringColliderShape` (enum)
+
+The shape of a spring collider.
+
+A string: one of the variants below. The zero value is `"sphere"`.
+
+| Variant | Doc |
+|---|---|
+| `"sphere"` | A ball of `radius` about `offset`. |
+| `"capsule"` | A capsule of `radius` about the segment from `offset` to `tail`. |
+
+```ogt
+enum SpringColliderShape {
+  doc "The shape of a spring collider."
+  variant sphere "A ball of `radius` about `offset`."
+  variant capsule "A capsule of `radius` about the segment from `offset` to `tail`."
+}
+```
+
+<sub>`api.ogt` line 8226</sub>
+
 <a id="type-ClipInfo"></a>
 
 ### `ClipInfo` (struct)
@@ -1365,7 +1461,7 @@ struct ClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 8217</sub>
+<sub>`api.ogt` line 8274</sub>
 
 <a id="type-Animation"></a>
 
@@ -1392,7 +1488,7 @@ struct Animation {
 }
 ```
 
-<sub>`api.ogt` line 8227</sub>
+<sub>`api.ogt` line 8284</sub>
 
 <a id="type-GraphDesc"></a>
 
@@ -1416,7 +1512,7 @@ struct GraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 8236</sub>
+<sub>`api.ogt` line 8293</sub>
 
 <a id="type-Rig"></a>
 
@@ -1430,7 +1526,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with `footHeight`, how high its ankles stand above the ground."
 ```
 
-<sub>`api.ogt` line 8250</sub>
+<sub>`api.ogt` line 8307</sub>
 
 <a id="type-HumanBone"></a>
 
@@ -1451,7 +1547,7 @@ struct HumanBone {
 }
 ```
 
-<sub>`api.ogt` line 8259</sub>
+<sub>`api.ogt` line 8316</sub>
 
 <a id="type-Humanoid"></a>
 
@@ -1472,7 +1568,7 @@ struct Humanoid {
 }
 ```
 
-<sub>`api.ogt` line 8265</sub>
+<sub>`api.ogt` line 8322</sub>
 
 <a id="type-HumanoidDesc"></a>
 
@@ -1496,7 +1592,7 @@ struct HumanoidDesc {
 }
 ```
 
-<sub>`api.ogt` line 8271</sub>
+<sub>`api.ogt` line 8328</sub>
 
 <a id="type-RetargetDesc"></a>
 
@@ -1530,7 +1626,7 @@ struct RetargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 8285</sub>
+<sub>`api.ogt` line 8342</sub>
 
 <a id="type-MirrorDesc"></a>
 
@@ -1554,7 +1650,7 @@ struct MirrorDesc {
 }
 ```
 
-<sub>`api.ogt` line 8305</sub>
+<sub>`api.ogt` line 8362</sub>
 
 <a id="type-FlipbookSheet"></a>
 
@@ -1568,7 +1664,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
 ```
 
-<sub>`api.ogt` line 8319</sub>
+<sub>`api.ogt` line 8376</sub>
 
 <a id="type-FlipMode"></a>
 
@@ -1593,7 +1689,7 @@ enum FlipMode {
 }
 ```
 
-<sub>`api.ogt` line 8328</sub>
+<sub>`api.ogt` line 8385</sub>
 
 <a id="type-FlipbookClipInfo"></a>
 
@@ -1624,7 +1720,7 @@ struct FlipbookClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 8374</sub>
+<sub>`api.ogt` line 8431</sub>
 
 <a id="type-FlipbookInfo"></a>
 
@@ -1655,7 +1751,7 @@ struct FlipbookInfo {
 }
 ```
 
-<sub>`api.ogt` line 8386</sub>
+<sub>`api.ogt` line 8443</sub>
 
 <a id="type-Rig2D"></a>
 
@@ -1669,7 +1765,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig2D "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d."
 ```
 
-<sub>`api.ogt` line 8421</sub>
+<sub>`api.ogt` line 8478</sub>
 
 <a id="type-Rig2DClipInfo"></a>
 
@@ -1698,7 +1794,7 @@ struct Rig2DClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 8500</sub>
+<sub>`api.ogt` line 8557</sub>
 
 <a id="type-Rig2DInfo"></a>
 
@@ -1731,7 +1827,7 @@ struct Rig2DInfo {
 }
 ```
 
-<sub>`api.ogt` line 8511</sub>
+<sub>`api.ogt` line 8568</sub>
 
 <a id="type-Skeleton2DBox"></a>
 
@@ -1754,7 +1850,7 @@ struct Skeleton2DBox {
 }
 ```
 
-<sub>`api.ogt` line 8530</sub>
+<sub>`api.ogt` line 8587</sub>
 
 ## Column kinds
 
@@ -1770,6 +1866,7 @@ Each is a factory, `SkeletonAsset(value?, options?)`, that makes one field of a 
 | <a id="column-IkSolver"></a>`IkSolver` | `IkSolver` | `Uint32Array` | 1 | An IkSolver field: the variant's index. |
 | <a id="column-IkSpace"></a>`IkSpace` | `IkSpace` | `Uint32Array` | 1 | An IkSpace field: the variant's index. |
 | <a id="column-SpringSpace"></a>`SpringSpace` | `SpringSpace` | `Uint32Array` | 1 | A SpringSpace field: the variant's index. |
+| <a id="column-SpringColliderShape"></a>`SpringColliderShape` | `SpringColliderShape` | `Uint32Array` | 1 | A SpringColliderShape field: the variant's index. |
 | <a id="column-Rig"></a>`Rig` | `Rig` | `Uint32Array` | 2 | A Rig handle field (0 is none): a humanoid map og.load.rig answered. |
 | <a id="column-FlipbookSheet"></a>`FlipbookSheet` | `FlipbookSheet` | `Uint32Array` | 2 | A FlipbookSheet handle field. |
 | <a id="column-Rig2D"></a>`Rig2D` | `Rig2D` | `Uint32Array` | 2 | A Rig2D handle field. |
@@ -1863,6 +1960,17 @@ column SpringSpace {
 <sub>`api.ogt` line 8159</sub>
 
 ```ogt
+column SpringColliderShape {
+  doc "A SpringColliderShape field: the variant's index."
+  array Uint32Array
+  stride 1
+  value SpringColliderShape
+}
+```
+
+<sub>`api.ogt` line 8232</sub>
+
+```ogt
 column Rig {
   doc "A Rig handle field (0 is none): a humanoid map og.load.rig answered."
   array Uint32Array
@@ -1871,7 +1979,7 @@ column Rig {
 }
 ```
 
-<sub>`api.ogt` line 8252</sub>
+<sub>`api.ogt` line 8309</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -1882,7 +1990,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>`api.ogt` line 8321</sub>
+<sub>`api.ogt` line 8378</sub>
 
 ```ogt
 column Rig2D {
@@ -1893,4 +2001,4 @@ column Rig2D {
 }
 ```
 
-<sub>`api.ogt` line 8423</sub>
+<sub>`api.ogt` line 8480</sub>

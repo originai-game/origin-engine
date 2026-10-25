@@ -9,6 +9,14 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- Spring bone colliders and falloff: `og.SpringCollider` (a sphere or a
+  capsule on a joint, three-vrm's VRMSpringBoneCollider) keeps the tails
+  of that skeleton's `og.SpringBone`s out by its `radius` plus the
+  spring's new `radius`, picked by `layers` against the spring's
+  `colliders`; `og.SpringBone.tipFrequency` and `tipDamping` scale the
+  last joint's frequency and damping, the joints between in proportion.
+  At their defaults a chain swings bit for bit as before; worlds that
+  install og-anim hash differently once (a new type, a new layout).
 - Faster capture PNGs: the probe's `capture`, `sweep` and `screenshot`
   encode with fdeflate (rows filtered `Up`, deflated as they are
   filtered) instead of zlib level 6, 10 to 35 times faster on a

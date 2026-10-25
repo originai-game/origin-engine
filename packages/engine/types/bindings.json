@@ -297,6 +297,12 @@
       "value": "SpringSpace"
     },
     {
+      "name": "SpringColliderShape",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "SpringColliderShape"
+    },
+    {
       "name": "Rig",
       "array": "Uint32Array",
       "stride": 2,
@@ -4244,6 +4250,18 @@
           "tunable": true
         },
         {
+          "name": "tipFrequency",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "tipDamping",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
           "name": "gravity",
           "column": "Vector3",
           "default": {
@@ -4264,6 +4282,17 @@
           "tunable": true
         },
         {
+          "name": "radius",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "colliders",
+          "column": "u32",
+          "default": 4294967295
+        },
+        {
           "name": "lag",
           "column": "f32",
           "default": 0,
@@ -4273,6 +4302,58 @@
     },
     {
       "id": 53,
+      "name": "SpringCollider",
+      "schema": "og.SpringCollider",
+      "module": "anim",
+      "fields": [
+        {
+          "name": "skeleton",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "joint",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "shape",
+          "column": "SpringColliderShape",
+          "default": "sphere"
+        },
+        {
+          "name": "offset",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "tail",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "radius",
+          "column": "f32",
+          "default": 0.1,
+          "tunable": true
+        },
+        {
+          "name": "layers",
+          "column": "u32",
+          "default": 1
+        }
+      ]
+    },
+    {
+      "id": 54,
       "name": "Flipbook",
       "schema": "og.Flipbook",
       "module": "anim",
@@ -4324,7 +4405,7 @@
       ]
     },
     {
-      "id": 54,
+      "id": 55,
       "name": "Skeleton2D",
       "schema": "og.Skeleton2D",
       "module": "anim",
@@ -4379,7 +4460,7 @@
       ]
     },
     {
-      "id": 55,
+      "id": 56,
       "name": "IkTarget2D",
       "schema": "og.IkTarget2D",
       "module": "anim",
@@ -4428,7 +4509,7 @@
       ]
     },
     {
-      "id": 56,
+      "id": 57,
       "name": "Tilemap",
       "schema": "og.Tilemap",
       "module": "tilemap",
@@ -4480,7 +4561,7 @@
       ]
     },
     {
-      "id": 57,
+      "id": 58,
       "name": "AudioSource",
       "schema": "og.AudioSource",
       "module": "audio",
@@ -4631,7 +4712,7 @@
       ]
     },
     {
-      "id": 58,
+      "id": 59,
       "name": "AudioListener",
       "schema": "og.AudioListener",
       "module": "audio",
@@ -4656,7 +4737,7 @@
       ]
     },
     {
-      "id": 59,
+      "id": 60,
       "name": "AudioBusFx",
       "schema": "og.AudioBusFx",
       "module": "audio",
@@ -4751,7 +4832,7 @@
       ]
     },
     {
-      "id": 60,
+      "id": 61,
       "name": "ReverbZone",
       "schema": "og.ReverbZone",
       "module": "audio",
@@ -4809,7 +4890,7 @@
       ]
     },
     {
-      "id": 61,
+      "id": 62,
       "name": "Music",
       "schema": "og.Music",
       "module": "audio",
@@ -4857,7 +4938,7 @@
       ]
     },
     {
-      "id": 62,
+      "id": 63,
       "name": "NavAgent",
       "schema": "og.NavAgent",
       "module": "nav",
@@ -4982,7 +5063,7 @@
       ]
     },
     {
-      "id": 63,
+      "id": 64,
       "name": "Steering",
       "schema": "og.Steering",
       "module": "nav",
@@ -5098,7 +5179,7 @@
       ]
     },
     {
-      "id": 64,
+      "id": 65,
       "name": "AiAgent",
       "schema": "og.AiAgent",
       "module": "ai",
@@ -5145,7 +5226,7 @@
       ]
     },
     {
-      "id": 65,
+      "id": 66,
       "name": "Perception",
       "schema": "og.Perception",
       "module": "ai",
@@ -5256,7 +5337,7 @@
       ]
     },
     {
-      "id": 66,
+      "id": 67,
       "name": "Perceivable",
       "schema": "og.Perceivable",
       "module": "ai",
@@ -5274,7 +5355,7 @@
       ]
     },
     {
-      "id": 67,
+      "id": 68,
       "name": "Terrain",
       "schema": "og.Terrain",
       "module": "terrain",
@@ -5303,7 +5384,7 @@
       ]
     },
     {
-      "id": 68,
+      "id": 69,
       "name": "TerrainScatter",
       "schema": "og.TerrainScatter",
       "module": "terrain",
@@ -5372,7 +5453,7 @@
       ]
     },
     {
-      "id": 69,
+      "id": 70,
       "name": "VideoPlayer",
       "schema": "og.VideoPlayer",
       "module": "video",
@@ -5424,7 +5505,7 @@
       ]
     },
     {
-      "id": 70,
+      "id": 71,
       "name": "PathFollower",
       "schema": "og.PathFollower",
       "module": "path",
@@ -5478,7 +5559,7 @@
       ]
     },
     {
-      "id": 71,
+      "id": 72,
       "name": "Timeline",
       "schema": "og.Timeline",
       "module": "timeline",
@@ -5512,7 +5593,7 @@
       ]
     },
     {
-      "id": 72,
+      "id": 73,
       "name": "PlayerInput",
       "schema": "og.PlayerInput",
       "module": "net",

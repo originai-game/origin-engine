@@ -816,11 +816,22 @@ each joint's tail is a damped spring (`frequency` 3 Hz, `damping` 0.3;
 length. `space` world (default) lags behind the entity's motion; model
 ignores it (a teleport does not whip the tail). Applied last, after IK
 and look-at; `lag` reads back how far the chain trails. Deterministic and
-saved with the world.
+saved with the world. `tipFrequency` and `tipDamping` (1) scale the last
+joint's frequency and damping, the joints between in proportion: 0.25 is
+a strand soft at its tip on a stiff root.
+
+Keep hair out of the head with `og.SpringCollider { skeleton, joint,
+shape, offset, tail, radius }` on its own entity, a sphere about `offset`
+or a capsule from `offset` to `tail` in the joint's frame: every tail of
+that skeleton's springs is pushed out of it to its `radius` plus the
+spring's `radius`, keeping its bone's length. A collider's `layers` (1)
+must meet the spring's `colliders` (all) to count.
 
 ```ts
 const tail = must(world.spawn({ name: "hero-tail" }));
-must(world.insert(tail, og.SpringBone, { skeleton: body, joint: TAIL_TIP, bones: 3, gravity: { x: 0, y: -4, z: 0 } }));
+must(world.insert(tail, og.SpringBone, { skeleton: body, joint: TAIL_TIP, bones: 3, gravity: { x: 0, y: -4, z: 0 }, tipFrequency: 0.5, radius: 0.02 }));
+const hips = must(world.spawn({ name: "hero-hips-collider" }));
+must(world.insert(hips, og.SpringCollider, { skeleton: body, joint: HIPS, shape: "capsule", offset: { x: -0.15, y: 0, z: 0 }, tail: { x: 0.15, y: 0, z: 0 }, radius: 0.12 }));
 ```
 
 `templates/archetypes/third-person` (`src/anim.ts`: a 1D blend by speed,

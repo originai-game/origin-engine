@@ -5861,6 +5861,9 @@
         "SpringSpace",
         "SpringSpace",
         "SpringBone",
+        "SpringColliderShape",
+        "SpringColliderShape",
+        "SpringCollider",
         "AnimationEvent",
         "ClipInfo",
         "Animation",
@@ -24735,6 +24738,22 @@
           "maximum": 2,
           "x-og-tunable": true
         },
+        "tipFrequency": {
+          "type": "number",
+          "description": "The last joint's frequency as a multiple of `frequency`, the joints between in proportion along the chain (1: every joint alike; 0.25: the tip springs back four times slower than the top, a soft strand on a stiff root).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-tunable": true
+        },
+        "tipDamping": {
+          "type": "number",
+          "description": "The last joint's damping ratio as a multiple of `damping`, the joints between in proportion along the chain (1: every joint alike).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-tunable": true
+        },
         "gravity": {
           "$ref": "#/$defs/Vector3",
           "description": "An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop.",
@@ -24758,12 +24777,103 @@
           "maximum": 1,
           "x-og-tunable": true
         },
+        "radius": {
+          "type": "number",
+          "description": "The tails' radius against og.SpringCollider (three-vrm's hitRadius): a tail stays this far outside every collider it meets (0: a point).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "colliders": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The og.SpringCollider layers the tails are pushed out of, as bits: a collider on the same skeleton counts when its `layers` meet these.",
+          "default": 4294967295
+        },
         "lag": {
           "type": "number",
           "description": "Written: the farthest a tail is from its animated place this tick.",
           "default": 0,
           "x-og-unit": "m",
           "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "SpringColliderShape": {
+      "x-og-kind": "enum",
+      "x-og-module": "anim",
+      "description": "The shape of a spring collider.",
+      "type": "string",
+      "enum": [
+        "sphere",
+        "capsule"
+      ],
+      "x-og-variants": {
+        "sphere": "A ball of `radius` about `offset`.",
+        "capsule": "A capsule of `radius` about the segment from `offset` to `tail`."
+      }
+    },
+    "SpringCollider": {
+      "x-og-kind": "component",
+      "x-og-module": "anim",
+      "description": "A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton (a head, a chest, an upper arm), so hair, ears and tails do not swing through the body. Each tick, after a tail of an og.SpringBone of the same skeleton has stepped and before its joint turns, the tail is pushed out of every collider whose `layers` meet the spring's `colliders` (in query order) to `radius` plus the spring's `radius`, keeping its bone's length. Put it on its own entity, one per shape; colliders follow the pose as it is when a chain is swung, so one on a joint an earlier chain swung follows that swing.",
+      "type": "object",
+      "properties": {
+        "skeleton": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity with the og.Skeleton whose spring bones this keeps out.",
+          "default": 0
+        },
+        "joint": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The joint the collider rides on (an index into the skin's joints).",
+          "default": 0,
+          "minimum": 0
+        },
+        "shape": {
+          "$ref": "#/$defs/SpringColliderShape",
+          "description": "A sphere about `offset`, or a capsule from `offset` to `tail`.",
+          "default": "sphere"
+        },
+        "offset": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The sphere's centre, or the capsule's first end, in the joint's frame.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "tail": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The capsule's other end, in the joint's frame (a sphere ignores it).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "radius": {
+          "type": "number",
+          "description": "The radius, in metres of the skeleton's model space (the joint's own scale does not apply).",
+          "default": 0.1,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The layers this collider is on, as bits (a spring bone's `colliders` picks them).",
+          "default": 1
         }
       },
       "additionalProperties": false

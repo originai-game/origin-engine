@@ -339,6 +339,7 @@ pub fn install(world: &mut World) -> Result<AnimationSystem> {
     world.register::<JointLimit>()?;
     world.register::<FootLock>()?;
     world.register::<SpringBone>()?;
+    world.register::<SpringCollider>()?;
     world.register::<AnimationEvent>()?;
     let shared = Arc::new(Mutex::new(Shared::default()));
     let desc = SystemDesc::new(SYSTEM_NAME)
@@ -351,6 +352,7 @@ pub fn install(world: &mut World) -> Result<AnimationSystem> {
         .read::<JointLimit>()
         .write::<FootLock>()
         .write::<SpringBone>()
+        .read::<SpringCollider>()
         .write::<Transform>()
         .write::<AnimationEvent>()
         .query(QueryDesc::new().read::<Skeleton>())
@@ -366,7 +368,8 @@ pub fn install(world: &mut World) -> Result<AnimationSystem> {
         .query(QueryDesc::new().read::<LookAt>())
         .query(QueryDesc::new().read::<JointLimit>())
         .query(QueryDesc::new().read::<FootLock>())
-        .query(QueryDesc::new().read::<SpringBone>());
+        .query(QueryDesc::new().read::<SpringBone>())
+        .query(QueryDesc::new().read::<SpringCollider>());
     let s = shared.clone();
     world.add_system(desc, move |ctx| run(ctx, &s))?;
     world.add_state_block(SYSTEM_NAME, Box::new(AnimState(shared.clone())))?;
@@ -1086,6 +1089,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     let joint_limits = entities(ctx, 7)?;
     let foot_locks = entities(ctx, 8)?;
     let spring_bones = entities(ctx, 9)?;
+    let spring_colliders = entities(ctx, 10)?;
 
     let mut sh = lock(shared);
     // Read every skeleton entity in entity order, up to the first one that
@@ -1204,6 +1208,14 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
         }
         aimed.push((l, look));
     }
+    // Spring colliders, in query order, with the node each rides on.
+    let mut colliders: Vec<(u32, SpringCollider)> = Vec::with_capacity(spring_colliders.len());
+    for &c in &spring_colliders {
+        let col: SpringCollider = ctx.get(c)?;
+        if let Some(w) = work.iter().find(|w| w.entity.to_bits() == col.skeleton) {
+            colliders.push((joint(w, col.joint, "og.SpringCollider.joint")?, col));
+        }
+    }
     // Spring bones, last (they follow the final pose of their parents), in
     // query order.
     let mut springs: BTreeMap<u64, SpringState> = BTreeMap::new();
@@ -1216,7 +1228,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
                 .springs
                 .get(&s.to_bits())
                 .filter(|p| p.skeleton == sb.skeleton && p.space == sb.space);
-            springs.insert(s.to_bits(), spring(w, &mut sb, prev, dt)?);
+            springs.insert(s.to_bits(), spring(w, &mut sb, prev, &colliders, dt)?);
         }
         swung.push((s, sb));
     }
@@ -1451,13 +1463,52 @@ fn tail_of(asset: &SkeletonAsset, pose: &[Trs], chain: &[u32], i: usize) -> Vec3
     }
 }
 
+/// A spring collider placed for one chain: in the spring's frame, a
+/// segment (a point for a sphere) and the distance a tail keeps from it.
+struct Placed {
+    a: Vec3,
+    b: Vec3,
+    reach: f32,
+}
+
+/// The point of segment `a`…`b` nearest `x`.
+fn nearest_on_segment(a: Vec3, b: Vec3, x: Vec3) -> Vec3 {
+    let ab = b - a;
+    let len2 = ab.dot(ab);
+    if len2 <= 0.0 {
+        return a;
+    }
+    a + ab * ((x - a).dot(ab) / len2).clamp(0.0, 1.0)
+}
+
+/// Where a tail at `x`, `length` from `head`, comes to rest outside a ball
+/// of `reach` about `centre`: the point nearest `x` on the circle where the
+/// bone's sphere about `head` meets the ball's surface. None when the bone
+/// cannot clear the ball (its head too deep) or `x` lies on the axis.
+fn push_out(head: Vec3, length: f32, centre: Vec3, reach: f32, x: Vec3) -> Option<Vec3> {
+    let hc = centre - head;
+    let d = hc.length();
+    if d < 1e-9 || d + length < reach || d > length + reach {
+        return None;
+    }
+    let n = hc / d;
+    let a = (length * length - reach * reach + d * d) / (2.0 * d);
+    let rho = (length * length - a * a).max(0.0).sqrt();
+    let off = x - head;
+    let side = off - n * off.dot(n);
+    let l = side.length();
+    (l > 1e-9).then(|| head + n * a + side * (rho / l))
+}
+
 /// One spring chain this tick: each joint's tail, top first, stepped
 /// towards where the pose (with the joints above already swung) puts it,
-/// held at the bone's length, and the joint turned to point at it.
+/// held at the bone's length, pushed out of the colliders it meets (and
+/// held at the length again), and the joint turned to point at it.
 fn spring(
     w: &mut Work,
     sb: &mut SpringBone,
     prev: Option<&SpringState>,
+    colliders: &[(u32, SpringCollider)],
     dt: f32,
 ) -> Result<SpringState> {
     let node = joint(w, sb.joint, "og.SpringBone.joint")?;
@@ -1477,10 +1528,44 @@ fn spring(
     let prev = prev.filter(|p| p.tails.len() == chain.len());
     // Implicit Euler on x'' = ω²(target − x) − 2ζω x' + g: stable at any
     // frequency and tick.
-    let omega = std::f32::consts::TAU * sb.frequency.max(0.0);
-    let (k, c) = (omega * omega, 2.0 * sb.damping.max(0.0) * omega);
+    // Per joint, top to tip, frequency and damping move linearly from
+    // theirs to tipFrequency and tipDamping times theirs (1 and 1: exactly
+    // the chain's own, for every joint).
+    let (tip_f, tip_d) = (sb.tip_frequency.max(0.0), sb.tip_damping.max(0.0));
+    let along = |i: usize| match chain.len() {
+        1 => 0.0,
+        n => i as f32 / (n - 1) as f32,
+    };
+    let coefficients = |i: usize| {
+        let t = along(i);
+        let omega = std::f32::consts::TAU * sb.frequency.max(0.0) * (1.0 + (tip_f - 1.0) * t);
+        let zeta = sb.damping.max(0.0) * (1.0 + (tip_d - 1.0) * t);
+        (omega * omega, 2.0 * zeta * omega)
+    };
     let weight = sb.weight.clamp(0.0, 1.0);
     let model = w.asset.model_space(&w.pose.nodes);
+    // The colliders of this skeleton the chain is kept out of, placed in
+    // the spring's frame from the pose as it is when the chain starts.
+    let scale = frame.scale.abs().max_element();
+    let radius = sb.radius.max(0.0);
+    let placed: Vec<Placed> = colliders
+        .iter()
+        .filter(|(_, c)| c.skeleton == sb.skeleton && c.layers & sb.colliders != 0)
+        .map(|&(node, c)| {
+            let m = frame.mul(&model[node as usize]);
+            let a = m.transform_point(c.offset);
+            let b = if c.shape == SPRING_CAPSULE {
+                m.transform_point(c.tail)
+            } else {
+                a
+            };
+            Placed {
+                a,
+                b,
+                reach: (c.radius.max(0.0) + radius) * scale,
+            }
+        })
+        .collect();
     let mut parent = match w.asset.nodes[chain[0] as usize].parent {
         NONE => Trs::IDENTITY,
         p => model[p as usize],
@@ -1502,17 +1587,33 @@ fn spring(
         }
         let x0 = x;
         if dt > 0.0 {
+            let (k, c) = coefficients(i);
             v = (v + ((target - x) * k + sb.gravity) * dt) / (1.0 + dt * c + dt * dt * k);
             x += v * dt;
         }
         // Held at the bone's length from the head.
-        let d = x - head;
-        let l = d.length();
-        x = if l > 1e-9 {
-            head + d * (length / l)
-        } else {
-            target
+        let hold = |x: Vec3| {
+            let d = x - head;
+            let l = d.length();
+            if l > 1e-9 {
+                head + d * (length / l)
+            } else {
+                target
+            }
         };
+        x = hold(x);
+        // Out of every collider it meets, in order, still at the length.
+        for p in &placed {
+            let near = nearest_on_segment(p.a, p.b, x);
+            if (x - near).length() < p.reach {
+                x = push_out(head, length, near, p.reach, x).unwrap_or_else(|| {
+                    // The bone cannot clear it (its head is inside): out
+                    // from the centre, then back at the length.
+                    let d = x - near;
+                    hold(near + d.normalize_or((x - head).normalize_or(Vec3::Y)) * p.reach)
+                });
+            }
+        }
         if dt > 0.0 {
             v = (x - x0) / dt;
         }
