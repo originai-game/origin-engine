@@ -55,7 +55,7 @@ pub fn skeleton() -> SkeletonAsset {
     ];
     let mut s = SkeletonAsset {
         nodes,
-        skins: Vec::new(),
+        ..Default::default()
     };
     let model = s.model_matrices(&s.rest_pose());
     let joints: Vec<u32> = (1..13).collect();
@@ -376,7 +376,7 @@ pub fn skeleton_from_model(defs: &[NodeDef], scale: f32) -> SkeletonAsset {
     }
     let mut s = SkeletonAsset {
         nodes,
-        skins: Vec::new(),
+        ..Default::default()
     };
     let mm = s.model_matrices(&s.rest_pose());
     let joints: Vec<u32> = (1..s.nodes.len() as u32).collect();

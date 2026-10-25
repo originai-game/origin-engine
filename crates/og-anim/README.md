@@ -30,9 +30,9 @@ Dependencies: og-core, og-ecs, glam. No serde, no C, builds for
 | Item | What it is |
 |---|---|
 | `install(&mut World) -> AnimationSystem` | registers the types, schedules `og.anim` here in the schedule, adds the `og.anim` state block |
-| `AnimationSystem` | `add_skeleton`/`add_clip`/`add_graph(handle, asset)` (handle ≠ 0; validated), `remove_*`, `skeleton`/`clip`/`graph(handle)`, `pose(entity)` (final local pose), `output(entity) -> AnimOutput`, `write_outputs(&mut dyn PaletteSink)` |
-| `SkeletonAsset { nodes, skins }`, `SkeletonNode`, `Skin` | a rig: every glTF node in topological order with its rest TRS and mesh, skins with joints and inverse bind matrices; `rest_pose`, `model_space`, `model_matrices`, `palette`, `joint_node`, `node` |
-| `ClipAsset`, `Channel`, `ChannelPath`, `ClipEvent` | a clip resampled at `rate` (with `source_rate` kept); `frame_pos`, `vec3`, `quat`, `weight`; `frames_for` |
+| `AnimationSystem` | `add_skeleton`/`add_clip`/`add_graph(handle, asset)` (handle ≠ 0; validated), `remove_*`, `skeleton`/`clip`/`graph(handle)`, `pose(entity)` (final local pose), `visible(entity)` (its per-node flags), `output(entity) -> AnimOutput` (palette, weights, `drawn` per node), `write_outputs(&mut dyn PaletteSink)` |
+| `SkeletonAsset { nodes, skins, hidden }`, `SkeletonNode`, `Skin` | a rig: every glTF node in topological order with its rest TRS and mesh, skins with joints and inverse bind matrices, the nodes hidden at rest; `rest_pose`, `rest_visibility`, `drawn`, `model_space`, `model_matrices`, `palette`, `joint_node`, `node` |
+| `ClipAsset`, `Channel`, `ChannelPath`, `ClipEvent` | a clip resampled at `rate` (with `source_rate` kept); `frame_pos`, `vec3`, `quat`, `weight`, `visible`; `frames_for` (§Visibility) |
 | `GraphAsset` (`parse(text, resolve)`), `Motion`, `Layer`, `State`, `Transition`, `Condition`, `MaskEntry` | the `animgraph` asset; `Layer::node_weights(skeleton)` resolves a mask |
 | `Trs`, `nlerp`, `rotation_arc`, `twist_y` | deterministic transform math |
 | `two_bone`, `fabrik`, `ik_chain`, `look_at`, `JointLimit::clamp` | the solvers and the limit on a pose (used by the system, public for tools); each solver takes the chain's limits aligned with it, or `&[]` |
@@ -319,6 +319,36 @@ fraction (cycles since entry restart at 0, so `exit` counts from the
 transition): a walk-to-run blend keeps the feet in step. Nothing new is
 saved: the phases already are.
 
+## Visibility
+
+A node has a visible flag, and a clip can animate it: a
+`ChannelPath::Visibility` channel (code 4) is one lane per frame, 1
+visible or 0 hidden, always STEP (`ClipAsset::validate` refuses anything
+else), sampled as held from frame to frame (`ClipAsset::visible`). A
+pose carries the flags (`Pose::visible`, from the skeleton's rest
+visibility: `SkeletonAsset::hidden`, the cook's `KHR_node_visibility`), and
+a node is drawn when it and every ancestor is visible
+(`SkeletonAsset::drawn`, three.js's and `KHR_node_visibility`'s reading),
+which `AnimOutput::drawn` hands the renderer: og-runtime draws no
+primitive of a node that is not drawn, so a hidden node costs no draw
+(a `.vox` frame folded away, og-cook's `.vox` row).
+
+A flag is not a quantity, so a blend chooses (`pose.rs`): two poses
+(`lerp_to` by `t`, a fade, a layer, the player over the graph) take the
+heavier's flags, `other`'s from `t ≥ 0.5` (a masked layer per node by
+`t × mask`); a blend of many (a blend tree's children) the heaviest
+input's, the later on a tie; an additive layer sets a node's flag to its
+clip's where the clip's frame differs from its reference frame (the layer
+toggles it) and the layer's weight there is at least 0.5. A cross-fade
+between two mesh-swap clips therefore swaps at its middle, never drawing
+both frames or neither (`tests/visibility.rs`). Mirroring moves a
+visibility channel to the node's counterpart; retargeting puts it on the
+target's node of the same humanoid bone, else the node of the same name
+(a prop), and drops it where the target has neither. The final flags are
+in the state block (tagged section 3: per skeleton entity with a hidden
+node, its hidden nodes; written only when some node is hidden, so a
+world without visibility saves, and hashes, as before).
+
 ## Palette contract with og-render
 
 `AnimationSystem::write_outputs(&mut dyn PaletteSink)` hands, per animated
@@ -334,6 +364,9 @@ entity in entity order:
   extraction converts).
 - `morph_weights(entity, mesh, &[f32; 8])` for entities with
   `og.Blendshapes`: the weights for the glTF mesh `mesh`'s targets.
+- `AnimOutput::drawn`: per skeleton node, whether its primitives are
+  drawn (§Visibility); the renderer's extraction skips the parts of a
+  node where it is false.
 
 Vertex data comes from the cook, per model primitive, indexed as
 `CookedModel::primitives` and per cooked vertex in the model blob's order:
@@ -361,7 +394,8 @@ phase as whole cycles plus fraction, seconds in state, previous state and
 phase, fade), then, after the entities and only when non-empty, tagged
 sections: 1 the foot locks (per `og.FootLock` entity holding or
 releasing a foot: the skeleton, held or releasing, the point, the release
-time), 2 the interrupt guards of fades in progress (entity, layer, rule). `snapshot`, `restore` and `world_hash` therefore cover the
+time), 2 the interrupt guards of fades in progress (entity, layer, rule),
+3 the hidden nodes of each skeleton entity that has one (§Visibility). `snapshot`, `restore` and `world_hash` therefore cover the
 animation; a restore recomputes the palettes from the restored poses. All
 writes happen after every computation, so a failing tick changes nothing.
 
@@ -382,6 +416,7 @@ chain; palettes use exact `Mat4` products.
 | `footlock.rs` | the walk's `FootPlants` are a few frames of the cycle; a stomp (half a cycle on a standing leg while root motion carries the walker on) holds the locked foot still to 1e-6 m over every plant (it slides 0.25 m without the lock), across a cross-fade to a jog started mid-plant, and a lifted foot is back on its animation 10 ticks later; a snapshot mid-plant restores to the same hashes and foot positions |
 | `graph.rs` (interruption) | per `interrupt` rule, which of the new state's, the source's and an `any` transition cut a 0.5 s fade at once and which wait for it to complete; a bad rule refused with its line; a guarded fade restored from a snapshot continues to the same hashes and states |
 | `layers.rs` | a masked override layer leaves the nodes outside its branches bit for bit, takes a named node's whole branch and blends a half-weight branch halfway; an additive layer's mask; a bad mask weight refused with its line; a synced upper layer samples its clip at the base's phase (not its own); a transition inside a group continues from the old state's phase |
+| `visibility.rs` | a visibility channel is held to its frame's end (hidden at 96 % of the way to a shown frame) and hides the node's descendants; a LINEAR or fractional one is refused; `lerp_to` takes the other pose's flags from 0.5, a masked layer per node by its weight, an additive layer only the flags its clip toggles; a 0.5 s cross-fade in a player swaps once, at its middle (tick 13–17 of 30), never drawing both frames or neither; mirroring moves a channel to the other side and back; retargeting the walk onto the Mixamo rig carries one by bone (the left upper arm) and one by name (a sword); two runs give the same hashes, and a snapshot at tick 20 (a frame folded away) restores to the same hash and outputs (`drawn`) and continues to the same hashes |
 | `retarget.rs` | the schemes detected from the walker's and a Mixamo rig's names, rig files (forced scheme, a bone named and one removed, mistakes by line); the walk retargeted onto longer legs keeps planted feet on the ground and still, without foot IK it misses by over 1 cm; the hips' travel scaled; an A-posed arm waves parallel to the T-posed one; the clip plays on the tall rig; side tokens swap in every scheme's names; a mirrored walk moves each foot as the other did, reflected, within 1e-5 (on the walker and on the tall Mixamo rig), the hips' sway flips, and mirroring twice gives the walk back |
 
 `crates/og-cook/tests/anim_compress.rs` checks compressed clips against

@@ -48,6 +48,10 @@ pub struct AnimOutput {
     /// The mesh the weights are for ([`NONE`] without `og.Blendshapes`).
     pub mesh: u32,
     pub weights: [f32; BLENDSHAPES],
+    /// Per skeleton node: whether it is drawn (it and every ancestor
+    /// visible, [`SkeletonAsset::drawn`]). The renderer skips a node's
+    /// primitives where this is false, so a hidden node costs no draw.
+    pub drawn: Vec<bool>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -119,6 +123,8 @@ struct EntityState {
     pose: Vec<Trs>,
     /// The final blendshape weights of the last tick.
     weights: [f32; BLENDSHAPES],
+    /// The final per-node visible flags of the last tick.
+    visible: Vec<bool>,
     player: PlayerState,
     graph: GraphState,
 }
@@ -238,6 +244,7 @@ impl Shared {
                         palette,
                         mesh: st.mesh,
                         weights: st.weights,
+                        drawn: skel.drawn(&st.visible),
                     },
                 );
             }
@@ -390,6 +397,15 @@ impl AnimationSystem {
             .map(|s| s.pose.clone())
     }
 
+    /// The final per-node visible flags of `entity` in the last tick (the
+    /// pose's own; [`AnimOutput::drawn`] folds in the ancestors').
+    pub fn visible(&self, entity: Entity) -> Option<Vec<bool>> {
+        lock(&self.shared)
+            .states
+            .get(&entity.to_bits())
+            .map(|s| s.visible.clone())
+    }
+
     /// What the last tick produced for `entity`.
     pub fn output(&self, entity: Entity) -> Option<AnimOutput> {
         lock(&self.shared).outputs.get(&entity.to_bits()).cloned()
@@ -441,6 +457,8 @@ fn read_vec3(r: &mut Reader) -> Result<Vec3> {
 const SECTION_LOCKS: u32 = 1;
 /// Graph layers whose fade a transition's `interrupt` guards.
 const SECTION_GUARDS: u32 = 2;
+/// Skeleton entities with a hidden node: the hidden nodes of each.
+const SECTION_HIDDEN: u32 = 3;
 
 fn guard_code(g: Interrupt) -> u8 {
     match g {
@@ -539,6 +557,26 @@ fn encode(
             w.u8(g);
         }
     }
+    let hidden: Vec<(u64, Vec<u32>)> = states
+        .iter()
+        .filter_map(|(&e, s)| {
+            let h: Vec<u32> = (0..s.visible.len() as u32)
+                .filter(|&i| !s.visible[i as usize])
+                .collect();
+            (!h.is_empty()).then_some((e, h))
+        })
+        .collect();
+    if !hidden.is_empty() {
+        w.u32(SECTION_HIDDEN);
+        w.u32(hidden.len() as u32);
+        for (e, nodes) in hidden {
+            w.u64(e);
+            w.u32(nodes.len() as u32);
+            for n in nodes {
+                w.u32(n);
+            }
+        }
+    }
 }
 
 fn decode(bytes: &[u8]) -> Result<Saved> {
@@ -613,6 +651,7 @@ fn decode(bytes: &[u8]) -> Result<Saved> {
                 guard: Interrupt::Any,
             });
         }
+        let visible = vec![true; pose.len()];
         saved.states.insert(
             e,
             EntityState {
@@ -621,6 +660,7 @@ fn decode(bytes: &[u8]) -> Result<Saved> {
                 mesh,
                 pose,
                 weights,
+                visible,
                 player,
                 graph: GraphState { asset, layers },
             },
@@ -689,10 +729,33 @@ fn decode(bytes: &[u8]) -> Result<Saved> {
                     l.guard = guard;
                 }
             }
+            SECTION_HIDDEN => {
+                let n = r.count(12)?;
+                for _ in 0..n {
+                    let e = r.u64()?;
+                    let count = r.count(4)?;
+                    let s = saved.states.get_mut(&e).ok_or_else(|| {
+                        Error::new(
+                            ErrorKind::Parse,
+                            format!("og.anim hidden nodes for entity {e}, which it lacks"),
+                        )
+                    })?;
+                    for _ in 0..count {
+                        let node = r.u32()?;
+                        let v = s.visible.get_mut(node as usize).ok_or_else(|| {
+                            Error::new(
+                                ErrorKind::Parse,
+                                format!("og.anim entity {e} hides node {node}, past its pose"),
+                            )
+                        })?;
+                        *v = false;
+                    }
+                }
+            }
             t => {
                 return Err(Error::new(
                     ErrorKind::Parse,
-                    format!("og.anim state section {t}; this engine reads up to {SECTION_GUARDS}"),
+                    format!("og.anim state section {t}; this engine reads up to {SECTION_HIDDEN}"),
                 ));
             }
         }
@@ -798,6 +861,7 @@ fn gather(
             mesh: NONE,
             pose: asset.rest_pose(),
             weights: [0.0; BLENDSHAPES],
+            visible: asset.rest_visibility(),
             player: PlayerState::default(),
             graph: GraphState::default(),
         });
@@ -1072,6 +1136,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
         }
         w.state.pose = w.pose.nodes;
         w.state.weights = w.pose.weights;
+        w.state.visible = w.pose.visible;
         outputs.insert(
             w.entity.to_bits(),
             AnimOutput {
@@ -1079,6 +1144,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
                 palette,
                 mesh: w.state.mesh,
                 weights: w.state.weights,
+                drawn: w.asset.drawn(&w.state.visible),
             },
         );
         states.insert(w.entity.to_bits(), w.state);

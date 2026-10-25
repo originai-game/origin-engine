@@ -663,7 +663,8 @@ fn reflect_rotation(q: Quat) -> Quat {
 /// reflected, applied to its own rest), so left and right bone frames need
 /// not mirror each other; translations are the counterpart's travel from
 /// rest, reflected (root motion's x and yaw flip); scales and blendshape
-/// weights are copied. Assumes a symmetric rest pose. A node gets a channel
+/// weights are copied, visibility channels move to the counterpart.
+/// Assumes a symmetric rest pose. A node gets a channel
 /// when it or its counterpart is animated; a sided node without a
 /// counterpart gets none (it keeps its rest pose). Mirroring twice gives
 /// the clip back. Same name, duration, rate and markers.
@@ -749,6 +750,9 @@ pub fn mirror(skeleton: &SkeletonAsset, clip: &ClipAsset) -> Result<ClipAsset> {
             });
         }
     }
+    channels.extend(crate::visibility::mirrored(
+        skeleton, clip, &binding, &pairs,
+    ));
     let out = ClipAsset {
         channels,
         ..clip.clone()
@@ -881,7 +885,8 @@ fn set_model_rotation(
 /// hips; bones mapped on one rig only are left out, and target nodes no
 /// mapped bone covers keep their rest pose. A target bone gets a channel
 /// when the clip animates its source bone (and both legs' bones when their
-/// feet are solved), so a partial clip (a wave) stays partial.
+/// feet are solved), so a partial clip (a wave) stays partial. Visibility
+/// channels follow their bone, else their node's name.
 pub fn retarget(
     source: &SkeletonAsset,
     source_map: &HumanoidMap,
@@ -1133,6 +1138,9 @@ pub fn retarget(
             samples: std::mem::take(&mut rotations[k]),
         });
     }
+    channels.extend(crate::visibility::retargeted(
+        source, source_map, target, target_map, clip, &binding,
+    ));
     let out = ClipAsset {
         name: clip.name.clone(),
         duration: clip.duration,
