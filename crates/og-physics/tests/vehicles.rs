@@ -10,7 +10,9 @@
 //! rays stand a car on another whose layers it does not meet (Meridian
 //! Loop's FINDINGS #3); the defaults barely move a car of a car's mass (#1);
 //! a car tips over at full lock with nothing to stop it (#2); a sliding
-//! tyre is not told (#16).
+//! tyre is not told (#16); a chassis with locked axes sizes its tyres'
+//! impulses with the mass it does not have (a car on rails rolls on
+//! turned wheels).
 
 mod support;
 
@@ -326,4 +328,53 @@ fn full_lock_at_speed_tips_a_tall_car_only_with_roll_influence_and_a_high_centre
     assert!(lowest < 0.0, "rollInfluence 0.1 left it upright ({lowest})");
     let (lowest, ..) = trial(0.1, -0.7);
     assert!(lowest > 0.95, "the low centre of mass leaned to {lowest}");
+}
+
+#[test]
+fn a_car_on_rails_with_its_front_wheels_turned_scrubs_them() {
+    // The chassis can move only along z (x and every rotation locked) and
+    // its front wheels are steered a little, s = 0.05 × maxSteer: they
+    // roll at an angle to the only way the car can go, so they slide
+    // sideways at v sin s and their side impulse is all spent along z. A
+    // side impulse sized with the chassis's free inverse mass (1/m, where
+    // only sin²s of it moves the chassis) removes 0.2 sin²s of that slide
+    // a tick, a drag of 2 × 0.2 m sin²s v / dt = 18.2 v N against the
+    // rear wheels' 2 × 2,500 (1 − v/40): 34.9 m/s, no tyre sliding. Sized
+    // with its effective inverse mass (sin²s/m) the impulse wants
+    // 0.2 m v / sin s, past the friction circle's cap of
+    // (m g / 4) dt × 5 grip: both front tyres slide, each dragging
+    // (m g / 4) × 5 grip × sin s, and 5,000 (1 − v/40) = 1,349 N at
+    // 29.2 m/s.
+    let (mut w, _) = world(Physics::default(), 1);
+    road(&mut w);
+    let rails = LOCK_TRANSLATION_X | LOCK_ROTATION_X | LOCK_ROTATION_Y | LOCK_ROTATION_Z;
+    let car = car_at(
+        &mut w,
+        Vec3::new(0.0, 1.2, 0.0),
+        RigidBody {
+            lock: rails,
+            ..RigidBody::dynamic()
+        },
+        Collider::cuboid(Vec3::new(1.8, 0.6, 4.0)),
+        Vehicle::default(),
+    );
+    run(&mut w, 60);
+    set(&mut w, car, |v| {
+        v.throttle = 1.0;
+        v.steer = 0.05;
+    });
+    // Eight seconds is the speed's time constant (1,000 kg / 125 N s/m).
+    run(&mut w, 3000);
+    let d = Vehicle::default();
+    let (m, g, sin_s) = (1000.0f32, 9.81f32, (0.05 * d.max_steer).sin());
+    let drag = 2.0 * (m * g / 4.0) * 5.0 * d.grip * sin_s;
+    let engine = 2.0 * d.engine_force;
+    let expected = (engine - drag) / (engine / d.max_speed);
+    let v = vehicle(&w, car);
+    assert!(
+        (v.speed - expected).abs() < 0.3,
+        "{} m/s, the scrub predicts {expected}",
+        v.speed
+    );
+    assert!(v.slip > 0.5, "the front tyres slide: {v:?}");
 }

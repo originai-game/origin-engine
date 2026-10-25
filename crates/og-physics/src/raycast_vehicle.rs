@@ -7,7 +7,10 @@
 //! two fields public, `crate::` paths spelled through the public API, the
 //! 2D branch and profiling dropped, and its passes regrouped as one pass
 //! per wheel (place, cast, spring; then size the friction; then apply), the
-//! arithmetic in upstream's order so a world's hash is the same.
+//! arithmetic in upstream's order so a world's hash is the same. Upstream's
+//! TODOs are done: the friction impulses' denominators take the bodies'
+//! effective inverse mass (locked axes, a non-dynamic ground) as rapier's
+//! solver does.
 
 use rapier3d::dynamics::{RigidBody, RigidBodyHandle, RigidBodySet};
 use rapier3d::geometry::{ColliderHandle, ColliderSet, Ray};
@@ -642,8 +645,7 @@ impl<'a> WheelContactPoint<'a> {
             let dpt = pos - body.center_of_mass();
             let gcross = dpt.gcross(n);
             let v = (body.mass_properties().effective_world_inv_inertia * gcross).gcross(dpt);
-            // TODO: take the effective inv mass into account instead of the inv_mass?
-            body.mass_properties().local_mprops.inv_mass + n.dot(v)
+            inv_mass_along(body, n) + n.dot(v)
         }
         let denom0 = impulse_denominator(body0, friction_position_world, friction_direction_world);
         let denom1 = body1
@@ -682,6 +684,22 @@ impl<'a> WheelContactPoint<'a> {
     }
 }
 
+/// `body`'s inverse mass along the unit direction `n` as rapier's solver
+/// takes it, `n · (effective_inv_mass ∘ n)`: a locked translation axis and
+/// a body that is not dynamic contribute nothing (an additional mass is
+/// already in the local mass properties). Where the effective inverse mass
+/// is the same on every axis it is that scalar exactly, `n` being unit, so
+/// a free chassis is not moved by the rounding of |n|².
+fn inv_mass_along(body: &RigidBody, n: Vector) -> Real {
+    let mprops = body.mass_properties();
+    let im = mprops.effective_inv_mass;
+    if im == Vector::splat(mprops.local_mprops.inv_mass) {
+        mprops.local_mprops.inv_mass
+    } else {
+        n.dot(im * n)
+    }
+}
+
 /// The side impulse along `normal` at `pt` that removes
 /// [`SIDE_FRICTION_DAMPING`] of the chassis's velocity relative to `ground`
 /// there: a dynamic ground body shares the impulse (its inverse mass and
@@ -696,15 +714,13 @@ fn side_impulse(
     let dpt1 = pt - chassis.center_of_mass();
     let aj = dpt1.gcross(normal);
     let iaj = chassis.mass_properties().effective_world_inv_inertia * aj;
-    // TODO: take the effective_inv_mass into account?
-    let im1 = chassis.mass_properties().local_mprops.inv_mass;
+    let im1 = inv_mass_along(chassis, normal);
 
     let (vel2, im2, ibj_sq) = ground.map_or((Vector::ZERO, 0.0, 0.0), |ground| {
         let dpt2 = pt - ground.center_of_mass();
         let bj = dpt2.gcross(-normal);
         let ibj = ground.mass_properties().effective_world_inv_inertia * bj;
-        // TODO: take the effective_inv_mass into account?
-        let im2 = ground.mass_properties().local_mprops.inv_mass;
+        let im2 = inv_mass_along(ground, normal);
         (ground.velocity_at_point(pt), im2, ibj.gdot(ibj))
     });
 
