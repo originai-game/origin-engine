@@ -448,6 +448,9 @@ export function installInflater(glue: Pick<WebExtras, "og_web_set_inflater" | "o
  * too: it is asked again until its budget runs out.)
  */
 function isPendingCapture(frame: string, answer: string): boolean {
+  // Every null result is written `"result":null` (the probe's compact JSON);
+  // a frame's answer is megabytes of base64 not worth parsing to learn it is not null.
+  if (!answer.includes('"result":null')) return false;
   try {
     const request = JSON.parse(frame) as { method?: string };
     if (request.method !== "capture" && request.method !== "sweep") return false;
