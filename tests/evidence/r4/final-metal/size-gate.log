@@ -1,0 +1,6 @@
+wasm                         download           bytes   brotli-q11
+og_host_web-lanes.wasm       3D lanes        12052826      3370739  (80% of the budget)
+og_host_web-lanes2d.wasm     2D lanes        11152466      3125451  (74% of the budget)
+og_host_web-publish.wasm     3D publish      11802563      3331081  (79% of the budget)
+og_host_web-publish2d.wasm   2D publish      10892617      3085900  (73% of the budget)
+max                                                        3370739  (the largest download, 80% of the per-download budget 4194304)

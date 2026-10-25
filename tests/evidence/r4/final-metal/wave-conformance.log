@@ -1,0 +1,32 @@
+wave-end: cfa291b2, stages: conformance
+
+==> conformance
++ scripts/tsrs-diff.sh 
+ok   packages/engine/tsconfig.json: both clean
+ok   packages/engine/tsconfig.runtime.json: both clean
+ok   packages/engine/tsconfig.templates.json: both clean
+ok   templates/fx-showcase: both clean
+ok   templates/game-2d: both clean
+ok   templates/game: both clean
+ok   templates/ui-kit: both clean
+ok   templates/archetypes/arena: both clean
+ok   templates/archetypes/idle: both clean
+ok   templates/archetypes/match3: both clean
+ok   templates/archetypes/rhythm: both clean
+ok   templates/archetypes/roguelike: both clean
+ok   templates/archetypes/runner: both clean
+ok   templates/archetypes/third-person: both clean
+ok   templates/archetypes/topdown: both clean
+ok   templates/archetypes/tower-defense: both clean
+ok   examples/brasswick/tsconfig.json: both clean
+ok   examples/hollowbell/tsconfig.json: both clean
+ok   examples/kestrel-stair/tsconfig.json: both clean
+ok   examples/lantern-vale/tsconfig.json: both clean
+ok   examples/meridian-loop/tsconfig.json: both clean
+ok   examples/rumpus-isle/tsconfig.json: both clean
+ok   scripts/tsrs-corpus/tsconfig.json: tsgo 23 diagnostic(s); tsrs missed 0, reported 0 more, 0 with another message
+PASS check-conformance (tsrs 0.18.0-ts7.1.0-dev.20260929 against tsgo 7.0.2)
+PASS conformance (14s)
+
+wave-end PASSED (14s); logs in target/evidence/wave-end/
+PASS conformance (14s)

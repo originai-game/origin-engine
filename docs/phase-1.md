@@ -7,6 +7,17 @@ the platform can run it in an `engine`-class sandbox. Spike findings
 (`docs/spike-results.md`) are the baseline; the spike crate is the seed
 of `og-render` and is deleted once its code has moved.
 
+## Round 4 determinism receipt (2026-10-25)
+
+At candidate `70c120c0`, `tools/wasm-determinism` reports **anim_hash
+15495097786948894722**. Native debug, native release with lanes off and on,
+wasm scalar and SIMD, and both lanes wasm profiles agree. The hash moved
+by design with the new og.anim records, not through a determinism mismatch.
+The same run reports math_digest 6117185439544271997, bouncing_boxes_hash
+15551159556835976588, physics3d_hash 10053948282410406339 and physics2d_hash
+3002410719564870113. Native lanes performed 1,067 parallel calls on four
+threads. Receipt: `tests/evidence/r4/final-metal/determinism.log`.
+
 ## Public packages first, the local loop, the development sandbox on InstaBox, E2B last (2026-10-22)
 
 The owner's decision, after the two below: the engine is consumed as

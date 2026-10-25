@@ -1,0 +1,3 @@
+| scene | mode | p50 ms | p95 ms | sustained ms | fps |
+|---|---|---|---|---|---|
+| reference | three WebGL2, InstancedMesh | 2.988 | 3.583 | 2.54 | 394 |

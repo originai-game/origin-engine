@@ -1,0 +1,66 @@
+{
+ "chrome": "/Users/fan/.agent-browser/browsers/chrome-150.0.7871.115/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+ "frames": 600,
+ "warm": 60,
+ "rounds": 2,
+ "size": "1280x720",
+ "summary": [
+  {
+   "scene": "reference",
+   "mode": "three WebGL2, InstancedMesh",
+   "p50": 2.988,
+   "p95": 3.583,
+   "sustainedMs": 2.54,
+   "fps": 394,
+   "rounds": 2
+  }
+ ],
+ "runs": [
+  {
+   "scene": "reference",
+   "mode": "three WebGL2, InstancedMesh",
+   "round": 1,
+   "load": "3.25 4.75 12.92",
+   "info": {
+    "renderer": "three WebGLRenderer + EffectComposer",
+    "draws": "4 InstancedMesh",
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 2.985,
+    "p95": 3.56,
+    "p99": 3.955,
+    "max": 5.44,
+    "mean": 2.535
+   },
+   "sustainedMs": 2.535,
+   "fps": 395,
+   "shot": "threejs-reference-three-webgl2-instancedmesh.png"
+  },
+  {
+   "scene": "reference",
+   "mode": "three WebGL2, InstancedMesh",
+   "round": 2,
+   "load": "3.25 4.75 12.92",
+   "info": {
+    "renderer": "three WebGLRenderer + EffectComposer",
+    "draws": "4 InstancedMesh",
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 2.99,
+    "p95": 3.605,
+    "p99": 3.91,
+    "max": 4.57,
+    "mean": 2.545
+   },
+   "sustainedMs": 2.545,
+   "fps": 393,
+   "shot": "threejs-reference-three-webgl2-instancedmesh.png"
+  }
+ ]
+}

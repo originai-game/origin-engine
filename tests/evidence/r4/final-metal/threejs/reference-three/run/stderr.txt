@@ -1,0 +1,6 @@
+building reference (og build --publish's web half) into /Volumes/app/origin-engine-measure/target/tmp/threejs-bench/reference
+reference / three WebGL2, InstancedMesh / round 1: http://127.0.0.1:64394/three-page.html?scene=reference
+reference / three WebGL2, InstancedMesh / round 1: p50 2.985 p95 3.56 ms, sustained 2.535 ms (395 fps); load 3.25 4.75 12.92
+reference / three WebGL2, InstancedMesh / round 2: http://127.0.0.1:64394/three-page.html?scene=reference
+reference / three WebGL2, InstancedMesh / round 2: p50 2.99 p95 3.605 ms, sustained 2.545 ms (393 fps); load 3.25 4.75 12.92
+reference / three WebGL2, InstancedMesh: threejs-reference-three-webgl2-instancedmesh.png

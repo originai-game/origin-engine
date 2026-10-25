@@ -1,0 +1,74 @@
+{
+ "chrome": "/Users/fan/.agent-browser/browsers/chrome-150.0.7871.115/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+ "frames": 600,
+ "warm": 60,
+ "rounds": 2,
+ "size": "1280x720",
+ "summary": [
+  {
+   "scene": "spheres",
+   "mode": "engine WebGL2",
+   "p50": 3.525,
+   "p95": 4.288,
+   "sustainedMs": 3.674,
+   "fps": 272,
+   "rounds": 2
+  }
+ ],
+ "runs": [
+  {
+   "scene": "spheres",
+   "mode": "engine WebGL2",
+   "round": 1,
+   "load": "3.33 4.35 11.90",
+   "info": {
+    "tier": "webgl2",
+    "lanes": {
+     "on": true,
+     "threads": 8,
+     "why": ""
+    },
+    "isolated": true,
+    "scene": "spheres"
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 3.52,
+    "p95": 4.245,
+    "p99": 7.585,
+    "max": 26.405,
+    "mean": 3.676
+   },
+   "sustainedMs": 3.676,
+   "fps": 272,
+   "shot": "threejs-spheres-engine-webgl2.png"
+  },
+  {
+   "scene": "spheres",
+   "mode": "engine WebGL2",
+   "round": 2,
+   "load": "3.23 4.31 11.84",
+   "info": {
+    "tier": "webgl2",
+    "lanes": {
+     "on": true,
+     "threads": 8,
+     "why": ""
+    },
+    "isolated": true,
+    "scene": "spheres"
+   },
+   "frames": 600,
+   "ms": {
+    "p50": 3.53,
+    "p95": 4.33,
+    "p99": 7.08,
+    "max": 25.085,
+    "mean": 3.672
+   },
+   "sustainedMs": 3.672,
+   "fps": 272,
+   "shot": "threejs-spheres-engine-webgl2.png"
+  }
+ ]
+}

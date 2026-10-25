@@ -1,0 +1,121 @@
+{
+  "base": "70c120c0b2653aab0d013403ab02641d9154a8d1",
+  "captureLoad": {
+    "min": 4.18,
+    "max": 4.21
+  },
+  "capture": [
+    {
+      "host": "native",
+      "scene": "game",
+      "p50": 5.517707999999857,
+      "p95": 6.124208999999951,
+      "max": 6.978417000000036,
+      "limit": 30,
+      "verdict": "PASS"
+    },
+    {
+      "host": "native",
+      "scene": "meridian",
+      "p50": 9.772707999999966,
+      "p95": 18.03641700000003,
+      "max": 19.167291999999975,
+      "limit": 30,
+      "verdict": "PASS"
+    },
+    {
+      "host": "web",
+      "scene": "game",
+      "p50": 15.559999942779541,
+      "p95": 15.994999885559082,
+      "max": 15.995000123977661,
+      "limit": 60,
+      "verdict": "PASS"
+    },
+    {
+      "host": "web",
+      "scene": "meridian",
+      "p50": 23.77999997138977,
+      "p95": 31.975000143051147,
+      "max": 32.329999923706055,
+      "limit": 60,
+      "verdict": "PASS"
+    }
+  ],
+  "comparisons": [
+    {
+      "scene": "reference",
+      "sides": [
+        {
+          "scene": "reference",
+          "mode": "engine WebGL2",
+          "p50": 1.483,
+          "p95": 3.075,
+          "sustainedMs": 1.996,
+          "fps": 501,
+          "rounds": 2,
+          "load": {
+            "min": 2.9,
+            "max": 3.63
+          }
+        },
+        {
+          "scene": "reference",
+          "mode": "three WebGL2, InstancedMesh",
+          "p50": 2.988,
+          "p95": 3.583,
+          "sustainedMs": 2.54,
+          "fps": 394,
+          "rounds": 2,
+          "load": {
+            "min": 3.2,
+            "max": 3.55
+          }
+        }
+      ],
+      "ratio": 1.2725450901803608,
+      "target": 1.5,
+      "verdict": "FAIL"
+    },
+    {
+      "scene": "spheres",
+      "sides": [
+        {
+          "scene": "spheres",
+          "mode": "engine WebGL2",
+          "p50": 3.525,
+          "p95": 4.288,
+          "sustainedMs": 3.674,
+          "fps": 272,
+          "rounds": 2,
+          "load": {
+            "min": 3.11,
+            "max": 3.33
+          }
+        },
+        {
+          "scene": "spheres",
+          "mode": "three WebGL2, InstancedMesh",
+          "p50": 2.375,
+          "p95": 2.515,
+          "sustainedMs": 2.385,
+          "fps": 419,
+          "rounds": 2,
+          "load": {
+            "min": 3.1,
+            "max": 3.38
+          }
+        }
+      ],
+      "ratio": 0.6491562329885683,
+      "target": null,
+      "verdict": "no separate numeric budget"
+    }
+  ],
+  "lanes3d": {
+    "brotliBytes": 3370739,
+    "budgetBytes": 4194304,
+    "percentage": 80.36468029022217
+  },
+  "stopped": "Step 4 WebGL2 reference ratio below 1.5; Lantern and separate Chrome first-frame/frame-time checks not run"
+}

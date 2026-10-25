@@ -1,0 +1,6 @@
+building spheres (og build --publish's web half) into /Volumes/app/origin-engine-measure/target/tmp/threejs-bench/spheres
+spheres / three WebGL2, InstancedMesh / round 1: http://127.0.0.1:64611/three-page.html?scene=spheres
+spheres / three WebGL2, InstancedMesh / round 1: p50 2.375 p95 2.515 ms, sustained 2.391 ms (418 fps); load 3.10 3.98 10.92
+spheres / three WebGL2, InstancedMesh / round 2: http://127.0.0.1:64611/three-page.html?scene=spheres
+spheres / three WebGL2, InstancedMesh / round 2: p50 2.375 p95 2.515 ms, sustained 2.378 ms (420 fps); load 3.34 4.01 10.89
+spheres / three WebGL2, InstancedMesh: threejs-spheres-three-webgl2-instancedmesh.png

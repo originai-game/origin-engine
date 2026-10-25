@@ -1,0 +1,196 @@
+wave-end: cfa291b2, stages: release
+
+==> release
++ scripts/release.sh pack 
+release-bump --check: every occurrence is 0.4.0
+release: packing 0.4.0 into dist/release/0.4.0/
+warning: linker stderr: ignoring deprecated linker optimization setting "1"
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: method `replay` is never used
+  --> crates/og-runtime/src/anim.rs:59:19
+   |
+52 | impl AnimAssets {
+   | --------------- method in this implementation
+...
+59 |     pub(crate) fn replay(&self, system: &AnimationSystem) {
+   |                   ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `replay` is never used
+   --> crates/og-runtime/src/feel.rs:234:19
+    |
+228 | impl FeelAssets {
+    | --------------- method in this implementation
+...
+234 |     pub(crate) fn replay(&self, feel: &Feel) {
+    |                   ^^^^^^
+
+warning: method `replay` is never used
+  --> crates/og-runtime/src/anim.rs:59:19
+   |
+52 | impl AnimAssets {
+   | --------------- method in this implementation
+...
+59 |     pub(crate) fn replay(&self, system: &AnimationSystem) {
+   |                   ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `physics_heightfields` is never read
+   --> crates/og-runtime/src/engine.rs:481:9
+    |
+415 | pub(crate) struct State {
+    |                   ----- field in this struct
+...
+481 |     pub physics_heightfields: BTreeMap<u64, og_physics::HeightfieldDesc>,
+    |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: method `replay` is never used
+   --> crates/og-runtime/src/feel.rs:234:19
+    |
+228 | impl FeelAssets {
+    | --------------- method in this implementation
+...
+234 |     pub(crate) fn replay(&self, feel: &Feel) {
+    |                   ^^^^^^
+
+warning: unstable feature specified for `-Ctarget-feature`: `atomics`
+  |
+  = note: this feature is not stably supported; its behavior can change in the future
+
+warning: method `replay` is never used
+  --> crates/og-runtime/src/anim.rs:59:19
+   |
+52 | impl AnimAssets {
+   | --------------- method in this implementation
+...
+59 |     pub(crate) fn replay(&self, system: &AnimationSystem) {
+   |                   ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `physics_heightfields` is never read
+   --> crates/og-runtime/src/engine.rs:481:9
+    |
+415 | pub(crate) struct State {
+    |                   ----- field in this struct
+...
+481 |     pub physics_heightfields: BTreeMap<u64, og_physics::HeightfieldDesc>,
+    |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: method `replay` is never used
+   --> crates/og-runtime/src/feel.rs:234:19
+    |
+228 | impl FeelAssets {
+    | --------------- method in this implementation
+...
+234 |     pub(crate) fn replay(&self, feel: &Feel) {
+    |                   ^^^^^^
+
+warning: unstable feature specified for `-Ctarget-feature`: `atomics`
+  |
+  = note: this feature is not stably supported; its behavior can change in the future
+
+warning: method `replay` is never used
+  --> crates/og-runtime/src/anim.rs:59:19
+   |
+52 | impl AnimAssets {
+   | --------------- method in this implementation
+...
+59 |     pub(crate) fn replay(&self, system: &AnimationSystem) {
+   |                   ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `replay` is never used
+   --> crates/og-runtime/src/feel.rs:234:19
+    |
+228 | impl FeelAssets {
+    | --------------- method in this implementation
+...
+234 |     pub(crate) fn replay(&self, feel: &Feel) {
+    |                   ^^^^^^
+
+origingame-engine-0.4.0.tgz  26191781 bytes  sha256 c695819128fd794a4a38444c6b1899c6b92f6c001ea55582e43f982a74662f79
+origingame-engine-darwin-arm64-0.4.0.tgz  17691611 bytes  sha256 eb8ff7a4996457b1136283bc5f8d8d1291c4a151bc64c5c66dfd1924d86bc760
+origingame-engine-linux-x64-0.4.0.tgz  19153781 bytes  sha256 42d101801d1ac05442bad99636f5db1f6148e7ba914b1e284e0c02f48f01380f
+origingame-create-game-0.4.0.tgz  16319694 bytes  sha256 099c2aea7d90ae533ae8694d75bac70d7ac65c197c7880d0a82dac844a678d4f
+origingame-engine-0.4.0.tgz  26191781 bytes  sha256 c695819128fd794a4a38444c6b1899c6b92f6c001ea55582e43f982a74662f79
+origingame-engine-darwin-arm64-0.4.0.tgz  17691611 bytes  sha256 eb8ff7a4996457b1136283bc5f8d8d1291c4a151bc64c5c66dfd1924d86bc760
+origingame-engine-linux-x64-0.4.0.tgz  19153781 bytes  sha256 42d101801d1ac05442bad99636f5db1f6148e7ba914b1e284e0c02f48f01380f
+release: note: the working tree was dirty when these were packed; publish will refuse them until a clean tree is packed
+release: packed 0.4.0 (dist/release/0.4.0/manifest.json)
++ scripts/release.sh verify 
+[install 0.0s] work directory /var/folders/b4/8rdtn1p960b30lp_78cm1hzw0000gn/T/og-install-dg0DOf (darwin-arm64, from /Volumes/app/origin-engine-measure/dist/release/0.4.0)
+[install 0.0s] -- 1 create-game
+[install 0.0s]    $ bun install
+[install 0.1s]    $ bun /var/folders/b4/8rdtn1p960b30lp_78cm1hzw0000gn/T/og-install-dg0DOf/consumer/node_modules/@origingame/create-game/bin/create.ts /var/folders/b4/8rdtn1p960b30lp_78cm1hzw0000gn/T/og-install-dg0DOf/demo --name Demo --no-prompt
+[install 0.2s] -- 2 bun install
+[install 0.2s]    $ bun install
+[install 1.1s] -- 3 og --version, og doctor
+[install 1.1s]    $ bun x og --version
+[install 1.9s]    $ bun x og doctor
+[install 3.2s]    renderer: ok metal (a 64x64 frame headless in 80 ms)
+[install 3.2s]    checker: ok       tsrs          0.18.0-ts7.1.0-dev.20260929 (TypeScript 7.1.0-dev.20260930.4, from node_modules: /private/var/folders/b4/8rdtn1p960b30lp_78cm1hzw0000gn/T/og-install-dg0DOf/demo/node_modules/@tsrs/darwin-arm64/tsrs)
+[install 3.2s] -- 4 og check, og test, og build --publish
+[install 3.2s]    $ bun x og check .
+[install 3.3s]    $ bun x og test .
+[install 4.6s]    og test: PASS smoke (9 checks, 216 ms): A tap on Start spins the trickster and drops the crate; the run writes its frame, description, dumps and UI tree | og test: 3 suite(s) passed
+[install 4.6s]    $ bun x og build . --publish
+[install 55.5s] -- 5 the runner archetype
+[install 55.5s]    $ bun /var/folders/b4/8rdtn1p960b30lp_78cm1hzw0000gn/T/og-install-dg0DOf/consumer/node_modules/@origingame/create-game/bin/create.ts /var/folders/b4/8rdtn1p960b30lp_78cm1hzw0000gn/T/og-install-dg0DOf/demo-runner --name Demo Runner --archetype runner --no-prompt
+[install 55.5s]    $ bun install
+[install 55.8s]    $ bun x og test .
+[install 59.5s] -- 6 the 2D starter (--profile 2d)
+[install 59.5s]    $ bun /var/folders/b4/8rdtn1p960b30lp_78cm1hzw0000gn/T/og-install-dg0DOf/consumer/node_modules/@origingame/create-game/bin/create.ts /var/folders/b4/8rdtn1p960b30lp_78cm1hzw0000gn/T/og-install-dg0DOf/demo-2d --name Demo 2D --profile 2d --no-prompt
+[install 59.5s]    $ bun install
+[install 59.8s]    $ bun x og check .
+[install 60.4s]    $ bun x og test .
+[install 61.8s]    og test: PASS smoke (11 checks, 282 ms): The courier runs over two coins, jumps up through a one-way ledge onto it, pauses and resumes, and the pit costs a life | og test: 2 suite(s) passed
+[install 61.8s] -- 7 knowledge: validate, mount --package, --check
+[install 61.8s]    $ bun /var/folders/b4/8rdtn1p960b30lp_78cm1hzw0000gn/T/og-install-dg0DOf/demo/node_modules/@origingame/engine/knowledge/scripts/validate.ts
+[install 61.9s]    $ bun /var/folders/b4/8rdtn1p960b30lp_78cm1hzw0000gn/T/og-install-dg0DOf/demo/node_modules/@origingame/engine/knowledge/scripts/mount.ts /var/folders/b4/8rdtn1p960b30lp_78cm1hzw0000gn/T/og-install-dg0DOf/platform --package /var/folders/b4/8rdtn1p960b30lp_78cm1hzw0000gn/T/og-install-dg0DOf/demo/node_modules/@origingame/engine
+[install 62.0s]    $ bun /var/folders/b4/8rdtn1p960b30lp_78cm1hzw0000gn/T/og-install-dg0DOf/demo/node_modules/@origingame/engine/knowledge/scripts/mount.ts /var/folders/b4/8rdtn1p960b30lp_78cm1hzw0000gn/T/og-install-dg0DOf/platform --package /var/folders/b4/8rdtn1p960b30lp_78cm1hzw0000gn/T/og-install-dg0DOf/demo/node_modules/@origingame/engine --check
+[install 62.0s] PASS on darwin-arm64
+[install 62.2s] -- container (linux-x64)
+[install 62.2s]    $ docker build -q -t og-install:node22-bun --platform linux/amd64 /Volumes/app/origin-engine-measure/tests/install
+[install 0.0s] work directory /tmp/og-install-W9fsgl (linux-x64, from /tgz)
+[install 0.0s] -- 1 create-game
+[install 0.0s]    $ bun install
+[install 0.2s]    $ bun /tmp/og-install-W9fsgl/consumer/node_modules/@origingame/create-game/bin/create.ts /tmp/og-install-W9fsgl/demo --name Demo --no-prompt
+[install 0.5s] -- 2 bun install
+[install 0.5s]    $ bun install
+[install 3.1s] -- 3 og --version, og doctor
+[install 3.1s]    $ bun x og --version
+[install 3.5s]    $ bun x og doctor
+[install 4.4s]    renderer: none no GPU adapter: Auto: No suitable graphics adapter found; noop not requested, vulkan drivers/libraries could not be loaded, metal support not compiled in, dx12 support not compiled in, gl not requested, webgpu support not compiled in
+[install 4.4s]    checker: ok       tsrs          0.18.0-ts7.1.0-dev.20260929 (TypeScript 7.1.0-dev.20260930.4, from node_modules: /tmp/og-install-W9fsgl/demo/node_modules/@tsrs/linux-x64-gnu/tsrs)
+[install 4.4s] -- 4 og check, og test, og build --publish
+[install 4.4s]    $ bun x og check .
+[install 5.0s]    $ bun x og test .
+[install 14.9s]    og test:   ~ smoke.png: no renderer, frame unchecked | og test: 3 suite(s) passed; 4 frame(s) unchecked: no renderer here (frames are verified on the author's machine, in the browser-check sandbox or on an executor with a GPU)
+[install 14.9s]    $ bun x og build . --publish
+[install 18.6s] -- 5 the runner archetype
+[install 18.6s]    $ bun /tmp/og-install-W9fsgl/consumer/node_modules/@origingame/create-game/bin/create.ts /tmp/og-install-W9fsgl/demo-runner --name Demo Runner --archetype runner --no-prompt
+[install 18.9s]    $ bun install
+[install 19.3s]    $ bun x og test .
+[install 35.7s] -- 6 the 2D starter (--profile 2d)
+[install 35.7s]    $ bun /tmp/og-install-W9fsgl/consumer/node_modules/@origingame/create-game/bin/create.ts /tmp/og-install-W9fsgl/demo-2d --name Demo 2D --profile 2d --no-prompt
+[install 35.9s]    $ bun install
+[install 36.3s]    $ bun x og check .
+[install 37.0s]    $ bun x og test .
+[install 42.1s]    og test:   ~ ledge.png: no renderer, frame unchecked | og test: 2 suite(s) passed; 3 frame(s) unchecked: no renderer here (frames are verified on the author's machine, in the browser-check sandbox or on an executor with a GPU)
+[install 42.1s] -- 7 knowledge: validate, mount --package, --check
+[install 42.1s]    $ bun /tmp/og-install-W9fsgl/demo/node_modules/@origingame/engine/knowledge/scripts/validate.ts
+[install 42.7s]    $ bun /tmp/og-install-W9fsgl/demo/node_modules/@origingame/engine/knowledge/scripts/mount.ts /tmp/og-install-W9fsgl/platform --package /tmp/og-install-W9fsgl/demo/node_modules/@origingame/engine
+[install 43.4s]    $ bun /tmp/og-install-W9fsgl/demo/node_modules/@origingame/engine/knowledge/scripts/mount.ts /tmp/og-install-W9fsgl/platform --package /tmp/og-install-W9fsgl/demo/node_modules/@origingame/engine --check
+[install 44.0s] PASS on linux-x64
+[install 44.0s] install test PASSED
+[install 110.9s] install test PASSED
+PASS release (623s)
+
+wave-end PASSED (623s); logs in target/evidence/wave-end/
+PASS release (623s)
