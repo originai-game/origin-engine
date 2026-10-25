@@ -12,6 +12,9 @@
 //! `OG_GFX_DEBUG_CASCADES=1` draws the cascade debug view instead.
 //! `OG_GFX_AO_HALF=1` runs the scene's ambient occlusion at half resolution
 //! (`AoResolution::Half`).
+//! `OG_GFX_QUALITY=low|medium|high` draws the scene at a graphics preset
+//! (`RenderQuality::preset`, what `og.render.applyQuality` writes); unset,
+//! the scene's own quality (the default, medium's).
 //! `OG_GFX_CULLING=cpu|gpu|auto` sets the scene's `Culling`: `cpu` culls on
 //! the CPU on every tier, `gpu` on the GPU on the full tier whatever the
 //! scene's size, `auto` (the default) on the GPU from
@@ -197,6 +200,19 @@ fn run(
         && let Some(ao) = &mut built.scene.post.ao
     {
         ao.resolution = og_render::AoResolution::Half;
+    }
+    match std::env::var("OG_GFX_QUALITY").as_deref() {
+        Ok("low") => {
+            built.scene.quality = og_render::RenderQuality::preset(og_render::QualityPreset::Low)
+        }
+        Ok("medium") => {
+            built.scene.quality = og_render::RenderQuality::preset(og_render::QualityPreset::Medium)
+        }
+        Ok("high") => {
+            built.scene.quality = og_render::RenderQuality::preset(og_render::QualityPreset::High)
+        }
+        Err(_) => {}
+        Ok(other) => return Err(format!("OG_GFX_QUALITY={other}: low, medium or high")),
     }
     let t0 = Instant::now();
     let mut renderer = Renderer::new_blocking(&built.desc).map_err(|e| e.to_string())?;

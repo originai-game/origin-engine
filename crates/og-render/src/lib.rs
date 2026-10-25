@@ -5331,9 +5331,14 @@ impl Renderer {
             camera.position,
             cam.forward,
         )?;
+        // The quality's resolution, where it sets one, over the scene's.
         let ao = post_fx
             .ao
-            .filter(|a| scene.quality.ambient_occlusion && a.intensity > 0.0 && a.radius > 0.0);
+            .filter(|a| scene.quality.ambient_occlusion && a.intensity > 0.0 && a.radius > 0.0)
+            .map(|a| AmbientOcclusion {
+                resolution: scene.quality.ao_resolution.unwrap_or(a.resolution),
+                ..a
+            });
         let outline = post_fx.outline.is_some()
             || batches
                 .iter()
@@ -5352,7 +5357,11 @@ impl Renderer {
         // probes and the environment), read from the prepass (ssr.rs).
         let ssr = post_fx
             .ssr
-            .filter(|s| scene.quality.ssr && s.intensity > 0.0 && self.info.tier == Tier::Full);
+            .filter(|s| scene.quality.ssr && s.intensity > 0.0 && self.info.tier == Tier::Full)
+            .map(|s| ssr::ScreenSpaceReflections {
+                steps: scene.quality.ssr_steps(s.steps),
+                ..s
+            });
         // Custom post passes (post_custom.rs) that compiled; they read the
         // prepass's depth and normals.
         let custom_posts = self.custom_posts.prepare(&self.device, scene);
@@ -6283,6 +6292,7 @@ impl Renderer {
                 fog,
                 (self.width, self.height),
                 scene.tick,
+                &scene.quality,
             );
         }
         if !lights_gpu.is_empty() {
