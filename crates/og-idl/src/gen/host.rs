@@ -418,7 +418,8 @@ pub fn host_rs(ix: &Index<'_>) -> String {
          \x20   pub unit: &'static str,\n\
          \x20   /// The person-facing name, or empty.\n\
          \x20   pub label: &'static str,\n\
-         \x20   /// The field's docs, joined.\n\
+         \x20   /// The field's docs, joined; empty in a publish build (og-api's\n\
+         \x20   /// `publish`), where nothing reads them.\n\
          \x20   pub doc: &'static str,\n\
          \x20   /// An enum column's variants in index order; empty otherwise.\n\
          \x20   pub variants: &'static [&'static str],\n\
@@ -469,7 +470,7 @@ pub fn host_rs(ix: &Index<'_>) -> String {
                     _ => String::new(),
                 };
                 out.push_str(&format!(
-                    "            FieldDecl {{\n                name: \"{}\",\n                column: \"{}\",\n                default: {:?},\n                readonly: {},\n                tunable: {},\n                min: {},\n                max: {},\n                step: {},\n                unit: {:?},\n                label: {:?},\n                doc: {:?},\n                variants: &[{}],\n                capacity: {},\n                list: {},\n            }},\n",
+                    "            FieldDecl {{\n                name: \"{}\",\n                column: \"{}\",\n                default: {:?},\n                readonly: {},\n                tunable: {},\n                min: {},\n                max: {},\n                step: {},\n                unit: {:?},\n                label: {:?},\n                doc: doc!({:?}),\n                variants: &[{}],\n                capacity: {},\n                list: {},\n            }},\n",
                     f.name,
                     ix.list(&f.ty).map_or(f.ty.name(), |(element, _)| element.name()),
                     default,

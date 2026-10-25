@@ -1198,6 +1198,27 @@ pub fn schemas_to_json(schemas: &[Schema]) -> String {
     .expect("schemas serialize")
 }
 
+/// A doc string as `#[derive(Reflect)]` writes it into a [`Schema`]: the
+/// text, or empty with og-core's `publish` feature (a published game's
+/// build, where nothing reads the docs), so the text is not linked there.
+#[doc(hidden)]
+#[macro_export]
+#[cfg(not(feature = "publish"))]
+macro_rules! reflect_doc {
+    ($doc:literal) => {
+        $doc
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+#[cfg(feature = "publish")]
+macro_rules! reflect_doc {
+    ($doc:literal) => {
+        ""
+    };
+}
+
 /// A type with a reflected layout. Implemented by `#[derive(Reflect)]`.
 ///
 /// `write_fields` calls `out(i, bytes)` once per field `i` with that field's

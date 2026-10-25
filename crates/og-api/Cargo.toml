@@ -6,6 +6,12 @@ license.workspace = true
 rust-version.workspace = true
 description = "Origin Engine API: the host traits and record tables generated from api.ogt (og-idl generates them), and the host-neutral runtime."
 
+[features]
+# A published game (og-runtime's `publish`): RECORDS' field docs are empty
+# (`doc!` in src/lib.rs), so their text is not linked; nothing in a publish
+# build reads them.
+publish = []
+
 [dependencies]
 
 [dev-dependencies]

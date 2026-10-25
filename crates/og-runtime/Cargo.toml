@@ -33,9 +33,11 @@ og-net = { path = "../og-net" }
 
 [features]
 default = ["shaping", "physics2d", "physics3d"]
-# A published game: the probe keeps only its player-facing members and
-# the renderer times no pass on the GPU (og-render's `publish`).
-publish = ["og-probe/publish", "og-render/publish"]
+# A published game: the probe keeps only its player-facing members, the
+# renderer times no pass on the GPU (og-render's `publish`), and the
+# reflected and record field docs are empty (og-core's and og-api's
+# `publish`: nothing in a publish build reads them).
+publish = ["og-probe/publish", "og-render/publish", "og-core/publish", "og-api/publish"]
 # The 2D profile: the renderer without the 3D world subsystems (og-render's
 # `profile2d`) and the runtime without terrain (src/terrain_absent.rs: its
 # calls and height-field colliders answer the refusal); the 2D web modules,

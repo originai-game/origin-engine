@@ -6,6 +6,13 @@ license.workspace = true
 rust-version.workspace = true
 description = "Origin Engine core: handles, reflection, .ogt text, deterministic rng and math, time"
 
+[features]
+# A published game (og-runtime's `publish`): `#[derive(Reflect)]` writes
+# empty docs into its schemas (`reflect_doc!`), so the text is not linked;
+# nothing in a publish build reads them (the probe's schema members, the
+# inspector and Tune are not built in).
+publish = []
+
 [dependencies]
 og-core-derive = { path = "../og-core-derive" }
 glam = { workspace = true }
