@@ -77,6 +77,8 @@ pub(crate) struct QueuedSprite {
     /// `SpriteDesc.toneMapped`: false keeps it out of exposure, bloom and
     /// the tone curve ([`og_render::SpriteFx::tone_mapped`]).
     pub tone_mapped: bool,
+    /// `SpriteDesc.facing`: a billboard (world sprites only).
+    pub facing: og_render::SpriteFacing,
 }
 
 /// One `og.load.lut`: its renderer LUT while resident.
@@ -795,6 +797,7 @@ pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
             continue;
         }
         let index = scene.sprites.len() as u32;
+        super::feel::set_facing(scene, index as usize, q.facing);
         scene.sprites.push(q.sprite);
         if let Some((array, layer)) = q.array {
             scene.sprite_arrays.push(og_render::SpriteArray {

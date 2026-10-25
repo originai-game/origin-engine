@@ -1963,9 +1963,20 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
             }
             _ => vec![sprite],
         };
-        for (i, sprite) in pieces.into_iter().enumerate() {
+        let facing = if screen {
+            og_render::SpriteFacing::None
+        } else {
+            super::feel::facing_named(d["facing"].as_str())
+        };
+        // A faced nine-slice turns as one panel about the sprite's anchor.
+        let one_panel = facing != og_render::SpriteFacing::None && pieces.len() > 1;
+        for (i, piece) in pieces.into_iter().enumerate() {
             rs.fx.sprites.push(super::fx::QueuedSprite {
-                sprite,
+                sprite: if one_panel {
+                    piece.anchored_at(sprite.position)
+                } else {
+                    piece
+                },
                 flash,
                 glow: num(&d, "glow", 0.0).max(0.0),
                 additive: d["blend"].as_str() == Some("additive"),
@@ -1977,6 +1988,7 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
                 drop_shadow: num(&d, "dropShadow", 0.0).clamp(0.0, 1.0),
                 drop_shadow_height: num(&d, "dropShadowHeight", 0.0),
                 tone_mapped: d["toneMapped"].as_bool().unwrap_or(true),
+                facing,
             });
         }
         Ok(())

@@ -1901,10 +1901,41 @@ struct SpriteOut {
     /// `Sprite.toneMapped`: false keeps it out of exposure, bloom and the
     /// tone curve ([`og_render::SpriteFx::tone_mapped`]).
     tone_mapped: bool,
+    /// `Sprite.facing`: a billboard ([`og_render::RenderScene::sprite_facing`]).
+    facing: og_render::SpriteFacing,
+}
+
+/// `SpriteFacing` by its IDL name (og.Sprite.facing, SpriteDesc.facing):
+/// `none` for any other.
+pub(crate) fn facing_named(name: Option<&str>) -> og_render::SpriteFacing {
+    match name {
+        Some("camera") => og_render::SpriteFacing::Camera,
+        Some("cameraY") => og_render::SpriteFacing::CameraY,
+        _ => og_render::SpriteFacing::None,
+    }
+}
+
+/// Sets world sprite `index`'s facing (the list stays short while no
+/// sprite faces the camera).
+pub(crate) fn set_facing(
+    scene: &mut og_render::RenderScene,
+    index: usize,
+    facing: og_render::SpriteFacing,
+) {
+    if facing == og_render::SpriteFacing::None && scene.sprite_facing.len() <= index {
+        return;
+    }
+    if scene.sprite_facing.len() <= index {
+        scene
+            .sprite_facing
+            .resize(index + 1, og_render::SpriteFacing::None);
+    }
+    scene.sprite_facing[index] = facing;
 }
 
 fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
     let index = scene.sprites.len() as u32;
+    set_facing(scene, index as usize, s.facing);
     scene.sprites.push(s.sprite);
     if let Some((array, layer)) = s.array {
         scene.sprite_arrays.push(og_render::SpriteArray {
@@ -2110,6 +2141,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         let glow = f(&v, "glow", 0.0).max(0.0);
         let additive = v.text("blend").as_deref() == Some("additive");
         let tone_mapped = on(&v, "toneMapped", true);
+        let facing = facing_named(v.text("facing").as_deref());
         let base = og_render::Sprite {
             texture: image.texture(),
             position: pos,
@@ -2152,6 +2184,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     drop_shadow: 0.0,
                     drop_shadow_height: 0.0,
                     tone_mapped: true,
+                    facing: og_render::SpriteFacing::None,
                 },
             );
         }
@@ -2199,6 +2232,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                         drop_shadow: 0.0,
                         drop_shadow_height: 0.0,
                         tone_mapped,
+                        facing,
                     },
                 );
             }
@@ -2221,12 +2255,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         let cast = on(&v, "castShadow", false);
         let drop_shadow = f(&v, "dropShadow", 0.0).clamp(0.0, 1.0);
         let drop_shadow_height = f(&v, "dropShadowHeight", 0.0);
+        // A faced nine-slice turns as one panel about the sprite's anchor.
+        let one_panel = facing != og_render::SpriteFacing::None && pieces.len() > 1;
         for (i, p) in pieces.into_iter().enumerate() {
             drawn.push((scene.sprites.len() as u32, e));
             push(
                 scene,
                 SpriteOut {
-                    sprite: p,
+                    sprite: if one_panel {
+                        p.anchored_at(base.position)
+                    } else {
+                        p
+                    },
                     key,
                     flash,
                     glow,
@@ -2236,6 +2276,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     drop_shadow,
                     drop_shadow_height,
                     tone_mapped,
+                    facing,
                 },
             );
         }

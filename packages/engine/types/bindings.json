@@ -147,6 +147,12 @@
       "value": "SpriteBlend"
     },
     {
+      "name": "SpriteFacing",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "SpriteFacing"
+    },
+    {
       "name": "StripBlend",
       "array": "Uint32Array",
       "stride": 1,
@@ -1394,6 +1400,11 @@
           "name": "sortY",
           "column": "bool",
           "default": false
+        },
+        {
+          "name": "facing",
+          "column": "SpriteFacing",
+          "default": "none"
         },
         {
           "name": "flipX",

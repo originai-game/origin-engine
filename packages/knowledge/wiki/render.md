@@ -57,6 +57,8 @@ module render {
 | [`DofQuality()`](#column-DofQuality) | column kind | A DofQuality field: the variant's index. |
 | [`SpriteBlend`](#type-SpriteBlend) | enum | How a sprite is blended over what is below it. |
 | [`SpriteBlend()`](#column-SpriteBlend) | column kind | A SpriteBlend field: the variant's index. |
+| [`SpriteFacing`](#type-SpriteFacing) | enum | How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). Decided as a mode of og.Sprite and SpriteDesc rather than a component of its own: a billboard is the same quad, texture, region, flash, glow, blend, layer, drop shadow and texture array layer as any sprite, drawn by the same sprite batch and shader, which only stands its corners differently. The turn is computed on the GPU from each camera's own axes (the main camera, every og.CameraView and og.Mirror, every face of a reflection probe), so it never feeds back into the simulation and a snapshot holds only the mode. The sprite turns about its anchor (a nine-slice turns as one panel), `rotation` still turns it within its own plane, and its drop shadow is cast by the quad stood upright facing the sun, so it shows the whole shape from every camera. Within its layer a faced sprite without sortY draws back to front from the camera's eye (by view depth; a probe's six faces by distance from the probe), after the layer's drop shadows and before its unfaced sprites; and it is culled by its bounds (a sphere round the anchor through the farthest corner) against the camera's view. Sprites draw over the 3D scene after its transparent meshes and particles, depth tested and not depth writing, so a billboard behind a transparent mesh still draws over it. |
+| [`SpriteFacing()`](#column-SpriteFacing) | column kind | A SpriteFacing field: the variant's index. |
 | [`StripBlend`](#type-StripBlend) | enum | How a trail, ribbon or beam is blended. |
 | [`StripBlend()`](#column-StripBlend) | column kind | A StripBlend field: the variant's index. |
 | [`og.PostEffects`](#record-PostEffects) | resource | The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation. |
@@ -85,9 +87,9 @@ module render {
 | [`TextDesc`](#type-TextDesc) | desc struct | A line or block of MSDF text in the world's xy plane facing +z, drawn this frame only (immediate mode: submit it every tick it should show). |
 | [`TextMeasureDesc`](#type-TextMeasureDesc) | desc struct | Text to measure with og.render.measureText, laid out as og.render.text lays it out. |
 | [`TextMetrics`](#type-TextMetrics) | struct | The extent of a laid-out text, in world units. |
-| [`SpriteDesc`](#type-SpriteDesc) | desc struct | A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene. |
+| [`SpriteDesc`](#type-SpriteDesc) | desc struct | A textured or solid quad in the world's xy plane facing +z (or turned to the camera, `facing`), drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene. |
 | [`og.render.sprite`](#fn-sprite) | function | Draw a sprite this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the sprite should show. |
-| [`og.Sprite`](#record-Sprite) | component | A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame. |
+| [`og.Sprite`](#record-Sprite) | component | A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame. |
 | [`og.Afterimage`](#record-Afterimage) | component | Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block). |
 | [`FloatingTextDesc`](#type-FloatingTextDesc) | desc struct | A damage number or pickup text that pops at a point, rises, spreads and fades by itself (no per-tick submission). Deterministic: its drift comes from the tick and its order, and it is world state (the og.sprite state block). |
 | [`og.render.floatingText`](#fn-floatingText) | function | Spawn a floating text (damage numbers, +coins, `blocked`). It lives `lifetime` seconds of scaled time on its own; systems and commands may call it. |
@@ -222,7 +224,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 3592</sub>
+<sub>`api.ogt` line 3606</sub>
 
 <a id="fn-sprite"></a>
 
@@ -252,7 +254,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 3720</sub>
+<sub>`api.ogt` line 3735</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -282,7 +284,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3900</sub>
+<sub>`api.ogt` line 3916</sub>
 
 <a id="fn-measureText"></a>
 
@@ -312,7 +314,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3907</sub>
+<sub>`api.ogt` line 3923</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -342,7 +344,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3976</sub>
+<sub>`api.ogt` line 3992</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -372,7 +374,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3983</sub>
+<sub>`api.ogt` line 3999</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -402,7 +404,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 3990</sub>
+<sub>`api.ogt` line 4006</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -432,7 +434,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4072</sub>
+<sub>`api.ogt` line 4088</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -464,7 +466,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4079</sub>
+<sub>`api.ogt` line 4095</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -496,7 +498,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4096</sub>
+<sub>`api.ogt` line 4112</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -528,7 +530,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 4104</sub>
+<sub>`api.ogt` line 4120</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -562,7 +564,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 4112</sub>
+<sub>`api.ogt` line 4128</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -592,7 +594,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 4121</sub>
+<sub>`api.ogt` line 4137</sub>
 
 <a id="fn-applyQuality"></a>
 
@@ -646,7 +648,7 @@ fn applyQuality {
 }
 ```
 
-<sub>`api.ogt` line 4128</sub>
+<sub>`api.ogt` line 4144</sub>
 
 <a id="fn-look"></a>
 
@@ -674,7 +676,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 4146</sub>
+<sub>`api.ogt` line 4162</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -702,7 +704,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 4152</sub>
+<sub>`api.ogt` line 4168</sub>
 
 <a id="fn-text"></a>
 
@@ -732,7 +734,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 4158</sub>
+<sub>`api.ogt` line 4174</sub>
 
 <a id="fn-bufferGeometry"></a>
 
@@ -762,7 +764,7 @@ fn bufferGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4196</sub>
+<sub>`api.ogt` line 4212</sub>
 
 <a id="fn-updateGeometry"></a>
 
@@ -794,7 +796,7 @@ fn updateGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4203</sub>
+<sub>`api.ogt` line 4219</sub>
 
 <a id="fn-geometryInfo"></a>
 
@@ -824,7 +826,7 @@ fn geometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 4211</sub>
+<sub>`api.ogt` line 4227</sub>
 
 <a id="fn-cylinderGeometry"></a>
 
@@ -854,7 +856,7 @@ fn cylinderGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4406</sub>
+<sub>`api.ogt` line 4422</sub>
 
 <a id="fn-coneGeometry"></a>
 
@@ -884,7 +886,7 @@ fn coneGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4413</sub>
+<sub>`api.ogt` line 4429</sub>
 
 <a id="fn-capsuleGeometry"></a>
 
@@ -914,7 +916,7 @@ fn capsuleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4420</sub>
+<sub>`api.ogt` line 4436</sub>
 
 <a id="fn-torusGeometry"></a>
 
@@ -944,7 +946,7 @@ fn torusGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4427</sub>
+<sub>`api.ogt` line 4443</sub>
 
 <a id="fn-ringGeometry"></a>
 
@@ -974,7 +976,7 @@ fn ringGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4434</sub>
+<sub>`api.ogt` line 4450</sub>
 
 <a id="fn-circleGeometry"></a>
 
@@ -1004,7 +1006,7 @@ fn circleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4441</sub>
+<sub>`api.ogt` line 4457</sub>
 
 <a id="fn-tubeGeometry"></a>
 
@@ -1034,7 +1036,7 @@ fn tubeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4448</sub>
+<sub>`api.ogt` line 4464</sub>
 
 <a id="fn-shapeGeometry"></a>
 
@@ -1064,7 +1066,7 @@ fn shapeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4685</sub>
+<sub>`api.ogt` line 4701</sub>
 
 <a id="fn-extrudeGeometry"></a>
 
@@ -1094,7 +1096,7 @@ fn extrudeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4692</sub>
+<sub>`api.ogt` line 4708</sub>
 
 <a id="fn-latheGeometry"></a>
 
@@ -1124,7 +1126,7 @@ fn latheGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4699</sub>
+<sub>`api.ogt` line 4715</sub>
 
 <a id="fn-polyhedronGeometry"></a>
 
@@ -1154,7 +1156,7 @@ fn polyhedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4706</sub>
+<sub>`api.ogt` line 4722</sub>
 
 <a id="fn-icosahedronGeometry"></a>
 
@@ -1184,7 +1186,7 @@ fn icosahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4713</sub>
+<sub>`api.ogt` line 4729</sub>
 
 <a id="fn-dodecahedronGeometry"></a>
 
@@ -1214,7 +1216,7 @@ fn dodecahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4720</sub>
+<sub>`api.ogt` line 4736</sub>
 
 <a id="fn-octahedronGeometry"></a>
 
@@ -1244,7 +1246,7 @@ fn octahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4727</sub>
+<sub>`api.ogt` line 4743</sub>
 
 <a id="fn-tetrahedronGeometry"></a>
 
@@ -1274,7 +1276,7 @@ fn tetrahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4734</sub>
+<sub>`api.ogt` line 4750</sub>
 
 <a id="fn-sweepGeometry"></a>
 
@@ -1304,7 +1306,7 @@ fn sweepGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4741</sub>
+<sub>`api.ogt` line 4757</sub>
 
 <a id="fn-csgGeometry"></a>
 
@@ -1334,7 +1336,7 @@ fn csgGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4748</sub>
+<sub>`api.ogt` line 4764</sub>
 
 <a id="fn-mergeGeometries"></a>
 
@@ -1364,7 +1366,7 @@ fn mergeGeometries {
 }
 ```
 
-<sub>`api.ogt` line 4755</sub>
+<sub>`api.ogt` line 4771</sub>
 
 <a id="fn-lines"></a>
 
@@ -1394,7 +1396,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 4813</sub>
+<sub>`api.ogt` line 4829</sub>
 
 <a id="fn-points"></a>
 
@@ -1424,7 +1426,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 4848</sub>
+<sub>`api.ogt` line 4864</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1456,7 +1458,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 4952</sub>
+<sub>`api.ogt` line 4968</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1486,7 +1488,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 5008</sub>
+<sub>`api.ogt` line 5024</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1520,7 +1522,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 5120</sub>
+<sub>`api.ogt` line 5136</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1548,7 +1550,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 5135</sub>
+<sub>`api.ogt` line 5151</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1576,7 +1578,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 5203</sub>
+<sub>`api.ogt` line 5219</sub>
 
 ## Components, resources and events
 
@@ -2229,7 +2231,7 @@ resource PostEffects {
 }
 ```
 
-<sub>`api.ogt` line 2859</sub>
+<sub>`api.ogt` line 2873</sub>
 
 <a id="record-Stylise"></a>
 
@@ -2484,7 +2486,7 @@ resource Stylise {
 }
 ```
 
-<sub>`api.ogt` line 3115</sub>
+<sub>`api.ogt` line 3129</sub>
 
 <a id="record-MaterialStyle"></a>
 
@@ -2549,7 +2551,7 @@ resource MaterialStyle {
 }
 ```
 
-<sub>`api.ogt` line 3308</sub>
+<sub>`api.ogt` line 3322</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -2588,7 +2590,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 3358</sub>
+<sub>`api.ogt` line 3372</sub>
 
 <a id="record-Light2D"></a>
 
@@ -2639,7 +2641,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 3377</sub>
+<sub>`api.ogt` line 3391</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -2670,7 +2672,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 3407</sub>
+<sub>`api.ogt` line 3421</sub>
 
 <a id="record-Decal"></a>
 
@@ -2725,7 +2727,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 3421</sub>
+<sub>`api.ogt` line 3435</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -2762,7 +2764,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 3455</sub>
+<sub>`api.ogt` line 3469</sub>
 
 <a id="record-Trail"></a>
 
@@ -2838,7 +2840,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 3471</sub>
+<sub>`api.ogt` line 3485</sub>
 
 <a id="record-Beam"></a>
 
@@ -2904,13 +2906,13 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 3519</sub>
+<sub>`api.ogt` line 3533</sub>
 
 <a id="record-Sprite"></a>
 
 ### `og.Sprite` (component)
 
-A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.
+A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.
 
 Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.
 
@@ -2930,6 +2932,7 @@ Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type 
 | `uvMax` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | The texture region's bottom-right corner, v down. |
 | `layer` | `number` | `0` | — | — | — | Draw order among sprites, tiles and text; higher draws on top. |
 | `sortY` | `boolean` | `false` | — | — | — | Within its layer, lower y draws in front: top-down characters, props and trees overlap by their feet. |
+| `facing` | `SpriteFacing` | `"none"` | — | — | — | A billboard (SpriteDesc.facing): none keeps the quad in the world's xy plane; camera turns it into each camera's view plane; cameraY stands it upright turned about y towards the camera, for trees and characters in a 3D set. Its afterimages face as it does; its blob shadow stays flat. |
 | `flipX` | `boolean` | `false` | — | — | — | Mirror left to right (a character facing left). |
 | `flipY` | `boolean` | `false` | — | — | — | Mirror top to bottom. |
 | `flash` | `number` | `0` | 0 … 1 | — | tunable | A hit flash: the colour mixed towards flashColor by this much (og.tween.flash fades it out). |
@@ -2951,7 +2954,7 @@ Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type 
 
 ```ogt
 component Sprite {
-  doc "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame."
+  doc "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame."
   doc "Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer."
   field texture Texture "The texture (og.load.texture); 0 draws a solid quad of the colour."
   field array TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`; 0 uses `texture`. Every sprite of one array is one draw whichever layer each shows. While the array's streaming group is not resident the sprite draws nothing."
@@ -2986,6 +2989,7 @@ component Sprite {
   }
   field layer i32 "Draw order among sprites, tiles and text; higher draws on top."
   field sortY bool "Within its layer, lower y draws in front: top-down characters, props and trees overlap by their feet."
+  field facing SpriteFacing "A billboard (SpriteDesc.facing): none keeps the quad in the world's xy plane; camera turns it into each camera's view plane; cameraY stands it upright turned about y towards the camera, for trees and characters in a 3D set. Its afterimages face as it does; its blob shadow stays flat."
   field flipX bool "Mirror left to right (a character facing left)."
   field flipY bool "Mirror top to bottom."
   field flash f32 "A hit flash: the colour mixed towards flashColor by this much (og.tween.flash fades it out)." {
@@ -3039,7 +3043,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 3727</sub>
+<sub>`api.ogt` line 3742</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -3087,7 +3091,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 3815</sub>
+<sub>`api.ogt` line 3831</sub>
 
 <a id="record-ReflectionProbe"></a>
 
@@ -3140,7 +3144,7 @@ component ReflectionProbe {
 }
 ```
 
-<sub>`api.ogt` line 4040</sub>
+<sub>`api.ogt` line 4056</sub>
 
 <a id="record-Lines"></a>
 
@@ -3203,7 +3207,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 4855</sub>
+<sub>`api.ogt` line 4871</sub>
 
 <a id="record-Points"></a>
 
@@ -3257,7 +3261,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 4892</sub>
+<sub>`api.ogt` line 4908</sub>
 
 <a id="record-CameraView"></a>
 
@@ -3364,7 +3368,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 5015</sub>
+<sub>`api.ogt` line 5031</sub>
 
 <a id="record-Mirror"></a>
 
@@ -3409,7 +3413,7 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 5087</sub>
+<sub>`api.ogt` line 5103</sub>
 
 <a id="record-RectLight"></a>
 
@@ -3459,7 +3463,7 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 5149</sub>
+<sub>`api.ogt` line 5165</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -3493,7 +3497,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 5176</sub>
+<sub>`api.ogt` line 5192</sub>
 
 ## Types
 
@@ -4201,6 +4205,31 @@ enum SpriteBlend {
 
 <sub>`api.ogt` line 2833</sub>
 
+<a id="type-SpriteFacing"></a>
+
+### `SpriteFacing` (enum)
+
+How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). Decided as a mode of og.Sprite and SpriteDesc rather than a component of its own: a billboard is the same quad, texture, region, flash, glow, blend, layer, drop shadow and texture array layer as any sprite, drawn by the same sprite batch and shader, which only stands its corners differently. The turn is computed on the GPU from each camera's own axes (the main camera, every og.CameraView and og.Mirror, every face of a reflection probe), so it never feeds back into the simulation and a snapshot holds only the mode. The sprite turns about its anchor (a nine-slice turns as one panel), `rotation` still turns it within its own plane, and its drop shadow is cast by the quad stood upright facing the sun, so it shows the whole shape from every camera. Within its layer a faced sprite without sortY draws back to front from the camera's eye (by view depth; a probe's six faces by distance from the probe), after the layer's drop shadows and before its unfaced sprites; and it is culled by its bounds (a sphere round the anchor through the farthest corner) against the camera's view. Sprites draw over the 3D scene after its transparent meshes and particles, depth tested and not depth writing, so a billboard behind a transparent mesh still draws over it.
+
+A string: one of the variants below. The zero value is `"none"`.
+
+| Variant | Doc |
+|---|---|
+| `"none"` | In the world's xy plane facing +z, as every sprite before billboards. |
+| `"camera"` | In the camera's view plane: its x along the camera's right, its y along its up, as particle billboards (smoke, glints, impostors seen from any side). |
+| `"cameraY"` | Upright, turned about the world's y axis towards the camera: its y stays +y, its x the camera's right laid level. Trees, characters and props that must stand while the camera looks down on them. |
+
+```ogt
+enum SpriteFacing {
+  doc "How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). Decided as a mode of og.Sprite and SpriteDesc rather than a component of its own: a billboard is the same quad, texture, region, flash, glow, blend, layer, drop shadow and texture array layer as any sprite, drawn by the same sprite batch and shader, which only stands its corners differently. The turn is computed on the GPU from each camera's own axes (the main camera, every og.CameraView and og.Mirror, every face of a reflection probe), so it never feeds back into the simulation and a snapshot holds only the mode. The sprite turns about its anchor (a nine-slice turns as one panel), `rotation` still turns it within its own plane, and its drop shadow is cast by the quad stood upright facing the sun, so it shows the whole shape from every camera. Within its layer a faced sprite without sortY draws back to front from the camera's eye (by view depth; a probe's six faces by distance from the probe), after the layer's drop shadows and before its unfaced sprites; and it is culled by its bounds (a sphere round the anchor through the farthest corner) against the camera's view. Sprites draw over the 3D scene after its transparent meshes and particles, depth tested and not depth writing, so a billboard behind a transparent mesh still draws over it."
+  variant none "In the world's xy plane facing +z, as every sprite before billboards."
+  variant camera "In the camera's view plane: its x along the camera's right, its y along its up, as particle billboards (smoke, glints, impostors seen from any side)."
+  variant cameraY "Upright, turned about the world's y axis towards the camera: its y stays +y, its x the camera's right laid level. Trees, characters and props that must stand while the camera looks down on them."
+}
+```
+
+<sub>`api.ogt` line 2846</sub>
+
 <a id="type-StripBlend"></a>
 
 ### `StripBlend` (enum)
@@ -4222,7 +4251,7 @@ enum StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2846</sub>
+<sub>`api.ogt` line 2860</sub>
 
 <a id="type-Palette"></a>
 
@@ -4236,7 +4265,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Palette "A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours)."
 ```
 
-<sub>`api.ogt` line 3067</sub>
+<sub>`api.ogt` line 3081</sub>
 
 <a id="type-Look"></a>
 
@@ -4250,7 +4279,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Look "A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook."
 ```
 
-<sub>`api.ogt` line 3068</sub>
+<sub>`api.ogt` line 3082</sub>
 
 <a id="type-DitherPattern"></a>
 
@@ -4281,7 +4310,7 @@ enum DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 3084</sub>
+<sub>`api.ogt` line 3098</sub>
 
 <a id="type-StyliseSpace"></a>
 
@@ -4306,7 +4335,7 @@ enum StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 3101</sub>
+<sub>`api.ogt` line 3115</sub>
 
 <a id="type-LookInfo"></a>
 
@@ -4337,7 +4366,7 @@ struct LookInfo {
 }
 ```
 
-<sub>`api.ogt` line 3347</sub>
+<sub>`api.ogt` line 3361</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -4377,7 +4406,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 3559</sub>
+<sub>`api.ogt` line 3573</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -4408,7 +4437,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 3580</sub>
+<sub>`api.ogt` line 3594</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -4470,7 +4499,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3599</sub>
+<sub>`api.ogt` line 3613</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -4499,7 +4528,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 3633</sub>
+<sub>`api.ogt` line 3647</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -4522,13 +4551,13 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 3644</sub>
+<sub>`api.ogt` line 3658</sub>
 
 <a id="type-SpriteDesc"></a>
 
 ### `SpriteDesc` (desc struct)
 
-A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene.
+A textured or solid quad in the world's xy plane facing +z (or turned to the camera, `facing`), drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -4554,6 +4583,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `dropShadow` | `number` | `0` | 0 … 1 | — | — | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground under it (dropShadowHeight, or the og.Terrain there), drawn before every sprite of its layer: pixel sprites standing in a 3D set cast shadows that agree with it. Where the ground already lies in the sun's cascaded shadow the drop shadow fades, so a shadow inside a shadow is no darker. None with the sun below the horizon; at most five times the sprite's height long under a low one. World sprites with a perspective camera over the xz ground; a 2D camera sees the ground edge on. |
 | `dropShadowHeight` | `number` | `0` | — | `m` | — | The height of the level ground the drop shadow lies on (a floor, a deck, a step). Where an og.Terrain under the sprite's anchor is higher, the shadow lies on the terrain instead, on the plane fitted to its slope under the shadow, or bent over a hollow or a ridge narrower than the shadow (the terrain's heights under a 4 x 2 grid of the shadow's cells). 0 with no terrain is the ground plane y = 0. |
 | `toneMapped` | `boolean` | `true` | — | — | — | As three.js Material.toneMapped: true draws the sprite into the lit scene, carried by exposure (auto exposure included), bloom and the tone curve like any surface. false keeps its colours as given: still placed in the world, depth tested and sorted with the other sprites, but shown unexposed and uncurved (clamped to 0 to 1), outside bloom and fog; the grade, vignette, grain and screen flash still apply. For world UI that must read the same at noon and at dusk: speech bubbles, name tags, markers. Alpha blending only: an additive sprite adds light and is always tone mapped. |
+| `facing` | `SpriteFacing` | `"none"` | — | — | — | A billboard: none keeps the quad in the world's xy plane; camera turns it into the view plane of each camera that draws it; cameraY stands it upright turned about y towards the camera (trees, characters). World sprites only (a screen sprite ignores it); see SpriteFacing for sorting, culling and its drop shadow. |
 | `flipX` | `boolean` | `false` | — | — | — | Mirror the region left to right. |
 | `flipY` | `boolean` | `false` | — | — | — | Mirror the region top to bottom. |
 | `sortY` | `boolean` | `false` | — | — | — | Within its layer, draw by y: lower on the screen draws in front (top-down games). |
@@ -4564,7 +4594,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct SpriteDesc {
-  doc "A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene."
+  doc "A textured or solid quad in the world's xy plane facing +z (or turned to the camera, `facing`), drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene."
   desc true
   field texture Option.Texture "The texture from og.load.texture; null draws a solid quad of the colour."
   field array Option.TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows, so a flipbook's frames packed as layers batch across frames. World and screen sprites alike, with flash, glow, blend and 2D lighting as a textured sprite. null uses `texture`."
@@ -4620,6 +4650,7 @@ struct SpriteDesc {
   field toneMapped bool "As three.js Material.toneMapped: true draws the sprite into the lit scene, carried by exposure (auto exposure included), bloom and the tone curve like any surface. false keeps its colours as given: still placed in the world, depth tested and sorted with the other sprites, but shown unexposed and uncurved (clamped to 0 to 1), outside bloom and fog; the grade, vignette, grain and screen flash still apply. For world UI that must read the same at noon and at dusk: speech bubbles, name tags, markers. Alpha blending only: an additive sprite adds light and is always tone mapped." {
     default true
   }
+  field facing SpriteFacing "A billboard: none keeps the quad in the world's xy plane; camera turns it into the view plane of each camera that draws it; cameraY stands it upright turned about y towards the camera (trees, characters). World sprites only (a screen sprite ignores it); see SpriteFacing for sorting, culling and its drop shadow."
   field flipX bool "Mirror the region left to right."
   field flipY bool "Mirror the region top to bottom."
   field sortY bool "Within its layer, draw by y: lower on the screen draws in front (top-down games)."
@@ -4633,7 +4664,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 3651</sub>
+<sub>`api.ogt` line 3665</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -4721,7 +4752,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3842</sub>
+<sub>`api.ogt` line 3858</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -4763,7 +4794,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3914</sub>
+<sub>`api.ogt` line 3930</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -4799,7 +4830,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3937</sub>
+<sub>`api.ogt` line 3953</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -4839,7 +4870,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3955</sub>
+<sub>`api.ogt` line 3971</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -4896,7 +4927,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 4001</sub>
+<sub>`api.ogt` line 4017</sub>
 
 <a id="type-ReflectionProbeMode"></a>
 
@@ -4919,7 +4950,7 @@ enum ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 4027</sub>
+<sub>`api.ogt` line 4043</sub>
 
 <a id="type-Shader"></a>
 
@@ -4933,7 +4964,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read."
 ```
 
-<sub>`api.ogt` line 4087</sub>
+<sub>`api.ogt` line 4103</sub>
 
 <a id="type-BufferGeometryDesc"></a>
 
@@ -4974,7 +5005,7 @@ struct BufferGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4167</sub>
+<sub>`api.ogt` line 4183</sub>
 
 <a id="type-GeometryInfo"></a>
 
@@ -5005,7 +5036,7 @@ struct GeometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 4183</sub>
+<sub>`api.ogt` line 4199</sub>
 
 <a id="type-CylinderGeometryDesc"></a>
 
@@ -5064,7 +5095,7 @@ struct CylinderGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4218</sub>
+<sub>`api.ogt` line 4234</sub>
 
 <a id="type-ConeGeometryDesc"></a>
 
@@ -5108,7 +5139,7 @@ struct ConeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4254</sub>
+<sub>`api.ogt` line 4270</sub>
 
 <a id="type-CapsuleGeometryDesc"></a>
 
@@ -5155,7 +5186,7 @@ struct CapsuleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4278</sub>
+<sub>`api.ogt` line 4294</sub>
 
 <a id="type-TorusGeometryDesc"></a>
 
@@ -5202,7 +5233,7 @@ struct TorusGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4305</sub>
+<sub>`api.ogt` line 4321</sub>
 
 <a id="type-RingGeometryDesc"></a>
 
@@ -5253,7 +5284,7 @@ struct RingGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4332</sub>
+<sub>`api.ogt` line 4348</sub>
 
 <a id="type-CircleGeometryDesc"></a>
 
@@ -5293,7 +5324,7 @@ struct CircleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4362</sub>
+<sub>`api.ogt` line 4378</sub>
 
 <a id="type-TubeGeometryDesc"></a>
 
@@ -5337,7 +5368,7 @@ struct TubeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4383</sub>
+<sub>`api.ogt` line 4399</sub>
 
 <a id="type-ShapePoints"></a>
 
@@ -5358,7 +5389,7 @@ struct ShapePoints {
 }
 ```
 
-<sub>`api.ogt` line 4457</sub>
+<sub>`api.ogt` line 4473</sub>
 
 <a id="type-ShapeGeometryDesc"></a>
 
@@ -5395,7 +5426,7 @@ struct ShapeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4463</sub>
+<sub>`api.ogt` line 4479</sub>
 
 <a id="type-ExtrudeGeometryDesc"></a>
 
@@ -5468,7 +5499,7 @@ struct ExtrudeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4480</sub>
+<sub>`api.ogt` line 4496</sub>
 
 <a id="type-LatheGeometryDesc"></a>
 
@@ -5516,7 +5547,7 @@ struct LatheGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4525</sub>
+<sub>`api.ogt` line 4541</sub>
 
 <a id="type-PolyhedronGeometryDesc"></a>
 
@@ -5560,7 +5591,7 @@ struct PolyhedronGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4551</sub>
+<sub>`api.ogt` line 4567</sub>
 
 <a id="type-SolidGeometryDesc"></a>
 
@@ -5600,7 +5631,7 @@ struct SolidGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4573</sub>
+<sub>`api.ogt` line 4589</sub>
 
 <a id="type-SweepKey"></a>
 
@@ -5623,7 +5654,7 @@ struct SweepKey {
 }
 ```
 
-<sub>`api.ogt` line 4593</sub>
+<sub>`api.ogt` line 4609</sub>
 
 <a id="type-SweepGeometryDesc"></a>
 
@@ -5675,7 +5706,7 @@ struct SweepGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4601</sub>
+<sub>`api.ogt` line 4617</sub>
 
 <a id="type-MirrorAxis"></a>
 
@@ -5702,7 +5733,7 @@ enum MirrorAxis {
 }
 ```
 
-<sub>`api.ogt` line 4628</sub>
+<sub>`api.ogt` line 4644</sub>
 
 <a id="type-GeometryPart"></a>
 
@@ -5736,7 +5767,7 @@ struct GeometryPart {
 }
 ```
 
-<sub>`api.ogt` line 4636</sub>
+<sub>`api.ogt` line 4652</sub>
 
 <a id="type-CsgOp"></a>
 
@@ -5761,7 +5792,7 @@ enum CsgOp {
 }
 ```
 
-<sub>`api.ogt` line 4650</sub>
+<sub>`api.ogt` line 4666</sub>
 
 <a id="type-CsgGeometryDesc"></a>
 
@@ -5797,7 +5828,7 @@ struct CsgGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4657</sub>
+<sub>`api.ogt` line 4673</sub>
 
 <a id="type-MergeGeometriesDesc"></a>
 
@@ -5829,7 +5860,7 @@ struct MergeGeometriesDesc {
 }
 ```
 
-<sub>`api.ogt` line 4672</sub>
+<sub>`api.ogt` line 4688</sub>
 
 <a id="type-LineMode"></a>
 
@@ -5854,7 +5885,7 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4762</sub>
+<sub>`api.ogt` line 4778</sub>
 
 <a id="type-LinesDesc"></a>
 
@@ -5920,7 +5951,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 4776</sub>
+<sub>`api.ogt` line 4792</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -5971,7 +6002,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 4820</sub>
+<sub>`api.ogt` line 4836</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -6004,7 +6035,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4923</sub>
+<sub>`api.ogt` line 4939</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -6039,7 +6070,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 4937</sub>
+<sub>`api.ogt` line 4953</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -6062,7 +6093,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4962</sub>
+<sub>`api.ogt` line 4978</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -6076,7 +6107,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 4975</sub>
+<sub>`api.ogt` line 4991</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -6110,7 +6141,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 4984</sub>
+<sub>`api.ogt` line 5000</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -6137,7 +6168,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 4999</sub>
+<sub>`api.ogt` line 5015</sub>
 
 <a id="type-Post"></a>
 
@@ -6151,7 +6182,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 5111</sub>
+<sub>`api.ogt` line 5127</sub>
 
 <a id="type-PostError"></a>
 
@@ -6172,7 +6203,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 5129</sub>
+<sub>`api.ogt` line 5145</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -6195,7 +6226,7 @@ enum VolumetricFog {
 }
 ```
 
-<sub>`api.ogt` line 5143</sub>
+<sub>`api.ogt` line 5159</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -6228,7 +6259,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 5191</sub>
+<sub>`api.ogt` line 5207</sub>
 
 ## Column kinds
 
@@ -6247,6 +6278,7 @@ Each is a factory, `Geometry(value?, options?)`, that makes one field of a compo
 | <a id="column-AoMethod"></a>`AoMethod` | `AoMethod` | `Uint32Array` | 1 | An AoMethod field: the variant's index. |
 | <a id="column-DofQuality"></a>`DofQuality` | `DofQuality` | `Uint32Array` | 1 | A DofQuality field: the variant's index. |
 | <a id="column-SpriteBlend"></a>`SpriteBlend` | `SpriteBlend` | `Uint32Array` | 1 | A SpriteBlend field: the variant's index. |
+| <a id="column-SpriteFacing"></a>`SpriteFacing` | `SpriteFacing` | `Uint32Array` | 1 | A SpriteFacing field: the variant's index. |
 | <a id="column-StripBlend"></a>`StripBlend` | `StripBlend` | `Uint32Array` | 1 | A StripBlend field: the variant's index. |
 | <a id="column-Palette"></a>`Palette` | `Palette` | `Uint32Array` | 2 | A Palette handle field (0 is none). |
 | <a id="column-Look"></a>`Look` | `Look` | `Uint32Array` | 2 | A Look handle field (0 is none): a look og.load.look answered, kept for og.render.applyLook. |
@@ -6381,6 +6413,17 @@ column SpriteBlend {
 <sub>`api.ogt` line 2839</sub>
 
 ```ogt
+column SpriteFacing {
+  doc "A SpriteFacing field: the variant's index."
+  array Uint32Array
+  stride 1
+  value SpriteFacing
+}
+```
+
+<sub>`api.ogt` line 2853</sub>
+
+```ogt
 column StripBlend {
   doc "A StripBlend field: the variant's index."
   array Uint32Array
@@ -6389,7 +6432,7 @@ column StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 2852</sub>
+<sub>`api.ogt` line 2866</sub>
 
 ```ogt
 column Palette {
@@ -6400,7 +6443,7 @@ column Palette {
 }
 ```
 
-<sub>`api.ogt` line 3070</sub>
+<sub>`api.ogt` line 3084</sub>
 
 ```ogt
 column Look {
@@ -6411,7 +6454,7 @@ column Look {
 }
 ```
 
-<sub>`api.ogt` line 3077</sub>
+<sub>`api.ogt` line 3091</sub>
 
 ```ogt
 column DitherPattern {
@@ -6422,7 +6465,7 @@ column DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 3094</sub>
+<sub>`api.ogt` line 3108</sub>
 
 ```ogt
 column StyliseSpace {
@@ -6433,7 +6476,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 3108</sub>
+<sub>`api.ogt` line 3122</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -6444,7 +6487,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 4033</sub>
+<sub>`api.ogt` line 4049</sub>
 
 ```ogt
 column Shader {
@@ -6455,7 +6498,7 @@ column Shader {
 }
 ```
 
-<sub>`api.ogt` line 4089</sub>
+<sub>`api.ogt` line 4105</sub>
 
 ```ogt
 column LineMode {
@@ -6466,7 +6509,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4769</sub>
+<sub>`api.ogt` line 4785</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -6477,7 +6520,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4968</sub>
+<sub>`api.ogt` line 4984</sub>
 
 ```ogt
 column RenderTarget {
@@ -6488,7 +6531,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 4977</sub>
+<sub>`api.ogt` line 4993</sub>
 
 ```ogt
 column Post {
@@ -6499,7 +6542,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 5113</sub>
+<sub>`api.ogt` line 5129</sub>
 
 ## Constants
 
@@ -6515,28 +6558,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>`api.ogt` line 3453</sub>
+<sub>`api.ogt` line 3467</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 3997</sub>
+<sub>`api.ogt` line 4013</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 3998</sub>
+<sub>`api.ogt` line 4014</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
 ```
 
-<sub>`api.ogt` line 3999</sub>
+<sub>`api.ogt` line 4015</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>`api.ogt` line 4025</sub>
+<sub>`api.ogt` line 4041</sub>

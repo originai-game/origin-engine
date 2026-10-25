@@ -153,6 +153,8 @@ export interface ColumnKinds {
   DofQuality: { readonly array: Uint32Array; readonly stride: 1; readonly value: DofQuality };
   /** A SpriteBlend field: the variant's index. */
   SpriteBlend: { readonly array: Uint32Array; readonly stride: 1; readonly value: SpriteBlend };
+  /** A SpriteFacing field: the variant's index. */
+  SpriteFacing: { readonly array: Uint32Array; readonly stride: 1; readonly value: SpriteFacing };
   /** A StripBlend field: the variant's index. */
   StripBlend: { readonly array: Uint32Array; readonly stride: 1; readonly value: StripBlend };
   /** A Palette handle field (0 is none). */
@@ -4410,6 +4412,23 @@ export type SpriteBlend = "alpha" | "additive";
 export declare function SpriteBlend(value?: SpriteBlend, options?: FieldOptions): FieldSpec<"SpriteBlend">;
 
 /**
+ * How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). Decided as a mode of og.Sprite and SpriteDesc rather than a component of its own: a billboard is the same quad, texture, region, flash, glow, blend, layer, drop shadow and texture array layer as any sprite, drawn by the same sprite batch and shader, which only stands its corners differently. The turn is computed on the GPU from each camera's own axes (the main camera, every og.CameraView and og.Mirror, every face of a reflection probe), so it never feeds back into the simulation and a snapshot holds only the mode. The sprite turns about its anchor (a nine-slice turns as one panel), `rotation` still turns it within its own plane, and its drop shadow is cast by the quad stood upright facing the sun, so it shows the whole shape from every camera. Within its layer a faced sprite without sortY draws back to front from the camera's eye (by view depth; a probe's six faces by distance from the probe), after the layer's drop shadows and before its unfaced sprites; and it is culled by its bounds (a sphere round the anchor through the farthest corner) against the camera's view. Sprites draw over the 3D scene after its transparent meshes and particles, depth tested and not depth writing, so a billboard behind a transparent mesh still draws over it.
+ * - `"none"`: In the world's xy plane facing +z, as every sprite before billboards.
+ * - `"camera"`: In the camera's view plane: its x along the camera's right, its y along its up, as particle billboards (smoke, glints, impostors seen from any side).
+ * - `"cameraY"`: Upright, turned about the world's y axis towards the camera: its y stays +y, its x the camera's right laid level. Trees, characters and props that must stand while the camera looks down on them.
+ */
+export type SpriteFacing = "none" | "camera" | "cameraY";
+
+/**
+ * A SpriteFacing field: the variant's index.
+ *
+ * A `SpriteFacing` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function SpriteFacing(value?: SpriteFacing, options?: FieldOptions): FieldSpec<"SpriteFacing">;
+
+/**
  * How a trail, ribbon or beam is blended.
  * - `"additive"`: Added: glowing streaks, lasers, magic.
  * - `"alpha"`: Alpha blended: smoke trails, tyre marks.
@@ -5789,7 +5808,7 @@ export interface TextMetrics {
 }
 
 /**
- * A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene.
+ * A textured or solid quad in the world's xy plane facing +z (or turned to the camera, `facing`), drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -5926,6 +5945,12 @@ export interface SpriteDesc {
    */
   readonly toneMapped?: boolean;
   /**
+   * A billboard: none keeps the quad in the world's xy plane; camera turns it into the view plane of each camera that draws it; cameraY stands it upright turned about y towards the camera (trees, characters). World sprites only (a screen sprite ignores it); see SpriteFacing for sorting, culling and its drop shadow.
+   *
+   * @default "none"
+   */
+  readonly facing?: SpriteFacing;
+  /**
    * Mirror the region left to right.
    *
    * @default false
@@ -5972,7 +5997,7 @@ export interface SpriteDesc {
 
 
 /**
- * A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.
+ * A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.
  * Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.
  *
  * The value of the `Sprite` component (token `og.Sprite`).
@@ -6040,6 +6065,10 @@ export interface Sprite {
    * Within its layer, lower y draws in front: top-down characters, props and trees overlap by their feet.
    */
   sortY: boolean;
+  /**
+   * A billboard (SpriteDesc.facing): none keeps the quad in the world's xy plane; camera turns it into each camera's view plane; cameraY stands it upright turned about y towards the camera, for trees and characters in a 3D set. Its afterimages face as it does; its blob shadow stays flat.
+   */
+  facing: SpriteFacing;
   /** Mirror left to right (a character facing left). */
   flipX: boolean;
   /** Mirror top to bottom. */
@@ -22669,10 +22698,10 @@ export declare namespace og {
    */
   const Beam: ComponentType<{ readonly end: FieldSpec<"Vector3">; readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly tile: FieldSpec<"f32">; readonly scroll: FieldSpec<"f32">; readonly segments: FieldSpec<"u32">; readonly jitter: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly blend: FieldSpec<"StripBlend"> }, Beam>;
   /**
-   * A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.
+   * A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.
    * Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.
    */
-  const Sprite: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly array: FieldSpec<"TextureArray">; readonly arrayLayer: FieldSpec<"u32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly anchor: FieldSpec<"Vector2">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly layer: FieldSpec<"i32">; readonly sortY: FieldSpec<"bool">; readonly flipX: FieldSpec<"bool">; readonly flipY: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly glow: FieldSpec<"f32">; readonly blend: FieldSpec<"SpriteBlend">; readonly castShadow: FieldSpec<"bool">; readonly sliceX: FieldSpec<"Vector2">; readonly sliceY: FieldSpec<"Vector2">; readonly sliceScale: FieldSpec<"f32">; readonly shadow: FieldSpec<"f32">; readonly shadowSize: FieldSpec<"Vector2">; readonly shadowOffset: FieldSpec<"Vector2">; readonly dropShadow: FieldSpec<"f32">; readonly dropShadowHeight: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32"> }, Sprite>;
+  const Sprite: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly array: FieldSpec<"TextureArray">; readonly arrayLayer: FieldSpec<"u32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly anchor: FieldSpec<"Vector2">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly layer: FieldSpec<"i32">; readonly sortY: FieldSpec<"bool">; readonly facing: FieldSpec<"SpriteFacing">; readonly flipX: FieldSpec<"bool">; readonly flipY: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly glow: FieldSpec<"f32">; readonly blend: FieldSpec<"SpriteBlend">; readonly castShadow: FieldSpec<"bool">; readonly sliceX: FieldSpec<"Vector2">; readonly sliceY: FieldSpec<"Vector2">; readonly sliceScale: FieldSpec<"f32">; readonly shadow: FieldSpec<"f32">; readonly shadowSize: FieldSpec<"Vector2">; readonly shadowOffset: FieldSpec<"Vector2">; readonly dropShadow: FieldSpec<"f32">; readonly dropShadowHeight: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32"> }, Sprite>;
   /**
    * Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
    */
