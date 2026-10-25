@@ -514,7 +514,7 @@ async function connectAndroid(wanted: string | null, port: number, scheme: strin
 
 const ELEMENT = "element-6066-11e4-a52e-4f735466cecf";
 const IPHONE_FIX =
-  "on the iPhone turn on Settings > Apps > Safari > Advanced > Web Inspector and Remote Automation; on the Mac run `safaridriver --enable` once and pair the phone in Xcode (Window > Devices and Simulators)";
+  "on the iPhone turn on Settings > Apps > Safari > Advanced > Web Inspector and Remote Automation; on the Mac turn on Safari > Develop > Allow Remote Automation, run `safaridriver --enable` once and pair the phone in Xcode (Window > Devices and Simulators)";
 
 /** Safari on an iPhone over WebDriver (safaridriver). */
 async function connectIphone(udid: string | null): Promise<Driver> {
@@ -568,7 +568,10 @@ async function connectIphone(udid: string | null): Promise<Driver> {
     );
     session = s.sessionId;
   } catch (e) {
-    return refuse(`safaridriver could not open Safari on the iPhone (${(e as Error).message.split("\n")[0]}): ${IPHONE_FIX}`);
+    // The whole answer: safaridriver names the device it found and why it
+    // could not use it on the lines after the first.
+    const why = (e as Error).message.split("\n").map((l) => l.trim()).filter(Boolean).join("; ");
+    return refuse(`safaridriver could not open Safari on the iPhone (${why}): ${IPHONE_FIX}`);
   }
   await call("POST", `/session/${session}/timeouts`, { script: 120_000, pageLoad: 120_000 });
   return {
