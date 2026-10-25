@@ -765,7 +765,9 @@ fn the_mobile_preset_is_reported() {
 
 /// Capture is a request: it completes without blocking through
 /// `try_finish`, a dropped request is cancelled without disturbing the
-/// next, and `wait` is bounded.
+/// next, `wait` is bounded, and a capture into the buffer an earlier one
+/// read (the renderer keeps it for the next of its size) holds its own
+/// frame, not the earlier one.
 #[test]
 fn capture_is_bounded_and_cancellable() {
     let mut scene = flat_scene();
@@ -802,6 +804,27 @@ fn capture_is_bounded_and_cancellable() {
         .wait(&renderer, Duration::from_secs(5))
         .expect("within the bound");
     assert_eq!(center(&image), [0, 255, 0]);
+    // The next frame, read into the buffer the last capture handed back,
+    // then once more after a cancelled capture took that buffer.
+    let mut red = flat_scene();
+    let plane = red.add_mesh(shapes::plane(4.0, 1.0));
+    let m = red.add_standard_material(StandardMaterial::basic(Vec3::new(1.0, 0.0, 0.0)));
+    red.add_instance(plane, m, Mat4::IDENTITY);
+    renderer
+        .render(&red, &RenderTarget::Offscreen)
+        .expect("render");
+    assert_eq!(
+        center(&renderer.read_offscreen().expect("capture")),
+        [255, 0, 0]
+    );
+    renderer.begin_capture().expect("begin").cancel();
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("render");
+    assert_eq!(
+        center(&renderer.read_offscreen().expect("capture")),
+        [0, 255, 0]
+    );
 }
 
 /// The PNG the probe's `capture` and `screenshot` answer (`og_render::png`)

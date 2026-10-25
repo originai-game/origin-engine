@@ -17,6 +17,9 @@
 //! started after it reads the frame the loop drew (`og render`'s
 //! every-frame capture on the web, through the probe's `Capture::frame`).
 //!
+//! A request whose frame was read hands its buffer back to the renderer,
+//! and the next capture of the same size copies into it instead of
+//! allocating another; one cancelled before its mapping landed frees it.
 //! [`png`] encodes a frame for the probe's `capture` and `screenshot`.
 
 use crate::{Encoder, RenderError, Renderer, RgbaImage};
@@ -51,10 +54,17 @@ impl Future for Mapped {
     }
 }
 
+/// The buffer of the last capture read, kept for the next one of its size.
+pub(crate) type Spare = Arc<Mutex<Option<wgpu::Buffer>>>;
+
 /// A capture in flight: the copy of the last offscreen frame into a
 /// buffer being mapped. Dropping it cancels the capture.
 pub struct CaptureRequest {
     buffer: wgpu::Buffer,
+    /// Where the buffer goes once read (the renderer's [`Spare`]).
+    spare: Spare,
+    /// The frame was read and the buffer unmapped: it can be used again.
+    read: bool,
     state: Arc<Mutex<MapState>>,
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     submission: wgpu::SubmissionIndex,
@@ -125,7 +135,7 @@ impl CaptureRequest {
     /// Resolves when the mapping completes (the host bounds the wait: drop
     /// the future to cancel). On WebGL2 something must poll the device:
     /// the next frame's submit or [`Renderer::poll`].
-    pub async fn finish(self) -> Result<RgbaImage, RenderError> {
+    pub async fn finish(mut self) -> Result<RgbaImage, RenderError> {
         Mapped(self.state.clone())
             .await
             .map_err(|e| RenderError::Readback(e.to_string()))?;
@@ -135,7 +145,7 @@ impl CaptureRequest {
     /// Cancels the capture (the same as dropping it).
     pub fn cancel(self) {}
 
-    fn read(&self) -> Result<RgbaImage, RenderError> {
+    fn read(&mut self) -> Result<RgbaImage, RenderError> {
         let row = self.width * 4;
         let mut pixels = Vec::with_capacity((row * self.height) as usize);
         {
@@ -149,6 +159,7 @@ impl CaptureRequest {
             }
         }
         self.buffer.unmap();
+        self.read = true;
         if self.swizzle {
             for p in pixels.as_chunks_mut::<4>().0 {
                 p.swap(0, 2);
@@ -164,7 +175,14 @@ impl CaptureRequest {
 
 impl Drop for CaptureRequest {
     fn drop(&mut self) {
-        self.buffer.destroy();
+        if !self.read {
+            self.buffer.destroy();
+            return;
+        }
+        let mut spare = self.spare.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(old) = spare.replace(self.buffer.clone()) {
+            old.destroy();
+        }
     }
 }
 
@@ -241,12 +259,26 @@ impl Renderer {
         let row = width * 4;
         let padded_row =
             row.div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-        let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("capture"),
-            size: (padded_row * height) as u64,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
+        let size = u64::from(padded_row * height);
+        let spare = self
+            .capture_spare
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
+        let buffer = match spare {
+            Some(b) if b.size() == size => b,
+            other => {
+                if let Some(b) = other {
+                    b.destroy();
+                }
+                self.device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("capture"),
+                    size,
+                    usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                    mapped_at_creation: false,
+                })
+            }
+        };
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -287,6 +319,8 @@ impl Renderer {
             });
         Ok(CaptureRequest {
             buffer,
+            spare: self.capture_spare.clone(),
+            read: false,
             state,
             submission,
             width,

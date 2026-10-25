@@ -1403,6 +1403,8 @@ pub struct Renderer {
     /// Copy each presented surface frame into the offscreen target, so
     /// [`Renderer::begin_capture`] reads it ([`Renderer::set_keep_frame`]).
     keep_frame: bool,
+    /// The last capture's buffer once read, for the next capture of its size.
+    capture_spare: capture::Spare,
     samples: u32,
     persistent: post::Persistent,
     graph: post::FrameGraph,
@@ -2996,6 +2998,7 @@ impl Renderer {
             offscreen_linear,
             surface,
             keep_frame: false,
+            capture_spare: Default::default(),
             samples,
             persistent,
             graph: post::FrameGraph::default(),
