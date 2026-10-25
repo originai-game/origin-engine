@@ -1,0 +1,6 @@
+# og cook output and the generated assets (tools/make-assets.ts): rebuilt, never committed.
+cooked/
+assets/
+og-out/
+.og/
+dist/

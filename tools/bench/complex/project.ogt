@@ -1,0 +1,18 @@
+type project
+version 1
+---
+# The complex scene of tools/bench/threejs-compare.ts (docs/design.md §7):
+# a product-scale level that judges the 1.5x budget. Its assets are made
+# by tools/make-assets.ts (not committed); src/layout.js places everything,
+# for this project and for tools/bench/three-complex.js alike.
+name "Complex scene"
+id "complex-scene"
+engine "0.5.0"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
+publish {
+  probe player
+  out "dist"
+}

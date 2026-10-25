@@ -1,0 +1,16 @@
+building complex (og build --publish's web half) into /home/user/workspace/repo/target/tmp/threejs-bench/complex
+complex / engine WebGPU / round 1: http://127.0.0.1:33647/bench.html
+complex / engine WebGPU / round 1: p50 33.67 p95 486.345 ms, sustained 179.485 ms (6 fps); load 10.31, 6.21, 3.64
+complex / engine WebGL2 / round 1: http://127.0.0.1:33647/bench.html?webgl=1
+complex / engine WebGL2 / round 1: p50 2962.99 p95 6125.465 ms, sustained 3948.917 ms (0 fps); load 9.65, 6.14, 3.63
+complex / three WebGL2, InstancedMesh per tile / round 1: http://127.0.0.1:38875/three-page.html?scene=complex
+complex / three WebGL2, InstancedMesh per tile / round 1: p50 2801.275 p95 3017.765 ms, sustained 2842.17 ms (0 fps); load 7.29, 5.91, 3.66
+complex / three WebGL2, InstancedMesh per part / round 1: http://127.0.0.1:38875/three-page.html?scene=complex&tiles=0
+complex / three WebGL2, InstancedMesh per part / round 1: p50 33.395 p95 33.595 ms, sustained 23.583 ms (42 fps); load 5.36, 5.57, 3.62
+complex / three WebGPU, InstancedMesh per tile / round 1: http://127.0.0.1:38875/three-page.html?scene=complex&webgpu=1
+complex / three WebGPU, InstancedMesh per tile / round 1: p50 58485.1 p95 148452.68 ms, sustained 73948.477 ms (0 fps); load 3.87, 5.20, 3.54
+complex / engine WebGPU: threejs-complex-engine-webgpu.png
+complex / engine WebGL2: threejs-complex-engine-webgl2.png
+complex / three WebGL2, InstancedMesh per tile: threejs-complex-three-webgl2-instancedmesh-per-tile.png
+complex / three WebGL2, InstancedMesh per part: threejs-complex-three-webgl2-instancedmesh-per-part.png
+complex / three WebGPU, InstancedMesh per tile: threejs-complex-three-webgpu-instancedmesh-per-tile.png

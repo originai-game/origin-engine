@@ -1209,10 +1209,19 @@ Measured in the spike (§10) and gated in CI afterwards.
 | first frame, mid-range Android, 4G, small game | ≤ 2.0 s click to first frame (the play-surface budget) |
 | first frame, iPhone 13, Wi-Fi, mid-size 3D scene | ≤ 1.5 s |
 | TS system over 10,000 entities (one archetype, 2 components) | ≤ 1.0 ms per tick on a 2022 mid-range Android |
-| reference scene (500 instanced objects, 2 shadowed lights, 20 skinned characters, PBR, post) | ≥ 1.5× the frame rate of the same scene in Three.js on the same device |
+| complex scene (`tools/bench/complex`: a 320 m textured level, 5,261 props from 19 models in 60 materials, 48 skinned characters on 14 clips, the sun's cascades and 4 shadowed local lights, 20 particle emitters, transparency, AO, bloom, ACES, the tier's antialiasing) | ≥ 1.5× the frame rate of the same scene in Three.js on the same device, judged on WebGPU; WebGL2 reported |
+| reference scene (500 instanced objects, 2 shadowed lights, 20 skinned characters, PBR, post) | reported beside the complex scene, both tiers; no longer the judge |
 | probe `capture` 1280×720 | ≤ 30 ms native, ≤ 60 ms web |
 | hot reload | ≤ 300 ms from bundle write to first new frame |
 | headless executor image (`engine`) | ≤ 600 MB |
+
+The Three.js budget is judged on the complex scene since the owner's
+decision of 2026-10-25: a small scene hides the gap between the engines
+(the reference scene measured 1.93× on WebGPU and 1.27× on WebGL2 on an M4
+Pro), so the judge is a level at the size of a shipped game, built from
+the same glTF models and cooked textures on both sides by
+`tools/bench/threejs-compare.ts`; `tools/bench/README.md` names every
+feature on each side and how it is matched.
 
 The hot-reload budget is rebuild and swap. `og dev`'s type check of the same
 save runs beside the rebuild in a process of its own and is reported apart

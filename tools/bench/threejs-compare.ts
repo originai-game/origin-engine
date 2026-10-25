@@ -4,9 +4,20 @@
 // 1280×720 canvas at DPR 1 with vsync and the frame-rate limit off.
 //
 //   bun tools/bench/threejs-compare.ts [--frames 600] [--warm 60] [--rounds 2]
-//       [--only reference|spheres] [--mode <text>] [--shots] [--out <dir>] [--chrome <path>]
+//       [--only complex|reference|spheres] [--mode <text>] [--shots] [--shot-frames 120] [--shot-wait 30]
+//       [--out <dir>] [--chrome <path>]
 //
 // Scenes:
+// - complex: tools/bench/complex, the scene that judges §7's 1.5x budget
+//   (WebGPU the primary tier, WebGL2 reported): a product-scale level of a
+//   320 m textured ground with a lake, 5,261 props from 19 models in 60
+//   materials, 48 skinned characters on 14 clips, the sun's cascades and
+//   four shadowed local lights, 20 particle emitters, blended water, glass
+//   and ghosts, AO, bloom, ACES and the tier's antialiasing; and
+//   three-complex.js, its three.js rebuild from the same assets and the
+//   same src/layout.js (InstancedMesh per 40 m tile, or per part over the
+//   whole level; WebGLRenderer with SMAA, WebGPURenderer with TRAA).
+//   Its assets are made by complex/tools/make-assets.ts on first use;
 // - reference: crates/og-tests/reference-scene (500 turning objects in four
 //   PBR materials, 20 skinned walkers, a shadowed sun and spot, sky IBL,
 //   AO, bloom, ACES, TAA), and three-reference.js, its three.js rebuild
@@ -37,7 +48,7 @@
 // --frozen-lockfile` in tools/bench. Writes <out>/threejs-comparison.json
 // and a screenshot per mode (default tests/evidence/P4/web-host-tools/).
 
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { settingsOf, webBuild } from "../../packages/engine/src/node/web-build.ts";
@@ -45,11 +56,16 @@ import { Browser, chromePath, type Page } from "../../packages/engine/tests/web/
 import { serve, TYPES } from "../../packages/engine/tests/web/serve.ts";
 import { ogBin } from "../../packages/engine/tests/support/og-bin.ts";
 
+interface Hasher {
+  update(data: string | Uint8Array): Hasher;
+  digest(encoding: "hex"): string;
+}
 declare const Bun: {
   build(o: { entrypoints: string[]; target: string; format: string }): Promise<{ success: boolean; logs: unknown[]; outputs: Array<{ text(): Promise<string> }> }>;
   spawnSync(cmd: string[], o?: { cwd?: string; stdout?: string; stderr?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
   serve(o: { port: number; hostname?: string; fetch(req: Request): Response | Promise<Response> }): { port: number; stop(): void };
   file(path: string): Blob & { exists(): Promise<boolean> };
+  CryptoHasher: new (algorithm: string) => Hasher;
 };
 
 const argv = process.argv.slice(2);
@@ -65,11 +81,17 @@ const ONLY = opt("--only", "");
 const SHOTS_ONLY = argv.includes("--shots");
 /** --mode <text>: only the modes whose name contains it (e.g. `engine`, `WebGL2`). */
 const MODE = opt("--mode", "");
+/** --shot-frames N, --shot-wait S: frames played before a screenshot (120) and how long to wait for it (30 s); fewer and longer on a CPU-only machine. */
+const SHOT_FRAMES = Number(opt("--shot-frames", "120"));
+const SHOT_WAIT = Number(opt("--shot-wait", "30"));
 const W = 1280, H = 720;
 mkdirSync(out, { recursive: true });
 const chrome = chromePath(argv.includes("--chrome") ? ["--chrome", opt("--chrome", "")] : []);
+/** BENCH_CHROME_FLAGS: more Chrome flags (an orb without a GPU: `--use-angle=gl-egl`, llvmpipe's GL, since SwiftShader refuses the engine's msdf-text shader on WebGL2). */
+const extraFlags = (process.env.BENCH_CHROME_FLAGS ?? "").split(" ").filter(Boolean);
 
 const SCENES = {
+  complex: { project: join(here, "complex"), three: "complex" },
   reference: { project: join(repo, "crates", "og-tests", "reference-scene"), three: "reference" },
   spheres: { project: join(here, "spheres"), three: "spheres" },
 } as const;
@@ -84,6 +106,11 @@ interface Mode {
   readonly query: string;
 }
 const MODES: Mode[] = [
+  { scene: "complex", name: "engine WebGPU", side: "engine", query: "" },
+  { scene: "complex", name: "engine WebGL2", side: "engine", query: "?webgl=1" },
+  { scene: "complex", name: "three WebGL2, InstancedMesh per tile", side: "three", query: "?scene=complex" },
+  { scene: "complex", name: "three WebGL2, InstancedMesh per part", side: "three", query: "?scene=complex&tiles=0" },
+  { scene: "complex", name: "three WebGPU, InstancedMesh per tile", side: "three", query: "?scene=complex&webgpu=1" },
   { scene: "reference", name: "engine WebGPU", side: "engine", query: "" },
   { scene: "reference", name: "engine WebGL2", side: "engine", query: "?webgl=1" },
   { scene: "reference", name: "three WebGL2, InstancedMesh", side: "three", query: "?scene=reference" },
@@ -113,7 +140,22 @@ const engineHtml = `<!doctype html><html><head><meta charset="utf-8"><title>engi
 const dists: Partial<Record<SceneName, string>> = {};
 for (const scene of new Set(MODES.map((m) => m.scene))) {
   const { project } = SCENES[scene];
-  if (!existsSync(join(project, "cooked", ".cook.ogt"))) {
+  // The complex scene's assets are generated (complex/tools/make-assets.ts, not committed): made again
+  // when the generator or the layout it reads changed since assets/.made, then cooked again.
+  const maker = join(project, "tools", "make-assets.ts");
+  let stale = false;
+  if (existsSync(maker)) {
+    const stamp = new Bun.CryptoHasher("sha256").update(readFileSync(maker)).update(readFileSync(join(project, "src", "layout.js"))).digest("hex");
+    const made = join(project, "assets", ".made");
+    if (!existsSync(made) || readFileSync(made, "utf8").trim() !== stamp) {
+      process.stderr.write(`making ${scene}'s assets (${maker})\n`);
+      const r = Bun.spawnSync([process.execPath, maker], { cwd: repo, stdout: "ignore", stderr: "pipe" });
+      if (r.exitCode !== 0) throw new Error(`making ${scene}'s assets: ${new TextDecoder().decode(r.stderr)}`);
+      writeFileSync(made, stamp + "\n");
+      stale = true;
+    }
+  }
+  if (stale || !existsSync(join(project, "cooked", ".cook.ogt"))) {
     // og cook wants an assets/ even when the game makes everything in code (the sphere field).
     mkdirSync(join(project, "assets"), { recursive: true });
     const r = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo, stdout: "ignore", stderr: "pipe" });
@@ -216,22 +258,22 @@ const pageUrl = (m: Mode) => (m.side === "engine" ? `http://127.0.0.1:${servers[
  */
 async function shots(): Promise<void> {
   for (const m of MODES) {
-    const browser = await Browser.launch({ chrome, width: W, height: H });
+    const browser = await Browser.launch({ chrome, width: W, height: H, flags: extraFlags });
     try {
       const page = await browser.open("about:blank", []);
       await page.send("Emulation.setDeviceMetricsOverride", { width: W, height: H, deviceScaleFactor: 1, mobile: false });
       await page.send("Page.navigate", { url: pageUrl(m) });
       if (m.side === "engine") {
         await page.until("!!globalThis.__og_shell__", 120_000);
-        await page.eval(`(async () => { for (let i = 0; i < 120; i++) await globalThis.__og_shell__.call("frame", 1000 / 60); })()`);
+        await page.eval(`(async () => { for (let i = 0; i < ${SHOT_FRAMES}; i++) await globalThis.__og_shell__.call("frame", 1000 / 60); })()`);
         await page.eval(`void (globalThis.__keep__ = setInterval(() => globalThis.__og_shell__.call("frame", 1000 / 60).catch(() => {}), 30))`);
       } else {
         await page.until("!!(globalThis.__bench_ready__ || globalThis.__bench_error__)", 120_000);
-        await page.eval(`(() => { for (let i = 0; i < 120; i++) globalThis.__bench_step__(); globalThis.__keep__ = setInterval(() => globalThis.__bench_step__(), 30); })()`);
+        await page.eval(`(() => { for (let i = 0; i < ${SHOT_FRAMES}; i++) globalThis.__bench_step__(); globalThis.__keep__ = setInterval(() => globalThis.__bench_step__(), 30); })()`);
       }
-      const png = await Promise.race([page.screenshot(), new Promise<null>((r) => setTimeout(() => r(null), 30_000))]);
+      const png = await Promise.race([page.screenshot(), new Promise<null>((r) => setTimeout(() => r(null), SHOT_WAIT * 1000))]);
       if (png) writeFileSync(join(out, shotName(m)), png);
-      process.stderr.write(`${m.scene} / ${m.name}: ${png ? shotName(m) : "no screenshot within 30 s"}\n`);
+      process.stderr.write(`${m.scene} / ${m.name}: ${png ? shotName(m) : `no screenshot within ${SHOT_WAIT} s`}\n`);
     } catch (e) {
       process.stderr.write(`${m.scene} / ${m.name}: no screenshot (${e instanceof Error ? e.message : String(e)})\n`);
     } finally {
@@ -249,7 +291,7 @@ try {
   }
   for (let round = 1; round <= ROUNDS; round++) {
     for (const m of MODES) for (let attempt = 1; attempt <= 3; attempt++) {
-      const browser = await Browser.launch({ chrome, width: W, height: H, flags: ["--disable-frame-rate-limit"] });
+      const browser = await Browser.launch({ chrome, width: W, height: H, flags: ["--disable-frame-rate-limit", ...extraFlags] });
       const log: string[] = [];
       const label = `${m.scene} / ${m.name} / round ${round}`;
       try {
