@@ -13,8 +13,10 @@ already fixed there.
 | 2 | rumpus-isle #1 (2D look for a 3D premise) | fixed here | fa9ead9b | `packages/create/tests/create.test.ts` "the premise's style is one drawn for the project's profile"; `packages/knowledge/tests/validate.test.ts` refuses a bad `look.profiles` |
 | 3 | rumpus-isle #2 (no `Font()` / `Style()`) | fixed here | 5a8ca6a4 | `packages/engine/tests/api-surface.test.ts` "every handle type has a field factory of its own kind, and a handle round-trips through it" |
 | 4 | rumpus-isle #3, #4, #5, #6, #8, #11 (docs) | fixed here | 5bc4e92d, 04e09288 | knowledge validator (names resolve); claims checked by runs, below |
+| 4b | module action names (follow-up decision) | fixed here | 4af7a193 | og-runtime `engine::tests::a_game_command_named_as_a_module_action_is_refused`, `engine::tests::the_module_actions_are_the_reserved_list` |
 | 5 | rumpus-isle #13 (polish wants floating text on every hit) | fixed here | 9a870fa3 | `packages/engine/tests/polish.test.ts` "an impact with three of the four signals owes no fourth" |
 | 6 | r3 terrain-generate (one-line `layer { ... }`) | the terrain example was already fixed on main (7a2c1498); another one-line example fixed here, and the validator now checks | ab8d92c0 | `packages/knowledge/tests/grammar.test.ts` "every .ogt example in the skills has the parser's line shape" |
+| 1 | brasswick #11, #12, #15, #16 (follow-up) | already fixed on main | 80008fbb (#15 with 41f49c78) | og-ui `groups_and_icons_take_the_names_their_descs_give`, `a_corner_group_steps_down_past_the_control_when_moving_along_lands_on_another`; `packages/engine/tests/ui-levels.test.ts`, `ui-hud-corner.test.ts` (10 pass here); og-platform-sdk §3's system order for #16 |
 | 7 | r3 model-review (og-build lacks `og compare`; og-model lacks `type model`) | already fixed on main | 3da5b8a5 | og-build §4 names the views, the turntable and `og compare`; og-model §5 has "The same model as an asset: `type model`" |
 
 ## What changed
@@ -80,10 +82,8 @@ project (dev `og`, `OG_RENDERER=none`):
   ("command 'pause': 'pause' is a core action; register under another
   name"). A game command named after a module's registered action (`view`)
   is **not** refused: the game's handler replaces the engine's
-  (`help` shows `view (registered)` with the game's empty doc). og-game §3
-  warns about this (04e09288). Refusing it would be an engine change
-  (`let _ = probe.register_command(...)` in og-runtime ignores the clash);
-  left for the coordinator.
+  (`help` shows `view (registered)` with the game's empty doc). The
+  coordinator decided to refuse it; see "Module action names" below.
 - #5: `command::parse` splits fields on `:` and `\` makes the next character
   literal; `0.1:records:12:34.5` set `best` 12 and `seconds` 34.5.
 - #6: `Probe::emit` suffixes a named clash at any time with a WARN; the run
@@ -95,6 +95,37 @@ project (dev `og`, `OG_RENDERER=none`):
   say both.
 - #3: the pattern is Rumpus's own `Tags` system (`src/feel.ts`), with
   `screen` and `layer` as TextDesc documents them.
+
+**Module action names (follow-up, 4af7a193).** The game's commands were
+registered first (`rprobe::install`), then the modules' with `let _ =`, so a
+module's registration of a name the game had taken failed silently and the
+game's handler ran. Reordering alone would not hold in a publish build,
+which registers fewer module actions (no dumps, `view`, `cover`). So
+og-runtime now reserves the names: `probe::MODULE_ACTIONS` (18 names) and
+`probe::reserved(name)`. `register_one` (the game's `GameDesc.commands` at
+start, a hot reload's new ones) and `og_commands_register`
+(`og.commands.register`) refuse a reserved name with "'view' is a
+registered engine action; register under another name", beside the core
+message. Both hosts run this code (og-runtime is shared by the addon and the
+wasm). The check is by name, so the order the modules and the game register
+in does not matter. The test tries both orders and checks that a module
+registered after a refused game command keeps its own handler. The modules'
+registration is one function, `engine::register_module_actions`; a second
+test holds it to `MODULE_ACTIONS`, so a module that adds an action without
+reserving it fails. A scratch game with `commands: { view }` now stops at
+start: "command 'view': 'view' is a registered engine action; register
+under another name". No template, example or test registers one of the 18
+names. og-game §3 lists them as refused.
+
+**Brasswick #11, #12, #15, #16 (follow-up).** Each checked against the code
+and its tests: #11 `IconDesc`/`ImageDesc.label` and the level card's names;
+#12 `SettingsDesc.sectionLabel`/`languagesLabel` and the group labels; #15
+anchored groups keep out of `Viewport.covered` (41f49c78) and a corner group
+steps down past it (80008fbb), and Brasswick's HUD is anchored groups, so
+it gets this; #16 og-platform-sdk §3's system order. All four rows are
+marked fixed. Brasswick's own `tests/locales.og.ts` asserts the old English
+names (#11's repro), so that suite needs updating with the game; I did not
+run it.
 
 ## Verification
 
@@ -108,7 +139,13 @@ into `packages/engine/native/` (`cargo build -p og-host-node -p og-cli`):
 - In packages/engine: `bun run typecheck`, `tests/api-surface.test.ts`
   (5 pass), `tests/polish.test.ts` (8 pass), `tests/ui-levels.test.ts`
   (5 pass).
-- `cargo test -p og-ui --test widgets` (27 pass), for item 1's focus rows.
+- `cargo test -p og-ui --test widgets` (27 pass) and `--test a11y` (6 pass),
+  for item 1's rows.
+- Follow-up: `cargo test -p og-runtime --lib` (19 pass),
+  `cargo clippy -p og-runtime --all-targets -- -D warnings`, `cargo fmt`;
+  packages/engine `tests/api-surface.test.ts`, `tests/runtime.test.ts`
+  (18 pass), `tests/ui-hud-corner.test.ts` (5 pass); `bun run validate` in
+  packages/knowledge.
 
 The new tests fail on the old code: the create test picks
 `rubber-hose-animation`, the api-surface test finds five handles without
@@ -125,11 +162,10 @@ the wasm build, reference captures, the full packages/engine suite.
   on main. Nothing here touches rendering, the UI kit, a template's look or
   a game's code. The catalogue's new field and `sculpted-clay`'s premise
   words change only what `create --premise` picks for a new scaffold.
-- **Brasswick #11, #12, #15, #16:** 80008fbb's subject says it fixed these
-  too, but their FINDINGS rows carry no fix mark. Not verified or marked
-  here.
-- **Module action names:** a game command can silently replace a module's
-  registered action (see #4 above). Decide whether og-runtime should refuse
-  it as it refuses core names.
+- **Brasswick's `tests/locales.og.ts`** still asserts the English icon
+  names from before 80008fbb. It belongs to the game and was not run here.
+- **Module action names:** a game whose command is one of the 18 names now
+  fails at start. None in the repository does; a game outside it would
+  need a rename.
 - **Rumpus-isle's workaround** (#2: the font as an `f64` cast back) can now
   be a `Font()` field; the game was not edited.
