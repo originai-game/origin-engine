@@ -255,7 +255,19 @@ registered schema and refuses a model path that does not exist.
   (ETC1S for colour, UASTC for normal and linear maps), WAV into QOA, fonts
   into MSDF atlases, scenes into component tables. Import settings live next
   to the source as `<file>.ogt` (`texture { kind normal }`,
-  `font { charset latin chars "开始游戏" }`).
+  `font { charset latin chars "开始游戏" }`). The prose here writes a
+  block on one line for short; in a file, as in every `.ogt`, a `{` ends
+  its key's line and a `}` stands alone on its own (the parser refuses
+  `'{' must end its line`):
+
+  ```text
+  type import
+  version 1
+  ---
+  texture {
+    kind normal
+  }
+  ```
 - At load a cooked texture reaches the GPU block-compressed in the device's
   format with its mips (BC7, and BC5 for normal maps, on desktop GPUs; ASTC
   on Apple and most Android; ETC2 and EAC elsewhere), a quarter of RGBA8's
@@ -2821,11 +2833,22 @@ door. Mark the scene's unmoving models `static true` and put an
 entity "hall" {
   model "models/hall.glb"
   static true
-  Transform { position 0 0 0 quaternion 0 0 0 1 scale 1 1 1 }
+  Transform {
+    position 0 0 0
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
 }
 entity "hall-probes" {
-  Transform { position 0 2 0 quaternion 0 0 0 1 scale 1 1 1 }
-  LightVolume { size 12 4 12 spacing 1 }
+  Transform {
+    position 0 2 0
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  LightVolume {
+    size 12 4 12
+    spacing 1
+  }
 }
 ```
 
