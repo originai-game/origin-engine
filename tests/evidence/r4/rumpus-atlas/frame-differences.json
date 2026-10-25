@@ -1,0 +1,68 @@
+[
+  {
+    "frame": "berry.png",
+    "pixels": 6389,
+    "outlierPercent": 0.2811414930555556,
+    "rmse": 0.0190571491002252
+  },
+  {
+    "frame": "bump.png",
+    "pixels": 5742,
+    "outlierPercent": 0.263671875,
+    "rmse": 0.018583980758067154
+  },
+  {
+    "frame": "card.png",
+    "pixels": 11947,
+    "outlierPercent": 0.4801432291666667,
+    "rmse": 0.027930211795798795
+  },
+  {
+    "frame": "crumble.png",
+    "pixels": 5985,
+    "outlierPercent": 0.2698567708333333,
+    "rmse": 0.018747651812558105
+  },
+  {
+    "frame": "lobby.png",
+    "pixels": 17833,
+    "outlierPercent": 0.666015625,
+    "rmse": 0.03253570895677292
+  },
+  {
+    "frame": "pause.png",
+    "pixels": 23361,
+    "outlierPercent": 0.6749131944444444,
+    "rmse": 0.030136172375776267
+  },
+  {
+    "frame": "podium.png",
+    "pixels": 13599,
+    "outlierPercent": 0.4554036458333333,
+    "rmse": 0.028189150318228894
+  },
+  {
+    "frame": "scores.png",
+    "pixels": 13477,
+    "outlierPercent": 0.4239366319444444,
+    "rmse": 0.024925499089721366
+  },
+  {
+    "frame": "settings-fr.png",
+    "pixels": 16136,
+    "outlierPercent": 0.4574652777777778,
+    "rmse": 0.02530749668683685
+  },
+  {
+    "frame": "splash.png",
+    "pixels": 6107,
+    "outlierPercent": 0.2738715277777778,
+    "rmse": 0.01884055482033072
+  },
+  {
+    "frame": "title.png",
+    "pixels": 12937,
+    "outlierPercent": 0.3956163194444444,
+    "rmse": 0.024761901477232735
+  }
+]

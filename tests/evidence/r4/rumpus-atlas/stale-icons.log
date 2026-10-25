@@ -1,0 +1,4 @@
+og check: ok (tsrs, 16 ms)
+FAIL frames (2 checks, 6233 ms): the title, lobby, card, a bump, a splash, the scoreboard, berries, cracking tiles, pause, the French settings and the podium match their reference frames
+  - icons.png must match the cartoon pack: run bun tools/make-assets.ts: expected "898671e76d5fe1ffe871ac1c005ee2941e1238029866a4d79ab9214cf878d814", got "90d45c062f09ff8f332918a2a1a0b18ceefe10e75192a22e1c1159c7f627163c"
+og test: 1 of 1 suite(s) failed

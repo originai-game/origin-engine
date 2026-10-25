@@ -1,0 +1,4 @@
+og check: ok (tsrs, 40 ms)
+FAIL frames (1 checks, 7130 ms): the title, lobby, card, a bump, a splash, the scoreboard, berries, cracking tiles, pause, the French settings and the podium match their reference frames
+  - atlas.png must match the cartoon pack: run bun tools/make-assets.ts: expected "102e3b512c71aaa642c38a11281196467840847450165bd0928d8d0f1919c3f1", got "12b16258c1d1362a061155b6c5a8454eda5edd6f6ae870de980173cd03d80a0a"
+og test: 1 of 1 suite(s) failed

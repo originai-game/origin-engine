@@ -4,8 +4,11 @@
 // knocked out, the scoreboard, the berry rush with berries up, the crumble
 // tiles shaking under the critters, the pause menu, the settings in French,
 // and the podium. `OG_FX_CAPTURE=1 og test .` records this tier's references.
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { playtest } from "@origingame/engine/playtest";
-import { checkFrames } from "./frames.ts";
+import { checkFrames, referencesDir } from "./frames.ts";
 import { game, hold, pad, PAD0, script, tap } from "./lib.ts";
 
 const FILES = ["title.png", "lobby.png", "card.png", "bump.png", "splash.png", "scores.png", "berry.png", "crumble.png", "pause.png", "settings-fr.png", "podium.png"];
@@ -53,6 +56,13 @@ export default playtest({
     "17.1:quit",
   ),
   check(run, t) {
+    const project = dirname(referencesDir());
+    for (const file of ["atlas.png", "icons.png"]) {
+      const copied = createHash("sha256").update(readFileSync(resolve(project, "assets/styles/rumpus", file))).digest("hex");
+      const source = createHash("sha256").update(readFileSync(resolve(project, "../../templates/styles/cartoon", file))).digest("hex");
+      t.equal(copied, source, `${file} must match the cartoon pack: run bun tools/make-assets.ts`);
+      if (copied !== source) return;
+    }
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     t.ok(run.quit, "the script reached quit");
     t.ok(game(run, "bump.json").bumps >= 1, "the critters met as the bump frame is taken");
