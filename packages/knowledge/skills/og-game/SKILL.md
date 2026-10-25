@@ -232,9 +232,13 @@ export default og.game({
     `key_down`, `key_up`, `type`, `compose`, `commit`, `move_to_text`,
     `teleport`, `frame_entity`, `dump_world`, `dump_entity`, `dump_ui`,
     `get`, `set`, `seed`, `pause`, `resume`, `advance`, `describe`,
-    `expect`, `save_scene`, `quit` and `help` (`help` prints them, and the
-    modules' `dump_ai`, `dump_nav`, `dump_platform`, `locale`,
-    `dump_stream` and `terrain_stream`, also taken). The engine's `pause`
+    `expect`, `save_scene`, `quit` and `help`. Keep off the actions the
+    engine's modules register as well: `help` lists them marked
+    `(registered)`, among them `debug`, `view`, `turntable`, `timeline`,
+    `locale`, `lanes`, `cover`, `bake_probes`, `terrain_stream` and the
+    `dump_*` family; a game action of one of those names is not refused
+    but replaces the engine's, so `view:hero:front` would run the game's
+    handler. The engine's `pause`
     freezes the tick from outside the game; the game's own pause (its menu
     open, `Game.paused` set) is a game action under its own name,
     `open_pause`.
