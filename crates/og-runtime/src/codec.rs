@@ -221,7 +221,13 @@ pub struct Layout {
     /// `(field, byte offset)` by field name, built on the first
     /// [`Layout::slot`] (the fields never change after construction).
     pub(crate) by_name: std::sync::Arc<std::sync::OnceLock<Vec<(usize, usize)>>>,
+    /// The last bytes [`Layout::decode_kept`] decoded and their JSON,
+    /// shared by the layout's clones.
+    kept: std::sync::Arc<std::sync::Mutex<Kept>>,
 }
+
+/// A record's packed bytes and their JSON ([`Layout::decode_kept`]).
+type Kept = Option<(Vec<u8>, std::sync::Arc<Value>)>;
 
 /// The variants of an IDL enum column (`AudioBus`), from the declared
 /// columns: a game's field may be of an enum column no engine record uses.
@@ -319,6 +325,7 @@ impl Layout {
             kind,
             fields: out.into(),
             by_name: Default::default(),
+            kept: Default::default(),
         };
         // Defaults must encode: refuse a bad one at declaration.
         layout.encode(None, None)?;
@@ -372,6 +379,7 @@ impl Layout {
             kind,
             fields: fields.into(),
             by_name: Default::default(),
+            kept: Default::default(),
         })
     }
 
@@ -402,6 +410,7 @@ impl Layout {
                 .collect::<Vec<_>>()
                 .into(),
             by_name: Default::default(),
+            kept: Default::default(),
         }
     }
 
@@ -522,6 +531,27 @@ impl Layout {
             at += size;
         }
         Value::Object(map)
+    }
+
+    /// [`Layout::decode`] of a record read every frame, a resource: the
+    /// last bytes decoded and their JSON are kept, so a record whose bytes
+    /// did not change is not decoded again (the camera's, the render
+    /// settings' and the post effects' decodes, their maps built and
+    /// dropped, were about a tenth of a WebGL2 frame's wasm:
+    /// tests/evidence/r4/perf-webgl2-2/NOTES.md).
+    pub fn decode_kept(&self, bytes: Vec<u8>) -> std::sync::Arc<Value> {
+        let mut kept = self
+            .kept
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some((b, v)) = kept.as_ref()
+            && *b == bytes
+        {
+            return v.clone();
+        }
+        let v = std::sync::Arc::new(self.decode(&bytes));
+        *kept = Some((bytes, v.clone()));
+        v
     }
 
     /// One field of packed bytes as JSON.
@@ -938,6 +968,33 @@ mod tests {
             capacity,
             list: 0,
         }
+    }
+
+    /// A resource read every frame is decoded once while its bytes stay
+    /// the same (one JSON shared by the layout's clones) and again when
+    /// they change, always what a fresh decode answers.
+    #[test]
+    fn a_kept_decode_is_redone_only_when_the_bytes_change() {
+        let decl = og_api::host::RECORDS
+            .iter()
+            .find(|d| d.schema == "og.Camera")
+            .expect("og.Camera");
+        let layout = Layout::from_decl(decl).unwrap();
+        let clone = layout.clone();
+        let a = layout.encode(None, None).unwrap();
+        let b = layout
+            .encode(Some(&a), Some(&json!({ "fov": 35.0 })))
+            .unwrap();
+        assert_ne!(a, b);
+        let first = layout.decode_kept(a.clone());
+        assert_eq!(*first, layout.decode(&a));
+        let again = clone.decode_kept(a.clone());
+        assert!(std::sync::Arc::ptr_eq(&first, &again), "decoded again");
+        let changed = layout.decode_kept(b.clone());
+        assert!(!std::sync::Arc::ptr_eq(&first, &changed));
+        assert_eq!(*changed, layout.decode(&b));
+        assert_eq!(changed["fov"], json!(35.0));
+        assert_eq!(*layout.decode_kept(a.clone()), layout.decode(&a));
     }
 
     /// An engine record's text field (`str.24` in the IDL) is stored at the

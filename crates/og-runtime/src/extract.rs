@@ -339,12 +339,13 @@ fn on(v: &Value, key: &str, default: bool) -> bool {
     }
 }
 
-/// The value of a resource the world holds, decoded with its layout.
-pub(crate) fn resource(world: &World, layout: Option<&Layout>) -> Option<Value> {
+/// The value of a resource the world holds, decoded with its layout (kept
+/// while its bytes are unchanged: [`Layout::decode_kept`]).
+pub(crate) fn resource(world: &World, layout: Option<&Layout>) -> Option<std::sync::Arc<Value>> {
     let layout = layout?;
     let id = world.id_by_name(&layout.schema).ok()?;
     let bytes = world.resource_bytes(id).ok()?;
-    Some(layout.decode(&bytes))
+    Some(layout.decode_kept(bytes))
 }
 
 /// Local transforms and parents of every entity with `og.Transform`, for

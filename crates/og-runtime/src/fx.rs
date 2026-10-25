@@ -18,6 +18,7 @@ use og_render::{
 };
 use serde_json::Value;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 /// The layouts of the effect records the engine registered.
 #[derive(Default)]
@@ -198,10 +199,10 @@ fn variant(v: &Value, names: &[&str]) -> usize {
     }
 }
 
-pub(crate) fn resource(world: &World, layout: Option<&Layout>) -> Option<Value> {
+pub(crate) fn resource(world: &World, layout: Option<&Layout>) -> Option<Arc<Value>> {
     let layout = layout?;
     let id = world.id_by_name(&layout.schema).ok()?;
-    Some(layout.decode(&world.resource_bytes(id).ok()?))
+    Some(layout.decode_kept(world.resource_bytes(id).ok()?))
 }
 
 /// Decoded rows of one component in entity order: `(entity bits, value)`.
@@ -422,8 +423,8 @@ pub(crate) fn snap_to_grid(rs: &mut RenderState) {
 /// `Stylise` and `MaterialStyle` as og-render's description (every
 /// primitive `None` or zero unless its field turns it on).
 fn stylise(
-    s: Option<Value>,
-    m: Option<Value>,
+    s: Option<Arc<Value>>,
+    m: Option<Arc<Value>>,
     palettes: &[(String, Option<og_render::PaletteHandle>)],
     textures: &[og_render::TextureHandle],
 ) -> og_render::Stylise {
