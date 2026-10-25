@@ -104,6 +104,8 @@ export const BlendshapeSource = ((value = "component" as Api.BlendshapeSource, o
 export const IkSolver = ((value = "twoBone" as Api.IkSolver, options) => spec("IkSolver", value, options)) as typeof Api.IkSolver;
 export const IkSpace = ((value = "world" as Api.IkSpace, options) => spec("IkSpace", value, options)) as typeof Api.IkSpace;
 export const AudioBus = ((value = "master" as Api.AudioBus, options) => spec("AudioBus", value, options)) as typeof Api.AudioBus;
+export const PanningModel = ((value = "equalpower" as Api.PanningModel, options) => spec("PanningModel", value, options)) as typeof Api.PanningModel;
+export const AudioResampler = ((value = "linear" as Api.AudioResampler, options) => spec("AudioResampler", value, options)) as typeof Api.AudioResampler;
 export const Navigation = ((value = 0 as Api.Navigation, options) => spec("Navigation", value, options)) as typeof Api.Navigation;
 export const Behaviour = ((value = 0 as Api.Behaviour, options) => spec("Behaviour", value, options)) as typeof Api.Behaviour;
 
@@ -152,6 +154,7 @@ export const SOUND_STOPPED: typeof Api.SOUND_STOPPED = 1;
 export const SOUND_REMOVED: typeof Api.SOUND_REMOVED = 2;
 export const SOUND_REPLACED: typeof Api.SOUND_REPLACED = 3;
 export const SOUND_CULLED: typeof Api.SOUND_CULLED = 4;
+export const SOUND_RETRIGGERED: typeof Api.SOUND_RETRIGGERED = 5;
 export const NAV_IDLE: typeof Api.NAV_IDLE = 0;
 export const NAV_MOVING: typeof Api.NAV_MOVING = 1;
 export const NAV_ARRIVED: typeof Api.NAV_ARRIVED = 2;
