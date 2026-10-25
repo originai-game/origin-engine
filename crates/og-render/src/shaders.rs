@@ -159,7 +159,7 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
         "particles",
         crate::particles_gpu::draw_source(crate::FRAME_WGSL),
     );
-    for (label, wgsl) in crate::post::post_sources() {
+    for (label, wgsl) in crate::post::post_sources(full) {
         add(label, wgsl);
     }
     add("glass", crate::glass::GLASS_WGSL.to_string());

@@ -10,6 +10,8 @@
 //! times, and the comparison with the committed reference when one exists.
 //! Frame times run the scene's per-frame update (moving sprites) each frame.
 //! `OG_GFX_DEBUG_CASCADES=1` draws the cascade debug view instead.
+//! `OG_GFX_AO_HALF=1` runs the scene's ambient occlusion at half resolution
+//! (`AoResolution::Half`).
 //! `OG_GFX_CULLING=cpu|gpu|auto` sets the scene's `Culling`: `cpu` culls on
 //! the CPU on every tier, `gpu` on the GPU on the full tier whatever the
 //! scene's size, `auto` (the default) on the GPU from
@@ -191,6 +193,11 @@ fn run(
     if std::env::var_os("OG_GFX_DEBUG_AO").is_some() {
         built.scene.debug = og_render::DebugView::AmbientOcclusion;
     }
+    if std::env::var_os("OG_GFX_AO_HALF").is_some()
+        && let Some(ao) = &mut built.scene.post.ao
+    {
+        ao.resolution = og_render::AoResolution::Half;
+    }
     let t0 = Instant::now();
     let mut renderer = Renderer::new_blocking(&built.desc).map_err(|e| e.to_string())?;
     let mut stats = FrameStats::default();
@@ -337,6 +344,20 @@ const VARIANTS: &[Variant] = &[
     ("E1: AO (SSAO)", |g| {
         g.scene.post.ao = Some(og_render::AmbientOcclusion {
             method: og_render::AoMethod::Ssao,
+            ..Default::default()
+        })
+    }),
+    ("E1: AO (GTAO, half resolution)", |g| {
+        g.scene.post.ao = Some(og_render::AmbientOcclusion {
+            method: og_render::AoMethod::Gtao,
+            resolution: og_render::AoResolution::Half,
+            ..Default::default()
+        })
+    }),
+    ("E1: AO (SSAO, half resolution)", |g| {
+        g.scene.post.ao = Some(og_render::AmbientOcclusion {
+            method: og_render::AoMethod::Ssao,
+            resolution: og_render::AoResolution::Half,
             ..Default::default()
         })
     }),

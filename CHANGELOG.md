@@ -9,6 +9,12 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## 0.5.0 — 2026-10-25
 
+- Cheaper ambient occlusion: `PostEffects.aoResolution` (`AoResolution`,
+  `full` by default, today's frame) set to `half` searches and blurs a
+  quarter of the pixels and brings them to full resolution with a
+  depth-aware upsample (an `ao-upsample` pass). At `full` the AO blur
+  reads its taps as gathers on WebGPU and skips the sky; every frame is
+  unchanged. Worlds hash differently once (PostEffects has a new layout).
 - Instance uploads send only the records a draw reads: a batch drawn from
   its culled copies (under 90 % in view, the CPU culling path, so every
   WebGL2 frame) no longer also sends its sorted records, and object

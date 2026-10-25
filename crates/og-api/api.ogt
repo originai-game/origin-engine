@@ -2817,6 +2817,19 @@ module render {
     value AoMethod
   }
 
+  enum AoResolution {
+    doc "The resolution ambient occlusion is searched at."
+    variant full "Every pixel searched, then a 4x4 depth-aware blur."
+    variant half "Every second pixel in x and y searched (a quarter of the work) and blurred at that resolution, then brought to full resolution by a depth-aware upsample: softer contacts and thin creases, a fraction of the GPU time."
+  }
+
+  column AoResolution {
+    doc "An AoResolution field: the variant's index."
+    array Uint32Array
+    stride 1
+    value AoResolution
+  }
+
   enum DofQuality {
     doc "How many taps depth of field gathers per pixel."
     variant low "16 taps at half resolution."
@@ -2886,6 +2899,7 @@ module render {
       tunable true
     }
     field aoMethod AoMethod "The algorithm."
+    field aoResolution AoResolution "Full resolution, or half for a fraction of the GPU time at softer detail."
     field outline bool "Outlines every opaque surface from depth and normal edges, creases between the faces of one object included (materials with outlineWidth get their own hull outline instead)."
     field outlineColor Color "The line colour, linear." {
       default 0.02 0.02 0.03

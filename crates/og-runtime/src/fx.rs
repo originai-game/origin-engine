@@ -11,9 +11,9 @@ use glam::{Mat4, Vec2, Vec3};
 use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, World};
 use og_render::{
-    AmbientOcclusion, AoMethod, Beam, CameraShake, ChromaticAberration, ColorCurve, ColorGrading,
-    Curve, Decal, DepthOfField, DofQuality, FilmGrain, Glow, GodRays, JointPalette, Light2d,
-    Lighting2d, MeshHandle, MorphTargets, MotionBlur, Occluder2d, Outline, ParticleBlend,
+    AmbientOcclusion, AoMethod, AoResolution, Beam, CameraShake, ChromaticAberration, ColorCurve,
+    ColorGrading, Curve, Decal, DepthOfField, DofQuality, FilmGrain, Glow, GodRays, JointPalette,
+    Light2d, Lighting2d, MeshHandle, MorphTargets, MotionBlur, Occluder2d, Outline, ParticleBlend,
     ParticleSystem, RibbonUv, ScreenFlash, SkinData, SkinnedInstance, Trail, TrailStyle,
     TrailStyleHandle, Vignette,
 };
@@ -268,6 +268,8 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
                 intensity: f(&p, "aoIntensity", 1.0),
                 method: [AoMethod::Auto, AoMethod::Gtao, AoMethod::Ssao]
                     [variant(&p["aoMethod"], &["auto", "gtao", "ssao"]).min(2)],
+                resolution: [AoResolution::Full, AoResolution::Half]
+                    [variant(&p["aoResolution"], &["full", "half"]).min(1)],
             });
         }
         if on(&p, "outline", false) {

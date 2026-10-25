@@ -2927,6 +2927,7 @@ impl Renderer {
                 taa_history: desc.taa_history,
                 taa_sharpen: desc.taa_sharpen.clamp(0.0, 1.0),
             },
+            tier == Tier::Full,
         );
         let mips = mips::MipGenerator::new(&device);
         let default_white = solid_texture(&device, &queue, [255; 4]);
@@ -6752,7 +6753,14 @@ impl Renderer {
                 1.0 / self.height as f32,
             ],
             cam: [camera.far, cam.orthographic as u32 as f32, camera.near, 0.0],
-            ao: ao.map_or([0.0; 4], |a| [a.radius, a.intensity, 0.0, 0.0]),
+            // z: the AO targets' divisor of the screen (2 at half resolution).
+            ao: ao.map_or([0.0; 4], |a| {
+                let divisor = match a.resolution {
+                    AoResolution::Full => 1.0,
+                    AoResolution::Half => 2.0,
+                };
+                [a.radius, a.intensity, divisor, 0.0]
+            }),
             outline_color: global_outline.map_or([0.0; 4], |o| o.color),
             outline: match global_outline {
                 Some(o) => [o.width.max(0.0), o.depth_threshold, o.normal_threshold, 1.0],
@@ -6877,8 +6885,11 @@ impl Renderer {
         if prepass {
             passes.push(FramePass::Prepass);
         }
-        if ao.is_some() {
+        if let Some(a) = ao {
             passes.extend([FramePass::Ao, FramePass::AoBlur]);
+            if a.resolution == AoResolution::Half {
+                passes.push(FramePass::AoUpsample);
+            }
         }
         if particle_frame.any_gpu {
             passes.push(FramePass::Particles);
