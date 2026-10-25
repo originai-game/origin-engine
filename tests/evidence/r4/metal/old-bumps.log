@@ -1,0 +1,14 @@
+og check: ok (tsrs, 16 ms)
+  title.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/target/r4-control-rumpus/references/metal/title.png
+  lobby.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/target/r4-control-rumpus/references/metal/lobby.png
+  card.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/target/r4-control-rumpus/references/metal/card.png
+  bump.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/target/r4-control-rumpus/references/metal/bump.png
+  splash.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/target/r4-control-rumpus/references/metal/splash.png
+  scores.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/target/r4-control-rumpus/references/metal/scores.png
+  berry.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/target/r4-control-rumpus/references/metal/berry.png
+  crumble.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/target/r4-control-rumpus/references/metal/crumble.png
+  pause.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/target/r4-control-rumpus/references/metal/pause.png
+  settings-fr.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/target/r4-control-rumpus/references/metal/settings-fr.png
+  podium.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/target/r4-control-rumpus/references/metal/podium.png
+PASS frames (28 checks, 6450 ms): the title, lobby, card, a bump, a splash, the scoreboard, berries, cracking tiles, pause, the French settings and the podium match their reference frames
+og test: 1 suite(s) passed

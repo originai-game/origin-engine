@@ -1,0 +1,25 @@
+og check: ok (tsrs, 38 ms)
+  title.png: 0.396 % outliers, RMSE 0.02476 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/title.png
+  lobby.png: 0.666 % outliers, RMSE 0.03254 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/lobby.png
+  card.png: 0.480 % outliers, RMSE 0.02793 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/card.png
+  bump.png: 0.277 % outliers, RMSE 0.01868 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/bump.png
+  splash.png: 0.289 % outliers, RMSE 0.01899 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/splash.png
+  scores.png: 0.424 % outliers, RMSE 0.02493 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/scores.png
+  berry.png: 0.281 % outliers, RMSE 0.01906 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/berry.png
+  crumble.png: 0.270 % outliers, RMSE 0.01875 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/crumble.png
+  pause.png: 0.675 % outliers, RMSE 0.03014 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/pause.png
+  settings-fr.png: 0.457 % outliers, RMSE 0.02531 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/settings-fr.png
+  podium.png: 0.455 % outliers, RMSE 0.02819 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/podium.png
+FAIL frames (28 checks, 8595 ms): the title, lobby, card, a bump, a splash, the scoreboard, berries, cracking tiles, pause, the French settings and the podium match their reference frames
+  - title.png matches title.png: 0.396 % outliers (≤ 0.5 %), RMSE 0.02476 (≤ 0.01)
+  - lobby.png matches lobby.png: 0.666 % outliers (≤ 0.5 %), RMSE 0.03254 (≤ 0.01)
+  - card.png matches card.png: 0.480 % outliers (≤ 0.5 %), RMSE 0.02793 (≤ 0.01)
+  - bump.png matches bump.png: 0.277 % outliers (≤ 0.5 %), RMSE 0.01868 (≤ 0.01)
+  - splash.png matches splash.png: 0.289 % outliers (≤ 0.5 %), RMSE 0.01899 (≤ 0.01)
+  - scores.png matches scores.png: 0.424 % outliers (≤ 0.5 %), RMSE 0.02493 (≤ 0.01)
+  - berry.png matches berry.png: 0.281 % outliers (≤ 0.5 %), RMSE 0.01906 (≤ 0.01)
+  - crumble.png matches crumble.png: 0.270 % outliers (≤ 0.5 %), RMSE 0.01875 (≤ 0.01)
+  - pause.png matches pause.png: 0.675 % outliers (≤ 0.5 %), RMSE 0.03014 (≤ 0.01)
+  - settings-fr.png matches settings-fr.png: 0.457 % outliers (≤ 0.5 %), RMSE 0.02531 (≤ 0.01)
+  - podium.png matches podium.png: 0.455 % outliers (≤ 0.5 %), RMSE 0.02819 (≤ 0.01)
+og test: 1 of 1 suite(s) failed
