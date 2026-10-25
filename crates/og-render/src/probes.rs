@@ -20,7 +20,8 @@
 //! refract the face drawn so far and the water darkens and foams by the
 //! depth below, as in the frame. The targets ([`FaceTargets`]) are one
 //! set per face size, made the first time a capture needs them and drawn
-//! only while one is due: a frame without a due capture pays nothing.
+//! only while one is due: a frame without a due capture pays nothing, and
+//! only a realtime probe keeps them between its captures.
 //!
 //! A baked probe draws its capture once, the first frame it is in a
 //! scene, unless it brings one ([`ReflectionProbe::baked`], an environment
@@ -310,8 +311,9 @@ impl ProbeSlot {
 /// fluids read), the copy of the face drawn so far (what water and 3D
 /// fluids show through) and the 3D fluids' own targets. One
 /// set serves every face of that size, as the faces are drawn one after
-/// the other; made the first frame a capture needs it, kept while a probe
-/// of that size is.
+/// the other; made the first frame a capture needs it, kept while a capture
+/// of that size is due or a realtime probe of that size draws its own
+/// (`face_target_sizes`), so a baked probe's are freed after its capture.
 pub(crate) struct FaceTargets {
     pub size: u32,
     pub prepass: crate::views::DepthPrepass,
@@ -337,7 +339,7 @@ pub(crate) struct Probes {
     pub slots: Vec<ProbeSlot>,
     /// Frame uniforms: one per active probe, then six per due capture.
     pub uniforms: Option<(wgpu::Buffer, u64)>,
-    /// The due faces' depth and copy, by face size.
+    /// The due faces' depth and copy, by face size (`face_target_sizes`).
     pub targets: Vec<FaceTargets>,
 }
 
@@ -402,7 +404,9 @@ impl Probes {
             }
             frame.active.push((*p, Some(slot)));
         }
-        let sizes: Vec<u32> = self.slots.iter().map(|s| s.size).collect();
+        // Face targets only for the sizes a capture needs now or will again
+        // soon: a baked probe's (up to 71 MB at 1024²) go after its capture.
+        let sizes = face_target_sizes(&frame);
         self.targets.retain(|t| sizes.contains(&t.size));
         let slots = frame.active.len() + 6 * frame.due.len();
         let stride = (std::mem::size_of::<FrameUniform>() as u64)
@@ -533,6 +537,23 @@ impl Probes {
     }
 }
 
+/// The face sizes whose [`FaceTargets`] a frame keeps: those of its due
+/// captures and of every realtime probe drawing its own (it captures again
+/// each interval, and remaking them each time would cost more than they
+/// hold). A baked probe's are freed the frame after its capture and made
+/// again if it is ever due again (a new size or sample count).
+fn face_target_sizes(frame: &ProbeFrame) -> Vec<u32> {
+    frame
+        .active
+        .iter()
+        .enumerate()
+        .filter(|&(i, (p, slot))| {
+            slot.is_some() && (p.mode == ProbeMode::Realtime || frame.due.iter().any(|d| d.1 == i))
+        })
+        .map(|(_, (p, _))| p.face_size())
+        .collect()
+}
+
 /// The face cameras of a capture at `at` (their matrices, unjittered).
 pub(crate) fn face_frames(base: &Camera, at: Vec3, far: f32) -> [crate::frame::CameraFrame; 6] {
     std::array::from_fn(|face| {
@@ -651,6 +672,28 @@ mod tests {
             let u = crate::face_direction(face, 1.0, 0.0) * 2f32.sqrt() - forward;
             assert!((forward.cross(c.up) + u).length() < 1e-4, "face {face}");
         }
+    }
+
+    /// A baked probe keeps its face targets only while its capture is due;
+    /// a realtime one keeps them between captures; a probe baked from an
+    /// environment map (no slot) never has any.
+    #[test]
+    fn face_targets_are_kept_for_due_and_realtime_captures_only() {
+        let probe = |id, resolution, mode| ReflectionProbe {
+            resolution,
+            mode,
+            ..ReflectionProbe::new(id, Vec3::ZERO, Vec3::ONE)
+        };
+        let baked = probe(1, 1024, ProbeMode::Baked);
+        let realtime = probe(2, 256, ProbeMode::Realtime);
+        let loaded = probe(3, 512, ProbeMode::Baked);
+        let frame = |due: Vec<(usize, usize)>| ProbeFrame {
+            active: vec![(baked, Some(0)), (realtime, Some(1)), (loaded, None)],
+            due,
+        };
+        assert_eq!(face_target_sizes(&frame(vec![(0, 0), (1, 1)])), [1024, 256]);
+        assert_eq!(face_target_sizes(&frame(vec![])), [256]);
+        assert_eq!(face_target_sizes(&frame(vec![(0, 0)])), [1024, 256]);
     }
 
     #[test]

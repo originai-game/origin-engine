@@ -59,16 +59,10 @@ fn fs(in: CustomOut) -> @location(0) vec4<f32> {
   var shadow = 1.0;
   if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(in.world, n, n_dot_l); }
   var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
-  if (frame.params.z > 0.5) {
-    let word = cluster_word(cluster_at(in.clip.xy, in.world));
-    let first = word & 0xffffffu;
-    let count = word >> 24u;
-    // Rect lights through LTC with their shadows, points and spots with
-    // their cookies (area.wgsl), as terrain, scatter and the 3D fluid.
-    for (var k = 0u; k < count; k++) {
-      color += surface_local_light(light_list[cluster_ref(first + k)], s, in.world, n, v);
-    }
-  }
+  // Rect lights through LTC with their shadows, points and spots with
+  // their cookies: the cluster's, or every light in a probe face
+  // (area.wgsl surface_local_lights), as terrain, scatter and the 3D fluid.
+  color += surface_local_lights(in.clip.xy, s, in.world, n, v);
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);

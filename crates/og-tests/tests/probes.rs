@@ -7,9 +7,9 @@
 use og_render::{RenderDesc, RenderTarget, Renderer, RgbaImage};
 use og_tests::gfx;
 use og_tests::probe_scenes::{
-    FLOOR_PROBE, Outdoor, SsrFloor, add_floor_fluid, add_floor_particles, add_floor_water,
-    outdoor_scene, posed_figure_scene, probe_effects_scene, probe_floor_scene, probe_water_scene,
-    ssr_floor_scene, two_rooms_scene,
+    FLOOR_PROBE, Outdoor, SsrFloor, add_floor_fluid, add_floor_particles, add_floor_wall,
+    add_floor_water, outdoor_scene, posed_figure_scene, probe_effects_scene, probe_floor_scene,
+    probe_water_scene, ssr_floor_scene, two_rooms_scene,
 };
 use og_tests::scenes;
 use std::path::PathBuf;
@@ -418,5 +418,108 @@ fn ssr_reads_roughness_maps_and_terrain_layers() {
     assert!(
         terrain[0] > terrain_off[0] + 15.0 && terrain[0] > terrain[1] * 1.4,
         "the terrain mirrors it: {terrain:?} against {terrain_off:?}"
+    );
+}
+
+/// Local lights reach terrain, grass and 3D fluids in a capture: a blue
+/// point light under the outdoor probe turns the meadow on its -y face
+/// blue, and one between the floor probe and the red fluid ball lights the
+/// ball's near side on its +x face. A face's frame has no light clusters;
+/// before the debt round 3 these shaders still read one (the main camera's
+/// first), so the light was missing from the face as it is here bare.
+#[test]
+fn local_lights_reach_terrain_and_fluids_in_a_capture() {
+    let desc = scenes::base_desc();
+    let blue = |position| og_render::Light {
+        position,
+        color: glam::Vec3::new(0.1, 0.3, 1.0),
+        intensity: 6.0,
+        range: 4.0,
+        ..Default::default()
+    };
+    let blue_share = |c: [f32; 3]| c[2] / (c[0] + c[1] + c[2]).max(1e-4);
+    let mut failures = Vec::new();
+
+    let mut meadow = outdoor_scene(Outdoor {
+        content: false,
+        probe: Some(1.0),
+    });
+    let ny0 = face_mean(&render(&desc, &meadow, Some(7)).1.unwrap(), 3);
+    meadow.lights.push(blue(
+        og_tests::probe_scenes::outdoor_probe() - glam::Vec3::Y * 1.2,
+    ));
+    let ny = face_mean(&render(&desc, &meadow, Some(7)).1.unwrap(), 3);
+    println!("meadow -y: lit {ny:?}, bare {ny0:?}");
+    if ny[2] < ny0[2] + 0.05 || blue_share(ny) < blue_share(ny0) + 0.1 {
+        failures.push(format!("the meadow on -y: lit {ny:?}, bare {ny0:?}"));
+    }
+
+    let mut fluid = probe_floor_scene();
+    add_floor_fluid(&mut fluid);
+    let px0 = face_mean(&render(&desc, &fluid, Some(FLOOR_PROBE.0)).1.unwrap(), 0);
+    fluid
+        .lights
+        .push(blue(FLOOR_PROBE.1 + glam::Vec3::new(0.6, 0.0, 0.0)));
+    let px = face_mean(&render(&desc, &fluid, Some(FLOOR_PROBE.0)).1.unwrap(), 0);
+    println!("fluid +x: lit {px:?}, bare {px0:?}");
+    if px[2] < px0[2] + 0.03 {
+        failures.push(format!("the fluid on +x: lit {px:?}, bare {px0:?}"));
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The mean linear RGB of rows `rows` (fractions of the face, top down)
+/// across the middle half of cube face `face`.
+fn face_rows(capture: &(u32, Vec<f32>), face: usize, rows: (f32, f32)) -> [f32; 3] {
+    let (n, data) = (capture.0 as usize, &capture.1);
+    let mut s = [0.0f32; 3];
+    let mut count = 0.0;
+    for y in (rows.0 * n as f32) as usize..(rows.1 * n as f32) as usize {
+        for x in n / 4..3 * n / 4 {
+            let at = ((face * n + y) * n + x) * 3;
+            for k in 0..3 {
+                s[k] += data[at + k];
+            }
+            count += 1.0;
+        }
+    }
+    s.map(|v| v / count)
+}
+
+/// Water in a capture reflects the face in screen space, as the frame's
+/// does on the full tier: the probe's +x face sees the glowing blue wall
+/// beyond the water mirrored in it, so the water's rows (below the
+/// horizon, between the wall's foot and the face's bottom) turn bluer.
+/// Before the debt round 3 a face's water reflected only the environment
+/// there, and those rows matched the same water without the wall's
+/// reflection (the wall alone moves them by its light on the floor).
+#[test]
+fn water_in_a_capture_reflects_the_face_in_screen_space() {
+    let desc = scenes::base_desc();
+    let water_rows = |wall: bool, water: bool| {
+        let mut scene = probe_floor_scene();
+        if water {
+            add_floor_water(&mut scene);
+        }
+        if wall {
+            add_floor_wall(&mut scene);
+        }
+        face_rows(
+            &render(&desc, &scene, Some(FLOOR_PROBE.0)).1.unwrap(),
+            0,
+            (0.74, 0.92),
+        )
+    };
+    let (water, walled) = (water_rows(false, true), water_rows(true, true));
+    let (floor, floor_walled) = (water_rows(false, false), water_rows(true, false));
+    println!(
+        "+x water rows: water {water:?}, water and wall {walled:?}; floor {floor:?}, floor and wall {floor_walled:?}"
+    );
+    // The blue the wall adds over the water, against what it adds over the
+    // bare floor (its glow on the floor, which shows through the water too).
+    let (over_water, over_floor) = (walled[2] - water[2], floor_walled[2] - floor[2]);
+    assert!(
+        over_water > over_floor + 0.04,
+        "the wall mirrored in the water on +x: blue up {over_water:.3} over water, {over_floor:.3} over the bare floor"
     );
 }

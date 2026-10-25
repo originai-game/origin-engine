@@ -569,6 +569,132 @@ fn billboards_face_each_camera_sort_back_to_front_and_cull_by_bounds() {
     assert_eq!(differ, 0, "{differ} pixels moved with the submission order");
 }
 
+/// A glass pane between two solid billboards: the red one behind it, the
+/// green one in front, both turned to the camera; `pane` false leaves the
+/// pane out. Seen from (0, 1, 6) looking along -z.
+fn billboards_and_glass(pane: bool) -> RenderScene {
+    let mut scene = RenderScene::new();
+    scene.environment.background = Background::Color(Vec3::splat(0.02));
+    scene.post.tonemap = Tonemap::None;
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 1.0, 6.0),
+        target: Vec3::new(0.0, 1.0, 0.0),
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    if pane {
+        let mesh = scene.add_mesh(shapes::cuboid(Vec3::new(5.0, 3.0, 0.05)));
+        let glass = scene.add_standard_material(og_render::StandardMaterial {
+            color: Vec3::new(0.1, 0.2, 1.0),
+            emissive: Vec3::new(0.05, 0.1, 0.6),
+            transparent: 1,
+            opacity: 0.5,
+            ..Default::default()
+        });
+        scene.add_instance(
+            mesh,
+            glass,
+            Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0)),
+        );
+    }
+    for (x, z, color) in [
+        (-1.2, -2.0, [1.0, 0.05, 0.05, 1.0]),
+        (1.2, 2.0, [0.05, 1.0, 0.05, 1.0]),
+    ] {
+        scene.add_sprite(Sprite {
+            position: Vec3::new(x, 1.0, z),
+            size: Vec2::splat(1.0),
+            anchor: Vec2::splat(0.5),
+            color,
+            ..Default::default()
+        });
+        scene.sprite_facing.push(og_render::SpriteFacing::Camera);
+    }
+    scene
+}
+
+/// Billboards sort among the transparent meshes: the red billboard behind
+/// the glass pane shows through it (its pixels take the glass's blue), the
+/// green one in front draws over it (its pixels are the same with the pane
+/// as without). Before the debt round 3 every sprite drew after the
+/// transparent meshes, so the red one drew over the glass too and its
+/// pixels were the same with the pane as without.
+#[test]
+fn billboards_sort_among_transparent_meshes() {
+    let desc = scenes::base_desc();
+    let (with, _) = frame(&desc, &billboards_and_glass(true), 1);
+    let (without, _) = frame(&desc, &billboards_and_glass(false), 1);
+    // The billboards' centres on screen: x = 640 ± 1.2 / (depth · tan 22.5°) · 360 px.
+    let at = |img: &RgbaImage, depth: f32, x: f32| {
+        let px = 640.0 + x / (depth * 22.5f32.to_radians().tan()) * 360.0;
+        let i = ((360 * img.width + px as u32) * 4) as usize;
+        [img.pixels[i], img.pixels[i + 1], img.pixels[i + 2]]
+    };
+    let (back, back0) = (at(&with, 8.0, -1.2), at(&without, 8.0, -1.2));
+    let (front, front0) = (at(&with, 4.0, 1.2), at(&without, 4.0, 1.2));
+    println!("behind the glass {back:?} (no glass {back0:?}); in front {front:?} ({front0:?})");
+    assert!(
+        back[2] > back0[2] + 40 && back[0] < back0[0],
+        "the red billboard through the glass: {back:?} against {back0:?}"
+    );
+    assert_eq!(front, front0, "the green billboard over the glass");
+}
+
+/// World text faces the camera (`RenderScene::text_facing`): seen almost
+/// edge on, along -x, text in the xy plane shows nearly nothing; turned
+/// upright towards the camera (`CameraY`) it shows its glyphs, and centred
+/// on its pivot (`align` 0.5) they stand about the middle of the frame,
+/// where the pivot is, rather than to its right. Before the debt round 3
+/// world text had no facing.
+#[test]
+fn world_text_faces_the_camera() {
+    let desc = scenes::base_desc();
+    // Bright pixels, their mean column, and the glyphs drawn.
+    let lit = |facing: og_render::SpriteFacing, align: f32| {
+        let mut scene = RenderScene::new();
+        let font = scenes::load_font(&mut scene).expect("the test font");
+        scene.environment.background = Background::Color(Vec3::ZERO);
+        scene.post.tonemap = Tonemap::None;
+        scene.camera = Camera {
+            position: Vec3::new(6.0, 0.5, 0.05),
+            target: Vec3::new(0.0, 0.5, 0.0),
+            exposure: Exposure::linear(1.0),
+            ..Default::default()
+        };
+        scene.texts.push(Text {
+            size: 1.2,
+            ..Text::new(font, "OG text")
+        });
+        scene.text_facing.push(og_render::TextFacing {
+            text: 0,
+            facing,
+            align,
+        });
+        let (img, stats) = frame(&desc, &scene, 1);
+        let columns: Vec<u32> = (0..img.width * img.height)
+            .filter(|&i| img.pixels[i as usize * 4] > 128)
+            .map(|i| i % img.width)
+            .collect();
+        let mean = columns.iter().sum::<u32>() as f32 / columns.len().max(1) as f32;
+        (columns.len(), mean, stats.glyphs)
+    };
+    let (flat, _, glyphs) = lit(og_render::SpriteFacing::None, 0.0);
+    let (faced, start, faced_glyphs) = lit(og_render::SpriteFacing::CameraY, 0.0);
+    let (_, centred, _) = lit(og_render::SpriteFacing::CameraY, 0.5);
+    println!(
+        "bright pixels: flat {flat}, faced {faced}; mean column from the start {start:.0}, centred {centred:.0}; glyphs {glyphs}, {faced_glyphs}"
+    );
+    assert_eq!((glyphs, faced_glyphs), (6, 6), "the six glyphs either way");
+    assert!(
+        faced > 4000 && faced > 8 * flat.max(1),
+        "flat {flat}, faced {faced}"
+    );
+    assert!(
+        (centred - 640.0).abs() < 40.0 && start > 640.0 + 150.0,
+        "centred on the pivot at column {centred:.0}, from its start {start:.0}"
+    );
+}
+
 /// Sprites drawn from texture arrays (`RenderScene::sprite_arrays`): the
 /// sixteen flipbook sprites (eight layers, two rows) are one draw, the six
 /// added ones from a second array another, the plain textured strip a

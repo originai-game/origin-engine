@@ -158,8 +158,8 @@ fn ssr(origin: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
   return vec4<f32>(0.0);
 }
 
-// A texel of the depth below, clamped to it: a reflection probe's face
-// binds a 1x1 far plane (water.rs `face_draws`).
+// A texel of the depth below, clamped to it (a target smaller than the
+// screen the uniform names reads its edge).
 fn depth_texel(p: vec2<f32>) -> vec2<i32> {
   return min(vec2<i32>(p), vec2<i32>(textureDimensions(scene_depth)) - vec2<i32>(1));
 }

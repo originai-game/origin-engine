@@ -32,7 +32,7 @@ the world → scene extraction belongs to the layer above.
 | `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default), `Agx` (Blender 4's and three.js's AgX fit, base look) or `None` (clamp: authored 2D colours come out exact). |
 | `EnvironmentMapData`, `EnvironmentMap`, `bake` | A prefiltered environment map (level 0's face `size`, `ENVIRONMENT_MAP_LEVELS` = 5 levels of RGB9E5 `texels`, level m at roughness m/4, `irradiance` as nine harmonics) and how a frame uses one (`map`, `rotation` about +y in radians, `background_intensity`); `rgb9e5`, `rgb9e5_decode`, `sh9`, `face_direction`; feature `bake`: `bake::bake(&Equirect, &BakeDesc)` and `bake::bake_cube`, the cook's prefilter, and `bake::from_prefiltered(&PrefilteredCube, &BakeDesc)`, a cube's own prefiltered mip chain taken as it is. See [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation). |
 | `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down; a flipped region swaps u0/u1 or v0/v1), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, sort key, texture); within those, submission order. `anchored_at(pivot)`: the same quad anchored elsewhere (a faced nine-slice's pieces turn about the panel's anchor). |
-| `SpriteFacing`, `sun_card_right` | `sprite_facing` (by sprite index, like `sprite_layers`): billboards, `None` (the xy plane), `Camera` (the view plane), `CameraY` (upright, turned about y). Turned in the sprite vertex shader for each camera, sorted back to front from its eye, culled by bounds (`FrameStats::sprites_culled`); a faced sprite's drop shadow is cast by its sun-facing card (`sun_card_right`, `ShadowGround::fit_facing`). See [Billboards](#billboards). |
+| `SpriteFacing`, `sun_card_right` | `sprite_facing` (by sprite index, like `sprite_layers`): billboards, `None` (the xy plane), `Camera` (the view plane), `CameraY` (upright, turned about y). Turned in the sprite vertex shader for each camera, sorted back to front from its eye among the transparent meshes, culled by bounds (`FrameStats::sprites_culled`); a faced sprite's drop shadow is cast by its sun-facing card (`sun_card_right`, `ShadowGround::fit_facing`). `TextFacing` (`RenderScene::text_facing`): world text as a billboard, turned about its aligned point. See [Billboards](#billboards). |
 | `SpriteArray`, `TextureArrayData`, `TextureArrayInfo` | `sprite_arrays` (and `Overlay::sprite_arrays` for screen sprites): a sprite drawn from layer `layer` of a texture array (`add_texture_array`: same-sized layers uploaded as one `D2Array`; `set_texture_array_filter` for pixel art) instead of its texture, with glow, flash, 2D lighting and blend; `ParticleEmitter::array` draws a 2D emitter's particles from one. See [The 2D batch](#the-2d-batch-e4). |
 | `SpriteShadow`, `ShadowGround`, `ShadowBend`, `SPRITE_SHADOW_LIFT`, `SHADOW_BEND_ROWS`, `SHADOW_BEND_COLUMNS`, `SHADOW_BEND_TOLERANCE` | `sprite_shadows`: a world sprite's drop shadow along the sun onto its `ground` (a plane through `height` under the anchor with a `normal`; the plane y = 0 by default; `ShadowGround::fit` fits one to a terrain under the shadow, and bends it, `bend`, over a hollow or ridge the plane misses), faded where the cascades already shadow that ground, drawn before the sprites of its layer (see [The 2D batch](#the-2d-batch-e4)). |
 | `SpriteOrder`, `TextOutline`, `TextureFilter` | Per-frame side lists by index, so `Sprite` and `Text` keep their fields: `sprite_order` gives a sprite a sort key within its layer (top-down y sorting: `-y` of the feet; default 0), `text_outlines` an outline (width as a fraction of half the font's distance range, linear colour) to a world text; `set_texture_filter(texture, Nearest)` samples a texture by its nearest texel wherever sprites, tiles and particles draw it (pixel art). |
@@ -231,6 +231,20 @@ The terrain's lit pass reads the same tables. The planar reflection pass
 for the mirrored camera over the same light records
 (`ClusterBuilder::build_kept`; the oblique projection moves only depth, so
 the tiles follow the mirrored camera's x and y).
+
+A reflection probe's face has no clusters (its uniform's `cluster` is
+zero, `probes.rs`): every lit shader loops every light record of the
+frame there. The standard and physical fragments did so already; terrain,
+scattered copies, the 3D fluid's composite and full material shaders
+share area.wgsl's `surface_local_lights`, which takes the cluster's lights
+when the frame has clusters and every light when it has none (before the
+debt round 3 those four read cluster 0 of the main camera in a face, so a
+local light was missing or wrong in their reflections; og-tests probes
+`local_lights_reach_terrain_and_fluids_in_a_capture`). *Limit:* the
+records are the main camera's kept lights, so a light whose range misses
+the main view lights nothing in a capture either; keeping lights for the
+due faces would change which lights the main view's shadow budget picks
+on capture frames.
 
 ## Shadows and antialiasing by tier
 
@@ -1005,16 +1019,28 @@ particle billboards; nothing on the CPU (the simulation, the probe's
 snapshots) reads the turn. `rotation` still turns the quad within its own
 plane; the quad turns about its anchor.
 
-*Sorting.* A faced sprite without a `sprite_order` key is keyed
-`-depth` of its anchor within its layer (`SpriteEye`: the view depth
-along the eye's forward; a reflection probe's due capture builds its
-own sprite list sorted by distance from the probe, one order for its
-six faces), so billboards draw back to front among themselves, after
-the layer's drop shadows and before its key-0 unfaced sprites, as the
-transparent meshes are sorted (`sort_transparent`). Like every sprite
-they draw after the transparent meshes and particles, depth tested
-without writing depth: a billboard behind a transparent mesh still draws
-over it (*limit*, shared with particles and every sprite). *Culling.* Its
+*Sorting.* A faced sprite without a `sprite_order` key, tone mapped,
+sorts with the transparent meshes (`SpriteFrame::billboards`): its depth
+is the view depth of its anchor along the eye's forward (`SpriteEye`),
+the transparent meshes' own sort key (`Renderer::sort_transparent`), and
+the transparent list is cut where a billboard falls between two of its
+instances (`DrawList::before`), so `draw_blended` draws meshes and
+billboards in one back-to-front order: a billboard behind a glass pane
+shows through it, one in front draws over it (a billboard as far as a
+mesh draws after it). Their drop shadows (`billboard_shadows`) draw
+first, before the transparent meshes: they lie on the opaque ground,
+and drawn after a billboard, which writes no depth, they would darken
+it. The main pass, every view and every reflection probe face do this
+from their own eye (a due capture builds its sprite list per face, from
+the probe along the face's forward, culled to the face). Such a
+billboard leaves its layer's order: among the billboards ties go by
+layer, then submission. With a key it keeps the old place, sorted by
+(layer, key) after the transparent meshes, particles and lines; so does
+an untonemapped one, whose cover pass belongs to the sprite order. A
+faced sprite's layer no longer orders it against unfaced sprites (they
+draw after it). Particles and every unfaced sprite still draw after the
+transparent meshes (*limit*, as before: their order is the layers').
+*Culling.* Its
 bounds are the sphere round the anchor through the farthest corner
 (`sprite_radius`, whatever its turn); the main camera and each view drop
 a faced sprite (and its glow; not its drop shadow, which may show) whose
@@ -1029,14 +1055,28 @@ pass (`id_pass.rs`) turns faced sprites to its camera (`face_axes`, the
 CPU twin of `stand`). og-runtime anchors a faced nine-slice's pieces at
 the panel's anchor (`Sprite::anchored_at`), so the panel turns as one;
 an og.Sprite's afterimages face as it does, its blob shadow stays flat.
-World text does not face (yet). Tests: `sprites.rs`'s
+*World text* faces too (`RenderScene::text_facing`, a `TextFacing { text,
+facing, align }` per text, the last for an index winning; the IDL's
+`TextDesc.facing` and `FloatingTextDesc.facing`): every glyph of a faced
+text is anchored at its pivot, `position` moved along each line's
+baseline by `align` of that line's width (`FontLayout::walk` returns the
+widths), with its corner as the anchor's offset, so the sprite shader
+turns the whole text as one panel with no change of its own. og-runtime
+hands an aligned faced text over whole with its alignment (an unfaced
+one keeps the per-line shift along world x), and a faced floating text
+with `align` 0.5 about its point. A faced text sorts as a billboard by
+its pivot's depth and is not culled. Tests: `sprites.rs`'s
 `faced_sprites_sort_back_to_front_cull_to_the_frustum_and_cast_sun_facing_shadows`
 and `a_sprite_anchored_elsewhere_keeps_its_corners`, og-runtime
 `tests/billboards.rs`, og-tests `sprites-billboard`
 (`billboards_face_each_camera_sort_back_to_front_and_cull_by_bounds`: the
 reference, one culled, and the frame unchanged byte for byte when two
 translucent puffs are submitted the other way round), `vulkan-cpu`
-reference (the `metal` one is owed).
+reference (the `metal` one is owed); og-tests gfx
+`billboards_sort_among_transparent_meshes` (behind a glass pane a red
+billboard takes the glass's blue, 255/63/63 → 196/103/210, in front a
+green one is unchanged; the old order left the red one 255/63/63) and
+`world_text_faces_the_camera`; og-runtime `tests/text_facing.rs`.
 
 ### Untonemapped sprites
 
@@ -1114,6 +1154,18 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
   `layer_flag::UNLIT`): every tile instance carries the lit flag the
   sprite shader reads (`fx.y`), so the ambient, the lights and the
   occluders' shadows reach a tilemap on every tier, the same pipeline.
+- **The glow in views**: a `View` (views.rs) draws its glowing sprites
+  into a chain of its own at half its size and runs the frame's bloom
+  filters over it (`bloom_chain.wgsl`'s 13-tap `downsample13` and
+  `bloom_tent`, which post.wgsl's `fs_bloom_down` and `fs_bloom_up` call
+  too; as many levels as `post::bloom_levels` at the view's size), then
+  adds level 0 onto its image at the weight the tonemap gives the frame's
+  glow (the bloom's intensity when the lit image blooms, else the glow's).
+  The same sprite glowing in a view and in the frame has the same halo
+  (og-tests targets `a_views_glow_spreads_as_the_frames_bloom`: 188 at
+  140 px in both, where the old box-filtered mips gave the view 171); the
+  view has no lit-image bloom of its own (post effects are the main
+  camera's).
   Before, tiles were never lit (hollowbell FINDINGS #9: a dark cave of
   tiles drew as authored). Tests: `tests/sprites2d.rs`
   `tile_layers_in_the_lit_range_take_the_2d_light` (near, far, behind a
@@ -1999,6 +2051,49 @@ since the footprint is measured along the depth gradient (owed row 55).
 Still open: object space leaves terrain, scattered copies and vertex-offset
 materials in world space and does not cut alpha holes; a bent shadow
 bridges features narrower than a cell of its 4 × 2 grid.
+
+## Reflection probe faces
+
+A due capture draws six faces (`probes.rs`, `lib.rs`'s probe pass; the
+order and what each face draws: `docs/design.md` §2.6). What the faces
+draw besides the capture itself:
+
+- **Face targets** (`FaceTargets`, one set per face size): the face's
+  depth prepass, its copy (water and 3D fluids refract it) and the 3D
+  fluids' targets, 24, 8 and 36 bytes a texel (25 to 71 MB at 1024²).
+  They are made the first frame a capture of that size needs them and
+  kept only while one is due or a realtime probe of that size draws its
+  own (`face_target_sizes`): a baked probe's go the frame after its
+  capture and are made again if it is ever due again (a new face size or
+  sample count), so a scene of baked probes holds none after its first
+  frame. A realtime probe keeps them between its captures, which would
+  otherwise reallocate them every interval. A capture drawn after the
+  targets were freed and remade is bit for bit the first (checked in the
+  debt round 3); og-render `probes::tests::face_targets_are_kept_for_due_and_realtime_captures_only`.
+- **Water's reflections.** On the full tier a face's water marches its
+  screen-space reflection through the face's own depth prepass and copy,
+  as the frame's water does through its own (`WaterRenderer::face_draws`
+  keeps `look.y`): what the surface mirrors as seen from the probe's
+  point, which is what the whole capture is. Rays that leave the face
+  fall back to the environment, as rays leaving the screen do in the
+  frame. og-tests probes
+  `water_in_a_capture_reflects_the_face_in_screen_space`. The planar
+  reflection stays off in faces: it is a second pass from the camera
+  mirrored in the surface, one surface a frame, and a face would need its
+  own (six per capture, each with an oblique clip and its own target).
+- **What water and 3D fluids see through (left out, deliberately).** The
+  face's copy is taken after the sky, before the transparent meshes, so
+  water and fluids in a face show the opaque face behind them and not
+  glass drawn behind them. This is the main pass's rule too (its
+  `scene-copy`, and the transmission copy physical materials refract, as
+  three.js's transmission pass renders only opaque objects), and a face
+  must draw what the frame draws or its reflections disagree with the
+  scene they reflect. Changing it for both would need the transparents
+  ordered against the water and fluid surfaces: water is drawn in one
+  pass of its own and the 3D fluids as one screen-space surface with no
+  plane to sort a mesh against, a pane crossing a surface cannot be cut
+  per instance, and drawing the transparents into the copy and again
+  after would blend them twice.
 
 ## What phase 2 owes
 

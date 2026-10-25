@@ -296,3 +296,26 @@ fn surface_local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>
   let radiance = light.color_kind.rgb * light_cookie(light, -l);
   return brdf(s, n, v, l) * radiance * atten * local_shadow(light, p, n);
 }
+
+// Every point, spot and rect light on a surface for those shaders: the
+// lights of the fragment's cluster (`frag`, its pixel; clusters.rs), in
+// scene order, or, in a reflection probe's face, whose frame has no
+// clusters (probes.rs), every light of the frame, as pbr_fs.wgsl's
+// every-light branch. A face read the main camera's first cluster before.
+fn surface_local_lights(frag: vec2<f32>, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
+  var color = vec3<f32>(0.0);
+  if (frame.params.z < 0.5) { return color; }
+  if (frame.cluster.x > 0.0) {
+    let word = cluster_word(cluster_at(frag, p));
+    let first = word & 0xffffffu;
+    let count = word >> 24u;
+    for (var k = 0u; k < count; k++) {
+      color += surface_local_light(light_list[cluster_ref(first + k)], s, p, n, v);
+    }
+  } else {
+    for (var k = 0u; k < u32(frame.params.z); k++) {
+      color += surface_local_light(light_list[k], s, p, n, v);
+    }
+  }
+  return color;
+}

@@ -59,7 +59,7 @@ module render {
 | [`DofQuality()`](#column-DofQuality) | column kind | A DofQuality field: the variant's index. |
 | [`SpriteBlend`](#type-SpriteBlend) | enum | How a sprite is blended over what is below it. |
 | [`SpriteBlend()`](#column-SpriteBlend) | column kind | A SpriteBlend field: the variant's index. |
-| [`SpriteFacing`](#type-SpriteFacing) | enum | How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). Decided as a mode of og.Sprite and SpriteDesc rather than a component of its own: a billboard is the same quad, texture, region, flash, glow, blend, layer, drop shadow and texture array layer as any sprite, drawn by the same sprite batch and shader, which only stands its corners differently. The turn is computed on the GPU from each camera's own axes (the main camera, every og.CameraView and og.Mirror, every face of a reflection probe), so it never feeds back into the simulation and a snapshot holds only the mode. The sprite turns about its anchor (a nine-slice turns as one panel), `rotation` still turns it within its own plane, and its drop shadow is cast by the quad stood upright facing the sun, so it shows the whole shape from every camera. Within its layer a faced sprite without sortY draws back to front from the camera's eye (by view depth; a probe's six faces by distance from the probe), after the layer's drop shadows and before its unfaced sprites; and it is culled by its bounds (a sphere round the anchor through the farthest corner) against the camera's view. Sprites draw over the 3D scene after its transparent meshes and particles, depth tested and not depth writing, so a billboard behind a transparent mesh still draws over it. |
+| [`SpriteFacing`](#type-SpriteFacing) | enum | How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). Decided as a mode of og.Sprite and SpriteDesc rather than a component of its own: a billboard is the same quad, texture, region, flash, glow, blend, layer, drop shadow and texture array layer as any sprite, drawn by the same sprite batch and shader, which only stands its corners differently. The turn is computed on the GPU from each camera's own axes (the main camera, every og.CameraView and og.Mirror, every face of a reflection probe), so it never feeds back into the simulation and a snapshot holds only the mode. The sprite turns about its anchor (a nine-slice turns as one panel), `rotation` still turns it within its own plane, and its drop shadow is cast by the quad stood upright facing the sun, so it shows the whole shape from every camera. A faced sprite without sortY (and tone mapped) draws among the transparent meshes, back to front with them by the view depth of its anchor from the camera that draws it (each face of a reflection probe from the probe), its drop shadow before them, so a billboard behind a glass pane shows through it and one in front draws over it; its layer no longer orders it against other sprites. With sortY, or toneMapped false, it keeps the sprite order (layer, then key) after the transparent meshes and particles. A faced sprite is culled by its bounds (a sphere round the anchor through the farthest corner) against the camera's view. Sprites are depth tested and do not write depth. World text takes the same modes (TextDesc.facing, FloatingTextDesc.facing): it turns as one panel about its position and sorts as a billboard. |
 | [`SpriteFacing()`](#column-SpriteFacing) | column kind | A SpriteFacing field: the variant's index. |
 | [`StripBlend`](#type-StripBlend) | enum | How a trail, ribbon or beam is blended. |
 | [`StripBlend()`](#column-StripBlend) | column kind | A StripBlend field: the variant's index. |
@@ -256,7 +256,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 3749</sub>
+<sub>`api.ogt` line 3750</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -286,7 +286,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 3930</sub>
+<sub>`api.ogt` line 3932</sub>
 
 <a id="fn-measureText"></a>
 
@@ -316,7 +316,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 3937</sub>
+<sub>`api.ogt` line 3939</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -346,7 +346,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4006</sub>
+<sub>`api.ogt` line 4008</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -376,7 +376,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4013</sub>
+<sub>`api.ogt` line 4015</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -406,7 +406,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4020</sub>
+<sub>`api.ogt` line 4022</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -436,7 +436,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4102</sub>
+<sub>`api.ogt` line 4104</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -468,7 +468,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4109</sub>
+<sub>`api.ogt` line 4111</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -500,7 +500,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4126</sub>
+<sub>`api.ogt` line 4128</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -532,7 +532,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 4134</sub>
+<sub>`api.ogt` line 4136</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -566,7 +566,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 4142</sub>
+<sub>`api.ogt` line 4144</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -596,7 +596,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 4151</sub>
+<sub>`api.ogt` line 4153</sub>
 
 <a id="fn-applyQuality"></a>
 
@@ -650,7 +650,7 @@ fn applyQuality {
 }
 ```
 
-<sub>`api.ogt` line 4158</sub>
+<sub>`api.ogt` line 4160</sub>
 
 <a id="fn-look"></a>
 
@@ -678,7 +678,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 4176</sub>
+<sub>`api.ogt` line 4178</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -706,7 +706,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 4182</sub>
+<sub>`api.ogt` line 4184</sub>
 
 <a id="fn-text"></a>
 
@@ -736,7 +736,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 4188</sub>
+<sub>`api.ogt` line 4190</sub>
 
 <a id="fn-bufferGeometry"></a>
 
@@ -766,7 +766,7 @@ fn bufferGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4226</sub>
+<sub>`api.ogt` line 4228</sub>
 
 <a id="fn-updateGeometry"></a>
 
@@ -798,7 +798,7 @@ fn updateGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4233</sub>
+<sub>`api.ogt` line 4235</sub>
 
 <a id="fn-geometryInfo"></a>
 
@@ -828,7 +828,7 @@ fn geometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 4241</sub>
+<sub>`api.ogt` line 4243</sub>
 
 <a id="fn-cylinderGeometry"></a>
 
@@ -858,7 +858,7 @@ fn cylinderGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4436</sub>
+<sub>`api.ogt` line 4438</sub>
 
 <a id="fn-coneGeometry"></a>
 
@@ -888,7 +888,7 @@ fn coneGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4443</sub>
+<sub>`api.ogt` line 4445</sub>
 
 <a id="fn-capsuleGeometry"></a>
 
@@ -918,7 +918,7 @@ fn capsuleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4450</sub>
+<sub>`api.ogt` line 4452</sub>
 
 <a id="fn-torusGeometry"></a>
 
@@ -948,7 +948,7 @@ fn torusGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4457</sub>
+<sub>`api.ogt` line 4459</sub>
 
 <a id="fn-ringGeometry"></a>
 
@@ -978,7 +978,7 @@ fn ringGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4464</sub>
+<sub>`api.ogt` line 4466</sub>
 
 <a id="fn-circleGeometry"></a>
 
@@ -1008,7 +1008,7 @@ fn circleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4471</sub>
+<sub>`api.ogt` line 4473</sub>
 
 <a id="fn-tubeGeometry"></a>
 
@@ -1038,7 +1038,7 @@ fn tubeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4478</sub>
+<sub>`api.ogt` line 4480</sub>
 
 <a id="fn-shapeGeometry"></a>
 
@@ -1068,7 +1068,7 @@ fn shapeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4715</sub>
+<sub>`api.ogt` line 4717</sub>
 
 <a id="fn-extrudeGeometry"></a>
 
@@ -1098,7 +1098,7 @@ fn extrudeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4722</sub>
+<sub>`api.ogt` line 4724</sub>
 
 <a id="fn-latheGeometry"></a>
 
@@ -1128,7 +1128,7 @@ fn latheGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4729</sub>
+<sub>`api.ogt` line 4731</sub>
 
 <a id="fn-polyhedronGeometry"></a>
 
@@ -1158,7 +1158,7 @@ fn polyhedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4736</sub>
+<sub>`api.ogt` line 4738</sub>
 
 <a id="fn-icosahedronGeometry"></a>
 
@@ -1188,7 +1188,7 @@ fn icosahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4743</sub>
+<sub>`api.ogt` line 4745</sub>
 
 <a id="fn-dodecahedronGeometry"></a>
 
@@ -1218,7 +1218,7 @@ fn dodecahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4750</sub>
+<sub>`api.ogt` line 4752</sub>
 
 <a id="fn-octahedronGeometry"></a>
 
@@ -1248,7 +1248,7 @@ fn octahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4757</sub>
+<sub>`api.ogt` line 4759</sub>
 
 <a id="fn-tetrahedronGeometry"></a>
 
@@ -1278,7 +1278,7 @@ fn tetrahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4764</sub>
+<sub>`api.ogt` line 4766</sub>
 
 <a id="fn-sweepGeometry"></a>
 
@@ -1308,7 +1308,7 @@ fn sweepGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4771</sub>
+<sub>`api.ogt` line 4773</sub>
 
 <a id="fn-csgGeometry"></a>
 
@@ -1338,7 +1338,7 @@ fn csgGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4778</sub>
+<sub>`api.ogt` line 4780</sub>
 
 <a id="fn-mergeGeometries"></a>
 
@@ -1368,7 +1368,7 @@ fn mergeGeometries {
 }
 ```
 
-<sub>`api.ogt` line 4785</sub>
+<sub>`api.ogt` line 4787</sub>
 
 <a id="fn-lines"></a>
 
@@ -1398,7 +1398,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 4843</sub>
+<sub>`api.ogt` line 4845</sub>
 
 <a id="fn-points"></a>
 
@@ -1428,7 +1428,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 4878</sub>
+<sub>`api.ogt` line 4880</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1460,7 +1460,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 4982</sub>
+<sub>`api.ogt` line 4984</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1490,7 +1490,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 5038</sub>
+<sub>`api.ogt` line 5040</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1524,7 +1524,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 5150</sub>
+<sub>`api.ogt` line 5152</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1552,7 +1552,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 5165</sub>
+<sub>`api.ogt` line 5167</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1580,7 +1580,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 5233</sub>
+<sub>`api.ogt` line 5235</sub>
 
 ## Components, resources and events
 
@@ -3047,7 +3047,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 3756</sub>
+<sub>`api.ogt` line 3757</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -3095,7 +3095,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 3845</sub>
+<sub>`api.ogt` line 3846</sub>
 
 <a id="record-ReflectionProbe"></a>
 
@@ -3148,7 +3148,7 @@ component ReflectionProbe {
 }
 ```
 
-<sub>`api.ogt` line 4070</sub>
+<sub>`api.ogt` line 4072</sub>
 
 <a id="record-Lines"></a>
 
@@ -3211,7 +3211,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 4885</sub>
+<sub>`api.ogt` line 4887</sub>
 
 <a id="record-Points"></a>
 
@@ -3265,7 +3265,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 4922</sub>
+<sub>`api.ogt` line 4924</sub>
 
 <a id="record-CameraView"></a>
 
@@ -3372,7 +3372,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 5045</sub>
+<sub>`api.ogt` line 5047</sub>
 
 <a id="record-Mirror"></a>
 
@@ -3417,7 +3417,7 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 5117</sub>
+<sub>`api.ogt` line 5119</sub>
 
 <a id="record-RectLight"></a>
 
@@ -3467,7 +3467,7 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 5179</sub>
+<sub>`api.ogt` line 5181</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -3501,7 +3501,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 5206</sub>
+<sub>`api.ogt` line 5208</sub>
 
 ## Types
 
@@ -4236,7 +4236,7 @@ enum SpriteBlend {
 
 ### `SpriteFacing` (enum)
 
-How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). Decided as a mode of og.Sprite and SpriteDesc rather than a component of its own: a billboard is the same quad, texture, region, flash, glow, blend, layer, drop shadow and texture array layer as any sprite, drawn by the same sprite batch and shader, which only stands its corners differently. The turn is computed on the GPU from each camera's own axes (the main camera, every og.CameraView and og.Mirror, every face of a reflection probe), so it never feeds back into the simulation and a snapshot holds only the mode. The sprite turns about its anchor (a nine-slice turns as one panel), `rotation` still turns it within its own plane, and its drop shadow is cast by the quad stood upright facing the sun, so it shows the whole shape from every camera. Within its layer a faced sprite without sortY draws back to front from the camera's eye (by view depth; a probe's six faces by distance from the probe), after the layer's drop shadows and before its unfaced sprites; and it is culled by its bounds (a sphere round the anchor through the farthest corner) against the camera's view. Sprites draw over the 3D scene after its transparent meshes and particles, depth tested and not depth writing, so a billboard behind a transparent mesh still draws over it.
+How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). Decided as a mode of og.Sprite and SpriteDesc rather than a component of its own: a billboard is the same quad, texture, region, flash, glow, blend, layer, drop shadow and texture array layer as any sprite, drawn by the same sprite batch and shader, which only stands its corners differently. The turn is computed on the GPU from each camera's own axes (the main camera, every og.CameraView and og.Mirror, every face of a reflection probe), so it never feeds back into the simulation and a snapshot holds only the mode. The sprite turns about its anchor (a nine-slice turns as one panel), `rotation` still turns it within its own plane, and its drop shadow is cast by the quad stood upright facing the sun, so it shows the whole shape from every camera. A faced sprite without sortY (and tone mapped) draws among the transparent meshes, back to front with them by the view depth of its anchor from the camera that draws it (each face of a reflection probe from the probe), its drop shadow before them, so a billboard behind a glass pane shows through it and one in front draws over it; its layer no longer orders it against other sprites. With sortY, or toneMapped false, it keeps the sprite order (layer, then key) after the transparent meshes and particles. A faced sprite is culled by its bounds (a sphere round the anchor through the farthest corner) against the camera's view. Sprites are depth tested and do not write depth. World text takes the same modes (TextDesc.facing, FloatingTextDesc.facing): it turns as one panel about its position and sorts as a billboard.
 
 A string: one of the variants below. The zero value is `"none"`.
 
@@ -4248,7 +4248,7 @@ A string: one of the variants below. The zero value is `"none"`.
 
 ```ogt
 enum SpriteFacing {
-  doc "How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). Decided as a mode of og.Sprite and SpriteDesc rather than a component of its own: a billboard is the same quad, texture, region, flash, glow, blend, layer, drop shadow and texture array layer as any sprite, drawn by the same sprite batch and shader, which only stands its corners differently. The turn is computed on the GPU from each camera's own axes (the main camera, every og.CameraView and og.Mirror, every face of a reflection probe), so it never feeds back into the simulation and a snapshot holds only the mode. The sprite turns about its anchor (a nine-slice turns as one panel), `rotation` still turns it within its own plane, and its drop shadow is cast by the quad stood upright facing the sun, so it shows the whole shape from every camera. Within its layer a faced sprite without sortY draws back to front from the camera's eye (by view depth; a probe's six faces by distance from the probe), after the layer's drop shadows and before its unfaced sprites; and it is culled by its bounds (a sphere round the anchor through the farthest corner) against the camera's view. Sprites draw over the 3D scene after its transparent meshes and particles, depth tested and not depth writing, so a billboard behind a transparent mesh still draws over it."
+  doc "How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). Decided as a mode of og.Sprite and SpriteDesc rather than a component of its own: a billboard is the same quad, texture, region, flash, glow, blend, layer, drop shadow and texture array layer as any sprite, drawn by the same sprite batch and shader, which only stands its corners differently. The turn is computed on the GPU from each camera's own axes (the main camera, every og.CameraView and og.Mirror, every face of a reflection probe), so it never feeds back into the simulation and a snapshot holds only the mode. The sprite turns about its anchor (a nine-slice turns as one panel), `rotation` still turns it within its own plane, and its drop shadow is cast by the quad stood upright facing the sun, so it shows the whole shape from every camera. A faced sprite without sortY (and tone mapped) draws among the transparent meshes, back to front with them by the view depth of its anchor from the camera that draws it (each face of a reflection probe from the probe), its drop shadow before them, so a billboard behind a glass pane shows through it and one in front draws over it; its layer no longer orders it against other sprites. With sortY, or toneMapped false, it keeps the sprite order (layer, then key) after the transparent meshes and particles. A faced sprite is culled by its bounds (a sphere round the anchor through the farthest corner) against the camera's view. Sprites are depth tested and do not write depth. World text takes the same modes (TextDesc.facing, FloatingTextDesc.facing): it turns as one panel about its position and sorts as a billboard."
   variant none "In the world's xy plane facing +z, as every sprite before billboards."
   variant camera "In the camera's view plane: its x along the camera's right, its y along its up, as particle billboards (smoke, glints, impostors seen from any side)."
   variant cameraY "Upright, turned about the world's y axis towards the camera: its y stays +y, its x the camera's right laid level. Trees, characters and props that must stand while the camera looks down on them."
@@ -4487,6 +4487,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `align` | `TextAlign` | `"start"` | — | — | — | How each line sits on `position`: start puts its left end there, center its middle, end its right end. |
 | `outline` | `number` | `0` | 0 … 1 | — | — | World text: an outline around the glyphs, as a fraction (0 to 1) of the widest the font's distance range allows (a font cooked with a larger px_range takes thicker outlines). |
 | `outlineColor` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | The outline's linear colour. |
+| `facing` | `SpriteFacing` | `"none"` | — | — | — | World text as a billboard (SpriteFacing): none keeps it in the world's xy plane; camera turns it into each camera's view plane; cameraY stands it upright turned about y towards the camera (a name over a character). It turns as one panel about `position`, sorts among the transparent meshes by that point's view depth and is not culled. Screen text ignores it. |
 | `screen` | `boolean` | `false` | — | — | — | Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it. |
 | `clip` | `[number, number, number, number] \| null` | `null` | — | — | — | Screen text: cut to [x, y, width, height] in CSS pixels, per pixel; null draws it whole. |
 
@@ -4521,6 +4522,7 @@ struct TextDesc {
     max 1
   }
   field outlineColor Color "The outline's linear colour."
+  field facing SpriteFacing "World text as a billboard (SpriteFacing): none keeps it in the world's xy plane; camera turns it into each camera's view plane; cameraY stands it upright turned about y towards the camera (a name over a character). It turns as one panel about `position`, sorts among the transparent meshes by that point's view depth and is not culled. Screen text ignores it."
   field screen bool "Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it."
   field clip Option.Array.f32.4 "Screen text: cut to [x, y, width, height] in CSS pixels, per pixel; null draws it whole."
 }
@@ -4555,7 +4557,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 3661</sub>
+<sub>`api.ogt` line 3662</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -4578,7 +4580,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 3672</sub>
+<sub>`api.ogt` line 3673</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -4691,7 +4693,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 3679</sub>
+<sub>`api.ogt` line 3680</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -4718,6 +4720,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `crit` | `boolean` | `false` | — | — | — | A critical hit: critScale times bigger, a stronger pop. |
 | `critScale` | `number` | `1.6` | ≥ 1 | — | — | The size of a crit. |
 | `layer` | `number` | `100` | — | — | — | The sprite layer (above the action). |
+| `facing` | `SpriteFacing` | `"none"` | — | — | — | A billboard (TextDesc.facing): none keeps the text in the world's xy plane, as for a 2D game; camera or cameraY turns it towards each camera that draws it, for damage numbers over a 3D scene. |
 
 ```ogt
 struct FloatingTextDesc {
@@ -4776,10 +4779,11 @@ struct FloatingTextDesc {
   field layer i32 "The sprite layer (above the action)." {
     default 100
   }
+  field facing SpriteFacing "A billboard (TextDesc.facing): none keeps the text in the world's xy plane, as for a 2D game; camera or cameraY turns it towards each camera that draws it, for damage numbers over a 3D scene."
 }
 ```
 
-<sub>`api.ogt` line 3872</sub>
+<sub>`api.ogt` line 3873</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -4821,7 +4825,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3944</sub>
+<sub>`api.ogt` line 3946</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -4857,7 +4861,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3967</sub>
+<sub>`api.ogt` line 3969</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -4897,7 +4901,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 3985</sub>
+<sub>`api.ogt` line 3987</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -4954,7 +4958,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 4031</sub>
+<sub>`api.ogt` line 4033</sub>
 
 <a id="type-ReflectionProbeMode"></a>
 
@@ -4977,7 +4981,7 @@ enum ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 4057</sub>
+<sub>`api.ogt` line 4059</sub>
 
 <a id="type-Shader"></a>
 
@@ -4991,7 +4995,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read."
 ```
 
-<sub>`api.ogt` line 4117</sub>
+<sub>`api.ogt` line 4119</sub>
 
 <a id="type-BufferGeometryDesc"></a>
 
@@ -5032,7 +5036,7 @@ struct BufferGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4197</sub>
+<sub>`api.ogt` line 4199</sub>
 
 <a id="type-GeometryInfo"></a>
 
@@ -5063,7 +5067,7 @@ struct GeometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 4213</sub>
+<sub>`api.ogt` line 4215</sub>
 
 <a id="type-CylinderGeometryDesc"></a>
 
@@ -5122,7 +5126,7 @@ struct CylinderGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4248</sub>
+<sub>`api.ogt` line 4250</sub>
 
 <a id="type-ConeGeometryDesc"></a>
 
@@ -5166,7 +5170,7 @@ struct ConeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4284</sub>
+<sub>`api.ogt` line 4286</sub>
 
 <a id="type-CapsuleGeometryDesc"></a>
 
@@ -5213,7 +5217,7 @@ struct CapsuleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4308</sub>
+<sub>`api.ogt` line 4310</sub>
 
 <a id="type-TorusGeometryDesc"></a>
 
@@ -5260,7 +5264,7 @@ struct TorusGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4335</sub>
+<sub>`api.ogt` line 4337</sub>
 
 <a id="type-RingGeometryDesc"></a>
 
@@ -5311,7 +5315,7 @@ struct RingGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4362</sub>
+<sub>`api.ogt` line 4364</sub>
 
 <a id="type-CircleGeometryDesc"></a>
 
@@ -5351,7 +5355,7 @@ struct CircleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4392</sub>
+<sub>`api.ogt` line 4394</sub>
 
 <a id="type-TubeGeometryDesc"></a>
 
@@ -5395,7 +5399,7 @@ struct TubeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4413</sub>
+<sub>`api.ogt` line 4415</sub>
 
 <a id="type-ShapePoints"></a>
 
@@ -5416,7 +5420,7 @@ struct ShapePoints {
 }
 ```
 
-<sub>`api.ogt` line 4487</sub>
+<sub>`api.ogt` line 4489</sub>
 
 <a id="type-ShapeGeometryDesc"></a>
 
@@ -5453,7 +5457,7 @@ struct ShapeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4493</sub>
+<sub>`api.ogt` line 4495</sub>
 
 <a id="type-ExtrudeGeometryDesc"></a>
 
@@ -5526,7 +5530,7 @@ struct ExtrudeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4510</sub>
+<sub>`api.ogt` line 4512</sub>
 
 <a id="type-LatheGeometryDesc"></a>
 
@@ -5574,7 +5578,7 @@ struct LatheGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4555</sub>
+<sub>`api.ogt` line 4557</sub>
 
 <a id="type-PolyhedronGeometryDesc"></a>
 
@@ -5618,7 +5622,7 @@ struct PolyhedronGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4581</sub>
+<sub>`api.ogt` line 4583</sub>
 
 <a id="type-SolidGeometryDesc"></a>
 
@@ -5658,7 +5662,7 @@ struct SolidGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4603</sub>
+<sub>`api.ogt` line 4605</sub>
 
 <a id="type-SweepKey"></a>
 
@@ -5681,7 +5685,7 @@ struct SweepKey {
 }
 ```
 
-<sub>`api.ogt` line 4623</sub>
+<sub>`api.ogt` line 4625</sub>
 
 <a id="type-SweepGeometryDesc"></a>
 
@@ -5733,7 +5737,7 @@ struct SweepGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4631</sub>
+<sub>`api.ogt` line 4633</sub>
 
 <a id="type-MirrorAxis"></a>
 
@@ -5760,7 +5764,7 @@ enum MirrorAxis {
 }
 ```
 
-<sub>`api.ogt` line 4658</sub>
+<sub>`api.ogt` line 4660</sub>
 
 <a id="type-GeometryPart"></a>
 
@@ -5794,7 +5798,7 @@ struct GeometryPart {
 }
 ```
 
-<sub>`api.ogt` line 4666</sub>
+<sub>`api.ogt` line 4668</sub>
 
 <a id="type-CsgOp"></a>
 
@@ -5819,7 +5823,7 @@ enum CsgOp {
 }
 ```
 
-<sub>`api.ogt` line 4680</sub>
+<sub>`api.ogt` line 4682</sub>
 
 <a id="type-CsgGeometryDesc"></a>
 
@@ -5855,7 +5859,7 @@ struct CsgGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4687</sub>
+<sub>`api.ogt` line 4689</sub>
 
 <a id="type-MergeGeometriesDesc"></a>
 
@@ -5887,7 +5891,7 @@ struct MergeGeometriesDesc {
 }
 ```
 
-<sub>`api.ogt` line 4702</sub>
+<sub>`api.ogt` line 4704</sub>
 
 <a id="type-LineMode"></a>
 
@@ -5912,7 +5916,7 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4792</sub>
+<sub>`api.ogt` line 4794</sub>
 
 <a id="type-LinesDesc"></a>
 
@@ -5978,7 +5982,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 4806</sub>
+<sub>`api.ogt` line 4808</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -6029,7 +6033,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 4850</sub>
+<sub>`api.ogt` line 4852</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -6062,7 +6066,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4953</sub>
+<sub>`api.ogt` line 4955</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -6097,7 +6101,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 4967</sub>
+<sub>`api.ogt` line 4969</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -6120,7 +6124,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4992</sub>
+<sub>`api.ogt` line 4994</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -6134,7 +6138,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 5005</sub>
+<sub>`api.ogt` line 5007</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -6168,7 +6172,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 5014</sub>
+<sub>`api.ogt` line 5016</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -6195,7 +6199,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 5029</sub>
+<sub>`api.ogt` line 5031</sub>
 
 <a id="type-Post"></a>
 
@@ -6209,7 +6213,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 5141</sub>
+<sub>`api.ogt` line 5143</sub>
 
 <a id="type-PostError"></a>
 
@@ -6230,7 +6234,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 5159</sub>
+<sub>`api.ogt` line 5161</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -6253,7 +6257,7 @@ enum VolumetricFog {
 }
 ```
 
-<sub>`api.ogt` line 5173</sub>
+<sub>`api.ogt` line 5175</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -6286,7 +6290,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 5221</sub>
+<sub>`api.ogt` line 5223</sub>
 
 ## Column kinds
 
@@ -6526,7 +6530,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 4063</sub>
+<sub>`api.ogt` line 4065</sub>
 
 ```ogt
 column Shader {
@@ -6537,7 +6541,7 @@ column Shader {
 }
 ```
 
-<sub>`api.ogt` line 4119</sub>
+<sub>`api.ogt` line 4121</sub>
 
 ```ogt
 column LineMode {
@@ -6548,7 +6552,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 4799</sub>
+<sub>`api.ogt` line 4801</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -6559,7 +6563,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 4998</sub>
+<sub>`api.ogt` line 5000</sub>
 
 ```ogt
 column RenderTarget {
@@ -6570,7 +6574,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 5007</sub>
+<sub>`api.ogt` line 5009</sub>
 
 ```ogt
 column Post {
@@ -6581,7 +6585,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 5143</sub>
+<sub>`api.ogt` line 5145</sub>
 
 ## Constants
 
@@ -6603,22 +6607,22 @@ const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never 
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 4027</sub>
+<sub>`api.ogt` line 4029</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 4028</sub>
+<sub>`api.ogt` line 4030</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
 ```
 
-<sub>`api.ogt` line 4029</sub>
+<sub>`api.ogt` line 4031</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>`api.ogt` line 4055</sub>
+<sub>`api.ogt` line 4057</sub>

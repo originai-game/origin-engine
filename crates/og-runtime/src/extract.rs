@@ -153,6 +153,10 @@ pub(crate) struct QueuedText {
     /// World text: an outline (width as a fraction of the distance range) and its colour.
     pub outline: f32,
     pub outline_color: [f32; 4],
+    /// World text: a billboard (`TextDesc.facing`) turning about the point
+    /// `align` of each line along it (`og_render::TextFacing`).
+    pub facing: og_render::SpriteFacing,
+    pub align: f32,
 }
 
 /// One model's parts: per part the mesh, the material and the node's
@@ -1026,6 +1030,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.sprite_layers.clear();
     // Billboards (sprites' facing): set by what pushes them, none past the end.
     scene.sprite_facing.clear();
+    scene.text_facing.clear();
     scene.line_layers.clear();
     scene.point_layers.clear();
     scene.particle_layers.clear();
@@ -1486,6 +1491,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                         text: scene.texts.len() as u32,
                         width: t.outline,
                         color: t.outline_color,
+                    });
+                }
+                if t.facing != og_render::SpriteFacing::None {
+                    scene.text_facing.push(og_render::TextFacing {
+                        text: scene.texts.len() as u32,
+                        facing: t.facing,
+                        align: t.align,
                     });
                 }
                 scene.texts.push(text);

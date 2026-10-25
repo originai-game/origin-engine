@@ -805,7 +805,7 @@ pub(crate) fn queued(rs: &mut RenderState, fresh: bool, viewport: (f32, f32)) {
             continue;
         }
         let index = scene.sprites.len() as u32;
-        super::feel::set_facing(scene, index as usize, q.facing);
+        super::feel::set_facing(&mut scene.sprite_facing, index as usize, q.facing);
         scene.sprites.push(q.sprite);
         if let Some((array, layer)) = q.array {
             scene.sprite_arrays.push(og_render::SpriteArray {

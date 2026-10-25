@@ -212,16 +212,19 @@ impl FontLayout {
     /// moves by the text's placements when it has them, else by each glyph's
     /// advance, the kerning with the character before it and the tracking
     /// (a missing glyph takes no space and breaks the kerning pair).
+    /// Returns each line's width (em): where the pen ends it.
     pub fn walk(
         &self,
         text: &Text,
         line_step: f32,
         mut f: impl FnMut(char, Option<&Glyph>, Vec2, Vec2),
-    ) {
+    ) -> Vec<f32> {
         let mut pen = Vec2::ZERO;
         let mut prev: Option<char> = None;
+        let mut widths = Vec::new();
         for (i, ch) in text.text.chars().enumerate() {
             if ch == '\n' {
+                widths.push(pen.x);
                 pen = Vec2::new(0.0, pen.y + line_step);
                 prev = None;
                 continue;
@@ -244,6 +247,8 @@ impl FontLayout {
             pen.x += g.advance + text.tracking;
             prev = Some(ch);
         }
+        widths.push(pen.x);
+        widths
     }
 }
 
@@ -265,6 +270,59 @@ pub(crate) struct SpriteFrame {
     /// Faced sprites left out because their bounds miss the eye's frustum
     /// ([`RenderScene::sprite_facing`]).
     pub culled: u32,
+    /// Billboards drawn among the transparent meshes rather than in the
+    /// layer order: faced sprites and faced text without a key of their
+    /// own, tone mapped, far to near by the eye's depth (the transparent
+    /// meshes' sort key), each a run of one instance with that depth
+    /// ([`draw_runs_of`] merges neighbours of one source).
+    pub billboards: Vec<(f32, SpriteRun)>,
+    /// Those billboards' drop shadows, drawn before the transparent meshes
+    /// (the shadows lie on the opaque ground, and drawn after a billboard,
+    /// which writes no depth, they would darken it).
+    pub billboard_shadows: Vec<SpriteRun>,
+}
+
+/// A pass's billboards and their drop shadows
+/// ([`SpriteFrame::billboards`], [`SpriteFrame::billboard_shadows`]).
+pub(crate) type Billboards = (Vec<(f32, SpriteRun)>, Vec<SpriteRun>);
+
+/// `frame`'s billboards with their instances moved to `base` in the buffer.
+pub(crate) fn billboards_at(frame: &SpriteFrame, base: u32) -> Billboards {
+    let at = |r: &SpriteRun| SpriteRun {
+        source: r.source,
+        first: r.first + base,
+        count: r.count,
+        tone_mapped: r.tone_mapped,
+    };
+    (
+        frame.billboards.iter().map(|(d, r)| (*d, at(r))).collect(),
+        frame.billboard_shadows.iter().map(at).collect(),
+    )
+}
+
+/// The billboards' depths, far first (`Renderer::sort_transparent`).
+pub(crate) fn depths(billboards: &[(f32, SpriteRun)]) -> Vec<f32> {
+    billboards.iter().map(|b| b.0).collect()
+}
+
+/// Billboards of [`SpriteFrame::billboards`] as draw runs: neighbours of
+/// one source in one run.
+pub(crate) fn draw_runs_of(billboards: &[(f32, SpriteRun)]) -> Vec<SpriteRun> {
+    let mut runs: Vec<SpriteRun> = Vec::new();
+    for (_, r) in billboards {
+        match runs.last_mut() {
+            Some(last) if last.source == r.source && last.first + last.count == r.first => {
+                last.count += r.count
+            }
+            _ => runs.push(SpriteRun {
+                source: r.source,
+                first: r.first,
+                count: r.count,
+                tone_mapped: r.tone_mapped,
+            }),
+        }
+    }
+    runs
 }
 
 /// A sprite's instance with its effects.
@@ -553,10 +611,15 @@ pub(crate) fn build<'a>(
     let mut culled = 0u32;
     let outlines: HashMap<u32, &crate::TextOutline> =
         scene.text_outlines.iter().map(|o| (o.text, o)).collect();
+    let text_facing: HashMap<u32, &crate::TextFacing> =
+        scene.text_facing.iter().map(|t| (t.text, t)).collect();
     // (layer, key, source, untonemapped, instance), in submission order.
     let mut keyed: Vec<(i32, f32, RunSource, bool, SpriteInstance)> =
         Vec::with_capacity(scene.sprites.len() + extra.len());
     let mut glowing: Vec<(RunSource, SpriteInstance)> = Vec::new();
+    // Billboards (depth, layer, source, instance) and their drop shadows.
+    let mut boards: Vec<(f32, i32, RunSource, SpriteInstance)> = Vec::new();
+    let mut board_shadows: Vec<(RunSource, SpriteInstance)> = Vec::new();
     for (i, s) in scene.sprites.iter().enumerate() {
         if let Some(t) = s.texture
             && t.index() >= texture_count
@@ -588,6 +651,10 @@ pub(crate) fn build<'a>(
         let facing = facing_of(&scene.sprite_facing, i);
         inst.facing = facing_code(facing);
         let faced = facing != SpriteFacing::None;
+        // A billboard of its own depth sorts with the transparent meshes
+        // (`billboards`); with a key, or untonemapped (its cover pass is
+        // the sprite order's), it keeps the layer order.
+        let board = faced && tone_mapped && !order.contains_key(&(i as u32));
         // A billboard sorts back to front from the eye within its layer.
         let key = match order.get(&(i as u32)) {
             Some(&k) => k,
@@ -619,16 +686,16 @@ pub(crate) fn build<'a>(
                 }
                 None => RunSource::Sprite(SpriteBlend::Alpha, s.texture),
             };
-            match on.bend {
+            let cells = match on.bend {
                 // Bent over the ground: one instance per cell of the quad.
-                Some(bend) => {
-                    for cell in bent_shadow(shadow, &bend, g[3]) {
-                        keyed.push((s.layer, f32::MIN, source, false, cell));
-                        shadow_count += 1;
-                    }
-                }
-                None => {
-                    keyed.push((s.layer, f32::MIN, source, false, shadow));
+                Some(bend) => bent_shadow(shadow, &bend, g[3]).collect(),
+                None => vec![shadow],
+            };
+            for cell in cells {
+                if board {
+                    board_shadows.push((source, cell));
+                } else {
+                    keyed.push((s.layer, f32::MIN, source, false, cell));
                     shadow_count += 1;
                 }
             }
@@ -645,6 +712,15 @@ pub(crate) fn build<'a>(
             if glow > 0.0 {
                 glowing.push((RunSource::Array(SpriteBlend::Additive, array), inst));
             }
+            if board {
+                boards.push((
+                    eye.depth(s.position),
+                    s.layer,
+                    RunSource::Array(blend, array),
+                    inst,
+                ));
+                continue;
+            }
             keyed.push((
                 s.layer,
                 key,
@@ -657,6 +733,15 @@ pub(crate) fn build<'a>(
         if glow > 0.0 {
             glowing.push((RunSource::Sprite(SpriteBlend::Additive, s.texture), inst));
         }
+        if board {
+            boards.push((
+                eye.depth(s.position),
+                s.layer,
+                RunSource::Sprite(blend, s.texture),
+                inst,
+            ));
+            continue;
+        }
         keyed.push((
             s.layer,
             key,
@@ -665,6 +750,7 @@ pub(crate) fn build<'a>(
             inst,
         ));
     }
+    let sprite_boards = boards.len() as u32;
     for e in extra.iter().filter(|e| e.layers & mask != 0) {
         let s = &e.sprite;
         let mut inst = sprite_instance(s, [1.0, 1.0, 1.0, 0.0], e.glow, lit(s.layer), e.soft);
@@ -705,7 +791,7 @@ pub(crate) fn build<'a>(
             sprite_instance(&Sprite::default(), [1.0, 1.0, 1.0, 0.0], 0.0, false, false);
         keyed.push((m.layer, key, RunSource::Mesh(i as u32), false, placeholder));
     }
-    let sprites = keyed.len() as u32 - shadow_count - mesh_count;
+    let sprites = keyed.len() as u32 - shadow_count - mesh_count + sprite_boards;
     let after_sprites = keyed.len() as u32;
     let mut missing_glyphs = 0;
     for (i, text) in scene.texts.iter().enumerate() {
@@ -724,6 +810,19 @@ pub(crate) fn build<'a>(
         let (sin, cos) = text.rotation.sin_cos();
         let rotate = |v: Vec2| Vec2::new(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
         let origin = text.position.truncate();
+        // Faced text (`text_facing`) turns as one panel about its pivot:
+        // every glyph anchored there, its corner the anchor's offset (each
+        // line moved back by `align` of its width); a billboard sorting
+        // with the transparent meshes.
+        let (facing, align) = text_facing
+            .get(&(i as u32))
+            .map_or((SpriteFacing::None, 0.0), |t| (t.facing, t.align));
+        let widths = if facing != SpriteFacing::None && align != 0.0 {
+            font.walk(text, -font.line_height, |_, _, _, _| {})
+        } else {
+            Vec::new()
+        };
+        let depth = eye.depth(text.position);
         font.walk(text, -font.line_height, |ch, g, pen, offset| {
             let Some(g) = g else {
                 if !ch.is_whitespace() {
@@ -735,37 +834,45 @@ pub(crate) fn build<'a>(
             if r > l && t > b {
                 let corner = (pen + offset + Vec2::new(l, b)) * text.size;
                 let [al, at, ar, ab] = g.atlas_bounds;
-                keyed.push((
-                    text.layer,
-                    0.0,
-                    RunSource::Font(text.font),
-                    false,
-                    SpriteInstance {
-                        position_rotation: [
-                            origin.x + rotate(corner).x,
-                            origin.y + rotate(corner).y,
-                            text.position.z,
-                            text.rotation,
-                        ],
-                        size_anchor: [(r - l) * text.size, (t - b) * text.size, 0.0, 0.0],
-                        uv_rect: [
-                            al / font.atlas_size.x,
-                            at / font.atlas_size.y,
-                            ar / font.atlas_size.x,
-                            ab / font.atlas_size.y,
-                        ],
-                        color: text.color,
-                        flash: outline_color,
-                        fx: [outline, 0.0, 0.0],
-                        ground: NO_GROUND,
-                        layer: 0,
-                        facing: FACING_NONE,
-                    },
-                ));
+                let size = [(r - l) * text.size, (t - b) * text.size];
+                let mut inst = SpriteInstance {
+                    position_rotation: [
+                        origin.x + rotate(corner).x,
+                        origin.y + rotate(corner).y,
+                        text.position.z,
+                        text.rotation,
+                    ],
+                    size_anchor: [size[0], size[1], 0.0, 0.0],
+                    uv_rect: [
+                        al / font.atlas_size.x,
+                        at / font.atlas_size.y,
+                        ar / font.atlas_size.x,
+                        ab / font.atlas_size.y,
+                    ],
+                    color: text.color,
+                    flash: outline_color,
+                    fx: [outline, 0.0, 0.0],
+                    ground: NO_GROUND,
+                    layer: 0,
+                    facing: FACING_NONE,
+                };
+                if facing == SpriteFacing::None {
+                    keyed.push((text.layer, 0.0, RunSource::Font(text.font), false, inst));
+                } else {
+                    let line = (pen.y / -font.line_height).round() as usize;
+                    let back = widths.get(line).map_or(0.0, |w| w * align * text.size);
+                    let corner = corner - Vec2::new(back, 0.0);
+                    inst.position_rotation[0] = origin.x;
+                    inst.position_rotation[1] = origin.y;
+                    inst.size_anchor[2] = -corner.x / size[0];
+                    inst.size_anchor[3] = -corner.y / size[1];
+                    inst.facing = facing_code(facing);
+                    boards.push((depth, text.layer, RunSource::Font(text.font), inst));
+                }
             }
         });
     }
-    let glyphs = keyed.len() as u32 - after_sprites;
+    let glyphs = keyed.len() as u32 - after_sprites + boards.len() as u32 - sprite_boards;
     // Stable: within a (layer, key, source, tone) run, submission order is kept.
     og_core::sort::sort_by(&mut keyed, |a, b| {
         a.0.cmp(&b.0)
@@ -857,6 +964,28 @@ pub(crate) fn build<'a>(
         push(&mut runs, source, !untonemapped, index, 1);
     }
     place_under(i32::MAX, &mut instances, &mut runs, &mut next_under);
+    // The billboards' shadows, then the billboards far to near (ties by
+    // layer, then as submitted), after the layer runs in the buffer.
+    let mut billboard_shadows: Vec<SpriteRun> = Vec::new();
+    for (source, inst) in board_shadows {
+        let index = instances.len() as u32;
+        instances.push(inst);
+        push(&mut billboard_shadows, source, true, index, 1);
+    }
+    og_core::sort::sort_by(&mut boards, |a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)));
+    let mut billboards: Vec<(f32, SpriteRun)> = Vec::with_capacity(boards.len());
+    for (depth, _, source, inst) in boards {
+        billboards.push((
+            depth,
+            SpriteRun {
+                source,
+                first: instances.len() as u32,
+                count: 1,
+                tone_mapped: true,
+            },
+        ));
+        instances.push(inst);
+    }
     // The glow pass: by texture or array (additive, so order does not
     // matter; a stable sort keeps the plain textures' order as before).
     og_core::sort::sort_by_key(&mut glowing, |(source, _)| *source);
@@ -886,6 +1015,8 @@ pub(crate) fn build<'a>(
         tiles,
         tile_chunks,
         culled,
+        billboards,
+        billboard_shadows,
     })
 }
 
@@ -962,23 +1093,27 @@ mod tests {
             (4, 1),
             "the one off to the side is culled"
         );
-        // The shadow first, then the billboards far to near, then the
-        // key-0 flat sprite, then the keyed one.
-        let zs: Vec<(f32, u32)> = f
-            .instances
-            .iter()
-            .map(|i| (i.position_rotation[2], i.facing))
-            .collect();
+        // In the layer order the key-0 flat sprite, then the keyed
+        // billboard (its key keeps it there); the others sort with the
+        // transparent meshes: their shadow, then they far to near, each
+        // with its view depth.
+        let zs = |runs: &mut dyn Iterator<Item = &SpriteRun>| -> Vec<(f32, u32)> {
+            runs.flat_map(|r| &f.instances[r.first as usize..(r.first + r.count) as usize])
+                .map(|i| (i.position_rotation[2], i.facing))
+                .collect()
+        };
         assert_eq!(
-            zs,
-            [
-                (-2.0, FACING_SUN),
-                (-6.0, FACING_CAMERA),
-                (-2.0, FACING_CAMERA_Y),
-                (-4.0, FACING_NONE),
-                (-3.0, FACING_CAMERA),
-            ]
+            zs(&mut f.runs.iter()),
+            [(-4.0, FACING_NONE), (-3.0, FACING_CAMERA)]
         );
+        assert_eq!(zs(&mut f.billboard_shadows.iter()), [(-2.0, FACING_SUN)]);
+        assert_eq!(
+            zs(&mut f.billboards.iter().map(|b| &b.1)),
+            [(-6.0, FACING_CAMERA), (-2.0, FACING_CAMERA_Y)]
+        );
+        let depth = |z: f32| (Vec3::new(0.0, 0.0, z) - eye.position).dot(camera.forward);
+        let depths: Vec<f32> = f.billboards.iter().map(|b| b.0).collect();
+        assert_eq!(depths, [depth(-6.0), depth(-2.0)], "view depths, far first");
         // By distance without a forward (a probe's faces), still far first.
         let f = build(
             &scene,
@@ -994,7 +1129,8 @@ mod tests {
         )
         .expect("a frame");
         assert_eq!(f.culled, 0, "no frustum, nothing culled");
-        assert_eq!(f.instances[1].position_rotation[0], 500.0);
+        let first = f.billboards[0].1.first as usize;
+        assert_eq!(f.instances[first].position_rotation[0], 500.0);
         // The sun-facing card: the sun as a camera's right.
         assert!((sun_card_right(Vec3::new(1.0, 1.0, 0.0)) - Vec3::NEG_Z).length() < 1e-6);
         assert_eq!(sun_card_right(Vec3::Y), Vec3::X, "overhead: +x");

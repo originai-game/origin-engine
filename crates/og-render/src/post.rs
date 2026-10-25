@@ -12,7 +12,9 @@ use crate::{Antialias, DEPTH_FORMAT, HDR_FORMAT, TaaHistory, target_texture};
 use std::collections::HashMap;
 
 pub(crate) const FULLSCREEN_WGSL: &str = wgsl!("fullscreen.wgsl");
-const POST_WGSL: &str = wgsl!("post.wgsl");
+/// Exposure, bloom and the tonemap, with the bloom chain's filters (shared
+/// with a view's glow, `views_glow.wgsl`).
+const POST_WGSL: &str = concat!(wgsl!("post.wgsl"), wgsl!("bloom_chain.wgsl"));
 const TAA_WGSL: &str = wgsl!("taa.wgsl");
 const LUMINANCE_WGSL: &str = wgsl!("luminance.wgsl");
 const EXPOSURE_WGSL: &str = wgsl!("exposure.wgsl");

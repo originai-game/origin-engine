@@ -231,7 +231,9 @@ lighting falls back to a forward tile table built on the CPU).
   CJK coverage through the platform's subset fonts, and characters outside
   a cooked charset rendered at run time from the font's outlines (`font {
   runtime true }`); bidi (UAX #9) and shaping (Arabic, Indic) through
-  rustybuzz, behind og-ui's `shaping` feature.
+  rustybuzz, behind og-ui's `shaping` feature. World text faces the camera
+  as a billboard does when asked (`TextDesc.facing`), turned as one panel
+  about its aligned point and sorted among the transparent meshes.
 - Capture: a readback path from the render graph, used by the probe's
   `capture` on both hosts; on the web it reads the OffscreenCanvas target, so
   no `preserveDrawingBuffer`.
@@ -345,8 +347,11 @@ S6).
   `depth_prepass`, then the fluids' depth, thickness and smoothing
   through the face camera into face-sized targets, and ends its pass
   after the sky to copy itself, so the water and the fluids refract the
-  face drawn so far and the water darkens and foams by the depth below;
-  no screen-space or planar reflections on the water;
+  face drawn so far and the water darkens and foams by the depth below,
+  and on the full tier reflects the face in screen space over the same
+  depth and copy; no planar reflection, and the copy holds the opaque
+  face as the frame's holds the opaque scene (og-render README,
+  Reflection probe faces);
   `WaterRenderer::face_draws`, `Fluid3dRenderer::camera_frame`, the
   targets one set per face size in `Probes`, made the first time a capture
   needs them and drawn only while one is due), then transparent meshes
@@ -452,10 +457,11 @@ fluids are composited in its sprite order from field targets of its own
 size, the frame's kernels drawn through its camera. In a frame with soft
 particles every view runs its depth prepass (the one a target's depth
 texture takes) before its pass, and its particles fade against it. With
-`PostEffects.glow` its glowing sprites draw into a glow buffer at half its size,
-whose box-filtered mip chain (as many levels as the frame's bloom chain,
-each spread by a 3 × 3 tent) is added onto its image before the resolve
-(`views_glow.wgsl`): the main frame's glow without the rest of the bloom.
+`PostEffects.glow` its glowing sprites draw into a glow chain at half its
+size, run through the frame's own bloom filters (13-tap downsamples, tent
+upsamples, `bloom_chain.wgsl`) and added onto its image before the resolve
+at the weight the frame's tonemap gives its glow (`views_glow.wgsl`): the
+main frame's glow, the same halo, without the rest of the bloom.
 Screen sprites, the UI and the post chain are the main frame's. Of the post chain an `ldr` target or
 a viewport carries exposure and the tone curve (the resolve); an `hdr`
 target carries linear radiance for the frame that shows it to expose.

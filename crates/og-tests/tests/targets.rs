@@ -297,3 +297,42 @@ fn a_targets_depth_texture_holds_the_views_linear_depth() {
         );
     }
 }
+/// A view's sprite glow spreads as the main frame's: the same glowing
+/// sprite, framed alike in a viewport view and in the main frame, has the
+/// same halo at 60 to 200 px from its centre (within 2/255), with the glow
+/// alone and with the lit image blooming too (a threshold nothing reaches,
+/// so the bloom's intensity is the glow's weight in both). Before the debt
+/// round 3 the view's glow was a box-filtered mip chain and its far halo
+/// fell short (171 against 188 at 140 px), and it ignored the bloom's
+/// intensity.
+#[test]
+fn a_views_glow_spreads_as_the_frames_bloom() {
+    use og_tests::target_scenes::{ViewFx, view_fx_scene};
+    let mut failures = Vec::new();
+    for bloom in [None, Some(0.35)] {
+        let scene = |main: bool| {
+            let mut s = view_fx_scene(ViewFx::Glow, true);
+            s.post.bloom = bloom.map(|intensity| og_render::Bloom {
+                threshold: 50.0,
+                knee: 0.1,
+                intensity,
+            });
+            if main {
+                s.views.clear();
+                s.camera.target = glam::Vec3::ZERO;
+            }
+            frame(&s)
+        };
+        let (view, main) = (scene(false), scene(true));
+        let red =
+            |img: &og_render::RgbaImage, x: u32| img.pixels[((360 * img.width + x) * 4) as usize];
+        for d in [60, 80, 100, 140, 200] {
+            let (v, m) = (red(&view, 960 + d), red(&main, 640 + d));
+            println!("bloom {bloom:?}, {d} px: view {v}, main {m}");
+            if v.abs_diff(m) > 2 {
+                failures.push(format!("bloom {bloom:?}, {d} px: view {v}, main {m}"));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}

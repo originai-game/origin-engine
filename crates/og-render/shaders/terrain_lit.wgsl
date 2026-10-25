@@ -218,15 +218,9 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(p, n_geo, n_dot_l); }
   var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(p);
-  // Point and spot lights: those of this fragment's cluster (clusters.rs).
-  if (frame.params.z > 0.5) {
-    let word = cluster_word(cluster_at(in.clip.xy, p));
-    let first = word & 0xffffffu;
-    let light_count = word >> 24u;
-    for (var k = 0u; k < light_count; k++) {
-      color += surface_local_light(light_list[cluster_ref(first + k)], s, p, n, v);
-    }
-  }
+  // Point, spot and rect lights: this fragment's cluster's, or every light
+  // in a reflection probe's face (area.wgsl surface_local_lights).
+  color += surface_local_lights(in.clip.xy, s, p, n, v);
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = vec3<f32>(1.0) - f_ibl;
