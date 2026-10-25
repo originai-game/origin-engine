@@ -30,6 +30,7 @@ ordinary dependency).
 | `schema` | `AudioSource`, `AudioListener`, `Audio`, `ReverbZone` (`weight_at`), `SoundStarted`, `SoundEnded`, `end_reason`, `panning_model`, engine-owned `AudioPlayback`, `AudioStream`, the `og.Transform` mirror, `Bus` |
 | `command` | `Command`, `Op`, `encode`/`decode` (56-byte records), `TickPacket` |
 | `sound` | `SoundBank` (`insert_qoa`, `insert_pcm`, `insert_chunked`, `put_chunk`, `keep_chunks`, `set_chunk_loader`, `resident_bytes`, `get`, `info`, `remove`; `with_resident_seconds`), `SoundData` (`chunking`, `resident_chunks`, `resident_bytes`), `chunks_wanted` (§Chunked sounds) |
+| `decode` | `SoundBank::start_decode_thread`, `take_decode_jobs` → `DecodeJob` (`key`, `frame`, `qoa`, `decode`), `put_decoded`, `decode_queued`, `decode_stats` → `DecodeStats`; `DECODE_AHEAD_SECONDS`, `DECODE_AHEAD_FRAMES` (§Decoding beside the tick) |
 | `resample` | the windowed sinc's constants (`SINC_ZEROS`, `SINC_TAPS`, `SINC_BETA`, `SINC_PHASES`, `SINC_MAX_SPREAD`, `WIDE_PHASES`) |
 | `mixer` | `Mixer::new(MixerDesc, SoundBank)` / `Mixer::for_link`, `push`, `pump`, `render`, `render_until_tick`, `frames_until_tick`, `skip`, `stats`; `Clock::{Driven, Free}` |
 | `sink` | `HeadlessSink` (`Null` / `Capture`), `wav(pcm, channels, rate)` |
@@ -176,11 +177,15 @@ playhead. Only the regular commands are hashed.
   exactly to the world's next tick, so its PCM is a function of the stream.
   `Clock::Free { latency_frames }` (cpal) is pulled by the device; a packet
   more than 100 ms late or 500 ms early re-anchors.
-- **Sounds**: a sound up to 6 s (`DEFAULT_RESIDENT_SECONDS`) is decoded at
-  insert and shared; a longer one streams: each voice decodes the QOA frames
-  (5120 samples, self-contained) it reaches into two slots, so a frame
-  boundary or a loop seam never decodes twice. A sound cooked in chunks
-  keeps only some of its QOA bytes in memory (§Chunked sounds).
+- **Sounds**: nothing is decoded at insert. A QOA sound's frames (5120
+  samples, self-contained) are decoded beside the tick into the sound's
+  frame cache (§Decoding beside the tick): a sound up to 6 s
+  (`DEFAULT_RESIDENT_SECONDS`) whole, and it stays decoded; a longer one
+  streams, its frames decoded ahead of the playheads and dropped behind
+  them. A voice reads the cache two frames at a time, so a frame boundary
+  or a loop seam never looks twice, and decodes a frame nobody decoded
+  yet itself, to the same samples. A sound cooked in chunks keeps only
+  some of its QOA bytes in memory (§Chunked sounds).
 - **Voices**: resampling at `pitch × source rate / output rate`, by a
   windowed sinc (`og.Audio.resampler` sinc, the default) or linear
   interpolation (`linear`, the mix before round 4; §Resampling, virtual
@@ -435,8 +440,9 @@ cut apart, and decode to its samples exactly.
   chunked sound a loader that reads a missing chunk's file on the mixing
   thread (type and cook stamp checked), so a long `advance` mixed at once
   (og run) still hears every sample.
-- `resident_bytes()` sums what the sounds hold in memory (decoded PCM, a
-  streamed sound's QOA file, a chunked sound's resident chunks).
+- `resident_bytes()` sums what the sounds hold in memory (PCM, a QOA
+  sound's file, a chunked sound's resident chunks, and the QOA frames
+  decoded from them). A chunk dropped takes its decoded frames with it.
 
 Nothing here reaches the world: the tick side times a sound by its rate
 and length alone, so `world_hash` is the same chunked or whole.
@@ -466,6 +472,81 @@ that no chunk of a grouped one is read before its group is resident nor
 after it is let go, and `packages/engine/tests/sound-chunks.test.ts`
 runs the idle archetype's music cooked whole and in 2-second chunks
 through `og run --audio` for 35 s (the loop wraps): the same WAV.
+
+## Decoding beside the tick
+
+Debt round 3 (`tests/evidence/debt3/audio-decode/NOTES.md`). Before it a
+short sound was decoded whole when it entered the bank (inside
+`og.load.sound`, on the engine thread: 6 s of 48 kHz stereo is a whole
+file's decode in one call) and a long one by each voice as the mixer
+reached its frames, in the pump after the frame (on the web, the engine
+Worker). Now neither happens on the engine thread unless a frame is
+needed before anything decoded it.
+
+- **The frame cache.** A QOA or chunked sound is indexed at insert (its
+  frame table, checked as the decoder reads it) and holds one slot per
+  QOA frame. The frames of a sound up to the bank's resident seconds are
+  pinned (once decoded they stay, as the whole decode did); of a longer
+  one only the first is, the others are held while the decode-ahead
+  wants them. `insert_pcm` sounds are PCM as before.
+- **What is decoded is planned from the world.** Each sound queues its
+  pinned frames when it enters the bank (`insert_*`, `replace_*`). The
+  `og.audio` system, at the start of every tick with a sink attached,
+  plans the decode-ahead from the playheads (`og.AudioPlayback`, not
+  virtual): per voice the QOA frame its cursor is in and the next ones
+  up to `DECODE_AHEAD_SECONDS` (0.25) of the device at its pitch, at
+  most `DECODE_AHEAD_FRAMES` (4) past the cursor's frame, and across a
+  loop's wrap the loop start's frames for the rest of the window; soonest
+  first, ahead of the pins. Frames it planned before and no longer wants
+  are dropped, so a voice holds at most 5 decoded frames on each side of
+  a wrap. The plan reads the world and writes nothing in it: the stream
+  and `world_hash` are unchanged.
+- **The helper** takes the queue's jobs (a frame's one-frame QOA file)
+  and answers with its samples: natively `start_decode_thread`, one
+  thread per bank that og-runtime starts for every engine (it ends with
+  the bank); on the web `web/audio-decoder.ts`, a decoder Worker the
+  engine Worker starts from a `blob:` URL of `decodeQoa`'s own source
+  and feeds after each pump (`og_web_audio_decode_jobs`, at most 32 in
+  flight), answering the bank with `og_web_audio_put_decoded`. The same
+  page works isolated or not (no SharedArrayBuffer, no threaded wasm);
+  where the Worker cannot start or fails (a CSP without `worker-src
+  blob:`) no decoder runs. A job not answered within 120 plans is handed
+  out again; an answer of another length, or for a key not in flight, is
+  refused.
+- **A miss is decoded where it is read.** A voice reaching a frame not in
+  the cache decodes it itself (today's path), to the same samples, and
+  keeps a pinned one for the others; `DecodeStats.misses` counts them.
+  So the PCM is a function of the command stream whatever the helper
+  did: no helper, a slow one, a racing thread. The misses that remain
+  with a helper that keeps up are the frames nothing could foresee: the
+  first frame of a start part-way into a long sound (`startOffset`, a
+  virtual voice heard again, a resync after attach) and a long `advance`
+  mixed at once (og run's playtests: the plan covers a quarter second).
+  Nothing about a sound's start depends on its data being ready: the
+  tick times a sound by its rate and length alone, as with chunks.
+- **Two decoders, one result.** The web's decoder is a TypeScript port
+  of `qoa.rs`'s decoder (integer arithmetic, operation for operation).
+  `tests/decode.rs` and `packages/engine/tests/audio-decoder.test.ts`
+  decode one fixture (`packages/engine/tests/fixtures/qoa/frames.qoa`,
+  written by this crate's encoder: full-scale squares with noise, a
+  sweep, silence, impulses; stereo, two frames and a short one) to one
+  FNV-1a hash, whole and as the jobs' one-frame files, the bun test also
+  after the export's minifying build.
+
+Tests: `tests/decode.rs` (each broken once and failing: a miss playing
+silence, the plan stopping at the loop's end, an answer of another
+length taken, the pins decoded on the inserting thread), and
+`packages/engine/tests/audio-decoder.test.ts` (the TS decoder against the
+fixture's hash, its Worker source after minifying, `AudioDecoder` feeding
+a real Worker and answering a bank).
+
+| Test | Asserts |
+|---|---|
+| `the_mix_is_the_same_whatever_the_helper_did` | 10 s of a looping 44.1 kHz track (wrapping), a pad pitched 1.37, blips and a second voice started 3 s into the track: no helper, a helper that keeps up, a racing thread and a late web-like helper (four jobs a tick, each answered three ticks later) give the same stream hash and bit-identical PCM; without a helper over 100 misses, with one that keeps up exactly one (the start part-way in) |
+| `a_sound_is_indexed_at_insert_and_decoded_by_the_helper` | inserting 6 s of stereo queues its 57 frames and decodes none (resident bytes: the QOA file alone); a long sound queues its first; after the helper the bytes add the PCM, and a voice pitched 1.1 mixes bit for bit what the whole file decoded at once mixes, with no miss |
+| `the_decode_ahead_is_bounded_and_crosses_the_wrap` | a voice pitched 16 plans its cursor's frame and four more; a loop of 1.0–1.5 s plans its start's frame a quarter second before the wrap, never past its end, and holds at most its window |
+| `answers_of_another_length_or_key_are_refused` | a short answer, a second answer and an unknown key are refused; the refused frame is decoded where it is read (one miss), the mix bit for bit the whole file's |
+| `the_shared_fixture_decodes_to_its_hash_frame_by_frame` | the encoder still writes the fixture; it decodes to `080bf5513188bc60` whole and as the jobs' one-frame files |
 
 ## Ring (web)
 
@@ -499,8 +580,13 @@ worklet; the worklet queues up to 0.5 s and drops the oldest beyond that.
 | open | `og_web_audio_open(engine, sampleRate)` → Result | `og_node_audio_open(engine, "null" \| "capture" \| "device", sampleRate?)` → Result |
 | per frame | `og_web_audio_pump(engine, maxFrames)` → `Float32Array` | `og_node_audio_pump(engine)` → Result of stats |
 | sounds | `og_web_audio_insert_qoa(engine, id, bytes)` → Result of the handle | `og_node_audio_insert_qoa(engine, id, Buffer)` → Result of the handle |
+| decoding (§Decoding beside the tick) | `og_web_audio_decode_jobs(engine, max)` → `[key, frame, Uint8Array, …]`, `og_web_audio_put_decoded(engine, key, Int16Array)` → bool | the bank's decode thread, started by og-runtime for every engine |
 | other | `og_web_audio_stats`, `og_web_audio_close` | `og_node_audio_stats`, `og_node_audio_wav` (capture → WAV Buffer), `og_node_audio_close` |
-| TypeScript | `web/audio.ts`: `AudioShell` (main thread: `listen()`, `unlock()`), `WorkerAudio.attach(glue, engine, msg)` → `pump()`; `web/audio-worklet.ts`: processor `og-audio` | `node/audio.ts`: `openAudio(engine, mode)` → `pump()`, `stats()`, `wav()`; `insertSound` |
+| TypeScript | `web/audio.ts`: `AudioShell` (main thread: `listen()`, `unlock()`), `WorkerAudio.attach(glue, engine, msg)` → `pump()` (then feeds the decoder); `web/audio-decoder.ts`: `AudioDecoder`, `decodeQoa`; `web/audio-worklet.ts`: processor `og-audio` | `node/audio.ts`: `openAudio(engine, mode)` → `pump()`, `stats()`, `wav()`; `insertSound` |
+
+Both hosts' stats carry `decodedAhead` (frames the helper decoded),
+`decodeMisses` (frames a voice decoded where it read them) and
+`decodeQueued` (the web's also `decodeInFlight`).
 
 Rules: one sink per engine; the sink attaches the link (the next tick
 resyncs); pump after every `advance`/`frame`; a headless run opens `null`
@@ -581,19 +667,12 @@ chunked sounds (`tests/evidence/P4/cook/sound-chunks.md`).
 Effects, ducking, ray-cast occlusion, distance low-pass, music clock and
 crossfades, scheduled starts, priority and the voice cap, `listen`, `og run
 --audio`, chunked streaming of long sounds, propagation (Doppler, cones,
-the HRTF), the windowed sinc, virtual voices and retrigger have landed
-(§E6, §Chunked sounds, §Propagation, §Resampling, virtual voices,
-retrigger). Still owed:
-
-- Decoding off the engine Worker (the mixer decodes QOA frames as voices
-  reach them). (A chunk's fetch is prioritised by how soon its playhead
-  needs it since the cook round three: §Chunked sounds.) Not done in
-  round 4 because it does not fit without changing the mixer's observable
-  output: the engine's wasm is single-threaded (`wasm32-unknown-unknown`
-  without atomics, so no second thread shares the bank), and a driven
-  mixer renders each tick's PCM as a function of the stream, so the frame
-  a voice reaches must be decoded at that sample; a decode on another
-  Worker that arrives late would play silence (as a missing chunk does)
-  and make the PCM depend on timing. It needs a decode-ahead the tick can
-  bound (the playheads' next QOA frames, as `chunk_distances` bounds
-  chunks) with a synchronous fallback, and a threaded wasm build.
+the HRTF), the windowed sinc, virtual voices, retrigger and decoding
+beside the tick have landed (§E6, §Chunked sounds, §Propagation,
+§Resampling, virtual voices, retrigger, §Decoding beside the tick).
+Nothing is owed. The last item, decoding off the engine Worker, landed in
+debt round 3; round 4 had left it because a decode on another Worker that
+lands late would play silence and make the PCM depend on timing. The
+miss path answers that (a frame not decoded yet is decoded where it is
+read, to the same samples), and no threaded wasm is needed: the decoder
+Worker shares no memory with the engine.

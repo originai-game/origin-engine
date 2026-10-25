@@ -9,6 +9,15 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## 0.5.0 — 2026-10-25
 
+- Audio decoding no longer runs on the engine thread: a sound entering
+  the bank is indexed, not decoded, and its QOA frames are decoded beside
+  the tick (natively on a thread of the bank, on the web by a decoder
+  Worker the engine Worker feeds), ahead of the playheads as each tick
+  plans it. A frame the mixer reaches first is decoded there, to the same
+  samples, so every mix is bit for bit what it was and no world hash
+  moves. The memory figure for audio counts a QOA sound's file and its
+  decoded frames; the hosts' audio stats add `decodedAhead`,
+  `decodeMisses` and `decodeQueued`.
 - Cheaper ambient occlusion: `PostEffects.aoResolution` (`AoResolution`,
   `full` by default, today's frame) set to `half` searches and blurs a
   quarter of the pixels and brings them to full resolution with a

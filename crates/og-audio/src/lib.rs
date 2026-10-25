@@ -16,6 +16,10 @@
 //!   streaming from [`SoundBank`], one-shots, seamless loops, pitch by
 //!   resampling, distance and pan (computed by the tick side), bus gains and
 //!   a soft limiter. It never writes the world.
+//! - **Decoding** ([`decode`]): the sounds' QOA frames are decoded beside
+//!   the tick by a helper the host runs (a thread natively, a decoder
+//!   Worker on the web), ahead of the playheads as the tick plans it; a
+//!   frame the mixer reaches first is decoded there, to the same samples.
 //!
 //! Sinks: the web host renders in the engine Worker and ships PCM to an
 //! AudioWorklet through a SharedArrayBuffer ring; the native host pulls the
