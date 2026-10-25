@@ -7,8 +7,8 @@ The CLI source at `1bb341e5` confirms that `--preflight` is an internal
 
 | Check | Result |
 |---|---|
-| `og run templates/game --device android --preflight` | Fail, exit 2: unknown option `--preflight` |
-| `og run templates/game --device iphone --preflight` | Fail, exit 2: unknown option `--preflight` |
+| `og run templates/game --device android --preflight` | Not a defect: expected exit 2; `--preflight` is internal, not a user flag |
+| `og run templates/game --device iphone --preflight` | Not a defect: expected exit 2; `--preflight` is internal, not a user flag |
 | `bun packages/engine/src/node/device.ts --preflight --device android` | Pass, exit 0. Checks that adb exists, not that a phone is authorized |
 | `bun packages/engine/src/node/device.ts --preflight --device iphone` | Pass, exit 0. Checks macOS and safaridriver existence, not Remote Automation or phone pairing |
 | adb | `/opt/homebrew/bin/adb`, 1.0.41, platform tools 37.0.1-15733141 |
@@ -22,8 +22,10 @@ The CLI source at `1bb341e5` confirms that `--preflight` is an internal
 | LAN address | `192.168.1.40`, `en0`. The only non-loopback IPv4 address, so `device.ts` selects it |
 
 Raw commands and output: `phone-preflight.txt`, `safari-preferences.txt`,
-`phone-followup.txt`. The requested CLI `--preflight` returning exit 2 is a
-CLI defect, not a missing tool. No engine code was changed to fix it here.
+`phone-followup.txt`. Not a defect: `--preflight` is internal; the preflight
+runs on every `og run --device` before the build. `crates/og-cli/src/device.rs`
+passes it to `device.ts`; the public CLI correctly rejects it. The earlier
+defect label was incorrect. Raw exit codes remain unchanged.
 A Pixel 10 is not the design
 budget's 2022 mid-range Android; results on this phone cannot close that
 hardware-specific budget without noting the mismatch.

@@ -143,4 +143,5 @@ zero bytes rather than 921,600. The failed receipt is retained in
 The dedicated tick runner does not perform or claim that readback check.
 
 Phone setup and remaining owner actions are in `phone.md`. The CLI's
-`--preflight` exit 2 is recorded as a defect, not fixed in this branch.
+`--preflight` exit 2 is not a defect: `--preflight` is internal; the preflight
+runs on every `og run --device` before the build.
