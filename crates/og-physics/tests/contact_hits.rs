@@ -307,3 +307,86 @@ fn a_snapshot_taken_before_the_hit_replays_the_same_event() {
         assert_eq!(again, first, "the replayed hit differs");
     }
 }
+
+/// A top-down character controller (gravityScale 0) walking +x, faster
+/// each tick (1 m/s and 0.25 m/s more a tick, so this tick's velocity is
+/// not the last one's), under a 2 kg ball dropped on its head at 8 m/s, weightless: the ball
+/// comes from above, so the walk never sees it in the way, and it lands
+/// while the controller moves. The controller is a position-based
+/// kinematic body: the contact meets it at the velocity carrying it from
+/// its pose to the target its last move set, and only the ball's momentum
+/// answers the impulse.
+fn controller_hit(profile: u32) {
+    let (mut w, _p) = world(weightless(profile), 6);
+    let walker = w
+        .spawn((
+            at(0.0, 0.0, 0.0),
+            slick(Collider::capsule(0.4, 1.0)),
+            CharacterController {
+                movement: Vec3::new(3.0, 0.0, 0.0),
+                gravity_scale: 0.0,
+                push_bodies: false,
+                ..CharacterController::default()
+            },
+        ))
+        .unwrap();
+    // Its cap's top is 0.9 m up: 1.6 m (12 ticks) of fall, by when the
+    // controller has walked about 0.5 m.
+    let ball = moving(
+        &mut w,
+        at(0.5, 3.0, 0.0),
+        RigidBody {
+            mass: 2.0,
+            ..RigidBody::dynamic()
+        },
+        slick(Collider::sphere(0.5)),
+        linear(0.0, -8.0, 0.0),
+    );
+    // The controller's target for each step is where its move after the
+    // step before put its Transform; it starts the step where the move
+    // before that put it.
+    let mut targets = vec![transform(&w, walker).position];
+    for k in 0..60 {
+        let mut c = w.get::<CharacterController>(walker).unwrap();
+        c.movement = Vec3::new(1.0 + 0.25 * k as f32, 0.0, 0.0);
+        w.insert(walker, c).unwrap();
+        let before = velocity(&w, ball);
+        w.step().unwrap();
+        let started = w.pending_events::<CollisionStarted>().unwrap();
+        if let Some(&s) = started.first() {
+            let n = targets.len();
+            assert!(n >= 3, "hit in the first ticks");
+            let expect = (targets[n - 1] - targets[n - 2]) * 60.0;
+            let last = (targets[n - 2] - targets[n.saturating_sub(3)]) * 60.0;
+            assert!(
+                expect.x > 2.0 && expect.x - last.x > 0.2,
+                "the controller was walking, faster than the tick before: {expect} after {last}"
+            );
+            assert_eq!((s.a, s.b), (walker.to_bits(), ball.to_bits()));
+            assert!(s.normal.y > 0.9, "the ball landed on its head: {s:?}");
+            // a (the controller) relative to b (the ball) before the solver.
+            let rel = expect - before.linear;
+            assert!(
+                near(s.relative_velocity, rel, 1e-2),
+                "{s:?}, expected {rel}"
+            );
+            // The kinematic side takes nothing: the ball's momentum change
+            // is the whole impulse, along +normal (b's side).
+            let dp = 2.0 * (velocity(&w, ball).linear - before.linear);
+            assert!(s.impulse > 1.0, "{s:?}");
+            assert!(
+                near(dp, s.normal * s.impulse, 0.02 * s.impulse),
+                "Δp {dp} vs {s:?}"
+            );
+            return;
+        }
+        targets.push(transform(&w, walker).position);
+    }
+    panic!("the ball never met the controller");
+}
+
+#[test]
+fn a_controller_hitting_a_dynamic_body_reports_its_interpolated_velocity_and_the_bodys_momentum() {
+    controller_hit(PROFILE_3D);
+    controller_hit(PROFILE_2D);
+}

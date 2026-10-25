@@ -39,7 +39,7 @@ Branch `r4/physics-contact`, cut from `1bb341e5` (origin/main, 0.4.0).
 
 ## Tests and results
 
-`crates/og-physics/tests/contact_hits.rs` (4 tests, each run in the 3D
+`crates/og-physics/tests/contact_hits.rs` (5 tests, each run in the 3D
 and 2D profiles). On `1bb341e5` the fields do not exist, so the file
 does not compile.
 - Light into heavy: a 1 kg ball at 6 m/s into a 10 kg ball, weightless and
@@ -59,6 +59,18 @@ does not compile.
   against 10.88 + 0.33). In a second case, a weightless 1 kg box is struck
   by a kinematic platform rising at 3 m/s: the relative velocity is
   (0,3,0) and the impulse equals the box's new velocity times its mass.
+- Controller (follow-up commit): a top-down og.CharacterController
+  (gravityScale 0, pushBodies off), which is a position-based kinematic
+  body, walks +x faster every tick (1 m/s, then 0.25 m/s more each tick).
+  A 2 kg ball drops onto its head at 8 m/s, weightless. `relativeVelocity`
+  equals the controller's velocity from its pose to its target, which is
+  the difference between its last two Transform targets × 60, minus the
+  ball's velocity. That came to (3.74, 7.78). The ball's momentum change
+  equals `impulse · normal` within 2 %. Both profiles. The test fails
+  when the motions read rapier's stored velocity instead of interpolating
+  it: it then reports last tick's (3.5, 8.0). I checked that by mutating
+  the code. The controller's speed has to change every tick for that
+  check to fail, since at a constant speed the stale value is the same.
 - Snapshot: a spinning rod and a ball. A snapshot taken five ticks in,
   before the hit, is restored and replayed, and the event comes back equal
   field for field on the same tick.
@@ -140,10 +152,8 @@ addon.
   sensor events. Only the start of a contact is a hit. A game that wants
   the force of a resting contact can ask for it later. That would be
   another field on Contact, at a per-tick cost for every pair.
-- A test for a position-based kinematic body (a controller) hitting a
-  dynamic body. The code takes the controller's velocity from rapier's
-  interpolation (`RigidBodyPosition::interpolate_velocity`, as rapier does
-  inside the step), but no test covers that case.
+- (Added in the follow-up commit: the position-based controller test
+  below.)
 
 ## What the coordinator must re-check
 
