@@ -446,11 +446,7 @@ impl Bundle {
     pub fn from_manifest(text: &str) -> Result<Bundle, LoadError> {
         let manifest = Manifest::parse(text)?;
         let outputs: Vec<ManifestOutput> = manifest.outputs().cloned().collect();
-        let index = outputs
-            .iter()
-            .enumerate()
-            .map(|(i, o)| (o.id.clone(), i))
-            .collect();
+        let index = og_core::sort::map(outputs.iter().enumerate().map(|(i, o)| (o.id.clone(), i)));
         Ok(Bundle {
             manifest,
             index,

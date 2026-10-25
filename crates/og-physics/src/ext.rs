@@ -283,7 +283,7 @@ pub(crate) fn sync_joints(
     sim: &mut Sim,
     handles: &super::sim::Handles<'_>,
 ) -> Result<()> {
-    let live: BTreeSet<u64> = scene.joints.iter().map(|(e, _)| e.to_bits()).collect();
+    let live: BTreeSet<u64> = og_core::sort::set(scene.joints.iter().map(|(e, _)| e.to_bits()));
     let gone: Vec<u64> = sim
         .joints
         .keys()
@@ -675,7 +675,7 @@ pub(crate) fn soft(
     let flat2 = DIM == 2;
     let gravity = flat(settings.gravity);
     // Ropes.
-    let live: BTreeSet<u64> = scene.ropes.iter().map(|r| r.0.to_bits()).collect();
+    let live: BTreeSet<u64> = og_core::sort::set(scene.ropes.iter().map(|r| r.0.to_bits()));
     sim.ropes.retain(|e, _| live.contains(e));
     let mut ropes: BTreeMap<u64, (&Rope, Vec3, Option<Vec3>)> = BTreeMap::new();
     for (e, position, rope) in &scene.ropes {
@@ -711,7 +711,7 @@ pub(crate) fn soft(
         state.step(rope, dt, gravity, start, end, flat2, &near);
     });
     // Cloth.
-    let live: BTreeSet<u64> = scene.cloths.iter().map(|c| c.0.to_bits()).collect();
+    let live: BTreeSet<u64> = og_core::sort::set(scene.cloths.iter().map(|c| c.0.to_bits()));
     sim.cloths.retain(|e, _| live.contains(e));
     let mut cloths: BTreeMap<u64, (&Cloth, Vec3, Quat)> = BTreeMap::new();
     for (e, position, rotation, cloth) in &scene.cloths {
@@ -755,7 +755,7 @@ pub(crate) fn soft(
     laps.lap(Phase::Soft);
     // Fluids: each alone, or with the others of its group (the first four
     // in entity order); each set steps from its own particles.
-    let live: BTreeSet<u64> = scene.fluids.iter().map(|f| f.0.to_bits()).collect();
+    let live: BTreeSet<u64> = og_core::sort::set(scene.fluids.iter().map(|f| f.0.to_bits()));
     sim.fluids.retain(|e, _| live.contains(e));
     let g = Vec2::new(settings.gravity.x, settings.gravity.y);
     let mut groups: BTreeMap<u32, Vec<usize>> = BTreeMap::new();
@@ -907,7 +907,7 @@ fn fluids3(scene: &Scene, settings: &Physics, dt: f32, sim: &mut Sim) {
         sim.fluids3.clear();
         return;
     }
-    let live: BTreeSet<u64> = scene.fluids3.iter().map(|f| f.0.to_bits()).collect();
+    let live: BTreeSet<u64> = og_core::sort::set(scene.fluids3.iter().map(|f| f.0.to_bits()));
     sim.fluids3.retain(|e, _| live.contains(e));
     // Each fluid's set: its group's first four (entity order), or itself.
     let mut sets: BTreeMap<(u32, u64), Vec<usize>> = BTreeMap::new();
@@ -1098,7 +1098,7 @@ pub(crate) fn water(
     let list = floaters(scene, sim, handles);
     let g = -settings.gravity.y;
     let mut forces: Vec<WaterForce> = Vec::new();
-    let live: BTreeSet<u64> = scene.surfaces.iter().map(|s| s.0.to_bits()).collect();
+    let live: BTreeSet<u64> = og_core::sort::set(scene.surfaces.iter().map(|s| s.0.to_bits()));
     sim.surfaces.retain(|e, _| live.contains(e));
     for (e, position, surface) in &scene.surfaces {
         let key = e.to_bits();
@@ -1121,7 +1121,7 @@ pub(crate) fn water(
             });
         }
     }
-    let live: BTreeSet<u64> = scene.lines.iter().map(|s| s.0.to_bits()).collect();
+    let live: BTreeSet<u64> = og_core::sort::set(scene.lines.iter().map(|s| s.0.to_bits()));
     sim.lines.retain(|e, _| live.contains(e));
     for (e, position, line) in &scene.lines {
         let key = e.to_bits();

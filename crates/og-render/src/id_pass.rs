@@ -345,10 +345,8 @@ pub fn render_ids_from(
 
     // The objects: what shows of each id, with its bounds and depth.
     let forward = -view.row(2).truncate();
-    let mut objects: BTreeMap<u32, IdObject> = frame
-        .drawn
-        .iter()
-        .map(|(&id, &(count, b))| {
+    let mut objects: BTreeMap<u32, IdObject> =
+        og_core::sort::map(frame.drawn.iter().map(|(&id, &(count, b))| {
             (
                 id,
                 IdObject {
@@ -361,8 +359,7 @@ pub fn render_ids_from(
                     point: [0, 0],
                 },
             )
-        })
-        .collect();
+        }));
     let ivp = vp.inverse();
     let eye = view.inverse().w_axis.truncate();
     for y in 0..height {

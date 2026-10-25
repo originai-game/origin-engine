@@ -87,7 +87,7 @@ impl RuntimeView {
         };
         // A skinned instance's entity: the one its palette was made for.
         let by_palette: BTreeMap<u32, u64> =
-            rs.atmo.palettes.iter().map(|(&e, &p)| (p, e)).collect();
+            og_core::sort::map(rs.atmo.palettes.iter().map(|(&e, &p)| (p, e)));
         sources.skinned = scene
             .skinned_instances
             .iter()

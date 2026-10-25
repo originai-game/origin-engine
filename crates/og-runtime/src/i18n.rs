@@ -140,17 +140,15 @@ pub fn og_i18n_t(world: u32, key: String, args: Option<String>) -> String {
         .ok()
         .and_then(|v| v.as_object().cloned())
         .map(|o| {
-            o.into_iter()
-                .map(|(k, v)| {
-                    let a = match &v {
-                        Value::Number(n) => Arg::Num(n.as_f64().unwrap_or(0.0)),
-                        Value::String(s) => Arg::Str(s.clone()),
-                        Value::Bool(b) => Arg::Str(b.to_string()),
-                        other => Arg::Str(other.to_string()),
-                    };
-                    (k, a)
-                })
-                .collect()
+            og_core::sort::map(o.into_iter().map(|(k, v)| {
+                let a = match &v {
+                    Value::Number(n) => Arg::Num(n.as_f64().unwrap_or(0.0)),
+                    Value::String(s) => Arg::Str(s.clone()),
+                    Value::Bool(b) => Arg::Str(b.to_string()),
+                    other => Arg::Str(other.to_string()),
+                };
+                (k, a)
+            }))
         })
         .unwrap_or_default();
     match with(world, |s| s.catalog.t(&key, &args)) {

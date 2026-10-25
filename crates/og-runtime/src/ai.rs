@@ -177,11 +177,9 @@ fn describe_value(world_id: u32, e: Entity, perception: Option<(bool, u64)>) -> 
         .get(mem.status as usize)
         .copied()
         .unwrap_or("idle");
-    let blackboard: serde_json::Map<String, Value> = mem
-        .keys
-        .iter()
-        .map(|(k, v)| (k.clone(), to_json(*v)))
-        .collect();
+    // Extended rather than collected: `collect` sorts first (og_core::sort::map).
+    let mut blackboard = serde_json::Map::new();
+    blackboard.extend(mem.keys.iter().map(|(k, v)| (k.clone(), to_json(*v))));
     let (sees, target) = perception.unwrap_or((false, 0));
     Some(json!({
         "behaviour": b.name, "kind": kind, "state": state,

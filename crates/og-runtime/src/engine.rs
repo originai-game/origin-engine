@@ -703,12 +703,10 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
         command_help: desc["commandHelp"]
             .as_object()
             .map(|o| {
-                o.iter()
-                    .map(|(k, v)| {
-                        let text = |f: &str| v[f].as_str().unwrap_or_default().to_string();
-                        (k.clone(), (text("usage"), text("doc")))
-                    })
-                    .collect()
+                og_core::sort::map(o.iter().map(|(k, v)| {
+                    let text = |f: &str| v[f].as_str().unwrap_or_default().to_string();
+                    (k.clone(), (text("usage"), text("doc")))
+                }))
             })
             .unwrap_or_default(),
         max_catch_up: num("maxCatchUp", 4),
@@ -717,9 +715,10 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
         scenes: desc["scenes"]
             .as_object()
             .map(|o| {
-                o.iter()
-                    .filter_map(|(k, v)| Some((k.clone(), v.as_str()?.to_string())))
-                    .collect()
+                og_core::sort::map(
+                    o.iter()
+                        .filter_map(|(k, v)| Some((k.clone(), v.as_str()?.to_string()))),
+                )
             })
             .unwrap_or_default(),
         render: desc["render"].clone(),
@@ -742,11 +741,12 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
 /// Declaration order, then `after`/`before`: among the systems whose
 /// predecessors have all been placed, the earliest declared goes next.
 fn order(systems: &[SystemDecl]) -> Result<Vec<usize>, String> {
-    let index: BTreeMap<&str, usize> = systems
-        .iter()
-        .enumerate()
-        .map(|(i, s)| (s.name.as_str(), i))
-        .collect();
+    let index: BTreeMap<&str, usize> = og_core::sort::map(
+        systems
+            .iter()
+            .enumerate()
+            .map(|(i, s)| (s.name.as_str(), i)),
+    );
     if index.len() != systems.len() {
         return Err("two systems of the game share a name".into());
     }

@@ -597,7 +597,8 @@ fn run(
     if agents.is_empty() {
         return Ok(());
     }
-    let alive: std::collections::BTreeSet<u64> = agents.iter().map(|e| e.to_bits()).collect();
+    let alive: std::collections::BTreeSet<u64> =
+        og_core::sort::set(agents.iter().map(|e| e.to_bits()));
     st.mems.retain(|k, _| alive.contains(k));
     let behaviours = lock(&sys.behaviours);
     for (n, &e) in agents.iter().enumerate() {

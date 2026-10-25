@@ -1396,8 +1396,8 @@ impl World {
         self.archetype_by_types = state.by_types;
         self.resources = state.resources;
         self.events = state.events;
-        self.by_name = state.names.iter().map(|(e, n)| (n.clone(), *e)).collect();
-        self.names = state.names.into_iter().collect();
+        self.by_name = og_core::sort::map(state.names.iter().map(|(e, n)| (n.clone(), *e)));
+        self.names = og_core::sort::map(state.names);
         for (b, decoded) in self.blocks.iter_mut().zip(state.blocks) {
             b.block.apply(decoded);
         }

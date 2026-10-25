@@ -181,13 +181,14 @@ pub(crate) fn scene_spawned(
             return;
         }
     };
-    let by_name: BTreeMap<&str, og_ecs::Entity> = scene
-        .entities
-        .iter()
-        .zip(spawned)
-        .filter(|(e, _)| !e.name.is_empty())
-        .map(|(e, s)| (e.name.as_str(), *s))
-        .collect();
+    let by_name: BTreeMap<&str, og_ecs::Entity> = og_core::sort::map(
+        scene
+            .entities
+            .iter()
+            .zip(spawned)
+            .filter(|(e, _)| !e.name.is_empty())
+            .map(|(e, s)| (e.name.as_str(), *s)),
+    );
     // The models' parts, loaded by the spawn.
     let mut models: Vec<(og_ecs::Entity, Parts, &og_cook::lightmap::BakedModel)> = Vec::new();
     for m in &lm.file.models {

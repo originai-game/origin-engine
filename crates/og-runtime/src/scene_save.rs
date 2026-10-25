@@ -197,10 +197,8 @@ impl SceneWriter for RuntimeWriter {
             });
         }
         let has_boot = files.first().is_some_and(|f| f.boot);
-        let by_schema: BTreeMap<String, Layout> = layouts
-            .values()
-            .map(|l| (l.schema.clone(), l.clone()))
-            .collect();
+        let by_schema: BTreeMap<String, Layout> =
+            og_core::sort::map(layouts.values().map(|l| (l.schema.clone(), l.clone())));
         let resolve = |name: &str, kind: RecordKind| -> Option<&Layout> {
             layouts
                 .get(name)
@@ -222,10 +220,11 @@ impl SceneWriter for RuntimeWriter {
                 .iter()
                 .filter_map(|n| boot_file.names.get(n).map(|b| Entity::from_bits(*b)))
                 .collect();
-            let roots: BTreeMap<u64, String> = instances
-                .iter()
-                .filter_map(|i| i.root.map(|r| (r, i.id.clone())))
-                .collect();
+            let roots: BTreeMap<u64, String> = og_core::sort::map(
+                instances
+                    .iter()
+                    .filter_map(|i| i.root.map(|r| (r, i.id.clone()))),
+            );
             // A scene instance's root is the instantiate call's: the game
             // makes it again when it instantiates, and scene text cannot
             // name a scene to instantiate, so it is not written.
@@ -363,7 +362,7 @@ impl RuntimeWriter {
         picked: &[Entity],
         by_schema: &BTreeMap<String, Layout>,
     ) -> Vec<SpawnedEntity> {
-        let set: BTreeSet<u64> = picked.iter().map(|e| e.to_bits()).collect();
+        let set: BTreeSet<u64> = og_core::sort::set(picked.iter().map(|e| e.to_bits()));
         let mut nodes: BTreeMap<u64, SpawnedEntity> = BTreeMap::new();
         let mut parent_of: BTreeMap<u64, u64> = BTreeMap::new();
         let mut seen = BTreeSet::new();

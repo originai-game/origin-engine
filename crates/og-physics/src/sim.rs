@@ -462,12 +462,13 @@ impl Handles<'_> {
     pub(crate) fn get(&self, key: &u64) -> Option<&rp::RigidBodyHandle> {
         self.by_entity
             .get_or_init(|| {
-                self.scene
-                    .bodies
-                    .iter()
-                    .map(|b| b.entity.to_bits())
-                    .zip(self.by_body.iter().copied())
-                    .collect()
+                og_core::sort::map(
+                    self.scene
+                        .bodies
+                        .iter()
+                        .map(|b| b.entity.to_bits())
+                        .zip(self.by_body.iter().copied()),
+                )
             })
             .get(key)
     }

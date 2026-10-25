@@ -123,6 +123,25 @@ fn permute<T>(v: &mut [T], mut order: Vec<u32>) {
     }
 }
 
+/// The map `iter.collect::<BTreeMap<_, _>>()` makes, built by inserting
+/// each pair rather than by sorting them first: `BTreeMap`'s `FromIterator`
+/// sorts with the standard library's stable sort, one more driftsort per
+/// key and value type (1.2 to 4.7 kB of wasm each). The same map: a later
+/// pair with an equal key replaces the earlier one's value, as with
+/// `collect`.
+pub fn map<K: Ord, V>(iter: impl IntoIterator<Item = (K, V)>) -> std::collections::BTreeMap<K, V> {
+    let mut out = std::collections::BTreeMap::new();
+    out.extend(iter);
+    out
+}
+
+/// The set `iter.collect::<BTreeSet<_>>()` makes, by insertion ([`map`]).
+pub fn set<T: Ord>(iter: impl IntoIterator<Item = T>) -> std::collections::BTreeSet<T> {
+    let mut out = std::collections::BTreeSet::new();
+    out.extend(iter);
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -156,6 +175,17 @@ mod tests {
                 assert_eq!(ours, std, "len {len}, {keys} keys, descending");
             }
         }
+    }
+
+    /// Duplicate keys: the last value wins, as `collect` keeps it.
+    #[test]
+    fn maps_as_collect_does() {
+        let pairs = [(3, "c"), (1, "a"), (3, "C"), (2, "b"), (1, "A")];
+        let ours = map(pairs);
+        let std: std::collections::BTreeMap<_, _> = pairs.into_iter().collect();
+        assert_eq!(ours, std);
+        assert_eq!(ours[&3], "C");
+        assert_eq!(set([5, 1, 5, 3]), [1, 3, 5].into_iter().collect());
     }
 
     #[test]

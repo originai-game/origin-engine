@@ -412,12 +412,13 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
 /// A model's skeleton and clips by name (og.load.animation of it).
 fn clip_set(eng: &Engine, model: &str) -> Result<(u64, BTreeMap<String, u64>), String> {
     let v = super::anim::load_animation(eng, model)?;
-    let clips = v["clips"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|c| Some((c["name"].as_str()?.to_string(), bits(&c["clip"]))))
-        .collect();
+    let clips = og_core::sort::map(
+        v["clips"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|c| Some((c["name"].as_str()?.to_string(), bits(&c["clip"])))),
+    );
     Ok((bits(&v["skeleton"]), clips))
 }
 

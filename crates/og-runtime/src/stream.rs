@@ -1425,10 +1425,11 @@ fn wanted_chunks(eng: &Engine) -> Vec<Wanted> {
     };
     let bank = link.bank();
     let distances = og_audio::chunk_distances(world, bank);
-    let sets = distances
-        .iter()
-        .map(|(h, chunks)| (*h, chunks.keys().copied().collect()))
-        .collect();
+    let sets = og_core::sort::map(
+        distances
+            .iter()
+            .map(|(h, chunks)| (*h, og_core::sort::set(chunks.keys().copied()))),
+    );
     let a = eng.assets.borrow();
     let mut out = Vec::new();
     for (handle, id, n) in bank.keep_chunks(&sets) {

@@ -249,7 +249,7 @@ pub(crate) fn ragdolls(
     targets: &BTreeMap<u64, Vec<(Vec3, Quat)>>,
     out: &mut StepOut,
 ) -> Result<()> {
-    let live: BTreeSet<u64> = scene.ragdolls.iter().map(|r| r.0.to_bits()).collect();
+    let live: BTreeSet<u64> = og_core::sort::set(scene.ragdolls.iter().map(|r| r.0.to_bits()));
     let gone: Vec<u64> = sim
         .ragdolls
         .keys()
