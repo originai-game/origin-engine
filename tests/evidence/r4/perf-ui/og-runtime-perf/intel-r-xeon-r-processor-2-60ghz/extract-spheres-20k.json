@@ -1,0 +1,6 @@
+{
+  "scene": "extract-spheres-20k",
+  "cpu": "intel-r-xeon-r-processor-2-60ghz",
+  "instances": 20000,
+  "frame_ms": 2.495
+}

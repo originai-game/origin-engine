@@ -1,0 +1,1008 @@
+diff --git a/crates/og-host-node/src/lib.rs b/crates/og-host-node/src/lib.rs
+index be12cf45..157d78a9 100644
+--- a/crates/og-host-node/src/lib.rs
++++ b/crates/og-host-node/src/lib.rs
+@@ -507,6 +507,9 @@ impl RenderBackend for OffscreenBackend {
+             .map(|s| {
+                 self.missing = s.missing_glyphs;
+                 self.triangles = s.triangles;
++                if std::env::var_os("OG_PERF_UI").is_some() {
++                    eprintln!("PERFSTATS {s:?}");
++                }
+             })
+             .map_err(|e| e.to_string())
+     }
+diff --git a/crates/og-render/src/lib.rs b/crates/og-render/src/lib.rs
+index a3337965..bdbdf1a3 100644
+--- a/crates/og-render/src/lib.rs
++++ b/crates/og-render/src/lib.rs
+@@ -1537,8 +1537,10 @@ pub struct Renderer {
+     /// when a scene first draws a material with array maps (`material.rs`).
+     array_maps: Option<material::ArrayMaps>,
+     /// The copy of the opaque scene transmission refracts, with its mip
+-    /// chain, at the renderer's size (made when a frame first needs it).
+-    transmission: Option<wgpu::Texture>,
++    /// chain, at the renderer's size (made when a frame first needs it),
++    /// its view and the chain's views and bind groups (made with it, not
++    /// every frame).
++    transmission: Option<(wgpu::Texture, wgpu::TextureView, mips::MipChain)>,
+     /// The frame bind group (camera, shadow maps, IBL) and the sky pass's
+     /// (the sky cube) for the sky they were generated from.
+     environment: Option<(
+@@ -5132,7 +5134,9 @@ impl Renderer {
+         if let Some(stale) = scene.stale_handle() {
+             return Err(RenderError::InvalidHandle(stale));
+         }
++        perfui_mark("start");
+         self.sync(scene)?;
++        perfui_mark("sync");
+         self.apply_quality(&scene.quality);
+         // A look that switches the stylisation on or off (passes added or
+         // removed, the pixel grid, the material style) is a cut: no ghost of
+@@ -5167,7 +5171,9 @@ impl Renderer {
+         let active_probes: Vec<ReflectionProbe> = probe_frame.active.iter().map(|a| a.0).collect();
+         let probe_boxes = probe_select::boxes(&active_probes);
+         self.sorted.set_probes(probe_boxes.clone());
++        perfui_mark("prepare");
+         let (mut batches, sorted_instances) = self.build_batches(scene)?;
++        perfui_mark("batches");
+         let instances::Sorted {
+             mut transforms,
+             spheres,
+@@ -5188,6 +5194,7 @@ impl Renderer {
+         for mesh in full {
+             self.ensure_full(scene, mesh);
+         }
++        perfui_mark("full");
+         let mut skinned = self.build_skinned(scene, &probe_boxes)?;
+         // The planar water this frame draws: none where the 3D world is
+         // not built in (WORLD_3D).
+@@ -5279,6 +5286,7 @@ impl Renderer {
+         let joint_matrices = std::mem::take(&mut skinned.matrices);
+ 
+         // Effects this frame.
++        perfui_mark("skinned+views");
+         let post_fx = &scene.post;
+         let particle_frame = self.particles.prepare(
+             &self.device,
+@@ -5420,6 +5428,7 @@ impl Renderer {
+             }
+         }
+         // A pattern in object space: the object pass after the prepass.
++        perfui_mark("pipelines");
+         let object_space = prepass && scene.stylise.in_object_space();
+         if object_space {
+             let object = self.stylise_object.get_or_insert_with(|| {
+@@ -5630,6 +5639,7 @@ impl Renderer {
+                 .flatten()
+                 .map(|g| g.info.layers)
+         };
++        perfui_mark("overlay+ribbons");
+         let mut sprite_frame = sprites::build(
+             scene,
+             font,
+@@ -5818,6 +5828,7 @@ impl Renderer {
+                 t.index()
+             )));
+         }
++        perfui_mark("sprites");
+         let lut_index = post_fx.color_grading.map(|g| g.lut.index());
+         if let Some(g) = post_fx.color_grading
+             && !(scene.contains_lut(g.lut)
+@@ -6103,6 +6114,7 @@ impl Renderer {
+         };
+ 
+         // The directional light's cascades.
++        perfui_mark("lists");
+         let light = &scene.light;
+         let to_light = light.direction_to_light.normalize_or(Vec3::Y);
+         let shadow_size = self.info.shadow_map_size;
+@@ -6167,6 +6179,7 @@ impl Renderer {
+             .collect();
+ 
+         // Local lights: the clusters they reach, their records, their shadow faces.
++        perfui_mark("cascades");
+         self.clusters.build(
+             &scene.lights,
+             &clusters::ClusterView {
+@@ -6266,6 +6279,7 @@ impl Renderer {
+                 );
+             }
+         }
++        perfui_mark("lights");
+         let mut local_lists: Vec<Option<DrawList>> =
+             (0..LOCAL_SHADOW_LAYERS).map(|_| None).collect();
+         let mut local_frustums: Vec<Option<Frustum>> =
+@@ -6297,6 +6311,7 @@ impl Renderer {
+         // Upload instances, previous transforms, skinned data, strips and
+         // sprites. With GPU culling the sorted instances go to its buffer and
+         // this one holds only the transparent draws.
++        perfui_mark("local");
+         let mut gpu_counts = None;
+         let copy_counts = std::mem::take(&mut self.culling_counts);
+         let cull_commands = if gpu_cull {
+@@ -6385,6 +6400,7 @@ impl Renderer {
+                 bytemuck::cast_slice(&prev),
+             );
+         }
++        perfui_mark("inst-upload");
+         self.sorted.restore(transforms, spheres);
+         if !skinned_data.is_empty() {
+             grow_and_write(
+@@ -6446,6 +6462,7 @@ impl Renderer {
+         };
+ 
+         // Uniforms.
++        perfui_mark("skin+overlay-up");
+         let mut uniform = frame::FrameUniform {
+             view_proj: cam.jittered_view_proj.to_cols_array_2d(),
+             inv_view_proj: cam.jittered_view_proj.inverse().to_cols_array_2d(),
+@@ -6539,6 +6556,7 @@ impl Renderer {
+             view_right: cam.axes().0,
+             view_up: cam.axes().1,
+         };
++        perfui_mark("p.uniform");
+         let mut shadow_slots = vec![bytemuck::Zeroable::zeroed(); SHADOW_SLOTS];
+         for (i, c) in cascades.iter().enumerate() {
+             uniform.cascade_view_proj[i] = c.view_proj.to_cols_array_2d();
+@@ -6576,6 +6594,7 @@ impl Renderer {
+         }
+         self.queue
+             .write_buffer(&self.frame_buffer, 0, bytemuck::bytes_of(&uniform));
++        perfui_mark("p.shadowslots");
+         let probe_positions: Vec<Vec3> = probe_frame
+             .due
+             .iter()
+@@ -6606,6 +6625,7 @@ impl Renderer {
+             .write_buffer(&self.shadow_buffer, 0, bytemuck::cast_slice(&shadow_slots));
+ 
+         // The sun on screen, for god rays.
++        perfui_mark("p.probes");
+         let sun_clip = cam.view_proj * (camera.position + to_light * camera.far * 0.5).extend(1.0);
+         let sun_ndc = sun_clip.truncate().truncate() / sun_clip.w.max(1e-6);
+         let sun_front = sun_clip.w > 0.0 && to_light.dot(cam.forward) > 0.0;
+@@ -6631,6 +6651,7 @@ impl Renderer {
+         } else {
+             self.post.forget_exposure();
+         }
++        perfui_mark("p.post+exposure");
+         let mut fx_uniform =
+             fx::fx_uniform(cam.view_proj, prev_view_proj, (self.width, self.height));
+         let decals = fx::pack_decals(&scene.decals, &mut fx_uniform.decals);
+@@ -6650,6 +6671,7 @@ impl Renderer {
+             self.queue
+                 .write_buffer(&self.reflection_fx_buffer, 0, bytemuck::bytes_of(&u));
+         }
++        perfui_mark("p.fx");
+         let viewport_format = self.viewport_format(target);
+         self.views.write(
+             &self.device,
+@@ -6679,6 +6701,7 @@ impl Renderer {
+                     .write_view(&self.device, &self.queue, k, p.frame.view_proj);
+             }
+         }
++        perfui_mark("p.views");
+         let proj = cam.view_proj * cam.view.inverse();
+         let global_outline = post_fx.outline;
+         let fxp = post::FxPostUniform {
+@@ -6773,6 +6796,7 @@ impl Renderer {
+             .write_buffer(&self.particles.view_buffer, 0, bytemuck::bytes_of(&pview));
+         self.queue
+             .write_buffer(&self.sprite_fx_buffer, 0, bytemuck::bytes_of(&fxp.screen));
++        perfui_mark("p.fxpost+particles");
+         let slot = (self.frame_index % 2) as usize;
+         let taa_blend = taa && self.taa_history.is_some();
+         if taa {
+@@ -6800,6 +6824,7 @@ impl Renderer {
+ 
+         // The frame's passes, compiled into the render graph (cached while
+         // the pass list stays the same).
++        perfui_mark("p.taa");
+         let auto_exposure = matches!(camera.exposure, Exposure::Auto { .. });
+         let bloom = post_fx.bloom.is_some_and(|b| b.intensity > 0.0) || glow;
+         let gtao = match ao.map(|a| a.method) {
+@@ -6907,8 +6932,10 @@ impl Renderer {
+         if (self.width, self.height) != (self.out_width, self.out_height) {
+             passes.push(FramePass::Upscale);
+         }
++        perfui_mark("p.passlist");
+         self.post.ensure_chain(&self.device, &passes);
+         // The stylise passes' parameters, palette and canvas.
++        perfui_mark("p.ensure_chain");
+         let palette_view = st
+             .quantize
+             .and_then(|q| q.palette)
+@@ -7078,6 +7105,7 @@ impl Renderer {
+             };
+             self.post.write_stylise(&self.queue, &u);
+         }
++        perfui_mark("p.stylise");
+         let lightmap_scale = scene
+             .lighting_2d
+             .map_or(0.5, |l| l.resolution.clamp(0.25, 1.0));
+@@ -7093,12 +7121,13 @@ impl Renderer {
+             .any(|r| batches[r.0 as usize].transmissive)
+             || skinned_visible.iter().any(|b| b.transmissive);
+         if transmission {
++            self.mips.prepare(&self.device, HDR_FORMAT);
+             let stale = self
+                 .transmission
+                 .as_ref()
+-                .is_none_or(|t| (t.width(), t.height()) != (self.width, self.height));
++                .is_none_or(|(t, ..)| (t.width(), t.height()) != (self.width, self.height));
+             if stale {
+-                self.transmission = Some(self.device.create_texture(&wgpu::TextureDescriptor {
++                let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+                     label: Some("transmission"),
+                     size: wgpu::Extent3d {
+                         width: self.width,
+@@ -7113,15 +7142,19 @@ impl Renderer {
+                         | wgpu::TextureUsages::TEXTURE_BINDING
+                         | wgpu::TextureUsages::COPY_DST,
+                     view_formats: &[],
+-                }));
++                });
++                let view = texture.create_view(&Default::default());
++                let chain = self.mips.chain(&self.device, &texture);
++                self.transmission = Some((texture, view, chain));
+             }
+-            self.mips.prepare(&self.device, HDR_FORMAT);
+         }
++        perfui_mark(if transmission { "p.transmission1" } else { "p.transmission0" });
+         let transmission_view = self
+             .transmission
+             .as_ref()
+             .filter(|_| transmission)
+-            .map(|t| t.create_view(&Default::default()));
++            .map(|(_, view, chain)| (view, chain));
++        perfui_mark("p.tview");
+         self.graph
+             .prepare(
+                 &self.device,
+@@ -7149,6 +7182,7 @@ impl Renderer {
+             )
+             .map_err(|e| RenderError::Graph(e.to_string()))?;
+ 
++        perfui_mark("p.graph");
+         let surface_frame = match target {
+             RenderTarget::Surface => {
+                 let (surface, config) = self.surface.as_ref().ok_or_else(|| {
+@@ -7271,6 +7305,7 @@ impl Renderer {
+ 
+         // Per-frame bind groups of the effects.
+         // The effect bind groups, rebuilt only when what they read changed.
++        perfui_mark("p.surface+stats");
+         let fx_key = (
+             self.graph.generation,
+             scene.id(),
+@@ -7324,6 +7359,7 @@ impl Renderer {
+             };
+             self.fx_groups = Some(groups);
+         }
++        perfui_mark("p.fxgroups");
+         let (_, frame_bind_group, sky_group, reflection_frame_group) = self
+             .environment
+             .as_ref()
+@@ -7412,12 +7448,13 @@ impl Renderer {
+                             wgpu::BindingResource::TextureView(atlas_view),
+                             wgpu::BindingResource::Sampler(&self.trilinear_sampler),
+                             wgpu::BindingResource::TextureView(
+-                                transmission_view.as_ref().unwrap_or(&self.post.white),
++                                transmission_view.map_or(&self.post.white, |(v, _)| v),
+                             ),
+                         ],
+                     )
+                 })
+         });
++        perfui_mark("p.groups");
+         let scene_depth = self
+             .graph
+             .try_view("lindepth")
+@@ -7539,6 +7576,7 @@ impl Renderer {
+                 ],
+             )
+         });
++        perfui_mark("p.water+fluid");
+         let view_groups = self.view_groups(scene, &view_plans);
+         // Each view's metaball field groups (its own fields' textures).
+         let view_fields: Vec<Vec<wgpu::BindGroup>> = view_plans
+@@ -7636,10 +7674,12 @@ impl Renderer {
+             .collect();
+         // The queries this frame's passes write their timestamps into
+         // (`timing.rs`): the encoder puts a pair around every pass.
++        perfui_mark("p.viewgroups");
+         let gpu_set = match (&mut self.gpu_timer, self.clock) {
+             (Some(t), Some(_)) => t.begin(&self.device, &self.queue),
+             _ => None,
+         };
++        perfui_mark("pre-encode");
+         let mut encoder = Encoder::new(
+             self.device
+                 .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+@@ -9338,13 +9378,13 @@ impl Renderer {
+                                 size,
+                             );
+                         }
+-                        if let Some(view) = &transmission_view {
++                        if let Some((view, chain)) = transmission_view {
+                             encoder.copy_texture_to_texture(
+                                 hdr.texture().as_image_copy(),
+                                 view.texture().as_image_copy(),
+                                 size,
+                             );
+-                            self.mips.record(&self.device, &mut encoder, view.texture());
++                            self.mips.record_chain(&mut encoder, chain);
+                         }
+                         pass = begin(&mut encoder, false);
+                         pass.set_bind_group(0, frame_bind_group, &[]);
+@@ -9676,8 +9716,10 @@ impl Renderer {
+         if let Some((frame, ..)) = surface_frame.as_ref().filter(|_| self.keep_frame) {
+             self.keep_presented(&mut encoder, &frame.texture);
+         }
++        perfui_mark("encode");
+         self.queue
+             .submit(cull_commands.into_iter().chain(Some(encoder.finish())));
++        perfui_mark("submit");
+         if let Some(gc) = self.gpu_cull.as_mut().filter(|_| gpu_cull) {
+             gc.after_submit();
+         }
+@@ -9968,3 +10010,12 @@ fn grow_and_write(
+         queue.write_buffer(buffer, 0, bytes);
+     }
+ }
++
++thread_local! {
++    /// SCRATCH perf-ui instrumentation.
++    pub static PERFUI_MARKS: std::cell::RefCell<Vec<(&'static str, std::time::Instant)>> = const { std::cell::RefCell::new(Vec::new()) };
++}
++/// SCRATCH perf-ui instrumentation.
++pub fn perfui_mark(name: &'static str) {
++    PERFUI_MARKS.with(|m| m.borrow_mut().push((name, std::time::Instant::now())));
++}
+diff --git a/crates/og-render/src/mips.rs b/crates/og-render/src/mips.rs
+index 54ec53c9..80a722c9 100644
+--- a/crates/og-render/src/mips.rs
++++ b/crates/og-render/src/mips.rs
+@@ -114,36 +114,61 @@ impl MipGenerator {
+         encoder: &mut crate::Encoder,
+         texture: &wgpu::Texture,
+     ) {
+-        let pipeline = &self.pipelines[&texture.format()];
+-        let level = |mip: u32| {
+-            texture.create_view(&wgpu::TextureViewDescriptor {
+-                label: Some("mip"),
+-                base_mip_level: mip,
+-                mip_level_count: Some(1),
+-                ..Default::default()
++        self.record_chain(encoder, &self.chain(device, texture));
++    }
++
++    /// The views and bind groups that fill `texture`'s levels: made once
++    /// for a texture whose levels are filled every frame
++    /// ([`MipGenerator::record_chain`]). Making them each frame was 20
++    /// views and 10 bind groups a frame for a 1280 x 720 copy, and a view
++    /// of a texture the GPU is still reading waited for it on lavapipe
++    /// (tests/evidence/r4/perf-ui/NOTES.md).
++    pub(crate) fn chain(&self, device: &wgpu::Device, texture: &wgpu::Texture) -> MipChain {
++        let levels: Vec<wgpu::TextureView> = (0..texture.mip_level_count())
++            .map(|mip| {
++                texture.create_view(&wgpu::TextureViewDescriptor {
++                    label: Some("mip"),
++                    base_mip_level: mip,
++                    mip_level_count: Some(1),
++                    ..Default::default()
++                })
+             })
+-        };
+-        for mip in 1..texture.mip_level_count() {
+-            let source = level(mip - 1);
+-            let target = level(mip);
+-            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+-                label: Some("mipmap"),
+-                layout: &self.layout,
+-                entries: &[
+-                    wgpu::BindGroupEntry {
+-                        binding: 0,
+-                        resource: wgpu::BindingResource::TextureView(&source),
+-                    },
+-                    wgpu::BindGroupEntry {
+-                        binding: 1,
+-                        resource: wgpu::BindingResource::Sampler(&self.sampler),
+-                    },
+-                ],
+-            });
++            .collect();
++        let groups = levels
++            .iter()
++            .take(levels.len().saturating_sub(1))
++            .map(|source| {
++                device.create_bind_group(&wgpu::BindGroupDescriptor {
++                    label: Some("mipmap"),
++                    layout: &self.layout,
++                    entries: &[
++                        wgpu::BindGroupEntry {
++                            binding: 0,
++                            resource: wgpu::BindingResource::TextureView(source),
++                        },
++                        wgpu::BindGroupEntry {
++                            binding: 1,
++                            resource: wgpu::BindingResource::Sampler(&self.sampler),
++                        },
++                    ],
++                })
++            })
++            .collect();
++        MipChain {
++            format: texture.format(),
++            levels,
++            groups,
++        }
++    }
++
++    /// Records passes filling levels 1.. of `chain`'s texture from level 0.
++    pub(crate) fn record_chain(&self, encoder: &mut crate::Encoder, chain: &MipChain) {
++        let pipeline = &self.pipelines[&chain.format];
++        for (target, bind_group) in chain.levels.iter().skip(1).zip(&chain.groups) {
+             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                 label: Some("mipmap"),
+                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+-                    view: &target,
++                    view: target,
+                     depth_slice: None,
+                     resolve_target: None,
+                     ops: wgpu::Operations {
+@@ -157,11 +182,19 @@ impl MipGenerator {
+                 multiview_mask: None,
+             });
+             pass.set_pipeline(pipeline);
+-            pass.set_bind_group(0, &bind_group, &[]);
++            pass.set_bind_group(0, bind_group, &[]);
+             pass.draw(0..3, 0..1);
+         }
+     }
+ }
+ 
++/// A texture's levels as views, and the bind group that reads each level
++/// but the last ([`MipGenerator::chain`]).
++pub(crate) struct MipChain {
++    format: wgpu::TextureFormat,
++    levels: Vec<wgpu::TextureView>,
++    groups: Vec<wgpu::BindGroup>,
++}
++
+ /// The mip generator's module (`crate::shaders` validates it).
+ pub(crate) const MIPMAP_WGSL: &str = wgsl!("mipmap.wgsl");
+diff --git a/crates/og-render/src/post.rs b/crates/og-render/src/post.rs
+index 4b2e4f3d..822ab164 100644
+--- a/crates/og-render/src/post.rs
++++ b/crates/og-render/src/post.rs
+@@ -2098,6 +2098,7 @@ impl FrameGraph {
+         {
+             return Ok(());
+         }
++        crate::perfui_mark("g.check");
+         let plan = build_graph(&passes, cfg).compile()?;
+         self.order = plan.order().iter().map(|&i| passes[i]).collect();
+         // Physical slots to pool textures: the first unused entry with the
+@@ -2147,6 +2148,7 @@ impl FrameGraph {
+             lut.1,
+             (stylise.0, stylise.1),
+         ));
++        crate::perfui_mark("g.rebuild");
+         self.generation += 1;
+         self.passes = passes;
+         self.cfg = Some(*cfg);
+diff --git a/crates/og-runtime/src/engine.rs b/crates/og-runtime/src/engine.rs
+index 00dd48bd..278a6d77 100644
+--- a/crates/og-runtime/src/engine.rs
++++ b/crates/og-runtime/src/engine.rs
+@@ -1628,15 +1628,36 @@ fn render(eng: &Engine) -> Result<bool, String> {
+     let notes = {
+         let world = eng.world()?;
+         let mut rs = eng.render.borrow_mut();
++        og_render::PERFUI_MARKS.with(|m| m.borrow_mut().clear());
++        og_render::perfui_mark("frame");
+         super::extract::extract(world, &mut rs);
++        og_render::perfui_mark("extract");
+         super::probes::load_bakes(eng, &mut rs);
+         let rs = &mut *rs;
+         if let Some(b) = rs.backend.as_mut() {
+             b.set_clock(Some(rprobe::now_ms));
+             b.render(&rs.scene)?;
++            og_render::perfui_mark("end");
++            if std::env::var_os("OG_PERF_UI").is_some() {
++                let line = og_render::PERFUI_MARKS.with(|m| {
++                    let m = m.borrow();
++                    let mut out = format!("PERFUI tick={tick}");
++                    for w in m.windows(2) {
++                        out.push_str(&format!(" {}={:.4}", w[1].0, (w[1].1 - w[0].1).as_secs_f64() * 1000.0));
++                    }
++                    out
++                });
++                eprintln!("{line} sprites={} instances={} texts={}", rs.scene.sprites.len(), rs.scene.instances.len(), rs.scene.texts.len());
++            }
++            let q0 = std::time::Instant::now();
+             passes = b.pass_timings();
++            let q1 = std::time::Instant::now();
+             gpu = b.gpu_timings(false);
++            let q2 = std::time::Instant::now();
+             triangles = b.triangles();
++            if std::env::var_os("OG_PERF_UI").is_some() {
++                eprintln!("PERFPOST tick={tick} passes={:.3} gpu={:.3} t0_to_now={:.3}", (q1-q0).as_secs_f64()*1e3, (q2-q1).as_secs_f64()*1e3, rprobe::now_ms()-t0);
++            }
+             if b.missing_glyphs() > 0 {
+                 let assets = eng.assets.borrow();
+                 let named = |handle: og_render::FontHandle| {
+diff --git a/crates/og-runtime/src/extract.rs b/crates/og-runtime/src/extract.rs
+index c09895cd..0555e7b9 100644
+--- a/crates/og-runtime/src/extract.rs
++++ b/crates/og-runtime/src/extract.rs
+@@ -16,7 +16,7 @@
+ //! - the text `og.render.text` queued during the tick, with cooked
+ //!   multi-page MSDF fonts mapped to one `MsdfFont` per page.
+ 
+-use super::codec::Layout;
++use super::codec::{Layout, Rec, Row};
+ use glam::{Mat4, Quat, Vec3};
+ use og_ecs::{Entity, QueryDesc, World};
+ use og_render::{FontHandle, MaterialHandle, MeshHandle, RenderScene};
+@@ -880,6 +880,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
+     // A review camera frames what the last frame drew for its entity, so
+     // the models below pick their levels for it (once more at the end).
+     let ids = std::mem::take(&mut rs.ids.instances);
++    og_render::perfui_mark("x.hier");
+     let framed = super::review::bounds(rs, &h, &ids);
+     rs.ids.instances = ids;
+     let size = backend_size(rs);
+@@ -962,6 +963,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
+         exposure = f(c, "exposure", 1.0).max(0.0);
+         scene.environment.background = og_render::Background::Color(color(&c["background"], 0.0));
+     }
++    og_render::perfui_mark("x.camera");
+     super::review::apply(&mut scene.camera, rs.review.as_ref(), size, framed);
+ 
+     // Settings: environment, sky, bloom, exposure, tone mapping.
+@@ -1025,43 +1027,67 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
+     let baked = settings
+         .as_ref()
+         .is_none_or(|s| on(s, "bakedLighting", true));
++    og_render::perfui_mark("x.meshes0");
+     super::baked::apply(world, &mut rs.scene, &mut rs.baked, baked);
+     // Models: posed by og-anim when the entity has a Skeleton.
++    og_render::perfui_mark("x.baked");
+     let posed = super::fx::skeletons(world, rs);
++    og_render::perfui_mark("m.skeletons");
+     let mut keys: Vec<(u64, u32)> = Vec::new();
+-    let model_rows = layouts
+-        .model
+-        .as_ref()
+-        .map(|m| rows(world, m))
+-        .unwrap_or_default();
+     // Each model's own tint and flash ride in its instances' records
+     // (kestrel-stair #11: a glTF's materials are shared by every instance),
+     // with its shadow flags (on unless the model says otherwise). A hidden
+-    // model draws nothing (meridian-loop #14).
+-    let model_parts: Vec<(u64, u64, Parts, super::fx::ModelLook, f32)> = model_rows
+-        .into_iter()
+-        .filter(|(_, v)| on(v, "visible", true))
+-        .filter_map(|(e, v)| {
+-            let bias = f(&v, "lodBias", 1.0).max(0.0);
+-            let asset = v["asset"].as_f64().unwrap_or(0.0) as u64;
+-            let look = super::fx::ModelLook {
+-                fx: og_render::InstanceFx {
+-                    flash: f(&v, "flash", 0.0),
+-                    flash_color: color(&v["flashColor"], 1.0),
+-                    tint: color(&v["tint"], 1.0),
+-                },
+-                cast: on(&v, "castShadow", true),
+-                receive: on(&v, "receiveShadow", true),
+-            };
+-            // A static model with a bake draws its lightmapped parts.
+-            let lightmapped = (baked && on(&v, "static", false))
+-                .then(|| rs.baked.overrides.get(&e))
+-                .flatten();
+-            lightmapped
+-                .or_else(|| models.get(&asset))
+-                .map(|p| (e, asset, p.clone(), look, bias))
+-        })
+-        .collect();
++    // model draws nothing (meridian-loop #14). The rows are read in place
++    // by offset (decoding each to JSON was the most of a 3D frame's
++    // extraction after the sprites': Lantern Vale's 40 models,
++    // tests/evidence/r4/perf-ui/NOTES.md).
++    let model_parts: Vec<(u64, u64, Parts, super::fx::ModelLook, f32)> = match &layouts.model {
++        Some(layout) => {
++            let slot = |key| super::codec::Slot::of(layout, key);
++            let (visible, lod_bias, asset) = (slot("visible"), slot("lodBias"), slot("asset"));
++            let (flash, flash_color, tint) = (slot("flash"), slot("flashColor"), slot("tint"));
++            let (cast, receive) = (slot("castShadow"), slot("receiveShadow"));
++            let is_static = slot("static");
++            let rows = world
++                .id_by_name(&layout.schema)
++                .map(|id| super::feel::byte_rows(world, id, layout))
++                .unwrap_or_default();
++            rows.iter()
++                .filter_map(|(e, bytes)| {
++                    let (e, v) = (*e, Row::new(layout, bytes));
++                    let num = |s: &super::codec::Slot, d: f32| v.num(s).map_or(d, |x| x as f32);
++                    let on = |s: &super::codec::Slot, d: bool| v.flag(s).unwrap_or(d);
++                    let rgb = |s: &super::codec::Slot| {
++                        let lane = |l| v.lane(s, l).map_or(1.0, |x| x as f32);
++                        Vec3::new(lane("r"), lane("g"), lane("b"))
++                    };
++                    if !on(&visible, true) {
++                        return None;
++                    }
++                    let bias = num(&lod_bias, 1.0).max(0.0);
++                    let asset = v.num(&asset).unwrap_or(0.0) as u64;
++                    let look = super::fx::ModelLook {
++                        fx: og_render::InstanceFx {
++                            flash: num(&flash, 0.0),
++                            flash_color: rgb(&flash_color),
++                            tint: rgb(&tint),
++                        },
++                        cast: on(&cast, true),
++                        receive: on(&receive, true),
++                    };
++                    // A static model with a bake draws its lightmapped parts.
++                    let lightmapped = (baked && on(&is_static, false))
++                        .then(|| rs.baked.overrides.get(&e))
++                        .flatten();
++                    lightmapped
++                        .or_else(|| models.get(&asset))
++                        .map(|p| (e, asset, p.clone(), look, bias))
++                })
++                .collect()
++        }
++        None => Vec::new(),
++    };
++    og_render::perfui_mark("m.modelrows");
+     let mesh_rows = layouts
+         .mesh
+         .as_ref()
+@@ -1080,6 +1106,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
+         Some((_, ht)) if ht > 0 => ht as f32,
+         _ => super::fx::viewport(rs).1,
+     };
++    og_render::perfui_mark("m.meshrows");
+     let model_lods = std::mem::take(&mut rs.model_lods);
+     let last_drawn = std::mem::take(&mut rs.lod_drawn);
+     let mut drawn = BTreeMap::new();
+@@ -1132,6 +1159,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
+             keys.push((e, k as u32));
+         }
+     }
++    og_render::perfui_mark("m.modelloop");
+     rs.model_lods = model_lods;
+     rs.lod_drawn = drawn;
+     let scene = &mut rs.scene;
+@@ -1167,6 +1195,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
+             keys.push((e, 0));
+         }
+     }
++    og_render::perfui_mark("m.meshloop");
+     // Lights: the first directional light, then point and spot lights in
+     // entity order (deterministic); og-render culls them to the view and
+     // keeps at most MAX_LIGHTS.
+@@ -1243,6 +1272,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
+             locals.push((e, light, None));
+         }
+     }
++    og_render::perfui_mark("x.meshes");
+     og_core::sort::sort_by_key(&mut locals, |(e, ..)| Entity::from_bits(*e).index());
+     scene.light_cookies = locals
+         .iter()
+@@ -1252,6 +1282,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
+     scene.lights = locals.iter().map(|(_, l, _)| *l).collect();
+     // Cookies past RenderCapabilities.maxLightCookies layers are not drawn:
+     // the log says which lights shine without theirs.
++    og_render::perfui_mark("x.lights");
+     let cookies = og_render::cookie_layers(scene);
+     if !cookies.left_out.is_empty() {
+         let lights: Vec<String> = cookies
+@@ -1275,16 +1306,22 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
+     // The effects games declare: the post stack, shake and 2D lighting,
+     // then the effect components.
+     let tick = time.tick;
++    og_render::perfui_mark("x.cookies");
+     super::fx::settings(world, rs);
++    og_render::perfui_mark("x.fxsettings");
+     super::fx::components(world, rs, &mut h, tick);
+     // The pixel grid's snap: after the sprites and the camera are in.
++    og_render::perfui_mark("x.fxcomponents");
+     super::fx::snap_to_grid(rs);
+     // Cloth meshes are instances too: keyed for per-object motion.
+     keys.extend(super::atmosphere::extract(world, rs, &mut h));
++    og_render::perfui_mark("x.snap");
+     super::environment::extract(world, rs);
++    og_render::perfui_mark("x.env");
+     super::probes::extract(world, rs, &mut h);
+     // Scattered copies are instances too, keyed by their terrain cell.
+     keys.extend(super::terrain::extract(world, rs, &mut h));
++    og_render::perfui_mark("x.probes");
+     particle_colliders(world, rs, &mut h);
+     let vp = super::fx::viewport(rs);
+     // The camera's shake, punch, kick and zones (on the frame only), then
+@@ -1294,12 +1331,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
+         _ if vp.1 > 0.0 => vp.0 / vp.1,
+         _ => 16.0 / 9.0,
+     };
++    og_render::perfui_mark("x.pcolliders");
+     super::feel::camera_frame(world, rs, aspect);
++    og_render::perfui_mark("x.feelcam");
+     super::feel::extract(world, rs, &mut h);
++    og_render::perfui_mark("x.feel");
+     super::skeleton2d::extract(world, rs, &mut h);
+ 
+     // Characters the fonts lack, rendered from their files before any
+     // text is laid out for this frame.
++    og_render::perfui_mark("x.skel2d");
+     super::glyphs::generate(rs);
+ 
+     // Text, page by page; screen text into the overlay.
+@@ -1348,6 +1389,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
+     }
+ 
+     // Sprites and ribbons queued this tick.
++    og_render::perfui_mark("x.glyphs+ui?");
+     super::fx::queued(rs, fresh, vp);
+     // The review camera on this frame's instances of its entity.
+     if rs.review.is_some() {
+@@ -1357,19 +1399,25 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
+     }
+     // Lines, points and debug draw (after every instance is in, for the
+     // bounds view).
++    og_render::perfui_mark("x.queued");
+     super::geometry::extract(world, rs, &mut h, vp);
++    og_render::perfui_mark("x.geometry");
+     super::fx::motion(rs, &keys, tick);
+     // Layer masks, secondary cameras and custom post passes.
++    og_render::perfui_mark("x.motion");
+     super::views::extract(world, rs, &keys, &mut h);
+     // Which entity each instance came from, for the probe's id pass.
+     rs.ids.instances.clear();
+     rs.ids.instances.extend(keys.iter().map(|k| k.0));
+     // Drop shadows over the terrain under their sprites.
++    og_render::perfui_mark("x.views");
+     super::terrain::ground_drop_shadows(rs);
+ 
+     // Each video's texture shows its player's frame.
++    og_render::perfui_mark("x.ground");
+     super::video::extract(world, rs);
+     // The UI, over everything else, in the overlay.
++    og_render::perfui_mark("x.video");
+     super::modules::emit(rs);
+     rs.hierarchy = h;
+ }
+diff --git a/crates/og-runtime/src/feel.rs b/crates/og-runtime/src/feel.rs
+index 47e7391e..e47a0bc5 100644
+--- a/crates/og-runtime/src/feel.rs
++++ b/crates/og-runtime/src/feel.rs
+@@ -1957,7 +1957,7 @@ pub(crate) struct FeelRender {
+ /// Every row of a component as `(entity bits, packed bytes)`, in query
+ /// order: read in place with [`Row`] (decoding each to JSON was most of a
+ /// 2D frame's extraction: Hollowbell's 200 sprites).
+-fn byte_rows(world: &World, id: SchemaId, layout: &Layout) -> Vec<(u64, Vec<u8>)> {
++pub(crate) fn byte_rows(world: &World, id: SchemaId, layout: &Layout) -> Vec<(u64, Vec<u8>)> {
+     let q = QueryDesc {
+         read: vec![layout.schema.clone()],
+         ..QueryDesc::default()
+diff --git a/crates/og-runtime/tests/extract_cost.rs b/crates/og-runtime/tests/extract_cost.rs
+index f702fc48..1e6373be 100644
+--- a/crates/og-runtime/tests/extract_cost.rs
++++ b/crates/og-runtime/tests/extract_cost.rs
+@@ -14,6 +14,12 @@
+ //!   og-runtime --release -- --ignored perf`): the 20,000-mesh frame against
+ //!   `crates/og-runtime/perf/<cpu>/extract-spheres-20k.json`, 15 % tolerance;
+ //!   `OG_PERF_RECORD=1` records one.
++//! - `perf_extract_sprites_20k` (ignored, the perf lane): a frame of 20,000
++//!   og.Sprite entities against `extract-sprites-20k.json`. Sprite
++//!   extraction reads some 30 fields of every row; looked up by name per
++//!   read (a binary search over the layout's names) they were about 5 % of
++//!   Hollowbell's release frame, read by offset ([`og_runtime`]'s
++//!   `codec::Slot`) they are not (tests/evidence/r4/perf-ui/NOTES.md).
+ 
+ use og_runtime::{
+     Dispatch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_game_game,
+@@ -37,8 +43,9 @@ impl Hooks for Clock {
+     }
+ }
+ 
+-/// A renderer that draws nothing and remembers how many instances it was handed.
+-struct Counting(Rc<Cell<usize>>);
++/// A renderer that draws nothing and remembers how many instances (or,
++/// with `sprites`, sprites) it was handed.
++struct Counting(Rc<Cell<usize>>, bool);
+ 
+ impl RenderBackend for Counting {
+     fn tier(&self) -> String {
+@@ -48,7 +55,11 @@ impl RenderBackend for Counting {
+         (1280, 720)
+     }
+     fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
+-        self.0.set(scene.instances.len());
++        self.0.set(if self.1 {
++            scene.sprites.len()
++        } else {
++            scene.instances.len()
++        });
+         Ok(())
+     }
+     fn capture(
+@@ -70,6 +81,27 @@ fn value(text: String) -> Value {
+ /// An engine with `count` spheres (one geometry, one material) on a grid,
+ /// and the counter of what its renderer was handed.
+ fn field(count: usize) -> (u32, Rc<Cell<usize>>) {
++    grid(count, false)
++}
++
++/// `field`, or with `sprites` an engine with `count` solid og.Sprite
++/// quads on the grid, tinted, layered and sorted by y as a 2D game's are.
++fn grid(count: usize, sprites: bool) -> (u32, Rc<Cell<usize>>) {
++    grid_of(count, if sprites { Kind::Sprites } else { Kind::Meshes })
++}
++
++/// What a perf grid holds.
++#[derive(Clone, Copy, PartialEq)]
++enum Kind {
++    Meshes,
++    Sprites,
++    /// og.Model rows, tinted, flashing and shadowed, of a model asset no
++    /// test loads: extraction reads every row and draws none.
++    Models,
++}
++
++fn grid_of(count: usize, kind: Kind) -> (u32, Rc<Cell<usize>>) {
++    let sprites = kind == Kind::Sprites;
+     set_hooks(Rc::new(Clock(Instant::now())));
+     og_host_begin_bundle();
+     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+@@ -77,6 +109,49 @@ fn field(count: usize) -> (u32, Rc<Cell<usize>>) {
+         .as_u64()
+         .expect("engine id") as u32;
+     let world = engine;
++    if sprites {
++        for i in 0..count {
++            let (x, y) = ((i % 200) as f64 * 1.2, (i / 200) as f64 * 1.2);
++            let desc = json!({ "position": { "x": x, "y": y, "z": 0 } }).to_string();
++            let e = value(og_world_spawn(world, Some(desc)));
++            let sprite = json!({
++                "width": 1.0, "height": 1.5, "anchor": { "x": 0.5, "y": 0.0 },
++                "color": { "r": 1.0, "g": 0.8, "b": 0.6 }, "opacity": 0.9,
++                "layer": (i % 4) as i32, "sortY": true, "flipX": i % 2 == 0,
++            })
++            .to_string();
++            value(og_world_insert(
++                world,
++                e.as_f64().expect("entity"),
++                "og.Sprite".into(),
++                Some(sprite),
++            ));
++        }
++        let seen = Rc::new(Cell::new(0));
++        set_render_backend(engine, Some(Box::new(Counting(seen.clone(), true)))).expect("backend");
++        return (engine, seen);
++    }
++    if kind == Kind::Models {
++        for i in 0..count {
++            let (x, z) = ((i % 200) as f64 * 1.2, (i / 200) as f64 * 1.2);
++            let desc = json!({ "position": { "x": x, "y": 0, "z": z } }).to_string();
++            let e = value(og_world_spawn(world, Some(desc)));
++            let model = json!({
++                "asset": 7, "tint": { "r": 1.0, "g": 0.9, "b": 0.8 }, "flash": 0.25,
++                "castShadow": i % 2 == 0, "lodBias": 1.5,
++            })
++            .to_string();
++            value(og_world_insert(
++                world,
++                e.as_f64().expect("entity"),
++                "og.Model".into(),
++                Some(model),
++            ));
++        }
++        let seen = Rc::new(Cell::new(usize::MAX));
++        set_render_backend(engine, Some(Box::new(Counting(seen.clone(), false)))).expect("backend");
++        return (engine, seen);
++    }
+     let geometry = value(og_render_sphere_geometry(
+         world,
+         Some(r#"{"radius":0.5,"widthSegments":16,"heightSegments":12}"#.into()),
+@@ -95,7 +170,7 @@ fn field(count: usize) -> (u32, Rc<Cell<usize>>) {
+         ));
+     }
+     let seen = Rc::new(Cell::new(0));
+-    set_render_backend(engine, Some(Box::new(Counting(seen.clone())))).expect("backend");
++    set_render_backend(engine, Some(Box::new(Counting(seen.clone(), false)))).expect("backend");
+     (engine, seen)
+ }
+ 
+@@ -195,18 +270,56 @@ fn perf_extract_spheres_20k() {
+     let (engine, seen) = field(20_000);
+     let ms = best_frame_ms(engine, 7, 50);
+     assert_eq!(seen.get(), 20_000);
++    against_baseline("extract-spheres-20k", ms);
++}
++
++#[test]
++#[ignore]
++fn perf_extract_sprites_20k() {
++    if cfg!(debug_assertions) {
++        panic!(
++            "perf tests measure release builds: cargo test -p og-runtime --release -- --ignored perf"
++        );
++    }
++    let (engine, seen) = grid(20_000, true);
++    let ms = best_frame_ms(engine, 7, 50);
++    assert_eq!(seen.get(), 20_000, "every og.Sprite is a sprite");
++    against_baseline("extract-sprites-20k", ms);
++}
++
++/// 20,000 og.Model rows read each frame: decoded to JSON per row they were
++/// most of Lantern Vale's 3D extraction (0.17 of 0.55 ms on the orb, 40
++/// models); read in place by offset they are not.
++#[test]
++#[ignore]
++fn perf_extract_models_20k() {
++    if cfg!(debug_assertions) {
++        panic!(
++            "perf tests measure release builds: cargo test -p og-runtime --release -- --ignored perf"
++        );
++    }
++    let (engine, seen) = grid_of(20_000, Kind::Models);
++    let ms = best_frame_ms(engine, 7, 50);
++    assert_eq!(seen.get(), 0, "a model whose asset is not loaded draws nothing");
++    against_baseline("extract-models-20k", ms);
++}
++
++/// `ms` a frame of the 20,000 instances of `scene` against this machine's
++/// baseline (`crates/og-runtime/perf/<cpu>/<scene>.json`), 15 % tolerance;
++/// `OG_PERF_RECORD=1` records it instead.
++fn against_baseline(scene: &str, ms: f64) {
+     let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+         .join("perf")
+         .join(cpu_slug());
+-    let path = dir.join("extract-spheres-20k.json");
++    let path = dir.join(format!("{scene}.json"));
+     println!(
+-        "perf extract-spheres-20k: best {ms:.3} ms per frame ({:.3} us an instance)",
++        "perf {scene}: best {ms:.3} ms per frame ({:.3} us an instance)",
+         ms * 1000.0 / 20_000.0
+     );
+     if std::env::var_os("OG_PERF_RECORD").is_some() {
+         std::fs::create_dir_all(&dir).expect("perf dir");
+         let text = format!(
+-            "{{\n  \"scene\": \"extract-spheres-20k\",\n  \"cpu\": \"{}\",\n  \"instances\": 20000,\n  \"frame_ms\": {ms:.3}\n}}\n",
++            "{{\n  \"scene\": \"{scene}\",\n  \"cpu\": \"{}\",\n  \"instances\": 20000,\n  \"frame_ms\": {ms:.3}\n}}\n",
+             cpu_slug()
+         );
+         std::fs::write(&path, text).expect("write baseline");
+@@ -226,6 +339,6 @@ fn perf_extract_spheres_20k() {
+     println!("  baseline {baseline:.3} ms, limit {limit:.3} ms");
+     assert!(
+         ms <= limit,
+-        "extract-spheres-20k: {ms:.3} ms per frame exceeds the baseline {baseline:.3} ms by more than 15 %"
++        "{scene}: {ms:.3} ms per frame exceeds the baseline {baseline:.3} ms by more than 15 %"
+     );
+ }
+diff --git a/crates/og-tests/tests/perf.rs b/crates/og-tests/tests/perf.rs
+index 724b6f27..8ceb1195 100644
+--- a/crates/og-tests/tests/perf.rs
++++ b/crates/og-tests/tests/perf.rs
+@@ -153,6 +153,17 @@ fn perf_lights_256() {
+     perf("lights-256");
+ }
+ 
++/// Five transmissive objects: every frame copies the opaque scene and
++/// fills its mip chain for them to refract. The copy's view and its
++/// chain's views and bind groups are made with the copy, not each frame
++/// (tests/evidence/r4/perf-ui/NOTES.md: a view made each frame of a
++/// texture still in flight waited for the GPU on lavapipe).
++#[test]
++#[ignore]
++fn perf_materials_physical() {
++    perf("materials-physical");
++}
++
+ #[test]
+ #[ignore]
+ fn perf_showcase() {
