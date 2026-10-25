@@ -57,8 +57,19 @@ const WALK = { speed: 0.5, stride: 0.4, lift: 0.08 } as const;
  * steps there no faster.
  */
 const FOOT_SPEED = Math.hypot(2 * WALK.speed, 2 * WALK.speed * RAMP.slope + (8 * WALK.lift * WALK.speed) / WALK.stride);
-/** A turn's ticks: the rig narrows to its edge and opens the other way (og.Transform's scale x, never 0). */
-const TURN_TICKS = 12;
+/** Each foot's place standing: this far ahead of the keeper, or behind it. */
+const STANCE = 0.15;
+/**
+ * A turn's ticks: the rig narrows to its edge and opens the other way
+ * (og.Transform's scale x the cosine of a steady half turn, never 0) as
+ * fast as its feet can follow it. A foot STANCE out moves `2 STANCE
+ * sin(step / 2)` along the ramp in a tick of a half turn of `step`, which
+ * stays within FOOT_SPEED's tick: each foot keeps up with its narrowing
+ * leg, so the legs' IK reaches the feet on every tick of the turn (a
+ * 12-tick turn left a foot behind its leg near the edge, up to 0.008 m
+ * out of reach). 21 ticks at 60 Hz.
+ */
+const TURN_TICKS = Math.ceil(0.5 + Math.PI / (2 * Math.asin(FOOT_SPEED / 60 / (2 * STANCE * Math.hypot(1, RAMP.slope)))));
 
 /** The courier. */
 export const Hero = defineComponent("Hero", { spawnX: f32(0, { unit: "m" }), spawnY: f32(0, { unit: "m" }) });
@@ -423,7 +434,7 @@ function spawnKeeper(world: World, rig: Rig2DInfo): void {
   const w = must(world.resource(KeeperWalk));
   Object.assign(w, { goal: x, walked: 0, walking: false, facing: -1, turning: 0, squash: 1, settling: false, landed: true, idle, walk });
   // Facing left, the front foot is the left one; the back foot steps half a cycle later.
-  for (const [name, ahead, lag] of [["leg-f", 0.15, 0], ["leg-b", -0.15, 0.5]] as const) {
+  for (const [name, ahead, lag] of [["leg-f", STANCE, 0], ["leg-b", -STANCE, 0.5]] as const) {
     const constraint = rig.constraints.indexOf(name);
     if (constraint < 0) throw new Error(`rigs/keeper.ogt has no ik ${name}`);
     const fx = x - ahead;

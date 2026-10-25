@@ -639,13 +639,28 @@ the tall rig in the tests). A node gets a channel when it or its
 counterpart is animated; one without a counterpart gets none. Assumes a
 symmetric rest pose; mirroring twice gives the clip back (within f32).
 
-## Owed
+## Resident samples
 
-- Resident clips are not compressed in memory: cooked clips can be
-  quantised with keyframe reduction (og-cook's `animation { compress true
-  tolerance }`, `src/anim_codec.rs`), but the loader rebuilds every frame,
-  so a registered `ClipAsset` holds f32 samples whichever way it was
-  cooked.
+A channel holds its frames as `Samples` (`src/samples.rs`): `F32`
+(`frames × lanes`), `Constant` (one sample) or `Quantized` (the cooked
+keys of og-cook's `animation { compress true tolerance }`, its
+`src/anim_codec.rs`: smallest-three rotations, unorm16 lanes over a
+per-lane range, the kept frames' indices). The loader hands the blob's
+storage over as it is, so a registered `ClipAsset` costs what its cooked
+form costs (`ClipAsset::sample_bytes`). Sampling reads a frame from the
+keys: a kept frame is its key; any other is rebuilt between the kept
+frames around it (found by binary search) by a hold (STEP), a lerp per
+lane or a normalised lerp on the shorter arc, with `+ - * /` and `sqrt`
+in the order the cook measured its tolerance in (`unpack_quat`,
+`dequantize`, `nlerp4` are the shared arithmetic). So the frame has the
+bits a decoder writing every frame out gives, and the pose sampled
+between frames (`ClipAsset::vec3`, `quat`, `weight`, `visible`) is bit
+for bit the pose of an f32 clip of those frames: og-cook's
+`tests/anim_compress.rs` plays every compressed model's clips from the
+keys and from the written-out frames to the same world hash, tick for
+tick. `Channel::decoded` writes the frames out (the cook re-encodes a
+retargeted or mirrored clip from them); `mirror` and `retarget` emit f32
+channels.
 
 ## Flipbooks (sprite animation, E4)
 

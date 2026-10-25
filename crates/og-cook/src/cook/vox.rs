@@ -32,17 +32,19 @@
 //! listing several models each with its `_f` key frame (shown from that
 //! frame to the next key), or, in a file without a graph, several models
 //! (0.98's `PACK` animation: model `i` is frame `i`). Such a file cooks to
-//! a skinned glTF: each animated model skinned whole to a joint of its
-//! own, and per clip a visibility track per model's mesh node (the
-//! engine's `OG_animation_visibility`, 1 on the frames its model shows, 0
+//! a glTF of mesh swaps: each animated model a mesh node of its own, and
+//! per clip a visibility track per model's mesh node (the engine's
+//! `OG_animation_visibility`, 1 on the frames its model shows, 0
 //! elsewhere; the mesh nodes not shown on frame 0 hidden at rest with
-//! `KHR_node_visibility`), so `og.AnimationPlayer` plays it as any skinned
-//! clip and a frame folded away is not drawn at all. `model { voxFps 8 voxClip walk 0 3 }` gives the frame
+//! `KHR_node_visibility`), so `og.AnimationPlayer` plays it as any clip
+//! and a frame folded away is not drawn at all. A frame that never moves
+//! has no joint (no palette matrix; drawn as a static instance when
+//! shown); only a model a keyed transform moves is skinned. `model { voxFps 8 voxClip walk 0 3 }` gives the frame
 //! rate (default 10) and named frame ranges (default one clip `frames` of
 //! every frame). `nTRN` key frames (an `_f` per frame of a transform, each
 //! held until the next, as ogt_vox samples them) move what is under the
-//! transform: a model whose place changes across frames is skinned to a
-//! joint of its own with a STEP translation channel as well, and a key
+//! transform: a model whose place changes across frames is skinned whole
+//! to a joint of its own with a STEP translation channel as well, and a key
 //! that turns it starts a new mesh (a turn is a different set of voxel
 //! faces), swapped in like a frame's model. A node's `_loop` (on an
 //! `nTRN` or an `nSHP`) repeats its keys from the first to the last on
@@ -50,7 +52,9 @@
 //! (`compute_looped_frame_index`) play it; the scene's playback range
 //! (`META`'s `_anim_range`, MagicaVoxel 0.99.7.2) sets the frames walked
 //! (to its last) and the default clip (its frames alone). The editor's
-//! frame rate is not in the file: `voxFps` gives it.
+//! frame rate is not in the file (no chunk of the format carries one; the
+//! playback range is the one animation setting the editor writes, and
+//! ogt_vox reads no rate either): `voxFps` gives it.
 //!
 //! Greedy meshing: per face direction, per slice, runs of voxels of one
 //! colour merge into rectangles, so a 32³ block of one colour is 12
@@ -963,18 +967,21 @@ fn clips_of(file: &VoxFile, settings: &VoxSettings) -> Result<Vec<(String, u32, 
 /// the shared white material, `settings.scale` metres per voxel, its
 /// origin where `settings.origin` says.
 ///
-/// An animated file (frames: [`VoxFile::frame_count`]) is a skinned glTF
-/// whose clips swap meshes: each model of an animated shape is skinned
-/// whole to a joint of its own (at its translation, scale 1, inverse bind
-/// the identity), and each clip is a visibility track per model on its
+/// An animated file (frames: [`VoxFile::frame_count`]) is a glTF whose
+/// clips swap meshes: each model of an animated shape is a mesh node of
+/// its own, and each clip is a visibility track per model on its
 /// mesh node (`OG_animation_visibility`: STEP, 1 on the frames the model
 /// shows and 0 elsewhere), at `settings.fps` (one key per frame, and one
-/// at the clip's end holding its last frame). A model a keyed transform
-/// moves ([`Placement::track`]) also has a STEP translation channel on its
-/// joint, its place on each frame (held from its nearest shown frame where
-/// it is folded away). The rest pose is frame 0: the other frames' mesh
-/// nodes are hidden at rest (`KHR_node_visibility`) and scaled to 0, so
-/// the model drawn without a skeleton shows frame 0 too.
+/// at the clip's end holding its last frame). A model that never moves
+/// is a plain mesh node (no joint). A model a keyed transform moves
+/// ([`Placement::track`]) is skinned whole to a joint of its own (at its
+/// translation, scale 1, inverse bind the identity) with a STEP
+/// translation channel on that joint, its place on each frame (held from
+/// its nearest shown frame where it is folded away). The rest pose is
+/// frame 0: the other frames' mesh nodes are hidden at rest
+/// (`KHR_node_visibility`; a skinned one also scaled to 0 for a reader
+/// without the extension), so the model drawn without a skeleton shows
+/// frame 0 too.
 pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
     let file = parse(bytes)?;
     let clips = clips_of(&file, settings)?;
@@ -1072,8 +1079,8 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
             serde_json::json!({ "componentType": 5125, "count": indices.len(), "type": "SCALAR" }),
         );
         let mut attributes = serde_json::json!({ "POSITION": pos, "NORMAL": nrm, "COLOR_0": col });
-        if placement.frames.is_some() {
-            // Skinned whole to its own joint.
+        if placement.frames.is_some() && !placement.track.is_empty() {
+            // Moved by a keyed transform: skinned whole to its own joint.
             let j: Vec<[u16; 4]> = vec![[joints, 0, 0, 0]; count];
             let w: Vec<[f32; 4]> = vec![[1.0, 0.0, 0.0, 0.0]; count];
             attributes["JOINTS_0"] = bin
@@ -1120,38 +1127,53 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
         VoxOrigin::Bottom => -floor,
     };
     let mut nodes: Vec<serde_json::Value> = Vec::new();
-    // Per joint: its node, its mesh node, the frames its model shows and
-    // its translation on each (lifted; empty: it stays put).
-    type Joint = (usize, usize, std::ops::Range<u32>, Vec<[f32; 3]>);
-    let mut joint_nodes: Vec<Joint> = Vec::new();
+    // Per animated model: its mesh node, the frames it shows, and when a
+    // keyed transform moves it, its joint's node and its translation on
+    // each frame (lifted).
+    type Animated = (usize, std::ops::Range<u32>, Option<(usize, Vec<[f32; 3]>)>);
+    let mut animated: Vec<Animated> = Vec::new();
     for (pi, mesh, at, frames, track) in &placed {
         let at = [at[0], at[1] + lift, at[2]];
-        match frames {
-            None => nodes.push(serde_json::json!({
+        let Some(f) = frames else {
+            nodes.push(serde_json::json!({
                 "name": format!("vox{pi}"), "mesh": mesh, "translation": at
-            })),
-            Some(f) => {
-                // Hidden at rest unless it is frame 0's; the mesh node's
-                // scale says the same to a reader without the extension
-                // (the model drawn without a skeleton shows frame 0).
-                let shown = f.contains(&0);
-                let s = if shown { 1.0 } else { 0.0 };
-                let mut node = serde_json::json!({
-                    "name": format!("vox{pi}"), "mesh": mesh, "skin": 0,
-                    "translation": at, "scale": [s, s, s]
-                });
-                if !shown {
-                    node["extensions"] =
-                        serde_json::json!({ "KHR_node_visibility": { "visible": false } });
-                }
-                nodes.push(node);
-                nodes.push(serde_json::json!({
-                    "name": format!("vox{pi}-frames"), "translation": at
-                }));
-                let track = track.iter().map(|t| [t[0], t[1] + lift, t[2]]).collect();
-                joint_nodes.push((nodes.len() - 1, nodes.len() - 2, f.clone(), track));
+            }));
+            continue;
+        };
+        // Hidden at rest unless it is frame 0's.
+        let shown = f.contains(&0);
+        let hidden = serde_json::json!({ "KHR_node_visibility": { "visible": false } });
+        if track.is_empty() {
+            // A frame that never moves: a plain mesh node, swapped in and
+            // out by its visibility track alone (no joint, no palette
+            // matrix; drawn as a static instance when shown).
+            let mut node = serde_json::json!({
+                "name": format!("vox{pi}"), "mesh": mesh, "translation": at
+            });
+            if !shown {
+                node["extensions"] = hidden;
             }
+            nodes.push(node);
+            animated.push((nodes.len() - 1, f.clone(), None));
+            continue;
         }
+        // Skinned to a joint of its own; the mesh node's scale says the
+        // rest visibility to a reader without the extension (a skinned
+        // mesh's node transform is otherwise unused).
+        let s = if shown { 1.0 } else { 0.0 };
+        let mut node = serde_json::json!({
+            "name": format!("vox{pi}"), "mesh": mesh, "skin": 0,
+            "translation": at, "scale": [s, s, s]
+        });
+        if !shown {
+            node["extensions"] = hidden;
+        }
+        nodes.push(node);
+        nodes.push(serde_json::json!({
+            "name": format!("vox{pi}-frames"), "translation": at
+        }));
+        let track = track.iter().map(|t| [t[0], t[1] + lift, t[2]]).collect();
+        animated.push((nodes.len() - 2, f.clone(), Some((nodes.len() - 1, track))));
     }
     let mut json = serde_json::json!({
         "asset": { "version": "2.0", "generator": "og-cook vox" },
@@ -1164,6 +1186,10 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
             "pbrMetallicRoughness": { "baseColorFactor": [1.0, 1.0, 1.0, 1.0], "metallicFactor": 0.0, "roughnessFactor": 0.9 }
         }],
     });
+    let joint_nodes: Vec<usize> = animated
+        .iter()
+        .filter_map(|(_, _, j)| j.as_ref().map(|(n, _)| *n))
+        .collect();
     if !joint_nodes.is_empty() {
         let identity: Vec<f32> = (0..joint_nodes.len()).flat_map(|_| IDENTITY_MAT4).collect();
         let ibm = bin.add(
@@ -1173,9 +1199,11 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
         );
         json["skins"] = serde_json::json!([{
             "name": "frames",
-            "joints": joint_nodes.iter().map(|(n, ..)| *n).collect::<Vec<_>>(),
+            "joints": joint_nodes,
             "inverseBindMatrices": ibm
         }]);
+    }
+    if !animated.is_empty() {
         let mut animations = Vec::new();
         for (name, first, last) in &clips {
             // One key per frame, and one at the end holding the last.
@@ -1192,7 +1220,7 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
             let mut samplers = Vec::new();
             let mut channels = Vec::new();
             let mut visibility = Vec::new();
-            for (node, mesh_node, frames, track) in &joint_nodes {
+            for (mesh_node, frames, joint) in &animated {
                 let shown: Vec<f32> = (0..=len)
                     .map(|i| {
                         let shown = frames.contains(&(first + i.min(len - 1)));
@@ -1210,9 +1238,9 @@ pub fn to_glb(bytes: &[u8], settings: &VoxSettings) -> Result<Vec<u8>, String> {
                 samplers.push(serde_json::json!({
                     "input": input, "output": output, "interpolation": "STEP"
                 }));
-                if track.is_empty() {
+                let Some((node, track)) = joint else {
                     continue;
-                }
+                };
                 // Where the keyed transform puts the model on each frame;
                 // on a frame it is folded away, where it was or will be
                 // nearest (a fold is not a move).
@@ -1964,9 +1992,9 @@ mod tests {
     }
 
     /// The visibility tracks of a glTF's animation `i`
-    /// (`OG_animation_visibility`): per track its node (a skinned mesh
-    /// node: what it hides is that node's primitives), its key times and
-    /// its values (STEP, 0 or 1).
+    /// (`OG_animation_visibility`): per track its node (a mesh node: what
+    /// it hides is that node's primitives), its key times and its values
+    /// (STEP, 0 or 1).
     fn tracks(glb: &[u8], i: usize) -> Vec<(usize, Vec<f32>, Vec<f32>)> {
         let g = gltf::Gltf::from_slice(glb).unwrap();
         let blob = g.blob.clone().unwrap();
@@ -1985,7 +2013,7 @@ mod tests {
             .iter()
             .map(|c| {
                 let node = c["node"].as_u64().unwrap() as usize;
-                assert!(nodes[node].mesh().is_some() && nodes[node].skin().is_some());
+                assert!(nodes[node].mesh().is_some());
                 let s = anim
                     .samplers()
                     .nth(c["sampler"].as_u64().unwrap() as usize)
@@ -1997,9 +2025,10 @@ mod tests {
     }
 
     /// Several models without a graph are MagicaVoxel 0.98's animation: one
-    /// frame each, all at the origin, cooked as a skinned glTF whose clip
-    /// `frames` shows each frame's mesh node on its frame and hides it
-    /// elsewhere (a visibility track; no joint is scaled to 0).
+    /// frame each, all at the origin, cooked as plain mesh nodes whose clip
+    /// `frames` shows each frame's node on its frame and hides it elsewhere
+    /// (a visibility track). No frame moves, so none has a joint: the file
+    /// has no skin, and every node stays at scale 1.
     #[test]
     fn a_pack_without_a_graph_is_the_frames_of_one_clip() {
         let models = vec![
@@ -2019,21 +2048,15 @@ mod tests {
         };
         let glb = to_glb(&bytes, &settings).unwrap();
         let g = gltf::Gltf::from_slice(&glb).unwrap();
-        let blob = g.blob.clone().unwrap();
-        let skin = g.document.skins().next().expect("a skin");
-        assert_eq!(skin.joints().count(), 3);
-        // The joints stay at scale 1; the mesh nodes of the frames after
-        // 0 are hidden at rest (and scaled to 0 for a reader without the
-        // extension: the model drawn without a skeleton shows frame 0).
+        assert_eq!(g.document.skins().count(), 0, "no joint: no frame moves");
+        // One node per frame, at scale 1; those after frame 0 are hidden
+        // at rest (the model drawn without a skeleton shows frame 0).
         let scales: Vec<[f32; 3]> = g
             .document
             .nodes()
             .map(|n| n.transform().decomposed().2)
             .collect();
-        assert_eq!(
-            scales,
-            vec![[1.0; 3], [1.0; 3], [0.0; 3], [1.0; 3], [0.0; 3], [1.0; 3]]
-        );
+        assert_eq!(scales, vec![[1.0; 3]; 3]);
         let len = u32::from_le_bytes(glb[12..16].try_into().unwrap()) as usize;
         let json: serde_json::Value = serde_json::from_slice(&glb[20..20 + len]).unwrap();
         let hidden: Vec<bool> = json["nodes"]
@@ -2042,24 +2065,20 @@ mod tests {
             .iter()
             .map(|n| n["extensions"]["KHR_node_visibility"]["visible"] == false)
             .collect();
-        assert_eq!(hidden, [false, false, true, false, true, false]);
+        assert_eq!(hidden, [false, true, true]);
         assert!(
             g.document
                 .nodes()
-                .filter(|n| n.mesh().is_some())
-                .all(|n| n.skin().is_some())
+                .all(|n| n.mesh().is_some() && n.skin().is_none())
         );
         let anims: Vec<_> = g.document.animations().collect();
         assert_eq!(anims.len(), 1);
         assert_eq!(anims[0].name(), Some(DEFAULT_CLIP));
-        assert_eq!(anims[0].channels().count(), 0, "no joint is scaled");
-        let _ = blob;
-        let joints: Vec<usize> = skin.joints().map(|j| j.index()).collect();
+        assert_eq!(anims[0].channels().count(), 0, "no transform is keyed");
         let tracks = tracks(&glb, 0);
         assert_eq!(tracks.len(), 3);
         for (k, (node, times, shown)) in tracks.into_iter().enumerate() {
-            // The mesh node skinned to joint k (written just before it).
-            assert_eq!(node + 1, joints[k]);
+            assert_eq!(node, k, "on frame {k}'s mesh node");
             assert_eq!(times, vec![0.0, 0.2, 0.4, 0.6]);
             // Frame k only; the end key holds the last frame.
             let mut want = vec![0.0; 4];
@@ -2122,14 +2141,10 @@ mod tests {
         };
         let glb = to_glb(&bytes, &settings).unwrap();
         let g = gltf::Gltf::from_slice(&glb).unwrap();
-        // The static part is not skinned.
-        let skinned: Vec<bool> = g
-            .document
-            .nodes()
-            .filter(|n| n.mesh().is_some())
-            .map(|n| n.skin().is_some())
-            .collect();
-        assert_eq!(skinned, vec![true, true, false]);
+        // Nothing moves, so nothing is skinned: the frames are swapped by
+        // their visibility tracks alone, beside the static part.
+        assert_eq!(g.document.skins().count(), 0);
+        assert!(g.document.nodes().all(|n| n.skin().is_none()));
         let anims: Vec<_> = g.document.animations().collect();
         assert_eq!(anims[0].name(), Some("idle"));
         assert_eq!(
@@ -2257,16 +2272,34 @@ mod tests {
         let blob = g.blob.clone().unwrap();
         let skin = g.document.skins().next().expect("a skin");
         let joints: Vec<usize> = skin.joints().map(|j| j.index()).collect();
-        assert_eq!(joints.len(), 3, "the cube, the bar and the turned bar");
-        // Per joint: its visibility track (on its mesh node, written just
-        // before it) and its translation channel, sorted by joint.
+        assert_eq!(
+            joints.len(),
+            2,
+            "the cube and the turned bar; the bar before its turn never moves"
+        );
+        // Per model (0 the cube, 1 the bar, 2 the turned bar: glTF nodes
+        // `vox1` to `vox3`): its visibility track (on its mesh node) and,
+        // when it moves, its joint's (`vox<n>-frames`) translation channel.
+        let model_of = |node: gltf::Node| -> usize {
+            let name = node.name().unwrap();
+            let n: usize = name
+                .trim_start_matches("vox")
+                .trim_end_matches("-frames")
+                .parse()
+                .unwrap();
+            n - 1
+        };
+        let nodes: Vec<_> = g.document.nodes().collect();
         type Read = (usize, &'static str, Vec<Vec<f32>>);
         let read = |i: usize, anim: &gltf::Animation| -> Vec<Read> {
             let mut out: Vec<Read> = tracks(&glb, i)
                 .into_iter()
                 .map(|(node, _, v)| {
-                    let joint = joints.iter().position(|j| *j == node + 1).unwrap();
-                    (joint, "visible", v.into_iter().map(|x| vec![x]).collect())
+                    (
+                        model_of(nodes[node].clone()),
+                        "visible",
+                        v.into_iter().map(|x| vec![x]).collect(),
+                    )
                 })
                 .collect();
             out.extend(anim.channels().map(|ch| {
@@ -2274,15 +2307,15 @@ mod tests {
                     ch.sampler().interpolation(),
                     gltf::animation::Interpolation::Step
                 );
-                let joint = joints
-                    .iter()
-                    .position(|j| *j == ch.target().node().index())
-                    .unwrap();
+                let node = ch.target().node();
+                assert!(joints.contains(&node.index()), "on a joint");
                 let r = ch.reader(|_| Some(&blob[..]));
                 match r.read_outputs().unwrap() {
-                    gltf::animation::util::ReadOutputs::Translations(t) => {
-                        (joint, "translation", t.map(|v| v.to_vec()).collect())
-                    }
+                    gltf::animation::util::ReadOutputs::Translations(t) => (
+                        model_of(node),
+                        "translation",
+                        t.map(|v| v.to_vec()).collect(),
+                    ),
                     _ => panic!("translation only: no joint is scaled"),
                 }
             }));
@@ -2348,9 +2381,12 @@ mod tests {
             ]
         );
         // The rest pose is frame 0: the cube's joint and mesh node where
-        // its first key puts it; the base is not skinned.
-        let nodes: Vec<_> = g.document.nodes().collect();
+        // its first key puts it; the base and the unturned bar are not
+        // skinned.
         assert!(nodes[0].skin().is_none() && nodes[0].mesh().is_some());
+        let bar = nodes.iter().find(|n| n.name() == Some("vox2")).unwrap();
+        assert!(bar.skin().is_none() && bar.mesh().is_some());
+        assert_eq!(bar.transform().decomposed().2, [1.0; 3], "at scale 1");
         assert_eq!(nodes[1].transform().decomposed().0, [-2.0, 2.0, 0.0]);
         assert_eq!(
             nodes[joints[0]].transform().decomposed().0,

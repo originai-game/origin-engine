@@ -36,9 +36,9 @@ const WALK = 1;
  * 1.42316 m/s, 0.023719 m a tick.
  */
 const STRIDE_STEP = 0.023719;
-/** The ticks dumped every tick: from just before `keeper:7` (2.2 s) to the end (5 s). */
+/** The ticks dumped every tick: from just before `keeper:7` (2.2 s) to the end (5.3 s). */
 const FIRST = 130;
-const LAST = 300;
+const LAST = 320;
 const perTick = Array.from({ length: LAST - FIRST + 1 }, (_, i) => {
   const k = FIRST + i;
   const at = (j: number) => (k / 60 + 0.002 * j).toFixed(4);
@@ -50,10 +50,10 @@ export default playtest({
   commands: [
     "1.0:screenshot:keeper.png;1.01:dump_entity:keeper:keeper.json;1.02:dump_entity:keeper-leg-f:front.json;1.03:dump_entity:keeper-leg-b:back.json",
     "2.1:get:Game:game.json;2.2:keeper:7",
-    "2.85:screenshot:walk.png;2.851:dump_entity:keeper:walk.json;2.852:dump_entity:keeper-leg-f:walk-front.json;2.853:dump_entity:keeper-leg-b:walk-back.json",
-    "3.15:dump_entity:keeper:walk-later.json;3.151:dump_entity:keeper-leg-f:walk-front-later.json;3.152:dump_entity:keeper-leg-b:walk-back-later.json",
+    "3.0:screenshot:walk.png;3.001:dump_entity:keeper:walk.json;3.002:dump_entity:keeper-leg-f:walk-front.json;3.003:dump_entity:keeper-leg-b:walk-back.json",
+    "3.3:dump_entity:keeper:walk-later.json;3.301:dump_entity:keeper-leg-f:walk-front-later.json;3.302:dump_entity:keeper-leg-b:walk-back-later.json",
     perTick,
-    "5.1:dump_entity:keeper:keeper-up.json;5.11:dump_entity:keeper-leg-f:front-up.json;5.12:dump_entity:keeper-leg-b:back-up.json;5.2:get:Game:game-end.json;5.3:quit",
+    "5.4:dump_entity:keeper:keeper-up.json;5.41:dump_entity:keeper-leg-f:front-up.json;5.42:dump_entity:keeper-leg-b:back-up.json;5.5:get:Game:game-end.json;5.6:quit",
   ]
     .join(";")
     .split(";")
@@ -99,7 +99,7 @@ export default playtest({
       }
     }
     t.ok(planted >= 2, `while it walks a foot stays planted on the plank (${planted} of 4 targets on it)`);
-    // The back foot carried the keeper from 2.85 s to 3.15 s (the walk starts after the turn): it did not move.
+    // The back foot carried the keeper from 3.0 s to 3.3 s (the walk starts after the turn): it did not move.
     const before = foot("walk-back.json")["target"] as number[];
     const later = foot("walk-back-later.json")["target"] as number[];
     t.ok(Math.abs(before[0]! - later[0]!) < 1e-4 && Math.abs(before[1]! - later[1]!) < 1e-4, `the planted foot stays put while the keeper passes over it (${before.join(", ")} then ${later.join(", ")})`);
@@ -120,6 +120,7 @@ export default playtest({
         flipX: s["flipX"] === true,
         clip: s["clip"] as number,
         feet: [`f${k}.json`, `b${k}.json`].map((f) => foot(f)["target"] as number[]),
+        ikError: Math.max(...[`f${k}.json`, `b${k}.json`].map((f) => foot(f)["error"] as number)),
       };
     });
     // No foot moves further in a tick than the gait's swing: setting off, walking, stopping and both turns.
@@ -136,7 +137,7 @@ export default playtest({
     // The walk itself moves the swinging foot nearly that far, so the bound is the gait's, not a loose one.
     t.ok(worst > STRIDE_STEP * 0.9, `the walk's swing reaches the bound (${worst.toFixed(6)} m)`);
     // Each turn: several ticks of a narrowed rig (never edge-on), standing still, between one facing and the other.
-    const turns: { from: number; to: number; ticks: number; still: boolean; steady: boolean }[] = [];
+    const turns: { from: number; to: number; ticks: number; still: boolean; steady: boolean; miss: number }[] = [];
     for (let i = 1; i < ticks.length; i++) {
       if (ticks[i]!.flipX === ticks[i - 1]!.flipX) continue;
       let j = i - 1;
@@ -148,11 +149,14 @@ export default playtest({
         ticks: i - j - 1,
         still: span.every((u) => Math.abs(u.x - span[0]!.x) < 1e-6),
         steady: span.every((u, n) => u.squash !== 0 && (n === 0 || Math.abs(u.squash * (u.flipX ? -1 : 1) - span[n - 1]!.squash * (span[n - 1]!.flipX ? -1 : 1)) <= 0.5)),
+        miss: Math.max(...span.map((u) => u.ikError)),
       });
     }
     t.ok(turns.length === 2, `the keeper turned twice: setting off and on arrival (${turns.length})`);
     for (const u of turns) {
       t.ok(u.ticks >= 4 && u.still && u.steady, `a turn (ticks ${u.from} to ${u.to}) narrows the rig over ${u.ticks} ticks in place, never edge-on or by half its width at once`);
+      // The feet keep up with the narrowing legs: the IK reaches them on every tick of the turn (a 12-tick turn missed by up to 0.008 m).
+      t.ok(u.miss < 1e-3, `through the turn (ticks ${u.from} to ${u.to}) both legs reach their feet (worst IK error ${u.miss.toFixed(6)} m)`);
     }
     // The stop: the idle clip returns only with both feet down on the ramp, where they stand.
     const back = ticks.findIndex((u, i) => i > 0 && u.clip === IDLE && ticks[i - 1]!.clip !== IDLE);

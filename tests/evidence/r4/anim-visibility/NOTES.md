@@ -107,6 +107,12 @@ expected).
    unskinned mesh node with only a visibility track; left as is so the
    skinning path, its tests and the og-tests frame stay what they were.
 
+Since: decision 2's `KHR_animation_pointer` is read (b470ea2f, the cook
+rewrites such a channel into `OG_animation_visibility`); decision 3's
+static draw reads the rest flag from the model blob's node rows
+(595dd0e4); decision 4's joint is gone for a frame that never moves
+(debt3/anim-import, `tests/evidence/debt3/anim-import/NOTES.md`).
+
 ## Files shared with r4/anim-owed
 
 `crates/og-anim/src/retarget.rs` (one `channels.extend(...)` line in

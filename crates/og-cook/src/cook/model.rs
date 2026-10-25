@@ -1432,12 +1432,22 @@ pub fn cook(
         .unwrap_or(if scenes.is_empty() { NONE } else { 0 });
 
     // Bounds of the default scene's vertices with node transforms, from the
-    // source positions (exactly what og-render's glTF bridge computes).
+    // source positions: what og-render's glTF bridge computes, less the
+    // nodes hidden at rest (`KHR_node_visibility` `visible: false`) and
+    // what is under them, which the rest pose does not draw (an animated
+    // `.vox`'s frames after 0).
     let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
     if let Some(scene) = doc.default_scene().or_else(|| doc.scenes().next()) {
         let mut stack: Vec<(gltf::Node, Mat4)> =
             scene.nodes().map(|n| (n, Mat4::IDENTITY)).collect();
         while let Some((node, parent)) = stack.pop() {
+            if node
+                .extension_value("KHR_node_visibility")
+                .and_then(|v| v.get("visible")?.as_bool())
+                == Some(false)
+            {
+                continue;
+            }
             let (t, r, s) = node.transform().decomposed();
             let world = parent
                 * Mat4::from_scale_rotation_translation(

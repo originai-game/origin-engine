@@ -200,7 +200,8 @@ fn the_pose_at_a_sampled_time_is_the_clips_sample() {
             let i = (k / 2) as usize;
             for ch in &walk.channels {
                 let n = ch.node as usize;
-                let s = &ch.samples[i * ch.lanes as usize..][..ch.lanes as usize];
+                let all = ch.decoded(walk.frames);
+                let s = &all[i * ch.lanes as usize..][..ch.lanes as usize];
                 let got: Vec<f32> = match ch.path {
                     ChannelPath::Translation => pose[n].translation.to_array().to_vec(),
                     ChannelPath::Rotation => pose[n].rotation.to_array().to_vec(),
@@ -263,7 +264,8 @@ fn a_stepped_player_holds_each_pose_for_its_step() {
             let i = j * 5 / 2;
             for ch in &walk.channels {
                 let n = ch.node as usize;
-                let s = &ch.samples[i * ch.lanes as usize..][..ch.lanes as usize];
+                let all = ch.decoded(walk.frames);
+                let s = &all[i * ch.lanes as usize..][..ch.lanes as usize];
                 let got: Vec<f32> = match ch.path {
                     ChannelPath::Translation => pose[n].translation.to_array().to_vec(),
                     ChannelPath::Rotation => pose[n].rotation.to_array().to_vec(),

@@ -3,6 +3,7 @@
 //! (`og-cook`, the `<model>#anim` blob); the loaders build these types; the
 //! host registers them with [`crate::AnimationSystem`] under a handle.
 
+use crate::samples::{Samples, words_per_key};
 use crate::xform::{Trs, nlerp, unit};
 use og_core::glam::{Mat4, Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};
@@ -232,8 +233,95 @@ pub struct Channel {
     /// Floats per sample (3 translation/scale, 4 rotation xyzw, n weights,
     /// 1 visibility).
     pub lanes: u32,
-    /// `frames × lanes` floats.
-    pub samples: Vec<f32>,
+    /// The frames: `frames × lanes` floats, one constant sample, or the
+    /// cooked quantised keys sampled where they lie ([`Samples`]).
+    pub samples: Samples,
+}
+
+impl Channel {
+    /// Lane `k` of frame `i`.
+    pub fn lane(&self, i: usize, k: usize) -> f32 {
+        let lanes = self.lanes as usize;
+        match &self.samples {
+            Samples::F32(v) => v[i * lanes + k],
+            Samples::Constant(v) => v[k],
+            Samples::Quantized(q) if self.path == ChannelPath::Rotation => q.quat(self.step, i)[k],
+            Samples::Quantized(q) => q.lane(lanes, self.step, i, k),
+        }
+    }
+
+    /// Frame `i` of a rotation channel, `[x, y, z, w]`.
+    fn rotation(&self, i: usize) -> [f32; 4] {
+        match &self.samples {
+            Samples::Quantized(q) => q.quat(self.step, i),
+            _ => [
+                self.lane(i, 0),
+                self.lane(i, 1),
+                self.lane(i, 2),
+                self.lane(i, 3),
+            ],
+        }
+    }
+
+    /// Every frame as f32, `frames × lanes` (what a decoder writing the
+    /// frames out gives; sampling reads the same values).
+    pub fn decoded(&self, frames: u32) -> Vec<f32> {
+        let lanes = self.lanes as usize;
+        let mut out = Vec::with_capacity(frames as usize * lanes);
+        for i in 0..frames as usize {
+            if self.path == ChannelPath::Rotation && lanes == 4 {
+                out.extend_from_slice(&self.rotation(i));
+            } else {
+                out.extend((0..lanes).map(|k| self.lane(i, k)));
+            }
+        }
+        out
+    }
+
+    /// Checks the storage holds `frames` frames of `lanes` lanes.
+    fn check_samples(&self, frames: u32) -> std::result::Result<(), String> {
+        let lanes = self.lanes as usize;
+        let n = frames as usize;
+        match &self.samples {
+            Samples::F32(v) if v.len() != n * lanes => Err(format!(
+                "{} floats, expected {frames} frames × {lanes} lanes",
+                v.len()
+            )),
+            Samples::Constant(v) if v.len() != lanes => Err(format!(
+                "a constant of {} floats, expected {lanes}",
+                v.len()
+            )),
+            Samples::Quantized(q) => {
+                let rotation = self.path == ChannelPath::Rotation;
+                let per = words_per_key(self.lanes, rotation);
+                let keys = q.words.len() / per;
+                if keys == 0 || q.words.len() % per != 0 || keys > n || n > usize::from(u16::MAX) {
+                    return Err(format!(
+                        "{} quantised words for {n} frames of {lanes} lanes",
+                        q.words.len()
+                    ));
+                }
+                if q.range.len() != if rotation { 0 } else { 2 * lanes } {
+                    return Err(format!("{} range floats for {lanes} lanes", q.range.len()));
+                }
+                if q.frames.is_empty() {
+                    if keys != n {
+                        return Err(format!("{keys} keys without key frames for {n} frames"));
+                    }
+                } else if q.frames.len() != keys
+                    || q.frames[0] != 0
+                    || usize::from(q.frames[keys - 1]) != n - 1
+                    || q.frames.windows(2).any(|w| w[1] <= w[0])
+                {
+                    return Err(
+                        "quantised key frames are not ascending from 0 to the last frame".into(),
+                    );
+                }
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
 }
 
 /// A named marker at a time of a clip.
@@ -308,16 +396,15 @@ impl ClipAsset {
                     ch.lanes, ch.path
                 )));
             }
-            if ch.samples.len() != (self.frames * ch.lanes) as usize {
-                return Err(what(format!(
-                    "channel {c} has {} floats, expected {} frames × {} lanes",
-                    ch.samples.len(),
-                    self.frames,
-                    ch.lanes
-                )));
+            if let Err(r) = ch.check_samples(self.frames) {
+                return Err(what(format!("channel {c}: {r}")));
             }
             if ch.path == ChannelPath::Visibility
-                && (!ch.step || ch.samples.iter().any(|&v| v != 0.0 && v != 1.0))
+                && (!ch.step
+                    || (0..self.frames as usize).any(|i| {
+                        let v = ch.lane(i, 0);
+                        v != 0.0 && v != 1.0
+                    }))
             {
                 return Err(what(format!(
                     "channel {c} is a visibility channel: it is STEP and holds 0 (hidden) or 1 (visible)"
@@ -374,38 +461,26 @@ impl ClipAsset {
         }
     }
 
-    fn lane(ch: &Channel, i: usize, k: usize) -> f32 {
-        ch.samples[i * ch.lanes as usize + k]
+    /// Bytes every channel's frames take in memory (for a clip loaded from
+    /// a blob, its share of the blob's `samples` and `packed` sections).
+    pub fn sample_bytes(&self) -> usize {
+        self.channels.iter().map(|c| c.samples.bytes()).sum()
     }
 
     /// A translation or scale channel at `p`.
     pub fn vec3(ch: &Channel, p: FramePos) -> Vec3 {
-        let a = Vec3::new(
-            Self::lane(ch, p.i0, 0),
-            Self::lane(ch, p.i0, 1),
-            Self::lane(ch, p.i0, 2),
-        );
+        let v = |i| Vec3::new(ch.lane(i, 0), ch.lane(i, 1), ch.lane(i, 2));
+        let a = v(p.i0);
         if ch.step || p.frac == 0.0 {
             return a;
         }
-        let b = Vec3::new(
-            Self::lane(ch, p.i1, 0),
-            Self::lane(ch, p.i1, 1),
-            Self::lane(ch, p.i1, 2),
-        );
+        let b = v(p.i1);
         a + (b - a) * p.frac
     }
 
     /// A rotation channel at `p` (normalised lerp between samples).
     pub fn quat(ch: &Channel, p: FramePos) -> Quat {
-        let q = |i| {
-            Quat::from_xyzw(
-                Self::lane(ch, i, 0),
-                Self::lane(ch, i, 1),
-                Self::lane(ch, i, 2),
-                Self::lane(ch, i, 3),
-            )
-        };
+        let q = |i| Quat::from_array(ch.rotation(i));
         let a = q(p.i0);
         if ch.step || p.frac == 0.0 {
             return unit(a);
@@ -415,16 +490,16 @@ impl ClipAsset {
 
     /// A visibility channel at `p`: the sample held from `p.i0`.
     pub fn visible(ch: &Channel, p: FramePos) -> bool {
-        Self::lane(ch, p.i0, 0) != 0.0
+        ch.lane(p.i0, 0) != 0.0
     }
 
     /// Lane `k` of a weights channel at `p`.
     pub fn weight(ch: &Channel, p: FramePos, k: usize) -> f32 {
-        let a = Self::lane(ch, p.i0, k);
+        let a = ch.lane(p.i0, k);
         if ch.step || p.frac == 0.0 {
             return a;
         }
-        a + (Self::lane(ch, p.i1, k) - a) * p.frac
+        a + (ch.lane(p.i1, k) - a) * p.frac
     }
 }
 

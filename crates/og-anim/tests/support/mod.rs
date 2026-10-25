@@ -105,7 +105,7 @@ pub fn clip(
                 path,
                 step: false,
                 lanes,
-                samples,
+                samples: samples.into(),
             }
         })
         .collect();

@@ -2,10 +2,13 @@
 //! clip names of the model's `#anim` blob (FINDINGS #3 of
 //! `examples/lantern-vale`: it was always empty), and an animated `.vox`
 //! (MagicaVoxel frames cooked into mesh-swap clips) plays on an
-//! og.AnimationPlayer: one frame's primitive is drawn at a time, skinned,
-//! the frames folded away hidden by the clip's visibility channels and not
-//! drawn at all (before the visibility track every frame was drawn, the
-//! folded ones through a joint scaled to 0: three draws a tick, now one).
+//! og.AnimationPlayer: one frame's primitive is drawn at a time, as a plain
+//! instance (a frame that never moves has no joint: no palette matrix, no
+//! skinning), the frames folded away hidden by the clip's visibility
+//! channels and not drawn at all (before the visibility track every frame
+//! was drawn, the folded ones through a joint scaled to 0: three draws a
+//! tick, now one; before frames without motion lost their joints, the one
+//! was a skinned draw through a palette of three matrices).
 //!
 //! A project with a three-frame `.vox` (`voxFps 4`, two `voxClip`s), a
 //! static `.vox` and the template walker is cooked once; a renderer that
@@ -13,8 +16,8 @@
 //!
 //! Ways this could fail: gltfInfo answers no names (or the static model's
 //! load is refused for its missing `#anim`); a hidden frame still drawn
-//! (two frames or more a tick), or the wrong one shown; the frames'
-//! primitives drawn unskinned; a `.vox` drawn without a skeleton drawing
+//! (two frames or more a tick), or the wrong one shown; a frame drawn at
+//! its rest place but scaled away; a `.vox` drawn without a skeleton drawing
 //! the frames after 0 (they are hidden at rest: the model blob's node rows
 //! carry `KHR_node_visibility`, which the static draw honours).
 
@@ -247,19 +250,19 @@ fn an_animated_vox_plays_one_frame_at_a_time() {
             tick += 1;
         }
         let s = seen.borrow();
-        assert_eq!(s.palettes.len(), 1);
         assert!(
-            s.palettes[0].iter().all(|x| (x - 1.0).abs() < 1e-5),
-            "no joint is scaled away: {:?}",
-            s.palettes[0]
+            s.palettes.iter().all(|p| p.is_empty()),
+            "no joint: {:?}",
+            s.palettes
         );
-        shown.push(s.skinned.clone());
+        assert!(s.skinned.is_empty(), "nothing skinned");
+        shown.push(s.instances.clone());
     }
     // Frame k is 2 + k voxels (metres) tall.
     assert_eq!(
         shown,
         vec![vec![2.0], vec![3.0], vec![4.0], vec![2.0]],
-        "one skinned draw a tick: frame 0, 1, 2, then frame 0 again (looped)"
+        "one plain draw a tick: frame 0, 1, 2, then frame 0 again (looped)"
     );
 }
 

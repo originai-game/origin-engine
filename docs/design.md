@@ -694,7 +694,7 @@ Baked lighting, volumetrics and area lights (depth S7).
   "x_tex.json"`): skew, colour offsets, zOrder and IK timelines, armature
   displays (as child armatures), bounding boxes, path displays and path
   constraints, every skin (the `default` one the rig's own attachments,
-  each other a `skin` block of swaps), Bézier curves,
+  each other a `skin` block of swaps; a child armature's skins its own, worn by the name the rig wears), Bézier curves,
   `clockwise` turns (accumulated as DragonBones' parser does) and the
   sine `tweenEasing` (above 1: Hermite segments of a `curve`, within 1e-7
   of the sine) come across, and a frame without `tweenEasing` holds as DragonBones holds
@@ -705,7 +705,7 @@ Baked lighting, volumetrics and area lights (depth S7).
   `time`, `speed`, `loop`, `flipX`, `layer`, `skin`, `finished`) plays it through
   the `og.skeleton2d` system, run with the tweens and flipbooks after the
   game's systems; clip events arrive as `og.Skeleton2DEvent` (a child
-  armature's tagged with its name);
+  armature's tagged with its name, forwards and backwards);
   `og.IkTarget2D` moves a constraint's target (its weight multiplies the
   constraint's) and reads back `reached` and `error`;
   `og.anim.skeleton2dBoxes` answers the bounding boxes the last pose

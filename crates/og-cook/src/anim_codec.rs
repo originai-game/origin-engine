@@ -13,8 +13,11 @@
 //!   frame that the interpolation between its kept neighbours (lerp, or
 //!   normalised lerp on the shorter arc for rotations; a hold for STEP
 //!   channels) rebuilds within the tolerance of the resampled value. The
-//!   loader rebuilds the dropped frames the same way, so a clip has every
-//!   frame again and og-anim samples it exactly as an f32 clip.
+//!   loader keeps the keys as stored ([`samples`], `og_anim::Samples`) and
+//!   og-anim rebuilds a dropped frame the same way when it samples it
+//!   (the decoding arithmetic is og-anim's, which this encoder measures
+//!   against), so a resident clip costs what its cooked form costs and
+//!   poses exactly as the same frames written out as f32 would.
 //!
 //! - **Visibility** (`path::VISIBILITY`, 0 or 1, STEP) is always kept
 //!   exact: its tolerance is 0 whatever the setting, so the reduction
@@ -27,6 +30,7 @@
 //! `sqrt` in a fixed order, so every host rebuilds the same floats.
 
 use crate::format::{ChannelRow, path};
+use og_anim::{QuantizedKeys, Samples, dequantize, nlerp4, normalize4, unpack_quat};
 
 /// [`ChannelRow::codec`] values.
 pub mod codec {
@@ -47,36 +51,6 @@ pub const MAX_QUANTIZED_FRAMES: u32 = 65535;
 
 const SQRT1_2: f32 = std::f32::consts::FRAC_1_SQRT_2;
 const Q15: f32 = 32767.0;
-
-fn normalize4(q: [f32; 4]) -> [f32; 4] {
-    let len2 = q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3];
-    if len2 > 1e-24 && len2.is_finite() {
-        let s = 1.0 / len2.sqrt();
-        [q[0] * s, q[1] * s, q[2] * s, q[3] * s]
-    } else {
-        [0.0, 0.0, 0.0, 1.0]
-    }
-}
-
-fn dot4(a: [f32; 4], b: [f32; 4]) -> f32 {
-    a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3]
-}
-
-/// Normalised lerp on the shorter arc, scalar and in a fixed order.
-fn nlerp4(a: [f32; 4], b: [f32; 4], u: f32) -> [f32; 4] {
-    let b = if dot4(a, b) < 0.0 {
-        [-b[0], -b[1], -b[2], -b[3]]
-    } else {
-        b
-    };
-    let v = 1.0 - u;
-    normalize4([
-        a[0] * v + b[0] * u,
-        a[1] * v + b[1] * u,
-        a[2] * v + b[2] * u,
-        a[3] * v + b[3] * u,
-    ])
-}
 
 /// A unit quaternion as smallest-three: three u16 words (bits 47..0:
 /// the largest component's index in 46..45, then the others in order,
@@ -104,38 +78,16 @@ fn pack_quat(q: [f32; 4]) -> [u16; 3] {
     [(bits >> 32) as u16, (bits >> 16) as u16, bits as u16]
 }
 
-fn unpack_quat(w: [u16; 3]) -> [f32; 4] {
-    let bits = (u64::from(w[0]) << 32) | (u64::from(w[1]) << 16) | u64::from(w[2]);
-    let big = ((bits >> 45) & 3) as usize;
-    let mut q = [0.0f32; 4];
-    let mut shift = 30;
-    let mut sum = 0.0f32;
-    for (i, c) in q.iter_mut().enumerate() {
-        if i == big {
-            continue;
-        }
-        let v = ((bits >> shift) & 0x7fff) as f32;
-        let x = (v / Q15 * 2.0 - 1.0) * SQRT1_2;
-        *c = x;
-        sum += x * x;
-        shift -= 15;
-    }
-    q[big] = (1.0 - sum).max(0.0).sqrt();
-    normalize4(q)
-}
-
-fn dequantize(min: f32, extent: f32, q: u16) -> f32 {
-    min + extent * (f32::from(q) / 65535.0)
-}
-
-/// The f32 samples of a channel, `frames × lanes`, from its row and the
-/// blob's `samples` and `packed` sections.
-pub fn decode(
+/// A channel's frames as og-anim keeps them resident, from its row and the
+/// blob's `samples` and `packed` sections: f32 and constant samples
+/// copied, quantised keys kept as stored (og-anim samples them where they
+/// lie, `og_anim::Samples`).
+pub fn samples(
     row: &ChannelRow,
     frames: u32,
     samples: &[f32],
     packed: &[u16],
-) -> Result<Vec<f32>, String> {
+) -> Result<Samples, String> {
     let lanes = row.lanes as usize;
     let n = frames as usize;
     let at = row.sample_offset as usize;
@@ -145,11 +97,8 @@ pub fn decode(
             .ok_or_else(|| "channel samples out of range".to_string())
     };
     match row.codec {
-        codec::F32 => Ok(floats(n * lanes)?.to_vec()),
-        codec::CONSTANT => {
-            let one = floats(lanes)?;
-            Ok((0..n).flat_map(|_| one.iter().copied()).collect())
-        }
+        codec::F32 => Ok(Samples::F32(floats(n * lanes)?.to_vec())),
+        codec::CONSTANT => Ok(Samples::Constant(floats(lanes)?.to_vec())),
         codec::QUANTIZED => {
             let rotation = row.path == path::ROTATION;
             let keys = row.keys as usize;
@@ -163,47 +112,47 @@ pub fn decode(
                 .get(start..start + index_len + keys * words)
                 .ok_or_else(|| "quantised channel out of range".to_string())?;
             let (index, values) = data.split_at(index_len);
-            let range = if rotation {
-                &[][..]
-            } else {
-                floats(2 * lanes)?
-            };
-            let key_value = |k: usize| -> Vec<f32> {
-                let v = &values[k * words..(k + 1) * words];
-                if rotation {
-                    unpack_quat([v[0], v[1], v[2]]).to_vec()
-                } else {
-                    (0..lanes)
-                        .map(|l| dequantize(range[2 * l], range[2 * l + 1], v[l]))
-                        .collect()
-                }
-            };
-            let frame_of = |k: usize| if index_len > 0 { index[k] as usize } else { k };
             if index_len > 0
-                && (frame_of(0) != 0
-                    || frame_of(keys - 1) != n - 1
+                && (index[0] != 0
+                    || usize::from(index[keys - 1]) != n - 1
                     || index.windows(2).any(|w| w[1] <= w[0]))
             {
                 return Err(
                     "quantised channel key frames are not ascending from 0 to the last".into(),
                 );
             }
-            let mut out = Vec::with_capacity(n * lanes);
-            let mut a = key_value(0);
-            out.extend_from_slice(&a);
-            for k in 1..keys {
-                let b = key_value(k);
-                let (fa, fb) = (frame_of(k - 1), frame_of(k));
-                for j in fa + 1..fb {
-                    out.extend(between(&a, &b, rotation, row_step(row), fa, fb, j));
-                }
-                out.extend_from_slice(&b);
-                a = b;
-            }
-            Ok(out)
+            Ok(Samples::Quantized(QuantizedKeys {
+                frames: index.to_vec(),
+                words: values.to_vec(),
+                range: if rotation {
+                    Vec::new()
+                } else {
+                    floats(2 * lanes)?.to_vec()
+                },
+            }))
         }
         c => Err(format!("channel codec {c}")),
     }
+}
+
+/// The f32 samples of a channel, `frames × lanes`: every frame of
+/// [`samples`] written out (what og-anim samples, frame for frame).
+pub fn decode(
+    row: &ChannelRow,
+    frames: u32,
+    samples_: &[f32],
+    packed: &[u16],
+) -> Result<Vec<f32>, String> {
+    let channel = og_anim::Channel {
+        node: row.node,
+        node_name: String::new(),
+        path: og_anim::ChannelPath::from_code(row.path)
+            .ok_or_else(|| format!("channel path {}", row.path))?,
+        step: row_step(row),
+        lanes: row.lanes,
+        samples: samples(row, frames, samples_, packed)?,
+    };
+    Ok(channel.decoded(frames))
 }
 
 fn row_step(row: &ChannelRow) -> bool {

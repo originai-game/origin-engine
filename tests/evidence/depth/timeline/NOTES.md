@@ -129,3 +129,9 @@ the bottom anchor (y 670), time 3.983 at 4 s, the trickster on its way,
   og.path.sample feeds it) belongs to S1 and is not wired here.
 - At the end, transform and animation tracks leave their last values;
   only the camera is handed back. This matches the IDL doc.
+
+Since: the tube along a path landed at 81ed13f1 (`og.render.tubeGeometry`'s
+`desc.path`, og-runtime `tests/tube_path.rs`), the hot reload with a playing
+timeline at d1576245 (og-runtime `tests/timeline.rs`), and the sound was
+heard on debt3/anim-import (og-runtime `tests/timeline_sound.rs`, the
+intro's capture in `tests/evidence/debt3/anim-import/`).

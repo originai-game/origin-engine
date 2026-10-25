@@ -616,3 +616,63 @@ fn every_dragonbones_skin_is_imported_and_the_default_comes_first() {
         k => panic!("{k:?}"),
     }
 }
+
+/// A child armature's skins (the old import noted them and dropped them):
+/// the flame's `armor` swaps its fire for the cloth, worn while the rig
+/// wears its own `armor`; in the default it shows its fire.
+#[test]
+fn a_child_armatures_skins_are_imported_and_worn_by_name() {
+    let ske = r#"{ "name": "kit", "version": "5.5", "frameRate": 10, "armature": [{
+  "name": "kit",
+  "bone": [{ "name": "root" }],
+  "slot": [{ "name": "body", "parent": "root", "displayIndex": 0 }, { "name": "lamp", "parent": "root", "displayIndex": 0 }],
+  "skin": [
+    { "name": "default", "slot": [
+      { "name": "body", "display": [{ "name": "shirt", "path": "arm" }] },
+      { "name": "lamp", "display": [{ "name": "flame", "type": "armature" }] } ] },
+    { "name": "armor", "slot": [
+      { "name": "body", "display": [{ "name": "plate", "path": "cloth" }] } ] }
+  ],
+  "animation": [{ "name": "idle", "duration": 10 }]
+}, {
+  "name": "flame",
+  "bone": [{ "name": "base" }],
+  "slot": [{ "name": "fire", "parent": "base", "displayIndex": 0 }],
+  "skin": [
+    { "name": "default", "slot": [{ "name": "fire", "display": [{ "name": "fire", "path": "arm" }] }] },
+    { "name": "armor", "slot": [{ "name": "fire", "display": [{ "name": "ember", "path": "cloth" }] }] }
+  ],
+  "animation": [{ "name": "idle", "duration": 10 }]
+}] }"#;
+    let root = project(
+        "dragonbones-child-skins",
+        &[
+            ("rigs/hero_tex.png", png(32, 16)),
+            ("rigs/hero_ske.json", ske.as_bytes().to_vec()),
+            ("rigs/hero_tex.json", ATLAS.as_bytes().to_vec()),
+            ("rigs/hero.ogt", IMPORT.as_bytes().to_vec()),
+        ],
+    );
+    let rig = cooked(&root).load_rig2d("rigs/hero.ogt").unwrap();
+    assert_eq!(rig.armatures.len(), 1);
+    let flame = &rig.armatures[0];
+    let id = |n: &str| {
+        flame
+            .attachments
+            .iter()
+            .position(|a| a.name == n)
+            .unwrap_or_else(|| panic!("{n}"))
+    };
+    assert_eq!(flame.skins.len(), 1);
+    assert_eq!(flame.skins[0].name, "armor");
+    assert_eq!(
+        flame.skins[0].swaps,
+        [(id("fire"), Some(id("armor/ember")))]
+    );
+    let fire = |skin: u32| {
+        let p = rig.pose_in_skin(Some(&rig.clips[0]), 0.0, &[], skin);
+        p.children[0].1.slots[0]
+    };
+    assert_eq!(fire(0), Some(id("fire")));
+    assert_eq!(fire(1), Some(id("armor/ember")));
+}

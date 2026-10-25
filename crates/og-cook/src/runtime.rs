@@ -2129,7 +2129,7 @@ impl CookedAnimation {
             for ch in rows {
                 let path = og_anim::ChannelPath::from_code(ch.path)
                     .ok_or_else(|| bad(format!("channel path {}", ch.path)))?;
-                let data = crate::anim_codec::decode(ch, c.frames, &samples, &packed)
+                let data = crate::anim_codec::samples(ch, c.frames, &samples, &packed)
                     .map_err(|e| bad(format!("clip channel: {e}")))?;
                 let node_name = skeleton
                     .nodes
