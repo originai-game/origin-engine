@@ -419,3 +419,177 @@ impl Reverb {
         }
     }
 }
+
+/// The head's radius the HRTF model assumes, metres (Brown and Duda's
+/// average adult head).
+pub const HEAD_RADIUS: f32 = 0.0875;
+/// The speed of sound inside the head model, m/s.
+pub const HEAD_SPEED_OF_SOUND: f32 = 343.0;
+/// Brown and Duda's head-shadow constants: the shadowed ear's zero falls to
+/// `ALPHA_MIN` at `THETA_MIN` from the ear's axis (150°).
+const ALPHA_MIN: f32 = 0.1;
+const THETA_MIN: f32 = 5.0 * PI / 6.0;
+/// Frames of the HRTF's delay line (a power of two): the farthest ear's
+/// delay, (a/c)(1 + π/2) = 0.66 ms, is 126 frames at 192 kHz.
+const HRTF_LINE: usize = 128;
+
+/// The HRTF panner of one voice, for headphones: Brown and Duda's
+/// spherical-head model ("A Structural Model for Binaural Sound Synthesis",
+/// IEEE Trans. Speech and Audio Processing 6(5), 1998), its head part. For
+/// each ear, with θ the angle between the source's direction and the ear's
+/// axis (the listener's ±X):
+///
+/// - **ITD** (Woodworth's formula, offset so the near ear has none):
+///   `(a/c)(1 − cos θ)` for θ < π/2, `(a/c)(1 + θ − π/2)` past it, read
+///   from a delay line with linear interpolation;
+/// - **head shadow** (ILD): the one-pole, one-zero filter
+///   `H(s) = (1 + α(θ)·s/2ω₀) / (1 + s/2ω₀)`, `ω₀ = c/a`,
+///   `α(θ) = (1 + α_min/2) + (1 − α_min/2)·cos(θ/θ_min·π)` with α_min 0.1
+///   and θ_min 150°, by the bilinear transform: flat at low frequencies, up
+///   to +6 dB above about 1 kHz at the near ear, down to −20 dB at the far
+///   one (with the bright spot behind the head).
+///
+/// The pinna and shoulder echoes of the paper are not modelled, so a source
+/// moves between the ears convincingly but front and back, and up and down,
+/// are not told apart (as with the stereo panner). The output is scaled by
+/// √½ so a centred source carries the low-frequency power of the
+/// equal-power panner's. Coefficients and delays glide linearly over the
+/// ramp a direction change asks for; the angle is og-core's deterministic
+/// `atan2` and `cos`, the rest plain f32 arithmetic.
+#[derive(Clone, Debug)]
+pub struct Hrtf {
+    line: [f32; HRTF_LINE],
+    at: usize,
+    /// Per ear (left, right): the delay in frames, the zero's b0 and b1,
+    /// and their targets and per-frame steps.
+    delay: [f32; 2],
+    b0: [f32; 2],
+    b1: [f32; 2],
+    delay_to: [f32; 2],
+    b0_to: [f32; 2],
+    b1_to: [f32; 2],
+    delay_step: [f32; 2],
+    b0_step: [f32; 2],
+    b1_step: [f32; 2],
+    ramp: u32,
+    a1: f32,
+    /// Filter state per ear: the last input and output.
+    x1: [f32; 2],
+    y1: [f32; 2],
+    /// 2·rate·τ of the bilinear transform (`rate · a / c`).
+    k: f32,
+    rate: f32,
+}
+
+impl Hrtf {
+    /// A panner at `rate`, looking straight ahead until `set`.
+    pub fn new(rate: f32) -> Hrtf {
+        let k = rate * HEAD_RADIUS / HEAD_SPEED_OF_SOUND;
+        let mut h = Hrtf {
+            line: [0.0; HRTF_LINE],
+            at: 0,
+            delay: [0.0; 2],
+            b0: [1.0; 2],
+            b1: [0.0; 2],
+            delay_to: [0.0; 2],
+            b0_to: [1.0; 2],
+            b1_to: [0.0; 2],
+            delay_step: [0.0; 2],
+            b0_step: [0.0; 2],
+            b1_step: [0.0; 2],
+            ramp: 0,
+            a1: (1.0 - k) / (1.0 + k),
+            x1: [0.0; 2],
+            y1: [0.0; 2],
+            k,
+            rate,
+        };
+        h.set([0.0, 0.0, -1.0], 0);
+        h
+    }
+
+    /// One ear's (delay in frames, b0, b1) for a source in direction `dir`
+    /// (listener frame, unit), the ear's axis being `side` (−1 left, 1 right).
+    fn ear(&self, dir: [f32; 3], side: f32) -> (f32, f32, f32) {
+        let c = (dir[0] * side).clamp(-1.0, 1.0);
+        let theta = og_core::math::atan2((1.0 - c * c).max(0.0).sqrt(), c);
+        let alpha = (1.0 + ALPHA_MIN * 0.5)
+            + (1.0 - ALPHA_MIN * 0.5) * og_core::math::cos(theta / THETA_MIN * PI);
+        let seconds = if theta < PI * 0.5 {
+            (HEAD_RADIUS / HEAD_SPEED_OF_SOUND) * (1.0 - c)
+        } else {
+            (HEAD_RADIUS / HEAD_SPEED_OF_SOUND) * (1.0 + theta - PI * 0.5)
+        };
+        let delay = (seconds * self.rate).clamp(0.0, (HRTF_LINE - 2) as f32);
+        let norm = 1.0 / (1.0 + self.k);
+        (
+            delay,
+            (1.0 + alpha * self.k) * norm,
+            (1.0 - alpha * self.k) * norm,
+        )
+    }
+
+    /// Points the panner at `dir` (the listener's frame: x right, y up, z
+    /// behind; normalised here), gliding there over `ramp` frames (0: at once).
+    pub fn set(&mut self, dir: [f32; 3], ramp: u32) {
+        let n = (dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]).sqrt();
+        let dir = if n > 1e-6 {
+            [dir[0] / n, dir[1] / n, dir[2] / n]
+        } else {
+            [0.0, 0.0, -1.0]
+        };
+        for (e, side) in [(0, -1.0), (1, 1.0)] {
+            let (d, b0, b1) = self.ear(dir, side);
+            self.delay_to[e] = d;
+            self.b0_to[e] = b0;
+            self.b1_to[e] = b1;
+            if ramp == 0 {
+                self.delay[e] = d;
+                self.b0[e] = b0;
+                self.b1[e] = b1;
+            } else {
+                let r = ramp as f32;
+                self.delay_step[e] = (d - self.delay[e]) / r;
+                self.b0_step[e] = (b0 - self.b0[e]) / r;
+                self.b1_step[e] = (b1 - self.b1[e]) / r;
+            }
+        }
+        self.ramp = ramp;
+    }
+
+    /// One mono frame in, (left, right) out.
+    #[inline]
+    pub fn process(&mut self, x: f32) -> (f32, f32) {
+        const MASK: usize = HRTF_LINE - 1;
+        self.line[self.at] = x;
+        if self.ramp > 0 {
+            self.ramp -= 1;
+            for e in 0..2 {
+                if self.ramp == 0 {
+                    self.delay[e] = self.delay_to[e];
+                    self.b0[e] = self.b0_to[e];
+                    self.b1[e] = self.b1_to[e];
+                } else {
+                    self.delay[e] += self.delay_step[e];
+                    self.b0[e] += self.b0_step[e];
+                    self.b1[e] += self.b1_step[e];
+                }
+            }
+        }
+        let mut out = [0.0f32; 2];
+        for (e, o) in out.iter_mut().enumerate() {
+            let d = self.delay[e];
+            let i = d as usize;
+            let f = d - i as f32;
+            let s0 = self.line[(self.at + HRTF_LINE - i) & MASK];
+            let s1 = self.line[(self.at + HRTF_LINE - i - 1) & MASK];
+            let delayed = s0 + (s1 - s0) * f;
+            let y = self.b0[e] * delayed + self.b1[e] * self.x1[e] - self.a1 * self.y1[e];
+            self.x1[e] = delayed;
+            self.y1[e] = y;
+            *o = y * std::f32::consts::FRAC_1_SQRT_2;
+        }
+        self.at = (self.at + 1) & MASK;
+        (out[0], out[1])
+    }
+}

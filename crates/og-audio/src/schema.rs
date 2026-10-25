@@ -93,6 +93,32 @@ pub struct AudioSource {
     /// Starts, stops and volume changes ramp over this long (crossfades, stems brought in and out); 0 is 5 ms.
     #[reflect(min = 0, max = 30, unit = "s", tunable)]
     pub fade: f32,
+    /// Doppler: how much a spatial source's and the listener's motion along the line between them shifts its pitch (their tick velocities, from world positions down og.Parent); 1 is physical, 0 is off. Times og.AudioListener.dopplerFactor, against og.Audio.speedOfSound.
+    #[reflect(name = "dopplerFactor", min = 0, max = 10, default = 1, tunable)]
+    pub doppler_factor: f32,
+    /// Directivity, as three.js PositionalAudio.setDirectionalCone and Web Audio's PannerNode: a spatial source plays at full volume while the listener is within this full angle about the source's +Z; 360 (with coneOuterAngle 360) is omnidirectional.
+    #[reflect(
+        name = "coneInnerAngle",
+        min = 0,
+        max = 360,
+        default = 360,
+        unit = "deg",
+        tunable
+    )]
+    pub cone_inner_angle: f32,
+    /// Past this full angle about the source's +Z it plays at coneOuterGain; between the two angles the gain falls linearly.
+    #[reflect(
+        name = "coneOuterAngle",
+        min = 0,
+        max = 360,
+        default = 360,
+        unit = "deg",
+        tunable
+    )]
+    pub cone_outer_angle: f32,
+    /// The gain outside coneOuterAngle.
+    #[reflect(name = "coneOuterGain", min = 0, max = 1, tunable)]
+    pub cone_outer_gain: f32,
 }
 
 impl Default for AudioSource {
@@ -118,6 +144,10 @@ impl Default for AudioSource {
             start_at: 0.0,
             start_offset: 0.0,
             fade: 0.0,
+            doppler_factor: 1.0,
+            cone_inner_angle: 360.0,
+            cone_outer_angle: 360.0,
+            cone_outer_gain: 0.0,
         }
     }
 }
@@ -142,11 +172,29 @@ pub struct AudioListener {
     /// A gain on every spatial source this listener hears.
     #[reflect(min = 0, max = 4, default = 1, tunable)]
     pub volume: f32,
+    /// Scales every spatial source's Doppler shift (og.AudioSource.dopplerFactor); 0 turns Doppler off for this listener.
+    #[reflect(name = "dopplerFactor", min = 0, max = 10, default = 1, tunable)]
+    pub doppler_factor: f32,
+    /// How spatial sources are placed between the ears: equalpower (the stereo panner, for speakers) or hrtf (a spherical-head model for headphones: interaural time and level differences).
+    #[reflect(name = "panningModel", variants = ["equalpower", "hrtf"])]
+    pub panning_model: u32,
+}
+
+/// `og.AudioListener.panningModel` values.
+pub mod panning_model {
+    /// Web Audio's equal-power panner (the default).
+    pub const EQUALPOWER: u32 = 0;
+    /// The spherical-head HRTF approximation, for headphones.
+    pub const HRTF: u32 = 1;
 }
 
 impl Default for AudioListener {
     fn default() -> Self {
-        AudioListener { volume: 1.0 }
+        AudioListener {
+            volume: 1.0,
+            doppler_factor: 1.0,
+            panning_model: panning_model::EQUALPOWER,
+        }
     }
 }
 
@@ -191,6 +239,16 @@ pub struct Audio {
     /// Seconds from a sample's world time to the speaker, as the host reports it between ticks (og.audio.outputLatency); 0 headless.
     #[reflect(name = "outputLatency", min = 0, unit = "s")]
     pub output_latency: f64,
+    /// The speed of sound Doppler shifts are computed against (og.AudioSource.dopplerFactor).
+    #[reflect(
+        name = "speedOfSound",
+        min = 1,
+        max = 10000,
+        default = 343.3,
+        unit = "mps",
+        tunable
+    )]
+    pub speed_of_sound: f32,
 }
 
 impl Default for Audio {
@@ -206,6 +264,7 @@ impl Default for Audio {
             reverb_room: 0.6,
             reverb_damping: 0.4,
             output_latency: 0.0,
+            speed_of_sound: 343.3,
         }
     }
 }
@@ -285,6 +344,10 @@ pub struct AudioPlayback {
     pub loop_end: u32,
     /// The low-pass cutoff last sent, Hz (0: open).
     pub lowpass: f32,
+    /// The source's world position in the last tick (its Doppler velocity is the change).
+    pub position: Vec3,
+    /// The direction last sent to the HRTF panner, in the listener's frame (zero: the stereo panner).
+    pub direction: Vec3,
 }
 
 /// Engine-owned: the command stream's running hash and counters. Being a
@@ -309,6 +372,11 @@ pub struct AudioStream {
     pub bus_sent: og_core::glam::Vec4,
     /// A hash of the bus effects last sent.
     pub fx: u64,
+    /// The listener heard from last tick (its entity's bits; 0: none).
+    pub listener: u64,
+    /// That listener's world position last tick (its Doppler velocity is the change).
+    #[reflect(name = "listenerAt")]
+    pub listener_at: Vec3,
 }
 
 /// The engine's `og.Parent`, mirrored so the system can place sources,

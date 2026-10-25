@@ -121,7 +121,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1218 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1220 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -918,6 +918,8 @@ Field units the docs and Tune use.
 | [`Palette`](render.md#type-Palette) | handle | render | — |
 | [`Palette()`](render.md#column-Palette) | column kind | render | — |
 | [`PanelDesc`](ui.md#type-PanelDesc) | desc struct | ui | — |
+| [`PanningModel`](audio.md#type-PanningModel) | enum | audio | — |
+| [`PanningModel()`](audio.md#column-PanningModel) | column kind | audio | — |
 | [`ParticleEmitter`](render.md#type-ParticleEmitter) | handle | render | — |
 | [`ParticleEmitter()`](render.md#column-ParticleEmitter) | column kind | render | — |
 | [`PARTICLES_ARMED`](render.md#const-PARTICLES_ARMED) | constant | render | — |

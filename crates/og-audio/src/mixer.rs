@@ -29,7 +29,7 @@
 //!   release) through a tanh soft knee at -1.9 dBFS: |output| < 1.0.
 
 use crate::command::{Command, Op, TickPacket, fx};
-use crate::dsp::{Biquad, Compressor, Ducker, OnePole, Reverb};
+use crate::dsp::{Biquad, Compressor, Ducker, Hrtf, OnePole, Reverb};
 use crate::listen::Listen;
 use crate::schema::BUS_COUNT;
 use crate::sound::{Reader, SoundBank};
@@ -127,6 +127,9 @@ struct Voice {
     stopping: bool,
     done: bool,
     lp: OnePole,
+    /// The HRTF panner, while the voice has a direction (`hrtf` commands);
+    /// `None` is the stereo panner.
+    hrtf: Option<Box<Hrtf>>,
 }
 
 /// Web Audio's StereoPannerNode gains for `pan`, as a matrix.
@@ -175,7 +178,12 @@ impl Voice {
         } else {
             self.gain * self.bus_gain(buses)
         };
-        self.target = pan_matrix(self.pan, self.stereo, g);
+        self.target = if self.hrtf.is_some() {
+            // The HRTF makes both ears; the matrix only carries the gain.
+            [g, 0.0, 0.0, g]
+        } else {
+            pan_matrix(self.pan, self.stereo, g)
+        };
         if frames == 0 {
             self.cur = self.target;
             self.ramp = 0;
@@ -262,9 +270,12 @@ impl Voice {
             let frac = (self.pos - i as f64) as f32;
             let (al, ar) = self.reader.frame(i);
             let (bl, br) = self.reader.frame(self.next_index(i));
-            let (l, r) = self
+            let (mut l, mut r) = self
                 .lp
                 .process(al + (bl - al) * frac, ar + (br - ar) * frac);
+            if let Some(h) = &mut self.hrtf {
+                (l, r) = h.process(if self.stereo { 0.5 * (l + r) } else { l });
+            }
             if self.ramp > 0 {
                 for k in 0..4 {
                     self.cur[k] += self.inc[k];
@@ -654,6 +665,34 @@ impl Mixer {
                             }
                         }
                     }
+                    Op::Hrtf => {
+                        let buses = self.buses;
+                        let dir = [c.gain, c.pitch, c.pan];
+                        let off = dir.iter().all(|x| *x == 0.0 || !x.is_finite());
+                        for v in self
+                            .voices
+                            .iter_mut()
+                            .filter(|v| v.id == c.voice && !v.stopping)
+                        {
+                            match (&mut v.hrtf, off) {
+                                (Some(_), true) => v.hrtf = None,
+                                (Some(h), false) => {
+                                    h.set(dir, RAMP_FRAMES);
+                                    continue;
+                                }
+                                (None, true) => continue,
+                                (None, false) => {
+                                    let mut h = Hrtf::new(rate);
+                                    h.set(dir, 0);
+                                    v.hrtf = Some(Box::new(h));
+                                }
+                            }
+                            // The matrix follows the panner, finishing a
+                            // ramp in progress (a resync's fade-in).
+                            let ramp = v.ramp;
+                            v.retarget(&buses, ramp);
+                        }
+                    }
                     Op::StopAll => {
                         let buses = self.buses;
                         for v in &mut self.voices {
@@ -709,6 +748,7 @@ impl Mixer {
             stopping: false,
             done: false,
             lp: OnePole::default(),
+            hrtf: None,
         };
         v.apply(c);
         v.lp.set(c.lowpass, self.desc.sample_rate as f32, 0);

@@ -6391,12 +6391,14 @@
     },
     {
       "name": "audio",
-      "doc": "Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively).\nThe stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Load sounds with og.load.sound; inserting a source plays it, setting `playing` false stops it, and a one-shot sets `playing` back to false when it ends.\nSpatial gain and pan are computed in the tick from the source's world transform relative to the first AudioListener's (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z). A source, listener or zone on a child entity is placed at its og.Transform composed down og.Parent, as og.MatrixWorld is: a sound on a child is heard where its parent carries it, a listener under a camera rig hears from the rig.",
+      "doc": "Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively).\nThe stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Load sounds with og.load.sound; inserting a source plays it, setting `playing` false stops it, and a one-shot sets `playing` back to false when it ends.\nSpatial gain and pan are computed in the tick from the source's world transform relative to the first AudioListener's (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z). A source, listener or zone on a child entity is placed at its og.Transform composed down og.Parent, as og.MatrixWorld is: a sound on a child is heard where its parent carries it, a listener under a camera rig hears from the rig.\nPropagation, all in the tick and so in the stream: a spatial source or listener that moves shifts the pitch (Doppler, from their tick velocities: AudioSource.dopplerFactor, AudioListener.dopplerFactor, Audio.speedOfSound), a source with a cone is turned down away from its +Z (coneInnerAngle, coneOuterAngle, coneOuterGain, as three.js's setDirectionalCone), and a listener whose panningModel is hrtf places sources for headphones (interaural delay and head shadow) instead of the stereo panner.",
       "place": "namespace",
       "publish": true,
       "types": [
         "AudioBus",
         "AudioBus",
+        "PanningModel",
+        "PanningModel",
         "AudioSource",
         "AudioListener",
         "Audio",
@@ -25811,6 +25813,20 @@
         "ui": "Interface sounds."
       }
     },
+    "PanningModel": {
+      "x-og-kind": "enum",
+      "x-og-module": "audio",
+      "description": "How an AudioListener places spatial sources between the ears, as Web Audio's PannerNode.panningModel.",
+      "type": "string",
+      "enum": [
+        "equalpower",
+        "hrtf"
+      ],
+      "x-og-variants": {
+        "equalpower": "The stereo panner (Web Audio's equal-power law): for speakers.",
+        "hrtf": "For headphones: a spherical-head model (Brown and Duda, 1998) that delays the far ear by the interaural time difference (up to 0.66 ms) and shadows its highs (up to -20 dB), so a source moves between the ears; front and back, up and down are not told apart (no pinna)."
+      }
+    },
     "AudioSource": {
       "x-og-kind": "component",
       "x-og-module": "audio",
@@ -25957,6 +25973,40 @@
           "maximum": 30,
           "x-og-unit": "s",
           "x-og-tunable": true
+        },
+        "dopplerFactor": {
+          "type": "number",
+          "description": "Doppler: how much a spatial source's and the listener's motion along the line between them shifts its pitch, from their tick velocities (world positions down og.Parent): pitch times (c - DF * vListener) / (c - DF * vSource), c being Audio.speedOfSound and DF this times AudioListener.dopplerFactor (OpenAL's model). 1 is physical, 0 is off. A jump at or past the speed of sound in a tick is a teleport and shifts nothing; DF * v is held within c/2, so the shift stays within a factor of 3.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "coneInnerAngle": {
+          "type": "number",
+          "description": "Directivity, as three.js PositionalAudio.setDirectionalCone and Web Audio's PannerNode: a spatial source plays at full volume while the listener is within this full angle about the source's +Z (its world transform's, three.js's PositionalAudio orientation); 360 with coneOuterAngle 360 is omnidirectional.",
+          "default": 360,
+          "minimum": 0,
+          "maximum": 360,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "coneOuterAngle": {
+          "type": "number",
+          "description": "Past this full angle about the source's +Z it plays at coneOuterGain; between coneInnerAngle and this the gain falls linearly with the angle.",
+          "default": 360,
+          "minimum": 0,
+          "maximum": 360,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "coneOuterGain": {
+          "type": "number",
+          "description": "The gain outside coneOuterAngle.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
         }
       },
       "additionalProperties": false
@@ -25974,6 +26024,19 @@
           "minimum": 0,
           "maximum": 4,
           "x-og-tunable": true
+        },
+        "dopplerFactor": {
+          "type": "number",
+          "description": "Scales every spatial source's Doppler shift (AudioSource.dopplerFactor); 0 turns Doppler off for this listener.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "panningModel": {
+          "$ref": "#/$defs/PanningModel",
+          "description": "How spatial sources are placed between the ears: equalpower (speakers) or hrtf (headphones). Non-spatial sources keep their pan either way; the stereo path is unchanged while it is equalpower.",
+          "default": "equalpower"
         }
       },
       "additionalProperties": false
@@ -26065,6 +26128,15 @@
           "minimum": 0,
           "x-og-unit": "s",
           "readOnly": true
+        },
+        "speedOfSound": {
+          "type": "number",
+          "description": "The speed of sound Doppler shifts are computed against (AudioSource.dopplerFactor).",
+          "default": 343.3,
+          "minimum": 1,
+          "maximum": 10000,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
         }
       },
       "additionalProperties": false

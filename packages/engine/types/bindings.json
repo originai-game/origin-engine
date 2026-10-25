@@ -321,6 +321,12 @@
       "value": "AudioBus"
     },
     {
+      "name": "PanningModel",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "PanningModel"
+    },
+    {
       "name": "Navigation",
       "array": "Uint32Array",
       "stride": 2,
@@ -4322,6 +4328,30 @@
           "column": "f32",
           "default": 0,
           "tunable": true
+        },
+        {
+          "name": "dopplerFactor",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "coneInnerAngle",
+          "column": "f32",
+          "default": 360,
+          "tunable": true
+        },
+        {
+          "name": "coneOuterAngle",
+          "column": "f32",
+          "default": 360,
+          "tunable": true
+        },
+        {
+          "name": "coneOuterGain",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
         }
       ]
     },
@@ -4336,6 +4366,17 @@
           "column": "f32",
           "default": 1,
           "tunable": true
+        },
+        {
+          "name": "dopplerFactor",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "panningModel",
+          "column": "PanningModel",
+          "default": "equalpower"
         }
       ]
     },
@@ -7287,6 +7328,12 @@
           "column": "f64",
           "default": 0,
           "readonly": true
+        },
+        {
+          "name": "speedOfSound",
+          "column": "f32",
+          "default": 343.3,
+          "tunable": true
         }
       ]
     },

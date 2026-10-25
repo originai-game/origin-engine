@@ -27,7 +27,7 @@ ordinary dependency).
 | Module | Entry points |
 |---|---|
 | `system` | `install(&mut World, &AudioDesc) -> AudioLink`, `AudioLink` (`bank`, `attach`, `detach`, `drain`, `next_tick`, `dropped`), `publish_link`/`link`/`retire_link` (engine id → link), `SYSTEM_NAME` = `og.audio` |
-| `schema` | `AudioSource`, `AudioListener`, `Audio`, `ReverbZone` (`weight_at`), `SoundStarted`, `SoundEnded`, `end_reason`, engine-owned `AudioPlayback`, `AudioStream`, the `og.Transform` mirror, `Bus` |
+| `schema` | `AudioSource`, `AudioListener`, `Audio`, `ReverbZone` (`weight_at`), `SoundStarted`, `SoundEnded`, `end_reason`, `panning_model`, engine-owned `AudioPlayback`, `AudioStream`, the `og.Transform` mirror, `Bus` |
 | `command` | `Command`, `Op`, `encode`/`decode` (56-byte records), `TickPacket` |
 | `sound` | `SoundBank` (`insert_qoa`, `insert_pcm`, `insert_chunked`, `put_chunk`, `keep_chunks`, `set_chunk_loader`, `resident_bytes`, `get`, `info`, `remove`; `with_resident_seconds`), `SoundData` (`chunking`, `resident_chunks`, `resident_bytes`), `chunks_wanted` (§Chunked sounds) |
 | `mixer` | `Mixer::new(MixerDesc, SoundBank)` / `Mixer::for_link`, `push`, `pump`, `render`, `render_until_tick`, `frames_until_tick`, `skip`, `stats`; `Clock::{Driven, Free}` |
@@ -144,7 +144,7 @@ One 56-byte little-endian record per command (`command.rs`):
 
 | offset | type | field | meaning |
 |---:|---|---|---|
-| 0 | u8 | `op` | 1 play, 2 stop, 3 params, 4 bus, 5 stop-all |
+| 0 | u8 | `op` | 1 play, 2 stop, 3 params, 4 bus, 5 stop-all, 6 fx, 7 cue, 8 hrtf (§Propagation) |
 | 1 | u8 | `flags` | bit 0 loop, bit 1 spatial |
 | 2 | u8 | `bus` | 0 master, 1 music, 2 sfx, 3 ui |
 | 3 | u8 | reserved | 0 |
@@ -262,6 +262,77 @@ across a restore; a click rings inside and not outside), scheduled starts on the
 clock and a stinger on the bar line, a two-second crossfade, the voice cap,
 occlusion and distance dulling, and the same PCM twice with `listen`
 returning its last second (`$OG_EVIDENCE_DIR/M6/e6-mix.{wav,json}`).
+
+## Propagation
+
+Doppler, cone directivity and the HRTF panner (round 4). Doppler and the
+cone are computed in the tick, like gain and pan, so they are part of the
+stream and the world hash; the HRTF is the mixer's, steered by `hrtf`
+commands.
+
+Records (`schema.rs`, IDL module `audio`):
+
+| record | field | type | default | meaning |
+|---|---|---|---|---|
+| `og.AudioSource` | `dopplerFactor` | f32 | 1 (0–10, tunable) | how much motion shifts a spatial source's pitch; 0 off |
+| | `coneInnerAngle` | f32 | 360 (deg) | full volume within this full angle about the source's +Z |
+| | `coneOuterAngle` | f32 | 360 (deg) | `coneOuterGain` past this full angle |
+| | `coneOuterGain` | f32 | 0 (0–1) | the gain outside the outer angle |
+| `og.AudioListener` | `dopplerFactor` | f32 | 1 (0–10) | scales every source's shift; 0 turns Doppler off for the listener |
+| | `panningModel` | enum | `equalpower` | `equalpower` (speakers) or `hrtf` (headphones) |
+| `og.Audio` | `speedOfSound` | f32 | 343.3 (m/s) | what Doppler divides by |
+| `og.AudioPlayback` (engine) | `position`, `direction` | Vector3 | | the source's world position last tick; the direction last sent to the HRTF (zero: the panner) |
+| `og.AudioStream` (engine) | `listener`, `listenerAt` | u64, Vector3 | | the listener heard last tick (0: none) and where it was |
+
+- **Doppler** (OpenAL 1.1's model, Web Audio's former PannerNode one):
+  pitch × `(c − DF·vl) / (c − DF·vs)`, `vs` and `vl` the source's and the
+  listener's velocities along the line from the source to the listener,
+  `c` = `og.Audio.speedOfSound`, `DF` = the source's `dopplerFactor` × the
+  listener's. Velocities are tick velocities: the change of the world
+  position (its `og.Transform` down `og.Parent`, §Tick semantics) since
+  the last tick × the tick rate, so a source carried by a moving parent
+  shifts as one placed there would. A voice's first tick, a source that
+  was not spatial last tick and a listener that was not the listener last
+  tick have no velocity; a jump at or past the speed of sound in one tick
+  is a teleport (a warp, a respawn) and counts as still. Each `DF·v` is
+  held within ±c/2, so the shift stays within ×1/3..×3. The shifted pitch
+  is the voice's pitch in the stream, so the playhead (and the tick a
+  one-shot ends on) follows it. Static scenes compute a ratio of exactly
+  1: their stream is the one before Doppler, bit for bit.
+- **Cones** (Web Audio's PannerNode cone, three.js PositionalAudio's
+  `setDirectionalCone`): with θ the angle between the source's world +Z
+  (three.js orients a PositionalAudio by +Z) and the listener, the gain is
+  1 for θ ≤ inner/2, `coneOuterGain` for θ ≥ outer/2, linear in θ
+  between; 360/360 is exactly 1. θ is og-core's deterministic `atan2`.
+- **HRTF** (`panningModel` hrtf): the tick sends op 8 `hrtf` per spatial
+  voice after its play (and its params) whenever its direction in the
+  listener's frame changed (x, y, z in `gain`, `pitch`, `pan`), and with
+  every resynced play; the zero vector (the listener back on
+  `equalpower`) returns the voice to the stereo panner. The mixer's voice
+  then folds to mono and runs Brown and Duda's spherical-head model (IEEE
+  Trans. Speech and Audio Processing 6(5), 1998, its head part; `dsp.rs`
+  `Hrtf`): per ear an interaural delay by Woodworth's formula (up to
+  (a/c)(1 + π/2) = 0.66 ms, 31.5 frames at 48 kHz; read from a 128-frame
+  delay line with linear interpolation) and the head-shadow filter
+  `(1 + α(θ)s/2ω₀)/(1 + s/2ω₀)` (a = 8.75 cm, ω₀ = c/a, α from 2 at the
+  ear's axis to 0.1 at 150° from it), by the bilinear transform; the
+  output is scaled by √½ so a centred source keeps the equal-power
+  panner's low-frequency power. Delays and coefficients glide over the
+  256-frame ramp. No pinna or shoulder echoes: sources move between the
+  ears, front/back and up/down are not resolved. Non-spatial sources keep
+  their pan. With `equalpower` no `hrtf` command is sent and the voice
+  path is the one before the HRTF, sample for sample.
+
+Tests: `tests/propagation.rs` (Doppler against OpenAL's formula in f64 at
+20 m/s coming and going, heard 440 Hz → 467/416 Hz, factor 0 on either
+side, factor 2, a 200 m teleport, a listener walking at 5 m/s; a 60°/180°
+cone with outer gain 0.2 at eight angles, turned to face −Z, and the
+omnidirectional default; the HRTF's far-ear lag of 31–32 frames by
+cross-correlation, its highs 5× down and its lows not, a source ahead
+identical in both ears, no `hrtf` command and hard right on `equalpower`,
+and the panner back after switching mid-run; a walk with every feature on
+the same twice, samples and stream, and across a restore at tick 117) and
+`tests/parented.rs` (a carried source's pitch bits equal a placed one's).
 
 ## Chunked sounds
 
@@ -452,12 +523,9 @@ chunked sounds (`tests/evidence/P4/cook/sound-chunks.md`).
 
 Effects, ducking, ray-cast occlusion, distance low-pass, music clock and
 crossfades, scheduled starts, priority and the voice cap, `listen`, `og run
---audio` and chunked streaming of long sounds have landed (§E6, §Chunked
-sounds). Still owed:
+--audio`, chunked streaming of long sounds and propagation (Doppler, cones,
+the HRTF) have landed (§E6, §Chunked sounds, §Propagation). Still owed:
 
-- **Propagation**: Doppler, HRTF for headphones, cone directivity.
-  (Parented sources, listeners and zones are composed down `og.Parent`
-  since row 86: §Tick semantics.)
 - Better resampling (windowed sinc), voice virtualisation (a culled voice
   resuming where it would be), retrigger without a level change.
 - Decoding off the engine Worker (the mixer decodes QOA frames as voices

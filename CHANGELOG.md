@@ -9,6 +9,21 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- Doppler on spatial audio: `og.AudioSource.dopplerFactor` (1; 0 off),
+  `og.AudioListener.dopplerFactor` (1) and `og.Audio.speedOfSound`
+  (343.3 m/s). The pitch follows OpenAL's model from the source's and the
+  listener's tick velocities, composed down `og.Parent`; a jump faster
+  than sound in one tick is a teleport and shifts nothing. Moving spatial
+  sources and listeners now sound shifted: set `dopplerFactor` 0 to keep
+  the old pitch. The records' layouts change (saves restore with
+  `migrate`).
+- Cone directivity: `og.AudioSource.coneInnerAngle`, `coneOuterAngle`
+  (360°) and `coneOuterGain` (0), Web Audio's PannerNode cone about the
+  source's +Z as three.js's `setDirectionalCone`.
+- HRTF for headphones: `og.AudioListener.panningModel` (`PanningModel`:
+  `equalpower` default, `hrtf`), a spherical-head model (Brown and Duda:
+  interaural delay and head shadow) in the mixer, steered by a new `hrtf`
+  command (op 8) in the stream; with `equalpower` the mix is unchanged.
 - `og.CollisionStarted` gains `impulse` (N·s, the normal impulse the
   solver gave the pair in the step that made the contact, summed over
   substeps and contact points: `b` takes it along `normal`, `a` against

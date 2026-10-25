@@ -5,16 +5,16 @@
 //!
 //! | offset | type | field | meaning |
 //! |---:|---|---|---|
-//! | 0 | u8 | `op` | 1 play, 2 stop, 3 params, 4 bus, 5 stop-all, 6 fx, 7 cue |
+//! | 0 | u8 | `op` | 1 play, 2 stop, 3 params, 4 bus, 5 stop-all, 6 fx, 7 cue, 8 hrtf |
 //! | 1 | u8 | `flags` | bit 0 loop, bit 1 spatial |
 //! | 2 | u8 | `bus` | 0 master, 1 music, 2 sfx, 3 ui (the bus a `bus` or `fx` op sets) |
 //! | 3 | u8 | reserved | 0 |
 //! | 4 | u32 | `voice` | the voice id (0 for `bus`, `stop-all`; the parameter for `fx`, [`fx`]) |
 //! | 8 | u64 | `tick` | the tick whose start the command takes effect at |
 //! | 16 | u64 | `sound` | the sound handle (`play`) |
-//! | 24 | f32 | `gain` | voice gain, the bus gain for `bus`, the value for `fx` |
-//! | 28 | f32 | `pitch` | playback rate |
-//! | 32 | f32 | `pan` | -1 left .. 1 right |
+//! | 24 | f32 | `gain` | voice gain, the bus gain for `bus`, the value for `fx`; `hrtf`: the direction's x (right) |
+//! | 28 | f32 | `pitch` | playback rate; `hrtf`: y (up) |
+//! | 32 | f32 | `pan` | -1 left .. 1 right; `hrtf`: z (behind) |
 //! | 36 | u32 | `loop_start` | loop start, frames of the sound |
 //! | 40 | u32 | `loop_end` | loop end (exclusive), frames; 0 = the sound's end |
 //! | 44 | f32 | `lowpass` | the voice's low-pass cutoff in Hz (play, params); 0 open |
@@ -39,6 +39,13 @@ pub enum Op {
     /// its play's delay), at full gain: `AudioSource.startOffset`. Follows
     /// its `play` in the same tick; only sent for an offset above 0.
     Cue = 7,
+    /// `voice`'s direction from the listener, in the listener's frame (a
+    /// unit vector: x right in `gain`, y up in `pitch`, z behind in `pan`),
+    /// for the HRTF panner (`og.AudioListener.panningModel` hrtf); the zero
+    /// vector puts the voice back on the stereo panner. Sent only while the
+    /// listener uses the HRTF, after the voice's `play` or `params` in the
+    /// same tick, when the direction changed.
+    Hrtf = 8,
 }
 
 /// The effect parameters an `fx` command sets (its `voice` field).
@@ -81,6 +88,7 @@ impl Op {
             5 => Op::StopAll,
             6 => Op::Fx,
             7 => Op::Cue,
+            8 => Op::Hrtf,
             _ => return None,
         })
     }

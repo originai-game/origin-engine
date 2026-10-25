@@ -8,6 +8,8 @@ The stream, not the PCM, is world state: snapshots, restore and the world hash c
 
 Spatial gain and pan are computed in the tick from the source's world transform relative to the first AudioListener's (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z). A source, listener or zone on a child entity is placed at its og.Transform composed down og.Parent, as og.MatrixWorld is: a sound on a child is heard where its parent carries it, a listener under a camera rig hears from the rig.
 
+Propagation, all in the tick and so in the stream: a spatial source or listener that moves shifts the pitch (Doppler, from their tick velocities: AudioSource.dopplerFactor, AudioListener.dopplerFactor, Audio.speedOfSound), a source with a cone is turned down away from its +Z (coneInnerAngle, coneOuterAngle, coneOuterGain, as three.js's setDirectionalCone), and a listener whose panningModel is hrtf places sources for headphones (interaural delay and head shadow) instead of the stereo panner.
+
 - **TypeScript**: functions are the namespace `og.audio`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Skill**: `og-audio`, which teaches the module (how much of it to use, and how to prove it).
@@ -31,6 +33,8 @@ module audio {
 | [`SOUND_CULLED`](#const-SOUND_CULLED) | constant | SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age). |
 | [`AudioBus`](#type-AudioBus) | enum | The bus a source plays on; every bus passes through master. |
 | [`AudioBus()`](#column-AudioBus) | column kind | An AudioBus field: the variant's index. |
+| [`PanningModel`](#type-PanningModel) | enum | How an AudioListener places spatial sources between the ears, as Web Audio's PannerNode.panningModel. |
+| [`PanningModel()`](#column-PanningModel) | column kind | A PanningModel field: the variant's index. |
 | [`og.AudioSource`](#record-AudioSource) | component | A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded. |
 | [`og.AudioListener`](#record-AudioListener) | component | Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right. The first listener in query order is used. |
 | [`og.Audio`](#record-Audio) | resource | Bus volumes; master scales every bus. A change ramps over 256 frames in the mixer. |
@@ -73,7 +77,7 @@ fn outputLatency {
 }
 ```
 
-<sub>`api.ogt` line 9067</sub>
+<sub>`api.ogt` line 9122</sub>
 
 ## Components, resources and events
 
@@ -109,6 +113,10 @@ Token `og.AudioSource`, registered under the schema name `og.AudioSource`; its v
 | `startAt` | `number` | `0` | ≥ 0 | `s` | — | Starts at this world time (seconds since tick 0), to the sample, even inside a tick; 0 or a time past starts at once. Music.nextBar and Music.nextBeat give musical times. |
 | `startOffset` | `number` | `0` | ≥ 0 | `s` | — | Where in the sound it starts, in seconds of the sound: started at startAt (or at once) from this far in, to the sample and at full gain, so a resumed phrase continues instead of restarting. Past a one-shot's end it plays nothing; a loop wraps into its region. |
 | `fade` | `number` | `0` | 0 … 30 | `s` | tunable | Starts, stops and volume changes ramp over this long: a crossfade is one source stopped and another started with the same fade; 0 is 5 ms. |
+| `dopplerFactor` | `number` | `1` | 0 … 10 | — | tunable | Doppler: how much a spatial source's and the listener's motion along the line between them shifts its pitch, from their tick velocities (world positions down og.Parent): pitch times (c - DF * vListener) / (c - DF * vSource), c being Audio.speedOfSound and DF this times AudioListener.dopplerFactor (OpenAL's model). 1 is physical, 0 is off. A jump at or past the speed of sound in a tick is a teleport and shifts nothing; DF * v is held within c/2, so the shift stays within a factor of 3. |
+| `coneInnerAngle` | `number` | `360` | 0 … 360 | `deg` | tunable | Directivity, as three.js PositionalAudio.setDirectionalCone and Web Audio's PannerNode: a spatial source plays at full volume while the listener is within this full angle about the source's +Z (its world transform's, three.js's PositionalAudio orientation); 360 with coneOuterAngle 360 is omnidirectional. |
+| `coneOuterAngle` | `number` | `360` | 0 … 360 | `deg` | tunable | Past this full angle about the source's +Z it plays at coneOuterGain; between coneInnerAngle and this the gain falls linearly with the angle. |
+| `coneOuterGain` | `number` | `0` | 0 … 1 | — | tunable | The gain outside coneOuterAngle. |
 
 ```ogt
 component AudioSource {
@@ -197,10 +205,35 @@ component AudioSource {
     unit s
     tunable true
   }
+  field dopplerFactor f32 "Doppler: how much a spatial source's and the listener's motion along the line between them shifts its pitch, from their tick velocities (world positions down og.Parent): pitch times (c - DF * vListener) / (c - DF * vSource), c being Audio.speedOfSound and DF this times AudioListener.dopplerFactor (OpenAL's model). 1 is physical, 0 is off. A jump at or past the speed of sound in a tick is a teleport and shifts nothing; DF * v is held within c/2, so the shift stays within a factor of 3." {
+    default 1
+    min 0
+    max 10
+    tunable true
+  }
+  field coneInnerAngle f32 "Directivity, as three.js PositionalAudio.setDirectionalCone and Web Audio's PannerNode: a spatial source plays at full volume while the listener is within this full angle about the source's +Z (its world transform's, three.js's PositionalAudio orientation); 360 with coneOuterAngle 360 is omnidirectional." {
+    default 360
+    min 0
+    max 360
+    unit deg
+    tunable true
+  }
+  field coneOuterAngle f32 "Past this full angle about the source's +Z it plays at coneOuterGain; between coneInnerAngle and this the gain falls linearly with the angle." {
+    default 360
+    min 0
+    max 360
+    unit deg
+    tunable true
+  }
+  field coneOuterGain f32 "The gain outside coneOuterAngle." {
+    min 0
+    max 1
+    tunable true
+  }
 }
 ```
 
-<sub>`api.ogt` line 8714</sub>
+<sub>`api.ogt` line 8728</sub>
 
 <a id="record-AudioListener"></a>
 
@@ -213,6 +246,8 @@ Token `og.AudioListener`, registered under the schema name `og.AudioListener`; i
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `volume` | `number` | `1` | 0 … 4 | — | tunable | A gain on every spatial source this listener hears. |
+| `dopplerFactor` | `number` | `1` | 0 … 10 | — | tunable | Scales every spatial source's Doppler shift (AudioSource.dopplerFactor); 0 turns Doppler off for this listener. |
+| `panningModel` | `PanningModel` | `"equalpower"` | — | — | — | How spatial sources are placed between the ears: equalpower (speakers) or hrtf (headphones). Non-spatial sources keep their pan either way; the stereo path is unchanged while it is equalpower. |
 
 ```ogt
 component AudioListener {
@@ -223,10 +258,19 @@ component AudioListener {
     max 4
     tunable true
   }
+  field dopplerFactor f32 "Scales every spatial source's Doppler shift (AudioSource.dopplerFactor); 0 turns Doppler off for this listener." {
+    default 1
+    min 0
+    max 10
+    tunable true
+  }
+  field panningModel PanningModel "How spatial sources are placed between the ears: equalpower (speakers) or hrtf (headphones). Non-spatial sources keep their pan either way; the stereo path is unchanged while it is equalpower." {
+    default equalpower
+  }
 }
 ```
 
-<sub>`api.ogt` line 8802</sub>
+<sub>`api.ogt` line 8841</sub>
 
 <a id="record-Audio"></a>
 
@@ -248,6 +292,7 @@ Token `og.Audio`, registered under the schema name `og.Audio`; its value type is
 | `reverbRoom` | `number` | `0.6` | 0 … 1 | — | tunable | The shared reverb's room size (the AudioBusFx.reverb sends feed it). |
 | `reverbDamping` | `number` | `0.4` | 0 … 1 | — | tunable | The shared reverb's damping of high frequencies. |
 | `outputLatency` | `number` | `0` | ≥ 0 | `s` | read only | Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency). |
+| `speedOfSound` | `number` | `343.3` | 1 … 10000 | `mps` | tunable | The speed of sound Doppler shifts are computed against (AudioSource.dopplerFactor). |
 
 ```ogt
 resource Audio {
@@ -311,10 +356,17 @@ resource Audio {
     unit s
     readonly true
   }
+  field speedOfSound f32 "The speed of sound Doppler shifts are computed against (AudioSource.dopplerFactor)." {
+    default 343.3
+    min 1
+    max 10000
+    unit mps
+    tunable true
+  }
 }
 ```
 
-<sub>`api.ogt` line 8812</sub>
+<sub>`api.ogt` line 8860</sub>
 
 <a id="record-AudioBusFx"></a>
 
@@ -435,7 +487,7 @@ component AudioBusFx {
 }
 ```
 
-<sub>`api.ogt` line 8875</sub>
+<sub>`api.ogt` line 8930</sub>
 
 <a id="record-ReverbZone"></a>
 
@@ -506,7 +558,7 @@ component ReverbZone {
 }
 ```
 
-<sub>`api.ogt` line 8964</sub>
+<sub>`api.ogt` line 9019</sub>
 
 <a id="record-Music"></a>
 
@@ -562,7 +614,7 @@ component Music {
 }
 ```
 
-<sub>`api.ogt` line 9010</sub>
+<sub>`api.ogt` line 9065</sub>
 
 <a id="record-MusicBeat"></a>
 
@@ -589,7 +641,7 @@ event MusicBeat {
 }
 ```
 
-<sub>`api.ogt` line 9044</sub>
+<sub>`api.ogt` line 9099</sub>
 
 <a id="record-SoundStarted"></a>
 
@@ -614,7 +666,7 @@ event SoundStarted {
 }
 ```
 
-<sub>`api.ogt` line 9052</sub>
+<sub>`api.ogt` line 9107</sub>
 
 <a id="record-SoundEnded"></a>
 
@@ -641,7 +693,7 @@ event SoundEnded {
 }
 ```
 
-<sub>`api.ogt` line 9059</sub>
+<sub>`api.ogt` line 9114</sub>
 
 ## Types
 
@@ -670,7 +722,30 @@ enum AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 8699</sub>
+<sub>`api.ogt` line 8700</sub>
+
+<a id="type-PanningModel"></a>
+
+### `PanningModel` (enum)
+
+How an AudioListener places spatial sources between the ears, as Web Audio's PannerNode.panningModel.
+
+A string: one of the variants below. The zero value is `"equalpower"`.
+
+| Variant | Doc |
+|---|---|
+| `"equalpower"` | The stereo panner (Web Audio's equal-power law): for speakers. |
+| `"hrtf"` | For headphones: a spherical-head model (Brown and Duda, 1998) that delays the far ear by the interaural time difference (up to 0.66 ms) and shadows its highs (up to -20 dB), so a source moves between the ears; front and back, up and down are not told apart (no pinna). |
+
+```ogt
+enum PanningModel {
+  doc "How an AudioListener places spatial sources between the ears, as Web Audio's PannerNode.panningModel."
+  variant equalpower "The stereo panner (Web Audio's equal-power law): for speakers."
+  variant hrtf "For headphones: a spherical-head model (Brown and Duda, 1998) that delays the far ear by the interaural time difference (up to 0.66 ms) and shadows its highs (up to -20 dB), so a source moves between the ears; front and back, up and down are not told apart (no pinna)."
+}
+```
+
+<sub>`api.ogt` line 8715</sub>
 
 ## Column kinds
 
@@ -679,6 +754,7 @@ Each is a factory, `AudioBus(value?, options?)`, that makes one field of a compo
 | Column | Value | Typed array | Stride | Doc |
 |---|---|---|---|---|
 | <a id="column-AudioBus"></a>`AudioBus` | `AudioBus` | `Uint32Array` | 1 | An AudioBus field: the variant's index. |
+| <a id="column-PanningModel"></a>`PanningModel` | `PanningModel` | `Uint32Array` | 1 | A PanningModel field: the variant's index. |
 
 ```ogt
 column AudioBus {
@@ -689,7 +765,18 @@ column AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 8707</sub>
+<sub>`api.ogt` line 8708</sub>
+
+```ogt
+column PanningModel {
+  doc "A PanningModel field: the variant's index."
+  array Uint32Array
+  stride 1
+  value PanningModel
+}
+```
+
+<sub>`api.ogt` line 8721</sub>
 
 ## Constants
 
@@ -705,28 +792,28 @@ column AudioBus {
 const SOUND_FINISHED u32 0 "SoundEnded.reason: a one-shot played to its end."
 ```
 
-<sub>`api.ogt` line 8693</sub>
+<sub>`api.ogt` line 8694</sub>
 
 ```ogt
 const SOUND_STOPPED u32 1 "SoundEnded.reason: `playing` was set to false."
 ```
 
-<sub>`api.ogt` line 8694</sub>
+<sub>`api.ogt` line 8695</sub>
 
 ```ogt
 const SOUND_REMOVED u32 2 "SoundEnded.reason: the AudioSource was removed from a living entity."
 ```
 
-<sub>`api.ogt` line 8695</sub>
+<sub>`api.ogt` line 8696</sub>
 
 ```ogt
 const SOUND_REPLACED u32 3 "SoundEnded.reason: `sound` changed while it played."
 ```
 
-<sub>`api.ogt` line 8696</sub>
+<sub>`api.ogt` line 8697</sub>
 
 ```ogt
 const SOUND_CULLED u32 4 "SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age)."
 ```
 
-<sub>`api.ogt` line 8697</sub>
+<sub>`api.ogt` line 8698</sub>

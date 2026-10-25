@@ -14,7 +14,9 @@
 //!   scale → `a_zone_under_a_parent_is_where_its_parent_puts_it`
 //!
 //! Broken once by reading each entity's own `og.Transform` again
-//! (`Places::world` returning `t`): all three fail.
+//! (`Places::world` returning `t`): all three fail. The first also holds
+//! the Doppler shift a carried source gets (its pitch bits, and the shift
+//! itself, which the code before Doppler never sent).
 
 mod support;
 
@@ -32,14 +34,21 @@ fn parent(e: Entity) -> Parent {
     }
 }
 
-/// The (gain, pan, cutoff) bits of every spatial play or params command
-/// in one tick's packets.
-fn spatial(link: &og_audio::AudioLink) -> Vec<(u32, u32, u32)> {
+/// The (gain, pan, cutoff, pitch) bits of every spatial play or params
+/// command in one tick's packets (the pitch carries the Doppler shift).
+fn spatial(link: &og_audio::AudioLink) -> Vec<(u32, u32, u32, u32)> {
     link.drain()
         .iter()
         .flat_map(|p| p.commands.clone())
         .filter(|c| c.voice != 0 && matches!(c.op, Op::Play | Op::Params))
-        .map(|c| (c.gain.to_bits(), c.pan.to_bits(), c.lowpass.to_bits()))
+        .map(|c| {
+            (
+                c.gain.to_bits(),
+                c.pan.to_bits(),
+                c.lowpass.to_bits(),
+                c.pitch.to_bits(),
+            )
+        })
         .collect()
 }
 
@@ -62,7 +71,7 @@ fn hum(bank: &SoundBank) -> AudioSource {
 fn a_source_on_a_child_follows_its_moving_parent() {
     let bank = SoundBank::new();
     let source = hum(&bank);
-    let run = |parented: bool| -> (Vec<(u32, u32, u32)>, u64) {
+    let run = |parented: bool| -> (Vec<(u32, u32, u32, u32)>, u64) {
         let (mut world, link) = world_with(&bank, |w| {
             w.register::<AudioListener>().unwrap();
             w.register::<Parent>().unwrap();
@@ -108,6 +117,13 @@ fn a_source_on_a_child_follows_its_moving_parent() {
     assert!(
         gains[60] > 3.0 * gains[0],
         "nearest in the middle: {gains:?}"
+    );
+    // Carried at 10 m/s, its Doppler shift is the placed source's: up
+    // while it comes, down once it has passed.
+    let pitches: Vec<f32> = carried.iter().map(|c| f32::from_bits(c.3)).collect();
+    assert!(
+        pitches[30] > 1.01 && pitches[90] < 0.99,
+        "Doppler down og.Parent: {pitches:?}"
     );
 }
 
