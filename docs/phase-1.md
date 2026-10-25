@@ -1480,7 +1480,9 @@ Meridian Loop's physics and API findings (lane-5): 3 (the blocker), 2,
   `og.RigidBody.centerOfMass` (an offset, the inertia the shape's);
   rapier's raycast car copied into og-physics
   (`raycast_vehicle.rs`, Apache-2.0, unchanged but for making roll
-  influence and skid info public) so `og.Vehicle.rollInfluence` exposes
+  influence and skid info public; since debt3/physics-vehicle its
+  upstream TODOs are done: effective inverse mass, the ground's
+  reaction on a dynamic body, one pass per wheel) so `og.Vehicle.rollInfluence` exposes
   the controller's own roll setting, default 0 (rapier's 0.1 flips the
   default car at full lock above about 20 m/s). Tests: forces.rs (6,
   the 2D profile, the hit stop, the snapshot, a weighted box righting
