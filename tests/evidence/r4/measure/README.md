@@ -145,3 +145,26 @@ The dedicated tick runner does not perform or claim that readback check.
 Phone setup and remaining owner actions are in `phone.md`. The CLI's
 `--preflight` exit 2 is not a defect: `--preflight` is internal; the preflight
 runs on every `og run --device` before the build.
+
+## Capture-stage profile and compact presentation images
+
+`capture-profile/README.md` splits native capture into extract/render submission,
+readback, PNG and the base64/ABI residual. PNG dominates Meridian; level-1
+encoding experiments and original decoded-pixel hashes are retained there.
+These instrumented measurements do not replace `GPU.md`'s budget verdicts.
+
+After profiling, all 61 evidence PNGs were reduced to at most 640 pixels on
+either side and under 150,000 bytes each, using Pillow Lanczos resizing and
+PNG optimization (128/64/32-colour quantization only where needed to meet
+the byte cap). Each three.js mode retains its representative frame. These
+are presentation images, not full-resolution pixel-comparison inputs.
+The files occupy about 9.23 MB total after trimming, versus 37.40 MB with
+the new profile's full-size images. No history was rewritten.
+
+Every table, summary, per-run result and raw numeric receipt is retained.
+SHA-256 comparison found no byte-identical JSON files between provisional
+`capture/` and accepted `capture-idle/`, so no raw JSON was removed as a
+duplicate. The provisional batch remains excluded from acceptance verdicts.
+All three numeric summarizers still pass after trimming. The profile's
+`validate-pixels.py` must run on fresh full-size captures before resizing;
+its original verification receipt is `capture-profile/pixels.json`.
