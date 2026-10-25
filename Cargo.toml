@@ -266,3 +266,7 @@ codegen-units = 16
 # §Determinism).
 [patch.crates-io]
 basis-universal-sys = { path = "third_party/basis-universal-sys" }
+# wgpu-hal 30.0.1 with two GLES-only patches for the WebGL2 tier, GPU
+# timestamps from EXT_disjoint_timer_query_webgl2 and a queue that skips GL
+# calls setting what is already set (third_party/wgpu-hal/ORIGIN.md).
+wgpu-hal = { path = "third_party/wgpu-hal" }
