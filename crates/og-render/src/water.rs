@@ -410,11 +410,11 @@ impl WaterRenderer {
                 under: water.underwater_color.extend(0.0).to_array(),
             };
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
-            // A probe face has no planar reflection of its own, and its
-            // screen-space reflection is left out: the probe's capture point
-            // sees what the surface would mirror only from one point.
+            // A probe face has no planar reflection of its own (that would be
+            // a mirrored pass per face); its screen-space reflection marches
+            // the face's own depth prepass and copy, as the frame's does
+            // (full tier), mirroring what the probe sees from its point.
             slot.face = gpu;
-            slot.face.look[1] = 0.0;
             slot.face.extra[1] = 0.0;
             let heights = match (&slot.heights, field) {
                 (Some((_, _, v)), Some(_)) => v,
@@ -466,9 +466,9 @@ impl WaterRenderer {
     /// The surfaces as the faces of a reflection probe's capture of face
     /// size `size` draw them (after [`WaterRenderer::prepare`]): through
     /// `below`, the copy of the face drawn so far, and over `scene_depth`,
-    /// the face's depth prepass, so the face refracts what lies below and
-    /// foams at the edges as the frame does; without screen-space or
-    /// planar reflections.
+    /// the face's depth prepass, so the face refracts what lies below,
+    /// foams at the edges and (full tier) reflects the face in screen
+    /// space as the frame does; without the planar reflection.
     pub(crate) fn face_draws(
         &self,
         device: &wgpu::Device,

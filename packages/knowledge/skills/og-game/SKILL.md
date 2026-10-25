@@ -2812,10 +2812,14 @@ world.insert(probe, og.ReflectionProbe, {
   its centre, so two rooms that share a model each reflect their own.
   The capture shows everything in the room: characters in their pose
   (and each one takes the probe of the room its pose stands in), terrain,
-  grass, water (refracting what lies below it), 3D fluids, glass,
-  particles (soft ones fading as in the frame), lines and world sprites
-  and text. Terrain, grass and water inside the box are lit
-  by it too. At most 8 probes (`MAX_REFLECTION_PROBES`) are used,
+  grass, water (refracting what lies below it and, on the full tier,
+  reflecting the capture in screen space), 3D fluids, glass, particles
+  (soft ones fading as in the frame), lines and world sprites and text,
+  lit by the sun and every local light the camera's frame has (a light
+  whose range the camera does not see lights nothing in the capture
+  either). As in the frame, water and fluids show the opaque scene
+  through them, not glass behind them. Terrain, grass and water inside
+  the box are lit by it too. At most 8 probes (`MAX_REFLECTION_PROBES`) are used,
   nearest the camera first.
 - `dump_render` lists the frame's probes and whether each was loaded from
   the cache. In a playtest, assert what the sphere shows with

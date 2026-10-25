@@ -2032,6 +2032,30 @@ draw besides the capture itself:
   otherwise reallocate them every interval. A capture drawn after the
   targets were freed and remade is bit for bit the first (checked in the
   debt round 3); og-render `probes::tests::face_targets_are_kept_for_due_and_realtime_captures_only`.
+- **Water's reflections.** On the full tier a face's water marches its
+  screen-space reflection through the face's own depth prepass and copy,
+  as the frame's water does through its own (`WaterRenderer::face_draws`
+  keeps `look.y`): what the surface mirrors as seen from the probe's
+  point, which is what the whole capture is. Rays that leave the face
+  fall back to the environment, as rays leaving the screen do in the
+  frame. og-tests probes
+  `water_in_a_capture_reflects_the_face_in_screen_space`. The planar
+  reflection stays off in faces: it is a second pass from the camera
+  mirrored in the surface, one surface a frame, and a face would need its
+  own (six per capture, each with an oblique clip and its own target).
+- **What water and 3D fluids see through (left out, deliberately).** The
+  face's copy is taken after the sky, before the transparent meshes, so
+  water and fluids in a face show the opaque face behind them and not
+  glass drawn behind them. This is the main pass's rule too (its
+  `scene-copy`, and the transmission copy physical materials refract, as
+  three.js's transmission pass renders only opaque objects), and a face
+  must draw what the frame draws or its reflections disagree with the
+  scene they reflect. Changing it for both would need the transparents
+  ordered against the water and fluid surfaces: water is drawn in one
+  pass of its own and the 3D fluids as one screen-space surface with no
+  plane to sort a mesh against, a pane crossing a surface cannot be cut
+  per instance, and drawing the transparents into the copy and again
+  after would blend them twice.
 
 ## What phase 2 owes
 

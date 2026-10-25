@@ -517,6 +517,23 @@ pub fn add_floor_water(scene: &mut RenderScene) {
     });
 }
 
+/// A glowing blue wall 4 m to the +x side of [`probe_floor_scene`]'s
+/// probe, 3 m tall, beyond [`add_floor_water`]'s far edge: the probe's +x
+/// face sees it at the horizon and, in screen space, mirrored in the water
+/// below it.
+pub fn add_floor_wall(scene: &mut RenderScene) {
+    boxed(
+        scene,
+        StandardMaterial {
+            color: Vec3::new(0.02, 0.05, 0.4),
+            emissive: Vec3::new(0.1, 0.25, 3.0),
+            ..Default::default()
+        },
+        Vec3::new(4.0, 1.5, 0.0),
+        Vec3::new(0.2, 3.0, 8.0),
+    );
+}
+
 /// A few green particles 1.2 m wide hovering 0.1 to 0.2 m over
 /// [`probe_floor_scene`]'s floor, under the probe; `soft`: they fade over
 /// 2 m of the depth behind them, so against the floor they nearly vanish.

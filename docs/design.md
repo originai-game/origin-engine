@@ -345,8 +345,11 @@ S6).
   `depth_prepass`, then the fluids' depth, thickness and smoothing
   through the face camera into face-sized targets, and ends its pass
   after the sky to copy itself, so the water and the fluids refract the
-  face drawn so far and the water darkens and foams by the depth below;
-  no screen-space or planar reflections on the water;
+  face drawn so far and the water darkens and foams by the depth below,
+  and on the full tier reflects the face in screen space over the same
+  depth and copy; no planar reflection, and the copy holds the opaque
+  face as the frame's holds the opaque scene (og-render README,
+  Reflection probe faces);
   `WaterRenderer::face_draws`, `Fluid3dRenderer::camera_frame`, the
   targets one set per face size in `Probes`, made the first time a capture
   needs them and drawn only while one is due), then transparent meshes
