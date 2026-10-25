@@ -157,6 +157,12 @@ run_tests() {
   else
     og_green_clear "$key.gpu"
   fi
+  # og-tests' gfx harness appends a line here for each frame on the
+  # vulkan-cpu tier's known-divergence list (crates/og-tests/src/gfx.rs,
+  # docs/ci.md §The vulkan-cpu tier's known divergences); nextest shows no
+  # output of a passing test, so the list is printed after the run.
+  local known="$OG_EVIDENCE_DIR/gfx-known-divergences.txt"
+  rm -f "$known"
   if command -v cargo-nextest >/dev/null 2>&1; then
     local args=(--workspace) filters=() expr=""
     for pk in ${exclude[@]+"${exclude[@]}"}; do args+=(--exclude "$pk"); done
@@ -173,6 +179,10 @@ run_tests() {
     for pk in ${exclude[@]+"${exclude[@]}"}; do args+=(--exclude "$pk"); done
     [ "$gpu" = 1 ] || args+=(--exclude og-tests --exclude og-ui --exclude og-render)
     cargo test "${args[@]}"; rc=$?
+  fi
+  if [ -s "$known" ]; then
+    echo "known vulkan-cpu frame divergences ($known):"
+    sort "$known"
   fi
   [ "$rc" -eq 0 ] || return "$rc"
   if [ "$gpu" = 1 ]; then og_green_set "$key.gpu"; fi

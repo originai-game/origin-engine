@@ -1,6 +1,8 @@
 //! The gfx reference harness: render a named scene headless, compare it with
 //! `crates/og-tests/references/<backend-tier>/<scene>.png`, and on failure
 //! write the actual frame and a diff image under the output directory.
+//! On the vulkan-cpu tier, a scene on [`VULKAN_CPU_KNOWN_DIVERGENCES`] past
+//! its tolerance against metal's reference is reported as tolerated.
 //!
 //! `OG_GFX_CAPTURE=1` (re)records every reference instead of comparing;
 //! `OG_GFX_CAPTURE=scene-a,scene-b` records only those scenes.
@@ -70,6 +72,114 @@ pub fn references_dir() -> PathBuf {
 
 pub fn reference_path(tier: &str, scene: &str) -> PathBuf {
     references_dir().join(tier).join(format!("{scene}.png"))
+}
+
+/// The CPU Vulkan tier (Mesa lavapipe): the orbs' and CI's adapter, with no
+/// references of its own since 2026-10-22, so its frames are judged against
+/// metal's (docs/ci.md §The vulkan-cpu tier's known divergences).
+pub const VULKAN_CPU: &str = "vulkan-cpu";
+
+/// A scene whose lavapipe frame is known to exceed its tolerance against
+/// metal's reference, with the divergence measured when it was listed.
+#[derive(Clone, Copy, Debug)]
+pub struct KnownDivergence {
+    pub scene: &'static str,
+    /// RMSE against metal's reference when measured.
+    pub rmse: f64,
+    /// Outlier pixels against metal's reference when measured.
+    pub outliers: usize,
+    /// When it was measured, and on what.
+    pub measured: &'static str,
+}
+
+/// How far past its measured divergence a listed scene stays tolerated: a
+/// listed frame that moves further than this on lavapipe fails again.
+pub const KNOWN_DIVERGENCE_MARGIN: f64 = 1.25;
+
+impl KnownDivergence {
+    /// Whether `c` is within this entry's measured divergence and the margin.
+    pub fn covers(&self, c: &Comparison) -> bool {
+        c.rmse <= self.rmse * KNOWN_DIVERGENCE_MARGIN
+            && c.outliers as f64 <= self.outliers as f64 * KNOWN_DIVERGENCE_MARGIN
+    }
+}
+
+impl std::fmt::Display for KnownDivergence {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "listed rmse={:.5} outliers={}, measured {}",
+            self.rmse, self.outliers, self.measured
+        )
+    }
+}
+
+/// The orb's lavapipe and CI's, which agree to a few outlier pixels; each
+/// entry holds the larger of the two.
+const MEASURED_2026_10_25: &str =
+    "2026-10-25, llvmpipe of Mesa 25.0.7 with LLVM 15.0.6 (orb) and LLVM 19.1.7 (CI)";
+
+/// The frames known to diverge on the vulkan-cpu tier, the one list of
+/// them (docs/ci.md §The vulkan-cpu tier's known divergences). Read only
+/// when the adapter's tier is vulkan-cpu and the scene is judged against
+/// metal's reference: such a scene past its tolerance passes and is
+/// reported as tolerated, with its numbers, up to [`KNOWN_DIVERGENCE_MARGIN`]
+/// times its measured divergence; one within tolerance is reported so the
+/// list shrinks. Every other tier, and every scene not listed, is judged
+/// as before. Measured scene by scene with the tests that render them
+/// (tests/evidence/ci/known-frames/NOTES.md); every one passes on metal.
+pub const VULKAN_CPU_KNOWN_DIVERGENCES: &[KnownDivergence] = &[
+    KnownDivergence {
+        scene: "atmosphere-night",
+        rmse: 0.01312,
+        outliers: 558,
+        measured: MEASURED_2026_10_25,
+    },
+    KnownDivergence {
+        scene: "atmosphere-moon",
+        rmse: 0.01295,
+        outliers: 552,
+        measured: MEASURED_2026_10_25,
+    },
+    KnownDivergence {
+        scene: "sprites-array",
+        rmse: 0.01255,
+        outliers: 434,
+        measured: MEASURED_2026_10_25,
+    },
+    KnownDivergence {
+        scene: "tilemap-lit",
+        rmse: 0.02653,
+        outliers: 17666,
+        measured: MEASURED_2026_10_25,
+    },
+    KnownDivergence {
+        scene: "water-underwater",
+        rmse: 0.02253,
+        outliers: 20805,
+        measured: MEASURED_2026_10_25,
+    },
+];
+
+/// Reports a known divergence: printed with the test's output, and a line
+/// in `$OG_EVIDENCE_DIR/gfx-known-divergences.txt` (default
+/// `target/evidence/`), which the gate's test steps print, since nextest
+/// shows no output of a passing test.
+fn note_known_divergence(line: &str) {
+    use std::io::Write as _;
+    println!("{line}");
+    let dir = std::env::var_os("OG_EVIDENCE_DIR").map_or_else(
+        || PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target/evidence"),
+        PathBuf::from,
+    );
+    let _ = std::fs::create_dir_all(&dir);
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(dir.join("gfx-known-divergences.txt"))
+    {
+        let _ = file.write_all(format!("{line}\n").as_bytes());
+    }
 }
 
 /// Whether `OG_GFX_CAPTURE` asks to record `scene`.
@@ -214,6 +324,34 @@ pub fn check(scene: &str, out_dir: &Path) -> Result<GfxReport, String> {
         width: expected.width,
         height: expected.height,
         pixels: comparison.diff_image.clone(),
+    };
+    let known = (tier == VULKAN_CPU && reference != own)
+        .then(|| {
+            VULKAN_CPU_KNOWN_DIVERGENCES
+                .iter()
+                .find(|k| k.scene == scene)
+        })
+        .flatten();
+    let verdict = match (verdict, known) {
+        (Ok(()), None) => Ok(()),
+        (Ok(()), Some(k)) => {
+            note_known_divergence(&format!(
+                "gfx {scene}: on the {VULKAN_CPU} known-divergence list ({k}) but within tolerance now (rmse={:.5} outliers={}): remove it from VULKAN_CPU_KNOWN_DIVERGENCES",
+                comparison.rmse, comparison.outliers
+            ));
+            Ok(())
+        }
+        (Err(why), Some(k)) if k.covers(&comparison) => {
+            note_known_divergence(&format!(
+                "gfx {scene}: TOLERATED on {VULKAN_CPU} against metal, a known divergence ({k}): {why} (rmse={:.5} max_diff={} outliers={})",
+                comparison.rmse, comparison.max_channel_diff, comparison.outliers
+            ));
+            Ok(())
+        }
+        (Err(why), Some(k)) => Err(format!(
+            "{why}; beyond its known {VULKAN_CPU} divergence ({k}) by more than {KNOWN_DIVERGENCE_MARGIN}x"
+        )),
+        (Err(why), None) => Err(why),
     };
     report.comparison = Some(comparison);
     if let Err(why) = verdict {
