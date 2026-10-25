@@ -121,7 +121,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1221 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1223 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -450,6 +450,7 @@ Field units the docs and Tune use.
 | [`MeterKind`](ui.md#type-MeterKind) | enum | ui | — |
 | [`MinimapDesc`](ui.md#type-MinimapDesc) | desc struct | ui | — |
 | [`MirrorAxis`](render.md#type-MirrorAxis) | enum | render | — |
+| [`MirrorDesc`](anim.md#type-MirrorDesc) | desc struct | anim | — |
 | [`ModalDesc`](ui.md#type-ModalDesc) | desc struct | ui | — |
 | [`ModalResult`](ui.md#type-ModalResult) | struct | ui | — |
 | [`Modifiers`](input.md#type-Modifiers) | struct | input | — |
@@ -489,6 +490,7 @@ Field units the docs and Tune use.
 | [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
 | [`og.anim.graph`](anim.md#fn-graph) | function | anim | `og_anim_graph` |
 | [`og.anim.humanoid`](anim.md#fn-humanoid) | function | anim | `og_anim_humanoid` |
+| [`og.anim.mirror`](anim.md#fn-mirror) | function | anim | `og_anim_mirror` |
 | [`og.anim.retarget`](anim.md#fn-retarget) | function | anim | `og_anim_retarget` |
 | [`og.anim.rig2dInfo`](anim.md#fn-rig2dInfo) | function | anim | `og_anim_rig2d_info` |
 | [`og.anim.skeleton2dBoxes`](anim.md#fn-skeleton2dBoxes) | function | anim | `og_anim_skeleton2d_boxes` |

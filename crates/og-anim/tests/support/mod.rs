@@ -1,7 +1,8 @@
 //! A procedural walker rig shared by the og-anim tests (and the wasm probe):
 //! a 13-node skeleton (hips, spine, head with a two-target mesh, two
 //! three-joint legs, a three-joint left arm), five clips sampled at 30 Hz,
-//! and a two-layer graph (locomotion state machine plus an additive wave).
+//! and a two-layer graph (locomotion state machine plus an additive wave
+//! masked to the arm, in step with the gait while it moves).
 #![allow(dead_code)]
 
 pub mod walk;
@@ -16,6 +17,8 @@ pub const WALK: u64 = 11;
 pub const RUN: u64 = 12;
 pub const WAVE: u64 = 13;
 pub const BLINK: u64 = 14;
+/// The walk mirrored (`og_anim::mirror`).
+pub const WALK_MIRRORED: u64 = 15;
 pub const GRAPH: u64 = 20;
 
 /// Joint indices (the skin's joints are nodes 1..=12).
@@ -273,7 +276,9 @@ blend1d move speed {
 }
 layer base {
   state idle idle
-  state move move
+  state move move {
+    sync gait
+  }
   entry idle
   transition idle move {
     when speed gt 0.2
@@ -287,7 +292,10 @@ layer base {
 layer upper {
   mode additive
   weight wave
-  state wave waving
+  mask "arm.L"
+  state wave waving {
+    sync gait
+  }
   entry wave
 }
 "#;
@@ -307,6 +315,10 @@ pub fn resolve(name: &str) -> Option<u64> {
 pub fn register(anim: &AnimationSystem) {
     anim.add_skeleton(SKELETON, skeleton()).unwrap();
     for (h, c) in clips() {
+        if h == WALK {
+            anim.add_clip(WALK_MIRRORED, mirror(&skeleton(), &c).unwrap())
+                .unwrap();
+        }
         anim.add_clip(h, c).unwrap();
     }
     anim.add_graph(GRAPH, GraphAsset::parse(GRAPH_TEXT, &resolve).unwrap())

@@ -579,6 +579,184 @@ impl RigAsset {
     }
 }
 
+/// The node name on the other side: the side tokens the naming schemes
+/// read swapped (a `Left`/`Right` prefix after any namespace, as Mixamo,
+/// Unity and plain names write it; VRM's `_L_`/`_R_`; a `.L`, `_R`, `.left`,
+/// `_l` suffix, as Blender, Rigify and Unreal write it), keeping the case;
+/// `None` for a name with no side.
+pub fn mirror_name(name: &str) -> Option<String> {
+    let cut = name.rfind([':', '|']).map_or(0, |i| i + 1);
+    let (ns, local) = name.split_at(cut);
+    for (a, b) in [("Left", "Right"), ("left", "right"), ("LEFT", "RIGHT")] {
+        for (from, to) in [(a, b), (b, a)] {
+            if let Some(rest) = local.strip_prefix(from) {
+                return Some(format!("{ns}{to}{rest}"));
+            }
+        }
+    }
+    for (from, to) in [
+        ("_L_", "_R_"),
+        ("_R_", "_L_"),
+        ("_l_", "_r_"),
+        ("_r_", "_l_"),
+    ] {
+        if let Some(i) = local.find(from) {
+            return Some(format!(
+                "{ns}{}{to}{}",
+                &local[..i],
+                &local[i + from.len()..]
+            ));
+        }
+    }
+    for sep in ['.', '_', '-', ' '] {
+        for (a, b) in [
+            ("Left", "Right"),
+            ("left", "right"),
+            ("LEFT", "RIGHT"),
+            ("L", "R"),
+            ("l", "r"),
+        ] {
+            for (from, to) in [(a, b), (b, a)] {
+                if let Some(rest) = local.strip_suffix(from)
+                    && rest.ends_with(sep)
+                {
+                    return Some(format!("{ns}{rest}{to}"));
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Each node's counterpart on the other side ([`mirror_name`]): itself for
+/// a node without a side, [`NONE`] for a sided node whose counterpart the
+/// skeleton lacks (or whose counterpart does not name it back).
+pub fn mirror_pairs(skeleton: &SkeletonAsset) -> Vec<u32> {
+    (0..skeleton.nodes.len())
+        .map(|i| match mirror_name(&skeleton.nodes[i].name) {
+            None => i as u32,
+            Some(other) => skeleton
+                .node(&other)
+                .filter(|&k| {
+                    mirror_name(&skeleton.nodes[k as usize].name).as_deref()
+                        == Some(skeleton.nodes[i].name.as_str())
+                })
+                .unwrap_or(NONE),
+        })
+        .collect()
+}
+
+/// `v` reflected in the model's x = 0 plane.
+fn reflect(v: Vec3) -> Vec3 {
+    Vec3::new(-v.x, v.y, v.z)
+}
+
+/// A rotation reflected in the model's x = 0 plane (`M q M`).
+fn reflect_rotation(q: Quat) -> Quat {
+    Quat::from_xyzw(q.x, -q.y, -q.z, q.w)
+}
+
+/// `clip` (made for `skeleton`) played on the other side: every frame
+/// reflected in the model's x = 0 plane, each node taking its
+/// counterpart's motion ([`mirror_pairs`]). Rotations move in model space
+/// (a node's model rotation is its counterpart's change from rest,
+/// reflected, applied to its own rest), so left and right bone frames need
+/// not mirror each other; translations are the counterpart's travel from
+/// rest, reflected (root motion's x and yaw flip); scales and blendshape
+/// weights are copied. Assumes a symmetric rest pose. A node gets a channel
+/// when it or its counterpart is animated; a sided node without a
+/// counterpart gets none (it keeps its rest pose). Mirroring twice gives
+/// the clip back. Same name, duration, rate and markers.
+pub fn mirror(skeleton: &SkeletonAsset, clip: &ClipAsset) -> Result<ClipAsset> {
+    clip.validate()?;
+    let pairs = mirror_pairs(skeleton);
+    let binding = bind(skeleton, clip);
+    let n = skeleton.nodes.len();
+    let animated = |node: u32, path: ChannelPath| {
+        node != NONE
+            && clip
+                .channels
+                .iter()
+                .zip(&binding)
+                .any(|(c, &b)| b == node && c.path == path)
+    };
+    let wants = |path: ChannelPath| -> Vec<bool> {
+        (0..n)
+            .map(|i| pairs[i] != NONE && (animated(i as u32, path) || animated(pairs[i], path)))
+            .collect()
+    };
+    let (rot, pos, scl) = (
+        wants(ChannelPath::Rotation),
+        wants(ChannelPath::Translation),
+        wants(ChannelPath::Scale),
+    );
+    let rest_pose = skeleton.rest_pose();
+    let rest = model(skeleton, &rest_pose);
+    let mut samples: Vec<[Vec<f32>; 3]> = vec![Default::default(); n];
+    for i in 0..clip.frames {
+        let t = (i as f32 / clip.rate).min(clip.duration);
+        let mut src = Pose::rest(skeleton);
+        sample(skeleton, clip, &binding, t, NONE, &mut src);
+        let ms = model(skeleton, &src.nodes);
+        let mut pose = rest_pose.clone();
+        let mut mt: Vec<Trs> = Vec::with_capacity(n);
+        for j in 0..n {
+            let parent = parent_model(skeleton, &mt, j);
+            let k = pairs[j] as usize;
+            if rot[j] {
+                let change = ms[k].rotation * rest[k].rotation.conjugate();
+                let want = unit(reflect_rotation(change) * rest[j].rotation);
+                pose[j].rotation = unit(parent.rotation.conjugate() * want);
+                samples[j][1].extend_from_slice(&pose[j].rotation.to_array());
+            }
+            if pos[j] {
+                let at = rest[j].translation + reflect(ms[k].translation - rest[k].translation);
+                pose[j].translation = parent.inverse().transform_point(at);
+                samples[j][0].extend_from_slice(&pose[j].translation.to_array());
+            }
+            if scl[j] {
+                pose[j].scale = src.nodes[k].scale;
+                samples[j][2].extend_from_slice(&pose[j].scale.to_array());
+            }
+            mt.push(parent.mul(&pose[j]));
+        }
+    }
+    let mut channels = Vec::new();
+    for (j, s) in samples.into_iter().enumerate() {
+        for (path, lanes, data) in [
+            (ChannelPath::Translation, 3, &s[0]),
+            (ChannelPath::Rotation, 4, &s[1]),
+            (ChannelPath::Scale, 3, &s[2]),
+        ] {
+            if !data.is_empty() {
+                channels.push(Channel {
+                    node: j as u32,
+                    node_name: skeleton.nodes[j].name.clone(),
+                    path,
+                    step: false,
+                    lanes,
+                    samples: data.clone(),
+                });
+            }
+        }
+    }
+    for (c, &b) in clip.channels.iter().zip(&binding) {
+        if c.path == ChannelPath::Weights && b != NONE {
+            channels.push(Channel {
+                node: b,
+                node_name: skeleton.nodes[b as usize].name.clone(),
+                ..c.clone()
+            });
+        }
+    }
+    let out = ClipAsset {
+        channels,
+        ..clip.clone()
+    };
+    out.validate()?;
+    Ok(out)
+}
+
 /// How far above its lowest a foot may be and still be planted, in the
 /// skeleton's model units: 5 mm.
 pub const PLANT_HEIGHT: f32 = 0.005;

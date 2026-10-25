@@ -863,6 +863,16 @@ stride), and its legs are solved so planted feet stay on the ground
 (`footIk`, on by default). The fx-showcase `retarget` station is the
 pattern.
 
+**Mirroring.** `og.anim.mirror(world, { clip, skeleton })` answers a new
+clip that plays `clip` on the other side (a left-handed swing, a limp on
+the other leg, a turn the other way): left and right nodes are paired by
+the side tokens every naming scheme writes (`LeftArm`/`RightArm`,
+`thigh.L`/`thigh.R`, `J_Bip_L_`/`J_Bip_R_`, `calf_l`/`calf_r`), each
+node takes its counterpart's motion reflected across the skeleton's
+x = 0 plane, root motion's sideways travel and turns flip. It assumes a
+symmetric rest pose; mirror a retargeted clip on the skeleton it was
+retargeted for.
+
 **Compression** shrinks a model's clips in the bundle (not in memory: they
 are rebuilt at load). In the same `animation` block, `compress true`
 quantises rotations to 48 bits and the rest to 16 and drops the keyframes
@@ -907,6 +917,7 @@ layer base {                # the first layer is the base: root motion and og.An
   state still idle          # state <name> <motion>
   state move move {
     speed 1                 # playback rate, 0 or more (default 1)
+    sync gait               # a sync group: states of one group play in step across layers (default none)
   }
   entry still               # the state it starts in (default: the first)
   transition still move {   # transition <from | any> <to>; in file order, the first that holds fires
@@ -921,7 +932,11 @@ layer base {                # the first layer is the base: root motion and og.An
 layer upper {
   mode additive             # override (default): replaces the pose below | additive: adds each clip's difference from its first frame
   weight wave               # a number 0 to 1, or a parameter clamped to it (default 1)
-  state wave waving
+  mask "spine" 0.5          # mask "<node>" [weight 0 to 1, default 1]: that node and every node under it (default: no mask, all 1)
+  mask "arm.L"              # a deeper line wins for its branch; nodes under no line take 0
+  state wave waving {
+    sync gait
+  }
 }
 ```
 
@@ -929,7 +944,14 @@ Each state advances one phase by `dt × AnimationGraph.speed × state speed
 / duration`, the duration weighted across a blend's clips, so blended
 clips stay in step. Per tick and layer the transitions are checked first,
 then the phases advance, then the poses blend; a transition during a fade
-replaces it. `og.anim.graph` refuses a parse error naming the line, a
+replaces it. A layer's `mask` lines confine it to branches of the
+skeleton (by node name, the nearest named ancestor's weight; an upper-body
+layer is `mask "spine"`), so a wave or an aim plays over a walk without
+freezing the legs. In a sync group the first layer (file order) whose
+current state is in it leads: every later layer's state of that group
+plays at the leader's phase, whatever its clip's length, and a transition
+between two states of one group keeps the phase (a walk-to-run blend
+keeps the feet in step). `og.anim.graph` refuses a parse error naming the line, a
 clip name `clips` lacks, a parameter not declared and a motion that
 contains itself. Write the parameters from a system every tick
 (`world.set(body, og.AnimationGraph, { p0: speed })`); `state` and

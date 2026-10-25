@@ -241,3 +241,49 @@ fn an_animated_vox_plays_one_frame_at_a_time() {
         "frame 0, 1, 2, then frame 0 again (looped)"
     );
 }
+
+#[test]
+fn a_mirrored_clip_is_registered_once_and_plays() {
+    let (engine, _) = engine();
+    let anim = value(og_load_animation(engine, "models/walker.glb".into()));
+    let walk = anim["clips"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == "walk")
+        .expect("the walker walks")
+        .clone();
+    let desc = json!({ "clip": walk["clip"], "skeleton": anim["skeleton"] }).to_string();
+    let m = value(og_runtime::og_anim_mirror(engine, Some(desc.clone())));
+    assert_ne!(m["clip"], walk["clip"]);
+    assert_eq!(
+        (&m["name"], &m["duration"], &m["markers"]),
+        (&walk["name"], &walk["duration"], &walk["markers"])
+    );
+    assert_eq!(value(og_runtime::og_anim_mirror(engine, Some(desc))), m);
+    let asset = value(og_load_gltf(engine, "models/walker.glb".into(), None));
+    let e = value(og_world_instantiate(engine, asset.as_f64().unwrap(), None))
+        .as_f64()
+        .unwrap();
+    value(og_world_insert(
+        engine,
+        e,
+        "og.Skeleton".into(),
+        Some(json!({ "asset": anim["skeleton"] }).to_string()),
+    ));
+    value(og_world_insert(
+        engine,
+        e,
+        "og.AnimationPlayer".into(),
+        Some(json!({ "clip": m["clip"] }).to_string()),
+    ));
+    value(og_engine_frame(engine, 1000.0 / 60.0));
+    // An unregistered clip is refused by name.
+    let refused: Value = serde_json::from_str(&og_runtime::og_anim_mirror(
+        engine,
+        Some(json!({ "clip": 12345, "skeleton": anim["skeleton"] }).to_string()),
+    ))
+    .unwrap();
+    assert_eq!(refused["ok"], json!(false));
+    assert!(refused.to_string().contains("12345"), "{refused}");
+}

@@ -46,13 +46,13 @@ pub use flipbook::{
     SheetFilter, SheetFrame, install_flipbook,
 };
 pub use graph::{
-    Condition, GraphAsset, Layer, LayerMode, Motion, MotionNode, Op, State, Transition,
+    Condition, GraphAsset, Layer, LayerMode, MaskEntry, Motion, MotionNode, Op, State, Transition,
 };
 pub use ik::{IkResult, chain as ik_chain, fabrik, look_at, two_bone};
 pub use pose::{Pose, sample, stepped};
 pub use retarget::{
     FootPlants, HUMAN_BONE_COUNT, HUMAN_BONES, HumanoidMap, PLANT_HEIGHT, RetargetOptions,
-    Retargeted, RigAsset, SCHEMES, human_bone, retarget,
+    Retargeted, RigAsset, SCHEMES, human_bone, mirror, mirror_name, mirror_pairs, retarget,
 };
 pub use rig2d::{
     Affine2, Armature2d, Attachment2d, AttachmentKind, Bone2d, BoneTimeline, BoundingBox2d, Clip2d,

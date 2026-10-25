@@ -45,6 +45,8 @@ pub(crate) struct AnimAssets {
     /// What og.anim.retarget answered per (clip, source, target, source rig,
     /// target rig, foot IK), so asking again answers the same clip.
     retargeted: BTreeMap<(u64, u64, u64, u64, u64, bool), Value>,
+    /// What og.anim.mirror answered per (clip, skeleton).
+    mirrored: BTreeMap<(u64, u64), Value>,
 }
 
 impl AnimAssets {
@@ -352,6 +354,44 @@ pub fn og_anim_retarget(world: u32, desc: Option<String>) -> String {
     wire(engine(world).and_then(|eng| {
         let desc = parse(desc.as_deref())?;
         retarget(&eng, &desc)
+    }))
+}
+
+fn mirror(eng: &Engine, desc: &Value) -> Result<Value, String> {
+    let sys = system(eng)?;
+    let (clip_h, skeleton_h) = (handle(desc, "clip"), handle(desc, "skeleton"));
+    let key = (clip_h, skeleton_h);
+    if let Some(v) = eng.state.borrow().anim_assets.mirrored.get(&key) {
+        return Ok(v.clone());
+    }
+    let clip = sys
+        .clip(clip_h)
+        .ok_or_else(|| format!("desc.clip {clip_h} is not a loaded clip (og.load.animation)"))?;
+    let skeleton = sys.skeleton(skeleton_h).ok_or_else(|| {
+        format!("desc.skeleton {skeleton_h} is not a loaded skeleton (og.load.animation)")
+    })?;
+    let out =
+        og_anim::mirror(&skeleton, &clip).map_err(|e| format!("og.anim.mirror: {}", e.reason()))?;
+    let mut st = eng.state.borrow_mut();
+    let assets = &mut st.anim_assets;
+    let h = assets.mint();
+    sys.add_clip(h, out.clone())
+        .map_err(|e| format!("og.anim.mirror: {}", e.reason()))?;
+    let answer = json!({
+        "clip": h as f64,
+        "name": out.name,
+        "duration": out.duration,
+        "markers": out.events.iter().map(|e| e.name.clone()).collect::<Vec<_>>(),
+    });
+    assets.clips.insert(h, out);
+    assets.mirrored.insert(key, answer.clone());
+    Ok(answer)
+}
+
+pub fn og_anim_mirror(world: u32, desc: Option<String>) -> String {
+    wire(engine(world).and_then(|eng| {
+        let desc = parse(desc.as_deref())?;
+        mirror(&eng, &desc)
     }))
 }
 

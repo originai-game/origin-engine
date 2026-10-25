@@ -59,6 +59,8 @@ module anim {
 | [`og.anim.humanoid`](#fn-humanoid) | function | The standard humanoid bones of a skeleton, as retargeting sees them: to check a rig before retargeting onto it. |
 | [`RetargetDesc`](#type-RetargetDesc) | desc struct | A clip made for one skeleton, to play on another (other proportions, rest pose or bone names). |
 | [`og.anim.retarget`](#fn-retarget) | function | A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time. |
+| [`MirrorDesc`](#type-MirrorDesc) | desc struct | A clip to play on the other side of the skeleton it was made for. |
+| [`og.anim.mirror`](#fn-mirror) | function | A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers (markers keep their names). Mirroring twice gives the clip back. |
 | [`FlipbookSheet`](#type-FlipbookSheet) | handle | A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook. |
 | [`FlipbookSheet()`](#column-FlipbookSheet) | column kind | A FlipbookSheet handle field. |
 | [`FlipMode`](#type-FlipMode) | enum | How a flipbook clip runs past its last frame. |
@@ -172,6 +174,36 @@ fn retarget {
 
 <sub>`api.ogt` line 8229</sub>
 
+<a id="fn-mirror"></a>
+
+### `og.anim.mirror`
+
+A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers (markers keep their names). Mirroring twice gives the clip back.
+
+```ts
+og.anim.mirror(world: World, desc?: MirrorDesc): Result<ClipInfo>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose animation owns the skeleton and the clip. |
+| `desc` | `MirrorDesc` | yes | The clip and its skeleton. |
+
+**Returns** `Result<ClipInfo>`: The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip or skeleton.
+
+Binding symbol `og_anim_mirror` · publish builds: kept
+
+```ogt
+fn mirror {
+  doc "A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers (markers keep their names). Mirroring twice gives the clip back."
+  param world World "The world whose animation owns the skeleton and the clip."
+  param desc MirrorDesc "The clip and its skeleton."
+  returns Result.ClipInfo "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip or skeleton."
+}
+```
+
+<sub>`api.ogt` line 8243</sub>
+
 <a id="fn-clip"></a>
 
 ### `og.anim.clip`
@@ -201,7 +233,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 8314</sub>
+<sub>`api.ogt` line 8328</sub>
 
 <a id="fn-clip-2"></a>
 
@@ -232,7 +264,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 8322</sub>
+<sub>`api.ogt` line 8336</sub>
 
 <a id="fn-clip-3"></a>
 
@@ -263,7 +295,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 8330</sub>
+<sub>`api.ogt` line 8344</sub>
 
 <a id="fn-rig2dInfo"></a>
 
@@ -293,7 +325,7 @@ fn rig2dInfo {
 }
 ```
 
-<sub>`api.ogt` line 8440</sub>
+<sub>`api.ogt` line 8454</sub>
 
 <a id="fn-skeleton2dBoxes"></a>
 
@@ -323,7 +355,7 @@ fn skeleton2dBoxes {
 }
 ```
 
-<sub>`api.ogt` line 8454</sub>
+<sub>`api.ogt` line 8468</sub>
 
 ## Components, resources and events
 
@@ -913,7 +945,7 @@ component Flipbook {
 }
 ```
 
-<sub>`api.ogt` line 8252</sub>
+<sub>`api.ogt` line 8266</sub>
 
 <a id="record-FlipbookEvent"></a>
 
@@ -940,7 +972,7 @@ event FlipbookEvent {
 }
 ```
 
-<sub>`api.ogt` line 8283</sub>
+<sub>`api.ogt` line 8297</sub>
 
 <a id="record-Skeleton2D"></a>
 
@@ -996,7 +1028,7 @@ component Skeleton2D {
 }
 ```
 
-<sub>`api.ogt` line 8347</sub>
+<sub>`api.ogt` line 8361</sub>
 
 <a id="record-Skeleton2DEvent"></a>
 
@@ -1027,7 +1059,7 @@ event Skeleton2DEvent {
 }
 ```
 
-<sub>`api.ogt` line 8377</sub>
+<sub>`api.ogt` line 8391</sub>
 
 <a id="record-IkTarget2D"></a>
 
@@ -1078,7 +1110,7 @@ component IkTarget2D {
 }
 ```
 
-<sub>`api.ogt` line 8388</sub>
+<sub>`api.ogt` line 8402</sub>
 
 ## Types
 
@@ -1410,6 +1442,30 @@ struct RetargetDesc {
 
 <sub>`api.ogt` line 8216</sub>
 
+<a id="type-MirrorDesc"></a>
+
+### `MirrorDesc` (desc struct)
+
+A clip to play on the other side of the skeleton it was made for.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `clip` | `ClipAsset` | `0` | — | — | — | The clip, made for `skeleton`. |
+| `skeleton` | `SkeletonAsset` | `0` | — | — | — | The skeleton the clip was made for (og.load.animation's `skeleton`); its left and right nodes are paired by name, the side tokens every rig naming scheme writes swapped (LeftArm and RightArm, thigh.L and thigh.R, J_Bip_L_ and J_Bip_R_, calf_l and calf_r). |
+
+```ogt
+struct MirrorDesc {
+  doc "A clip to play on the other side of the skeleton it was made for."
+  desc true
+  field clip ClipAsset "The clip, made for `skeleton`."
+  field skeleton SkeletonAsset "The skeleton the clip was made for (og.load.animation's `skeleton`); its left and right nodes are paired by name, the side tokens every rig naming scheme writes swapped (LeftArm and RightArm, thigh.L and thigh.R, J_Bip_L_ and J_Bip_R_, calf_l and calf_r)."
+}
+```
+
+<sub>`api.ogt` line 8236</sub>
+
 <a id="type-FlipbookSheet"></a>
 
 ### `FlipbookSheet` (handle)
@@ -1422,7 +1478,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
 ```
 
-<sub>`api.ogt` line 8236</sub>
+<sub>`api.ogt` line 8250</sub>
 
 <a id="type-FlipMode"></a>
 
@@ -1447,7 +1503,7 @@ enum FlipMode {
 }
 ```
 
-<sub>`api.ogt` line 8245</sub>
+<sub>`api.ogt` line 8259</sub>
 
 <a id="type-FlipbookClipInfo"></a>
 
@@ -1478,7 +1534,7 @@ struct FlipbookClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 8291</sub>
+<sub>`api.ogt` line 8305</sub>
 
 <a id="type-FlipbookInfo"></a>
 
@@ -1509,7 +1565,7 @@ struct FlipbookInfo {
 }
 ```
 
-<sub>`api.ogt` line 8303</sub>
+<sub>`api.ogt` line 8317</sub>
 
 <a id="type-Rig2D"></a>
 
@@ -1523,7 +1579,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig2D "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d."
 ```
 
-<sub>`api.ogt` line 8338</sub>
+<sub>`api.ogt` line 8352</sub>
 
 <a id="type-Rig2DClipInfo"></a>
 
@@ -1552,7 +1608,7 @@ struct Rig2DClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 8417</sub>
+<sub>`api.ogt` line 8431</sub>
 
 <a id="type-Rig2DInfo"></a>
 
@@ -1585,7 +1641,7 @@ struct Rig2DInfo {
 }
 ```
 
-<sub>`api.ogt` line 8428</sub>
+<sub>`api.ogt` line 8442</sub>
 
 <a id="type-Skeleton2DBox"></a>
 
@@ -1608,7 +1664,7 @@ struct Skeleton2DBox {
 }
 ```
 
-<sub>`api.ogt` line 8447</sub>
+<sub>`api.ogt` line 8461</sub>
 
 ## Column kinds
 
@@ -1724,7 +1780,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>`api.ogt` line 8238</sub>
+<sub>`api.ogt` line 8252</sub>
 
 ```ogt
 column Rig2D {
@@ -1735,4 +1791,4 @@ column Rig2D {
 }
 ```
 
-<sub>`api.ogt` line 8340</sub>
+<sub>`api.ogt` line 8354</sub>

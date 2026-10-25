@@ -474,6 +474,8 @@ pub trait AnimApi: Wire {
     fn og_anim_humanoid(&self, world: u32, desc: Option<String>) -> String;
     /// `og.anim.retarget`
     fn og_anim_retarget(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.anim.mirror`
+    fn og_anim_mirror(&self, world: u32, desc: Option<String>) -> String;
     /// `og.anim.rig2dInfo`
     fn og_anim_rig2d_info(&self, world: u32, rig: f64) -> String;
     /// `og.anim.skeleton2dBoxes`
@@ -1124,6 +1126,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_anim_graph",
     "og_anim_humanoid",
     "og_anim_retarget",
+    "og_anim_mirror",
     "og_anim_rig2d_info",
     "og_anim_skeleton2d_boxes",
     "og_tween_to",

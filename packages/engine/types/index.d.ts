@@ -12591,6 +12591,27 @@ export interface RetargetDesc {
 
 
 /**
+ * A clip to play on the other side of the skeleton it was made for.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MirrorDesc {
+  /**
+   * The clip, made for `skeleton`.
+   *
+   * @default 0
+   */
+  readonly clip?: ClipAsset;
+  /**
+   * The skeleton the clip was made for (og.load.animation's `skeleton`); its left and right nodes are paired by name, the side tokens every rig naming scheme writes swapped (LeftArm and RightArm, thigh.L and thigh.R, J_Bip_L_ and J_Bip_R_, calf_l and calf_r).
+   *
+   * @default 0
+   */
+  readonly skeleton?: SkeletonAsset;
+}
+
+
+/**
  * A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
@@ -23578,6 +23599,14 @@ export declare namespace og {
      * @returns The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node.
      */
     function retarget(world: World, desc?: RetargetDesc): Result<ClipInfo>;
+    /**
+     * A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers (markers keep their names). Mirroring twice gives the clip back.
+     *
+     * @param world The world whose animation owns the skeleton and the clip.
+     * @param desc The clip and its skeleton.
+     * @returns The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip or skeleton.
+     */
+    function mirror(world: World, desc?: MirrorDesc): Result<ClipInfo>;
     /**
      * The index of a flipbook clip by name, for Flipbook.clip: `og.anim.clip(hero, "walk_down")`. -1 when the sheet has no such clip.
      *

@@ -1179,6 +1179,12 @@ pub fn og_anim_retarget(env: Env, world: u32, desc: Option<String>) -> String {
     <Host as AnimApi>::og_anim_retarget(&Host, world, desc)
 }
 
+#[napi(js_name = "og_anim_mirror")]
+pub fn og_anim_mirror(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AnimApi>::og_anim_mirror(&Host, world, desc)
+}
+
 #[napi(js_name = "og_anim_rig2d_info")]
 pub fn og_anim_rig2d_info(env: Env, world: u32, rig: f64) -> String {
     let _env = crate::EnvScope::enter(&env);

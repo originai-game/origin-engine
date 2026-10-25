@@ -33,10 +33,11 @@ Dependencies: og-core, og-ecs, glam. No serde, no C, builds for
 | `AnimationSystem` | `add_skeleton`/`add_clip`/`add_graph(handle, asset)` (handle ≠ 0; validated), `remove_*`, `skeleton`/`clip`/`graph(handle)`, `pose(entity)` (final local pose), `output(entity) -> AnimOutput`, `write_outputs(&mut dyn PaletteSink)` |
 | `SkeletonAsset { nodes, skins }`, `SkeletonNode`, `Skin` | a rig: every glTF node in topological order with its rest TRS and mesh, skins with joints and inverse bind matrices; `rest_pose`, `model_space`, `model_matrices`, `palette`, `joint_node`, `node` |
 | `ClipAsset`, `Channel`, `ChannelPath`, `ClipEvent` | a clip resampled at `rate` (with `source_rate` kept); `frame_pos`, `vec3`, `quat`, `weight`; `frames_for` |
-| `GraphAsset` (`parse(text, resolve)`), `Motion`, `Layer`, `State`, `Transition`, `Condition` | the `animgraph` asset |
+| `GraphAsset` (`parse(text, resolve)`), `Motion`, `Layer`, `State`, `Transition`, `Condition`, `MaskEntry` | the `animgraph` asset; `Layer::node_weights(skeleton)` resolves a mask |
 | `Trs`, `nlerp`, `rotation_arc`, `twist_y` | deterministic transform math |
 | `two_bone`, `fabrik`, `ik_chain`, `look_at`, `JointLimit::clamp` | the solvers and the limit on a pose (used by the system, public for tools); each solver takes the chain's limits aligned with it, or `&[]` |
 | `HumanoidMap`, `RigAsset`, `retarget`, `RetargetOptions`, `HUMAN_BONES`, `SCHEMES` | humanoid bone maps and clips retargeted between rigs (§Retargeting) |
+| `mirror`, `mirror_name`, `mirror_pairs` | a clip played on the other side of its skeleton, left and right paired by the schemes' side tokens (§Mirroring) |
 | `FootPlants`, `PLANT_HEIGHT` | where a foot meets the ground over a clip: the engine's one notion of "planted" (retargeting's contact checks, `og.FootLock`) |
 | `SYSTEM_NAME` | `og.anim`, the system's and the state block's name |
 
@@ -256,8 +257,10 @@ blend2d strafe x y {        # blend2d <motion> <px> <py>: gradient-band weights
   child left -1 0
 }
 layer base {                # layer 0: the base, root motion and AnimationGraph.state come from it
-  state idle idle           # state <name> <motion> [{ speed s }]
-  state move move
+  state idle idle           # state <name> <motion> [{ speed s  sync <group> }]
+  state move move {
+    sync gait               # a sync group: phase-locked across layers
+  }
   entry idle
   transition idle move {    # transition <from|any> <to>
     when speed gt 0.2       # all `when` must hold: gt ge lt le eq ne
@@ -268,7 +271,11 @@ layer base {                # layer 0: the base, root motion and AnimationGraph.
 layer upper {
   mode additive             # override (default) | additive (difference from each clip's first frame)
   weight wave               # a number 0..1 or a parameter
-  state wave waving
+  mask "spine" 0.5          # mask "<node>" [weight 0..1, default 1]: per-joint weights
+  mask "arm.L"
+  state wave waving {
+    sync gait
+  }
 }
 ```
 
@@ -279,6 +286,28 @@ clamped otherwise). Per tick and layer, transitions are checked first (file
 order, the first that holds fires; `any` never re-enters the current state),
 then phases advance, then poses blend. A transition during a fade replaces
 it (the fading-out state is dropped). Parse errors name the line.
+
+**Layer masks.** A layer's `mask` lines give per-joint weights by node
+name, resolved against the skeleton the graph plays on: a node takes the
+weight of the nearest of itself and its ancestors a line names, and nodes
+under none take 0 (Unreal's branch filter; a name the skeleton lacks
+masks nothing). An override layer moves node `i` towards its pose by
+`layer weight × mask[i]`, an additive layer adds its difference by the
+same; blendshape weights follow the layer weight. A layer without `mask`
+lines takes the old path, bit for bit.
+
+**Sync groups.** `sync <group>` in a state's block puts it in a group
+(groups are per graph, named in first-use order, `GraphAsset::sync_groups`).
+Per tick, the first layer (file order) whose current state is in a group
+leads it: its phase advances as usual. Every later layer whose current
+state is in the group plays at the leader's phase (its phase is set to
+the leader's, its markers fire over the leader's span), so a wave on the
+upper body stays in step with the gait whatever the clips' lengths. A
+fading-out state keeps its own phase. A transition between two states of
+one group (in one layer) starts the new state at the old state's phase
+fraction (cycles since entry restart at 0, so `exit` counts from the
+transition): a walk-to-run blend keeps the feet in step. Nothing new is
+saved: the phases already are.
 
 ## Palette contract with og-render
 
@@ -341,7 +370,8 @@ chain; palettes use exact `Mat4` products.
 | `output.rs` | the bind-pose palette is the identity and moves with a clip; component weights write through to the output and the sink; clip weights drive the component; root motion moves the Transform and pins the hips; unregistered assets refused with the entity |
 | `graph.rs` | transitions fire in the tick their condition holds and cross-fade; blend1d and the additive layer; bad text refused with its line |
 | `footlock.rs` | the walk's `FootPlants` are a few frames of the cycle; a stomp (half a cycle on a standing leg while root motion carries the walker on) holds the locked foot still to 1e-6 m over every plant (it slides 0.25 m without the lock), across a cross-fade to a jog started mid-plant, and a lifted foot is back on its animation 10 ticks later; a snapshot mid-plant restores to the same hashes and foot positions |
-| `retarget.rs` | the schemes detected from the walker's and a Mixamo rig's names, rig files (forced scheme, a bone named and one removed, mistakes by line); the walk retargeted onto longer legs keeps planted feet on the ground and still, without foot IK it misses by over 1 cm; the hips' travel scaled; an A-posed arm waves parallel to the T-posed one; the clip plays on the tall rig |
+| `layers.rs` | a masked override layer leaves the nodes outside its branches bit for bit, takes a named node's whole branch and blends a half-weight branch halfway; an additive layer's mask; a bad mask weight refused with its line; a synced upper layer samples its clip at the base's phase (not its own); a transition inside a group continues from the old state's phase |
+| `retarget.rs` | the schemes detected from the walker's and a Mixamo rig's names, rig files (forced scheme, a bone named and one removed, mistakes by line); the walk retargeted onto longer legs keeps planted feet on the ground and still, without foot IK it misses by over 1 cm; the hips' travel scaled; an A-posed arm waves parallel to the T-posed one; the clip plays on the tall rig; side tokens swap in every scheme's names; a mirrored walk moves each foot as the other did, reflected, within 1e-5 (on the walker and on the tall Mixamo rig), the hips' sway flips, and mirroring twice gives the walk back |
 
 `crates/og-cook/tests/anim_compress.rs` checks compressed clips against
 f32 ones on every committed animated model (each lane within the
@@ -417,14 +447,37 @@ arms, thigh 0.70 and shin 0.44 m against 0.45 and 0.45): planted feet within
 kinematics alone), the hips' travel scaled by the leg ratio, the A-posed
 arm waving parallel to the walker's, the clip played by og.anim.
 
+## Mirroring
+
+`mirror(skeleton, clip)` (the runtime's `og.anim.mirror`) rewrites a clip
+for the other side. `mirror_name` swaps the side tokens the naming
+schemes write (§Retargeting): a `Left`/`Right` prefix after any namespace
+(Mixamo, Unity, plain), VRM's `_L_`/`_R_`, a `.L`/`_R`/`.left`/`_l`
+suffix (Blender, Rigify, Unreal), keeping the case; `mirror_pairs` pairs
+each node with the node so named when that one names it back (a node
+without a side is its own counterpart; a sided node whose counterpart is
+missing has none, `NONE`). Per frame, in node order: a node's model
+rotation is its counterpart's model-space change from rest reflected in
+x = 0 (`(x, −y, −z, w)`), applied to its own rest model rotation; a
+translated node sits at its rest position plus its counterpart's travel
+from rest reflected (`(−x, y, z)`, so root motion's sideways travel and
+yaw flip); scales are the counterpart's, blendshape weights copied; local
+values are derived from the new parent transforms. Working in model space
+means left and right bone frames need not mirror each other (Mixamo's,
+the tall rig in the tests). A node gets a channel when it or its
+counterpart is animated; one without a counterpart gets none. Assumes a
+symmetric rest pose; mirroring twice gives the clip back (within f32).
+
 ## Owed
 
 - **Retargeting**: hands and fingers (no finger bones in the map), twist
   bones driven from their parents, per-character foot heights other than
-  the rest pose's, mirroring a clip between sides.
+  the rest pose's.
 - **Procedural animation**: springs/jiggle bones.
-- Layer masks (per-joint weights), sync groups across layers, mirroring,
-  transition interruption rules. Cooked clips can be quantised with
+- Transition interruption rules.
+- Mirroring at cook time or per graph state (a `mirror true` on a graph
+  clip): today a mirrored clip is made at run time with `og.anim.mirror`
+  and registered like any other. Cooked clips can be quantised with
   keyframe reduction (og-cook's `animation { compress true tolerance }`,
   `src/anim_codec.rs`); the loader rebuilds every frame, so a registered
   `ClipAsset` holds f32 samples whichever way it was cooked: resident

@@ -1302,6 +1302,9 @@ fn eval_graph(
     let graph_weight = comp.weight.clamp(0.0, 1.0);
     let mut pose = Pose::rest(skel);
     let mut delta = Trs::IDENTITY;
+    // Each sync group's phase this tick (before, after, wraps), set by the
+    // first layer whose current state is in it.
+    let mut leaders: Vec<Option<(Phase, Phase, i32)>> = vec![None; graph.sync_groups.len()];
     for (li, layer) in graph.layers.iter().enumerate() {
         let ls = &mut gs.layers[li];
         if ls.state as usize >= layer.states.len() {
@@ -1319,10 +1322,21 @@ fn eval_graph(
             if t.exit.is_some_and(|x| ls.phase.total() < x as f64) {
                 continue;
             }
+            let carried = match (
+                layer.states[ls.state as usize].sync,
+                layer.states[t.to].sync,
+            ) {
+                // Between two states of one group the fraction carries over.
+                (Some(a), Some(b)) if a == b => ls.phase.frac,
+                _ => 0.0,
+            };
             ls.prev = ls.state;
             ls.prev_phase = ls.phase;
             ls.state = t.to as u32;
-            ls.phase = Phase::default();
+            ls.phase = Phase {
+                cycles: 0,
+                frac: carried,
+            };
             ls.time = 0.0;
             ls.fade = 0.0;
             ls.fade_duration = t.fade;
@@ -1344,7 +1358,11 @@ fn eval_graph(
         let leaf_root = if base { root } else { None };
         let mut layer_blend = Blend::new();
         let mut reference = Blend::new();
-        let mut run_state = |state: usize, phase: &mut Phase, w: f32| -> Result<()> {
+        let mut run_state = |state: usize,
+                             phase: &mut Phase,
+                             w: f32,
+                             follow: Option<(Phase, Phase, i32)>|
+         -> Result<(Phase, i32)> {
             let st = &layer.states[state];
             let mut leaves = Vec::new();
             graph.leaves(st.motion, &params, 1.0, &mut leaves);
@@ -1361,11 +1379,21 @@ fn eval_graph(
                     duration += lw * c.duration / cs;
                 }
             }
-            let before = *phase;
-            let wraps = if duration > 0.0 {
-                phase.advance(dt * speed * st.speed / duration)
-            } else {
-                0
+            let (before, wraps) = match follow {
+                // A follower plays at its group leader's phase.
+                Some((b, a, k)) => {
+                    *phase = a;
+                    (b, k)
+                }
+                None => {
+                    let before = *phase;
+                    let wraps = if duration > 0.0 {
+                        phase.advance(dt * speed * st.speed / duration)
+                    } else {
+                        0
+                    };
+                    (before, wraps)
+                }
             };
             for &(n, lw) in &leaves {
                 let Motion::Clip { clip, looping, .. } = graph.nodes[n].motion else {
@@ -1400,26 +1428,38 @@ fn eval_graph(
                     reference.push(leaf.reference(skel, mesh), Trs::IDENTITY, lw * w);
                 }
             }
-            Ok(())
+            Ok((before, wraps))
         };
         let (cur, mut cur_phase) = (ls.state as usize, ls.phase);
         if ls.prev != NONE && alpha < 1.0 {
             let (prev, mut prev_phase) = (ls.prev as usize, ls.prev_phase);
-            run_state(prev, &mut prev_phase, 1.0 - alpha)?;
+            run_state(prev, &mut prev_phase, 1.0 - alpha, None)?;
             ls.prev_phase = prev_phase;
         }
-        run_state(cur, &mut cur_phase, alpha)?;
+        let group = layer.states[cur].sync;
+        let follow = group.and_then(|g| leaders[g]);
+        let (before, wraps) = run_state(cur, &mut cur_phase, alpha, follow)?;
+        if let Some(g) = group
+            && leaders[g].is_none()
+        {
+            leaders[g] = Some((before, cur_phase, wraps));
+        }
         ls.phase = cur_phase;
         ls.time += dt * speed;
         if alpha >= 1.0 {
             ls.prev = NONE;
         }
         let layer_pose = layer_blend.pose.unwrap_or_else(|| Pose::rest(skel));
-        match layer.mode {
-            LayerMode::Override => pose.lerp_to(&layer_pose, layer_weight),
-            LayerMode::Additive => {
+        let mask = layer.node_weights(skel);
+        match (layer.mode, &mask) {
+            (LayerMode::Override, None) => pose.lerp_to(&layer_pose, layer_weight),
+            (LayerMode::Override, Some(m)) => pose.lerp_to_masked(&layer_pose, layer_weight, m),
+            (LayerMode::Additive, _) => {
                 let r = reference.pose.unwrap_or_else(|| Pose::rest(skel));
-                pose.add(&layer_pose, &r, layer_weight);
+                match &mask {
+                    None => pose.add(&layer_pose, &r, layer_weight),
+                    Some(m) => pose.add_masked(&layer_pose, &r, layer_weight, m),
+                }
             }
         }
         if base {

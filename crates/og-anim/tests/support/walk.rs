@@ -1,6 +1,7 @@
 //! The determinism scenario: `WALKERS` characters on the walker rig, half
 //! driven by the graph (a speed profile through idle, walk and run, an
-//! additive wave), half by players switching clips with cross-fades; all
+//! additive wave masked to the arm and synced to the gait), half by players
+//! switching clips (the mirrored walk among them) with cross-fades; all
 //! with planar root motion, blendshapes, two-bone feet and a FABRIK arm,
 //! hinged knees and a cone on the shoulder (joint limits) and a head
 //! looking at a target that circles it, and both feet locked while planted.
@@ -78,8 +79,8 @@ pub fn build(seed: u32) -> (World, AnimationSystem) {
                             // Switch clips every 97 + i ticks.
                             let period = 97 + i as u64;
                             if tick % period == 0 {
-                                p.clip =
-                                    [WALK, RUN, IDLE][((tick / period + i as u64) % 3) as usize];
+                                p.clip = [WALK, RUN, IDLE, WALK_MIRRORED]
+                                    [((tick / period + i as u64) % 4) as usize];
                                 p.fade = 0.3;
                             }
                             ctx.set(e, p)?;

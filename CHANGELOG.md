@@ -9,6 +9,13 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- Layer masks and sync groups in the `animgraph` grammar: `mask "<node>"
+  [weight]` lines give a layer per-joint weights (a node's nearest named
+  ancestor, 0 elsewhere); `sync <group>` in a state's block plays every
+  later layer's state of the group at the first layer's phase, and a
+  transition inside a group keeps the phase. `og.anim.mirror` (and
+  `og_anim::mirror`): a clip played on the other side, left and right
+  paired by the naming schemes' side tokens, reflected in model space.
 - `og.FootLock` (a planted foot held where it touched the ground across
   clip blends and root motion until the clips lift it, then released over
   `release`; `planted` and `locked` written). "Planted" is retargeting's
