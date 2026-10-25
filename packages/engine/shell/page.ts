@@ -600,6 +600,10 @@ export async function play(): Promise<PlayHandle> {
     pausedByPlayer = m.paused;
     if (m.started && phase === "gate") start();
   };
+  // The usual case with a real Player: it answered the shell's hello while the engine loaded,
+  // and the handler above was not installed yet (the first one only released og.platform).
+  // What that hello says applies now: its rooms, and a Play link's room through them.
+  if (!page && player.hosted) playerEvents.hello({ started: player.started, paused: player.paused, capabilities: player.capabilities });
   playerEvents.start = () => {
     byPlayer = true;
     if (phase === "gate") start();

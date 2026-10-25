@@ -165,6 +165,13 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
   an `f64` or an `Asset()` cast (rumpus-isle #2). Every handle type of the
   API now has its factory; `packages/engine/tests/api-surface.test.ts`
   holds it.
+- A framed play page joins the Player's room again: the Player's hello
+  usually arrives while the engine loads, before the shell's hello handler
+  that reads it (`shell/page.ts`), so a Play link's room was never joined
+  under a real Player. The shell now replays that hello once the handler
+  is installed, as the top-level page already did (the platform's
+  rooms/player-protocol-2 acceptance found it: two engines on one `?room=`
+  link join as peers 0 and 1 with the fix, neither without).
 
 ## 0.4.0 — 2026-10-24
 
