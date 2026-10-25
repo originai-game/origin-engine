@@ -387,6 +387,12 @@ pub struct Hierarchy {
     /// slots: they are brought to `columns` and `parent` when an entity is
     /// next asked for.
     pending: Option<Pending>,
+    /// How many archetypes of `columns` the slots were last brought to.
+    applied: usize,
+    /// Entities and slots the last [`Hierarchy::apply`] walked: none when
+    /// nothing moved since the one before (the raycast record's cost test
+    /// counts them).
+    pub(crate) walked: usize,
 }
 
 /// What [`Hierarchy::capture`] leaves for [`Hierarchy::apply`]: per
@@ -546,10 +552,24 @@ impl Hierarchy {
 
     /// The second half of [`Hierarchy::refresh`]: the slots brought to the
     /// last [`Hierarchy::capture`] (nothing when there is none pending).
+    #[inline(never)]
     fn apply(&mut self) {
         let Some(Pending { still, reparented }) = self.pending.take() else {
             return;
         };
+        self.loose.clear();
+        self.walked = 0;
+        let applied = std::mem::replace(&mut self.applied, still.len());
+        if !reparented && still.len() == applied && still.iter().all(|&s| s) {
+            // The same archetypes, entities, bytes and parents as the
+            // slots were last brought to: every slot, its `local_set` and
+            // its kept world matrix stand as they are (`changed` is only
+            // read within this pass, which sets it for every slot first).
+            // 20,000 still meshes walked 20,000 entities and every slot
+            // three times here for nothing.
+            return;
+        }
+        self.walked = self.slots.len();
         // `local_set` now says "had og.Transform at the last read".
         let mut was: Vec<bool> = std::mem::take(&mut self.was);
         was.clear();
@@ -557,8 +577,8 @@ impl Hierarchy {
         for s in &mut self.slots {
             s.local_set = false;
         }
-        self.loose.clear();
         for ((ents, cols), &still) in self.columns.iter().zip(&still) {
+            self.walked += ents.len();
             let (pb, rb, sb) = (&cols[0], &cols[1], &cols[2]);
             for (i, e) in ents.iter().enumerate() {
                 let index = e.index() as usize;
@@ -729,7 +749,10 @@ impl Hierarchy {
 
     /// The world matrix of an entity: its local transform after its parents'.
     pub(crate) fn world_of(&mut self, e: u64) -> Mat4 {
-        self.apply();
+        // Checked in place: the raycast record asks once per target.
+        if self.pending.is_some() {
+            self.apply();
+        }
         if let Some(m) = self.cached(e) {
             return m;
         }
