@@ -1301,6 +1301,11 @@ struct DrawList {
     /// GPU culling's pass: the ranges are in its `instances` and each draw's
     /// count is in its `args` (`instances` and `triangles` are 0 here).
     indirect: Option<u32>,
+    /// A transparent list's billboards drawn before each range: how many of
+    /// the pass's ([`sprites::SpriteFrame::billboards`]) are farther than
+    /// its first instance ([`Renderer::sort_transparent`]); empty in the
+    /// other lists.
+    before: Vec<u32>,
 }
 
 /// GPU culling's list for pass `g`: every `include`d batch, drawn indirect
@@ -4585,8 +4590,12 @@ impl Renderer {
 
     /// The transparent instances in view, sorted back to front by the view
     /// depth of their bounds' centre (ties keep submission order), as runs of
-    /// one (mesh, material) appended to `transforms`. Returns the list and
-    /// how many were outside the view.
+    /// one (mesh, material) appended to `transforms`. `billboards`: the
+    /// depths, far first, of the billboards drawn among them (the pass's
+    /// [`sprites::SpriteFrame::billboards`]): a run is cut where one falls
+    /// between two of its instances, and [`DrawList::before`] says how many
+    /// draw before each run (a billboard as far as a mesh draws after it).
+    /// Returns the list and how many were outside the view.
     #[allow(clippy::too_many_arguments)]
     fn sort_transparent(
         &self,
@@ -4599,6 +4608,7 @@ impl Renderer {
         eye: Vec3,
         forward: Vec3,
         layers: u32,
+        billboards: &[f32],
     ) -> (DrawList, u32) {
         let mut keyed: Vec<(f32, u32, usize, u32)> = Vec::new();
         let mut culled = 0;
@@ -4615,13 +4625,21 @@ impl Renderer {
         }
         og_core::sort::sort_by(&mut keyed, |a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)));
         let mut list = DrawList::default();
-        for (_, _, k, b) in keyed {
+        let mut farther = 0;
+        for (depth, _, k, b) in keyed {
             let at = transforms.len() as u32;
             transforms.push(transforms[k]);
             origins.push(origins[k]);
+            let before = farther;
+            while farther < billboards.len() && billboards[farther] > depth {
+                farther += 1;
+            }
             match list.ranges.last_mut() {
-                Some(r) if r.0 == b && r.1 + r.2 == at => r.2 += 1,
-                _ => list.ranges.push((b, at, 1)),
+                Some(r) if r.0 == b && r.1 + r.2 == at && farther == before => r.2 += 1,
+                _ => {
+                    list.ranges.push((b, at, 1));
+                    list.before.push(farther as u32);
+                }
             }
             list.instances += 1;
             list.triangles += (self.cache.meshes[batches[b as usize].mesh].index_count / 3) as u64;
@@ -5677,6 +5695,9 @@ impl Renderer {
         // glow buffer.
         let mut view_sprites: Vec<Vec<sprites::SpriteRun>> = Vec::new();
         let mut view_glow_runs: Vec<Vec<sprites::SpriteRun>> = Vec::new();
+        // Each view's billboards among its transparent meshes and their
+        // drop shadows (sprites.rs `SpriteFrame::billboards`).
+        let mut view_boards: Vec<sprites::Billboards> = Vec::new();
         for (p, runs) in view_plans.iter().zip(&view_ribbons) {
             let view_strips: Vec<sprites::LayeredStrip> = runs
                 .iter()
@@ -5725,6 +5746,7 @@ impl Renderer {
             // Its glow instances follow every run's (its glow pass reads them).
             let base = sprite_frame.instances.len() as u32;
             sprite_frame.instances.extend_from_slice(&f.instances);
+            view_boards.push(sprites::billboards_at(&f, base));
             view_glow_runs.push(
                 f.glow_runs
                     .into_iter()
@@ -5748,44 +5770,48 @@ impl Renderer {
         }
         // The due probe faces' world sprites, 2D particles and text (every
         // layer, unlit, without glow: probes.rs), after the views' in the
-        // sprite buffer; built once per due probe, its billboards sorted
-        // by distance from the capture point (one order for its six
-        // faces, each of which turns them to itself in the shader) and
-        // never culled.
+        // sprite buffer; built for each face, its billboards sorted by the
+        // face camera's depth from the capture point among the face's
+        // transparent meshes and culled to the face.
         let mut face_sprites: Vec<Vec<sprites::SpriteRun>> = Vec::new();
-        for &(_, i) in &probe_frame.due {
-            let f = sprites::build(
-                scene,
-                font,
-                self.cache.textures.len(),
-                array_layers,
-                &particle_frame.sprites,
-                |_| false,
-                None,
-                &[],
-                u32::MAX,
-                &sprites::SpriteEye {
-                    position: active_probes[i].position,
-                    forward: None,
-                    frustum: None,
-                },
-            )?;
-            let base = sprite_frame.instances.len() as u32;
-            sprite_frame.instances.extend_from_slice(&f.instances);
-            face_sprites.push(
-                f.runs
-                    .into_iter()
-                    .map(|mut r| {
-                        if !matches!(
-                            r.source,
-                            RunSource::Strip(..) | RunSource::Mesh(_) | RunSource::Metaballs(_)
-                        ) {
-                            r.first += base;
-                        }
-                        r
-                    })
-                    .collect(),
-            );
+        let mut face_boards: Vec<sprites::Billboards> = Vec::new();
+        for (d, &(_, i)) in probe_frame.due.iter().enumerate() {
+            for cam in &probe_faces[d] {
+                let frustum = Frustum::from_view_proj(cam.view_proj);
+                let f = sprites::build(
+                    scene,
+                    font,
+                    self.cache.textures.len(),
+                    array_layers,
+                    &particle_frame.sprites,
+                    |_| false,
+                    None,
+                    &[],
+                    u32::MAX,
+                    &sprites::SpriteEye {
+                        position: active_probes[i].position,
+                        forward: Some(cam.forward),
+                        frustum: Some(&frustum),
+                    },
+                )?;
+                let base = sprite_frame.instances.len() as u32;
+                sprite_frame.instances.extend_from_slice(&f.instances);
+                face_boards.push(sprites::billboards_at(&f, base));
+                face_sprites.push(
+                    f.runs
+                        .into_iter()
+                        .map(|mut r| {
+                            if !matches!(
+                                r.source,
+                                RunSource::Strip(..) | RunSource::Mesh(_) | RunSource::Metaballs(_)
+                            ) {
+                                r.first += base;
+                            }
+                            r
+                        })
+                        .collect(),
+                );
+            }
         }
         let sprite_frame = sprite_frame;
         for run in sprite_frame
@@ -5795,6 +5821,14 @@ impl Renderer {
             .chain(view_sprites.iter().flatten())
             .chain(view_glow_runs.iter().flatten())
             .chain(face_sprites.iter().flatten())
+            .chain(sprite_frame.billboards.iter().map(|b| &b.1))
+            .chain(&sprite_frame.billboard_shadows)
+            .chain(
+                view_boards
+                    .iter()
+                    .chain(&face_boards)
+                    .flat_map(|(b, s)| b.iter().map(|b| &b.1).chain(s)),
+            )
         {
             match run.source {
                 RunSource::Sprite(_, t) => {
@@ -5970,6 +6004,7 @@ impl Renderer {
             camera.position,
             cam.forward,
             mask,
+            &sprites::depths(&sprite_frame.billboards),
         );
         culled += blended_culled + skinned_culled;
         let reflection_list = reflection.as_ref().map(|r| {
@@ -5999,7 +6034,7 @@ impl Renderer {
         let mut probe_blended: Vec<DrawList> = Vec::new();
         for (d, cams) in probe_faces.iter().enumerate() {
             let eye = active_probes[probe_frame.due[d].1].position;
-            for f in cams {
+            for (face, f) in cams.iter().enumerate() {
                 let frustum = Frustum::from_view_proj(f.view_proj);
                 probe_lists.push(
                     self.cull(
@@ -6025,6 +6060,7 @@ impl Renderer {
                         eye,
                         f.forward,
                         u32::MAX,
+                        &sprites::depths(&face_boards[6 * d + face].0),
                     )
                     .0,
                 );
@@ -6035,7 +6071,8 @@ impl Renderer {
         // its eye.
         let mut view_blended: Vec<DrawList> = view_plans
             .iter()
-            .map(|p| {
+            .zip(&view_boards)
+            .map(|(p, boards)| {
                 self.sort_transparent(
                     &batches,
                     &spheres,
@@ -6046,6 +6083,7 @@ impl Renderer {
                     p.position,
                     p.frame.forward,
                     p.layers,
+                    &sprites::depths(&boards.0),
                 )
                 .0
             })
@@ -7298,7 +7336,10 @@ impl Renderer {
             tiles: sprite_frame.tiles,
             tile_chunks: sprite_frame.tile_chunks,
             glyphs: sprite_frame.glyphs,
-            sprite_draws: sprite_frame.runs.len() as u32,
+            sprite_draws: (sprite_frame.runs.len()
+                + sprite_frame.billboard_shadows.len()
+                + sprites::draw_runs_of(&sprite_frame.billboards).len())
+                as u32,
             missing_glyphs: sprite_frame.missing_glyphs,
             transparent: blended_list.instances,
             transparent_draws: blended_list.ranges.len() as u32,
@@ -8191,6 +8232,51 @@ impl Renderer {
             }
             draws
         };
+        // The transparent meshes of `list` and the billboards sorted among
+        // them (`sprites::SpriteFrame::billboards`): the billboards' drop
+        // shadows first, then each billboard before the first run nearer
+        // than it (`DrawList::before`), the rest after the last. `fx`: the
+        // pass's effects group and its sprites' (each pass's group 2).
+        // Returns the draw calls.
+        #[allow(clippy::type_complexity)]
+        let draw_blended =
+            |pass: &mut wgpu::RenderPass,
+             list: &DrawList,
+             (boards, shadows): (&[(f32, sprites::SpriteRun)], &[sprites::SpriteRun]),
+             (fx, sprite_fx): (&wgpu::BindGroup, &wgpu::BindGroup),
+             physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
+             probes: Option<probe_select::ProbeGroups>,
+             view: bool|
+             -> u32 {
+                if boards.is_empty() && shadows.is_empty() {
+                    draw_list(pass, list, true, &mut None, physical_fx, probes);
+                    return list.ranges.len() as u32;
+                }
+                let billboards = |pass: &mut wgpu::RenderPass, runs: &[sprites::SpriteRun]| {
+                    let n = draw_sprites(pass, runs, sprite_fx, &[], view);
+                    pass.set_bind_group(2, fx, &[]);
+                    n
+                };
+                let meshes = |pass: &mut wgpu::RenderPass, range: std::ops::Range<usize>| {
+                    let part = DrawList {
+                        ranges: list.ranges[range.clone()].to_vec(),
+                        ..DrawList::default()
+                    };
+                    draw_list(pass, &part, true, &mut None, physical_fx, probes);
+                    range.len() as u32
+                };
+                let mut draws = billboards(pass, shadows);
+                let (mut drawn, mut start) = (0usize, 0usize);
+                for r in 0..=list.ranges.len() {
+                    let before = list.before.get(r).map_or(boards.len(), |&b| b as usize);
+                    if before > drawn {
+                        draws += meshes(pass, start..r);
+                        draws += billboards(pass, &sprites::draw_runs_of(&boards[drawn..before]));
+                        (drawn, start) = (before, r);
+                    }
+                }
+                draws + meshes(pass, start..list.ranges.len())
+            };
         let terrain_indices = self.terrain.index_buffer();
         // The depth prepass of a camera other than the main one (a view's,
         // a probe face's: views.rs, probes.rs): its opaque `list`, its
@@ -8871,11 +8957,18 @@ impl Renderer {
                                 }
                                 pass.set_bind_group(2, fx_group, &[]);
                             }
-                            // Transparent meshes, back to front from the
-                            // probe, over the opaque capture.
-                            let blended = &probe_blended[k];
-                            draw_list(&mut pass, blended, true, &mut None, None, None);
-                            stats.draw_calls += blended.ranges.len() as u32;
+                            // Transparent meshes and the billboards among
+                            // them, back to front from the probe, over the
+                            // opaque capture.
+                            stats.draw_calls += draw_blended(
+                                &mut pass,
+                                &probe_blended[k],
+                                (&face_boards[k].0, &face_boards[k].1),
+                                (fx_group, glow_fx_group),
+                                None,
+                                None,
+                                true,
+                            );
                             stats.draw_calls += draw_skinned(
                                 &mut pass,
                                 &probe_skinned[k],
@@ -8917,7 +9010,7 @@ impl Renderer {
                                 pass.set_bind_group(0, &face_groups[k], &[]);
                             }
                             stats.draw_calls +=
-                                draw_sprites(&mut pass, &face_sprites[d], glow_fx_group, &[], true);
+                                draw_sprites(&mut pass, &face_sprites[k], glow_fx_group, &[], true);
                         }
                         self.ibl.record_probe_filter(&mut encoder, &s.filter);
                     }
@@ -9127,8 +9220,15 @@ impl Renderer {
                         // the scene lines and points, the world sprites and
                         // text.
                         pass.set_bind_group(2, &view_groups[i].1, &[]);
-                        draw_list(&mut pass, &view_blended[i], true, &mut None, None, None);
-                        stats.draw_calls += view_blended[i].ranges.len() as u32;
+                        stats.draw_calls += draw_blended(
+                            &mut pass,
+                            &view_blended[i],
+                            (&view_boards[i].0, &view_boards[i].1),
+                            (&view_groups[i].1, &view_sprite_fx[i]),
+                            None,
+                            None,
+                            true,
+                        );
                         stats.draw_calls += draw_skinned(
                             &mut pass,
                             &view_skinned[i],
@@ -9436,17 +9536,18 @@ impl Renderer {
                             binder.reset(&mut pass);
                         }
                     }
-                    // Transparent meshes, back to front over the opaque scene.
+                    // Transparent meshes and the billboards among them, back
+                    // to front over the opaque scene.
                     pass.set_bind_group(2, fx_group, &[]);
-                    draw_list(
+                    stats.draw_calls += draw_blended(
                         &mut pass,
                         &blended_list,
-                        true,
-                        &mut None,
+                        (&sprite_frame.billboards, &sprite_frame.billboard_shadows),
+                        (fx_group, sprite_fx_group),
                         physical_fx,
                         probe_binding,
+                        false,
                     );
-                    stats.draw_calls += blended_list.ranges.len() as u32;
                     stats.draw_calls += draw_skinned(
                         &mut pass,
                         &skinned_visible,

@@ -2857,7 +2857,7 @@ module render {
   }
 
   enum SpriteFacing {
-    doc "How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). Decided as a mode of og.Sprite and SpriteDesc rather than a component of its own: a billboard is the same quad, texture, region, flash, glow, blend, layer, drop shadow and texture array layer as any sprite, drawn by the same sprite batch and shader, which only stands its corners differently. The turn is computed on the GPU from each camera's own axes (the main camera, every og.CameraView and og.Mirror, every face of a reflection probe), so it never feeds back into the simulation and a snapshot holds only the mode. The sprite turns about its anchor (a nine-slice turns as one panel), `rotation` still turns it within its own plane, and its drop shadow is cast by the quad stood upright facing the sun, so it shows the whole shape from every camera. Within its layer a faced sprite without sortY draws back to front from the camera's eye (by view depth; a probe's six faces by distance from the probe), after the layer's drop shadows and before its unfaced sprites; and it is culled by its bounds (a sphere round the anchor through the farthest corner) against the camera's view. Sprites draw over the 3D scene after its transparent meshes and particles, depth tested and not depth writing, so a billboard behind a transparent mesh still draws over it."
+    doc "How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). Decided as a mode of og.Sprite and SpriteDesc rather than a component of its own: a billboard is the same quad, texture, region, flash, glow, blend, layer, drop shadow and texture array layer as any sprite, drawn by the same sprite batch and shader, which only stands its corners differently. The turn is computed on the GPU from each camera's own axes (the main camera, every og.CameraView and og.Mirror, every face of a reflection probe), so it never feeds back into the simulation and a snapshot holds only the mode. The sprite turns about its anchor (a nine-slice turns as one panel), `rotation` still turns it within its own plane, and its drop shadow is cast by the quad stood upright facing the sun, so it shows the whole shape from every camera. A faced sprite without sortY (and tone mapped) draws among the transparent meshes, back to front with them by the view depth of its anchor from the camera that draws it (each face of a reflection probe from the probe), its drop shadow before them, so a billboard behind a glass pane shows through it and one in front draws over it; its layer no longer orders it against other sprites. With sortY, or toneMapped false, it keeps the sprite order (layer, then key) after the transparent meshes and particles. A faced sprite is culled by its bounds (a sphere round the anchor through the farthest corner) against the camera's view. Sprites are depth tested and do not write depth. World text takes the same modes (TextDesc.facing, FloatingTextDesc.facing): it turns as one panel about its position and sorts as a billboard."
     variant none "In the world's xy plane facing +z, as every sprite before billboards."
     variant camera "In the camera's view plane: its x along the camera's right, its y along its up, as particle billboards (smoke, glints, impostors seen from any side)."
     variant cameraY "Upright, turned about the world's y axis towards the camera: its y stays +y, its x the camera's right laid level. Trees, characters and props that must stand while the camera looks down on them."
@@ -3654,6 +3654,7 @@ module render {
       max 1
     }
     field outlineColor Color "The outline's linear colour."
+    field facing SpriteFacing "World text as a billboard (SpriteFacing): none keeps it in the world's xy plane; camera turns it into each camera's view plane; cameraY stands it upright turned about y towards the camera (a name over a character). It turns as one panel about `position`, sorts among the transparent meshes by that point's view depth and is not culled. Screen text ignores it."
     field screen bool "Draw in screen space over the finished frame: position is the first baseline's origin in CSS pixels from the top left, y down, size in CSS pixels, rotation clockwise. With og.ui: under every UI element at a layer up to UI_LAYER (1000), over every one above it."
     field clip Option.Array.f32.4 "Screen text: cut to [x, y, width, height] in CSS pixels, per pixel; null draws it whole."
   }
@@ -3925,6 +3926,7 @@ module render {
     field layer i32 "The sprite layer (above the action)." {
       default 100
     }
+    field facing SpriteFacing "A billboard (TextDesc.facing): none keeps the text in the world's xy plane, as for a 2D game; camera or cameraY turns it towards each camera that draws it, for damage numbers over a 3D scene."
   }
 
   fn floatingText {

@@ -1673,12 +1673,16 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
             num(oc, "b", 0.0),
             color[3],
         ];
+        let facing = super::feel::facing_named(d["facing"].as_str());
         let shift = match d["align"].as_str() {
             Some("center") => 0.5,
             Some("end") => 1.0,
             _ => 0.0,
         };
-        if shift == 0.0 {
+        // Unaligned, or a faced world text, which the renderer aligns about
+        // its point in its own plane (`og_render::TextFacing::align`).
+        let faced = facing != og_render::SpriteFacing::None && !screen;
+        if shift == 0.0 || faced {
             rs.texts.push(super::extract::QueuedText {
                 font: render,
                 text,
@@ -1691,6 +1695,8 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
                 clip,
                 outline,
                 outline_color,
+                facing,
+                align: shift,
             });
             return Ok(());
         }
@@ -1720,6 +1726,8 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
                 clip,
                 outline,
                 outline_color,
+                facing,
+                align: 0.0,
             });
         }
         Ok(())

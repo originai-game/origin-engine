@@ -231,7 +231,9 @@ lighting falls back to a forward tile table built on the CPU).
   CJK coverage through the platform's subset fonts, and characters outside
   a cooked charset rendered at run time from the font's outlines (`font {
   runtime true }`); bidi (UAX #9) and shaping (Arabic, Indic) through
-  rustybuzz, behind og-ui's `shaping` feature.
+  rustybuzz, behind og-ui's `shaping` feature. World text faces the camera
+  as a billboard does when asked (`TextDesc.facing`), turned as one panel
+  about its aligned point and sorted among the transparent meshes.
 - Capture: a readback path from the render graph, used by the probe's
   `capture` on both hosts; on the web it reads the OffscreenCanvas target, so
   no `preserveDrawingBuffer`.

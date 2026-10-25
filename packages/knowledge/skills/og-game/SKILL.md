@@ -460,11 +460,17 @@ else ignores it. The stamp is world state, so a replay reproduces it.
   the view plane (smoke, glints, signs); `"none"`, the default, keeps the
   xy plane. Every camera turns it to itself (og.CameraView, og.Mirror, reflection
   probes), the turn is render-only (never read by systems or snapshots),
-  faced sprites in one layer draw back to front from the camera and are
-  culled off screen, and a faced sprite's `dropShadow` is its whole shape
-  from any angle. It is still a sprite: flash, glow, blend, 2D lighting,
-  arrays, flipbooks and `toneMapped` all apply. A billboard behind a
-  transparent mesh still draws over it (sprites draw after the 3D scene).
+  faced sprites draw back to front with the transparent meshes (a tree
+  behind a glass pane shows through it, one in front draws over it) and
+  are culled off screen, and a faced sprite's `dropShadow` is its whole
+  shape from any angle. It is still a sprite: flash, glow, blend, 2D
+  lighting, arrays, flipbooks and `toneMapped` all apply. Its layer no
+  longer orders it against other sprites; give it `sortY` to keep the
+  sprite order instead (then it draws after the transparent meshes). World
+  text takes the same `facing` (`og.render.text`, `og.render.floatingText`):
+  a name over a character, a damage number over a 3D fight, turned as one
+  panel about its position (centred on it with `align: "center"`; a
+  floating text always is).
 
   ```ts
   world.insert(tree, og.Sprite, { texture: treeTex, width: 2, height: 2.6, anchor: { x: 0.5, y: 0 }, facing: "cameraY", dropShadow: 0.6 });

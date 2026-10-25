@@ -1408,13 +1408,18 @@ pub struct RenderScene {
     /// How each world sprite faces the camera, by index in `sprites`
     /// (billboards): an index past the end is [`SpriteFacing::None`], the
     /// xy plane. A faced sprite without a [`RenderScene::sprite_order`] key
-    /// is sorted within its layer back to front from the eye that draws it
-    /// (its key the negated view depth of its anchor, so before the
-    /// layer's key-0 sprites), and culled by its bounds (a sphere round the
-    /// anchor through the farthest corner) against that camera's frustum.
-    /// Its drop shadow is cast by the quad stood upright facing the sun,
-    /// so it shows the sprite's whole shape from every camera.
+    /// (and tone mapped) draws among the transparent meshes, back to front
+    /// with them by the view depth of its anchor from the eye that draws
+    /// it, its drop shadow before them; with a key it keeps the sprites'
+    /// (layer, key) order. Culled by its bounds (a sphere round the anchor
+    /// through the farthest corner) against that camera's frustum. Its
+    /// drop shadow is cast by the quad stood upright facing the sun, so it
+    /// shows the sprite's whole shape from every camera.
     pub sprite_facing: Vec<SpriteFacing>,
+    /// World texts turned to the camera ([`TextFacing`], by text index; the
+    /// last entry for an index wins; a text without one stays in the xy
+    /// plane), as [`RenderScene::sprite_facing`] turns sprites.
+    pub text_facing: Vec<TextFacing>,
     /// The same for `lines` and `points` (scene sets; overlay and screen
     /// sets draw on the main frame whatever their masks).
     pub line_layers: Vec<u32>,
@@ -1505,6 +1510,7 @@ impl RenderScene {
             skinned_layers: Vec::new(),
             sprite_layers: Vec::new(),
             sprite_facing: Vec::new(),
+            text_facing: Vec::new(),
             line_layers: Vec::new(),
             point_layers: Vec::new(),
             particle_layers: Vec::new(),
@@ -3035,6 +3041,21 @@ pub struct SpriteOrder {
     pub sprite: u32,
     /// Lower keys draw first (under); top-down games use `-y` of the feet.
     pub key: f32,
+}
+
+/// A world text turned to the camera ([`RenderScene::text_facing`]): it
+/// turns as one panel about its pivot, `position` moved forward along each
+/// line's baseline by `align` of that line's width (0 the line's start,
+/// 0.5 its middle, 1 its end; each line is moved back by as much so the
+/// pivot stays put, as an aligned text's lines are), and draws among the
+/// transparent meshes by the pivot's view depth, as a billboard does
+/// ([`RenderScene::sprite_facing`]). It is not culled.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TextFacing {
+    /// The index in [`RenderScene::texts`].
+    pub text: u32,
+    pub facing: SpriteFacing,
+    pub align: f32,
 }
 
 /// An outline around one world text ([`RenderScene::text_outlines`]).

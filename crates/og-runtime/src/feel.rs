@@ -151,6 +151,8 @@ pub(crate) struct Floating {
     pub fade: f32,
     pub pop: f32,
     pub layer: i32,
+    /// `FloatingTextDesc.facing`: a billboard (`RenderScene::text_facing`).
+    pub facing: og_render::SpriteFacing,
 }
 
 #[derive(Default)]
@@ -913,6 +915,12 @@ impl<'a> Reader<'a> {
         self.at += n;
         Ok(b)
     }
+    pub fn at_end(&self) -> bool {
+        self.at == self.bytes.len()
+    }
+    pub fn u8(&mut self) -> og_core::Result<u8> {
+        Ok(self.take(1)?[0])
+    }
     pub fn u32(&mut self) -> og_core::Result<u32> {
         Ok(u32::from_le_bytes(self.take(4)?.try_into().expect("4")))
     }
@@ -1278,6 +1286,7 @@ pub fn og_render_floating_text(world: u32, desc: Option<String>) -> String {
             fade: f(&d, "fade", 0.4).clamp(0.0, 1.0),
             pop: f(&d, "pop", 0.4).max(0.0) * if crit { 1.5 } else { 1.0 },
             layer: d["layer"].as_i64().unwrap_or(100) as i32,
+            facing: facing_named(d["facing"].as_str()),
         });
         Ok(())
     }))
@@ -1884,6 +1893,16 @@ impl StateBlock for SpriteBlock {
                 out.extend_from_slice(&v.to_le_bytes());
             }
         }
+        // The floating texts' facings, a byte each, only when one faces the
+        // camera: a block without is the one engines before
+        // FloatingTextDesc.facing wrote and read, and its hash unchanged.
+        if sh
+            .floating
+            .iter()
+            .any(|t| t.facing != og_render::SpriteFacing::None)
+        {
+            out.extend(sh.floating.iter().map(|t| facing_byte(t.facing)));
+        }
     }
 
     fn decode(&self, bytes: &[u8]) -> og_core::Result<Box<dyn Any + Send>> {
@@ -1931,6 +1950,7 @@ impl StateBlock for SpriteBlock {
                 fade: r.f32()?,
                 pop: r.f32()?,
                 layer: r.i32()?,
+                facing: og_render::SpriteFacing::None,
             });
         }
         for i in 0..2 {
@@ -1942,6 +1962,15 @@ impl StateBlock for SpriteBlock {
                 sh.squash = map;
             } else {
                 sh.flash = map;
+            }
+        }
+        if !r.at_end() {
+            for t in &mut sh.floating {
+                t.facing = match r.u8()? {
+                    1 => og_render::SpriteFacing::Camera,
+                    2 => og_render::SpriteFacing::CameraY,
+                    _ => og_render::SpriteFacing::None,
+                };
             }
         }
         r.end()?;
@@ -2034,6 +2063,16 @@ struct SpriteOut {
     facing: og_render::SpriteFacing,
 }
 
+/// A floating text's facing as the og.sprite state block stores it (its
+/// decode reads it back): 0 none, 1 camera, 2 cameraY.
+fn facing_byte(f: og_render::SpriteFacing) -> u8 {
+    match f {
+        og_render::SpriteFacing::None => 0,
+        og_render::SpriteFacing::Camera => 1,
+        og_render::SpriteFacing::CameraY => 2,
+    }
+}
+
 /// `SpriteFacing` by its IDL name (og.Sprite.facing, SpriteDesc.facing):
 /// `none` for any other.
 pub(crate) fn facing_named(name: Option<&str>) -> og_render::SpriteFacing {
@@ -2044,27 +2083,26 @@ pub(crate) fn facing_named(name: Option<&str>) -> og_render::SpriteFacing {
     }
 }
 
-/// Sets world sprite `index`'s facing (the list stays short while no
-/// sprite faces the camera).
+/// Sets world sprite or text `index`'s facing in `list`
+/// (`RenderScene::sprite_facing` or `text_facing`; the list stays short
+/// while none faces the camera).
 pub(crate) fn set_facing(
-    scene: &mut og_render::RenderScene,
+    list: &mut Vec<og_render::SpriteFacing>,
     index: usize,
     facing: og_render::SpriteFacing,
 ) {
-    if facing == og_render::SpriteFacing::None && scene.sprite_facing.len() <= index {
+    if facing == og_render::SpriteFacing::None && list.len() <= index {
         return;
     }
-    if scene.sprite_facing.len() <= index {
-        scene
-            .sprite_facing
-            .resize(index + 1, og_render::SpriteFacing::None);
+    if list.len() <= index {
+        list.resize(index + 1, og_render::SpriteFacing::None);
     }
-    scene.sprite_facing[index] = facing;
+    list[index] = facing;
 }
 
 fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
     let index = scene.sprites.len() as u32;
-    set_facing(scene, index as usize, s.facing);
+    set_facing(&mut scene.sprite_facing, index as usize, s.facing);
     scene.sprites.push(s.sprite);
     if let Some((array, layer)) = s.array {
         scene.sprite_arrays.push(og_render::SpriteArray {
@@ -2462,7 +2500,14 @@ fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
         let Some(first) = pages.first().and_then(|p| rs.scene.font(*p)) else {
             continue;
         };
-        let width: f32 = first.measure(&t.text) * size;
+        // Centred on its point: moved back by half its width, or, faced,
+        // turned about the point with its line centred on it.
+        let faced = t.facing != og_render::SpriteFacing::None;
+        let width: f32 = if faced {
+            0.0
+        } else {
+            first.measure(&t.text) * size
+        };
         let position = Vec3::new(
             t.position.x + t.drift * k - width / 2.0,
             t.position.y + rise,
@@ -2470,6 +2515,13 @@ fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
         );
         for page in pages {
             let index = rs.scene.texts.len() as u32;
+            if faced {
+                rs.scene.text_facing.push(og_render::TextFacing {
+                    text: index,
+                    facing: t.facing,
+                    align: 0.5,
+                });
+            }
             rs.scene.texts.push(og_render::Text {
                 font: page,
                 text: t.text.clone(),
