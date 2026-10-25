@@ -85,8 +85,165 @@ fn read_uri(
 
 /// Parses a `.glb`/`.gltf`, resolving its buffers and image bytes, and lists
 /// the textures its materials use in first-use order.
+/// The JSON of a glTF (a `.glb`'s JSON chunk, or the file) as the cook
+/// reads it: with [`pointer_visibility`] applied. `None` when it does not
+/// parse.
+pub(super) fn source_json(bytes: &[u8]) -> Option<serde_json::Value> {
+    let mut json: serde_json::Value = if bytes.len() >= 20 && &bytes[0..4] == b"glTF" {
+        let len = u32::from_le_bytes(bytes[12..16].try_into().ok()?) as usize;
+        serde_json::from_slice(bytes.get(20..20 + len)?).ok()?
+    } else {
+        serde_json::from_slice(bytes).ok()?
+    };
+    pointer_visibility(&mut json).ok()?;
+    Some(json)
+}
+
+/// The pointer `KHR_animation_pointer` animates `KHR_node_visibility` with.
+fn visibility_node(pointer: &str) -> Option<u64> {
+    let n = pointer
+        .strip_prefix("/nodes/")?
+        .strip_suffix("/extensions/KHR_node_visibility/visible")?;
+    (!n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+        .then(|| n.parse().ok())
+        .flatten()
+}
+
+/// Rewrites glTF's own visibility animation, a `KHR_animation_pointer`
+/// channel (`"path": "pointer"`) onto
+/// `/nodes/<n>/extensions/KHR_node_visibility/visible`, as the engine's
+/// `OG_animation_visibility` entry `{ sampler, node: n }` of the same
+/// animation, the form the gltf crate (which refuses the `pointer` path)
+/// loads and validates as any other file. A pointer channel onto anything
+/// else is dropped with a warning, or refused when the file requires
+/// `KHR_animation_pointer`; once none is left the extension leaves
+/// `extensionsRequired`, as does `KHR_node_visibility`, which the cook
+/// reads. Untouched (`Ok` and no warnings, nothing changed) without a
+/// pointer channel.
+pub(super) fn pointer_visibility(json: &mut serde_json::Value) -> Result<Vec<String>, String> {
+    use serde_json::{Value, json};
+    const POINTER: &str = "KHR_animation_pointer";
+    let required = |json: &Value, ext: &str| {
+        json.get("extensionsRequired")
+            .and_then(|r| r.as_array())
+            .is_some_and(|r| r.iter().any(|e| e == ext))
+    };
+    let pointer_required = required(json, POINTER);
+    let mut warnings = Vec::new();
+    let mut changed = false;
+    let Some(anims) = json.get_mut("animations").and_then(|a| a.as_array_mut()) else {
+        return Ok(warnings);
+    };
+    for (ai, anim) in anims.iter_mut().enumerate() {
+        let Some(channels) = anim.get_mut("channels").and_then(|c| c.as_array_mut()) else {
+            continue;
+        };
+        let mut moved = Vec::new();
+        let mut kept = Vec::with_capacity(channels.len());
+        for (ci, ch) in std::mem::take(channels).into_iter().enumerate() {
+            if ch.pointer("/target/path").and_then(|p| p.as_str()) != Some("pointer") {
+                kept.push(ch);
+                continue;
+            }
+            changed = true;
+            let at = format!("animation {ai} channel {ci}");
+            let pointer = ch
+                .pointer(&format!("/target/extensions/{POINTER}/pointer"))
+                .and_then(|p| p.as_str())
+                .ok_or_else(|| {
+                    format!("glTF: {at}: a `pointer` path without its {POINTER} pointer")
+                })?;
+            let sampler = ch
+                .get("sampler")
+                .and_then(|s| s.as_u64())
+                .ok_or_else(|| format!("glTF: {at}: no sampler"))?;
+            match visibility_node(pointer) {
+                Some(node) => moved.push(json!({ "sampler": sampler, "node": node })),
+                None if pointer_required => {
+                    return Err(format!(
+                        "glTF: {at} animates {pointer} through the required {POINTER}; the engine animates only KHR_node_visibility's visible that way"
+                    ));
+                }
+                None => warnings.push(format!(
+                    "glTF: {at}: {POINTER} onto {pointer} is not animated (only KHR_node_visibility's visible is); dropped"
+                )),
+            }
+        }
+        *channels = kept;
+        if !moved.is_empty() {
+            let ext = anim
+                .as_object_mut()
+                .ok_or("glTF: an animation is not an object")?
+                .entry("extensions")
+                .or_insert_with(|| json!({}))
+                .as_object_mut()
+                .ok_or("glTF: an animation's extensions are not an object")?
+                .entry(crate::cook::anim::VISIBILITY_EXTENSION)
+                .or_insert_with(|| json!({ "channels": [] }));
+            ext.get_mut("channels")
+                .and_then(|c| c.as_array_mut())
+                .ok_or_else(|| {
+                    format!(
+                        "glTF: animation {ai}: {}'s channels are not a list",
+                        crate::cook::anim::VISIBILITY_EXTENSION
+                    )
+                })?
+                .extend(moved);
+        }
+    }
+    if changed
+        && let Some(r) = json
+            .get_mut("extensionsRequired")
+            .and_then(|r| r.as_array_mut())
+    {
+        r.retain(|e| e != POINTER && e != "KHR_node_visibility");
+    }
+    Ok(warnings)
+}
+
+/// `bytes` with [`pointer_visibility`] applied (a `.glb` rebuilt around its
+/// rewritten JSON chunk), borrowed as they are when it changes nothing.
+fn rewrite_pointers(bytes: &[u8]) -> Result<(std::borrow::Cow<'_, [u8]>, Vec<String>), String> {
+    use std::borrow::Cow;
+    let glb = bytes.len() >= 20 && &bytes[0..4] == b"glTF";
+    let (json_bytes, rest) = if glb {
+        let len = u32::from_le_bytes(bytes[12..16].try_into().expect("4 bytes")) as usize;
+        match bytes.get(20..20 + len) {
+            Some(j) => (j, &bytes[20 + len..]),
+            // Malformed: the gltf crate says how.
+            None => return Ok((Cow::Borrowed(bytes), Vec::new())),
+        }
+    } else {
+        (bytes, &[][..])
+    };
+    // Only a file that names the `pointer` path is parsed here.
+    if !json_bytes.windows(9).any(|w| w == b"\"pointer\"") {
+        return Ok((Cow::Borrowed(bytes), Vec::new()));
+    }
+    let Ok(mut json) = serde_json::from_slice::<serde_json::Value>(json_bytes) else {
+        return Ok((Cow::Borrowed(bytes), Vec::new()));
+    };
+    let warnings = pointer_visibility(&mut json)?;
+    let mut text = serde_json::to_vec(&json).map_err(|e| format!("glTF: {e}"))?;
+    if !glb {
+        return Ok((Cow::Owned(text), warnings));
+    }
+    while text.len() % 4 != 0 {
+        text.push(b' ');
+    }
+    let mut out = Vec::with_capacity(20 + text.len() + rest.len());
+    out.extend_from_slice(&bytes[0..8]);
+    out.extend_from_slice(&((20 + text.len() + rest.len()) as u32).to_le_bytes());
+    out.extend_from_slice(&(text.len() as u32).to_le_bytes());
+    out.extend_from_slice(&bytes[16..20]);
+    out.extend_from_slice(&text);
+    out.extend_from_slice(rest);
+    Ok((Cow::Owned(out), warnings))
+}
+
 pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
-    let gltf = gltf::Gltf::from_slice(bytes).map_err(|e| format!("glTF: {e}"))?;
+    let (bytes, pointer_warnings) = rewrite_pointers(bytes)?;
+    let gltf = gltf::Gltf::from_slice(&bytes).map_err(|e| format!("glTF: {e}"))?;
     let mut blob = gltf.blob;
     let doc = gltf.document;
     let mut external = Vec::new();
@@ -117,7 +274,7 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
         });
     }
     let mut textures: Vec<TextureUse> = Vec::new();
-    let mut warnings = Vec::new();
+    let mut warnings = pointer_warnings;
     for m in doc.materials() {
         let pbr = m.pbr_metallic_roughness();
         let slots = [

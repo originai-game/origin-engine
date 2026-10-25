@@ -36,6 +36,13 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
   its descendants, so a `.vox` without a skeleton draws frame 0 only
   (its other frames were zero-size draws). Every model, proxy and `#anim`
   re-cooks once (the type hash and the `nodes-v2` stamp move).
+- glTF files that animate visibility through `KHR_animation_pointer`
+  (onto `KHR_node_visibility/visible`, as Blender and three.js export)
+  now cook: the loader rewrites such channels as the engine's
+  `OG_animation_visibility` before the gltf crate validates the file. A
+  pointer onto another property is dropped with a warning, or refused
+  when the file requires the extension. Files without one load byte for
+  byte as before.
 - Faster capture PNGs: the probe's `capture`, `sweep` and `screenshot`
   encode with fdeflate (rows filtered `Up`, deflated as they are
   filtered) instead of zlib level 6, 10 to 35 times faster on a

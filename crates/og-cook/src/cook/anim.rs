@@ -301,13 +301,10 @@ pub fn wanted(src: &GltfSource) -> bool {
 }
 
 /// The glTF JSON (for `extras`, which the gltf crate is built without).
+/// The glTF's JSON as the model loader read it (`KHR_animation_pointer`
+/// visibility channels rewritten as [`VISIBILITY_EXTENSION`] entries).
 fn json(bytes: &[u8]) -> Option<serde_json::Value> {
-    if bytes.len() >= 20 && &bytes[0..4] == b"glTF" {
-        let len = u32::from_le_bytes(bytes[12..16].try_into().ok()?) as usize;
-        serde_json::from_slice(bytes.get(20..20 + len)?).ok()
-    } else {
-        serde_json::from_slice(bytes).ok()
-    }
+    model::source_json(bytes)
 }
 
 /// The value of a sampler at `t`, `lanes` floats, per the glTF specification.
@@ -472,7 +469,9 @@ fn read_channels(
 /// sampler's output a float scalar per key (visible from 0.5, hidden
 /// below), held from key to key whatever its interpolation says. (glTF's
 /// own way, `KHR_animation_pointer` onto `KHR_node_visibility/visible`, is
-/// a channel path the gltf crate refuses to load.)
+/// a channel path the gltf crate refuses to load: the model loader rewrites
+/// such a channel as an entry of this extension before it parses the file,
+/// `model::pointer_visibility`.)
 pub const VISIBILITY_EXTENSION: &str = "OG_animation_visibility";
 
 /// The nodes a glTF hides at rest (`KHR_node_visibility` `visible: false`),
@@ -543,7 +542,18 @@ fn read_visibility(
                 .ok_or_else(|| what("its accessor has no data"))
         };
         let times = floats(sampler.input())?;
-        let mut values = floats(sampler.output())?;
+        // The output: floats, or KHR_animation_pointer's booleans, unsigned
+        // bytes (0 hidden, any other value shown).
+        let output = sampler.output();
+        let mut values = if output.data_type() == gltf::accessor::DataType::U8
+            && output.dimensions() == gltf::accessor::Dimensions::Scalar
+        {
+            gltf::accessor::Iter::<u8>::new(output, |b| Some(&src.buffers[b.index()].0[..]))
+                .map(|i| i.map(|v| if v != 0 { 1.0 } else { 0.0 }).collect())
+                .ok_or_else(|| what("its accessor has no data"))?
+        } else {
+            floats(output)?
+        };
         // A CUBICSPLINE sampler's key is (in-tangent, value, out-tangent).
         if sampler.interpolation() == gltf::animation::Interpolation::CubicSpline
             && values.len() == times.len() * 3
