@@ -48,17 +48,54 @@ opt-level = 3
 lto = "thin"
 codegen-units = 1
 
-# The wasm every web build ships and the size gate measures: release, with
+# The wasm every web build ships and the size gate measures: release at
+# opt-level s, with the crates whose loops run every tick or frame at 3 and
 # the crates that run only while loading or when something changes (WGSL
 # translation for WebGL2, font shaping, the cooked bundle's decoding and
 # decompression, snapshots' bincode, navmesh triangulation, locale tables)
-# optimised for size. -85 KB brotli on the publish wasm (72.0 % to 70.0 % of
-# the budget) with Chrome's frame times, first frames and the physics step
-# unchanged; every per-tick and per-frame crate (physics, ECS, render, wgpu,
-# og-ui, og-runtime, og-nav, og-ai) stays at 3, z for all of them cost 25 %
-# of a frame (tests/evidence/E7/wasm-size.md). Native builds never use it.
+# at z. Load-time crates at z: -85 KB brotli (tests/evidence/E7/wasm-size.md,
+# with Chrome's frame times unchanged; z for every crate cost 25 % of a
+# frame). The s default (tests/evidence/r4/size-2/NOTES.md): physics
+# (rapier, parry, og-physics, the math), og-ecs, og-render, og-anim,
+# og-lanes, og-ui, wgpu's WebGPU front end, og-nav and og-ai stay at 3;
+# og-runtime (the frame's extract and the bindings' glue) and wgpu's
+# WebGL2 path (wgpu-core, wgpu-hal) and the rest go to s. Native builds
+# never use it.
 [profile.wasm]
 inherits = "release"
+opt-level = "s"
+[profile.wasm.package.rapier3d]
+opt-level = 3
+[profile.wasm.package.rapier2d]
+opt-level = 3
+[profile.wasm.package.parry3d]
+opt-level = 3
+[profile.wasm.package.parry2d]
+opt-level = 3
+[profile.wasm.package.og-physics]
+opt-level = 3
+[profile.wasm.package.glam]
+opt-level = 3
+[profile.wasm.package.nalgebra]
+opt-level = 3
+[profile.wasm.package.simba]
+opt-level = 3
+[profile.wasm.package.og-ecs]
+opt-level = 3
+[profile.wasm.package.og-render]
+opt-level = 3
+[profile.wasm.package.og-anim]
+opt-level = 3
+[profile.wasm.package.og-lanes]
+opt-level = 3
+[profile.wasm.package.og-ui]
+opt-level = 3
+[profile.wasm.package.wgpu]
+opt-level = 3
+[profile.wasm.package.og-nav]
+opt-level = 3
+[profile.wasm.package.og-ai]
+opt-level = 3
 # The gate's wasm (scripts/check.sh wasm-build): the wasm profile with
 # codegen units, so wasm-build is minutes shorter; its modules are a little
 # larger than the shipping profile's (docs/ci.md §Lanes has the measured
