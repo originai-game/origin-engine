@@ -232,6 +232,20 @@ for the mirrored camera over the same light records
 (`ClusterBuilder::build_kept`; the oblique projection moves only depth, so
 the tiles follow the mirrored camera's x and y).
 
+A reflection probe's face has no clusters (its uniform's `cluster` is
+zero, `probes.rs`): every lit shader loops every light record of the
+frame there. The standard and physical fragments did so already; terrain,
+scattered copies, the 3D fluid's composite and full material shaders
+share area.wgsl's `surface_local_lights`, which takes the cluster's lights
+when the frame has clusters and every light when it has none (before the
+debt round 3 those four read cluster 0 of the main camera in a face, so a
+local light was missing or wrong in their reflections; og-tests probes
+`local_lights_reach_terrain_and_fluids_in_a_capture`). *Limit:* the
+records are the main camera's kept lights, so a light whose range misses
+the main view lights nothing in a capture either; keeping lights for the
+due faces would change which lights the main view's shadow budget picks
+on capture frames.
+
 ## Shadows and antialiasing by tier
 
 The shadows-aa round (P4, `tests/evidence/P4/shadows-aa/`) closed the

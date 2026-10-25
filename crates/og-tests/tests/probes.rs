@@ -420,3 +420,50 @@ fn ssr_reads_roughness_maps_and_terrain_layers() {
         "the terrain mirrors it: {terrain:?} against {terrain_off:?}"
     );
 }
+
+/// Local lights reach terrain, grass and 3D fluids in a capture: a blue
+/// point light under the outdoor probe turns the meadow on its -y face
+/// blue, and one between the floor probe and the red fluid ball lights the
+/// ball's near side on its +x face. A face's frame has no light clusters;
+/// before the debt round 3 these shaders still read one (the main camera's
+/// first), so the light was missing from the face as it is here bare.
+#[test]
+fn local_lights_reach_terrain_and_fluids_in_a_capture() {
+    let desc = scenes::base_desc();
+    let blue = |position| og_render::Light {
+        position,
+        color: glam::Vec3::new(0.1, 0.3, 1.0),
+        intensity: 6.0,
+        range: 4.0,
+        ..Default::default()
+    };
+    let blue_share = |c: [f32; 3]| c[2] / (c[0] + c[1] + c[2]).max(1e-4);
+    let mut failures = Vec::new();
+
+    let mut meadow = outdoor_scene(Outdoor {
+        content: false,
+        probe: Some(1.0),
+    });
+    let ny0 = face_mean(&render(&desc, &meadow, Some(7)).1.unwrap(), 3);
+    meadow.lights.push(blue(
+        og_tests::probe_scenes::outdoor_probe() - glam::Vec3::Y * 1.2,
+    ));
+    let ny = face_mean(&render(&desc, &meadow, Some(7)).1.unwrap(), 3);
+    println!("meadow -y: lit {ny:?}, bare {ny0:?}");
+    if ny[2] < ny0[2] + 0.05 || blue_share(ny) < blue_share(ny0) + 0.1 {
+        failures.push(format!("the meadow on -y: lit {ny:?}, bare {ny0:?}"));
+    }
+
+    let mut fluid = probe_floor_scene();
+    add_floor_fluid(&mut fluid);
+    let px0 = face_mean(&render(&desc, &fluid, Some(FLOOR_PROBE.0)).1.unwrap(), 0);
+    fluid
+        .lights
+        .push(blue(FLOOR_PROBE.1 + glam::Vec3::new(0.6, 0.0, 0.0)));
+    let px = face_mean(&render(&desc, &fluid, Some(FLOOR_PROBE.0)).1.unwrap(), 0);
+    println!("fluid +x: lit {px:?}, bare {px0:?}");
+    if px[2] < px0[2] + 0.03 {
+        failures.push(format!("the fluid on +x: lit {px:?}, bare {px0:?}"));
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}

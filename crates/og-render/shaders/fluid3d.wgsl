@@ -140,19 +140,6 @@ fn tangent(px: vec2<i32>, p: vec3<f32>, d: f32, step: vec2<i32>) -> vec3<f32> {
   return world_at(pc + vec2<f32>(step), d) - p;
 }
 
-fn cluster_lights(frag: vec2<f32>, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
-  var color = vec3<f32>(0.0);
-  if (frame.params.z < 0.5) { return color; }
-  let word = cluster_word(cluster_at(frag, p));
-  let first = word & 0xffffffu;
-  let count = word >> 24u;
-  for (var k = 0u; k < count; k++) {
-    // Rect lights through LTC, points and spots with cookies (area.wgsl).
-    color += surface_local_light(light_list[cluster_ref(first + k)], s, p, n, v);
-  }
-  return color;
-}
-
 struct CompositeOut {
   @location(0) color: vec4<f32>,
   @builtin(frag_depth) depth: f32,
@@ -202,7 +189,8 @@ fn fs_composite(in: FullOut) -> CompositeOut {
   if (frame.light_dir.w > 0.5) { shadow = cascade_shadow(p, n, n_dot_l); }
   var body = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   body += ambient_light_level(n, p) * color * frame.params.x;
-  body += cluster_lights(in.pos.xy, s, p, n, v);
+  // The local lights: the cluster's, or every light in a probe face (area.wgsl).
+  body += surface_local_lights(in.pos.xy, s, p, n, v);
   var out = through + body * (1.0 - transmit);
 
   // The environment reflected (Schlick, water's reflectance).
