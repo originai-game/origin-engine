@@ -1016,10 +1016,14 @@ pub struct CookedModel {
 }
 
 /// What [`CookedModel::add_to`] added: per part the mesh, the material and
-/// the node's transform within the model.
+/// the node's transform within the model, and the node drawing it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ModelParts {
     pub parts: Vec<(MeshHandle, MaterialHandle, Mat4)>,
+    /// Per part, its node's index in [`CookedModel::nodes`] (the
+    /// `#anim` skeleton's node order: a posed model skips the parts of a
+    /// node its pose hides).
+    pub nodes: Vec<usize>,
 }
 
 impl ModelParts {
@@ -1404,16 +1408,18 @@ impl CookedModel {
             .collect();
         let world = self.node_world();
         let mut parts = Vec::new();
+        let mut nodes = Vec::new();
         if let Some(s) = self.default_scene {
             for n in self.scene_nodes(s) {
                 if let Some(m) = self.nodes[n].mesh {
                     for p in self.meshes[m].primitives.clone() {
                         parts.push((meshes[p], materials[self.primitives[p].material], world[n]));
+                        nodes.push(n);
                     }
                 }
             }
         }
-        ModelParts { parts }
+        ModelParts { parts, nodes }
     }
 }
 
@@ -2029,6 +2035,7 @@ impl CookedAnimation {
         let bad = |r: String| invalid(blob, r);
         let meta = one::<AnimMeta>(blob)?;
         let nodes = table::<NodeRow>(blob, "nodes")?;
+        let hidden = blob.table::<u32>("hidden", 0)?.into_owned();
         let skins = table::<SkinRow>(blob, "skins")?;
         let joints = blob.table::<u32>("joints", 0)?.into_owned();
         let ibms = blob.table::<f32>("inverse_binds", 0)?.into_owned();
@@ -2049,12 +2056,16 @@ impl CookedAnimation {
                 .ok_or_else(|| bad("string out of range".into()))
         };
         if nodes.len() != meta.node_count as usize
+            || hidden.len() != meta.hidden_count as usize
             || clips.len() != meta.clip_count as usize
             || ibms.len() != joints.len() * 16
         {
             return Err(bad("counts disagree with the meta row".into()));
         }
-        let mut skeleton = og_anim::SkeletonAsset::default();
+        let mut skeleton = og_anim::SkeletonAsset {
+            hidden,
+            ..Default::default()
+        };
         for n in &nodes {
             skeleton.nodes.push(og_anim::SkeletonNode {
                 name: s(n.name_offset, n.name_len)?,

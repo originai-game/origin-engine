@@ -16,6 +16,11 @@
 //!   loader rebuilds the dropped frames the same way, so a clip has every
 //!   frame again and og-anim samples it exactly as an f32 clip.
 //!
+//! - **Visibility** (`path::VISIBILITY`, 0 or 1, STEP) is always kept
+//!   exact: its tolerance is 0 whatever the setting, so the reduction
+//!   keeps exactly the frames where the flag changes (and the ends), and
+//!   a unorm over `[0, 1]` rebuilds 0 and 1 bit for bit.
+//!
 //! A channel whose quantisation alone misses the tolerance (a range too
 //! wide for 16 bits) stays f32. A channel whose frames are all the same
 //! bits is always stored once (lossless). Decoding uses only `+ - * /` and
@@ -287,6 +292,12 @@ pub fn encode(
     let Some(tol) = tolerance else {
         return f32s();
     };
+    // A flag is never approximated.
+    let tol = if path_code == path::VISIBILITY {
+        0.0
+    } else {
+        tol
+    };
     let rotation = path_code == path::ROTATION;
     if n <= 1 || frames > MAX_QUANTIZED_FRAMES || (rotation && lanes != 4) || lanes == 0 {
         return f32s();
@@ -472,6 +483,27 @@ mod tests {
         for (a, b) in out.chunks(4).zip(rot.chunks(4)) {
             assert!(error(a, b, true) <= 1e-4);
         }
+    }
+
+    #[test]
+    fn a_visibility_channel_keeps_its_changes_exactly_at_any_tolerance() {
+        let data: Vec<f32> = [1, 1, 1, 0, 0, 0, 0, 1, 0, 0]
+            .iter()
+            .map(|&v| v as f32)
+            .collect();
+        let frames = data.len() as u32;
+        let e = encode(path::VISIBILITY, true, 1, frames, &data, Some(0.1));
+        let out = decode(
+            &row(&e, path::VISIBILITY, 1, true),
+            frames,
+            &e.floats,
+            &e.words,
+        )
+        .unwrap();
+        assert_eq!(out, data);
+        // The ends and the frames where it changes: 0, 3, 7, 8, 9.
+        assert_eq!((e.codec, e.keys), (codec::QUANTIZED, 5));
+        assert_eq!(&e.words[..5], &[0, 3, 7, 8, 9]);
     }
 
     #[test]

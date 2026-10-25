@@ -11,6 +11,11 @@
 //! a sample time counts as reached. `rate` is the import settings'
 //! `animation { rate }`, else the source's own key rate rounded (1 / its
 //! smallest key interval), clamped to 1..=120 Hz; the source rate is kept.
+//!
+//! Visibility: the nodes a glTF hides at rest (`KHR_node_visibility`) are
+//! the blob's `hidden` table, and an animation's visibility tracks (the
+//! engine's [`VISIBILITY_EXTENSION`]) are STEP channels of 0 or 1 on
+//! `path::VISIBILITY`, resampled like any STEP channel.
 
 use super::model::{self, GltfSource, Strings};
 use super::{CookError, MeshOptions};
@@ -434,6 +439,115 @@ fn read_channels(
     Ok(out)
 }
 
+/// The engine's glTF extension for visibility tracks, on an animation:
+/// `"extensions": { "OG_animation_visibility": { "channels": [{ "sampler":
+/// <index into the animation's samplers>, "node": <node> }] } }`, each
+/// sampler's output a float scalar per key (visible from 0.5, hidden
+/// below), held from key to key whatever its interpolation says. (glTF's
+/// own way, `KHR_animation_pointer` onto `KHR_node_visibility/visible`, is
+/// a channel path the gltf crate refuses to load.)
+pub const VISIBILITY_EXTENSION: &str = "OG_animation_visibility";
+
+/// The nodes a glTF hides at rest (`KHR_node_visibility` `visible: false`),
+/// as cooked node indices, ascending.
+fn hidden_at_rest(json: Option<&serde_json::Value>, new_index: &[u32]) -> Vec<u32> {
+    let mut hidden: Vec<u32> = json
+        .and_then(|j| j.get("nodes")?.as_array())
+        .map(|nodes| {
+            nodes
+                .iter()
+                .enumerate()
+                .filter(|(_, n)| {
+                    n.pointer("/extensions/KHR_node_visibility/visible")
+                        .and_then(|v| v.as_bool())
+                        == Some(false)
+                })
+                .filter_map(|(i, _)| new_index.get(i).copied())
+                .collect()
+        })
+        .unwrap_or_default();
+    hidden.sort_unstable();
+    hidden
+}
+
+/// The visibility tracks of an animation ([`VISIBILITY_EXTENSION`]): one
+/// STEP channel of 0 or 1 per entry.
+fn read_visibility(
+    src: &GltfSource,
+    json: Option<&serde_json::Value>,
+    anim: &gltf::Animation,
+    new_index: &[u32],
+) -> Result<Vec<SourceChannel>, String> {
+    let Some(list) = json
+        .and_then(|j| j.get("animations")?.get(anim.index()))
+        .and_then(|a| a.pointer(&format!("/extensions/{VISIBILITY_EXTENSION}/channels")))
+    else {
+        return Ok(Vec::new());
+    };
+    let list = list
+        .as_array()
+        .ok_or_else(|| format!("{VISIBILITY_EXTENSION}: channels is not a list"))?;
+    let mut out = Vec::with_capacity(list.len());
+    for (ci, entry) in list.iter().enumerate() {
+        let what = |r: &str| format!("{VISIBILITY_EXTENSION} channel {ci}: {r}");
+        let index = |key: &str| {
+            entry
+                .get(key)
+                .and_then(|v| v.as_u64())
+                .map(|v| v as usize)
+                .ok_or_else(|| what(&format!("needs a \"{key}\" index")))
+        };
+        let (sampler, node) = (index("sampler")?, index("node")?);
+        let sampler = anim
+            .samplers()
+            .nth(sampler)
+            .ok_or_else(|| what(&format!("sampler {sampler} is not the animation's")))?;
+        let node = *new_index
+            .get(node)
+            .ok_or_else(|| what(&format!("node {node} is not the glTF's")))?;
+        let floats = |a: gltf::Accessor| -> Result<Vec<f32>, String> {
+            if a.data_type() != gltf::accessor::DataType::F32
+                || a.dimensions() != gltf::accessor::Dimensions::Scalar
+            {
+                return Err(what("its sampler's input and output are float scalars"));
+            }
+            gltf::accessor::Iter::<f32>::new(a, |b| Some(&src.buffers[b.index()].0[..]))
+                .map(|i| i.collect())
+                .ok_or_else(|| what("its accessor has no data"))
+        };
+        let times = floats(sampler.input())?;
+        let mut values = floats(sampler.output())?;
+        // A CUBICSPLINE sampler's key is (in-tangent, value, out-tangent).
+        if sampler.interpolation() == gltf::animation::Interpolation::CubicSpline
+            && values.len() == times.len() * 3
+        {
+            values = values.chunks(3).map(|k| k[1]).collect();
+        }
+        if times.is_empty() || values.len() != times.len() {
+            return Err(what(&format!(
+                "{} keys but {} values",
+                times.len(),
+                values.len()
+            )));
+        }
+        if times.windows(2).any(|w| w[1] < w[0]) || times.iter().any(|t| !t.is_finite()) {
+            return Err(what("key times are not increasing"));
+        }
+        out.push(SourceChannel {
+            node,
+            path: path::VISIBILITY,
+            interpolation: interpolation::STEP,
+            lanes: 1,
+            times,
+            values: values
+                .iter()
+                .map(|&v| if v >= 0.5 { 1.0 } else { 0.0 })
+                .collect(),
+        });
+    }
+    Ok(out)
+}
+
 fn events_of(
     json: Option<&serde_json::Value>,
     anim_index: usize,
@@ -723,8 +837,12 @@ fn cook_with(
             )));
         }
         clip_names.push(name.clone());
-        let source = read_channels(src, &anim, new_index)
+        let mut source = read_channels(src, &anim, new_index)
             .map_err(|e| CookError(format!("animation '{name}': {e}")))?;
+        source.extend(
+            read_visibility(src, json.as_ref(), &anim, new_index)
+                .map_err(|e| CookError(format!("animation '{name}': {e}")))?,
+        );
         let duration = source
             .iter()
             .flat_map(|c| c.times.last())
@@ -1027,7 +1145,9 @@ fn cook_with(
         morphs.len()
     ));
     notes.push(store.describe());
+    let hidden = hidden_at_rest(json.as_ref(), new_index);
     let meta = AnimMeta {
+        hidden_count: hidden.len() as u32,
         node_count: order.rows.len() as u32,
         skin_count: skins.len() as u32,
         joint_count: joints.len() as u32,
@@ -1044,6 +1164,7 @@ fn cook_with(
     );
     w.table("meta", &[meta], row_hash::<AnimMeta>())
         .table("nodes", &order.rows, row_hash::<NodeRow>())
+        .table("hidden", &hidden, 0)
         .table("skins", &skins, row_hash::<SkinRow>())
         .table("joints", &joints, 0)
         .table("inverse_binds", &inverse_binds, 0)
