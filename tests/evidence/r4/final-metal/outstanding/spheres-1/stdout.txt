@@ -1,0 +1,13 @@
+
+running 1 test
+test perf_extract_spheres_20k ... perf extract-spheres-20k: best 0.799 ms per frame (0.040 us an instance)
+  baseline 0.531 ms, limit 0.611 ms
+FAILED
+
+failures:
+
+failures:
+    perf_extract_spheres_20k
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.36s
+

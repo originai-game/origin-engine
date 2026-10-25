@@ -117,3 +117,13 @@ load qualification and comparison inputs, regenerating `summary.json`.
 Evidence PNGs are presentation copies, resized to ≤640px and <150KB after
 validation; raw numeric results are unchanged. No claim of a complete wave:
 the remaining timings require a coordinator decision after the FAIL.
+
+## Follow-up: remaining timings completed
+
+The coordinator authorised continuing on `7ca4e251`, without treating the
+WebGL2 comparison miss as a blocker. The [remaining timing receipts](outstanding/README.md)
+record five release-unpaced rounds per game, five Chrome runs per game and
+tier, and three serial sphere-baseline repeats. Lantern passes in all five
+runs. Chrome passes the existing device timing checks, with one retained
+display-gap outlier and no matched pre-size-2 comparison. Sphere frame cost
+repeatedly exceeds its unchanged baseline. No source or reference changed.

@@ -1,0 +1,7 @@
+    Finished `release` profile [optimized] target(s) in 0.08s
+     Running tests/extract_cost.rs (target/release/deps/extract_cost-9076a0effa8192b7)
+
+thread 'perf_extract_spheres_20k' (99496909) panicked at crates/og-runtime/tests/extract_cost.rs:370:5:
+extract-spheres-20k: 0.785 ms per frame exceeds the baseline 0.531 ms by more than 15 %
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+error: test failed, to rerun pass `-p og-runtime --test extract_cost`

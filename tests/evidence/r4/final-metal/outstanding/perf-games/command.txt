@@ -1,0 +1,1 @@
+bun tests/evidence/r4/final-metal/perf-unpaced.mjs tests/evidence/r4/final-metal/outstanding/perf-games 

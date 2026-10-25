@@ -1,0 +1,101 @@
+{
+ "project": "game",
+ "date": "2026-10-25",
+ "target": "chrome",
+ "driver": "chrome (Google Chrome for Testing, headless)",
+ "url": "http://127.0.0.1:65216/?webgl=1",
+ "scheme": "http",
+ "port": 65216,
+ "lan": [],
+ "budgetMs": 2000,
+ "scores": {
+  "firstFrame": 100,
+  "frameTime": 100
+ },
+ "findings": [],
+ "fps": 119.9,
+ "ticksPerSecond": 59.9,
+ "measured": {
+  "firstFrameMs": 538,
+  "readyMs": 333,
+  "startMs": 768,
+  "tier": "webgl2",
+  "seconds": 10,
+  "frames": 1199,
+  "ticks": 599,
+  "interval": {
+   "count": 1199,
+   "mean": 8.34,
+   "p50": 8.34,
+   "p95": 8.34,
+   "p99": 8.34,
+   "max": 16.67
+  },
+  "work": {
+   "count": 1199,
+   "mean": 1.19,
+   "p50": 1.09,
+   "p95": 2.31,
+   "p99": 2.62,
+   "max": 3.03
+  },
+  "device": {
+   "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+   "platform": "macOS",
+   "mobile": false,
+   "dpr": 1,
+   "viewport": {
+    "width": 1280,
+    "height": 577
+   },
+   "screen": {
+    "width": 800,
+    "height": 600
+   },
+   "canvas": {
+    "width": 1280,
+    "height": 577
+   },
+   "hardwareConcurrency": 12,
+   "deviceMemory": 16,
+   "crossOriginIsolated": true,
+   "isSecureContext": true,
+   "gpu": {
+    "vendor": "apple",
+    "architecture": "metal-3",
+    "description": ""
+   },
+   "webgl": {
+    "vendor": "Google Inc. (Apple)",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)"
+   }
+  },
+  "errors": []
+ },
+ "served": {
+  "/": {
+   "cross-origin-resource-policy": "cross-origin",
+   "x-content-type-options": "nosniff",
+   "cross-origin-opener-policy": "same-origin",
+   "cross-origin-embedder-policy": "require-corp",
+   "cache-control": "no-store",
+   "content-type": "text/html; charset=utf-8"
+  },
+  "/origin-engine-lanes_bg.wasm": {
+   "cross-origin-resource-policy": "cross-origin",
+   "x-content-type-options": "nosniff",
+   "cross-origin-opener-policy": "same-origin",
+   "cross-origin-embedder-policy": "require-corp",
+   "content-type": "application/wasm",
+   "cache-control": "no-store"
+  },
+  "/basis/basis_transcoder.wasm": {
+   "cross-origin-resource-policy": "cross-origin",
+   "x-content-type-options": "nosniff",
+   "cross-origin-opener-policy": "same-origin",
+   "cross-origin-embedder-policy": "require-corp",
+   "content-type": "application/wasm",
+   "cache-control": "no-store"
+  }
+ }
+}
