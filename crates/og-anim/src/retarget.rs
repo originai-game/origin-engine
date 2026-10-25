@@ -494,6 +494,29 @@ fn invalid(reason: String) -> Error {
     Error::new(ErrorKind::Invalid, reason)
 }
 
+/// Unity's legacy (and VRM 0.x's) thumb is Proximal, Intermediate, Distal,
+/// its Proximal the metacarpal: on a side whose thumb has an `Intermediate`
+/// node and no `Metacarpal`, the names are read so, Proximal as the
+/// metacarpal and Intermediate as the proximal (VRM 1.0's names, which
+/// have no thumb Intermediate, stay as they are).
+fn unity_legacy_thumbs(skeleton: &SkeletonAsset, nodes: &mut [u32; HUMAN_BONE_COUNT]) {
+    for (side, base) in [("left", FINGERS[0]), ("right", FINGERS[1])] {
+        let intermediate = format!("{side}thumbintermediate");
+        let Some(i) = skeleton
+            .nodes
+            .iter()
+            .position(|n| squash(local_name(&n.name)) == intermediate)
+        else {
+            continue;
+        };
+        // The thumb's bones are base (metacarpal), base + 1, base + 2.
+        if nodes[base] == NONE {
+            nodes[base] = nodes[base + 1];
+            nodes[base + 1] = i as u32;
+        }
+    }
+}
+
 impl HumanoidMap {
     /// The map `scheme` reads from the node names (the first node of each
     /// bone, in node order); an unknown scheme is refused.
@@ -511,6 +534,9 @@ impl HumanoidMap {
             {
                 nodes[b] = i as u32;
             }
+        }
+        if scheme == "unity" {
+            unity_legacy_thumbs(skeleton, &mut nodes);
         }
         Ok(HumanoidMap {
             scheme: scheme.to_string(),
@@ -991,11 +1017,12 @@ fn foot_y(rest: &[Trs], map: &HumanoidMap, leg: usize) -> f32 {
 /// A twist bone of the target (a node no standard bone maps whose name
 /// says `twist`, or a Rigify deform segment `….001`) on the limb segment
 /// from standard bone `a` to the next one, `c`.
-struct TwistBone {
-    node: usize,
+#[derive(Clone, Debug)]
+pub(crate) struct TwistBone {
+    pub(crate) node: usize,
     /// The segment's bone and the next bone's node; `a`'s parent node.
-    a: usize,
-    c: usize,
+    pub(crate) a: usize,
+    pub(crate) c: usize,
     parent: Option<usize>,
     /// The segment's direction in `a`'s frame (towards `c` at rest).
     axis: Vec3,
@@ -1022,7 +1049,11 @@ fn twist_angle(q: Quat, axis: Vec3) -> f32 {
 
 /// The twist bones of `skeleton` (mapped by `map`), on the upper and
 /// lower arm and leg segments whose next bone is mapped.
-fn twist_bones(skeleton: &SkeletonAsset, map: &HumanoidMap, rest: &[Trs]) -> Vec<TwistBone> {
+pub(crate) fn twist_bones(
+    skeleton: &SkeletonAsset,
+    map: &HumanoidMap,
+    rest: &[Trs],
+) -> Vec<TwistBone> {
     let mapped = |n: usize| map.nodes.iter().position(|&m| m as usize == n);
     let mut out = Vec::new();
     for (n, node) in skeleton.nodes.iter().enumerate() {
@@ -1078,6 +1109,46 @@ fn twist_bones(skeleton: &SkeletonAsset, map: &HumanoidMap, rest: &[Trs]) -> Vec
         });
     }
     out
+}
+
+/// Turns each of `twists` in `pose` (whose model space is `fk`; `rest` is
+/// the rest pose's) to a linear share of its segment's twist, from none
+/// relative to the segment's parent at its head to the next bone's at its
+/// end. Every node `keep` names keeps its model rotation from `fk`; the
+/// others keep their local rotation.
+pub(crate) fn share_twist(
+    skeleton: &SkeletonAsset,
+    twists: &[&TwistBone],
+    rest: &[Trs],
+    fk: &[Trs],
+    pose: &mut [Trs],
+    keep: impl Fn(usize) -> bool,
+) {
+    let mut m2: Vec<Trs> = Vec::with_capacity(pose.len());
+    for n in 0..pose.len() {
+        let p = parent_model(skeleton, &m2, n);
+        if let Some(tw) = twists.iter().find(|t| t.node == n) {
+            let rel = |of: &[Trs], x: usize, y: Option<usize>| -> Quat {
+                let base = y.map_or(Quat::IDENTITY, |y| of[y].rotation);
+                base.conjugate() * of[x].rotation
+            };
+            let tau_a = twist_angle(
+                rel(rest, tw.a, tw.parent).conjugate() * rel(fk, tw.a, tw.parent),
+                tw.axis,
+            );
+            let tau_c = twist_angle(
+                rel(fk, tw.c, Some(tw.a)) * rel(rest, tw.c, Some(tw.a)).conjugate(),
+                tw.axis,
+            );
+            let theta = tw.at * tau_c - (1.0 - tw.at) * tau_a;
+            let q = og_core::math::quat_from_axis_angle(tw.axis, theta);
+            let want = unit(m2[tw.a].rotation * q * rel(rest, n, Some(tw.a)));
+            pose[n].rotation = unit(p.rotation.conjugate() * want);
+        } else if keep(n) {
+            pose[n].rotation = unit(p.rotation.conjugate() * fk[n].rotation);
+        }
+        m2.push(p.mul(&pose[n]));
+    }
 }
 
 /// The height of the hips above the feet at rest (model space), or of the
@@ -1379,32 +1450,10 @@ pub fn retarget(
         // relative to the segment's parent at its head to the next bone's at
         // its end; every other node keeps its model rotation.
         if !twists.is_empty() {
-            let fk = mt.clone();
-            let mut m2: Vec<Trs> = Vec::with_capacity(pt.len());
-            for n in 0..pt.len() {
-                let p = parent_model(target, &m2, n);
-                if let Some(tw) = twists.iter().find(|t| t.node == n) {
-                    let rel = |of: &[Trs], x: usize, y: Option<usize>| -> Quat {
-                        let base = y.map_or(Quat::IDENTITY, |y| of[y].rotation);
-                        base.conjugate() * of[x].rotation
-                    };
-                    let tau_a = twist_angle(
-                        rel(&t_rest, tw.a, tw.parent).conjugate() * rel(&fk, tw.a, tw.parent),
-                        tw.axis,
-                    );
-                    let tau_c = twist_angle(
-                        rel(&fk, tw.c, Some(tw.a)) * rel(&t_rest, tw.c, Some(tw.a)).conjugate(),
-                        tw.axis,
-                    );
-                    let theta = tw.at * tau_c - (1.0 - tw.at) * tau_a;
-                    let q = og_core::math::quat_from_axis_angle(tw.axis, theta);
-                    let want = unit(m2[tw.a].rotation * q * rel(&t_rest, n, Some(tw.a)));
-                    pt[n].rotation = unit(p.rotation.conjugate() * want);
-                } else if by_node[n].is_some() {
-                    pt[n].rotation = unit(p.rotation.conjugate() * fk[n].rotation);
-                }
-                m2.push(p.mul(&pt[n]));
-            }
+            let all: Vec<&TwistBone> = twists.iter().collect();
+            share_twist(target, &all, &t_rest, &mt, &mut pt, |n| {
+                by_node[n].is_some()
+            });
             for (j, tw) in twists.iter().enumerate() {
                 let r = pt[tw.node].rotation;
                 twist_rotations[j].extend_from_slice(&[r.x, r.y, r.z, r.w]);

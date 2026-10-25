@@ -211,6 +211,8 @@ export interface ColumnKinds {
   IkSpace: { readonly array: Uint32Array; readonly stride: 1; readonly value: IkSpace };
   /** A SpringSpace field: the variant's index. */
   SpringSpace: { readonly array: Uint32Array; readonly stride: 1; readonly value: SpringSpace };
+  /** A SpringColliderShape field: the variant's index. */
+  SpringColliderShape: { readonly array: Uint32Array; readonly stride: 1; readonly value: SpringColliderShape };
   /** A Rig handle field (0 is none): a humanoid map og.load.rig answered. */
   Rig: { readonly array: Uint32Array; readonly stride: 2; readonly value: Rig };
   /** A FlipbookSheet handle field. */
@@ -12505,6 +12507,22 @@ export interface SpringBone {
    */
   damping: number;
   /**
+   * The last joint's frequency as a multiple of `frequency`, the joints between in proportion along the chain (1: every joint alike; 0.25: the tip springs back four times slower than the top, a soft strand on a stiff root).
+   *
+   * @default 1
+   * @range 0..4
+   * @tunable
+   */
+  tipFrequency: number;
+  /**
+   * The last joint's damping ratio as a multiple of `damping`, the joints between in proportion along the chain (1: every joint alike).
+   *
+   * @default 1
+   * @range 0..4
+   * @tunable
+   */
+  tipDamping: number;
+  /**
    * An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop.
    *
    * @unit mps2 (metres per second squared)
@@ -12523,12 +12541,87 @@ export interface SpringBone {
    */
   weight: number;
   /**
+   * The tails' radius against og.SpringCollider (three-vrm's hitRadius): a tail stays this far outside every collider it meets (0: a point).
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * The og.SpringCollider layers the tails are pushed out of, as bits: a collider on the same skeleton counts when its `layers` meet these.
+   *
+   * @default 4294967295
+   */
+  colliders: number;
+  /**
    * Written: the farthest a tail is from its animated place this tick.
    *
    * @unit m (metres)
    * @readonly written by the engine
    */
   readonly lag: number;
+}
+
+/**
+ * The shape of a spring collider.
+ * - `"sphere"`: A ball of `radius` about `offset`.
+ * - `"capsule"`: A capsule of `radius` about the segment from `offset` to `tail`.
+ */
+export type SpringColliderShape = "sphere" | "capsule";
+
+/**
+ * A SpringColliderShape field: the variant's index.
+ *
+ * A `SpringColliderShape` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function SpringColliderShape(value?: SpringColliderShape, options?: FieldOptions): FieldSpec<"SpringColliderShape">;
+
+/**
+ * A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton (a head, a chest, an upper arm), so hair, ears and tails do not swing through the body. Each tick, after a tail of an og.SpringBone of the same skeleton has stepped and before its joint turns, the tail is pushed out of every collider whose `layers` meet the spring's `colliders` (in query order) to `radius` plus the spring's `radius`, keeping its bone's length. Put it on its own entity, one per shape; colliders follow the pose as it is when a chain is swung, so one on a joint an earlier chain swung follows that swing.
+ *
+ * The value of the `SpringCollider` component (token `og.SpringCollider`).
+ */
+export interface SpringCollider {
+  /** The entity with the og.Skeleton whose spring bones this keeps out. */
+  skeleton: Entity;
+  /**
+   * The joint the collider rides on (an index into the skin's joints).
+   *
+   * @range 0..
+   */
+  joint: number;
+  /** A sphere about `offset`, or a capsule from `offset` to `tail`. */
+  shape: SpringColliderShape;
+  /**
+   * The sphere's centre, or the capsule's first end, in the joint's frame.
+   *
+   * @unit m (metres)
+   */
+  offset: Vector3;
+  /**
+   * The capsule's other end, in the joint's frame (a sphere ignores it).
+   *
+   * @unit m (metres)
+   */
+  tail: Vector3;
+  /**
+   * The radius, in metres of the skeleton's model space (the joint's own scale does not apply).
+   *
+   * @default 0.1
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * The layers this collider is on, as bits (a spring bone's `colliders` picks them).
+   *
+   * @default 1
+   */
+  layers: number;
 }
 
 /**
@@ -23770,7 +23863,11 @@ export declare namespace og {
   /**
    * A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint of the chain; for the last joint its first child, or its parent bone continued at the same length) is a point pulled towards where the animated pose puts it by a damped spring (`frequency`, `damping`), under `gravity`, held at the bone's length, and the joint turns to point at it. Applied after og.IkChain and og.LookAt, top joint first; put it on its own entity (a tail, an ear, a strand of hair, a single jiggling node), one per chain. Deterministic under the fixed tick; the tails' positions and velocities are world state (the `og.anim` state block), so a restore continues a swing exactly. A changed chain (another skeleton, length or space) restarts at the animated pose.
    */
-  const SpringBone: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly bones: FieldSpec<"u32">; readonly frequency: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly gravity: FieldSpec<"Vector3">; readonly space: FieldSpec<"SpringSpace">; readonly weight: FieldSpec<"f32">; readonly lag: FieldSpec<"f32"> }, SpringBone>;
+  const SpringBone: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly bones: FieldSpec<"u32">; readonly frequency: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly tipFrequency: FieldSpec<"f32">; readonly tipDamping: FieldSpec<"f32">; readonly gravity: FieldSpec<"Vector3">; readonly space: FieldSpec<"SpringSpace">; readonly weight: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly colliders: FieldSpec<"u32">; readonly lag: FieldSpec<"f32"> }, SpringBone>;
+  /**
+   * A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton (a head, a chest, an upper arm), so hair, ears and tails do not swing through the body. Each tick, after a tail of an og.SpringBone of the same skeleton has stepped and before its joint turns, the tail is pushed out of every collider whose `layers` meet the spring's `colliders` (in query order) to `radius` plus the spring's `radius`, keeping its bone's length. Put it on its own entity, one per shape; colliders follow the pose as it is when a chain is swung, so one on a joint an earlier chain swung follows that swing.
+   */
+  const SpringCollider: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly shape: FieldSpec<"SpringColliderShape">; readonly offset: FieldSpec<"Vector3">; readonly tail: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly layers: FieldSpec<"u32"> }, SpringCollider>;
   /**
    * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers.
    */

@@ -482,6 +482,7 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
             base,
             prim_mesh,
             part_nodes: parts.nodes,
+            part_shown: parts.shown,
         },
     );
     assets.by_path.insert(format!("gltf:{id}"), index);

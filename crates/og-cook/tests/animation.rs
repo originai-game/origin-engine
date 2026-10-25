@@ -561,3 +561,114 @@ fn a_clip_is_mirrored_at_cook_time() {
         assert!(errors.contains(says), "{settings}: {errors}");
     }
 }
+
+/// A glTF (text, one data-URI buffer) whose only animation hides and shows
+/// node `flag` through `KHR_animation_pointer` onto
+/// `KHR_node_visibility/visible` (an unsigned-byte STEP sampler, keys at 0,
+/// 0.5 and 1 s: shown, hidden, shown), as Blender and three.js write it,
+/// with a second pointer channel onto `extra` when given.
+fn pointer_gltf(extra: Option<&str>, required: bool) -> String {
+    // Times f32 ×3 (12 bytes), then the flags u8 ×3 and a byte of padding.
+    let mut buf: Vec<u8> = [0.0f32, 0.5, 1.0]
+        .iter()
+        .flat_map(|t| t.to_le_bytes())
+        .collect();
+    buf.extend_from_slice(&[1, 0, 1, 0]);
+    let b64 = {
+        const A: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let mut s = String::new();
+        for c in buf.chunks(3) {
+            let n = (c[0] as u32) << 16
+                | (*c.get(1).unwrap_or(&0) as u32) << 8
+                | *c.get(2).unwrap_or(&0) as u32;
+            for k in 0..4 {
+                s.push(if k <= c.len() {
+                    A[(n >> (18 - 6 * k) & 63) as usize] as char
+                } else {
+                    '='
+                });
+            }
+        }
+        s
+    };
+    let pointer = |p: &str| serde_json::json!({ "sampler": 0, "target": { "path": "pointer", "extensions": { "KHR_animation_pointer": { "pointer": p } } } });
+    let mut channels = vec![pointer("/nodes/1/extensions/KHR_node_visibility/visible")];
+    if let Some(e) = extra {
+        channels.push(pointer(e));
+    }
+    let mut json = serde_json::json!({
+        "asset": { "version": "2.0" },
+        "extensionsUsed": ["KHR_animation_pointer", "KHR_node_visibility"],
+        "scene": 0,
+        "scenes": [{ "nodes": [0] }],
+        "nodes": [
+            { "name": "root", "children": [1] },
+            { "name": "flag", "translation": [0, 1, 0], "extensions": { "KHR_node_visibility": { "visible": true } } }
+        ],
+        "buffers": [{ "byteLength": 16, "uri": format!("data:application/octet-stream;base64,{b64}") }],
+        "bufferViews": [
+            { "buffer": 0, "byteOffset": 0, "byteLength": 12 },
+            { "buffer": 0, "byteOffset": 12, "byteLength": 3 }
+        ],
+        "accessors": [
+            { "bufferView": 0, "componentType": 5126, "count": 3, "type": "SCALAR", "min": [0.0], "max": [1.0] },
+            { "bufferView": 1, "componentType": 5121, "count": 3, "type": "SCALAR" }
+        ],
+        "animations": [{
+            "name": "blink",
+            "samplers": [{ "input": 0, "output": 1, "interpolation": "STEP" }],
+            "channels": channels
+        }]
+    });
+    if required {
+        json["extensionsRequired"] = serde_json::json!(["KHR_animation_pointer"]);
+    }
+    json.to_string()
+}
+
+fn cook_pointer(name: &str, gltf: &str) -> (og_cook::cook::Report, PathBuf) {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join("og-cook-anim-pointer")
+        .join(name);
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("assets/models")).unwrap();
+    std::fs::write(root.join("assets/models/blink.gltf"), gltf).unwrap();
+    (cook_project(&root, &CookOptions::default()).unwrap(), root)
+}
+
+#[test]
+fn khr_animation_pointer_onto_node_visibility_cooks_to_a_visibility_track() {
+    // Required, and every pointer channel the engine's: the file loads (the
+    // gltf crate alone refuses the `pointer` path) and the track arrives.
+    let (report, root) = cook_pointer("visibility", &pointer_gltf(None, true));
+    assert!(report.ok(), "{:?}", report.errors());
+    let b = Bundle::open(&root.join("cooked")).unwrap();
+    let a = anim(&b, "models/blink.gltf");
+    let clip = a.clip("blink").expect("the clip");
+    let flag = a.skeleton.node("flag").unwrap();
+    let ch = clip
+        .channels
+        .iter()
+        .find(|c| c.path == og_anim::ChannelPath::Visibility)
+        .expect("a visibility channel");
+    assert_eq!(ch.node, flag);
+    let at = |t: f32| og_anim::ClipAsset::visible(ch, clip.frame_pos(t));
+    assert_eq!(
+        [at(0.0), at(0.25), at(0.5), at(0.75), at(1.0)],
+        [true, true, false, false, true],
+        "shown, hidden from 0.5 s, shown again at 1 s"
+    );
+    // A required pointer onto something the engine does not animate is
+    // refused, naming it; the same file not requiring the extension cooks
+    // with that channel dropped and said so.
+    let colour = "/materials/0/pbrMetallicRoughness/baseColorFactor";
+    let (report, _) = cook_pointer("refused", &pointer_gltf(Some(colour), true));
+    let errors = report.errors().join("\n");
+    assert!(!report.ok() && errors.contains(colour), "{errors}");
+    let (report, root) = cook_pointer("dropped", &pointer_gltf(Some(colour), false));
+    assert!(report.ok(), "{:?}", report.errors());
+    assert!(format!("{report:?}").contains("dropped"), "{report:?}");
+    let b = Bundle::open(&root.join("cooked")).unwrap();
+    let clip = anim(&b, "models/blink.gltf").clip("blink").unwrap().clone();
+    assert_eq!(clip.channels.len(), 1, "the visibility track alone");
+}

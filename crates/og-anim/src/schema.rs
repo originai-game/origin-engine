@@ -563,6 +563,12 @@ pub struct SpringBone {
     /// The damping ratio: 0 swings on, 1 settles without overshooting (critical damping).
     #[reflect(min = 0, max = 2, default = 0.3, tunable)]
     pub damping: f32,
+    /// The last joint's frequency as a multiple of `frequency`, the joints between in proportion along the chain (1: every joint alike; 0.25: the tip springs back four times slower than the top, a soft strand on a stiff root).
+    #[reflect(name = "tipFrequency", min = 0, max = 4, default = 1, tunable)]
+    pub tip_frequency: f32,
+    /// The last joint's damping ratio as a multiple of `damping`, the joints between in proportion along the chain (1: every joint alike).
+    #[reflect(name = "tipDamping", min = 0, max = 4, default = 1, tunable)]
+    pub tip_damping: f32,
     /// An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop.
     #[reflect(unit = "m/s2")]
     pub gravity: Vec3,
@@ -572,6 +578,12 @@ pub struct SpringBone {
     /// How much of the swing is applied (0 = the animated pose, 1 = the spring's).
     #[reflect(min = 0, max = 1, default = 1, tunable)]
     pub weight: f32,
+    /// The tails' radius against og.SpringCollider (three-vrm's hitRadius): a tail stays this far outside every collider it meets (0: a point).
+    #[reflect(unit = "m", min = 0, tunable)]
+    pub radius: f32,
+    /// The og.SpringCollider layers the tails are pushed out of, as bits: a collider on the same skeleton counts when its `layers` meet these.
+    #[reflect(default = 4294967295)]
+    pub colliders: u32,
     /// Written: the farthest a tail is from its animated place this tick.
     #[reflect(unit = "m")]
     pub lag: f32,
@@ -585,10 +597,69 @@ impl Default for SpringBone {
             bones: 1,
             frequency: 3.0,
             damping: 0.3,
+            tip_frequency: 1.0,
+            tip_damping: 1.0,
             gravity: Vec3::ZERO,
             space: SPRING_WORLD,
             weight: 1.0,
+            radius: 0.0,
+            colliders: u32::MAX,
             lag: 0.0,
+        }
+    }
+}
+
+/// `SpringCollider.shape`: a ball of `radius` about `offset`.
+pub const SPRING_SPHERE: u32 = 0;
+/// `SpringCollider.shape`: a capsule of `radius` about the segment from
+/// `offset` to `tail`.
+pub const SPRING_CAPSULE: u32 = 1;
+
+/// A collider spring bones are kept out of (three-vrm's
+/// VRMSpringBoneCollider): a sphere or a capsule riding on a joint of a
+/// skeleton (a head, a chest, an upper arm), so hair, ears and tails do not
+/// swing through the body. Each tick, after a tail of an og.SpringBone of
+/// the same skeleton has stepped and before its joint turns, the tail is
+/// pushed out of every collider whose `layers` meet the spring's
+/// `colliders` (in query order) by `radius` plus the spring's `radius`, and
+/// put back at its bone's length. Put it on its own entity, one per shape;
+/// colliders follow the pose at the moment a chain is swung, so a collider
+/// on a joint an earlier chain swung follows that swing.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.SpringCollider")]
+pub struct SpringCollider {
+    /// The entity with the og.Skeleton whose spring bones this keeps out.
+    pub skeleton: u64,
+    /// The joint the collider rides on (an index into the skin's joints).
+    #[reflect(min = 0)]
+    pub joint: u32,
+    /// A sphere about `offset`, or a capsule from `offset` to `tail`.
+    #[reflect(variants = ["sphere", "capsule"])]
+    pub shape: u32,
+    /// The sphere's centre, or the capsule's first end, in the joint's frame.
+    #[reflect(unit = "m")]
+    pub offset: Vec3,
+    /// The capsule's other end, in the joint's frame (a sphere ignores it).
+    #[reflect(unit = "m")]
+    pub tail: Vec3,
+    /// The radius, in metres of the skeleton's model space (the joint's own scale does not apply).
+    #[reflect(unit = "m", min = 0, default = 0.1, tunable)]
+    pub radius: f32,
+    /// The layers this collider is on, as bits (a spring bone's `colliders` picks them).
+    #[reflect(default = 1)]
+    pub layers: u32,
+}
+
+impl Default for SpringCollider {
+    fn default() -> Self {
+        SpringCollider {
+            skeleton: 0,
+            joint: 0,
+            shape: SPRING_SPHERE,
+            offset: Vec3::ZERO,
+            tail: Vec3::ZERO,
+            radius: 0.1,
+            layers: 1,
         }
     }
 }

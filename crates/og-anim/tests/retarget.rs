@@ -526,6 +526,83 @@ fn fingers_are_humanoid_bones_and_a_curl_carries_over() {
     }
 }
 
+/// A chain of nodes, each the child of the one before.
+fn chain_of(names: &[&str]) -> SkeletonAsset {
+    SkeletonAsset {
+        nodes: names
+            .iter()
+            .enumerate()
+            .map(|(i, n)| SkeletonNode {
+                name: (*n).into(),
+                parent: if i == 0 { NONE } else { i as u32 - 1 },
+                rest: Trs::IDENTITY,
+                mesh: NONE,
+            })
+            .collect(),
+        skins: Vec::new(),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn unitys_legacy_thumb_names_start_at_the_metacarpal() {
+    // Unity's (and VRM 0.x's) thumb: Proximal (the metacarpal),
+    // Intermediate, Distal; with spaces as Unity shows them, or squashed.
+    let legacy = chain_of(&[
+        "Hips",
+        "LeftHand",
+        "Left Thumb Proximal",
+        "Left Thumb Intermediate",
+        "Left Thumb Distal",
+        "rightHand",
+        "rightThumbProximal",
+        "rightThumbIntermediate",
+        "rightThumbDistal",
+    ]);
+    let m = HumanoidMap::detect(&legacy);
+    assert_eq!(m.scheme, "unity");
+    for (bone, node) in [
+        ("leftThumbMetacarpal", 2),
+        ("leftThumbProximal", 3),
+        ("leftThumbDistal", 4),
+        ("rightThumbMetacarpal", 6),
+        ("rightThumbProximal", 7),
+        ("rightThumbDistal", 8),
+    ] {
+        assert_eq!(m.node(bone), Some(node), "{bone}");
+    }
+    // VRM 1.0's names (Metacarpal, Proximal, Distal) stay as they are.
+    let vrm1 = chain_of(&[
+        "hips",
+        "leftHand",
+        "leftThumbMetacarpal",
+        "leftThumbProximal",
+        "leftThumbDistal",
+    ]);
+    let m = HumanoidMap::detect(&vrm1);
+    for (bone, node) in [
+        ("leftThumbMetacarpal", 2),
+        ("leftThumbProximal", 3),
+        ("leftThumbDistal", 4),
+    ] {
+        assert_eq!(m.node(bone), Some(node), "{bone}");
+    }
+    // The rig-file workaround (each thumb bone named outright) gives the
+    // same map, and a rig file still overrides what the scheme reads.
+    let rig = RigAsset::parse(
+        "type rig\nversion 1\n---\nleftThumbMetacarpal \"Left Thumb Proximal\"\nleftThumbProximal \"Left Thumb Intermediate\"\nleftThumbDistal \"Left Thumb Distal\"\n",
+    )
+    .unwrap();
+    assert_eq!(
+        rig.map(&legacy).unwrap().nodes,
+        HumanoidMap::detect(&legacy).nodes
+    );
+    let rig = RigAsset::parse("type rig\nversion 1\n---\nleftThumbMetacarpal none\n").unwrap();
+    let m = rig.map(&legacy).unwrap();
+    assert_eq!(m.node("leftThumbMetacarpal"), None);
+    assert_eq!(m.node("leftThumbProximal"), Some(3));
+}
+
 /// The twist of `q` about unit `axis`, in radians.
 fn twist(q: Quat, axis: Vec3) -> f32 {
     let p = Vec3::new(q.x, q.y, q.z).dot(axis);
@@ -598,6 +675,128 @@ fn twist_bones_share_their_segments_twist() {
     // The forearm, a child of the upper arm (not of its twist bone), keeps
     // its own pose.
     assert!(rel(5, 3).abs() < 1e-3, "forearm {}", rel(5, 3));
+}
+
+/// An Unreal-named arm with a twist bone halfway along each segment, its
+/// twist bones named `twist` (`…_twist_01_l`) or `roll`, which no scheme reads.
+fn ue_arm(twist: bool) -> SkeletonAsset {
+    let i = Quat::IDENTITY;
+    let (upper, lower) = if twist {
+        ("upperarm_twist_01_l", "lowerarm_twist_01_l")
+    } else {
+        ("upperarm_roll_01_l", "lowerarm_roll_01_l")
+    };
+    let defs: Vec<NodeDef> = vec![
+        ("root", NONE, Vec3::ZERO, i),
+        ("pelvis", 0, Vec3::new(0.0, 1.0, 0.0), i),
+        ("spine_01", 1, Vec3::new(0.0, 1.3, 0.0), i),
+        ("upperarm_l", 2, Vec3::new(0.2, 1.5, 0.0), i),
+        (upper, 3, Vec3::new(0.35, 1.5, 0.0), i),
+        ("lowerarm_l", 3, Vec3::new(0.5, 1.5, 0.0), i),
+        (lower, 5, Vec3::new(0.625, 1.5, 0.0), i),
+        ("hand_l", 5, Vec3::new(0.75, 1.5, 0.0), i),
+    ];
+    skeleton_from_model(&defs, 1.0)
+}
+
+/// `skeleton` playing `clip` at its end in a world, after one tick: the
+/// local and the model-space pose.
+fn played(skeleton: &SkeletonAsset, clip: &ClipAsset) -> (Vec<Trs>, Vec<Trs>) {
+    let mut w = World::new(&WorldDesc {
+        tick_rate: 60,
+        seed: 1,
+    })
+    .unwrap();
+    let anim = install(&mut w).unwrap();
+    anim.add_skeleton(1, skeleton.clone()).unwrap();
+    anim.add_clip(2, clip.clone()).unwrap();
+    let e = w
+        .spawn((
+            Skeleton {
+                asset: 1,
+                ..Skeleton::default()
+            },
+            AnimationPlayer {
+                clip: 2,
+                time: clip.duration,
+                speed: 0.0,
+                looping: false,
+                ..AnimationPlayer::default()
+            },
+        ))
+        .unwrap();
+    w.step().unwrap();
+    let pose = anim.pose(e).unwrap();
+    let model = skeleton.model_space(&pose);
+    (pose, model)
+}
+
+#[test]
+fn twist_bones_share_their_segments_twist_when_a_clip_for_the_rig_leaves_them_still() {
+    // A clip authored for the arm itself (not retargeted): the upper arm
+    // rolls 0.6 rad about its length, the hand 1.2; the twist bones have
+    // no channels.
+    let roll = |node: u32, name: &'static str, a: f32| -> support::ChannelFn<'static> {
+        (
+            node,
+            name,
+            ChannelPath::Rotation,
+            4,
+            Box::new(move |t| {
+                og_core::math::quat_from_axis_angle(Vec3::X, a * t)
+                    .to_array()
+                    .to_vec()
+            }),
+        )
+    };
+    let rolls = || vec![roll(3, "upperarm_l", 0.6), roll(7, "hand_l", 1.2)];
+    let c = support::clip("roll", 1.0, &[], rolls());
+    let t = ue_arm(true);
+    let rest = t.model_space(&t.rest_pose());
+    let rel = |m: &[Trs], n: usize, of: usize| {
+        let now = m[of].rotation.conjugate() * m[n].rotation;
+        let then = rest[of].rotation.conjugate() * rest[n].rotation;
+        twist(now * then.conjugate(), Vec3::X)
+    };
+    let (_, m) = played(&t, &c);
+    // The shares retargeting gives: the forearm's twist bone half the
+    // hand's roll, the upper arm's half the upper arm's against the spine.
+    assert!((rel(&m, 7, 5) - 1.2).abs() < 1e-3, "hand {}", rel(&m, 7, 5));
+    assert!(
+        (rel(&m, 6, 5) - 0.6).abs() < 1e-3,
+        "forearm twist {}",
+        rel(&m, 6, 5)
+    );
+    assert!(
+        (rel(&m, 3, 2) - 0.6).abs() < 1e-3,
+        "upper arm {}",
+        rel(&m, 3, 2)
+    );
+    assert!(
+        (rel(&m, 4, 2) - 0.3).abs() < 1e-3,
+        "upper arm twist {}",
+        rel(&m, 4, 2)
+    );
+    assert!(rel(&m, 5, 3).abs() < 1e-3, "forearm {}", rel(&m, 5, 3));
+    // A clip that animates a twist bone (held at rest here) keeps it; the
+    // other is still shared.
+    let mut keyed = rolls();
+    keyed.push(roll(6, "lowerarm_twist_01_l", 0.0));
+    let (local, m) = played(&t, &support::clip("keyed", 1.0, &[], keyed));
+    assert_eq!(local[6].rotation, Quat::IDENTITY, "the keyed twist bone");
+    assert!(
+        (rel(&m, 4, 2) - 0.3).abs() < 1e-3,
+        "upper arm twist {}",
+        rel(&m, 4, 2)
+    );
+    // A rig without twist bones (the same nodes named `roll`) plays the
+    // clip as it is: its in-between nodes ride their parents at rest.
+    let r = ue_arm(false);
+    let (local, _) = played(&r, &c);
+    let rest = r.rest_pose();
+    for n in [4usize, 6] {
+        assert_eq!(local[n], rest[n], "node {n}");
+    }
 }
 
 #[test]

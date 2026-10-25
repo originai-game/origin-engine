@@ -790,6 +790,10 @@ fn ext(rel: &str) -> String {
         .unwrap_or_default()
 }
 
+/// The node rows' layout, in the stamp of every blob that has them (a model,
+/// its proxy, its `#anim`): `NodeRow` version 2 carries `visible`.
+const NODE_ROWS: &[u8] = b"nodes-v2";
+
 fn stamp(parts: &[&[u8]]) -> u64 {
     let mut h = StableHasher::new();
     h.write_str(COOKER_VERSION);
@@ -1187,20 +1191,27 @@ pub fn cook_project_with_texture_cache(
                 let st = if ext(&s.rel) == "ogt" {
                     stamp(&[
                         b"model",
+                        NODE_ROWS,
                         mesh_desc.as_bytes(),
                         &hash,
                         joined.as_bytes(),
                         budget_desc.as_bytes(),
                     ])
                 } else {
-                    stamp(&[b"model", mesh_desc.as_bytes(), &hash, joined.as_bytes()])
+                    stamp(&[
+                        b"model",
+                        NODE_ROWS,
+                        mesh_desc.as_bytes(),
+                        &hash,
+                        joined.as_bytes(),
+                    ])
                 };
                 outs.insert(
                     0,
                     (s.rel.clone(), format::Model::NAME, st, Work::Model(s, ids)),
                 );
                 if group_of.contains_key(&s.rel) {
-                    let st = stamp(&[b"proxy", mesh_desc.as_bytes(), &hash]);
+                    let st = stamp(&[b"proxy", NODE_ROWS, mesh_desc.as_bytes(), &hash]);
                     outs.push((
                         format!("{}#proxy", s.rel),
                         format::Model::NAME,
@@ -1214,6 +1225,7 @@ pub fn cook_project_with_texture_cache(
                             let deps = anim::dependencies(&assets_root(s), &a);
                             let st = stamp(&[
                                 b"animation",
+                                NODE_ROWS,
                                 mesh_desc.as_bytes(),
                                 a.describe().as_bytes(),
                                 &hash,

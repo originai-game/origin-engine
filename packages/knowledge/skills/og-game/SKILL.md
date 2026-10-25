@@ -816,11 +816,22 @@ each joint's tail is a damped spring (`frequency` 3 Hz, `damping` 0.3;
 length. `space` world (default) lags behind the entity's motion; model
 ignores it (a teleport does not whip the tail). Applied last, after IK
 and look-at; `lag` reads back how far the chain trails. Deterministic and
-saved with the world.
+saved with the world. `tipFrequency` and `tipDamping` (1) scale the last
+joint's frequency and damping, the joints between in proportion: 0.25 is
+a strand soft at its tip on a stiff root.
+
+Keep hair out of the head with `og.SpringCollider { skeleton, joint,
+shape, offset, tail, radius }` on its own entity, a sphere about `offset`
+or a capsule from `offset` to `tail` in the joint's frame: every tail of
+that skeleton's springs is pushed out of it to its `radius` plus the
+spring's `radius`, keeping its bone's length. A collider's `layers` (1)
+must meet the spring's `colliders` (all) to count.
 
 ```ts
 const tail = must(world.spawn({ name: "hero-tail" }));
-must(world.insert(tail, og.SpringBone, { skeleton: body, joint: TAIL_TIP, bones: 3, gravity: { x: 0, y: -4, z: 0 } }));
+must(world.insert(tail, og.SpringBone, { skeleton: body, joint: TAIL_TIP, bones: 3, gravity: { x: 0, y: -4, z: 0 }, tipFrequency: 0.5, radius: 0.02 }));
+const hips = must(world.spawn({ name: "hero-hips-collider" }));
+must(world.insert(hips, og.SpringCollider, { skeleton: body, joint: HIPS, shape: "capsule", offset: { x: -0.15, y: 0, z: 0 }, tail: { x: 0.15, y: 0, z: 0 }, radius: 0.12 }));
 ```
 
 `templates/archetypes/third-person` (`src/anim.ts`: a 1D blend by speed,
@@ -899,13 +910,16 @@ pattern.
 Hands retarget too: the fingers are humanoid bones (VRM 1.0's
 `leftThumbMetacarpal` … `leftLittleDistal`, read from Mixamo's
 `LeftHandIndex1`, VRoid's `J_Bip_L_Index1`, Rigify's `DEF-f_index.01.L`,
-Unreal's `index_01_l`, plain `index.01.L`), each turning from its hand as
+Unreal's `index_01_l`, plain `index.01.L`; Unity's legacy `Left Thumb
+Proximal` is the metacarpal), each turning from its hand as
 the source's does, so a fist or a grip holds on an A-posed arm whatever
 the arm does. The target's twist bones (unmapped nodes named `twist`, such
 as Unreal's `lowerarm_twist_01_l`, or Rigify's `DEF-forearm.L.001`) take a
 share of their segment's roll by where they sit along it: none at the
 segment's head, the next bone's at its end, so a forearm does not
-candy-wrap. A character whose rest pose does not stand on the ground (an
+candy-wrap. A clip made for the rig itself that leaves its twist bones
+still gets the same shares each tick (after IK); a clip that keys them
+is played as keyed. A character whose rest pose does not stand on the ground (an
 armature lifted off it, a crouched rest) says how high its ankles stand
 in its `type rig` file, `footHeight 0.08` (or `footHeight <left>
 <right>`); planted feet then land on that ground, not at the rest pose's

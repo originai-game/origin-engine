@@ -9,6 +9,40 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- Spring bone colliders and falloff: `og.SpringCollider` (a sphere or a
+  capsule on a joint, three-vrm's VRMSpringBoneCollider) keeps the tails
+  of that skeleton's `og.SpringBone`s out by its `radius` plus the
+  spring's new `radius`, picked by `layers` against the spring's
+  `colliders`; `og.SpringBone.tipFrequency` and `tipDamping` scale the
+  last joint's frequency and damping, the joints between in proportion.
+  At their defaults a chain swings bit for bit as before; worlds that
+  install og-anim hash differently once (a new type, a new layout).
+- Twist bones follow clips that are not retargeted: a clip authored for
+  a rig that turns an arm or leg segment but leaves its twist bones
+  (`…twist…`, Rigify's `DEF-….001`) still now gives them, per tick, the
+  share of the segment's twist retargeting gives (after IK and look-at).
+  Retargeted clips, rigs without twist bones and clips that key them play
+  bit for bit as before.
+- Unity's legacy thumb names are read from the metacarpal: on a side
+  whose thumb has an `Intermediate` and no `Metacarpal` (`Left Thumb
+  Proximal`, `Intermediate`, `Distal`; VRM 0.x's `leftThumbIntermediate`),
+  Proximal is `leftThumbMetacarpal` and Intermediate `leftThumbProximal`,
+  so those thumbs retarget one bone further in than they did. A `type rig`
+  file naming them still wins. The cook's retarget stamp moves to
+  `retarget-v3`: models with an `animation { library }` re-cook once.
+- A model drawn without an `og.Skeleton` honours `KHR_node_visibility`:
+  the model blob's node rows (`og.ModelNode` schema 2) carry each node's
+  rest visibility and og-runtime's static draw skips a hidden node and
+  its descendants, so a `.vox` without a skeleton draws frame 0 only
+  (its other frames were zero-size draws). Every model, proxy and `#anim`
+  re-cooks once (the type hash and the `nodes-v2` stamp move).
+- glTF files that animate visibility through `KHR_animation_pointer`
+  (onto `KHR_node_visibility/visible`, as Blender and three.js export)
+  now cook: the loader rewrites such channels as the engine's
+  `OG_animation_visibility` before the gltf crate validates the file. A
+  pointer onto another property is dropped with a warning, or refused
+  when the file requires the extension. Files without one load byte for
+  byte as before.
 - Faster capture PNGs: the probe's `capture`, `sweep` and `screenshot`
   encode with fdeflate (rows filtered `Up`, deflated as they are
   filtered) instead of zlib level 6, 10 to 35 times faster on a
