@@ -1,6 +1,6 @@
 ---
 name: og-audio
-description: Sound on Origin Engine — one-shot voices for game events, the procedural sound presets og cook synthesises (coin, jump, hit, click and more), UI sounds, the four buses and their effects (filters, reverb send, compressor or limiter, ducking), music with stems, bar-aligned starts, crossfades and stingers on og.Music's clock, spatial sources with occlusion and distance dulling, voice priority and the cap, and proving it all headless with listen and og run --audio. Use when a game is silent, when adding any sound or music, or when the mix is muddy, clipping or wrong.
+description: Sound on Origin Engine — one-shot voices for game events, the procedural sound presets og cook synthesises (coin, jump, hit, click and more), UI sounds, the four buses and their effects (filters, reverb send, compressor or limiter, ducking), music with stems, bar-aligned starts, crossfades and stingers on og.Music's clock, spatial sources with occlusion, distance dulling, Doppler, cones and HRTF for headphones, voice priority and the cap, and proving it all headless with listen and og run --audio. Use when a game is silent, when adding any sound or music, or when the mix is muddy, clipping or wrong.
 ---
 
 Audio on Origin Engine is world state: an entity with `og.AudioSource`
@@ -34,9 +34,11 @@ given and taken, pickups, a door, a death, a win and a loss, every UI press.
 
 - One voice entity per sound, spawned in `start` with `playing: false`, and
   a `Voices` system that plays each requested one: systems set bits of a
-  game resource (`Sounds.sfx |= Sound.Jump`), Voices sets `playing` on the
-  matching voice (a voice already playing is stopped this tick and
-  restarted the next). Every archetype in `templates/archetypes` does
+  game resource (`Sounds.sfx |= Sound.Jump`), Voices sets `retrigger: true`
+  on the matching voice (it starts again from the top in that tick,
+  playing or not, and the engine clears it; archetypes written before
+  `retrigger` set `playing`, stopping a playing voice one tick and
+  starting it the next). Every archetype in `templates/archetypes` does
   this; copy a `Voices`.
 - Vary repeated sounds: `pitch` 0.92–1.08 from the world's `og.Rng` for
   footsteps, hits and coins, so a stream of them does not machine-gun.
@@ -173,10 +175,34 @@ at 1.0 is a mix bug, not loudness.
   the listener is. It follows the listener's world transform, so put the
   og.AudioListener where the ears are (the camera, or the player); a zone
   on a child of a moving room moves with it.
+- Motion is heard: a spatial source or listener that moves shifts the
+  pitch (Doppler, from tick velocities down `og.Parent`, so a car on a
+  rig or a listener on a moving camera just works). `dopplerFactor` 1 is
+  physical; 0.3–0.6 on a racing game's engines keeps a fly-by readable;
+  0 on a source that must keep its pitch (a voice line, a musical
+  instrument in the world) or on the `og.AudioListener` to turn it off
+  everywhere. A warp or respawn (a jump faster than sound in one tick)
+  shifts nothing. `og.Audio.speedOfSound` (343.3) is the scale.
+- Directional sources: `coneInnerAngle`, `coneOuterAngle` (full angles,
+  degrees, about the entity's +Z, as three.js's `setDirectionalCone`)
+  and `coneOuterGain`: a loudspeaker or an NPC talking forward `90`,
+  `240`, `0.3`; a siren on a vehicle `120`, `300`, `0.5`. Rotate the
+  entity to aim it; the default 360/360 is omnidirectional.
+- Headphones: `og.AudioListener.panningModel: "hrtf"` places spatial
+  sources by interaural delay and head shadow (a spherical-head model),
+  clearer left and right than the stereo panner, without front/back or
+  height cues; offer it as a setting ("Headphones"), keep `equalpower`
+  for speakers (the default). Non-spatial sources keep their `pan`.
 - `og.Audio.maxVoices` (32) caps voices; past it the lowest `priority`,
   then the quietest, then the oldest is culled (`SOUND_CULLED`). Give the
   player's own sounds and the music a high priority (200+), ambient props a
-  low one.
+  low one. Ambient loops and music stems that should keep their place
+  when culled get `virtualize: true`: past the cap they go silent with
+  their playhead running and come back where they would be, not from the
+  top (`og.AudioPlayback.virtual` says which).
+- `og.Audio.resampler` is `sinc` (clean highs at any pitch); `linear` is
+  the older, cheaper mix, kept for a game that compares its exact output
+  (a WAV hash in a test). Unpitched 48 kHz sounds play the same either way.
 
 ## 7. Prove it
 

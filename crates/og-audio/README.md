@@ -27,9 +27,10 @@ ordinary dependency).
 | Module | Entry points |
 |---|---|
 | `system` | `install(&mut World, &AudioDesc) -> AudioLink`, `AudioLink` (`bank`, `attach`, `detach`, `drain`, `next_tick`, `dropped`), `publish_link`/`link`/`retire_link` (engine id → link), `SYSTEM_NAME` = `og.audio` |
-| `schema` | `AudioSource`, `AudioListener`, `Audio`, `ReverbZone` (`weight_at`), `SoundStarted`, `SoundEnded`, `end_reason`, engine-owned `AudioPlayback`, `AudioStream`, the `og.Transform` mirror, `Bus` |
+| `schema` | `AudioSource`, `AudioListener`, `Audio`, `ReverbZone` (`weight_at`), `SoundStarted`, `SoundEnded`, `end_reason`, `panning_model`, engine-owned `AudioPlayback`, `AudioStream`, the `og.Transform` mirror, `Bus` |
 | `command` | `Command`, `Op`, `encode`/`decode` (56-byte records), `TickPacket` |
 | `sound` | `SoundBank` (`insert_qoa`, `insert_pcm`, `insert_chunked`, `put_chunk`, `keep_chunks`, `set_chunk_loader`, `resident_bytes`, `get`, `info`, `remove`; `with_resident_seconds`), `SoundData` (`chunking`, `resident_chunks`, `resident_bytes`), `chunks_wanted` (§Chunked sounds) |
+| `resample` | the windowed sinc's constants (`SINC_ZEROS`, `SINC_TAPS`, `SINC_BETA`, `SINC_PHASES`, `SINC_MAX_SPREAD`, `WIDE_PHASES`) |
 | `mixer` | `Mixer::new(MixerDesc, SoundBank)` / `Mixer::for_link`, `push`, `pump`, `render`, `render_until_tick`, `frames_until_tick`, `skip`, `stats`; `Clock::{Driven, Free}` |
 | `sink` | `HeadlessSink` (`Null` / `Capture`), `wav(pcm, channels, rate)` |
 
@@ -90,7 +91,7 @@ with none, the origin looking down −Z.
 | 0 | `entity` | Entity (u64) | the source's entity |
 | 1 | `sound` | Sound (u64) | the sound |
 | 2 | `voice` | u32 | the voice id in the command stream |
-| 3 | `reason` (`SoundEnded` only) | u32 | 0 finished, 1 stopped (`playing` = 0), 2 removed (the AudioSource left a living entity), 3 replaced (`sound` changed while playing) |
+| 3 | `reason` (`SoundEnded` only) | u32 | 0 finished, 1 stopped (`playing` = 0), 2 removed (the AudioSource left a living entity), 3 replaced (`sound` changed while playing), 4 culled (§E6), 5 retriggered (§Resampling, virtual voices, retrigger) |
 
 Sent during the tick it happens; systems read them the tick after (og-ecs
 event semantics). A despawned entity's voice is silenced without an event.
@@ -144,7 +145,7 @@ One 56-byte little-endian record per command (`command.rs`):
 
 | offset | type | field | meaning |
 |---:|---|---|---|
-| 0 | u8 | `op` | 1 play, 2 stop, 3 params, 4 bus, 5 stop-all |
+| 0 | u8 | `op` | 1 play, 2 stop, 3 params, 4 bus, 5 stop-all, 6 fx, 7 cue, 8 hrtf (§Propagation) |
 | 1 | u8 | `flags` | bit 0 loop, bit 1 spatial |
 | 2 | u8 | `bus` | 0 master, 1 music, 2 sfx, 3 ui |
 | 3 | u8 | reserved | 0 |
@@ -180,9 +181,11 @@ playhead. Only the regular commands are hashed.
   (5120 samples, self-contained) it reaches into two slots, so a frame
   boundary or a loop seam never decodes twice. A sound cooked in chunks
   keeps only some of its QOA bytes in memory (§Chunked sounds).
-- **Voices**: linear-interpolation resampling at `pitch × source rate /
-  output rate`; at a loop seam the interpolation reads `loopStart` as the
-  frame after `loopEnd − 1`, so a sample-continuous loop region is seamless.
+- **Voices**: resampling at `pitch × source rate / output rate`, by a
+  windowed sinc (`og.Audio.resampler` sinc, the default) or linear
+  interpolation (`linear`, the mix before round 4; §Resampling, virtual
+  voices, retrigger); at a loop seam both read `loopStart` as the frame
+  after `loopEnd − 1`, so a sample-continuous loop region is seamless.
   Gain, pan and bus changes ramp over 256 frames; stops fade over 256; a
   resynced voice fades in; a fresh one starts at full gain (attacks kept).
   Mono sources pan with Web Audio's equal-power law, stereo ones with its
@@ -262,6 +265,131 @@ across a restore; a click rings inside and not outside), scheduled starts on the
 clock and a stinger on the bar line, a two-second crossfade, the voice cap,
 occlusion and distance dulling, and the same PCM twice with `listen`
 returning its last second (`$OG_EVIDENCE_DIR/M6/e6-mix.{wav,json}`).
+
+## Propagation
+
+Doppler, cone directivity and the HRTF panner (round 4). Doppler and the
+cone are computed in the tick, like gain and pan, so they are part of the
+stream and the world hash; the HRTF is the mixer's, steered by `hrtf`
+commands.
+
+Records (`schema.rs`, IDL module `audio`):
+
+| record | field | type | default | meaning |
+|---|---|---|---|---|
+| `og.AudioSource` | `dopplerFactor` | f32 | 1 (0–10, tunable) | how much motion shifts a spatial source's pitch; 0 off |
+| | `coneInnerAngle` | f32 | 360 (deg) | full volume within this full angle about the source's +Z |
+| | `coneOuterAngle` | f32 | 360 (deg) | `coneOuterGain` past this full angle |
+| | `coneOuterGain` | f32 | 0 (0–1) | the gain outside the outer angle |
+| `og.AudioListener` | `dopplerFactor` | f32 | 1 (0–10) | scales every source's shift; 0 turns Doppler off for the listener |
+| | `panningModel` | enum | `equalpower` | `equalpower` (speakers) or `hrtf` (headphones) |
+| `og.Audio` | `speedOfSound` | f32 | 343.3 (m/s) | what Doppler divides by |
+| `og.AudioPlayback` (engine) | `position`, `direction` | Vector3 | | the source's world position last tick; the direction last sent to the HRTF (zero: the panner) |
+| `og.AudioStream` (engine) | `listener`, `listenerAt` | u64, Vector3 | | the listener heard last tick (0: none) and where it was |
+
+- **Doppler** (OpenAL 1.1's model, Web Audio's former PannerNode one):
+  pitch × `(c − DF·vl) / (c − DF·vs)`, `vs` and `vl` the source's and the
+  listener's velocities along the line from the source to the listener,
+  `c` = `og.Audio.speedOfSound`, `DF` = the source's `dopplerFactor` × the
+  listener's. Velocities are tick velocities: the change of the world
+  position (its `og.Transform` down `og.Parent`, §Tick semantics) since
+  the last tick × the tick rate, so a source carried by a moving parent
+  shifts as one placed there would. A voice's first tick, a source that
+  was not spatial last tick and a listener that was not the listener last
+  tick have no velocity; a jump at or past the speed of sound in one tick
+  is a teleport (a warp, a respawn) and counts as still. Each `DF·v` is
+  held within ±c/2, so the shift stays within ×1/3..×3. The shifted pitch
+  is the voice's pitch in the stream, so the playhead (and the tick a
+  one-shot ends on) follows it. Static scenes compute a ratio of exactly
+  1: their stream is the one before Doppler, bit for bit.
+- **Cones** (Web Audio's PannerNode cone, three.js PositionalAudio's
+  `setDirectionalCone`): with θ the angle between the source's world +Z
+  (three.js orients a PositionalAudio by +Z) and the listener, the gain is
+  1 for θ ≤ inner/2, `coneOuterGain` for θ ≥ outer/2, linear in θ
+  between; 360/360 is exactly 1. θ is og-core's deterministic `atan2`.
+- **HRTF** (`panningModel` hrtf): the tick sends op 8 `hrtf` per spatial
+  voice after its play (and its params) whenever its direction in the
+  listener's frame changed (x, y, z in `gain`, `pitch`, `pan`), and with
+  every resynced play; the zero vector (the listener back on
+  `equalpower`) returns the voice to the stereo panner. The mixer's voice
+  then folds to mono and runs Brown and Duda's spherical-head model (IEEE
+  Trans. Speech and Audio Processing 6(5), 1998, its head part; `dsp.rs`
+  `Hrtf`): per ear an interaural delay by Woodworth's formula (up to
+  (a/c)(1 + π/2) = 0.66 ms, 31.5 frames at 48 kHz; read from a 128-frame
+  delay line with linear interpolation) and the head-shadow filter
+  `(1 + α(θ)s/2ω₀)/(1 + s/2ω₀)` (a = 8.75 cm, ω₀ = c/a, α from 2 at the
+  ear's axis to 0.1 at 150° from it), by the bilinear transform; the
+  output is scaled by √½ so a centred source keeps the equal-power
+  panner's low-frequency power. Delays and coefficients glide over the
+  256-frame ramp. No pinna or shoulder echoes: sources move between the
+  ears, front/back and up/down are not resolved. Non-spatial sources keep
+  their pan. With `equalpower` no `hrtf` command is sent and the voice
+  path is the one before the HRTF, sample for sample.
+
+Tests: `tests/propagation.rs` (Doppler against OpenAL's formula in f64 at
+20 m/s coming and going, heard 440 Hz → 467/416 Hz, factor 0 on either
+side, factor 2, a 200 m teleport, a listener walking at 5 m/s; a 60°/180°
+cone with outer gain 0.2 at eight angles, turned to face −Z, and the
+omnidirectional default; the HRTF's far-ear lag of 31–32 frames by
+cross-correlation, its highs 5× down and its lows not, a source ahead
+identical in both ears, no `hrtf` command and hard right on `equalpower`,
+and the panner back after switching mid-run; a walk with every feature on
+the same twice, samples and stream, and across a restore at tick 117) and
+`tests/parented.rs` (a carried source's pitch bits equal a placed one's).
+
+## Resampling, virtual voices, retrigger
+
+Records: `og.Audio.resampler` (`AudioResampler`: `linear`, `sinc`;
+default `sinc`), `og.AudioSource.virtualize` and `retrigger` (bool, false),
+engine-owned `og.AudioPlayback.virtual` (bool), `SOUND_RETRIGGERED` (5).
+
+- **Windowed sinc** (`resample.rs`): a Kaiser window, β = 7 (about 70 dB
+  of stopband), 8 zero crossings each side: 16 taps at pitch ≤ 1 from a
+  table of 2048 phases (nearest phase: at most 1/4096 frame of time
+  error), each phase normalised to sum to 1. A voice stepping faster than
+  one source frame per output frame widens the kernel by the step rounded
+  up to an eighth (cutoff at the output's Nyquist), up to 4× (64 taps),
+  from a 512-phase table built on first use; past 4× it aliases, as
+  linear always did. A voice keeps a 128-frame history around its
+  playhead, filled one source frame at a time and across the loop seam
+  as the linear path reads it, so a frame costs one decoded frame and its
+  taps. On a source frame exactly (an unpitched sound at the output's
+  rate) it returns the frame: such a voice is the linear path's samples,
+  bit for bit. Tables are built from `+ − × ÷` and `sqrt` (series for sin
+  and I0), the same on every host. The choice reaches the mixer as an fx
+  command (`fx::RESAMPLER` 22, on master) with the others, so it is in
+  the stream, the hash and every resync. `linear` keeps the old output
+  exactly (a scratch scene of seven pitched voices at three rates hashed
+  the same as on the base); measured on a 15 kHz tone from 44.1 kHz:
+  linear −3.4 dB on the tone and its image at −11.5 dB, sinc 0.0 dB and
+  −74 dB; pitched 2.5× from 6 kHz, the folded image −28 dB linear,
+  −90 dB sinc.
+- **Virtual voices**: past `maxVoices` a source with `virtualize` is not
+  culled: its voice is stopped in the mixer and `AudioPlayback.virtual`
+  set; its playhead (the tick side's `cursor`) runs on, a one-shot ends on
+  the tick it would have (`SoundEnded` finished), nothing is sent for it.
+  Each tick the cap ranks heard and virtual voices together; a virtual
+  one back within it is played at its cursor (a resumed play, fading in
+  over 256 frames, with its `hrtf` direction), so it is heard where it
+  would have been, reading the clock, not restarting. One that is heard
+  and falls outside goes virtual; one without `virtualize` is culled as
+  before. Fresh sources past the cap start virtual.
+- **Retrigger**: `retrigger` true starts the sound again from the top in
+  that tick (its `startOffset`, `startAt` and `fade` as a fresh start):
+  a playing voice is stopped (`SOUND_RETRIGGERED`) and a new voice id
+  plays it; a source not playing (ended, stopped, culled) plays; either
+  way the engine clears `retrigger` and sets `playing` true. No level
+  change on `playing` is needed (a `Voices` system no longer has to stop
+  a voice one tick and start it the next).
+
+Tests: `tests/voices.rs` (the sinc against linear on the 15 kHz tone and
+2.5× pitch-up, and identical on its own frames; a virtual voice at
+priority 100 under a cap of 2 runs its playhead 800 frames a tick, is
+never sent, is played once at tick 30 from frame 24 000 when it outranks
+another and is heard at the swell's level there, a virtual one-shot
+ending on tick 29; a retrigger stopping the old voice and playing a new
+one from 0 in one tick, flag cleared, and an ended one-shot played again;
+a run with every feature the same twice and across a restore at tick 87).
 
 ## Chunked sounds
 
@@ -452,14 +580,20 @@ chunked sounds (`tests/evidence/P4/cook/sound-chunks.md`).
 
 Effects, ducking, ray-cast occlusion, distance low-pass, music clock and
 crossfades, scheduled starts, priority and the voice cap, `listen`, `og run
---audio` and chunked streaming of long sounds have landed (§E6, §Chunked
-sounds). Still owed:
+--audio`, chunked streaming of long sounds, propagation (Doppler, cones,
+the HRTF), the windowed sinc, virtual voices and retrigger have landed
+(§E6, §Chunked sounds, §Propagation, §Resampling, virtual voices,
+retrigger). Still owed:
 
-- **Propagation**: Doppler, HRTF for headphones, cone directivity.
-  (Parented sources, listeners and zones are composed down `og.Parent`
-  since row 86: §Tick semantics.)
-- Better resampling (windowed sinc), voice virtualisation (a culled voice
-  resuming where it would be), retrigger without a level change.
 - Decoding off the engine Worker (the mixer decodes QOA frames as voices
   reach them). (A chunk's fetch is prioritised by how soon its playhead
-  needs it since the cook round three: §Chunked sounds.)
+  needs it since the cook round three: §Chunked sounds.) Not done in
+  round 4 because it does not fit without changing the mixer's observable
+  output: the engine's wasm is single-threaded (`wasm32-unknown-unknown`
+  without atomics, so no second thread shares the bank), and a driven
+  mixer renders each tick's PCM as a function of the stream, so the frame
+  a voice reaches must be decoded at that sample; a decode on another
+  Worker that arrives late would play silence (as a missing chunk does)
+  and make the PCM depend on timing. It needs a decode-ahead the tick can
+  bound (the playheads' next QOA frames, as `chunk_distances` bounds
+  chunks) with a synchronous fallback, and a threaded wasm build.

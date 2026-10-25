@@ -9,6 +9,32 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- Doppler on spatial audio: `og.AudioSource.dopplerFactor` (1; 0 off),
+  `og.AudioListener.dopplerFactor` (1) and `og.Audio.speedOfSound`
+  (343.3 m/s). The pitch follows OpenAL's model from the source's and the
+  listener's tick velocities, composed down `og.Parent`; a jump faster
+  than sound in one tick is a teleport and shifts nothing. Moving spatial
+  sources and listeners now sound shifted: set `dopplerFactor` 0 to keep
+  the old pitch. The records' layouts change (saves restore with
+  `migrate`).
+- Cone directivity: `og.AudioSource.coneInnerAngle`, `coneOuterAngle`
+  (360°) and `coneOuterGain` (0), Web Audio's PannerNode cone about the
+  source's +Z as three.js's `setDirectionalCone`.
+- HRTF for headphones: `og.AudioListener.panningModel` (`PanningModel`:
+  `equalpower` default, `hrtf`), a spherical-head model (Brown and Duda:
+  interaural delay and head shadow) in the mixer, steered by a new `hrtf`
+  command (op 8) in the stream; with `equalpower` the mix is unchanged.
+- Windowed-sinc resampling: `og.Audio.resampler` (`AudioResampler`:
+  `sinc` default, `linear`), a Kaiser-windowed sinc (β 7, 16 taps, 2048
+  phases, widened to 64 taps pitched up to 4×). Pitched voices and sounds
+  not at the output's rate now render other samples: set `linear` to keep
+  the mix as it was; unpitched sounds at the output's rate are unchanged.
+- Virtual voices: `og.AudioSource.virtualize` keeps a source past
+  `og.Audio.maxVoices` silent with its playhead running and heard again
+  from where it would be (`og.AudioPlayback.virtual`), instead of culled.
+- Retrigger: `og.AudioSource.retrigger` restarts a sound from the top in
+  one tick, playing or not; the engine clears it. `SoundEnded.reason`
+  `SOUND_RETRIGGERED` (5).
 - `og.CollisionStarted` gains `impulse` (N·s, the normal impulse the
   solver gave the pair in the step that made the contact, summed over
   substeps and contact points: `b` takes it along `normal`, `a` against

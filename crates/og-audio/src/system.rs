@@ -6,7 +6,7 @@
 use crate::command::{Command, FLAG_LOOP, FLAG_SPATIAL, Op, TickPacket, encode, fx};
 use crate::schema::{
     Audio, AudioBusFx, AudioListener, AudioPlayback, AudioSource, AudioStream, BUS_COUNT, Parent,
-    ReverbZone, SoundEnded, SoundStarted, Transform, end_reason,
+    ReverbZone, SoundEnded, SoundStarted, Transform, end_reason, panning_model,
 };
 use crate::sound::SoundBank;
 use og_core::Result;
@@ -225,6 +225,8 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
         tick_rate,
         bus_sent: Vec4::splat(-1.0),
         fx: fx_hash(&fx_state(&[None; BUS_COUNT], &Audio::default())),
+        listener: 0,
+        listener_at: Vec3::ZERO,
     })?;
     let link = match &desc.link {
         Some(l) if l.tick_rate == tick_rate => {
@@ -332,12 +334,82 @@ impl Places {
     }
 }
 
-/// The listener's frame: position, rotation, volume.
+/// The listener's frame: position, rotation, volume, and what Doppler and
+/// the HRTF read.
 #[derive(Clone, Copy)]
 struct Ear {
     position: Vec3,
     inverse: Quat,
     volume: f32,
+    /// Metres per second: the world position's change since last tick.
+    velocity: Vec3,
+    /// `AudioListener.dopplerFactor`.
+    doppler: f32,
+    /// The listener's panning model is the HRTF.
+    hrtf: bool,
+}
+
+/// A tick velocity in m/s: the change of a world position over one tick. A
+/// jump at or past the speed of sound is a teleport (a warp, a respawn) and
+/// counts as standing still, so it shifts nothing.
+fn tick_velocity(prev: Vec3, now: Vec3, tick_rate: u32, speed: f32) -> Vec3 {
+    let v = (now - prev) * tick_rate as f32;
+    if v.length() < speed { v } else { Vec3::ZERO }
+}
+
+/// Doppler's pitch ratio for a source at `p` moving at `v`: OpenAL 1.1's
+/// model (Web Audio's former PannerNode one), `(c - DF·vl) / (c - DF·vs)`,
+/// with `vs` and `vl` the source's and the listener's speeds along the line
+/// from the source to the listener, `c` the speed of sound and `DF` the
+/// source's `dopplerFactor` times the listener's. Each `DF·v` is held
+/// within ±c/2, so the ratio stays within 1/3..3. Exactly 1 when nothing
+/// moves along that line or `DF` is 0.
+fn doppler(ear: &Ear, p: Vec3, v: Vec3, s: &AudioSource, speed: f32) -> f32 {
+    let df = s.doppler_factor.max(0.0) * ear.doppler;
+    if !(df > 0.0 && speed > 0.0) {
+        return 1.0;
+    }
+    let d = ear.position - p;
+    let dist = d.length();
+    if dist <= 1e-6 {
+        return 1.0;
+    }
+    let u = d / dist;
+    let half = 0.5 * speed;
+    let vs = (df * v.dot(u)).clamp(-half, half);
+    let vl = (df * ear.velocity.dot(u)).clamp(-half, half);
+    (speed - vl) / (speed - vs)
+}
+
+/// Web Audio's PannerNode cone gain (three.js PositionalAudio's
+/// `setDirectionalCone`): 1 while the listener is within half of
+/// `coneInnerAngle` of the source's forward (its world +Z, as three.js
+/// orients a PositionalAudio), `coneOuterGain` past half of
+/// `coneOuterAngle`, linear in the angle between. Exactly 1 for the
+/// default 360/360. The angle is og-core's deterministic `atan2`.
+fn cone_gain(s: &AudioSource, t: &Transform, ear: Vec3) -> f32 {
+    let inner = s.cone_inner_angle.clamp(0.0, 360.0);
+    let outer = s.cone_outer_angle.clamp(0.0, 360.0);
+    if inner >= 360.0 && outer >= 360.0 {
+        return 1.0;
+    }
+    let to = (ear - t.position).normalize_or_zero();
+    let forward = (t.quaternion.normalize() * Vec3::Z).normalize_or_zero();
+    if to == Vec3::ZERO || forward == Vec3::ZERO {
+        return 1.0;
+    }
+    let c = to.dot(forward).clamp(-1.0, 1.0);
+    let angle = og_core::math::atan2((1.0 - c * c).max(0.0).sqrt(), c).to_degrees();
+    let (hi, ho) = (inner * 0.5, outer * 0.5);
+    let outer_gain = s.cone_outer_gain.clamp(0.0, 1.0);
+    if angle <= hi {
+        1.0
+    } else if angle >= ho {
+        outer_gain
+    } else {
+        let x = (angle - hi) / (ho - hi);
+        (1.0 - x) + outer_gain * x
+    }
 }
 
 /// Gain and pan of a spatial source at `p` (Web Audio's inverse distance
@@ -370,6 +442,11 @@ struct Wanted {
     loop_start: u32,
     loop_end: u32,
     lowpass: f32,
+    /// The source's world position (a spatial one's; zero otherwise).
+    position: Vec3,
+    /// The HRTF panner's direction in the listener's frame; zero on the
+    /// stereo panner.
+    direction: Vec3,
 }
 
 /// The lower of two cutoffs, 0 being open.
@@ -397,6 +474,14 @@ fn distance_cutoff(dist: f32, s: &AudioSource) -> f32 {
     (hi + (lo - hi) * t).exp()
 }
 
+/// Where a source is heard from this tick, beside its own record: its world
+/// position last tick (none on its first) and the tick rate, for Doppler.
+#[derive(Clone, Copy)]
+struct Motion {
+    prev: Option<Vec3>,
+    tick_rate: u32,
+}
+
 #[allow(clippy::too_many_arguments)]
 fn wanted(
     ctx: &SystemContext<'_>,
@@ -406,6 +491,7 @@ fn wanted(
     ear: &Ear,
     audio: &Audio,
     occluder: Option<&Occluder>,
+    motion: Motion,
     rate: u32,
     frames: u64,
 ) -> Wanted {
@@ -416,14 +502,27 @@ fn wanted(
     } else {
         0.0
     };
+    let mut pitch = clamp_pitch(s.pitch);
+    let (mut position, mut direction) = (Vec3::ZERO, Vec3::ZERO);
     if s.spatial {
-        let p = places
-            .world(ctx, e)
-            .map(|t| t.position)
-            .unwrap_or(Vec3::ZERO);
+        let t = places.world(ctx, e).unwrap_or_default();
+        let p = t.position;
+        position = p;
         let (g, sp) = spatialise(ear, p, s);
-        gain *= g;
+        gain *= g * cone_gain(s, &t, ear.position);
         pan = sp;
+        let speed = audio.speed_of_sound;
+        let v = motion
+            .prev
+            .map_or(Vec3::ZERO, |q| tick_velocity(q, p, motion.tick_rate, speed));
+        pitch = clamp_pitch(s.pitch * doppler(ear, p, v, s, speed));
+        if ear.hrtf {
+            direction = (ear.inverse * (p - ear.position)).normalize_or_zero();
+            if direction == Vec3::ZERO {
+                // At the listener: straight ahead.
+                direction = Vec3::NEG_Z;
+            }
+        }
         flags |= FLAG_SPATIAL as u32;
         lowpass = min_cutoff(lowpass, distance_cutoff(p.distance(ear.position), s));
         if s.occlude && occluder.is_some_and(|o| o(p, ear.position)) {
@@ -448,12 +547,14 @@ fn wanted(
     Wanted {
         gain,
         pan,
-        pitch: clamp_pitch(s.pitch),
+        pitch,
         bus: s.bus.min(BUS_COUNT as u32 - 1),
         flags,
         loop_start,
         loop_end,
         lowpass,
+        position,
+        direction,
     }
 }
 
@@ -464,6 +565,17 @@ pub fn clamp_pitch(p: f32) -> f32 {
     } else {
         1.0
     }
+}
+
+/// The `hrtf` command that puts `voice` at `direction` (zero: back on the
+/// stereo panner).
+fn hrtf_command(tick: u64, voice: u32, direction: Vec3) -> Command {
+    let mut c = Command::new(Op::Hrtf, tick);
+    c.voice = voice;
+    c.gain = direction.x;
+    c.pitch = direction.y;
+    c.pan = direction.z;
+    c
 }
 
 fn voice_command(op: Op, tick: u64, voice: u32, sound: u64, w: &Wanted, position: f64) -> Command {
@@ -515,7 +627,7 @@ pub(crate) fn fx_state(
     chosen: &[Option<AudioBusFx>; BUS_COUNT],
     audio: &Audio,
 ) -> Vec<(u8, u32, f32)> {
-    let mut out = Vec::with_capacity(BUS_COUNT * 13 + 2);
+    let mut out = Vec::with_capacity(BUS_COUNT * 13 + 3);
     for (b, f) in chosen.iter().enumerate() {
         let f = f.unwrap_or_default();
         let b = b as u8;
@@ -542,6 +654,7 @@ pub(crate) fn fx_state(
     }
     out.push((0, fx::ROOM, audio.reverb_room.clamp(0.0, 1.0)));
     out.push((0, fx::DAMPING, audio.reverb_damping.clamp(0.0, 1.0)));
+    out.push((0, fx::RESAMPLER, (audio.resampler != 0) as u32 as f32));
     out
 }
 
@@ -564,6 +677,21 @@ fn fx_commands(state: &[(u8, u32, f32)], tick: u64) -> impl Iterator<Item = Comm
     })
 }
 
+/// A voice that plays on this tick, for the voice cap.
+struct Sounding {
+    e: Entity,
+    voice: u32,
+    priority: u32,
+    gain: f32,
+    /// Virtual now (past the cap with `virtualize`): silent in the mixer.
+    is_virtual: bool,
+    /// Its source's `virtualize`.
+    virtualize: bool,
+    /// The play that makes it heard again at its playhead (the tick's start).
+    play: Command,
+    direction: Vec3,
+}
+
 /// A source waiting to start this tick.
 struct Fresh {
     e: Entity,
@@ -573,6 +701,8 @@ struct Fresh {
     frames: u64,
     /// Seconds into the tick it starts at.
     delay: f64,
+    /// Past the cap with `virtualize`: it starts virtual (its playhead runs, unheard).
+    is_virtual: bool,
 }
 
 /// A voice's standing under the voice cap: higher priority, then louder,
@@ -655,14 +785,33 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         position: Vec3::ZERO,
         inverse: Quat::IDENTITY,
         volume: 1.0,
+        velocity: Vec3::ZERO,
+        doppler: 1.0,
+        hrtf: false,
     };
     let places = Places::read(ctx)?;
     let listener = ctx.query(3)?.flat_map(|a| a.entities().to_vec()).next();
     if let Some(e) = listener {
         let t = places.world(ctx, e)?;
+        let l = ctx.get::<AudioListener>(e)?;
         ear.position = t.position;
         ear.inverse = t.quaternion.normalize().inverse();
-        ear.volume = ctx.get::<AudioListener>(e)?.volume.max(0.0);
+        ear.volume = l.volume.max(0.0);
+        ear.doppler = l.doppler_factor.max(0.0);
+        ear.hrtf = l.panning_model == panning_model::HRTF;
+        if stream.listener == e.to_bits() {
+            ear.velocity = tick_velocity(
+                stream.listener_at,
+                t.position,
+                tick_rate,
+                audio.speed_of_sound,
+            );
+        }
+        stream.listener = e.to_bits();
+        stream.listener_at = t.position;
+    } else {
+        stream.listener = 0;
+        stream.listener_at = Vec3::ZERO;
     }
 
     // Bus effects: every parameter again when any changed.
@@ -698,8 +847,8 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
     // Playing sources.
     let playing: Vec<Entity> = ctx.query(0)?.flat_map(|a| a.entities().to_vec()).collect();
     let mut to_start: Vec<Entity> = Vec::new();
-    // (entity, voice, priority, gain) of the voices that play on.
-    let mut sounding: Vec<(Entity, u32, u32, f32)> = Vec::new();
+    // The voices that play on, heard or virtual.
+    let mut sounding: Vec<Sounding> = Vec::new();
     for e in playing {
         let s = ctx.get::<AudioSource>(e)?;
         let mut p = ctx.get::<AudioPlayback>(e)?;
@@ -709,6 +858,24 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
             c.position = f64::from(fade.max(0.0));
             commands.push(c);
         };
+        if s.retrigger {
+            // From the top in this tick: this voice ends, a new one starts.
+            if !p.is_virtual {
+                stop(&mut commands, p.voice, s.fade);
+            }
+            ended(ctx, e, &p, end_reason::RETRIGGERED)?;
+            ctx.remove::<AudioPlayback>(e)?;
+            ctx.set(
+                e,
+                AudioSource {
+                    playing: true,
+                    retrigger: false,
+                    ..s
+                },
+            )?;
+            to_start.push(e);
+            continue;
+        }
         if !s.playing {
             stop(&mut commands, p.voice, s.fade);
             ended(ctx, e, &p, end_reason::STOPPED)?;
@@ -729,7 +896,14 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
             to_start.push(e);
             continue;
         };
-        let w = wanted(ctx, &places, e, &s, &ear, &audio, occluder, rate, frames);
+        let motion = Motion {
+            // A source that was not spatial last tick has no position yet.
+            prev: (p.flags & FLAG_SPATIAL as u32 != 0).then_some(p.position),
+            tick_rate,
+        };
+        let w = wanted(
+            ctx, &places, e, &s, &ear, &audio, occluder, motion, rate, frames,
+        );
         let changed = w.gain != p.gain
             || w.pan != p.pan
             || w.pitch != p.pitch
@@ -738,7 +912,10 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
             || w.loop_start != p.loop_start
             || w.loop_end != p.loop_end
             || w.lowpass != p.lowpass;
-        if changed {
+        // A virtual voice is not in the mixer: it is told nothing until it
+        // is heard again (then a play at its playhead, below).
+        let heard = !p.is_virtual;
+        if changed && heard {
             commands.push(voice_command(
                 Op::Params,
                 tick,
@@ -748,7 +925,11 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
                 f64::from(s.fade.max(0.0)),
             ));
         }
-        if resync {
+        if w.direction != p.direction && heard {
+            commands.push(hrtf_command(tick, p.voice, w.direction));
+        }
+        let play = voice_command(Op::Play, tick, p.voice, p.sound, &w, p.cursor);
+        if resync && heard {
             snapshot.push(voice_command(
                 Op::Play,
                 tick,
@@ -757,6 +938,9 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
                 &w,
                 p.cursor,
             ));
+            if w.direction != Vec3::ZERO {
+                snapshot.push(hrtf_command(tick, p.voice, w.direction));
+            }
         }
         let (cursor, done) = advance(p.cursor, rate, tick_rate, &w, frames);
         if done {
@@ -771,8 +955,19 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
             ctx.remove::<AudioPlayback>(e)?;
             continue;
         }
-        live.push(p.voice);
-        sounding.push((e, p.voice, s.priority, w.gain));
+        if heard {
+            live.push(p.voice);
+        }
+        sounding.push(Sounding {
+            e,
+            voice: p.voice,
+            priority: s.priority,
+            gain: w.gain,
+            is_virtual: p.is_virtual,
+            virtualize: s.virtualize,
+            play,
+            direction: w.direction,
+        });
         p.cursor = cursor;
         p.gain = w.gain;
         p.pan = w.pan;
@@ -782,6 +977,8 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         p.loop_start = w.loop_start;
         p.loop_end = w.loop_end;
         p.lowpass = w.lowpass;
+        p.position = w.position;
+        p.direction = w.direction;
         ctx.set(e, p)?;
     }
 
@@ -792,7 +989,14 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
     fresh_entities.extend(to_start);
     let mut fresh: Vec<Fresh> = Vec::new();
     for e in fresh_entities {
-        let s = ctx.get::<AudioSource>(e)?;
+        let mut s = ctx.get::<AudioSource>(e)?;
+        if s.retrigger {
+            // Not playing (stopped, ended, culled or never started): it
+            // plays from the top, `playing` set back to true.
+            s.retrigger = false;
+            s.playing = true;
+            ctx.set(e, s)?;
+        }
         if !s.playing || s.start_at >= t1 {
             continue;
         }
@@ -800,7 +1004,13 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         let Some((rate, frames)) = bank.info(s.sound) else {
             continue;
         };
-        let w = wanted(ctx, &places, e, &s, &ear, &audio, occluder, rate, frames);
+        let motion = Motion {
+            prev: None,
+            tick_rate,
+        };
+        let w = wanted(
+            ctx, &places, e, &s, &ear, &audio, occluder, motion, rate, frames,
+        );
         let delay = if s.start_at > t0 {
             s.start_at - t0
         } else {
@@ -813,16 +1023,23 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
             rate,
             frames,
             delay,
+            is_virtual: false,
         });
     }
 
-    // The voice cap: the lowest standing is culled, playing or not yet started.
+    // The voice cap: the lowest standing is culled (or goes virtual, with
+    // `virtualize`), playing or not yet started; a virtual voice back
+    // within the cap is heard again from its playhead.
     let cap = audio.max_voices.max(1) as usize;
-    if sounding.len() + fresh.len() > cap {
+    if sounding.len() + fresh.len() > cap || sounding.iter().any(|v| v.is_virtual) {
         // (standing, index into sounding, index into fresh)
         let mut all: Vec<(Standing, Option<usize>, Option<usize>)> = Vec::new();
-        for (i, &(_, voice, prio, gain)) in sounding.iter().enumerate() {
-            all.push((standing(prio, gain, u64::from(voice)), Some(i), None));
+        for (i, v) in sounding.iter().enumerate() {
+            all.push((
+                standing(v.priority, v.gain, u64::from(v.voice)),
+                Some(i),
+                None,
+            ));
         }
         for (i, f) in fresh.iter().enumerate() {
             all.push((
@@ -833,28 +1050,60 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         }
         all.sort_by_key(|a| std::cmp::Reverse(a.0));
         let mut cull_fresh = vec![false; fresh.len()];
-        for (_, playing, starting) in all.into_iter().skip(cap) {
+        for (rank, (_, playing, starting)) in all.into_iter().enumerate() {
+            let within = rank < cap;
             if let Some(i) = playing {
-                let (e, voice, _, _) = sounding[i];
-                let mut c = Command::new(Op::Stop, tick);
-                c.voice = voice;
-                commands.push(c);
-                let p = ctx.get::<AudioPlayback>(e)?;
-                ended(ctx, e, &p, end_reason::CULLED)?;
-                let s = ctx.get::<AudioSource>(e)?;
-                ctx.set(
-                    e,
-                    AudioSource {
-                        playing: false,
-                        ..s
-                    },
-                )?;
-                ctx.remove::<AudioPlayback>(e)?;
-                live.retain(|v| *v != voice);
-                snapshot.retain(|c| c.voice != voice);
+                let v = &sounding[i];
+                let set_virtual = |ctx: &SystemContext<'_>, is_virtual: bool| -> Result<()> {
+                    let p = ctx.get::<AudioPlayback>(v.e)?;
+                    ctx.set(v.e, AudioPlayback { is_virtual, ..p })
+                };
+                if within && v.is_virtual {
+                    // Heard again where it would have been (a resumed play fades in).
+                    commands.push(v.play);
+                    if resync {
+                        snapshot.push(v.play);
+                    }
+                    if v.direction != Vec3::ZERO {
+                        let h = hrtf_command(tick, v.voice, v.direction);
+                        commands.push(h);
+                        if resync {
+                            snapshot.push(h);
+                        }
+                    }
+                    live.push(v.voice);
+                    set_virtual(ctx, false)?;
+                } else if !within && !v.is_virtual {
+                    let mut c = Command::new(Op::Stop, tick);
+                    c.voice = v.voice;
+                    commands.push(c);
+                    live.retain(|x| *x != v.voice);
+                    snapshot.retain(|c| c.voice != v.voice);
+                    if v.virtualize {
+                        set_virtual(ctx, true)?;
+                    } else {
+                        let p = ctx.get::<AudioPlayback>(v.e)?;
+                        ended(ctx, v.e, &p, end_reason::CULLED)?;
+                        let s = ctx.get::<AudioSource>(v.e)?;
+                        ctx.set(
+                            v.e,
+                            AudioSource {
+                                playing: false,
+                                ..s
+                            },
+                        )?;
+                        ctx.remove::<AudioPlayback>(v.e)?;
+                    }
+                }
             }
-            if let Some(i) = starting {
-                cull_fresh[i] = true;
+            if let Some(i) = starting
+                && !within
+            {
+                if fresh[i].s.virtualize {
+                    fresh[i].is_virtual = true;
+                } else {
+                    cull_fresh[i] = true;
+                }
             }
         }
         let mut k = 0;
@@ -887,6 +1136,7 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         rate,
         frames,
         delay,
+        is_virtual,
     } in fresh
     {
         let voice = stream.next_voice;
@@ -925,9 +1175,14 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         if cue > 0.0 {
             started.insert(1, voice_command(Op::Cue, tick, voice, s.sound, &w, cue));
         }
-        commands.extend_from_slice(&started);
-        if resync {
-            snapshot.extend_from_slice(&started);
+        if w.direction != Vec3::ZERO {
+            started.push(hrtf_command(tick, voice, w.direction));
+        }
+        if !is_virtual {
+            commands.extend_from_slice(&started);
+            if resync {
+                snapshot.extend_from_slice(&started);
+            }
         }
         ctx.send(SoundStarted {
             entity: e.to_bits(),
@@ -955,7 +1210,9 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
             )?;
             continue;
         }
-        live.push(voice);
+        if !is_virtual {
+            live.push(voice);
+        }
         ctx.insert(
             e,
             AudioPlayback {
@@ -970,6 +1227,9 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
                 loop_start: w.loop_start,
                 loop_end: w.loop_end,
                 lowpass: w.lowpass,
+                position: w.position,
+                direction: w.direction,
+                is_virtual,
             },
         )?;
     }

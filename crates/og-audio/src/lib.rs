@@ -44,6 +44,7 @@ pub mod dsp;
 pub mod listen;
 pub mod mixer;
 pub mod music;
+pub mod resample;
 pub mod schema;
 pub mod sink;
 pub mod sound;

@@ -219,6 +219,10 @@ export interface ColumnKinds {
   TilemapAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: TilemapAsset };
   /** An AudioBus field: the variant's index. */
   AudioBus: { readonly array: Uint32Array; readonly stride: 1; readonly value: AudioBus };
+  /** An AudioResampler field: the variant's index. */
+  AudioResampler: { readonly array: Uint32Array; readonly stride: 1; readonly value: AudioResampler };
+  /** A PanningModel field: the variant's index. */
+  PanningModel: { readonly array: Uint32Array; readonly stride: 1; readonly value: PanningModel };
   /** A Navigation handle field. */
   Navigation: { readonly array: Uint32Array; readonly stride: 2; readonly value: Navigation };
   /** A Behaviour handle field. */
@@ -13242,6 +13246,7 @@ export interface TileCell {
 // Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively).
 // The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Load sounds with og.load.sound; inserting a source plays it, setting `playing` false stops it, and a one-shot sets `playing` back to false when it ends.
 // Spatial gain and pan are computed in the tick from the source's world transform relative to the first AudioListener's (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z). A source, listener or zone on a child entity is placed at its og.Transform composed down og.Parent, as og.MatrixWorld is: a sound on a child is heard where its parent carries it, a listener under a camera rig hears from the rig.
+// Propagation, all in the tick and so in the stream: a spatial source or listener that moves shifts the pitch (Doppler, from their tick velocities: AudioSource.dopplerFactor, AudioListener.dopplerFactor, Audio.speedOfSound), a source with a cone is turned down away from its +Z (coneInnerAngle, coneOuterAngle, coneOuterGain, as three.js's setDirectionalCone), and a listener whose panningModel is hrtf places sources for headphones (interaural delay and head shadow) instead of the stereo panner.
 
 /** SoundEnded.reason: a one-shot played to its end. */
 export declare const SOUND_FINISHED: 0;
@@ -13261,6 +13266,11 @@ export declare const SOUND_REPLACED: 3;
 export declare const SOUND_CULLED: 4;
 
 /**
+ * SoundEnded.reason: AudioSource.retrigger started the sound again from the top; a new voice plays it.
+ */
+export declare const SOUND_RETRIGGERED: 5;
+
+/**
  * The bus a source plays on; every bus passes through master.
  * - `"master"`: The master bus: what every bus passes through.
  * - `"music"`: Music.
@@ -13277,6 +13287,38 @@ export type AudioBus = "master" | "music" | "sfx" | "ui";
  * @param options Range, unit, label, docs and the tunable flag.
  */
 export declare function AudioBus(value?: AudioBus, options?: FieldOptions): FieldSpec<"AudioBus">;
+
+/**
+ * How an AudioListener places spatial sources between the ears, as Web Audio's PannerNode.panningModel.
+ * - `"equalpower"`: The stereo panner (Web Audio's equal-power law): for speakers.
+ * - `"hrtf"`: For headphones: a spherical-head model (Brown and Duda, 1998) that delays the far ear by the interaural time difference (up to 0.66 ms) and shadows its highs (up to -20 dB), so a source moves between the ears; front and back, up and down are not told apart (no pinna).
+ */
+export type PanningModel = "equalpower" | "hrtf";
+
+/**
+ * How the mixer resamples a voice whose pitch or sound rate differs from the output's.
+ * - `"linear"`: Linear interpolation: the engine's mix before round 4, cheaper, with duller highs (-3.4 dB at 15 kHz from 44.1 kHz) and images (-11.5 dB there).
+ * - `"sinc"`: A Kaiser-windowed sinc (beta 7, 16 taps, 2048 phases; widened up to 64 taps for a voice pitched up to 4x): flat to the highs, images below -70 dB.
+ */
+export type AudioResampler = "linear" | "sinc";
+
+/**
+ * An AudioResampler field: the variant's index.
+ *
+ * A `AudioResampler` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function AudioResampler(value?: AudioResampler, options?: FieldOptions): FieldSpec<"AudioResampler">;
+
+/**
+ * A PanningModel field: the variant's index.
+ *
+ * A `PanningModel` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function PanningModel(value?: PanningModel, options?: FieldOptions): FieldSpec<"PanningModel">;
 
 /**
  * A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded.
@@ -13419,6 +13461,47 @@ export interface AudioSource {
    * @tunable
    */
   fade: number;
+  /**
+   * Doppler: how much a spatial source's and the listener's motion along the line between them shifts its pitch, from their tick velocities (world positions down og.Parent): pitch times (c - DF * vListener) / (c - DF * vSource), c being Audio.speedOfSound and DF this times AudioListener.dopplerFactor (OpenAL's model). 1 is physical, 0 is off. A jump at or past the speed of sound in a tick is a teleport and shifts nothing; DF * v is held within c/2, so the shift stays within a factor of 3.
+   *
+   * @default 1
+   * @range 0..10
+   * @tunable
+   */
+  dopplerFactor: number;
+  /**
+   * Directivity, as three.js PositionalAudio.setDirectionalCone and Web Audio's PannerNode: a spatial source plays at full volume while the listener is within this full angle about the source's +Z (its world transform's, three.js's PositionalAudio orientation); 360 with coneOuterAngle 360 is omnidirectional.
+   *
+   * @default 360
+   * @range 0..360
+   * @unit deg (degrees)
+   * @tunable
+   */
+  coneInnerAngle: number;
+  /**
+   * Past this full angle about the source's +Z it plays at coneOuterGain; between coneInnerAngle and this the gain falls linearly with the angle.
+   *
+   * @default 360
+   * @range 0..360
+   * @unit deg (degrees)
+   * @tunable
+   */
+  coneOuterAngle: number;
+  /**
+   * The gain outside coneOuterAngle.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  coneOuterGain: number;
+  /**
+   * Past Audio.maxVoices it goes virtual instead of being culled: silent, its playhead running on (a one-shot still ends on its tick), and heard again from where it would be, fading in, once it stands within the cap. Without it the source is culled (SOUND_CULLED, playing false).
+   */
+  virtualize: boolean;
+  /**
+   * Set true to start the sound again from the top (its startOffset, its startAt) this tick, playing or not, without a level change on `playing`: the voice playing ends (SOUND_RETRIGGERED) and a new one starts in the same tick. The engine sets it back to false and `playing` true.
+   */
+  retrigger: boolean;
 }
 
 /**
@@ -13435,6 +13518,20 @@ export interface AudioListener {
    * @tunable
    */
   volume: number;
+  /**
+   * Scales every spatial source's Doppler shift (AudioSource.dopplerFactor); 0 turns Doppler off for this listener.
+   *
+   * @default 1
+   * @range 0..10
+   * @tunable
+   */
+  dopplerFactor: number;
+  /**
+   * How spatial sources are placed between the ears: equalpower (speakers) or hrtf (headphones). Non-spatial sources keep their pan either way; the stereo path is unchanged while it is equalpower.
+   *
+   * @default "equalpower"
+   */
+  panningModel: PanningModel;
 }
 
 /**
@@ -13523,6 +13620,21 @@ export interface Audio {
    * @readonly written by the engine
    */
   readonly outputLatency: number;
+  /**
+   * The speed of sound Doppler shifts are computed against (AudioSource.dopplerFactor).
+   *
+   * @default 343.3
+   * @range 1..10000
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  speedOfSound: number;
+  /**
+   * How voices are resampled: sinc (the default) or linear, the mix before round 4, for a game that relies on its exact output. A sound at the output's rate played at pitch 1 is its own samples either way.
+   *
+   * @default "sinc"
+   */
+  resampler: AudioResampler;
 }
 
 /**
@@ -13819,7 +13931,7 @@ export interface SoundEnded {
   /** The voice id in the command stream. */
   readonly voice: number;
   /**
-   * Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3) or SOUND_CULLED (4).
+   * Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3), SOUND_CULLED (4) or SOUND_RETRIGGERED (5).
    */
   readonly reason: number;
 }
@@ -23541,13 +23653,13 @@ export declare namespace og {
    * A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded.
    * A one-shot of F frames at rate R and pitch p started in tick S ends in tick S + ceil(F * tickRate / (R * p)) - 1. A despawned entity's voice is silenced without an event.
    */
-  const AudioSource: ComponentType<{ readonly sound: FieldSpec<"Sound">; readonly bus: FieldSpec<"AudioBus">; readonly volume: FieldSpec<"f32">; readonly pitch: FieldSpec<"f32">; readonly pan: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f32">; readonly loopEnd: FieldSpec<"f32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly rolloffFactor: FieldSpec<"f32">; readonly playing: FieldSpec<"bool">; readonly priority: FieldSpec<"u32">; readonly lowpass: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly distanceCutoff: FieldSpec<"f32">; readonly startAt: FieldSpec<"f64">; readonly startOffset: FieldSpec<"f64">; readonly fade: FieldSpec<"f32"> }, AudioSource>;
+  const AudioSource: ComponentType<{ readonly sound: FieldSpec<"Sound">; readonly bus: FieldSpec<"AudioBus">; readonly volume: FieldSpec<"f32">; readonly pitch: FieldSpec<"f32">; readonly pan: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f32">; readonly loopEnd: FieldSpec<"f32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly rolloffFactor: FieldSpec<"f32">; readonly playing: FieldSpec<"bool">; readonly priority: FieldSpec<"u32">; readonly lowpass: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly distanceCutoff: FieldSpec<"f32">; readonly startAt: FieldSpec<"f64">; readonly startOffset: FieldSpec<"f64">; readonly fade: FieldSpec<"f32">; readonly dopplerFactor: FieldSpec<"f32">; readonly coneInnerAngle: FieldSpec<"f32">; readonly coneOuterAngle: FieldSpec<"f32">; readonly coneOuterGain: FieldSpec<"f32">; readonly virtualize: FieldSpec<"bool">; readonly retrigger: FieldSpec<"bool"> }, AudioSource>;
   /**
    * Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right. The first listener in query order is used.
    */
-  const AudioListener: ComponentType<{ readonly volume: FieldSpec<"f32"> }, AudioListener>;
+  const AudioListener: ComponentType<{ readonly volume: FieldSpec<"f32">; readonly dopplerFactor: FieldSpec<"f32">; readonly panningModel: FieldSpec<"PanningModel"> }, AudioListener>;
   /** Bus volumes; master scales every bus. A change ramps over 256 frames in the mixer. */
-  const Audio: ResourceType<{ readonly master: FieldSpec<"f32">; readonly music: FieldSpec<"f32">; readonly sfx: FieldSpec<"f32">; readonly ui: FieldSpec<"f32">; readonly maxVoices: FieldSpec<"u32">; readonly occlusionGain: FieldSpec<"f32">; readonly occlusionCutoff: FieldSpec<"f32">; readonly reverbRoom: FieldSpec<"f32">; readonly reverbDamping: FieldSpec<"f32">; readonly outputLatency: FieldSpec<"f64"> }, Audio>;
+  const Audio: ResourceType<{ readonly master: FieldSpec<"f32">; readonly music: FieldSpec<"f32">; readonly sfx: FieldSpec<"f32">; readonly ui: FieldSpec<"f32">; readonly maxVoices: FieldSpec<"u32">; readonly occlusionGain: FieldSpec<"f32">; readonly occlusionCutoff: FieldSpec<"f32">; readonly reverbRoom: FieldSpec<"f32">; readonly reverbDamping: FieldSpec<"f32">; readonly outputLatency: FieldSpec<"f64">; readonly speedOfSound: FieldSpec<"f32">; readonly resampler: FieldSpec<"AudioResampler"> }, Audio>;
   /**
    * A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-chain ducking by another bus, and a send to the shared reverb, whose return joins master. One entity per bus (the first in query order counts); without one a bus passes straight through.
    * Changes reach the mixer through the command stream, so they are deterministic and in the world hash; the PCM is the mixer's.
@@ -23574,6 +23686,7 @@ export declare namespace og {
    * Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively).
    * The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Load sounds with og.load.sound; inserting a source plays it, setting `playing` false stops it, and a one-shot sets `playing` back to false when it ends.
    * Spatial gain and pan are computed in the tick from the source's world transform relative to the first AudioListener's (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z). A source, listener or zone on a child entity is placed at its og.Transform composed down og.Parent, as og.MatrixWorld is: a sound on a child is heard where its parent carries it, a listener under a camera rig hears from the rig.
+   * Propagation, all in the tick and so in the stream: a spatial source or listener that moves shifts the pitch (Doppler, from their tick velocities: AudioSource.dopplerFactor, AudioListener.dopplerFactor, Audio.speedOfSound), a source with a cone is turned down away from its +Z (coneInnerAngle, coneOuterAngle, coneOuterGain, as three.js's setDirectionalCone), and a listener whose panningModel is hrtf places sources for headphones (interaural delay and head shadow) instead of the stereo panner.
    */
   namespace audio {
     /**
