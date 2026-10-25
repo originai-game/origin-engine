@@ -38,22 +38,58 @@ impl Pose {
         }
     }
 
+    /// [`Pose::lerp_to`] with node `i` moved by `t · mask[i]` (blendshape
+    /// weights by `t`).
+    pub fn lerp_to_masked(&mut self, other: &Pose, t: f32, mask: &[f32]) {
+        if t <= 0.0 {
+            return;
+        }
+        for ((a, b), &m) in self.nodes.iter_mut().zip(&other.nodes).zip(mask) {
+            let k = t * m;
+            if k >= 1.0 {
+                *a = *b;
+            } else if k > 0.0 {
+                *a = a.lerp(b, k);
+            }
+        }
+        let t = t.min(1.0);
+        for (a, b) in self.weights.iter_mut().zip(&other.weights) {
+            *a += (*b - *a) * t;
+        }
+    }
+
+    /// [`Pose::add`] with node `i`'s difference scaled by `w · mask[i]`
+    /// (blendshape weights by `w`).
+    pub fn add_masked(&mut self, pose: &Pose, reference: &Pose, w: f32, mask: &[f32]) {
+        if w <= 0.0 {
+            return;
+        }
+        for (((base, p), r), &m) in self
+            .nodes
+            .iter_mut()
+            .zip(&pose.nodes)
+            .zip(&reference.nodes)
+            .zip(mask)
+        {
+            if m > 0.0 {
+                add_node(base, p, r, w * m);
+            }
+        }
+        self.add_weights(pose, reference, w);
+    }
+
     /// Adds `pose`'s difference from `reference`, scaled by `w`.
     pub fn add(&mut self, pose: &Pose, reference: &Pose, w: f32) {
         if w <= 0.0 {
             return;
         }
         for ((base, p), r) in self.nodes.iter_mut().zip(&pose.nodes).zip(&reference.nodes) {
-            base.translation += (p.translation - r.translation) * w;
-            let dr = r.rotation.conjugate() * p.rotation;
-            base.rotation = crate::xform::unit(base.rotation * nlerp(Quat::IDENTITY, dr, w));
-            let ds = Vec3::new(
-                ratio(p.scale.x, r.scale.x),
-                ratio(p.scale.y, r.scale.y),
-                ratio(p.scale.z, r.scale.z),
-            );
-            base.scale *= Vec3::ONE + (ds - Vec3::ONE) * w;
+            add_node(base, p, r, w);
         }
+        self.add_weights(pose, reference, w);
+    }
+
+    fn add_weights(&mut self, pose: &Pose, reference: &Pose, w: f32) {
         for ((b, p), r) in self
             .weights
             .iter_mut()
@@ -63,6 +99,19 @@ impl Pose {
             *b += (*p - *r) * w;
         }
     }
+}
+
+/// Adds `p`'s difference from `r` to `base`, scaled by `w`.
+fn add_node(base: &mut Trs, p: &Trs, r: &Trs, w: f32) {
+    base.translation += (p.translation - r.translation) * w;
+    let dr = r.rotation.conjugate() * p.rotation;
+    base.rotation = crate::xform::unit(base.rotation * nlerp(Quat::IDENTITY, dr, w));
+    let ds = Vec3::new(
+        ratio(p.scale.x, r.scale.x),
+        ratio(p.scale.y, r.scale.y),
+        ratio(p.scale.z, r.scale.z),
+    );
+    base.scale *= Vec3::ONE + (ds - Vec3::ONE) * w;
 }
 
 fn ratio(a: f32, b: f32) -> f32 {

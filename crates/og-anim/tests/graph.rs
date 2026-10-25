@@ -152,3 +152,142 @@ fn bad_graph_text_is_refused_with_its_line() {
     assert_eq!(g.clips(), vec![IDLE, WALK, RUN, WAVE]);
     assert_eq!(g.layers[1].mode, LayerMode::Additive);
 }
+
+// ---- transition interruption -------------------------------------------------
+
+const IG: u64 = 41;
+
+/// idle → walk with `interrupt <mode>` over a 0.5 s (30-tick) fade; then
+/// walk → run (the new state's own), idle → jump (the source's, `jump` the
+/// wave clip) and any → idle (an `any` one) can each try to interrupt it.
+fn interrupt_graph(mode: &str) -> String {
+    format!(
+        r#"type animgraph
+version 1
+---
+param p
+clip idle "idle"
+clip walk "walk"
+clip run "run"
+clip jump "wave"
+layer base {{
+  state idle idle
+  state walk walk
+  state run run
+  state jump jump
+  transition idle walk {{
+    when p ge 1
+    fade 0.5
+    interrupt {mode}
+  }}
+  transition walk run {{
+    when p eq 2
+    fade 0.1
+  }}
+  transition idle jump {{
+    when p eq 3
+    fade 0.1
+  }}
+  transition any idle {{
+    when p eq 4
+    fade 0.1
+  }}
+}}
+"#
+    )
+}
+
+fn interrupt_world(mode: &str) -> (World, Entity) {
+    let mut w = World::new(&WorldDesc {
+        tick_rate: 60,
+        seed: 1,
+    })
+    .unwrap();
+    let anim = install(&mut w).unwrap();
+    register(&anim);
+    anim.add_graph(
+        IG,
+        GraphAsset::parse(&interrupt_graph(mode), &resolve).unwrap(),
+    )
+    .unwrap();
+    let e = w
+        .spawn((
+            Transform::default(),
+            Skeleton {
+                asset: SKELETON,
+                ..Skeleton::default()
+            },
+            AnimationGraph::new(IG),
+        ))
+        .unwrap();
+    (w, e)
+}
+
+/// Starts idle → walk, then sets `p` to `then` the tick after: the base
+/// state for the next 40 ticks.
+fn interrupted(mode: &str, then: f32) -> Vec<u32> {
+    let (mut w, e) = interrupt_world(mode);
+    set(&mut w, e, |g| g.p0 = 1.0);
+    w.step().unwrap();
+    set(&mut w, e, |g| g.p0 = then);
+    (0..40)
+        .map(|_| {
+            w.step().unwrap();
+            w.get::<AnimationGraph>(e).unwrap().state
+        })
+        .collect()
+}
+
+#[test]
+fn an_interrupt_rule_says_which_transitions_may_cut_a_fade() {
+    let (walk, run, jump, idle) = (1, 2, 3, 0);
+    let first = |states: &[u32], s: u32| states.iter().position(|&x| x == s);
+    // any (the default): the new state's and `any` transitions cut in at once.
+    assert_eq!(interrupted("any", 2.0)[0], run);
+    assert_eq!(interrupted("any", 4.0)[0], idle);
+    assert_eq!(first(&interrupted("any", 3.0), jump), None);
+    // none: the 30-tick fade completes first (about 28 ticks after the
+    // one that set p, as the f32 fade time sums), then the run fires.
+    let none = interrupted("none", 2.0);
+    let at = first(&none, run).expect("the run fires after the fade");
+    assert!((28..=30).contains(&at), "{none:?}");
+    assert!(none[..at].iter().all(|&s| s == walk), "{none:?}");
+    assert!(interrupted("none", 4.0)[..28].iter().all(|&s| s == walk));
+    // source: only the state being left (idle) may re-target the fade.
+    assert_eq!(interrupted("source", 3.0)[0], jump);
+    assert!(interrupted("source", 2.0)[..28].iter().all(|&s| s == walk));
+    assert!(interrupted("source", 4.0)[..28].iter().all(|&s| s == walk));
+    // next: the new state's own, not `any` ones.
+    assert_eq!(interrupted("next", 2.0)[0], run);
+    assert!(interrupted("next", 4.0)[..28].iter().all(|&s| s == walk));
+
+    let e = GraphAsset::parse(&interrupt_graph("later"), &resolve).unwrap_err();
+    assert!(
+        e.reason().contains("line 17") && e.reason().contains("later"),
+        "{e}"
+    );
+}
+
+#[test]
+fn a_guarded_fade_survives_a_snapshot() {
+    let (mut a, e) = interrupt_world("none");
+    set(&mut a, e, |g| g.p0 = 1.0);
+    a.step().unwrap();
+    set(&mut a, e, |g| g.p0 = 2.0);
+    a.step().unwrap();
+    let snap = a.snapshot();
+    let mut want = Vec::new();
+    for _ in 0..40 {
+        a.step().unwrap();
+        want.push((a.world_hash(), a.get::<AnimationGraph>(e).unwrap().state));
+    }
+    let (mut b, eb) = interrupt_world("none");
+    b.restore(&snap).unwrap();
+    for (h, s) in want {
+        b.step().unwrap();
+        assert_eq!(
+            (b.world_hash(), b.get::<AnimationGraph>(eb).unwrap().state),
+            (h, s)
+        );
+    }
+}

@@ -3,6 +3,7 @@
 //! tree; layers run state machines over them; transitions fire on
 //! conditions over the graph's parameters and cross-fade.
 
+use crate::asset::{NONE, SkeletonAsset};
 use crate::schema::GRAPH_PARAMS;
 use og_core::glam::Vec2;
 use og_core::ogt::{Block, Document, Entry, Value};
@@ -80,6 +81,21 @@ impl Condition {
     }
 }
 
+/// What may interrupt a transition while it cross-fades.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Interrupt {
+    /// Any transition that could fire from the new state, `any` ones
+    /// included (the default).
+    #[default]
+    Any,
+    /// Nothing: the fade completes first.
+    None,
+    /// Only transitions out of the state being left (to a third state).
+    Source,
+    /// Only transitions out of the new state itself, not `any` ones.
+    Next,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transition {
     /// The source state, or `None` for `any` (every state but the target).
@@ -92,6 +108,8 @@ pub struct Transition {
     pub exit: Option<f32>,
     /// Cross-fade seconds.
     pub fade: f32,
+    /// What may interrupt it during its fade.
+    pub interrupt: Interrupt,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -101,6 +119,20 @@ pub struct State {
     pub motion: usize,
     /// A playback-rate multiplier.
     pub speed: f32,
+    /// The sync group (an index into [`GraphAsset::sync_groups`]): every
+    /// layer's current state in one group plays at the phase of the first
+    /// layer (file order) whose current state is in it, and a transition
+    /// between two states of one group keeps the phase's fraction.
+    pub sync: Option<usize>,
+}
+
+/// One line of a layer's mask: the node named (by name, resolved against
+/// the skeleton the graph plays on) and every node under it take `weight`,
+/// down to the next node another line names.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MaskEntry {
+    pub node: String,
+    pub weight: f32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -114,6 +146,8 @@ pub struct Layer {
     pub entry: usize,
     /// In file order; the first whose conditions hold fires.
     pub transitions: Vec<Transition>,
+    /// Per-joint weights (`mask "<node>" [weight]`); empty: every node 1.
+    pub mask: Vec<MaskEntry>,
 }
 
 impl Layer {
@@ -122,6 +156,32 @@ impl Layer {
             Some(p) => params[p].clamp(0.0, 1.0),
             None => self.weight,
         }
+    }
+
+    /// The mask's weight of every node of `skeleton` (`None` without a
+    /// mask): the weight of the nearest of the node and its ancestors a
+    /// `mask` line names, 0 for nodes under none. A name the skeleton lacks
+    /// masks nothing.
+    pub fn node_weights(&self, skeleton: &SkeletonAsset) -> Option<Vec<f32>> {
+        if self.mask.is_empty() {
+            return None;
+        }
+        let mut named: Vec<Option<f32>> = vec![None; skeleton.nodes.len()];
+        for m in &self.mask {
+            if let Some(n) = skeleton.node(&m.node) {
+                named[n as usize] = Some(m.weight);
+            }
+        }
+        // Nodes are in topological order: a parent's weight is known first.
+        let mut out = vec![0.0f32; skeleton.nodes.len()];
+        for (i, n) in skeleton.nodes.iter().enumerate() {
+            out[i] = match (named[i], n.parent) {
+                (Some(w), _) => w,
+                (None, NONE) => 0.0,
+                (None, p) => out[p as usize],
+            };
+        }
+        Some(out)
     }
 }
 
@@ -134,6 +194,8 @@ pub struct GraphAsset {
     /// At least one; layer 0 is the base and the only one root motion and
     /// `og.AnimationGraph.state` come from.
     pub layers: Vec<Layer>,
+    /// The sync groups' names, in first-use order ([`State::sync`]).
+    pub sync_groups: Vec<String>,
 }
 
 fn err(e: &Entry, reason: impl std::fmt::Display) -> Error {
@@ -349,6 +411,7 @@ impl GraphAsset {
         }
 
         let mut layers = Vec::new();
+        let mut sync_groups: Vec<String> = Vec::new();
         for e in body.get_all("layer") {
             arity(e, 1)?;
             let name = word(e, 0)?.to_string();
@@ -362,6 +425,7 @@ impl GraphAsset {
                 states: Vec::new(),
                 entry: 0,
                 transitions: Vec::new(),
+                mask: Vec::new(),
             };
             for b in block.get_all("state") {
                 arity(b, 2)?;
@@ -370,6 +434,7 @@ impl GraphAsset {
                     return Err(err(b, format!("state '{sname}' is defined twice")));
                 }
                 let mut speed = 1.0;
+                let mut sync = None;
                 if let Some(sb) = &b.block {
                     for s in &sb.entries {
                         match s.key.as_str() {
@@ -380,8 +445,22 @@ impl GraphAsset {
                                     return Err(err(s, "a state's speed must be 0 or more"));
                                 }
                             }
+                            "sync" => {
+                                arity(s, 1)?;
+                                let g = word(s, 0)?;
+                                sync = Some(match sync_groups.iter().position(|x| x == g) {
+                                    Some(i) => i,
+                                    None => {
+                                        sync_groups.push(g.to_string());
+                                        sync_groups.len() - 1
+                                    }
+                                });
+                            }
                             k => {
-                                return Err(err(s, format!("unknown state setting '{k}' (speed)")));
+                                return Err(err(
+                                    s,
+                                    format!("unknown state setting '{k}' (speed, sync)"),
+                                ));
                             }
                         }
                     }
@@ -390,6 +469,7 @@ impl GraphAsset {
                     name: sname,
                     motion: node_of(b, word(b, 1)?)?,
                     speed,
+                    sync,
                 });
             }
             if layer.states.is_empty() {
@@ -407,9 +487,31 @@ impl GraphAsset {
             let mut weight = None;
             let mut weight_param = None;
             let mut mode = LayerMode::Override;
+            let mut mask: Vec<MaskEntry> = Vec::new();
             for b in &block.entries {
                 match b.key.as_str() {
                     "state" => {}
+                    "mask" => {
+                        if b.values.is_empty() || b.values.len() > 2 {
+                            return Err(err(
+                                b,
+                                "`mask \"<node>\" [weight]` takes a node name and a weight 0..1",
+                            ));
+                        }
+                        let node = b.string(0).map_err(|x| err(b, x.reason()))?.to_string();
+                        let weight = if b.values.len() == 2 {
+                            number(b, 1)?
+                        } else {
+                            1.0
+                        };
+                        if !(0.0..=1.0).contains(&weight) {
+                            return Err(err(b, "a mask weight is 0 to 1"));
+                        }
+                        if mask.iter().any(|m| m.node == node) {
+                            return Err(err(b, format!("node '{node}' is masked twice")));
+                        }
+                        mask.push(MaskEntry { node, weight });
+                    }
                     "entry" => {
                         arity(b, 1)?;
                         entry = Some(state_of(b, word(b, 0)?)?);
@@ -447,6 +549,7 @@ impl GraphAsset {
                             conditions: Vec::new(),
                             exit: None,
                             fade: 0.2,
+                            interrupt: Interrupt::Any,
                         };
                         if let Some(tb) = &b.block {
                             for c in &tb.entries {
@@ -483,11 +586,28 @@ impl GraphAsset {
                                         arity(c, 1)?;
                                         t.fade = number(c, 0)?.max(0.0);
                                     }
+                                    "interrupt" => {
+                                        arity(c, 1)?;
+                                        t.interrupt = match word(c, 0)? {
+                                            "any" => Interrupt::Any,
+                                            "none" => Interrupt::None,
+                                            "source" => Interrupt::Source,
+                                            "next" => Interrupt::Next,
+                                            w => {
+                                                return Err(err(
+                                                    c,
+                                                    format!(
+                                                        "interrupt '{w}' (any, none, source, next)"
+                                                    ),
+                                                ));
+                                            }
+                                        };
+                                    }
                                     k => {
                                         return Err(err(
                                             c,
                                             format!(
-                                                "unknown transition setting '{k}' (when, exit, fade)"
+                                                "unknown transition setting '{k}' (when, exit, fade, interrupt)"
                                             ),
                                         ));
                                     }
@@ -503,7 +623,7 @@ impl GraphAsset {
                         return Err(err(
                             b,
                             format!(
-                                "unknown layer setting '{k}' (state, entry, mode, weight, transition)"
+                                "unknown layer setting '{k}' (state, entry, mode, weight, mask, transition)"
                             ),
                         ));
                     }
@@ -514,6 +634,7 @@ impl GraphAsset {
             layer.mode = mode;
             layer.weight = weight.unwrap_or(1.0);
             layer.weight_param = weight_param;
+            layer.mask = mask;
             layers.push(layer);
         }
         if layers.is_empty() {
@@ -540,6 +661,7 @@ impl GraphAsset {
             params,
             nodes,
             layers,
+            sync_groups,
         })
     }
 

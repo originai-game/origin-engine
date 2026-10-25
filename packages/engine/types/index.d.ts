@@ -12234,6 +12234,192 @@ export interface IkChain {
 }
 
 /**
+ * An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the target, +Y up). The direction is held within maxYaw and maxPitch of the animated forward; with `bones` above 1 the joint's parents share the turn. Put it on its own entity (a head, the eyes, a turret's barrel); constraints apply in query order, and og.JointLimit clamps the joints it turns.
+ *
+ * The value of the `LookAt` component (token `og.LookAt`).
+ */
+export interface LookAt {
+  /** The entity with the og.Skeleton this constraint turns. */
+  skeleton: Entity;
+  /**
+   * The joint that aims (an index into the skin's joints): the head, an eye.
+   *
+   * @range 0..
+   */
+  joint: number;
+  /**
+   * How many joints share the turn: `joint` and its parents (3 spreads a look over neck, chest and spine), each parent taking an even share and `joint` the rest.
+   *
+   * @default 1
+   * @range 1..8
+   */
+  bones: number;
+  /**
+   * The point to look at, in `space`.
+   *
+   * @unit m (metres)
+   */
+  target: Vector3;
+  /**
+   * What `target` and `up` are relative to: world (the frame the skeleton entity's og.Transform is in) or model.
+   */
+  space: IkSpace;
+  /**
+   * The joint's forward, in its own frame: the axis turned onto the target.
+   *
+   * @default { x: 0, y: 0, z: 1 }
+   */
+  axis: Vector3;
+  /**
+   * The joint's up, in its own frame: yaw turns about it, pitch towards it, and it rolls towards `up`.
+   *
+   * @default { x: 0, y: 1, z: 0 }
+   */
+  upAxis: Vector3;
+  /**
+   * The up hint, a direction in `space` the joint's `upAxis` leans to (three.js Object3D.up); the zero vector keeps the animated roll.
+   *
+   * @default { x: 0, y: 1, z: 0 }
+   */
+  up: Vector3;
+  /**
+   * The largest turn about `upAxis`, left or right of the animated forward.
+   *
+   * @default 3.1416
+   * @range 0..3.1416
+   * @unit rad (radians)
+   * @tunable
+   */
+  maxYaw: number;
+  /**
+   * The largest turn towards or away from `upAxis`, from the animated forward.
+   *
+   * @default 1.5708
+   * @range 0..1.5708
+   * @unit rad (radians)
+   * @tunable
+   */
+  maxPitch: number;
+  /**
+   * How much of the turn is applied (0 = the animated pose, 1 = aimed).
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  weight: number;
+  /**
+   * Written: the target lay outside maxYaw or maxPitch, so the joint aims at the nearest direction inside them.
+   *
+   * @readonly written by the engine
+   */
+  readonly clamped: boolean;
+}
+
+/**
+ * How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped.
+ *
+ * The value of the `JointLimit` component (token `og.JointLimit`).
+ */
+export interface JointLimit {
+  /** The entity with the og.Skeleton whose joint this limits. */
+  skeleton: Entity;
+  /**
+   * The limited joint (an index into the skin's joints).
+   *
+   * @range 0..
+   */
+  joint: number;
+  /**
+   * The twist axis in the joint's rest frame: along the bone for a ball joint, along the hinge for a hinge.
+   *
+   * @default { x: 0, y: 1, z: 0 }
+   */
+  axis: Vector3;
+  /**
+   * The cone half-angle the axis may swing away from its rest direction (0 locks it: a hinge; pi is free).
+   *
+   * @default 3.1416
+   * @range 0..3.1416
+   * @unit rad (radians)
+   * @tunable
+   */
+  swing: number;
+  /**
+   * The least twist about `axis` from rest (a hinge's bend one way).
+   *
+   * @default -3.1416
+   * @range -3.1416..3.1416
+   * @unit rad (radians)
+   * @tunable
+   */
+  twistMin: number;
+  /**
+   * The most twist about `axis` from rest (a hinge's bend the other way).
+   *
+   * @default 3.1416
+   * @range -3.1416..3.1416
+   * @unit rad (radians)
+   * @tunable
+   */
+  twistMax: number;
+}
+
+/**
+ * Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip, the notion retargeting uses, weighed across blends and cross-fades: planted when the planting clips hold at least half the pose), the foot stays where it touched the ground, through clip blends and root motion, its leg bent by two-bone IK and the foot keeping its animated orientation; when the clips lift it, the foot rejoins its animation over `release`. Put it on its own entity, one per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. The lock is world state (the `og.anim` state block).
+ *
+ * The value of the `FootLock` component (token `og.FootLock`).
+ */
+export interface FootLock {
+  /** The entity with the og.Skeleton whose foot this holds. */
+  skeleton: Entity;
+  /**
+   * The foot joint (an index into the skin's joints); the two bones above it are the leg that bends.
+   *
+   * @range 0..
+   */
+  foot: number;
+  /**
+   * How much of the lock is applied (0 = the animated foot, 1 = held).
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  weight: number;
+  /**
+   * Seconds the foot takes to rejoin its animation once lifted (0: at once).
+   *
+   * @default 0.15
+   * @range 0..2
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  release: number;
+  /**
+   * Farther than this from where the animation puts the foot, the lock lets go (a leg cannot stretch).
+   *
+   * @default 0.5
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  maxDistance: number;
+  /**
+   * Written: the playing clips plant the foot this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly planted: boolean;
+  /**
+   * Written: the foot is held at its lock this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly locked: boolean;
+}
+
+/**
  * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers.
  *
  * The payload of the `AnimationEvent` event (token `og.AnimationEvent`).
@@ -12405,6 +12591,27 @@ export interface RetargetDesc {
    * @default true
    */
   readonly footIk?: boolean;
+}
+
+
+/**
+ * A clip to play on the other side of the skeleton it was made for.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MirrorDesc {
+  /**
+   * The clip, made for `skeleton`.
+   *
+   * @default 0
+   */
+  readonly clip?: ClipAsset;
+  /**
+   * The skeleton the clip was made for (og.load.animation's `skeleton`); its left and right nodes are paired by name, the side tokens every rig naming scheme writes swapped (LeftArm and RightArm, thigh.L and thigh.R, J_Bip_L_ and J_Bip_R_, calf_l and calf_r).
+   *
+   * @default 0
+   */
+  readonly skeleton?: SkeletonAsset;
 }
 
 
@@ -23437,6 +23644,18 @@ export declare namespace og {
    */
   const IkChain: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly tip: FieldSpec<"u32">; readonly bones: FieldSpec<"u32">; readonly solver: FieldSpec<"IkSolver">; readonly target: FieldSpec<"Vector3">; readonly pole: FieldSpec<"Vector3">; readonly space: FieldSpec<"IkSpace">; readonly weight: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly tolerance: FieldSpec<"f32">; readonly reached: FieldSpec<"bool">; readonly error: FieldSpec<"f32"> }, IkChain>;
   /**
+   * An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the target, +Y up). The direction is held within maxYaw and maxPitch of the animated forward; with `bones` above 1 the joint's parents share the turn. Put it on its own entity (a head, the eyes, a turret's barrel); constraints apply in query order, and og.JointLimit clamps the joints it turns.
+   */
+  const LookAt: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly bones: FieldSpec<"u32">; readonly target: FieldSpec<"Vector3">; readonly space: FieldSpec<"IkSpace">; readonly axis: FieldSpec<"Vector3">; readonly upAxis: FieldSpec<"Vector3">; readonly up: FieldSpec<"Vector3">; readonly maxYaw: FieldSpec<"f32">; readonly maxPitch: FieldSpec<"f32">; readonly weight: FieldSpec<"f32">; readonly clamped: FieldSpec<"bool"> }, LookAt>;
+  /**
+   * How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped.
+   */
+  const JointLimit: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly axis: FieldSpec<"Vector3">; readonly swing: FieldSpec<"f32">; readonly twistMin: FieldSpec<"f32">; readonly twistMax: FieldSpec<"f32"> }, JointLimit>;
+  /**
+   * Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip, the notion retargeting uses, weighed across blends and cross-fades: planted when the planting clips hold at least half the pose), the foot stays where it touched the ground, through clip blends and root motion, its leg bent by two-bone IK and the foot keeping its animated orientation; when the clips lift it, the foot rejoins its animation over `release`. Put it on its own entity, one per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. The lock is world state (the `og.anim` state block).
+   */
+  const FootLock: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly foot: FieldSpec<"u32">; readonly weight: FieldSpec<"f32">; readonly release: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly planted: FieldSpec<"bool">; readonly locked: FieldSpec<"bool"> }, FootLock>;
+  /**
    * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers.
    */
   const AnimationEvent: EventType<AnimationEvent>;
@@ -23492,6 +23711,14 @@ export declare namespace og {
      * @returns The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node.
      */
     function retarget(world: World, desc?: RetargetDesc): Result<ClipInfo>;
+    /**
+     * A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers (markers keep their names). Mirroring twice gives the clip back.
+     *
+     * @param world The world whose animation owns the skeleton and the clip.
+     * @param desc The clip and its skeleton.
+     * @returns The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip or skeleton.
+     */
+    function mirror(world: World, desc?: MirrorDesc): Result<ClipInfo>;
     /**
      * The index of a flipbook clip by name, for Flipbook.clip: `og.anim.clip(hero, "walk_down")`. -1 when the sheet has no such clip.
      *

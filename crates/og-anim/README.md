@@ -2,8 +2,9 @@
 
 Animation for the engine (`docs/design.md` §2.4, §2.7): glTF skins and
 clips (cooked by `og-cook` into the `<model>#anim` blob), a blend-tree graph
-asset with layered state machines, root motion, two-bone and FABRIK IK and
-blendshapes, evaluated by one scheduled system, `og.anim`, over the ECS.
+asset with layered state machines, root motion, two-bone and FABRIK IK,
+look-at constraints, joint limits, foot locking and blendshapes, evaluated by one
+scheduled system, `og.anim`, over the ECS.
 Game code owns the components; the system writes the pose, the palette and
 root motion back each tick.
 
@@ -32,10 +33,12 @@ Dependencies: og-core, og-ecs, glam. No serde, no C, builds for
 | `AnimationSystem` | `add_skeleton`/`add_clip`/`add_graph(handle, asset)` (handle ≠ 0; validated), `remove_*`, `skeleton`/`clip`/`graph(handle)`, `pose(entity)` (final local pose), `output(entity) -> AnimOutput`, `write_outputs(&mut dyn PaletteSink)` |
 | `SkeletonAsset { nodes, skins }`, `SkeletonNode`, `Skin` | a rig: every glTF node in topological order with its rest TRS and mesh, skins with joints and inverse bind matrices; `rest_pose`, `model_space`, `model_matrices`, `palette`, `joint_node`, `node` |
 | `ClipAsset`, `Channel`, `ChannelPath`, `ClipEvent` | a clip resampled at `rate` (with `source_rate` kept); `frame_pos`, `vec3`, `quat`, `weight`; `frames_for` |
-| `GraphAsset` (`parse(text, resolve)`), `Motion`, `Layer`, `State`, `Transition`, `Condition` | the `animgraph` asset |
+| `GraphAsset` (`parse(text, resolve)`), `Motion`, `Layer`, `State`, `Transition`, `Condition`, `MaskEntry` | the `animgraph` asset; `Layer::node_weights(skeleton)` resolves a mask |
 | `Trs`, `nlerp`, `rotation_arc`, `twist_y` | deterministic transform math |
-| `two_bone`, `fabrik`, `ik_chain` | the solvers on a pose (used by the system, public for tools) |
+| `two_bone`, `fabrik`, `ik_chain`, `look_at`, `JointLimit::clamp` | the solvers and the limit on a pose (used by the system, public for tools); each solver takes the chain's limits aligned with it, or `&[]` |
 | `HumanoidMap`, `RigAsset`, `retarget`, `RetargetOptions`, `HUMAN_BONES`, `SCHEMES` | humanoid bone maps and clips retargeted between rigs (§Retargeting) |
+| `mirror`, `mirror_name`, `mirror_pairs` | a clip played on the other side of its skeleton, left and right paired by the schemes' side tokens (§Mirroring) |
+| `FootPlants`, `PLANT_HEIGHT` | where a foot meets the ground over a clip: the engine's one notion of "planted" (retargeting's contact checks, `og.FootLock`) |
 | `SYSTEM_NAME` | `og.anim`, the system's and the state block's name |
 
 Assets are not world state (like physics meshes): a fresh engine registers
@@ -122,6 +125,101 @@ snapshots and restores as before.
 | `reached` | bool | false | written: within `tolerance` |
 | `error` | f32 m | 0 | written: tip distance from the target |
 
+### `og.LookAt` (component, on its own entity; many per skeleton)
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `skeleton` | u64 (Entity) | 0 | the entity with the `og.Skeleton` |
+| `joint` | u32 | 0 | the joint that aims (the head, an eye) |
+| `bones` | u32, 1…8 | 1 | joints sharing the turn: `joint` and its parents |
+| `target` | vec3 m | 0 | the point looked at |
+| `space` | enum `world` `model` | world | as `og.IkChain.space`, for `target` and `up` |
+| `axis` | vec3 | 0 0 1 | the joint's forward in its own frame (three.js `lookAt` aims +Z) |
+| `upAxis` | vec3 | 0 1 0 | the joint's up in its own frame: yaw is about it, pitch towards it |
+| `up` | vec3 | 0 1 0 | the up hint `upAxis` rolls towards (three.js `Object3D.up`); zero keeps the animated roll |
+| `maxYaw` | f32 rad, 0…π, tunable | π | the largest turn about `upAxis` from the animated forward |
+| `maxPitch` | f32 rad, 0…π/2, tunable | π/2 | the largest turn towards or away from `upAxis` |
+| `weight` | f32, 0…1, tunable | 1 | blend of aimed and animated rotations |
+| `clamped` | bool | false | written: the target lay outside the angles |
+
+Applied after the IK chains, in query order (`look_at`): the direction
+from the joint to the target is taken into the joint's animated frame,
+its yaw and pitch held within the angles (the held direction then aims
+the joint wherever its parents carry it; an unheld one aims at the target
+from where the joint ends up). The joint's model rotation is the one
+turning `axis` onto that direction and, with an `up` hint, `upAxis`
+onto the hint made perpendicular to it (else the shortest turn, keeping
+the animated roll). With `bones` n, each of the n − 1 parents (top first)
+turns by an even share of what remains (`nlerp(identity, remaining,
+1/(n − i))`) and the joint takes the rest. Joint limits clamp each joint
+as it turns; `weight` blends every turned joint's local rotation with its
+animated one.
+
+### `og.JointLimit` (component, on its own entity; one per joint)
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `skeleton` | u64 (Entity) | 0 | the entity with the `og.Skeleton` |
+| `joint` | u32 | 0 | the limited joint |
+| `axis` | vec3 | 0 1 0 | the twist axis in the joint's rest frame: along the bone (ball joint) or the hinge |
+| `swing` | f32 rad, 0…π, tunable | π | the cone half-angle `axis` may swing from rest; 0 is a hinge |
+| `twistMin`, `twistMax` | f32 rad, −π…π, tunable | −π, π | the twist about `axis` from rest; a hinge's bend range |
+
+`JointLimit::clamp(rest, local)`: the local rotation relative to the
+node's rest (`rest⁻¹ · local`) is split into twist (its projection on
+`axis`) and swing (the rest), each angle from `atan2`; the twist is
+clamped into the range and the swing to the cone about its own axis, and
+the result is `rest · swing · twist`. A rotation inside is returned bit
+for bit, so a limit that never binds changes nothing. The defaults hold
+nothing. Limits bind only what og.anim's solvers turn: two-bone IK clamps
+each joint as it is turned, root first (a target the limits keep away is
+missed, `reached` false); FABRIK with a limited joint turns and clamps
+the chain after every pass and starts the next pass from it (without
+limits it runs as before, bit for bit); `og.LookAt` clamps each joint it
+turns. The clip's pose itself is never clamped. A second limit on the same
+joint replaces the first (query order). A hinge from a two-bone solve
+whose bend plane is not exactly the hinge's wants a little `swing` play
+(0.1–0.2), or the tip misses by the off-plane part.
+
+### `og.FootLock` (component, on its own entity; one per foot)
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `skeleton` | u64 (Entity) | 0 | the entity with the `og.Skeleton` |
+| `foot` | u32 | 0 | the foot joint; the two bones above it are the leg |
+| `weight` | f32, 0…1, tunable | 1 | blend of held and animated leg |
+| `release` | f32 s, 0…2, tunable | 0.15 | how long a lifted foot takes to rejoin its animation |
+| `maxDistance` | f32 m, tunable | 0.5 | farther than this from the animated foot, the lock lets go |
+| `planted` | bool | false | written: the clips plant the foot this tick |
+| `locked` | bool | false | written: the foot is held this tick |
+
+**Planted** is `FootPlants` (`src/retarget.rs`), the notion retargeting's
+foot checks use: the foot node's model height over the clip's frames
+(sampled over the rest pose), planted where it is within `PLANT_HEIGHT`
+(5 mm) of its lowest; at a clip time the height is interpolated between
+frames. Computed once per (skeleton, clip, foot) and cached like the
+bindings. Each tick the system records the clips that posed the legs
+(the base layer's leaves and the player's clip and fading clip, at the
+times they were sampled, with their shares of the pose: graph weight,
+layer weight, blend and fade weights, the player's weight over the
+graph); the foot is planted when the planting clips hold at least half of
+that.
+
+After root motion has moved the Transform and before the IK chains, in
+query order, each lock steps: free and planted → held at the animated
+foot's position in the frame the skeleton entity's Transform is written
+in; held and lifted (or farther than `maxDistance` from the animated
+foot) → releasing; releasing → free after `release` seconds, the target
+moving linearly from the lock to the animated foot. While held or
+releasing, the leg is solved by two-bone IK (keeping its bend plane,
+clamped by `og.JointLimit`s) onto the target by `weight`, and the foot
+turned back to its animated model rotation. Because the lock lives in
+the entity frame, root motion and clip blends do not move a held foot.
+The `og.anim` state block keeps every lock that is held or releasing
+(its entity, the skeleton it holds, the point, the release time); a
+restored world holds the same feet in the same places. A world without
+foot locks saves exactly the bytes it did before.
+
 ### `og.AnimationEvent` (event)
 
 | Field | Type | Meaning |
@@ -159,19 +257,26 @@ blend2d strafe x y {        # blend2d <motion> <px> <py>: gradient-band weights
   child left -1 0
 }
 layer base {                # layer 0: the base, root motion and AnimationGraph.state come from it
-  state idle idle           # state <name> <motion> [{ speed s }]
-  state move move
+  state idle idle           # state <name> <motion> [{ speed s  sync <group> }]
+  state move move {
+    sync gait               # a sync group: phase-locked across layers
+  }
   entry idle
   transition idle move {    # transition <from|any> <to>
     when speed gt 0.2       # all `when` must hold: gt ge lt le eq ne
     exit 0.9                # optional: the source state's phase (cycles since entry) reached
     fade 0.25               # cross-fade seconds (default 0.2)
+    interrupt next          # what may cut its fade: any (default) | none | source | next
   }
 }
 layer upper {
   mode additive             # override (default) | additive (difference from each clip's first frame)
   weight wave               # a number 0..1 or a parameter
-  state wave waving
+  mask "spine" 0.5          # mask "<node>" [weight 0..1, default 1]: per-joint weights
+  mask "arm.L"
+  state wave waving {
+    sync gait
+  }
 }
 ```
 
@@ -181,7 +286,38 @@ clips stay in step; each clip samples at its phase (`frac` when looping,
 clamped otherwise). Per tick and layer, transitions are checked first (file
 order, the first that holds fires; `any` never re-enters the current state),
 then phases advance, then poses blend. A transition during a fade replaces
-it (the fading-out state is dropped). Parse errors name the line.
+it (the fading-out state is dropped) when the fading transition's
+`interrupt` allows it: `any` (the default, the old behaviour) lets every
+transition that could fire from the new state, `any` ones included; `none`
+lets nothing until the fade completes; `source` only transitions out of
+the state being left (to a third state: the fade is re-targeted from the
+state being left, the abandoned target dropped, its `exit` counted on the
+left state's phase); `next` only the new state's own, not `any` ones. The
+guard of a fade in progress is saved in the state block (tagged section 2,
+written only when some layer has one other than `any`). Parse errors name
+the line.
+
+**Layer masks.** A layer's `mask` lines give per-joint weights by node
+name, resolved against the skeleton the graph plays on: a node takes the
+weight of the nearest of itself and its ancestors a line names, and nodes
+under none take 0 (Unreal's branch filter; a name the skeleton lacks
+masks nothing). An override layer moves node `i` towards its pose by
+`layer weight × mask[i]`, an additive layer adds its difference by the
+same; blendshape weights follow the layer weight. A layer without `mask`
+lines takes the old path, bit for bit.
+
+**Sync groups.** `sync <group>` in a state's block puts it in a group
+(groups are per graph, named in first-use order, `GraphAsset::sync_groups`).
+Per tick, the first layer (file order) whose current state is in a group
+leads it: its phase advances as usual. Every later layer whose current
+state is in the group plays at the leader's phase (its phase is set to
+the leader's, its markers fire over the leader's span), so a wave on the
+upper body stays in step with the gait whatever the clips' lengths. A
+fading-out state keeps its own phase. A transition between two states of
+one group (in one layer) starts the new state at the old state's phase
+fraction (cycles since entry restart at 0, so `exit` counts from the
+transition): a walk-to-run blend keeps the feet in step. Nothing new is
+saved: the phases already are.
 
 ## Palette contract with og-render
 
@@ -211,15 +347,21 @@ widened by the palette (owed on the render side).
 ## Determinism and the state block
 
 f32 with `+ - * /` and `sqrt` only: rotations blend by normalised lerp on
-the shorter arc, yaw comes from a swing-twist split, no host trigonometry,
-no clocks. Skeletons are processed in query order (archetype creation, then
-row), IK chains after all skeletons in their query order, everything else by
-entity id. The `og.anim` state block saves, per skeleton entity: the
+the shorter arc, yaw comes from a swing-twist split, no host trigonometry
+(joint limits and look-at angles use og-core's deterministic `atan2` and
+`sin_cos`), no clocks. Skeletons are processed in query order (archetype creation, then
+row); after all skeletons, foot locks, then IK chains, then look-at
+constraints, each in its own query order; everything else by entity id.
+Joint limits are read in query order before the solvers run. The
+`og.anim` state block saves, per skeleton entity: the
 skeleton handle, skin, mesh, the final pose and blendshape weights, the
 player (clip, time, the time last written, speed, loop, the fading-out clip
 with its time, speed and loop, fade progress) and each graph layer (state,
 phase as whole cycles plus fraction, seconds in state, previous state and
-phase, fade). `snapshot`, `restore` and `world_hash` therefore cover the
+phase, fade), then, after the entities and only when non-empty, tagged
+sections: 1 the foot locks (per `og.FootLock` entity holding or
+releasing a foot: the skeleton, held or releasing, the point, the release
+time), 2 the interrupt guards of fades in progress (entity, layer, rule). `snapshot`, `restore` and `world_hash` therefore cover the
 animation; a restore recomputes the palettes from the restored poses. All
 writes happen after every computation, so a failing tick changes nothing.
 
@@ -232,12 +374,15 @@ chain; palettes use exact `Mat4` products.
 
 | Test | Asserts |
 |---|---|
-| `walk.rs` | 20 walkers (state machine + additive layer, cross-fading players, planar root motion, blendshapes, 60 IK chains) for 3600 ticks give the same hash twice; a snapshot at 1800 restored into a fresh world continues to the same hashes and palettes; both graph states visited, footsteps fired, every walker travelled, chains reached; writes `anim-walk-determinism.json` |
+| `walk.rs` | 20 walkers (state machine + additive layer, cross-fading players, planar root motion, blendshapes, 60 IK chains over hinged knees and a limited shoulder, a two-joint look-at circling each head, both feet locked while planted) for 3600 ticks give the same hash twice; a snapshot at 1800 restored into a fresh world continues to the same hashes and palettes; both graph states visited, footsteps fired, every walker travelled, chains reached, heads both held at their angles and free, feet held; writes `anim-walk-determinism.json` |
 | `playback.rs` | markers fire in the tick playback passes them (forwards, backwards, at double speed, at 0 and at the loop seam); a clip change cross-fades and fires both clips' markers by weight, ending bit-identical to the new clip; a seek fires nothing; a one-shot holds its end; poses at sampled times are the clip's samples; a 12-step player at 60 Hz changes pose 12 times a second (smooth: 60), each held pose the clip's sample at its twelfth, its time continuous |
-| `ik.rs` | two-bone reaches within 1e-3 and bends to the pole, keeps bone lengths, clamps an unreachable target straight at full length with `reached` false; world targets; FABRIK reaches and clamps; half weight; a bad tip is refused |
+| `ik.rs` | two-bone reaches within 1e-3 and bends to the pole, keeps bone lengths, clamps an unreachable target straight at full length with `reached` false; world targets; FABRIK reaches and clamps; half weight; a bad tip is refused; a joint limit clamps swing and twist separately and leaves a rotation inside bit for bit; a hinged knee never bends backwards for a pole behind (and reaches with the pole in front); FABRIK keeps a limited shoulder in its cone; a head looks at a world target with no roll, half weight turns part way; a look past maxYaw/maxPitch is held at them exactly and shared with the spine, whose own limit holds its share |
 | `output.rs` | the bind-pose palette is the identity and moves with a clip; component weights write through to the output and the sink; clip weights drive the component; root motion moves the Transform and pins the hips; unregistered assets refused with the entity |
 | `graph.rs` | transitions fire in the tick their condition holds and cross-fade; blend1d and the additive layer; bad text refused with its line |
-| `retarget.rs` | the schemes detected from the walker's and a Mixamo rig's names, rig files (forced scheme, a bone named and one removed, mistakes by line); the walk retargeted onto longer legs keeps planted feet on the ground and still, without foot IK it misses by over 1 cm; the hips' travel scaled; an A-posed arm waves parallel to the T-posed one; the clip plays on the tall rig |
+| `footlock.rs` | the walk's `FootPlants` are a few frames of the cycle; a stomp (half a cycle on a standing leg while root motion carries the walker on) holds the locked foot still to 1e-6 m over every plant (it slides 0.25 m without the lock), across a cross-fade to a jog started mid-plant, and a lifted foot is back on its animation 10 ticks later; a snapshot mid-plant restores to the same hashes and foot positions |
+| `graph.rs` (interruption) | per `interrupt` rule, which of the new state's, the source's and an `any` transition cut a 0.5 s fade at once and which wait for it to complete; a bad rule refused with its line; a guarded fade restored from a snapshot continues to the same hashes and states |
+| `layers.rs` | a masked override layer leaves the nodes outside its branches bit for bit, takes a named node's whole branch and blends a half-weight branch halfway; an additive layer's mask; a bad mask weight refused with its line; a synced upper layer samples its clip at the base's phase (not its own); a transition inside a group continues from the old state's phase |
+| `retarget.rs` | the schemes detected from the walker's and a Mixamo rig's names, rig files (forced scheme, a bone named and one removed, mistakes by line); the walk retargeted onto longer legs keeps planted feet on the ground and still, without foot IK it misses by over 1 cm; the hips' travel scaled; an A-posed arm waves parallel to the T-posed one; the clip plays on the tall rig; side tokens swap in every scheme's names; a mirrored walk moves each foot as the other did, reflected, within 1e-5 (on the walker and on the tall Mixamo rig), the hips' sway flips, and mirroring twice gives the walk back |
 
 `crates/og-cook/tests/anim_compress.rs` checks compressed clips against
 f32 ones on every committed animated model (each lane within the
@@ -313,15 +458,36 @@ arms, thigh 0.70 and shin 0.44 m against 0.45 and 0.45): planted feet within
 kinematics alone), the hips' travel scaled by the leg ratio, the A-posed
 arm waving parallel to the walker's, the clip played by og.anim.
 
+## Mirroring
+
+`mirror(skeleton, clip)` (the runtime's `og.anim.mirror`) rewrites a clip
+for the other side. `mirror_name` swaps the side tokens the naming
+schemes write (§Retargeting): a `Left`/`Right` prefix after any namespace
+(Mixamo, Unity, plain), VRM's `_L_`/`_R_`, a `.L`/`_R`/`.left`/`_l`
+suffix (Blender, Rigify, Unreal), keeping the case; `mirror_pairs` pairs
+each node with the node so named when that one names it back (a node
+without a side is its own counterpart; a sided node whose counterpart is
+missing has none, `NONE`). Per frame, in node order: a node's model
+rotation is its counterpart's model-space change from rest reflected in
+x = 0 (`(x, −y, −z, w)`), applied to its own rest model rotation; a
+translated node sits at its rest position plus its counterpart's travel
+from rest reflected (`(−x, y, z)`, so root motion's sideways travel and
+yaw flip); scales are the counterpart's, blendshape weights copied; local
+values are derived from the new parent transforms. Working in model space
+means left and right bone frames need not mirror each other (Mixamo's,
+the tall rig in the tests). A node gets a channel when it or its
+counterpart is animated; one without a counterpart gets none. Assumes a
+symmetric rest pose; mirroring twice gives the clip back (within f32).
+
 ## Owed
 
 - **Retargeting**: hands and fingers (no finger bones in the map), twist
   bones driven from their parents, per-character foot heights other than
-  the rest pose's, mirroring a clip between sides.
-- **Procedural animation**: look-at/aim constraints, foot locking, joint
-  limits and twist constraints in IK, springs/jiggle bones.
-- Layer masks (per-joint weights), sync groups across layers, mirroring,
-  transition interruption rules. Cooked clips can be quantised with
+  the rest pose's.
+- **Procedural animation**: springs/jiggle bones.
+- Mirroring at cook time or per graph state (a `mirror true` on a graph
+  clip): today a mirrored clip is made at run time with `og.anim.mirror`
+  and registered like any other. Cooked clips can be quantised with
   keyframe reduction (og-cook's `animation { compress true tolerance }`,
   `src/anim_codec.rs`); the loader rebuilds every frame, so a registered
   `ClipAsset` holds f32 samples whichever way it was cooked: resident

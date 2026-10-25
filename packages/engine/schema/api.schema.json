@@ -5853,6 +5853,9 @@
         "AnimationGraph",
         "Blendshapes",
         "IkChain",
+        "LookAt",
+        "JointLimit",
+        "FootLock",
         "AnimationEvent",
         "ClipInfo",
         "Animation",
@@ -5863,6 +5866,7 @@
         "Humanoid",
         "HumanoidDesc",
         "RetargetDesc",
+        "MirrorDesc",
         "FlipbookSheet",
         "FlipbookSheet",
         "FlipMode",
@@ -5942,6 +5946,27 @@
           ],
           "returns": "Result<ClipInfo>",
           "returnsDoc": "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node.",
+          "publish": true
+        },
+        {
+          "name": "mirror",
+          "doc": "A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers (markers keep their names). Mirroring twice gives the clip back.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose animation owns the skeleton and the clip."
+            },
+            {
+              "name": "desc",
+              "type": "MirrorDesc",
+              "optional": true,
+              "doc": "The clip and its skeleton."
+            }
+          ],
+          "returns": "Result<ClipInfo>",
+          "returnsDoc": "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip or skeleton.",
           "publish": true
         },
         {
@@ -24398,6 +24423,228 @@
       },
       "additionalProperties": false
     },
+    "LookAt": {
+      "x-og-kind": "component",
+      "x-og-module": "anim",
+      "description": "An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the target, +Y up). The direction is held within maxYaw and maxPitch of the animated forward; with `bones` above 1 the joint's parents share the turn. Put it on its own entity (a head, the eyes, a turret's barrel); constraints apply in query order, and og.JointLimit clamps the joints it turns.",
+      "type": "object",
+      "properties": {
+        "skeleton": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity with the og.Skeleton this constraint turns.",
+          "default": 0
+        },
+        "joint": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The joint that aims (an index into the skin's joints): the head, an eye.",
+          "default": 0,
+          "minimum": 0
+        },
+        "bones": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many joints share the turn: `joint` and its parents (3 spreads a look over neck, chest and spine), each parent taking an even share and `joint` the rest.",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 8
+        },
+        "target": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The point to look at, in `space`.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "space": {
+          "$ref": "#/$defs/IkSpace",
+          "description": "What `target` and `up` are relative to: world (the frame the skeleton entity's og.Transform is in) or model.",
+          "default": "world"
+        },
+        "axis": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The joint's forward, in its own frame: the axis turned onto the target.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 1
+          }
+        },
+        "upAxis": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The joint's up, in its own frame: yaw turns about it, pitch towards it, and it rolls towards `up`.",
+          "default": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
+        },
+        "up": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The up hint, a direction in `space` the joint's `upAxis` leans to (three.js Object3D.up); the zero vector keeps the animated roll.",
+          "default": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
+        },
+        "maxYaw": {
+          "type": "number",
+          "description": "The largest turn about `upAxis`, left or right of the animated forward.",
+          "default": 3.1416,
+          "minimum": 0,
+          "maximum": 3.1416,
+          "x-og-unit": "rad",
+          "x-og-tunable": true
+        },
+        "maxPitch": {
+          "type": "number",
+          "description": "The largest turn towards or away from `upAxis`, from the animated forward.",
+          "default": 1.5708,
+          "minimum": 0,
+          "maximum": 1.5708,
+          "x-og-unit": "rad",
+          "x-og-tunable": true
+        },
+        "weight": {
+          "type": "number",
+          "description": "How much of the turn is applied (0 = the animated pose, 1 = aimed).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "clamped": {
+          "type": "boolean",
+          "description": "Written: the target lay outside maxYaw or maxPitch, so the joint aims at the nearest direction inside them.",
+          "default": false,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "JointLimit": {
+      "x-og-kind": "component",
+      "x-og-module": "anim",
+      "description": "How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped.",
+      "type": "object",
+      "properties": {
+        "skeleton": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity with the og.Skeleton whose joint this limits.",
+          "default": 0
+        },
+        "joint": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The limited joint (an index into the skin's joints).",
+          "default": 0,
+          "minimum": 0
+        },
+        "axis": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The twist axis in the joint's rest frame: along the bone for a ball joint, along the hinge for a hinge.",
+          "default": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
+        },
+        "swing": {
+          "type": "number",
+          "description": "The cone half-angle the axis may swing away from its rest direction (0 locks it: a hinge; pi is free).",
+          "default": 3.1416,
+          "minimum": 0,
+          "maximum": 3.1416,
+          "x-og-unit": "rad",
+          "x-og-tunable": true
+        },
+        "twistMin": {
+          "type": "number",
+          "description": "The least twist about `axis` from rest (a hinge's bend one way).",
+          "default": -3.1416,
+          "minimum": -3.1416,
+          "maximum": 3.1416,
+          "x-og-unit": "rad",
+          "x-og-tunable": true
+        },
+        "twistMax": {
+          "type": "number",
+          "description": "The most twist about `axis` from rest (a hinge's bend the other way).",
+          "default": 3.1416,
+          "minimum": -3.1416,
+          "maximum": 3.1416,
+          "x-og-unit": "rad",
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "FootLock": {
+      "x-og-kind": "component",
+      "x-og-module": "anim",
+      "description": "Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip, the notion retargeting uses, weighed across blends and cross-fades: planted when the planting clips hold at least half the pose), the foot stays where it touched the ground, through clip blends and root motion, its leg bent by two-bone IK and the foot keeping its animated orientation; when the clips lift it, the foot rejoins its animation over `release`. Put it on its own entity, one per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. The lock is world state (the `og.anim` state block).",
+      "type": "object",
+      "properties": {
+        "skeleton": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity with the og.Skeleton whose foot this holds.",
+          "default": 0
+        },
+        "foot": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The foot joint (an index into the skin's joints); the two bones above it are the leg that bends.",
+          "default": 0,
+          "minimum": 0
+        },
+        "weight": {
+          "type": "number",
+          "description": "How much of the lock is applied (0 = the animated foot, 1 = held).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "release": {
+          "type": "number",
+          "description": "Seconds the foot takes to rejoin its animation once lifted (0: at once).",
+          "default": 0.15,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "maxDistance": {
+          "type": "number",
+          "description": "Farther than this from where the animation puts the foot, the lock lets go (a leg cannot stretch).",
+          "default": 0.5,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "planted": {
+          "type": "boolean",
+          "description": "Written: the playing clips plant the foot this tick.",
+          "default": false,
+          "readOnly": true
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Written: the foot is held at its lock this tick.",
+          "default": false,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
     "AnimationEvent": {
       "x-og-kind": "event",
       "x-og-module": "anim",
@@ -24647,6 +24894,25 @@
           "type": "boolean",
           "description": "Solve the legs so a planted foot stays planted on the target's ground (and the hips lower when a leg cannot reach).",
           "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "MirrorDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "anim",
+      "description": "A clip to play on the other side of the skeleton it was made for.",
+      "type": "object",
+      "properties": {
+        "clip": {
+          "$ref": "#/$defs/ClipAsset",
+          "description": "The clip, made for `skeleton`.",
+          "default": 0
+        },
+        "skeleton": {
+          "$ref": "#/$defs/SkeletonAsset",
+          "description": "The skeleton the clip was made for (og.load.animation's `skeleton`); its left and right nodes are paired by name, the side tokens every rig naming scheme writes swapped (LeftArm and RightArm, thigh.L and thigh.R, J_Bip_L_ and J_Bip_R_, calf_l and calf_r).",
+          "default": 0
         }
       },
       "additionalProperties": false

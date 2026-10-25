@@ -90,7 +90,7 @@ fn foot_track(s: &SkeletonAsset, c: &ClipAsset, foot: u32) -> Vec<Vec3> {
 }
 
 /// The largest height error of the target's foot over the frames where the
-/// source's foot is planted (within 5 mm of its lowest): its height above
+/// source's foot is planted ([`FootPlants`]: within 5 mm of its lowest): its height above
 /// the target's ground (the source's ground scaled onto the target) against
 /// the source foot's height above its own, scaled; and the largest slide
 /// (xz travel between planted frames against the source's, scaled).
@@ -100,14 +100,15 @@ fn contact_error(walk: &ClipAsset, out: &Retargeted, t: &SkeletonAsset) -> (f32,
     let (mut height, mut slide, mut planted) = (0f32, 0f32, 0usize);
     for foot in ["leftFoot", "rightFoot"] {
         let src = foot_track(&s, walk, sm.node(foot).unwrap());
+        let plants = FootPlants::new(&s, walk, sm.node(foot).unwrap());
         let dst = foot_track(t, &out.clip, tm.node(foot).unwrap());
         let s_rest = s.model_space(&s.rest_pose())[sm.node(foot).unwrap() as usize].translation;
         let t_rest = t.model_space(&t.rest_pose())[tm.node(foot).unwrap() as usize].translation;
-        let ground_s = src.iter().map(|p| p.y).fold(f32::MAX, f32::min);
+        let ground_s = plants.lowest;
         let ground_t = t_rest.y + (ground_s - s_rest.y) * out.scale;
         let mut last: Option<usize> = None;
         for i in 0..src.len() {
-            if src[i].y > ground_s + 0.005 {
+            if !plants.planted(i) {
                 last = None;
                 continue;
             }
@@ -256,4 +257,103 @@ fn the_retargeted_clip_plays_on_the_tall_rig() {
         a[foot].translation,
         b[foot].translation
     );
+}
+
+// ---- mirroring ---------------------------------------------------------------
+
+#[test]
+fn sides_swap_in_every_schemes_names() {
+    for (a, b) in [
+        ("mixamorig:LeftUpLeg", "mixamorig:RightUpLeg"),
+        ("leftHand", "rightHand"),
+        ("J_Bip_L_UpperArm", "J_Bip_R_UpperArm"),
+        ("DEF-thigh.L", "DEF-thigh.R"),
+        ("calf_r", "calf_l"),
+        ("upper_arm.left", "upper_arm.right"),
+        ("Foot_L", "Foot_R"),
+    ] {
+        assert_eq!(mirror_name(a).as_deref(), Some(b), "{a}");
+        assert_eq!(mirror_name(b).as_deref(), Some(a), "{b}");
+    }
+    for centre in [
+        "hips",
+        "mixamorig:Spine1",
+        "J_Bip_C_Neck",
+        "pelvis",
+        "DEF-spine.006",
+    ] {
+        assert_eq!(mirror_name(centre), None, "{centre}");
+    }
+    let s = support::skeleton();
+    let pairs = mirror_pairs(&s);
+    assert_eq!(
+        pairs[s.node("thigh.L").unwrap() as usize],
+        s.node("thigh.R").unwrap()
+    );
+    assert_eq!(
+        pairs[s.node("hips").unwrap() as usize],
+        s.node("hips").unwrap()
+    );
+    // The walker has no right arm: the left one has no counterpart.
+    assert_eq!(pairs[s.node("arm.L").unwrap() as usize], NONE);
+}
+
+/// The largest distance between `mirrored`'s node `a` and `source`'s node
+/// `b` reflected in x = 0, over every frame.
+fn mirror_error(
+    s: &SkeletonAsset,
+    source: &ClipAsset,
+    mirrored: &ClipAsset,
+    a: u32,
+    b: u32,
+) -> f32 {
+    (0..source.frames)
+        .map(|i| {
+            let p = frame_pose(s, mirrored, i)[a as usize].translation;
+            let q = frame_pose(s, source, i)[b as usize].translation;
+            (p - Vec3::new(-q.x, q.y, q.z)).length()
+        })
+        .fold(0.0, f32::max)
+}
+
+#[test]
+fn a_mirrored_walk_moves_each_foot_as_the_other_did_reflected() {
+    let s = support::skeleton();
+    let walk = clip("walk");
+    let m = mirror(&s, &walk).unwrap();
+    assert_eq!((m.frames, &m.events), (walk.frames, &walk.events));
+    let (fl, fr) = (s.node("foot.L").unwrap(), s.node("foot.R").unwrap());
+    let err = mirror_error(&s, &walk, &m, fl, fr).max(mirror_error(&s, &walk, &m, fr, fl));
+    assert!(err < 1e-5, "feet mirrored within {err}");
+    // The hips sway the other way (their yaw flips) and travel as before.
+    let hips = s.node("hips").unwrap();
+    assert!(mirror_error(&s, &walk, &m, hips, hips) < 1e-5);
+    let head = s.node("head").unwrap();
+    assert!(mirror_error(&s, &walk, &m, head, head) < 1e-5);
+    let i = 7;
+    let (a, b) = (
+        frame_pose(&s, &walk, i)[hips as usize].rotation,
+        frame_pose(&s, &m, i)[hips as usize].rotation,
+    );
+    assert!(a.y.abs() > 0.01 && (a.y + b.y).abs() < 1e-6, "{a} {b}");
+    // Twice is the clip back.
+    let back = mirror(&s, &m).unwrap();
+    for i in 0..walk.frames {
+        let (p, q) = (frame_pose(&s, &walk, i), frame_pose(&s, &back, i));
+        for (x, y) in p.iter().zip(&q) {
+            assert!((x.translation - y.translation).length() < 1e-5);
+        }
+    }
+
+    // On the tall Mixamo rig (bone frames along each bone, an armature
+    // scaled by 0.01) the retargeted walk mirrors the same way.
+    let t = tall();
+    let (sm, tm) = (HumanoidMap::detect(&s), HumanoidMap::detect(&t));
+    let out = retarget(&s, &sm, &t, &tm, &walk, &RetargetOptions::default()).unwrap();
+    let m = mirror(&t, &out.clip).unwrap();
+    let (fl, fr) = (tm.node("leftFoot").unwrap(), tm.node("rightFoot").unwrap());
+    let err = mirror_error(&t, &out.clip, &m, fl, fr);
+    assert!(err < 1e-4, "tall feet mirrored within {err}");
+    let toe = (tm.node("leftToes").unwrap(), tm.node("rightToes").unwrap());
+    assert!(mirror_error(&t, &out.clip, &m, toe.0, toe.1) < 1e-4);
 }

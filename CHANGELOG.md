@@ -9,6 +9,29 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- Transition interruption rules in the `animgraph` grammar: `interrupt
+  any | none | source | next` on a transition says which transitions may
+  cut its cross-fade (default `any`, the old behaviour); the guard of a
+  fade in progress is saved in the `og.anim` state block.
+- Layer masks and sync groups in the `animgraph` grammar: `mask "<node>"
+  [weight]` lines give a layer per-joint weights (a node's nearest named
+  ancestor, 0 elsewhere); `sync <group>` in a state's block plays every
+  later layer's state of the group at the first layer's phase, and a
+  transition inside a group keeps the phase. `og.anim.mirror` (and
+  `og_anim::mirror`): a clip played on the other side, left and right
+  paired by the naming schemes' side tokens, reflected in model space.
+- `og.FootLock` (a planted foot held where it touched the ground across
+  clip blends and root motion until the clips lift it, then released over
+  `release`; `planted` and `locked` written). "Planted" is retargeting's
+  test, now `og_anim::FootPlants`. The locks are saved in the `og.anim`
+  state block (a tagged section written only when a lock is held).
+- `og.LookAt` (an aim constraint after the clips and IK: a joint's `axis`
+  turned onto `target`, its `upAxis` towards the `up` hint, held within
+  `maxYaw`/`maxPitch`, shared over `bones` joints, `clamped` written) and
+  `og.JointLimit` (a joint's swing cone and twist range from rest, which
+  og.IkChain's two-bone and FABRIK solvers and og.LookAt clamp to; a hinge
+  is `swing` 0 with the bend as the twist range). New records: every
+  world's registry, and so its `world_hash`, gains them.
 - Doppler on spatial audio: `og.AudioSource.dopplerFactor` (1; 0 off),
   `og.AudioListener.dopplerFactor` (1) and `og.Audio.speedOfSound`
   (343.3 m/s). The pitch follows OpenAL's model from the source's and the

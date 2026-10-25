@@ -675,6 +675,9 @@ impl AnimApi for WebHost {
     fn og_anim_retarget(&self, world: u32, desc: Option<String>) -> String {
         rt::og_anim_retarget(world, desc)
     }
+    fn og_anim_mirror(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_anim_mirror(world, desc)
+    }
 }
 
 impl AtmosphereApi for WebHost {

@@ -121,7 +121,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1223 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1228 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -452,6 +452,7 @@ Field units the docs and Tune use.
 | [`MeterKind`](ui.md#type-MeterKind) | enum | ui | — |
 | [`MinimapDesc`](ui.md#type-MinimapDesc) | desc struct | ui | — |
 | [`MirrorAxis`](render.md#type-MirrorAxis) | enum | render | — |
+| [`MirrorDesc`](anim.md#type-MirrorDesc) | desc struct | anim | — |
 | [`ModalDesc`](ui.md#type-ModalDesc) | desc struct | ui | — |
 | [`ModalResult`](ui.md#type-ModalResult) | struct | ui | — |
 | [`Modifiers`](input.md#type-Modifiers) | struct | input | — |
@@ -491,6 +492,7 @@ Field units the docs and Tune use.
 | [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |
 | [`og.anim.graph`](anim.md#fn-graph) | function | anim | `og_anim_graph` |
 | [`og.anim.humanoid`](anim.md#fn-humanoid) | function | anim | `og_anim_humanoid` |
+| [`og.anim.mirror`](anim.md#fn-mirror) | function | anim | `og_anim_mirror` |
 | [`og.anim.retarget`](anim.md#fn-retarget) | function | anim | `og_anim_retarget` |
 | [`og.anim.rig2dInfo`](anim.md#fn-rig2dInfo) | function | anim | `og_anim_rig2d_info` |
 | [`og.anim.skeleton2dBoxes`](anim.md#fn-skeleton2dBoxes) | function | anim | `og_anim_skeleton2d_boxes` |
@@ -548,6 +550,7 @@ Field units the docs and Tune use.
 | [`og.Fog`](atmosphere.md#record-Fog) | resource | atmosphere | — |
 | [`og.Follow2D`](camera.md#record-Follow2D) | component | camera | — |
 | [`og.FollowCamera`](camera.md#record-FollowCamera) | component | camera | — |
+| [`og.FootLock`](anim.md#record-FootLock) | component | anim | — |
 | [`og.game`](game.md#fn-game) | function | game | `og_game_game` |
 | [`og.Gamepad`](input.md#record-Gamepad) | resource | input | — |
 | [`og.i18n.has`](i18n.md#fn-has) | function | i18n | `og_i18n_has` |
@@ -559,6 +562,7 @@ Field units the docs and Tune use.
 | [`og.IkTarget2D`](anim.md#record-IkTarget2D) | component | anim | — |
 | [`og.Input`](input.md#record-Input) | resource | input | — |
 | [`og.Joint`](physics.md#record-Joint) | component | physics | — |
+| [`og.JointLimit`](anim.md#record-JointLimit) | component | anim | — |
 | [`og.KeyDown`](input.md#record-KeyDown) | event | input | — |
 | [`og.KeyUp`](input.md#record-KeyUp) | event | input | — |
 | [`og.Light2D`](render.md#record-Light2D) | component | render | — |
@@ -597,6 +601,7 @@ Field units the docs and Tune use.
 | [`og.load.video`](load.md#fn-video) | function | load | `og_load_video` |
 | [`og.load.videoInfo`](load.md#fn-videoInfo) | function | load | `og_load_video_info` |
 | [`og.Lockstep`](net.md#record-Lockstep) | resource | net | — |
+| [`og.LookAt`](anim.md#record-LookAt) | component | anim | — |
 | [`og.MaterialStyle`](render.md#record-MaterialStyle) | resource | render | — |
 | [`og.MatrixWorld`](transform.md#record-MatrixWorld) | component | transform | — |
 | [`og.Mesh`](render.md#record-Mesh) | component | render | — |
