@@ -916,7 +916,9 @@ the arm does. The target's twist bones (unmapped nodes named `twist`, such
 as Unreal's `lowerarm_twist_01_l`, or Rigify's `DEF-forearm.L.001`) take a
 share of their segment's roll by where they sit along it: none at the
 segment's head, the next bone's at its end, so a forearm does not
-candy-wrap. A character whose rest pose does not stand on the ground (an
+candy-wrap. A clip made for the rig itself that leaves its twist bones
+still gets the same shares each tick (after IK); a clip that keys them
+is played as keyed. A character whose rest pose does not stand on the ground (an
 armature lifted off it, a crouched rest) says how high its ankles stand
 in its `type rig` file, `footHeight 0.08` (or `footHeight <left>
 <right>`); planted feet then land on that ground, not at the rest pose's

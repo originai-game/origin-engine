@@ -457,7 +457,7 @@ the shorter arc, yaw comes from a swing-twist split, no host trigonometry
 (joint limits and look-at angles use og-core's deterministic `atan2` and
 `sin_cos`), no clocks. Skeletons are processed in query order (archetype creation, then
 row); after all skeletons, foot locks, then IK chains, then look-at
-constraints, then spring bones, each in its own query order; everything else by entity id.
+constraints, then twist bones (§Retargeting), then spring bones, each in its own query order; everything else by entity id.
 Joint limits are read in query order before the solvers run. The
 `og.anim` state block saves, per skeleton entity: the
 skeleton handle, skin, mesh, the final pose and blendshape weights, the
@@ -493,7 +493,7 @@ chain; palettes use exact `Mat4` products.
 | `graph.rs` (interruption) | per `interrupt` rule, which of the new state's, the source's and an `any` transition cut a 0.5 s fade at once and which wait for it to complete; a bad rule refused with its line; a guarded fade restored from a snapshot continues to the same hashes and states |
 | `layers.rs` | a masked override layer leaves the nodes outside its branches bit for bit, takes a named node's whole branch and blends a half-weight branch halfway; an additive layer's mask; a bad mask weight refused with its line; a synced upper layer samples its clip at the base's phase (not its own); a transition inside a group continues from the old state's phase |
 | `spring.rs` | a three-joint tail trails a body moving at 2 m/s by over 0.1 m, swings past rest when it stops and settles onto the animated pose, bones keeping their length (without a spring the tip rides rigidly); a model-space spring ignores the entity's motion; gravity droops a 1 Hz tail over 3× a 4 Hz one; a single-joint spring turns only that joint; a bad joint refused with the field; a restore mid-swing continues to the same hashes and pose; a tail drooping into a sphere, or a capsule whose ends are far from it, keeps every tail at least the two radii out on every tick (free, it comes within 9 cm of the centre), bones at their length, and a collider on a layer the spring skips changes nothing bit for bit; `tipFrequency` 0.25 droops the tip 3 cm further with the top joint bit-identical, `tipDamping` 4 cuts the overshoot by a fifth |
-| `retarget.rs` (hands) | finger names of every scheme on their bones; a curled index (0.5 rad per joint) on a T-posed source bends the A-posed Mixamo target's by the same angles (1e-3), its bones keeping their lengths, with the arm not animated; an Unreal arm's forearm twist bone, halfway, takes half the hand's 1.2 rad roll and the upper arm's twist bone half the upper arm's 0.6 against the spine; a rig lifted 0.2 m with `footHeight 0.1` plants its feet on that ground (2 mm), without it they stay over 0.25 m up; per-side heights and a bad line |
+| `retarget.rs` (hands) | finger names of every scheme on their bones; a curled index (0.5 rad per joint) on a T-posed source bends the A-posed Mixamo target's by the same angles (1e-3), its bones keeping their lengths, with the arm not animated; an Unreal arm's forearm twist bone, halfway, takes half the hand's 1.2 rad roll and the upper arm's twist bone half the upper arm's 0.6 against the spine; the same shares, per tick, when a clip authored for that arm (not retargeted) leaves its twist bones still, a twist bone the clip keys kept as keyed, and the same arm with the nodes named `roll` posed bit for bit as the clip says; a rig lifted 0.2 m with `footHeight 0.1` plants its feet on that ground (2 mm), without it they stay over 0.25 m up; per-side heights and a bad line |
 | `visibility.rs` | a visibility channel is held to its frame's end (hidden at 96 % of the way to a shown frame) and hides the node's descendants; a LINEAR or fractional one is refused; `lerp_to` takes the other pose's flags from 0.5, a masked layer per node by its weight, an additive layer only the flags its clip toggles; a 0.5 s cross-fade in a player swaps once, at its middle (tick 13–17 of 30), never drawing both frames or neither; mirroring moves a channel to the other side and back; retargeting the walk onto the Mixamo rig carries one by bone (the left upper arm) and one by name (a sword); two runs give the same hashes, and a snapshot at tick 20 (a frame folded away) restores to the same hash and outputs (`drawn`) and continues to the same hashes |
 | `retarget.rs` | the schemes detected from the walker's and a Mixamo rig's names, rig files (forced scheme, a bone named and one removed, mistakes by line); the walk retargeted onto longer legs keeps planted feet on the ground and still, without foot IK it misses by over 1 cm; the hips' travel scaled; an A-posed arm waves parallel to the T-posed one; the clip plays on the tall rig; side tokens swap in every scheme's names; a mirrored walk moves each foot as the other did, reflected, within 1e-5 (on the walker and on the tall Mixamo rig), the hips' sway flips, and mirroring twice gives the walk back |
 
@@ -595,6 +595,18 @@ clip of the source rig for the target, frame by frame:
   rotation. `Retargeted::twists` counts them. A rig without twist bones
   takes the old path, bit for bit.
 
+The same share is given per tick to clips that are not retargeted: after
+the IK chains and look-ats (so it follows them) and before the spring
+bones, each twist bone of a skeleton (found as above, on the humanoid map
+its names give) is turned to its share of the pose as it now is when a
+clip posing the skeleton this tick (the base layer's and the player's,
+the ones foot locks read) turns its segment's bone or the next, and none
+of them has the twist bone's rotation. The nodes below a driven twist
+bone keep their model rotations. A retargeted clip writes its twist bones,
+so it plays as before bit for bit; so does a skeleton without twist bones
+or whose clips key them. What each clip does to each twist bone is worked
+out once per (skeleton, clip) and cached like the bindings.
+
 The cook applies it to a model's `animation { library … }` (og-cook's
 README) and the runtime to `og.anim.retarget`. `tests/retarget.rs` retargets
 the walker onto a taller Mixamo-named rig (armature scale 0.01, A-posed
@@ -631,9 +643,6 @@ symmetric rest pose; mirroring twice gives the clip back (within f32).
   tolerance }`, `src/anim_codec.rs`), but the loader rebuilds every frame,
   so a registered `ClipAsset` holds f32 samples whichever way it was
   cooked.
-- Twist bones are driven by retargeting only (the channels it writes); a
-  clip authored for the rig itself that leaves its twist bones still is
-  played as it is, with no per-tick twist distribution.
 - Unity's legacy thumb names (`Thumb Proximal` as the metacarpal) are read
   as VRM 1.0's; a Unity-named rig whose thumbs are off by a bone names
   them in a `type rig` file.

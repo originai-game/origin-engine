@@ -7,7 +7,7 @@ use crate::codec::{Reader, Writer};
 use crate::graph::{GraphAsset, Interrupt, LayerMode, Motion};
 use crate::ik;
 use crate::pose::{Blend, Fired, Leaf, Pose, RootMotion, stepped};
-use crate::retarget::FootPlants;
+use crate::retarget::{FootPlants, HumanoidMap, TwistBone, share_twist, twist_bones};
 use crate::schema::*;
 use crate::xform::{Trs, nlerp, rotation_arc, unit};
 use og_core::glam::{Mat4, Quat, Vec3};
@@ -141,6 +141,27 @@ type Mirrored = Arc<(ClipAsset, Vec<u32>)>;
 /// Mirrored clips by (skeleton, clip).
 type Mirrors = BTreeMap<(u64, u64), Mirrored>;
 
+/// A skeleton's twist bones (on the limb segments of the humanoid map its
+/// names give) and its rest pose in model space.
+struct TwistRig {
+    bones: Vec<TwistBone>,
+    rest: Vec<Trs>,
+}
+
+/// Twist rigs by skeleton.
+type TwistRigs = BTreeMap<u64, Arc<TwistRig>>;
+
+/// What a clip does to each twist bone of a skeleton, by (skeleton, clip,
+/// mirrored): [`TWIST_STILL`], [`TWIST_SEGMENT`] or [`TWIST_ANIMATED`].
+type TwistRoles = BTreeMap<(u64, u64, bool), Arc<Vec<u8>>>;
+
+/// The clip turns neither the twist bone nor its segment.
+const TWIST_STILL: u8 = 0;
+/// The clip turns the segment (its bone or the next) and not the twist bone.
+const TWIST_SEGMENT: u8 = 1;
+/// The clip has the twist bone's rotation.
+const TWIST_ANIMATED: u8 = 2;
+
 /// What a clip that poses the legs played this tick: ((clip, mirrored),
 /// the time it was sampled at, its share of the pose). The base layer's
 /// and the player's clips, for foot locks.
@@ -198,6 +219,9 @@ pub(crate) struct Shared {
     plants: Mutex<Plants>,
     /// A cache filled as graphs play mirrored clips on skeletons.
     mirrors: Mutex<Mirrors>,
+    /// Caches filled as skeletons with clips meet twist distribution.
+    twist_rigs: Mutex<TwistRigs>,
+    twist_roles: Mutex<TwistRoles>,
     states: BTreeMap<u64, EntityState>,
     locks: BTreeMap<u64, LockState>,
     springs: BTreeMap<u64, SpringState>,
@@ -217,6 +241,10 @@ fn lock_plants(p: &Mutex<Plants>) -> MutexGuard<'_, Plants> {
 }
 
 fn lock_mirrors(m: &Mutex<Mirrors>) -> MutexGuard<'_, Mirrors> {
+    m.lock().unwrap_or_else(|p| p.into_inner())
+}
+
+fn lock_cache<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|p| p.into_inner())
 }
 
@@ -277,8 +305,70 @@ impl Shared {
         ))
     }
 
+    /// Skeleton `skeleton`'s twist rig, made on first use.
+    fn twist_rig(&self, skeleton: u64, asset: &SkeletonAsset) -> Arc<TwistRig> {
+        if let Some(r) = lock_cache(&self.twist_rigs).get(&skeleton) {
+            return r.clone();
+        }
+        let rest = asset.model_space(&asset.rest_pose());
+        let bones = twist_bones(asset, &HumanoidMap::detect(asset), &rest);
+        let r = Arc::new(TwistRig { bones, rest });
+        lock_cache(&self.twist_rigs)
+            .entry(skeleton)
+            .or_insert(r)
+            .clone()
+    }
+
+    /// What clip `clip` (mirrored or not) does to each of `rig`'s twist
+    /// bones on skeleton `skeleton` (`None` when it is not registered).
+    fn twist_roles(
+        &self,
+        skeleton: u64,
+        rig: &TwistRig,
+        (clip, mirrored): (u64, bool),
+    ) -> Result<Option<Arc<Vec<u8>>>> {
+        let key = (skeleton, clip, mirrored);
+        if let Some(r) = lock_cache(&self.twist_roles).get(&key) {
+            return Ok(Some(r.clone()));
+        }
+        let turned: Vec<u32> = if mirrored {
+            let Some(m) = self.mirrored(skeleton, clip)? else {
+                return Ok(None);
+            };
+            rotated(&m.0, &m.1)
+        } else {
+            let (Some(c), Some(b)) = (self.clips.get(&clip), self.binding(skeleton, clip)) else {
+                return Ok(None);
+            };
+            rotated(c, &b)
+        };
+        let has = |n: usize| turned.contains(&(n as u32));
+        let roles: Vec<u8> = rig
+            .bones
+            .iter()
+            .map(|t| {
+                if has(t.node) {
+                    TWIST_ANIMATED
+                } else if has(t.a) || has(t.c) {
+                    TWIST_SEGMENT
+                } else {
+                    TWIST_STILL
+                }
+            })
+            .collect();
+        let r = Arc::new(roles);
+        Ok(Some(
+            lock_cache(&self.twist_roles)
+                .entry(key)
+                .or_insert(r)
+                .clone(),
+        ))
+    }
+
     /// Forgets what was derived from skeleton `skeleton` or clip `clip`.
     fn forget(&self, skeleton: Option<u64>, clip: Option<u64>) {
+        lock_cache(&self.twist_rigs).retain(|&k, _| Some(k) != skeleton);
+        lock_cache(&self.twist_roles).retain(|k, _| Some(k.0) != skeleton && Some(k.1) != clip);
         lock_bindings(&self.bindings).retain(|k, _| Some(k.0) != skeleton && Some(k.1) != clip);
         lock_plants(&self.plants).retain(|k, _| Some(k.0) != skeleton && Some(k.1) != clip);
         lock_mirrors(&self.mirrors).retain(|k, _| Some(k.0) != skeleton && Some(k.1) != clip);
@@ -305,6 +395,66 @@ impl Shared {
             }
         }
     }
+}
+
+/// The nodes a clip's rotation channels turn, by `binding`.
+fn rotated(clip: &ClipAsset, binding: &[u32]) -> Vec<u32> {
+    clip.channels
+        .iter()
+        .zip(binding)
+        .filter(|(c, b)| c.path == crate::asset::ChannelPath::Rotation && **b != NONE)
+        .map(|(_, &b)| b)
+        .collect()
+}
+
+/// Twist distribution, per tick, for clips that are not retargeted: each
+/// twist bone of `w`'s skeleton that a clip posing it this tick turns the
+/// segment of, while none of them animates the twist bone itself, takes
+/// its share of the segment's twist in the pose as it now is; the nodes
+/// below it keep their model rotations. A skeleton without twist bones, or
+/// whose clips animate them (retargeting writes them), is left bit for bit.
+fn distribute_twist(sh: &Shared, w: &mut Work) -> Result<()> {
+    if w.stance.iter().all(|s| s.2 <= 0.0) {
+        return Ok(());
+    }
+    let rig = sh.twist_rig(w.skeleton.asset, &w.asset);
+    if rig.bones.is_empty() {
+        return Ok(());
+    }
+    let (mut segment, mut animated) = (vec![false; rig.bones.len()], vec![false; rig.bones.len()]);
+    for &(clip, _, weight) in &w.stance {
+        if weight <= 0.0 {
+            continue;
+        }
+        if let Some(roles) = sh.twist_roles(w.skeleton.asset, &rig, clip)? {
+            for (j, &r) in roles.iter().enumerate() {
+                segment[j] |= r == TWIST_SEGMENT;
+                animated[j] |= r == TWIST_ANIMATED;
+            }
+        }
+    }
+    let driven: Vec<&TwistBone> = rig
+        .bones
+        .iter()
+        .enumerate()
+        .filter(|&(j, _)| segment[j] && !animated[j])
+        .map(|(_, t)| t)
+        .collect();
+    if driven.is_empty() {
+        return Ok(());
+    }
+    // The nodes below a driven twist bone (nodes are in topological order).
+    let nodes = &w.asset.nodes;
+    let mut below = vec![false; nodes.len()];
+    for n in 0..nodes.len() {
+        let p = nodes[n].parent;
+        below[n] = p != NONE && (below[p as usize] || driven.iter().any(|t| t.node == p as usize));
+    }
+    let fk = w.asset.model_space(&w.pose.nodes);
+    share_twist(&w.asset, &driven, &rig.rest, &fk, &mut w.pose.nodes, |n| {
+        below[n]
+    });
+    Ok(())
 }
 
 /// The handle to an installed animation system: asset registration and the
@@ -1207,6 +1357,10 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
             aim(w, &mut look, &limits)?;
         }
         aimed.push((l, look));
+    }
+    // Twist bones, after the solvers that turn their segments.
+    for w in &mut work {
+        distribute_twist(&sh, w)?;
     }
     // Spring colliders, in query order, with the node each rides on.
     let mut colliders: Vec<(u32, SpringCollider)> = Vec::with_capacity(spring_colliders.len());

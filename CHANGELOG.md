@@ -17,6 +17,12 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
   last joint's frequency and damping, the joints between in proportion.
   At their defaults a chain swings bit for bit as before; worlds that
   install og-anim hash differently once (a new type, a new layout).
+- Twist bones follow clips that are not retargeted: a clip authored for
+  a rig that turns an arm or leg segment but leaves its twist bones
+  (`…twist…`, Rigify's `DEF-….001`) still now gives them, per tick, the
+  share of the segment's twist retargeting gives (after IK and look-at).
+  Retargeted clips, rigs without twist bones and clips that key them play
+  bit for bit as before.
 - Faster capture PNGs: the probe's `capture`, `sweep` and `screenshot`
   encode with fdeflate (rows filtered `Up`, deflated as they are
   filtered) instead of zlib level 6, 10 to 35 times faster on a
