@@ -40,8 +40,15 @@ for (const render of [false, true]) {
     const entry = join(dir, "game.ts");
     writeFileSync(entry, game("a: f32(1)"));
     const child = Bun.spawn(["bun", "src/node/run.ts", "--entry", entry, "--watch", entry, "--ticks", "240", "--realtime", ...(render ? ["--size", "160x90"] : ["--no-render"]), "--json"], { cwd: pkg, stdout: "pipe", stderr: "pipe" });
-    setTimeout(() => writeFileSync(entry, game("a: f32(1), b: f32(2)")), 1500);
+    // The changed bundle is written every half second until the run ends,
+    // not once at a fixed delay: run.ts starts watching only once its engine
+    // (and renderer) are up, which took longer than 1.5 s with a renderer on
+    // CI's two vCPU of Lavapipe, and a write before that is never seen. Its
+    // 240 paced ticks start after the watch, so a write lands in them.
+    // Rewriting the same bundle reloads the same layout again.
+    const writer = setInterval(() => writeFileSync(entry, game("a: f32(1), b: f32(2)")), 500);
     const out = await new Response(child.stdout).text();
+    clearInterval(writer);
     expect(await child.exited).toBe(0);
     rmSync(dir, { recursive: true, force: true });
     const reloads = out.split("\n").filter((l) => l.startsWith('{"event":"reload"')).map((l) => JSON.parse(l));

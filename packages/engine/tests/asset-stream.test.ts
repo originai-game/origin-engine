@@ -27,6 +27,7 @@ import { loadNativeHost, native } from "../src/node/index.ts";
 import { encodePng } from "../src/node/png.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { decodeCapture, pixel, type Image } from "./support/png.ts";
+import { slow } from "./support/slow.ts";
 import { ogBin } from "./support/og-bin.ts";
 import { DEFAULT_PUBLISH, settingsOf, webBuild } from "../src/node/web-build.ts";
 
@@ -471,4 +472,4 @@ test("og build --publish ships each group as its pack beside the first group, an
   const html = readFileSync(join(dist, "index.html"), "utf8");
   expect(html).toContain(`"cooked":${firstBytes - statSync(join(dist, "cooked", ".cook.ogt")).size}`);
   writeFileSync(join(evidence, "publish.json"), JSON.stringify({ firstGroup: m.stream.first, groups: m.stream.groups, precachedCooked: cooked, lazy: config.lazy, total: b.total }, null, 1) + "\n");
-}, 120_000);
+}, slow(120_000));
