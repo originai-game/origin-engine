@@ -697,7 +697,7 @@ export const GRAMMARS: readonly Grammar[] = [
     source: "crates/og-anim/src/graph.rs",
     region: [/pub fn from_document/, /\/\/\/ The slot of a parameter/],
     reads: readKeys,
-    names: { param: 1, clip: 1, blend1d: 2, blend2d: 3, child: 1, state: 2, entry: 1, transition: 2, when: 1, weight: 1 },
+    names: { param: 1, clip: 1, blend1d: 2, blend2d: 3, child: 1, state: 2, entry: 1, transition: 2, when: 1, weight: 1, sync: 1 },
   },
   { type: "navmesh", source: "crates/og-cook/src/cook/e6.rs", region: [/pub\(super\) fn cook_navmesh/, /og_nav::bake::bake\(/], reads: readKeys, home: "og-ai" },
   {
