@@ -175,11 +175,9 @@ pub(crate) fn with_probe<T>(
     let world = eng.world()?;
     // state().timings.systems (the last tick, run order) and .passes.
     {
-        let systems = world
-            .system_info()
-            .into_iter()
-            .filter_map(|s| s.ms.map(|ms| (s.name, ms)))
-            .collect();
+        // Names and times only: system_info copies every declaration, a
+        // tenth of a millisecond of every web frame.
+        let systems = world.system_ms();
         let st = eng.state.borrow();
         let passes = st.pass_ms.iter().map(|p| (p.name.clone(), p.ms)).collect();
         probe.set_timing_detail(systems, passes, st.gpu_ms.clone());

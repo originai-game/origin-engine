@@ -529,7 +529,26 @@ pub(crate) fn time_scale_json(scale: og_core::TimeScale, time: og_core::Time) ->
 pub(crate) fn time_payload(ctx: &SystemContext<'_>) -> String {
     let s = ctx.time_scale();
     let t = ctx.time();
-    format!("{},{},{},{}", s.scale, s.hit_stop, s.dt(&t), s.elapsed)
+    time_payload_of(s.scale, s.hit_stop, s.dt(&t), s.elapsed)
+}
+
+/// [`time_payload`]'s text, `{}`'s numbers: the scaled elapsed time
+/// formatted with zmij, whose shortest round-trip digits are core's (as
+/// JavaScript's `Number` reads them back) where core's `{}` falls back to
+/// Dragon4 for most elapsed times, a fifth of a millisecond of every
+/// WebGL2 tick of the reference scene (tests/evidence/r4/perf-webgl2-2/).
+/// The f32 fields keep `{}`: on an exact tie between two shortest
+/// candidates zmij rounds to even and core up.
+fn time_payload_of(scale: f32, hit_stop: u32, dt: f32, elapsed: f64) -> String {
+    use std::fmt::Write;
+    let mut out = String::with_capacity(48);
+    let _ = write!(out, "{scale},{hit_stop},{dt},");
+    if elapsed.is_finite() {
+        out.push_str(zmij::Buffer::new().format_finite(elapsed));
+    } else {
+        let _ = write!(out, "{elapsed}");
+    }
+    out
 }
 
 fn with_world<T>(
@@ -2690,5 +2709,84 @@ pub(crate) fn camera_frame(world: &World, rs: &mut RenderState, aspect: f32) {
     if shift != Vec3::ZERO {
         scene.camera.position += shift;
         scene.camera.target += shift;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::time_payload_of;
+
+    /// What JavaScript's `Number` reads from each field of a payload (a
+    /// correctly rounded parse to f64, as Rust's), by bits; NaN for text
+    /// it does not read (`inf`).
+    fn numbers(payload: &str) -> Vec<u64> {
+        payload
+            .split(',')
+            .map(|f| f.parse::<f64>().unwrap_or(f64::NAN))
+            .map(|x| {
+                if x.is_nan() {
+                    f64::NAN.to_bits()
+                } else {
+                    x.to_bits()
+                }
+            })
+            .collect()
+    }
+
+    /// The payload's numbers are those of `{}`'s text, so the game's
+    /// systems read the same scaled time: an f32 field carries the f32's
+    /// own shortest digits (not the f64 it widens to), over the elapsed
+    /// times of long runs, random bit patterns and the odd values.
+    #[test]
+    fn the_time_payload_reads_back_as_the_formatted_numbers() {
+        let mut seed = 0x2545_f491_4f6c_dd1d_u64;
+        let mut next = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        let mut cases: Vec<(f32, u32, f32, f64)> = Vec::new();
+        // Elapsed as the engine sums it: f32 ticks added to an f64.
+        for (scale, dt) in [
+            (1.0f32, 1.0f32 / 60.0),
+            (0.5, 1.0 / 60.0),
+            (0.3, 1.0 / 30.0),
+            (1.7, 1.0 / 120.0),
+        ] {
+            let mut elapsed = 0.0f64;
+            for _ in 0..20_000 {
+                cases.push((scale, 0, dt * scale, elapsed));
+                elapsed += f64::from(dt * scale);
+            }
+        }
+        for _ in 0..50_000 {
+            let r = next();
+            let (a, b) = (f32::from_bits(r as u32), f32::from_bits((r >> 32) as u32));
+            cases.push((a, (r >> 40) as u32, b, f64::from_bits(next())));
+        }
+        for x in [
+            0.0,
+            -0.0,
+            1e-45,
+            3.4e38,
+            f32::NAN,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            1e-7,
+        ] {
+            cases.push((x, u32::MAX, x, f64::from(x)));
+        }
+        cases.push((1.0, 0, 0.0, f64::MIN_POSITIVE));
+        cases.push((1.0, 0, 0.0, f64::MAX));
+        for (scale, hit_stop, dt, elapsed) in cases {
+            let ours = time_payload_of(scale, hit_stop, dt, elapsed);
+            let display = format!("{scale},{hit_stop},{dt},{elapsed}");
+            assert_eq!(
+                numbers(&ours),
+                numbers(&display),
+                "{ours} against {display}"
+            );
+        }
     }
 }

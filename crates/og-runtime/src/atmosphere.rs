@@ -101,7 +101,7 @@ fn hours(d: &Value, tick: u64, dt: f32) -> f32 {
 /// look, and the directional light's intensity (the look's times
 /// lightIntensity).
 struct DayNightNow {
-    d: Value,
+    d: Arc<Value>,
     hours: f32,
     look: og_render::DayNightLook,
     intensity: f32,

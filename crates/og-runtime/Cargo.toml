@@ -17,6 +17,8 @@ og-cook = { path = "../og-cook", default-features = false, features = ["runtime"
 miniz_oxide = "0.8"
 glam = { workspace = true }
 serde_json = { version = "1", features = ["float_roundtrip"] }
+# Shortest float formatting (serde_json's own): a system call's time payload.
+zmij = "1"
 og-physics = { path = "../og-physics", default-features = false }
 og-audio = { path = "../og-audio" }
 og-ui = { path = "../og-ui", default-features = false }

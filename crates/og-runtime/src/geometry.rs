@@ -70,9 +70,120 @@ pub(crate) struct GeoState {
     /// The debug view's index once set (`None`: RenderOptions.debugView).
     view: Option<usize>,
     disabled: bool,
-    /// The drawn meshes as the current tick started (`before_tick`).
-    record: Option<(u64, Rc<Vec<Target>>)>,
+    /// The drawn meshes as the current tick started (`before_tick`), with
+    /// that tick.
+    record: Option<(u64, Record)>,
+    /// The transforms and parents as the record's tick started: the
+    /// record's world matrices are composed from them.
     hierarchy: Hierarchy,
+    /// Those of the last raycast between ticks, which reads the world as
+    /// it is (its own, so the record's stay as its tick started).
+    now: Hierarchy,
+    /// The record's og.Mesh half and what it was read from.
+    meshes: Meshes,
+}
+
+/// The drawn og.Mesh rows of the last tick start, kept while the columns
+/// they were read from, the entities and the geometries are unchanged:
+/// a tick where no og.Mesh changed reads four columns' bytes, not every
+/// row (20,000 still meshes: 0.33 ms a tick).
+#[derive(Default)]
+struct Meshes {
+    /// Per og.Mesh archetype in query order: its entities and its
+    /// geometry, visible and layers columns as read.
+    columns: Vec<(Vec<og_ecs::Entity>, [Vec<u8>; 3])>,
+    /// `RenderState::geometries`' length then (they are only appended).
+    geometries: usize,
+    list: Rc<Vec<Drawn>>,
+}
+
+impl Meshes {
+    /// Whether the og.Mesh columns are as `columns` holds; else holds them
+    /// now. False when they cannot be read by column (`mesh_rows`' JSON
+    /// rows), so the rows are read every time.
+    fn still(&mut self, world: &World, schema: &str, geometries: usize) -> bool {
+        let id = world.id_by_name(schema).ok();
+        let fields = ["geometry", "visible", "layers"]
+            .map(|n| id.and_then(|id| world.field_by_id(id, n).ok()));
+        let q = og_ecs::QueryDesc {
+            read: vec![schema.to_string()],
+            ..og_ecs::QueryDesc::default()
+        };
+        let (Ok(all), [Some(g), Some(v), Some(l)]) = (world.query(&q), fields) else {
+            self.columns.clear();
+            return false;
+        };
+        let mut still = geometries == self.geometries;
+        let mut n = 0;
+        for (k, a) in all.enumerate() {
+            let (Ok(g), Ok(v), Ok(l)) = (a.read_bytes(g), a.read_bytes(v), a.read_bytes(l)) else {
+                self.columns.clear();
+                return false;
+            };
+            n = k + 1;
+            if self.columns.len() <= k {
+                self.columns.push(Default::default());
+            }
+            let (ents, cols) = &mut self.columns[k];
+            if ents.as_slice() == a.entities() && cols[0] == *g && cols[1] == *v && cols[2] == *l {
+                continue;
+            }
+            still = false;
+            ents.clear();
+            ents.extend_from_slice(a.entities());
+            for (c, b) in cols.iter_mut().zip([&g, &v, &l]) {
+                c.clear();
+                c.extend_from_slice(b);
+            }
+        }
+        if n != self.columns.len() {
+            still = false;
+            self.columns.truncate(n);
+        }
+        self.geometries = geometries;
+        still
+    }
+}
+
+/// A drawn mesh as a tick started, before its world matrix: an og.Mesh
+/// (`part`: `None`) or one part of an og.Model (its transform within the
+/// model).
+#[derive(Clone, Copy)]
+struct Drawn {
+    entity: u64,
+    geometry: usize,
+    mesh: MeshHandle,
+    part: Option<Mat4>,
+    visible: bool,
+    layers: u32,
+}
+
+/// The raycast record of a tick: its drawn meshes as read when it started,
+/// then, from the first raycast of the tick on, the targets composed from
+/// them. Most ticks raycast nothing from a system, and composing every
+/// drawn mesh's world matrix each tick was a tenth of a WebGL2 frame of
+/// the reference scene (tests/evidence/r4/perf-webgl2-2/NOTES.md).
+enum Record {
+    /// The og.Mesh rows (shared with the next tick's while they hold) and
+    /// the og.Model parts.
+    Drawn(Rc<Vec<Drawn>>, Vec<Drawn>),
+    Targets(Rc<Vec<Target>>),
+}
+
+impl Record {
+    /// The targets, composed from `h` (the transforms as the tick started)
+    /// on the first call.
+    fn targets(&mut self, h: &mut Hierarchy) -> Rc<Vec<Target>> {
+        if let Record::Drawn(meshes, models) = self {
+            let mut targets = compose(h, meshes);
+            targets.extend(compose(h, models));
+            *self = Record::Targets(Rc::new(targets));
+        }
+        match self {
+            Record::Targets(t) => t.clone(),
+            Record::Drawn(..) => unreachable!("composed above"),
+        }
+    }
 }
 
 impl GeoState {
@@ -1013,64 +1124,116 @@ pub fn og_render_points(world: u32, desc: Option<String>) -> String {
 
 // ── raycast ─────────────────────────────────────────────────────────────────
 
-/// Every og.Mesh and og.Model part as drawn from the world now.
-fn targets(world: &World, rs: &RenderState, h: &mut Hierarchy) -> Vec<Target> {
-    let mut out = Vec::new();
+/// Every og.Mesh and og.Model part as drawn from the world now, with `h`
+/// read again: the og.Mesh rows in query order (`kept`'s while their
+/// columns are unchanged), and the og.Model parts in entity order into
+/// `out` (cleared).
+fn drawn(
+    world: &World,
+    rs: &RenderState,
+    h: &mut Hierarchy,
+    kept: &mut Meshes,
+    out: &mut Vec<Drawn>,
+) -> Rc<Vec<Drawn>> {
+    use super::codec::{Rec, Row, Slot};
+    out.clear();
     h.refresh(world);
-    if let Some(layout) = &rs.draw.mesh {
-        for r in super::extract::mesh_rows(world, layout) {
-            let Some(&mesh) = rs.geometries.get(r.geometry) else {
-                continue;
-            };
-            out.push(Target {
-                entity: r.entity,
-                geometry: r.geometry,
-                mesh,
-                transform: h.world_of(r.entity),
-                visible: r.visible,
-                layers: r.layers,
-            });
+    let meshes = match &rs.draw.mesh {
+        Some(layout) if kept.still(world, &layout.schema, rs.geometries.len()) => kept.list.clone(),
+        Some(layout) => {
+            let mut list = Vec::new();
+            for r in super::extract::mesh_rows(world, layout) {
+                let Some(&mesh) = rs.geometries.get(r.geometry) else {
+                    continue;
+                };
+                list.push(Drawn {
+                    entity: r.entity,
+                    geometry: r.geometry,
+                    mesh,
+                    part: None,
+                    visible: r.visible,
+                    layers: r.layers,
+                });
+            }
+            kept.list = Rc::new(list);
+            kept.list.clone()
         }
-    }
-    if let Some(layout) = &rs.draw.model {
-        for (e, v) in super::fx::rows(world, Some(layout)) {
-            let asset = v["asset"].as_f64().unwrap_or(0.0) as u64;
-            let Some(parts) = rs.models.get(&asset) else {
+        None => Rc::new(Vec::new()),
+    };
+    if let Some(layout) = &rs.draw.model
+        && let Ok(id) = world.id_by_name(&layout.schema)
+    {
+        // Read in place, as extraction reads them (decoding each row to
+        // JSON was half of this read).
+        let (asset, visible, layers) = (
+            Slot::of(layout, "asset"),
+            Slot::of(layout, "visible"),
+            Slot::of(layout, "layers"),
+        );
+        let mut rows = super::feel::byte_rows(world, id, layout);
+        og_core::sort::sort_by_key(&mut rows, |(e, _)| og_ecs::Entity::from_bits(*e).index());
+        for (e, bytes) in &rows {
+            let v = Row::new(layout, bytes);
+            let Some(parts) = rs.models.get(&(v.num(&asset).unwrap_or(0.0) as u64)) else {
                 continue;
             };
-            let m = h.world_of(e);
-            let visible = flag(&v, "visible", true);
-            let layers = v["layers"].as_u64().map_or(1, |x| x as u32);
+            let visible = v.flag(&visible).unwrap_or(true);
+            let layers = v.uint(&layers).map_or(1, |x| x as u32);
             for &(mesh, _, local) in parts.iter() {
-                out.push(Target {
-                    entity: e,
+                out.push(Drawn {
+                    entity: *e,
                     geometry: rs
                         .geometries
                         .iter()
                         .position(|g| *g == mesh)
                         .unwrap_or(usize::MAX),
                     mesh,
-                    transform: m * local,
+                    part: Some(local),
                     visible,
                     layers,
                 });
             }
         }
     }
-    out
+    meshes
+}
+
+/// The targets of `drawn`, their world matrices from `h`.
+fn compose(h: &mut Hierarchy, drawn: &[Drawn]) -> Vec<Target> {
+    drawn
+        .iter()
+        .map(|d| {
+            let m = h.world_of(d.entity);
+            Target {
+                entity: d.entity,
+                geometry: d.geometry,
+                mesh: d.mesh,
+                transform: d.part.map_or(m, |local| m * local),
+                visible: d.visible,
+                layers: d.layers,
+            }
+        })
+        .collect()
 }
 
 /// The probe's tick start: the drawn meshes as the tick starts, for a
-/// raycast from inside a system.
+/// raycast from inside a system. Their world matrices wait for the first
+/// such raycast ([`Record`]).
 pub(crate) fn before_tick(eng: &Engine, world: &mut World) {
     let Ok(mut rs) = eng.render.try_borrow_mut() else {
         return;
     };
     let tick = world.time().tick;
+    let mut models = match rs.geo.record.take() {
+        Some((_, Record::Drawn(_, models))) => models,
+        _ => Vec::new(),
+    };
     let mut h = std::mem::take(&mut rs.geo.hierarchy);
-    let list = targets(world, &rs, &mut h);
+    let mut kept = std::mem::take(&mut rs.geo.meshes);
+    let meshes = drawn(world, &rs, &mut h, &mut kept, &mut models);
     rs.geo.hierarchy = h;
-    rs.geo.record = Some((tick, Rc::new(list)));
+    rs.geo.meshes = kept;
+    rs.geo.record = Some((tick, Record::Drawn(meshes, models)));
 }
 
 pub fn og_render_raycast(world: u32, ray: String, desc: Option<String>) -> String {
@@ -1098,17 +1261,29 @@ pub fn og_render_raycast(world: u32, ray: String, desc: Option<String>) -> Strin
         // (`super::views`).
         let layers = d["layers"].as_u64().map_or(1, |x| x as u32);
         let list: Rc<Vec<Target>> = if running(eng.id).is_some() {
-            let rs = eng.render.borrow();
-            match &rs.geo.record {
-                Some((_, l)) => l.clone(),
+            let mut rs = eng.render.borrow_mut();
+            let GeoState {
+                record, hierarchy, ..
+            } = &mut rs.geo;
+            match record {
+                Some((_, r)) => r.targets(hierarchy),
                 None => Rc::new(Vec::new()),
             }
         } else {
             let mut rs = eng.render.borrow_mut();
-            let mut h = std::mem::take(&mut rs.geo.hierarchy);
-            let l = targets(eng.world()?, &rs, &mut h);
-            rs.geo.hierarchy = h;
-            Rc::new(l)
+            let mut h = std::mem::take(&mut rs.geo.now);
+            let mut models = Vec::new();
+            let meshes = drawn(
+                eng.world()?,
+                &rs,
+                &mut h,
+                &mut Meshes::default(),
+                &mut models,
+            );
+            let mut targets = compose(&mut h, &meshes);
+            targets.extend(compose(&mut h, &models));
+            rs.geo.now = h;
+            Rc::new(targets)
         };
         let mut rs = eng.render.borrow_mut();
         let RenderState { geo: g, scene, .. } = &mut *rs;
@@ -1682,12 +1857,46 @@ mod tests {
     }
 
     /// The tick's raycast record, each transform's bits, against the world
-    /// read afresh; and how many world matrices that tick's read composed.
+    /// read afresh; and how many world matrices composing it took. The
+    /// tick itself composes none: only a raycast from a system needs them.
     fn checked(w: u32, label: &str) -> usize {
         let eng = engine(w).unwrap();
-        let rs = eng.render.borrow();
-        let (_, list) = rs.geo.record.as_ref().expect("a record");
+        let mut rs = eng.render.borrow_mut();
+        assert_eq!(
+            rs.geo.hierarchy.composed, 0,
+            "{label}: the tick composed world matrices no raycast asked for"
+        );
+        let GeoState {
+            record, hierarchy, ..
+        } = &mut rs.geo;
+        let list = record.as_mut().expect("a record").1.targets(hierarchy);
         let mut fresh = Hierarchy::of(eng.world().unwrap());
+        // The rows kept from earlier ticks are those read afresh.
+        let mut models = Vec::new();
+        let meshes = drawn(
+            eng.world().unwrap(),
+            &rs,
+            &mut Hierarchy::default(),
+            &mut Meshes::default(),
+            &mut models,
+        );
+        let rows = |t: &[(u64, usize, bool, u32)]| t.to_vec();
+        assert_eq!(
+            rows(
+                &list
+                    .iter()
+                    .map(|t| (t.entity, t.geometry, t.visible, t.layers))
+                    .collect::<Vec<_>>()
+            ),
+            rows(
+                &meshes
+                    .iter()
+                    .chain(&models)
+                    .map(|d| (d.entity, d.geometry, d.visible, d.layers))
+                    .collect::<Vec<_>>()
+            ),
+            "{label}: the record's meshes are not the world's"
+        );
         for t in list.iter() {
             let want = fresh.world_of(t.entity).to_cols_array().map(f32::to_bits);
             assert_eq!(
@@ -1704,7 +1913,8 @@ mod tests {
     /// tick) composes only the world matrices that moved, and stays bit for
     /// bit what a fresh read composes through moves, a moved parent,
     /// reparenting, a removed transform and a despawn. Before it was
-    /// incremental, a tick where nothing moved composed all 350.
+    /// incremental, a tick where nothing moved composed all 350; before it
+    /// waited for a raycast, every tick composed what moved (`checked`).
     #[test]
     fn the_raycast_record_composes_only_what_moved() {
         set_hooks(Rc::new(Quiet));
@@ -1767,5 +1977,21 @@ mod tests {
         value(og_world_despawn(w, roots[8]));
         step("despawned");
         assert_eq!(step("still at the end"), 0);
+        // A mesh hidden and one given another geometry: the kept rows are
+        // read again (`checked` compares them with the world's).
+        let hidden = json!({ "visible": false }).to_string();
+        value(og_world_set(w, roots[2], "og.Mesh".into(), hidden));
+        let other = value(og_render_sphere_geometry(w, Some(r#"{"radius":2}"#.into())));
+        let swapped = json!({ "geometry": other }).to_string();
+        value(og_world_set(w, roots[5], "og.Mesh".into(), swapped));
+        step("a mesh hidden, one swapped");
+        let eng = engine(w).unwrap();
+        let rs = eng.render.borrow();
+        let Some((_, Record::Targets(list))) = &rs.geo.record else {
+            panic!("composed by checked");
+        };
+        let of = |e: f64| list.iter().find(|t| t.entity == e as u64).expect("drawn");
+        assert!(!of(roots[2]).visible);
+        assert_ne!(of(roots[5]).geometry, of(roots[6]).geometry);
     }
 }
