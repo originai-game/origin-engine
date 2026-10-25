@@ -1,0 +1,6222 @@
+[
+  {
+    "round": 0,
+    "before": [
+      8.078125,
+      7.8310546875,
+      7.607421875
+    ],
+    "after": [
+      8.078125,
+      7.8310546875,
+      7.607421875
+    ],
+    "value": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36",
+      "crossOriginIsolated": true,
+      "transport": "ring",
+      "entities": 10000,
+      "advanced": {
+        "ok": true,
+        "value": 2600
+      },
+      "beforeTick": 600,
+      "afterTick": 2600,
+      "hash": "47bec675f12794a5",
+      "engineTickMs": 0.5272199999988079,
+      "elapsedMs": 1054.4399999976158,
+      "systemsBefore": [
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.physics.queries",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll"
+          ],
+          "runs": 600,
+          "totalMs": 6.825000137090683,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.02499999850988388,
+          "name": "og.ui.begin",
+          "reads": [
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Input",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 600,
+          "totalMs": 20.870000012218952,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.terrain",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.0799999833106995,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.platform",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.3699999526143074,
+          "writes": [
+            "og.PlatformAnswered"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.stream",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 0.924999974668026,
+          "writes": [
+            "og.StreamEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.01000000536441803,
+          "name": "og.net",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 10.20499999821186,
+          "writes": [
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ai",
+          "reads": [
+            "og.WorldRestored",
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Camera",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.RenderSettings",
+            "og.Environment",
+            "og.PostEffects",
+            "og.Stylise",
+            "og.MaterialStyle",
+            "og.Lighting2D",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.AssetReady",
+            "og.AssetFailed",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Splash",
+            "og.Ragdoll",
+            "og.Fog",
+            "og.Sky",
+            "og.DayNight",
+            "og.Weather",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.MusicBeat",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.Steering",
+            "og.Perceivable",
+            "og.PlatformAnswered",
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync",
+            "og.AnimationEvent",
+            "og.FlipbookEvent",
+            "og.Skeleton2DEvent",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded",
+            "og.StreamEvent",
+            "Health",
+            "Velocity",
+            "Spin",
+            "og.KeyDown",
+            "og.KeyUp",
+            "og.PointerDown",
+            "og.PointerUp",
+            "og.PointerMove",
+            "og.Wheel",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 600,
+          "totalMs": 3.475000075995922,
+          "writes": [
+            "og.NavAgent",
+            "og.AiAgent",
+            "og.Perception",
+            "og.AiChanged"
+          ]
+        },
+        {
+          "matched": 10000,
+          "ms": 0.10500000417232513,
+          "name": "Move",
+          "reads": [
+            "Velocity"
+          ],
+          "runs": 600,
+          "totalMs": 105.40500006079674,
+          "writes": [
+            "og.Transform"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.tween",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.469999872148037,
+          "writes": [
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.NavAgent",
+            "og.Steering",
+            "og.AiAgent",
+            "og.Perception",
+            "og.Perceivable",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.PlayerInput",
+            "Health",
+            "Velocity",
+            "Spin"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.flipbook",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.7650000154972076,
+          "writes": [
+            "og.Flipbook",
+            "og.FlipbookEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.skeleton2d",
+          "reads": [
+            "og.Transform"
+          ],
+          "runs": 600,
+          "totalMs": 2.975000075995922,
+          "writes": [
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.Skeleton2DEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.video",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 2.2599999234080315,
+          "writes": [
+            "og.AudioSource",
+            "og.VideoPlayer"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.path",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 0.8650000393390656,
+          "writes": [
+            "og.Transform",
+            "og.PathFollower"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.timeline",
+          "reads": [
+            "og.Model"
+          ],
+          "runs": 600,
+          "totalMs": 2.005000002682209,
+          "writes": [
+            "og.Transform",
+            "og.Camera",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AudioSource",
+            "og.Timeline",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.anim",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 4.204999901354313,
+          "writes": [
+            "og.Transform",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.AnimationEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.tilemap",
+          "reads": [
+            "og.Tilemap"
+          ],
+          "runs": 600,
+          "totalMs": 1.5199999809265137,
+          "writes": [
+            "og.Transform",
+            "og.Collider"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.020000003278255463,
+          "name": "og.camera",
+          "reads": [
+            "og.Transform",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail"
+          ],
+          "runs": 600,
+          "totalMs": 15.674999997019768,
+          "writes": [
+            "og.Camera"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.nav",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 2.1050000563263893,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.NavAgent",
+            "og.Steering"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.ui.end",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 15.184999980032444,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ragdollTargets",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.Ragdoll"
+          ],
+          "runs": 600,
+          "totalMs": 0.7950000315904617,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.0299999937415123,
+          "name": "og.physics",
+          "reads": [
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Physics",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine"
+          ],
+          "runs": 600,
+          "totalMs": 47.03499986231327,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Splash",
+            "og.Ragdoll"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ui.sound",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 0.994999997317791,
+          "writes": [
+            "og.AudioSource"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.music",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.3099999949336052,
+          "writes": [
+            "og.Music",
+            "og.MusicBeat"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.audio",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx"
+          ],
+          "runs": 600,
+          "totalMs": 7.325000070035458,
+          "writes": [
+            "og.AudioSource",
+            "og.ReverbZone",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.AudioPlayback",
+            "og.AudioStream"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.sprite",
+          "reads": [
+            "og.Transform",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.Flipbook"
+          ],
+          "runs": 600,
+          "totalMs": 1.2200000509619713,
+          "writes": []
+        }
+      ],
+      "systemsAfter": [
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.physics.queries",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll"
+          ],
+          "runs": 2600,
+          "totalMs": 19.770000025629997,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.019999995827674866,
+          "name": "og.ui.begin",
+          "reads": [
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Input",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 2600,
+          "totalMs": 66.69000009447336,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.terrain",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.3600000739097595,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.platform",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.8749997913837433,
+          "writes": [
+            "og.PlatformAnswered"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.stream",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 2.890000030398369,
+          "writes": [
+            "og.StreamEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.009999997913837433,
+          "name": "og.net",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 30.189999990165234,
+          "writes": [
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.ai",
+          "reads": [
+            "og.WorldRestored",
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Camera",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.RenderSettings",
+            "og.Environment",
+            "og.PostEffects",
+            "og.Stylise",
+            "og.MaterialStyle",
+            "og.Lighting2D",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.AssetReady",
+            "og.AssetFailed",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Splash",
+            "og.Ragdoll",
+            "og.Fog",
+            "og.Sky",
+            "og.DayNight",
+            "og.Weather",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.MusicBeat",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.Steering",
+            "og.Perceivable",
+            "og.PlatformAnswered",
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync",
+            "og.AnimationEvent",
+            "og.FlipbookEvent",
+            "og.Skeleton2DEvent",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded",
+            "og.StreamEvent",
+            "Health",
+            "Velocity",
+            "Spin",
+            "og.KeyDown",
+            "og.KeyUp",
+            "og.PointerDown",
+            "og.PointerUp",
+            "og.PointerMove",
+            "og.Wheel",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 2600,
+          "totalMs": 7.195000059902668,
+          "writes": [
+            "og.NavAgent",
+            "og.AiAgent",
+            "og.Perception",
+            "og.AiChanged"
+          ]
+        },
+        {
+          "matched": 10000,
+          "ms": 0.0950000062584877,
+          "name": "Move",
+          "reads": [
+            "Velocity"
+          ],
+          "runs": 2600,
+          "totalMs": 327.0300002247095,
+          "writes": [
+            "og.Transform"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.tween",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 4.804999873042107,
+          "writes": [
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.NavAgent",
+            "og.Steering",
+            "og.AiAgent",
+            "og.Perception",
+            "og.Perceivable",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.PlayerInput",
+            "Health",
+            "Velocity",
+            "Spin"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.flipbook",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 6.210000053048134,
+          "writes": [
+            "og.Flipbook",
+            "og.FlipbookEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.skeleton2d",
+          "reads": [
+            "og.Transform"
+          ],
+          "runs": 2600,
+          "totalMs": 6.2750000804662704,
+          "writes": [
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.Skeleton2DEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.video",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 5.405000023543835,
+          "writes": [
+            "og.AudioSource",
+            "og.VideoPlayer"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.path",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 2.335000030696392,
+          "writes": [
+            "og.Transform",
+            "og.PathFollower"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.timeline",
+          "reads": [
+            "og.Model"
+          ],
+          "runs": 2600,
+          "totalMs": 4.549999974668026,
+          "writes": [
+            "og.Transform",
+            "og.Camera",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AudioSource",
+            "og.Timeline",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.anim",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 10.184999957680702,
+          "writes": [
+            "og.Transform",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.AnimationEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.tilemap",
+          "reads": [
+            "og.Tilemap"
+          ],
+          "runs": 2600,
+          "totalMs": 3.3749999031424522,
+          "writes": [
+            "og.Transform",
+            "og.Collider"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.02499999850988388,
+          "name": "og.camera",
+          "reads": [
+            "og.Transform",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail"
+          ],
+          "runs": 2600,
+          "totalMs": 56.42499976605177,
+          "writes": [
+            "og.Camera"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.nav",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 4.250000178813934,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.NavAgent",
+            "og.Steering"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.ui.end",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 29.00499990582466,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ragdollTargets",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.Ragdoll"
+          ],
+          "runs": 2600,
+          "totalMs": 2.0099999606609344,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.019999995827674866,
+          "name": "og.physics",
+          "reads": [
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Physics",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine"
+          ],
+          "runs": 2600,
+          "totalMs": 103.40000008791685,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Splash",
+            "og.Ragdoll"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ui.sound",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.005000129342079,
+          "writes": [
+            "og.AudioSource"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.music",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.1650001034140587,
+          "writes": [
+            "og.Music",
+            "og.MusicBeat"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.audio",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx"
+          ],
+          "runs": 2600,
+          "totalMs": 18.114999890327454,
+          "writes": [
+            "og.AudioSource",
+            "og.ReverbZone",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.AudioPlayback",
+            "og.AudioStream"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.sprite",
+          "reads": [
+            "og.Transform",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.Flipbook"
+          ],
+          "runs": 2600,
+          "totalMs": 3.1200000196695328,
+          "writes": []
+        }
+      ],
+      "entityBefore": {
+        "components": {
+          "Health": {
+            "hp": 100,
+            "max": 100
+          },
+          "Velocity": {
+            "v": [
+              0,
+              0,
+              1
+            ]
+          },
+          "og.Transform": {
+            "position": [
+              -0.40770972,
+              0,
+              -10.000153
+            ],
+            "quaternion": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "id": "enemy-0-0",
+        "kind": "entity",
+        "name": "enemy-0-0"
+      },
+      "entityAfter": {
+        "components": {
+          "Health": {
+            "hp": 100,
+            "max": 100
+          },
+          "Velocity": {
+            "v": [
+              0,
+              0,
+              1
+            ]
+          },
+          "og.Transform": {
+            "position": [
+              -0.40770972,
+              0,
+              23.333017
+            ],
+            "quaternion": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "id": "enemy-0-0",
+        "kind": "entity",
+        "name": "enemy-0-0"
+      }
+    }
+  },
+  {
+    "round": 1,
+    "before": [
+      8.078125,
+      7.8310546875,
+      7.607421875
+    ],
+    "after": [
+      8.07177734375,
+      7.83349609375,
+      7.609375
+    ],
+    "value": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36",
+      "crossOriginIsolated": true,
+      "transport": "ring",
+      "entities": 10000,
+      "advanced": {
+        "ok": true,
+        "value": 2600
+      },
+      "beforeTick": 600,
+      "afterTick": 2600,
+      "hash": "47bec675f12794a5",
+      "engineTickMs": 0.517622499998659,
+      "elapsedMs": 1035.2449999973178,
+      "systemsBefore": [
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.physics.queries",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll"
+          ],
+          "runs": 600,
+          "totalMs": 9.295000091195107,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.02499999850988388,
+          "name": "og.ui.begin",
+          "reads": [
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Input",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 600,
+          "totalMs": 21.859999872744083,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.terrain",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.3199999257922173,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.platform",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.2650000303983688,
+          "writes": [
+            "og.PlatformAnswered"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.stream",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 0.7750000581145287,
+          "writes": [
+            "og.StreamEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.01000000536441803,
+          "name": "og.net",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 10.344999998807907,
+          "writes": [
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ai",
+          "reads": [
+            "og.WorldRestored",
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Camera",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.RenderSettings",
+            "og.Environment",
+            "og.PostEffects",
+            "og.Stylise",
+            "og.MaterialStyle",
+            "og.Lighting2D",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.AssetReady",
+            "og.AssetFailed",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Splash",
+            "og.Ragdoll",
+            "og.Fog",
+            "og.Sky",
+            "og.DayNight",
+            "og.Weather",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.MusicBeat",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.Steering",
+            "og.Perceivable",
+            "og.PlatformAnswered",
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync",
+            "og.AnimationEvent",
+            "og.FlipbookEvent",
+            "og.Skeleton2DEvent",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded",
+            "og.StreamEvent",
+            "Health",
+            "Velocity",
+            "Spin",
+            "og.KeyDown",
+            "og.KeyUp",
+            "og.PointerDown",
+            "og.PointerUp",
+            "og.PointerMove",
+            "og.Wheel",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 600,
+          "totalMs": 2.8700000271201134,
+          "writes": [
+            "og.NavAgent",
+            "og.AiAgent",
+            "og.Perception",
+            "og.AiChanged"
+          ]
+        },
+        {
+          "matched": 10000,
+          "ms": 0.11499999463558197,
+          "name": "Move",
+          "reads": [
+            "Velocity"
+          ],
+          "runs": 600,
+          "totalMs": 112.6600000038743,
+          "writes": [
+            "og.Transform"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.tween",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.5649998933076859,
+          "writes": [
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.NavAgent",
+            "og.Steering",
+            "og.AiAgent",
+            "og.Perception",
+            "og.Perceivable",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.PlayerInput",
+            "Health",
+            "Velocity",
+            "Spin"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.flipbook",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.4199999570846558,
+          "writes": [
+            "og.Flipbook",
+            "og.FlipbookEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.skeleton2d",
+          "reads": [
+            "og.Transform"
+          ],
+          "runs": 600,
+          "totalMs": 2.7699999511241913,
+          "writes": [
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.Skeleton2DEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.video",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.920000083744526,
+          "writes": [
+            "og.AudioSource",
+            "og.VideoPlayer"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.path",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.0500000044703484,
+          "writes": [
+            "og.Transform",
+            "og.PathFollower"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.timeline",
+          "reads": [
+            "og.Model"
+          ],
+          "runs": 600,
+          "totalMs": 6.519999988377094,
+          "writes": [
+            "og.Transform",
+            "og.Camera",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AudioSource",
+            "og.Timeline",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.anim",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 4.929999880492687,
+          "writes": [
+            "og.Transform",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.AnimationEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.tilemap",
+          "reads": [
+            "og.Tilemap"
+          ],
+          "runs": 600,
+          "totalMs": 1.5900000408291817,
+          "writes": [
+            "og.Transform",
+            "og.Collider"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.015000000596046448,
+          "name": "og.camera",
+          "reads": [
+            "og.Transform",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail"
+          ],
+          "runs": 600,
+          "totalMs": 16.415000036358833,
+          "writes": [
+            "og.Camera"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.nav",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 2.070000045001507,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.NavAgent",
+            "og.Steering"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.01000000536441803,
+          "name": "og.ui.end",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 15.215000003576279,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ragdollTargets",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.Ragdoll"
+          ],
+          "runs": 600,
+          "totalMs": 1.3749999105930328,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.0299999937415123,
+          "name": "og.physics",
+          "reads": [
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Physics",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine"
+          ],
+          "runs": 600,
+          "totalMs": 49.520000129938126,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Splash",
+            "og.Ragdoll"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ui.sound",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 0.9349999576807022,
+          "writes": [
+            "og.AudioSource"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.music",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.3550000041723251,
+          "writes": [
+            "og.Music",
+            "og.MusicBeat"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.audio",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx"
+          ],
+          "runs": 600,
+          "totalMs": 7.53499998152256,
+          "writes": [
+            "og.AudioSource",
+            "og.ReverbZone",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.AudioPlayback",
+            "og.AudioStream"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.sprite",
+          "reads": [
+            "og.Transform",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.Flipbook"
+          ],
+          "runs": 600,
+          "totalMs": 1.0999999791383743,
+          "writes": []
+        }
+      ],
+      "systemsAfter": [
+        {
+          "matched": 0,
+          "ms": 0.019999995827674866,
+          "name": "og.physics.queries",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll"
+          ],
+          "runs": 2600,
+          "totalMs": 21.455000080168247,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.020000003278255463,
+          "name": "og.ui.begin",
+          "reads": [
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Input",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 2600,
+          "totalMs": 68.30499997735023,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.terrain",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.7149998918175697,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.platform",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.4750000536441803,
+          "writes": [
+            "og.PlatformAnswered"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.stream",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 2.6000000536441803,
+          "writes": [
+            "og.StreamEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.net",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 30.41000011563301,
+          "writes": [
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.ai",
+          "reads": [
+            "og.WorldRestored",
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Camera",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.RenderSettings",
+            "og.Environment",
+            "og.PostEffects",
+            "og.Stylise",
+            "og.MaterialStyle",
+            "og.Lighting2D",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.AssetReady",
+            "og.AssetFailed",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Splash",
+            "og.Ragdoll",
+            "og.Fog",
+            "og.Sky",
+            "og.DayNight",
+            "og.Weather",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.MusicBeat",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.Steering",
+            "og.Perceivable",
+            "og.PlatformAnswered",
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync",
+            "og.AnimationEvent",
+            "og.FlipbookEvent",
+            "og.Skeleton2DEvent",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded",
+            "og.StreamEvent",
+            "Health",
+            "Velocity",
+            "Spin",
+            "og.KeyDown",
+            "og.KeyUp",
+            "og.PointerDown",
+            "og.PointerUp",
+            "og.PointerMove",
+            "og.Wheel",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 2600,
+          "totalMs": 6.564999982714653,
+          "writes": [
+            "og.NavAgent",
+            "og.AiAgent",
+            "og.Perception",
+            "og.AiChanged"
+          ]
+        },
+        {
+          "matched": 10000,
+          "ms": 0.10000000149011612,
+          "name": "Move",
+          "reads": [
+            "Velocity"
+          ],
+          "runs": 2600,
+          "totalMs": 332.2149999588728,
+          "writes": [
+            "og.Transform"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.tween",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 5.144999951124191,
+          "writes": [
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.NavAgent",
+            "og.Steering",
+            "og.AiAgent",
+            "og.Perception",
+            "og.Perceivable",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.PlayerInput",
+            "Health",
+            "Velocity",
+            "Spin"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.flipbook",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 4.069999970495701,
+          "writes": [
+            "og.Flipbook",
+            "og.FlipbookEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.skeleton2d",
+          "reads": [
+            "og.Transform"
+          ],
+          "runs": 2600,
+          "totalMs": 5.754999972879887,
+          "writes": [
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.Skeleton2DEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.video",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 4.565000094473362,
+          "writes": [
+            "og.AudioSource",
+            "og.VideoPlayer"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.path",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 2.6999999210238457,
+          "writes": [
+            "og.Transform",
+            "og.PathFollower"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.timeline",
+          "reads": [
+            "og.Model"
+          ],
+          "runs": 2600,
+          "totalMs": 8.714999943971634,
+          "writes": [
+            "og.Transform",
+            "og.Camera",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AudioSource",
+            "og.Timeline",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.anim",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 9.969999983906746,
+          "writes": [
+            "og.Transform",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.AnimationEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.tilemap",
+          "reads": [
+            "og.Tilemap"
+          ],
+          "runs": 2600,
+          "totalMs": 3.8650000616908073,
+          "writes": [
+            "og.Transform",
+            "og.Collider"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.019999995827674866,
+          "name": "og.camera",
+          "reads": [
+            "og.Transform",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail"
+          ],
+          "runs": 2600,
+          "totalMs": 56.354999996721745,
+          "writes": [
+            "og.Camera"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.nav",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 4.055000104010105,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.NavAgent",
+            "og.Steering"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.01000000536441803,
+          "name": "og.ui.end",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 29.145000122487545,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ragdollTargets",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.Ragdoll"
+          ],
+          "runs": 2600,
+          "totalMs": 3.169999845325947,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.02499999850988388,
+          "name": "og.physics",
+          "reads": [
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Physics",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine"
+          ],
+          "runs": 2600,
+          "totalMs": 105.01500052958727,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Splash",
+            "og.Ragdoll"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ui.sound",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 2.8949999064207077,
+          "writes": [
+            "og.AudioSource"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.music",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.5249999836087227,
+          "writes": [
+            "og.Music",
+            "og.MusicBeat"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.009999997913837433,
+          "name": "og.audio",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx"
+          ],
+          "runs": 2600,
+          "totalMs": 17.18499991297722,
+          "writes": [
+            "og.AudioSource",
+            "og.ReverbZone",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.AudioPlayback",
+            "og.AudioStream"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.sprite",
+          "reads": [
+            "og.Transform",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.Flipbook"
+          ],
+          "runs": 2600,
+          "totalMs": 3.4149998649954796,
+          "writes": []
+        }
+      ],
+      "entityBefore": {
+        "components": {
+          "Health": {
+            "hp": 100,
+            "max": 100
+          },
+          "Velocity": {
+            "v": [
+              0,
+              0,
+              1
+            ]
+          },
+          "og.Transform": {
+            "position": [
+              -0.40770972,
+              0,
+              -10.000153
+            ],
+            "quaternion": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "id": "enemy-0-0",
+        "kind": "entity",
+        "name": "enemy-0-0"
+      },
+      "entityAfter": {
+        "components": {
+          "Health": {
+            "hp": 100,
+            "max": 100
+          },
+          "Velocity": {
+            "v": [
+              0,
+              0,
+              1
+            ]
+          },
+          "og.Transform": {
+            "position": [
+              -0.40770972,
+              0,
+              23.333017
+            ],
+            "quaternion": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "id": "enemy-0-0",
+        "kind": "entity",
+        "name": "enemy-0-0"
+      }
+    }
+  },
+  {
+    "round": 2,
+    "before": [
+      8.07177734375,
+      7.83349609375,
+      7.609375
+    ],
+    "after": [
+      7.98583984375,
+      7.8193359375,
+      7.60546875
+    ],
+    "value": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36",
+      "crossOriginIsolated": true,
+      "transport": "ring",
+      "entities": 10000,
+      "advanced": {
+        "ok": true,
+        "value": 2600
+      },
+      "beforeTick": 600,
+      "afterTick": 2600,
+      "hash": "47bec675f12794a5",
+      "engineTickMs": 0.5517874999977648,
+      "elapsedMs": 1103.5749999955297,
+      "systemsBefore": [
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.physics.queries",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll"
+          ],
+          "runs": 600,
+          "totalMs": 8.514999985694885,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.025000005960464478,
+          "name": "og.ui.begin",
+          "reads": [
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Input",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 600,
+          "totalMs": 25.119999922811985,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.terrain",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.3750000298023224,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.platform",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.4649999886751175,
+          "writes": [
+            "og.PlatformAnswered"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.stream",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 0.8450000360608101,
+          "writes": [
+            "og.StreamEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.015000000596046448,
+          "name": "og.net",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 13.860000014305115,
+          "writes": [
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.ai",
+          "reads": [
+            "og.WorldRestored",
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Camera",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.RenderSettings",
+            "og.Environment",
+            "og.PostEffects",
+            "og.Stylise",
+            "og.MaterialStyle",
+            "og.Lighting2D",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.AssetReady",
+            "og.AssetFailed",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Splash",
+            "og.Ragdoll",
+            "og.Fog",
+            "og.Sky",
+            "og.DayNight",
+            "og.Weather",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.MusicBeat",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.Steering",
+            "og.Perceivable",
+            "og.PlatformAnswered",
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync",
+            "og.AnimationEvent",
+            "og.FlipbookEvent",
+            "og.Skeleton2DEvent",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded",
+            "og.StreamEvent",
+            "Health",
+            "Velocity",
+            "Spin",
+            "og.KeyDown",
+            "og.KeyUp",
+            "og.PointerDown",
+            "og.PointerUp",
+            "og.PointerMove",
+            "og.Wheel",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 600,
+          "totalMs": 3.9749999791383743,
+          "writes": [
+            "og.NavAgent",
+            "og.AiAgent",
+            "og.Perception",
+            "og.AiChanged"
+          ]
+        },
+        {
+          "matched": 10000,
+          "ms": 0.14000000059604645,
+          "name": "Move",
+          "reads": [
+            "Velocity"
+          ],
+          "runs": 600,
+          "totalMs": 153.83000000566244,
+          "writes": [
+            "og.Transform"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.tween",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.629999965429306,
+          "writes": [
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.NavAgent",
+            "og.Steering",
+            "og.AiAgent",
+            "og.Perception",
+            "og.Perceivable",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.PlayerInput",
+            "Health",
+            "Velocity",
+            "Spin"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.flipbook",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 2.07500009983778,
+          "writes": [
+            "og.Flipbook",
+            "og.FlipbookEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.skeleton2d",
+          "reads": [
+            "og.Transform"
+          ],
+          "runs": 600,
+          "totalMs": 3.4499999433755875,
+          "writes": [
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.Skeleton2DEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.video",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 2.5700000673532486,
+          "writes": [
+            "og.AudioSource",
+            "og.VideoPlayer"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.path",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.01999993622303,
+          "writes": [
+            "og.Transform",
+            "og.PathFollower"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.timeline",
+          "reads": [
+            "og.Model"
+          ],
+          "runs": 600,
+          "totalMs": 2.4099999740719795,
+          "writes": [
+            "og.Transform",
+            "og.Camera",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AudioSource",
+            "og.Timeline",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.anim",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 5.614999949932098,
+          "writes": [
+            "og.Transform",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.AnimationEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.tilemap",
+          "reads": [
+            "og.Tilemap"
+          ],
+          "runs": 600,
+          "totalMs": 2.1900000646710396,
+          "writes": [
+            "og.Transform",
+            "og.Collider"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.020000003278255463,
+          "name": "og.camera",
+          "reads": [
+            "og.Transform",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail"
+          ],
+          "runs": 600,
+          "totalMs": 20.56500006467104,
+          "writes": [
+            "og.Camera"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.nav",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 2.284999944269657,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.NavAgent",
+            "og.Steering"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.009999997913837433,
+          "name": "og.ui.end",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 21.384999953210354,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ragdollTargets",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.Ragdoll"
+          ],
+          "runs": 600,
+          "totalMs": 0.8400000110268593,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.03999999910593033,
+          "name": "og.physics",
+          "reads": [
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Physics",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine"
+          ],
+          "runs": 600,
+          "totalMs": 64.905000038445,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Splash",
+            "og.Ragdoll"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ui.sound",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.2299998998641968,
+          "writes": [
+            "og.AudioSource"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.music",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.7400000095367432,
+          "writes": [
+            "og.Music",
+            "og.MusicBeat"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.audio",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx"
+          ],
+          "runs": 600,
+          "totalMs": 9.835000030696392,
+          "writes": [
+            "og.AudioSource",
+            "og.ReverbZone",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.AudioPlayback",
+            "og.AudioStream"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.sprite",
+          "reads": [
+            "og.Transform",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.Flipbook"
+          ],
+          "runs": 600,
+          "totalMs": 1.4350000470876694,
+          "writes": []
+        }
+      ],
+      "systemsAfter": [
+        {
+          "matched": 0,
+          "ms": 0.009999997913837433,
+          "name": "og.physics.queries",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll"
+          ],
+          "runs": 2600,
+          "totalMs": 20.87000000476837,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.020000003278255463,
+          "name": "og.ui.begin",
+          "reads": [
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Input",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 2600,
+          "totalMs": 73.71999987214804,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.terrain",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.550000123679638,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.platform",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.75,
+          "writes": [
+            "og.PlatformAnswered"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.stream",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 2.5099999234080315,
+          "writes": [
+            "og.StreamEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.009999997913837433,
+          "name": "og.net",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 36.00000008940697,
+          "writes": [
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ai",
+          "reads": [
+            "og.WorldRestored",
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Camera",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.RenderSettings",
+            "og.Environment",
+            "og.PostEffects",
+            "og.Stylise",
+            "og.MaterialStyle",
+            "og.Lighting2D",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.AssetReady",
+            "og.AssetFailed",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Splash",
+            "og.Ragdoll",
+            "og.Fog",
+            "og.Sky",
+            "og.DayNight",
+            "og.Weather",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.MusicBeat",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.Steering",
+            "og.Perceivable",
+            "og.PlatformAnswered",
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync",
+            "og.AnimationEvent",
+            "og.FlipbookEvent",
+            "og.Skeleton2DEvent",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded",
+            "og.StreamEvent",
+            "Health",
+            "Velocity",
+            "Spin",
+            "og.KeyDown",
+            "og.KeyUp",
+            "og.PointerDown",
+            "og.PointerUp",
+            "og.PointerMove",
+            "og.Wheel",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 2600,
+          "totalMs": 8.459999956190586,
+          "writes": [
+            "og.NavAgent",
+            "og.AiAgent",
+            "og.Perception",
+            "og.AiChanged"
+          ]
+        },
+        {
+          "matched": 10000,
+          "ms": 0.125,
+          "name": "Move",
+          "reads": [
+            "Velocity"
+          ],
+          "runs": 2600,
+          "totalMs": 388.43499997258186,
+          "writes": [
+            "og.Transform"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.tween",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 7.219999931752682,
+          "writes": [
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.NavAgent",
+            "og.Steering",
+            "og.AiAgent",
+            "og.Perception",
+            "og.Perceivable",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.PlayerInput",
+            "Health",
+            "Velocity",
+            "Spin"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.flipbook",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 4.995000094175339,
+          "writes": [
+            "og.Flipbook",
+            "og.FlipbookEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.skeleton2d",
+          "reads": [
+            "og.Transform"
+          ],
+          "runs": 2600,
+          "totalMs": 7.034999996423721,
+          "writes": [
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.Skeleton2DEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.video",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 5.285000167787075,
+          "writes": [
+            "og.AudioSource",
+            "og.VideoPlayer"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.path",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 2.860000066459179,
+          "writes": [
+            "og.Transform",
+            "og.PathFollower"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.timeline",
+          "reads": [
+            "og.Model"
+          ],
+          "runs": 2600,
+          "totalMs": 4.869999922811985,
+          "writes": [
+            "og.Transform",
+            "og.Camera",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AudioSource",
+            "og.Timeline",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.anim",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 11.654999800026417,
+          "writes": [
+            "og.Transform",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.AnimationEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.tilemap",
+          "reads": [
+            "og.Tilemap"
+          ],
+          "runs": 2600,
+          "totalMs": 3.99499998241663,
+          "writes": [
+            "og.Transform",
+            "og.Collider"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.020000003278255463,
+          "name": "og.camera",
+          "reads": [
+            "og.Transform",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail"
+          ],
+          "runs": 2600,
+          "totalMs": 63.01000012457371,
+          "writes": [
+            "og.Camera"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.nav",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 4.884999983012676,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.NavAgent",
+            "og.Steering"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.ui.end",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 37.91499999910593,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ragdollTargets",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.Ragdoll"
+          ],
+          "runs": 2600,
+          "totalMs": 1.950000025331974,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.02499999850988388,
+          "name": "og.physics",
+          "reads": [
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Physics",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine"
+          ],
+          "runs": 2600,
+          "totalMs": 125.33499993383884,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Splash",
+            "og.Ragdoll"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.ui.sound",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.289999946951866,
+          "writes": [
+            "og.AudioSource"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.music",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 4.029999926686287,
+          "writes": [
+            "og.Music",
+            "og.MusicBeat"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.audio",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx"
+          ],
+          "runs": 2600,
+          "totalMs": 20.605000160634518,
+          "writes": [
+            "og.AudioSource",
+            "og.ReverbZone",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.AudioPlayback",
+            "og.AudioStream"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.sprite",
+          "reads": [
+            "og.Transform",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.Flipbook"
+          ],
+          "runs": 2600,
+          "totalMs": 3.4750000834465027,
+          "writes": []
+        }
+      ],
+      "entityBefore": {
+        "components": {
+          "Health": {
+            "hp": 100,
+            "max": 100
+          },
+          "Velocity": {
+            "v": [
+              0,
+              0,
+              1
+            ]
+          },
+          "og.Transform": {
+            "position": [
+              -0.40770972,
+              0,
+              -10.000153
+            ],
+            "quaternion": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "id": "enemy-0-0",
+        "kind": "entity",
+        "name": "enemy-0-0"
+      },
+      "entityAfter": {
+        "components": {
+          "Health": {
+            "hp": 100,
+            "max": 100
+          },
+          "Velocity": {
+            "v": [
+              0,
+              0,
+              1
+            ]
+          },
+          "og.Transform": {
+            "position": [
+              -0.40770972,
+              0,
+              23.333017
+            ],
+            "quaternion": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "id": "enemy-0-0",
+        "kind": "entity",
+        "name": "enemy-0-0"
+      }
+    }
+  },
+  {
+    "round": 3,
+    "before": [
+      7.98583984375,
+      7.8193359375,
+      7.60546875
+    ],
+    "after": [
+      7.98583984375,
+      7.8193359375,
+      7.60546875
+    ],
+    "value": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36",
+      "crossOriginIsolated": true,
+      "transport": "ring",
+      "entities": 10000,
+      "advanced": {
+        "ok": true,
+        "value": 2600
+      },
+      "beforeTick": 600,
+      "afterTick": 2600,
+      "hash": "47bec675f12794a5",
+      "engineTickMs": 0.5226825000010431,
+      "elapsedMs": 1045.3650000020862,
+      "systemsBefore": [
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.physics.queries",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll"
+          ],
+          "runs": 600,
+          "totalMs": 7.320000052452087,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.019999995827674866,
+          "name": "og.ui.begin",
+          "reads": [
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Input",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 600,
+          "totalMs": 22.019999958574772,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.terrain",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.5049999803304672,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.platform",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.3749999850988388,
+          "writes": [
+            "og.PlatformAnswered"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.stream",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 0.7750000059604645,
+          "writes": [
+            "og.StreamEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.net",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 10.5450000166893,
+          "writes": [
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.ai",
+          "reads": [
+            "og.WorldRestored",
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Camera",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.RenderSettings",
+            "og.Environment",
+            "og.PostEffects",
+            "og.Stylise",
+            "og.MaterialStyle",
+            "og.Lighting2D",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.AssetReady",
+            "og.AssetFailed",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Splash",
+            "og.Ragdoll",
+            "og.Fog",
+            "og.Sky",
+            "og.DayNight",
+            "og.Weather",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.MusicBeat",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.Steering",
+            "og.Perceivable",
+            "og.PlatformAnswered",
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync",
+            "og.AnimationEvent",
+            "og.FlipbookEvent",
+            "og.Skeleton2DEvent",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded",
+            "og.StreamEvent",
+            "Health",
+            "Velocity",
+            "Spin",
+            "og.KeyDown",
+            "og.KeyUp",
+            "og.PointerDown",
+            "og.PointerUp",
+            "og.PointerMove",
+            "og.Wheel",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 600,
+          "totalMs": 3.870000034570694,
+          "writes": [
+            "og.NavAgent",
+            "og.AiAgent",
+            "og.Perception",
+            "og.AiChanged"
+          ]
+        },
+        {
+          "matched": 10000,
+          "ms": 0.10999999940395355,
+          "name": "Move",
+          "reads": [
+            "Velocity"
+          ],
+          "runs": 600,
+          "totalMs": 113.24999988824129,
+          "writes": [
+            "og.Transform"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.tween",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.6849999502301216,
+          "writes": [
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.NavAgent",
+            "og.Steering",
+            "og.AiAgent",
+            "og.Perception",
+            "og.Perceivable",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.PlayerInput",
+            "Health",
+            "Velocity",
+            "Spin"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.flipbook",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.6800001114606857,
+          "writes": [
+            "og.Flipbook",
+            "og.FlipbookEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.skeleton2d",
+          "reads": [
+            "og.Transform"
+          ],
+          "runs": 600,
+          "totalMs": 2.6649999767541885,
+          "writes": [
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.Skeleton2DEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.video",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.9199999868869781,
+          "writes": [
+            "og.AudioSource",
+            "og.VideoPlayer"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.path",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 0.7850000262260437,
+          "writes": [
+            "og.Transform",
+            "og.PathFollower"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.timeline",
+          "reads": [
+            "og.Model"
+          ],
+          "runs": 600,
+          "totalMs": 2.395000033080578,
+          "writes": [
+            "og.Transform",
+            "og.Camera",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AudioSource",
+            "og.Timeline",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.anim",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 8.17999992519617,
+          "writes": [
+            "og.Transform",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.AnimationEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.tilemap",
+          "reads": [
+            "og.Tilemap"
+          ],
+          "runs": 600,
+          "totalMs": 1.8349999487400055,
+          "writes": [
+            "og.Transform",
+            "og.Collider"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.01499999314546585,
+          "name": "og.camera",
+          "reads": [
+            "og.Transform",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail"
+          ],
+          "runs": 600,
+          "totalMs": 17.175000086426735,
+          "writes": [
+            "og.Camera"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.nav",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 2.3800000101327896,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.NavAgent",
+            "og.Steering"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.01000000536441803,
+          "name": "og.ui.end",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 17.325000025331974,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ragdollTargets",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.Ragdoll"
+          ],
+          "runs": 600,
+          "totalMs": 0.8950000107288361,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.02499999850988388,
+          "name": "og.physics",
+          "reads": [
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Physics",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine"
+          ],
+          "runs": 600,
+          "totalMs": 52.235000021755695,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Splash",
+            "og.Ragdoll"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ui.sound",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 0.9900000393390656,
+          "writes": [
+            "og.AudioSource"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.music",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.3300000578165054,
+          "writes": [
+            "og.Music",
+            "og.MusicBeat"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.audio",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx"
+          ],
+          "runs": 600,
+          "totalMs": 8.039999909698963,
+          "writes": [
+            "og.AudioSource",
+            "og.ReverbZone",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.AudioPlayback",
+            "og.AudioStream"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.sprite",
+          "reads": [
+            "og.Transform",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.Flipbook"
+          ],
+          "runs": 600,
+          "totalMs": 1.2300000935792923,
+          "writes": []
+        }
+      ],
+      "systemsAfter": [
+        {
+          "matched": 0,
+          "ms": 0.009999997913837433,
+          "name": "og.physics.queries",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll"
+          ],
+          "runs": 2600,
+          "totalMs": 18.97500029951334,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.030000001192092896,
+          "name": "og.ui.begin",
+          "reads": [
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Input",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 2600,
+          "totalMs": 67.81999978423119,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.terrain",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.8650000765919685,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.platform",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.585000105202198,
+          "writes": [
+            "og.PlatformAnswered"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.stream",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 2.3099999502301216,
+          "writes": [
+            "og.StreamEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.net",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 29.759999930858612,
+          "writes": [
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.ai",
+          "reads": [
+            "og.WorldRestored",
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Camera",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.RenderSettings",
+            "og.Environment",
+            "og.PostEffects",
+            "og.Stylise",
+            "og.MaterialStyle",
+            "og.Lighting2D",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.AssetReady",
+            "og.AssetFailed",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Splash",
+            "og.Ragdoll",
+            "og.Fog",
+            "og.Sky",
+            "og.DayNight",
+            "og.Weather",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.MusicBeat",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.Steering",
+            "og.Perceivable",
+            "og.PlatformAnswered",
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync",
+            "og.AnimationEvent",
+            "og.FlipbookEvent",
+            "og.Skeleton2DEvent",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded",
+            "og.StreamEvent",
+            "Health",
+            "Velocity",
+            "Spin",
+            "og.KeyDown",
+            "og.KeyUp",
+            "og.PointerDown",
+            "og.PointerUp",
+            "og.PointerMove",
+            "og.Wheel",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 2600,
+          "totalMs": 7.490000016987324,
+          "writes": [
+            "og.NavAgent",
+            "og.AiAgent",
+            "og.Perception",
+            "og.AiChanged"
+          ]
+        },
+        {
+          "matched": 10000,
+          "ms": 0.0949999988079071,
+          "name": "Move",
+          "reads": [
+            "Velocity"
+          ],
+          "runs": 2600,
+          "totalMs": 337.1549998149276,
+          "writes": [
+            "og.Transform"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.tween",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 4.8599999994039536,
+          "writes": [
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.NavAgent",
+            "og.Steering",
+            "og.AiAgent",
+            "og.Perception",
+            "og.Perceivable",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.PlayerInput",
+            "Health",
+            "Velocity",
+            "Spin"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.flipbook",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 4.025000087916851,
+          "writes": [
+            "og.Flipbook",
+            "og.FlipbookEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.skeleton2d",
+          "reads": [
+            "og.Transform"
+          ],
+          "runs": 2600,
+          "totalMs": 5.700000002980232,
+          "writes": [
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.Skeleton2DEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.video",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 4.82000008970499,
+          "writes": [
+            "og.AudioSource",
+            "og.VideoPlayer"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.path",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 2.3249998539686203,
+          "writes": [
+            "og.Transform",
+            "og.PathFollower"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.timeline",
+          "reads": [
+            "og.Model"
+          ],
+          "runs": 2600,
+          "totalMs": 5.495000049471855,
+          "writes": [
+            "og.Transform",
+            "og.Camera",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AudioSource",
+            "og.Timeline",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.anim",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 13.494999930262566,
+          "writes": [
+            "og.Transform",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.AnimationEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.tilemap",
+          "reads": [
+            "og.Tilemap"
+          ],
+          "runs": 2600,
+          "totalMs": 4.07499985396862,
+          "writes": [
+            "og.Transform",
+            "og.Collider"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.019999995827674866,
+          "name": "og.camera",
+          "reads": [
+            "og.Transform",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail"
+          ],
+          "runs": 2600,
+          "totalMs": 57.41000021994114,
+          "writes": [
+            "og.Camera"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.nav",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 4.25999990105629,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.NavAgent",
+            "og.Steering"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.009999997913837433,
+          "name": "og.ui.end",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 31.319999888539314,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ragdollTargets",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.Ragdoll"
+          ],
+          "runs": 2600,
+          "totalMs": 1.8699999675154686,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.025000005960464478,
+          "name": "og.physics",
+          "reads": [
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Physics",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine"
+          ],
+          "runs": 2600,
+          "totalMs": 108.24999990314245,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Splash",
+            "og.Ragdoll"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ui.sound",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.15000007301569,
+          "writes": [
+            "og.AudioSource"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.music",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.389999955892563,
+          "writes": [
+            "og.Music",
+            "og.MusicBeat"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.audio",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx"
+          ],
+          "runs": 2600,
+          "totalMs": 17.895000249147415,
+          "writes": [
+            "og.AudioSource",
+            "og.ReverbZone",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.AudioPlayback",
+            "og.AudioStream"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.sprite",
+          "reads": [
+            "og.Transform",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.Flipbook"
+          ],
+          "runs": 2600,
+          "totalMs": 3.240000121295452,
+          "writes": []
+        }
+      ],
+      "entityBefore": {
+        "components": {
+          "Health": {
+            "hp": 100,
+            "max": 100
+          },
+          "Velocity": {
+            "v": [
+              0,
+              0,
+              1
+            ]
+          },
+          "og.Transform": {
+            "position": [
+              -0.40770972,
+              0,
+              -10.000153
+            ],
+            "quaternion": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "id": "enemy-0-0",
+        "kind": "entity",
+        "name": "enemy-0-0"
+      },
+      "entityAfter": {
+        "components": {
+          "Health": {
+            "hp": 100,
+            "max": 100
+          },
+          "Velocity": {
+            "v": [
+              0,
+              0,
+              1
+            ]
+          },
+          "og.Transform": {
+            "position": [
+              -0.40770972,
+              0,
+              23.333017
+            ],
+            "quaternion": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "id": "enemy-0-0",
+        "kind": "entity",
+        "name": "enemy-0-0"
+      }
+    }
+  },
+  {
+    "round": 4,
+    "before": [
+      7.98583984375,
+      7.8193359375,
+      7.60546875
+    ],
+    "after": [
+      7.82666015625,
+      7.7890625,
+      7.595703125
+    ],
+    "value": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36",
+      "crossOriginIsolated": true,
+      "transport": "ring",
+      "entities": 10000,
+      "advanced": {
+        "ok": true,
+        "value": 2600
+      },
+      "beforeTick": 600,
+      "afterTick": 2600,
+      "hash": "47bec675f12794a5",
+      "engineTickMs": 0.5221924999989569,
+      "elapsedMs": 1044.3849999979138,
+      "systemsBefore": [
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.physics.queries",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll"
+          ],
+          "runs": 600,
+          "totalMs": 7.174999974668026,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.019999995827674866,
+          "name": "og.ui.begin",
+          "reads": [
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Input",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 600,
+          "totalMs": 24.259999953210354,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.terrain",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.184999980032444,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.platform",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.3200000151991844,
+          "writes": [
+            "og.PlatformAnswered"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.stream",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 0.85999995470047,
+          "writes": [
+            "og.StreamEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.009999997913837433,
+          "name": "og.net",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 9.90999997407198,
+          "writes": [
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ai",
+          "reads": [
+            "og.WorldRestored",
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Camera",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.RenderSettings",
+            "og.Environment",
+            "og.PostEffects",
+            "og.Stylise",
+            "og.MaterialStyle",
+            "og.Lighting2D",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.AssetReady",
+            "og.AssetFailed",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Splash",
+            "og.Ragdoll",
+            "og.Fog",
+            "og.Sky",
+            "og.DayNight",
+            "og.Weather",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.MusicBeat",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.Steering",
+            "og.Perceivable",
+            "og.PlatformAnswered",
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync",
+            "og.AnimationEvent",
+            "og.FlipbookEvent",
+            "og.Skeleton2DEvent",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded",
+            "og.StreamEvent",
+            "Health",
+            "Velocity",
+            "Spin",
+            "og.KeyDown",
+            "og.KeyUp",
+            "og.PointerDown",
+            "og.PointerUp",
+            "og.PointerMove",
+            "og.Wheel",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 600,
+          "totalMs": 2.5999999940395355,
+          "writes": [
+            "og.NavAgent",
+            "og.AiAgent",
+            "og.Perception",
+            "og.AiChanged"
+          ]
+        },
+        {
+          "matched": 10000,
+          "ms": 0.10499999672174454,
+          "name": "Move",
+          "reads": [
+            "Velocity"
+          ],
+          "runs": 600,
+          "totalMs": 110.46000000089407,
+          "writes": [
+            "og.Transform"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.tween",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.6749999597668648,
+          "writes": [
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.NavAgent",
+            "og.Steering",
+            "og.AiAgent",
+            "og.Perception",
+            "og.Perceivable",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.PlayerInput",
+            "Health",
+            "Velocity",
+            "Spin"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.flipbook",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.605000078678131,
+          "writes": [
+            "og.Flipbook",
+            "og.FlipbookEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.skeleton2d",
+          "reads": [
+            "og.Transform"
+          ],
+          "runs": 600,
+          "totalMs": 2.660000056028366,
+          "writes": [
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.Skeleton2DEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.video",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 2.2599999234080315,
+          "writes": [
+            "og.AudioSource",
+            "og.VideoPlayer"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.path",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 0.890000008046627,
+          "writes": [
+            "og.Transform",
+            "og.PathFollower"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.timeline",
+          "reads": [
+            "og.Model"
+          ],
+          "runs": 600,
+          "totalMs": 2.1099999621510506,
+          "writes": [
+            "og.Transform",
+            "og.Camera",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AudioSource",
+            "og.Timeline",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.anim",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 4.280000075697899,
+          "writes": [
+            "og.Transform",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.AnimationEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.tilemap",
+          "reads": [
+            "og.Tilemap"
+          ],
+          "runs": 600,
+          "totalMs": 1.4949999749660492,
+          "writes": [
+            "og.Transform",
+            "og.Collider"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.019999995827674866,
+          "name": "og.camera",
+          "reads": [
+            "og.Transform",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail"
+          ],
+          "runs": 600,
+          "totalMs": 15.359999984502792,
+          "writes": [
+            "og.Camera"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.nav",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 2.054999992251396,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.NavAgent",
+            "og.Steering"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.01000000536441803,
+          "name": "og.ui.end",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 15.26000002026558,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ragdollTargets",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.Ragdoll"
+          ],
+          "runs": 600,
+          "totalMs": 0.7200000360608101,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.0299999937415123,
+          "name": "og.physics",
+          "reads": [
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Physics",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine"
+          ],
+          "runs": 600,
+          "totalMs": 57.53999997675419,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Splash",
+            "og.Ragdoll"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ui.sound",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 0.9750000685453415,
+          "writes": [
+            "og.AudioSource"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.music",
+          "reads": [],
+          "runs": 600,
+          "totalMs": 1.3099999502301216,
+          "writes": [
+            "og.Music",
+            "og.MusicBeat"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.audio",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx"
+          ],
+          "runs": 600,
+          "totalMs": 6.895000010728836,
+          "writes": [
+            "og.AudioSource",
+            "og.ReverbZone",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.AudioPlayback",
+            "og.AudioStream"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.sprite",
+          "reads": [
+            "og.Transform",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.Flipbook"
+          ],
+          "runs": 600,
+          "totalMs": 1.1250000223517418,
+          "writes": []
+        }
+      ],
+      "systemsAfter": [
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.physics.queries",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll"
+          ],
+          "runs": 2600,
+          "totalMs": 20.31000004708767,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.019999995827674866,
+          "name": "og.ui.begin",
+          "reads": [
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Input",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 2600,
+          "totalMs": 69.89499997347593,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.terrain",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.5050000846385956,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.platform",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.569999948143959,
+          "writes": [
+            "og.PlatformAnswered"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.stream",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 2.7549998909235,
+          "writes": [
+            "og.StreamEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.net",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 30.145000115036964,
+          "writes": [
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ai",
+          "reads": [
+            "og.WorldRestored",
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.TextInput",
+            "og.A11yAction",
+            "og.Camera",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.RenderSettings",
+            "og.Environment",
+            "og.PostEffects",
+            "og.Stylise",
+            "og.MaterialStyle",
+            "og.Lighting2D",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.AssetReady",
+            "og.AssetFailed",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Physics",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Splash",
+            "og.Ragdoll",
+            "og.Fog",
+            "og.Sky",
+            "og.DayNight",
+            "og.Weather",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.MusicBeat",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.Steering",
+            "og.Perceivable",
+            "og.PlatformAnswered",
+            "og.RoomJoined",
+            "og.RoomPeerJoined",
+            "og.RoomPeerLeft",
+            "og.RoomMessage",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.Lockstep",
+            "og.PlayerInput",
+            "og.Desync",
+            "og.AnimationEvent",
+            "og.FlipbookEvent",
+            "og.Skeleton2DEvent",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded",
+            "og.StreamEvent",
+            "Health",
+            "Velocity",
+            "Spin",
+            "og.KeyDown",
+            "og.KeyUp",
+            "og.PointerDown",
+            "og.PointerUp",
+            "og.PointerMove",
+            "og.Wheel",
+            "og.Pointers",
+            "og.Gamepad"
+          ],
+          "runs": 2600,
+          "totalMs": 6.60499994456768,
+          "writes": [
+            "og.NavAgent",
+            "og.AiAgent",
+            "og.Perception",
+            "og.AiChanged"
+          ]
+        },
+        {
+          "matched": 10000,
+          "ms": 0.0949999988079071,
+          "name": "Move",
+          "reads": [
+            "Velocity"
+          ],
+          "runs": 2600,
+          "totalMs": 330.30000001192093,
+          "writes": [
+            "og.Transform"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.tween",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 6.124999947845936,
+          "writes": [
+            "og.Transform",
+            "og.Parent",
+            "og.MatrixWorld",
+            "og.OrbitCamera",
+            "og.FollowCamera",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail",
+            "og.Mesh",
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.Light2D",
+            "og.Occluder2D",
+            "og.Decal",
+            "og.ParticleSystem",
+            "og.Trail",
+            "og.Beam",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.ReflectionProbe",
+            "og.Lines",
+            "og.Points",
+            "og.CameraView",
+            "og.Mirror",
+            "og.RectLight",
+            "og.LightVolume",
+            "og.Model",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Velocity",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.Vehicle",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine",
+            "og.Ragdoll",
+            "og.Water",
+            "og.Water2D",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.Flipbook",
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.TweenCompleted",
+            "og.Tilemap",
+            "og.AudioSource",
+            "og.AudioListener",
+            "og.AudioBusFx",
+            "og.ReverbZone",
+            "og.Music",
+            "og.NavAgent",
+            "og.Steering",
+            "og.AiAgent",
+            "og.Perception",
+            "og.Perceivable",
+            "og.Terrain",
+            "og.TerrainScatter",
+            "og.VideoPlayer",
+            "og.PathFollower",
+            "og.Timeline",
+            "og.PlayerInput",
+            "Health",
+            "Velocity",
+            "Spin"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.flipbook",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 4.035000018775463,
+          "writes": [
+            "og.Flipbook",
+            "og.FlipbookEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.skeleton2d",
+          "reads": [
+            "og.Transform"
+          ],
+          "runs": 2600,
+          "totalMs": 5.280000001192093,
+          "writes": [
+            "og.Skeleton2D",
+            "og.IkTarget2D",
+            "og.Skeleton2DEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.video",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 6.284999966621399,
+          "writes": [
+            "og.AudioSource",
+            "og.VideoPlayer"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.path",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 2.465000070631504,
+          "writes": [
+            "og.Transform",
+            "og.PathFollower"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.timeline",
+          "reads": [
+            "og.Model"
+          ],
+          "runs": 2600,
+          "totalMs": 5.274999916553497,
+          "writes": [
+            "og.Transform",
+            "og.Camera",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AudioSource",
+            "og.Timeline",
+            "og.TimelineStarted",
+            "og.TimelineMarker",
+            "og.TimelineEnded"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.anim",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 9.650000125169754,
+          "writes": [
+            "og.Transform",
+            "og.Skeleton",
+            "og.AnimationPlayer",
+            "og.AnimationGraph",
+            "og.Blendshapes",
+            "og.IkChain",
+            "og.AnimationEvent"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.tilemap",
+          "reads": [
+            "og.Tilemap"
+          ],
+          "runs": 2600,
+          "totalMs": 3.5250000581145287,
+          "writes": [
+            "og.Transform",
+            "og.Collider"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.020000003278255463,
+          "name": "og.camera",
+          "reads": [
+            "og.Transform",
+            "og.Follow2D",
+            "og.CameraZone",
+            "og.CameraRail"
+          ],
+          "runs": 2600,
+          "totalMs": 56.364999786019325,
+          "writes": [
+            "og.Camera"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.nav",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 4.1450000032782555,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.NavAgent",
+            "og.Steering"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.004999995231628418,
+          "name": "og.ui.end",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 29.84000013768673,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ragdollTargets",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.Ragdoll"
+          ],
+          "runs": 2600,
+          "totalMs": 1.8650000244379044,
+          "writes": []
+        },
+        {
+          "matched": 0,
+          "ms": 0.02499999850988388,
+          "name": "og.physics",
+          "reads": [
+            "og.Parent",
+            "og.RigidBody",
+            "og.Collider",
+            "og.Physics",
+            "og.Rope",
+            "og.Cloth",
+            "og.Fluid2D",
+            "og.Fluid3D",
+            "og.WaterSurface",
+            "og.WaterLine"
+          ],
+          "runs": 2600,
+          "totalMs": 114.24999987334013,
+          "writes": [
+            "og.Transform",
+            "og.Velocity",
+            "og.CollisionStarted",
+            "og.CollisionEnded",
+            "og.SensorEntered",
+            "og.SensorExited",
+            "og.Contact",
+            "og.Joint",
+            "og.CharacterController",
+            "og.PlatformerController",
+            "og.CharacterEvent",
+            "og.Vehicle",
+            "og.Splash",
+            "og.Ragdoll"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.ui.sound",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.2000001296401024,
+          "writes": [
+            "og.AudioSource"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.music",
+          "reads": [],
+          "runs": 2600,
+          "totalMs": 3.4049999192357063,
+          "writes": [
+            "og.Music",
+            "og.MusicBeat"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0.005000002682209015,
+          "name": "og.audio",
+          "reads": [
+            "og.Transform",
+            "og.Parent",
+            "og.AudioListener",
+            "og.Audio",
+            "og.AudioBusFx"
+          ],
+          "runs": 2600,
+          "totalMs": 16.605000019073486,
+          "writes": [
+            "og.AudioSource",
+            "og.ReverbZone",
+            "og.SoundStarted",
+            "og.SoundEnded",
+            "og.AudioPlayback",
+            "og.AudioStream"
+          ]
+        },
+        {
+          "matched": 0,
+          "ms": 0,
+          "name": "og.sprite",
+          "reads": [
+            "og.Transform",
+            "og.Sprite",
+            "og.Afterimage",
+            "og.Flipbook"
+          ],
+          "runs": 2600,
+          "totalMs": 3.080000102519989,
+          "writes": []
+        }
+      ],
+      "entityBefore": {
+        "components": {
+          "Health": {
+            "hp": 100,
+            "max": 100
+          },
+          "Velocity": {
+            "v": [
+              0,
+              0,
+              1
+            ]
+          },
+          "og.Transform": {
+            "position": [
+              -0.40770972,
+              0,
+              -10.000153
+            ],
+            "quaternion": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "id": "enemy-0-0",
+        "kind": "entity",
+        "name": "enemy-0-0"
+      },
+      "entityAfter": {
+        "components": {
+          "Health": {
+            "hp": 100,
+            "max": 100
+          },
+          "Velocity": {
+            "v": [
+              0,
+              0,
+              1
+            ]
+          },
+          "og.Transform": {
+            "position": [
+              -0.40770972,
+              0,
+              23.333017
+            ],
+            "quaternion": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "id": "enemy-0-0",
+        "kind": "entity",
+        "name": "enemy-0-0"
+      }
+    }
+  }
+]

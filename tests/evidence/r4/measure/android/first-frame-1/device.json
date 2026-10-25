@@ -1,0 +1,101 @@
+{
+ "project": "game",
+ "date": "2026-10-25",
+ "target": "android:58051FDCR007QL",
+ "driver": "android Pixel 10 (58051FDCR007QL)",
+ "url": "http://localhost:49741/",
+ "scheme": "http",
+ "port": 49741,
+ "lan": [],
+ "budgetMs": 2000,
+ "scores": {
+  "firstFrame": 81,
+  "frameTime": 100
+ },
+ "findings": [],
+ "fps": 85.1,
+ "ticksPerSecond": 44.7,
+ "measured": {
+  "firstFrameMs": 1559,
+  "readyMs": 1086,
+  "startMs": 1875,
+  "tier": "webgpu",
+  "seconds": 5.03,
+  "frames": 428,
+  "ticks": 225,
+  "interval": {
+   "count": 428,
+   "mean": 12.42,
+   "p50": 8.49,
+   "p95": 8.53,
+   "p99": 16.67,
+   "max": 1636.88
+  },
+  "work": {
+   "count": 428,
+   "mean": 3.54,
+   "p50": 3.39,
+   "p95": 6.09,
+   "p99": 7.42,
+   "max": 17.65
+  },
+  "device": {
+   "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36",
+   "platform": "Android",
+   "mobile": true,
+   "dpr": 2.625,
+   "viewport": {
+    "width": 857,
+    "height": 355
+   },
+   "screen": {
+    "width": 924,
+    "height": 412
+   },
+   "canvas": {
+    "width": 2252,
+    "height": 932
+   },
+   "hardwareConcurrency": 8,
+   "deviceMemory": 8,
+   "crossOriginIsolated": true,
+   "isSecureContext": true,
+   "gpu": {
+    "vendor": "img-tec",
+    "architecture": "d-series",
+    "description": ""
+   },
+   "webgl": {
+    "vendor": "Google Inc. (Imagination Technologies)",
+    "renderer": "ANGLE (Imagination Technologies, PowerVR D-Series DXT-48-1536, OpenGL ES 3.2)"
+   }
+  },
+  "errors": []
+ },
+ "served": {
+  "/": {
+   "cross-origin-resource-policy": "cross-origin",
+   "x-content-type-options": "nosniff",
+   "cross-origin-opener-policy": "same-origin",
+   "cross-origin-embedder-policy": "require-corp",
+   "cache-control": "no-store",
+   "content-type": "text/html; charset=utf-8"
+  },
+  "/origin-engine-lanes_bg.wasm": {
+   "cross-origin-resource-policy": "cross-origin",
+   "x-content-type-options": "nosniff",
+   "cross-origin-opener-policy": "same-origin",
+   "cross-origin-embedder-policy": "require-corp",
+   "content-type": "application/wasm",
+   "cache-control": "no-store"
+  },
+  "/basis/basis_transcoder.wasm": {
+   "cross-origin-resource-policy": "cross-origin",
+   "x-content-type-options": "nosniff",
+   "cross-origin-opener-policy": "same-origin",
+   "cross-origin-embedder-policy": "require-corp",
+   "content-type": "application/wasm",
+   "cache-control": "no-store"
+  }
+ }
+}

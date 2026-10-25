@@ -1,0 +1,88 @@
+[
+  {
+    "round": 0,
+    "before": [
+      6.05908203125,
+      7.189453125,
+      7.43310546875
+    ],
+    "after": [
+      6.03662109375,
+      7.1494140625,
+      7.41552734375
+    ],
+    "value": {
+      "host": "web",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36",
+      "crossOriginIsolated": true,
+      "transport": "ring",
+      "tier": "webgpu",
+      "spawned": {
+        "ok": true
+      },
+      "advanced": {
+        "ok": true,
+        "value": 600
+      },
+      "tick": 600,
+      "hash": "ccaf74a60ea7fcd5",
+      "entities": 10000,
+      "moveSystemMs": 0.009999997913837433,
+      "spawnMs": 320.2,
+      "advanceMs": 1205.6,
+      "inputAccepted": 2,
+      "views": {
+        "rawLoopMs": 0.04,
+        "engineTickMs": 0.6301,
+        "ratio": 15.77
+      },
+      "frames": [
+        {
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 0,
+          "quit": false,
+          "renderMs": 7.704999998211861,
+          "rendered": true,
+          "stepMs": 0.629629999998957,
+          "text": null,
+          "tick": 2700,
+          "ticks": 0
+        },
+        {
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 0,
+          "quit": false,
+          "renderMs": 3.844999998807907,
+          "rendered": true,
+          "stepMs": 0.629629999998957,
+          "text": null,
+          "tick": 2700,
+          "ticks": 0
+        },
+        {
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 0,
+          "quit": false,
+          "renderMs": 1.6649999991059303,
+          "rendered": true,
+          "stepMs": 0.629629999998957,
+          "text": null,
+          "tick": 2700,
+          "ticks": 0
+        }
+      ],
+      "renderFrame": {
+        "bytes": 0,
+        "expected": 921600,
+        "lit": 0
+      },
+      "error": "renderFrame: 0 bytes for 921600, 0 lit pixels"
+    }
+  }
+]

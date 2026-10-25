@@ -1,0 +1,64 @@
+{
+  "tier": "webgl2",
+  "samples": [
+    {
+      "wallMs": 107.84999990463257,
+      "behind": 0,
+      "ok": true,
+      "paused": false,
+      "pending": 0,
+      "quit": false,
+      "renderMs": 104.60999989509583,
+      "rendered": true,
+      "stepMs": 0,
+      "text": null,
+      "tick": 0,
+      "ticks": 0
+    }
+  ],
+  "stream": [
+    {
+      "action": "dump_stream",
+      "data": "{\n  \"budget\": 268435456.0,\n  \"events\": [],\n  \"fetch\": {\n    \"finished\": 0.0,\n    \"inFlight\": [],\n    \"max\": 4,\n    \"peak\": 0,\n    \"queued\": [],\n    \"started\": 0.0\n  },\n  \"groups\": [],\n  \"kept\": 0.0,\n  \"peak\": 0.0,\n  \"terrain\": {\n    \"budget\": 262144.0,\n    \"cached\": 5,\n    \"cachedBytes\": 1235060.0,\n    \"decoded\": 5.0,\n    \"handed\": 5,\n    \"inFlight\": 0,\n    \"mode\": \"stream\",\n    \"resident\": 5,\n    \"terrains\": 1,\n    \"waiting\": 0,\n    \"worstFrameMs\": 4.065\n  },\n  \"used\": 0.0\n}\n",
+      "file": "terrain.json",
+      "kind": "json",
+      "tick": 0
+    }
+  ],
+  "before": "bca854f9105ef070",
+  "after": "bca854f9105ef070",
+  "loads": [
+    {
+      "at": "2026-10-25T01:57:32.280Z",
+      "load": [
+        7.8515625,
+        7.4150390625,
+        7.4345703125
+      ]
+    },
+    {
+      "at": "2026-10-25T01:57:33.281Z",
+      "load": [
+        7.8515625,
+        7.4150390625,
+        7.4345703125
+      ]
+    },
+    {
+      "at": "2026-10-25T01:57:33.738Z",
+      "load": [
+        7.8515625,
+        7.4150390625,
+        7.4345703125
+      ]
+    }
+  ],
+  "idle": true,
+  "log": [],
+  "engineLog": [],
+  "summary": {
+    "p50": 107.84999990463257,
+    "p95": 107.84999990463257,
+    "max": 107.84999990463257
+  }
+}
