@@ -383,6 +383,20 @@ pub struct Hierarchy {
     /// position, quaternion and scale columns as last read, so an
     /// archetype where nothing moved is told by four comparisons.
     columns: Vec<(Vec<Entity>, [Vec<u8>; 3])>,
+    /// A read of the world ([`Hierarchy::capture`]) not yet applied to the
+    /// slots: they are brought to `columns` and `parent` when an entity is
+    /// next asked for.
+    pending: Option<Pending>,
+}
+
+/// What [`Hierarchy::capture`] leaves for [`Hierarchy::apply`]: per
+/// archetype of `columns`, whether its entities and columns are those the
+/// slots were last brought to (unchanged by every read since), and whether
+/// a read since found the parents changed.
+#[derive(Default)]
+struct Pending {
+    still: Vec<bool>,
+    reparented: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -453,15 +467,22 @@ impl Hierarchy {
     /// where little moves composes only what moved. The ECS keeps no
     /// change ticks, so the columns are still read and compared.
     pub(crate) fn refresh(&mut self, world: &World) {
+        self.capture(world);
+        self.apply();
+    }
+
+    /// The first half of [`Hierarchy::refresh`]: copies the world's
+    /// transform columns and parents, and leaves bringing the slots to
+    /// them (a pass over every entity whose archetype changed) to the next
+    /// question about an entity. The raycast record reads the world as
+    /// every tick starts and most ticks ask it nothing (20,000 moving
+    /// spheres: the per-entity pass was a tenth of the WebGL2 frame's wasm
+    /// work). Reads with no question between them add up: an archetype is
+    /// still only when it was still at each of them.
+    pub(crate) fn capture(&mut self, world: &World) {
         self.composed = 0;
-        // `local_set` now says "had og.Transform at the last read".
-        let mut was: Vec<bool> = std::mem::take(&mut self.was);
-        was.clear();
-        was.extend(self.slots.iter().map(|s| s.local_set));
-        for s in &mut self.slots {
-            s.local_set = false;
-        }
-        self.loose.clear();
+        let mut pending = self.pending.take();
+        let mut still = Vec::new();
         if let Ok(tid) = world.id_by_name("og.Transform") {
             let fields = ["position", "quaternion", "scale"];
             let refs: Vec<_> = fields
@@ -473,7 +494,7 @@ impl Hierarchy {
                 ..QueryDesc::default()
             };
             if let (Ok(all), 3) = (world.query(&q), refs.len()) {
-                for (k, a) in all.enumerate() {
+                for a in all {
                     let (Ok(_), Ok(_), Ok(_), Ok(pb), Ok(rb), Ok(sb)) = (
                         a.read::<Vec3>(refs[0]),
                         a.read::<Quat>(refs[1]),
@@ -484,15 +505,16 @@ impl Hierarchy {
                     ) else {
                         continue;
                     };
+                    let k = still.len();
                     if self.columns.len() <= k {
                         self.columns.push(Default::default());
                     }
                     let (ents, cols) = &mut self.columns[k];
-                    let still = ents.as_slice() == a.entities()
+                    let same = ents.as_slice() == a.entities()
                         && cols[0] == *pb
                         && cols[1] == *rb
                         && cols[2] == *sb;
-                    if !still {
+                    if !same {
                         ents.clear();
                         ents.extend_from_slice(a.entities());
                         for (c, b) in cols.iter_mut().zip([&pb, &rb, &sb]) {
@@ -500,43 +522,79 @@ impl Hierarchy {
                             c.extend_from_slice(b);
                         }
                     }
-                    for (i, e) in a.entities().iter().enumerate() {
-                        let index = e.index() as usize;
-                        if still && was.get(index).copied().unwrap_or(false) {
-                            // As last read, and the slot was this entity's then.
-                            let slot = &mut self.slots[index];
-                            slot.changed = false;
-                            slot.local_set = true;
-                            continue;
-                        }
-                        if index >= self.slots.len() {
-                            self.slots.resize(index + 1, EMPTY_SLOT);
-                            self.data.resize(index + 1, EMPTY_DATA);
-                        }
-                        let (slot, data) = (&mut self.slots[index], &mut self.data[index]);
-                        let bits = e.to_bits();
-                        let (pb, rb, sb) = (
-                            &pb[i * 12..i * 12 + 12],
-                            &rb[i * 16..i * 16 + 16],
-                            &sb[i * 12..i * 12 + 12],
-                        );
-                        let same = was.get(index).copied().unwrap_or(false)
-                            && slot.bits == bits
-                            && data.trs[..12] == *pb
-                            && data.trs[12..28] == *rb
-                            && data.trs[28..] == *sb;
-                        slot.changed = !same;
-                        if !same {
-                            slot.bits = bits;
-                            data.trs[..12].copy_from_slice(pb);
-                            data.trs[12..28].copy_from_slice(rb);
-                            data.trs[28..].copy_from_slice(sb);
-                            slot.world_set = false;
-                            data.local = None;
-                        }
-                        slot.local_set = true;
-                    }
+                    let before = pending
+                        .as_ref()
+                        .is_none_or(|p| p.still.get(k) == Some(&true));
+                    still.push(same && before);
                 }
+            }
+        }
+        self.columns.truncate(still.len());
+        let reparented = self.read_parents(world);
+        let reparented = reparented || pending.as_ref().is_some_and(|p| p.reparented);
+        let p = pending.get_or_insert_with(Pending::default);
+        p.still = still;
+        p.reparented = reparented;
+        self.pending = pending;
+    }
+
+    /// Whether a read of the world waits to be applied to the slots.
+    #[cfg(test)]
+    pub(crate) fn pending(&self) -> bool {
+        self.pending.is_some()
+    }
+
+    /// The second half of [`Hierarchy::refresh`]: the slots brought to the
+    /// last [`Hierarchy::capture`] (nothing when there is none pending).
+    fn apply(&mut self) {
+        let Some(Pending { still, reparented }) = self.pending.take() else {
+            return;
+        };
+        // `local_set` now says "had og.Transform at the last read".
+        let mut was: Vec<bool> = std::mem::take(&mut self.was);
+        was.clear();
+        was.extend(self.slots.iter().map(|s| s.local_set));
+        for s in &mut self.slots {
+            s.local_set = false;
+        }
+        self.loose.clear();
+        for ((ents, cols), &still) in self.columns.iter().zip(&still) {
+            let (pb, rb, sb) = (&cols[0], &cols[1], &cols[2]);
+            for (i, e) in ents.iter().enumerate() {
+                let index = e.index() as usize;
+                if still && was.get(index).copied().unwrap_or(false) {
+                    // As last read, and the slot was this entity's then.
+                    let slot = &mut self.slots[index];
+                    slot.changed = false;
+                    slot.local_set = true;
+                    continue;
+                }
+                if index >= self.slots.len() {
+                    self.slots.resize(index + 1, EMPTY_SLOT);
+                    self.data.resize(index + 1, EMPTY_DATA);
+                }
+                let (slot, data) = (&mut self.slots[index], &mut self.data[index]);
+                let bits = e.to_bits();
+                let (pb, rb, sb) = (
+                    &pb[i * 12..i * 12 + 12],
+                    &rb[i * 16..i * 16 + 16],
+                    &sb[i * 12..i * 12 + 12],
+                );
+                let same = was.get(index).copied().unwrap_or(false)
+                    && slot.bits == bits
+                    && data.trs[..12] == *pb
+                    && data.trs[12..28] == *rb
+                    && data.trs[28..] == *sb;
+                slot.changed = !same;
+                if !same {
+                    slot.bits = bits;
+                    data.trs[..12].copy_from_slice(pb);
+                    data.trs[12..28].copy_from_slice(rb);
+                    data.trs[28..].copy_from_slice(sb);
+                    slot.world_set = false;
+                    data.local = None;
+                }
+                slot.local_set = true;
             }
         }
         // A slot that lost its transform changed; one that never had one
@@ -550,7 +608,6 @@ impl Hierarchy {
             moved |= s.changed;
         }
         self.was = was;
-        let reparented = self.read_parents(world);
         if reparented {
             // Every world matrix is composed again.
             for s in &mut self.slots {
@@ -672,6 +729,7 @@ impl Hierarchy {
 
     /// The world matrix of an entity: its local transform after its parents'.
     pub(crate) fn world_of(&mut self, e: u64) -> Mat4 {
+        self.apply();
         if let Some(m) = self.cached(e) {
             return m;
         }

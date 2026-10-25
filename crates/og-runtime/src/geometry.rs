@@ -1125,7 +1125,8 @@ pub fn og_render_points(world: u32, desc: Option<String>) -> String {
 // ── raycast ─────────────────────────────────────────────────────────────────
 
 /// Every og.Mesh and og.Model part as drawn from the world now, with `h`
-/// read again: the og.Mesh rows in query order (`kept`'s while their
+/// read again (its slots brought to the read when the record is first
+/// composed, [`Hierarchy::capture`]): the og.Mesh rows in query order (`kept`'s while their
 /// columns are unchanged), and the og.Model parts in entity order into
 /// `out` (cleared).
 fn drawn(
@@ -1137,7 +1138,7 @@ fn drawn(
 ) -> Rc<Vec<Drawn>> {
     use super::codec::{Rec, Row, Slot};
     out.clear();
-    h.refresh(world);
+    h.capture(world);
     let meshes = match &rs.draw.mesh {
         Some(layout) if kept.still(world, &layout.schema, rs.geometries.len()) => kept.list.clone(),
         Some(layout) => {
@@ -1866,6 +1867,10 @@ mod tests {
             rs.geo.hierarchy.composed, 0,
             "{label}: the tick composed world matrices no raycast asked for"
         );
+        assert!(
+            rs.geo.hierarchy.pending(),
+            "{label}: the tick brought the hierarchy to the world before a raycast asked"
+        );
         let GeoState {
             record, hierarchy, ..
         } = &mut rs.geo;
@@ -1977,6 +1982,21 @@ mod tests {
         value(og_world_despawn(w, roots[8]));
         step("despawned");
         assert_eq!(step("still at the end"), 0);
+        // Ticks with no raycast between them: a root moved a tick before
+        // one where nothing moves (which alone reads as still), then moved
+        // and moved back.
+        value(og_world_set(w, roots[1], "og.Transform".into(), to(9.0)));
+        frame();
+        assert_eq!(step("moved a tick before a still one"), 1);
+        value(og_world_set(w, roots[1], "og.Transform".into(), to(11.0)));
+        frame();
+        value(og_world_set(w, roots[1], "og.Transform".into(), to(9.0)));
+        assert_eq!(step("moved and moved back"), 0);
+        // Reparented a tick before a still one: everything again.
+        let v = json!({ "entity": roots[6] }).to_string();
+        value(og_world_insert(w, children[1], "og.Parent".into(), Some(v)));
+        frame();
+        assert_eq!(step("reparented a tick before a still one"), 347);
         // A mesh hidden and one given another geometry: the kept rows are
         // read again (`checked` compares them with the world's).
         let hidden = json!({ "visible": false }).to_string();
