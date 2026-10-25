@@ -1680,7 +1680,7 @@ dependencies = [
 
 [[package]]
 name = "og-ai"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "og-audio",
  "og-core",
@@ -1690,7 +1690,7 @@ dependencies = [
 
 [[package]]
 name = "og-anim"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "glam 0.34.1",
  "og-core",
@@ -1700,7 +1700,7 @@ dependencies = [
 
 [[package]]
 name = "og-api"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "og-anim",
  "og-audio",
@@ -1715,7 +1715,7 @@ dependencies = [
 
 [[package]]
 name = "og-audio"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "image",
  "og-core",
@@ -1724,7 +1724,7 @@ dependencies = [
 
 [[package]]
 name = "og-bake"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "cc",
  "glam 0.34.1",
@@ -1732,14 +1732,14 @@ dependencies = [
 
 [[package]]
 name = "og-blob"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "bytemuck",
 ]
 
 [[package]]
 name = "og-cli"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "glam 0.34.1",
  "image",
@@ -1758,7 +1758,7 @@ dependencies = [
 
 [[package]]
 name = "og-cook"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "basis-universal",
  "bytemuck",
@@ -1795,7 +1795,7 @@ dependencies = [
 
 [[package]]
 name = "og-core"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "bincode",
  "bytemuck",
@@ -1808,7 +1808,7 @@ dependencies = [
 
 [[package]]
 name = "og-core-derive"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1817,7 +1817,7 @@ dependencies = [
 
 [[package]]
 name = "og-ecs"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "bytemuck",
  "og-core",
@@ -1826,7 +1826,7 @@ dependencies = [
 
 [[package]]
 name = "og-geom"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "glam 0.34.1",
  "og-core",
@@ -1836,7 +1836,7 @@ dependencies = [
 
 [[package]]
 name = "og-host-node"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "cpal",
  "napi",
@@ -1855,7 +1855,7 @@ dependencies = [
 
 [[package]]
 name = "og-host-web"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "js-sys",
  "log",
@@ -1876,7 +1876,7 @@ dependencies = [
 
 [[package]]
 name = "og-i18n"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "og-core",
  "unicode-segmentation",
@@ -1884,7 +1884,7 @@ dependencies = [
 
 [[package]]
 name = "og-idl"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "og-core",
  "serde_json",
@@ -1892,7 +1892,7 @@ dependencies = [
 
 [[package]]
 name = "og-input"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "og-core",
  "og-ecs",
@@ -1901,7 +1901,7 @@ dependencies = [
 
 [[package]]
 name = "og-lanes"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "rayon",
  "wasm-bindgen",
@@ -1910,7 +1910,7 @@ dependencies = [
 
 [[package]]
 name = "og-nav"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "og-core",
  "og-ecs",
@@ -1919,7 +1919,7 @@ dependencies = [
 
 [[package]]
 name = "og-net"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "og-core",
  "serde_json",
@@ -1928,7 +1928,7 @@ dependencies = [
 
 [[package]]
 name = "og-physics"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "bincode",
  "glam 0.34.1",
@@ -1944,7 +1944,7 @@ dependencies = [
 
 [[package]]
 name = "og-probe"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "miniz_oxide 0.8.9",
  "og-core",
@@ -1956,7 +1956,7 @@ dependencies = [
 
 [[package]]
 name = "og-render"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "bytemuck",
  "fdeflate",
@@ -1972,7 +1972,7 @@ dependencies = [
 
 [[package]]
 name = "og-runtime"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "glam 0.34.1",
  "miniz_oxide 0.8.9",
@@ -2002,7 +2002,7 @@ dependencies = [
 
 [[package]]
 name = "og-tests"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "glam 0.34.1",
  "image",
@@ -2017,7 +2017,7 @@ dependencies = [
 
 [[package]]
 name = "og-tests-web"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "image",
  "js-sys",
@@ -2037,7 +2037,7 @@ dependencies = [
 
 [[package]]
 name = "og-tilemap"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "glam 0.34.1",
  "og-core",
@@ -2045,7 +2045,7 @@ dependencies = [
 
 [[package]]
 name = "og-timeline"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "og-core",
  "og-tween",
@@ -2054,7 +2054,7 @@ dependencies = [
 
 [[package]]
 name = "og-tween"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "og-core",
  "og-ecs",
@@ -2062,7 +2062,7 @@ dependencies = [
 
 [[package]]
 name = "og-ui"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "image",
  "og-cook",

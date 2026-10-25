@@ -3,7 +3,7 @@ version 1
 ---
 name "Three-Lane Beat"
 id "rhythm"
-engine "0.4.0"
+engine "0.5.0"
 entry "src/main.ts"
 profile "2d"
 tick 60

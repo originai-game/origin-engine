@@ -4,7 +4,7 @@ version 1
 # The fixture look.test.ts cooks and loads (assets/looks/*.ogt).
 name "Look fixture"
 id "look-fixture"
-engine "0.4.0"
+engine "0.5.0"
 entry "main.ts"
 profile "3d"
 tick 60

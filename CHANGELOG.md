@@ -7,7 +7,7 @@ One version across `@origingame/engine` (the knowledge inside it as
 bump carries API additions or changes, one line each, written at the merge
 that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
-## Unreleased
+## 0.5.0 — 2026-10-25
 
 - Spring bone colliders and falloff: `og.SpringCollider` (a sphere or a
   capsule on a joint, three-vrm's VRMSpringBoneCollider) keeps the tails
