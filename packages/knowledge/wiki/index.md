@@ -121,7 +121,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1218 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1220 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -557,6 +557,7 @@ Field units the docs and Tune use.
 | [`og.IkTarget2D`](anim.md#record-IkTarget2D) | component | anim | — |
 | [`og.Input`](input.md#record-Input) | resource | input | — |
 | [`og.Joint`](physics.md#record-Joint) | component | physics | — |
+| [`og.JointLimit`](anim.md#record-JointLimit) | component | anim | — |
 | [`og.KeyDown`](input.md#record-KeyDown) | event | input | — |
 | [`og.KeyUp`](input.md#record-KeyUp) | event | input | — |
 | [`og.Light2D`](render.md#record-Light2D) | component | render | — |
@@ -595,6 +596,7 @@ Field units the docs and Tune use.
 | [`og.load.video`](load.md#fn-video) | function | load | `og_load_video` |
 | [`og.load.videoInfo`](load.md#fn-videoInfo) | function | load | `og_load_video_info` |
 | [`og.Lockstep`](net.md#record-Lockstep) | resource | net | — |
+| [`og.LookAt`](anim.md#record-LookAt) | component | anim | — |
 | [`og.MaterialStyle`](render.md#record-MaterialStyle) | resource | render | — |
 | [`og.MatrixWorld`](transform.md#record-MatrixWorld) | component | transform | — |
 | [`og.Mesh`](render.md#record-Mesh) | component | render | — |

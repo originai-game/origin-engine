@@ -1,7 +1,9 @@
 //! The determinism scenario: `WALKERS` characters on the walker rig, half
 //! driven by the graph (a speed profile through idle, walk and run, an
 //! additive wave), half by players switching clips with cross-fades; all
-//! with planar root motion, blendshapes, two-bone feet and a FABRIK arm.
+//! with planar root motion, blendshapes, two-bone feet and a FABRIK arm,
+//! hinged knees and a cone on the shoulder (joint limits) and a head
+//! looking at a target that circles it.
 //! A driver system (before `og.anim`) derives every input from the tick and
 //! the walker's index, so the world is a function of its seed and tick.
 #![allow(dead_code)]
@@ -19,7 +21,8 @@ pub const WALKERS: u32 = 20;
 #[reflect(name = "test.Walker")]
 pub struct Walker {
     pub index: u32,
-    /// 0 skeleton, 1 left foot, 2 right foot, 3 left hand.
+    /// 0 skeleton, 1 left foot, 2 right foot, 3 left hand, 4 the head's
+    /// look-at, 5 a joint limit.
     pub role: u32,
 }
 
@@ -42,6 +45,7 @@ pub fn build(seed: u32) -> (World, AnimationSystem) {
     world.register::<AnimationGraph>().unwrap();
     world.register::<AnimationPlayer>().unwrap();
     world.register::<IkChain>().unwrap();
+    world.register::<LookAt>().unwrap();
     world.register::<Blendshapes>().unwrap();
     world.register::<Skeleton>().unwrap();
     world
@@ -53,6 +57,7 @@ pub fn build(seed: u32) -> (World, AnimationSystem) {
                 .write::<AnimationPlayer>()
                 .write::<Blendshapes>()
                 .write::<IkChain>()
+                .write::<LookAt>()
                 .query(QueryDesc::new().read::<Walker>()),
             |ctx| {
                 let tick = ctx.time().tick;
@@ -86,7 +91,15 @@ pub fn build(seed: u32) -> (World, AnimationSystem) {
                             b.w1 = (tick % 60) as f32 / 60.0;
                             ctx.set(e, b)?;
                         }
-                    } else {
+                    } else if w.role == 4 {
+                        let mut l: LookAt = ctx.get(e)?;
+                        let sk: Transform = ctx.get(Entity::from_bits(l.skeleton))?;
+                        // Circles the walker: in front, beside, behind.
+                        let a = tick as f32 / 90.0 + i as f32;
+                        let local = Vec3::new(2.0 * math::sin(a), 1.4, 2.0 * math::cos(a));
+                        l.target = sk.position + sk.quaternion * (sk.scale * local);
+                        ctx.set(e, l)?;
+                    } else if w.role != 5 {
                         let mut c: IkChain = ctx.get(e)?;
                         let sk: Transform = ctx.get(Entity::from_bits(c.skeleton))?;
                         let local = match w.role {
@@ -161,6 +174,55 @@ pub fn build(seed: u32) -> (World, AnimationSystem) {
                         ..IkChain::default()
                     },
                     Walker { index: i, role },
+                ))
+                .unwrap();
+        }
+        world
+            .spawn((
+                LookAt {
+                    skeleton: e.to_bits(),
+                    joint: J_HEAD,
+                    bones: 2,
+                    max_yaw: 1.2,
+                    max_pitch: 0.5,
+                    ..LookAt::default()
+                },
+                Walker { index: i, role: 4 },
+            ))
+            .unwrap();
+        // Knees hinge forwards only (with a little play); the shoulder swings
+        // within a cone.
+        for limit in [
+            JointLimit {
+                joint: J_SHIN_L,
+                axis: Vec3::X,
+                swing: 0.15,
+                twist_min: -0.05,
+                twist_max: 2.6,
+                ..JointLimit::default()
+            },
+            JointLimit {
+                joint: J_SHIN_R,
+                axis: Vec3::X,
+                swing: 0.15,
+                twist_min: -0.05,
+                twist_max: 2.6,
+                ..JointLimit::default()
+            },
+            JointLimit {
+                joint: J_ARM_L,
+                axis: Vec3::X,
+                swing: 1.4,
+                ..JointLimit::default()
+            },
+        ] {
+            world
+                .spawn((
+                    JointLimit {
+                        skeleton: e.to_bits(),
+                        ..limit
+                    },
+                    Walker { index: i, role: 5 },
                 ))
                 .unwrap();
         }

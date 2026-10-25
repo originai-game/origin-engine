@@ -208,6 +208,8 @@ pub fn install(world: &mut World) -> Result<AnimationSystem> {
     world.register::<AnimationGraph>()?;
     world.register::<Blendshapes>()?;
     world.register::<IkChain>()?;
+    world.register::<LookAt>()?;
+    world.register::<JointLimit>()?;
     world.register::<AnimationEvent>()?;
     let shared = Arc::new(Mutex::new(Shared::default()));
     let desc = SystemDesc::new(SYSTEM_NAME)
@@ -216,6 +218,8 @@ pub fn install(world: &mut World) -> Result<AnimationSystem> {
         .write::<AnimationGraph>()
         .write::<Blendshapes>()
         .write::<IkChain>()
+        .write::<LookAt>()
+        .read::<JointLimit>()
         .write::<Transform>()
         .write::<AnimationEvent>()
         .query(QueryDesc::new().read::<Skeleton>())
@@ -227,7 +231,9 @@ pub fn install(world: &mut World) -> Result<AnimationSystem> {
         .query(QueryDesc::new().read::<Skeleton>().read::<AnimationGraph>())
         .query(QueryDesc::new().read::<Skeleton>().read::<Blendshapes>())
         .query(QueryDesc::new().read::<Skeleton>().read::<Transform>())
-        .query(QueryDesc::new().read::<IkChain>());
+        .query(QueryDesc::new().read::<IkChain>())
+        .query(QueryDesc::new().read::<LookAt>())
+        .query(QueryDesc::new().read::<JointLimit>());
     let s = shared.clone();
     world.add_system(desc, move |ctx| run(ctx, &s))?;
     world.add_state_block(SYSTEM_NAME, Box::new(AnimState(shared.clone())))?;
@@ -703,6 +709,8 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     };
     let (players, graphs, blends, transforms) = (with(1)?, with(2)?, with(3)?, with(4)?);
     let chains = entities(ctx, 5)?;
+    let looks = entities(ctx, 6)?;
+    let joint_limits = entities(ctx, 7)?;
 
     let mut sh = lock(shared);
     // Read every skeleton entity in entity order, up to the first one that
@@ -754,6 +762,17 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
         return Err(err);
     }
 
+    // Joint limits, by (skeleton entity, node); a later one for the same
+    // joint replaces an earlier one.
+    let mut limits: Limits = BTreeMap::new();
+    for &l in &joint_limits {
+        let limit: JointLimit = ctx.get(l)?;
+        if let Some(w) = work.iter().find(|w| w.entity.to_bits() == limit.skeleton) {
+            let node = joint(w, limit.joint, "og.JointLimit.joint")?;
+            limits.insert((limit.skeleton, node), limit);
+        }
+    }
+
     // IK, after every skeleton's clips and graph, in chain query order.
     let mut solved: Vec<(Entity, IkChain)> = Vec::with_capacity(chains.len());
     for &c in &chains {
@@ -764,9 +783,22 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
             .iter_mut()
             .find(|w| w.entity.to_bits() == chain.skeleton)
         {
-            solve(w, &mut chain)?;
+            solve(w, &mut chain, &limits)?;
         }
         solved.push((c, chain));
+    }
+    // Look-at constraints, after IK, in query order.
+    let mut aimed: Vec<(Entity, LookAt)> = Vec::with_capacity(looks.len());
+    for &l in &looks {
+        let mut look: LookAt = ctx.get(l)?;
+        look.clamped = false;
+        if let Some(w) = work
+            .iter_mut()
+            .find(|w| w.entity.to_bits() == look.skeleton)
+        {
+            aim(w, &mut look, &limits)?;
+        }
+        aimed.push((l, look));
     }
 
     // The joint palettes, in lanes; then everything is written back in
@@ -810,6 +842,9 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     for (c, chain) in solved {
         ctx.set(c, chain)?;
     }
+    for (l, look) in aimed {
+        ctx.set(l, look)?;
+    }
     for (e, f) in fired {
         ctx.send(AnimationEvent {
             entity: e.to_bits(),
@@ -824,14 +859,70 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     Ok(())
 }
 
-fn solve(w: &mut Work, chain: &mut IkChain) -> Result<()> {
+/// Joint limits by (skeleton entity, node).
+type Limits = BTreeMap<(u64, u32), JointLimit>;
+
+/// The node of joint `joint` of `w`'s skin, or an error naming `field`.
+fn joint(w: &Work, joint: u32, field: &str) -> Result<u32> {
     let skin = w.skeleton.skin;
-    let Some(tip) = w.asset.joint_node(skin, chain.tip) else {
+    w.asset
+        .joint_node(skin, joint)
+        .ok_or_else(|| invalid(format!("{field} {joint} is not a joint of skin {skin}")))
+}
+
+/// The limits of `nodes` on `w`'s skeleton, aligned with them (empty when
+/// none is limited, so the solvers take their unlimited path).
+fn chain_limits(w: &Work, nodes: &[u32], limits: &Limits) -> Vec<Option<JointLimit>> {
+    let key = w.entity.to_bits();
+    let out: Vec<Option<JointLimit>> = nodes
+        .iter()
+        .map(|&n| limits.get(&(key, n)).copied())
+        .collect();
+    if out.iter().any(Option::is_some) {
+        out
+    } else {
+        Vec::new()
+    }
+}
+
+/// A point of `space` in the skeleton's model space (world: the inverse
+/// of the entity's Transform).
+fn model_point(space: u32, t: Option<Transform>, p: Vec3) -> Vec3 {
+    match (space, t) {
+        (IK_WORLD, Some(t)) => Trs::new(t.position, t.quaternion, t.scale)
+            .inverse()
+            .transform_point(p),
+        _ => p,
+    }
+}
+
+/// A direction of `space` in the skeleton's model space.
+fn model_direction(space: u32, t: Option<Transform>, v: Vec3) -> Vec3 {
+    match (space, t) {
+        (IK_WORLD, Some(t)) => t.quaternion.conjugate() * v,
+        _ => v,
+    }
+}
+
+fn aim(w: &mut Work, look: &mut LookAt, limits: &Limits) -> Result<()> {
+    let node = joint(w, look.joint, "og.LookAt.joint")?;
+    let bones = look.bones.clamp(1, 8);
+    let Some(nodes) = ik::chain(&w.asset, node, bones - 1) else {
         return Err(invalid(format!(
-            "og.IkChain.tip {} is not a joint of skin {skin}",
-            chain.tip
+            "og.LookAt: joint {} has fewer than {} joints above it",
+            look.joint,
+            bones - 1
         )));
     };
+    let target = model_point(look.space, w.transform, look.target);
+    let up = (look.up != Vec3::ZERO).then(|| model_direction(look.space, w.transform, look.up));
+    let lim = chain_limits(w, &nodes, limits);
+    look.clamped = ik::look_at(&w.asset, &mut w.pose.nodes, &nodes, target, up, look, &lim);
+    Ok(())
+}
+
+fn solve(w: &mut Work, chain: &mut IkChain, limits: &Limits) -> Result<()> {
+    let tip = joint(w, chain.tip, "og.IkChain.tip")?;
     let bones = if chain.solver == IK_TWO_BONE {
         2
     } else {
@@ -843,19 +934,21 @@ fn solve(w: &mut Work, chain: &mut IkChain) -> Result<()> {
             chain.tip
         )));
     };
-    let to_model = |p: Vec3| -> Vec3 {
-        match (chain.space, w.transform) {
-            (IK_WORLD, Some(t)) => Trs::new(t.position, t.quaternion, t.scale)
-                .inverse()
-                .transform_point(p),
-            _ => p,
-        }
-    };
+    let to_model = |p: Vec3| model_point(chain.space, w.transform, p);
     let target = to_model(chain.target);
     let weight = chain.weight.clamp(0.0, 1.0);
+    let lim = chain_limits(w, &nodes, limits);
     let result = if chain.solver == IK_TWO_BONE {
         let pole = (chain.pole != Vec3::ZERO).then(|| to_model(chain.pole));
-        ik::two_bone(&w.asset, &mut w.pose.nodes, &nodes, target, pole, weight)
+        ik::two_bone(
+            &w.asset,
+            &mut w.pose.nodes,
+            &nodes,
+            target,
+            pole,
+            weight,
+            &lim,
+        )
     } else {
         ik::fabrik(
             &w.asset,
@@ -865,6 +958,7 @@ fn solve(w: &mut Work, chain: &mut IkChain) -> Result<()> {
             chain.iterations,
             chain.tolerance,
             weight,
+            &lim,
         )
     };
     chain.error = result.error;

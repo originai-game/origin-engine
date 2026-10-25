@@ -98,6 +98,8 @@ fn physics_audio_animation_and_input_records_have_the_idl_layouts() {
     check::<og_anim::AnimationGraph>(&mut failures);
     check::<og_anim::Blendshapes>(&mut failures);
     check::<og_anim::IkChain>(&mut failures);
+    check::<og_anim::LookAt>(&mut failures);
+    check::<og_anim::JointLimit>(&mut failures);
     check::<og_anim::AnimationEvent>(&mut failures);
     check::<og_anim::Flipbook>(&mut failures);
     check::<og_anim::FlipbookEvent>(&mut failures);

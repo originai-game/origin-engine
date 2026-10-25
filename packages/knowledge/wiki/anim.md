@@ -43,6 +43,8 @@ module anim {
 | [`og.AnimationGraph`](#record-AnimationGraph) | component | Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, which the graph names in `param` order (`param speed` is p0, the next `param` is p1, ...). |
 | [`og.Blendshapes`](#record-Blendshapes) | component | Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets. With `source` clips the playing clips' weight channels write them; with `component` game code does. |
 | [`og.IkChain`](#record-IkChain) | component | An inverse-kinematics constraint on a skeleton, applied after its clips and graph: the chain of `bones` bones ending at joint `tip` turns so the tip reaches `target`. Put it on its own entity (a skeleton can have many chains); chains apply in query order. |
+| [`og.LookAt`](#record-LookAt) | component | An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the target, +Y up). The direction is held within maxYaw and maxPitch of the animated forward; with `bones` above 1 the joint's parents share the turn. Put it on its own entity (a head, the eyes, a turret's barrel); constraints apply in query order, and og.JointLimit clamps the joints it turns. |
+| [`og.JointLimit`](#record-JointLimit) | component | How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped. |
 | [`og.AnimationEvent`](#record-AnimationEvent) | event | A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers. |
 | [`ClipInfo`](#type-ClipInfo) | struct | One clip of a loaded animation. |
 | [`Animation`](#type-Animation) | struct | What og.load.animation registered from a model's `#anim` blob. |
@@ -107,7 +109,7 @@ fn graph {
 }
 ```
 
-<sub>`api.ogt` line 8060</sub>
+<sub>`api.ogt` line 8141</sub>
 
 <a id="fn-humanoid"></a>
 
@@ -137,7 +139,7 @@ fn humanoid {
 }
 ```
 
-<sub>`api.ogt` line 8095</sub>
+<sub>`api.ogt` line 8176</sub>
 
 <a id="fn-retarget"></a>
 
@@ -167,7 +169,7 @@ fn retarget {
 }
 ```
 
-<sub>`api.ogt` line 8115</sub>
+<sub>`api.ogt` line 8196</sub>
 
 <a id="fn-clip"></a>
 
@@ -198,7 +200,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 8200</sub>
+<sub>`api.ogt` line 8281</sub>
 
 <a id="fn-clip-2"></a>
 
@@ -229,7 +231,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 8208</sub>
+<sub>`api.ogt` line 8289</sub>
 
 <a id="fn-clip-3"></a>
 
@@ -260,7 +262,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 8216</sub>
+<sub>`api.ogt` line 8297</sub>
 
 <a id="fn-rig2dInfo"></a>
 
@@ -290,7 +292,7 @@ fn rig2dInfo {
 }
 ```
 
-<sub>`api.ogt` line 8326</sub>
+<sub>`api.ogt` line 8407</sub>
 
 <a id="fn-skeleton2dBoxes"></a>
 
@@ -320,7 +322,7 @@ fn skeleton2dBoxes {
 }
 ```
 
-<sub>`api.ogt` line 8340</sub>
+<sub>`api.ogt` line 8421</sub>
 
 ## Components, resources and events
 
@@ -641,6 +643,135 @@ component IkChain {
 
 <sub>`api.ogt` line 7979</sub>
 
+<a id="record-LookAt"></a>
+
+### `og.LookAt` (component)
+
+An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the target, +Y up). The direction is held within maxYaw and maxPitch of the animated forward; with `bones` above 1 the joint's parents share the turn. Put it on its own entity (a head, the eyes, a turret's barrel); constraints apply in query order, and og.JointLimit clamps the joints it turns.
+
+Token `og.LookAt`, registered under the schema name `og.LookAt`; its value type is `LookAt`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `skeleton` | `Entity` | `0` | — | — | — | The entity with the og.Skeleton this constraint turns. |
+| `joint` | `number` | `0` | ≥ 0 | — | — | The joint that aims (an index into the skin's joints): the head, an eye. |
+| `bones` | `number` | `1` | 1 … 8 | — | — | How many joints share the turn: `joint` and its parents (3 spreads a look over neck, chest and spine), each parent taking an even share and `joint` the rest. |
+| `target` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The point to look at, in `space`. |
+| `space` | `IkSpace` | `"world"` | — | — | — | What `target` and `up` are relative to: world (the frame the skeleton entity's og.Transform is in) or model. |
+| `axis` | `Vector3` | `{ x: 0, y: 0, z: 1 }` | — | — | — | The joint's forward, in its own frame: the axis turned onto the target. |
+| `upAxis` | `Vector3` | `{ x: 0, y: 1, z: 0 }` | — | — | — | The joint's up, in its own frame: yaw turns about it, pitch towards it, and it rolls towards `up`. |
+| `up` | `Vector3` | `{ x: 0, y: 1, z: 0 }` | — | — | — | The up hint, a direction in `space` the joint's `upAxis` leans to (three.js Object3D.up); the zero vector keeps the animated roll. |
+| `maxYaw` | `number` | `3.1416` | 0 … 3.1416 | `rad` | tunable | The largest turn about `upAxis`, left or right of the animated forward. |
+| `maxPitch` | `number` | `1.5708` | 0 … 1.5708 | `rad` | tunable | The largest turn towards or away from `upAxis`, from the animated forward. |
+| `weight` | `number` | `1` | 0 … 1 | — | tunable | How much of the turn is applied (0 = the animated pose, 1 = aimed). |
+| `clamped` | `boolean` | `false` | — | — | read only | Written: the target lay outside maxYaw or maxPitch, so the joint aims at the nearest direction inside them. |
+
+```ogt
+component LookAt {
+  doc "An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the target, +Y up). The direction is held within maxYaw and maxPitch of the animated forward; with `bones` above 1 the joint's parents share the turn. Put it on its own entity (a head, the eyes, a turret's barrel); constraints apply in query order, and og.JointLimit clamps the joints it turns."
+  field skeleton Entity "The entity with the og.Skeleton this constraint turns."
+  field joint u32 "The joint that aims (an index into the skin's joints): the head, an eye." {
+    min 0
+  }
+  field bones u32 "How many joints share the turn: `joint` and its parents (3 spreads a look over neck, chest and spine), each parent taking an even share and `joint` the rest." {
+    default 1
+    min 1
+    max 8
+  }
+  field target Vector3 "The point to look at, in `space`." {
+    unit m
+  }
+  field space IkSpace "What `target` and `up` are relative to: world (the frame the skeleton entity's og.Transform is in) or model."
+  field axis Vector3 "The joint's forward, in its own frame: the axis turned onto the target." {
+    default 0 0 1
+  }
+  field upAxis Vector3 "The joint's up, in its own frame: yaw turns about it, pitch towards it, and it rolls towards `up`." {
+    default 0 1 0
+  }
+  field up Vector3 "The up hint, a direction in `space` the joint's `upAxis` leans to (three.js Object3D.up); the zero vector keeps the animated roll." {
+    default 0 1 0
+  }
+  field maxYaw f32 "The largest turn about `upAxis`, left or right of the animated forward." {
+    default 3.1416
+    min 0
+    max 3.1416
+    unit rad
+    tunable true
+  }
+  field maxPitch f32 "The largest turn towards or away from `upAxis`, from the animated forward." {
+    default 1.5708
+    min 0
+    max 1.5708
+    unit rad
+    tunable true
+  }
+  field weight f32 "How much of the turn is applied (0 = the animated pose, 1 = aimed)." {
+    default 1
+    min 0
+    max 1
+    tunable true
+  }
+  field clamped bool "Written: the target lay outside maxYaw or maxPitch, so the joint aims at the nearest direction inside them." {
+    readonly true
+  }
+}
+```
+
+<sub>`api.ogt` line 8023</sub>
+
+<a id="record-JointLimit"></a>
+
+### `og.JointLimit` (component)
+
+How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped.
+
+Token `og.JointLimit`, registered under the schema name `og.JointLimit`; its value type is `JointLimit`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `skeleton` | `Entity` | `0` | — | — | — | The entity with the og.Skeleton whose joint this limits. |
+| `joint` | `number` | `0` | ≥ 0 | — | — | The limited joint (an index into the skin's joints). |
+| `axis` | `Vector3` | `{ x: 0, y: 1, z: 0 }` | — | — | — | The twist axis in the joint's rest frame: along the bone for a ball joint, along the hinge for a hinge. |
+| `swing` | `number` | `3.1416` | 0 … 3.1416 | `rad` | tunable | The cone half-angle the axis may swing away from its rest direction (0 locks it: a hinge; pi is free). |
+| `twistMin` | `number` | `-3.1416` | -3.1416 … 3.1416 | `rad` | tunable | The least twist about `axis` from rest (a hinge's bend one way). |
+| `twistMax` | `number` | `3.1416` | -3.1416 … 3.1416 | `rad` | tunable | The most twist about `axis` from rest (a hinge's bend the other way). |
+
+```ogt
+component JointLimit {
+  doc "How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped."
+  field skeleton Entity "The entity with the og.Skeleton whose joint this limits."
+  field joint u32 "The limited joint (an index into the skin's joints)." {
+    min 0
+  }
+  field axis Vector3 "The twist axis in the joint's rest frame: along the bone for a ball joint, along the hinge for a hinge." {
+    default 0 1 0
+  }
+  field swing f32 "The cone half-angle the axis may swing away from its rest direction (0 locks it: a hinge; pi is free)." {
+    default 3.1416
+    min 0
+    max 3.1416
+    unit rad
+    tunable true
+  }
+  field twistMin f32 "The least twist about `axis` from rest (a hinge's bend one way)." {
+    default -3.1416
+    min -3.1416
+    max 3.1416
+    unit rad
+    tunable true
+  }
+  field twistMax f32 "The most twist about `axis` from rest (a hinge's bend the other way)." {
+    default 3.1416
+    min -3.1416
+    max 3.1416
+    unit rad
+    tunable true
+  }
+}
+```
+
+<sub>`api.ogt` line 8072</sub>
+
 <a id="record-AnimationEvent"></a>
 
 ### `og.AnimationEvent` (event)
@@ -670,7 +801,7 @@ event AnimationEvent {
 }
 ```
 
-<sub>`api.ogt` line 8023</sub>
+<sub>`api.ogt` line 8104</sub>
 
 <a id="record-Flipbook"></a>
 
@@ -726,7 +857,7 @@ component Flipbook {
 }
 ```
 
-<sub>`api.ogt` line 8138</sub>
+<sub>`api.ogt` line 8219</sub>
 
 <a id="record-FlipbookEvent"></a>
 
@@ -753,7 +884,7 @@ event FlipbookEvent {
 }
 ```
 
-<sub>`api.ogt` line 8169</sub>
+<sub>`api.ogt` line 8250</sub>
 
 <a id="record-Skeleton2D"></a>
 
@@ -809,7 +940,7 @@ component Skeleton2D {
 }
 ```
 
-<sub>`api.ogt` line 8233</sub>
+<sub>`api.ogt` line 8314</sub>
 
 <a id="record-Skeleton2DEvent"></a>
 
@@ -840,7 +971,7 @@ event Skeleton2DEvent {
 }
 ```
 
-<sub>`api.ogt` line 8263</sub>
+<sub>`api.ogt` line 8344</sub>
 
 <a id="record-IkTarget2D"></a>
 
@@ -891,7 +1022,7 @@ component IkTarget2D {
 }
 ```
 
-<sub>`api.ogt` line 8274</sub>
+<sub>`api.ogt` line 8355</sub>
 
 ## Types
 
@@ -1056,7 +1187,7 @@ struct ClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 8034</sub>
+<sub>`api.ogt` line 8115</sub>
 
 <a id="type-Animation"></a>
 
@@ -1083,7 +1214,7 @@ struct Animation {
 }
 ```
 
-<sub>`api.ogt` line 8044</sub>
+<sub>`api.ogt` line 8125</sub>
 
 <a id="type-GraphDesc"></a>
 
@@ -1107,7 +1238,7 @@ struct GraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 8053</sub>
+<sub>`api.ogt` line 8134</sub>
 
 <a id="type-Rig"></a>
 
@@ -1121,7 +1252,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright."
 ```
 
-<sub>`api.ogt` line 8067</sub>
+<sub>`api.ogt` line 8148</sub>
 
 <a id="type-HumanBone"></a>
 
@@ -1142,7 +1273,7 @@ struct HumanBone {
 }
 ```
 
-<sub>`api.ogt` line 8076</sub>
+<sub>`api.ogt` line 8157</sub>
 
 <a id="type-Humanoid"></a>
 
@@ -1163,7 +1294,7 @@ struct Humanoid {
 }
 ```
 
-<sub>`api.ogt` line 8082</sub>
+<sub>`api.ogt` line 8163</sub>
 
 <a id="type-HumanoidDesc"></a>
 
@@ -1187,7 +1318,7 @@ struct HumanoidDesc {
 }
 ```
 
-<sub>`api.ogt` line 8088</sub>
+<sub>`api.ogt` line 8169</sub>
 
 <a id="type-RetargetDesc"></a>
 
@@ -1221,7 +1352,7 @@ struct RetargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 8102</sub>
+<sub>`api.ogt` line 8183</sub>
 
 <a id="type-FlipbookSheet"></a>
 
@@ -1235,7 +1366,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
 ```
 
-<sub>`api.ogt` line 8122</sub>
+<sub>`api.ogt` line 8203</sub>
 
 <a id="type-FlipMode"></a>
 
@@ -1260,7 +1391,7 @@ enum FlipMode {
 }
 ```
 
-<sub>`api.ogt` line 8131</sub>
+<sub>`api.ogt` line 8212</sub>
 
 <a id="type-FlipbookClipInfo"></a>
 
@@ -1291,7 +1422,7 @@ struct FlipbookClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 8177</sub>
+<sub>`api.ogt` line 8258</sub>
 
 <a id="type-FlipbookInfo"></a>
 
@@ -1322,7 +1453,7 @@ struct FlipbookInfo {
 }
 ```
 
-<sub>`api.ogt` line 8189</sub>
+<sub>`api.ogt` line 8270</sub>
 
 <a id="type-Rig2D"></a>
 
@@ -1336,7 +1467,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig2D "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d."
 ```
 
-<sub>`api.ogt` line 8224</sub>
+<sub>`api.ogt` line 8305</sub>
 
 <a id="type-Rig2DClipInfo"></a>
 
@@ -1365,7 +1496,7 @@ struct Rig2DClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 8303</sub>
+<sub>`api.ogt` line 8384</sub>
 
 <a id="type-Rig2DInfo"></a>
 
@@ -1398,7 +1529,7 @@ struct Rig2DInfo {
 }
 ```
 
-<sub>`api.ogt` line 8314</sub>
+<sub>`api.ogt` line 8395</sub>
 
 <a id="type-Skeleton2DBox"></a>
 
@@ -1421,7 +1552,7 @@ struct Skeleton2DBox {
 }
 ```
 
-<sub>`api.ogt` line 8333</sub>
+<sub>`api.ogt` line 8414</sub>
 
 ## Column kinds
 
@@ -1526,7 +1657,7 @@ column Rig {
 }
 ```
 
-<sub>`api.ogt` line 8069</sub>
+<sub>`api.ogt` line 8150</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -1537,7 +1668,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>`api.ogt` line 8124</sub>
+<sub>`api.ogt` line 8205</sub>
 
 ```ogt
 column Rig2D {
@@ -1548,4 +1679,4 @@ column Rig2D {
 }
 ```
 
-<sub>`api.ogt` line 8226</sub>
+<sub>`api.ogt` line 8307</sub>

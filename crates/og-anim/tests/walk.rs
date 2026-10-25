@@ -1,6 +1,7 @@
 //! The determinism contract of `og.anim` (docs/design.md §2.4): 20 walkers
 //! with state machines, an additive layer, cross-fading players, planar root
-//! motion, blendshapes and 60 IK chains for 3600 ticks give the same
+//! motion, blendshapes, 60 IK chains, 60 joint limits and 20 look-ats for
+//! 3600 ticks give the same
 //! `world_hash` twice, and a snapshot taken at tick 1800 and restored into a
 //! fresh world continues to the same hash and the same palettes.
 //!
@@ -9,7 +10,9 @@
 //! block (a restore then replays from the wrong place), a pose or phase not
 //! saved, or a palette derived from something the snapshot does not hold.
 //! The walk also has to *do* something: walkers travel by root motion, the
-//! state machine visits both states, footstep markers fire, feet reach.
+//! state machine visits both states, footstep markers fire, feet reach,
+//! heads follow their targets and are held at their angles when the target
+//! goes behind.
 
 mod support;
 
@@ -23,6 +26,9 @@ struct Run {
     snapshot_1800: Vec<u8>,
     states_seen: BTreeSet<u32>,
     footsteps: usize,
+    /// Look-at evaluations held at their angles, and free.
+    looks_clamped: usize,
+    looks_free: usize,
 }
 
 fn skeletons(world: &World) -> Vec<Entity> {
@@ -41,7 +47,14 @@ fn run(world: &mut World, from: u64, to: u64) -> Run {
         snapshot_1800: Vec::new(),
         states_seen: BTreeSet::new(),
         footsteps: 0,
+        looks_clamped: 0,
+        looks_free: 0,
     };
+    let looks: Vec<Entity> = world
+        .entities()
+        .into_iter()
+        .filter(|&e| world.has::<LookAt>(e).unwrap_or(false))
+        .collect();
     let sk = skeletons(world);
     for tick in from..to {
         world.step().unwrap();
@@ -54,6 +67,13 @@ fn run(world: &mut World, from: u64, to: u64) -> Run {
         for &e in &sk {
             if let Ok(g) = world.get::<AnimationGraph>(e) {
                 r.states_seen.insert(g.state);
+            }
+        }
+        for &l in &looks {
+            if world.get::<LookAt>(l).unwrap().clamped {
+                r.looks_clamped += 1;
+            } else {
+                r.looks_free += 1;
             }
         }
         if (tick + 1) % 600 == 0 {
@@ -137,6 +157,12 @@ fn a_3600_tick_walk_gives_the_same_hash_twice_and_after_a_restore_at_1800() {
     assert!(
         reached >= 2 * WALKERS as usize,
         "{reached} of {chains} chains reached their targets"
+    );
+    assert!(
+        ra.looks_clamped > 10_000 && ra.looks_free > 10_000,
+        "heads held at their angles {} times, free {} times",
+        ra.looks_clamped,
+        ra.looks_free
     );
 
     // Evidence: the hashes and what the walk did.

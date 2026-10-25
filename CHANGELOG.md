@@ -9,6 +9,13 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- `og.LookAt` (an aim constraint after the clips and IK: a joint's `axis`
+  turned onto `target`, its `upAxis` towards the `up` hint, held within
+  `maxYaw`/`maxPitch`, shared over `bones` joints, `clamped` written) and
+  `og.JointLimit` (a joint's swing cone and twist range from rest, which
+  og.IkChain's two-bone and FABRIK solvers and og.LookAt clamp to; a hinge
+  is `swing` 0 with the bend as the twist range). New records: every
+  world's registry, and so its `world_hash`, gains them.
 - `og.CollisionStarted` gains `impulse` (N·s, the normal impulse the
   solver gave the pair in the step that made the contact, summed over
   substeps and contact points: `b` takes it along `normal`, `a` against

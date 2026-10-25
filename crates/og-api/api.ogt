@@ -8020,6 +8020,87 @@ module anim {
     }
   }
 
+  component LookAt {
+    doc "An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the target, +Y up). The direction is held within maxYaw and maxPitch of the animated forward; with `bones` above 1 the joint's parents share the turn. Put it on its own entity (a head, the eyes, a turret's barrel); constraints apply in query order, and og.JointLimit clamps the joints it turns."
+    field skeleton Entity "The entity with the og.Skeleton this constraint turns."
+    field joint u32 "The joint that aims (an index into the skin's joints): the head, an eye." {
+      min 0
+    }
+    field bones u32 "How many joints share the turn: `joint` and its parents (3 spreads a look over neck, chest and spine), each parent taking an even share and `joint` the rest." {
+      default 1
+      min 1
+      max 8
+    }
+    field target Vector3 "The point to look at, in `space`." {
+      unit m
+    }
+    field space IkSpace "What `target` and `up` are relative to: world (the frame the skeleton entity's og.Transform is in) or model."
+    field axis Vector3 "The joint's forward, in its own frame: the axis turned onto the target." {
+      default 0 0 1
+    }
+    field upAxis Vector3 "The joint's up, in its own frame: yaw turns about it, pitch towards it, and it rolls towards `up`." {
+      default 0 1 0
+    }
+    field up Vector3 "The up hint, a direction in `space` the joint's `upAxis` leans to (three.js Object3D.up); the zero vector keeps the animated roll." {
+      default 0 1 0
+    }
+    field maxYaw f32 "The largest turn about `upAxis`, left or right of the animated forward." {
+      default 3.1416
+      min 0
+      max 3.1416
+      unit rad
+      tunable true
+    }
+    field maxPitch f32 "The largest turn towards or away from `upAxis`, from the animated forward." {
+      default 1.5708
+      min 0
+      max 1.5708
+      unit rad
+      tunable true
+    }
+    field weight f32 "How much of the turn is applied (0 = the animated pose, 1 = aimed)." {
+      default 1
+      min 0
+      max 1
+      tunable true
+    }
+    field clamped bool "Written: the target lay outside maxYaw or maxPitch, so the joint aims at the nearest direction inside them." {
+      readonly true
+    }
+  }
+
+  component JointLimit {
+    doc "How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped."
+    field skeleton Entity "The entity with the og.Skeleton whose joint this limits."
+    field joint u32 "The limited joint (an index into the skin's joints)." {
+      min 0
+    }
+    field axis Vector3 "The twist axis in the joint's rest frame: along the bone for a ball joint, along the hinge for a hinge." {
+      default 0 1 0
+    }
+    field swing f32 "The cone half-angle the axis may swing away from its rest direction (0 locks it: a hinge; pi is free)." {
+      default 3.1416
+      min 0
+      max 3.1416
+      unit rad
+      tunable true
+    }
+    field twistMin f32 "The least twist about `axis` from rest (a hinge's bend one way)." {
+      default -3.1416
+      min -3.1416
+      max 3.1416
+      unit rad
+      tunable true
+    }
+    field twistMax f32 "The most twist about `axis` from rest (a hinge's bend the other way)." {
+      default 3.1416
+      min -3.1416
+      max 3.1416
+      unit rad
+      tunable true
+    }
+  }
+
   event AnimationEvent {
     doc "A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers."
     field entity Entity "The skeleton entity."

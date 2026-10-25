@@ -4002,6 +4002,139 @@
     },
     {
       "id": 49,
+      "name": "LookAt",
+      "schema": "og.LookAt",
+      "module": "anim",
+      "fields": [
+        {
+          "name": "skeleton",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "joint",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "bones",
+          "column": "u32",
+          "default": 1
+        },
+        {
+          "name": "target",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "space",
+          "column": "IkSpace",
+          "default": "world"
+        },
+        {
+          "name": "axis",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 1
+          }
+        },
+        {
+          "name": "upAxis",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
+        },
+        {
+          "name": "up",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
+        },
+        {
+          "name": "maxYaw",
+          "column": "f32",
+          "default": 3.1416,
+          "tunable": true
+        },
+        {
+          "name": "maxPitch",
+          "column": "f32",
+          "default": 1.5708,
+          "tunable": true
+        },
+        {
+          "name": "weight",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "clamped",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "name": "JointLimit",
+      "schema": "og.JointLimit",
+      "module": "anim",
+      "fields": [
+        {
+          "name": "skeleton",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "joint",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "axis",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
+        },
+        {
+          "name": "swing",
+          "column": "f32",
+          "default": 3.1416,
+          "tunable": true
+        },
+        {
+          "name": "twistMin",
+          "column": "f32",
+          "default": -3.1416,
+          "tunable": true
+        },
+        {
+          "name": "twistMax",
+          "column": "f32",
+          "default": 3.1416,
+          "tunable": true
+        }
+      ]
+    },
+    {
+      "id": 51,
       "name": "Flipbook",
       "schema": "og.Flipbook",
       "module": "anim",
@@ -4053,7 +4186,7 @@
       ]
     },
     {
-      "id": 50,
+      "id": 52,
       "name": "Skeleton2D",
       "schema": "og.Skeleton2D",
       "module": "anim",
@@ -4108,7 +4241,7 @@
       ]
     },
     {
-      "id": 51,
+      "id": 53,
       "name": "IkTarget2D",
       "schema": "og.IkTarget2D",
       "module": "anim",
@@ -4157,7 +4290,7 @@
       ]
     },
     {
-      "id": 52,
+      "id": 54,
       "name": "Tilemap",
       "schema": "og.Tilemap",
       "module": "tilemap",
@@ -4209,7 +4342,7 @@
       ]
     },
     {
-      "id": 53,
+      "id": 55,
       "name": "AudioSource",
       "schema": "og.AudioSource",
       "module": "audio",
@@ -4326,7 +4459,7 @@
       ]
     },
     {
-      "id": 54,
+      "id": 56,
       "name": "AudioListener",
       "schema": "og.AudioListener",
       "module": "audio",
@@ -4340,7 +4473,7 @@
       ]
     },
     {
-      "id": 55,
+      "id": 57,
       "name": "AudioBusFx",
       "schema": "og.AudioBusFx",
       "module": "audio",
@@ -4435,7 +4568,7 @@
       ]
     },
     {
-      "id": 56,
+      "id": 58,
       "name": "ReverbZone",
       "schema": "og.ReverbZone",
       "module": "audio",
@@ -4493,7 +4626,7 @@
       ]
     },
     {
-      "id": 57,
+      "id": 59,
       "name": "Music",
       "schema": "og.Music",
       "module": "audio",
@@ -4541,7 +4674,7 @@
       ]
     },
     {
-      "id": 58,
+      "id": 60,
       "name": "NavAgent",
       "schema": "og.NavAgent",
       "module": "nav",
@@ -4666,7 +4799,7 @@
       ]
     },
     {
-      "id": 59,
+      "id": 61,
       "name": "Steering",
       "schema": "og.Steering",
       "module": "nav",
@@ -4782,7 +4915,7 @@
       ]
     },
     {
-      "id": 60,
+      "id": 62,
       "name": "AiAgent",
       "schema": "og.AiAgent",
       "module": "ai",
@@ -4829,7 +4962,7 @@
       ]
     },
     {
-      "id": 61,
+      "id": 63,
       "name": "Perception",
       "schema": "og.Perception",
       "module": "ai",
@@ -4940,7 +5073,7 @@
       ]
     },
     {
-      "id": 62,
+      "id": 64,
       "name": "Perceivable",
       "schema": "og.Perceivable",
       "module": "ai",
@@ -4958,7 +5091,7 @@
       ]
     },
     {
-      "id": 63,
+      "id": 65,
       "name": "Terrain",
       "schema": "og.Terrain",
       "module": "terrain",
@@ -4987,7 +5120,7 @@
       ]
     },
     {
-      "id": 64,
+      "id": 66,
       "name": "TerrainScatter",
       "schema": "og.TerrainScatter",
       "module": "terrain",
@@ -5056,7 +5189,7 @@
       ]
     },
     {
-      "id": 65,
+      "id": 67,
       "name": "VideoPlayer",
       "schema": "og.VideoPlayer",
       "module": "video",
@@ -5108,7 +5241,7 @@
       ]
     },
     {
-      "id": 66,
+      "id": 68,
       "name": "PathFollower",
       "schema": "og.PathFollower",
       "module": "path",
@@ -5162,7 +5295,7 @@
       ]
     },
     {
-      "id": 67,
+      "id": 69,
       "name": "Timeline",
       "schema": "og.Timeline",
       "module": "timeline",
@@ -5196,7 +5329,7 @@
       ]
     },
     {
-      "id": 68,
+      "id": 70,
       "name": "PlayerInput",
       "schema": "og.PlayerInput",
       "module": "net",

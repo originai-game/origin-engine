@@ -5,6 +5,11 @@
 //! [`crate::AnimationSystem`]; 0 means none. Joint fields index the skin's
 //! `joints` list (glTF `skin.joints`), so `0` is the skin's first joint.
 
+// 3.1416 and 1.5708 are the IDL's angle bounds (og.LookAt, og.JointLimit), a
+// hair above pi and pi/2 so the default ranges hold nothing; the derive
+// writes them into generated code an item attribute does not reach.
+#![allow(clippy::approx_constant)]
+
 use og_core::glam::{Quat, Vec3};
 use og_core::{Reflect, Str64};
 
@@ -359,6 +364,124 @@ impl Default for IkChain {
             tolerance: 0.001,
             reached: false,
             error: 0.0,
+        }
+    }
+}
+
+/// An aim constraint on a skeleton, applied after its clips, graph and IK
+/// chains: `joint` turns so its `axis` points at `target` (three.js
+/// Object3D.lookAt: +Z at the target, +Y towards `up`). Put it on its own
+/// entity (a head, the eyes, a turret's barrel); constraints apply in query
+/// order.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.LookAt")]
+pub struct LookAt {
+    /// The entity with the og.Skeleton this constraint turns.
+    pub skeleton: u64,
+    /// The joint that aims (an index into the skin's joints): the head, an eye.
+    #[reflect(min = 0)]
+    pub joint: u32,
+    /// How many joints share the turn: `joint` and its parents (3 spreads a look over neck, chest and spine), each parent taking an even share and `joint` the rest.
+    #[reflect(min = 1, max = 8, default = 1)]
+    pub bones: u32,
+    /// The point to look at, in `space`.
+    #[reflect(unit = "m")]
+    pub target: Vec3,
+    /// What `target` and `up` are relative to: world (the frame the skeleton entity's og.Transform is in) or model.
+    #[reflect(variants = ["world", "model"])]
+    pub space: u32,
+    /// The joint's forward, in its own frame: the axis turned onto the target.
+    #[reflect(default = [0, 0, 1])]
+    pub axis: Vec3,
+    /// The joint's up, in its own frame: yaw turns about it, pitch towards it, and it rolls towards `up`.
+    #[reflect(name = "upAxis", default = [0, 1, 0])]
+    pub up_axis: Vec3,
+    /// The up hint, a direction in `space` the joint's `upAxis` leans to (three.js Object3D.up); the zero vector keeps the animated roll.
+    #[reflect(default = [0, 1, 0])]
+    pub up: Vec3,
+    /// The largest turn about `upAxis`, left or right of the animated forward.
+    #[reflect(
+        name = "maxYaw",
+        unit = "rad",
+        min = 0,
+        max = 3.1416,
+        default = 3.1416,
+        tunable
+    )]
+    pub max_yaw: f32,
+    /// The largest turn towards or away from `upAxis`, from the animated forward.
+    #[reflect(
+        name = "maxPitch",
+        unit = "rad",
+        min = 0,
+        max = 1.5708,
+        default = 1.5708,
+        tunable
+    )]
+    pub max_pitch: f32,
+    /// How much of the turn is applied (0 = the animated pose, 1 = aimed).
+    #[reflect(min = 0, max = 1, default = 1, tunable)]
+    pub weight: f32,
+    /// Written: the target lay outside maxYaw or maxPitch, so the joint aims at the nearest direction inside them.
+    pub clamped: bool,
+}
+
+impl Default for LookAt {
+    fn default() -> Self {
+        LookAt {
+            skeleton: 0,
+            joint: 0,
+            bones: 1,
+            target: Vec3::ZERO,
+            space: IK_WORLD,
+            axis: Vec3::Z,
+            up_axis: Vec3::Y,
+            up: Vec3::Y,
+            max_yaw: 3.1416,
+            max_pitch: 1.5708,
+            weight: 1.0,
+            clamped: false,
+        }
+    }
+}
+
+/// How far a joint may turn from its rest rotation when og.anim's solvers
+/// (og.IkChain, og.LookAt) turn it: a swing of the `axis`
+/// within a cone and a twist about it within a range. A hinge (a knee, an
+/// elbow) is `axis` along the hinge, `swing` 0 and the bend range as
+/// `twistMin`…`twistMax`. Put it on its own entity, one per joint; the
+/// animated pose itself is never clamped.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.JointLimit")]
+pub struct JointLimit {
+    /// The entity with the og.Skeleton whose joint this limits.
+    pub skeleton: u64,
+    /// The limited joint (an index into the skin's joints).
+    #[reflect(min = 0)]
+    pub joint: u32,
+    /// The twist axis in the joint's rest frame: along the bone for a ball joint, along the hinge for a hinge.
+    #[reflect(default = [0, 1, 0])]
+    pub axis: Vec3,
+    /// The cone half-angle the axis may swing away from its rest direction (0 locks it: a hinge; pi is free).
+    #[reflect(unit = "rad", min = 0, max = 3.1416, default = 3.1416, tunable)]
+    pub swing: f32,
+    /// The least twist about `axis` from rest (a hinge's bend one way).
+    #[reflect(name = "twistMin", unit = "rad", min = -3.1416, max = 3.1416, default = -3.1416, tunable)]
+    pub twist_min: f32,
+    /// The most twist about `axis` from rest (a hinge's bend the other way).
+    #[reflect(name = "twistMax", unit = "rad", min = -3.1416, max = 3.1416, default = 3.1416, tunable)]
+    pub twist_max: f32,
+}
+
+impl Default for JointLimit {
+    fn default() -> Self {
+        JointLimit {
+            skeleton: 0,
+            joint: 0,
+            axis: Vec3::Y,
+            swing: 3.1416,
+            twist_min: -3.1416,
+            twist_max: 3.1416,
         }
     }
 }

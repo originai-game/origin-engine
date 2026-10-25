@@ -23,6 +23,10 @@ pub const J_HIPS: u32 = 0;
 pub const J_FOOT_L: u32 = 5;
 pub const J_FOOT_R: u32 = 8;
 pub const J_HAND_L: u32 = 11;
+pub const J_HEAD: u32 = 2;
+pub const J_SHIN_L: u32 = 4;
+pub const J_SHIN_R: u32 = 7;
+pub const J_ARM_L: u32 = 9;
 
 pub fn skeleton() -> SkeletonAsset {
     let n = |name: &str, parent: u32, t: [f32; 3], mesh: u32| SkeletonNode {

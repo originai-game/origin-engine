@@ -759,6 +759,28 @@ strike, a bite or a fall at weight 1, back to 0 when `finished`.
 Transform by the root joint's xz travel and yaw, `full` by all of it,
 `off` (the default) leaves the hips travelling inside the model; switch it
 to `planar` for a lunge's clip and back to `off` after.
+**Look-at and joint limits.** `og.LookAt { skeleton, joint, target }`
+on its own entity turns a joint (a head, an eye, a turret's barrel) so its
+`axis` (default +Z, as three.js `lookAt`) points at `target` after the
+clips and IK, its `upAxis` (+Y) rolling towards `up` (world +Y; zero
+keeps the animated roll). `maxYaw` and `maxPitch` (radians from the
+animated forward) hold a head from turning round, `clamped` reads back
+when they did; `bones: 3` spreads the turn over neck, chest and spine;
+`weight` fades it in and out. `og.JointLimit { skeleton, joint, axis,
+swing, twistMin, twistMax }` (radians from the rest pose) limits what
+`og.IkChain` and `og.LookAt` may turn a joint to: a knee is a hinge,
+`axis` +X, `swing: 0.15`, `twistMin: 0`, `twistMax: 2.6`, so a
+foot IK target never bends it backwards; a shoulder is a cone (`swing`).
+The defaults limit nothing, and the clip's own pose is never clamped.
+
+```ts
+const look = must(world.spawn({ name: "hero-look" }));
+must(world.insert(look, og.LookAt, { skeleton: body, joint: HEAD, bones: 2, maxYaw: 1.2, maxPitch: 0.5 }));
+const knee = must(world.spawn({ name: "hero-knee-l" }));
+must(world.insert(knee, og.JointLimit, { skeleton: body, joint: SHIN_L, axis: { x: 1, y: 0, z: 0 }, swing: 0.15, twistMin: 0, twistMax: 2.6 }));
+// each tick, from a system that writes og.LookAt: world.set(look, og.LookAt, { target: playerPosition })
+```
+
 `templates/archetypes/third-person` (`src/anim.ts`: a 1D blend by speed,
 a hero retargeted at cook time and sentinels at run time) is the pattern,
 and for a 3D action game as a whole: a CharacterController over a level,
