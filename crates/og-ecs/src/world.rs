@@ -863,6 +863,17 @@ impl World {
             .collect()
     }
 
+    /// Every timed system's name and the milliseconds of its last run, in
+    /// run order: [`World::system_info`]'s `name` and `ms` without the
+    /// declarations it copies, for a reader of every frame (the probe's
+    /// `state().timings.systems`).
+    pub fn system_ms(&self) -> Vec<(String, f64)> {
+        self.systems
+            .iter()
+            .filter_map(|s| s.ms.map(|ms| (s.name.clone(), ms)))
+            .collect()
+    }
+
     /// Times every system's run (with its commands applied) with `clock`,
     /// wall-clock milliseconds from any origin, reported by
     /// [`World::system_info`]; `None` stops timing. Measurement only: no

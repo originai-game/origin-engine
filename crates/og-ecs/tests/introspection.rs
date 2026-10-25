@@ -132,6 +132,7 @@ fn systems_are_timed_with_the_world_clock() {
     w.step().unwrap();
     let info = w.system_info();
     assert_eq!((info[0].ms, info[0].runs), (None, 0), "no clock, no times");
+    assert!(w.system_ms().is_empty(), "no clock, no times");
     let hash = w.world_hash();
     w.set_clock(Some(clock));
     w.step().unwrap();
@@ -142,6 +143,7 @@ fn systems_are_timed_with_the_world_clock() {
     // read it twice): where a trace lays it, not where the last run ended.
     assert_eq!(info[0].start, Some(3.0));
     assert_eq!((info[0].total_ms, info[0].runs), (3.0, 2));
+    assert_eq!(w.system_ms(), [("idle".to_string(), 1.5)]);
     let mut plain = world();
     plain
         .add_system(SystemDesc::new("idle"), |_| Ok(()))
