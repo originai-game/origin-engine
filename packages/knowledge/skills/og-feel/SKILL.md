@@ -169,7 +169,10 @@ it is a cutscene or a reward.
 ## 7. Floating text
 
 `og.render.floatingText(world, { text, position, ... })` pops a text that
-rises, drifts and fades by itself (world state, deterministic).
+rises, drifts and fades by itself (world state, deterministic). A label
+that stays with a character (a name tag, a player's number) is not
+floating text: it is screen text where the og.Camera resource's
+`worldToScreen` puts the point, og-ui §3 (Text over a world point).
 
 - Damage and score numbers above the hit point, not on the HUD: the eye is
   already there. Pickups: what was gained (`+1`, `key`), short.

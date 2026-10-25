@@ -53,8 +53,9 @@ a number and a sound (taste 98, feel 79).
    `get:<Resource>[.<field>]` or `get:<entity>[.<Component>[.<field>]]`
    (logs the value as game code sees it, og.Time whole and a light og.DayNight
    drives as it is drawn, and writes `get-<tick>.json`, then
-   `get-<tick>-2.json`, ... for more on one tick; a world dump lists
-   resources by name only, so `get:` is how to read one),
+   `get-<tick>-2.json`, ... for more on one tick; `get:Game:game.json`
+   names the file; a world dump lists resources by name only, so `get:`
+   is how to read one),
    `set:<entity>.<Component>.<field>=<value>` or
    `set:<Resource>.<field>=<value>` (`set:og.Camera.trauma=0.5`,
    `set:Game.coins=10`, `set:og.Stylise.ink=false`: a number, `true` or
@@ -98,7 +99,46 @@ each its argument form and one sentence in `GameDesc.commandHelp`
 (`{ spawn_wave: { usage: "<count>", doc: "Spawns a wave now." } }`)
 so `help` explains it (it lists `spawn_wave:<count>`: the name, then the
 usage). An entry naming no action is logged when the game
-starts.
+starts. A step's arguments are its colon-delimited fields after the
+action, never shell words: `0.5:records:12:34.5` hands the handler
+`args[0]` `"12"` and `args[1]` `"34.5"`, and its usage is written the same
+way, `usage: "<berries>:<seconds>"` (a space stays inside its field:
+`records:12 34.5` is one argument). A game may not take a core action's
+name; og-game §3 lists them, with `open_pause` beside the engine's `pause`.
+
+**File names.** Every output of one script has its own file. An unnamed
+output takes the action and the tick (`get-000030.json`), and a second on
+the same tick is suffixed quietly (`get-000030-2.json`). A named one that
+an earlier step of the script already wrote, at any time (a copy-pasted
+`0.5:get:Game:met.json`), is written as `met-2.json`, then `met-3.json`,
+never over the first, and logs a WARN naming both steps ("'met.json' was
+already written by the 0.5s get step, so this one is 'met-2.json'"). The
+WARN is in `run.warnings`, so a playtest that asserts a clean run
+(`t.equal(run.warnings.length, 0, ...)`) fails on the clash, and
+`run.json("met.json")` reads the first step's: give each named step its
+own file.
+
+**Values in the JSON.** A dump and a `get` answer write a vector as an
+array in lane order (`Vector3` `[x, y, z]`, `Quaternion` `[x, y, z, w]`,
+`Color` `[r, g, b]`), where the API's values are objects
+(`{ x, y, z }`); `set:` takes the lanes comma-separated, without spaces
+(`set:box.og.Transform.position=4,5,6`). Read a dump by index:
+
+```ts
+// 0.3:get:box.og.Transform:t.json writes {"kind":"get","target":"box.og.Transform","tick":18,"value":{"position":[1,2.5,-3],...}}
+const [x, y, z] = run.json<{ value: { position: [number, number, number] } }>("t.json").value.position;
+t.near(y, 2.5, 1e-4, "the box stands on the ledge");
+```
+
+An `f32` field is IEEE-754 single precision. Game code reads it as the
+f32's exact value promoted to a JavaScript number, so `2.7` written to an
+f32 reads back as `2.700000047683716`, and what game code sends carries
+that number as JSON (the facts, an og.platform payload, so
+`dump_platform`); `get` and the dumps print the f32's shortest form,
+`2.7`. Compare numbers with a tolerance in a test (`t.near(a, b, 1e-4,
+...)`), round only to display one (`toFixed(1)` on the label), and keep a
+value that must round-trip exactly (a payload a test compares with `===`)
+in an `f64` field.
 
 ## 2. Live sessions: the probe and hot reload
 

@@ -213,6 +213,31 @@ export default og.game({
   channel and playtests can call (`0.5:spawn_wave:3`), with their usage in
   `GameDesc.commandHelp` for `help` (og-build §1). Add one for each state a
   test needs to reach quickly, instead of playing there.
+  - **Arguments are colon-delimited**, the fields after the name, each a
+    string (`Number(args[0])` to read a number); a space is part of its
+    field, not a separator, and `\:` writes a colon inside one. Two
+    arguments, and the usage that says so:
+
+    ```ts
+    commands: { records: (world, args) => setRecords(world, Number(args[0]), Number(args[1])) },
+    commandHelp: { records: { usage: "<berries>:<seconds>", doc: "Sets the isle's records." } },
+    ```
+
+    `0.5:records:12:34.5` hands `args` `["12", "34.5"]`; `records:12 34.5`
+    would hand one argument, `"12 34.5"`.
+  - **Reserved names.** The channel's core actions are not a game's to
+    take, and the game refuses to start on one (`'pause' is a core action;
+    register under another name`): `screenshot`, `listen`, `touch_move_to`,
+    `touch_move`, `touch_start`, `touch_end`, `touch`, `scroll`, `gamepad`,
+    `key_down`, `key_up`, `type`, `compose`, `commit`, `move_to_text`,
+    `teleport`, `frame_entity`, `dump_world`, `dump_entity`, `dump_ui`,
+    `get`, `set`, `seed`, `pause`, `resume`, `advance`, `describe`,
+    `expect`, `save_scene`, `quit` and `help` (`help` prints them, and the
+    modules' `dump_ai`, `dump_nav`, `dump_platform`, `locale`,
+    `dump_stream` and `terrain_stream`, also taken). The engine's `pause`
+    freezes the tick from outside the game; the game's own pause (its menu
+    open, `Game.paused` set) is a game action under its own name,
+    `open_pause`.
 - **Facts** (`GameDesc.facts`) return a small JSON object for the probe's
   `state()`: score, phase, lives. Tests assert on facts and dumps.
 

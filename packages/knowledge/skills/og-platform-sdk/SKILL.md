@@ -88,6 +88,12 @@ if (answer.ok && typeof answer.data.value === "number") run.best[i] = Math.max(r
 | AI-generated content shown | `aiMark(world, { kind, label })` | disclosure, not permission |
 | Play with others in one room | `roomCreate(world, { name })`, `roomJoin(world, room)`, `roomLeave`, `roomSend(world, data, to?)`, `roomPeers`, `roomInfo`; the answers as `og.RoomJoined`, `og.RoomPeerJoined`, `og.RoomPeerLeft`, `og.RoomMessage` (read one with `roomMessage`) | natively `og relay` with `og run --room ws://127.0.0.1:P/<room>`; on the web the Player's rooms, when its hello lists `room.join` (`roomInfo(world).host` is `none` otherwise and joins are refused). A message is this peer's host input only: for a game both peers simulate, use og.net's lockstep (`og.Lockstep`, `og.PlayerInput`, og-game §20) and send nothing yourself |
 
+A payload keeps the number it was given: an `f32` field's value is single
+precision promoted to a JSON number (`f32(2.7)` sends `2.700000047683716`),
+and the store neither rounds nor widens it. Compare with a tolerance in
+a playtest, round only for display, or keep a value that must compare
+exactly in an `f64` (og-build §1, Values in the JSON).
+
 `og.platform.info(world)` says what answers here (`player`, `local` or
 `none`) and the methods it answers (`capabilities`): check it rather than
 trying.
