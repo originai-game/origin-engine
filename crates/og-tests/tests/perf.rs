@@ -32,6 +32,13 @@ fn slug(s: &str) -> String {
 /// Times `scene`, checks it against its baseline, and returns the best
 /// run's milliseconds per frame and the adapter.
 fn perf(scene: &str) -> (f64, String) {
+    perf_of(scene, false)
+}
+
+/// [`perf`], or with `capture` each frame also read back and encoded as
+/// the probe's `capture` does (`read_offscreen`, then `og_render::png`),
+/// against `<scene>-capture.json`.
+fn perf_of(scene: &str, capture: bool) -> (f64, String) {
     if cfg!(debug_assertions) {
         panic!(
             "perf tests measure release builds: cargo test -p og-tests --release -- --ignored perf"
@@ -49,6 +56,10 @@ fn perf(scene: &str) -> (f64, String) {
         renderer
             .render(&built.scene, &RenderTarget::Offscreen)
             .expect("render");
+        if capture {
+            let image = renderer.read_offscreen().expect("capture");
+            std::hint::black_box(og_render::png(&image));
+        }
     };
     for _ in 0..built.frames.max(1) + 10 {
         render(&mut renderer, &mut built);
@@ -68,10 +79,15 @@ fn perf(scene: &str) -> (f64, String) {
     let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("perf")
         .join(format!("{}-{}", info.backend_tier(), slug(&info.adapter)));
-    let path = dir.join(format!("{scene}.json"));
+    let name = if capture {
+        format!("{scene}-capture")
+    } else {
+        scene.to_string()
+    };
+    let path = dir.join(format!("{name}.json"));
     let runs_text: Vec<String> = runs.iter().map(|r| format!("{r:.3}")).collect();
     println!(
-        "perf {scene} [{} on {}]: best {ms:.3} ms per frame (runs: {})",
+        "perf {name} [{} on {}]: best {ms:.3} ms per frame (runs: {})",
         info.backend_tier(),
         info.adapter,
         runs_text.join(", ")
@@ -79,7 +95,7 @@ fn perf(scene: &str) -> (f64, String) {
     if std::env::var_os("OG_PERF_RECORD").is_some() {
         std::fs::create_dir_all(&dir).expect("perf dir");
         let json = format!(
-            "{{\n  \"scene\": \"{scene}\",\n  \"tier\": \"{}\",\n  \"adapter\": \"{}\",\n  \"width\": {},\n  \"height\": {},\n  \"frames_per_run\": {FRAMES},\n  \"runs_ms\": [{}],\n  \"frame_ms\": {ms:.3}\n}}\n",
+            "{{\n  \"scene\": \"{name}\",\n  \"tier\": \"{}\",\n  \"adapter\": \"{}\",\n  \"width\": {},\n  \"height\": {},\n  \"frames_per_run\": {FRAMES},\n  \"runs_ms\": [{}],\n  \"frame_ms\": {ms:.3}\n}}\n",
             info.backend_tier(),
             info.adapter,
             built.desc.width,
@@ -106,7 +122,7 @@ fn perf(scene: &str) -> (f64, String) {
     println!("  baseline {baseline:.3} ms, limit {limit:.3} ms");
     assert!(
         ms <= limit,
-        "{scene}: {ms:.3} ms per frame exceeds the baseline {baseline:.3} ms by more than {:.0} %",
+        "{name}: {ms:.3} ms per frame exceeds the baseline {baseline:.3} ms by more than {:.0} %",
         TOLERANCE * 100.0
     );
     (ms, info.adapter.clone())
@@ -157,6 +173,23 @@ fn perf_lights_256() {
 #[ignore]
 fn perf_showcase() {
     perf("showcase");
+}
+
+/// The capture budget (docs/design.md §7: 30 ms per 1280×720 capture
+/// natively): the showcase drawn, read back and encoded as a PNG each
+/// frame, as the probe's `capture` and `screenshot` do. Level-6 zlib took
+/// about 90 ms of a 103 ms capture of Meridian Loop on the M4 Pro
+/// (tests/evidence/r4/measure/capture-profile).
+#[test]
+#[ignore]
+fn perf_showcase_capture() {
+    let (ms, adapter) = perf_of("showcase", true);
+    if adapter.contains("M4 Pro") {
+        assert!(
+            ms < 30.0,
+            "a showcase capture takes {ms:.3} ms on {adapter}: the budget is 30 ms"
+        );
+    }
 }
 
 /// The E4 budget: a 256x256 map with four layers (one animated, one at half

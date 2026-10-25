@@ -538,7 +538,11 @@ the web the mapping completes through WebGPU's `mapAsync` or, on WebGL2, on
 the next submit or `Renderer::poll()`. It reads only the offscreen target, so
 a page needs no `preserveDrawingBuffer`; a probe capture renders a frame to
 `Offscreen` first. It runs in Chrome on WebGPU and WebGL2: every frame
-`make web-reference` compares is a probe capture.
+`make web-reference` compares is a probe capture. A capture whose frame
+was read leaves its buffer to the next capture of the same size.
+`png(&image)` is the probe's encoder (`capture`, `sweep`, `screenshot`):
+rows filtered `Up` and deflated by fdeflate as they are filtered, the
+pixels decoding exactly (tests/evidence/r4/perf-capture/NOTES.md).
 
 ## Backend tiers
 

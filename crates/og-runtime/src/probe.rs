@@ -18,7 +18,7 @@ use super::engine::{DECL, assemble};
 use super::engine::{Engine, call, engine, extract_layouts, hooks, invalidate};
 use super::extract::{RenderState, extract};
 use og_ecs::{Entity, World};
-use og_probe::{Capture, Frame, Probe};
+use og_probe::{Capture, Frame, Probe, base64};
 #[cfg(not(feature = "publish"))]
 use og_probe::{Rebuilt, Reloader};
 use serde_json::{Value, json};
@@ -97,7 +97,7 @@ impl Capture for RuntimeCapture {
         let frame = image.map(|image| Frame {
             width: image.width,
             height: image.height,
-            png: png(&image),
+            png: og_render::png(&image),
         });
         // The probe's work, not the game's: the tick's step time leaves it out.
         rs.capture_ms += now_ms() - t0;
@@ -582,13 +582,13 @@ pub(crate) fn outputs_json(outputs: Vec<og_probe::Output>) -> Value {
             .into_iter()
             .map(|o| {
                 let (kind, data) = match &o.payload {
-                    og_probe::Payload::Png { bytes, .. } => ("png", json!(base64(bytes))),
+                    og_probe::Payload::Png { bytes, .. } => ("png", json!(base64::encode(bytes))),
                     og_probe::Payload::Json(_) => (
                         "json",
                         json!(String::from_utf8_lossy(&o.bytes()).into_owned()),
                     ),
                     og_probe::Payload::Text(t) => ("text", json!(t)),
-                    og_probe::Payload::Wav(bytes) => ("wav", json!(base64(bytes))),
+                    og_probe::Payload::Wav(bytes) => ("wav", json!(base64::encode(bytes))),
                 };
                 json!({ "tick": o.tick, "action": o.action, "file": o.file_name(), "kind": kind, "data": data })
             })
@@ -599,88 +599,4 @@ pub(crate) fn outputs_json(outputs: Vec<og_probe::Output>) -> Value {
 /// The wall clock, for timings only.
 pub(crate) fn now_ms() -> f64 {
     hooks().map_or(0.0, |h| h.now_ms())
-}
-
-pub(crate) fn base64(bytes: &[u8]) -> String {
-    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
-    for chunk in bytes.chunks(3) {
-        let b = [
-            chunk[0],
-            *chunk.get(1).unwrap_or(&0),
-            *chunk.get(2).unwrap_or(&0),
-        ];
-        let n = (u32::from(b[0]) << 16) | (u32::from(b[1]) << 8) | u32::from(b[2]);
-        for (i, shift) in [18, 12, 6, 0].iter().enumerate() {
-            if i <= chunk.len() {
-                out.push(T[((n >> shift) & 63) as usize] as char);
-            } else {
-                out.push('=');
-            }
-        }
-    }
-    out
-}
-
-/// A PNG of an RGBA8 image: rows filtered with `Up`, deflated (zlib level 6).
-pub fn png(image: &og_render::RgbaImage) -> Vec<u8> {
-    // CRC-32 a byte at a time from a table made at compile time: the
-    // bitwise loop took a fifth of a screenshot's tick unoptimised (dev).
-    const CRC: [u32; 256] = {
-        let mut t = [0u32; 256];
-        let mut n = 0;
-        while n < 256 {
-            let mut c = n as u32;
-            let mut k = 0;
-            while k < 8 {
-                c = if c & 1 != 0 {
-                    0xedb8_8320 ^ (c >> 1)
-                } else {
-                    c >> 1
-                };
-                k += 1;
-            }
-            t[n] = c;
-            n += 1;
-        }
-        t
-    };
-    fn crc(data: &[u8]) -> u32 {
-        let mut c = 0xffff_ffffu32;
-        for &b in data {
-            c = CRC[((c ^ u32::from(b)) & 0xff) as usize] ^ (c >> 8);
-        }
-        !c
-    }
-    fn chunk(out: &mut Vec<u8>, kind: &[u8; 4], data: &[u8]) {
-        out.extend_from_slice(&(data.len() as u32).to_be_bytes());
-        let mut body = kind.to_vec();
-        body.extend_from_slice(data);
-        out.extend_from_slice(&body);
-        out.extend_from_slice(&crc(&body).to_be_bytes());
-    }
-    let (w, h) = (image.width as usize, image.height as usize);
-    let stride = w * 4;
-    let mut raw = Vec::with_capacity((stride + 1) * h);
-    for row in 0..h {
-        let cur = &image.pixels[row * stride..(row + 1) * stride];
-        if row == 0 {
-            raw.push(0);
-            raw.extend_from_slice(cur);
-        } else {
-            let prev = &image.pixels[(row - 1) * stride..row * stride];
-            raw.push(2);
-            raw.extend(cur.iter().zip(prev).map(|(c, p)| c.wrapping_sub(*p)));
-        }
-    }
-    let z = miniz_oxide::deflate::compress_to_vec_zlib(&raw, 6);
-    let mut out = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
-    let mut ihdr = Vec::new();
-    ihdr.extend_from_slice(&(w as u32).to_be_bytes());
-    ihdr.extend_from_slice(&(h as u32).to_be_bytes());
-    ihdr.extend_from_slice(&[8, 6, 0, 0, 0]);
-    chunk(&mut out, b"IHDR", &ihdr);
-    chunk(&mut out, b"IDAT", &z);
-    chunk(&mut out, b"IEND", &[]);
-    out
 }

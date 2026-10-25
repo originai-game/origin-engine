@@ -142,7 +142,7 @@ mod headless;
 
 pub use area::{CookieLayers, LightCookie, MAX_COOKIE_LAYERS, RECT_SHADOW_FOV, cookie_layers};
 pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
-pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
+pub use capture::{CAPTURE_TIMEOUT, CaptureRequest, png};
 pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS, UNIFORM_LIGHT_REFS};
 pub use custom::{FULL_SHADER_ENTRIES, example as example_full_shader};
 pub use effects::*;
@@ -1403,6 +1403,8 @@ pub struct Renderer {
     /// Copy each presented surface frame into the offscreen target, so
     /// [`Renderer::begin_capture`] reads it ([`Renderer::set_keep_frame`]).
     keep_frame: bool,
+    /// The last capture's buffer once read, for the next capture of its size.
+    capture_spare: capture::Spare,
     samples: u32,
     persistent: post::Persistent,
     graph: post::FrameGraph,
@@ -2996,6 +2998,7 @@ impl Renderer {
             offscreen_linear,
             surface,
             keep_frame: false,
+            capture_spare: Default::default(),
             samples,
             persistent,
             graph: post::FrameGraph::default(),

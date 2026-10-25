@@ -148,6 +148,7 @@ pub use net::{
 };
 /// The counting allocator the hosts install (`#[global_allocator]`), for the probe's `memory`.
 pub use og_core::alloc::Counting as CountingAlloc;
+pub use og_render::png;
 pub use physics_ext::{
     og_physics_apply_force, og_physics_apply_impulse, og_physics_apply_torque,
     og_physics_apply_torque_impulse, og_physics_cloth_points, og_physics_fluid_particles,
@@ -162,7 +163,6 @@ pub use platform::{
     og_platform_save_settings, og_platform_save_slot, og_platform_set_host, og_platform_store_get,
     og_platform_store_list, og_platform_store_set, og_platform_take, og_platform_telemetry,
 };
-pub use probe::png;
 #[cfg(not(feature = "publish"))]
 pub use record::{render_frame, render_restore, render_snapshot};
 pub use save::{og_world_restore, og_world_snapshot};

@@ -32,6 +32,9 @@ wgpu = { workspace = true }
 glam = { workspace = true }
 bytemuck = { workspace = true }
 log = { workspace = true }
+# The capture's PNG (capture.rs `png`): image-rs's deflate for filtered
+# image rows.
+fdeflate = "0.3.7"
 gltf = { workspace = true, optional = true }
 
 [dev-dependencies]
