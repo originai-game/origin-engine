@@ -207,6 +207,8 @@ export interface ColumnKinds {
   IkSolver: { readonly array: Uint32Array; readonly stride: 1; readonly value: IkSolver };
   /** An IkSpace field: the variant's index. */
   IkSpace: { readonly array: Uint32Array; readonly stride: 1; readonly value: IkSpace };
+  /** A SpringSpace field: the variant's index. */
+  SpringSpace: { readonly array: Uint32Array; readonly stride: 1; readonly value: SpringSpace };
   /** A Rig handle field (0 is none): a humanoid map og.load.rig answered. */
   Rig: { readonly array: Uint32Array; readonly stride: 2; readonly value: Rig };
   /** A FlipbookSheet handle field. */
@@ -12420,6 +12422,87 @@ export interface FootLock {
 }
 
 /**
+ * Where a spring bone's tails move.
+ * - `"world"`: The frame the skeleton entity's og.Transform is written in: the chain lags behind the entity's motion (walking, root motion, a jump).
+ * - `"model"`: The skeleton's model space: only the animation moves the chain (a teleport or a vehicle carrying the entity does not).
+ */
+export type SpringSpace = "world" | "model";
+
+/**
+ * A SpringSpace field: the variant's index.
+ *
+ * A `SpringSpace` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function SpringSpace(value?: SpringSpace, options?: FieldOptions): FieldSpec<"SpringSpace">;
+
+/**
+ * A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint of the chain; for the last joint its first child, or its parent bone continued at the same length) is a point pulled towards where the animated pose puts it by a damped spring (`frequency`, `damping`), under `gravity`, held at the bone's length, and the joint turns to point at it. Applied after og.IkChain and og.LookAt, top joint first; put it on its own entity (a tail, an ear, a strand of hair, a single jiggling node), one per chain. Deterministic under the fixed tick; the tails' positions and velocities are world state (the `og.anim` state block), so a restore continues a swing exactly. A changed chain (another skeleton, length or space) restarts at the animated pose.
+ *
+ * The value of the `SpringBone` component (token `og.SpringBone`).
+ */
+export interface SpringBone {
+  /** The entity with the og.Skeleton whose joints this swings. */
+  skeleton: Entity;
+  /**
+   * The chain's last joint (an index into the skin's joints): the tip of a tail, an ear.
+   *
+   * @range 0..
+   */
+  joint: number;
+  /**
+   * How many joints swing: `joint` and its parents (1 is the joint alone).
+   *
+   * @default 1
+   * @range 1..16
+   */
+  bones: number;
+  /**
+   * How fast a tail springs back to its animated place: the spring's natural frequency (0: no spring, it only hangs and swings).
+   *
+   * @default 3
+   * @range 0..30
+   * @unit hz (ticks or cycles per second)
+   * @tunable
+   */
+  frequency: number;
+  /**
+   * The damping ratio: 0 swings on, 1 settles without overshooting (critical damping).
+   *
+   * @default 0.3
+   * @range 0..2
+   * @tunable
+   */
+  damping: number;
+  /**
+   * An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop.
+   *
+   * @unit mps2 (metres per second squared)
+   */
+  gravity: Vector3;
+  /**
+   * Where the tails move: world (the frame the skeleton entity's og.Transform is in, so the chain lags behind the entity's motion) or model (only the animation moves it).
+   */
+  space: SpringSpace;
+  /**
+   * How much of the swing is applied (0 = the animated pose, 1 = the spring's).
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  weight: number;
+  /**
+   * Written: the farthest a tail is from its animated place this tick.
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly lag: number;
+}
+
+/**
  * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers.
  *
  * The payload of the `AnimationEvent` event (token `og.AnimationEvent`).
@@ -23655,6 +23738,10 @@ export declare namespace og {
    * Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip, the notion retargeting uses, weighed across blends and cross-fades: planted when the planting clips hold at least half the pose), the foot stays where it touched the ground, through clip blends and root motion, its leg bent by two-bone IK and the foot keeping its animated orientation; when the clips lift it, the foot rejoins its animation over `release`. Put it on its own entity, one per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. The lock is world state (the `og.anim` state block).
    */
   const FootLock: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly foot: FieldSpec<"u32">; readonly weight: FieldSpec<"f32">; readonly release: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly planted: FieldSpec<"bool">; readonly locked: FieldSpec<"bool"> }, FootLock>;
+  /**
+   * A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint of the chain; for the last joint its first child, or its parent bone continued at the same length) is a point pulled towards where the animated pose puts it by a damped spring (`frequency`, `damping`), under `gravity`, held at the bone's length, and the joint turns to point at it. Applied after og.IkChain and og.LookAt, top joint first; put it on its own entity (a tail, an ear, a strand of hair, a single jiggling node), one per chain. Deterministic under the fixed tick; the tails' positions and velocities are world state (the `og.anim` state block), so a restore continues a swing exactly. A changed chain (another skeleton, length or space) restarts at the animated pose.
+   */
+  const SpringBone: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly bones: FieldSpec<"u32">; readonly frequency: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly gravity: FieldSpec<"Vector3">; readonly space: FieldSpec<"SpringSpace">; readonly weight: FieldSpec<"f32">; readonly lag: FieldSpec<"f32"> }, SpringBone>;
   /**
    * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers.
    */

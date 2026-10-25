@@ -791,6 +791,22 @@ foot rejoins its animation over `release` (0.15 s). `planted` and
 would stretch. It needs clips whose feet actually rest: a foot that only
 grazes its lowest for a frame is held for that frame only.
 
+**Spring bones.** `og.SpringBone { skeleton, joint, bones }` on its own
+entity, one per chain (a tail, ears, a ponytail, a single jiggling node),
+swings `joint` and its `bones` − 1 parents after their parents' motion:
+each joint's tail is a damped spring (`frequency` 3 Hz, `damping` 0.3;
+1 settles without overshoot) towards where the animation puts it, under
+`gravity` (`{ x: 0, y: -9.8, z: 0 }` droops it), held at the bone's
+length. `space` world (default) lags behind the entity's motion; model
+ignores it (a teleport does not whip the tail). Applied last, after IK
+and look-at; `lag` reads back how far the chain trails. Deterministic and
+saved with the world.
+
+```ts
+const tail = must(world.spawn({ name: "hero-tail" }));
+must(world.insert(tail, og.SpringBone, { skeleton: body, joint: TAIL_TIP, bones: 3, gravity: { x: 0, y: -4, z: 0 } }));
+```
+
 `templates/archetypes/third-person` (`src/anim.ts`: a 1D blend by speed,
 a hero retargeted at cook time and sentinels at run time) is the pattern,
 and for a 3D action game as a whole: a CharacterController over a level,

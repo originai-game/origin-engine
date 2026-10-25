@@ -529,6 +529,70 @@ impl Default for FootLock {
     }
 }
 
+/// `SpringBone.space`: the springs move in the frame the skeleton entity's
+/// Transform is written in, so the chain lags behind the entity's motion.
+pub const SPRING_WORLD: u32 = 0;
+/// `SpringBone.space`: the springs move in the skeleton's model space, so
+/// only the animation moves them (a teleport or a vehicle's motion does not).
+pub const SPRING_MODEL: u32 = 1;
+
+/// A spring (jiggle) bone chain (three-vrm's VRMSpringBone): `joint` and
+/// its `bones` − 1 parents swing after their parents' motion. Each joint's
+/// tail (the next joint of the chain, the last joint's first child, or, for
+/// a joint without one, its parent bone continued at the same length) is a
+/// point mass pulled towards where the animated pose puts it by a damped
+/// spring, under `gravity`, held at the bone's length; the joint turns to
+/// point at it. Applied after og.IkChain and og.LookAt, top joint first.
+/// Put it on its own entity (a tail, an ear, a strand of hair, a single
+/// jiggling node); chains apply in query order. The tails' positions and
+/// velocities are world state (the `og.anim` state block).
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.SpringBone")]
+pub struct SpringBone {
+    /// The entity with the og.Skeleton whose joints this swings.
+    pub skeleton: u64,
+    /// The chain's last joint (an index into the skin's joints): the tip of a tail, an ear.
+    #[reflect(min = 0)]
+    pub joint: u32,
+    /// How many joints swing: `joint` and its parents (1 is the joint alone).
+    #[reflect(min = 1, max = 16, default = 1)]
+    pub bones: u32,
+    /// How fast a tail springs back to its animated place: the spring's natural frequency (0: no spring, it only hangs and swings).
+    #[reflect(unit = "hz", min = 0, max = 30, default = 3, tunable)]
+    pub frequency: f32,
+    /// The damping ratio: 0 swings on, 1 settles without overshooting (critical damping).
+    #[reflect(min = 0, max = 2, default = 0.3, tunable)]
+    pub damping: f32,
+    /// An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop.
+    #[reflect(unit = "m/s2")]
+    pub gravity: Vec3,
+    /// Where the tails move: world (the frame the skeleton entity's og.Transform is in, so the chain lags behind the entity's motion) or model (only the animation moves it).
+    #[reflect(variants = ["world", "model"])]
+    pub space: u32,
+    /// How much of the swing is applied (0 = the animated pose, 1 = the spring's).
+    #[reflect(min = 0, max = 1, default = 1, tunable)]
+    pub weight: f32,
+    /// Written: the farthest a tail is from its animated place this tick.
+    #[reflect(unit = "m")]
+    pub lag: f32,
+}
+
+impl Default for SpringBone {
+    fn default() -> Self {
+        SpringBone {
+            skeleton: 0,
+            joint: 0,
+            bones: 1,
+            frequency: 3.0,
+            damping: 0.3,
+            gravity: Vec3::ZERO,
+            space: SPRING_WORLD,
+            weight: 1.0,
+            lag: 0.0,
+        }
+    }
+}
+
 /// A named marker of a clip that playback passed in the last tick (read in
 /// the tick after it fired, like every event).
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]

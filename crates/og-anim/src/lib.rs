@@ -1,12 +1,12 @@
 //! Origin Engine animation (docs/design.md §2.7): glTF skins and clips, a
 //! blend-tree graph asset with layered state machines, root motion,
-//! two-bone and FABRIK IK, look-at constraints, joint limits, foot locking
-//! and blendshapes, evaluated by one deterministic ECS system, `og.anim`.
+//! two-bone and FABRIK IK, look-at constraints, joint limits, foot locking,
+//! spring bones and blendshapes, evaluated by one deterministic ECS system, `og.anim`.
 //!
 //! | item | what it is |
 //! |---|---|
 //! | [`install`] | registers the types, schedules `og.anim` and adds its state block; returns an [`AnimationSystem`] |
-//! | [`Skeleton`], [`AnimationPlayer`], [`AnimationGraph`], [`Blendshapes`], [`IkChain`], [`LookAt`], [`JointLimit`], [`FootLock`] | the components (`og.Skeleton`, …) |
+//! | [`Skeleton`], [`AnimationPlayer`], [`AnimationGraph`], [`Blendshapes`], [`IkChain`], [`LookAt`], [`JointLimit`], [`FootLock`], [`SpringBone`] | the components (`og.Skeleton`, …) |
 //! | [`AnimationEvent`] | a clip marker passed in the last tick |
 //! | [`Flipbook`], [`FlipbookEvent`], [`FlipbookSheet`], [`install_flipbook`] | sprite animation: sheets of frames, clips with fps, loop / ping-pong / once and frame events, played by `og.flipbook` |
 //! | [`SkeletonAsset`], [`ClipAsset`], [`GraphAsset`] | the assets (the cook's `<model>#anim` blob, an `animgraph` `.ogt`) |

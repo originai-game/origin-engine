@@ -121,7 +121,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1228 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1231 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -759,6 +759,7 @@ Field units the docs and Tune use.
 | [`og.SoundStarted`](audio.md#record-SoundStarted) | event | audio | — |
 | [`og.Splash`](physics.md#record-Splash) | event | physics | — |
 | [`og.SpotLight`](render.md#record-SpotLight) | component | render | — |
+| [`og.SpringBone`](anim.md#record-SpringBone) | component | anim | — |
 | [`og.Sprite`](render.md#record-Sprite) | component | render | — |
 | [`og.Steering`](nav.md#record-Steering) | component | nav | — |
 | [`og.stream.budget`](stream.md#fn-budget) | function | stream | `og_stream_budget` |
@@ -1187,6 +1188,8 @@ Field units the docs and Tune use.
 | [`SphereMath.intersectsBox`](math.md#member-SphereMath-intersectsBox) | method | math | — |
 | [`SphereMath.intersectsSphere`](math.md#member-SphereMath-intersectsSphere) | method | math | — |
 | [`SpotlightDesc`](ui.md#type-SpotlightDesc) | desc struct | ui | — |
+| [`SpringSpace`](anim.md#type-SpringSpace) | enum | anim | — |
+| [`SpringSpace()`](anim.md#column-SpringSpace) | column kind | anim | — |
 | [`SpriteBlend`](render.md#type-SpriteBlend) | enum | render | — |
 | [`SpriteBlend()`](render.md#column-SpriteBlend) | column kind | render | — |
 | [`SpriteDesc`](render.md#type-SpriteDesc) | desc struct | render | — |

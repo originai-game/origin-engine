@@ -5856,6 +5856,9 @@
         "LookAt",
         "JointLimit",
         "FootLock",
+        "SpringSpace",
+        "SpringSpace",
+        "SpringBone",
         "AnimationEvent",
         "ClipInfo",
         "Animation",
@@ -24640,6 +24643,98 @@
           "type": "boolean",
           "description": "Written: the foot is held at its lock this tick.",
           "default": false,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "SpringSpace": {
+      "x-og-kind": "enum",
+      "x-og-module": "anim",
+      "description": "Where a spring bone's tails move.",
+      "type": "string",
+      "enum": [
+        "world",
+        "model"
+      ],
+      "x-og-variants": {
+        "world": "The frame the skeleton entity's og.Transform is written in: the chain lags behind the entity's motion (walking, root motion, a jump).",
+        "model": "The skeleton's model space: only the animation moves the chain (a teleport or a vehicle carrying the entity does not)."
+      }
+    },
+    "SpringBone": {
+      "x-og-kind": "component",
+      "x-og-module": "anim",
+      "description": "A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint of the chain; for the last joint its first child, or its parent bone continued at the same length) is a point pulled towards where the animated pose puts it by a damped spring (`frequency`, `damping`), under `gravity`, held at the bone's length, and the joint turns to point at it. Applied after og.IkChain and og.LookAt, top joint first; put it on its own entity (a tail, an ear, a strand of hair, a single jiggling node), one per chain. Deterministic under the fixed tick; the tails' positions and velocities are world state (the `og.anim` state block), so a restore continues a swing exactly. A changed chain (another skeleton, length or space) restarts at the animated pose.",
+      "type": "object",
+      "properties": {
+        "skeleton": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity with the og.Skeleton whose joints this swings.",
+          "default": 0
+        },
+        "joint": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The chain's last joint (an index into the skin's joints): the tip of a tail, an ear.",
+          "default": 0,
+          "minimum": 0
+        },
+        "bones": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many joints swing: `joint` and its parents (1 is the joint alone).",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 16
+        },
+        "frequency": {
+          "type": "number",
+          "description": "How fast a tail springs back to its animated place: the spring's natural frequency (0: no spring, it only hangs and swings).",
+          "default": 3,
+          "minimum": 0,
+          "maximum": 30,
+          "x-og-unit": "hz",
+          "x-og-tunable": true
+        },
+        "damping": {
+          "type": "number",
+          "description": "The damping ratio: 0 swings on, 1 settles without overshooting (critical damping).",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "gravity": {
+          "$ref": "#/$defs/Vector3",
+          "description": "An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "mps2"
+        },
+        "space": {
+          "$ref": "#/$defs/SpringSpace",
+          "description": "Where the tails move: world (the frame the skeleton entity's og.Transform is in, so the chain lags behind the entity's motion) or model (only the animation moves it).",
+          "default": "world"
+        },
+        "weight": {
+          "type": "number",
+          "description": "How much of the swing is applied (0 = the animated pose, 1 = the spring's).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "lag": {
+          "type": "number",
+          "description": "Written: the farthest a tail is from its animated place this tick.",
+          "default": 0,
+          "x-og-unit": "m",
           "readOnly": true
         }
       },

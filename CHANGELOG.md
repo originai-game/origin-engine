@@ -9,6 +9,11 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- `og.SpringBone` (spring/jiggle bones, three-vrm's VRMSpringBone: a
+  joint chain whose tails follow their animated places by a damped spring
+  under gravity, in world or model space, held at bone length; `lag`
+  written). The tails are saved in the `og.anim` state block (a tagged
+  section written only when a spring exists).
 - Transition interruption rules in the `animgraph` grammar: `interrupt
   any | none | source | next` on a transition says which transitions may
   cut its cross-fade (default `any`, the old behaviour); the guard of a
