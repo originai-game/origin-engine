@@ -924,6 +924,7 @@ layer base {                # the first layer is the base: root motion and og.An
     when speed gt 0.2       # when <param> gt | ge | lt | le | eq | ne <number>; every `when` must hold
     exit 0.9                # and the source has played this many cycles (a `when` or an `exit` is required)
     fade 0.25               # cross-fade seconds (default 0.2)
+    interrupt any           # what may cut this fade: any (default) | none (it completes first) | source (only the state being left) | next (only the new state's own)
   }
   transition any still {    # any: from every state but the target
     when speed le 0.2
@@ -944,7 +945,9 @@ Each state advances one phase by `dt × AnimationGraph.speed × state speed
 / duration`, the duration weighted across a blend's clips, so blended
 clips stay in step. Per tick and layer the transitions are checked first,
 then the phases advance, then the poses blend; a transition during a fade
-replaces it. A layer's `mask` lines confine it to branches of the
+replaces it unless its `interrupt` says otherwise (`none` for a
+committed attack or landing, `source` to let an idle re-target a start
+that has just begun). A layer's `mask` lines confine it to branches of the
 skeleton (by node name, the nearest named ancestor's weight; an upper-body
 layer is `mask "spine"`), so a wave or an aim plays over a walk without
 freezing the legs. In a sync group the first layer (file order) whose

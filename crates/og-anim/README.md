@@ -266,6 +266,7 @@ layer base {                # layer 0: the base, root motion and AnimationGraph.
     when speed gt 0.2       # all `when` must hold: gt ge lt le eq ne
     exit 0.9                # optional: the source state's phase (cycles since entry) reached
     fade 0.25               # cross-fade seconds (default 0.2)
+    interrupt next          # what may cut its fade: any (default) | none | source | next
   }
 }
 layer upper {
@@ -285,7 +286,16 @@ clips stay in step; each clip samples at its phase (`frac` when looping,
 clamped otherwise). Per tick and layer, transitions are checked first (file
 order, the first that holds fires; `any` never re-enters the current state),
 then phases advance, then poses blend. A transition during a fade replaces
-it (the fading-out state is dropped). Parse errors name the line.
+it (the fading-out state is dropped) when the fading transition's
+`interrupt` allows it: `any` (the default, the old behaviour) lets every
+transition that could fire from the new state, `any` ones included; `none`
+lets nothing until the fade completes; `source` only transitions out of
+the state being left (to a third state: the fade is re-targeted from the
+state being left, the abandoned target dropped, its `exit` counted on the
+left state's phase); `next` only the new state's own, not `any` ones. The
+guard of a fade in progress is saved in the state block (tagged section 2,
+written only when some layer has one other than `any`). Parse errors name
+the line.
 
 **Layer masks.** A layer's `mask` lines give per-joint weights by node
 name, resolved against the skeleton the graph plays on: a node takes the
@@ -351,7 +361,7 @@ phase as whole cycles plus fraction, seconds in state, previous state and
 phase, fade), then, after the entities and only when non-empty, tagged
 sections: 1 the foot locks (per `og.FootLock` entity holding or
 releasing a foot: the skeleton, held or releasing, the point, the release
-time). `snapshot`, `restore` and `world_hash` therefore cover the
+time), 2 the interrupt guards of fades in progress (entity, layer, rule). `snapshot`, `restore` and `world_hash` therefore cover the
 animation; a restore recomputes the palettes from the restored poses. All
 writes happen after every computation, so a failing tick changes nothing.
 
@@ -370,6 +380,7 @@ chain; palettes use exact `Mat4` products.
 | `output.rs` | the bind-pose palette is the identity and moves with a clip; component weights write through to the output and the sink; clip weights drive the component; root motion moves the Transform and pins the hips; unregistered assets refused with the entity |
 | `graph.rs` | transitions fire in the tick their condition holds and cross-fade; blend1d and the additive layer; bad text refused with its line |
 | `footlock.rs` | the walk's `FootPlants` are a few frames of the cycle; a stomp (half a cycle on a standing leg while root motion carries the walker on) holds the locked foot still to 1e-6 m over every plant (it slides 0.25 m without the lock), across a cross-fade to a jog started mid-plant, and a lifted foot is back on its animation 10 ticks later; a snapshot mid-plant restores to the same hashes and foot positions |
+| `graph.rs` (interruption) | per `interrupt` rule, which of the new state's, the source's and an `any` transition cut a 0.5 s fade at once and which wait for it to complete; a bad rule refused with its line; a guarded fade restored from a snapshot continues to the same hashes and states |
 | `layers.rs` | a masked override layer leaves the nodes outside its branches bit for bit, takes a named node's whole branch and blends a half-weight branch halfway; an additive layer's mask; a bad mask weight refused with its line; a synced upper layer samples its clip at the base's phase (not its own); a transition inside a group continues from the old state's phase |
 | `retarget.rs` | the schemes detected from the walker's and a Mixamo rig's names, rig files (forced scheme, a bone named and one removed, mistakes by line); the walk retargeted onto longer legs keeps planted feet on the ground and still, without foot IK it misses by over 1 cm; the hips' travel scaled; an A-posed arm waves parallel to the T-posed one; the clip plays on the tall rig; side tokens swap in every scheme's names; a mirrored walk moves each foot as the other did, reflected, within 1e-5 (on the walker and on the tall Mixamo rig), the hips' sway flips, and mirroring twice gives the walk back |
 
@@ -474,7 +485,6 @@ symmetric rest pose; mirroring twice gives the clip back (within f32).
   bones driven from their parents, per-character foot heights other than
   the rest pose's.
 - **Procedural animation**: springs/jiggle bones.
-- Transition interruption rules.
 - Mirroring at cook time or per graph state (a `mirror true` on a graph
   clip): today a mirrored clip is made at run time with `og.anim.mirror`
   and registered like any other. Cooked clips can be quantised with

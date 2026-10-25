@@ -9,6 +9,10 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- Transition interruption rules in the `animgraph` grammar: `interrupt
+  any | none | source | next` on a transition says which transitions may
+  cut its cross-fade (default `any`, the old behaviour); the guard of a
+  fade in progress is saved in the `og.anim` state block.
 - Layer masks and sync groups in the `animgraph` grammar: `mask "<node>"
   [weight]` lines give a layer per-joint weights (a node's nearest named
   ancestor, 0 elsewhere); `sync <group>` in a state's block plays every

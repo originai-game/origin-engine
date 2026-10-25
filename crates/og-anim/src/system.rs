@@ -4,7 +4,7 @@
 
 use crate::asset::{ClipAsset, NONE, SkeletonAsset, bind};
 use crate::codec::{Reader, Writer};
-use crate::graph::{GraphAsset, LayerMode, Motion};
+use crate::graph::{GraphAsset, Interrupt, LayerMode, Motion};
 use crate::ik;
 use crate::pose::{Blend, Fired, Leaf, Pose, RootMotion, stepped};
 use crate::retarget::FootPlants;
@@ -99,6 +99,9 @@ struct LayerState {
     prev_phase: Phase,
     fade: f32,
     fade_duration: f32,
+    /// What may interrupt the fade in progress (the transition's
+    /// `interrupt`); `Any` when none is.
+    guard: Interrupt,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -436,6 +439,17 @@ fn read_vec3(r: &mut Reader) -> Result<Vec3> {
 /// when they hold something (so a world without them saves, and hashes, as
 /// before they existed).
 const SECTION_LOCKS: u32 = 1;
+/// Graph layers whose fade a transition's `interrupt` guards.
+const SECTION_GUARDS: u32 = 2;
+
+fn guard_code(g: Interrupt) -> u8 {
+    match g {
+        Interrupt::Any => 0,
+        Interrupt::None => 1,
+        Interrupt::Source => 2,
+        Interrupt::Next => 3,
+    }
+}
 
 fn encode(
     states: &BTreeMap<u64, EntityState>,
@@ -503,6 +517,26 @@ fn encode(
             w.u8(mode);
             write_vec3(&mut w, at);
             w.f32(t);
+        }
+    }
+    let guards: Vec<(u64, u32, u8)> = states
+        .iter()
+        .flat_map(|(&e, s)| {
+            s.graph
+                .layers
+                .iter()
+                .enumerate()
+                .filter(|(_, l)| l.guard != Interrupt::Any)
+                .map(move |(i, l)| (e, i as u32, guard_code(l.guard)))
+        })
+        .collect();
+    if !guards.is_empty() {
+        w.u32(SECTION_GUARDS);
+        w.u32(guards.len() as u32);
+        for (e, layer, g) in guards {
+            w.u64(e);
+            w.u32(layer);
+            w.u8(g);
         }
     }
 }
@@ -576,6 +610,7 @@ fn decode(bytes: &[u8]) -> Result<Saved> {
                 prev_phase: read_phase(&mut r)?,
                 fade: r.f32()?,
                 fade_duration: r.f32()?,
+                guard: Interrupt::Any,
             });
         }
         saved.states.insert(
@@ -624,10 +659,40 @@ fn decode(bytes: &[u8]) -> Result<Saved> {
                     saved.locks.insert(e, LockState { skeleton, lock });
                 }
             }
+            SECTION_GUARDS => {
+                let n = r.count(13)?;
+                for _ in 0..n {
+                    let (e, layer, g) = (r.u64()?, r.u32()?, r.u8()?);
+                    let guard = match g {
+                        1 => Interrupt::None,
+                        2 => Interrupt::Source,
+                        3 => Interrupt::Next,
+                        g => {
+                            return Err(Error::new(
+                                ErrorKind::Parse,
+                                format!("og.anim interrupt guard {g}"),
+                            ));
+                        }
+                    };
+                    let l = saved
+                        .states
+                        .get_mut(&e)
+                        .and_then(|s| s.graph.layers.get_mut(layer as usize))
+                        .ok_or_else(|| {
+                            Error::new(
+                                ErrorKind::Parse,
+                                format!(
+                                    "og.anim guard for entity {e} layer {layer}, which it lacks"
+                                ),
+                            )
+                        })?;
+                    l.guard = guard;
+                }
+            }
             t => {
                 return Err(Error::new(
                     ErrorKind::Parse,
-                    format!("og.anim state section {t}; this engine reads up to {SECTION_LOCKS}"),
+                    format!("og.anim state section {t}; this engine reads up to {SECTION_GUARDS}"),
                 ));
             }
         }
@@ -1310,28 +1375,46 @@ fn eval_graph(
         if ls.state as usize >= layer.states.len() {
             ls.state = layer.entry as u32;
         }
+        // During a fade, the transition's `interrupt` says which may fire.
+        let guard = if ls.prev != NONE {
+            ls.guard
+        } else {
+            Interrupt::Any
+        };
         for t in &layer.transitions {
-            match t.from {
-                Some(f) if f != ls.state as usize => continue,
-                None if t.to == ls.state as usize => continue,
-                _ => {}
-            }
-            if !t.conditions.iter().all(|c| c.holds(&params)) {
+            let (cur, prev) = (ls.state as usize, ls.prev as usize);
+            // A source interrupt leaves from the state being faded out.
+            let from_source = guard == Interrupt::Source;
+            let open = match (guard, t.from) {
+                (Interrupt::None, _) => false,
+                (Interrupt::Source, Some(f)) => f == prev && t.to != cur,
+                (Interrupt::Source, None) => false,
+                (Interrupt::Next, Some(f)) => f == cur,
+                (Interrupt::Next, None) => false,
+                (Interrupt::Any, Some(f)) => f == cur,
+                (Interrupt::Any, None) => t.to != cur,
+            };
+            if !open || !t.conditions.iter().all(|c| c.holds(&params)) {
                 continue;
             }
-            if t.exit.is_some_and(|x| ls.phase.total() < x as f64) {
+            let (left, left_phase) = if from_source {
+                (prev, ls.prev_phase)
+            } else {
+                (cur, ls.phase)
+            };
+            if t.exit.is_some_and(|x| left_phase.total() < x as f64) {
                 continue;
             }
-            let carried = match (
-                layer.states[ls.state as usize].sync,
-                layer.states[t.to].sync,
-            ) {
+            let carried = match (layer.states[left].sync, layer.states[t.to].sync) {
                 // Between two states of one group the fraction carries over.
-                (Some(a), Some(b)) if a == b => ls.phase.frac,
+                (Some(a), Some(b)) if a == b => left_phase.frac,
                 _ => 0.0,
             };
-            ls.prev = ls.state;
-            ls.prev_phase = ls.phase;
+            // The fade continues from the state left (a source interrupt
+            // drops the target it abandons).
+            ls.prev = left as u32;
+            ls.prev_phase = left_phase;
+            ls.guard = t.interrupt;
             ls.state = t.to as u32;
             ls.phase = Phase {
                 cycles: 0,
@@ -1448,6 +1531,7 @@ fn eval_graph(
         ls.time += dt * speed;
         if alpha >= 1.0 {
             ls.prev = NONE;
+            ls.guard = Interrupt::Any;
         }
         let layer_pose = layer_blend.pose.unwrap_or_else(|| Pose::rest(skel));
         let mask = layer.node_weights(skel);

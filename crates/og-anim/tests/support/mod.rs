@@ -283,6 +283,7 @@ layer base {
   transition idle move {
     when speed gt 0.2
     fade 0.25
+    interrupt none
   }
   transition move idle {
     when speed le 0.2

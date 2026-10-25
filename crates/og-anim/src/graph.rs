@@ -81,6 +81,21 @@ impl Condition {
     }
 }
 
+/// What may interrupt a transition while it cross-fades.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Interrupt {
+    /// Any transition that could fire from the new state, `any` ones
+    /// included (the default).
+    #[default]
+    Any,
+    /// Nothing: the fade completes first.
+    None,
+    /// Only transitions out of the state being left (to a third state).
+    Source,
+    /// Only transitions out of the new state itself, not `any` ones.
+    Next,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transition {
     /// The source state, or `None` for `any` (every state but the target).
@@ -93,6 +108,8 @@ pub struct Transition {
     pub exit: Option<f32>,
     /// Cross-fade seconds.
     pub fade: f32,
+    /// What may interrupt it during its fade.
+    pub interrupt: Interrupt,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -532,6 +549,7 @@ impl GraphAsset {
                             conditions: Vec::new(),
                             exit: None,
                             fade: 0.2,
+                            interrupt: Interrupt::Any,
                         };
                         if let Some(tb) = &b.block {
                             for c in &tb.entries {
@@ -568,11 +586,28 @@ impl GraphAsset {
                                         arity(c, 1)?;
                                         t.fade = number(c, 0)?.max(0.0);
                                     }
+                                    "interrupt" => {
+                                        arity(c, 1)?;
+                                        t.interrupt = match word(c, 0)? {
+                                            "any" => Interrupt::Any,
+                                            "none" => Interrupt::None,
+                                            "source" => Interrupt::Source,
+                                            "next" => Interrupt::Next,
+                                            w => {
+                                                return Err(err(
+                                                    c,
+                                                    format!(
+                                                        "interrupt '{w}' (any, none, source, next)"
+                                                    ),
+                                                ));
+                                            }
+                                        };
+                                    }
                                     k => {
                                         return Err(err(
                                             c,
                                             format!(
-                                                "unknown transition setting '{k}' (when, exit, fade)"
+                                                "unknown transition setting '{k}' (when, exit, fade, interrupt)"
                                             ),
                                         ));
                                     }

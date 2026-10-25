@@ -46,7 +46,8 @@ pub use flipbook::{
     SheetFilter, SheetFrame, install_flipbook,
 };
 pub use graph::{
-    Condition, GraphAsset, Layer, LayerMode, MaskEntry, Motion, MotionNode, Op, State, Transition,
+    Condition, GraphAsset, Interrupt, Layer, LayerMode, MaskEntry, Motion, MotionNode, Op, State,
+    Transition,
 };
 pub use ik::{IkResult, chain as ik_chain, fabrik, look_at, two_bone};
 pub use pose::{Pose, sample, stepped};
