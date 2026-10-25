@@ -668,9 +668,8 @@ pub(crate) fn soft(
     out: &mut StepOut,
     laps: &mut crate::stats::Laps,
 ) -> Result<()> {
-    use crate::lanes::soft_grain;
+    use crate::lanes::{Soft, soft_each};
     use crate::stats::Phase;
-    let site = og_lanes::Site::Physics;
     let grains = crate::lanes::now();
     let flat2 = DIM == 2;
     let gravity = flat(settings.gravity);
@@ -702,8 +701,7 @@ pub(crate) fn soft(
         .iter()
         .map(|(s, (rope, ..))| s.points.len() * rope.iterations.clamp(1, 64) as usize)
         .sum();
-    let grain = soft_grain(jobs.len(), work, grains.rope_work);
-    og_lanes::for_each_mut(site, &mut jobs, grain, |job| {
+    soft_each(Soft::Ropes, &mut jobs, work, grains.rope_work, |job| {
         let (rope, start, end) = *job.1;
         let state = &mut *job.0;
         let (min, max) = bounds(&state.points, rope.length);
@@ -743,8 +741,7 @@ pub(crate) fn soft(
                 * cloth.substeps.clamp(1, 16) as usize
         })
         .sum();
-    let grain = soft_grain(jobs.len(), work, grains.cloth_work);
-    og_lanes::for_each_mut(site, &mut jobs, grain, |job| {
+    soft_each(Soft::Cloths, &mut jobs, work, grains.cloth_work, |job| {
         let (cloth, position, rotation) = *job.1;
         let state = &mut *job.0;
         let size = cloth.spacing * (cloth.columns.max(cloth.rows)) as f32;
@@ -814,9 +811,8 @@ pub(crate) fn soft(
             particles * substeps as usize
         })
         .sum();
-    let grain = soft_grain(jobs.len(), work, grains.fluid_work);
     let colliders = &sim.world.colliders;
-    og_lanes::for_each_mut(site, &mut jobs, grain, |job| {
+    soft_each(Soft::Fluids, &mut jobs, work, grains.fluid_work, |job| {
         let (members, taken) = (job.0, &mut job.1);
         fluid_set(scene, members, taken, dt, g, colliders);
     });
@@ -968,10 +964,11 @@ fn fluids3(scene: &Scene, settings: &Physics, dt: f32, sim: &mut Sim) {
             particles * substeps_of(members) as usize
         })
         .sum();
-    let grain = crate::lanes::soft_grain(jobs.len(), work, crate::lanes::now().fluid_work);
+    let per_task = crate::lanes::now().fluid_work;
     let colliders = &sim.world.colliders;
     let gravity = flat(settings.gravity);
-    og_lanes::for_each_mut(og_lanes::Site::Physics, &mut jobs, grain, |job| {
+    let soft = crate::lanes::Soft::Fluids3d;
+    crate::lanes::soft_each(soft, &mut jobs, work, per_task, |job| {
         let (members, taken) = (job.0, &mut job.1);
         let grouped = members.len() > 1;
         let (mut min, mut max) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));

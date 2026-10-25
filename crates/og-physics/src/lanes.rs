@@ -145,6 +145,114 @@ pub(crate) fn soft_grain(items: usize, work: usize, per_task: usize) -> usize {
     }
 }
 
+/// The soft bodies that step side by side, each kind with its own
+/// [`Gauge`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Soft {
+    Ropes,
+    Cloths,
+    Fluids,
+    Fluids3d,
+}
+
+/// Whether the lanes pool still pays for one kind of soft body on this
+/// machine now. The grains were measured on an idle machine; on a loaded
+/// one the pool's threads wait to be scheduled while the engine thread
+/// waits for them (The Kestrel Stair's five cloths: 0.93 ms a tick
+/// serially, 2.9 to 4.2 ms on the pool at a load average of 20 to 25,
+/// tests/evidence/P4/perf-games/kestrel-stair.md). A call that went to the
+/// pool is measured: when its wall time on the calling thread is no less
+/// than its jobs' own times summed (what running them one after the other
+/// would have taken), the pool did not pay, and the next calls of that
+/// kind run serially, 8 of them after the first loss, twice as many after
+/// each further loss up to 512 (about 8.5 s of ticks), and the call after
+/// them tries the pool again; a call that pays clears the backoff. Where
+/// the work runs never changes the world (og-lanes), so neither does this.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Gauge {
+    /// Calls left to run serially.
+    serial_left: u32,
+    /// How many the last loss sent serial (0: the pool paid last time).
+    backoff: u32,
+}
+
+impl Gauge {
+    const FIRST: u32 = 8;
+    const MOST: u32 = 512;
+
+    /// Whether this call may go to the pool (a call kept serial counts down).
+    pub(crate) fn admit(&mut self) -> bool {
+        if self.serial_left > 0 {
+            self.serial_left -= 1;
+            false
+        } else {
+            true
+        }
+    }
+
+    /// A call on the pool took `wall_ms` on the calling thread for jobs
+    /// that took `busy_ms` in all where they ran.
+    pub(crate) fn record(&mut self, wall_ms: f64, busy_ms: f64) {
+        if wall_ms >= busy_ms {
+            self.backoff = self
+                .backoff
+                .saturating_mul(2)
+                .clamp(Gauge::FIRST, Gauge::MOST);
+            self.serial_left = self.backoff;
+        } else {
+            self.backoff = 0;
+        }
+    }
+}
+
+static GAUGES: Mutex<[Gauge; 4]> = Mutex::new(
+    [Gauge {
+        serial_left: 0,
+        backoff: 0,
+    }; 4],
+);
+
+/// `f` on every soft body job of `kind`, side by side on the lanes when
+/// [`soft_grain`] splits them (`work` against `per_task`) and the kind's
+/// [`Gauge`] admits the pool, else one after the other on the calling
+/// thread. Forced grains ([`set_grains`]) always split as they say.
+pub(crate) fn soft_each<T: Send>(
+    kind: Soft,
+    jobs: &mut [T],
+    work: usize,
+    per_task: usize,
+    f: impl Fn(&mut T) + Sync + Send,
+) {
+    let site = og_lanes::Site::Physics;
+    let grain = soft_grain(jobs.len(), work, per_task);
+    let forced = FORCED.lock().unwrap_or_else(|e| e.into_inner()).is_some();
+    if grain >= jobs.len() || forced {
+        og_lanes::for_each_mut(site, jobs, grain, f);
+        return;
+    }
+    let gauges = || GAUGES.lock().unwrap_or_else(|e| e.into_inner());
+    if !gauges()[kind as usize].admit() {
+        og_lanes::for_each_mut(site, jobs, jobs.len(), f);
+        return;
+    }
+    let calls = og_lanes::calls_here();
+    let busy = Mutex::new(0.0f64);
+    let start = crate::stats::now_ms();
+    og_lanes::for_each_mut(site, jobs, grain, |job| {
+        let at = crate::stats::now_ms();
+        f(job);
+        let took = crate::stats::now_ms() - at;
+        *busy.lock().unwrap_or_else(|e| e.into_inner()) += took;
+    });
+    let wall = crate::stats::now_ms() - start;
+    let busy = busy.into_inner().unwrap_or_else(|e| e.into_inner());
+    // Recorded only when the call went to the pool, and with a clock (the
+    // wasm without one reads 0 everywhere).
+    if og_lanes::calls_here() > calls && busy > 0.0 {
+        gauges()[kind as usize].record(wall, busy);
+    }
+}
+
 /// `0..n` as the ranges of a per-particle pass: `grain` items each from
 /// two grains, one range below.
 pub(crate) fn ranges(n: usize, grain: usize) -> Vec<std::ops::Range<usize>> {
@@ -212,4 +320,36 @@ pub(crate) fn for_each_chunk_of<P: Send>(
         let (at, p) = part;
         f(*at, p)
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Gauge;
+
+    #[test]
+    fn a_pool_that_does_not_pay_is_left_for_longer_each_time_until_it_pays() {
+        let mut g = Gauge::default();
+        assert!(g.admit(), "the pool is tried first");
+        g.record(1.0, 3.0);
+        assert!(g.admit(), "a call that paid keeps the pool");
+        // A loss: the next 8 calls run serially, then the pool is tried.
+        g.record(3.0, 0.9);
+        assert_eq!((0..8).filter(|_| g.admit()).count(), 0);
+        assert!(g.admit());
+        // A second loss in a row: 16, then 32, ... up to 512.
+        g.record(3.0, 0.9);
+        assert_eq!((0..16).filter(|_| g.admit()).count(), 0);
+        assert!(g.admit());
+        for _ in 0..10 {
+            g.record(3.0, 0.9);
+        }
+        assert_eq!((0..512).filter(|_| g.admit()).count(), 0);
+        assert!(g.admit());
+        // A call that pays clears it: the next loss starts again at 8.
+        g.record(0.5, 0.9);
+        assert!(g.admit());
+        g.record(0.9, 0.9);
+        assert_eq!((0..8).filter(|_| g.admit()).count(), 0);
+        assert!(g.admit());
+    }
 }
