@@ -204,6 +204,9 @@ if (which === "rng") {
     engine.advance(1);
     out.moved = read();
     out.expectedMoved = 0.02 + AUDIO_PRIME_FRAMES / 48000;
+    // The attach started the decoder Worker, which keeps the process alive
+    // until it is terminated.
+    attached.value.close();
   }
 } else {
   throw new Error(`unknown --case ${which}`);
