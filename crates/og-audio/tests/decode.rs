@@ -371,3 +371,82 @@ fn answers_of_another_length_or_key_are_refused() {
     assert_eq!(bank.decode_stats().misses, 1);
     assert!(bits(&decoded) == bits(&mix_whole(&file, 16)));
 }
+
+/// The QOA file both decoders (this crate's and the web host's decoder
+/// Worker, `packages/engine/src/web/audio-decoder.ts`) are checked against:
+/// the same samples, frame by frame, or a voice would hear its own decode
+/// and the Worker's differ. Two full frames and a short one of stereo:
+/// full-scale square waves with noise (the clamp, the largest residuals),
+/// a sweep, silence and impulses. `OG_WRITE_FIXTURE=1` writes it.
+fn fixture_samples() -> Vec<i16> {
+    let mut seed = 0x2545_f491_u32;
+    let mut noise = move || {
+        seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+        f64::from(seed >> 8) / f64::from(1u32 << 24) * 2.0 - 1.0
+    };
+    let mut out = Vec::new();
+    for i in 0..12_000usize {
+        let t = i as f64 / f64::from(RATE);
+        let square = if (i / 37) % 2 == 0 { 1.0 } else { -1.0 };
+        let l = if i < 7000 {
+            square + 0.3 * noise()
+        } else {
+            0.05 * noise()
+        };
+        let r = match i {
+            0..4000 => 0.9 * (TAU * (200.0 + 4000.0 * t) * t).sin(),
+            4000..6000 => 0.0,
+            _ if i % 500 == 0 => 1.0,
+            _ => -0.4 * noise(),
+        };
+        for v in [l, r] {
+            out.push((v.clamp(-1.0, 1.0) * 32767.0).round() as i16);
+        }
+    }
+    out
+}
+
+/// FNV-1a over the samples' little-endian bytes.
+fn fnv(samples: &[i16]) -> u64 {
+    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    for b in samples.iter().flat_map(|s| s.to_le_bytes()) {
+        h = (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3);
+    }
+    h
+}
+
+/// The decoded fixture's hash, also asserted by `audio-decoder.test.ts`.
+const FIXTURE_HASH: u64 = 0x080b_f551_3188_bc60;
+
+#[test]
+fn the_shared_fixture_decodes_to_its_hash_frame_by_frame() {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../packages/engine/tests/fixtures/qoa/frames.qoa"
+    );
+    let file = qoa::encode(&fixture_samples(), 2, 44_100).unwrap();
+    if std::env::var_os("OG_WRITE_FIXTURE").is_some() {
+        std::fs::create_dir_all(std::path::Path::new(path).parent().unwrap()).unwrap();
+        std::fs::write(path, &file).unwrap();
+    }
+    assert_eq!(
+        std::fs::read(path).unwrap(),
+        file,
+        "the encoder still writes the fixture"
+    );
+    let whole = qoa::decode(&file).unwrap().samples;
+    assert_eq!(fnv(&whole), FIXTURE_HASH, "{:016x}", fnv(&whole));
+    // The jobs a helper gets are one-frame files that decode to the same.
+    let bank = SoundBank::with_resident_seconds(0.0);
+    let sound = bank.insert_qoa("fixture", &file).unwrap();
+    let (mut world, link) = world_with(&bank, |_| {});
+    let _sink = HeadlessSink::new(&link, HeadlessMode::Null);
+    world.spawn((AudioSource::new(sound),)).unwrap();
+    world.step().unwrap();
+    world.step().unwrap();
+    let mut jobs = bank.take_decode_jobs(usize::MAX);
+    jobs.sort_by_key(|j| j.frame);
+    assert_eq!(jobs.iter().map(|j| j.frame).collect::<Vec<_>>(), [0, 1, 2]);
+    let frames: Vec<i16> = jobs.iter().flat_map(|j| j.decode().unwrap()).collect();
+    assert_eq!(fnv(&frames), FIXTURE_HASH);
+}

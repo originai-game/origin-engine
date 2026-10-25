@@ -10,7 +10,8 @@
 // - Engine Worker (`WorkerAudio`): on that message opens the engine's mixer
 //   at the context's rate (og_web_audio_open), and after every frame's ticks
 //   pumps the PCM those ticks cover (og_web_audio_pump) into the ring, or
-//   posts it to the port.
+//   posts it to the port; then hands the sounds' next QOA frames to the
+//   decoder Worker (audio-decoder.ts), so decoding runs beside the tick.
 
 import {
   PROCESSOR,
@@ -25,6 +26,7 @@ import {
   ringAvailable,
   type WorkletOptions,
 } from "./audio-worklet.ts";
+import { AudioDecoder, type DecoderGlue } from "./audio-decoder.ts";
 
 // ── the ring (producer side) ───────────────────────────────────────────────
 
@@ -225,7 +227,7 @@ export class AudioShell {
 // ── engine Worker ──────────────────────────────────────────────────────────
 
 /** The wasm-bindgen exports of crates/og-host-web/src/audio.rs. */
-export interface WebAudioGlue {
+export interface WebAudioGlue extends DecoderGlue {
   og_web_audio_open(engine: number, sampleRate: number): string;
   og_web_audio_pump(engine: number, maxFrames: number): Float32Array;
   og_web_audio_stats(engine: number): string;
@@ -249,6 +251,8 @@ export class WorkerAudio {
   overflow = 0;
 
   readonly #sampleRate: number;
+  /** The decoder Worker; null where none can start (the engine then decodes as it mixes). */
+  readonly #decoder: AudioDecoder | null;
 
   private constructor(glue: WebAudioGlue, engine: number, message: AudioMessage) {
     this.#glue = glue;
@@ -256,6 +260,7 @@ export class WorkerAudio {
     this.#ring = message.ring ?? null;
     this.#port = message.port ?? null;
     this.#sampleRate = message.sampleRate;
+    this.#decoder = AudioDecoder.start(glue, engine);
   }
 
   /** Open the engine's mixer at the context's rate, on the shell's `audio` message. */
@@ -277,8 +282,17 @@ export class WorkerAudio {
     this.#glue.og_web_audio_latency(this.#engine, seconds);
   }
 
-  /** After a frame's ticks: ship the audio they cover. Returns the frames shipped. */
+  /**
+   * After a frame's ticks: ship the audio they cover, then give the decoder
+   * Worker the frames the ticks' decode-ahead planned. Returns the frames shipped.
+   */
   pump(): number {
+    const shipped = this.#ship();
+    this.#decoder?.feed();
+    return shipped;
+  }
+
+  #ship(): number {
     if (this.#ring) {
       const pcm = this.#glue.og_web_audio_pump(this.#engine, audioRingFree(this.#ring));
       const wrote = writeAudioRing(this.#ring, pcm);
@@ -288,6 +302,11 @@ export class WorkerAudio {
     const pcm = this.#glue.og_web_audio_pump(this.#engine, MAX_CHUNK_FRAMES);
     if (pcm.length > 0 && this.#port) this.#port.postMessage(pcm, [pcm.buffer]);
     return pcm.length >> 1;
+  }
+
+  /** Whether a decoder Worker decodes beside the tick (false: the engine decodes as it mixes). */
+  get decoding(): boolean {
+    return this.#decoder !== null;
   }
 
   /** The mixer's counters. */
@@ -303,5 +322,6 @@ export class WorkerAudio {
   close(): void {
     this.#glue.og_web_audio_close(this.#engine);
     this.#port?.close();
+    this.#decoder?.close();
   }
 }

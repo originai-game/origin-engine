@@ -216,6 +216,11 @@ pub(crate) fn mount_back(
         },
     )
     .map_err(err)?;
+    // The sounds' QOA frames are decoded beside the tick: natively on the
+    // bank's own thread, on the web by the host's decoder Worker
+    // (og-audio's `decode.rs`). Once per bank: a reload keeps the old one.
+    #[cfg(not(target_arch = "wasm32"))]
+    audio.bank().start_decode_thread();
     world
         .add_state_block(UI_STATE, Box::new(UiState(ui.clone())))
         .map_err(err)?;

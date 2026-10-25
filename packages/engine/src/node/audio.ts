@@ -38,6 +38,12 @@ export interface AudioStats {
   readonly packets?: number;
   readonly resyncs?: number;
   readonly device?: string;
+  /** QOA frames the bank's decode thread decoded beside the tick (og-audio decode.rs). */
+  readonly decodedAhead?: number;
+  /** QOA frames a voice decoded where the mixer read them: nothing had decoded them first. */
+  readonly decodeMisses?: number;
+  /** Decode jobs waiting for the decode thread. */
+  readonly decodeQueued?: number;
 }
 
 export interface AudioSink {
