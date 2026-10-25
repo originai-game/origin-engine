@@ -240,9 +240,10 @@ export const Move = defineSystem("Move", { reads: [Velocity], writes: [og.Transf
   entity each.
 - A handle is a 64-bit number (an `og.load` answer, a texture, a sound,
   a geometry, a material, an entity): keep it in a field of its own kind,
-  `Asset()`, `Texture()`, `Sound()`, `Geometry()`, `Material()` or
-  `Entity()` (each handle type of the API has its factory), in a
-  component or a resource. A `u32` field refuses one (`4294967298 is not
+  `Asset()`, `Texture()`, `Sound()`, `Font()`, `Style()`, `Look()`,
+  `Geometry()`, `Material()` or `Entity()` (each handle type of the API
+  has its factory, named as the type: a font is a `Font()`, never an
+  `Asset()` cast), in a component or a resource. A `u32` field refuses one (`4294967298 is not
   a u32`).
 - Per-entity calls (`world.get`, `world.set`) are for commands, setup and
   the few named entities a system touches (a camera, a listener, the

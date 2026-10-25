@@ -108,6 +108,61 @@ export default og.game({
   expect(unresolved(f?.fix ?? "")).toEqual([]);
 }, 300_000);
 
+test("an impact with three of the four signals owes no fourth; one with fewer is asked for each it lacks (rumpus-isle #13)", () => {
+  const p = join(evidence, "three-of-four");
+  rmSync(p, { recursive: true, force: true });
+  for (const d of ["src", "tests", "assets/fonts"]) mkdirSync(join(p, d), { recursive: true });
+  copyFileSync(join(repo, "templates", "game", "assets", "fonts", "NotoSansSC-Regular-subset.ttf"), join(p, "assets", "fonts", "NotoSansSC-Regular-subset.ttf"));
+  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Bumps"\nid "bumps"\nengine "0.4.0"\nentry "src/main.ts"\n');
+  // A bump (hits rising) holds the world, shakes and pops a number: three of
+  // four, no sound. A fall (hp falling) only shakes: one of four.
+  writeFileSync(
+    join(p, "src", "main.ts"),
+    `import { og, defineResource, u32 } from "@origingame/engine";
+const Score = defineResource("Score", { hits: u32(0), hp: u32(3) });
+export default og.game({
+  tick: 60,
+  resources: [Score],
+  start: (world) => {
+    const font = og.load.font(world, "fonts/NotoSansSC-Regular-subset.ttf");
+    if (font.ok) og.ui.configure(world, { font: font.value });
+  },
+  commands: {
+    bump: (world) => {
+      const s = world.resource(Score);
+      if (s.ok) s.value.hits += 1;
+      og.time.hitStop(world, 4);
+      og.camera.shake(world, 0.3);
+      og.render.floatingText(world, { text: "bump", position: { x: 0, y: 1, z: 0 } });
+    },
+    fall: (world) => {
+      const s = world.resource(Score);
+      if (s.ok) s.value.hp -= 1;
+      og.camera.shake(world, 0.3);
+    },
+  },
+  facts: (world) => {
+    const s = world.resource(Score);
+    return s.ok ? { hits: s.value.hits, hp: s.value.hp } : {};
+  },
+});
+`,
+  );
+  writeFileSync(join(p, "tests", "bumps.og.ts"), 'import { playtest } from "@origingame/engine/playtest";\nexport default playtest({ name: "bumps", commands: "0.3:bump;0.8:fall;1.3:quit", check(run, t) { t.ok(run.quit, "quit"); } });\n');
+  const r = run([ogBin(), "polish", p, "--frames", "0"]);
+  if (r.code !== 0) throw new Error(r.out);
+  const out = JSON.parse(readFileSync(join(p, "og-out", "polish", "polish.json"), "utf8")) as Polish;
+  const dmg = out.playtests[0]!.damage as Polish["playtests"][number]["damage"] & { shake: number; whole: number };
+  expect([dmg.moments, dmg.hitStop, dmg.shake, dmg.floating, dmg.sound, dmg.whole]).toEqual([2, 1, 2, 1, 0, 1]);
+  const rows = out.findings.filter((x) => x.measure === "hit feedback").map((x) => x.detail.replace(/ \(.*/, ""));
+  // The bump owes no sound; the fall owes hit stop, floating text and a sound, and not the shake it had.
+  expect(rows).toEqual(["1 of 2 damage moments", "1 of 2 damage moments", "1 of 2 damage moments"]);
+  const owed = out.findings.filter((x) => x.measure === "hit feedback").map((x) => /had no (.+?) within/.exec(x.detail)?.[1]);
+  expect(owed).toEqual(["hit stop", "floating text", "a sound"]);
+  // Per impact: three of three for the bump, one of three for the fall.
+  expect(out.scores["hitFeedback"]).toBe(Math.round((100 * (3 + 1)) / 6));
+}, 300_000);
+
 test("og polish reads a dialog as a screen, leaves out what its scrim dims, and does not count touch controls as HUD", () => {
   const p = join(evidence, "screens");
   rmSync(p, { recursive: true, force: true });

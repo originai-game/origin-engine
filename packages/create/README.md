@@ -35,8 +35,11 @@ catalogue (`packages/knowledge/looks/catalogue.json`, 37 styles):
 - `--premise "<one line>"` picks the style whose premise fits best (a word
   of the premise in a style's genre counts 3, in its mood 2, in its era,
   audience, name or descriptor 1; a tie goes to a style the engine draws
-  whole, then to catalogue order). On a terminal, with neither flag, create
-  asks for the premise (`--no-prompt` does not);
+  whole, then to catalogue order), among the styles whose `look.profiles`
+  include the game's profile: a 3D game never gets a flipbook-only style,
+  a 2D one never a style of lit meshes (`--look` names any). On a
+  terminal, with neither flag, create asks for the premise (`--no-prompt`
+  does not);
 - otherwise the template's own look stays: the plain template extends
   `faceted-low-poly`, the idle archetype carries its UI style and render
   settings, and the other archetypes get a look that extends nothing (their

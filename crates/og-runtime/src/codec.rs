@@ -52,6 +52,8 @@ impl Kind {
             "Material" => Kind::Material,
             "Asset" => Kind::Asset,
             "Sound" => Kind::Sound,
+            // The handles og.load answers beside Asset: fonts, UI styles, looks, shaders, rigs.
+            "Font" | "Style" | "Look" | "Shader" | "Rig" => Kind::Asset,
             // The animation module's asset handles: u64 like every handle.
             "SkeletonAsset" | "ClipAsset" | "GraphAsset" => Kind::Asset,
             // The effect assets and textures in records (Decal atlas, LUT, emitter).

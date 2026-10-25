@@ -105,6 +105,30 @@ layers (`anchor` for HUD corners, `modal` for dialogs,
 playtest can `touch_move_to` it (`Shop/Panel/Detail/Buy` resolves as
 `Detail/Buy`).
 
+**Text over a world point** (a name tag over a critter, a marker over a
+door): project the point each tick with the og.Camera resource's
+`worldToScreen` (null behind the camera: draw nothing) and draw screen
+text there, not world text. World text (`og.render.text` without `screen`) faces +z, rides
+the tone curve and is blurred by depth of field at the frame's edge;
+screen text is never tone mapped, blurred or depth tested, so the tag
+stays crisp and in its colour, and at a `layer` up to `UI_LAYER` (1000) it
+draws under every UI element (the HUD and the dialogs cover it):
+
+```ts
+const Tags = defineSystem("Tags", { reads: [Game, og.Camera] }, (_q, _t, world) => {
+  const cam = must(world.resource(og.Camera));
+  for (const c of critters(world)) {
+    const at = cam.worldToScreen({ x: c.x, y: c.y + 1.25, z: c.z }); // CSS pixels, y down
+    if (at === null) continue;
+    og.render.text(world, { font, text: c.name, position: { x: at.x, y: at.y, z: 0 }, size: 18, align: "center", outline: 0.7, screen: true, layer: 10 });
+  }
+});
+```
+
+Keep the font in a `Font()` field. Two tags within a tag's width of each
+other overlap into one label: lift the later one by its height, or hide
+the farther one's.
+
 Mixed styles in one paragraph are `richText(id, markup)`: `[b]`,
 `[color=danger]` (a token, or `#rrggbb`), `[size=lg]`, `[font=mono]`,
 `[icon=coin]`, `[link=shop]…[/link]` and the per-glyph `[wave]`, `[shake]`,

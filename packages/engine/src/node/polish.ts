@@ -611,7 +611,8 @@ interface PlaytestMeasures {
   hud: { gameplayShots: number; worstShare: number; worstCentre: number };
   ui: { screenChanges: number; withMotion: number; presses: number; pressesWithSound: number; motionTicks: number };
   latency: { inputs: number; answered: number; medianTicks: number; maxTicks: number; baselineShare: number; sound: number };
-  damage: { moments: number; hitStop: number; shake: number; floating: number; sound: number; flash: number; particles: number; facts: string[] };
+  /** Per signal, the moments that had it; `whole`, the moments with three of the four (hit stop, shake, floating text, a sound: og-feel §7's rule); `credit`, each moment's min(3, its signals) summed, what the score reads. */
+  damage: { moments: number; hitStop: number; shake: number; floating: number; sound: number; flash: number; particles: number; whole: number; credit: number; facts: string[] };
   idle: { share: number };
   particles: { peakSystems: number; bursts: number };
   /** `rendered` false: no renderer (tier `none`), so render and frame time were not measured. */
@@ -757,22 +758,39 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
     const tick = rec.facts[i]!.tick;
     if (hit && (moments.length === 0 || tick - moments.at(-1)! > 3)) moments.push(tick);
   }
-  const dmg = { moments: moments.length, hitStop: 0, shake: 0, floating: 0, sound: 0, flash: 0, particles: 0, facts: [...factKeys].slice(0, 6) };
+  const dmg = { moments: moments.length, hitStop: 0, shake: 0, floating: 0, sound: 0, flash: 0, particles: 0, whole: 0, credit: 0, facts: [...factKeys].slice(0, 6) };
+  // The four signals an impact is held to, in the order a finding names them: three of four make it whole.
+  const FOUR = ["hit stop", "shake", "floating text", "a sound"] as const;
+  const FIX: Record<(typeof FOUR)[number], string> = { "hit stop": "og-feel §3 (hit stop by impact weight)", shake: "og-feel §4 (trauma, not offsets)", "floating text": "og-feel §7 (floating text)", "a sound": "og-audio §1 (every event sounds; a hit's sound on its tick)" };
+  const lacking = new Map<(typeof FOUR)[number], number>(FOUR.map((k) => [k, 0]));
+  let short = 0;
   for (const t of moments) {
     const i = tickIndex.get(t) ?? -1;
-    if (i < 0) continue;
-    const w = sig.slice(Math.max(1, i - 3), Math.min(s.length, i + 9));
-    const held = s.slice(Math.max(0, i - 3), Math.min(s.length, i + 9)).some((p) => p.hitStop > 0 || p.scale < 1);
-    if (held || w.some((x) => x.hitStop)) dmg.hitStop++;
-    if (w.some((x) => x.shake)) dmg.shake++;
-    if (w.some((x) => x.floating)) dmg.floating++;
-    if (w.some((x) => x.sfx)) dmg.sound++;
+    // A moment the record cannot place is short of all four.
+    const w = i < 0 ? [] : sig.slice(Math.max(1, i - 3), Math.min(s.length, i + 9));
+    const held = i >= 0 && s.slice(Math.max(0, i - 3), Math.min(s.length, i + 9)).some((p) => p.hitStop > 0 || p.scale < 1);
+    const has = { "hit stop": held || w.some((x) => x.hitStop), shake: w.some((x) => x.shake), "floating text": w.some((x) => x.floating), "a sound": w.some((x) => x.sfx) };
+    if (has["hit stop"]) dmg.hitStop++;
+    if (has.shake) dmg.shake++;
+    if (has["floating text"]) dmg.floating++;
+    if (has["a sound"]) dmg.sound++;
     if (w.some((x) => x.tween)) dmg.flash++;
     if (w.some((x) => x.particles)) dmg.particles++;
+    const n = FOUR.filter((k) => has[k]).length;
+    dmg.credit += Math.min(3, n);
+    if (n >= 3) {
+      dmg.whole++;
+      continue;
+    }
+    // Short of three: each signal it lacks is owed. A whole moment owes none,
+    // so a party game's bump with hit stop, shake and a sound is not asked
+    // for a floating number (og-feel §7: damage and score numbers).
+    short++;
+    for (const k of FOUR) if (!has[k]) lacking.set(k, lacking.get(k)! + 1);
   }
-  if (dmg.moments > 0) {
-    const missing = [["hit stop", dmg.hitStop, "og-feel §3 (hit stop by impact weight)"], ["shake", dmg.shake, "og-feel §4 (trauma, not offsets)"], ["floating text", dmg.floating, "og-feel §7 (floating text)"], ["a sound", dmg.sound, "og-audio §1 (every event sounds; a hit's sound on its tick)"]] as const;
-    for (const [what, n, fix] of missing) if (n < dmg.moments) findings.push({ measure: "hit feedback", where: rec.playtest, detail: `${dmg.moments - n} of ${dmg.moments} damage moments (${dmg.facts.join(", ")}) had no ${what} within 8 ticks`, fix });
+  for (const k of FOUR) {
+    const n = lacking.get(k)!;
+    if (n > 0) findings.push({ measure: "hit feedback", where: rec.playtest, detail: `${n} of ${dmg.moments} damage moments (${dmg.facts.join(", ")}) had no ${k} within 8 ticks, and fewer than three of hit stop, shake, floating text and a sound (${short} short)`, fix: FIX[k] });
   }
 
   // Idle frames, particles, frame time.
@@ -844,7 +862,8 @@ function scores(ms: PlaytestMeasures[], missingKeys: number, hasLocales: boolean
   const lat = ms.filter((m) => m.latency.inputs > 0);
   const latency = lat.length === 0 ? null : Math.round(lat.reduce((n, m) => n + (m.latency.answered / m.latency.inputs) * (m.latency.medianTicks <= 1 ? 100 : m.latency.medianTicks <= 3 ? 70 : m.latency.medianTicks <= 6 ? 40 : 0), 0) / lat.length);
   const dm = sum((m) => m.damage.moments);
-  const hitFeedback = dm === 0 ? null : Math.round((100 * sum((m) => Math.min(3, [m.damage.hitStop, m.damage.shake, m.damage.floating, m.damage.sound].filter((n) => n > 0).length) / 3 * m.damage.moments)) / dm);
+  // Per impact: each moment scores min(3, its signals) of 3, so three of four is 100 and no moment's lack hides behind another's signal.
+  const hitFeedback = dm === 0 ? null : Math.round((100 * sum((m) => m.damage.credit)) / (3 * dm));
   const gameplay = ms.filter((m) => m.hud.gameplayShots > 0);
   const hud = gameplay.length === 0 ? null : Math.min(...gameplay.map((m) => Math.min(band(m.hud.worstShare, 15, 45), band(m.hud.worstCentre, 5, 30))));
   const timed = ms.filter((m) => m.frame.rendered);
@@ -894,7 +913,7 @@ function markdown(project: string, ms: PlaytestMeasures[], sc: Scores, findings:
   L.push(`| Locale keys | ${show(sc.locale)} | string tables without missing keys (og cook) |`);
   L.push(`| **Feel** | **${show(sc.feel)}** | mean of the feel rows |`);
   L.push(`| Input latency | ${show(sc.latency)} | inputs answered, by the median ticks to the answer (0–1: 100) |`);
-  L.push(`| Hit feedback | ${show(sc.hitFeedback)} | damage moments with hit stop, shake, floating text or a sound (three of four: 100) |`);
+  L.push(`| Hit feedback | ${show(sc.hitFeedback)} | each damage moment with three of hit stop, shake, floating text and a sound (every moment so: 100) |`);
   L.push(`| Idle frames | ${show(sc.idle)} | ticks where nothing new is seen or heard (10 %: 100, 60 %: 0) |`);
   L.push(`| Frame time | ${sc.frameTime === null && ms.length > 0 && ms.every((m) => !m.frame.rendered) ? "n/a (no renderer)" : show(sc.frameTime)} | p95 step + render (8.3 ms: 100, 33 ms: 0), worst playtest${ms.some((m) => !m.frame.rendered) ? "; no renderer: not measured" : ""} |`);
   L.push(`| Sound on input | ${show(sc.inputSound)} | inputs answered by a sound within 6 ticks |`, "");
@@ -920,7 +939,7 @@ function markdown(project: string, ms: PlaytestMeasures[], sc: Scores, findings:
     L.push(`| HUD | ${m.hud.gameplayShots} gameplay frame(s), up to ${m.hud.worstShare} % of the surface, ${m.hud.worstCentre} % of the centre |`);
     L.push(`| UI | ${m.ui.screenChanges} screen change(s), ${m.ui.withMotion} with motion; ${m.ui.motionTicks} ticks of UI motion; ${m.ui.presses} press(es), ${m.ui.pressesWithSound} with a ui-bus sound |`);
     L.push(`| Inputs | ${m.latency.inputs}, ${m.latency.answered} answered, median ${m.latency.medianTicks} ticks, max ${m.latency.maxTicks}; ${m.latency.sound} with a sound; ${m.latency.baselineShare} % of input-free ticks also change something |`);
-    L.push(`| Damage | ${m.damage.moments} moment(s)${m.damage.facts.length ? ` from ${m.damage.facts.map((f) => `\`${f}\``).join(", ")}` : ""}: hit stop ${m.damage.hitStop}, shake ${m.damage.shake}, floating text ${m.damage.floating}, sound ${m.damage.sound}, tween ${m.damage.flash}, particles ${m.damage.particles} |`);
+    L.push(`| Damage | ${m.damage.moments} moment(s)${m.damage.facts.length ? ` from ${m.damage.facts.map((f) => `\`${f}\``).join(", ")}` : ""}: hit stop ${m.damage.hitStop}, shake ${m.damage.shake}, floating text ${m.damage.floating}, sound ${m.damage.sound} (three of four: ${m.damage.whole}), tween ${m.damage.flash}, particles ${m.damage.particles} |`);
     L.push(`| Idle | ${m.idle.share} % of ticks |`);
     L.push(`| Particles | peak ${m.particles.peakSystems} system(s), ${m.particles.bursts} burst(s) |`);
     if (m.frame.rendered) L.push(`| Frame (${m.frame.tier}) | step ${m.frame.stepMedianMs} ms median, ${m.frame.stepP95Ms} p95; render ${m.frame.renderMedianMs} median, ${m.frame.renderP95Ms} p95; frame p95 ${m.frame.frameP95Ms}, max ${m.frame.frameMaxMs} |`);

@@ -101,7 +101,8 @@ export interface Style {
   readonly category: string;
   readonly descriptor: string;
   readonly premise: Readonly<Record<string, string>>;
-  readonly look: { readonly presetReady: boolean; readonly support: string; readonly missing: readonly string[] };
+  /** `profiles`: the project profiles the look draws for, `2d`, `3d` or both (a flipbook or hand-pixelled style is 2D only, a style of meshes and lit materials 3D only). */
+  readonly look: { readonly presetReady: boolean; readonly support: string; readonly profiles: readonly Profile[]; readonly missing: readonly string[] };
   readonly ui: string;
 }
 
@@ -135,9 +136,12 @@ export function words(text: string): string[] {
  * the premise found in a style's genre counts 3, in its mood 2, in its era
  * or audience 1, in its name or descriptor 1. Ties go to the style whose
  * look the engine draws whole (support `full`), then to catalogue order.
- * Null when no word matches any style. Only styles with a preset are chosen.
+ * Null when no word matches any style. Only styles with a preset that draw
+ * for the project's profile (`look.profiles`, 3D unless `2d`) are chosen: a
+ * 3D party premise never lands on a flipbook style, a 2D platformer never on
+ * a style of lit meshes. `--look` is not weighed here and may pick any.
  */
-export function pickStyle(premise: string, styles: readonly Style[]): { style: Style; score: number } | null {
+export function pickStyle(premise: string, styles: readonly Style[], profile: Profile = "3d"): { style: Style; score: number } | null {
   const asked = new Set(words(premise));
   if (asked.size === 0) return null;
   const weights: [(s: Style) => string, number][] = [
@@ -149,7 +153,7 @@ export function pickStyle(premise: string, styles: readonly Style[]): { style: S
   ];
   let best: { style: Style; score: number; full: boolean } | null = null;
   for (const style of styles) {
-    if (!style.look.presetReady) continue;
+    if (!style.look.presetReady || !style.look.profiles.includes(profile)) continue;
     let score = 0;
     for (const [field, weight] of weights) {
       const have = new Set(words(field(style)));
@@ -368,13 +372,13 @@ export function create(options: CreateOptions): Created {
   if (options.profile !== undefined && options.archetype !== undefined) {
     throw new Error(`--profile and --archetype together: an archetype has its own profile (${options.archetype}); drop one`);
   }
-  const choice = chooseStyle(options);
   const asked = options.profile ?? (options.premise !== undefined ? premiseProfile(options.premise) : null);
   const template = options.template ?? templateDir(options.archetype, asked ?? "3d");
   const profile: CreatedProfile = {
     value: profileOf(template),
     chosen: options.archetype !== undefined ? "archetype" : options.profile !== undefined ? "flag" : asked !== null ? "premise" : "template",
   };
+  const choice = chooseStyle(options, profile.value);
   const list = files(template);
   const written: string[] = [];
   mkdirSync(dir, { recursive: true });
@@ -402,8 +406,8 @@ export function create(options: CreateOptions): Created {
  * chose, and the entry's GameDesc.look pointed at it (inserted after
  * `og.game({` when the template names none).
  */
-/** The preset `--look` names or the premise fits; throws for a slug the catalogue has no preset for. */
-function chooseStyle(options: CreateOptions): { styles: Style[]; style: Style | undefined; chosen: CreatedLook["chosen"]; notes: string[] } {
+/** The preset `--look` names or the premise fits for the project's profile; throws for a slug the catalogue has no preset for. */
+function chooseStyle(options: CreateOptions, profile: Profile): { styles: Style[]; style: Style | undefined; chosen: CreatedLook["chosen"]; notes: string[] } {
   const styles = readCatalogue(options.catalogue);
   if (options.look !== undefined) {
     const style = styles.find((s) => s.slug === options.look);
@@ -413,9 +417,9 @@ function chooseStyle(options: CreateOptions): { styles: Style[]; style: Style | 
     return { styles, style, chosen: "flag", notes: [] };
   }
   if (options.premise !== undefined && options.premise.trim() !== "") {
-    const pick = pickStyle(options.premise, styles);
+    const pick = pickStyle(options.premise, styles, profile);
     if (pick) return { styles, style: pick.style, chosen: "premise", notes: [] };
-    return { styles, style: undefined, chosen: "none", notes: [`no catalogue style matched the premise "${options.premise}"; the look keeps the template's (og-taste §1 chooses one by genre, mood, era and audience: pass --look <slug>)`] };
+    return { styles, style: undefined, chosen: "none", notes: [`no catalogue style matched the premise "${options.premise}" for a ${profile.toUpperCase()} game; the look keeps the template's (og-taste §1 chooses one by genre, mood, era and audience: pass --look <slug>)`] };
   }
   return { styles, style: undefined, chosen: "none", notes: [] };
 }
@@ -485,8 +489,8 @@ Scaffolds an Origin Engine game into dir (default: ./origin-game).
   --id     the game's id, lowercase-hyphen (default: from the name)
   --profile    2d writes the 2D starter (a platformer: sprites, tilemap, 2D physics), 3d the 3D template (default: 2d for a premise that says 2D, platformer, side-scroller, metroidvania or pixel art without saying 3D; else 3d)
   --archetype  start from a complete archetype game (runner, match3, topdown, tower-defense, roguelike, idle, rhythm, third-person, arena) instead of the template; it has its own profile
-  --premise    the game in one line (genre, mood, setting, audience): its look extends the style catalogue's best match (asked for on a terminal when neither this nor --look is given)
-  --look   the style catalogue slug the look extends (og-taste §12), such as anime-cel-3d or 16bit-pixel
+  --premise    the game in one line (genre, mood, setting, audience): its look extends the style catalogue's best match among the styles drawn for the game's profile (asked for on a terminal when neither this nor --look is given)
+  --look   the style catalogue slug the look extends (og-taste §12), such as anime-cel-3d or 16bit-pixel; it wins over the premise and the profile
   --no-prompt  never ask for the premise
   --force  write into a directory that is not empty`;
 

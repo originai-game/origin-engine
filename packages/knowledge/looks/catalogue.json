@@ -37,6 +37,10 @@
         "preset": "templates/looks/expressionist-painting.ogt",
         "presetReady": true,
         "support": "content",
+        "profiles": [
+          "2d",
+          "3d"
+        ],
         "primitives": [
           "Stylise.paintRadius",
           "Stylise.paintCanvas",
@@ -88,6 +92,10 @@
         "preset": "templates/looks/bold-comic-illustration.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "2d",
+          "3d"
+        ],
         "primitives": [
           "StandardMaterialDesc.toon",
           "PostEffects.outline",
@@ -137,6 +145,10 @@
         "preset": "templates/looks/watercolor-wash.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "2d",
+          "3d"
+        ],
         "primitives": [
           "Stylise.paintEdgeDarkening",
           "Stylise.paintBleed",
@@ -186,6 +198,9 @@
         "preset": "templates/looks/pixel-3d-hybrid.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "3d"
+        ],
         "primitives": [
           "PostEffects.depthOfField",
           "PostEffects.ao",
@@ -237,6 +252,9 @@
         "preset": "templates/looks/faceted-low-poly.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "3d"
+        ],
         "primitives": [
           "StandardMaterialDesc.flatShading",
           "Fog",
@@ -276,8 +294,8 @@
         "Animation holds poses for 2 or more ticks (stepped, not interpolated)."
       ],
       "premise": {
-        "genre": "adventure, platformer, comedy",
-        "mood": "warm, odd, handmade",
+        "genre": "adventure, platformer, comedy, party games",
+        "mood": "warm, odd, playful, handmade",
         "era": "stop-motion film",
         "audience": "all ages, art-house"
       },
@@ -285,6 +303,9 @@
         "preset": "templates/looks/sculpted-clay.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "3d"
+        ],
         "primitives": [
           "StandardMaterialDesc.roughness",
           "StandardMaterialDesc.sheen",
@@ -336,6 +357,9 @@
         "preset": "templates/looks/8bit-pixel.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "2d"
+        ],
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.palette",
@@ -386,6 +410,9 @@
         "preset": "templates/looks/voxel-worlds.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "3d"
+        ],
         "primitives": [
           "StandardMaterialDesc.flatShading",
           "PostEffects.ao",
@@ -434,6 +461,9 @@
         "preset": "templates/looks/illuminated-manuscript.ogt",
         "presetReady": true,
         "support": "content",
+        "profiles": [
+          "2d"
+        ],
         "primitives": [
           "Stylise.paintCanvas",
           "Stylise.ink",
@@ -485,6 +515,9 @@
         "preset": "templates/looks/rubber-hose-animation.ogt",
         "presetReady": true,
         "support": "content",
+        "profiles": [
+          "2d"
+        ],
         "primitives": [
           "PostEffects.filmGrain",
           "PostEffects.vignette",
@@ -536,6 +569,9 @@
         "preset": "templates/looks/pencil-hatching.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "3d"
+        ],
         "primitives": [
           "Stylise.hatching",
           "Stylise.hatchingLevels",
@@ -585,6 +621,9 @@
         "preset": "templates/looks/gothic-contour.ogt",
         "presetReady": true,
         "support": "content",
+        "profiles": [
+          "2d"
+        ],
         "primitives": [
           "Fog",
           "PostEffects.glow",
@@ -637,6 +676,10 @@
         "preset": "templates/looks/lush-painted-worlds.ogt",
         "presetReady": true,
         "support": "content",
+        "profiles": [
+          "2d",
+          "3d"
+        ],
         "primitives": [
           "Stylise.paintRadius",
           "Stylise.paintCanvas",
@@ -688,6 +731,10 @@
         "preset": "templates/looks/decorative-storybook.ogt",
         "presetReady": true,
         "support": "content",
+        "profiles": [
+          "2d",
+          "3d"
+        ],
         "primitives": [
           "Stylise.ink",
           "Stylise.paintCanvas",
@@ -738,6 +785,9 @@
         "preset": "templates/looks/classical-painting-collage.ogt",
         "presetReady": true,
         "support": "content",
+        "profiles": [
+          "2d"
+        ],
         "primitives": [
           "sprites with transforms",
           "PostEffects.vignette",
@@ -788,6 +838,9 @@
         "preset": "templates/looks/detailed-doodle.ogt",
         "presetReady": true,
         "support": "content",
+        "profiles": [
+          "2d"
+        ],
         "primitives": [
           "Stylise.ink",
           "unlit materials",
@@ -838,6 +891,10 @@
         "preset": "templates/looks/black-figure-pottery.ogt",
         "presetReady": true,
         "support": "content",
+        "profiles": [
+          "2d",
+          "3d"
+        ],
         "primitives": [
           "Stylise.palette",
           "Stylise.posterize",
@@ -888,6 +945,9 @@
         "preset": "templates/looks/heavy-ink-shadows.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "3d"
+        ],
         "primitives": [
           "Stylise.posterize",
           "Stylise.hatching",
@@ -937,6 +997,9 @@
         "preset": "templates/looks/monochrome-pixel.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "2d"
+        ],
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.palette",
@@ -986,6 +1049,9 @@
         "preset": "templates/looks/16bit-pixel.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "2d"
+        ],
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.pixelSnap",
@@ -1035,6 +1101,9 @@
         "preset": "templates/looks/detailed-pixel.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "2d"
+        ],
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.pixelSnap",
@@ -1085,6 +1154,9 @@
         "preset": "templates/looks/luminous-pixel.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "2d"
+        ],
         "primitives": [
           "Stylise.pixelHeight",
           "Lighting2D",
@@ -1135,6 +1207,9 @@
         "preset": "templates/looks/topdown-tile-pixel.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "2d"
+        ],
         "primitives": [
           "tilemap layers",
           "Sprite.sortY",
@@ -1184,6 +1259,9 @@
         "preset": "templates/looks/low-resolution-3d.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "3d"
+        ],
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.vertexSnap",
@@ -1235,6 +1313,9 @@
         "preset": "templates/looks/coarse-pixel.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "2d"
+        ],
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.palette",
@@ -1283,6 +1364,9 @@
         "preset": "templates/looks/anime-cel-3d.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "3d"
+        ],
         "primitives": [
           "StandardMaterialDesc.toon",
           "StandardMaterialDesc.gradientMap",
@@ -1334,6 +1418,9 @@
         "preset": "templates/looks/inked-comic-3d.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "3d"
+        ],
         "primitives": [
           "PostEffects.outline",
           "StandardMaterialDesc.toon",
@@ -1385,6 +1472,9 @@
         "preset": "templates/looks/paper-craft.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "3d"
+        ],
         "primitives": [
           "StandardMaterialDesc.flatShading",
           "MaterialStyle.flatShading",
@@ -1435,6 +1525,9 @@
         "preset": "templates/looks/miniature-diorama.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "3d"
+        ],
         "primitives": [
           "PostEffects.depthOfField",
           "PostEffects.ao",
@@ -1485,6 +1578,9 @@
         "preset": "templates/looks/painterly-3d.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "3d"
+        ],
         "primitives": [
           "Stylise.paintRadius",
           "Stylise.paintAnisotropy",
@@ -1535,6 +1631,9 @@
         "preset": "templates/looks/cinematic-realism.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "3d"
+        ],
         "primitives": [
           "StandardMaterial (PBR)",
           "Environment",
@@ -1587,6 +1686,9 @@
         "preset": "templates/looks/muted-cinematic-3d.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "3d"
+        ],
         "primitives": [
           "PostEffects.godRays",
           "Fog",
@@ -1638,6 +1740,10 @@
         "preset": "templates/looks/layered-silhouette.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "2d",
+          "3d"
+        ],
         "primitives": [
           "Stylise.depthBands",
           "Fog",
@@ -1687,6 +1793,10 @@
         "preset": "templates/looks/minimal-geometric.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "2d",
+          "3d"
+        ],
         "primitives": [
           "unlit materials",
           "boxGeometry/sphereGeometry/planeGeometry",
@@ -1736,6 +1846,10 @@
         "preset": "templates/looks/neon-vector.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "2d",
+          "3d"
+        ],
         "primitives": [
           "RenderSettings.bloom",
           "emissive unlit materials",
@@ -1787,6 +1901,9 @@
         "preset": "templates/looks/monochrome-dither-3d.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "3d"
+        ],
         "primitives": [
           "Stylise.posterize",
           "Stylise.palette",
@@ -1836,6 +1953,10 @@
         "preset": "templates/looks/luminous-layered-painting.ogt",
         "presetReady": true,
         "support": "full",
+        "profiles": [
+          "2d",
+          "3d"
+        ],
         "primitives": [
           "sprite layers",
           "Fog",

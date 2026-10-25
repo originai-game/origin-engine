@@ -2317,13 +2317,8 @@ pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
 // ── commands ────────────────────────────────────────────────────────────────
 
 pub fn og_commands_register(name: String, handler: u32, desc: Option<String>) -> String {
-    if og_probe::command::CORE_ACTIONS
-        .iter()
-        .any(|(core, _, _)| *core == name)
-    {
-        return refuse(format!(
-            "'{name}' is a core action; register under another name"
-        ));
+    if let Some(why) = rprobe::reserved(&name) {
+        return refuse(why);
     }
     let valid = og_probe::command::parse(&format!("0:{name}"))
         .is_ok_and(|s| s.len() == 1 && s[0].action == name && s[0].args.is_empty());

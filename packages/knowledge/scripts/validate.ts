@@ -98,6 +98,7 @@ export function validate(roots: Roots = defaultRoots()): string[] {
   apiNames(roots, files, problems);
   looks(roots, files, problems);
   grammar(roots, files, problems);
+  problems.push(...ogtShape(skillTexts(files)));
   scaffold(roots, rules, manifest.overlay, files, byPath, problems);
   return problems;
 }
@@ -517,7 +518,7 @@ interface Style {
   descriptor: string;
   checks: string[];
   premise: Record<string, string>;
-  look: { preset: string; presetReady: boolean; support: string; primitives: string[]; missing: string[] };
+  look: { preset: string; presetReady: boolean; support: string; profiles: string[]; primitives: string[]; missing: string[] };
   ui: string;
   palette: { size: string; rules: string };
   assets: Record<string, string>;
@@ -526,6 +527,8 @@ interface Style {
 
 /** What `look.support` may say: full (every primitive draws), partial or planned (`missing` names what is still to land), content (the look is authored art). */
 export const SUPPORT = ["full", "partial", "planned", "content"] as const;
+/** What `look.profiles` may name: the project profiles a style draws for (create's premise match never offers a style outside the game's). */
+export const PROFILES = ["2d", "3d"] as const;
 /** The placeholders the art-bible template may use. */
 export const BIBLE_FIELDS = ["title", "premise", "camera", "platform", "name", "descriptor", "direction", "palette", "assets", "ui", "avoid", "game", "slug", "checks"] as const;
 const PREMISE = ["genre", "mood", "era", "audience"];
@@ -537,7 +540,7 @@ const ASSET_SPECS = ["logicalResolution", "spriteScale", "faceBudget", "outlineP
  * bible direction), its preset path `templates/looks/<slug>.ogt` (a
  * `type look` file when presetReady), its support honest (`missing` names
  * the primitives a style that is not `full` lacks, and is empty for one
- * that is), every `Resource.field` it names a member of the generated API,
+ * that is), the profiles it draws for (`look.profiles`, 2d and/or 3d), every `Resource.field` it names a member of the generated API,
  * og-taste naming every slug, and no text phrased as an imitation.
  */
 function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]): void {
@@ -591,6 +594,10 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
     }
     if (look.preset !== `templates/looks/${s.slug}.ogt`) problems.push(`${id}: look.preset is ${look.preset}, expected templates/looks/${s.slug}.ogt`);
     if (!(SUPPORT as readonly string[]).includes(look.support)) problems.push(`${id}: look.support ${look.support} is none of ${SUPPORT.join(", ")}`);
+    const profiles = Array.isArray(look.profiles) ? look.profiles : [];
+    if (profiles.length === 0 || new Set(profiles).size !== profiles.length || !profiles.every((p) => (PROFILES as readonly string[]).includes(p))) {
+      problems.push(`${id}: look.profiles must name the profiles the style draws for, one or both of ${PROFILES.join(", ")} (create matches a premise only among the game's)`);
+    }
     const missing = look.missing ?? [];
     if (look.support === "full" && missing.length > 0) problems.push(`${id}: support full, yet it names missing primitives`);
     if (look.support !== "full" && !missing.some(text)) problems.push(`${id}: support ${look.support} must name what is missing (the primitive or the authored art)`);
@@ -842,14 +849,70 @@ export function grammarDrift(skills: ReadonlyMap<string, string>, read: (path: s
   return problems;
 }
 
-function grammar(roots: Roots, files: readonly PayloadFile[], problems: string[]): void {
-  const repo = join(roots.pkg, "..", "..");
-  if (!existsSync(join(repo, "crates"))) return; // the published package: the parsers are not beside it
+/** Each skill's SKILL.md text, by skill name. */
+function skillTexts(files: readonly PayloadFile[]): Map<string, string> {
   const skills = new Map<string, string>();
   for (const f of files) {
     const m = /^game\/skills\/([^/]+)\/SKILL\.md$/.exec(f.path);
     if (m && isText(f.bytes)) skills.set(m[1]!, decoder.decode(f.bytes));
   }
+  return skills;
+}
+
+/**
+ * Every `.ogt` example a skill writes in a code block (```text or a bare
+ * fence, as a whole file or a fragment) holds to og-core's parser
+ * (crates/og-core/src/ogt.rs `parse`) line by line, so an author who copies
+ * it cooks: a `{` ends its key's line, a `}` stands alone on its own, the
+ * blocks close, and a file that opens with `type` has `version` and `---`
+ * next. A block with no brace and no `type` line is not checked (shell,
+ * prose). Strings and `#` comments are read as the parser reads them.
+ */
+export function ogtShape(skills: ReadonlyMap<string, string>): string[] {
+  const problems: string[] = [];
+  for (const [skill, md] of skills) {
+    for (const m of md.matchAll(/^( *)```([\w-]*)\n([\s\S]*?)^ *```/gm)) {
+      if (m[2] !== "text" && m[2] !== "") continue;
+      const indent = m[1]!.length;
+      const lines = m[3]!.split("\n").map((l) => l.slice(Math.min(indent, l.length - l.trimStart().length)));
+      const words = lines.map((l) => {
+        const out: string[] = [];
+        for (const t of l.matchAll(/"(?:[^"\\]|\\.)*"|\S+/g)) {
+          if (t[0].startsWith("#")) break;
+          out.push(t[0]);
+        }
+        return out;
+      });
+      const typed = words.find((w) => w.length > 0)?.[0] === "type";
+      if (!typed && !words.some((w) => w.includes("{") || w.includes("}"))) continue;
+      const first = md.slice(0, m.index).split("\n").length + 1;
+      const at = (i: number) => `skills/${skill}/SKILL.md:${first + i}`;
+      if (typed) {
+        const head = words.map((w, i) => [w, i] as const).filter(([w]) => w.length > 0).slice(0, 3);
+        if (head[1]?.[0][0] !== "version" || head[2]?.[0].join(" ") !== "---") problems.push(`${at(head[0]![1])}: an .ogt example opens with \`type\` but not \`version <n>\` and \`---\` after it; the parser refuses a file without its header`);
+      }
+      let depth = 0;
+      words.forEach((w, i) => {
+        const open = w.indexOf("{");
+        if (open >= 0 && open !== w.length - 1) problems.push(`${at(i)}: \`${lines[i]!.trim()}\` opens a block mid-line; the .ogt parser refuses it ('{' must end its line): put each line of the block on its own`);
+        if (w.includes("}") && w.length !== 1) problems.push(`${at(i)}: \`${lines[i]!.trim()}\` closes a block beside other words; the .ogt parser refuses it ('}' must be alone on its line)`);
+        if (open >= 0) depth++;
+        if (w.includes("}")) depth--;
+        if (depth < 0) {
+          problems.push(`${at(i)}: an unmatched '}'`);
+          depth = 0;
+        }
+      });
+      if (depth > 0) problems.push(`${at(lines.length - 1)}: an .ogt example leaves ${depth} block(s) open`);
+    }
+  }
+  return problems;
+}
+
+function grammar(roots: Roots, files: readonly PayloadFile[], problems: string[]): void {
+  const repo = join(roots.pkg, "..", "..");
+  if (!existsSync(join(repo, "crates"))) return; // the published package: the parsers are not beside it
+  const skills = skillTexts(files);
   problems.push(...grammarDrift(skills, (p) => (existsSync(join(repo, p)) ? readFileSync(join(repo, p), "utf8") : undefined)));
 }
 

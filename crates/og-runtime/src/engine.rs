@@ -1239,11 +1239,8 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
     {
         let mut probe = engine.probe.borrow_mut();
         super::e6::commit(engine_id, probe.inbox());
-        super::e6::register_commands(&mut probe, engine_id);
         super::timeline::commit(engine_id, probe.inbox());
-        super::timeline::register_commands(&mut probe, engine_id);
-        super::probe::register_render_dump(&mut probe, engine_id);
-        super::probes::register_bake_dump(&mut probe, engine_id);
+        register_module_actions(&mut probe, engine_id);
     }
     // The host's locale (og run --locale, the browser's language).
     super::i18n::request(engine_id, options["locale"].as_str().unwrap_or(""));
@@ -2385,9 +2382,83 @@ pub fn answer_call(id: u32, call: &og_probe::rpc::Call) -> String {
     }
 }
 
+/// The actions the engine's modules register on a probe (`help` marks them
+/// `(registered)`). Their names are reserved for the engine whatever the
+/// build or the order: rprobe::MODULE_ACTIONS lists them, and a game's
+/// command of one of them is refused (a test holds the list to this).
+pub(crate) fn register_module_actions(probe: &mut og_probe::Probe, engine_id: u32) {
+    super::e6::register_commands(probe, engine_id);
+    super::timeline::register_commands(probe, engine_id);
+    super::probe::register_render_dump(probe, engine_id);
+    super::probes::register_bake_dump(probe, engine_id);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The engine's own registered actions are exactly MODULE_ACTIONS, so a
+    /// module that adds one without reserving it fails here.
+    #[test]
+    #[cfg(not(feature = "publish"))]
+    fn the_module_actions_are_the_reserved_list() {
+        let mut world = World::new(&WorldDesc::default()).unwrap();
+        let mut probe = og_probe::Probe::new(&mut world).unwrap();
+        register_module_actions(&mut probe, 0);
+        let mut have: Vec<String> = probe
+            .help()
+            .into_iter()
+            .filter(|c| !c.core)
+            .map(|c| c.name)
+            .collect();
+        have.sort();
+        let mut want: Vec<String> = super::super::probe::MODULE_ACTIONS
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        want.sort();
+        assert_eq!(have, want);
+    }
+
+    /// A game command named as a module action is refused as a core
+    /// action's name is, whether the modules registered first or not.
+    #[test]
+    fn a_game_command_named_as_a_module_action_is_refused() {
+        use super::super::probe::register_one;
+        for modules_first in [false, true] {
+            let mut world = World::new(&WorldDesc::default()).unwrap();
+            let mut probe = og_probe::Probe::new(&mut world).unwrap();
+            if modules_first {
+                register_module_actions(&mut probe, 0);
+            }
+            assert_eq!(
+                register_one(&mut probe, 0, "view", "", ""),
+                Err("command 'view': 'view' is a registered engine action; register under another name".to_string())
+            );
+            assert_eq!(
+                register_one(&mut probe, 0, "dump_ai", "", ""),
+                Err("command 'dump_ai': 'dump_ai' is a registered engine action; register under another name".to_string())
+            );
+            assert_eq!(
+                register_one(&mut probe, 0, "pause", "", ""),
+                Err(
+                    "command 'pause': 'pause' is a core action; register under another name"
+                        .to_string()
+                )
+            );
+            assert_eq!(register_one(&mut probe, 0, "open_pause", "", ""), Ok(()));
+            if !modules_first && cfg!(not(feature = "publish")) {
+                // The modules registered after the game keep their own: the game's view never took it.
+                register_module_actions(&mut probe, 0);
+                assert!(
+                    probe
+                        .help()
+                        .iter()
+                        .any(|c| c.name == "view" && c.doc.starts_with("frame an entity"))
+                );
+            }
+        }
+    }
 
     const PROJECT: &str = "type project\nversion 1\n---\nname \"P\"\nentry \"src/main.ts\"\nprofile \"3d\"\ntick 30\nseed 7\nscenes {\n  main \"scenes/main.ogt\"\n  boss \"scenes/boss.ogt\"\n}\nscene boss\n";
 

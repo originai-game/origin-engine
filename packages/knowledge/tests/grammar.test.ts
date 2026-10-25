@@ -9,7 +9,7 @@ import { expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PACKAGE_ROOT } from "../scripts/lib.ts";
-import { grammarDrift, GRAMMARS, SKILLS, TILED } from "../scripts/validate.ts";
+import { grammarDrift, GRAMMARS, ogtShape, SKILLS, TILED } from "../scripts/validate.ts";
 
 const repo = join(PACKAGE_ROOT, "..", "..");
 const inRepo = existsSync(join(repo, "crates"));
@@ -134,4 +134,21 @@ test.skipIf(!inRepo)("the names in a behaviour, a graph and a navmesh are the au
 test.skipIf(!inRepo)("a grammar's region that moved is reported, not passed", () => {
   const p = grammarDrift(skills(), withSource("crates/og-cook/src/cook/e6.rs", (s) => s.replace("pub(super) fn cook_navmesh", "pub(super) fn bake_navmesh")));
   expect(p.some((x) => x.includes("e6.rs: the navmesh parser's region"))).toBeTrue();
+});
+
+test("every .ogt example in the skills has the parser's line shape; a one-line block is refused", () => {
+  expect(ogtShape(skills())).toEqual([]);
+  // r3 terrain-generate: `layer { ... }` on one line, which the parser refuses ('{' must end its line).
+  const one = ogtShape(withGame((s) => s.replace("  LightVolume {\n    size 12 4 12\n    spacing 1\n  }", "  LightVolume { size 12 4 12 spacing 1 }")));
+  expect(one.length).toBe(2);
+  expect(one[0]).toMatch(/^skills\/og-game\/SKILL\.md:\d+: `LightVolume \{ size 12 4 12 spacing 1 \}` opens a block mid-line/);
+  expect(one[1]).toContain("'}' must be alone on its line");
+  // A file without its header, and a block left open.
+  const head = ogtShape(new Map([["og-x", "```text\ntype terrain\n---\nlayer {\n  tile 6\n```\n"]]));
+  expect(head).toEqual([
+    "skills/og-x/SKILL.md:2: an .ogt example opens with `type` but not `version <n>` and `---` after it; the parser refuses a file without its header",
+    "skills/og-x/SKILL.md:6: an .ogt example leaves 1 block(s) open",
+  ]);
+  // TypeScript and shell blocks are not .ogt.
+  expect(ogtShape(new Map([["og-x", "```ts\nconst a = { b: 1 };\n```\n"]]))).toEqual([]);
 });

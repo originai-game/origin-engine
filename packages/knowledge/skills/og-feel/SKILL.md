@@ -169,7 +169,10 @@ it is a cutscene or a reward.
 ## 7. Floating text
 
 `og.render.floatingText(world, { text, position, ... })` pops a text that
-rises, drifts and fades by itself (world state, deterministic).
+rises, drifts and fades by itself (world state, deterministic). A label
+that stays with a character (a name tag, a player's number) is not
+floating text: it is screen text where the og.Camera resource's
+`worldToScreen` puts the point, og-ui §3 (Text over a world point).
 
 - Damage and score numbers above the hit point, not on the HUD: the eye is
   already there. Pickups: what was gained (`+1`, `key`), short.
@@ -180,6 +183,11 @@ rises, drifts and fades by itself (world state, deterministic).
   biggest number on screen should be the most important.
 - Lifetime 0.6–1.0 s, rise 0.8–1.5 units, spread 0.2–0.4 so stacked hits do
   not overlap. At most 6–8 on screen: sum rapid hits into one number.
+- Not every impact wants a number. An impact is held by three of four
+  signals (hit stop §3, shake §4, floating text, a sound): `og polish`
+  counts them per damage moment and asks for the missing ones only of a
+  moment with fewer than three, so a party game's bump that holds, shakes
+  and sounds owes no floating text.
 
 ## 8. Camera: look-ahead, dead zones, zones, rails
 

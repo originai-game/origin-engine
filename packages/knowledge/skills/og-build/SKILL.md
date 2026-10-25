@@ -53,8 +53,9 @@ a number and a sound (taste 98, feel 79).
    `get:<Resource>[.<field>]` or `get:<entity>[.<Component>[.<field>]]`
    (logs the value as game code sees it, og.Time whole and a light og.DayNight
    drives as it is drawn, and writes `get-<tick>.json`, then
-   `get-<tick>-2.json`, ... for more on one tick; a world dump lists
-   resources by name only, so `get:` is how to read one),
+   `get-<tick>-2.json`, ... for more on one tick; `get:Game:game.json`
+   names the file; a world dump lists resources by name only, so `get:`
+   is how to read one),
    `set:<entity>.<Component>.<field>=<value>` or
    `set:<Resource>.<field>=<value>` (`set:og.Camera.trauma=0.5`,
    `set:Game.coins=10`, `set:og.Stylise.ink=false`: a number, `true` or
@@ -98,7 +99,46 @@ each its argument form and one sentence in `GameDesc.commandHelp`
 (`{ spawn_wave: { usage: "<count>", doc: "Spawns a wave now." } }`)
 so `help` explains it (it lists `spawn_wave:<count>`: the name, then the
 usage). An entry naming no action is logged when the game
-starts.
+starts. A step's arguments are its colon-delimited fields after the
+action, never shell words: `0.5:records:12:34.5` hands the handler
+`args[0]` `"12"` and `args[1]` `"34.5"`, and its usage is written the same
+way, `usage: "<berries>:<seconds>"` (a space stays inside its field:
+`records:12 34.5` is one argument). A game may not take a core action's
+name; og-game §3 lists them, with `open_pause` beside the engine's `pause`.
+
+**File names.** Every output of one script has its own file. An unnamed
+output takes the action and the tick (`get-000030.json`), and a second on
+the same tick is suffixed quietly (`get-000030-2.json`). A named one that
+an earlier step of the script already wrote, at any time (a copy-pasted
+`0.5:get:Game:met.json`), is written as `met-2.json`, then `met-3.json`,
+never over the first, and logs a WARN naming both steps ("'met.json' was
+already written by the 0.5s get step, so this one is 'met-2.json'"). The
+WARN is in `run.warnings`, so a playtest that asserts a clean run
+(`t.equal(run.warnings.length, 0, ...)`) fails on the clash, and
+`run.json("met.json")` reads the first step's: give each named step its
+own file.
+
+**Values in the JSON.** A dump and a `get` answer write a vector as an
+array in lane order (`Vector3` `[x, y, z]`, `Quaternion` `[x, y, z, w]`,
+`Color` `[r, g, b]`), where the API's values are objects
+(`{ x, y, z }`); `set:` takes the lanes comma-separated, without spaces
+(`set:box.og.Transform.position=4,5,6`). Read a dump by index:
+
+```ts
+// 0.3:get:box.og.Transform:t.json writes {"kind":"get","target":"box.og.Transform","tick":18,"value":{"position":[1,2.5,-3],...}}
+const [x, y, z] = run.json<{ value: { position: [number, number, number] } }>("t.json").value.position;
+t.near(y, 2.5, 1e-4, "the box stands on the ledge");
+```
+
+An `f32` field is IEEE-754 single precision. Game code reads it as the
+f32's exact value promoted to a JavaScript number, so `2.7` written to an
+f32 reads back as `2.700000047683716`, and what game code sends carries
+that number as JSON (the facts, an og.platform payload, so
+`dump_platform`); `get` and the dumps print the f32's shortest form,
+`2.7`. Compare numbers with a tolerance in a test (`t.near(a, b, 1e-4,
+...)`), round only to display one (`toFixed(1)` on the label), and keep a
+value that must round-trip exactly (a payload a test compares with `===`)
+in an `f64` field.
 
 ## 2. Live sessions: the probe and hot reload
 
@@ -205,7 +245,7 @@ every screen that matters.
 | taste | UI sounds | a press that changed the UI and started a voice on the ui bus within 8 ticks | every press | og-taste §6, og-audio §3 |
 | taste | Locale keys | `og cook`'s warnings | none | og-i18n §1 |
 | feel | Input latency | ticks from the tick an input lands to the first thing seen or heard to change (a named entity accelerating or changing clip, the UI, a sound, a tween, a floating text, shake, hit stop, a particle burst); a press answered on its release counts from the release | 0–1 ticks | og-feel §1 |
-| feel | Hit feedback | each damage moment (a fact named `hp`, `health`, `lives`… falling, or `hits`, `damage`, `kills`… rising): hit stop, shake, floating text and a sound within 8 ticks | three of the four | og-feel §3, §4, §7, og-audio §1 |
+| feel | Hit feedback | each damage moment (a fact named `hp`, `health`, `lives`… falling, or `hits`, `damage`, `kills`… rising): hit stop, shake, floating text and a sound within 8 ticks | three of the four, per moment (a moment with three owes no fourth: a bump that holds, shakes and sounds is not asked for a number) | og-feel §3, §4, §7, og-audio §1 |
 | feel | Idle frames | ticks after the first ten where nothing moves or animates, no UI moves, no sound starts or plays, no tween, text or particle runs | at most 10 % | og-feel §9, og-taste §5 |
 | feel | Sound on input | inputs answered by a sound within 6 ticks | every action | og-audio §1 |
 | feel | Frame time | step + render, p95, on the tier it ran on (`metal` on a Mac, `vulkan` on a GPU); the probe's own screenshots (render, read back, PNG) are not the game's step and are left out. Without a renderer the row says `n/a (no renderer)`, as do contrast, text size and HUD occupancy, which read frames | 8.3 ms (half the frame) | og-game §14 |

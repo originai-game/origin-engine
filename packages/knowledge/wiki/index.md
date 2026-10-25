@@ -121,7 +121,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1213 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1218 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -311,6 +311,7 @@ Field units the docs and Tune use.
 | [`FloatingTextDesc`](render.md#type-FloatingTextDesc) | desc struct | render | — |
 | [`FlowDesc`](nav.md#type-FlowDesc) | desc struct | nav | — |
 | [`Font`](load.md#type-Font) | handle | load | — |
+| [`Font()`](load.md#column-Font) | column kind | load | — |
 | [`FontInfo`](load.md#type-FontInfo) | struct | load | — |
 | [`FontRole`](ui.md#type-FontRole) | enum | ui | — |
 | [`Frustum`](math.md#type-Frustum) | struct | math | — |
@@ -419,6 +420,7 @@ Field units the docs and Tune use.
 | [`LockstepSeat`](net.md#type-LockstepSeat) | struct | net | — |
 | [`LockstepStatus`](net.md#type-LockstepStatus) | struct | net | — |
 | [`Look`](render.md#type-Look) | handle | render | — |
+| [`Look()`](render.md#column-Look) | column kind | render | — |
 | [`LookInfo`](render.md#type-LookInfo) | struct | render | — |
 | [`Lut`](render.md#type-Lut) | handle | render | — |
 | [`Lut()`](render.md#column-Lut) | column kind | render | — |
@@ -1063,6 +1065,7 @@ Field units the docs and Tune use.
 | [`RichTextDesc`](ui.md#type-RichTextDesc) | desc struct | ui | — |
 | [`RichTextResult`](ui.md#type-RichTextResult) | struct | ui | — |
 | [`Rig`](anim.md#type-Rig) | handle | anim | — |
+| [`Rig()`](anim.md#column-Rig) | column kind | anim | — |
 | [`Rig2D`](anim.md#type-Rig2D) | handle | anim | — |
 | [`Rig2D()`](anim.md#column-Rig2D) | column kind | anim | — |
 | [`Rig2DClipInfo`](anim.md#type-Rig2DClipInfo) | struct | anim | — |
@@ -1118,6 +1121,7 @@ Field units the docs and Tune use.
 | [`SettingsDesc`](ui.md#type-SettingsDesc) | desc struct | ui | — |
 | [`SettingsResult`](ui.md#type-SettingsResult) | struct | ui | — |
 | [`Shader`](render.md#type-Shader) | handle | render | — |
+| [`Shader()`](render.md#column-Shader) | column kind | render | — |
 | [`ShakeDesc`](ui.md#type-ShakeDesc) | desc struct | ui | — |
 | [`Shape`](shapes.md#type-Shape) | interface | shapes | — |
 | [`Shape.extractPoints`](shapes.md#member-Shape-extractPoints) | method | shapes | — |
@@ -1195,6 +1199,7 @@ Field units the docs and Tune use.
 | [`StripBlend`](render.md#type-StripBlend) | enum | render | — |
 | [`StripBlend()`](render.md#column-StripBlend) | column kind | render | — |
 | [`Style`](load.md#type-Style) | handle | load | — |
+| [`Style()`](load.md#column-Style) | column kind | load | — |
 | [`StylePart`](ui.md#type-StylePart) | enum | ui | — |
 | [`StyliseSpace`](render.md#type-StyliseSpace) | enum | render | — |
 | [`StyliseSpace()`](render.md#column-StyliseSpace) | column kind | render | — |
