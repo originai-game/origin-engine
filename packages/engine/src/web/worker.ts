@@ -54,6 +54,7 @@ import { loadBasisTranscoder, transcodeKtx2, TEXTURE_FORMATS, type BasisTranscod
 import type { HostError } from "./shell.ts";
 import { PlatformCounter, settle, SETTLE_FIRST_MS, SETTLE_MS } from "./settle.ts";
 import { Trace, unixMs } from "../trace.ts";
+import { filterGlStateOf } from "./gl-state.ts";
 
 interface Start {
   type: "start";
@@ -984,6 +985,8 @@ export function startWorker(game: GameToken): void {
         let tier = "none";
         if (data.canvas) {
           canvas = data.canvas;
+          // The WebGL2 tier draws through the state filter (gl-state.ts).
+          if (data.webgl) filterGlStateOf(data.canvas);
           tier = await glue.og_web_attach_canvas(engine.id, data.canvas, !!data.webgl);
           rendering = true;
         }

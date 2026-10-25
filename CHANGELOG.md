@@ -16,6 +16,12 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
   as before; the files are larger (about 1.5 times on a detailed frame, up
   to 8 times on a flat one), and a renderer reuses the readback buffer
   of the last capture of the same size.
+- The WebGL2 fallback draws through a state filter in the engine Worker
+  (`src/web/gl-state.ts`, docs/web-export.md): a WebGL call that sets
+  what the context already holds is dropped, and the enables and
+  bindings are made when a call first reads them. Frames are the same;
+  the reference scene's 3,797 WebGL calls a frame become 761 for the same
+  41 draws.
 - Mirroring without `og.anim.mirror`: `mirror true` on an `animgraph`
   clip plays it on the other side of the skeleton (made once per
   skeleton and clip and kept, the same clip `og.anim.mirror` makes), and

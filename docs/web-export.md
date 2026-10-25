@@ -525,6 +525,15 @@ earlier build; a build that fails after replacing it removes what it wrote.
   Lantern Vale's 29 on WebGL2 in about 0.7 s, its 35 on WebGPU in 0.17 s);
   a pass the warm-up did not reach is made by the frame that first draws
   with it.
+- **The WebGL2 state filter** (`src/web/gl-state.ts`): on the WebGL2
+  fallback the Worker puts a mirror of the context's state in front of
+  the context wgpu's GL backend draws through. A call that sets a value
+  the context already holds is dropped, and the enables, the active
+  texture unit, the program, the framebuffer bindings and the generic
+  buffer bindings are made when a call first reads them; a call the mirror
+  does not model (or an extension's) forgets what it knew. The frame is
+  the same: on the reference scene 3,797 WebGL calls a frame become 761
+  for the same 41 draws (`tests/evidence/r4/perf-webgl2/NOTES.md`).
 - **URL parameters**: `webgl=1` (the WebGL2 fallback; also taken when WebGPU
   has no adapter), `replay-seed=<u32>`, `autoplay=0` (a harness drives the
   clock through the probe: no gate, no first tick, no service worker).
