@@ -10,7 +10,9 @@
 //! arithmetic in upstream's order so a world's hash is the same. Upstream's
 //! TODOs are done: the friction impulses' denominators take the bodies'
 //! effective inverse mass (locked axes, a non-dynamic ground) as rapier's
-//! solver does.
+//! solver does, and a dynamic ground body takes the opposite of the
+//! suspension and friction impulses at the contact point (a raft carries
+//! the car's weight and is driven backwards by its wheels).
 
 use rapier3d::dynamics::{RigidBody, RigidBodyHandle, RigidBodySet};
 use rapier3d::geometry::{ColliderHandle, ColliderSet, Ray};
@@ -420,17 +422,21 @@ impl DynamicRayCastVehicleController {
             self.wheels[wheel_id].update_suspension(chassis_mass);
         }
 
-        let chassis = queries.bodies.get_mut(self.chassis).unwrap();
-
         for wheel in &mut self.wheels {
+            let chassis = queries.bodies.get_mut(self.chassis).unwrap();
             if wheel.engine_force > 0.0 {
                 chassis.wake_up(true);
             }
 
-            // apply suspension force
+            // Apply the suspension force: up on the chassis, down on a
+            // dynamic ground body (a raft carries the car's weight).
             let suspension_force = wheel.wheel_suspension_force.min(wheel.max_suspension_force);
             let impulse = wheel.raycast_info.contact_normal_ws * suspension_force * dt;
-            chassis.apply_impulse_at_point(impulse, wheel.raycast_info.contact_point_ws, false);
+            let contact_point = wheel.raycast_info.contact_point_ws;
+            chassis.apply_impulse_at_point(impulse, contact_point, false);
+            if let Some(ground) = dynamic_ground(queries.bodies, queries.colliders, wheel) {
+                ground.apply_impulse_at_point(-impulse, contact_point, true);
+            }
         }
 
         self.update_friction(queries.bodies, queries.colliders, dt);
@@ -553,40 +559,51 @@ impl DynamicRayCastVehicleController {
             }
         }
 
-        // apply the impulses
-        let chassis = bodies.get_mut(self.chassis).unwrap();
-
+        // Apply the impulses: the chassis takes them (the side one raised
+        // towards its centre of mass by 1 − roll influence), a dynamic
+        // ground body the opposite of both at the contact point. A fixed or
+        // kinematic ground takes nothing.
         for (wheel_id, wheel) in self.wheels.iter().enumerate() {
-            let mut impulse_point = wheel.raycast_info.contact_point_ws;
+            let contact_point = wheel.raycast_info.contact_point_ws;
+            let forward_impulse = self.forward_ws[wheel_id] * wheel.forward_impulse;
+            let side_impulse = self.axle[wheel_id] * wheel.side_impulse;
+            let chassis = bodies.get_mut(self.chassis).unwrap();
 
             if wheel.forward_impulse != 0.0 {
-                chassis.apply_impulse_at_point(
-                    self.forward_ws[wheel_id] * wheel.forward_impulse,
-                    impulse_point,
-                    false,
-                );
+                chassis.apply_impulse_at_point(forward_impulse, contact_point, false);
             }
             if wheel.side_impulse != 0.0 {
-                let side_impulse = self.axle[wheel_id] * wheel.side_impulse;
-
                 let v_chassis_world_up =
                     chassis.position().rotation * Vector::ith(self.index_up_axis, 1.0);
-                impulse_point -= v_chassis_world_up
-                    * (v_chassis_world_up.dot(impulse_point - chassis.center_of_mass())
-                        * (1.0 - wheel.roll_influence));
+                let impulse_point = contact_point
+                    - v_chassis_world_up
+                        * (v_chassis_world_up.dot(contact_point - chassis.center_of_mass())
+                            * (1.0 - wheel.roll_influence));
 
                 chassis.apply_impulse_at_point(side_impulse, impulse_point, false);
+            }
 
-                // TODO: apply friction impulse on the ground
-                // let ground_object = self.wheels[wheel_id].raycast_info.ground_object;
-                // ground_object.apply_impulse_at_point(
-                //     -side_impulse,
-                //     wheels.raycast_info.contact_point_ws,
-                //     false,
-                // );
+            if let Some(ground) = dynamic_ground(bodies, colliders, wheel) {
+                ground.apply_impulse_at_point(
+                    -(forward_impulse + side_impulse),
+                    contact_point,
+                    true,
+                );
             }
         }
     }
+}
+
+/// The body under `wheel` when it is dynamic: the one that takes the
+/// opposite of the wheel's impulses. Ground without a body, or a fixed or
+/// kinematic one, takes none.
+fn dynamic_ground<'a>(
+    bodies: &'a mut RigidBodySet,
+    colliders: &ColliderSet,
+    wheel: &Wheel,
+) -> Option<&'a mut RigidBody> {
+    let body = colliders[wheel.raycast_info.ground_object?].parent()?;
+    bodies.get_mut(body).filter(|b| b.is_dynamic())
 }
 
 impl Wheel {
