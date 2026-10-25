@@ -2014,4 +2014,67 @@ mod tests {
         assert!(!of(roots[2]).visible);
         assert_ne!(of(roots[5]).geometry, of(roots[6]).geometry);
     }
+
+    /// A read where nothing moved since the last one brought to the slots
+    /// walks no entity and no slot, at a tick's first raycast and at a
+    /// raycast between ticks (`perf_raycast_record_20k`: the walk was the
+    /// still read's own work beside comparing the columns). One where
+    /// something moved, at that read or at a tick with no raycast since,
+    /// walks them, and the record stays a fresh read (`checked`).
+    #[test]
+    fn a_still_read_walks_no_entity() {
+        set_hooks(Rc::new(Quiet));
+        og_host_begin_bundle();
+        let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+        let w = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
+        let geometry = value(og_render_sphere_geometry(w, Some("{}".into())));
+        let material = value(og_render_standard_material(w, Some("{}".into())));
+        let mesh = json!({ "geometry": geometry, "material": material }).to_string();
+        let mut all = Vec::new();
+        for i in 0..60 {
+            let at = json!({ "position": { "x": i as f64, "y": 0, "z": 0 } }).to_string();
+            let e = value(og_world_spawn(w, Some(at))).as_f64().unwrap();
+            value(og_world_insert(w, e, "og.Mesh".into(), Some(mesh.clone())));
+            if i % 3 == 2 {
+                let v = json!({ "entity": all[i - 1] }).to_string();
+                value(og_world_insert(w, e, "og.Parent".into(), Some(v)));
+            }
+            all.push(e);
+        }
+        let frame = || value(og_engine_frame(w, 1000.0 / 60.0));
+        let walked = |label: &str| {
+            frame();
+            checked(w, label);
+            engine(w).unwrap().render.borrow().geo.hierarchy.walked
+        };
+        assert!(walked("first") >= 60);
+        assert_eq!(walked("still"), 0, "nothing moved");
+        let to = |x: f64| json!({ "position": { "x": x, "y": 1, "z": 2 } }).to_string();
+        value(og_world_set(w, all[4], "og.Transform".into(), to(3.0)));
+        assert!(walked("one moved") >= 60);
+        assert_eq!(walked("still after"), 0);
+        // Moved at a tick no raycast read, still at the next.
+        value(og_world_set(w, all[4], "og.Transform".into(), to(5.0)));
+        frame();
+        assert!(walked("moved a tick before a still one") >= 60);
+        // Every parented mesh loses its transform: their archetype empties
+        // and leaves the query, the others' columns and the parents are
+        // unchanged, and they are no longer the slots they were.
+        for &e in all.iter().skip(2).step_by(3) {
+            value(og_world_remove(w, e, "og.Transform".into()));
+        }
+        assert!(walked("the last archetype emptied") >= 40);
+        assert_eq!(walked("still after it"), 0);
+        // A raycast between ticks reads the world as it is.
+        let ray = json!({ "origin": { "x": 0, "y": 10, "z": 0 }, "direction": { "x": 0, "y": -1, "z": 0 } })
+            .to_string();
+        let between = || {
+            og_render_raycast(w, ray.clone(), None);
+            engine(w).unwrap().render.borrow().geo.now.walked
+        };
+        assert!(between() >= 40);
+        assert_eq!(between(), 0, "nothing moved between the raycasts");
+        value(og_world_set(w, all[7], "og.Transform".into(), to(1.0)));
+        assert!(between() >= 40);
+    }
 }
