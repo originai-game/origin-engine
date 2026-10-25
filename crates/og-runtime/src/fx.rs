@@ -89,12 +89,14 @@ pub(crate) struct LoadedLut {
 }
 
 /// One loaded model's primitives, for skinning: the scene mesh of its first
-/// primitive (they are consecutive) and the glTF mesh of each primitive.
+/// primitive (they are consecutive), the glTF mesh of each primitive, and
+/// the node of each of its parts (`og_cook::runtime::ModelParts::nodes`).
 #[derive(Clone, Debug)]
 pub(crate) struct ModelInfo {
     pub id: String,
     pub base: usize,
     pub prim_mesh: Vec<u32>,
+    pub part_nodes: Vec<usize>,
 }
 
 /// A model's skin and morph data from its `#anim` blob, and the skinned
@@ -912,7 +914,9 @@ pub(crate) struct ModelLook {
 /// Draws a model posed by og-anim: its skinned primitives as skinned
 /// instances under the entity's palette (and blendshape weights), the rest
 /// as instances, each with the model's own tint, flash and shadow flags
-/// (`look`). `false`
+/// (`look`). A part whose node the pose hides (a visibility channel, or
+/// a hidden ancestor: `AnimOutput::drawn`) is not drawn at all: a `.vox`
+/// frame folded away costs no draw. `false`
 /// when it cannot (no palette yet, no skin data): the caller draws it at
 /// its bind pose.
 pub(crate) fn posed_model(
@@ -945,7 +949,13 @@ pub(crate) fn posed_model(
     scene.joint_palettes.push(JointPalette {
         matrices: out.palette.clone(),
     });
+    // Parts and nodes line up unless the parts are not the model's own
+    // (a bake's lightmapped parts): then every part is drawn.
+    let nodes = (info.part_nodes.len() == parts.len()).then_some(&info.part_nodes);
     for (k, &(mesh, material, local)) in parts.iter().enumerate() {
+        if nodes.is_some_and(|n| out.drawn.get(n[k]) == Some(&false)) {
+            continue;
+        }
         let p = mesh.index().wrapping_sub(info.base);
         match meshes.get(p).copied().flatten() {
             Some(skinned) => {

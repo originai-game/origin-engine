@@ -1,16 +1,31 @@
 //! Poses and the operations the system composes them with: sampling a clip,
 //! blending, additive layering, root-motion extraction and clip markers.
+//!
+//! **Visibility.** A pose carries a visible flag per node (a visibility
+//! channel's, else the skeleton's rest visibility). It is a flag, not a
+//! quantity, so blends choose rather than mix: a blend of two poses takes
+//! the flag of the heavier (`lerp_to` by `t`: the other pose's from
+//! `t ≥ 0.5`, per node by `t · mask` for a masked layer), a blend of many
+//! ([`Blend`]) the flag of the heaviest input, the later on a tie; an
+//! additive layer sets a node's flag to its clip's where the clip's frame
+//! differs from its reference frame (the layer toggles it) and the layer's
+//! weight there is at least 0.5. A cross-fade between two mesh-swap clips
+//! therefore swaps at its middle instead of drawing both frames at once.
 
 use crate::asset::{ChannelPath, ClipAsset, NONE, SkeletonAsset};
 use crate::schema::{BLENDSHAPES, ROOT_MOTION_FULL};
 use crate::xform::{Trs, nlerp, twist_y};
 use og_core::glam::{Quat, Vec3};
 
-/// Every node's local transform, plus the blendshape weights of one mesh.
+/// Every node's local transform and visible flag, plus the blendshape
+/// weights of one mesh.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Pose {
     pub nodes: Vec<Trs>,
     pub weights: [f32; BLENDSHAPES],
+    /// Per node: drawn unless false (with its ancestors',
+    /// [`SkeletonAsset::drawn`]).
+    pub visible: Vec<bool>,
 }
 
 impl Pose {
@@ -18,10 +33,12 @@ impl Pose {
         Pose {
             nodes: skeleton.rest_pose(),
             weights: [0.0; BLENDSHAPES],
+            visible: skeleton.rest_visibility(),
         }
     }
 
-    /// Moves `self` towards `other` by `t`.
+    /// Moves `self` towards `other` by `t`; the visible flags are
+    /// `other`'s from `t ≥ 0.5`.
     pub fn lerp_to(&mut self, other: &Pose, t: f32) {
         if t <= 0.0 {
             return;
@@ -30,6 +47,14 @@ impl Pose {
             self.clone_from(other);
             return;
         }
+        self.lerp_values(other, t);
+        if t >= 0.5 {
+            self.visible.clone_from(&other.visible);
+        }
+    }
+
+    /// [`Pose::lerp_to`] without the visible flags.
+    fn lerp_values(&mut self, other: &Pose, t: f32) {
         for (a, b) in self.nodes.iter_mut().zip(&other.nodes) {
             *a = a.lerp(b, t);
         }
@@ -39,17 +64,28 @@ impl Pose {
     }
 
     /// [`Pose::lerp_to`] with node `i` moved by `t · mask[i]` (blendshape
-    /// weights by `t`).
+    /// weights by `t`), taking `other`'s flag where that is at least 0.5.
     pub fn lerp_to_masked(&mut self, other: &Pose, t: f32, mask: &[f32]) {
         if t <= 0.0 {
             return;
         }
-        for ((a, b), &m) in self.nodes.iter_mut().zip(&other.nodes).zip(mask) {
+        for (i, ((a, b), &m)) in self
+            .nodes
+            .iter_mut()
+            .zip(&other.nodes)
+            .zip(mask)
+            .enumerate()
+        {
             let k = t * m;
             if k >= 1.0 {
                 *a = *b;
             } else if k > 0.0 {
                 *a = a.lerp(b, k);
+            }
+            if k >= 0.5
+                && let (Some(v), Some(&o)) = (self.visible.get_mut(i), other.visible.get(i))
+            {
+                *v = o;
             }
         }
         let t = t.min(1.0);
@@ -64,15 +100,19 @@ impl Pose {
         if w <= 0.0 {
             return;
         }
-        for (((base, p), r), &m) in self
+        for (i, (((base, p), r), &m)) in self
             .nodes
             .iter_mut()
             .zip(&pose.nodes)
             .zip(&reference.nodes)
             .zip(mask)
+            .enumerate()
         {
             if m > 0.0 {
                 add_node(base, p, r, w * m);
+                if w * m >= 0.5 {
+                    toggle(&mut self.visible, pose, reference, i);
+                }
             }
         }
         self.add_weights(pose, reference, w);
@@ -86,6 +126,11 @@ impl Pose {
         for ((base, p), r) in self.nodes.iter_mut().zip(&pose.nodes).zip(&reference.nodes) {
             add_node(base, p, r, w);
         }
+        if w >= 0.5 {
+            for i in 0..self.visible.len() {
+                toggle(&mut self.visible, pose, reference, i);
+            }
+        }
         self.add_weights(pose, reference, w);
     }
 
@@ -98,6 +143,19 @@ impl Pose {
         {
             *b += (*p - *r) * w;
         }
+    }
+}
+
+/// An additive layer's visibility: node `i` takes `pose`'s flag where it
+/// differs from `reference`'s.
+fn toggle(visible: &mut [bool], pose: &Pose, reference: &Pose, i: usize) {
+    if let (Some(v), Some(&p), Some(&r)) = (
+        visible.get_mut(i),
+        pose.visible.get(i),
+        reference.visible.get(i),
+    ) && p != r
+    {
+        *v = p;
     }
 }
 
@@ -119,11 +177,14 @@ fn ratio(a: f32, b: f32) -> f32 {
 }
 
 /// Accumulates weighted poses (and root deltas) into their normalised blend,
-/// in submission order.
+/// in submission order; the visible flags are the heaviest pose's (the
+/// later of equal weights).
 pub struct Blend {
     pub pose: Option<Pose>,
     pub delta: Trs,
     total: f32,
+    /// The weight of the pose the flags came from.
+    heaviest: f32,
 }
 
 impl Blend {
@@ -132,6 +193,7 @@ impl Blend {
             pose: None,
             delta: Trs::IDENTITY,
             total: 0.0,
+            heaviest: 0.0,
         }
     }
 
@@ -144,9 +206,18 @@ impl Blend {
             None => {
                 self.pose = Some(pose);
                 self.delta = delta;
+                self.heaviest = w;
             }
             Some(p) => {
-                p.lerp_to(&pose, t);
+                if t >= 1.0 {
+                    p.clone_from(&pose);
+                } else {
+                    p.lerp_values(&pose, t);
+                }
+                if w >= self.heaviest {
+                    p.visible.clone_from(&pose.visible);
+                    self.heaviest = w;
+                }
                 self.delta = self.delta.lerp(&delta, t);
             }
         }
@@ -229,7 +300,7 @@ impl RootMotion {
                     ChannelPath::Translation => local[k].translation = ClipAsset::vec3(ch, p),
                     ChannelPath::Rotation => local[k].rotation = ClipAsset::quat(ch, p),
                     ChannelPath::Scale => local[k].scale = ClipAsset::vec3(ch, p),
-                    ChannelPath::Weights => {}
+                    ChannelPath::Weights | ChannelPath::Visibility => {}
                 }
             }
         }
@@ -403,7 +474,7 @@ pub fn stepped(t: f32, fps: f32, duration: f32, looping: bool) -> f32 {
 
 /// Writes `clip` at time `t` into `pose` (channels the binding leaves
 /// unbound are skipped; weight channels count when they target a node that
-/// draws mesh `mesh`).
+/// draws mesh `mesh`; visibility channels set the node's flag).
 pub fn sample(
     skeleton: &SkeletonAsset,
     clip: &ClipAsset,
@@ -422,6 +493,7 @@ pub fn sample(
             ChannelPath::Translation => n.translation = ClipAsset::vec3(ch, p),
             ChannelPath::Rotation => n.rotation = ClipAsset::quat(ch, p),
             ChannelPath::Scale => n.scale = ClipAsset::vec3(ch, p),
+            ChannelPath::Visibility => pose.visible[node as usize] = ClipAsset::visible(ch, p),
             ChannelPath::Weights => {
                 if mesh != NONE && skeleton.nodes[node as usize].mesh == mesh {
                     for k in 0..(ch.lanes as usize).min(BLENDSHAPES) {

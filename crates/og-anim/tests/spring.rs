@@ -36,6 +36,7 @@ fn skeleton() -> SkeletonAsset {
             n("tail3", 3, [0.0, 0.0, -0.2]),
         ],
         skins: Vec::new(),
+        ..Default::default()
     };
     let model = s.model_matrices(&s.rest_pose());
     let joints: Vec<u32> = (1..5).collect();

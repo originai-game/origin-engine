@@ -29,6 +29,18 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
   under gravity, in world or model space, held at bone length; `lag`
   written). The tails are saved in the `og.anim` state block (a tagged
   section written only when a spring exists).
+- Visibility tracks in og-anim: a clip's `ChannelPath::Visibility`
+  channel (STEP, 0 or 1) hides a node and what is under it, and og-runtime
+  draws no primitive of a hidden node on either host. Blends take the
+  heavier pose's flags (a cross-fade swaps at its middle); mirroring and
+  retargeting carry the channel; the flags are saved in the `og.anim`
+  state block (a tagged section written only when a node is hidden). The
+  cook reads `KHR_node_visibility` (rest) and the engine's
+  `OG_animation_visibility` animation extension; the `#anim` blob's
+  schema is 2 (a `hidden` table), so every `#anim` re-cooks. An animated
+  `.vox` folds its frames with visibility instead of scaling joints to
+  0: the same frame shows on every tick, one draw instead of one per
+  frame model.
 - Transition interruption rules in the `animgraph` grammar: `interrupt
   any | none | source | next` on a transition says which transitions may
   cut its cross-fade (default `any`, the old behaviour); the guard of a

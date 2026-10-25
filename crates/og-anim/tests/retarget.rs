@@ -463,6 +463,7 @@ fn fingers_are_humanoid_bones_and_a_curl_carries_over() {
                 mesh: NONE,
             }],
             skins: Vec::new(),
+            ..Default::default()
         };
         assert_eq!(HumanoidMap::detect(&skel).node(bone), Some(0), "{name}");
     }

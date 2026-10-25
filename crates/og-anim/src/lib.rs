@@ -35,6 +35,7 @@ mod rig2d;
 mod schema;
 mod skeleton2d;
 mod system;
+mod visibility;
 mod xform;
 
 pub use asset::{

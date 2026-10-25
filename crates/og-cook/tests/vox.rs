@@ -219,8 +219,13 @@ fn a_vox_with_and_without_a_scene_graph_cooks_to_the_same_bounds() {
 
 /// An animated `.vox` (three frames without a scene graph, MagicaVoxel
 /// 0.98's animation) cooks to a model with a `#anim` blob: `voxFps` and
-/// `voxClip` give its clips, whose STEP scale channels show one frame's
-/// joint at a time.
+/// `voxClip` give its clips, whose visibility channels show one frame's
+/// mesh node at a time. A folded frame is hidden, not a joint scaled to
+/// 0: every joint rests at scale 1, no clip has a scale channel, and the
+/// frames after 0 are hidden at rest. Compressed (`animation { compress
+/// true }`, the loosest tolerance), the flags are the same. Before the
+/// visibility track, each frame was a STEP scale of 0 or 1 on its joint,
+/// and every folded frame still cost its draw.
 #[test]
 fn an_animated_vox_cooks_its_frames_into_clips() {
     let frames = vec![
@@ -238,6 +243,11 @@ fn an_animated_vox_cooks_its_frames_into_clips() {
                 &settings("voxScale 0.5\nvoxFps 4\nvoxClip idle 0 0\nvoxClip grow 0 2"),
             ),
             ("models/plain.vox", &bytes),
+            ("models/packed.vox", &bytes),
+            (
+                "models/packed.vox.ogt",
+                b"type import\nversion 1\n---\nanimation {\n  compress true\n  tolerance 0.1\n}\n",
+            ),
         ],
     );
     let report = cook_project(&root, &CookOptions::default()).unwrap();
@@ -252,18 +262,43 @@ fn an_animated_vox_cooks_its_frames_into_clips() {
     assert_eq!(clips, vec![("idle", 0.25), ("grow", 0.75)]);
     assert_eq!(anim.skeleton.skins.len(), 1);
     assert_eq!(anim.skeleton.skins[0].joints.len(), 3);
+    let sk = &anim.skeleton;
+    let joints = &sk.skins[0].joints;
+    assert!(
+        joints
+            .iter()
+            .all(|&j| sk.nodes[j as usize].rest.scale == glam::Vec3::ONE),
+        "no joint is scaled to 0"
+    );
+    // Frame k's mesh node is the node written before its joint.
+    let mesh_nodes: Vec<u32> = joints.iter().map(|j| j - 1).collect();
+    assert!(
+        mesh_nodes
+            .iter()
+            .all(|&n| sk.nodes[n as usize].mesh != og_anim::NONE)
+    );
+    assert_eq!(sk.hidden, mesh_nodes[1..], "frames 1 and 2 hidden at rest");
+    assert!(
+        anim.clips
+            .iter()
+            .flat_map(|c| &c.channels)
+            .all(|ch| ch.path == og_anim::ChannelPath::Visibility),
+        "visibility channels only"
+    );
     let grow = anim.clip("grow").unwrap();
     assert_eq!(grow.rate, 4.0);
     assert_eq!(grow.channels.len(), 3);
     for (k, ch) in grow.channels.iter().enumerate() {
         assert!(ch.step, "a STEP channel");
-        assert_eq!(ch.path, og_anim::ChannelPath::Scale);
-        let shown: Vec<f32> = ch.samples.chunks(3).map(|s| s[0]).collect();
+        assert_eq!(ch.node, mesh_nodes[k], "on frame {k}'s mesh node");
         let mut want = vec![0.0; 4];
         want[k] = 1.0;
         want[3] = want[2];
-        assert_eq!(shown, want, "frame {k}'s joint");
+        assert_eq!(ch.samples, want, "frame {k}");
     }
+    let packed = bundle.load_animation("models/packed.vox").unwrap();
+    let plain_frames = bundle.load_animation("models/plain.vox").unwrap();
+    assert_eq!(packed.clips, plain_frames.clips, "compressed, still exact");
     // Every frame's primitive is skinned whole to its joint.
     assert_eq!(anim.skin_streams.len(), 3);
     for (k, s) in anim.skin_streams.iter().enumerate() {
@@ -327,15 +362,18 @@ fn a_keyed_transform_cooks_to_a_moving_joint() {
     assert_eq!(
         paths,
         vec![
-            og_anim::ChannelPath::Scale,
-            og_anim::ChannelPath::Translation
+            og_anim::ChannelPath::Translation,
+            og_anim::ChannelPath::Visibility
         ]
     );
     assert!(clip.channels.iter().all(|c| c.step), "STEP channels");
-    let shown: Vec<f32> = clip.channels[0].samples.chunks(3).map(|s| s[0]).collect();
-    assert_eq!(shown, vec![1.0; 4], "shown on every frame");
+    assert_eq!(
+        clip.channels[1].samples,
+        vec![1.0; 4],
+        "shown on every frame"
+    );
     // Frames 0, 1, 2 and the end key: (x, z, -y) of the keys at 0.5 m.
-    let places: Vec<[f32; 3]> = clip.channels[1]
+    let places: Vec<[f32; 3]> = clip.channels[0]
         .samples
         .chunks(3)
         .map(|s| [s[0], s[1], s[2]])
@@ -350,10 +388,11 @@ fn a_keyed_transform_cooks_to_a_moving_joint() {
         places.iter().zip(want).all(|(a, b)| close(*a, b)),
         "{places:?}"
     );
-    // The joint's channel drives the block's joint node.
+    // The translation drives the block's joint node, the visibility its
+    // mesh node.
     let joint = anim.skeleton.skins[0].joints[0];
     let binding = og_anim::bind(&anim.skeleton, clip);
-    assert_eq!(binding, vec![joint, joint]);
+    assert_eq!(binding, vec![joint, joint - 1]);
     // The bind pose is frame 0: the block at its first key beside the base.
     let (lo, hi) = bounds_of(&root, "models/lift.vox");
     assert!(

@@ -38,6 +38,11 @@ pub struct Skin {
 pub struct SkeletonAsset {
     pub nodes: Vec<SkeletonNode>,
     pub skins: Vec<Skin>,
+    /// The nodes hidden at rest (glTF `KHR_node_visibility` `visible:
+    /// false`), ascending; every other node is visible at rest. A
+    /// visibility channel sets a node's flag; a hidden node's primitives,
+    /// and its descendants', are not drawn ([`SkeletonAsset::drawn`]).
+    pub hidden: Vec<u32>,
 }
 
 impl SkeletonAsset {
@@ -70,12 +75,46 @@ impl SkeletonAsset {
                 )));
             }
         }
+        if self.hidden.windows(2).any(|w| w[0] >= w[1])
+            || self
+                .hidden
+                .last()
+                .is_some_and(|&h| h as usize >= self.nodes.len())
+        {
+            return Err(invalid(format!(
+                "the hidden nodes {:?} are not ascending node indices below {}",
+                self.hidden,
+                self.nodes.len()
+            )));
+        }
         Ok(())
     }
 
     /// The rest pose: every node's rest transform.
     pub fn rest_pose(&self) -> Vec<Trs> {
         self.nodes.iter().map(|n| n.rest).collect()
+    }
+
+    /// Every node's visibility at rest: false for [`SkeletonAsset::hidden`].
+    pub fn rest_visibility(&self) -> Vec<bool> {
+        let mut v = vec![true; self.nodes.len()];
+        for &h in &self.hidden {
+            v[h as usize] = false;
+        }
+        v
+    }
+
+    /// Which nodes are drawn for per-node flags `visible` (a pose's): a
+    /// node is drawn when it and every ancestor is visible, as
+    /// `KHR_node_visibility` and three.js's `Object3D.visible` read a
+    /// hierarchy.
+    pub fn drawn(&self, visible: &[bool]) -> Vec<bool> {
+        let mut out: Vec<bool> = Vec::with_capacity(self.nodes.len());
+        for (i, n) in self.nodes.iter().enumerate() {
+            let own = visible.get(i).copied().unwrap_or(true);
+            out.push(own && (n.parent == NONE || out[n.parent as usize]));
+        }
+        out
     }
 
     /// The index of the node called `name`.
@@ -151,6 +190,10 @@ pub enum ChannelPath {
     Scale,
     /// Morph-target weights of the node's mesh (one lane per target).
     Weights,
+    /// Whether the node (and what is under it) is drawn: one lane, 1
+    /// visible and 0 hidden, always held (STEP). A blend of visibilities
+    /// takes the flag of its heaviest input (`Pose::lerp_to`).
+    Visibility,
 }
 
 impl ChannelPath {
@@ -160,6 +203,7 @@ impl ChannelPath {
             ChannelPath::Rotation => 1,
             ChannelPath::Scale => 2,
             ChannelPath::Weights => 3,
+            ChannelPath::Visibility => 4,
         }
     }
 
@@ -169,6 +213,7 @@ impl ChannelPath {
             1 => ChannelPath::Rotation,
             2 => ChannelPath::Scale,
             3 => ChannelPath::Weights,
+            4 => ChannelPath::Visibility,
             _ => return None,
         })
     }
@@ -184,7 +229,8 @@ pub struct Channel {
     pub path: ChannelPath,
     /// The source sampler was STEP: hold each sample until the next one.
     pub step: bool,
-    /// Floats per sample (3 translation/scale, 4 rotation xyzw, n weights).
+    /// Floats per sample (3 translation/scale, 4 rotation xyzw, n weights,
+    /// 1 visibility).
     pub lanes: u32,
     /// `frames × lanes` floats.
     pub samples: Vec<f32>,
@@ -254,6 +300,7 @@ impl ClipAsset {
                 ChannelPath::Translation | ChannelPath::Scale => 3,
                 ChannelPath::Rotation => 4,
                 ChannelPath::Weights => ch.lanes.max(1),
+                ChannelPath::Visibility => 1,
             };
             if ch.lanes != lanes {
                 return Err(what(format!(
@@ -267,6 +314,13 @@ impl ClipAsset {
                     ch.samples.len(),
                     self.frames,
                     ch.lanes
+                )));
+            }
+            if ch.path == ChannelPath::Visibility
+                && (!ch.step || ch.samples.iter().any(|&v| v != 0.0 && v != 1.0))
+            {
+                return Err(what(format!(
+                    "channel {c} is a visibility channel: it is STEP and holds 0 (hidden) or 1 (visible)"
                 )));
             }
         }
@@ -357,6 +411,11 @@ impl ClipAsset {
             return unit(a);
         }
         nlerp(a, q(p.i1), p.frac)
+    }
+
+    /// A visibility channel at `p`: the sample held from `p.i0`.
+    pub fn visible(ch: &Channel, p: FramePos) -> bool {
+        Self::lane(ch, p.i0, 0) != 0.0
     }
 
     /// Lane `k` of a weights channel at `p`.
