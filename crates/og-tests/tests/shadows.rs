@@ -562,7 +562,16 @@ fn surfaces_that_receive_no_shadows_are_lit_as_if_unshadowed() {
         let mut elsewhere = 0;
         for i in 0..(flags.width * flags.height) as usize {
             let (f, a) = (px(&flags, i), px(&all, i));
-            if f == a {
+            // A pixel within one level on every channel has not moved: it
+            // is the 8-bit rounding of the same lit value. lavapipe compiles
+            // the shader for the host CPU, and on some of GitHub's runners
+            // (AMD EPYC 9V45 and 7763; not on Intel Xeon 8573C, nor on the
+            // orbs) the receiving and non-receiving paths' HDR values
+            // differ in their last bit at one silhouette pixel, which ACES
+            // rounds one blue level apart (tests/evidence/ci/known-frames/
+            // NOTES.md). A surface that read the shadow maps would move by
+            // far more.
+            if f.iter().zip(a).take(3).all(|(x, y)| x.abs_diff(*y) <= 1) {
                 continue;
             }
             if luma(f) >= luma(a) {

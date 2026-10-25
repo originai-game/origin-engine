@@ -9,6 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_PUBLISH, downloadLines, downloadsOf, settingsOf, webBuild, type ProjectSettings, type SizeRow } from "../src/node/web-build.ts";
 import { ogBin } from "./support/og-bin.ts";
+import { slow } from "./support/slow.ts";
 
 // The gate's path-aware lane skips this file: it spawns og processes for
 // minutes (docs/ci.md §Lanes). `scripts/check.sh --all`, CI and a plain
@@ -93,7 +94,7 @@ test.skipIf(SLOW)("the same inputs give the same bytes, wherever they are writte
   expect(b.manifest!.version).toBe(a.manifest!.version);
   expect(b.manifest!.files).toEqual(a.manifest!.files);
   expect(read(join(work, "deeper", "b"), "og-build.json")).toBe(read(join(work, "a"), "og-build.json"));
-}, 120_000);
+}, slow(120_000));
 
 test.skipIf(SLOW)("og-build.json names every file beside it, with bytes and sha256, and the Player's facts", async () => {
   const dir = join(work, "a");
@@ -172,7 +173,7 @@ test.skipIf(SLOW)("a publish build ships the engine variant of the game's profil
   expect(same(join(out, "origin-engine-lanes_bg.wasm"), join(work, "a", "origin-engine-lanes_bg.wasm"))).toBe(false);
   const dev = await webBuild(project, entry, join(work, "dev"), false, settings());
   expect(dev.ok && dev.manifest!.variant === "full").toBe(true);
-}, 120_000);
+}, slow(120_000));
 
 test.skipIf(SLOW)("publish settings: isolation, the badge and the service worker's version", async () => {
   const off = await webBuild(project, entry, join(work, "off"), true, settings({ isolation: "off", madeWith: false }));
@@ -200,7 +201,7 @@ test.skipIf(SLOW)("publish settings: isolation, the badge and the service worker
   expect(req.manifest!.player).toEqual({ protocol: 2, transports: ["frame", "page"] });
   expect(read(join(work, "req"), "index.html")).toContain('<meta name="og-player" content="frame page">');
   expect(JSON.parse(/<script type="application\/json" id="og-config">(.*?)<\/script>/.exec(read(join(work, "req"), "index.html"))![1]!).aspect).toBeCloseTo(16 / 9, 6);
-}, 120_000);
+}, slow(120_000));
 
 test.skipIf(SLOW)("a project icon must be a square PNG of at least 192 px", async () => {
   const copy = join(work, "iconed");

@@ -271,6 +271,41 @@ Two intermittent failures were known when the workflow last ran (og-cook's
 `cooking_twice_gives_identical_bytes`, row 80; the particle test's SIGSEGV,
 row 81); a red run is read before it is re-run.
 
+### The vulkan-cpu tier's known divergences
+
+Since the vulkan-cpu tier was set aside (§The wave-end run), og-tests'
+gfx frames on lavapipe, the orbs' and CI's adapter, are judged against
+metal's references under each scene's own tolerance
+(`crates/og-tests/src/compare.rs`). Five scenes always exceeded it there
+and pass on metal, and kept CI on main red with the same failures on
+every run, which hid any new one (the owner's decision of 2026-10-25).
+They are declared once, with the RMSE and outlier count measured on
+lavapipe against metal and the date, in `VULKAN_CPU_KNOWN_DIVERGENCES`
+(`crates/og-tests/src/gfx.rs`); the measurement is in
+`tests/evidence/ci/known-frames/NOTES.md`. The list lives in the
+harness, not as a file next to `references/`: `gfx::check` is the one
+place that knows the running tier (`RenderInfo::backend_tier`) and
+whether a scene fell back to metal's reference, the entries are typed and
+compile-checked, and the tolerance they bend is the harness's.
+
+`gfx::check` reads the list only when the tier is `vulkan-cpu` and the
+scene is judged against metal's reference; on metal, webgpu, webgl2 and
+dx12, and for a scene with its own vulkan-cpu reference, nothing changes,
+and the tolerance itself is not widened. A listed scene past its
+tolerance passes and is reported as `TOLERATED` with its numbers, as long
+as it stays within 1.25 times its measured RMSE and outlier count
+(`KNOWN_DIVERGENCE_MARGIN`): one that moves further fails, so a
+regression in a listed scene on lavapipe is still caught there. A listed
+scene now within tolerance is reported with `remove it from
+VULKAN_CPU_KNOWN_DIVERGENCES`, so the list shrinks. An unlisted scene
+that fails still fails. Each report is a line in
+`$OG_EVIDENCE_DIR/gfx-known-divergences.txt`, which the `test` and
+`test-quick` steps print after nextest (it shows no output of a passing
+test), so the gate's log lists every tolerated frame. A scene joins the
+list only by measurement on lavapipe against metal, never to make a red
+run green; when the vulkan-cpu requirement returns with references of its
+own, the list goes.
+
 ## Running the gate locally
 
 ```
