@@ -126,13 +126,19 @@ struct EntityState {
 /// Channel-to-node bindings by (skeleton, clip), derived from the assets.
 type Bindings = BTreeMap<(u64, u64), Arc<Vec<u32>>>;
 
-/// Foot plants by (skeleton, clip, foot node), derived from the assets.
-type Plants = BTreeMap<(u64, u64, u32), Arc<FootPlants>>;
+/// Foot plants by (skeleton, clip, mirrored, foot node), derived from the assets.
+type Plants = BTreeMap<(u64, u64, bool, u32), Arc<FootPlants>>;
 
-/// What a clip that poses the legs played this tick: (clip, the time it
-/// was sampled at, its share of the pose). The base layer's and the
-/// player's clips, for foot locks.
-type Stance = Vec<(u64, f32, f32)>;
+/// A clip mirrored for a skeleton (a graph's `mirror true`) and its binding.
+type Mirrored = Arc<(ClipAsset, Vec<u32>)>;
+
+/// Mirrored clips by (skeleton, clip).
+type Mirrors = BTreeMap<(u64, u64), Mirrored>;
+
+/// What a clip that poses the legs played this tick: ((clip, mirrored),
+/// the time it was sampled at, its share of the pose). The base layer's
+/// and the player's clips, for foot locks.
+type Stance = Vec<((u64, bool), f32, f32)>;
 
 /// A foot lock between ticks (`og.FootLock`); positions are in the frame
 /// the skeleton entity's Transform is written in (model space without one).
@@ -184,6 +190,8 @@ pub(crate) struct Shared {
     bindings: Mutex<Bindings>,
     /// A cache filled as foot locks meet (skeleton, clip, foot) triples.
     plants: Mutex<Plants>,
+    /// A cache filled as graphs play mirrored clips on skeletons.
+    mirrors: Mutex<Mirrors>,
     states: BTreeMap<u64, EntityState>,
     locks: BTreeMap<u64, LockState>,
     springs: BTreeMap<u64, SpringState>,
@@ -202,6 +210,10 @@ fn lock_plants(p: &Mutex<Plants>) -> MutexGuard<'_, Plants> {
     p.lock().unwrap_or_else(|p| p.into_inner())
 }
 
+fn lock_mirrors(m: &Mutex<Mirrors>) -> MutexGuard<'_, Mirrors> {
+    m.lock().unwrap_or_else(|p| p.into_inner())
+}
+
 impl Shared {
     fn binding(&self, skeleton: u64, clip: u64) -> Option<Arc<Vec<u32>>> {
         if let Some(b) = lock_bindings(&self.bindings).get(&(skeleton, clip)) {
@@ -218,23 +230,52 @@ impl Shared {
         )
     }
 
-    fn plants(&self, skeleton: u64, clip: u64, foot: u32) -> Option<Arc<FootPlants>> {
-        let key = (skeleton, clip, foot);
+    fn plants(
+        &self,
+        skeleton: u64,
+        (clip, mirrored): (u64, bool),
+        foot: u32,
+    ) -> Option<Arc<FootPlants>> {
+        let key = (skeleton, clip, mirrored, foot);
         if let Some(p) = lock_plants(&self.plants).get(&key) {
             return Some(p.clone());
         }
-        let p = Arc::new(FootPlants::new(
-            self.skeletons.get(&skeleton)?,
-            self.clips.get(&clip)?,
-            foot,
-        ));
+        let skel = self.skeletons.get(&skeleton)?;
+        let p = Arc::new(if mirrored {
+            FootPlants::new(skel, &self.mirrored(skeleton, clip).ok()??.0, foot)
+        } else {
+            FootPlants::new(skel, self.clips.get(&clip)?, foot)
+        });
         Some(lock_plants(&self.plants).entry(key).or_insert(p).clone())
+    }
+
+    /// Clip `clip` mirrored for skeleton `skeleton` and its binding, made
+    /// on first use (`None` when either is not registered).
+    fn mirrored(&self, skeleton: u64, clip: u64) -> Result<Option<Mirrored>> {
+        if let Some(m) = lock_mirrors(&self.mirrors).get(&(skeleton, clip)) {
+            return Ok(Some(m.clone()));
+        }
+        let (Some(skel), Some(c)) = (self.skeletons.get(&skeleton), self.clips.get(&clip)) else {
+            return Ok(None);
+        };
+        // Computed outside the lock: two lanes may both mirror a pair, to
+        // the same value.
+        let m = crate::retarget::mirror(skel, c)?;
+        let b = bind(skel, &m);
+        let m = Arc::new((m, b));
+        Ok(Some(
+            lock_mirrors(&self.mirrors)
+                .entry((skeleton, clip))
+                .or_insert(m)
+                .clone(),
+        ))
     }
 
     /// Forgets what was derived from skeleton `skeleton` or clip `clip`.
     fn forget(&self, skeleton: Option<u64>, clip: Option<u64>) {
         lock_bindings(&self.bindings).retain(|k, _| Some(k.0) != skeleton && Some(k.1) != clip);
         lock_plants(&self.plants).retain(|k, _| Some(k.0) != skeleton && Some(k.1) != clip);
+        lock_mirrors(&self.mirrors).retain(|k, _| Some(k.0) != skeleton && Some(k.1) != clip);
     }
 
     fn recompute_outputs(&mut self) {
@@ -1205,8 +1246,10 @@ fn foot_lock(
         if weight <= 0.0 {
             continue;
         }
-        let (Some(c), Some(p)) = (sh.clips.get(&clip), sh.plants(w.skeleton.asset, clip, foot))
-        else {
+        let Some(p) = sh.plants(w.skeleton.asset, clip, foot) else {
+            continue;
+        };
+        let Some(c) = sh.clips.get(&clip.0) else {
             continue;
         };
         total += weight;
@@ -1662,8 +1705,22 @@ fn eval_graph(
                 }
             };
             for &(n, lw) in &leaves {
-                let Motion::Clip { clip, looping, .. } = graph.nodes[n].motion else {
+                let Motion::Clip {
+                    clip,
+                    looping,
+                    mirror,
+                    ..
+                } = graph.nodes[n].motion
+                else {
                     continue;
+                };
+                let mirrored = if mirror {
+                    Some(
+                        sh.mirrored(skeleton_handle, clip)?
+                            .ok_or_else(|| missing(e, "clip", clip))?,
+                    )
+                } else {
+                    None
                 };
                 let c = sh
                     .clips
@@ -1672,10 +1729,14 @@ fn eval_graph(
                 let b = sh
                     .binding(skeleton_handle, clip)
                     .ok_or_else(|| missing(e, "clip", clip))?;
+                let (c, b): (&ClipAsset, &[u32]) = match &mirrored {
+                    Some(m) => (&m.0, &m.1),
+                    None => (c, &b),
+                };
                 let leaf = phase_leaf(
                     clip,
                     c,
-                    &b,
+                    b,
                     looping,
                     before,
                     *phase,
@@ -1684,7 +1745,7 @@ fn eval_graph(
                 );
                 leaf.events(events);
                 let d = if base {
-                    stance.push((clip, leaf.t1, lw * w * layer_weight));
+                    stance.push(((clip, mirror), leaf.t1, lw * w * layer_weight));
                     leaf.delta(skel, leaf_root)
                 } else {
                     Trs::IDENTITY
@@ -1841,7 +1902,7 @@ fn eval_player(
         };
         leaf.events(events);
         let held = stepped(t1, comp.step_fps, pc.duration, ps.prev_looping);
-        stance.push((ps.prev_clip, held, (1.0 - alpha) * wt));
+        stance.push(((ps.prev_clip, false), held, (1.0 - alpha) * wt));
         blend.push(
             leaf.pose_at(skel, root, mesh, held),
             leaf.delta(skel, root),
@@ -1867,7 +1928,7 @@ fn eval_player(
     };
     leaf.events(events);
     let held = stepped(t1, comp.step_fps, clip.duration, comp.looping);
-    stance.push((ps.clip, held, alpha * wt));
+    stance.push(((ps.clip, false), held, alpha * wt));
     blend.push(
         leaf.pose_at(skel, root, mesh, held),
         leaf.delta(skel, root),

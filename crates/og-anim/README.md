@@ -274,6 +274,9 @@ clip walk "walk" {
   speed 1                   # duration multiplier (> 0)
   loop true
 }
+clip walkOther "walk" {
+  mirror true               # played on the other side of the skeleton (default false)
+}
 clip run "run"
 clip waving "wave"
 blend1d move speed {        # blend1d <motion> <param>: linear between the two thresholds around the value
@@ -324,6 +327,18 @@ left state's phase); `next` only the new state's own, not `any` ones. The
 guard of a fade in progress is saved in the state block (tagged section 2,
 written only when some layer has one other than `any`). Parse errors name
 the line.
+
+**Mirrored clips.** `mirror true` on a clip motion plays it on the
+other side of whatever skeleton the graph runs on: the system makes the
+clip with `mirror` (§Mirroring) the first time a graph plays it on a
+skeleton and keeps it, with its binding and foot plants, beside the
+bindings (forgotten when the skeleton or the clip is replaced), so the
+result is bit for bit the graph playing a clip `og.anim.mirror` made and
+registered. Its markers fire under the original clip's handle; foot
+locks read the mirrored clip's plants. Nothing is saved: the cache is
+derived from the assets. The cook does the same once, offline:
+`animation { mirror "<clip>" ["<name>"] }` (og-cook's README) writes the
+mirrored clip into the model's `#anim`, so it is loaded like any other.
 
 **Layer masks.** A layer's `mask` lines give per-joint weights by node
 name, resolved against the skeleton the graph plays on: a node takes the
@@ -410,6 +425,7 @@ chain; palettes use exact `Mat4` products.
 | `output.rs` | the bind-pose palette is the identity and moves with a clip; component weights write through to the output and the sink; clip weights drive the component; root motion moves the Transform and pins the hips; unregistered assets refused with the entity |
 | `graph.rs` | transitions fire in the tick their condition holds and cross-fade; blend1d and the additive layer; bad text refused with its line |
 | `footlock.rs` | the walk's `FootPlants` are a few frames of the cycle; a stomp (half a cycle on a standing leg while root motion carries the walker on) holds the locked foot still to 1e-6 m over every plant (it slides 0.25 m without the lock), across a cross-fade to a jog started mid-plant, and a lifted foot is back on its animation 10 ticks later; a snapshot mid-plant restores to the same hashes and foot positions |
+| `graph.rs` (mirroring) | a graph clip with `mirror true` gives, tick after tick, the pose, root motion, foot-lock plants and markers (names, times; reported against the walk) of a graph playing the clip `mirror` made, and differs from the walk; `mirror maybe` refused with its line |
 | `graph.rs` (interruption) | per `interrupt` rule, which of the new state's, the source's and an `any` transition cut a 0.5 s fade at once and which wait for it to complete; a bad rule refused with its line; a guarded fade restored from a snapshot continues to the same hashes and states |
 | `layers.rs` | a masked override layer leaves the nodes outside its branches bit for bit, takes a named node's whole branch and blends a half-weight branch halfway; an additive layer's mask; a bad mask weight refused with its line; a synced upper layer samples its clip at the base's phase (not its own); a transition inside a group continues from the old state's phase |
 | `spring.rs` | a three-joint tail trails a body moving at 2 m/s by over 0.1 m, swings past rest when it stops and settles onto the animated pose, bones keeping their length (without a spring the tip rides rigidly); a model-space spring ignores the entity's motion; gravity droops a 1 Hz tail over 3× a 4 Hz one; a single-joint spring turns only that joint; a bad joint refused with the field; a restore mid-swing continues to the same hashes and pose |
@@ -545,13 +561,20 @@ symmetric rest pose; mirroring twice gives the clip back (within f32).
 
 ## Owed
 
-- Mirroring at cook time or per graph state (a `mirror true` on a graph
-  clip): today a mirrored clip is made at run time with `og.anim.mirror`
-  and registered like any other. Cooked clips can be quantised with
-  keyframe reduction (og-cook's `animation { compress true tolerance }`,
-  `src/anim_codec.rs`); the loader rebuilds every frame, so a registered
-  `ClipAsset` holds f32 samples whichever way it was cooked: resident
-  clips are not compressed in memory.
+- Resident clips are not compressed in memory: cooked clips can be
+  quantised with keyframe reduction (og-cook's `animation { compress true
+  tolerance }`, `src/anim_codec.rs`), but the loader rebuilds every frame,
+  so a registered `ClipAsset` holds f32 samples whichever way it was
+  cooked.
+- Spring bones have no colliders (three-vrm's sphere and capsule
+  colliders keeping hair out of a head) and no per-joint stiffness along a
+  chain; every joint of an `og.SpringBone` shares its settings.
+- Twist bones are driven by retargeting only (the channels it writes); a
+  clip authored for the rig itself that leaves its twist bones still is
+  played as it is, with no per-tick twist distribution.
+- Unity's legacy thumb names (`Thumb Proximal` as the metacarpal) are read
+  as VRM 1.0's; a Unity-named rig whose thumbs are off by a bone names
+  them in a `type rig` file.
 
 ## Flipbooks (sprite animation, E4)
 

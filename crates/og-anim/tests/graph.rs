@@ -291,3 +291,92 @@ fn a_guarded_fade_survives_a_snapshot() {
         );
     }
 }
+
+/// A one-state graph playing `line` (a `clip` line naming the walk).
+fn mirror_world(line: &str) -> (World, AnimationSystem, Entity, Entity) {
+    let text = format!(
+        "type animgraph\nversion 1\n---\n{line}\nlayer base {{\n  state walk w\n  entry walk\n}}\n"
+    );
+    let mut w = World::new(&WorldDesc {
+        tick_rate: 60,
+        seed: 1,
+    })
+    .unwrap();
+    let anim = install(&mut w).unwrap();
+    register(&anim);
+    let resolve = |n: &str| match n {
+        "walk mirrored" => Some(WALK_MIRRORED),
+        n => resolve(n),
+    };
+    anim.add_graph(40, GraphAsset::parse(&text, &resolve).unwrap())
+        .unwrap();
+    let e = w
+        .spawn((
+            Transform::default(),
+            Skeleton {
+                asset: SKELETON,
+                root_motion: ROOT_MOTION_PLANAR,
+                ..Skeleton::default()
+            },
+            AnimationGraph::new(40),
+        ))
+        .unwrap();
+    let l = w
+        .spawn((FootLock {
+            skeleton: e.to_bits(),
+            foot: J_FOOT_L,
+            ..FootLock::default()
+        },))
+        .unwrap();
+    (w, anim, e, l)
+}
+
+#[test]
+fn a_mirrored_graph_clip_plays_as_the_clip_og_anim_mirror_makes() {
+    let (mut a, anim_a, ea, la) = mirror_world("clip w \"walk\" {\n  mirror true\n}");
+    let (mut b, anim_b, eb, lb) = mirror_world("clip w \"walk mirrored\"");
+    let (mut c, anim_c, ec, _) = mirror_world("clip w \"walk\"");
+    let (mut differs, mut planted) = (false, 0);
+    for _ in 0..120 {
+        a.step().unwrap();
+        b.step().unwrap();
+        c.step().unwrap();
+        assert_eq!(anim_a.pose(ea).unwrap(), anim_b.pose(eb).unwrap());
+        assert_eq!(
+            a.get::<Transform>(ea).unwrap(),
+            b.get::<Transform>(eb).unwrap()
+        );
+        // The foot lock reads the mirrored clip's plants.
+        let (fa, fb) = (
+            a.get::<FootLock>(la).unwrap(),
+            b.get::<FootLock>(lb).unwrap(),
+        );
+        assert_eq!((fa.planted, fa.locked), (fb.planted, fb.locked));
+        planted += fa.planted as usize;
+        // Markers keep their names and times, reported against the walk.
+        let ev = |w: &World| -> Vec<(String, f32, u64)> {
+            w.pending_events::<AnimationEvent>()
+                .unwrap()
+                .iter()
+                .map(|e| (e.name.as_str().to_string(), e.time, e.clip))
+                .collect()
+        };
+        let (va, vb) = (ev(&a), ev(&b));
+        assert_eq!(
+            va.iter().map(|e| (&e.0, e.1)).collect::<Vec<_>>(),
+            vb.iter().map(|e| (&e.0, e.1)).collect::<Vec<_>>()
+        );
+        assert!(va.iter().all(|e| e.2 == WALK));
+        differs |= anim_a.pose(ea).unwrap() != anim_c.pose(ec).unwrap();
+    }
+    assert!(differs, "the mirrored walk is not the walk");
+    assert!(planted > 0, "the mirrored walk plants the left foot");
+    let _ = anim_c;
+    // `mirror` takes true or false.
+    let e = GraphAsset::parse(
+        "type animgraph\nversion 1\n---\nclip w \"walk\" {\n  mirror maybe\n}\nlayer base {\n  state walk w\n  entry walk\n}\n",
+        &resolve,
+    )
+    .unwrap_err();
+    assert!(e.reason().contains("line 5"), "{e}");
+}

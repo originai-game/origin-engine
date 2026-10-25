@@ -9,6 +9,11 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- Mirroring without `og.anim.mirror`: `mirror true` on an `animgraph`
+  clip plays it on the other side of the skeleton (made once per
+  skeleton and clip and kept, the same clip `og.anim.mirror` makes), and
+  the cook's `animation { mirror "<clip>" ["<name>"] }` writes a mirrored
+  copy into the model's `#anim`.
 - Retargeting of hands and twist bones, and per-character foot heights:
   the humanoid map gains VRM 1.0's 30 finger bones (read from Mixamo,
   VRoid, Rigify, Unreal and plain names; `og.anim.humanoid` lists them),

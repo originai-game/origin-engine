@@ -860,6 +860,7 @@ animation {
   library "anims/humanoid-clips.glb"   # its clips land in this model's #anim, retargeted (repeatable)
   rig "rigs/hero.ogt"                  # how this model's bones are named (`type rig`); default: detected from the node names
   footIk true                          # retargeting solves the legs so planted feet stay planted (default true)
+  mirror "turnLeft" "turnRight"        # also write a clip mirrored to the other side, under that name (default "<clip>.mirrored"; repeatable)
   compress false                       # quantised samples and keyframe reduction (default false: f32)
   tolerance 0.0001                     # the most compression may move a sampled value (default 0.0001, at most 0.1)
 }
@@ -932,6 +933,9 @@ clip idle "idle"            # clip <motion> "<clip name>"
 clip walk "walk" {
   speed 1                   # duration multiplier, above 0 (default 1)
   loop true                 # false: holds its last frame (default true)
+}
+clip walkOther "walk" {
+  mirror true               # plays the clip on the other side of the skeleton (default false): no og.anim.mirror needed
 }
 clip run "run"
 clip waving "wave"
