@@ -9,7 +9,7 @@ use crate::ik;
 use crate::pose::{Blend, Fired, Leaf, Pose, RootMotion, stepped};
 use crate::retarget::FootPlants;
 use crate::schema::*;
-use crate::xform::{Trs, unit};
+use crate::xform::{Trs, nlerp, rotation_arc, unit};
 use og_core::glam::{Mat4, Quat, Vec3};
 use og_core::{Error, ErrorKind, Result, Str64};
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
@@ -126,13 +126,19 @@ struct EntityState {
 /// Channel-to-node bindings by (skeleton, clip), derived from the assets.
 type Bindings = BTreeMap<(u64, u64), Arc<Vec<u32>>>;
 
-/// Foot plants by (skeleton, clip, foot node), derived from the assets.
-type Plants = BTreeMap<(u64, u64, u32), Arc<FootPlants>>;
+/// Foot plants by (skeleton, clip, mirrored, foot node), derived from the assets.
+type Plants = BTreeMap<(u64, u64, bool, u32), Arc<FootPlants>>;
 
-/// What a clip that poses the legs played this tick: (clip, the time it
-/// was sampled at, its share of the pose). The base layer's and the
-/// player's clips, for foot locks.
-type Stance = Vec<(u64, f32, f32)>;
+/// A clip mirrored for a skeleton (a graph's `mirror true`) and its binding.
+type Mirrored = Arc<(ClipAsset, Vec<u32>)>;
+
+/// Mirrored clips by (skeleton, clip).
+type Mirrors = BTreeMap<(u64, u64), Mirrored>;
+
+/// What a clip that poses the legs played this tick: ((clip, mirrored),
+/// the time it was sampled at, its share of the pose). The base layer's
+/// and the player's clips, for foot locks.
+type Stance = Vec<((u64, bool), f32, f32)>;
 
 /// A foot lock between ticks (`og.FootLock`); positions are in the frame
 /// the skeleton entity's Transform is written in (model space without one).
@@ -154,11 +160,24 @@ struct LockState {
     lock: Lock,
 }
 
+/// One `og.SpringBone` entity's tails between ticks, keyed by that
+/// entity; positions and velocities in the spring's `space`.
+#[derive(Clone, Debug, Default, PartialEq)]
+struct SpringState {
+    /// The skeleton entity it swung (a spring moved to another, or to
+    /// another space, or given another length, restarts at rest).
+    skeleton: u64,
+    space: u32,
+    /// Per chain joint, top first: the tail's position and velocity.
+    tails: Vec<(Vec3, Vec3)>,
+}
+
 /// What the state block holds.
 #[derive(Clone, Debug, Default, PartialEq)]
 struct Saved {
     states: BTreeMap<u64, EntityState>,
     locks: BTreeMap<u64, LockState>,
+    springs: BTreeMap<u64, SpringState>,
 }
 
 /// The registered assets and the world state.
@@ -171,8 +190,11 @@ pub(crate) struct Shared {
     bindings: Mutex<Bindings>,
     /// A cache filled as foot locks meet (skeleton, clip, foot) triples.
     plants: Mutex<Plants>,
+    /// A cache filled as graphs play mirrored clips on skeletons.
+    mirrors: Mutex<Mirrors>,
     states: BTreeMap<u64, EntityState>,
     locks: BTreeMap<u64, LockState>,
+    springs: BTreeMap<u64, SpringState>,
     outputs: BTreeMap<u64, AnimOutput>,
 }
 
@@ -186,6 +208,10 @@ fn lock_bindings(b: &Mutex<Bindings>) -> MutexGuard<'_, Bindings> {
 
 fn lock_plants(p: &Mutex<Plants>) -> MutexGuard<'_, Plants> {
     p.lock().unwrap_or_else(|p| p.into_inner())
+}
+
+fn lock_mirrors(m: &Mutex<Mirrors>) -> MutexGuard<'_, Mirrors> {
+    m.lock().unwrap_or_else(|p| p.into_inner())
 }
 
 impl Shared {
@@ -204,23 +230,52 @@ impl Shared {
         )
     }
 
-    fn plants(&self, skeleton: u64, clip: u64, foot: u32) -> Option<Arc<FootPlants>> {
-        let key = (skeleton, clip, foot);
+    fn plants(
+        &self,
+        skeleton: u64,
+        (clip, mirrored): (u64, bool),
+        foot: u32,
+    ) -> Option<Arc<FootPlants>> {
+        let key = (skeleton, clip, mirrored, foot);
         if let Some(p) = lock_plants(&self.plants).get(&key) {
             return Some(p.clone());
         }
-        let p = Arc::new(FootPlants::new(
-            self.skeletons.get(&skeleton)?,
-            self.clips.get(&clip)?,
-            foot,
-        ));
+        let skel = self.skeletons.get(&skeleton)?;
+        let p = Arc::new(if mirrored {
+            FootPlants::new(skel, &self.mirrored(skeleton, clip).ok()??.0, foot)
+        } else {
+            FootPlants::new(skel, self.clips.get(&clip)?, foot)
+        });
         Some(lock_plants(&self.plants).entry(key).or_insert(p).clone())
+    }
+
+    /// Clip `clip` mirrored for skeleton `skeleton` and its binding, made
+    /// on first use (`None` when either is not registered).
+    fn mirrored(&self, skeleton: u64, clip: u64) -> Result<Option<Mirrored>> {
+        if let Some(m) = lock_mirrors(&self.mirrors).get(&(skeleton, clip)) {
+            return Ok(Some(m.clone()));
+        }
+        let (Some(skel), Some(c)) = (self.skeletons.get(&skeleton), self.clips.get(&clip)) else {
+            return Ok(None);
+        };
+        // Computed outside the lock: two lanes may both mirror a pair, to
+        // the same value.
+        let m = crate::retarget::mirror(skel, c)?;
+        let b = bind(skel, &m);
+        let m = Arc::new((m, b));
+        Ok(Some(
+            lock_mirrors(&self.mirrors)
+                .entry((skeleton, clip))
+                .or_insert(m)
+                .clone(),
+        ))
     }
 
     /// Forgets what was derived from skeleton `skeleton` or clip `clip`.
     fn forget(&self, skeleton: Option<u64>, clip: Option<u64>) {
         lock_bindings(&self.bindings).retain(|k, _| Some(k.0) != skeleton && Some(k.1) != clip);
         lock_plants(&self.plants).retain(|k, _| Some(k.0) != skeleton && Some(k.1) != clip);
+        lock_mirrors(&self.mirrors).retain(|k, _| Some(k.0) != skeleton && Some(k.1) != clip);
     }
 
     fn recompute_outputs(&mut self) {
@@ -276,6 +331,7 @@ pub fn install(world: &mut World) -> Result<AnimationSystem> {
     world.register::<LookAt>()?;
     world.register::<JointLimit>()?;
     world.register::<FootLock>()?;
+    world.register::<SpringBone>()?;
     world.register::<AnimationEvent>()?;
     let shared = Arc::new(Mutex::new(Shared::default()));
     let desc = SystemDesc::new(SYSTEM_NAME)
@@ -287,6 +343,7 @@ pub fn install(world: &mut World) -> Result<AnimationSystem> {
         .write::<LookAt>()
         .read::<JointLimit>()
         .write::<FootLock>()
+        .write::<SpringBone>()
         .write::<Transform>()
         .write::<AnimationEvent>()
         .query(QueryDesc::new().read::<Skeleton>())
@@ -301,7 +358,8 @@ pub fn install(world: &mut World) -> Result<AnimationSystem> {
         .query(QueryDesc::new().read::<IkChain>())
         .query(QueryDesc::new().read::<LookAt>())
         .query(QueryDesc::new().read::<JointLimit>())
-        .query(QueryDesc::new().read::<FootLock>());
+        .query(QueryDesc::new().read::<FootLock>())
+        .query(QueryDesc::new().read::<SpringBone>());
     let s = shared.clone();
     world.add_system(desc, move |ctx| run(ctx, &s))?;
     world.add_state_block(SYSTEM_NAME, Box::new(AnimState(shared.clone())))?;
@@ -441,6 +499,8 @@ fn read_vec3(r: &mut Reader) -> Result<Vec3> {
 const SECTION_LOCKS: u32 = 1;
 /// Graph layers whose fade a transition's `interrupt` guards.
 const SECTION_GUARDS: u32 = 2;
+/// Spring bones' tails.
+const SECTION_SPRINGS: u32 = 3;
 
 fn guard_code(g: Interrupt) -> u8 {
     match g {
@@ -454,6 +514,7 @@ fn guard_code(g: Interrupt) -> u8 {
 fn encode(
     states: &BTreeMap<u64, EntityState>,
     locks: &BTreeMap<u64, LockState>,
+    springs: &BTreeMap<u64, SpringState>,
     out: &mut Vec<u8>,
 ) {
     let mut w = Writer::new(out);
@@ -537,6 +598,20 @@ fn encode(
             w.u64(e);
             w.u32(layer);
             w.u8(g);
+        }
+    }
+    if !springs.is_empty() {
+        w.u32(SECTION_SPRINGS);
+        w.u32(springs.len() as u32);
+        for (&e, s) in springs {
+            w.u64(e);
+            w.u64(s.skeleton);
+            w.u32(s.space);
+            w.u32(s.tails.len() as u32);
+            for &(x, v) in &s.tails {
+                write_vec3(&mut w, x);
+                write_vec3(&mut w, v);
+            }
         }
     }
 }
@@ -689,10 +764,29 @@ fn decode(bytes: &[u8]) -> Result<Saved> {
                     l.guard = guard;
                 }
             }
+            SECTION_SPRINGS => {
+                let n = r.count(24)?;
+                for _ in 0..n {
+                    let (e, skeleton, space) = (r.u64()?, r.u64()?, r.u32()?);
+                    let joints = r.count(24)?;
+                    let mut tails = Vec::with_capacity(joints);
+                    for _ in 0..joints {
+                        tails.push((read_vec3(&mut r)?, read_vec3(&mut r)?));
+                    }
+                    saved.springs.insert(
+                        e,
+                        SpringState {
+                            skeleton,
+                            space,
+                            tails,
+                        },
+                    );
+                }
+            }
             t => {
                 return Err(Error::new(
                     ErrorKind::Parse,
-                    format!("og.anim state section {t}; this engine reads up to {SECTION_GUARDS}"),
+                    format!("og.anim state section {t}; this engine reads up to {SECTION_SPRINGS}"),
                 ));
             }
         }
@@ -704,7 +798,7 @@ fn decode(bytes: &[u8]) -> Result<Saved> {
 impl StateBlock for AnimState {
     fn save(&self, out: &mut Vec<u8>) {
         let sh = lock(&self.0);
-        encode(&sh.states, &sh.locks, out);
+        encode(&sh.states, &sh.locks, &sh.springs, out);
     }
 
     fn decode(&self, bytes: &[u8]) -> Result<Box<dyn Any + Send>> {
@@ -718,6 +812,7 @@ impl StateBlock for AnimState {
             .unwrap_or_default();
         sh.states = saved.states;
         sh.locks = saved.locks;
+        sh.springs = saved.springs;
         sh.recompute_outputs();
     }
 }
@@ -926,6 +1021,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     let looks = entities(ctx, 6)?;
     let joint_limits = entities(ctx, 7)?;
     let foot_locks = entities(ctx, 8)?;
+    let spring_bones = entities(ctx, 9)?;
 
     let mut sh = lock(shared);
     // Read every skeleton entity in entity order, up to the first one that
@@ -1044,6 +1140,22 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
         }
         aimed.push((l, look));
     }
+    // Spring bones, last (they follow the final pose of their parents), in
+    // query order.
+    let mut springs: BTreeMap<u64, SpringState> = BTreeMap::new();
+    let mut swung: Vec<(Entity, SpringBone)> = Vec::with_capacity(spring_bones.len());
+    for &s in &spring_bones {
+        let mut sb: SpringBone = ctx.get(s)?;
+        sb.lag = 0.0;
+        if let Some(w) = work.iter_mut().find(|w| w.entity.to_bits() == sb.skeleton) {
+            let prev = sh
+                .springs
+                .get(&s.to_bits())
+                .filter(|p| p.skeleton == sb.skeleton && p.space == sb.space);
+            springs.insert(s.to_bits(), spring(w, &mut sb, prev, dt)?);
+        }
+        swung.push((s, sb));
+    }
 
     // The joint palettes, in lanes; then everything is written back in
     // entity order.
@@ -1092,6 +1204,9 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     for (f, fl) in held {
         ctx.set(f, fl)?;
     }
+    for (s, sb) in swung {
+        ctx.set(s, sb)?;
+    }
     for (e, f) in fired {
         ctx.send(AnimationEvent {
             entity: e.to_bits(),
@@ -1103,6 +1218,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     }
     sh.states = states;
     sh.locks = locks;
+    sh.springs = springs;
     sh.outputs = outputs;
     Ok(())
 }
@@ -1130,8 +1246,10 @@ fn foot_lock(
         if weight <= 0.0 {
             continue;
         }
-        let (Some(c), Some(p)) = (sh.clips.get(&clip), sh.plants(w.skeleton.asset, clip, foot))
-        else {
+        let Some(p) = sh.plants(w.skeleton.asset, clip, foot) else {
+            continue;
+        };
+        let Some(c) = sh.clips.get(&clip.0) else {
             continue;
         };
         total += weight;
@@ -1238,6 +1356,114 @@ fn model_direction(space: u32, t: Option<Transform>, v: Vec3) -> Vec3 {
         (IK_WORLD, Some(t)) => t.quaternion.conjugate() * v,
         _ => v,
     }
+}
+
+/// Where joint `n`'s tail is in its own frame: the next joint of `chain`
+/// after it, else its first child, else its parent bone continued at the
+/// same length (the rest pose's).
+fn tail_of(asset: &SkeletonAsset, pose: &[Trs], chain: &[u32], i: usize) -> Vec3 {
+    let n = chain[i];
+    let child = chain.get(i + 1).copied().or_else(|| {
+        asset
+            .nodes
+            .iter()
+            .position(|c| c.parent == n)
+            .map(|c| c as u32)
+    });
+    match child {
+        Some(c) => pose[c as usize].translation,
+        None => {
+            let rest = &asset.nodes[n as usize].rest;
+            let s = rest.scale;
+            let along = rest.rotation.conjugate() * rest.translation;
+            if s.x != 0.0 && s.y != 0.0 && s.z != 0.0 {
+                along / s
+            } else {
+                Vec3::ZERO
+            }
+        }
+    }
+}
+
+/// One spring chain this tick: each joint's tail, top first, stepped
+/// towards where the pose (with the joints above already swung) puts it,
+/// held at the bone's length, and the joint turned to point at it.
+fn spring(
+    w: &mut Work,
+    sb: &mut SpringBone,
+    prev: Option<&SpringState>,
+    dt: f32,
+) -> Result<SpringState> {
+    let node = joint(w, sb.joint, "og.SpringBone.joint")?;
+    let bones = sb.bones.clamp(1, 16);
+    let Some(chain) = ik::chain(&w.asset, node, bones - 1) else {
+        return Err(invalid(format!(
+            "og.SpringBone: joint {} has fewer than {} joints above it",
+            sb.joint,
+            bones - 1
+        )));
+    };
+    let frame = match (sb.space, w.transform) {
+        (SPRING_WORLD, Some(t)) => Trs::new(t.position, t.quaternion, t.scale),
+        _ => Trs::IDENTITY,
+    };
+    let to_model = frame.inverse();
+    let prev = prev.filter(|p| p.tails.len() == chain.len());
+    // Implicit Euler on x'' = ω²(target − x) − 2ζω x' + g: stable at any
+    // frequency and tick.
+    let omega = std::f32::consts::TAU * sb.frequency.max(0.0);
+    let (k, c) = (omega * omega, 2.0 * sb.damping.max(0.0) * omega);
+    let weight = sb.weight.clamp(0.0, 1.0);
+    let model = w.asset.model_space(&w.pose.nodes);
+    let mut parent = match w.asset.nodes[chain[0] as usize].parent {
+        NONE => Trs::IDENTITY,
+        p => model[p as usize],
+    };
+    let mut tails = Vec::with_capacity(chain.len());
+    for (i, &n) in chain.iter().enumerate() {
+        let tail = tail_of(&w.asset, &w.pose.nodes, &chain, i);
+        let local = w.pose.nodes[n as usize];
+        let m = parent.mul(&local);
+        let head = frame.transform_point(m.translation);
+        let target = frame.transform_point(m.transform_point(tail));
+        let length = (target - head).length();
+        let (mut x, mut v) = prev.map_or((target, Vec3::ZERO), |p| p.tails[i]);
+        if length < 1e-6 {
+            // No bone to swing.
+            tails.push((target, Vec3::ZERO));
+            parent = m;
+            continue;
+        }
+        let x0 = x;
+        if dt > 0.0 {
+            v = (v + ((target - x) * k + sb.gravity) * dt) / (1.0 + dt * c + dt * dt * k);
+            x += v * dt;
+        }
+        // Held at the bone's length from the head.
+        let d = x - head;
+        let l = d.length();
+        x = if l > 1e-9 {
+            head + d * (length / l)
+        } else {
+            target
+        };
+        if dt > 0.0 {
+            v = (x - x0) / dt;
+        }
+        sb.lag = sb.lag.max((x - target).length());
+        let from = m.rotation * (m.scale * tail);
+        let to = to_model.transform_point(x) - m.translation;
+        let turned = unit(rotation_arc(from, to) * m.rotation);
+        let swung = unit(parent.rotation.conjugate() * turned);
+        w.pose.nodes[n as usize].rotation = nlerp(local.rotation, swung, weight);
+        parent = parent.mul(&w.pose.nodes[n as usize]);
+        tails.push((x, v));
+    }
+    Ok(SpringState {
+        skeleton: sb.skeleton,
+        space: sb.space,
+        tails,
+    })
 }
 
 fn aim(w: &mut Work, look: &mut LookAt, limits: &Limits) -> Result<()> {
@@ -1479,8 +1705,22 @@ fn eval_graph(
                 }
             };
             for &(n, lw) in &leaves {
-                let Motion::Clip { clip, looping, .. } = graph.nodes[n].motion else {
+                let Motion::Clip {
+                    clip,
+                    looping,
+                    mirror,
+                    ..
+                } = graph.nodes[n].motion
+                else {
                     continue;
+                };
+                let mirrored = if mirror {
+                    Some(
+                        sh.mirrored(skeleton_handle, clip)?
+                            .ok_or_else(|| missing(e, "clip", clip))?,
+                    )
+                } else {
+                    None
                 };
                 let c = sh
                     .clips
@@ -1489,10 +1729,14 @@ fn eval_graph(
                 let b = sh
                     .binding(skeleton_handle, clip)
                     .ok_or_else(|| missing(e, "clip", clip))?;
+                let (c, b): (&ClipAsset, &[u32]) = match &mirrored {
+                    Some(m) => (&m.0, &m.1),
+                    None => (c, &b),
+                };
                 let leaf = phase_leaf(
                     clip,
                     c,
-                    &b,
+                    b,
                     looping,
                     before,
                     *phase,
@@ -1501,7 +1745,7 @@ fn eval_graph(
                 );
                 leaf.events(events);
                 let d = if base {
-                    stance.push((clip, leaf.t1, lw * w * layer_weight));
+                    stance.push(((clip, mirror), leaf.t1, lw * w * layer_weight));
                     leaf.delta(skel, leaf_root)
                 } else {
                     Trs::IDENTITY
@@ -1658,7 +1902,7 @@ fn eval_player(
         };
         leaf.events(events);
         let held = stepped(t1, comp.step_fps, pc.duration, ps.prev_looping);
-        stance.push((ps.prev_clip, held, (1.0 - alpha) * wt));
+        stance.push(((ps.prev_clip, false), held, (1.0 - alpha) * wt));
         blend.push(
             leaf.pose_at(skel, root, mesh, held),
             leaf.delta(skel, root),
@@ -1684,7 +1928,7 @@ fn eval_player(
     };
     leaf.events(events);
     let held = stepped(t1, comp.step_fps, clip.duration, comp.looping);
-    stance.push((ps.clip, held, alpha * wt));
+    stance.push(((ps.clip, false), held, alpha * wt));
     blend.push(
         leaf.pose_at(skel, root, mesh, held),
         leaf.delta(skel, root),

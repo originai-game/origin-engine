@@ -285,6 +285,12 @@
       "value": "IkSpace"
     },
     {
+      "name": "SpringSpace",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "SpringSpace"
+    },
+    {
       "name": "Rig",
       "array": "Uint32Array",
       "stride": 2,
@@ -4195,6 +4201,67 @@
     },
     {
       "id": 52,
+      "name": "SpringBone",
+      "schema": "og.SpringBone",
+      "module": "anim",
+      "fields": [
+        {
+          "name": "skeleton",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "joint",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "bones",
+          "column": "u32",
+          "default": 1
+        },
+        {
+          "name": "frequency",
+          "column": "f32",
+          "default": 3,
+          "tunable": true
+        },
+        {
+          "name": "damping",
+          "column": "f32",
+          "default": 0.3,
+          "tunable": true
+        },
+        {
+          "name": "gravity",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "space",
+          "column": "SpringSpace",
+          "default": "world"
+        },
+        {
+          "name": "weight",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "lag",
+          "column": "f32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 53,
       "name": "Flipbook",
       "schema": "og.Flipbook",
       "module": "anim",
@@ -4246,7 +4313,7 @@
       ]
     },
     {
-      "id": 53,
+      "id": 54,
       "name": "Skeleton2D",
       "schema": "og.Skeleton2D",
       "module": "anim",
@@ -4301,7 +4368,7 @@
       ]
     },
     {
-      "id": 54,
+      "id": 55,
       "name": "IkTarget2D",
       "schema": "og.IkTarget2D",
       "module": "anim",
@@ -4350,7 +4417,7 @@
       ]
     },
     {
-      "id": 55,
+      "id": 56,
       "name": "Tilemap",
       "schema": "og.Tilemap",
       "module": "tilemap",
@@ -4402,7 +4469,7 @@
       ]
     },
     {
-      "id": 56,
+      "id": 57,
       "name": "AudioSource",
       "schema": "og.AudioSource",
       "module": "audio",
@@ -4553,7 +4620,7 @@
       ]
     },
     {
-      "id": 57,
+      "id": 58,
       "name": "AudioListener",
       "schema": "og.AudioListener",
       "module": "audio",
@@ -4578,7 +4645,7 @@
       ]
     },
     {
-      "id": 58,
+      "id": 59,
       "name": "AudioBusFx",
       "schema": "og.AudioBusFx",
       "module": "audio",
@@ -4673,7 +4740,7 @@
       ]
     },
     {
-      "id": 59,
+      "id": 60,
       "name": "ReverbZone",
       "schema": "og.ReverbZone",
       "module": "audio",
@@ -4731,7 +4798,7 @@
       ]
     },
     {
-      "id": 60,
+      "id": 61,
       "name": "Music",
       "schema": "og.Music",
       "module": "audio",
@@ -4779,7 +4846,7 @@
       ]
     },
     {
-      "id": 61,
+      "id": 62,
       "name": "NavAgent",
       "schema": "og.NavAgent",
       "module": "nav",
@@ -4904,7 +4971,7 @@
       ]
     },
     {
-      "id": 62,
+      "id": 63,
       "name": "Steering",
       "schema": "og.Steering",
       "module": "nav",
@@ -5020,7 +5087,7 @@
       ]
     },
     {
-      "id": 63,
+      "id": 64,
       "name": "AiAgent",
       "schema": "og.AiAgent",
       "module": "ai",
@@ -5067,7 +5134,7 @@
       ]
     },
     {
-      "id": 64,
+      "id": 65,
       "name": "Perception",
       "schema": "og.Perception",
       "module": "ai",
@@ -5178,7 +5245,7 @@
       ]
     },
     {
-      "id": 65,
+      "id": 66,
       "name": "Perceivable",
       "schema": "og.Perceivable",
       "module": "ai",
@@ -5196,7 +5263,7 @@
       ]
     },
     {
-      "id": 66,
+      "id": 67,
       "name": "Terrain",
       "schema": "og.Terrain",
       "module": "terrain",
@@ -5225,7 +5292,7 @@
       ]
     },
     {
-      "id": 67,
+      "id": 68,
       "name": "TerrainScatter",
       "schema": "og.TerrainScatter",
       "module": "terrain",
@@ -5294,7 +5361,7 @@
       ]
     },
     {
-      "id": 68,
+      "id": 69,
       "name": "VideoPlayer",
       "schema": "og.VideoPlayer",
       "module": "video",
@@ -5346,7 +5413,7 @@
       ]
     },
     {
-      "id": 69,
+      "id": 70,
       "name": "PathFollower",
       "schema": "og.PathFollower",
       "module": "path",
@@ -5400,7 +5467,7 @@
       ]
     },
     {
-      "id": 70,
+      "id": 71,
       "name": "Timeline",
       "schema": "og.Timeline",
       "module": "timeline",
@@ -5434,7 +5501,7 @@
       ]
     },
     {
-      "id": 71,
+      "id": 72,
       "name": "PlayerInput",
       "schema": "og.PlayerInput",
       "module": "net",

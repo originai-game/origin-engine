@@ -791,6 +791,22 @@ foot rejoins its animation over `release` (0.15 s). `planted` and
 would stretch. It needs clips whose feet actually rest: a foot that only
 grazes its lowest for a frame is held for that frame only.
 
+**Spring bones.** `og.SpringBone { skeleton, joint, bones }` on its own
+entity, one per chain (a tail, ears, a ponytail, a single jiggling node),
+swings `joint` and its `bones` − 1 parents after their parents' motion:
+each joint's tail is a damped spring (`frequency` 3 Hz, `damping` 0.3;
+1 settles without overshoot) towards where the animation puts it, under
+`gravity` (`{ x: 0, y: -9.8, z: 0 }` droops it), held at the bone's
+length. `space` world (default) lags behind the entity's motion; model
+ignores it (a teleport does not whip the tail). Applied last, after IK
+and look-at; `lag` reads back how far the chain trails. Deterministic and
+saved with the world.
+
+```ts
+const tail = must(world.spawn({ name: "hero-tail" }));
+must(world.insert(tail, og.SpringBone, { skeleton: body, joint: TAIL_TIP, bones: 3, gravity: { x: 0, y: -4, z: 0 } }));
+```
+
 `templates/archetypes/third-person` (`src/anim.ts`: a 1D blend by speed,
 a hero retargeted at cook time and sentinels at run time) is the pattern,
 and for a 3D action game as a whole: a CharacterController over a level,
@@ -844,6 +860,7 @@ animation {
   library "anims/humanoid-clips.glb"   # its clips land in this model's #anim, retargeted (repeatable)
   rig "rigs/hero.ogt"                  # how this model's bones are named (`type rig`); default: detected from the node names
   footIk true                          # retargeting solves the legs so planted feet stay planted (default true)
+  mirror "turnLeft" "turnRight"        # also write a clip mirrored to the other side, under that name (default "<clip>.mirrored"; repeatable)
   compress false                       # quantised samples and keyframe reduction (default false: f32)
   tolerance 0.0001                     # the most compression may move a sampled value (default 0.0001, at most 0.1)
 }
@@ -862,6 +879,21 @@ source's distance scaled by the leg ratio (so root motion matches its
 stride), and its legs are solved so planted feet stay on the ground
 (`footIk`, on by default). The fx-showcase `retarget` station is the
 pattern.
+
+Hands retarget too: the fingers are humanoid bones (VRM 1.0's
+`leftThumbMetacarpal` … `leftLittleDistal`, read from Mixamo's
+`LeftHandIndex1`, VRoid's `J_Bip_L_Index1`, Rigify's `DEF-f_index.01.L`,
+Unreal's `index_01_l`, plain `index.01.L`), each turning from its hand as
+the source's does, so a fist or a grip holds on an A-posed arm whatever
+the arm does. The target's twist bones (unmapped nodes named `twist`, such
+as Unreal's `lowerarm_twist_01_l`, or Rigify's `DEF-forearm.L.001`) take a
+share of their segment's roll by where they sit along it: none at the
+segment's head, the next bone's at its end, so a forearm does not
+candy-wrap. A character whose rest pose does not stand on the ground (an
+armature lifted off it, a crouched rest) says how high its ankles stand
+in its `type rig` file, `footHeight 0.08` (or `footHeight <left>
+<right>`); planted feet then land on that ground, not at the rest pose's
+foot height.
 
 **Mirroring.** `og.anim.mirror(world, { clip, skeleton })` answers a new
 clip that plays `clip` on the other side (a left-handed swing, a limp on
@@ -901,6 +933,9 @@ clip idle "idle"            # clip <motion> "<clip name>"
 clip walk "walk" {
   speed 1                   # duration multiplier, above 0 (default 1)
   loop true                 # false: holds its last frame (default true)
+}
+clip walkOther "walk" {
+  mirror true               # plays the clip on the other side of the skeleton (default false): no og.anim.mirror needed
 }
 clip run "run"
 clip waving "wave"

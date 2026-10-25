@@ -57,10 +57,42 @@ pub const HUMAN_BONES: [&str; HUMAN_BONE_COUNT] = [
     "rightLowerLeg",
     "rightFoot",
     "rightToes",
+    "leftThumbMetacarpal",
+    "leftThumbProximal",
+    "leftThumbDistal",
+    "leftIndexProximal",
+    "leftIndexIntermediate",
+    "leftIndexDistal",
+    "leftMiddleProximal",
+    "leftMiddleIntermediate",
+    "leftMiddleDistal",
+    "leftRingProximal",
+    "leftRingIntermediate",
+    "leftRingDistal",
+    "leftLittleProximal",
+    "leftLittleIntermediate",
+    "leftLittleDistal",
+    "rightThumbMetacarpal",
+    "rightThumbProximal",
+    "rightThumbDistal",
+    "rightIndexProximal",
+    "rightIndexIntermediate",
+    "rightIndexDistal",
+    "rightMiddleProximal",
+    "rightMiddleIntermediate",
+    "rightMiddleDistal",
+    "rightRingProximal",
+    "rightRingIntermediate",
+    "rightRingDistal",
+    "rightLittleProximal",
+    "rightLittleIntermediate",
+    "rightLittleDistal",
 ];
 
-/// How many standard bones there are.
-pub const HUMAN_BONE_COUNT: usize = 22;
+/// How many standard bones there are: 22 for the body, then 15 per hand
+/// (VRM 1.0's finger bones: thumb, index, middle, ring and little, three
+/// each, from the hand out).
+pub const HUMAN_BONE_COUNT: usize = 52;
 
 /// The naming schemes [`HumanoidMap::detect`] tries, in tie-break order.
 pub const SCHEMES: [&str; 6] = ["mixamo", "vrm", "unity", "rigify", "ue", "blender"];
@@ -74,37 +106,62 @@ const HEAD: usize = 5;
 /// The first bone of each side's arm and leg.
 const ARM: [usize; 2] = [6, 10];
 const LEG: [usize; 2] = [14, 18];
+/// The first finger bone of each hand (the thumb's metacarpal); a hand's
+/// fingers are thumb, index, middle, ring, little, three bones each.
+const FINGERS: [usize; 2] = [22, 37];
 
-/// Which bone a standard bone hangs from (NONE for the hips).
-const PARENT: [usize; HUMAN_BONE_COUNT] = [
-    usize::MAX,
-    HIPS,
-    SPINE,
-    CHEST,
-    UPPER_CHEST,
-    NECK,
-    UPPER_CHEST,
-    6,
-    7,
-    8,
-    UPPER_CHEST,
-    10,
-    11,
-    12,
-    HIPS,
-    14,
-    15,
-    16,
-    HIPS,
-    18,
-    19,
-    20,
-];
+/// Which bone a standard bone hangs from (`usize::MAX` for the hips).
+fn parent_bone(bone: usize) -> usize {
+    match bone {
+        HIPS => usize::MAX,
+        SPINE | 14 | 18 => HIPS,
+        CHEST..=HEAD => bone - 1,
+        6 | 10 => UPPER_CHEST,
+        7..=9 | 11..=13 | 15..=17 | 19..=21 => bone - 1,
+        _ => {
+            let side = (bone >= FINGERS[1]) as usize;
+            let k = bone - FINGERS[side];
+            if k.is_multiple_of(3) {
+                ARM[side] + 3
+            } else {
+                bone - 1
+            }
+        }
+    }
+}
 
 /// The bones a bone points at, in preference order (its rest direction is
 /// towards the first one mapped on both rigs).
 fn children(bone: usize) -> &'static [usize] {
+    // A hand points at its middle finger (else index, ring, little).
+    const HAND_L: [usize; 4] = [
+        FINGERS[0] + 6,
+        FINGERS[0] + 3,
+        FINGERS[0] + 9,
+        FINGERS[0] + 12,
+    ];
+    const HAND_R: [usize; 4] = [
+        FINGERS[1] + 6,
+        FINGERS[1] + 3,
+        FINGERS[1] + 9,
+        FINGERS[1] + 12,
+    ];
+    static NEXT: [usize; HUMAN_BONE_COUNT] = {
+        let mut n = [0; HUMAN_BONE_COUNT];
+        let mut i = 0;
+        while i < HUMAN_BONE_COUNT {
+            n[i] = i + 1;
+            i += 1;
+        }
+        n
+    };
+    if bone >= FINGERS[0] && bone < HUMAN_BONE_COUNT {
+        let k = (bone - FINGERS[(bone >= FINGERS[1]) as usize]) % 3;
+        return if k < 2 { &NEXT[bone..bone + 1] } else { &[] };
+    }
     match bone {
+        9 => &HAND_L,
+        13 => &HAND_R,
         SPINE => &[CHEST, UPPER_CHEST, NECK],
         CHEST => &[UPPER_CHEST, NECK],
         UPPER_CHEST => &[NECK],
@@ -154,6 +211,46 @@ enum Part {
     LowerLeg,
     Foot,
     Toes,
+    /// A finger (0 thumb … 4 little) and its bone from the hand out (0..3).
+    Finger(usize, usize),
+}
+
+/// The hand a finger bone hangs from, `None` for a bone that is not a finger.
+fn hand_of(bone: usize) -> Option<usize> {
+    (bone >= FINGERS[0] && bone < HUMAN_BONE_COUNT).then(|| ARM[(bone >= FINGERS[1]) as usize] + 3)
+}
+
+/// The finger bone a squashed name is: an optional `hand`, `finger` or
+/// `f` prefix (Mixamo's `HandIndex1`, Rigify's `f_index.01`), the finger
+/// (`thumb`, `index`, `middle`, `ring`, `pinky` or `little`) and its bone
+/// from the hand, 1 to 3 (`1` or `01`).
+fn finger(squashed: &str) -> Option<Part> {
+    const NAMES: [(&str, usize); 6] = [
+        ("thumb", 0),
+        ("index", 1),
+        ("middle", 2),
+        ("ring", 3),
+        ("pinky", 4),
+        ("little", 4),
+    ];
+    let named = |s: &str| NAMES.iter().find(|(n, _)| s.starts_with(n)).copied();
+    let mut s = squashed;
+    for prefix in ["hand", "finger", "f"] {
+        if let Some(r) = s.strip_prefix(prefix)
+            && named(r).is_some()
+        {
+            s = r;
+            break;
+        }
+    }
+    let (name, f) = named(s)?;
+    let k = match &s[name.len()..] {
+        "1" | "01" => 0,
+        "2" | "02" => 1,
+        "3" | "03" => 2,
+        _ => return None,
+    };
+    Some(Part::Finger(f, k))
 }
 
 fn bone_of(side: Side, part: Part) -> Option<usize> {
@@ -183,6 +280,7 @@ fn bone_of(side: Side, part: Part) -> Option<usize> {
             Part::LowerLeg => offset(LEG, 1),
             Part::Foot => offset(LEG, 2),
             Part::Toes => offset(LEG, 3),
+            Part::Finger(f, k) => offset(FINGERS, 3 * f + k),
             _ => None,
         },
     }
@@ -260,7 +358,7 @@ fn classify(scheme: &str, name: &str) -> Option<usize> {
                 "leg" => Part::LowerLeg,
                 "foot" => Part::Foot,
                 "toebase" => Part::Toes,
-                _ => return None,
+                r => finger(r)?,
             };
             bone_of(side, part)
         }
@@ -288,7 +386,7 @@ fn classify(scheme: &str, name: &str) -> Option<usize> {
                 "lowerleg" => Part::LowerLeg,
                 "foot" => Part::Foot,
                 "toebase" | "toes" => Part::Toes,
-                _ => return None,
+                r => finger(r)?,
             };
             bone_of(side, part)
         }
@@ -316,7 +414,7 @@ fn classify(scheme: &str, name: &str) -> Option<usize> {
                 "shin" => Part::LowerLeg,
                 "foot" => Part::Foot,
                 "toe" => Part::Toes,
-                _ => return None,
+                r => finger(&squash(r))?,
             };
             bone_of(side, part)
         }
@@ -342,7 +440,7 @@ fn classify(scheme: &str, name: &str) -> Option<usize> {
                 "calf" => Part::LowerLeg,
                 "foot" => Part::Foot,
                 "ball" => Part::Toes,
-                _ => return None,
+                r => finger(&squash(r))?,
             };
             bone_of(side, part)
         }
@@ -370,7 +468,7 @@ fn classify(scheme: &str, name: &str) -> Option<usize> {
                 "shin" | "calf" | "lowerleg" => Part::LowerLeg,
                 "foot" => Part::Foot,
                 "toe" | "toes" => Part::Toes,
-                _ => return None,
+                r => finger(r)?,
             };
             bone_of(side, part)
         }
@@ -386,6 +484,10 @@ pub struct HumanoidMap {
     pub scheme: String,
     /// Per standard bone ([`HUMAN_BONES`] order): the node index, or [`NONE`].
     pub nodes: [u32; HUMAN_BONE_COUNT],
+    /// The height of the left and right foot joints above the ground when
+    /// the character stands (model space, the ground at y = 0), from a rig
+    /// file's `footHeight`; `None` takes the rest pose's foot heights.
+    pub foot_height: Option<[f32; 2]>,
 }
 
 fn invalid(reason: String) -> Error {
@@ -413,6 +515,7 @@ impl HumanoidMap {
         Ok(HumanoidMap {
             scheme: scheme.to_string(),
             nodes,
+            foot_height: None,
         })
     }
 
@@ -422,6 +525,7 @@ impl HumanoidMap {
         let mut best = HumanoidMap {
             scheme: "none".into(),
             nodes: [NONE; HUMAN_BONE_COUNT],
+            foot_height: None,
         };
         for s in SCHEMES {
             let m = HumanoidMap::with_scheme(skeleton, s).expect("a known scheme");
@@ -465,11 +569,16 @@ impl HumanoidMap {
 /// scheme auto                 # auto (default) | mixamo | vrm | unity | rigify | ue | blender
 /// hips "Root_Pelvis"          # a standard bone and the node it is (overrides the scheme)
 /// leftToes none               # this rig has no such bone
+/// footHeight 0.08             # the ankles above the ground standing (or `footHeight <left> <right>`)
 /// ```
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct RigAsset {
     /// The scheme, or `None` for `auto`.
     pub scheme: Option<String>,
+    /// `footHeight`: the left and right foot joints' height above the
+    /// ground (y = 0 of model space) when the character stands, for a rig
+    /// whose rest pose does not stand on the ground; `None`: the rest pose's.
+    pub foot_height: Option<[f32; 2]>,
     /// Bones named outright: (standard bone index, node name or `None` for absent, line).
     pub bones: Vec<(usize, Option<String>, usize)>,
 }
@@ -493,6 +602,28 @@ impl RigAsset {
         }
         let mut rig = RigAsset::default();
         for e in &doc.body.entries {
+            if e.key == "footHeight" {
+                if rig.foot_height.is_some() {
+                    return Err(parse_err(e, "'footHeight' is given twice"));
+                }
+                if !(1..=2).contains(&e.values.len()) || e.block.is_some() {
+                    return Err(parse_err(
+                        e,
+                        "'footHeight' takes one height, or the left's and the right's",
+                    ));
+                }
+                let mut h = [0f32; 2];
+                for (i, v) in h.iter_mut().enumerate() {
+                    *v = e
+                        .f32(i.min(e.values.len() - 1))
+                        .map_err(|x| parse_err(e, x.reason()))?;
+                    if !(v.is_finite() && (-10.0..=10.0).contains(v)) {
+                        return Err(parse_err(e, "a foot height is metres, -10..=10"));
+                    }
+                }
+                rig.foot_height = Some(h);
+                continue;
+            }
             if e.values.len() != 1 || e.block.is_some() {
                 return Err(parse_err(e, format!("'{}' takes one value", e.key)));
             }
@@ -514,7 +645,7 @@ impl RigAsset {
                 return Err(parse_err(
                     e,
                     format!(
-                        "'{}' is not `scheme` or a humanoid bone ({})",
+                        "'{}' is not `scheme`, `footHeight` or a humanoid bone ({})",
                         e.key,
                         HUMAN_BONES.join(", ")
                     ),
@@ -559,6 +690,7 @@ impl RigAsset {
         if m.count() > 0 && self.scheme.is_none() && m.scheme == "none" {
             m.scheme = "custom".into();
         }
+        m.foot_height = self.foot_height;
         Ok(m)
     }
 
@@ -574,6 +706,11 @@ impl RigAsset {
                 Some(n) => s.push_str(&format!("{} {n:?}\n", HUMAN_BONES[*b])),
                 None => s.push_str(&format!("{} none\n", HUMAN_BONES[*b])),
             }
+        }
+        match self.foot_height {
+            Some([l, r]) if l == r => s.push_str(&format!("footHeight {l}\n")),
+            Some([l, r]) => s.push_str(&format!("footHeight {l} {r}\n")),
+            None => {}
         }
         s
     }
@@ -834,16 +971,119 @@ pub struct Retargeted {
     pub bones: u32,
     /// Legs solved for the feet (0, 1 or 2).
     pub legs: u32,
+    /// Twist bones of the target driven from their limb segments.
+    pub twists: u32,
+}
+
+/// The height of the foot of `leg` (0 left, 1 right) above the ground the
+/// character stands on: the rig's `footHeight`, else the rest pose's.
+fn foot_y(rest: &[Trs], map: &HumanoidMap, leg: usize) -> f32 {
+    map.foot_height
+        .map_or(rest[map.nodes[LEG[leg] + 2] as usize].translation.y, |h| {
+            h[leg]
+        })
+}
+
+/// A twist bone of the target (a node no standard bone maps whose name
+/// says `twist`, or a Rigify deform segment `….001`) on the limb segment
+/// from standard bone `a` to the next one, `c`.
+struct TwistBone {
+    node: usize,
+    /// The segment's bone and the next bone's node; `a`'s parent node.
+    a: usize,
+    c: usize,
+    parent: Option<usize>,
+    /// The segment's direction in `a`'s frame (towards `c` at rest).
+    axis: Vec3,
+    /// How far along the segment the twist bone sits, 0 at `a` to 1 at `c`.
+    at: f32,
+}
+
+/// Whether a node name is a twist bone's.
+fn twist_name(name: &str) -> bool {
+    let lower = local_name(name).to_lowercase();
+    lower.contains("twist")
+        || (lower.starts_with("def-")
+            && lower.len() > 4
+            && lower[lower.len() - 4..].starts_with('.')
+            && lower[lower.len() - 3..].bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// The twist of rotation `q` about unit `axis` (swing-twist), in radians.
+fn twist_angle(q: Quat, axis: Vec3) -> f32 {
+    let p = Vec3::new(q.x, q.y, q.z).dot(axis);
+    let (p, w) = if q.w < 0.0 { (-p, -q.w) } else { (p, q.w) };
+    2.0 * og_core::math::atan2(p, w)
+}
+
+/// The twist bones of `skeleton` (mapped by `map`), on the upper and
+/// lower arm and leg segments whose next bone is mapped.
+fn twist_bones(skeleton: &SkeletonAsset, map: &HumanoidMap, rest: &[Trs]) -> Vec<TwistBone> {
+    let mapped = |n: usize| map.nodes.iter().position(|&m| m as usize == n);
+    let mut out = Vec::new();
+    for (n, node) in skeleton.nodes.iter().enumerate() {
+        if mapped(n).is_some() || !twist_name(&node.name) {
+            continue;
+        }
+        // The nearest mapped ancestor is the segment.
+        let mut p = node.parent;
+        let a_bone = loop {
+            if p == NONE {
+                break None;
+            }
+            if let Some(b) = mapped(p as usize) {
+                break Some(b);
+            }
+            p = skeleton.nodes[p as usize].parent;
+        };
+        let Some(ab) = a_bone else { continue };
+        let segment = [
+            ARM[0] + 1,
+            ARM[0] + 2,
+            ARM[1] + 1,
+            ARM[1] + 2,
+            LEG[0],
+            LEG[0] + 1,
+        ]
+        .into_iter()
+        .chain([LEG[1], LEG[1] + 1])
+        .any(|b| b == ab);
+        if !segment || map.nodes[ab + 1] == NONE {
+            continue;
+        }
+        let (a, c) = (map.nodes[ab] as usize, map.nodes[ab + 1] as usize);
+        let along = rest[c].translation - rest[a].translation;
+        let len2 = along.length_squared();
+        if len2 < 1e-12 {
+            continue;
+        }
+        let local = rest[a].inverse().transform_point(rest[c].translation);
+        let axis = local / local.length();
+        let at = ((rest[n].translation - rest[a].translation).dot(along) / len2).clamp(0.0, 1.0);
+        let parent = match skeleton.nodes[a].parent {
+            NONE => None,
+            q => Some(q as usize),
+        };
+        out.push(TwistBone {
+            node: n,
+            a,
+            c,
+            parent,
+            axis,
+            at,
+        });
+    }
+    out
 }
 
 /// The height of the hips above the feet at rest (model space), or of the
 /// hips alone when no foot is mapped.
 fn leg_height(rest: &[Trs], map: &HumanoidMap) -> f32 {
     let hips = rest[map.nodes[HIPS] as usize].translation.y;
-    let feet: Vec<f32> = [LEG[0] + 2, LEG[1] + 2]
-        .iter()
-        .filter(|&&b| map.nodes[b] != NONE)
-        .map(|&b| rest[map.nodes[b] as usize].translation.y)
+    let feet: Vec<f32> = [0, 1]
+        .into_iter()
+        .filter(|&l| map.nodes[LEG[l] + 2] != NONE)
+        .map(|l| foot_y(rest, map, l))
         .collect();
     if feet.is_empty() {
         hips
@@ -952,9 +1192,9 @@ pub fn retarget(
                 )
             }
             None => {
-                let mut p = PARENT[b];
+                let mut p = parent_bone(b);
                 while p != usize::MAX && !both(p) {
-                    p = PARENT[p];
+                    p = parent_bone(p);
                 }
                 if p == usize::MAX {
                     Quat::IDENTITY
@@ -990,6 +1230,16 @@ pub fn retarget(
     }
     let th = target_map.nodes[HIPS] as usize;
     let sh = source_map.nodes[HIPS] as usize;
+    // Twist bones on segments the clip moves (the segment or its next bone).
+    let twists: Vec<TwistBone> = twist_bones(target, target_map, &t_rest)
+        .into_iter()
+        .filter(|t| {
+            emit.iter().enumerate().any(|(b, &e)| {
+                e && (target_map.nodes[b] as usize == t.a || target_map.nodes[b] as usize == t.c)
+            })
+        })
+        .collect();
+    let mut twist_rotations: Vec<Vec<f32>> = vec![Vec::new(); twists.len()];
 
     // Per frame: the target pose, recorded into the emitted channels.
     let emitted: Vec<usize> = {
@@ -1026,7 +1276,17 @@ pub fn retarget(
         for n in 0..pt.len() {
             let p = parent_model(target, &mt, n);
             if let Some(b) = by_node[n] {
-                pt[n].rotation = unit(p.rotation.conjugate() * desired(b));
+                let want = match hand_of(b) {
+                    // A finger turns from its hand as the source's does from
+                    // its own, so a hand pose holds on an arm the clip
+                    // leaves alone (A-posed under a T-posed source's clip).
+                    Some(h) if both(h) => {
+                        let hand = target_map.nodes[h] as usize;
+                        unit(mt[hand].rotation * desired(h).conjugate() * desired(b))
+                    }
+                    _ => desired(b),
+                };
+                pt[n].rotation = unit(p.rotation.conjugate() * want);
             }
             if n == th && moves_hips {
                 pt[n].translation = p.inverse().transform_point(hips_at);
@@ -1035,10 +1295,17 @@ pub fn retarget(
         }
         // A leg too short for its foot's goal (a straight source leg on a
         // rig with other proportions) lowers the hips until it reaches.
+        // On the ground the rigs stand on: each foot's height above it is
+        // the rig's `footHeight`, else its rest pose's.
         let goal = |l: usize| {
+            let side = (l == LEG[1]) as usize;
             let sf = source_map.nodes[l + 2] as usize;
             let ft = target_map.nodes[l + 2] as usize;
-            t_rest[ft].translation + (ms[sf].translation - s_rest[sf].translation) * k
+            let mut base = t_rest[ft].translation;
+            base.y = foot_y(&t_rest, target_map, side);
+            let mut from = s_rest[sf].translation;
+            from.y = foot_y(&s_rest, source_map, side);
+            base + (ms[sf].translation - from) * k
         };
         let mut drop = 0f32;
         for &l in &legs {
@@ -1103,6 +1370,41 @@ pub fn retarget(
             set_model_rotation(target, &mut pt, &mt3, ft, desired(l + 2));
             mt = model(target, &pt);
         }
+        // Twist bones: a linear share of the segment's twist, from none
+        // relative to the segment's parent at its head to the next bone's at
+        // its end; every other node keeps its model rotation.
+        if !twists.is_empty() {
+            let fk = mt.clone();
+            let mut m2: Vec<Trs> = Vec::with_capacity(pt.len());
+            for n in 0..pt.len() {
+                let p = parent_model(target, &m2, n);
+                if let Some(tw) = twists.iter().find(|t| t.node == n) {
+                    let rel = |of: &[Trs], x: usize, y: Option<usize>| -> Quat {
+                        let base = y.map_or(Quat::IDENTITY, |y| of[y].rotation);
+                        base.conjugate() * of[x].rotation
+                    };
+                    let tau_a = twist_angle(
+                        rel(&t_rest, tw.a, tw.parent).conjugate() * rel(&fk, tw.a, tw.parent),
+                        tw.axis,
+                    );
+                    let tau_c = twist_angle(
+                        rel(&fk, tw.c, Some(tw.a)) * rel(&t_rest, tw.c, Some(tw.a)).conjugate(),
+                        tw.axis,
+                    );
+                    let theta = tw.at * tau_c - (1.0 - tw.at) * tau_a;
+                    let q = og_core::math::quat_from_axis_angle(tw.axis, theta);
+                    let want = unit(m2[tw.a].rotation * q * rel(&t_rest, n, Some(tw.a)));
+                    pt[n].rotation = unit(p.rotation.conjugate() * want);
+                } else if by_node[n].is_some() {
+                    pt[n].rotation = unit(p.rotation.conjugate() * fk[n].rotation);
+                }
+                m2.push(p.mul(&pt[n]));
+            }
+            for (j, tw) in twists.iter().enumerate() {
+                let r = pt[tw.node].rotation;
+                twist_rotations[j].extend_from_slice(&[r.x, r.y, r.z, r.w]);
+            }
+        }
         for (k, &b) in emitted.iter().enumerate() {
             let r = pt[target_map.nodes[b] as usize].rotation;
             rotations[k].extend_from_slice(&[r.x, r.y, r.z, r.w]);
@@ -1133,6 +1435,16 @@ pub fn retarget(
             samples: std::mem::take(&mut rotations[k]),
         });
     }
+    for (tw, samples) in twists.iter().zip(twist_rotations) {
+        channels.push(Channel {
+            node: tw.node as u32,
+            node_name: target.nodes[tw.node].name.clone(),
+            path: ChannelPath::Rotation,
+            step: false,
+            lanes: 4,
+            samples,
+        });
+    }
     let out = ClipAsset {
         name: clip.name.clone(),
         duration: clip.duration,
@@ -1148,6 +1460,7 @@ pub fn retarget(
         scale: k,
         bones: (0..HUMAN_BONE_COUNT).filter(|&b| both(b)).count() as u32,
         legs: legs.len() as u32,
+        twists: twists.len() as u32,
     })
 }
 

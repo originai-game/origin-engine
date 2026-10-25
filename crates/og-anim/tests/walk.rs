@@ -1,7 +1,7 @@
 //! The determinism contract of `og.anim` (docs/design.md §2.4): 20 walkers
 //! with state machines, an additive layer, cross-fading players, planar root
-//! motion, blendshapes, 60 IK chains, 60 joint limits, 20 look-ats and 40
-//! foot locks for
+//! motion, blendshapes, 60 IK chains, 60 joint limits, 20 look-ats, 40
+//! foot locks and 20 spring bones for
 //! 3600 ticks give the same
 //! `world_hash` twice, and a snapshot taken at tick 1800 and restored into a
 //! fresh world continues to the same hash and the same palettes.
@@ -32,6 +32,8 @@ struct Run {
     looks_free: usize,
     /// Foot-lock evaluations holding a foot.
     feet_locked: usize,
+    /// The largest spring lag seen.
+    spring_lag: f32,
 }
 
 fn skeletons(world: &World) -> Vec<Entity> {
@@ -53,6 +55,7 @@ fn run(world: &mut World, from: u64, to: u64) -> Run {
         looks_clamped: 0,
         looks_free: 0,
         feet_locked: 0,
+        spring_lag: 0.0,
     };
     let feet: Vec<Entity> = world
         .entities()
@@ -63,6 +66,11 @@ fn run(world: &mut World, from: u64, to: u64) -> Run {
         .entities()
         .into_iter()
         .filter(|&e| world.has::<LookAt>(e).unwrap_or(false))
+        .collect();
+    let springs: Vec<Entity> = world
+        .entities()
+        .into_iter()
+        .filter(|&e| world.has::<SpringBone>(e).unwrap_or(false))
         .collect();
     let sk = skeletons(world);
     for tick in from..to {
@@ -80,6 +88,9 @@ fn run(world: &mut World, from: u64, to: u64) -> Run {
         }
         for &f in &feet {
             r.feet_locked += world.get::<FootLock>(f).unwrap().locked as usize;
+        }
+        for &s in &springs {
+            r.spring_lag = r.spring_lag.max(world.get::<SpringBone>(s).unwrap().lag);
         }
         for &l in &looks {
             if world.get::<LookAt>(l).unwrap().clamped {
@@ -177,6 +188,11 @@ fn a_3600_tick_walk_gives_the_same_hash_twice_and_after_a_restore_at_1800() {
         ra.looks_free
     );
     assert!(ra.feet_locked > 1000, "feet held {} times", ra.feet_locked);
+    assert!(
+        ra.spring_lag > 0.02,
+        "springs lag {} m at most",
+        ra.spring_lag
+    );
 
     // Evidence: the hashes and what the walk did.
     let dir = std::env::var_os("OG_EVIDENCE_DIR")

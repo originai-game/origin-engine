@@ -207,6 +207,8 @@ export interface ColumnKinds {
   IkSolver: { readonly array: Uint32Array; readonly stride: 1; readonly value: IkSolver };
   /** An IkSpace field: the variant's index. */
   IkSpace: { readonly array: Uint32Array; readonly stride: 1; readonly value: IkSpace };
+  /** A SpringSpace field: the variant's index. */
+  SpringSpace: { readonly array: Uint32Array; readonly stride: 1; readonly value: SpringSpace };
   /** A Rig handle field (0 is none): a humanoid map og.load.rig answered. */
   Rig: { readonly array: Uint32Array; readonly stride: 2; readonly value: Rig };
   /** A FlipbookSheet handle field. */
@@ -12420,6 +12422,87 @@ export interface FootLock {
 }
 
 /**
+ * Where a spring bone's tails move.
+ * - `"world"`: The frame the skeleton entity's og.Transform is written in: the chain lags behind the entity's motion (walking, root motion, a jump).
+ * - `"model"`: The skeleton's model space: only the animation moves the chain (a teleport or a vehicle carrying the entity does not).
+ */
+export type SpringSpace = "world" | "model";
+
+/**
+ * A SpringSpace field: the variant's index.
+ *
+ * A `SpringSpace` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function SpringSpace(value?: SpringSpace, options?: FieldOptions): FieldSpec<"SpringSpace">;
+
+/**
+ * A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint of the chain; for the last joint its first child, or its parent bone continued at the same length) is a point pulled towards where the animated pose puts it by a damped spring (`frequency`, `damping`), under `gravity`, held at the bone's length, and the joint turns to point at it. Applied after og.IkChain and og.LookAt, top joint first; put it on its own entity (a tail, an ear, a strand of hair, a single jiggling node), one per chain. Deterministic under the fixed tick; the tails' positions and velocities are world state (the `og.anim` state block), so a restore continues a swing exactly. A changed chain (another skeleton, length or space) restarts at the animated pose.
+ *
+ * The value of the `SpringBone` component (token `og.SpringBone`).
+ */
+export interface SpringBone {
+  /** The entity with the og.Skeleton whose joints this swings. */
+  skeleton: Entity;
+  /**
+   * The chain's last joint (an index into the skin's joints): the tip of a tail, an ear.
+   *
+   * @range 0..
+   */
+  joint: number;
+  /**
+   * How many joints swing: `joint` and its parents (1 is the joint alone).
+   *
+   * @default 1
+   * @range 1..16
+   */
+  bones: number;
+  /**
+   * How fast a tail springs back to its animated place: the spring's natural frequency (0: no spring, it only hangs and swings).
+   *
+   * @default 3
+   * @range 0..30
+   * @unit hz (ticks or cycles per second)
+   * @tunable
+   */
+  frequency: number;
+  /**
+   * The damping ratio: 0 swings on, 1 settles without overshooting (critical damping).
+   *
+   * @default 0.3
+   * @range 0..2
+   * @tunable
+   */
+  damping: number;
+  /**
+   * An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop.
+   *
+   * @unit mps2 (metres per second squared)
+   */
+  gravity: Vector3;
+  /**
+   * Where the tails move: world (the frame the skeleton entity's og.Transform is in, so the chain lags behind the entity's motion) or model (only the animation moves it).
+   */
+  space: SpringSpace;
+  /**
+   * How much of the swing is applied (0 = the animated pose, 1 = the spring's).
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  weight: number;
+  /**
+   * Written: the farthest a tail is from its animated place this tick.
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly lag: number;
+}
+
+/**
  * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers.
  *
  * The payload of the `AnimationEvent` event (token `og.AnimationEvent`).
@@ -12493,7 +12576,7 @@ export interface GraphDesc {
 
 
 /**
- * A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright.
+ * A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with `footHeight`, how high its ankles stand above the ground.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
@@ -12511,7 +12594,7 @@ export declare function Rig(value?: Rig, options?: FieldOptions): FieldSpec<"Rig
 /** One standard humanoid bone of a skeleton. */
 export interface HumanBone {
   /**
-   * The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg.
+   * The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg, then each hand's fingers (VRM 1.0 names): leftThumbMetacarpal, leftThumbProximal, leftThumbDistal, leftIndexProximal, leftIndexIntermediate, leftIndexDistal, the same for Middle, Ring and Little, and the right hand's.
    */
   readonly bone: string;
   /** The skeleton node that is that bone. */
@@ -23656,6 +23739,10 @@ export declare namespace og {
    */
   const FootLock: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly foot: FieldSpec<"u32">; readonly weight: FieldSpec<"f32">; readonly release: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly planted: FieldSpec<"bool">; readonly locked: FieldSpec<"bool"> }, FootLock>;
   /**
+   * A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint of the chain; for the last joint its first child, or its parent bone continued at the same length) is a point pulled towards where the animated pose puts it by a damped spring (`frequency`, `damping`), under `gravity`, held at the bone's length, and the joint turns to point at it. Applied after og.IkChain and og.LookAt, top joint first; put it on its own entity (a tail, an ear, a strand of hair, a single jiggling node), one per chain. Deterministic under the fixed tick; the tails' positions and velocities are world state (the `og.anim` state block), so a restore continues a swing exactly. A changed chain (another skeleton, length or space) restarts at the animated pose.
+   */
+  const SpringBone: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly bones: FieldSpec<"u32">; readonly frequency: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly gravity: FieldSpec<"Vector3">; readonly space: FieldSpec<"SpringSpace">; readonly weight: FieldSpec<"f32">; readonly lag: FieldSpec<"f32"> }, SpringBone>;
+  /**
    * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers.
    */
   const AnimationEvent: EventType<AnimationEvent>;
@@ -23704,7 +23791,7 @@ export declare namespace og {
      */
     function humanoid(world: World, desc?: HumanoidDesc): Result<Humanoid>;
     /**
-     * A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time.
+     * A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree; fingers turn from their hand, so a hand pose holds whatever the arm does), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest pose's foot heights). The target's twist bones (unmapped nodes named `twist`, or Rigify's `DEF-….001`, on an upper or lower arm or leg) take a share of their segment's twist by how far along it they sit. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time.
      *
      * @param world The world whose animation owns the skeletons and the clip.
      * @param desc The clip, the two skeletons and their rigs.
@@ -23712,7 +23799,7 @@ export declare namespace og {
      */
     function retarget(world: World, desc?: RetargetDesc): Result<ClipInfo>;
     /**
-     * A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers (markers keep their names). Mirroring twice gives the clip back.
+     * A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers (markers keep their names). Mirroring twice gives the clip back. A clip known ahead needs no call: a graph's `clip` line with `mirror true` plays it mirrored, and the cook's `animation { mirror "<clip>" }` writes the mirrored clip into the model.
      *
      * @param world The world whose animation owns the skeleton and the clip.
      * @param desc The clip and its skeleton.

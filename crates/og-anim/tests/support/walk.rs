@@ -4,7 +4,9 @@
 //! switching clips (the mirrored walk among them) with cross-fades; all
 //! with planar root motion, blendshapes, two-bone feet and a FABRIK arm,
 //! hinged knees and a cone on the shoulder (joint limits) and a head
-//! looking at a target that circles it, and both feet locked while planted.
+//! looking at a target that circles it, both feet locked while planted, and
+//! a hand on a spring (`og.SpringBone`, drooping under gravity and lagging
+//! behind the walker's motion).
 //! A driver system (before `og.anim`) derives every input from the tick and
 //! the walker's index, so the world is a function of its seed and tick.
 #![allow(dead_code)]
@@ -23,7 +25,7 @@ pub const WALKERS: u32 = 20;
 pub struct Walker {
     pub index: u32,
     /// 0 skeleton, 1 left foot, 2 right foot, 3 left hand, 4 the head's
-    /// look-at, 5 a joint limit, 6 a foot lock.
+    /// look-at, 5 a joint limit, 6 a foot lock, 7 a spring bone.
     pub role: u32,
 }
 
@@ -203,6 +205,19 @@ pub fn build(seed: u32) -> (World, AnimationSystem) {
                 ))
                 .unwrap();
         }
+        world
+            .spawn((
+                SpringBone {
+                    skeleton: e.to_bits(),
+                    joint: J_HAND_L,
+                    frequency: 2.0,
+                    damping: 0.4,
+                    gravity: Vec3::new(0.0, -9.8, 0.0),
+                    ..SpringBone::default()
+                },
+                Walker { index: i, role: 7 },
+            ))
+            .unwrap();
         // Knees hinge forwards only (with a little play); the shoulder swings
         // within a cone.
         for limit in [

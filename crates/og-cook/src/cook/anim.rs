@@ -71,6 +71,9 @@ pub struct AnimSettings {
     pub libraries: Vec<String>,
     /// Retargeting solves the legs so planted feet stay on the ground.
     pub foot_ik: bool,
+    /// Clips written again mirrored (`og_anim::mirror`), after the
+    /// library's: (the clip, the mirrored clip's name).
+    pub mirrors: Vec<(String, String)>,
     /// Quantised keys with keyframe reduction (`crate::anim_codec`)
     /// instead of f32 samples.
     pub compress: bool,
@@ -92,6 +95,7 @@ impl Default for AnimSettings {
             rig: None,
             libraries: Vec::new(),
             foot_ik: true,
+            mirrors: Vec::new(),
             compress: false,
             tolerance: DEFAULT_TOLERANCE,
         }
@@ -117,9 +121,12 @@ impl AnimSettings {
         }
         for l in &self.libraries {
             s.push_str(&format!(
-                " library {l:?} retarget-v1 footIk {}",
+                " library {l:?} retarget-v2 footIk {}",
                 self.foot_ik
             ));
+        }
+        for (c, n) in &self.mirrors {
+            s.push_str(&format!(" mirror {c:?} {n:?} mirror-v1"));
         }
         s
     }
@@ -152,6 +159,26 @@ impl AnimSettings {
                 "library" => a
                     .libraries
                     .push(asset_path(e.string(0).map_err(err)?, e.line)?),
+                "mirror" => {
+                    if !(1..=2).contains(&e.values.len()) {
+                        return Err(format!(
+                            "line {}: mirror takes the clip and, optionally, the mirrored clip's name",
+                            e.line
+                        ));
+                    }
+                    let clip = e.string(0).map_err(err)?.to_string();
+                    let name = match e.values.len() {
+                        2 => e.string(1).map_err(err)?.to_string(),
+                        _ => format!("{clip}.mirrored"),
+                    };
+                    if a.mirrors.iter().any(|(_, n)| *n == name) || name == clip {
+                        return Err(format!(
+                            "line {}: the mirrored clip '{name}' is named twice",
+                            e.line
+                        ));
+                    }
+                    a.mirrors.push((clip, name));
+                }
                 "footIk" => {
                     a.foot_ik = e
                         .values
@@ -177,7 +204,7 @@ impl AnimSettings {
                 }
                 k => {
                     return Err(format!(
-                        "line {}: unknown animation setting '{k}' (rate, event, rig, library, footIk, compress, tolerance)",
+                        "line {}: unknown animation setting '{k}' (rate, event, rig, library, footIk, mirror, compress, tolerance)",
                         e.line
                     ));
                 }
@@ -572,7 +599,9 @@ fn quantize_weights(w: [f32; 4]) -> [u16; 4] {
 /// (for `extras`); `root` is `assets/`, where the settings' rig and
 /// libraries are read from. A library's clips are retargeted onto the
 /// model's skeleton (`og_anim::retarget`, each rig's humanoid map from its
-/// `rig` setting or detected) and written after the model's own clips.
+/// `rig` setting or detected) and written after the model's own clips; the
+/// `mirror` clips (own or a library's) after those, mirrored on the
+/// model's skeleton (`og_anim::mirror`), so nothing mirrors at run time.
 pub fn cook(
     src: &GltfSource,
     bytes: &[u8],
@@ -581,7 +610,7 @@ pub fn cook(
     stamp: u64,
     root: &Path,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    if settings.libraries.is_empty() {
+    if settings.libraries.is_empty() && settings.mirrors.is_empty() {
         return cook_with(src, bytes, mesh, settings, stamp, &[]);
     }
     // Retargeting reads the clips as resampled, never as compressed.
@@ -592,13 +621,18 @@ pub fn cook(
     let (own_blob, _) = cook_with(src, bytes, mesh, &exact, stamp, &[])?;
     let own = crate::runtime::CookedAnimation::from_bytes("model#anim", &own_blob)
         .map_err(|e| CookError(e.to_string()))?;
-    let target_map = humanoid(root, settings.rig.as_deref(), &own.skeleton).map_err(CookError)?;
     let mut extra: Vec<og_anim::ClipAsset> = Vec::new();
     let mut notes = Vec::new();
     let options = og_anim::RetargetOptions {
         foot_ik: settings.foot_ik,
     };
+    let target_map = if settings.libraries.is_empty() {
+        None
+    } else {
+        Some(humanoid(root, settings.rig.as_deref(), &own.skeleton).map_err(CookError)?)
+    };
     for lib in &settings.libraries {
+        let target_map = target_map.as_ref().expect("a library has a target map");
         let fail = |e: String| CookError(format!("library '{lib}': {e}"));
         let lib_bytes = std::fs::read(root.join(lib)).map_err(|e| fail(e.to_string()))?;
         let dir = root.join(lib);
@@ -632,17 +666,32 @@ pub fn cook(
                 &library.skeleton,
                 &source_map,
                 &own.skeleton,
-                &target_map,
+                target_map,
                 c,
                 &options,
             )
             .map_err(|e| fail(format!("clip '{}': {}", c.name, e.reason())))?;
             notes.push(format!(
-                "library '{lib}': clip '{}' retargeted ({} -> {} names, {} bones, {} legs solved, travel x{:.3})",
-                c.name, source_map.scheme, target_map.scheme, r.bones, r.legs, r.scale
+                "library '{lib}': clip '{}' retargeted ({} -> {} names, {} bones, {} legs solved, {} twist bones, travel x{:.3})",
+                c.name, source_map.scheme, target_map.scheme, r.bones, r.legs, r.twists, r.scale
             ));
             extra.push(r.clip);
         }
+    }
+    for (from, name) in &settings.mirrors {
+        let fail = |e: String| CookError(format!("mirror '{from}': {e}"));
+        let clip = own
+            .clip(from)
+            .or_else(|| extra.iter().find(|c| c.name == *from))
+            .ok_or_else(|| fail("the model and its libraries have no clip of that name".into()))?;
+        if own.clip(name).is_some() || extra.iter().any(|c| c.name == *name) {
+            return Err(fail(format!("a clip is already called '{name}'")));
+        }
+        let mut m =
+            og_anim::mirror(&own.skeleton, clip).map_err(|e| fail(e.reason().to_string()))?;
+        m.name = name.clone();
+        notes.push(format!("clip '{from}' mirrored as '{name}'"));
+        extra.push(m);
     }
     let (blob, mut own_notes) = cook_with(src, bytes, mesh, settings, stamp, &extra)?;
     own_notes.extend(notes);

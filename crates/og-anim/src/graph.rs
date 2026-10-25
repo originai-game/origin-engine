@@ -13,11 +13,14 @@ use og_core::{Error, ErrorKind, Result};
 #[derive(Clone, Debug, PartialEq)]
 pub enum Motion {
     /// A clip asset. `speed` scales its duration; it is sampled at the
-    /// state's phase (so blended clips stay in step).
+    /// state's phase (so blended clips stay in step). With `mirror` the
+    /// clip plays on the other side of the skeleton it plays on
+    /// ([`crate::mirror`], made once per skeleton and clip and kept).
     Clip {
         clip: u64,
         speed: f32,
         looping: bool,
+        mirror: bool,
     },
     /// Children at thresholds of one parameter, sorted by threshold; the two
     /// around the parameter's value blend linearly (clamped at the ends).
@@ -302,6 +305,7 @@ impl GraphAsset {
                         .ok_or_else(|| err(e, format!("clip '{reference}' is not loaded")))?;
                     let mut speed = 1.0;
                     let mut looping = true;
+                    let mut mirror = false;
                     for b in &block.entries {
                         match b.key.as_str() {
                             "speed" => {
@@ -317,10 +321,16 @@ impl GraphAsset {
                                     .as_bool()
                                     .ok_or_else(|| err(b, "loop takes true or false"))?;
                             }
+                            "mirror" => {
+                                arity(b, 1)?;
+                                mirror = b.values[0]
+                                    .as_bool()
+                                    .ok_or_else(|| err(b, "mirror takes true or false"))?;
+                            }
                             k => {
                                 return Err(err(
                                     b,
-                                    format!("unknown clip setting '{k}' (speed, loop)"),
+                                    format!("unknown clip setting '{k}' (speed, loop, mirror)"),
                                 ));
                             }
                         }
@@ -329,6 +339,7 @@ impl GraphAsset {
                         clip,
                         speed,
                         looping,
+                        mirror,
                     }
                 }
                 "blend1d" => {

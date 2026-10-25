@@ -46,21 +46,24 @@ module anim {
 | [`og.LookAt`](#record-LookAt) | component | An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the target, +Y up). The direction is held within maxYaw and maxPitch of the animated forward; with `bones` above 1 the joint's parents share the turn. Put it on its own entity (a head, the eyes, a turret's barrel); constraints apply in query order, and og.JointLimit clamps the joints it turns. |
 | [`og.JointLimit`](#record-JointLimit) | component | How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped. |
 | [`og.FootLock`](#record-FootLock) | component | Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip, the notion retargeting uses, weighed across blends and cross-fades: planted when the planting clips hold at least half the pose), the foot stays where it touched the ground, through clip blends and root motion, its leg bent by two-bone IK and the foot keeping its animated orientation; when the clips lift it, the foot rejoins its animation over `release`. Put it on its own entity, one per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. The lock is world state (the `og.anim` state block). |
+| [`SpringSpace`](#type-SpringSpace) | enum | Where a spring bone's tails move. |
+| [`SpringSpace()`](#column-SpringSpace) | column kind | A SpringSpace field: the variant's index. |
+| [`og.SpringBone`](#record-SpringBone) | component | A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint of the chain; for the last joint its first child, or its parent bone continued at the same length) is a point pulled towards where the animated pose puts it by a damped spring (`frequency`, `damping`), under `gravity`, held at the bone's length, and the joint turns to point at it. Applied after og.IkChain and og.LookAt, top joint first; put it on its own entity (a tail, an ear, a strand of hair, a single jiggling node), one per chain. Deterministic under the fixed tick; the tails' positions and velocities are world state (the `og.anim` state block), so a restore continues a swing exactly. A changed chain (another skeleton, length or space) restarts at the animated pose. |
 | [`og.AnimationEvent`](#record-AnimationEvent) | event | A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers. |
 | [`ClipInfo`](#type-ClipInfo) | struct | One clip of a loaded animation. |
 | [`Animation`](#type-Animation) | struct | What og.load.animation registered from a model's `#anim` blob. |
 | [`GraphDesc`](#type-GraphDesc) | desc struct | A blend-tree graph to register. |
 | [`og.anim.graph`](#fn-graph) | function | Register a blend-tree graph for AnimationGraph.asset. Its `clip` lines are resolved by name against `clips`. |
-| [`Rig`](#type-Rig) | handle | A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright. |
+| [`Rig`](#type-Rig) | handle | A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with `footHeight`, how high its ankles stand above the ground. |
 | [`Rig()`](#column-Rig) | column kind | A Rig handle field (0 is none): a humanoid map og.load.rig answered. |
 | [`HumanBone`](#type-HumanBone) | struct | One standard humanoid bone of a skeleton. |
 | [`Humanoid`](#type-Humanoid) | struct | Which node of a skeleton is each standard humanoid bone (what retargeting maps). |
 | [`HumanoidDesc`](#type-HumanoidDesc) | desc struct | A skeleton and, optionally, the rig that says how its bones are named. |
 | [`og.anim.humanoid`](#fn-humanoid) | function | The standard humanoid bones of a skeleton, as retargeting sees them: to check a rig before retargeting onto it. |
 | [`RetargetDesc`](#type-RetargetDesc) | desc struct | A clip made for one skeleton, to play on another (other proportions, rest pose or bone names). |
-| [`og.anim.retarget`](#fn-retarget) | function | A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time. |
+| [`og.anim.retarget`](#fn-retarget) | function | A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree; fingers turn from their hand, so a hand pose holds whatever the arm does), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest pose's foot heights). The target's twist bones (unmapped nodes named `twist`, or Rigify's `DEF-….001`, on an upper or lower arm or leg) take a share of their segment's twist by how far along it they sit. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time. |
 | [`MirrorDesc`](#type-MirrorDesc) | desc struct | A clip to play on the other side of the skeleton it was made for. |
-| [`og.anim.mirror`](#fn-mirror) | function | A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers (markers keep their names). Mirroring twice gives the clip back. |
+| [`og.anim.mirror`](#fn-mirror) | function | A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers (markers keep their names). Mirroring twice gives the clip back. A clip known ahead needs no call: a graph's `clip` line with `mirror true` plays it mirrored, and the cook's `animation { mirror "<clip>" }` writes the mirrored clip into the model. |
 | [`FlipbookSheet`](#type-FlipbookSheet) | handle | A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook. |
 | [`FlipbookSheet()`](#column-FlipbookSheet) | column kind | A FlipbookSheet handle field. |
 | [`FlipMode`](#type-FlipMode) | enum | How a flipbook clip runs past its last frame. |
@@ -112,7 +115,7 @@ fn graph {
 }
 ```
 
-<sub>`api.ogt` line 8174</sub>
+<sub>`api.ogt` line 8227</sub>
 
 <a id="fn-humanoid"></a>
 
@@ -142,13 +145,13 @@ fn humanoid {
 }
 ```
 
-<sub>`api.ogt` line 8209</sub>
+<sub>`api.ogt` line 8262</sub>
 
 <a id="fn-retarget"></a>
 
 ### `og.anim.retarget`
 
-A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time.
+A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree; fingers turn from their hand, so a hand pose holds whatever the arm does), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest pose's foot heights). The target's twist bones (unmapped nodes named `twist`, or Rigify's `DEF-….001`, on an upper or lower arm or leg) take a share of their segment's twist by how far along it they sit. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time.
 
 ```ts
 og.anim.retarget(world: World, desc?: RetargetDesc): Result<ClipInfo>
@@ -165,20 +168,20 @@ Binding symbol `og_anim_retarget` · publish builds: kept
 
 ```ogt
 fn retarget {
-  doc "A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time."
+  doc "A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree; fingers turn from their hand, so a hand pose holds whatever the arm does), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest pose's foot heights). The target's twist bones (unmapped nodes named `twist`, or Rigify's `DEF-….001`, on an upper or lower arm or leg) take a share of their segment's twist by how far along it they sit. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time."
   param world World "The world whose animation owns the skeletons and the clip."
   param desc RetargetDesc "The clip, the two skeletons and their rigs."
   returns Result.ClipInfo "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node."
 }
 ```
 
-<sub>`api.ogt` line 8229</sub>
+<sub>`api.ogt` line 8282</sub>
 
 <a id="fn-mirror"></a>
 
 ### `og.anim.mirror`
 
-A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers (markers keep their names). Mirroring twice gives the clip back.
+A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers (markers keep their names). Mirroring twice gives the clip back. A clip known ahead needs no call: a graph's `clip` line with `mirror true` plays it mirrored, and the cook's `animation { mirror "<clip>" }` writes the mirrored clip into the model.
 
 ```ts
 og.anim.mirror(world: World, desc?: MirrorDesc): Result<ClipInfo>
@@ -195,14 +198,14 @@ Binding symbol `og_anim_mirror` · publish builds: kept
 
 ```ogt
 fn mirror {
-  doc "A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers (markers keep their names). Mirroring twice gives the clip back."
+  doc "A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers (markers keep their names). Mirroring twice gives the clip back. A clip known ahead needs no call: a graph's `clip` line with `mirror true` plays it mirrored, and the cook's `animation { mirror \"<clip>\" }` writes the mirrored clip into the model."
   param world World "The world whose animation owns the skeleton and the clip."
   param desc MirrorDesc "The clip and its skeleton."
   returns Result.ClipInfo "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip or skeleton."
 }
 ```
 
-<sub>`api.ogt` line 8243</sub>
+<sub>`api.ogt` line 8296</sub>
 
 <a id="fn-clip"></a>
 
@@ -233,7 +236,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 8328</sub>
+<sub>`api.ogt` line 8381</sub>
 
 <a id="fn-clip-2"></a>
 
@@ -264,7 +267,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 8336</sub>
+<sub>`api.ogt` line 8389</sub>
 
 <a id="fn-clip-3"></a>
 
@@ -295,7 +298,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 8344</sub>
+<sub>`api.ogt` line 8397</sub>
 
 <a id="fn-rig2dInfo"></a>
 
@@ -325,7 +328,7 @@ fn rig2dInfo {
 }
 ```
 
-<sub>`api.ogt` line 8454</sub>
+<sub>`api.ogt` line 8507</sub>
 
 <a id="fn-skeleton2dBoxes"></a>
 
@@ -355,7 +358,7 @@ fn skeleton2dBoxes {
 }
 ```
 
-<sub>`api.ogt` line 8468</sub>
+<sub>`api.ogt` line 8521</sub>
 
 ## Components, resources and events
 
@@ -860,6 +863,70 @@ component FootLock {
 
 <sub>`api.ogt` line 8104</sub>
 
+<a id="record-SpringBone"></a>
+
+### `og.SpringBone` (component)
+
+A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint of the chain; for the last joint its first child, or its parent bone continued at the same length) is a point pulled towards where the animated pose puts it by a damped spring (`frequency`, `damping`), under `gravity`, held at the bone's length, and the joint turns to point at it. Applied after og.IkChain and og.LookAt, top joint first; put it on its own entity (a tail, an ear, a strand of hair, a single jiggling node), one per chain. Deterministic under the fixed tick; the tails' positions and velocities are world state (the `og.anim` state block), so a restore continues a swing exactly. A changed chain (another skeleton, length or space) restarts at the animated pose.
+
+Token `og.SpringBone`, registered under the schema name `og.SpringBone`; its value type is `SpringBone`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `skeleton` | `Entity` | `0` | — | — | — | The entity with the og.Skeleton whose joints this swings. |
+| `joint` | `number` | `0` | ≥ 0 | — | — | The chain's last joint (an index into the skin's joints): the tip of a tail, an ear. |
+| `bones` | `number` | `1` | 1 … 16 | — | — | How many joints swing: `joint` and its parents (1 is the joint alone). |
+| `frequency` | `number` | `3` | 0 … 30 | `hz` | tunable | How fast a tail springs back to its animated place: the spring's natural frequency (0: no spring, it only hangs and swings). |
+| `damping` | `number` | `0.3` | 0 … 2 | — | tunable | The damping ratio: 0 swings on, 1 settles without overshooting (critical damping). |
+| `gravity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | — | An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop. |
+| `space` | `SpringSpace` | `"world"` | — | — | — | Where the tails move: world (the frame the skeleton entity's og.Transform is in, so the chain lags behind the entity's motion) or model (only the animation moves it). |
+| `weight` | `number` | `1` | 0 … 1 | — | tunable | How much of the swing is applied (0 = the animated pose, 1 = the spring's). |
+| `lag` | `number` | `0` | — | `m` | read only | Written: the farthest a tail is from its animated place this tick. |
+
+```ogt
+component SpringBone {
+  doc "A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint of the chain; for the last joint its first child, or its parent bone continued at the same length) is a point pulled towards where the animated pose puts it by a damped spring (`frequency`, `damping`), under `gravity`, held at the bone's length, and the joint turns to point at it. Applied after og.IkChain and og.LookAt, top joint first; put it on its own entity (a tail, an ear, a strand of hair, a single jiggling node), one per chain. Deterministic under the fixed tick; the tails' positions and velocities are world state (the `og.anim` state block), so a restore continues a swing exactly. A changed chain (another skeleton, length or space) restarts at the animated pose."
+  field skeleton Entity "The entity with the og.Skeleton whose joints this swings."
+  field joint u32 "The chain's last joint (an index into the skin's joints): the tip of a tail, an ear." {
+    min 0
+  }
+  field bones u32 "How many joints swing: `joint` and its parents (1 is the joint alone)." {
+    default 1
+    min 1
+    max 16
+  }
+  field frequency f32 "How fast a tail springs back to its animated place: the spring's natural frequency (0: no spring, it only hangs and swings)." {
+    default 3
+    min 0
+    max 30
+    unit hz
+    tunable true
+  }
+  field damping f32 "The damping ratio: 0 swings on, 1 settles without overshooting (critical damping)." {
+    default 0.3
+    min 0
+    max 2
+    tunable true
+  }
+  field gravity Vector3 "An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop." {
+    unit mps2
+  }
+  field space SpringSpace "Where the tails move: world (the frame the skeleton entity's og.Transform is in, so the chain lags behind the entity's motion) or model (only the animation moves it)."
+  field weight f32 "How much of the swing is applied (0 = the animated pose, 1 = the spring's)." {
+    default 1
+    min 0
+    max 1
+    tunable true
+  }
+  field lag f32 "Written: the farthest a tail is from its animated place this tick." {
+    readonly true
+    unit m
+  }
+}
+```
+
+<sub>`api.ogt` line 8150</sub>
+
 <a id="record-AnimationEvent"></a>
 
 ### `og.AnimationEvent` (event)
@@ -889,7 +956,7 @@ event AnimationEvent {
 }
 ```
 
-<sub>`api.ogt` line 8137</sub>
+<sub>`api.ogt` line 8190</sub>
 
 <a id="record-Flipbook"></a>
 
@@ -945,7 +1012,7 @@ component Flipbook {
 }
 ```
 
-<sub>`api.ogt` line 8266</sub>
+<sub>`api.ogt` line 8319</sub>
 
 <a id="record-FlipbookEvent"></a>
 
@@ -972,7 +1039,7 @@ event FlipbookEvent {
 }
 ```
 
-<sub>`api.ogt` line 8297</sub>
+<sub>`api.ogt` line 8350</sub>
 
 <a id="record-Skeleton2D"></a>
 
@@ -1028,7 +1095,7 @@ component Skeleton2D {
 }
 ```
 
-<sub>`api.ogt` line 8361</sub>
+<sub>`api.ogt` line 8414</sub>
 
 <a id="record-Skeleton2DEvent"></a>
 
@@ -1059,7 +1126,7 @@ event Skeleton2DEvent {
 }
 ```
 
-<sub>`api.ogt` line 8391</sub>
+<sub>`api.ogt` line 8444</sub>
 
 <a id="record-IkTarget2D"></a>
 
@@ -1110,7 +1177,7 @@ component IkTarget2D {
 }
 ```
 
-<sub>`api.ogt` line 8402</sub>
+<sub>`api.ogt` line 8455</sub>
 
 ## Types
 
@@ -1250,6 +1317,29 @@ enum IkSpace {
 
 <sub>`api.ogt` line 7816</sub>
 
+<a id="type-SpringSpace"></a>
+
+### `SpringSpace` (enum)
+
+Where a spring bone's tails move.
+
+A string: one of the variants below. The zero value is `"world"`.
+
+| Variant | Doc |
+|---|---|
+| `"world"` | The frame the skeleton entity's og.Transform is written in: the chain lags behind the entity's motion (walking, root motion, a jump). |
+| `"model"` | The skeleton's model space: only the animation moves the chain (a teleport or a vehicle carrying the entity does not). |
+
+```ogt
+enum SpringSpace {
+  doc "Where a spring bone's tails move."
+  variant world "The frame the skeleton entity's og.Transform is written in: the chain lags behind the entity's motion (walking, root motion, a jump)."
+  variant model "The skeleton's model space: only the animation moves the chain (a teleport or a vehicle carrying the entity does not)."
+}
+```
+
+<sub>`api.ogt` line 8137</sub>
+
 <a id="type-ClipInfo"></a>
 
 ### `ClipInfo` (struct)
@@ -1275,7 +1365,7 @@ struct ClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 8148</sub>
+<sub>`api.ogt` line 8201</sub>
 
 <a id="type-Animation"></a>
 
@@ -1302,7 +1392,7 @@ struct Animation {
 }
 ```
 
-<sub>`api.ogt` line 8158</sub>
+<sub>`api.ogt` line 8211</sub>
 
 <a id="type-GraphDesc"></a>
 
@@ -1326,21 +1416,21 @@ struct GraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 8167</sub>
+<sub>`api.ogt` line 8220</sub>
 
 <a id="type-Rig"></a>
 
 ### `Rig` (handle)
 
-A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright.
+A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with `footHeight`, how high its ankles stand above the ground.
 
 A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
 
 ```ogt
-handle Rig "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright."
+handle Rig "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with `footHeight`, how high its ankles stand above the ground."
 ```
 
-<sub>`api.ogt` line 8181</sub>
+<sub>`api.ogt` line 8234</sub>
 
 <a id="type-HumanBone"></a>
 
@@ -1350,18 +1440,18 @@ One standard humanoid bone of a skeleton.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `bone` | `string` | `""` | — | — | — | The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg. |
+| `bone` | `string` | `""` | — | — | — | The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg, then each hand's fingers (VRM 1.0 names): leftThumbMetacarpal, leftThumbProximal, leftThumbDistal, leftIndexProximal, leftIndexIntermediate, leftIndexDistal, the same for Middle, Ring and Little, and the right hand's. |
 | `node` | `string` | `""` | — | — | — | The skeleton node that is that bone. |
 
 ```ogt
 struct HumanBone {
   doc "One standard humanoid bone of a skeleton."
-  field bone String "The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg."
+  field bone String "The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg, then each hand's fingers (VRM 1.0 names): leftThumbMetacarpal, leftThumbProximal, leftThumbDistal, leftIndexProximal, leftIndexIntermediate, leftIndexDistal, the same for Middle, Ring and Little, and the right hand's."
   field node String "The skeleton node that is that bone."
 }
 ```
 
-<sub>`api.ogt` line 8190</sub>
+<sub>`api.ogt` line 8243</sub>
 
 <a id="type-Humanoid"></a>
 
@@ -1382,7 +1472,7 @@ struct Humanoid {
 }
 ```
 
-<sub>`api.ogt` line 8196</sub>
+<sub>`api.ogt` line 8249</sub>
 
 <a id="type-HumanoidDesc"></a>
 
@@ -1406,7 +1496,7 @@ struct HumanoidDesc {
 }
 ```
 
-<sub>`api.ogt` line 8202</sub>
+<sub>`api.ogt` line 8255</sub>
 
 <a id="type-RetargetDesc"></a>
 
@@ -1440,7 +1530,7 @@ struct RetargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 8216</sub>
+<sub>`api.ogt` line 8269</sub>
 
 <a id="type-MirrorDesc"></a>
 
@@ -1464,7 +1554,7 @@ struct MirrorDesc {
 }
 ```
 
-<sub>`api.ogt` line 8236</sub>
+<sub>`api.ogt` line 8289</sub>
 
 <a id="type-FlipbookSheet"></a>
 
@@ -1478,7 +1568,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
 ```
 
-<sub>`api.ogt` line 8250</sub>
+<sub>`api.ogt` line 8303</sub>
 
 <a id="type-FlipMode"></a>
 
@@ -1503,7 +1593,7 @@ enum FlipMode {
 }
 ```
 
-<sub>`api.ogt` line 8259</sub>
+<sub>`api.ogt` line 8312</sub>
 
 <a id="type-FlipbookClipInfo"></a>
 
@@ -1534,7 +1624,7 @@ struct FlipbookClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 8305</sub>
+<sub>`api.ogt` line 8358</sub>
 
 <a id="type-FlipbookInfo"></a>
 
@@ -1565,7 +1655,7 @@ struct FlipbookInfo {
 }
 ```
 
-<sub>`api.ogt` line 8317</sub>
+<sub>`api.ogt` line 8370</sub>
 
 <a id="type-Rig2D"></a>
 
@@ -1579,7 +1669,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig2D "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d."
 ```
 
-<sub>`api.ogt` line 8352</sub>
+<sub>`api.ogt` line 8405</sub>
 
 <a id="type-Rig2DClipInfo"></a>
 
@@ -1608,7 +1698,7 @@ struct Rig2DClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 8431</sub>
+<sub>`api.ogt` line 8484</sub>
 
 <a id="type-Rig2DInfo"></a>
 
@@ -1641,7 +1731,7 @@ struct Rig2DInfo {
 }
 ```
 
-<sub>`api.ogt` line 8442</sub>
+<sub>`api.ogt` line 8495</sub>
 
 <a id="type-Skeleton2DBox"></a>
 
@@ -1664,7 +1754,7 @@ struct Skeleton2DBox {
 }
 ```
 
-<sub>`api.ogt` line 8461</sub>
+<sub>`api.ogt` line 8514</sub>
 
 ## Column kinds
 
@@ -1679,6 +1769,7 @@ Each is a factory, `SkeletonAsset(value?, options?)`, that makes one field of a 
 | <a id="column-BlendshapeSource"></a>`BlendshapeSource` | `BlendshapeSource` | `Uint32Array` | 1 | A BlendshapeSource field: the variant's index. |
 | <a id="column-IkSolver"></a>`IkSolver` | `IkSolver` | `Uint32Array` | 1 | An IkSolver field: the variant's index. |
 | <a id="column-IkSpace"></a>`IkSpace` | `IkSpace` | `Uint32Array` | 1 | An IkSpace field: the variant's index. |
+| <a id="column-SpringSpace"></a>`SpringSpace` | `SpringSpace` | `Uint32Array` | 1 | A SpringSpace field: the variant's index. |
 | <a id="column-Rig"></a>`Rig` | `Rig` | `Uint32Array` | 2 | A Rig handle field (0 is none): a humanoid map og.load.rig answered. |
 | <a id="column-FlipbookSheet"></a>`FlipbookSheet` | `FlipbookSheet` | `Uint32Array` | 2 | A FlipbookSheet handle field. |
 | <a id="column-Rig2D"></a>`Rig2D` | `Rig2D` | `Uint32Array` | 2 | A Rig2D handle field. |
@@ -1761,6 +1852,17 @@ column IkSpace {
 <sub>`api.ogt` line 7822</sub>
 
 ```ogt
+column SpringSpace {
+  doc "A SpringSpace field: the variant's index."
+  array Uint32Array
+  stride 1
+  value SpringSpace
+}
+```
+
+<sub>`api.ogt` line 8143</sub>
+
+```ogt
 column Rig {
   doc "A Rig handle field (0 is none): a humanoid map og.load.rig answered."
   array Uint32Array
@@ -1769,7 +1871,7 @@ column Rig {
 }
 ```
 
-<sub>`api.ogt` line 8183</sub>
+<sub>`api.ogt` line 8236</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -1780,7 +1882,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>`api.ogt` line 8252</sub>
+<sub>`api.ogt` line 8305</sub>
 
 ```ogt
 column Rig2D {
@@ -1791,4 +1893,4 @@ column Rig2D {
 }
 ```
 
-<sub>`api.ogt` line 8354</sub>
+<sub>`api.ogt` line 8407</sub>

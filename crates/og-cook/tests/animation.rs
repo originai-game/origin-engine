@@ -523,3 +523,41 @@ fn a_cooked_walker_plays_in_og_anim() {
             .any(|(x, y)| (x - y).abs() > 1e-3)
     );
 }
+
+#[test]
+fn a_clip_is_mirrored_at_cook_time() {
+    let (_, b) = cooked(
+        "mirror",
+        Some(
+            "type import\nversion 1\n---\nanimation {\n  mirror \"walk\" \"walkMirrored\"\n  mirror \"idle\"\n}\n",
+        ),
+    );
+    let a = anim(&b, "models/walker.glb");
+    let walk = a.clip("walk").unwrap();
+    let mut want = og_anim::mirror(&a.skeleton, walk).unwrap();
+    want.name = "walkMirrored".into();
+    // The cooked clip is the one og.anim.mirror makes at run time.
+    assert_eq!(a.clip("walkMirrored").unwrap(), &want);
+    assert_ne!(want.channels, walk.channels);
+    assert!(a.clip("idle.mirrored").is_some());
+    assert!(a.clip("walk").is_some() && a.clip("idle").is_some());
+
+    for (settings, says) in [
+        ("  mirror \"jump\"\n", "mirror 'jump'"),
+        ("  mirror \"walk\" \"idle\"\n", "already called 'idle'"),
+        (
+            "  mirror \"walk\" \"a\"\n  mirror \"idle\" \"a\"\n",
+            "line 6",
+        ),
+    ] {
+        let root = project(
+            "bad-mirror",
+            Some(&format!(
+                "type import\nversion 1\n---\nanimation {{\n{settings}}}\n"
+            )),
+        );
+        let report = cook_project(&root, &CookOptions::default()).unwrap();
+        let errors = report.errors().join("\n");
+        assert!(errors.contains(says), "{settings}: {errors}");
+    }
+}
