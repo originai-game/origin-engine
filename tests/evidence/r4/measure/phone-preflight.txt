@@ -1,0 +1,135 @@
+Sun Oct 25 01:28:07 UTC 2026
+14:28  up 15 days, 17:44, 13 users, load averages: 7.09 5.73 5.73
+Android Debug Bridge version 1.0.41
+Version 37.0.1-15733141
+Installed as /opt/homebrew/bin/adb
+Running on Darwin 27.2.0 (arm64)
+* daemon not running; starting now at tcp:5037
+* daemon started successfully
+List of devices attached
+58051FDCR007QL         unauthorized usb:34738176X transport_id:1
+
+Included with Safari 27.2 (22625.2.5.11.1)
+Error: Domain 'com.apple.Safari' not found.
+{
+  "lo0": [
+    {
+      "address": "127.0.0.1",
+      "cidr": "127.0.0.1/8",
+      "netmask": "255.0.0.0",
+      "family": "IPv4",
+      "mac": "00:00:00:00:00:00",
+      "internal": true
+    },
+    {
+      "address": "::1",
+      "cidr": "::1/128",
+      "netmask": "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+      "family": "IPv6",
+      "mac": "00:00:00:00:00:00",
+      "internal": true,
+      "scopeid": 0
+    },
+    {
+      "address": "fe80::1",
+      "cidr": "fe80::1/64",
+      "netmask": "ffff:ffff:ffff:ffff::",
+      "family": "IPv6",
+      "mac": "00:00:00:00:00:00",
+      "internal": true,
+      "scopeid": 1
+    }
+  ],
+  "utun0": [
+    {
+      "address": "fe80::274b:4a0f:4711:fd1",
+      "cidr": "fe80::274b:4a0f:4711:fd1/64",
+      "netmask": "ffff:ffff:ffff:ffff::",
+      "family": "IPv6",
+      "mac": "00:00:00:00:00:00",
+      "internal": false,
+      "scopeid": 18
+    }
+  ],
+  "utun1": [
+    {
+      "address": "fe80::cbeb:f307:1ee9:1863",
+      "cidr": "fe80::cbeb:f307:1ee9:1863/64",
+      "netmask": "ffff:ffff:ffff:ffff::",
+      "family": "IPv6",
+      "mac": "00:00:00:00:00:00",
+      "internal": false,
+      "scopeid": 19
+    }
+  ],
+  "en0": [
+    {
+      "address": "192.168.1.40",
+      "cidr": "192.168.1.40/24",
+      "netmask": "255.255.255.0",
+      "family": "IPv4",
+      "mac": "02:00:00:00:00:00",
+      "internal": false
+    }
+  ],
+  "awdl0": [
+    {
+      "address": "fe80::e891:f3ff:fe0e:fd2f",
+      "cidr": "fe80::e891:f3ff:fe0e:fd2f/64",
+      "netmask": "ffff:ffff:ffff:ffff::",
+      "family": "IPv6",
+      "mac": "02:00:00:00:00:00",
+      "internal": false,
+      "scopeid": 16
+    }
+  ],
+  "llw0": [
+    {
+      "address": "fe80::e891:f3ff:fe0e:fd2f",
+      "cidr": "fe80::e891:f3ff:fe0e:fd2f/64",
+      "netmask": "ffff:ffff:ffff:ffff::",
+      "family": "IPv6",
+      "mac": "02:00:00:00:00:00",
+      "internal": false,
+      "scopeid": 17
+    }
+  ],
+  "utun2": [
+    {
+      "address": "fe80::83e9:e22c:7814:a72a",
+      "cidr": "fe80::83e9:e22c:7814:a72a/64",
+      "netmask": "ffff:ffff:ffff:ffff::",
+      "family": "IPv6",
+      "mac": "00:00:00:00:00:00",
+      "internal": false,
+      "scopeid": 20
+    }
+  ],
+  "utun3": [
+    {
+      "address": "fe80::ce81:b1c:bd2c:69e",
+      "cidr": "fe80::ce81:b1c:bd2c:69e/64",
+      "netmask": "ffff:ffff:ffff:ffff::",
+      "family": "IPv6",
+      "mac": "00:00:00:00:00:00",
+      "internal": false,
+      "scopeid": 21
+    }
+  ]
+}
+og run: unknown option `--preflight`. usage: og run [project|entry] [--headless] [--commands "t:action[:args];..."] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--room ws://127.0.0.1:P/<room>] [--json] [--no-check]
+       og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]
+android_exit=2
+og run: unknown option `--preflight`. usage: og run [project|entry] [--headless] [--commands "t:action[:args];..."] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--room ws://127.0.0.1:P/<room>] [--json] [--no-check]
+       og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]
+iphone_exit=2
+internal_android_exit=0
+internal_iphone_exit=0
+Error: Domain 'com.apple.Safari' not found.
+Sun Oct 25 01:44:22 UTC 2026
+List of devices attached
+58051FDCR007QL         device usb:34738176X product:frankel model:Pixel_10 device:frankel transport_id:2
+
+Pixel 10
+17
+    versionName=155.0.8059.87

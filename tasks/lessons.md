@@ -8,3 +8,10 @@ credential contract rather than narrowing it to a single-operation exception
 or substituting an unrelated account key. Keep ordinary platform/channel
 credentials distinct; full development capability does not imply upgrading
 every platform key.
+
+## 2026-10-25 — Measurement revision identity
+
+`git merge --ff-only origin/main` succeeding does not mean local main equals
+origin/main: local main can be ahead. Before measuring a coordinator's revision,
+compare both full object IDs and pin the measurement worktree to the requested
+commit. Preserve unrelated local commits and never identify them as remote head.
