@@ -190,7 +190,7 @@ had grown `target/` to 143 GB.
 | `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | every | yes | yes | yes | |
 | `test-quick` | `cargo nextest run --workspace --exclude og-tests` (`cargo test` without nextest); og-ui's and og-render's GPU tests left out when their inputs did not change (§Lanes) | quick | yes, on lavapipe | | | |
 | `test` | `cargo nextest run --workspace && cargo test --workspace --doc` (`cargo test --workspace` without nextest); gfx tests in `og-tests`, left out with og-ui's and og-render's when their inputs did not change (§Lanes). Runs after `wasm-build`, whose og-render artifact `og-tests::wasm` takes when it is newer than og-render's sources (else that test runs `cargo check --target wasm32-unknown-unknown -p og-render` itself) | full, functional | | yes, on lavapipe | yes, on lavapipe | |
-| `wasm-build` | `cargo build --profile wasm --target wasm32-unknown-unknown -p <crate> --lib` (`Cargo.toml`'s `[profile.wasm]`: release, the load-time crates at opt-level z) for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish` in `target/wasm-<variant>/` (cargo 1.99 keeps one fingerprint per unit whatever its features, so two feature sets in one target dir recompiled og-probe, og-runtime and og-host-web on every run: 16.7 s and 12.2 s with nothing changed, 0.4 and 0.5 s apart; `tests/evidence/P2/tooling/wasm-build-relink.md`) and the lanes variants of crates marked `publish lanes` (one per `lanes` line: og-host-web's `lanes2d` then `lanes`, the 2D and the 3D publish features with wasm atomics, `scripts/wasm-lanes.sh` in `target/wasm-mt/`, which the two share; §The lanes wasm); copies to `target/og-wasm/raw/` | full | | | yes | |
+| `wasm-build` | `cargo build --profile wasm --target wasm32-unknown-unknown -p <crate> --lib` (`Cargo.toml`'s `[profile.wasm]`: release at opt-level s, the per-tick and per-frame crates at 3 and the load-time crates at z; `tests/evidence/r4/size-2/NOTES.md`) for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish` in `target/wasm-<variant>/` (cargo 1.99 keeps one fingerprint per unit whatever its features, so two feature sets in one target dir recompiled og-probe, og-runtime and og-host-web on every run: 16.7 s and 12.2 s with nothing changed, 0.4 and 0.5 s apart; `tests/evidence/P2/tooling/wasm-build-relink.md`) and the lanes variants of crates marked `publish lanes` (one per `lanes` line: og-host-web's `lanes2d` then `lanes`, the 2D and the 3D publish features with wasm atomics, `scripts/wasm-lanes.sh` in `target/wasm-mt/`, which the two share; §The lanes wasm); copies to `target/og-wasm/raw/` | full | | | yes | |
 | `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (`origin-engine-lanes` for a lanes variant, `-lanes*`; when the module uses it) then `scripts/wasm-opt.sh`, the one wasm-opt invocation (`-Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused`; rustc links wasm32 stack-first, so the low 1 KiB is only the bottom of an overflowing stack), which `packages/engine/scripts/build.sh` also ships with (`--threads` adds `--enable-threads` for the lanes variant); `opt.txt` lists the shipping (publish and lanes, one of each per game profile) variants, `opt-all.txt` every one | full | | | yes | |
 | `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` of each file in `opt.txt` ≤ `wasm_core_brotli_bytes` (a page downloads one variant; the table also prints the sum and the largest) | full | | | yes | |
 | `drift` | `og api check` (generated `.d.ts`, wiki, JSON schema, Rust glue vs `crates/og-api/api.ogt`), the dev `og` the test step built | every | yes | yes | yes | |
@@ -903,7 +903,14 @@ reference belongs to; a frame from another tier never replaces a Metal reference
    them first and they pay least (tests/evidence/P4/wasm-size/README.md).
 3. Prefer removing the cause: drop or feature-gate the dependency, disable
    default features, move debug-only code behind the non-`publish`
-   configuration, avoid generic monomorphization blow-ups.
+   configuration, avoid generic monomorphization blow-ups. A stable sort
+   in engine code is `og_core::sort::{sort, sort_by, sort_by_key}`, and a
+   `BTreeMap` or `BTreeSet` built from an iterator is
+   `og_core::sort::{map, set}`: the standard library's `sort_by` and
+   `collect` into a B-tree monomorphise driftsort per element type and
+   closure (tests/evidence/r4/size-2/NOTES.md measured 0.9 MB of them). A
+   publish build carries no reflected or record field docs (og-core's and
+   og-api's `publish`), so a new doc string costs a publish module nothing.
 4. Only when the growth is intended and unavoidable, update the budget as
    above. Physics was expected to push past 4 MB; measured at 49ed935 it adds
    0.69 MB brotli (3D), 0.54 MB (2D) or 1.05 MB (both) to og-host-web's

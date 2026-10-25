@@ -344,9 +344,21 @@ Row 99 remains open, but several proposed trims already landed. The
 debt2 size stream (`c8d7c2b3`, `tests/evidence/debt2/size/NOTES.md`) removed
 GPU timestamp queries and tool-only probe code from publish and excluded
 3D world subsystems from the 2D renderer. Round 3's profile-quality stream
-also removed the 2D runtime's terrain implementation. The latest gate's
-largest download is 3,787,011 B brotli, 90% of 4 MiB, recorded in the round
-3 closeout. Further cuts need a new profile, not a repeat of those tasks.
+also removed the 2D runtime's terrain implementation. The round 3
+closeout's gate recorded a largest download of 3,787,011 B brotli (90 % of
+4 MiB; a plain `scripts/check.sh`, so the `wasm-gate` profile, which runs
+5 to 6 % above the shipping one, docs/ci.md §Lanes). Branch `r4/size-2`
+(`tests/evidence/r4/size-2/NOTES.md`, from 1bb341e5) took the new approach:
+one non-generic stable sort and B-tree build for the engine
+(`og_core::sort`, the largest monomorphisation family), no reflected or
+record field docs in publish, one bincode encoder for the physics save, and
+the `wasm` profile at opt-level s with the per-frame crates at 3. Shipping
+profile, brotli: 3D publish 3,561,039 → 3,283,141 B (78.3 %), 3D lanes
+3,591,631 → 3,320,422 B (79.2 %, the largest), 2D publish 3,291,397 →
+3,034,243 B (72.3 %), 2D lanes 3,327,994 → 3,072,212 B (73.2 %): every
+variant under 80 %. Still open until the coordinator's gate, its
+determinism matrix, the Metal frames and Chrome's frame times (og-runtime
+at s is the one per-frame crate whose cost was not measured).
 
 The platform already routes standalone CAS wasm through a content hash
 and basename in `server/src/play/serve.ts`. Its current test uses a PNG,
