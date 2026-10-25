@@ -1600,6 +1600,7 @@ pub fn og_render_capabilities(world: u32) -> String {
                 "antialias": b.antialias(),
                 "maxLights": og_render::MAX_LIGHTS,
                 "maxShadowedLights": info.as_ref().map_or(0, |i| i.shadowed_lights),
+                "maxMsaaSamples": info.as_ref().map_or(0, |i| i.msaa_samples),
                 "pointShadows": info.as_ref().map_or("cube", |i| crate::point_shadows_name(i.point_shadows)),
                 "width": w, "height": h,
                 "stylise": og_render::STYLISE_DRAWN,
@@ -1628,7 +1629,7 @@ pub fn og_render_capabilities(world: u32) -> String {
             c
         })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "world3d": og_render::WORLD_3D }))
+    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "maxMsaaSamples": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "world3d": og_render::WORLD_3D }))
         .to_string()
 }
 
@@ -2201,6 +2202,9 @@ pub fn og_render_apply_quality(world: u32, preset: String) -> String {
         "softParticles": q.soft_particles,
         "screenSpaceReflections": q.ssr,
         "ambientOcclusion": q.ambient_occlusion,
+        "aoResolution": crate::extract::ao_resolution_setting(q.ao_resolution),
+        "ssrStepScale": q.ssr_step_scale,
+        "volumetricStepScale": q.volumetric_step_scale,
         "msaaSamples": q.msaa_samples,
     });
     result_void(

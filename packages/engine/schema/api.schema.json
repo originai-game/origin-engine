@@ -2756,6 +2756,8 @@
         "ToneMapping",
         "ToneMapping",
         "GraphicsQuality",
+        "AoResolutionSetting",
+        "AoResolutionSetting",
         "QualityPreset",
         "QualityPreset",
         "RenderSettings",
@@ -3196,7 +3198,7 @@
         },
         {
           "name": "applyQuality",
-          "doc": "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. The settings screen calls it when the player picks a preset (SettingsDesc.world); a game applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:\n| Field | low | medium | high |\n|---|---|---|---|\n| rectShadows | false | true | true |\n| shadowedLights | 2 | 8 | 8 |\n| shadowMapScale | 0.5 | 1 | 2 |\n| volumetricFog | false | true | true |\n| softParticles | false | true | true |\n| screenSpaceReflections | false | true | true |\n| ambientOcclusion | false | true | true |\n| msaaSamples | 1 | 4 | 4 |\nMedium is every field's default, the frame drawn before any preset.",
+          "doc": "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. The settings screen calls it when the player picks a preset (SettingsDesc.world); a game applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:\n| Field | low | medium | high |\n|---|---|---|---|\n| rectShadows | false | true | true |\n| shadowedLights | 2 | 8 | 8 |\n| shadowMapScale | 0.5 | 1 | 2 |\n| volumetricFog | false | true | true |\n| softParticles | false | true | true |\n| screenSpaceReflections | false | true | true |\n| ambientOcclusion | false | true | true |\n| aoResolution | half | postEffects | full |\n| ssrStepScale | 0.5 | 1 | 2 |\n| volumetricStepScale | 0.5 | 1 | 2 |\n| msaaSamples | 1 | 4 | 4 |\nMedium is every field's default, the frame drawn before any preset. The device caps two of the rows, as RenderCapabilities says: shadowedLights by maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value.",
           "params": [
             {
               "name": "world",
@@ -15360,8 +15362,24 @@
       ],
       "x-og-variants": {
         "medium": "The full frame: every quality field at its default.",
-        "low": "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections or ambient occlusion, FXAA for MSAA.",
-        "high": "The full frame with the shadow maps at twice their side."
+        "low": "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections or ambient occlusion, FXAA for MSAA; and, for a game that turns one of those back on, ambient occlusion at half resolution and half the reflection and fog steps.",
+        "high": "The full frame refined, at the GPU time of the effects the scene draws: the shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps). A scene without those effects differs from medium only by its shadow maps."
+      }
+    },
+    "AoResolutionSetting": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "The resolution RenderSettings.aoResolution draws ambient occlusion at.",
+      "type": "string",
+      "enum": [
+        "postEffects",
+        "full",
+        "half"
+      ],
+      "x-og-variants": {
+        "postEffects": "PostEffects.aoResolution's: the game's choice.",
+        "full": "Full resolution whatever PostEffects.aoResolution says (the high preset).",
+        "half": "Half resolution whatever PostEffects.aoResolution says (the low preset)."
       }
     },
     "QualityPreset": {
@@ -15530,11 +15548,30 @@
           "description": "PostEffects.ao darkens creases; false draws none. PostEffects keeps its settings either way.",
           "default": true
         },
+        "aoResolution": {
+          "$ref": "#/$defs/AoResolutionSetting",
+          "description": "The resolution ambient occlusion is searched at: postEffects (the default) draws PostEffects.aoResolution; full or half is drawn in its place, and PostEffects keeps its own for when this is postEffects again. The renderer reads this first, so the probe's RenderSettings and PostEffects together say what is drawn.",
+          "default": "postEffects"
+        },
+        "ssrStepScale": {
+          "type": "number",
+          "description": "PostEffects.ssrSteps times this (within the 4 to 128 steps the pass takes): 2 is 64 steps for the default 32, finer contact with thin and distant reflected surfaces at twice the pass's GPU time. PostEffects keeps its steps.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 32
+        },
+        "volumetricStepScale": {
+          "type": "number",
+          "description": "An og.VolumetricFog's samples along each view ray times this: the froxel grid's 64 slices deep (full tier; 8 to 256), each thinner, so a shaft's edge in depth and the fog just in front of a surface resolve more finely, or WebGL2's raymarch of 24 steps per pixel (4 to 96). The froxel grid's GPU time and memory grow with its slices; changing it makes the grid again at the next frame.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 4
+        },
         "msaaSamples": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Samples per pixel where the antialiasing multisamples (msaa, the WebGL2 tier's choice; RenderCapabilities.antialias): 4, or 1, which draws FXAA instead. TAA, FXAA and no antialiasing take one sample whatever it says. Changing it makes the multisampled targets and pipelines again at the next frame.",
+          "description": "Samples per pixel where the antialiasing multisamples (msaa, the WebGL2 tier's choice): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it, as maxShadowedLights caps shadowedLights: where the device resolved no MSAA (TAA, FXAA, off, or FXAA for want of a multisampled HDR format) it is 1, and one sample is drawn whatever this says; RenderCapabilities.antialias is what is drawn now. Changing it makes the multisampled targets and pipelines again at the next frame.",
           "default": 4,
           "minimum": 1,
           "maximum": 4
@@ -18087,6 +18124,12 @@
           "maximum": 4294967295,
           "description": "How many point and spot lights cast shadows in one frame (8 on the full tier, 4 on WebGL2); past it, the shadowed lights brightest at the camera keep theirs."
         },
+        "maxMsaaSamples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The samples per pixel this device multisamples the scene at, which caps RenderSettings.msaaSamples: 4 where antialias resolved to msaa4 when the renderer was made, 1 where it resolved to taa, fxaa or off (or to fxaa because the HDR format cannot be multisampled), 0 without a renderer. It stays 4 while RenderSettings.msaaSamples 1 draws FXAA (antialias then says fxaa)."
+        },
         "pointShadows": {
           "$ref": "#/$defs/PointShadows",
           "description": "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
@@ -18173,6 +18216,7 @@
         "antialias",
         "maxLights",
         "maxShadowedLights",
+        "maxMsaaSamples",
         "pointShadows",
         "width",
         "height",

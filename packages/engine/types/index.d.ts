@@ -137,6 +137,8 @@ export interface ColumnKinds {
   Material: { readonly array: Uint32Array; readonly stride: 2; readonly value: Material };
   /** A ToneMapping field: the variant's index. */
   ToneMapping: { readonly array: Uint32Array; readonly stride: 1; readonly value: ToneMapping };
+  /** An AoResolutionSetting field: the variant's index. */
+  AoResolutionSetting: { readonly array: Uint32Array; readonly stride: 1; readonly value: AoResolutionSetting };
   /** A QualityPreset field: the variant's index. */
   QualityPreset: { readonly array: Uint32Array; readonly stride: 1; readonly value: QualityPreset };
   /** A Texture handle field (0 is none). */
@@ -4095,10 +4097,27 @@ export declare function ToneMapping(value?: ToneMapping, options?: FieldOptions)
 /**
  * A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). The settings screen (og.ui.settingsScreen) offers the three.
  * - `"medium"`: The full frame: every quality field at its default.
- * - `"low"`: The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections or ambient occlusion, FXAA for MSAA.
- * - `"high"`: The full frame with the shadow maps at twice their side.
+ * - `"low"`: The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections or ambient occlusion, FXAA for MSAA; and, for a game that turns one of those back on, ambient occlusion at half resolution and half the reflection and fog steps.
+ * - `"high"`: The full frame refined, at the GPU time of the effects the scene draws: the shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps). A scene without those effects differs from medium only by its shadow maps.
  */
 export type GraphicsQuality = "medium" | "low" | "high";
+
+/**
+ * The resolution RenderSettings.aoResolution draws ambient occlusion at.
+ * - `"postEffects"`: PostEffects.aoResolution's: the game's choice.
+ * - `"full"`: Full resolution whatever PostEffects.aoResolution says (the high preset).
+ * - `"half"`: Half resolution whatever PostEffects.aoResolution says (the low preset).
+ */
+export type AoResolutionSetting = "postEffects" | "full" | "half";
+
+/**
+ * An AoResolutionSetting field: the variant's index.
+ *
+ * A `AoResolutionSetting` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function AoResolutionSetting(value?: AoResolutionSetting, options?: FieldOptions): FieldSpec<"AoResolutionSetting">;
 
 /**
  * The preset RenderSettings' quality fields were last written with (RenderSettings.quality).
@@ -4266,7 +4285,25 @@ export interface RenderSettings {
    */
   ambientOcclusion: boolean;
   /**
-   * Samples per pixel where the antialiasing multisamples (msaa, the WebGL2 tier's choice; RenderCapabilities.antialias): 4, or 1, which draws FXAA instead. TAA, FXAA and no antialiasing take one sample whatever it says. Changing it makes the multisampled targets and pipelines again at the next frame.
+   * The resolution ambient occlusion is searched at: postEffects (the default) draws PostEffects.aoResolution; full or half is drawn in its place, and PostEffects keeps its own for when this is postEffects again. The renderer reads this first, so the probe's RenderSettings and PostEffects together say what is drawn.
+   */
+  aoResolution: AoResolutionSetting;
+  /**
+   * PostEffects.ssrSteps times this (within the 4 to 128 steps the pass takes): 2 is 64 steps for the default 32, finer contact with thin and distant reflected surfaces at twice the pass's GPU time. PostEffects keeps its steps.
+   *
+   * @default 1
+   * @range 0..32
+   */
+  ssrStepScale: number;
+  /**
+   * An og.VolumetricFog's samples along each view ray times this: the froxel grid's 64 slices deep (full tier; 8 to 256), each thinner, so a shaft's edge in depth and the fog just in front of a surface resolve more finely, or WebGL2's raymarch of 24 steps per pixel (4 to 96). The froxel grid's GPU time and memory grow with its slices; changing it makes the grid again at the next frame.
+   *
+   * @default 1
+   * @range 0..4
+   */
+  volumetricStepScale: number;
+  /**
+   * Samples per pixel where the antialiasing multisamples (msaa, the WebGL2 tier's choice): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it, as maxShadowedLights caps shadowedLights: where the device resolved no MSAA (TAA, FXAA, off, or FXAA for want of a multisampled HDR format) it is 1, and one sample is drawn whatever this says; RenderCapabilities.antialias is what is drawn now. Changing it makes the multisampled targets and pipelines again at the next frame.
    *
    * @default 4
    * @range 1..4
@@ -6494,6 +6531,10 @@ export interface RenderCapabilities {
    * How many point and spot lights cast shadows in one frame (8 on the full tier, 4 on WebGL2); past it, the shadowed lights brightest at the camera keep theirs.
    */
   readonly maxShadowedLights: number;
+  /**
+   * The samples per pixel this device multisamples the scene at, which caps RenderSettings.msaaSamples: 4 where antialias resolved to msaa4 when the renderer was made, 1 where it resolved to taa, fxaa or off (or to fxaa because the HDR format cannot be multisampled), 0 without a renderer. It stays 4 while RenderSettings.msaaSamples 1 draws FXAA (antialias then says fxaa).
+   */
+  readonly maxMsaaSamples: number;
   /**
    * How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to).
    */
@@ -22858,7 +22899,7 @@ export declare namespace og {
   /**
    * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to msaaSamples) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    */
-  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly msaaSamples: FieldSpec<"u32"> }, RenderSettings>;
+  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32"> }, RenderSettings>;
   /**
    * Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.
    */
@@ -23065,8 +23106,11 @@ export declare namespace og {
      * | softParticles | false | true | true |
      * | screenSpaceReflections | false | true | true |
      * | ambientOcclusion | false | true | true |
+     * | aoResolution | half | postEffects | full |
+     * | ssrStepScale | 0.5 | 1 | 2 |
+     * | volumetricStepScale | 0.5 | 1 | 2 |
      * | msaaSamples | 1 | 4 | 4 |
-     * Medium is every field's default, the frame drawn before any preset.
+     * Medium is every field's default, the frame drawn before any preset. The device caps two of the rows, as RenderCapabilities says: shadowedLights by maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value.
      *
      * @param world The world whose RenderSettings change.
      * @param preset The preset.

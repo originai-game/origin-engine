@@ -24,6 +24,15 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
   depth-aware upsample (an `ao-upsample` pass). At `full` the AO blur
   reads its taps as gathers on WebGPU and skips the sky; every frame is
   unchanged. Worlds hash differently once (PostEffects has a new layout).
+- The high graphics preset buys more than bigger shadow maps:
+  `RenderSettings` gains `aoResolution` (`AoResolutionSetting`:
+  `postEffects` by default, `full`, `half`; read before
+  PostEffects.aoResolution), `ssrStepScale` and `volumetricStepScale`,
+  and `og.render.applyQuality` writes high as full-resolution AO and
+  twice the SSR steps and fog slices, low as half. Medium, the default,
+  draws every frame as before. `RenderCapabilities.maxMsaaSamples` says
+  the MSAA the device gives, the cap of `RenderSettings.msaaSamples`.
+  Worlds hash differently once (RenderSettings has a new layout).
 - Instance uploads send only the records a draw reads: a batch drawn from
   its culled copies (under 90 % in view, the CPU culling path, so every
   WebGL2 frame) no longer also sends its sorted records, and object

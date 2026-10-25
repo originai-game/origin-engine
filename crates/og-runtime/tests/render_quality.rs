@@ -11,11 +11,12 @@
 //! preset is accepted. Before the profile-quality round there was no
 //! applyQuality and nothing read GraphicsQuality.
 
-use og_render::{RenderQuality, RenderScene, RgbaImage};
+use og_render::{AoResolution, RenderQuality, RenderScene, RgbaImage};
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame,
     og_engine_probe_commands, og_engine_take_outputs, og_engine_write_resource, og_game_game,
-    og_host_begin_bundle, og_render_apply_quality, set_hooks, set_render_backend,
+    og_host_begin_bundle, og_render_apply_quality, og_render_capabilities, set_hooks,
+    set_render_backend,
 };
 use serde_json::{Value, json};
 use std::cell::Cell;
@@ -81,6 +82,9 @@ fn observe(engine: u32, seen: &Cell<Option<RenderQuality>>) -> (Value, RenderQua
         "softParticles",
         "screenSpaceReflections",
         "ambientOcclusion",
+        "aoResolution",
+        "ssrStepScale",
+        "volumetricStepScale",
         "msaaSamples",
     ];
     let fields = Value::Object(
@@ -102,6 +106,13 @@ fn as_fields(quality: &str, q: RenderQuality) -> Value {
         "softParticles": q.soft_particles,
         "screenSpaceReflections": q.ssr,
         "ambientOcclusion": q.ambient_occlusion,
+        "aoResolution": match q.ao_resolution {
+            None => "postEffects",
+            Some(AoResolution::Full) => "full",
+            Some(AoResolution::Half) => "half",
+        },
+        "ssrStepScale": q.ssr_step_scale,
+        "volumetricStepScale": q.volumetric_step_scale,
         "msaaSamples": q.msaa_samples,
     })
 }
@@ -128,19 +139,22 @@ fn apply_quality_writes_the_presets_row_and_the_renderer_reads_it() {
             "low",
             json!({ "quality": "low", "rectShadows": false, "shadowedLights": 2, "shadowMapScale": 0.5,
                 "volumetricFog": false, "softParticles": false, "screenSpaceReflections": false,
-                "ambientOcclusion": false, "msaaSamples": 1 }),
+                "ambientOcclusion": false, "aoResolution": "half", "ssrStepScale": 0.5,
+                "volumetricStepScale": 0.5, "msaaSamples": 1 }),
         ),
         (
             "high",
             json!({ "quality": "high", "rectShadows": true, "shadowedLights": 8, "shadowMapScale": 2.0,
                 "volumetricFog": true, "softParticles": true, "screenSpaceReflections": true,
-                "ambientOcclusion": true, "msaaSamples": 4 }),
+                "ambientOcclusion": true, "aoResolution": "full", "ssrStepScale": 2.0,
+                "volumetricStepScale": 2.0, "msaaSamples": 4 }),
         ),
         (
             "medium",
             json!({ "quality": "medium", "rectShadows": true, "shadowedLights": 8, "shadowMapScale": 1.0,
                 "volumetricFog": true, "softParticles": true, "screenSpaceReflections": true,
-                "ambientOcclusion": true, "msaaSamples": 4 }),
+                "ambientOcclusion": true, "aoResolution": "postEffects", "ssrStepScale": 1.0,
+                "volumetricStepScale": 1.0, "msaaSamples": 4 }),
         ),
     ];
     for (preset, row) in table {
@@ -176,4 +190,88 @@ fn apply_quality_writes_the_presets_row_and_the_renderer_reads_it() {
             .unwrap()
             .contains("not a graphics preset")
     );
+}
+
+/// A renderer whose device multisamples at `msaa` (og-render's
+/// `RenderInfo::msaa_samples`: 4 where the antialiasing resolved to MSAA,
+/// 1 where TAA, FXAA or none was resolved).
+struct Device {
+    msaa: u32,
+}
+
+impl RenderBackend for Device {
+    fn tier(&self) -> String {
+        "vulkan-cpu".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (64, 64)
+    }
+    fn info(&self) -> Option<og_render::RenderInfo> {
+        let rgba8 = og_render::TextureFormat::Rgba8;
+        Some(og_render::RenderInfo {
+            adapter: "test".into(),
+            backend: og_render::wgpu::Backend::Vulkan,
+            device_type: og_render::wgpu::DeviceType::Cpu,
+            tier: og_render::Tier::Full,
+            antialias: if self.msaa > 1 {
+                og_render::Antialias::Msaa4
+            } else {
+                og_render::Antialias::Taa
+            },
+            msaa_samples: self.msaa,
+            shadow_map_size: 2048,
+            shadow_cascades: 3,
+            shadowed_lights: 8,
+            point_shadows: og_render::PointShadows::Cube,
+            texture_formats: og_render::TextureFormats {
+                color: rgba8,
+                normal: rgba8,
+                data: rgba8,
+                supported: vec![rgba8],
+            },
+            pipeline_cache: false,
+            max_texture_size: 8192,
+            volumetric: og_render::VolumetricMethod::Froxel,
+            volumetric_lights: 64,
+            sprite_anisotropy: 1,
+        })
+    }
+    fn render(&mut self, _: &RenderScene) -> Result<(), String> {
+        Ok(())
+    }
+    fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<RgbaImage> {
+        None
+    }
+}
+
+/// RenderCapabilities.maxMsaaSamples says what MSAA the device gives, the
+/// cap of RenderSettings.msaaSamples (as maxShadowedLights caps
+/// shadowedLights): 4 where it resolved MSAA, 1 where it did not, 0
+/// without a renderer. The high preset's row keeps msaaSamples 4 either
+/// way: the field is what was asked, the capability what can be drawn.
+/// Before the debt round the capability had no such member, and a
+/// preset's 4 drawn at 1 was nowhere to be read.
+#[test]
+fn the_capabilities_say_what_msaa_the_device_gives() {
+    set_hooks(Rc::new(NoAssets));
+    og_host_begin_bundle();
+    let game = og_game_game(Some("{}".into()));
+    let engine = answer(og_engine_create(game, "{}".into()))["value"]
+        .as_u64()
+        .unwrap() as u32;
+    let caps = |engine| answer(og_render_capabilities(engine));
+    assert_eq!(caps(engine)["maxMsaaSamples"], json!(0), "no renderer");
+    for msaa in [4, 1] {
+        set_render_backend(engine, Some(Box::new(Device { msaa }))).unwrap();
+        assert_eq!(caps(engine)["maxMsaaSamples"], json!(msaa));
+        answer(og_render_apply_quality(engine, "high".into()));
+        let seen = Rc::new(Cell::new(None));
+        set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
+        let (fields, _) = observe(engine, &seen);
+        assert_eq!(
+            fields["msaaSamples"],
+            json!(4),
+            "the row's value, capped by the device"
+        );
+    }
 }

@@ -194,7 +194,7 @@ pub(crate) fn handle_index(v: &Value) -> Option<usize> {
     super::assets::index_of(v.as_f64()?)
 }
 
-fn variant(v: &Value, names: &[&str]) -> usize {
+pub(crate) fn variant(v: &Value, names: &[&str]) -> usize {
     match v {
         Value::String(s) => names.iter().position(|n| n == s).unwrap_or(0),
         Value::Number(n) => n.as_u64().unwrap_or(0) as usize,
