@@ -40,6 +40,7 @@
 //! ```
 
 pub mod command;
+pub mod decode;
 pub mod dsp;
 pub mod listen;
 pub mod mixer;
@@ -57,6 +58,7 @@ pub mod system;
 pub mod qoa;
 
 pub use command::{COMMAND_BYTES, Command, Op, TickPacket};
+pub use decode::{DECODE_AHEAD_FRAMES, DECODE_AHEAD_SECONDS, DecodeJob, DecodeStats};
 pub use listen::Listen;
 pub use mixer::{Clock, MixStats, Mixer, MixerDesc};
 pub use music::{MUSIC_SYSTEM, next_times};

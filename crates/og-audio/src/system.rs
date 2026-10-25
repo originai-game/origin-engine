@@ -753,10 +753,39 @@ fn zones(
     Ok(())
 }
 
+/// The decode-ahead of the playheads at this tick's start (`decode.rs`):
+/// the frames the mixer reads next, for the bank's helper to decode before
+/// it does. Reads the world, writes nothing in it.
+fn plan_decode(ctx: &SystemContext<'_>, bank: &SoundBank) -> Result<()> {
+    let mut heads = Vec::new();
+    for e in ctx.query(0)?.flat_map(|a| a.entities().to_vec()) {
+        let p = ctx.get::<AudioPlayback>(e)?;
+        if p.is_virtual {
+            continue;
+        }
+        let Some(sound) = bank.get(p.sound) else {
+            continue;
+        };
+        heads.push(crate::decode::Head {
+            sound,
+            cursor: p.cursor,
+            pitch: p.pitch,
+            looping: p.flags & FLAG_LOOP as u32 != 0,
+            loop_start: u64::from(p.loop_start),
+            loop_end: u64::from(p.loop_end),
+        });
+    }
+    crate::decode::plan(bank, heads);
+    Ok(())
+}
+
 fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder>) -> Result<()> {
     let tick = ctx.time().tick;
     let resync = link.begin(tick);
     let bank = link.bank.clone();
+    if link.attached() {
+        plan_decode(ctx, &bank)?;
+    }
     let mut stream = *ctx.resource::<AudioStream>()?;
     let audio = *ctx.resource::<Audio>()?;
     let tick_rate = stream.tick_rate.max(1);
