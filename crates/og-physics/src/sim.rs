@@ -289,6 +289,105 @@ impl BodyPoses {
     }
 }
 
+/// Every body's linear and angular velocity before a substep, by handle
+/// index (with the handle, as [`BodyPoses`]): the motions the solver meets
+/// a new contact with. A body a controller moves is taken at the velocity
+/// that carries it to its target, as rapier gives it inside the step.
+pub(crate) type Motions = Vec<Option<(rp::RigidBodyHandle, Vec3, Vec3)>>;
+
+fn motions_now(w: &rp::PhysicsWorld) -> Motions {
+    let inv_dt = w.integration_parameters.inv_dt();
+    let mut motions = Vec::new();
+    for (h, rb) in w.bodies.iter() {
+        let i = h.into_raw_parts().0 as usize;
+        if i >= motions.len() {
+            motions.resize(i + 1, None);
+        }
+        let vels = if rb.body_type() == rp::RigidBodyType::KinematicPositionBased {
+            rp::RigidBodyPosition {
+                position: *rb.position(),
+                next_position: *rb.next_position(),
+            }
+            .interpolate_velocity(inv_dt, rb.local_center_of_mass())
+        } else {
+            *rb.vels()
+        };
+        motions[i] = Some((h, unv(vels.linvel), unangvel(vels.angvel)));
+    }
+    motions
+}
+
+/// The pairs touching after the substeps before the last, by their
+/// colliders: the normal impulse they took so far and their relative
+/// velocity as the first of those substeps began.
+type Carried = BTreeMap<(u64, u64), (f32, Vec3)>;
+
+/// What the step's readout needs to report a hit: the motions before the
+/// last substep and what the earlier ones carried.
+struct Hits<'a> {
+    motions: &'a Motions,
+    carried: &'a Carried,
+}
+
+fn pair_key(pair: &rp::ContactPair) -> (u64, u64) {
+    (
+        pair.collider1.into_raw_parts().0 as u64 | (pair.collider1.into_raw_parts().1 as u64) << 32,
+        pair.collider2.into_raw_parts().0 as u64 | (pair.collider2.into_raw_parts().1 as u64) << 32,
+    )
+}
+
+/// A touching pair's hit in the substep just stepped: the normal impulse
+/// the solver gave it (N·s, summed over its contact points) and collider
+/// 1's velocity relative to collider 2 at the deepest point, each body's
+/// velocity taken from `motions` (before the substep) with its angular
+/// part about its centre of mass now. A collider without a body is still.
+fn hit(
+    pair: &rp::ContactPair,
+    colliders: &rp::ColliderSet,
+    bodies: &rp::RigidBodySet,
+    motions: &Motions,
+) -> (f32, Vec3) {
+    let Some((_, contact)) = pair.find_deepest_contact() else {
+        return (0.0, Vec3::ZERO);
+    };
+    let c1 = &colliders[pair.collider1];
+    let point = unv(c1.position().transform_point(contact.local_p1));
+    let at = |c: &rp::Collider| {
+        let Some(h) = c.parent() else {
+            return Vec3::ZERO;
+        };
+        match motions.get(h.into_raw_parts().0 as usize) {
+            Some(Some((handle, linear, angular))) if *handle == h => {
+                let com = unv(bodies[h].center_of_mass());
+                *linear + angular.cross(point - com)
+            }
+            _ => Vec3::ZERO,
+        }
+    };
+    let impulse = pair.total_impulse_magnitude().max(0.0);
+    (impulse, at(c1) - at(&colliders[pair.collider2]))
+}
+
+/// After a substep but the last: each touching solid pair's impulse added
+/// to what it carried, its first relative velocity kept; a pair no longer
+/// touching drops out (a contact that starts again starts afresh).
+fn carry(w: &rp::PhysicsWorld, motions: &Motions, carried: &mut Carried) {
+    let mut next = Carried::new();
+    for pair in w.narrow_phase.contact_pairs() {
+        if !pair.has_any_active_contact() {
+            continue;
+        }
+        let (impulse, velocity) = hit(pair, &w.colliders, &w.bodies, motions);
+        let key = pair_key(pair);
+        let entry = match carried.get(&key) {
+            Some(&(earlier, first)) => (earlier + impulse, first),
+            None => (impulse, velocity),
+        };
+        next.insert(key, entry);
+    }
+    *carried = next;
+}
+
 fn body_kind(b: &Body) -> Result<rp::RigidBodyType> {
     let e = b.entity;
     let kind = match b.body.kind {
@@ -423,15 +522,28 @@ fn step_here(
     let pre = rest_poses(scene, sim, &handles);
     laps.lap(Phase::Readout);
 
-    for _ in 0..substeps {
+    // Each substep starts from the bodies' motions recorded before it: what
+    // the solver met a contact with. The pairs touching after a substep
+    // but the last carry their impulse and first relative velocity on.
+    let mut carried = BTreeMap::new();
+    let mut motions = Vec::new();
+    for k in 0..substeps {
+        motions = motions_now(&sim.world);
         sim.world.step();
+        if k + 1 < substeps {
+            carry(&sim.world, &motions, &mut carried);
+        }
     }
     laps.lap(Phase::Rapier);
     if split {
         laps.split(Phase::Rapier);
     }
 
-    let (touching, moved) = after_step(settings, scene, sim, &handles, pre, split);
+    let hits = Hits {
+        motions: &motions,
+        carried: &carried,
+    };
+    let (touching, moved) = after_step(settings, scene, sim, &handles, pre, &hits, split);
     out.touching = touching;
     out.moved = moved;
     laps.lap(Phase::Readout);
@@ -746,9 +858,10 @@ fn after_step(
     sim: &mut Sim,
     handles: &Handles<'_>,
     before: Vec<rp::Pose>,
+    hits: &Hits<'_>,
     split: bool,
 ) -> (
-    Vec<(Contact, Vec3, Vec3)>,
+    Vec<(Contact, CollisionStarted)>,
     Vec<Option<(Vec3, Quat, Option<Velocity>)>>,
 ) {
     let Sim {
@@ -761,11 +874,11 @@ fn after_step(
     // the pool for them costs more than it saves (tests/evidence/P4/physics-3/).
     let pairs = if split { grains.pairs } else { usize::MAX };
     // The solid pairs: each one's contact (its entities in order, the
-    // deepest point and normal), its deepest penetration and the bodies it
-    // touches, by ranges of the contact graph's edges on the lanes, joined
-    // in edge order: the narrow phase's pair order either way.
+    // deepest point and normal, the hit), its deepest penetration and the
+    // bodies it touches, by ranges of the contact graph's edges on the
+    // lanes, joined in edge order: the narrow phase's pair order either way.
     let edges = w.narrow_phase.contact_graph().raw_graph().raw_edges();
-    let colliders = &w.colliders;
+    let (colliders, bodies) = (&w.colliders, &w.bodies);
     let read_pair = |pair: &rp::ContactPair| {
         let (c1, c2) = (&colliders[pair.collider1], &colliders[pair.collider2]);
         let (e1, e2) = (entity_of(c1).to_bits(), entity_of(c2).to_bits());
@@ -774,10 +887,15 @@ fn after_step(
             point = unv(c1.position().transform_point(contact.local_p1));
             normal = unv(manifold.data.normal);
         }
-        let (a, b, normal) = if e1 < e2 {
-            (e1, e2, normal)
+        let (mut impulse, mut velocity) = hit(pair, colliders, bodies, hits.motions);
+        if let Some(&(earlier, first)) = hits.carried.get(&pair_key(pair)) {
+            impulse += earlier;
+            velocity = first;
+        }
+        let (a, b, normal, velocity) = if e1 < e2 {
+            (e1, e2, normal, velocity)
         } else {
-            (e2, e1, -normal)
+            (e2, e1, -normal, -velocity)
         };
         let depth = pair
             .manifolds()
@@ -786,7 +904,17 @@ fn after_step(
             .fold(f32::INFINITY, f32::min);
         let body = |c: &rp::Collider| c.parent().map(|p| p.into_raw_parts().0 as usize);
         (
-            (Contact { a, b, sensor: 0 }, point, normal),
+            (
+                Contact { a, b, sensor: 0 },
+                CollisionStarted {
+                    a,
+                    b,
+                    point,
+                    normal,
+                    impulse,
+                    relative_velocity: velocity,
+                },
+            ),
             depth,
             [body(c1), body(c2)],
         )
@@ -831,8 +959,7 @@ fn after_step(
                 b: b.0,
                 sensor,
             },
-            Vec3::ZERO,
-            Vec3::ZERO,
+            CollisionStarted::default(),
         ));
     }
     let touching = sorted(touching, pairs);
@@ -920,7 +1047,10 @@ fn keep_tracked(scene: &Scene, tracked: &mut BTreeMap<u64, Tracked>, kept: Vec<T
 /// one floor) in their order: what a stable sort leaves, made by sorting
 /// each pair's key with its index (unique, so on the lanes or not the one
 /// order) and gathering the pairs in it.
-fn sorted(touching: Vec<(Contact, Vec3, Vec3)>, grain: usize) -> Vec<(Contact, Vec3, Vec3)> {
+fn sorted(
+    touching: Vec<(Contact, CollisionStarted)>,
+    grain: usize,
+) -> Vec<(Contact, CollisionStarted)> {
     let mut keys: Vec<(Contact, u32)> = touching
         .iter()
         .enumerate()

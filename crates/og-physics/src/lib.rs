@@ -1186,9 +1186,9 @@ pub(crate) struct StepOut {
     /// Per `Scene::bodies` index: the new pose of dynamic bodies (with
     /// their velocity) and of controllers (without).
     pub moved: Vec<Option<(Vec3, Quat, Option<Velocity>)>>,
-    /// Every touching pair, sorted by (a, b), with the deepest point and the
-    /// normal from a to b (zero for sensor overlaps).
-    pub touching: Vec<(Contact, Vec3, Vec3)>,
+    /// Every touching pair, sorted by (a, b), with the event it starts as
+    /// (point, normal from a to b and the hit; zero for sensor overlaps).
+    pub touching: Vec<(Contact, CollisionStarted)>,
     /// The components a step writes back.
     pub controls: Vec<(Entity, ControlOut)>,
     pub joints: Vec<(Entity, Joint)>,
@@ -1304,14 +1304,8 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
                 i += 1;
             }
             (_, Some(c)) => {
-                let (_, point, normal) = out.touching[j];
                 if c.sensor == 0 {
-                    ctx.send(CollisionStarted {
-                        a: c.a,
-                        b: c.b,
-                        point,
-                        normal,
-                    })?;
+                    ctx.send(out.touching[j].1)?;
                 } else {
                     sensor_events(ctx, c, true)?;
                 }

@@ -379,8 +379,10 @@ impl Physics {
 // ---- events -----------------------------------------------------------------
 
 /// Two solid colliders started touching during the tick (`a` < `b` by id).
-/// Read during the next tick, like every event.
-#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+/// Read during the next tick, like every event: by then og.Velocity holds
+/// the solver's answer, so the hit itself is in `impulse` and
+/// `relative_velocity`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
 #[reflect(name = "og.CollisionStarted")]
 pub struct CollisionStarted {
     /// The entity with the lower id.
@@ -392,6 +394,18 @@ pub struct CollisionStarted {
     pub point: Vec3,
     /// The contact normal, pointing from `a` towards `b`.
     pub normal: Vec3,
+    /// The normal impulse the solver applied between the two during the
+    /// tick's step (every substep, every contact point), N·s: `a` got
+    /// `-impulse * normal`, `b` `+impulse * normal`.
+    #[reflect(min = 0, unit = "N*s")]
+    pub impulse: f32,
+    /// `a`'s velocity relative to `b` at the deepest point as the step
+    /// that made the contact began, before the solver answered it: each
+    /// body's linear velocity plus its angular velocity crossed with the
+    /// point's offset from its centre of mass (z = 0 in 2D). Along
+    /// `normal` it is the closing speed, positive while they approach.
+    #[reflect(name = "relativeVelocity", unit = "m/s")]
+    pub relative_velocity: Vec3,
 }
 
 /// Two solid colliders stopped touching (or one of them vanished).

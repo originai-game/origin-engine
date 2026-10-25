@@ -8987,7 +8987,7 @@ export interface Physics {
 }
 
 /**
- * Two solid colliders started touching during the tick.
+ * Two solid colliders started touching during the tick. Read in the tick after, when og.Velocity already holds the solver's answer (the bodies parting): how hard they met is `impulse` and `relativeVelocity`, taken in the step itself.
  *
  * The payload of the `CollisionStarted` event (token `og.CollisionStarted`).
  */
@@ -8996,10 +8996,27 @@ export interface CollisionStarted {
   readonly a: Entity;
   /** The entity with the higher id. */
   readonly b: Entity;
-  /** The deepest contact point in world space (z is 0 in 2D). */
+  /**
+   * The deepest contact point in world space (z is 0 in 2D).
+   *
+   * @unit m (metres)
+   */
   readonly point: Vector3;
   /** The contact normal, from a towards b. */
   readonly normal: Vector3;
+  /**
+   * The normal impulse the solver gave the pair in the step that made the contact (every substep, every contact point), in newton-seconds: b took `impulse` along `normal`, a the same against it. Its momentum answer to the hit, at least 0; heavier and faster hits give more.
+   *
+   * @range 0..
+   * @unit newtonSecond (newton-seconds: an impulse, the momentum that changes a kilogram's velocity by one metre per second)
+   */
+  readonly impulse: number;
+  /**
+   * a's velocity relative to b at `point` as that step began, before the solver answered: each body's linear velocity plus its angular velocity crossed with the point's offset from its centre of mass (a static collider is still; z is 0 in 2D). Along `normal` it is the closing speed, positive while they approach: max(0, relativeVelocity · normal) is how hard they hit, in m/s.
+   *
+   * @unit mps (metres per second)
+   */
+  readonly relativeVelocity: Vector3;
 }
 
 /**
@@ -22961,7 +22978,9 @@ export declare namespace og {
    * The physics settings of the world. The profile is the project's; the same components serve both profiles.
    */
   const Physics: ResourceType<{ readonly profile: FieldSpec<"u32">; readonly gravity: FieldSpec<"Vector3">; readonly substeps: FieldSpec<"u32">; readonly solverIterations: FieldSpec<"u32">; readonly restSpeed: FieldSpec<"f32"> }, Physics>;
-  /** Two solid colliders started touching during the tick. */
+  /**
+   * Two solid colliders started touching during the tick. Read in the tick after, when og.Velocity already holds the solver's answer (the bodies parting): how hard they met is `impulse` and `relativeVelocity`, taken in the step itself.
+   */
   const CollisionStarted: EventType<CollisionStarted>;
   /** Two solid colliders stopped touching, or one of them went away. */
   const CollisionEnded: EventType<CollisionEnded>;

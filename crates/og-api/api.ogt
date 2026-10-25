@@ -22,6 +22,7 @@ unit ratio "a fraction between 0 and 1"
 unit bytes "bytes"
 unit kg "kilograms"
 unit newton "newtons: the force that gives a kilogram one metre per second squared"
+unit newtonSecond "newton-seconds: an impulse, the momentum that changes a kilogram's velocity by one metre per second"
 unit mps "metres per second"
 unit mps2 "metres per second squared"
 unit radps "radians per second"
@@ -5936,11 +5937,20 @@ module physics {
   }
 
   event CollisionStarted {
-    doc "Two solid colliders started touching during the tick."
+    doc "Two solid colliders started touching during the tick. Read in the tick after, when og.Velocity already holds the solver's answer (the bodies parting): how hard they met is `impulse` and `relativeVelocity`, taken in the step itself."
     field a Entity "The entity with the lower id."
     field b Entity "The entity with the higher id."
-    field point Vector3 "The deepest contact point in world space (z is 0 in 2D)."
+    field point Vector3 "The deepest contact point in world space (z is 0 in 2D)." {
+      unit m
+    }
     field normal Vector3 "The contact normal, from a towards b."
+    field impulse f32 "The normal impulse the solver gave the pair in the step that made the contact (every substep, every contact point), in newton-seconds: b took `impulse` along `normal`, a the same against it. Its momentum answer to the hit, at least 0; heavier and faster hits give more." {
+      min 0
+      unit newtonSecond
+    }
+    field relativeVelocity Vector3 "a's velocity relative to b at `point` as that step began, before the solver answered: each body's linear velocity plus its angular velocity crossed with the point's offset from its centre of mass (a static collider is still; z is 0 in 2D). Along `normal` it is the closing speed, positive while they approach: max(0, relativeVelocity · normal) is how hard they hit, in m/s." {
+      unit mps
+    }
   }
 
   event CollisionEnded {

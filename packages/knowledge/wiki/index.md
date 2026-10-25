@@ -109,6 +109,7 @@ Field units the docs and Tune use.
 | `bytes` | bytes |
 | `kg` | kilograms |
 | `newton` | newtons: the force that gives a kilogram one metre per second squared |
+| `newtonSecond` | newton-seconds: an impulse, the momentum that changes a kilogram's velocity by one metre per second |
 | `mps` | metres per second |
 | `mps2` | metres per second squared |
 | `radps` | radians per second |

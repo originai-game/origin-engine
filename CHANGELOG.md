@@ -9,6 +9,16 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- `og.CollisionStarted` gains `impulse` (N·s, the normal impulse the
+  solver gave the pair in the step that made the contact, summed over
+  substeps and contact points: `b` takes it along `normal`, `a` against
+  it) and `relativeVelocity` (m/s, `a`'s velocity relative to `b` at
+  `point` as that step began, each body's angular point velocity
+  included; its part along `normal` is the closing speed), in both
+  profiles (Rumpus Isle FINDINGS #9). `point` is declared in `m`. The
+  unit `newtonSecond` is new. The event's layout hash changes: a save
+  taken before this restores with `migrate`.
+
 ## 0.4.0 — 2026-10-24
 
 Player hello time now reaches `og.platform` on attachment through both
