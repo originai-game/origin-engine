@@ -1,0 +1,662 @@
+[
+  {
+    "frame": "ao-gtao.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "ao-ssao.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "atmosphere-dusk.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "atmosphere-fog.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "atmosphere-moon.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "atmosphere-night.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "baked-batches.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "baked-cornell.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "bloom.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "cascades-200m.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "debug-overlay.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "decals.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "dof-high.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "dof-low.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "environment-map.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "exposure.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "fluid-2d.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "fluid-3d.png",
+    "changed_pixels": 1,
+    "max_channel_diff": 1,
+    "rmse": 2.3584569819837653e-06
+  },
+  {
+    "frame": "fluid-groups.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "fx-2d.png",
+    "changed_pixels": 9500,
+    "max_channel_diff": 1,
+    "rmse": 0.0002327834078494977
+  },
+  {
+    "frame": "fxaa.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "geometry-procedural.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "geometry-shapes.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "gltf-reference.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "god-rays.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "ground-grid.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "light-cookies.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "lights-256.png",
+    "changed_pixels": 2,
+    "max_channel_diff": 1,
+    "rmse": 3.335361850194959e-06
+  },
+  {
+    "frame": "lines.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "lod-levels.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "materials-array.png",
+    "changed_pixels": 13,
+    "max_channel_diff": 1,
+    "rmse": 8.824537988028132e-06
+  },
+  {
+    "frame": "materials-physical.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "materials.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "model-flash.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "motion-blur.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "overlay.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "particles-cpu.png",
+    "changed_pixels": 55956,
+    "max_channel_diff": 91,
+    "rmse": 0.0016554335315419459
+  },
+  {
+    "frame": "particles.png",
+    "changed_pixels": 76928,
+    "max_channel_diff": 141,
+    "rmse": 0.002297612858984924
+  },
+  {
+    "frame": "point-shadows-paraboloid.png",
+    "changed_pixels": 2,
+    "max_channel_diff": 1,
+    "rmse": 3.335361850194959e-06
+  },
+  {
+    "frame": "point-spot-lights.png",
+    "changed_pixels": 3,
+    "max_channel_diff": 1,
+    "rmse": 4.0849673202614375e-06
+  },
+  {
+    "frame": "points.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "post-agx.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "post-crt.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "post-grade.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "probe-interior.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "probe-outdoor.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "probe-two-rooms.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "rect-lights.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "shader-full-dissolve.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "shader-hooks.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "shadow-flags.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "shadows-crypt.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "shadows-local-8.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "shadows-soft.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "showcase.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "skeleton-2d.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "skinned-hooks.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "skinning.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "sky-only.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "spheres-20k.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "sprites-20k.png",
+    "changed_pixels": 329728,
+    "max_channel_diff": 12,
+    "rmse": 0.002290517102031776
+  },
+  {
+    "frame": "sprites-array-fx.png",
+    "changed_pixels": 62,
+    "max_channel_diff": 1,
+    "rmse": 1.8570508846658304e-05
+  },
+  {
+    "frame": "sprites-array.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "sprites-billboard.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "sprites-shadow-terrain.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "sprites-shadow.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "sprites-untonemapped.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "ssr-wet-floor.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-bands-tint.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-bands.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-halftone-surface.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-halftone.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-ink-depth.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-material.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-object.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-outline-ground.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-outline-voxels.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-paint.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-palette.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-pixel.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-print.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-retro.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-surface.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylise-toon-physical.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "stylised.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "taa-sharp.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "taa.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "terrain-far.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "terrain-generated.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "terrain-grass.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "terrain-mid.png",
+    "changed_pixels": 40162,
+    "max_channel_diff": 100,
+    "rmse": 0.003619592246022761
+  },
+  {
+    "frame": "terrain-near.png",
+    "changed_pixels": 46040,
+    "max_channel_diff": 108,
+    "rmse": 0.006569988542336889
+  },
+  {
+    "frame": "text-msdf.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "tilemap-lit.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "trails-beams.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "views-depth.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "views-layers.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "views-mirror.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "views-monitor.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "views-split.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "volumetric-fog.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "vox-keyframes.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "water-2d.png",
+    "changed_pixels": 4016,
+    "max_channel_diff": 1,
+    "rmse": 0.00014945994263629875
+  },
+  {
+    "frame": "water-3d.png",
+    "changed_pixels": 4,
+    "max_channel_diff": 132,
+    "rmse": 0.0006215194211913438
+  },
+  {
+    "frame": "water-planar.png",
+    "changed_pixels": 96479,
+    "max_channel_diff": 108,
+    "rmse": 0.00490912523372515
+  },
+  {
+    "frame": "water-shadows.png",
+    "changed_pixels": 41127,
+    "max_channel_diff": 112,
+    "rmse": 0.0016928481129256277
+  },
+  {
+    "frame": "water-underwater.png",
+    "changed_pixels": 24089,
+    "max_channel_diff": 29,
+    "rmse": 0.0004205400614494678
+  },
+  {
+    "frame": "weather-rain.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "weather-snow.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  },
+  {
+    "frame": "wireframe.png",
+    "changed_pixels": 0,
+    "max_channel_diff": 0,
+    "rmse": 0.0
+  }
+]

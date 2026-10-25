@@ -1,0 +1,2 @@
+sprites-20k: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=4 batches=0 instances=0 culled=0 triangles=0 shadow_passes=0 shadow_casters=0 lights=0 sprites=20000 glyphs=0 sprite_draws=3 setup+first=89.8ms vs reference: rmse=0.00229 max_diff=12 outliers=0
+  -> target/r4-metal-3-recheck.png

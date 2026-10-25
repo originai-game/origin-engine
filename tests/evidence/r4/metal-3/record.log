@@ -1,0 +1,26 @@
+   Compiling og-core v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-core)
+   Compiling og-ecs v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-ecs)
+   Compiling og-render v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-render)
+   Compiling og-i18n v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-i18n)
+   Compiling og-geom v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-geom)
+   Compiling og-tilemap v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-tilemap)
+   Compiling og-input v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-input)
+   Compiling og-tween v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-tween)
+   Compiling og-nav v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-nav)
+   Compiling og-audio v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-audio)
+   Compiling og-anim v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-anim)
+   Compiling og-timeline v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-timeline)
+   Compiling og-probe v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-probe)
+   Compiling og-ai v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-ai)
+   Compiling og-ui v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-ui)
+   Compiling og-cook v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-cook)
+   Compiling og-tests v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-tests)
+    Finished `test` profile [unoptimized] target(s) in 10.84s
+     Running tests/gfx.rs (target/debug/deps/gfx-a92ca630b2b58aa1)
+
+running 1 test
+gfx sprites-billboard [metal on Apple M4 Pro, aa Off]: draws=33 batches=2 instances=2 culled=0 triangles=14 shadow_passes=3 shadow_casters=5 lights=0 sprites=8 glyphs=0 sprite_draws=8 captured -> /Volumes/app/origin-engine-measure/crates/og-tests/references/metal/sprites-billboard.png
+test billboards_face_each_camera_sort_back_to_front_and_cull_by_bounds ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 60 filtered out; finished in 0.52s
+
