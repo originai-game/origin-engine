@@ -20,7 +20,7 @@ module reflect {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 660</sub>
+<sub>`api.ogt` line 661</sub>
 
 ## Contents
 
@@ -76,7 +76,7 @@ fn defineComponent {
 }
 ```
 
-<sub>`api.ogt` line 764</sub>
+<sub>`api.ogt` line 765</sub>
 
 <a id="fn-defineResource"></a>
 
@@ -107,7 +107,7 @@ fn defineResource {
 }
 ```
 
-<sub>`api.ogt` line 773</sub>
+<sub>`api.ogt` line 774</sub>
 
 ## Types
 
@@ -143,7 +143,7 @@ struct FieldOptions {
 }
 ```
 
-<sub>`api.ogt` line 668</sub>
+<sub>`api.ogt` line 669</sub>
 
 ## Column kinds
 
@@ -173,7 +173,7 @@ column f32 {
 }
 ```
 
-<sub>`api.ogt` line 680</sub>
+<sub>`api.ogt` line 681</sub>
 
 ```ogt
 column f64 {
@@ -184,7 +184,7 @@ column f64 {
 }
 ```
 
-<sub>`api.ogt` line 687</sub>
+<sub>`api.ogt` line 688</sub>
 
 ```ogt
 column u32 {
@@ -195,7 +195,7 @@ column u32 {
 }
 ```
 
-<sub>`api.ogt` line 694</sub>
+<sub>`api.ogt` line 695</sub>
 
 ```ogt
 column i32 {
@@ -206,7 +206,7 @@ column i32 {
 }
 ```
 
-<sub>`api.ogt` line 701</sub>
+<sub>`api.ogt` line 702</sub>
 
 ```ogt
 column bool {
@@ -217,7 +217,7 @@ column bool {
 }
 ```
 
-<sub>`api.ogt` line 708</sub>
+<sub>`api.ogt` line 709</sub>
 
 ```ogt
 column Vector2 {
@@ -228,7 +228,7 @@ column Vector2 {
 }
 ```
 
-<sub>`api.ogt` line 715</sub>
+<sub>`api.ogt` line 716</sub>
 
 ```ogt
 column Vector3 {
@@ -239,7 +239,7 @@ column Vector3 {
 }
 ```
 
-<sub>`api.ogt` line 722</sub>
+<sub>`api.ogt` line 723</sub>
 
 ```ogt
 column Quaternion {
@@ -250,7 +250,7 @@ column Quaternion {
 }
 ```
 
-<sub>`api.ogt` line 729</sub>
+<sub>`api.ogt` line 730</sub>
 
 ```ogt
 column Matrix4 {
@@ -261,7 +261,7 @@ column Matrix4 {
 }
 ```
 
-<sub>`api.ogt` line 736</sub>
+<sub>`api.ogt` line 737</sub>
 
 ```ogt
 column Color {
@@ -272,7 +272,7 @@ column Color {
 }
 ```
 
-<sub>`api.ogt` line 743</sub>
+<sub>`api.ogt` line 744</sub>
 
 ```ogt
 column str {
@@ -284,7 +284,7 @@ column str {
 }
 ```
 
-<sub>`api.ogt` line 750</sub>
+<sub>`api.ogt` line 751</sub>
 
 ```ogt
 column list {
@@ -294,4 +294,4 @@ column list {
 }
 ```
 
-<sub>`api.ogt` line 758</sub>
+<sub>`api.ogt` line 759</sub>

@@ -73,8 +73,6 @@ export const Drive = defineSystem(
         }
         v.linear[i * 3] = vx;
         v.linear[i * 3 + 2] = vz;
-        c.vx[i] = vx;
-        c.vz[i] = vz;
         // Turn to face the way it goes (a spin about +y, eased).
         const sp = Math.hypot(vx, vz);
         const target = sp > 0.6 ? Math.atan2(vx, vz) : yaw;
@@ -112,9 +110,10 @@ export const Bumps = defineSystem(
       }
       nx /= l;
       nz /= l;
-      // How fast they closed: the velocities Drive handed the step, not og.Velocity, which by this
-      // tick holds the contact's answer (they already part: FINDINGS.md #9).
-      const closing = Math.max(0, (ca.vx - cb.vx) * nx + (ca.vz - cb.vz) * nz);
+      // How fast they closed: the event's velocity of a relative to b at the contact as the step
+      // began, along the flat line (og.Velocity by this tick holds the solver's answer: FINDINGS.md #9).
+      const rv = e.relativeVelocity;
+      const closing = Math.max(0, rv.x * nx + rv.z * nz);
       const shove = Math.max(t.bumpMin, closing * t.bumpShove);
       const aDash = ca.dash > 0, bDash = cb.dash > 0;
       // The one a dash hit takes most of it, and is stunned; the dasher recoils a little.

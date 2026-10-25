@@ -1671,16 +1671,24 @@ there. `world.set(e, og.Velocity, ...)` refuses on
 an entity without one (a body in `start`, before its first step):
 `world.insert` it there, which adds and sets it.
 
-`og.CollisionStarted` is read on the tick after the physics step. Its
-`normal` points from `a` to `b`; the bodies' `og.Velocity` already contains
-the solver's outgoing velocity, not their incoming impact velocity. Do
-not derive impact weight from those velocities: bodies may already be
-separating. There is no contact-time velocity or impulse on this event.
-For driven bodies, retain the velocity handed to physics in a component
-and read that cache before the next drive system overwrites it (as in
-`examples/rumpus-isle/src/critters.ts`). Project `velocityA - velocityB`
-onto the event normal for closing speed. This estimates linear approach
-speed, not contact-point speed from rotation or forces during the step.
+`og.CollisionStarted` is read on the tick after the physics step, when
+the bodies' `og.Velocity` already holds the solver's answer (they may
+already be parting), so never weigh a hit from og.Velocity. The event
+carries the hit itself, taken in the step that made the contact. `a` is
+the lower id, and `normal` points from `a` to `b`. `point` is the deepest
+contact point.
+`relativeVelocity` (m/s) is `a`'s velocity relative to `b` at `point` as
+that step began: each body's linear velocity plus its spin crossed with
+the point's offset from its centre of mass. A static collider counts as
+still, and a kinematic body moves at its velocity. Its part along
+`normal` is the closing speed:
+`Math.max(0, rv.x * n.x + rv.y * n.y + rv.z * n.z)`, which is positive
+while they approach. `impulse` (N·s, at least 0) is the normal impulse the
+solver gave the pair in that step, summed over substeps and contact points:
+`b` took `impulse` along `normal` and `a` the same against it, so heavier
+bodies hitting give more. Scale feedback on the closing speed (how fast)
+or the impulse (how hard, mass included), as
+`examples/rumpus-isle/src/critters.ts` does for its bumps.
 
 ```ts
 const hit = og.physics.raycast(world, { origin: eye, direction: { x: 0, y: 0, z: -1 }, maxDistance: 30, filter: { mask: 0b10, exclude: player } });

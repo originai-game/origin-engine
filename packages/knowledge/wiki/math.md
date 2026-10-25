@@ -14,7 +14,7 @@ module math {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 36</sub>
+<sub>`api.ogt` line 37</sub>
 
 ## Contents
 
@@ -69,7 +69,7 @@ const vec3: Vector3Math
 value vec3 Vector3Math "Vector3's pure functions: `vec3.add(a, b)`, `vec3.normalize(v)`, `vec3.applyQuaternion(v, q)`."
 ```
 
-<sub>`api.ogt` line 646</sub>
+<sub>`api.ogt` line 647</sub>
 
 <a id="value-vec2"></a>
 
@@ -85,7 +85,7 @@ const vec2: Vector2Math
 value vec2 Vector2Math "Vector2's pure functions: `vec2.add(a, b)`, `vec2.rotateAround(v, c, angle)`."
 ```
 
-<sub>`api.ogt` line 647</sub>
+<sub>`api.ogt` line 648</sub>
 
 <a id="value-quat"></a>
 
@@ -101,7 +101,7 @@ const quat: QuaternionMath
 value quat QuaternionMath "Quaternion's pure functions: `quat.multiply(a, b)`, `quat.slerp(a, b, t)`, `quat.fromEuler({ x, y, z })`."
 ```
 
-<sub>`api.ogt` line 648</sub>
+<sub>`api.ogt` line 649</sub>
 
 <a id="value-mat4"></a>
 
@@ -117,7 +117,7 @@ const mat4: Matrix4Math
 value mat4 Matrix4Math "Matrix4's pure functions: `mat4.multiply(a, b)`, `mat4.invert(m)`, `mat4.transformPoint(m, p)`."
 ```
 
-<sub>`api.ogt` line 649</sub>
+<sub>`api.ogt` line 650</sub>
 
 <a id="value-box3"></a>
 
@@ -133,7 +133,7 @@ const box3: Box3Math
 value box3 Box3Math "Box3's pure functions: `box3.fromPoints(points)`, `box3.intersectsBox(a, b)`."
 ```
 
-<sub>`api.ogt` line 650</sub>
+<sub>`api.ogt` line 651</sub>
 
 <a id="value-sphere"></a>
 
@@ -149,7 +149,7 @@ const sphere: SphereMath
 value sphere SphereMath "Sphere's pure functions: `sphere.containsPoint(s, p)`."
 ```
 
-<sub>`api.ogt` line 651</sub>
+<sub>`api.ogt` line 652</sub>
 
 <a id="value-plane"></a>
 
@@ -165,7 +165,7 @@ const plane: PlaneMath
 value plane PlaneMath "Plane's pure functions: `plane.distanceToPoint(pl, p)`."
 ```
 
-<sub>`api.ogt` line 652</sub>
+<sub>`api.ogt` line 653</sub>
 
 <a id="value-frustum"></a>
 
@@ -181,7 +181,7 @@ const frustum: FrustumMath
 value frustum FrustumMath "Frustum's pure functions: `frustum.fromCamera(camera, aspect)`, `frustum.intersectsBox(f, box)`."
 ```
 
-<sub>`api.ogt` line 653</sub>
+<sub>`api.ogt` line 654</sub>
 
 <a id="value-ray"></a>
 
@@ -197,7 +197,7 @@ const ray: RayMath
 value ray RayMath "Ray's pure functions: `ray.intersectBox(r, box)`, `ray.intersectTriangle(r, a, b, c)`."
 ```
 
-<sub>`api.ogt` line 654</sub>
+<sub>`api.ogt` line 655</sub>
 
 <a id="value-color"></a>
 
@@ -213,7 +213,7 @@ const color: ColorMath
 value color ColorMath "Color's pure functions: `color.fromHex(0xff8800)`, `color.toHex(c)`, `color.fromHsl(h, s, l)`."
 ```
 
-<sub>`api.ogt` line 655</sub>
+<sub>`api.ogt` line 656</sub>
 
 ## Interfaces
 
@@ -232,7 +232,7 @@ interface Vector3Math {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 111</sub>
+<sub>`api.ogt` line 112</sub>
 
 <a id="member-Vector3Math-add"></a>
 
@@ -263,7 +263,7 @@ fn add {
 }
 ```
 
-<sub>`api.ogt` line 114</sub>
+<sub>`api.ogt` line 115</sub>
 
 <a id="member-Vector3Math-sub"></a>
 
@@ -294,7 +294,7 @@ fn sub {
 }
 ```
 
-<sub>`api.ogt` line 121</sub>
+<sub>`api.ogt` line 122</sub>
 
 <a id="member-Vector3Math-scale"></a>
 
@@ -325,7 +325,7 @@ fn scale {
 }
 ```
 
-<sub>`api.ogt` line 128</sub>
+<sub>`api.ogt` line 129</sub>
 
 <a id="member-Vector3Math-dot"></a>
 
@@ -356,7 +356,7 @@ fn dot {
 }
 ```
 
-<sub>`api.ogt` line 135</sub>
+<sub>`api.ogt` line 136</sub>
 
 <a id="member-Vector3Math-cross"></a>
 
@@ -387,7 +387,7 @@ fn cross {
 }
 ```
 
-<sub>`api.ogt` line 142</sub>
+<sub>`api.ogt` line 143</sub>
 
 <a id="member-Vector3Math-length"></a>
 
@@ -416,7 +416,7 @@ fn length {
 }
 ```
 
-<sub>`api.ogt` line 149</sub>
+<sub>`api.ogt` line 150</sub>
 
 <a id="member-Vector3Math-normalize"></a>
 
@@ -445,7 +445,7 @@ fn normalize {
 }
 ```
 
-<sub>`api.ogt` line 155</sub>
+<sub>`api.ogt` line 156</sub>
 
 <a id="member-Vector3Math-lerp"></a>
 
@@ -478,7 +478,7 @@ fn lerp {
 }
 ```
 
-<sub>`api.ogt` line 161</sub>
+<sub>`api.ogt` line 162</sub>
 
 <a id="member-Vector3Math-distance"></a>
 
@@ -509,7 +509,7 @@ fn distance {
 }
 ```
 
-<sub>`api.ogt` line 169</sub>
+<sub>`api.ogt` line 170</sub>
 
 <a id="member-Vector3Math-applyQuaternion"></a>
 
@@ -540,7 +540,7 @@ fn applyQuaternion {
 }
 ```
 
-<sub>`api.ogt` line 176</sub>
+<sub>`api.ogt` line 177</sub>
 
 <a id="type-Vector2Math"></a>
 
@@ -554,7 +554,7 @@ interface Vector2Math {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 185</sub>
+<sub>`api.ogt` line 186</sub>
 
 <a id="member-Vector2Math-add"></a>
 
@@ -585,7 +585,7 @@ fn add {
 }
 ```
 
-<sub>`api.ogt` line 187</sub>
+<sub>`api.ogt` line 188</sub>
 
 <a id="member-Vector2Math-sub"></a>
 
@@ -616,7 +616,7 @@ fn sub {
 }
 ```
 
-<sub>`api.ogt` line 194</sub>
+<sub>`api.ogt` line 195</sub>
 
 <a id="member-Vector2Math-scale"></a>
 
@@ -647,7 +647,7 @@ fn scale {
 }
 ```
 
-<sub>`api.ogt` line 201</sub>
+<sub>`api.ogt` line 202</sub>
 
 <a id="member-Vector2Math-dot"></a>
 
@@ -678,7 +678,7 @@ fn dot {
 }
 ```
 
-<sub>`api.ogt` line 208</sub>
+<sub>`api.ogt` line 209</sub>
 
 <a id="member-Vector2Math-cross"></a>
 
@@ -709,7 +709,7 @@ fn cross {
 }
 ```
 
-<sub>`api.ogt` line 215</sub>
+<sub>`api.ogt` line 216</sub>
 
 <a id="member-Vector2Math-length"></a>
 
@@ -738,7 +738,7 @@ fn length {
 }
 ```
 
-<sub>`api.ogt` line 222</sub>
+<sub>`api.ogt` line 223</sub>
 
 <a id="member-Vector2Math-normalize"></a>
 
@@ -767,7 +767,7 @@ fn normalize {
 }
 ```
 
-<sub>`api.ogt` line 228</sub>
+<sub>`api.ogt` line 229</sub>
 
 <a id="member-Vector2Math-lerp"></a>
 
@@ -800,7 +800,7 @@ fn lerp {
 }
 ```
 
-<sub>`api.ogt` line 234</sub>
+<sub>`api.ogt` line 235</sub>
 
 <a id="member-Vector2Math-distance"></a>
 
@@ -831,7 +831,7 @@ fn distance {
 }
 ```
 
-<sub>`api.ogt` line 242</sub>
+<sub>`api.ogt` line 243</sub>
 
 <a id="member-Vector2Math-rotateAround"></a>
 
@@ -864,7 +864,7 @@ fn rotateAround {
 }
 ```
 
-<sub>`api.ogt` line 249</sub>
+<sub>`api.ogt` line 250</sub>
 
 <a id="type-QuaternionMath"></a>
 
@@ -878,7 +878,7 @@ interface QuaternionMath {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 259</sub>
+<sub>`api.ogt` line 260</sub>
 
 <a id="member-QuaternionMath-multiply"></a>
 
@@ -909,7 +909,7 @@ fn multiply {
 }
 ```
 
-<sub>`api.ogt` line 261</sub>
+<sub>`api.ogt` line 262</sub>
 
 <a id="member-QuaternionMath-slerp"></a>
 
@@ -942,7 +942,7 @@ fn slerp {
 }
 ```
 
-<sub>`api.ogt` line 268</sub>
+<sub>`api.ogt` line 269</sub>
 
 <a id="member-QuaternionMath-fromEuler"></a>
 
@@ -975,7 +975,7 @@ fn fromEuler {
 }
 ```
 
-<sub>`api.ogt` line 276</sub>
+<sub>`api.ogt` line 277</sub>
 
 <a id="member-QuaternionMath-invert"></a>
 
@@ -1004,7 +1004,7 @@ fn invert {
 }
 ```
 
-<sub>`api.ogt` line 285</sub>
+<sub>`api.ogt` line 286</sub>
 
 <a id="member-QuaternionMath-rotate"></a>
 
@@ -1035,7 +1035,7 @@ fn rotate {
 }
 ```
 
-<sub>`api.ogt` line 291</sub>
+<sub>`api.ogt` line 292</sub>
 
 <a id="type-Matrix4Math"></a>
 
@@ -1049,7 +1049,7 @@ interface Matrix4Math {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 300</sub>
+<sub>`api.ogt` line 301</sub>
 
 <a id="member-Matrix4Math-multiply"></a>
 
@@ -1080,7 +1080,7 @@ fn multiply {
 }
 ```
 
-<sub>`api.ogt` line 302</sub>
+<sub>`api.ogt` line 303</sub>
 
 <a id="member-Matrix4Math-invert"></a>
 
@@ -1109,7 +1109,7 @@ fn invert {
 }
 ```
 
-<sub>`api.ogt` line 309</sub>
+<sub>`api.ogt` line 310</sub>
 
 <a id="member-Matrix4Math-transformPoint"></a>
 
@@ -1140,7 +1140,7 @@ fn transformPoint {
 }
 ```
 
-<sub>`api.ogt` line 315</sub>
+<sub>`api.ogt` line 316</sub>
 
 <a id="member-Matrix4Math-transformDirection"></a>
 
@@ -1171,7 +1171,7 @@ fn transformDirection {
 }
 ```
 
-<sub>`api.ogt` line 322</sub>
+<sub>`api.ogt` line 323</sub>
 
 <a id="member-Matrix4Math-compose"></a>
 
@@ -1204,7 +1204,7 @@ fn compose {
 }
 ```
 
-<sub>`api.ogt` line 329</sub>
+<sub>`api.ogt` line 330</sub>
 
 <a id="type-Box3Math"></a>
 
@@ -1218,7 +1218,7 @@ interface Box3Math {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 339</sub>
+<sub>`api.ogt` line 340</sub>
 
 <a id="member-Box3Math-empty"></a>
 
@@ -1242,7 +1242,7 @@ fn empty {
 }
 ```
 
-<sub>`api.ogt` line 341</sub>
+<sub>`api.ogt` line 342</sub>
 
 <a id="member-Box3Math-fromPoints"></a>
 
@@ -1271,7 +1271,7 @@ fn fromPoints {
 }
 ```
 
-<sub>`api.ogt` line 346</sub>
+<sub>`api.ogt` line 347</sub>
 
 <a id="member-Box3Math-isEmpty"></a>
 
@@ -1300,7 +1300,7 @@ fn isEmpty {
 }
 ```
 
-<sub>`api.ogt` line 352</sub>
+<sub>`api.ogt` line 353</sub>
 
 <a id="member-Box3Math-containsPoint"></a>
 
@@ -1331,7 +1331,7 @@ fn containsPoint {
 }
 ```
 
-<sub>`api.ogt` line 358</sub>
+<sub>`api.ogt` line 359</sub>
 
 <a id="member-Box3Math-containsBox"></a>
 
@@ -1362,7 +1362,7 @@ fn containsBox {
 }
 ```
 
-<sub>`api.ogt` line 365</sub>
+<sub>`api.ogt` line 366</sub>
 
 <a id="member-Box3Math-intersectsBox"></a>
 
@@ -1393,7 +1393,7 @@ fn intersectsBox {
 }
 ```
 
-<sub>`api.ogt` line 372</sub>
+<sub>`api.ogt` line 373</sub>
 
 <a id="member-Box3Math-intersectsSphere"></a>
 
@@ -1424,7 +1424,7 @@ fn intersectsSphere {
 }
 ```
 
-<sub>`api.ogt` line 379</sub>
+<sub>`api.ogt` line 380</sub>
 
 <a id="member-Box3Math-expandByPoint"></a>
 
@@ -1455,7 +1455,7 @@ fn expandByPoint {
 }
 ```
 
-<sub>`api.ogt` line 386</sub>
+<sub>`api.ogt` line 387</sub>
 
 <a id="member-Box3Math-union"></a>
 
@@ -1486,7 +1486,7 @@ fn union {
 }
 ```
 
-<sub>`api.ogt` line 393</sub>
+<sub>`api.ogt` line 394</sub>
 
 <a id="member-Box3Math-getCenter"></a>
 
@@ -1515,7 +1515,7 @@ fn getCenter {
 }
 ```
 
-<sub>`api.ogt` line 400</sub>
+<sub>`api.ogt` line 401</sub>
 
 <a id="member-Box3Math-getSize"></a>
 
@@ -1544,7 +1544,7 @@ fn getSize {
 }
 ```
 
-<sub>`api.ogt` line 406</sub>
+<sub>`api.ogt` line 407</sub>
 
 <a id="member-Box3Math-applyMatrix4"></a>
 
@@ -1575,7 +1575,7 @@ fn applyMatrix4 {
 }
 ```
 
-<sub>`api.ogt` line 412</sub>
+<sub>`api.ogt` line 413</sub>
 
 <a id="type-SphereMath"></a>
 
@@ -1589,7 +1589,7 @@ interface SphereMath {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 421</sub>
+<sub>`api.ogt` line 422</sub>
 
 <a id="member-SphereMath-fromPoints"></a>
 
@@ -1618,7 +1618,7 @@ fn fromPoints {
 }
 ```
 
-<sub>`api.ogt` line 423</sub>
+<sub>`api.ogt` line 424</sub>
 
 <a id="member-SphereMath-containsPoint"></a>
 
@@ -1649,7 +1649,7 @@ fn containsPoint {
 }
 ```
 
-<sub>`api.ogt` line 429</sub>
+<sub>`api.ogt` line 430</sub>
 
 <a id="member-SphereMath-distanceToPoint"></a>
 
@@ -1680,7 +1680,7 @@ fn distanceToPoint {
 }
 ```
 
-<sub>`api.ogt` line 436</sub>
+<sub>`api.ogt` line 437</sub>
 
 <a id="member-SphereMath-intersectsSphere"></a>
 
@@ -1711,7 +1711,7 @@ fn intersectsSphere {
 }
 ```
 
-<sub>`api.ogt` line 443</sub>
+<sub>`api.ogt` line 444</sub>
 
 <a id="member-SphereMath-intersectsBox"></a>
 
@@ -1742,7 +1742,7 @@ fn intersectsBox {
 }
 ```
 
-<sub>`api.ogt` line 450</sub>
+<sub>`api.ogt` line 451</sub>
 
 <a id="member-SphereMath-getBoundingBox"></a>
 
@@ -1771,7 +1771,7 @@ fn getBoundingBox {
 }
 ```
 
-<sub>`api.ogt` line 457</sub>
+<sub>`api.ogt` line 458</sub>
 
 <a id="member-SphereMath-applyMatrix4"></a>
 
@@ -1802,7 +1802,7 @@ fn applyMatrix4 {
 }
 ```
 
-<sub>`api.ogt` line 463</sub>
+<sub>`api.ogt` line 464</sub>
 
 <a id="type-PlaneMath"></a>
 
@@ -1816,7 +1816,7 @@ interface PlaneMath {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 472</sub>
+<sub>`api.ogt` line 473</sub>
 
 <a id="member-PlaneMath-fromNormalAndCoplanarPoint"></a>
 
@@ -1847,7 +1847,7 @@ fn fromNormalAndCoplanarPoint {
 }
 ```
 
-<sub>`api.ogt` line 474</sub>
+<sub>`api.ogt` line 475</sub>
 
 <a id="member-PlaneMath-fromCoplanarPoints"></a>
 
@@ -1880,7 +1880,7 @@ fn fromCoplanarPoints {
 }
 ```
 
-<sub>`api.ogt` line 481</sub>
+<sub>`api.ogt` line 482</sub>
 
 <a id="member-PlaneMath-normalize"></a>
 
@@ -1909,7 +1909,7 @@ fn normalize {
 }
 ```
 
-<sub>`api.ogt` line 489</sub>
+<sub>`api.ogt` line 490</sub>
 
 <a id="member-PlaneMath-distanceToPoint"></a>
 
@@ -1940,7 +1940,7 @@ fn distanceToPoint {
 }
 ```
 
-<sub>`api.ogt` line 495</sub>
+<sub>`api.ogt` line 496</sub>
 
 <a id="member-PlaneMath-projectPoint"></a>
 
@@ -1971,7 +1971,7 @@ fn projectPoint {
 }
 ```
 
-<sub>`api.ogt` line 502</sub>
+<sub>`api.ogt` line 503</sub>
 
 <a id="member-PlaneMath-intersectsBox"></a>
 
@@ -2002,7 +2002,7 @@ fn intersectsBox {
 }
 ```
 
-<sub>`api.ogt` line 509</sub>
+<sub>`api.ogt` line 510</sub>
 
 <a id="member-PlaneMath-intersectsSphere"></a>
 
@@ -2033,7 +2033,7 @@ fn intersectsSphere {
 }
 ```
 
-<sub>`api.ogt` line 516</sub>
+<sub>`api.ogt` line 517</sub>
 
 <a id="type-FrustumMath"></a>
 
@@ -2047,7 +2047,7 @@ interface FrustumMath {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 525</sub>
+<sub>`api.ogt` line 526</sub>
 
 <a id="member-FrustumMath-fromProjectionMatrix"></a>
 
@@ -2076,7 +2076,7 @@ fn fromProjectionMatrix {
 }
 ```
 
-<sub>`api.ogt` line 527</sub>
+<sub>`api.ogt` line 528</sub>
 
 <a id="member-FrustumMath-fromCamera"></a>
 
@@ -2107,7 +2107,7 @@ fn fromCamera {
 }
 ```
 
-<sub>`api.ogt` line 533</sub>
+<sub>`api.ogt` line 534</sub>
 
 <a id="member-FrustumMath-containsPoint"></a>
 
@@ -2138,7 +2138,7 @@ fn containsPoint {
 }
 ```
 
-<sub>`api.ogt` line 540</sub>
+<sub>`api.ogt` line 541</sub>
 
 <a id="member-FrustumMath-intersectsBox"></a>
 
@@ -2169,7 +2169,7 @@ fn intersectsBox {
 }
 ```
 
-<sub>`api.ogt` line 547</sub>
+<sub>`api.ogt` line 548</sub>
 
 <a id="member-FrustumMath-intersectsSphere"></a>
 
@@ -2200,7 +2200,7 @@ fn intersectsSphere {
 }
 ```
 
-<sub>`api.ogt` line 554</sub>
+<sub>`api.ogt` line 555</sub>
 
 <a id="type-RayMath"></a>
 
@@ -2214,7 +2214,7 @@ interface RayMath {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 563</sub>
+<sub>`api.ogt` line 564</sub>
 
 <a id="member-RayMath-at"></a>
 
@@ -2245,7 +2245,7 @@ fn at {
 }
 ```
 
-<sub>`api.ogt` line 565</sub>
+<sub>`api.ogt` line 566</sub>
 
 <a id="member-RayMath-distanceToPoint"></a>
 
@@ -2276,7 +2276,7 @@ fn distanceToPoint {
 }
 ```
 
-<sub>`api.ogt` line 572</sub>
+<sub>`api.ogt` line 573</sub>
 
 <a id="member-RayMath-intersectBox"></a>
 
@@ -2307,7 +2307,7 @@ fn intersectBox {
 }
 ```
 
-<sub>`api.ogt` line 579</sub>
+<sub>`api.ogt` line 580</sub>
 
 <a id="member-RayMath-intersectSphere"></a>
 
@@ -2338,7 +2338,7 @@ fn intersectSphere {
 }
 ```
 
-<sub>`api.ogt` line 586</sub>
+<sub>`api.ogt` line 587</sub>
 
 <a id="member-RayMath-intersectPlane"></a>
 
@@ -2369,7 +2369,7 @@ fn intersectPlane {
 }
 ```
 
-<sub>`api.ogt` line 593</sub>
+<sub>`api.ogt` line 594</sub>
 
 <a id="member-RayMath-intersectTriangle"></a>
 
@@ -2408,7 +2408,7 @@ fn intersectTriangle {
 }
 ```
 
-<sub>`api.ogt` line 600</sub>
+<sub>`api.ogt` line 601</sub>
 
 <a id="type-ColorMath"></a>
 
@@ -2422,7 +2422,7 @@ interface ColorMath {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 614</sub>
+<sub>`api.ogt` line 615</sub>
 
 <a id="member-ColorMath-fromHex"></a>
 
@@ -2451,7 +2451,7 @@ fn fromHex {
 }
 ```
 
-<sub>`api.ogt` line 616</sub>
+<sub>`api.ogt` line 617</sub>
 
 <a id="member-ColorMath-toHex"></a>
 
@@ -2480,7 +2480,7 @@ fn toHex {
 }
 ```
 
-<sub>`api.ogt` line 622</sub>
+<sub>`api.ogt` line 623</sub>
 
 <a id="member-ColorMath-lerp"></a>
 
@@ -2513,7 +2513,7 @@ fn lerp {
 }
 ```
 
-<sub>`api.ogt` line 628</sub>
+<sub>`api.ogt` line 629</sub>
 
 <a id="member-ColorMath-fromHsl"></a>
 
@@ -2546,7 +2546,7 @@ fn fromHsl {
 }
 ```
 
-<sub>`api.ogt` line 636</sub>
+<sub>`api.ogt` line 637</sub>
 
 ## Types
 
@@ -2569,7 +2569,7 @@ struct Vector2 {
 }
 ```
 
-<sub>`api.ogt` line 41</sub>
+<sub>`api.ogt` line 42</sub>
 
 <a id="type-Vector3"></a>
 
@@ -2592,7 +2592,7 @@ struct Vector3 {
 }
 ```
 
-<sub>`api.ogt` line 47</sub>
+<sub>`api.ogt` line 48</sub>
 
 <a id="type-Quaternion"></a>
 
@@ -2619,7 +2619,7 @@ struct Quaternion {
 }
 ```
 
-<sub>`api.ogt` line 54</sub>
+<sub>`api.ogt` line 55</sub>
 
 <a id="type-Matrix4"></a>
 
@@ -2640,7 +2640,7 @@ struct Matrix4 {
 }
 ```
 
-<sub>`api.ogt` line 64</sub>
+<sub>`api.ogt` line 65</sub>
 
 <a id="type-Color"></a>
 
@@ -2663,7 +2663,7 @@ struct Color {
 }
 ```
 
-<sub>`api.ogt` line 71</sub>
+<sub>`api.ogt` line 72</sub>
 
 <a id="type-Ray"></a>
 
@@ -2684,7 +2684,7 @@ struct Ray {
 }
 ```
 
-<sub>`api.ogt` line 78</sub>
+<sub>`api.ogt` line 79</sub>
 
 <a id="type-Box3"></a>
 
@@ -2705,7 +2705,7 @@ struct Box3 {
 }
 ```
 
-<sub>`api.ogt` line 84</sub>
+<sub>`api.ogt` line 85</sub>
 
 <a id="type-Sphere"></a>
 
@@ -2728,7 +2728,7 @@ struct Sphere {
 }
 ```
 
-<sub>`api.ogt` line 90</sub>
+<sub>`api.ogt` line 91</sub>
 
 <a id="type-Plane"></a>
 
@@ -2751,7 +2751,7 @@ struct Plane {
 }
 ```
 
-<sub>`api.ogt` line 98</sub>
+<sub>`api.ogt` line 99</sub>
 
 <a id="type-Frustum"></a>
 
@@ -2770,4 +2770,4 @@ struct Frustum {
 }
 ```
 
-<sub>`api.ogt` line 106</sub>
+<sub>`api.ogt` line 107</sub>

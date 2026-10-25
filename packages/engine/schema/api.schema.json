@@ -17,6 +17,7 @@
     "bytes": "bytes",
     "kg": "kilograms",
     "newton": "newtons: the force that gives a kilogram one metre per second squared",
+    "newtonSecond": "newton-seconds: an impulse, the momentum that changes a kilogram's velocity by one metre per second",
     "mps": "metres per second",
     "mps2": "metres per second squared",
     "radps": "radians per second",
@@ -20863,7 +20864,7 @@
     "CollisionStarted": {
       "x-og-kind": "event",
       "x-og-module": "physics",
-      "description": "Two solid colliders started touching during the tick.",
+      "description": "Two solid colliders started touching during the tick. Read in the tick after, when og.Velocity already holds the solver's answer (the bodies parting): how hard they met is `impulse` and `relativeVelocity`, taken in the step itself.",
       "type": "object",
       "properties": {
         "a": {
@@ -20876,18 +20877,32 @@
         },
         "point": {
           "$ref": "#/$defs/Vector3",
-          "description": "The deepest contact point in world space (z is 0 in 2D)."
+          "description": "The deepest contact point in world space (z is 0 in 2D).",
+          "x-og-unit": "m"
         },
         "normal": {
           "$ref": "#/$defs/Vector3",
           "description": "The contact normal, from a towards b."
+        },
+        "impulse": {
+          "type": "number",
+          "description": "The normal impulse the solver gave the pair in the step that made the contact (every substep, every contact point), in newton-seconds: b took `impulse` along `normal`, a the same against it. Its momentum answer to the hit, at least 0; heavier and faster hits give more.",
+          "minimum": 0,
+          "x-og-unit": "newtonSecond"
+        },
+        "relativeVelocity": {
+          "$ref": "#/$defs/Vector3",
+          "description": "a's velocity relative to b at `point` as that step began, before the solver answered: each body's linear velocity plus its angular velocity crossed with the point's offset from its centre of mass (a static collider is still; z is 0 in 2D). Along `normal` it is the closing speed, positive while they approach: max(0, relativeVelocity · normal) is how hard they hit, in m/s.",
+          "x-og-unit": "mps"
         }
       },
       "required": [
         "a",
         "b",
         "point",
-        "normal"
+        "normal",
+        "impulse",
+        "relativeVelocity"
       ],
       "additionalProperties": false
     },

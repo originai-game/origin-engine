@@ -190,12 +190,6 @@ export const Critter = defineComponent("Critter", {
   stun: u32(0),
   /** Ticks since it went into the sea (berry round: back on the island after a while). */
   sunk: u32(0),
-  /**
-   * The velocity Drive handed the step (m/s). og.CollisionStarted is read the tick after the step,
-   * when og.Velocity already holds the contact's answer, so this is how hard a bump closed (FINDINGS.md #9).
-   */
-  vx: f32(0),
-  vz: f32(0),
   /** The material of its body, made in start in its seat's colour. */
   body: Material(),
   /** The body's mesh entity (squashed on bumps). */

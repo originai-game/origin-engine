@@ -7583,6 +7583,20 @@
             "y": 0,
             "z": 0
           }
+        },
+        {
+          "name": "impulse",
+          "type": "f32",
+          "default": 0
+        },
+        {
+          "name": "relativeVelocity",
+          "type": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
         }
       ]
     },
