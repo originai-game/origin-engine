@@ -1583,8 +1583,8 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState) {
 
 thread_local! {
     /// Viewports set by og.ui.previewViewport, by engine: they win over the host's.
-    static PREVIEW: std::cell::RefCell<std::collections::BTreeMap<u32, Viewport>> =
-        const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
+    static PREVIEW: std::cell::RefCell<og_core::IdMap<u32, Viewport>> =
+        const { std::cell::RefCell::new(og_core::IdMap::new()) };
 }
 
 fn opt_f(v: &Value, k: &str) -> Option<f32> {

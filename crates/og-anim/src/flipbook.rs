@@ -6,11 +6,11 @@
 //! stores (with Aseprite and TexturePacker frames and tags resolved into
 //! `frame` lines and clips), and what [`FlipbookSheet::parse`] reads back.
 
+use og_core::IdMap;
 use og_core::ogt::{Document, Entry};
 use og_core::{Error, ErrorKind, Reflect, Result, Str64};
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
 use std::any::Any;
-use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 /// The system's and the state block's name.
@@ -601,8 +601,8 @@ pub(crate) struct Playback {
 
 #[derive(Default)]
 struct Shared {
-    sheets: BTreeMap<u64, Arc<FlipbookSheet>>,
-    playback: BTreeMap<u64, Playback>,
+    sheets: IdMap<u64, Arc<FlipbookSheet>>,
+    playback: IdMap<u64, Playback>,
 }
 
 fn lock(m: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
@@ -797,7 +797,7 @@ impl StateBlock for FlipState {
         if bytes.len() != 4 + n * 40 {
             return Err(bad());
         }
-        let mut map = BTreeMap::new();
+        let mut map = IdMap::new();
         for i in 0..n {
             let b = &bytes[4 + i * 40..4 + (i + 1) * 40];
             let u64_ = |o: usize| u64::from_le_bytes(b[o..o + 8].try_into().expect("8"));
@@ -818,7 +818,7 @@ impl StateBlock for FlipState {
     fn apply(&mut self, decoded: Option<Box<dyn Any + Send>>) {
         lock(&self.0).playback = decoded
             .map(|d| {
-                *d.downcast::<BTreeMap<u64, Playback>>()
+                *d.downcast::<IdMap<u64, Playback>>()
                     .expect("decoded by FlipState")
             })
             .unwrap_or_default();

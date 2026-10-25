@@ -18,6 +18,7 @@
 
 use super::codec::{Layout, Rec, Row, Slot as FieldSlot};
 use glam::{Mat4, Quat, Vec3};
+use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, World};
 use og_render::{FontHandle, MaterialHandle, MeshHandle, RenderScene};
 use serde_json::Value;
@@ -198,13 +199,13 @@ pub(crate) struct RenderState {
     /// Geometry handles (glTF primitives) by index.
     pub geometries: Vec<MeshHandle>,
     /// Model parts by asset handle bits.
-    pub models: BTreeMap<u64, Parts>,
+    pub models: IdMap<u64, Parts>,
     /// The models' levels of detail by asset handle bits (models with one
     /// level have none).
-    pub model_lods: BTreeMap<u64, ModelLods>,
+    pub model_lods: IdMap<u64, ModelLods>,
     /// The level each og.Model entity drew last (by entity bits): the
     /// hysteresis of the next choice, and what dump_entity reports.
-    pub lod_drawn: BTreeMap<u64, u8>,
+    pub lod_drawn: IdMap<u64, u8>,
     /// The baked reflection probes' captures tried (`super::probes`).
     pub probe_bakes: super::probes::ProbeBakes,
     /// Fonts by Font handle index.
@@ -245,7 +246,7 @@ pub(crate) struct RenderState {
     pub ui_pages: BTreeMap<FontHandle, Vec<FontHandle>>,
     /// Fonts (by index into `fonts`) that render missing characters at run
     /// time from their file (`super::glyphs`).
-    pub runtime_fonts: BTreeMap<usize, super::glyphs::RuntimeFont>,
+    pub runtime_fonts: IdMap<usize, super::glyphs::RuntimeFont>,
     /// Warnings of the last extraction, for the engine's log.
     pub notes: Vec<String>,
     /// The characters a frame drew that their fonts lack, each warned of
@@ -280,9 +281,9 @@ impl RenderState {
             backend: None,
             materials: Vec::new(),
             geometries: Vec::new(),
-            models: BTreeMap::new(),
-            model_lods: BTreeMap::new(),
-            lod_drawn: BTreeMap::new(),
+            models: IdMap::new(),
+            model_lods: IdMap::new(),
+            lod_drawn: IdMap::new(),
             probe_bakes: Default::default(),
             fonts: Vec::new(),
             texts: Vec::new(),
@@ -302,7 +303,7 @@ impl RenderState {
             ui: None,
             ui_atlas: None,
             ui_pages: BTreeMap::new(),
-            runtime_fonts: BTreeMap::new(),
+            runtime_fonts: IdMap::new(),
             notes: Vec::new(),
             missing_warned: Default::default(),
             feel: Default::default(),
@@ -361,9 +362,9 @@ pub struct Hierarchy {
     /// matrix once composed.
     slots: Vec<Slot>,
     /// Parents by child bits (only entities with `og.Parent`).
-    parent: BTreeMap<u64, u64>,
+    parent: IdMap<u64, u64>,
     /// World matrices of chain members without `og.Transform` (no slot).
-    loose: BTreeMap<u64, Mat4>,
+    loose: IdMap<u64, Mat4>,
     /// World matrices composed since the last read of the world (the
     /// raycast record's cost test counts them).
     pub(crate) composed: usize,
@@ -586,7 +587,7 @@ impl Hierarchy {
             return false;
         }
         self.parent_columns.clear();
-        let mut parent = BTreeMap::new();
+        let mut parent = IdMap::new();
         for (e, b) in &views {
             for (entity, p) in e.iter().zip(b.as_chunks::<8>().0) {
                 let p = u64::from_le_bytes(*p);
@@ -1102,7 +1103,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     };
     let model_lods = std::mem::take(&mut rs.model_lods);
     let last_drawn = std::mem::take(&mut rs.lod_drawn);
-    let mut drawn = BTreeMap::new();
+    let mut drawn = IdMap::new();
     for (e, asset, parts, mut look, bias) in model_parts {
         let m = h.world_of(e);
         let level = match model_lods.get(&asset) {

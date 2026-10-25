@@ -11,9 +11,9 @@
 //! og-core's deterministic `pow`).
 
 use crate::schema_ext::{WaterLine, WaterSurface};
+use og_core::IdMap;
 use og_core::glam::{Vec2, Vec3};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 
 /// A height field's heights (relative to the rest level) and their vertical
 /// velocities, row-major (`resolution` per row, rows along +z), and which
@@ -24,7 +24,7 @@ pub(crate) struct SurfaceState {
     pub size: f32,
     pub heights: Vec<f32>,
     pub velocities: Vec<f32>,
-    pub under: BTreeMap<u64, bool>,
+    pub under: IdMap<u64, bool>,
 }
 
 /// A body as water sees it: its box, velocity and whether it floats.
@@ -68,7 +68,7 @@ impl SurfaceState {
             size: w.size,
             heights: vec![0.0; n * n],
             velocities: vec![0.0; n * n],
-            under: BTreeMap::new(),
+            under: IdMap::new(),
         }
     }
 
@@ -108,7 +108,7 @@ impl SurfaceState {
         let half = self.size * 0.5;
         let mut forces = Vec::new();
         let mut crossings = Vec::new();
-        let mut seen = BTreeMap::new();
+        let mut seen = IdMap::new();
         for f in floaters {
             if f.max.x < centre.x - half
                 || f.min.x > centre.x + half
@@ -200,7 +200,7 @@ pub(crate) struct LineState {
     pub width: f32,
     pub heights: Vec<f32>,
     pub velocities: Vec<f32>,
-    pub under: BTreeMap<u64, bool>,
+    pub under: IdMap<u64, bool>,
 }
 
 impl LineState {
@@ -211,7 +211,7 @@ impl LineState {
             width: w.width,
             heights: vec![0.0; n],
             velocities: vec![0.0; n],
-            under: BTreeMap::new(),
+            under: IdMap::new(),
         }
     }
 
@@ -245,7 +245,7 @@ impl LineState {
         let left_edge = centre.x - self.width * 0.5;
         let mut forces = Vec::new();
         let mut crossings = Vec::new();
-        let mut seen = BTreeMap::new();
+        let mut seen = IdMap::new();
         for f in floaters {
             if f.max.x < left_edge || f.min.x > left_edge + self.width {
                 continue;

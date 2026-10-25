@@ -14,6 +14,7 @@ use super::extract::{Hierarchy, RenderState};
 use super::fx::{color, f, on, resource, rows, u, vec2};
 use super::{ok, ok_void, parse, refuse};
 use glam::{Mat4, Vec2, Vec3};
+use og_core::IdMap;
 use og_ecs::{Entity, World};
 use og_render::{
     Background, Fog, MaterialHandle, MeshData, MeshHandle, Metaballs, ParticleSystem,
@@ -71,7 +72,7 @@ impl AtmoLayouts {
 #[derive(Default)]
 pub(crate) struct AtmoState {
     weather: Option<(Vec<u32>, og_render::EmitterHandle)>,
-    cloths: BTreeMap<u64, MeshHandle>,
+    cloths: IdMap<u64, MeshHandle>,
     cloth_material: Option<MaterialHandle>,
     /// `og.load.shader` handles by load index, and loads by path.
     pub shaders: Vec<og_render::ShaderHandle>,
@@ -79,8 +80,8 @@ pub(crate) struct AtmoState {
     /// Ragdoll rigs by entity (`og.physics.setRagdollRig`), replayed into
     /// a reloaded world's physics, and this frame's palette of each posed
     /// model by entity.
-    pub rigs: BTreeMap<u64, super::physics_ext::KeptRig>,
-    pub palettes: BTreeMap<u64, u32>,
+    pub rigs: IdMap<u64, super::physics_ext::KeptRig>,
+    pub palettes: IdMap<u64, u32>,
 }
 
 /// The particle system id of the weather (no entity has it).
@@ -436,7 +437,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         });
     }
     // 2D water over its spring line.
-    let lines: BTreeMap<u64, Value> = og_core::sort::map(rows(world, layouts.water_line.as_ref()));
+    let lines: IdMap<u64, Value> = IdMap::from_iter(rows(world, layouts.water_line.as_ref()));
     for (e, v) in rows(world, layouts.water_2d.as_ref()) {
         let (Some(line), Some(p)) = (lines.get(&e), physics) else {
             continue;

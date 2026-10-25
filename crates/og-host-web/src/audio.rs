@@ -11,8 +11,8 @@
 //! and `og_web_audio_close` (whether a mixer was open).
 
 use og_audio::{Clock, Mixer};
+use og_core::IdMap;
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use wasm_bindgen::prelude::*;
 
 struct WebAudio {
@@ -24,7 +24,7 @@ struct WebAudio {
 }
 
 thread_local! {
-    static OUTPUTS: RefCell<BTreeMap<u32, WebAudio>> = const { RefCell::new(BTreeMap::new()) };
+    static OUTPUTS: RefCell<IdMap<u32, WebAudio>> = const { RefCell::new(IdMap::new()) };
 }
 
 /// The most audio the mixer may lag the world before it skips ahead (250 ms).

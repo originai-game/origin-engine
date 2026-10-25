@@ -21,10 +21,11 @@
 //! moves them onto its own origin with the clock's reading [`take`]
 //! returns.
 
+use og_core::IdMap;
 use og_ecs::World;
 use serde_json::{Value, json};
 use std::cell::RefCell;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 /// The first thread id of og-lanes' pool threads.
 pub const LANE_THREADS: u32 = 16;
@@ -46,7 +47,7 @@ struct Trace {
 
 thread_local! {
     /// Per engine, while tracing is on.
-    static TRACES: RefCell<BTreeMap<u32, Trace>> = const { RefCell::new(BTreeMap::new()) };
+    static TRACES: RefCell<IdMap<u32, Trace>> = const { RefCell::new(IdMap::new()) };
     /// Loads, for whichever engine takes them first (the assets layer reads
     /// without knowing the engine).
     static LOADS: RefCell<Vec<Value>> = const { RefCell::new(Vec::new()) };

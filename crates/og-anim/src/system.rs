@@ -10,6 +10,7 @@ use crate::pose::{Blend, Fired, Leaf, Pose, RootMotion, stepped};
 use crate::retarget::FootPlants;
 use crate::schema::*;
 use crate::xform::{Trs, nlerp, rotation_arc, unit};
+use og_core::IdMap;
 use og_core::glam::{Mat4, Quat, Vec3};
 use og_core::{Error, ErrorKind, Result, Str64};
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
@@ -181,27 +182,27 @@ struct SpringState {
 /// What the state block holds.
 #[derive(Clone, Debug, Default, PartialEq)]
 struct Saved {
-    states: BTreeMap<u64, EntityState>,
-    locks: BTreeMap<u64, LockState>,
-    springs: BTreeMap<u64, SpringState>,
+    states: IdMap<u64, EntityState>,
+    locks: IdMap<u64, LockState>,
+    springs: IdMap<u64, SpringState>,
 }
 
 /// The registered assets and the world state.
 #[derive(Default)]
 pub(crate) struct Shared {
-    skeletons: BTreeMap<u64, Arc<SkeletonAsset>>,
-    clips: BTreeMap<u64, Arc<ClipAsset>>,
-    graphs: BTreeMap<u64, Arc<GraphAsset>>,
+    skeletons: IdMap<u64, Arc<SkeletonAsset>>,
+    clips: IdMap<u64, Arc<ClipAsset>>,
+    graphs: IdMap<u64, Arc<GraphAsset>>,
     /// A cache filled by the lanes as they meet (skeleton, clip) pairs.
     bindings: Mutex<Bindings>,
     /// A cache filled as foot locks meet (skeleton, clip, foot) triples.
     plants: Mutex<Plants>,
     /// A cache filled as graphs play mirrored clips on skeletons.
     mirrors: Mutex<Mirrors>,
-    states: BTreeMap<u64, EntityState>,
-    locks: BTreeMap<u64, LockState>,
-    springs: BTreeMap<u64, SpringState>,
-    outputs: BTreeMap<u64, AnimOutput>,
+    states: IdMap<u64, EntityState>,
+    locks: IdMap<u64, LockState>,
+    springs: IdMap<u64, SpringState>,
+    outputs: IdMap<u64, AnimOutput>,
 }
 
 fn lock(shared: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
@@ -530,9 +531,9 @@ fn guard_code(g: Interrupt) -> u8 {
 }
 
 fn encode(
-    states: &BTreeMap<u64, EntityState>,
-    locks: &BTreeMap<u64, LockState>,
-    springs: &BTreeMap<u64, SpringState>,
+    states: &IdMap<u64, EntityState>,
+    locks: &IdMap<u64, LockState>,
+    springs: &IdMap<u64, SpringState>,
     out: &mut Vec<u8>,
 ) {
     let mut w = Writer::new(out);
@@ -1151,7 +1152,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     // Foot locks, after root motion moved the Transforms and before the IK
     // chains, in query order. Only locks holding or releasing a foot are
     // kept.
-    let mut locks: BTreeMap<u64, LockState> = BTreeMap::new();
+    let mut locks: IdMap<u64, LockState> = IdMap::new();
     let mut held: Vec<(Entity, FootLock)> = Vec::with_capacity(foot_locks.len());
     for &f in &foot_locks {
         let mut fl: FootLock = ctx.get(f)?;
@@ -1206,7 +1207,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     }
     // Spring bones, last (they follow the final pose of their parents), in
     // query order.
-    let mut springs: BTreeMap<u64, SpringState> = BTreeMap::new();
+    let mut springs: IdMap<u64, SpringState> = IdMap::new();
     let mut swung: Vec<(Entity, SpringBone)> = Vec::with_capacity(spring_bones.len());
     for &s in &spring_bones {
         let mut sb: SpringBone = ctx.get(s)?;
@@ -1229,8 +1230,8 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
             .palette(w.skeleton.skin, &w.pose.nodes, &mut palette);
         palette
     });
-    let mut states = BTreeMap::new();
-    let mut outputs = BTreeMap::new();
+    let mut states = IdMap::new();
+    let mut outputs = IdMap::new();
     for (mut w, palette) in work.into_iter().zip(palettes) {
         w.skeleton.joint_count = palette.len() as u32;
         ctx.set(w.entity, w.skeleton)?;

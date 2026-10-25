@@ -19,6 +19,7 @@ use super::codec::{Kind, Layout, RecordKind};
 use og_cook::scene_text::{
     FieldValue, Plan, RESOURCE, SpawnedEntity, Tuned, rewrite_with, spawned_names,
 };
+use og_core::IdMap;
 use og_ecs::{Entity, World};
 use og_probe::{SavedFile, SavedScene, SceneWriter};
 use std::collections::{BTreeMap, BTreeSet};
@@ -220,7 +221,7 @@ impl SceneWriter for RuntimeWriter {
                 .iter()
                 .filter_map(|n| boot_file.names.get(n).map(|b| Entity::from_bits(*b)))
                 .collect();
-            let roots: BTreeMap<u64, String> = og_core::sort::map(
+            let roots: IdMap<u64, String> = IdMap::from_iter(
                 instances
                     .iter()
                     .filter_map(|i| i.root.map(|r| (r, i.id.clone()))),
@@ -363,8 +364,8 @@ impl RuntimeWriter {
         by_schema: &BTreeMap<String, Layout>,
     ) -> Vec<SpawnedEntity> {
         let set: BTreeSet<u64> = og_core::sort::set(picked.iter().map(|e| e.to_bits()));
-        let mut nodes: BTreeMap<u64, SpawnedEntity> = BTreeMap::new();
-        let mut parent_of: BTreeMap<u64, u64> = BTreeMap::new();
+        let mut nodes: IdMap<u64, SpawnedEntity> = IdMap::new();
+        let mut parent_of: IdMap<u64, u64> = IdMap::new();
         let mut seen = BTreeSet::new();
         for &e in picked {
             if !seen.insert(e.to_bits()) {

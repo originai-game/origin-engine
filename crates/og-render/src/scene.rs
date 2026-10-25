@@ -1711,7 +1711,7 @@ impl RenderScene {
     pub fn terrain_tiles(
         &self,
         handle: TerrainHandle,
-    ) -> Option<&std::collections::BTreeMap<u32, std::sync::Arc<crate::TerrainTile>>> {
+    ) -> Option<&og_core::IdMap<u32, std::sync::Arc<crate::TerrainTile>>> {
         match self.terrain_data.get(handle.index())? {
             crate::terrain::TerrainSource::Stream { tiles, .. } => Some(tiles),
             crate::terrain::TerrainSource::Data(_) => None,

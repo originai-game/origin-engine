@@ -1,6 +1,7 @@
 //! Tilesets: an atlas image cut into a grid, per-tile collision and
 //! animation, and auto-tiling terrains (`.ogt` of `type tileset`).
 
+use og_core::IdMap;
 use og_core::ogt::{Block, Document, Entry, Number, Value};
 use og_core::{Error, ErrorKind, Result};
 use std::collections::BTreeMap;
@@ -122,7 +123,7 @@ pub struct Tileset {
     pub spacing: u32,
     pub filter: Filter,
     /// Per tile id, what is declared about it (tiles not listed have nothing).
-    pub tiles: BTreeMap<u32, TileDef>,
+    pub tiles: IdMap<u32, TileDef>,
     pub terrains: Vec<Terrain>,
 }
 
@@ -217,7 +218,7 @@ impl Tileset {
             margin: 0,
             spacing: 0,
             filter: Filter::Nearest,
-            tiles: BTreeMap::new(),
+            tiles: IdMap::new(),
             terrains: Vec::new(),
         };
         let mut grid = false;

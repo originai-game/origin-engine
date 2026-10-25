@@ -13,10 +13,10 @@ use crate::gather::Scene;
 use crate::schema_ext::*;
 use crate::{RagdollRig, StepOut};
 use og_core::glam::{Quat, Vec3};
-use og_core::{Error, ErrorKind, Result};
+use og_core::{Error, ErrorKind, IdMap, Result};
 use og_ecs::Entity;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 /// The ragdoll layer: bones are on bit 31 and do not collide with each other.
@@ -176,9 +176,9 @@ struct Plan {
 fn plan(
     (e, position, rotation, r): &(Entity, Vec3, Quat, Ragdoll),
     dt: f32,
-    states: &BTreeMap<u64, RagdollState>,
-    rigs: &BTreeMap<u64, Arc<RagdollRig>>,
-    targets: &BTreeMap<u64, Vec<(Vec3, Quat)>>,
+    states: &IdMap<u64, RagdollState>,
+    rigs: &IdMap<u64, Arc<RagdollRig>>,
+    targets: &IdMap<u64, Vec<(Vec3, Quat)>>,
 ) -> Option<Plan> {
     let key = e.to_bits();
     let rig = rigs.get(&key)?;
@@ -245,8 +245,8 @@ pub(crate) fn ragdolls(
     scene: &Scene,
     dt: f32,
     sim: &mut Sim,
-    rigs: &BTreeMap<u64, Arc<RagdollRig>>,
-    targets: &BTreeMap<u64, Vec<(Vec3, Quat)>>,
+    rigs: &IdMap<u64, Arc<RagdollRig>>,
+    targets: &IdMap<u64, Vec<(Vec3, Quat)>>,
     out: &mut StepOut,
 ) -> Result<()> {
     let live: BTreeSet<u64> = og_core::sort::set(scene.ragdolls.iter().map(|r| r.0.to_bits()));

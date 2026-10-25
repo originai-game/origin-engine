@@ -11,13 +11,13 @@
 //! occlusion count the UI as something in front of it.
 
 use super::extract::{RenderState, extract};
+use og_core::IdMap;
 use og_ecs::{Entity, World};
 use og_probe::{Pick, SceneView, Seen};
 #[cfg(not(feature = "publish"))]
 use og_probe::{SeenView, Shown};
 use serde_json::json;
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::rc::Rc;
 
 /// The entity of each drawable extraction made, parallel to the scene's
@@ -64,7 +64,7 @@ impl RuntimeView {
         let (pw, ph) = og_render::id_pass_size(fw, fh);
         // Entities by id (1-based), in the order they are first met.
         let mut entities: Vec<u64> = Vec::new();
-        let mut ids: BTreeMap<u64, u32> = BTreeMap::new();
+        let mut ids: IdMap<u64, u32> = IdMap::new();
         let mut id_of = |e: u64| -> u32 {
             if e == 0 || !world.is_alive(Entity::from_bits(e)) {
                 return 0;
@@ -86,8 +86,8 @@ impl RuntimeView {
             ..Default::default()
         };
         // A skinned instance's entity: the one its palette was made for.
-        let by_palette: BTreeMap<u32, u64> =
-            og_core::sort::map(rs.atmo.palettes.iter().map(|(&e, &p)| (p, e)));
+        let by_palette: IdMap<u32, u64> =
+            IdMap::from_iter(rs.atmo.palettes.iter().map(|(&e, &p)| (p, e)));
         sources.skinned = scene
             .skinned_instances
             .iter()

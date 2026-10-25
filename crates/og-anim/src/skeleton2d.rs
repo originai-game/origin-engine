@@ -10,11 +10,11 @@
 
 use crate::rig2d::{Affine2, Pose2d, Rig2dAsset, atan2};
 use crate::schema::Transform;
+use og_core::IdMap;
 use og_core::glam::Vec2;
 use og_core::{Error, ErrorKind, Reflect, Result, Str64};
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
 use std::any::Any;
-use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 /// The system's and the state block's name.
@@ -174,10 +174,10 @@ struct Playback {
 
 #[derive(Default)]
 struct Shared {
-    rigs: BTreeMap<u64, Arc<Rig2dAsset>>,
-    playback: BTreeMap<u64, Playback>,
+    rigs: IdMap<u64, Arc<Rig2dAsset>>,
+    playback: IdMap<u64, Playback>,
     /// Per skeleton whose rig has boxes: the boxes its last pose showed.
-    boxes: BTreeMap<u64, Vec<Skeleton2dBox>>,
+    boxes: IdMap<u64, Vec<Skeleton2dBox>>,
 }
 
 fn lock(m: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
@@ -368,12 +368,12 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     sh.playback.retain(|k, _| seen.contains(k));
     // Each skeleton with IK targets or boxes posed at the new time: the
     // targets' `reached` and `error`, and the boxes the pose shows.
-    let mut by_skeleton: BTreeMap<u64, Vec<(Entity, IkTarget2D)>> = BTreeMap::new();
+    let mut by_skeleton: IdMap<u64, Vec<(Entity, IkTarget2D)>> = IdMap::new();
     for e in targets {
         let t: IkTarget2D = ctx.get(e)?;
         by_skeleton.entry(t.skeleton).or_default().push((e, t));
     }
-    let mut boxes = BTreeMap::new();
+    let mut boxes = IdMap::new();
     for e in skeletons {
         let key = e.to_bits();
         let list = by_skeleton.remove(&key).unwrap_or_default();
@@ -464,7 +464,7 @@ impl Reader<'_> {
 }
 
 /// The state block's contents: the playback and the boxes.
-type Saved = (BTreeMap<u64, Playback>, BTreeMap<u64, Vec<Skeleton2dBox>>);
+type Saved = (IdMap<u64, Playback>, IdMap<u64, Vec<Skeleton2dBox>>);
 
 impl StateBlock for SkeletonState {
     fn save(&self, out: &mut Vec<u8>) {
@@ -499,7 +499,7 @@ impl StateBlock for SkeletonState {
     fn decode(&self, bytes: &[u8]) -> Result<Box<dyn Any + Send>> {
         let mut r = Reader { bytes, at: 0 };
         let n = r.u32()?;
-        let mut playback = BTreeMap::new();
+        let mut playback = IdMap::new();
         for _ in 0..n {
             let key = r.u64()?;
             playback.insert(
@@ -511,7 +511,7 @@ impl StateBlock for SkeletonState {
                 },
             );
         }
-        let mut boxes = BTreeMap::new();
+        let mut boxes = IdMap::new();
         for _ in 0..r.u32()? {
             let key = r.u64()?;
             let mut list = Vec::new();

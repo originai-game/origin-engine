@@ -25,6 +25,7 @@ use super::codec::{Layout, RecordKind};
 use super::engine::{Engine, engine};
 use super::{ok, ok_void, parse, refuse};
 use glam::{Mat3, Quat, Vec3};
+use og_core::IdMap;
 use og_core::{Error, ErrorKind, Reflect, Str64};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
 use og_timeline::eval::{self, crossed};
@@ -133,7 +134,7 @@ pub(crate) struct Loaded {
     pub paths: BTreeMap<String, Arc<Path>>,
     pub sounds: BTreeMap<String, (u64, f32)>,
     /// Per animation track: (skeleton, clip handles by name).
-    pub clips: BTreeMap<usize, (u64, BTreeMap<String, u64>)>,
+    pub clips: IdMap<usize, (u64, BTreeMap<String, u64>)>,
 }
 
 #[derive(Default)]
@@ -150,7 +151,7 @@ pub(crate) struct Registry {
 }
 
 thread_local! {
-    static REGISTRIES: RefCell<BTreeMap<u32, Arc<Mutex<Registry>>>> = const { RefCell::new(BTreeMap::new()) };
+    static REGISTRIES: RefCell<IdMap<u32, Arc<Mutex<Registry>>>> = const { RefCell::new(IdMap::new()) };
 }
 
 fn registry(engine: u32) -> Arc<Mutex<Registry>> {
@@ -351,7 +352,7 @@ fn decode(eng: &Engine, id: &str) -> Result<Loaded, String> {
         paths.insert(name.clone(), Arc::new(Path::new(desc.clone())?));
     }
     let mut sounds = BTreeMap::new();
-    let mut clips = BTreeMap::new();
+    let mut clips = IdMap::new();
     for (k, tr) in timeline.tracks.iter().enumerate() {
         let names: Vec<&str> = match tr {
             Track::Audio(ks) => ks.iter().map(|k| k.sound.as_str()).collect(),
@@ -492,12 +493,12 @@ struct Run {
 
 #[derive(Default)]
 struct Shared {
-    runs: BTreeMap<u64, Run>,
+    runs: IdMap<u64, Run>,
     ops: Vec<(u64, Op)>,
 }
 
 thread_local! {
-    static SHARED: RefCell<BTreeMap<u32, Arc<Mutex<Shared>>>> = const { RefCell::new(BTreeMap::new()) };
+    static SHARED: RefCell<IdMap<u32, Arc<Mutex<Shared>>>> = const { RefCell::new(IdMap::new()) };
 }
 
 fn shared(engine: u32) -> Arc<Mutex<Shared>> {
@@ -1210,10 +1211,10 @@ fn evaluate(
                     );
                     continue;
                 };
-                if let std::collections::btree_map::Entry::Vacant(slot) = lt.clips.entry(ti) {
+                if !lt.clips.contains_key(&ti) {
                     match model_clips(ctx, engine_id, r, e) {
                         Ok(c) => {
-                            slot.insert(c);
+                            lt.clips.insert(ti, c);
                         }
                         Err(m) => {
                             note(

@@ -9,6 +9,7 @@ use super::CookError;
 use crate::format::{self, *};
 use crate::runtime::asset_id;
 use og_blob::BlobWriter;
+use og_core::IdMap;
 use og_core::ogt::Block;
 use og_tilemap::{
     Collision, FLIP_DIAGONAL, FLIP_X, FLIP_Y, Filter, Layer, MapObject, TILE_MASK, TileAnim,
@@ -479,7 +480,7 @@ fn tiled_embedded(rel: &str, t: &Value, name: &str) -> Result<Tileset, String> {
         margin: u(t, "margin").unwrap_or(0) as u32,
         spacing: u(t, "spacing").unwrap_or(0) as u32,
         filter: Filter::Nearest,
-        tiles: BTreeMap::new(),
+        tiles: IdMap::new(),
         terrains: Vec::new(),
     };
     for tile in t
@@ -1141,7 +1142,7 @@ pub fn import_ldtk(
                             margin: u(d, "padding").unwrap_or(0) as u32,
                             spacing: u(d, "spacing").unwrap_or(0) as u32,
                             filter: Filter::Nearest,
-                            tiles: BTreeMap::new(),
+                            tiles: IdMap::new(),
                             terrains: Vec::new(),
                         };
                         TilesetRef::Embedded(ts)
@@ -1229,7 +1230,7 @@ pub fn import_ldtk(
                 }
                 if any {
                     let index = *collision_set.get_or_insert_with(|| {
-                        let mut tiles = BTreeMap::new();
+                        let mut tiles = IdMap::new();
                         tiles.insert(
                             0,
                             TileDef {

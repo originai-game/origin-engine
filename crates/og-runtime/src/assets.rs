@@ -14,6 +14,7 @@ use super::codec::Layout;
 use super::engine::{Engine, before_structural, hooks};
 use super::extract::add_font;
 use og_cook::runtime::{Bundle, CookedSound, SceneDesc};
+use og_core::IdMap;
 use og_core::reflect::{FieldType, Schema};
 use og_ecs::Entity;
 use serde_json::{Map, Value, json};
@@ -93,7 +94,7 @@ pub(crate) struct Assets {
     pub texture_arrays: BTreeMap<String, Value>,
     /// Per glTF asset index, the GltfDesc shadow flags of its last
     /// og.load.gltf ([`Assets::model_shadows`]).
-    pub model_shadows: BTreeMap<usize, ModelShadows>,
+    pub model_shadows: IdMap<usize, ModelShadows>,
 }
 
 /// GltfDesc's `castShadow` and `receiveShadow`: what world.instantiate of

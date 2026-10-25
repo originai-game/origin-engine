@@ -16,9 +16,9 @@ use super::feel::{feel_of, set_filter};
 use super::{ok, refuse};
 use glam::{Vec2, Vec3, Vec4};
 use og_anim::{IkTarget2D, Rig2dAsset, Skeleton2D, Transform};
+use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, World};
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
 
 fn wire(r: Result<Value, String>) -> String {
     match r {
@@ -153,7 +153,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     if skeletons.is_empty() {
         return;
     }
-    let mut targets: BTreeMap<u64, Vec<(u32, Vec2, f32)>> = BTreeMap::new();
+    let mut targets: IdMap<u64, Vec<(u32, Vec2, f32)>> = IdMap::new();
     for e in entities_with::<IkTarget2D>(world) {
         if let Ok(t) = world.get::<IkTarget2D>(e) {
             targets

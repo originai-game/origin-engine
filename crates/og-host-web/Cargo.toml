@@ -31,6 +31,7 @@ profile2d = ["og-runtime/profile2d"]
 
 [dependencies]
 og-api = { path = "../og-api" }
+og-core = { path = "../og-core" }
 og-runtime = { path = "../og-runtime", default-features = false }
 og-lanes = { path = "../og-lanes" }
 og-render = { path = "../og-render" }

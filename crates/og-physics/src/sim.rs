@@ -17,7 +17,7 @@ use crate::{
 };
 use crate::{OverlapDesc, ShapeDesc};
 use og_core::glam::{Quat, Vec3};
-use og_core::{Error, ErrorKind, Result};
+use og_core::{Error, ErrorKind, IdMap, Result};
 use og_ecs::Entity;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -247,19 +247,19 @@ struct TrackedStatic {
 #[derive(Default, Serialize, Deserialize)]
 pub(crate) struct Sim {
     pub(crate) world: rp::PhysicsWorld,
-    pub(crate) bodies: BTreeMap<u64, Tracked>,
-    statics: BTreeMap<u64, TrackedStatic>,
+    pub(crate) bodies: IdMap<u64, Tracked>,
+    statics: IdMap<u64, TrackedStatic>,
     /// The fixed body world-anchored joints attach to.
     pub(crate) ground: Option<rp::RigidBodyHandle>,
-    pub(crate) joints: BTreeMap<u64, ext::TrackedJoint>,
-    pub(crate) vehicles: BTreeMap<u64, VehicleState>,
-    pub(crate) ropes: BTreeMap<u64, crate::verlet::RopeState>,
-    pub(crate) cloths: BTreeMap<u64, crate::verlet::ClothState>,
-    pub(crate) fluids: BTreeMap<u64, crate::fluid::FluidState>,
-    pub(crate) surfaces: BTreeMap<u64, crate::water::SurfaceState>,
-    pub(crate) lines: BTreeMap<u64, crate::water::LineState>,
-    pub(crate) ragdolls: BTreeMap<u64, super::RagdollState>,
-    pub(crate) fluids3: BTreeMap<u64, crate::fluid3d::Fluid3State>,
+    pub(crate) joints: IdMap<u64, ext::TrackedJoint>,
+    pub(crate) vehicles: IdMap<u64, VehicleState>,
+    pub(crate) ropes: IdMap<u64, crate::verlet::RopeState>,
+    pub(crate) cloths: IdMap<u64, crate::verlet::ClothState>,
+    pub(crate) fluids: IdMap<u64, crate::fluid::FluidState>,
+    pub(crate) surfaces: IdMap<u64, crate::water::SurfaceState>,
+    pub(crate) lines: IdMap<u64, crate::water::LineState>,
+    pub(crate) ragdolls: IdMap<u64, super::RagdollState>,
+    pub(crate) fluids3: IdMap<u64, crate::fluid3d::Fluid3State>,
 }
 
 /// Every body's pose at the start of the tick, by handle index (with the
@@ -566,7 +566,7 @@ fn step_here(
 pub(crate) struct Handles<'s> {
     scene: &'s Scene,
     pub(crate) by_body: Vec<rp::RigidBodyHandle>,
-    by_entity: std::sync::OnceLock<BTreeMap<u64, rp::RigidBodyHandle>>,
+    by_entity: std::sync::OnceLock<IdMap<u64, rp::RigidBodyHandle>>,
 }
 
 impl Handles<'_> {
@@ -574,13 +574,12 @@ impl Handles<'_> {
     pub(crate) fn get(&self, key: &u64) -> Option<&rp::RigidBodyHandle> {
         self.by_entity
             .get_or_init(|| {
-                og_core::sort::map(
-                    self.scene
-                        .bodies
-                        .iter()
-                        .map(|b| b.entity.to_bits())
-                        .zip(self.by_body.iter().copied()),
-                )
+                self.scene
+                    .bodies
+                    .iter()
+                    .map(|b| b.entity.to_bits())
+                    .zip(self.by_body.iter().copied())
+                    .collect()
             })
             .get(key)
     }
@@ -645,7 +644,7 @@ enum Plan {
     Build,
 }
 
-fn plan(b: &Body, tracked: &BTreeMap<u64, Tracked>, stale: &BTreeSet<u64>) -> Plan {
+fn plan(b: &Body, tracked: &IdMap<u64, Tracked>, stale: &BTreeSet<u64>) -> Plan {
     let stale_mesh = |c: &Collider| {
         matches!(c.shape, SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD)
             && stale.contains(&c.mesh)
@@ -697,7 +696,7 @@ fn sorted_keys(keys: impl Iterator<Item = u64>) -> Vec<u64> {
 
 /// Keeps the entries of `map` whose key is in `live` (ascending), in one
 /// walk of both; `gone` sees each other entry, in key order, as it leaves.
-fn retain_live<T>(map: &mut BTreeMap<u64, T>, live: &[u64], mut gone: impl FnMut(&T)) {
+fn retain_live<T>(map: &mut IdMap<u64, T>, live: &[u64], mut gone: impl FnMut(&T)) {
     let mut at = 0;
     map.retain(|key, value| {
         while at < live.len() && live[at] < *key {
@@ -1015,7 +1014,7 @@ fn after_step(
 /// which holds every body still in the rapier world and lacks those built
 /// this tick: one walk of both in entity order, the new ones inserted
 /// after it.
-fn keep_tracked(scene: &Scene, tracked: &mut BTreeMap<u64, Tracked>, kept: Vec<Tracked>) {
+fn keep_tracked(scene: &Scene, tracked: &mut IdMap<u64, Tracked>, kept: Vec<Tracked>) {
     let keys: Vec<u64> = scene.bodies.iter().map(|b| b.entity.to_bits()).collect();
     let mut order: Vec<usize> = (0..keys.len()).collect();
     if !keys.is_sorted() {

@@ -1797,6 +1797,7 @@ dependencies = [
 name = "og-core"
 version = "0.4.0"
 dependencies = [
+ "bincode",
  "bytemuck",
  "glam 0.34.1",
  "og-core-derive",
@@ -1861,6 +1862,7 @@ dependencies = [
  "og-api",
  "og-audio",
  "og-cook",
+ "og-core",
  "og-lanes",
  "og-probe",
  "og-render",

@@ -22,6 +22,7 @@ use super::extract::{Hierarchy, RenderState};
 use super::{ok, ok_void, parse, refuse};
 use glam::{Quat, Vec2, Vec3};
 use og_anim::{FlipbookSheet, FlipbookSystem};
+use og_core::IdMap;
 use og_core::{Error, ErrorKind};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
 use og_tilemap::{MapState, TilemapAsset, Tileset};
@@ -155,13 +156,13 @@ pub(crate) struct Floating {
 #[derive(Default)]
 pub(crate) struct FeelShared {
     pub camera_ops: Vec<CameraOp>,
-    pub ghosts: BTreeMap<u64, Vec<Ghost>>,
+    pub ghosts: IdMap<u64, Vec<Ghost>>,
     pub floating: Vec<Floating>,
     /// Texts spawned so far (their drift comes from it).
     pub spawned: u64,
     /// Per entity: the last squash and flash tween, cancelled by the next.
-    pub squash: BTreeMap<u64, u64>,
-    pub flash: BTreeMap<u64, u64>,
+    pub squash: IdMap<u64, u64>,
+    pub flash: IdMap<u64, u64>,
 }
 
 /// A map an og.Tilemap uses, with its tilesets and their textures.
@@ -187,8 +188,8 @@ pub(crate) struct LiveMap {
 
 #[derive(Default)]
 pub(crate) struct TileShared {
-    pub maps: BTreeMap<u64, Arc<MapAsset>>,
-    pub live: BTreeMap<u64, LiveMap>,
+    pub maps: IdMap<u64, Arc<MapAsset>>,
+    pub live: IdMap<u64, LiveMap>,
 }
 
 /// The feel modules of one world.
@@ -199,10 +200,10 @@ pub(crate) struct Feel {
     pub tiles: Arc<Mutex<TileShared>>,
     pub shared: Arc<Mutex<FeelShared>>,
     /// Per flipbook sheet handle: what its frames are drawn from.
-    pub sheet_textures: Arc<Mutex<BTreeMap<u64, SheetImage>>>,
+    pub sheet_textures: Arc<Mutex<IdMap<u64, SheetImage>>>,
     /// og.skeleton2d, and per rig handle its texture (an index in RenderState::textures).
     pub skeletons: og_anim::Skeleton2dSystem,
-    pub rig_textures: Arc<Mutex<BTreeMap<u64, usize>>>,
+    pub rig_textures: Arc<Mutex<IdMap<u64, usize>>>,
 }
 
 /// What a flipbook sheet's frames are drawn from: a region of its texture
@@ -218,10 +219,10 @@ pub(crate) enum SheetImage {
 #[derive(Clone, Default)]
 pub(crate) struct FeelAssets {
     next: u64,
-    pub sheets: BTreeMap<u64, (FlipbookSheet, Option<SheetImage>)>,
-    pub maps: BTreeMap<u64, Arc<MapAsset>>,
+    pub sheets: IdMap<u64, (FlipbookSheet, Option<SheetImage>)>,
+    pub maps: IdMap<u64, Arc<MapAsset>>,
     /// 2D rigs and their textures, by handle.
-    pub rigs: BTreeMap<u64, (og_anim::Rig2dAsset, usize)>,
+    pub rigs: IdMap<u64, (og_anim::Rig2dAsset, usize)>,
     pub(crate) loaded: BTreeMap<String, Value>,
 }
 
@@ -259,10 +260,10 @@ pub(crate) fn install_front(world: &mut World, components: &[String]) -> Result<
         tweens,
         flipbooks,
         skeletons,
-        rig_textures: Arc::new(Mutex::new(BTreeMap::new())),
+        rig_textures: Arc::new(Mutex::new(IdMap::new())),
         tiles: Arc::new(Mutex::new(TileShared::default())),
         shared: Arc::new(Mutex::new(FeelShared::default())),
-        sheet_textures: Arc::new(Mutex::new(BTreeMap::new())),
+        sheet_textures: Arc::new(Mutex::new(IdMap::new())),
     })
 }
 
@@ -1687,7 +1688,7 @@ impl StateBlock for TileBlock {
         let maps = lock(&self.0).maps.clone();
         let mut r = Reader::new(bytes, "og.tilemap");
         let n = r.u32()?;
-        let mut live = BTreeMap::new();
+        let mut live = IdMap::new();
         for _ in 0..n {
             let key = r.u64()?;
             let map = r.u64()?;
@@ -1731,7 +1732,7 @@ impl StateBlock for TileBlock {
     }
 }
 
-struct LiveMaps(BTreeMap<u64, LiveMap>);
+struct LiveMaps(IdMap<u64, LiveMap>);
 
 // ── the og.sprite system ───────────────────────────────────────────────────
 
@@ -1914,7 +1915,7 @@ impl StateBlock for SpriteBlock {
             });
         }
         for i in 0..2 {
-            let mut map = BTreeMap::new();
+            let mut map = IdMap::new();
             for _ in 0..r.u32()? {
                 map.insert(r.u64()?, r.u64()?);
             }
@@ -2184,11 +2185,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     let s = &r.slots.sprite;
     let scene_tick = world.time().tick;
     let scaled_now = world.time_scale().elapsed;
-    let flips: BTreeMap<u64, Vec<u8>> =
-        og_core::sort::map(byte_rows(world, r.flipbook.0, &r.flipbook.1));
+    let flips: IdMap<u64, Vec<u8>> =
+        IdMap::from_iter(byte_rows(world, r.flipbook.0, &r.flipbook.1));
     let sprites = byte_rows(world, r.sprite.0, &r.sprite.1);
-    let afterimages: BTreeMap<u64, Vec<u8>> =
-        og_core::sort::map(byte_rows(world, r.afterimage.0, &r.afterimage.1));
+    let afterimages: IdMap<u64, Vec<u8>> =
+        IdMap::from_iter(byte_rows(world, r.afterimage.0, &r.afterimage.1));
     let ghosts = lock(&feel.shared).ghosts.clone();
     if rs.feel.blob.is_none()
         && sprites

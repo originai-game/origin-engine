@@ -26,6 +26,7 @@
 //! Everything is integer or f32 arithmetic in a fixed order: the same
 //! heightfield builds the same polygons on every host.
 
+use og_core::IdMap;
 use og_core::glam::{Vec2, Vec3};
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BinaryHeap};
@@ -233,7 +234,7 @@ pub struct NavMesh {
     pub tiles_x: u32,
     pub tiles_z: u32,
     pub tiles: Vec<Tile>,
-    obstacles: BTreeMap<u32, Obstacle>,
+    obstacles: IdMap<u32, Obstacle>,
     /// Per span: blocked by an obstacle now.
     blocked: Vec<bool>,
     /// Per span: its region in its tile (0: none).
@@ -248,7 +249,7 @@ pub struct NavMesh {
 type EdgeMap = BTreeMap<((i32, i32), (i32, i32)), Vec<(PolyRef, usize, f32)>>;
 
 /// A tile's regions: region → its rows, each `(z, [(x, span)])`.
-type RegionRows = BTreeMap<u32, Vec<(i32, Vec<(i32, usize)>)>>;
+type RegionRows = IdMap<u32, Vec<(i32, Vec<(i32, usize)>)>>;
 
 fn cross(o: (i64, i64), a: (i64, i64), b: (i64, i64)) -> i64 {
     (a.0 - o.0) * (b.1 - o.1) - (a.1 - o.1) * (b.0 - o.0)
@@ -296,7 +297,7 @@ impl NavMesh {
             tiles_x,
             tiles_z,
             tiles: vec![Tile::default(); n],
-            obstacles: BTreeMap::new(),
+            obstacles: IdMap::new(),
             blocked: vec![false; spans],
             span_region: vec![0; spans],
             rows: vec![RegionRows::new(); n],
@@ -488,7 +489,7 @@ impl NavMesh {
     /// touching that region, so every region is one run per row.
     fn assign_regions(&mut self, t: usize) {
         let (x0, z0, x1, z1) = self.tile_rect(t);
-        let mut region: BTreeMap<usize, u32> = BTreeMap::new();
+        let mut region: IdMap<usize, u32> = IdMap::new();
         let mut next_region = 1u32;
         let mut rows = RegionRows::new();
         for z in z0..z1 {
@@ -499,8 +500,8 @@ impl NavMesh {
             }
             const MIXED: u32 = u32::MAX;
             let mut sweeps: Vec<Sweep> = Vec::new();
-            let mut run_of: BTreeMap<usize, usize> = BTreeMap::new();
-            let mut prev: BTreeMap<u32, u32> = BTreeMap::new();
+            let mut run_of: IdMap<usize, usize> = IdMap::new();
+            let mut prev: IdMap<u32, u32> = IdMap::new();
             for x in x0..x1 {
                 for s in self.field.column(x, z) {
                     if !self.walkable(s) {

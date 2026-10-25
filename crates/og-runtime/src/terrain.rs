@@ -22,6 +22,7 @@ use super::extract::{Hierarchy, RenderState};
 use super::fx::{color, f, on, rows, u};
 use super::{ok, parse, refuse};
 use glam::{Mat3, Mat4, Quat, Vec2, Vec3};
+use og_core::IdMap;
 use og_ecs::World;
 use og_render::{TerrainData, TerrainLayer, TerrainLod};
 use serde_json::{Value, json};
@@ -43,7 +44,7 @@ pub(crate) struct LoadedTerrain {
     /// Edited: `field` holds the edits and the renderer draws it.
     pub edited: bool,
     /// Level-0 tiles' heights decoded for sampling, by tile index.
-    pub tiles: std::cell::RefCell<BTreeMap<u32, Arc<[f32]>>>,
+    pub tiles: std::cell::RefCell<IdMap<u32, Arc<[f32]>>>,
     pub layers: Vec<TerrainLayer>,
     /// The texture arrays its layers sample (`layers`, `layerNormals`), as
     /// load indices in RenderState::texture_arrays: resolved to the
@@ -69,7 +70,7 @@ pub(crate) type SharedLog = Arc<std::sync::Mutex<EditLog>>;
 
 thread_local! {
     /// Each engine's edit log (its worlds' og.terrain blocks share it).
-    static LOGS: std::cell::RefCell<BTreeMap<u32, SharedLog>> = const { std::cell::RefCell::new(BTreeMap::new()) };
+    static LOGS: std::cell::RefCell<IdMap<u32, SharedLog>> = const { std::cell::RefCell::new(IdMap::new()) };
 }
 
 /// Engine `id`'s edit log.

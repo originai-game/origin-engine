@@ -11,11 +11,11 @@ use crate::motion::Fx;
 use crate::style::{Breakpoint, Density, Srgba, Theme, TypeStep};
 use crate::style_file::{Ink, Ornament, Slice, SliceFill, StylePart};
 use crate::text::{FontMetrics, UiFont};
+use og_core::IdMap;
 use og_core::glam::Vec2;
 use og_probe::UiElement;
 use og_probe::hooks::{find_by_id, find_by_text};
 use og_render::{Overlay, TextureHandle};
-use std::collections::BTreeMap;
 
 /// The play surface the UI lays out in, in CSS pixels.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -358,16 +358,16 @@ pub(crate) struct State {
     /// The presses counted into double and triple clicks in text controls.
     pub click: crate::edit::Click,
     /// Each text control's undo history, by key.
-    pub histories: BTreeMap<u64, crate::edit::History>,
+    pub histories: IdMap<u64, crate::edit::History>,
     pub hover_ticks: u32,
     pub pointer: Vec2,
     /// The press that focused a field: where it landed, to place the caret.
     pub focus_click: Option<f32>,
-    pub scroll: BTreeMap<u64, f32>,
+    pub scroll: IdMap<u64, f32>,
     /// Horizontal scroll offsets.
-    pub scroll_x: BTreeMap<u64, f32>,
+    pub scroll_x: IdMap<u64, f32>,
     /// Each scroll container's ranges and scrollbar lengths, last frame.
-    pub scroll_info: BTreeMap<u64, crate::scroll::ScrollInfo>,
+    pub scroll_info: IdMap<u64, crate::scroll::ScrollInfo>,
     /// A released drag's momentum: the container and its velocity per tick.
     pub fling: Option<(u64, Vec2)>,
     /// Two touches held at once (og.Pointers): the scroll container or
@@ -398,11 +398,11 @@ pub(crate) struct State {
     /// whether the focus was on nothing when it was queued (then it only
     /// puts the focus on the first control: `Ui::navigate`).
     pub pending: Vec<(Nav, bool)>,
-    pub anims: BTreeMap<u64, Anim>,
+    pub anims: IdMap<u64, Anim>,
     pub toasts: Vec<Toast>,
     pub next_toast: u32,
     /// Screen transitions by key.
-    pub screens: BTreeMap<u64, crate::juice::ScreenState>,
+    pub screens: IdMap<u64, crate::juice::ScreenState>,
     /// The host's voice entity for each UI sound (bits; 0: none).
     pub voices: [u64; 6],
     /// Players the last frame allowed (`set_players`): pads 1 to players - 1
@@ -2456,8 +2456,8 @@ impl Ui {
         self.apply_fx(&order);
 
         // Interaction state for the next tick.
-        let mut present: BTreeMap<u64, usize> =
-            og_core::sort::map(order.iter().map(|&i| (self.nodes[i].key, i)));
+        let mut present: IdMap<u64, usize> =
+            IdMap::from_iter(order.iter().map(|&i| (self.nodes[i].key, i)));
         // A rich text's links are controls of their own, inside its node.
         for &i in &order {
             for l in &self.nodes[i].links {
@@ -2478,7 +2478,7 @@ impl Ui {
         }
         // Each scroll container's ranges and bar lengths, as drawn.
         let min_bar = self.theme.space.xl;
-        self.state.scroll_info = og_core::sort::map(
+        self.state.scroll_info = IdMap::from_iter(
             order
                 .iter()
                 .filter(|&&i| self.nodes[i].scrolls())
@@ -2539,7 +2539,7 @@ impl Ui {
         // and the nodes with a role, with the paths their children name.
         let mut element_keys: Vec<u64> = Vec::new();
         let mut tree: Vec<(u64, crate::a11y::A11yNode)> = Vec::new();
-        let mut tree_path: BTreeMap<usize, String> = BTreeMap::new();
+        let mut tree_path: IdMap<usize, String> = IdMap::new();
         let mut top_scope = 0u64;
         let mut top_locked = false;
         for &i in &order[1..] {
@@ -2939,8 +2939,8 @@ impl Ui {
     /// rectangles (and the clips its own scroll containers make), multiplies
     /// opacity, and makes the subtree inert while it moves.
     fn apply_fx(&mut self, order: &[usize]) {
-        let pos: BTreeMap<usize, usize> =
-            og_core::sort::map(order.iter().enumerate().map(|(k, &i)| (i, k)));
+        let pos: IdMap<usize, usize> =
+            IdMap::from_iter(order.iter().enumerate().map(|(k, &i)| (i, k)));
         for k in 0..order.len() {
             let i = order[k];
             let parent = self.nodes[i].parent;

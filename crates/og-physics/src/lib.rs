@@ -76,7 +76,7 @@ pub use stats::{Phase, PhaseStats, PhysicsStats, set_clock};
 pub use gather::world_pose;
 use gather::{Ids, QUERIES, Scene};
 use og_core::glam::{Quat, Vec2, Vec3};
-use og_core::{Error, ErrorKind, Result};
+use og_core::{Error, ErrorKind, IdMap, Result};
 use og_ecs::{Entity, StateBlock, SystemContext, SystemDesc, World};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
@@ -269,9 +269,9 @@ pub(crate) struct Shared {
     /// Meshes registered with new geometry since the last step; colliders
     /// built from them are rebuilt.
     pub stale_meshes: BTreeSet<u64>,
-    pub meshes: BTreeMap<u64, Arc<MeshDesc>>,
+    pub meshes: IdMap<u64, Arc<MeshDesc>>,
     /// Height fields by handle (assets, like meshes).
-    pub heightfields: BTreeMap<u64, Arc<HeightfieldDesc>>,
+    pub heightfields: IdMap<u64, Arc<HeightfieldDesc>>,
     /// Why no height field can be registered in this build
     /// ([`PhysicsSystem::refuse_heightfields`]): every SHAPE_HEIGHTFIELD
     /// collider is refused with it.
@@ -286,8 +286,8 @@ pub(crate) struct Shared {
     pub recorded_query: Option<Arc<QueryInner>>,
     /// Ragdoll rigs by entity (assets, like meshes) and the animation's
     /// bone poses the host gave for this tick.
-    pub rigs: BTreeMap<u64, Arc<RagdollRig>>,
-    pub ragdoll_targets: BTreeMap<u64, Vec<(Vec3, Quat)>>,
+    pub rigs: IdMap<u64, Arc<RagdollRig>>,
+    pub ragdoll_targets: IdMap<u64, Vec<(Vec3, Quat)>>,
     /// What the last step cost ([`PhysicsSystem::stats`]; not world state).
     pub stats: PhysicsStats,
     /// Forces and impulses waiting for the next step, in the order given

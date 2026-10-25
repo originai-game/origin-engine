@@ -18,6 +18,7 @@ use super::extract::Parts;
 use super::fx::{color, f, on};
 use glam::{Mat4, Vec3};
 use og_cook::runtime::SceneDesc;
+use og_core::IdMap;
 use og_render::{BakedLighting, BakedMesh, LightmapPages, LightmapUvs, MeshData, ProbeVolume};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -55,7 +56,7 @@ pub(crate) struct DrawnBake {
 pub(crate) struct BakedState {
     pub scenes: Vec<SceneBake>,
     /// Static model entities drawn with their lightmap: their parts.
-    pub overrides: BTreeMap<u64, Parts>,
+    pub overrides: IdMap<u64, Parts>,
     /// What the renderer draws: every drawn bake's meshes and volumes.
     pub lighting: BakedLighting,
     /// Whether RenderSettings.bakedLighting was on in the last frame.

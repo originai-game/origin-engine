@@ -4,6 +4,7 @@
 
 use super::engine::{Engine, engine};
 use super::{ok, parse, refuse};
+use og_core::IdMap;
 use og_i18n::{Arg, Catalog, StringTable};
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -18,7 +19,7 @@ struct State {
 }
 
 thread_local! {
-    static STATES: RefCell<BTreeMap<u32, State>> = const { RefCell::new(BTreeMap::new()) };
+    static STATES: RefCell<IdMap<u32, State>> = const { RefCell::new(IdMap::new()) };
 }
 
 fn with<T>(engine: u32, f: impl FnOnce(&mut State) -> T) -> T {

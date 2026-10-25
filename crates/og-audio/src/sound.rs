@@ -15,8 +15,9 @@
 //! chunk's frames decode exactly as the same frames of the whole file.
 
 use crate::qoa;
+use og_core::IdMap;
 use og_core::{Error, ErrorKind, Handle, Pool, Result};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::sync::{Arc, OnceLock, RwLock};
 
 /// Samples per channel in a full QOA frame.
@@ -633,7 +634,7 @@ impl SoundBank {
     /// (a voice decoding one keeps its current frame). Returns the chunks
     /// wanted but not resident, as (handle, sound id, chunk), for the host
     /// to read and [`SoundBank::put_chunk`].
-    pub fn keep_chunks(&self, wanted: &BTreeMap<u64, BTreeSet<u32>>) -> Vec<(u64, String, u32)> {
+    pub fn keep_chunks(&self, wanted: &IdMap<u64, BTreeSet<u32>>) -> Vec<(u64, String, u32)> {
         let sounds: Vec<(u64, Arc<SoundData>)> = {
             let bank = self.inner.read().expect("sound bank lock");
             bank.pool
@@ -782,7 +783,7 @@ pub const CHUNK_AHEAD_SECONDS: f64 = 4.0;
 /// for a loop the chunk its loop start is in. The first chunk is always
 /// resident and not listed. Read at a tick boundary; it never changes the
 /// world. The keys of [`chunk_distances`].
-pub fn chunks_wanted(world: &og_ecs::World, bank: &SoundBank) -> BTreeMap<u64, BTreeSet<u32>> {
+pub fn chunks_wanted(world: &og_ecs::World, bank: &SoundBank) -> IdMap<u64, BTreeSet<u32>> {
     chunk_distances(world, bank)
         .into_iter()
         .map(|(h, chunks)| (h, chunks.into_keys().collect()))
@@ -796,11 +797,8 @@ pub fn chunks_wanted(world: &og_ecs::World, bank: &SoundBank) -> BTreeMap<u64, B
 /// loop's start chunk and the next, the time to the loop's wrap plus their
 /// offset from the loop start. A host fetching chunks fetches the smallest
 /// first (og-runtime's streaming fetches).
-pub fn chunk_distances(
-    world: &og_ecs::World,
-    bank: &SoundBank,
-) -> BTreeMap<u64, BTreeMap<u32, f64>> {
-    let mut out: BTreeMap<u64, BTreeMap<u32, f64>> = BTreeMap::new();
+pub fn chunk_distances(world: &og_ecs::World, bank: &SoundBank) -> IdMap<u64, IdMap<u32, f64>> {
+    let mut out: IdMap<u64, IdMap<u32, f64>> = IdMap::new();
     let Ok(rows) = world.query(&og_ecs::QueryDesc::new().read::<crate::schema::AudioPlayback>())
     else {
         return out;

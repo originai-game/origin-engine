@@ -21,6 +21,7 @@
 
 use crate::asset::{Behaviour, Root, Value};
 use crate::tree::{self, AgentMem, Effects, NodeMem, Senses};
+use og_core::IdMap;
 use og_core::glam::{Vec2, Vec3};
 use og_core::reflect::FieldType;
 use og_core::{Error, ErrorKind, Reflect, Result};
@@ -229,12 +230,12 @@ pub struct Noise {
 
 #[derive(Debug, Default)]
 struct State {
-    mems: BTreeMap<u64, AgentMem>,
+    mems: IdMap<u64, AgentMem>,
     /// The way each agent last moved (perception's forward).
-    forward: BTreeMap<u64, Vec3>,
+    forward: IdMap<u64, Vec3>,
     /// The tick each agent last saw and heard.
-    seen_tick: BTreeMap<u64, u64>,
-    heard_tick: BTreeMap<u64, u64>,
+    seen_tick: IdMap<u64, u64>,
+    heard_tick: IdMap<u64, u64>,
     noises: Vec<Noise>,
     commands: Vec<(String, Vec<String>)>,
     warnings: Vec<String>,
@@ -248,7 +249,7 @@ fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
 /// The behaviours an engine loaded, by handle.
 #[derive(Debug, Default)]
 pub struct Behaviours {
-    pub entries: BTreeMap<u64, Arc<Behaviour>>,
+    pub entries: IdMap<u64, Arc<Behaviour>>,
     next: u64,
 }
 
@@ -862,10 +863,10 @@ struct AiBlock(AiSystem);
 
 #[derive(Debug)]
 struct Saved {
-    mems: BTreeMap<u64, AgentMem>,
-    forward: BTreeMap<u64, Vec3>,
-    seen: BTreeMap<u64, u64>,
-    heard: BTreeMap<u64, u64>,
+    mems: IdMap<u64, AgentMem>,
+    forward: IdMap<u64, Vec3>,
+    seen: IdMap<u64, u64>,
+    heard: IdMap<u64, u64>,
     noises: Vec<Noise>,
 }
 
@@ -1010,7 +1011,7 @@ impl StateBlock for AiBlock {
 
     fn decode(&self, bytes: &[u8]) -> Result<Box<dyn Any + Send>> {
         let mut r = Rd { b: bytes, at: 0 };
-        let mut mems = BTreeMap::new();
+        let mut mems = IdMap::new();
         for _ in 0..r.u32()? {
             let k = r.u64()?;
             let mut m = AgentMem {
@@ -1045,14 +1046,14 @@ impl StateBlock for AiBlock {
             }
             mems.insert(k, m);
         }
-        let mut maps = [BTreeMap::new(), BTreeMap::new()];
+        let mut maps = [IdMap::new(), IdMap::new()];
         for map in &mut maps {
             for _ in 0..r.u32()? {
                 let k = r.u64()?;
                 map.insert(k, r.u64()?);
             }
         }
-        let mut forward = BTreeMap::new();
+        let mut forward = IdMap::new();
         for _ in 0..r.u32()? {
             let k = r.u64()?;
             forward.insert(k, r.v3()?);
