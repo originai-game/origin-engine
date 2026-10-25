@@ -68,8 +68,12 @@ pub struct RenderQuality {
     /// Samples per pixel where antialiasing multisamples
     /// ([`crate::Antialias::Msaa4`], the WebGL2 tier's choice):
     /// [`crate::MSAA_SAMPLES`], or 1, which draws FXAA instead
-    /// ([`crate::RenderInfo::antialias`] says which is drawn). TAA, FXAA
-    /// and no antialiasing take one sample whatever it says.
+    /// ([`crate::RenderInfo::antialias`] says which is drawn).
+    /// [`crate::RenderInfo::msaa_samples`] caps it, as
+    /// [`crate::RenderInfo::shadowed_lights`] caps
+    /// [`Self::shadowed_lights`]: where the device did not resolve MSAA
+    /// (TAA, FXAA, none, or FXAA for want of a multisampled HDR format)
+    /// it is 1, and one sample is drawn whatever this says.
     pub msaa_samples: u32,
 }
 

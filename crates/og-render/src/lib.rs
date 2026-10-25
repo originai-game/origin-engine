@@ -649,6 +649,14 @@ pub struct RenderInfo {
     pub tier: Tier,
     /// The antialiasing in use: `Off`, `Msaa4`, `Taa` or `Fxaa`.
     pub antialias: Antialias,
+    /// The samples per pixel the device multisamples the scene at:
+    /// [`MSAA_SAMPLES`] where the antialiasing resolved to
+    /// [`Antialias::Msaa4`] when the renderer was made, else 1 (TAA, FXAA,
+    /// none, or FXAA for want of a multisampled HDR format). It caps
+    /// [`RenderQuality::msaa_samples`] as [`Self::shadowed_lights`] caps
+    /// [`RenderQuality::shadowed_lights`]; [`Self::antialias`] is what the
+    /// frame draws now (FXAA while the quality asks 1).
+    pub msaa_samples: u32,
     /// The cascade size and count in use (after clamping).
     pub shadow_map_size: u32,
     pub shadow_cascades: u32,
@@ -1451,9 +1459,6 @@ pub struct Renderer {
     full_shadow_size: u32,
     /// The local lights' layers' side now ([`LOCAL_SHADOW_SIZE`] at scale 1).
     local_shadow_size: u32,
-    /// The device resolved the antialiasing to MSAA: [`RenderQuality::msaa_samples`]
-    /// switches it between MSAA and FXAA (anything else takes one sample).
-    multisampled: bool,
     material_sampler: wgpu::Sampler,
     sprite_sampler: wgpu::Sampler,
     sprite_sampler_nearest: wgpu::Sampler,
@@ -2398,6 +2403,7 @@ impl Renderer {
             device_type: adapter_info.device_type,
             tier,
             antialias,
+            msaa_samples: samples,
             shadow_map_size: shadow_size,
             shadow_cascades: cascades,
             shadowed_lights: shadows::shadowed_lights(tier) as u32,
@@ -3037,7 +3043,6 @@ impl Renderer {
             local_map,
             full_shadow_size: shadow_size,
             local_shadow_size: LOCAL_SHADOW_SIZE,
-            multisampled: antialias == Antialias::Msaa4,
             material_sampler,
             sprite_sampler,
             sprite_sampler_nearest,
@@ -3217,8 +3222,14 @@ impl Renderer {
             // The frame groups bind them: ensure_environment makes them again.
             self.environment = None;
         }
-        if self.multisampled {
-            let samples = if q.multisample() { MSAA_SAMPLES } else { 1 };
+        // The device's samples cap the quality's (RenderInfo::msaa_samples):
+        // where it resolved no MSAA, one sample whatever the quality asks.
+        if self.info.msaa_samples > 1 {
+            let samples = if q.multisample() {
+                self.info.msaa_samples
+            } else {
+                1
+            };
             if samples != self.samples {
                 self.set_samples(samples);
             }
