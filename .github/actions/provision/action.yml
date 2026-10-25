@@ -1,0 +1,74 @@
+# Provisions the CI container (debian:trixie on ubuntu-latest, ci.yml) for scripts/check.sh (docs/ci.md
+# §What runs where): disk, the Rust toolchain and target/ cache, the system
+# packages, node, and scripts/install-tools.sh's pinned tools. The gate's
+# logic stays in scripts/; this only installs what the scripts expect.
+name: provision
+description: The machine scripts/check.sh expects, in a debian:trixie job container.
+inputs:
+  cache-key:
+    description: The target/ cache's key (one per lane, so a lane restores what it built).
+    required: true
+runs:
+  using: composite
+  steps:
+    # The runner has about 13 GB free; the dev target, the wasm profiles and
+    # the determinism builds need more. The preinstalled SDKs the gate never
+    # uses (about 30 GB) are mounted into the container at /host/ (ci.yml)
+    # and emptied here.
+    - name: Free disk space
+      shell: bash
+      run: |
+        df -h /__w 2>/dev/null | tail -1 || df -h / | tail -1
+        for d in /host/*/; do [ -d "$d" ] && find "$d" -mindepth 1 -delete 2>/dev/null || true; done
+        df -h /__w 2>/dev/null | tail -1 || df -h / | tail -1
+
+    # Debian trixie's packages: the build tools, Lavapipe (mesa-vulkan-drivers,
+    # LLVM 19.1.7, the same Mesa as the og-lavapipe image the vulkan-cpu
+    # references are recorded in, docs/ci.md §CI), ALSA's headers for cpal
+    # (alsa-sys), brotli for the size gate, procps for the gate's pgrep.
+    - name: System packages
+      shell: bash
+      run: |
+        apt-get update -qq
+        DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+          build-essential pkg-config curl xz-utils unzip zstd procps \
+          mesa-vulkan-drivers libvulkan1 vulkan-tools libasound2-dev libudev-dev brotli >/dev/null
+        vulkaninfo --summary 2>/dev/null | grep -E 'deviceName|driverName|driverInfo' || echo "vulkaninfo: no Vulkan device"
+        # The checkout belongs to the runner's user, the container runs as root.
+        git config --global --add safe.directory '*'
+
+    # Reads rust-toolchain.toml (channel, rustfmt, clippy, rust-src, the
+    # wasm32 and linux-gnu targets). Caching is the next step's.
+    - uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        cache: false
+        rustflags: ""
+
+    # ~/.cargo and target/ (dependencies only: rust-cache drops the
+    # workspace's own units), one cache per lane. Saved on failure too, so a
+    # long cold build is not repeated.
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: ${{ inputs.cache-key }}
+        cache-on-failure: true
+
+    - uses: taiki-e/install-action@v2
+      with:
+        tool: nextest
+
+    # The determinism step runs the wasm32 builds under node.
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 24
+
+    - name: Cache tools
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.local/bin
+          ~/.local/lib
+        key: og-tools-trixie-${{ hashFiles('Cargo.lock', 'scripts/install-tools.sh') }}
+
+    - name: Tools (wasm-bindgen-cli, wasm-opt, brotli, bun, shellcheck)
+      shell: bash
+      run: scripts/install-tools.sh

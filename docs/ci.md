@@ -230,22 +230,46 @@ it the steps fall back to `cargo test`.
 
 ### CI
 
-**There is no cloud CI during the build-out.** The GitHub Actions workflow
-and its provisioning action were removed on 2026-10-21 (the owner's
-decision: the shared runner was slower than the local gate, billed, and
-added nothing the gate does not cover). The process is the local one: the
-functional lane for every merge, `--all` and web-reference (or
-`scripts/wave-end.sh`) at a wave's end, by the one session that merges
-(AGENTS.md §Build and gate discipline). What the workflow was when
-it last ran green (every job in a `debian:trixie` container with `--init`
-whose Lavapipe matched the og-lavapipe image, a shared provisioning
-action, quick 12.5 min, functional 35 min, gate 60 min and the perf
-nightly 145 min cold on a two-vCPU runner, `OG_BUN_TEST_TIMEOUT`,
-`OG_TEST_TIME_SCALE` and `OG_GATE_JOBS=1` for that runner) is in the
-history at 53b876f7 and 9d220790 and in docs/phase-1.md's ci-green
-section; the environment variables stay honoured by the scripts. When the
-repository is published, the workflow comes back from that history with
-its push, pull_request and nightly triggers.
+**GitHub Actions is back since the repository was published** (restored
+2026-10-25, the owner's instruction; row 83). It was off during the
+build-out: the workflow and its provisioning action were removed on
+2026-10-21 (the owner's decision: the shared runner was slower than the
+local gate, billed, and added nothing the gate does not cover), and the
+history at 53b876f7 and 9d220790 and docs/phase-1.md's ci-green section
+hold what it was when it last ran green. It came back from that history
+unchanged but for its triggers: `push` to main, `pull_request`, the
+nightly schedule (03:17 UTC) and `workflow_dispatch`.
+
+`.github/workflows/ci.yml` only provisions the machine
+(`.github/actions/provision`: disk, the toolchain from
+`rust-toolchain.toml`, a `target/` cache per lane, Lavapipe, ALSA's
+headers, node, `scripts/install-tools.sh`'s pinned tools) and runs the
+scripts, so a local run and a CI run are the same gate. Every job runs in
+a `debian:trixie` container with `--init`, whose Lavapipe (LLVM 19.1.7) is
+the og-lavapipe image's that records the vulkan-cpu references (Ubuntu
+24.04's LLVM 20.1.2 missed two of them by RMSE 0.0003 and 0.0005). The
+jobs, with the times measured on the two-vCPU runner when the workflow
+last ran green: `quick` (PRs, 12.5 min, timeout 45) and `functional` (PRs,
+35 min, timeout 90), `gate` (push to main and PRs, `scripts/check.sh` with
+`CI` set so nothing is skipped and the shipping wasm profile is measured,
+`OG_GATE_JOBS=1`, 60 min, timeout 240), `perf-nightly` (the schedule and
+by hand, `scripts/perf.sh --measure`: a measurement, not a baseline check,
+145 min, timeout 240). The runner's environment: `OG_GATE_MACHINE_LOCK=0`
+(one gate per runner), `OG_BUN_TEST_TIMEOUT=60000` and
+`OG_TEST_TIME_SCALE=3` (a render test on two vCPU of Lavapipe takes 5 to
+25 s), `RUSTC_WRAPPER=` (no sccache; `target/` is cached instead),
+`CARGO_PROFILE_DEV_DEBUG=line-tables-only` for backtraces. Evidence
+uploads are `continue-on-error`, so the account's artifact quota never
+fails a lane.
+
+The process does not change: the functional lane for every merge, `--all`
+and web-reference (or `scripts/wave-end.sh`) at a wave's end, by the one
+session that merges (AGENTS.md §Build and gate discipline), is what a
+merge must pass, and metal is the frame authority. CI is the shared
+runner's record of main and of every PR, and the nightly's measurement.
+Two intermittent failures were known when the workflow last ran (og-cook's
+`cooking_twice_gives_identical_bytes`, row 80; the particle test's SIGSEGV,
+row 81); a red run is read before it is re-run.
 
 ## Running the gate locally
 

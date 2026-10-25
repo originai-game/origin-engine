@@ -1379,7 +1379,7 @@ required feature to code and archived checks. The phone, capture and
 executor-image budgets above remain unverified. The native-platform
 status above is historical: Windows x64 with DX12 shipped in 0.3.0;
 registry and platform-runner acceptance are tracked in release F7.
-Cloud CI is paused by owner decision, not enforcing the perf baselines.
+Cloud CI is back since 2026-10-25 (row 83); its nightly measures, it does not enforce the perf baselines.
 
 ## 12. Open decisions (owner)
 

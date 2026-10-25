@@ -64,9 +64,10 @@ cmd_pack() {
   (cd packages/engine && sh scripts/pack.sh --linux-x64) || { og_err "release: packages/engine/scripts/pack.sh failed"; return 1; }
   cp packages/engine/dist/pack/*.tgz "$out/" || return 1
   (cd packages/create && bun scripts/pack-template.ts >/dev/null && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null) || { og_err "release: packing @origingame/create-game failed"; return 1; }
-  local n
-  n="$(ls "$out"/*.tgz | wc -l | tr -d ' ')"
+  local n tgz
+  n=0; for tgz in "$out"/*.tgz; do [ -e "$tgz" ] && n=$((n + 1)); done
   [ "$n" -eq 4 ] || { og_err "release: expected 4 tarballs in $out, found $n"; ls "$out"; return 1; }
+  # shellcheck disable=SC2016 # the bun script takes its arguments from argv
   bun -e '
     const { readdirSync, readFileSync, statSync, writeFileSync } = require("node:fs");
     const { createHash } = require("node:crypto");
@@ -119,6 +120,7 @@ cmd_publish() {
   v="$(version)"; out="$(out_dir "$v")"
   [ -f "$out/manifest.json" ] || { og_err "release: no $out/manifest.json; run pack and verify first"; return 1; }
   local status
+  # shellcheck disable=SC2016 # the bun script takes its arguments from argv
   status="$(bun -e '
     const m = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
     const problems = [];

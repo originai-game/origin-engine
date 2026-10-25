@@ -429,8 +429,8 @@ this repository does.
 2. ~~Whether the repository becomes public~~ (MIT since 2026-10-17;
    **decided 2026-10-23: public**. The packages' `repository.url` names
    `originai-game/origin-engine` (R7); the visibility change is made on
-   GitHub by the owner's account (the orb's token cannot); a public
-   repository restores CI on GitHub, owed row 83).
+   GitHub by the owner's account (the orb's token cannot); CI on GitHub
+   restored with it, 2026-10-25, row 83).
 3. ~~The two models of the template (R6)~~ (2026-10-23: the test copies
    stay; the template ships the CC0 `walker.glb`).
 4. The wasm budget's meaning (row 44), `topdown` in Discover, third-party
