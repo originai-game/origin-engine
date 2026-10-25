@@ -106,6 +106,7 @@ export const IkSpace = ((value = "world" as Api.IkSpace, options) => spec("IkSpa
 export const AudioBus = ((value = "master" as Api.AudioBus, options) => spec("AudioBus", value, options)) as typeof Api.AudioBus;
 export const PanningModel = ((value = "equalpower" as Api.PanningModel, options) => spec("PanningModel", value, options)) as typeof Api.PanningModel;
 export const AudioResampler = ((value = "linear" as Api.AudioResampler, options) => spec("AudioResampler", value, options)) as typeof Api.AudioResampler;
+export const SpringSpace = ((value = "world" as Api.SpringSpace, options) => spec("SpringSpace", value, options)) as typeof Api.SpringSpace;
 export const Navigation = ((value = 0 as Api.Navigation, options) => spec("Navigation", value, options)) as typeof Api.Navigation;
 export const Behaviour = ((value = 0 as Api.Behaviour, options) => spec("Behaviour", value, options)) as typeof Api.Behaviour;
 
