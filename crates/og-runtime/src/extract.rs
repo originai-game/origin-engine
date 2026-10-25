@@ -357,9 +357,14 @@ pub(crate) fn resource(world: &World, layout: Option<&Layout>) -> Option<Value> 
 /// most of their frame in the maps this replaced).
 #[derive(Default)]
 pub struct Hierarchy {
-    /// Per entity index: the entity's bits, its local matrix and its world
-    /// matrix once composed.
+    /// Per entity index: the entity's bits and what is known of its
+    /// matrices, apart from them (`data`), so a read where nothing moved
+    /// walks 16 bytes an entity, not the matrices' 190 (20,000 still
+    /// meshes: 0.33 ms a read, read twice a frame).
     slots: Vec<Slot>,
+    /// Per entity index: its transform's bytes, its local matrix and its
+    /// world matrix once composed.
+    data: Vec<SlotData>,
     /// Parents by child bits (only entities with `og.Parent`).
     parent: BTreeMap<u64, u64>,
     /// World matrices of chain members without `og.Transform` (no slot).
@@ -388,11 +393,34 @@ struct Slot {
     world_set: bool,
     /// Whether its transform differs from the last read's (or it is new).
     changed: bool,
+}
+
+#[derive(Clone, Copy)]
+struct SlotData {
     /// Its position, quaternion and scale as last read, as the columns'
     /// bytes (12, 16 and 12).
     trs: [u8; 40],
-    local: Mat4,
+    /// Its local matrix, made from `trs` when first composed after a
+    /// change ([`SlotData::local`]): the raycast record reads every transform
+    /// as a tick starts and composes nothing unless a system raycasts.
+    local: Option<Mat4>,
     world: Mat4,
+}
+
+impl SlotData {
+    /// The local matrix of `trs`, made once per change.
+    fn local(&mut self) -> Mat4 {
+        *self.local.get_or_insert_with(|| {
+            let t = &self.trs;
+            let x =
+                |i: usize| f32::from_le_bytes([t[i * 4], t[i * 4 + 1], t[i * 4 + 2], t[i * 4 + 3]]);
+            Mat4::from_scale_rotation_translation(
+                Vec3::new(x(7), x(8), x(9)),
+                Quat::from_xyzw(x(3), x(4), x(5), x(6)),
+                Vec3::new(x(0), x(1), x(2)),
+            )
+        })
+    }
 }
 
 const EMPTY_SLOT: Slot = Slot {
@@ -400,8 +428,11 @@ const EMPTY_SLOT: Slot = Slot {
     local_set: false,
     world_set: false,
     changed: true,
+};
+
+const EMPTY_DATA: SlotData = SlotData {
     trs: [0; 40],
-    local: Mat4::IDENTITY,
+    local: None,
     world: Mat4::IDENTITY,
 };
 
@@ -441,7 +472,7 @@ impl Hierarchy {
             };
             if let (Ok(all), 3) = (world.query(&q), refs.len()) {
                 for (k, a) in all.enumerate() {
-                    let (Ok(p), Ok(r), Ok(s), Ok(pb), Ok(rb), Ok(sb)) = (
+                    let (Ok(_), Ok(_), Ok(_), Ok(pb), Ok(rb), Ok(sb)) = (
                         a.read::<Vec3>(refs[0]),
                         a.read::<Quat>(refs[1]),
                         a.read::<Vec3>(refs[2]),
@@ -478,8 +509,9 @@ impl Hierarchy {
                         }
                         if index >= self.slots.len() {
                             self.slots.resize(index + 1, EMPTY_SLOT);
+                            self.data.resize(index + 1, EMPTY_DATA);
                         }
-                        let slot = &mut self.slots[index];
+                        let (slot, data) = (&mut self.slots[index], &mut self.data[index]);
                         let bits = e.to_bits();
                         let (pb, rb, sb) = (
                             &pb[i * 12..i * 12 + 12],
@@ -488,17 +520,17 @@ impl Hierarchy {
                         );
                         let same = was.get(index).copied().unwrap_or(false)
                             && slot.bits == bits
-                            && slot.trs[..12] == *pb
-                            && slot.trs[12..28] == *rb
-                            && slot.trs[28..] == *sb;
+                            && data.trs[..12] == *pb
+                            && data.trs[12..28] == *rb
+                            && data.trs[28..] == *sb;
                         slot.changed = !same;
                         if !same {
                             slot.bits = bits;
-                            slot.trs[..12].copy_from_slice(pb);
-                            slot.trs[12..28].copy_from_slice(rb);
-                            slot.trs[28..].copy_from_slice(sb);
+                            data.trs[..12].copy_from_slice(pb);
+                            data.trs[12..28].copy_from_slice(rb);
+                            data.trs[28..].copy_from_slice(sb);
                             slot.world_set = false;
-                            slot.local = Mat4::from_scale_rotation_translation(s[i], r[i], p[i]);
+                            data.local = None;
                         }
                         slot.local_set = true;
                     }
@@ -600,16 +632,15 @@ impl Hierarchy {
     }
 
     /// The slot of the entity `e` (bits), when it has `og.Transform`.
-    fn slot(&mut self, e: u64) -> Option<&mut Slot> {
+    fn slot(&mut self, e: u64) -> Option<(&mut Slot, &mut SlotData)> {
         let index = Entity::from_bits(e).index() as usize;
-        self.slots
-            .get_mut(index)
-            .filter(|s| s.local_set && s.bits == e)
+        let s = self.slots.get_mut(index)?;
+        (s.local_set && s.bits == e).then(|| (s, &mut self.data[index]))
     }
 
     fn cached(&mut self, e: u64) -> Option<Mat4> {
         match self.slot(e) {
-            Some(s) => s.world_set.then_some(s.world),
+            Some((s, d)) => s.world_set.then_some(d.world),
             None => self.loose.get(&e).copied(),
         }
     }
@@ -647,9 +678,9 @@ impl Hierarchy {
             self.composed += 1;
             let mut m = Mat4::IDENTITY;
             match self.slot(e) {
-                Some(s) => {
-                    m *= s.local;
-                    s.world = m;
+                Some((s, d)) => {
+                    m *= d.local();
+                    d.world = m;
                     s.world_set = true;
                 }
                 None => {
@@ -676,9 +707,9 @@ impl Hierarchy {
             }
             self.composed += 1;
             match self.slot(id) {
-                Some(s) => {
-                    m *= s.local;
-                    s.world = m;
+                Some((s, d)) => {
+                    m *= d.local();
+                    d.world = m;
                     s.world_set = true;
                 }
                 None => {
