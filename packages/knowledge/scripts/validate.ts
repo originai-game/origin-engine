@@ -517,7 +517,7 @@ interface Style {
   descriptor: string;
   checks: string[];
   premise: Record<string, string>;
-  look: { preset: string; presetReady: boolean; support: string; primitives: string[]; missing: string[] };
+  look: { preset: string; presetReady: boolean; support: string; profiles: string[]; primitives: string[]; missing: string[] };
   ui: string;
   palette: { size: string; rules: string };
   assets: Record<string, string>;
@@ -526,6 +526,8 @@ interface Style {
 
 /** What `look.support` may say: full (every primitive draws), partial or planned (`missing` names what is still to land), content (the look is authored art). */
 export const SUPPORT = ["full", "partial", "planned", "content"] as const;
+/** What `look.profiles` may name: the project profiles a style draws for (create's premise match never offers a style outside the game's). */
+export const PROFILES = ["2d", "3d"] as const;
 /** The placeholders the art-bible template may use. */
 export const BIBLE_FIELDS = ["title", "premise", "camera", "platform", "name", "descriptor", "direction", "palette", "assets", "ui", "avoid", "game", "slug", "checks"] as const;
 const PREMISE = ["genre", "mood", "era", "audience"];
@@ -537,7 +539,7 @@ const ASSET_SPECS = ["logicalResolution", "spriteScale", "faceBudget", "outlineP
  * bible direction), its preset path `templates/looks/<slug>.ogt` (a
  * `type look` file when presetReady), its support honest (`missing` names
  * the primitives a style that is not `full` lacks, and is empty for one
- * that is), every `Resource.field` it names a member of the generated API,
+ * that is), the profiles it draws for (`look.profiles`, 2d and/or 3d), every `Resource.field` it names a member of the generated API,
  * og-taste naming every slug, and no text phrased as an imitation.
  */
 function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]): void {
@@ -591,6 +593,10 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
     }
     if (look.preset !== `templates/looks/${s.slug}.ogt`) problems.push(`${id}: look.preset is ${look.preset}, expected templates/looks/${s.slug}.ogt`);
     if (!(SUPPORT as readonly string[]).includes(look.support)) problems.push(`${id}: look.support ${look.support} is none of ${SUPPORT.join(", ")}`);
+    const profiles = Array.isArray(look.profiles) ? look.profiles : [];
+    if (profiles.length === 0 || new Set(profiles).size !== profiles.length || !profiles.every((p) => (PROFILES as readonly string[]).includes(p))) {
+      problems.push(`${id}: look.profiles must name the profiles the style draws for, one or both of ${PROFILES.join(", ")} (create matches a premise only among the game's)`);
+    }
     const missing = look.missing ?? [];
     if (look.support === "full" && missing.length > 0) problems.push(`${id}: support full, yet it names missing primitives`);
     if (look.support !== "full" && !missing.some(text)) problems.push(`${id}: support ${look.support} must name what is missing (the primitive or the authored art)`);

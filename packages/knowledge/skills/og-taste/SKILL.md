@@ -342,6 +342,13 @@ the look lives in authored art (painted backdrops, frame-by-frame
 animation, hand-placed pixels); the engine frames it with the look, but
 the assets carry it, so budget for them.
 
+**Read `look.profiles` before matching.** It names the project profiles a
+style draws for: `["2d"]` for flipbooks, hand-placed pixels and paper
+cut-outs, `["3d"]` for lit meshes, toon materials and voxels, both for a
+post treatment that frames either. `create --premise` matches only among the
+styles of the game's profile (`--profile`, else the premise's, else 3D);
+`--look` names any style and wins.
+
 **Write the look.** Start from the style's preset and change only what the
 game needs; your file wins field by field. A style whose `look.presetReady`
 is false has no preset in this engine yet: leave out `extends` and set the

@@ -190,6 +190,7 @@ test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
       b.look.support = "planned";
       b.look.missing = [];
       c.look.primitives = [...c.look.primitives, "Stylise.posterise"];
+      c.look.profiles = ["2d", "4d"];
       cat.styles.push({ ...cat.styles[3] });
       cat.styles.push({ ...cat.styles[4], slug: "a-new-look" });
       return JSON.stringify(cat, null, 2);
@@ -204,6 +205,7 @@ test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
       `looks/catalogue.json: ${a}: needs exactly three checks a critic can judge on a frame`,
       `looks/catalogue.json: ${b}: support planned must name what is missing (the primitive or the authored art)`,
       `looks/catalogue.json: ${c}: names Stylise.posterise, which the generated API does not have`,
+      `looks/catalogue.json: ${c}: look.profiles must name the profiles the style draws for, one or both of 2d, 3d (create matches a premise only among the game's)`,
       `looks/catalogue.json: ${d}: a second style with this slug`,
       "looks/catalogue.json: a-new-look: look.preset is templates/looks/" + cat.styles[4]!.slug + ".ogt, expected templates/looks/a-new-look.ogt",
       "skills/og-taste/SKILL.md: the style catalogue (§12) does not list `a-new-look`",

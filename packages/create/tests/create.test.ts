@@ -252,7 +252,7 @@ test("pickStyle weighs genre over mood over the rest, prefers full support on a 
   const pick = (p: string) => pickStyle(p, styles)?.style.slug ?? null;
   expect(pick("a cosy city builder with a tabletop charm")).toBe("miniature-diorama");
   expect(pick("survival horror with lonely, uncanny corridors")).toBe("low-resolution-3d");
-  expect(pick("16-bit platformer, energetic and heroic")).toBe("16bit-pixel");
+  expect(pickStyle("16-bit platformer, energetic and heroic", styles, "2d")?.style.slug).toBe("16bit-pixel");
   expect(pick("a sandbox about building and destruction")).toBe("voxel-worlds");
   expect(pick("Cozy Puzzles")).not.toBeNull();
   expect(pick("")).toBeNull();
@@ -261,6 +261,32 @@ test("pickStyle weighs genre over mood over the rest, prefers full support on a 
   expect(pickStyle("neon arcade shooter", noPresets)).toBeNull();
   // Every slug the catalogue offers is one --look accepts, and each has its preset in templates/looks/.
   for (const s of styles) expect(existsSync(join(pkg, "..", "..", "templates", "looks", `${s.slug}.ogt`))).toBe(s.look.presetReady);
+});
+
+test("the premise's style is one drawn for the project's profile; --look still wins (rumpus-isle #1)", () => {
+  // rumpus-isle #1: this 3D party premise used to pick rubber-hose-animation,
+  // a style of flipbooks (2D only), for the 3D template.
+  const party = "a local-multiplayer party game for two to four on one screen: round critters on a little island bump each other into the sea in short minigames; bright, bouncy, cartoon";
+  const rubber = styles.find((s) => s.slug === "rubber-hose-animation")!;
+  expect(rubber.look.profiles).toEqual(["2d"]);
+  const three = pickStyle(party, styles, "3d")!.style;
+  expect(three.slug).toBe("sculpted-clay");
+  expect(three.look.profiles).toContain("3d");
+  expect(pickStyle(party, styles)!.style.slug).toBe(three.slug);
+  // The same premise for a 2D game may have it: the profile, not the words, rules it out.
+  expect(pickStyle(party, styles, "2d")!.style.slug).toBe("rubber-hose-animation");
+  // Nor does a 2D platformer land on a style of lit meshes.
+  expect(pickStyle("an adventure platformer of clay figures, comedy", styles, "2d")!.style.look.profiles).toContain("2d");
+  const r = cli("party", "--premise", party, "--no-prompt");
+  expect(r.code).toBe(0);
+  expect(r.out).toContain("Profile: 3d");
+  expect(topLevel(read("party", "assets", "looks", "party.ogt"), "extends")).toBe(three.slug);
+  // --look wins over the premise and the profile.
+  const flag = cli("party2", "--premise", party, "--look", "rubber-hose-animation", "--no-prompt");
+  expect(flag.code).toBe(0);
+  expect(topLevel(read("party2", "assets", "looks", "party2.ogt"), "extends")).toBe("rubber-hose-animation");
+  // Every style says which profiles it draws for.
+  for (const s of styles) expect(s.look.profiles.length).toBeGreaterThan(0);
 });
 
 test("an archetype without a look gets one: GameDesc.look inserted into og.game({...}), its frames untouched until a preset is chosen", () => {
