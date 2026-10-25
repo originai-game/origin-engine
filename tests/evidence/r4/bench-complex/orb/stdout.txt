@@ -1,0 +1,7 @@
+| scene | mode | p50 ms | p95 ms | sustained ms | fps |
+|---|---|---|---|---|---|
+| complex | engine WebGPU | 33.67 | 486.345 | 179.485 | 6 |
+| complex | engine WebGL2 | 2962.99 | 6125.465 | 3948.917 | 0 |
+| complex | three WebGL2, InstancedMesh per tile | 2801.275 | 3017.765 | 2842.17 | 0 |
+| complex | three WebGL2, InstancedMesh per part | 33.395 | 33.595 | 23.583 | 42 |
+| complex | three WebGPU, InstancedMesh per tile | 58485.1 | 148452.68 | 73948.477 | 0 |
