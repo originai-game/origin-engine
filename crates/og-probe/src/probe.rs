@@ -566,13 +566,10 @@ impl Probe {
             return;
         }
         let queue = std::mem::take(&mut self.queue);
-        self.queue = queue
-            .into_iter()
-            .map(|((tick, seq), step)| {
-                let left = tick.saturating_sub(from);
-                ((to + left, seq), step)
-            })
-            .collect();
+        self.queue = og_core::sort::map(queue.into_iter().map(|((tick, seq), step)| {
+            let left = tick.saturating_sub(from);
+            ((to + left, seq), step)
+        }));
     }
 
     /// The game's own facts for `state().facts` (`GameDesc.facts`).

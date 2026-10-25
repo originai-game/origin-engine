@@ -3481,7 +3481,7 @@ fn parse_clip(e: &Entry, rig: &Armature2d, names: &Names<'_>) -> Result<Clip2d> 
         ));
     }
     sorted(&clip.order.iter().map(|o| o.0).collect::<Vec<_>>(), e.line)?;
-    clip.events.sort_by(|a, b| a.0.total_cmp(&b.0));
+    og_core::sort::sort_by(&mut clip.events, |a, b| a.0.total_cmp(&b.0));
     Ok(clip)
 }
 

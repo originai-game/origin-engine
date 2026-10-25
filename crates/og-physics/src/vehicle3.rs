@@ -89,7 +89,7 @@ pub(crate) fn vehicles(
     handles: &super::sim::Handles<'_>,
     out: &mut StepOut,
 ) -> Result<()> {
-    let live: BTreeSet<u64> = scene.vehicles.iter().map(|v| v.0.to_bits()).collect();
+    let live: BTreeSet<u64> = og_core::sort::set(scene.vehicles.iter().map(|v| v.0.to_bits()));
     sim.vehicles.retain(|e, _| live.contains(e));
     for (e, veh) in &scene.vehicles {
         let key = e.to_bits();

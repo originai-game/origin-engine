@@ -781,7 +781,9 @@ impl ScatterRenderer {
             let centre = |(x, z): (u32, u32)| {
                 (Vec2::new(x as f32 + 0.5, z as f32 + 0.5) * span - half - eye).length()
             };
-            order.sort_by(|a, b| centre(*a).total_cmp(&centre(*b)).then(a.cmp(b)));
+            og_core::sort::sort_by(&mut order, |a, b| {
+                centre(*a).total_cmp(&centre(*b)).then(a.cmp(b))
+            });
             for (cx, cz) in order {
                 // The chunk's rectangle in the terrain's space: past the reach, nothing.
                 let a = Vec2::new(cx as f32, cz as f32) * span - half;

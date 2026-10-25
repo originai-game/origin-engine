@@ -1048,7 +1048,7 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
                 Some(i),
             ));
         }
-        all.sort_by_key(|a| std::cmp::Reverse(a.0));
+        og_core::sort::sort_by_key(&mut all, |a| std::cmp::Reverse(a.0));
         let mut cull_fresh = vec![false; fresh.len()];
         for (rank, (_, playing, starting)) in all.into_iter().enumerate() {
             let within = rank < cap;

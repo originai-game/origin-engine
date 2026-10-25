@@ -412,12 +412,13 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
 /// A model's skeleton and clips by name (og.load.animation of it).
 fn clip_set(eng: &Engine, model: &str) -> Result<(u64, BTreeMap<String, u64>), String> {
     let v = super::anim::load_animation(eng, model)?;
-    let clips = v["clips"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|c| Some((c["name"].as_str()?.to_string(), bits(&c["clip"]))))
-        .collect();
+    let clips = og_core::sort::map(
+        v["clips"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|c| Some((c["name"].as_str()?.to_string(), bits(&c["clip"])))),
+    );
     Ok((bits(&v["skeleton"]), clips))
 }
 
@@ -441,7 +442,7 @@ pub fn og_timeline_info(world: u32, asset: f64) -> String {
                 markers.extend(ks.iter().map(|k| (k.time, k.name.clone())));
             }
         }
-        markers.sort_by(|a, b| a.0.total_cmp(&b.0));
+        og_core::sort::sort_by(&mut markers, |a, b| a.0.total_cmp(&b.0));
         Ok(json!({
             "asset": asset,
             "name": tl.name,

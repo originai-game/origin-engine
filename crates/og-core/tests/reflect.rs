@@ -45,6 +45,7 @@ struct Player;
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
 struct Empty {}
 
+#[cfg(not(feature = "publish"))]
 #[test]
 fn derive_produces_the_schema_with_metadata() {
     let s = Life::schema();
@@ -95,6 +96,23 @@ fn derive_produces_the_schema_with_metadata() {
     assert_eq!(Player::schema().fields.len(), 0);
     assert_eq!(Player::schema().doc, "A tag.");
     assert_eq!(Empty::schema().fields.len(), 0);
+}
+
+/// A publish build (og-core's `publish`) writes no docs into a derived
+/// schema and keeps the rest of its metadata, and with it the layout hash.
+#[cfg(feature = "publish")]
+#[test]
+fn a_publish_build_leaves_the_docs_out() {
+    let s = Life::schema();
+    assert!(s.doc.is_empty() && s.fields.iter().all(|f| f.doc.is_empty()));
+    assert_eq!(s.fields[0].label.as_deref(), Some("Hit points"));
+    assert_eq!(s.fields[1].unit.as_deref(), Some("hp/s"));
+    let mut documented = s.clone();
+    documented.doc = "Hit points of anything that can be destroyed.".into();
+    documented.fields[0].doc = "Current hit points.".into();
+    assert_eq!(documented.layout_hash(), s.layout_hash());
+    assert!(Player::schema().doc.is_empty());
+    assert!(Empty::schema().doc.is_empty());
 }
 
 #[test]

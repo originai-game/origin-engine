@@ -574,12 +574,13 @@ impl Handles<'_> {
     pub(crate) fn get(&self, key: &u64) -> Option<&rp::RigidBodyHandle> {
         self.by_entity
             .get_or_init(|| {
-                self.scene
-                    .bodies
-                    .iter()
-                    .map(|b| b.entity.to_bits())
-                    .zip(self.by_body.iter().copied())
-                    .collect()
+                og_core::sort::map(
+                    self.scene
+                        .bodies
+                        .iter()
+                        .map(|b| b.entity.to_bits())
+                        .zip(self.by_body.iter().copied()),
+                )
             })
             .get(key)
     }
@@ -1238,7 +1239,7 @@ impl QueryWorld {
                 .map(|(_, c)| entity_of(c))
                 .collect::<Vec<_>>()
         });
-        hits.sort_by_key(|e| e.to_bits());
+        og_core::sort::sort_by_key(&mut hits, |e| e.to_bits());
         hits.dedup();
         Ok(hits)
     }
@@ -1296,11 +1297,9 @@ fn asset_key(c: &Collider, scale: Vec3) -> ShapeKey {
 /// shape's key and [`load`] rebuilds it from the asset. Everything else is
 /// rapier's own serialisation, byte for byte.
 pub(crate) fn save(sim: &Sim) -> (Vec<Hole>, Vec<u8>) {
-    use bincode::Options;
-    let codec = || bincode::DefaultOptions::new();
-    let full = codec()
-        .serialize(sim)
-        .expect("a physics world always serializes into memory");
+    let fits = "a physics world always serializes into memory";
+    let mut full = Vec::new();
+    crate::encode(&mut full, sim).expect(fits);
     let w = &sim.world;
     // Which colliders' shapes come from assets, by handle.
     let mut keyed: BTreeMap<(u32, u32), ShapeKey> = BTreeMap::new();
@@ -1320,15 +1319,23 @@ pub(crate) fn save(sim: &Sim) -> (Vec<Hole>, Vec<u8>) {
         return (Vec::new(), full);
     }
     // The colliders' bytes start after the world's fields before them
-    // (bincode writes a struct's fields one after another).
-    let size = |r: bincode::Result<u64>| r.expect("serialized above") as usize;
-    let start = size(codec().serialized_size(&w.gravity))
-        + size(codec().serialized_size(&w.integration_parameters))
-        + size(codec().serialized_size(&w.islands))
-        + size(codec().serialized_size(&w.broad_phase))
-        + size(codec().serialized_size(&w.narrow_phase))
-        + size(codec().serialized_size(&w.bodies));
-    let end = start + size(codec().serialized_size(&w.colliders));
+    // (bincode writes a struct's fields, and a tuple's, one after another):
+    // measured by writing those fields again with the same encoder rather
+    // than a size pass, which would compile their serialisation twice.
+    let mut scratch = Vec::new();
+    let before = (
+        &w.gravity,
+        &w.integration_parameters,
+        &w.islands,
+        &w.broad_phase,
+        &w.narrow_phase,
+        &w.bodies,
+    );
+    crate::encode(&mut scratch, &before).expect(fits);
+    let start = scratch.len();
+    scratch.clear();
+    crate::encode(&mut scratch, &w.colliders).expect(fits);
+    let end = start + scratch.len();
     let mut holes = Vec::new();
     let mut out = Vec::with_capacity(full.len());
     let mut at = start;
@@ -1337,9 +1344,9 @@ pub(crate) fn save(sim: &Sim) -> (Vec<Hole>, Vec<u8>) {
         let Some(key) = keyed.get(&h.into_raw_parts()) else {
             continue;
         };
-        let shape = codec()
-            .serialize(c.shared_shape())
-            .expect("a shape always serializes into memory");
+        scratch.clear();
+        crate::encode(&mut scratch, c.shared_shape()).expect(fits);
+        let shape = &scratch;
         // The shape is the collider's second field: the first match past
         // the previous collider is it.
         let Some(found) = full[at..end]
@@ -1371,7 +1378,7 @@ pub(crate) fn load(bytes: &[u8], holes: &[Hole], shared: &mut Shared) -> Result<
             format!("the rapier world does not decode: {e}"),
         )
     };
-    let codec = || bincode::DefaultOptions::new().reject_trailing_bytes();
+    let codec = crate::codec;
     if holes.is_empty() {
         return codec().deserialize(bytes).map_err(parse);
     }
@@ -1392,9 +1399,7 @@ pub(crate) fn load(bytes: &[u8], holes: &[Hole], shared: &mut Shared) -> Result<
                 "the save's colliders are built from meshes and height fields, which are assets: load or register them before restoring",
             )
         })?;
-        bincode::DefaultOptions::new()
-            .serialize_into(&mut full, &built)
-            .map_err(parse)?;
+        crate::encode(&mut full, &built).map_err(parse)?;
     }
     full.extend_from_slice(&bytes[from..]);
     codec().deserialize(&full).map_err(parse)

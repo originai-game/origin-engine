@@ -48,7 +48,7 @@ impl Names {
             .filter(|(e, _)| world.is_alive(*e))
             .map(|(e, n)| (n.to_owned(), e))
             .collect();
-        out.sort_by_key(|(_, e)| (e.index(), e.generation()));
+        og_core::sort::sort_by_key(&mut out, |(_, e)| (e.index(), e.generation()));
         out
     }
 }

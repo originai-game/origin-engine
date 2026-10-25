@@ -423,7 +423,7 @@ fn parse<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
             stored.push(type_at(r.u32()?)?);
         }
         let mut sorted = stored.clone();
-        sorted.sort();
+        og_core::sort::sort(&mut sorted);
         if sorted.windows(2).any(|w| w[0] == w[1]) {
             return Err(bad(format!("archetype {a} repeats a type")));
         }
@@ -1188,7 +1188,7 @@ impl World {
         for (a, snap) in parsed.archetypes.iter().enumerate() {
             let stored: Vec<SchemaId> = snap.stored.iter().map(|&t| map[t]).collect();
             let mut types = stored.clone();
-            types.sort();
+            og_core::sort::sort(&mut types);
             if by_types.insert(types.clone(), a as u32).is_some() {
                 return Err(bad(format!("archetype {a} duplicates another")));
             }
@@ -1299,7 +1299,7 @@ impl World {
                 .enumerate()
                 .filter_map(|(s, &t)| storable(t).map(|p| (s, p)))
                 .collect();
-            kept.sort_by_key(|(_, p)| p.target);
+            og_core::sort::sort_by_key(&mut kept, |(_, p)| p.target);
             let types: Vec<SchemaId> = kept.iter().map(|(_, p)| p.target).collect();
             let a = match by_types.get(&types) {
                 Some(&a) => a,
@@ -1396,8 +1396,8 @@ impl World {
         self.archetype_by_types = state.by_types;
         self.resources = state.resources;
         self.events = state.events;
-        self.by_name = state.names.iter().map(|(e, n)| (n.clone(), *e)).collect();
-        self.names = state.names.into_iter().collect();
+        self.by_name = og_core::sort::map(state.names.iter().map(|(e, n)| (n.clone(), *e)));
+        self.names = og_core::sort::map(state.names);
         for (b, decoded) in self.blocks.iter_mut().zip(state.blocks) {
             b.block.apply(decoded);
         }

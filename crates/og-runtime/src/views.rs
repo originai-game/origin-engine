@@ -275,7 +275,7 @@ fn every(v: &Value) -> u32 {
 /// Every component's rows in entity order (views tie on it).
 fn sorted_rows(world: &World, layout: Option<&Layout>) -> Vec<(u64, Value)> {
     let mut r = rows(world, layout);
-    r.sort_by_key(|(e, _)| Entity::from_bits(*e).index());
+    og_core::sort::sort_by_key(&mut r, |(e, _)| Entity::from_bits(*e).index());
     r
 }
 

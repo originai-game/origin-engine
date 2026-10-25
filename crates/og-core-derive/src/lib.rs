@@ -5,6 +5,7 @@
 //! `tunable` flag) and the field-by-field byte access the ECS uses for column
 //! storage. The generated code names `::og_core`, so a crate using the derive
 //! depends on `og-core` (which re-exports the derive as `og_core::Reflect`).
+//! The docs go through `og_core::reflect_doc!`, empty in a publish build.
 //!
 //! ```ignore
 //! /// Hit points of anything that can be destroyed.
@@ -143,7 +144,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
             ::og_core::reflect::FieldSchema {
                 name: ::std::string::String::from(#fname),
                 ty: #field_type,
-                doc: ::std::string::String::from(#doc),
+                doc: ::std::string::String::from(::og_core::reflect_doc!(#doc)),
                 label: #label,
                 unit: #unit,
                 min: #min,
@@ -198,7 +199,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                 ::og_core::reflect::Schema {
                     name: ::std::string::String::from(#name),
                     version: #version,
-                    doc: ::std::string::String::from(#doc),
+                    doc: ::std::string::String::from(::og_core::reflect_doc!(#doc)),
                     fields: ::std::vec![#(#schema_fields),*],
                 }
             }

@@ -1828,6 +1828,7 @@ name = "og-geom"
 version = "0.4.0"
 dependencies = [
  "glam 0.34.1",
+ "og-core",
  "robust",
  "spade",
 ]

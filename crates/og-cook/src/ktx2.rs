@@ -182,7 +182,7 @@ fn kvd(writer: &str, extra: &[(String, Vec<u8>)]) -> Vec<u8> {
             .map(|(k, v)| (k.as_str(), v.as_slice())),
     );
     // The specification sorts the pairs by key.
-    pairs.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
+    og_core::sort::sort_by(&mut pairs, |a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
     let mut out = Vec::new();
     for (k, v) in pairs {
         out.extend_from_slice(&((k.len() + 1 + v.len()) as u32).to_le_bytes());

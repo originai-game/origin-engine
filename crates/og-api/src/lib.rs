@@ -9,6 +9,23 @@
 //! does, so neither the generators nor the runtime rebuild what depends on
 //! the contract alone (`og`'s cook).
 
+/// A record field's doc as `RECORDS` holds it: the text, or empty with the
+/// `publish` feature (a published game's build: nothing there reads field
+/// docs, so the text is not linked).
+#[cfg(not(feature = "publish"))]
+macro_rules! doc {
+    ($doc:literal) => {
+        $doc
+    };
+}
+
+#[cfg(feature = "publish")]
+macro_rules! doc {
+    ($doc:literal) => {
+        ""
+    };
+}
+
 /// The host contract generated from the IDL: the traits `og-host-web` and
 /// `og-host-node` implement (`og api gen` writes `src/generated/host.rs`).
 #[rustfmt::skip]

@@ -8,6 +8,8 @@ description = "Origin Engine procedural geometry: three.js's shape, extrude, lat
 
 [dependencies]
 glam = { workspace = true }
+# The engine's one stable sort (og_core::sort).
+og-core = { path = "../og-core" }
 # Exact orientation predicates (Shewchuk's), where CSG decides a side.
 robust = "1.2.0"
 # The constrained Delaunay triangulation CSG cuts each triangle with

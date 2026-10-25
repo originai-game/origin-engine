@@ -2259,7 +2259,7 @@ impl Ui {
             .copied()
             .filter(|&f| !self.nodes[f].hidden)
             .collect();
-        floating.sort_by_key(|&f| self.nodes[f].float.rank());
+        og_core::sort::sort_by_key(&mut floating, |&f| self.nodes[f].float.rank());
         self.floating = floating;
 
         let vp = self.viewport;
@@ -2440,7 +2440,7 @@ impl Ui {
 
         // Interaction state for the next tick.
         let mut present: BTreeMap<u64, usize> =
-            order.iter().map(|&i| (self.nodes[i].key, i)).collect();
+            og_core::sort::map(order.iter().map(|&i| (self.nodes[i].key, i)));
         // A rich text's links are controls of their own, inside its node.
         for &i in &order {
             for l in &self.nodes[i].links {
@@ -2461,29 +2461,30 @@ impl Ui {
         }
         // Each scroll container's ranges and bar lengths, as drawn.
         let min_bar = self.theme.space.xl;
-        self.state.scroll_info = order
-            .iter()
-            .filter(|&&i| self.nodes[i].scrolls())
-            .map(|&i| {
-                let n = &self.nodes[i];
-                let range = Vec2::new(n.max_scroll_x(), n.max_scroll());
-                let bar = Vec2::new(
-                    crate::scroll::bar_len(
-                        n.rect.width,
-                        n.w - n.el.padding.horizontal(),
-                        n.content_w,
-                        min_bar,
-                    ),
-                    crate::scroll::bar_len(
-                        n.rect.height,
-                        n.h - n.el.padding.vertical(),
-                        n.content_h,
-                        min_bar,
-                    ),
-                );
-                (n.key, crate::scroll::ScrollInfo { range, bar })
-            })
-            .collect();
+        self.state.scroll_info = og_core::sort::map(
+            order
+                .iter()
+                .filter(|&&i| self.nodes[i].scrolls())
+                .map(|&i| {
+                    let n = &self.nodes[i];
+                    let range = Vec2::new(n.max_scroll_x(), n.max_scroll());
+                    let bar = Vec2::new(
+                        crate::scroll::bar_len(
+                            n.rect.width,
+                            n.w - n.el.padding.horizontal(),
+                            n.content_w,
+                            min_bar,
+                        ),
+                        crate::scroll::bar_len(
+                            n.rect.height,
+                            n.h - n.el.padding.vertical(),
+                            n.content_h,
+                            min_bar,
+                        ),
+                    );
+                    (n.key, crate::scroll::ScrollInfo { range, bar })
+                }),
+        );
         if let Some((k, _)) = self.state.fling
             && !present.contains_key(&k)
         {
@@ -2921,7 +2922,8 @@ impl Ui {
     /// rectangles (and the clips its own scroll containers make), multiplies
     /// opacity, and makes the subtree inert while it moves.
     fn apply_fx(&mut self, order: &[usize]) {
-        let pos: BTreeMap<usize, usize> = order.iter().enumerate().map(|(k, &i)| (i, k)).collect();
+        let pos: BTreeMap<usize, usize> =
+            og_core::sort::map(order.iter().enumerate().map(|(k, &i)| (i, k)));
         for k in 0..order.len() {
             let i = order[k];
             let parent = self.nodes[i].parent;
@@ -2963,7 +2965,8 @@ impl Ui {
                     r.height * fx.scale,
                 )
             };
-            let inside: std::collections::BTreeSet<usize> = order[k..end].iter().copied().collect();
+            let inside: std::collections::BTreeSet<usize> =
+                og_core::sort::set(order[k..end].iter().copied());
             for &j in &order[k..end] {
                 let n = &mut self.nodes[j];
                 n.rect = tf(n.rect);

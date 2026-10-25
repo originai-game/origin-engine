@@ -10,6 +10,7 @@
 //! | [`math`] | glam re-exported, plus deterministic `sin`/`cos`/`atan2`/`exp`/`ln`/`pow`, and [`math::world_pose`] down a parent chain |
 //! | [`time`] | [`Time`], the fixed-tick clock |
 //! | [`hash`] | [`hash::StableHasher`], the stable 64-bit hash for world and layout hashes |
+//! | [`sort`] | [`sort::sort_by`] and its siblings: the engine's one stable sort, compiled once |
 //!
 //! Invariants: no global mutable state; every fallible call returns
 //! `Result<_, Error>`; nothing here reads the wall clock or the host's
@@ -31,6 +32,7 @@ pub mod math;
 pub mod ogt;
 pub mod reflect;
 pub mod rng;
+pub mod sort;
 pub mod time;
 
 pub use error::{Error, ErrorKind, Result};

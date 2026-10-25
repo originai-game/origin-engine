@@ -295,7 +295,7 @@ impl Streamer {
         self.frame += 1;
         let t0 = hooks.map_or(0.0, |h| h.now_ms());
         let cooked: BTreeMap<usize, CookedTerrain> =
-            drawn.iter().map(|d| (d.index, d.cooked.clone())).collect();
+            og_core::sort::map(drawn.iter().map(|d| (d.index, d.cooked.clone())));
         self.collect(&cooked, hooks, false, notes);
         let mut handed = 0usize;
         let mut waiting = 0u32;
@@ -382,7 +382,7 @@ impl Streamer {
                 .filter(|(k, _)| !keep.contains(k))
                 .map(|(k, c)| (c.used, *k))
                 .collect();
-            old.sort();
+            og_core::sort::sort(&mut old);
             for (_, k) in old.into_iter().take(self.cache.len() - limit) {
                 self.cache.remove(&k);
             }

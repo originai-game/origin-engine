@@ -335,7 +335,7 @@ fn open(eng: &Engine) {
             loads: 0,
         })
         .collect();
-    groups.sort_by(|a, b| a.desc.name.cmp(&b.desc.name));
+    og_core::sort::sort_by(&mut groups, |a, b| a.desc.name.cmp(&b.desc.name));
     a.stream.groups = groups;
     a.stream.opened = true;
 }
@@ -468,7 +468,7 @@ pub(crate) fn update(eng: &Engine) {
         let mut order: Vec<usize> = (0..s.groups.len())
             .filter(|&i| s.groups[i].wanted)
             .collect();
-        order.sort_by(|&x, &y| {
+        og_core::sort::sort_by(&mut order, |&x, &y| {
             let (gx, gy) = (&s.groups[x], &s.groups[y]);
             gy.desc
                 .priority
@@ -1425,10 +1425,11 @@ fn wanted_chunks(eng: &Engine) -> Vec<Wanted> {
     };
     let bank = link.bank();
     let distances = og_audio::chunk_distances(world, bank);
-    let sets = distances
-        .iter()
-        .map(|(h, chunks)| (*h, chunks.keys().copied().collect()))
-        .collect();
+    let sets = og_core::sort::map(
+        distances
+            .iter()
+            .map(|(h, chunks)| (*h, og_core::sort::set(chunks.keys().copied()))),
+    );
     let a = eng.assets.borrow();
     let mut out = Vec::new();
     for (handle, id, n) in bank.keep_chunks(&sets) {
@@ -1466,7 +1467,7 @@ fn wanted_chunks(eng: &Engine) -> Vec<Wanted> {
 /// when it lands).
 pub(crate) fn fetch(eng: &Engine) {
     let mut wants = wanted_chunks(eng);
-    wants.sort_by(|a, b| match (&a.need, &b.need) {
+    og_core::sort::sort_by(&mut wants, |a, b| match (&a.need, &b.need) {
         (
             Need::Chunk {
                 id: ia,
@@ -1491,7 +1492,7 @@ pub(crate) fn fetch(eng: &Engine) {
             .iter()
             .filter(|g| g.state == State::Loading && g.files.is_empty())
             .collect();
-        packs.sort_by(|x, y| {
+        og_core::sort::sort_by(&mut packs, |x, y| {
             y.desc
                 .priority
                 .cmp(&x.desc.priority)

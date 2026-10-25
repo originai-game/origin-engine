@@ -1209,7 +1209,7 @@ fn load_flipbook(eng: &Engine, path: &str) -> Result<Value, String> {
         .enumerate()
         .map(|(i, c)| {
             let mut events: Vec<(u32, String)> = c.events.clone();
-            events.sort();
+            og_core::sort::sort(&mut events);
             json!({
                 "clip": i,
                 "name": c.name,
@@ -1305,11 +1305,8 @@ fn load_tilemap(eng: &Engine, path: &str) -> Result<Value, String> {
         .objects
         .iter()
         .map(|o| {
-            let props: serde_json::Map<String, Value> = o
-                .properties
-                .iter()
-                .map(|(k, v)| (k.clone(), json!(v)))
-                .collect();
+            let mut props = serde_json::Map::new();
+            props.extend(o.properties.iter().map(|(k, v)| (k.clone(), json!(v))));
             json!({
                 "name": o.name, "kind": o.kind,
                 "position": { "x": o.x, "y": o.y },
@@ -2045,13 +2042,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     };
     let scene_tick = world.time().tick;
     let scaled_now = world.time_scale().elapsed;
-    let flips: BTreeMap<u64, Vec<u8>> = byte_rows(world, r.flipbook.0, &r.flipbook.1)
-        .into_iter()
-        .collect();
+    let flips: BTreeMap<u64, Vec<u8>> =
+        og_core::sort::map(byte_rows(world, r.flipbook.0, &r.flipbook.1));
     let sprites = byte_rows(world, r.sprite.0, &r.sprite.1);
-    let afterimages: BTreeMap<u64, Vec<u8>> = byte_rows(world, r.afterimage.0, &r.afterimage.1)
-        .into_iter()
-        .collect();
+    let afterimages: BTreeMap<u64, Vec<u8>> =
+        og_core::sort::map(byte_rows(world, r.afterimage.0, &r.afterimage.1));
     let ghosts = lock(&feel.shared).ghosts.clone();
     if rs.feel.blob.is_none()
         && sprites

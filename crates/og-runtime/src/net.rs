@@ -617,7 +617,7 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
             };
             let layouts: BTreeMap<String, super::codec::Layout> = {
                 let st = eng.state.borrow();
-                [
+                let rows = [
                     JOINED,
                     PEER_JOINED,
                     PEER_LEFT,
@@ -627,8 +627,8 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
                     PLAYER_INPUT,
                 ]
                 .iter()
-                .filter_map(|n| st.layouts.get(*n).map(|l| (n.to_string(), l.clone())))
-                .collect()
+                .filter_map(|n| st.layouts.get(*n).map(|l| (n.to_string(), l.clone())));
+                og_core::sort::map(rows)
             };
             let (events, desync, running, seat, players, local) = with(engine_id, |n| {
                 for m in n.messages.iter_mut().filter(|m| m.tick.is_none()) {

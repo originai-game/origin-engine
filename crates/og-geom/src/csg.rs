@@ -340,7 +340,7 @@ impl Csg {
             }
         }
         let dir = self.tri_normal(ta).cross(self.tri_normal(tb));
-        uniq.sort_by(|&a, &b| {
+        og_core::sort::sort_by(&mut uniq, |&a, &b| {
             self.p(a)
                 .dot(dir)
                 .total_cmp(&self.p(b).dot(dir))
@@ -415,7 +415,7 @@ impl Csg {
                         along.push(v);
                     }
                 }
-                along.sort_by(|&a, &b| {
+                og_core::sort::sort_by(&mut along, |&a, &b| {
                     (self.p(a) - p0)
                         .dot(p1 - p0)
                         .total_cmp(&(self.p(b) - p0).dot(p1 - p0))
@@ -457,7 +457,7 @@ impl Csg {
                 .copied()
                 .filter(|&i| i != a && i != b && self.on[i as usize].contains(&e))
                 .collect();
-            along.sort_by(|&x, &y| {
+            og_core::sort::sort_by(&mut along, |&x, &y| {
                 (self.p(x) - pa)
                     .dot(pb - pa)
                     .total_cmp(&(self.p(y) - pa).dot(pb - pa))

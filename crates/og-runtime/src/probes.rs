@@ -74,7 +74,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         probes.push(p);
     }
     let eye = rs.scene.camera.position;
-    probes.sort_by(|a, b| {
+    og_core::sort::sort_by(&mut probes, |a, b| {
         a.position
             .distance_squared(eye)
             .total_cmp(&b.position.distance_squared(eye))

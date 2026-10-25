@@ -196,7 +196,7 @@ pub(crate) fn build<'a>(
         }
     }
     let glyphs = keyed.len() as u32 - sprites;
-    keyed.sort_by_key(|(layer, source, _)| (*layer, *source));
+    og_core::sort::sort_by_key(&mut keyed, |(layer, source, _)| (*layer, *source));
     let mut runs: Vec<SpriteRun> = Vec::new();
     let mut instances = Vec::with_capacity(keyed.len());
     for (index, (_, source, inst)) in keyed.into_iter().enumerate() {

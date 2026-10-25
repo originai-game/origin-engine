@@ -62,7 +62,7 @@ pub(crate) fn generate(rs: &mut RenderState) -> usize {
             continue;
         };
         let rf = rs.runtime_fonts.get_mut(&render).expect("listed");
-        let mut want: BTreeSet<char> = rf.file.take_wanted().into_iter().collect();
+        let mut want: BTreeSet<char> = og_core::sort::set(rf.file.take_wanted());
         for t in rs.texts.iter().filter(|t| t.font == render) {
             want.extend(t.text.chars());
         }

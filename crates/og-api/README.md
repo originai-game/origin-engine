@@ -15,7 +15,9 @@ carries no IDL prose (a trait method names its TypeScript path; the docs
 live in `api.ogt`, the `.d.ts` and the wiki). So a doc-only IDL edit
 rewrites the TypeScript, schema and wiki outputs and rebuilds no crate; an
 edit to a component field's doc rewrites `RECORDS` (the runtime's
-reflection serves it) and rebuilds the hosts; a generator edit rebuilds
+reflection serves it; each doc is written `doc!("...")`, empty with the
+crate's `publish` feature, so a published game's wasm carries none) and
+rebuilds the hosts; a generator edit rebuilds
 `og-idl` and `og` only. There is no build script: the outputs are committed
 and `og api check` (the gate's drift step) holds them to the IDL.
 

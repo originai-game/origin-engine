@@ -676,7 +676,7 @@ pub fn terrain_tiles_wanted(
         let d = view.detail / along;
         let mut near = Vec::new();
         cover(layout, 0, eye - d, eye + d, |i| near.push(i));
-        near.sort_by(|a, b| {
+        og_core::sort::sort_by(&mut near, |a, b| {
             let da = (eye.clamp(layout.rect(*a).0, layout.rect(*a).1) - eye).length();
             let db = (eye.clamp(layout.rect(*b).0, layout.rect(*b).1) - eye).length();
             da.total_cmp(&db).then(a.cmp(b))
@@ -721,7 +721,9 @@ pub fn terrain_tiles_wanted(
             .filter(|&(x, z)| x < cx && z < cz)
             .map(|(x, z)| layout.index(k - 1, x, z))
             .collect();
-        children.sort_by(|a, b| error(*b).total_cmp(&error(*a)).then(a.cmp(b)));
+        og_core::sort::sort_by(&mut children, |a, b| {
+            error(*b).total_cmp(&error(*a)).then(a.cmp(b))
+        });
         for c in children {
             if out.len() >= capacity {
                 break;

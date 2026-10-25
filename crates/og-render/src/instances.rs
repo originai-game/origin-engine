@@ -340,7 +340,7 @@ impl SortedInstances {
                 .collect()
         };
         let probe_of = |i: usize| probe.get(i).copied().unwrap_or(crate::probe_select::NONE);
-        order.sort_by_key(|&i| {
+        og_core::sort::sort_by_key(&mut order, |&i| {
             let inst = &instances[i];
             (
                 inst.mesh,

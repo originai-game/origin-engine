@@ -1150,7 +1150,7 @@ pub fn og_render_raycast(world: u32, ray: String, desc: Option<String>) -> Strin
                 }
             }
         }
-        hits.sort_by(|a, b| a.0.total_cmp(&b.0));
+        og_core::sort::sort_by(&mut hits, |a, b| a.0.total_cmp(&b.0));
         if first {
             hits.truncate(1);
         }

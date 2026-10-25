@@ -121,7 +121,7 @@ fn ids(world: &World, names: &[String], system: &str) -> Result<Vec<SchemaId>> {
             )
         })?);
     }
-    out.sort();
+    og_core::sort::sort(&mut out);
     out.dedup();
     Ok(out)
 }
@@ -157,7 +157,7 @@ impl System {
         }
         let mut reads = ids(world, &desc.reads, &name)?;
         reads.extend(&writes);
-        reads.sort();
+        og_core::sort::sort(&mut reads);
         reads.dedup();
         let mut queries = Vec::with_capacity(desc.queries.len());
         for (i, q) in desc.queries.iter().enumerate() {

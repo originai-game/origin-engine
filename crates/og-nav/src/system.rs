@@ -638,7 +638,8 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
     navs.refresh_flows();
     let mut state = lock(&sys.state);
     // Drop the paths of agents that are gone.
-    let alive: std::collections::BTreeSet<u64> = rows.iter().map(|r| r.e.to_bits()).collect();
+    let alive: std::collections::BTreeSet<u64> =
+        og_core::sort::set(rows.iter().map(|r| r.e.to_bits()));
     state.paths.retain(|k, _| alive.contains(k));
     // Positions for separation, bucketed by 2 m cells.
     let cell = 2.0f32;

@@ -628,8 +628,9 @@ impl ParticleRenderer {
         let frame = self.frame;
         self.systems.retain(|_, s| s.seen == frame);
         // Far systems first; additive after alpha within the same depth.
-        out.systems
-            .sort_by(|a, b| b.depth.total_cmp(&a.depth).then(a.id.cmp(&b.id)));
+        og_core::sort::sort_by(&mut out.systems, |a, b| {
+            b.depth.total_cmp(&a.depth).then(a.id.cmp(&b.id))
+        });
         if !entries.is_empty() {
             let size = EMITTER_STRIDE * entries.len() as u64;
             if size > self.emitter_buffer.size() {

@@ -436,9 +436,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         });
     }
     // 2D water over its spring line.
-    let lines: BTreeMap<u64, Value> = rows(world, layouts.water_line.as_ref())
-        .into_iter()
-        .collect();
+    let lines: BTreeMap<u64, Value> = og_core::sort::map(rows(world, layouts.water_line.as_ref()));
     for (e, v) in rows(world, layouts.water_2d.as_ref()) {
         let (Some(line), Some(p)) = (lines.get(&e), physics) else {
             continue;

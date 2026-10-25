@@ -404,6 +404,19 @@ fn codec() -> impl bincode::Options {
     bincode::DefaultOptions::new().reject_trailing_bytes()
 }
 
+/// `value`'s bytes appended to `out` through [`codec`]. Everything a save
+/// writes goes through this one encoder, so each type's serialisation is
+/// compiled once: bincode's `serialize` and `serialized_size` would each
+/// compile the whole rapier world's again (a size pass, a writer of
+/// another type), tens of kilobytes of wasm (`tests/evidence/r4/size-2`).
+pub(crate) fn encode<T: serde::Serialize + ?Sized>(
+    out: &mut Vec<u8>,
+    value: &T,
+) -> bincode::Result<()> {
+    use bincode::Options;
+    codec().serialize_into(out, value)
+}
+
 /// What follows the profile tag in a saved `og.physics` block: the pushes
 /// not yet applied, then the simulation's bytes without its asset shapes
 /// and where they go (empty with tag 0, no simulation yet).
@@ -411,7 +424,6 @@ type Block = (Vec<Push>, Vec<Hole>, Vec<u8>);
 
 impl StateBlock for PhysicsState {
     fn save(&self, out: &mut Vec<u8>) {
-        use bincode::Options;
         let shared = lock(&self.0);
         let pushes = shared.pushes.clone();
         let block: Option<(u8, Block)> = match () {
@@ -430,9 +442,7 @@ impl StateBlock for PhysicsState {
         };
         if let Some((tag, block)) = block {
             out.push(tag);
-            codec()
-                .serialize_into(&mut *out, &block)
-                .expect("a physics world always serializes into memory");
+            encode(out, &block).expect("a physics world always serializes into memory");
         }
     }
 
@@ -1278,7 +1288,7 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
 
     // Started/Ended from the pairs the previous step carried over.
     let mut previous = ctx.events::<Contact>()?;
-    previous.sort();
+    og_core::sort::sort(&mut previous);
     previous.dedup();
     let current: Vec<Contact> = out.touching.iter().map(|t| t.0).collect();
     let key = |c: &Contact| (c.a, c.b, c.sensor != 0);

@@ -868,7 +868,7 @@ impl GpuCulling {
                     .filter(|x| materials[x.material].occluder)
                     .map(|x| (x.side, x.compact))
                     .collect();
-                s.sort();
+                og_core::sort::sort(&mut s);
                 s.dedup();
                 s
             };

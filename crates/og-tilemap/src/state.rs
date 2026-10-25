@@ -535,7 +535,7 @@ pub fn collision_rects(state: &MapState, layer: usize) -> Vec<Rect> {
     for (k, y0) in rest {
         close(&mut out, k, y0, h - 1);
     }
-    out.sort_by(|a, b| {
+    og_core::sort::sort_by(&mut out, |a, b| {
         (a.0, a.1)
             .cmp(&(b.0, b.1))
             .then(a.2.min.y.total_cmp(&b.2.min.y).reverse())

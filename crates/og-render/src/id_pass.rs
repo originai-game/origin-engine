@@ -306,7 +306,7 @@ pub fn render_ids_from(
     }
     // Meshes first, grouped by id (an id's coverage drawn alone is counted
     // once per pixel); then sprites in their draw order.
-    items.sort_by_key(|item| {
+    og_core::sort::sort_by_key(&mut items, |item| {
         (
             item.sprite,
             if item.sprite { 0 } else { item.id },
@@ -345,10 +345,8 @@ pub fn render_ids_from(
 
     // The objects: what shows of each id, with its bounds and depth.
     let forward = -view.row(2).truncate();
-    let mut objects: BTreeMap<u32, IdObject> = frame
-        .drawn
-        .iter()
-        .map(|(&id, &(count, b))| {
+    let mut objects: BTreeMap<u32, IdObject> =
+        og_core::sort::map(frame.drawn.iter().map(|(&id, &(count, b))| {
             (
                 id,
                 IdObject {
@@ -361,8 +359,7 @@ pub fn render_ids_from(
                     point: [0, 0],
                 },
             )
-        })
-        .collect();
+        }));
     let ivp = vp.inverse();
     let eye = view.inverse().w_axis.truncate();
     for y in 0..height {

@@ -483,7 +483,7 @@ impl Ring {
             queue.push(self.leftmost(list));
         }
         // JavaScript's sort is stable, as `sort_by`; a NaN comparison is 0.
-        queue.sort_by(|&a, &b| {
+        og_core::sort::sort_by(&mut queue, |&a, &b| {
             let r = self.compare_xy_slope(a, b);
             r.partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal)
         });

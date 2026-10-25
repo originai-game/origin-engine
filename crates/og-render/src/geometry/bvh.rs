@@ -200,7 +200,9 @@ impl Bvh {
                 (None, None) => {}
             }
         }
-        hits.sort_by(|a, b| a.t.total_cmp(&b.t).then(a.face.cmp(&b.face)));
+        og_core::sort::sort_by(&mut hits, |a, b| {
+            a.t.total_cmp(&b.t).then(a.face.cmp(&b.face))
+        });
         if first {
             hits.truncate(1);
         }

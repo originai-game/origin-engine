@@ -1241,7 +1241,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             locals.push((e, light, None));
         }
     }
-    locals.sort_by_key(|(e, ..)| Entity::from_bits(*e).index());
+    og_core::sort::sort_by_key(&mut locals, |(e, ..)| Entity::from_bits(*e).index());
     scene.light_cookies = locals
         .iter()
         .enumerate()

@@ -255,7 +255,9 @@ impl ClusterBuilder {
                     .map(|&i| importance(&lights[i], view.position)),
             );
             let mut by_score: Vec<usize> = (0..self.kept.len()).collect();
-            by_score.sort_by(|&a, &b| self.scores[b].total_cmp(&self.scores[a]).then(a.cmp(&b)));
+            og_core::sort::sort_by(&mut by_score, |&a, &b| {
+                self.scores[b].total_cmp(&self.scores[a]).then(a.cmp(&b))
+            });
             let mut keep = vec![false; self.kept.len()];
             for &k in &by_score[..MAX_LIGHTS] {
                 keep[k] = true;
@@ -337,8 +339,9 @@ impl ClusterBuilder {
                     .map(|&i| importance(&lights[i], view.position)),
             );
             let scores = &self.scores;
-            self.order
-                .sort_by(|&a, &b| scores[b].total_cmp(&scores[a]).then(a.cmp(&b)));
+            og_core::sort::sort_by(&mut self.order, |&a, &b| {
+                scores[b].total_cmp(&scores[a]).then(a.cmp(&b))
+            });
         }
         self.refs.clear();
         self.refs.resize(offset as usize, 0);

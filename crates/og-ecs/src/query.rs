@@ -71,7 +71,7 @@ fn resolve_names(registry: &Registry, names: &[String], owner: &str) -> Result<V
                 .map_err(|e| e.context(format!("{owner}: unknown type '{n}'")))
         })
         .collect::<Result<Vec<_>>>()?;
-    ids.sort();
+    og_core::sort::sort(&mut ids);
     ids.dedup();
     Ok(ids)
 }
@@ -82,7 +82,7 @@ impl QueryAccess {
         let writes = resolve_names(registry, &desc.write, owner)?;
         let without = resolve_names(registry, &desc.without, owner)?;
         let mut required: Vec<SchemaId> = read.iter().chain(&writes).copied().collect();
-        required.sort();
+        og_core::sort::sort(&mut required);
         required.dedup();
         if let Some(id) = without.iter().find(|id| required.binary_search(id).is_ok()) {
             return Err(Error::new(

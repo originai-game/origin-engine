@@ -290,13 +290,21 @@ ships the variants of the game's physics profile (project.ogt `profile`),
 single-threaded and lanes, so a page never downloads the physics of the
 other profile:
 
-| Variant | Where | Built with (og-host-web) | Physics | brotli, of 4 MiB (2026-10-21 at 9d220790, shipping `wasm` profile) |
+| Variant | Where | Built with (og-host-web) | Physics | brotli, of 4 MiB (2026-10-25, r4/size-2, shipping `wasm` profile) |
 |---|---|---|---|---|
-| 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,physics3d,shaping` | rapier3d | 3,055,713 B (72.9 %) |
-| 3D lanes | `dist/web-publish/origin-engine-lanes*`, `snippets/` | the same, wasm atomics (§Lanes) | rapier3d (`parallel`) | 3,095,052 B (73.8 %, the largest download) |
-| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,physics2d,profile2d,shaping` | rapier2d | 2,894,396 B (69.0 %) |
-| 2D lanes | `dist/web-publish-2d/origin-engine-lanes*`, `snippets/` | the same, wasm atomics | rapier2d (`parallel`) | 2,928,498 B (69.8 %) |
+| 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,physics3d,shaping` | rapier3d | 3,283,141 B (78.3 %) |
+| 3D lanes | `dist/web-publish/origin-engine-lanes*`, `snippets/` | the same, wasm atomics (§Lanes) | rapier3d (`parallel`) | 3,320,422 B (79.2 %, the largest download) |
+| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,physics2d,profile2d,shaping` | rapier2d | 3,034,243 B (72.3 %) |
+| 2D lanes | `dist/web-publish-2d/origin-engine-lanes*`, `snippets/` | the same, wasm atomics | rapier2d (`parallel`) | 3,072,212 B (73.2 %) |
 | dev | `dist/web/origin-engine*` | default features (both profiles) | both | not shipped |
+
+What `publish` leaves out of every variant, beside the probe's tool
+members: GPU timestamp queries, the reflected and record field docs
+(og-core's and og-api's `publish`: a schema keeps its names, labels,
+units, ranges, defaults and variants), and, in the 2D modules, the 3D
+world's renderer (`profile2d`). The figures above were 3,561,039,
+3,591,631, 3,291,397 and 3,327,994 B at 1bb341e5 (0.4.0) on the same
+machine; tests/evidence/r4/size-2/NOTES.md has what moved them.
 
 Until owed row 71 the lanes variant was one module with both profiles in
 `dist/web-publish`, 3,472,308 B (82.8 %) at the same commit and the largest

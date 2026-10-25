@@ -275,7 +275,7 @@ impl RenderGraph {
         let mut by_first: Vec<usize> = (0..self.targets.len())
             .filter(|&t| lifetimes[t].is_some())
             .collect();
-        by_first.sort_by_key(|&t| (lifetimes[t].expect("filtered").0, t));
+        og_core::sort::sort_by_key(&mut by_first, |&t| (lifetimes[t].expect("filtered").0, t));
         let mut physical: Vec<(TargetDesc, usize)> = Vec::new(); // (desc, last use)
         let mut slots = vec![None; self.targets.len()];
         for t in by_first {
