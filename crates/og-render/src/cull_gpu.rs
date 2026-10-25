@@ -947,9 +947,14 @@ impl GpuCulling {
         if instances_replaced {
             self.upload.invalidate();
         }
-        self.uploaded = self
-            .upload
-            .write(queue, &self.instances, bytemuck::cast_slice(transforms));
+        // The compute reads every one.
+        let bytes: &[u8] = bytemuck::cast_slice(transforms);
+        self.uploaded = self.upload.write(
+            queue,
+            &self.instances,
+            bytes,
+            std::slice::from_ref(&(0..bytes.len())),
+        );
         let table: Vec<BatchGpu> = batches
             .iter()
             .map(|x| {

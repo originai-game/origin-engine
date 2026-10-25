@@ -2051,6 +2051,13 @@ with their mips, chosen per tier and reported in
     write only the 4 KiB blocks that changed (`src/upload.rs`), on both
     tiers; a buffer just grown, or a frame of another length, is written
     whole. `FrameStats::instance_upload_bytes`; og-tests `tests/upload.rs`.
+    Since r4/perf-webgl2-3 only the blocks a draw reads: on the CPU path
+    the sorted records of the batches a list draws whole and the culled
+    copies appended after them, so a batch drawn from copies does not also
+    send its sorted records (20,000 spheres a fifth off screen: 2.32 MB a
+    frame, 116 bytes an instance, to 1.04 MB, the 64 of one record per
+    sphere drawn). The previous transforms of object motion go through
+    the same tracking.
   - **Resources can be removed** (db105bd): `RenderScene::remove_mesh`,
     `remove_texture`, `remove_material`, `remove_font` free the slot on the
     GPU before the next frame; the next add of the kind reuses it under a

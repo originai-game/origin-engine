@@ -9,6 +9,12 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## 0.5.0 — 2026-10-25
 
+- Instance uploads send only the records a draw reads: a batch drawn from
+  its culled copies (under 90 % in view, the CPU culling path, so every
+  WebGL2 frame) no longer also sends its sorted records, and object
+  motion's previous transforms are written only where they changed. A
+  field of 20,000 moving spheres a fifth off screen sends 1.04 MB a frame
+  where it sent 2.32 MB; frames are unchanged.
 - Spring bone colliders and falloff: `og.SpringCollider` (a sphere or a
   capsule on a joint, three-vrm's VRMSpringBoneCollider) keeps the tails
   of that skeleton's `og.SpringBone`s out by its `radius` plus the

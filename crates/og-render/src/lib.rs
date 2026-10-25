@@ -874,8 +874,9 @@ pub struct FrameStats {
     pub scatter_draws: u32,
     pub scatter_copies: u32,
     pub scatter_built: u32,
-    /// Bytes of instance transforms written to the GPU this frame: only the
-    /// 4 KiB blocks that changed since the last frame (0 for a scene that
+    /// Bytes of instance transforms (and, with object motion, their previous
+    /// transforms) written to the GPU this frame: only the 4 KiB blocks a
+    /// draw reads that changed since the last frame (0 for a scene that
     /// stood still).
     pub instance_upload_bytes: u64,
     /// Draws of the planar reflection pass (0: it did not run).
@@ -1277,6 +1278,17 @@ type LitDrawKey = (
 /// vertices are [`VertexEncoding::Compact`]'s.
 type LeanKey = (Side, bool, bool, bool);
 
+/// What a frame's CPU culls share ([`Renderer::cull`]), kept between
+/// frames so no pass allocates it: the in-view test of each sorted
+/// instance, and per batch whether a list draws it whole from the sorted
+/// instances. Those are the only sorted records a draw reads (every other
+/// draw reads copies appended after them), so the only ones uploaded.
+#[derive(Default)]
+struct CullScratch {
+    inside: Vec<bool>,
+    whole: Vec<bool>,
+}
+
 /// What one pass draws: (batch, first instance, count) ranges in the instance buffer.
 #[derive(Default)]
 struct DrawList {
@@ -1424,7 +1436,7 @@ pub struct Renderer {
     views: views::Views,
     /// The custom post passes on the device (`post_custom.rs`).
     custom_posts: post_custom::CustomPosts,
-    cull_inside: Vec<bool>,
+    cull_inside: CullScratch,
     post: post::PostPasses,
     cascade_map: ShadowMap,
     local_map: ShadowMap,
@@ -1521,6 +1533,8 @@ pub struct Renderer {
     palette: skin::GpuPalette,
     skinned_buffer: wgpu::Buffer,
     prev_instance_buffer: wgpu::Buffer,
+    /// What `prev_instance_buffer` holds ([`upload::DirtyUpload`]).
+    prev_instance_upload: upload::DirtyUpload,
     ribbon_buffer: wgpu::Buffer,
     ribbon_sampler: wgpu::Sampler,
     /// Lines, points and wireframes (`lines.rs`).
@@ -3007,7 +3021,7 @@ impl Renderer {
             clock: None,
             pass_ms: Vec::new(),
             gpu_timer: None,
-            cull_inside: Vec::new(),
+            cull_inside: CullScratch::default(),
             probes: probes::Probes::default(),
             sorted: instances::SortedInstances::default(),
             views: views::Views::default(),
@@ -3075,6 +3089,7 @@ impl Renderer {
             palette: skin::GpuPalette::new(palette_mode),
             skinned_buffer,
             prev_instance_buffer,
+            prev_instance_upload: upload::DirtyUpload::default(),
             ribbon_buffer,
             ribbon_sampler,
             lines,
@@ -4504,8 +4519,8 @@ impl Renderer {
     /// `transforms`. A frame under GPU culling passes `whole` false: its
     /// sorted instances live in the culling's buffer, and the CPU lists
     /// (views, probe faces) draw only what they appended, from the
-    /// instance buffer. `inside` is the caller's scratch, reused across
-    /// the frame's passes.
+    /// instance buffer. `scratch` is the caller's, reused across the
+    /// frame's passes; a batch drawn whole is marked in its `whole`.
     #[allow(clippy::too_many_arguments)]
     fn cull(
         &self,
@@ -4513,7 +4528,7 @@ impl Renderer {
         spheres: &[(Vec3, f32)],
         transforms: &mut Vec<instances::GpuTransform>,
         origins: &mut Vec<u32>,
-        inside: &mut Vec<bool>,
+        scratch: &mut CullScratch,
         frustum: &Frustum,
         whole: bool,
         include: impl Fn(&Batch) -> bool,
@@ -4521,6 +4536,8 @@ impl Renderer {
         let mut list = DrawList::default();
         let mut culled = 0;
         let mut visible = Vec::new();
+        let inside = &mut scratch.inside;
+        scratch.whole.resize(batches.len(), false);
         // Only the included batches' spheres are tested: they are marked
         // first, and a lane leaves an unmarked one alone (no read of it
         // follows). The tests are lanes (og-lanes) once there are thousands.
@@ -4548,6 +4565,7 @@ impl Renderer {
             let (first, count) = if visible.is_empty() {
                 continue;
             } else if whole && visible.len() as u32 * 10 >= b.count * 9 {
+                scratch.whole[b_index] = true;
                 (b.first, b.count)
             } else {
                 let first = transforms.len() as u32;
@@ -5907,6 +5925,7 @@ impl Renderer {
         };
         // Lent to every CPU cull of this frame, given back after the last.
         let mut cull_inside = std::mem::take(&mut self.cull_inside);
+        cull_inside.whole.clear();
         // Occlusion needs a batch that can occlude and an earlier frame's
         // camera visibility (its visible occluders); without them the
         // occluders' depth, the pyramid and the occlusion test are skipped.
@@ -6350,8 +6369,34 @@ impl Renderer {
         } else {
             &transforms[..]
         };
-        // Only the blocks that changed since the last frame are written
-        // (a buffer just replaced is written whole).
+        // The records a draw reads: under GPU culling every one here (the
+        // lists' own copies); on the CPU path the batches a list draws
+        // whole and the copies appended after the sorted instances.
+        let mut drawn: Vec<std::ops::Range<usize>> = Vec::new();
+        let mut draw = |r: std::ops::Range<usize>| match drawn.last_mut() {
+            Some(last) if last.end == r.start => last.end = r.end,
+            _ if r.is_empty() => {}
+            _ => drawn.push(r),
+        };
+        if !gpu_cull {
+            for (b, _) in batches
+                .iter()
+                .zip(&self.cull_inside.whole)
+                .filter(|(_, w)| **w)
+            {
+                draw(b.first as usize..(b.first + b.count) as usize);
+            }
+            draw(sorted as usize..cpu_instances.len());
+        } else {
+            draw(0..cpu_instances.len());
+        }
+        let stride = INSTANCE_STRIDE as usize;
+        let drawn_bytes: Vec<std::ops::Range<usize>> = drawn
+            .iter()
+            .map(|r| r.start * stride..r.end * stride)
+            .collect();
+        // Of those, only the blocks that changed since the last frame are
+        // written (a buffer just replaced is written whole).
         let instance_bytes: &[u8] = bytemuck::cast_slice(cpu_instances);
         if grow(
             &self.device,
@@ -6361,34 +6406,44 @@ impl Renderer {
         ) {
             self.instance_upload.invalidate();
         }
-        let mut instance_upload_bytes =
-            self.instance_upload
-                .write(&self.queue, &self.instance_buffer, instance_bytes);
+        let mut instance_upload_bytes = self.instance_upload.write(
+            &self.queue,
+            &self.instance_buffer,
+            instance_bytes,
+            &drawn_bytes,
+        );
         if gpu_cull && let Some(gc) = &self.gpu_cull {
             instance_upload_bytes += gc.uploaded;
         }
         if object_motion {
-            // As the instances' own: with a compact run's dequantisation.
+            // As the instances' own: with a compact run's dequantisation,
+            // for the records a draw reads.
             let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
-            let prev: Vec<instances::GpuTransform> = origins
-                .iter()
-                .map(|&i| {
-                    let (inst, p) = (
-                        &scene.instances[i as usize],
-                        scene.previous_transforms[i as usize],
-                    );
-                    let d =
-                        Self::dequant(meshes, materials, inst.mesh.index(), inst.material.index());
-                    instances::gpu_transform(&d.map_or(p, |d| p * d))
-                })
-                .collect();
-            grow_and_write(
+            let mut prev = vec![instances::GpuTransform::default(); origins.len()];
+            for k in drawn.iter().flat_map(|r| r.clone()) {
+                let i = origins[k] as usize;
+                let (inst, p) = (&scene.instances[i], scene.previous_transforms[i]);
+                let d = Self::dequant(meshes, materials, inst.mesh.index(), inst.material.index());
+                prev[k] = instances::gpu_transform(&d.map_or(p, |d| p * d));
+            }
+            let bytes: &[u8] = bytemuck::cast_slice(&prev);
+            if grow(
                 &self.device,
-                &self.queue,
                 &mut self.prev_instance_buffer,
                 "previous instances",
-                bytemuck::cast_slice(&prev),
+                bytes.len() as u64,
+            ) {
+                self.prev_instance_upload.invalidate();
+            }
+            instance_upload_bytes += self.prev_instance_upload.write(
+                &self.queue,
+                &self.prev_instance_buffer,
+                bytes,
+                &drawn_bytes,
             );
+        } else {
+            // Not written this frame: what it holds is not known next time.
+            self.prev_instance_upload.invalidate();
         }
         self.sorted.restore(transforms, spheres);
         if !skinned_data.is_empty() {
