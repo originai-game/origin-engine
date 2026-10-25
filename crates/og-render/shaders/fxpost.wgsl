@@ -44,6 +44,12 @@ fn depth_uv(uv: vec2<f32>) -> f32 {
   return depth_at(vec2<i32>(uv * vec2<f32>(textureDimensions(tex_depth))));
 }
 
+// `depth_uv` with the depth's size (`size`, and as floats `size_f`) read
+// once by the caller rather than per tap.
+fn depth_tap(uv: vec2<f32>, size: vec2<i32>, size_f: vec2<f32>) -> f32 {
+  return textureLoad(tex_depth, clamp(vec2<i32>(uv * size_f), vec2<i32>(0), size - 1), 0).r;
+}
+
 fn is_sky(d: f32) -> bool {
   return d >= fxp.cam.x * 0.999;
 }
@@ -98,7 +104,12 @@ fn fs_gtao(in: VsOut) -> @location(0) vec4<f32> {
   let slices = 3u;
   let steps = 6u;
   var vis = 0.0;
+  // Loop invariants held outside the loops (the same values every tap
+  // read through `depth_uv`): the depth's size, and each slice's jitter.
+  let dsize = vec2<i32>(textureDimensions(tex_depth));
+  let dsize_f = vec2<f32>(dsize);
   for (var s = 0u; s < slices; s++) {
+    let jitter = fract(noise * 7.13 + f32(s) * 0.37);
     let phi = (f32(s) + noise) * FX_PI / f32(slices);
     let omega = vec2<f32>(cos(phi), -sin(phi));
     let dir = vec3<f32>(cos(phi), sin(phi), 0.0);
@@ -114,12 +125,12 @@ fn fs_gtao(in: VsOut) -> @location(0) vec4<f32> {
     var h0 = low0;
     var h1 = low1;
     for (var k = 1u; k <= steps; k++) {
-      let t = (f32(k) - 0.5 + fract(noise * 7.13 + f32(s) * 0.37)) / f32(steps);
+      let t = (f32(k) - 0.5 + jitter) / f32(steps);
       let offset = omega * (t * t * radius_px) * fxp.screen.zw;
       let uv0 = in.uv + offset;
       let uv1 = in.uv - offset;
-      let s0 = view_pos(uv0, depth_uv(uv0)) - p;
-      let s1 = view_pos(uv1, depth_uv(uv1)) - p;
+      let s0 = view_pos(uv0, depth_tap(uv0, dsize, dsize_f)) - p;
+      let s1 = view_pos(uv1, depth_tap(uv1, dsize, dsize_f)) - p;
       let l0 = length(s0);
       let l1 = length(s1);
       let w0 = clamp(2.0 - 2.0 * l0 / radius, 0.0, 1.0);
@@ -173,18 +184,32 @@ fn fs_ssao(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(pow(ao, max(fxp.ao.y, 0.0)), 0.0, 0.0, 1.0);
 }
 
+// The view depth the prepass clears to (post.rs FAR_DEPTH): the sky.
+const FX_FAR_DEPTH: f32 = 1.0e9;
+
+// The blur's answer without its taps, when it is known: 1 on the cleared
+// sky. There every sky tap weighs exp(0) = 1 and holds the raw AO's 1, and
+// a surface tap (nearer than 1e8 m, so with a far plane under it) weighs
+// below exp(-22) = 3e-10, which sixteen of cannot move a sum of whole ones
+// in f32: the 4x4 blur returns exactly 1 there too.
+fn ao_blur_sky(d0: f32) -> bool {
+  return d0 >= FX_FAR_DEPTH && fxp.cam.x < 1.0e8;
+}
+
 // A 4x4 depth-aware blur of the raw AO (tex_b) over its noise pattern.
 @fragment
 fn fs_ao_blur(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
   let d0 = depth_at(px);
+  if (ao_blur_sky(d0)) { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }
   let size = vec2<i32>(textureDimensions(tex_b));
+  let scale = max(d0 * 0.04, 1e-3);
   var sum = 0.0;
   var weight = 0.0;
   for (var y = -2; y <= 1; y++) {
     for (var x = -2; x <= 1; x++) {
       let q = clamp(px + vec2<i32>(x, y), vec2<i32>(0), size - 1);
-      let w = exp(-abs(depth_at(q) - d0) / max(d0 * 0.04, 1e-3));
+      let w = exp(-abs(depth_at(q) - d0) / scale);
       sum += textureLoad(tex_b, q, 0).r * w;
       weight += w;
     }
