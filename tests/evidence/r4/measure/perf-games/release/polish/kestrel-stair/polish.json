@@ -1,0 +1,1508 @@
+{
+ "project": "kestrel-stair",
+ "date": "2026-10-25",
+ "scores": {
+  "contrast": 98,
+  "textSize": 100,
+  "hud": 100,
+  "transitions": 98,
+  "uiSounds": 100,
+  "latency": 100,
+  "hitFeedback": 100,
+  "idle": 100,
+  "frameTime": 100,
+  "inputSound": 94,
+  "locale": 100,
+  "taste": 99,
+  "feel": 99
+ },
+ "findings": [
+  {
+   "measure": "contrast",
+   "where": "bag bag: `Count` \"2\"",
+   "detail": "4.04:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the style's palette, never per call"
+  },
+  {
+   "measure": "contrast",
+   "where": "frames bag: `Count` \"3\"",
+   "detail": "3.36:1 between ink and ground (body text wants 4.5:1)",
+   "fix": "og-taste §3 (value before hue): darken the ground or lighten the ink in the style's palette, never per call"
+  },
+  {
+   "measure": "screen transitions",
+   "where": "replay",
+   "detail": "1 of 13 screen changes had no motion in the 20 ticks around them",
+   "fix": "og-taste §5 (screens change through a transition): og.ui.screenTransition, one kind per game"
+  },
+  {
+   "measure": "screen transitions",
+   "where": "win",
+   "detail": "1 of 15 screen changes had no motion in the 20 ticks around them",
+   "fix": "og-taste §5 (screens change through a transition): og.ui.screenTransition, one kind per game"
+  }
+ ],
+ "playtests": [
+  {
+   "playtest": "anim",
+   "title": "retargeted clips on three skeletons through blend trees; the cape hangs and trails, a banner stirs, the lamp hangs on its chain",
+   "tier": "metal",
+   "ticks": 390,
+   "shots": [
+    {
+     "name": "cape",
+     "tick": 195,
+     "frame": "frames/anim-cape.png",
+     "menu": false,
+     "hud": 1.06,
+     "centre": 0,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 4,
+    "passing": 4,
+    "worst": [
+     {
+      "shot": "cape",
+      "id": "Pause",
+      "text": "Pause",
+      "ratio": 10.83
+     },
+     {
+      "shot": "cape",
+      "id": "Count",
+      "text": "0/3",
+      "ratio": 15.66
+     },
+     {
+      "shot": "cape",
+      "id": "Hour",
+      "text": "16:31",
+      "ratio": 15.66
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 4,
+    "passing": 4,
+    "smallest": [
+     {
+      "shot": "cape",
+      "id": "Hour",
+      "text": "16:31",
+      "ink": 11
+     },
+     {
+      "shot": "cape",
+      "id": "Pause",
+      "text": "Pause",
+      "ink": 12
+     },
+     {
+      "shot": "cape",
+      "id": "Count",
+      "text": "0/3",
+      "ink": 13
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 1.06,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 37
+   },
+   "latency": {
+    "inputs": 3,
+    "answered": 3,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 38.68,
+    "sound": 3
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 6,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.9,
+    "stepP95Ms": 1.32,
+    "renderMedianMs": 1.15,
+    "renderP95Ms": 1.64,
+    "frameP95Ms": 2.76,
+    "frameMaxMs": 4.24
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 6.5,
+    "peak": 0.21,
+    "rms": 0.0162,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "audio",
+   "title": "the streamed music loops unclipped; a brazier is heard from where the camera is; the crypt's drip is muffled by its walls; the crypt is a reverb zone",
+   "tier": "metal",
+   "ticks": 396,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 3,
+    "withMotion": 3,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 151
+   },
+   "latency": {
+    "inputs": 0,
+    "answered": 0,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 50.78,
+    "sound": 0
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 6,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.9,
+    "stepP95Ms": 1.16,
+    "renderMedianMs": 1.14,
+    "renderP95Ms": 1.75,
+    "frameP95Ms": 2.71,
+    "frameMaxMs": 4.46
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 6.6,
+    "peak": 0.21,
+    "rms": 0.0159,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "bag",
+   "title": "the bag opens with Tab, drags an item to another slot, shows its details and eats a hillwort with Use; H eats one; pause opens it",
+   "tier": "metal",
+   "ticks": 324,
+   "shots": [
+    {
+     "name": "bag",
+     "tick": 141,
+     "frame": "frames/bag-bag.png",
+     "menu": true,
+     "hud": 11.19,
+     "centre": 44.15,
+     "texts": 9,
+     "lowContrast": 1,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 9,
+    "passing": 8,
+    "worst": [
+     {
+      "shot": "bag",
+      "id": "Count",
+      "text": "2",
+      "ratio": 4.04
+     },
+     {
+      "shot": "bag",
+      "id": "Description",
+      "text": "Bitter leaves. Restores 40 strength.",
+      "ratio": 5.56
+     },
+     {
+      "shot": "bag",
+      "id": "Key",
+      "text": "Count",
+      "ratio": 6.92
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 9,
+    "passing": 9,
+    "smallest": [
+     {
+      "shot": "bag",
+      "id": "Count",
+      "text": "2",
+      "ink": 9
+     },
+     {
+      "shot": "bag",
+      "id": "Description",
+      "text": "Bitter leaves. Restores 40 strength.",
+      "ink": 11
+     },
+     {
+      "shot": "bag",
+      "id": "Key",
+      "text": "Count",
+      "ink": 11
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 10,
+    "withMotion": 10,
+    "presses": 4,
+    "pressesWithSound": 4,
+    "motionTicks": 323
+   },
+   "latency": {
+    "inputs": 9,
+    "answered": 9,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 8
+   },
+   "damage": {
+    "moments": 1,
+    "hitStop": 1,
+    "shake": 1,
+    "floating": 1,
+    "sound": 1,
+    "flash": 0,
+    "particles": 1,
+    "facts": [
+     "hp"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 7,
+    "bursts": 1
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.89,
+    "stepP95Ms": 1.24,
+    "renderMedianMs": 1.16,
+    "renderP95Ms": 1.48,
+    "frameP95Ms": 2.5,
+    "frameMaxMs": 4.01
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 5.4,
+    "peak": 0.5,
+    "rms": 0.0597,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "combat",
+   "title": "strikes land on the clip's marker with hit stop, shake, a flinch, a number and a sound; the warden falls and drops a sigil the courier takes; a slam hurts",
+   "tier": "metal",
+   "ticks": 606,
+   "shots": [
+    {
+     "name": "strike",
+     "tick": 75,
+     "frame": "frames/combat-strike.png",
+     "menu": false,
+     "hud": 1.62,
+     "centre": 0,
+     "texts": 6,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 6,
+    "passing": 6,
+    "worst": [
+     {
+      "shot": "strike",
+      "id": "Pause",
+      "text": "Pause",
+      "ratio": 10.83
+     },
+     {
+      "shot": "strike",
+      "id": "Text",
+      "text": "A warden has seen you",
+      "ratio": 12.63
+     },
+     {
+      "shot": "strike",
+      "id": "Toast#1",
+      "text": "A warden has seen you",
+      "ratio": 12.97
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 6,
+    "passing": 6,
+    "smallest": [
+     {
+      "shot": "strike",
+      "id": "Hour",
+      "text": "16:51",
+      "ink": 11
+     },
+     {
+      "shot": "strike",
+      "id": "Pause",
+      "text": "Pause",
+      "ink": 12
+     },
+     {
+      "shot": "strike",
+      "id": "Count",
+      "text": "0/3",
+      "ink": 13
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 1.62,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 7,
+    "withMotion": 7,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 386
+   },
+   "latency": {
+    "inputs": 10,
+    "answered": 10,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 97.53,
+    "sound": 10
+   },
+   "damage": {
+    "moments": 7,
+    "hitStop": 7,
+    "shake": 7,
+    "floating": 7,
+    "sound": 7,
+    "flash": 6,
+    "particles": 2,
+    "facts": [
+     "foes.warden-0.hp",
+     "hits",
+     "kills",
+     "hp"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 9,
+    "bursts": 3
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.9,
+    "stepP95Ms": 1.18,
+    "renderMedianMs": 1.21,
+    "renderP95Ms": 1.72,
+    "frameP95Ms": 2.72,
+    "frameMaxMs": 4.78
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 10.1,
+    "peak": 0.6,
+    "rms": 0.0616,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "foes",
+   "title": "imps patrol, chase, bite and flee on the navmesh; a warden alerts, lunges by root motion and slams",
+   "tier": "metal",
+   "ticks": 570,
+   "shots": [
+    {
+     "name": "slam",
+     "tick": 522,
+     "frame": "frames/foes-slam.png",
+     "menu": false,
+     "hud": 1.62,
+     "centre": 0,
+     "texts": 6,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 6,
+    "passing": 6,
+    "worst": [
+     {
+      "shot": "slam",
+      "id": "Pause",
+      "text": "Pause",
+      "ratio": 10.76
+     },
+     {
+      "shot": "slam",
+      "id": "Text",
+      "text": "A warden has seen you",
+      "ratio": 12.63
+     },
+     {
+      "shot": "slam",
+      "id": "Toast#1",
+      "text": "A warden has seen you",
+      "ratio": 12.97
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 6,
+    "passing": 6,
+    "smallest": [
+     {
+      "shot": "slam",
+      "id": "Hour",
+      "text": "16:52",
+      "ink": 11
+     },
+     {
+      "shot": "slam",
+      "id": "Pause",
+      "text": "Pause",
+      "ink": 12
+     },
+     {
+      "shot": "slam",
+      "id": "Count",
+      "text": "0/3",
+      "ink": 13
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 1.62,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 4,
+    "withMotion": 4,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 65
+   },
+   "latency": {
+    "inputs": 2,
+    "answered": 2,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 48.39,
+    "sound": 2
+   },
+   "damage": {
+    "moments": 4,
+    "hitStop": 4,
+    "shake": 4,
+    "floating": 4,
+    "sound": 4,
+    "flash": 3,
+    "particles": 2,
+    "facts": [
+     "hp",
+     "foes.imp-0.hp",
+     "hits"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 8,
+    "bursts": 2
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.91,
+    "stepP95Ms": 1.19,
+    "renderMedianMs": 1.13,
+    "renderP95Ms": 1.61,
+    "frameP95Ms": 2.54,
+    "frameMaxMs": 4.46
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 9.5,
+    "peak": 0.59,
+    "rms": 0.0425,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "frames",
+   "title": "the title, the intro, the court, a strike, the crypt, the bag, the chapters, the records and the results match their reference frames",
+   "tier": "metal",
+   "ticks": 1158,
+   "shots": [
+    {
+     "name": "title",
+     "tick": 72,
+     "frame": "frames/frames-title.png",
+     "menu": true,
+     "hud": 9.04,
+     "centre": 60.75,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "intro",
+     "tick": 156,
+     "frame": null,
+     "menu": true,
+     "hud": 23.25,
+     "centre": 0,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "explore",
+     "tick": 324,
+     "frame": null,
+     "menu": false,
+     "hud": 1.06,
+     "centre": 0,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "strike",
+     "tick": 388,
+     "frame": null,
+     "menu": false,
+     "hud": 1.06,
+     "centre": 0,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "crypt",
+     "tick": 480,
+     "frame": null,
+     "menu": false,
+     "hud": 1.06,
+     "centre": 0,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "bag",
+     "tick": 564,
+     "frame": null,
+     "menu": true,
+     "hud": 11.03,
+     "centre": 43.4,
+     "texts": 11,
+     "lowContrast": 1,
+     "small": 0
+    },
+    {
+     "name": "results",
+     "tick": 792,
+     "frame": null,
+     "menu": true,
+     "hud": 6.85,
+     "centre": 38.18,
+     "texts": 14,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "records",
+     "tick": 912,
+     "frame": null,
+     "menu": true,
+     "hud": 3.64,
+     "centre": 10,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    },
+    {
+     "name": "chapters",
+     "tick": 1152,
+     "frame": null,
+     "menu": true,
+     "hud": 5.74,
+     "centre": 29.18,
+     "texts": 7,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 59,
+    "passing": 58,
+    "worst": [
+     {
+      "shot": "bag",
+      "id": "Count",
+      "text": "3",
+      "ratio": 3.36
+     },
+     {
+      "shot": "results",
+      "id": "Best",
+      "text": "Best 3,599",
+      "ratio": 5.25
+     },
+     {
+      "shot": "results",
+      "id": "Key",
+      "text": "Time",
+      "ratio": 5.28
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 59,
+    "passing": 59,
+    "smallest": [
+     {
+      "shot": "bag",
+      "id": "Count",
+      "text": "3",
+      "ink": 9
+     },
+     {
+      "shot": "intro",
+      "id": "Speaker",
+      "text": "Abbess Maren",
+      "ink": 10
+     },
+     {
+      "shot": "title",
+      "id": "records",
+      "text": "Records",
+      "ink": 11
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 3,
+    "worstShare": 1.06,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 24,
+    "withMotion": 24,
+    "presses": 6,
+    "pressesWithSound": 6,
+    "motionTicks": 749
+   },
+   "latency": {
+    "inputs": 12,
+    "answered": 12,
+    "medianTicks": 0,
+    "maxTicks": 21,
+    "baselineShare": 71.15,
+    "sound": 10
+   },
+   "damage": {
+    "moments": 1,
+    "hitStop": 1,
+    "shake": 1,
+    "floating": 1,
+    "sound": 1,
+    "flash": 1,
+    "particles": 1,
+    "facts": [
+     "foes.warden-0.hp",
+     "hits"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 8,
+    "bursts": 2
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.84,
+    "stepP95Ms": 1.17,
+    "renderMedianMs": 1.01,
+    "renderP95Ms": 1.52,
+    "frameP95Ms": 2.53,
+    "frameMaxMs": 199.76
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 19.3,
+    "peak": 0.75,
+    "rms": 0.056,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "locales",
+   "title": "the title, intro, HUD, bag, pause, settings and results in Japanese, then English; no unnamed control in the accessibility tree",
+   "tier": "metal",
+   "ticks": 642,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 26,
+    "withMotion": 26,
+    "presses": 8,
+    "pressesWithSound": 8,
+    "motionTicks": 537
+   },
+   "latency": {
+    "inputs": 11,
+    "answered": 11,
+    "medianTicks": 0,
+    "maxTicks": 1,
+    "baselineShare": 94.5,
+    "sound": 10
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 6,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.79,
+    "stepP95Ms": 1.15,
+    "renderMedianMs": 1.07,
+    "renderP95Ms": 1.57,
+    "frameP95Ms": 2.38,
+    "frameMaxMs": 5.41
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 10.7,
+    "peak": 0.8,
+    "rms": 0.0645,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "lose",
+   "title": "night at 19:30 ends the climb; strength gone, the courier falls; the results say which, and Title goes back",
+   "tier": "metal",
+   "ticks": 606,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 11,
+    "withMotion": 11,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 253
+   },
+   "latency": {
+    "inputs": 1,
+    "answered": 1,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 59.33,
+    "sound": 1
+   },
+   "damage": {
+    "moments": 2,
+    "hitStop": 2,
+    "shake": 2,
+    "floating": 2,
+    "sound": 2,
+    "flash": 0,
+    "particles": 0,
+    "facts": [
+     "hp"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 6,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.82,
+    "stepP95Ms": 1.12,
+    "renderMedianMs": 1.09,
+    "renderP95Ms": 1.49,
+    "frameP95Ms": 2.36,
+    "frameMaxMs": 4.06
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 10.1,
+    "peak": 0.52,
+    "rms": 0.0744,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "move",
+   "title": "the courier walks and runs, climbs the ramp, the steep path and the stairs, slides off the scree and jumps onto a ledge",
+   "tier": "metal",
+   "ticks": 1182,
+   "shots": [
+    {
+     "name": "ledge",
+     "tick": 1176,
+     "frame": "frames/move-ledge.png",
+     "menu": false,
+     "hud": 1.06,
+     "centre": 0,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 4,
+    "passing": 4,
+    "worst": [
+     {
+      "shot": "ledge",
+      "id": "Pause",
+      "text": "Pause",
+      "ratio": 10.83
+     },
+     {
+      "shot": "ledge",
+      "id": "Hour",
+      "text": "16:41",
+      "ratio": 14.54
+     },
+     {
+      "shot": "ledge",
+      "id": "Count",
+      "text": "0/3",
+      "ratio": 15.66
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 4,
+    "passing": 4,
+    "smallest": [
+     {
+      "shot": "ledge",
+      "id": "Hour",
+      "text": "16:41",
+      "ink": 11
+     },
+     {
+      "shot": "ledge",
+      "id": "Pause",
+      "text": "Pause",
+      "ink": 12
+     },
+     {
+      "shot": "ledge",
+      "id": "Count",
+      "text": "0/3",
+      "ink": 13
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 1,
+    "worstShare": 1.06,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 1,
+    "withMotion": 1,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 37
+   },
+   "latency": {
+    "inputs": 9,
+    "answered": 9,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 43.9,
+    "sound": 9
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 6,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.83,
+    "stepP95Ms": 1.09,
+    "renderMedianMs": 1.32,
+    "renderP95Ms": 2.15,
+    "frameP95Ms": 3.01,
+    "frameMaxMs": 12.36
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 19.7,
+    "peak": 0.23,
+    "rms": 0.0181,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "replay",
+   "title": "a session of chases, bites, strikes, a slam, a rest, the gate and the bell replays to the same hash",
+   "tier": "metal",
+   "ticks": 762,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 13,
+    "withMotion": 12,
+    "presses": 0,
+    "pressesWithSound": 0,
+    "motionTicks": 562
+   },
+   "latency": {
+    "inputs": 17,
+    "answered": 17,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 16
+   },
+   "damage": {
+    "moments": 5,
+    "hitStop": 5,
+    "shake": 5,
+    "floating": 5,
+    "sound": 5,
+    "flash": 4,
+    "particles": 3,
+    "facts": [
+     "foes.imp-0.hp",
+     "hits",
+     "foes.warden-0.hp",
+     "hp"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 9,
+    "bursts": 3
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.9,
+    "stepP95Ms": 1.22,
+    "renderMedianMs": 1.13,
+    "renderP95Ms": 1.7,
+    "frameP95Ms": 2.68,
+    "frameMaxMs": 4.61
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 12.7,
+    "peak": 0.66,
+    "rms": 0.074,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "save",
+   "title": "a waystone saves the whole world in the store; a relaunch continues it there, and chapter II is unlocked",
+   "tier": "metal",
+   "ticks": 162,
+   "shots": [],
+   "contrast": {
+    "texts": 0,
+    "passing": 0,
+    "worst": []
+   },
+   "textSize": {
+    "texts": 0,
+    "passing": 0,
+    "smallest": []
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 6,
+    "withMotion": 6,
+    "presses": 1,
+    "pressesWithSound": 1,
+    "motionTicks": 161
+   },
+   "latency": {
+    "inputs": 3,
+    "answered": 3,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 100,
+    "sound": 3
+   },
+   "damage": {
+    "moments": 1,
+    "hitStop": 1,
+    "shake": 1,
+    "floating": 1,
+    "sound": 1,
+    "flash": 0,
+    "particles": 1,
+    "facts": [
+     "hp"
+    ]
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 7,
+    "bursts": 1
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.88,
+    "stepP95Ms": 1.2,
+    "renderMedianMs": 1.19,
+    "renderP95Ms": 1.75,
+    "frameP95Ms": 2.64,
+    "frameMaxMs": 4.48
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 2.7,
+    "peak": 0.5,
+    "rms": 0.0672,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "story",
+   "title": "the intro cutscene walks with Enter, the tutorial spotlights the HUD step by step, and the progress keeps it seen",
+   "tier": "metal",
+   "ticks": 444,
+   "shots": [
+    {
+     "name": "intro",
+     "tick": 72,
+     "frame": "frames/story-intro.png",
+     "menu": true,
+     "hud": 23.25,
+     "centre": 0,
+     "texts": 4,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 4,
+    "passing": 4,
+    "worst": [
+     {
+      "shot": "intro",
+      "id": "Speaker",
+      "text": "Abbess Maren",
+      "ratio": 6.09
+     },
+     {
+      "shot": "intro",
+      "id": "Skip",
+      "text": "Skip",
+      "ratio": 9.02
+     },
+     {
+      "shot": "intro",
+      "id": "Dialogue",
+      "text": "Courier, the bell-keeper on the summit w",
+      "ratio": 16.36
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 4,
+    "passing": 4,
+    "smallest": [
+     {
+      "shot": "intro",
+      "id": "Speaker",
+      "text": "Abbess Maren",
+      "ink": 10
+     },
+     {
+      "shot": "intro",
+      "id": "Skip",
+      "text": "Skip",
+      "ink": 14
+     },
+     {
+      "shot": "intro",
+      "id": "Line",
+      "text": "Courier, the bell-keeper on the summit w",
+      "ink": 16
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 6,
+    "withMotion": 6,
+    "presses": 4,
+    "pressesWithSound": 4,
+    "motionTicks": 210
+   },
+   "latency": {
+    "inputs": 12,
+    "answered": 12,
+    "medianTicks": 0,
+    "maxTicks": 0,
+    "baselineShare": 58.94,
+    "sound": 12
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 6,
+    "bursts": 0
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.61,
+    "stepP95Ms": 1.04,
+    "renderMedianMs": 1.29,
+    "renderP95Ms": 1.72,
+    "frameP95Ms": 2.36,
+    "frameMaxMs": 6.28
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 7.4,
+    "peak": 0.21,
+    "rms": 0.0156,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  },
+  {
+   "playtest": "win",
+   "title": "the gate refuses two sigils and rises for three; the bell ends the climb under the summit look; the results, the leaderboard and Again",
+   "tier": "metal",
+   "ticks": 894,
+   "shots": [
+    {
+     "name": "records",
+     "tick": 744,
+     "frame": "frames/win-records.png",
+     "menu": true,
+     "hud": 3.92,
+     "centre": 6.54,
+     "texts": 6,
+     "lowContrast": 0,
+     "small": 0
+    }
+   ],
+   "contrast": {
+    "texts": 6,
+    "passing": 6,
+    "worst": [
+     {
+      "shot": "records",
+      "id": "Rank",
+      "text": "1",
+      "ratio": 5.4
+     },
+     {
+      "shot": "records",
+      "id": "Tab#1",
+      "text": "Around you",
+      "ratio": 5.95
+     },
+     {
+      "shot": "records",
+      "id": "Name",
+      "text": "You",
+      "ratio": 9.94
+     }
+    ]
+   },
+   "textSize": {
+    "texts": 6,
+    "passing": 6,
+    "smallest": [
+     {
+      "shot": "records",
+      "id": "Name",
+      "text": "You",
+      "ink": 9
+     },
+     {
+      "shot": "records",
+      "id": "Tab#0",
+      "text": "Fastest",
+      "ink": 11
+     },
+     {
+      "shot": "records",
+      "id": "Score",
+      "text": "0:05",
+      "ink": 11
+     }
+    ]
+   },
+   "hud": {
+    "gameplayShots": 0,
+    "worstShare": 0,
+    "worstCentre": 0
+   },
+   "ui": {
+    "screenChanges": 15,
+    "withMotion": 14,
+    "presses": 2,
+    "pressesWithSound": 2,
+    "motionTicks": 540
+   },
+   "latency": {
+    "inputs": 13,
+    "answered": 13,
+    "medianTicks": 0,
+    "maxTicks": 1,
+    "baselineShare": 82.85,
+    "sound": 12
+   },
+   "damage": {
+    "moments": 0,
+    "hitStop": 0,
+    "shake": 0,
+    "floating": 0,
+    "sound": 0,
+    "flash": 0,
+    "particles": 0,
+    "facts": []
+   },
+   "idle": {
+    "share": 0
+   },
+   "particles": {
+    "peakSystems": 7,
+    "bursts": 1
+   },
+   "frame": {
+    "tier": "metal",
+    "rendered": true,
+    "stepMedianMs": 0.82,
+    "stepP95Ms": 1.11,
+    "renderMedianMs": 1.01,
+    "renderP95Ms": 1.48,
+    "frameP95Ms": 2.43,
+    "frameMaxMs": 4.39
+   },
+   "unchecked": 0,
+   "audio": {
+    "seconds": 14.9,
+    "peak": 0.56,
+    "rms": 0.0665,
+    "clipped": 0,
+    "silentShare": 0
+   },
+   "warnings": []
+  }
+ ],
+ "warnings": []
+}

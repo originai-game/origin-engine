@@ -1,0 +1,39 @@
+warning: unstable feature specified for `-Ctarget-feature`: `atomics`
+  |
+  = note: this feature is not stably supported; its behavior can change in the future
+
+warning: `og-core` (lib) generated 1 warning
+warning: `og-ecs` (lib) generated 1 warning (1 duplicate)
+   Compiling spade v2.15.1
+   Compiling og-render v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-render)
+warning: `og-tween` (lib) generated 1 warning (1 duplicate)
+warning: `og-input` (lib) generated 1 warning (1 duplicate)
+warning: `og-nav` (lib) generated 1 warning (1 duplicate)
+   Compiling og-probe v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-probe)
+warning: `og-lanes` (lib) generated 1 warning (1 duplicate)
+warning: `og-timeline` (lib) generated 1 warning (1 duplicate)
+warning: `og-i18n` (lib) generated 1 warning (1 duplicate)
+warning: `og-anim` (lib) generated 1 warning (1 duplicate)
+warning: `og-audio` (lib) generated 1 warning (1 duplicate)
+warning: `og-tilemap` (lib) generated 1 warning (1 duplicate)
+warning: `og-blob` (lib) generated 1 warning (1 duplicate)
+warning: `og-ai` (lib) generated 1 warning (1 duplicate)
+warning: `og-net` (lib) generated 1 warning (1 duplicate)
+warning: `og-api` (lib) generated 1 warning (1 duplicate)
+   Compiling parry2d v0.31.1
+   Compiling og-geom v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-geom)
+warning: `og-geom` (lib) generated 1 warning (1 duplicate)
+warning: `og-probe` (lib) generated 1 warning (1 duplicate)
+   Compiling rapier2d v0.36.1
+   Compiling og-cook v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-cook)
+   Compiling og-ui v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-ui)
+warning: `og-render` (lib) generated 1 warning (1 duplicate)
+warning: `og-cook` (lib) generated 1 warning (1 duplicate)
+warning: `og-ui` (lib) generated 1 warning (1 duplicate)
+   Compiling og-physics v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-physics)
+   Compiling og-runtime v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-runtime)
+warning: `og-physics` (lib) generated 1 warning (1 duplicate)
+warning: `og-runtime` (lib) generated 1 warning (1 duplicate)
+   Compiling og-host-web v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-host-web)
+warning: `og-host-web` (lib) generated 1 warning (1 duplicate)
+    Finished `wasm` profile [optimized] target(s) in 1m 59s

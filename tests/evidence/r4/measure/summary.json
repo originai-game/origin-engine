@@ -1,0 +1,264 @@
+{
+  "base": "1bb341e51b22bdcdaf69a3eb60aac5265366196f",
+  "terrain": [
+    {
+      "tier": "webgpu",
+      "wallMs": {
+        "median": 8.319999933242798,
+        "min": 7.944999933242798,
+        "max": 16.819999933242798
+      },
+      "renderMs": {
+        "median": 7.849999904632568,
+        "min": 7.370000123977661,
+        "max": 16.204999923706055
+      },
+      "tileSettleMs": {
+        "median": 4.22,
+        "min": 3.925,
+        "max": 8.15
+      },
+      "load": {
+        "median": 8.46484375,
+        "min": 8.13720703125,
+        "max": 8.7666015625
+      },
+      "verdict": "pass: tile settle measured separately; no numerical terrain-settle budget specified"
+    },
+    {
+      "tier": "webgl2",
+      "wallMs": {
+        "median": 107.84999990463257,
+        "min": 102.80999994277954,
+        "max": 119.9300000667572
+      },
+      "renderMs": {
+        "median": 104.60999989509583,
+        "min": 100.35500001907349,
+        "max": 116.44000005722046
+      },
+      "tileSettleMs": {
+        "median": 4.105,
+        "min": 3.875,
+        "max": 4.63
+      },
+      "load": {
+        "median": 8.18701171875,
+        "min": 7.8515625,
+        "max": 8.263671875
+      },
+      "verdict": "pass: tile settle measured separately; no numerical terrain-settle budget specified"
+    }
+  ],
+  "lanes": [
+    {
+      "bodies": 1000,
+      "mode": "non-isolated",
+      "hashes": [
+        {
+          "tick": 60,
+          "hash": "9ea573939a0719e5"
+        },
+        {
+          "tick": 360,
+          "hash": "49751a1c81179a5f"
+        },
+        {
+          "tick": 660,
+          "hash": "045cf4ed2a89cc1b"
+        }
+      ],
+      "lastPhysicsMs": {
+        "median": 4.799999952316284,
+        "min": 4.199999809265137,
+        "max": 6.8999998569488525
+      },
+      "parallelCalls": 0,
+      "threads": 1,
+      "load": {
+        "median": 8.0546875,
+        "min": 7.61376953125,
+        "max": 8.41259765625
+      },
+      "verdict": "pass: whole-world hashes and direct physics stats"
+    },
+    {
+      "bodies": 1000,
+      "mode": "isolated-off",
+      "hashes": [
+        {
+          "tick": 60,
+          "hash": "9ea573939a0719e5"
+        },
+        {
+          "tick": 360,
+          "hash": "49751a1c81179a5f"
+        },
+        {
+          "tick": 660,
+          "hash": "045cf4ed2a89cc1b"
+        }
+      ],
+      "lastPhysicsMs": {
+        "median": 4.414999961853027,
+        "min": 4.200000047683716,
+        "max": 4.734999895095825
+      },
+      "parallelCalls": 0,
+      "threads": 1,
+      "load": {
+        "median": 8.29931640625,
+        "min": 7.9658203125,
+        "max": 8.44873046875
+      },
+      "verdict": "pass: whole-world hashes and direct physics stats"
+    },
+    {
+      "bodies": 1000,
+      "mode": "isolated-on",
+      "hashes": [
+        {
+          "tick": 60,
+          "hash": "9ea573939a0719e5"
+        },
+        {
+          "tick": 360,
+          "hash": "49751a1c81179a5f"
+        },
+        {
+          "tick": 660,
+          "hash": "045cf4ed2a89cc1b"
+        }
+      ],
+      "lastPhysicsMs": {
+        "median": 4.705000162124634,
+        "min": 4.054999828338623,
+        "max": 5.009999990463257
+      },
+      "parallelCalls": 0,
+      "threads": 8,
+      "load": {
+        "median": 8.25244140625,
+        "min": 7.71142578125,
+        "max": 8.44873046875
+      },
+      "verdict": "pass: whole-world hashes and direct physics stats"
+    },
+    {
+      "bodies": 2000,
+      "mode": "non-isolated",
+      "hashes": [
+        {
+          "tick": 60,
+          "hash": "9c196c42b88bf5fc"
+        },
+        {
+          "tick": 360,
+          "hash": "c2077776c014e61d"
+        },
+        {
+          "tick": 660,
+          "hash": "c3220b16926c6ace"
+        }
+      ],
+      "lastPhysicsMs": {
+        "median": 10.600000143051147,
+        "min": 10.400000095367432,
+        "max": 11.900000095367432
+      },
+      "parallelCalls": 0,
+      "threads": 1,
+      "load": {
+        "median": 8.4580078125,
+        "min": 7.10107421875,
+        "max": 9.2099609375
+      },
+      "verdict": "pass: whole-world hashes and direct physics stats"
+    },
+    {
+      "bodies": 2000,
+      "mode": "isolated-off",
+      "hashes": [
+        {
+          "tick": 60,
+          "hash": "9c196c42b88bf5fc"
+        },
+        {
+          "tick": 360,
+          "hash": "c2077776c014e61d"
+        },
+        {
+          "tick": 660,
+          "hash": "c3220b16926c6ace"
+        }
+      ],
+      "lastPhysicsMs": {
+        "median": 10.519999980926514,
+        "min": 8.815000057220459,
+        "max": 10.59500002861023
+      },
+      "parallelCalls": 0,
+      "threads": 1,
+      "load": {
+        "median": 8.23974609375,
+        "min": 6.67236328125,
+        "max": 9.2099609375
+      },
+      "verdict": "pass: whole-world hashes and direct physics stats"
+    },
+    {
+      "bodies": 2000,
+      "mode": "isolated-on",
+      "hashes": [
+        {
+          "tick": 60,
+          "hash": "9c196c42b88bf5fc"
+        },
+        {
+          "tick": 360,
+          "hash": "c2077776c014e61d"
+        },
+        {
+          "tick": 660,
+          "hash": "c3220b16926c6ace"
+        }
+      ],
+      "lastPhysicsMs": {
+        "median": 6.43999981880188,
+        "min": 6.190000057220459,
+        "max": 6.629999876022339
+      },
+      "parallelCalls": 1921,
+      "threads": 8,
+      "load": {
+        "median": 8.06005859375,
+        "min": 6.67236328125,
+        "max": 9.04443359375
+      },
+      "verdict": "pass: whole-world hashes and direct physics stats"
+    }
+  ],
+  "android": {
+    "firstFrameMs": {
+      "median": 1677,
+      "min": 1559,
+      "max": 1836
+    },
+    "wholeTickMs": {
+      "median": 0.5226825000010431,
+      "min": 0.517622499998659,
+      "max": 0.5517874999977648
+    },
+    "moveMs": {
+      "median": 0.11081250008195638,
+      "min": 0.10977749997749925,
+      "max": 0.11730249998345971
+    },
+    "load": {
+      "median": 8.07177734375,
+      "min": 7.82666015625,
+      "max": 8.078125
+    },
+    "verdict": "pass on Pixel 10 over USB localhost; not-measurable for the specified 2022 mid-range Android/4G acceptance"
+  }
+}

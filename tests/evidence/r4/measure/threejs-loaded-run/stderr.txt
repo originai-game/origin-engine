@@ -1,0 +1,47 @@
+building reference (og build --publish's web half) into /Volumes/app/origin-engine-measure/target/tmp/threejs-bench/reference
+building spheres (og build --publish's web half) into /Volumes/app/origin-engine-measure/target/tmp/threejs-bench/spheres
+reference / engine WebGPU / round 1: http://127.0.0.1:54302/bench.html
+reference / engine WebGPU / round 1: p50 0.985 p95 2.825 ms, sustained 1.363 ms (734 fps); load 5.52 10.16 10.49
+reference / engine WebGL2 / round 1: http://127.0.0.1:54302/bench.html?webgl=1
+reference / engine WebGL2 / round 1: p50 2.29 p95 3.235 ms, sustained 2.226 ms (449 fps); load 5.52 10.16 10.49
+reference / three WebGL2, InstancedMesh / round 1: http://127.0.0.1:54301/three-page.html?scene=reference
+reference / three WebGL2, InstancedMesh / round 1: p50 3.16 p95 4.155 ms, sustained 2.653 ms (377 fps); load 5.48 10.07 10.45
+reference / three WebGL2, one Mesh each / round 1: http://127.0.0.1:54301/three-page.html?scene=reference&naive=1
+reference / three WebGL2, one Mesh each / round 1: p50 2.485 p95 4.98 ms, sustained 3.203 ms (312 fps); load 6.72 10.25 10.51
+spheres / engine WebGPU / round 1: http://127.0.0.1:54303/bench.html
+spheres / engine WebGPU / round 1: p50 3.99 p95 4.835 ms, sustained 3.995 ms (250 fps); load 6.72 10.25 10.51
+spheres / engine WebGL2 / round 1: http://127.0.0.1:54303/bench.html?webgl=1
+spheres / engine WebGL2 / round 1: p50 3.645 p95 5.03 ms, sustained 3.873 ms (258 fps); load 8.51 10.56 10.62
+spheres / three WebGL2, InstancedMesh / round 1: http://127.0.0.1:54301/three-page.html?scene=spheres
+spheres / three WebGL2, InstancedMesh / round 1: p50 2.605 p95 2.94 ms, sustained 2.606 ms (384 fps); load 8.63 10.56 10.62
+spheres / three WebGL2, one Mesh each / round 1: http://127.0.0.1:54301/three-page.html?scene=spheres&naive=1
+spheres / three WebGL2, one Mesh each / round 1: p50 10.33 p95 10.905 ms, sustained 10.313 ms (97 fps); load 9.86 10.78 10.70
+spheres / three WebGPU, InstancedMesh / round 1: http://127.0.0.1:54301/three-page.html?scene=spheres&webgpu=1
+spheres / three WebGPU, InstancedMesh / round 1: p50 1.315 p95 2.03 ms, sustained 1.402 ms (713 fps); load 9.39 10.67 10.66
+reference / engine WebGPU / round 2: http://127.0.0.1:54302/bench.html
+reference / engine WebGPU / round 2: p50 1.095 p95 2.505 ms, sustained 1.339 ms (747 fps); load 13.92 11.58 10.98
+reference / engine WebGL2 / round 2: http://127.0.0.1:54302/bench.html?webgl=1
+reference / engine WebGL2 / round 2: p50 2.16 p95 3.455 ms, sustained 2.265 ms (442 fps); load 13.92 11.58 10.98
+reference / three WebGL2, InstancedMesh / round 2: http://127.0.0.1:54301/three-page.html?scene=reference
+reference / three WebGL2, InstancedMesh / round 2: p50 3.095 p95 4.6 ms, sustained 2.746 ms (364 fps); load 13.21 11.47 10.95
+reference / three WebGL2, one Mesh each / round 2: http://127.0.0.1:54301/three-page.html?scene=reference&naive=1
+reference / three WebGL2, one Mesh each / round 2: p50 2.475 p95 5.02 ms, sustained 3.232 ms (309 fps); load 13.21 11.47 10.95
+spheres / engine WebGPU / round 2: http://127.0.0.1:54303/bench.html
+spheres / engine WebGPU / round 2: p50 3.79 p95 4.53 ms, sustained 3.773 ms (265 fps); load 13.51 11.57 10.98
+spheres / engine WebGL2 / round 2: http://127.0.0.1:54303/bench.html?webgl=1
+spheres / engine WebGL2 / round 2: p50 3.585 p95 5.285 ms, sustained 3.895 ms (257 fps); load 14.03 11.71 11.03
+spheres / three WebGL2, InstancedMesh / round 2: http://127.0.0.1:54301/three-page.html?scene=spheres
+spheres / three WebGL2, InstancedMesh / round 2: p50 2.565 p95 2.915 ms, sustained 2.525 ms (396 fps); load 18.59 12.69 11.39
+spheres / three WebGL2, one Mesh each / round 2: http://127.0.0.1:54301/three-page.html?scene=spheres&naive=1
+spheres / three WebGL2, one Mesh each / round 2: p50 11.17 p95 11.94 ms, sustained 11.189 ms (89 fps); load 18.59 12.69 11.39
+spheres / three WebGPU, InstancedMesh / round 2: http://127.0.0.1:54301/three-page.html?scene=spheres&webgpu=1
+spheres / three WebGPU, InstancedMesh / round 2: p50 1.31 p95 1.835 ms, sustained 1.385 ms (722 fps); load 16.80 12.50 11.33
+reference / engine WebGPU: threejs-reference-engine-webgpu.png
+reference / engine WebGL2: threejs-reference-engine-webgl2.png
+reference / three WebGL2, InstancedMesh: threejs-reference-three-webgl2-instancedmesh.png
+reference / three WebGL2, one Mesh each: threejs-reference-three-webgl2-one-mesh-each.png
+spheres / engine WebGPU: threejs-spheres-engine-webgpu.png
+spheres / engine WebGL2: threejs-spheres-engine-webgl2.png
+spheres / three WebGL2, InstancedMesh: threejs-spheres-three-webgl2-instancedmesh.png
+spheres / three WebGL2, one Mesh each: threejs-spheres-three-webgl2-one-mesh-each.png
+spheres / three WebGPU, InstancedMesh: threejs-spheres-three-webgpu-instancedmesh.png

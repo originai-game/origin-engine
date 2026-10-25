@@ -1,0 +1,11 @@
+| scene | mode | p50 ms | p95 ms | sustained ms | fps |
+|---|---|---|---|---|---|
+| reference | engine WebGPU | 1.018 | 2.165 | 1.275 | 784 |
+| reference | engine WebGL2 | 2.205 | 3.22 | 2.178 | 459 |
+| reference | three WebGL2, InstancedMesh | 3.008 | 3.575 | 2.532 | 395 |
+| reference | three WebGL2, one Mesh each | 2.395 | 4.703 | 3.071 | 326 |
+| spheres | engine WebGPU | 3.665 | 4.2 | 3.585 | 279 |
+| spheres | engine WebGL2 | 3.43 | 4.803 | 3.748 | 267 |
+| spheres | three WebGL2, InstancedMesh | 2.493 | 2.723 | 2.488 | 402 |
+| spheres | three WebGL2, one Mesh each | 10.803 | 11.543 | 10.788 | 93 |
+| spheres | three WebGPU, InstancedMesh | 1.288 | 1.655 | 1.318 | 759 |

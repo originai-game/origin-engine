@@ -1,0 +1,48 @@
+576c1e47fb28977a8448185f8fb23c5c79a07502c556427386c8b0a133f826e2  target/r4-profile.node
+fe3d87e117a34cf7c1ea1f2108adc71bb5a78dbc39f3dce5837922a3fee363d3  tests/evidence/r4/measure/capture-profile/instrumentation.patch
+   Compiling serde_json v1.0.154
+   Compiling og-core-derive v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-core-derive)
+   Compiling naga v30.0.1
+   Compiling half v2.7.1
+   Compiling num-complex v0.4.6
+   Compiling byteorder v1.5.0
+   Compiling og-render v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-render)
+   Compiling miniz_oxide v0.8.9
+   Compiling ttf-parser v0.25.1
+   Compiling og-geom v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-geom)
+   Compiling og-api v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-api)
+   Compiling hash32 v0.3.1
+   Compiling heapless v0.8.0
+   Compiling simba v0.10.2
+   Compiling rstar v0.13.0
+   Compiling og-core v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-core)
+   Compiling rustybuzz v0.20.1
+   Compiling nalgebra v0.35.0
+   Compiling og-ecs v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-ecs)
+   Compiling og-tilemap v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-tilemap)
+   Compiling og-i18n v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-i18n)
+   Compiling og-net v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-net)
+   Compiling og-tween v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-tween)
+   Compiling og-input v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-input)
+   Compiling og-nav v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-nav)
+   Compiling og-anim v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-anim)
+   Compiling og-audio v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-audio)
+   Compiling og-timeline v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-timeline)
+   Compiling og-probe v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-probe)
+   Compiling glamx v0.3.1
+   Compiling parry3d v0.31.1
+   Compiling parry2d v0.31.1
+   Compiling og-ai v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-ai)
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling rapier2d v0.36.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling rapier3d v0.36.1
+   Compiling wgpu v30.0.1
+   Compiling og-physics v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-physics)
+   Compiling og-ui v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-ui)
+   Compiling og-cook v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-cook)
+   Compiling og-runtime v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-runtime)
+   Compiling og-host-node v0.4.0 (/Volumes/app/origin-engine-measure/crates/og-host-node)
+    Finished `release` profile [optimized] target(s) in 2m 04s

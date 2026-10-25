@@ -1,0 +1,7892 @@
+[
+  {
+    "game": "hollowbell",
+    "paced": false,
+    "round": 0,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/hollowbell/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "5c33b0733b9a10a3",
+      "netHash": "dc54f8564573e992",
+      "entities": 168,
+      "advanceMs": 1300.64,
+      "frames": {
+        "stepMedianMs": 0.454,
+        "stepP95Ms": 0.903,
+        "stepMaxMs": 2.231,
+        "renderMedianMs": 0.536,
+        "renderP95Ms": 0.708,
+        "renderMaxMs": 57.874,
+        "stepped": 595,
+        "rendered": 595
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.108,
+          "totalMs": 64.687,
+          "runs": 600
+        },
+        {
+          "name": "Control",
+          "meanMs": 0.056,
+          "totalMs": 33.518,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.054,
+          "totalMs": 32.43,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.032,
+          "totalMs": 19.077,
+          "runs": 600
+        },
+        {
+          "name": "Enemies",
+          "meanMs": 0.027,
+          "totalMs": 16.495,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.027,
+          "totalMs": 16.142,
+          "runs": 600
+        },
+        {
+          "name": "Flickers",
+          "meanMs": 0.022,
+          "totalMs": 13.497,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.019,
+          "totalMs": 11.219,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.018,
+          "totalMs": 10.756,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.017,
+          "totalMs": 10.258,
+          "runs": 600
+        },
+        {
+          "name": "Bells",
+          "meanMs": 0.014,
+          "totalMs": 8.632,
+          "runs": 600
+        },
+        {
+          "name": "Areas",
+          "meanMs": 0.013,
+          "totalMs": 7.691,
+          "runs": 600
+        },
+        {
+          "name": "Moles",
+          "meanMs": 0.012,
+          "totalMs": 6.923,
+          "runs": 600
+        },
+        {
+          "name": "Stones",
+          "meanMs": 0.01,
+          "totalMs": 5.979,
+          "runs": 600
+        },
+        {
+          "name": "Backdrop",
+          "meanMs": 0.009,
+          "totalMs": 5.604,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.009,
+          "totalMs": 5.369,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.008,
+          "totalMs": 5.058,
+          "runs": 600
+        },
+        {
+          "name": "Hazards",
+          "meanMs": 0.008,
+          "totalMs": 4.926,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.008,
+          "totalMs": 4.628,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.008,
+          "totalMs": 4.556,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.007,
+          "totalMs": 4.195,
+          "runs": 600
+        },
+        {
+          "name": "Lifts",
+          "meanMs": 0.007,
+          "totalMs": 4.191,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.005,
+          "totalMs": 3.133,
+          "runs": 600
+        },
+        {
+          "name": "Effects",
+          "meanMs": 0.003,
+          "totalMs": 1.994,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.003,
+          "totalMs": 1.67,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.003,
+          "totalMs": 1.629,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.003,
+          "totalMs": 1.572,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.001,
+          "totalMs": 0.856,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.001,
+          "totalMs": 0.52,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.001,
+          "totalMs": 0.516,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.001,
+          "totalMs": 0.358,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.328,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0,
+          "totalMs": 0.247,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0,
+          "totalMs": 0.231,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.21,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0,
+          "totalMs": 0.203,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0,
+          "totalMs": 0.155,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0,
+          "totalMs": 0.155,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0,
+          "totalMs": 0.124,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0,
+          "totalMs": 0.089,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0,
+          "totalMs": 0.083,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.083,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 98,
+        "receivedHash": "956f58281458a982"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "kestrel-stair",
+    "paced": false,
+    "round": 0,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/kestrel-stair/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "13596d3b7a682ef9",
+      "netHash": "204b12262fcd745e",
+      "entities": 93,
+      "advanceMs": 2102.66,
+      "frames": {
+        "stepMedianMs": 0.808,
+        "stepP95Ms": 1.276,
+        "stepMaxMs": 5.277,
+        "renderMedianMs": 1.268,
+        "renderP95Ms": 2.107,
+        "renderMaxMs": 7.724,
+        "stepped": 595,
+        "rendered": 595
+      },
+      "systems": [
+        {
+          "name": "og.physics",
+          "meanMs": 0.266,
+          "totalMs": 159.396,
+          "runs": 600
+        },
+        {
+          "name": "Ui",
+          "meanMs": 0.141,
+          "totalMs": 84.893,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.073,
+          "totalMs": 43.985,
+          "runs": 600
+        },
+        {
+          "name": "Foes",
+          "meanMs": 0.071,
+          "totalMs": 42.533,
+          "runs": 600
+        },
+        {
+          "name": "Fx",
+          "meanMs": 0.041,
+          "totalMs": 24.748,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.034,
+          "totalMs": 20.427,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.029,
+          "totalMs": 17.388,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.028,
+          "totalMs": 16.879,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.023,
+          "totalMs": 13.902,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.023,
+          "totalMs": 13.519,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.022,
+          "totalMs": 13.307,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.017,
+          "totalMs": 10.286,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.017,
+          "totalMs": 9.913,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.01,
+          "totalMs": 5.985,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.01,
+          "totalMs": 5.982,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.007,
+          "totalMs": 4.354,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.007,
+          "totalMs": 4.012,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.004,
+          "totalMs": 2.207,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.002,
+          "totalMs": 1.448,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.002,
+          "totalMs": 1.361,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.001,
+          "totalMs": 0.533,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.461,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.001,
+          "totalMs": 0.394,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.364,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0,
+          "totalMs": 0.297,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0,
+          "totalMs": 0.288,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0,
+          "totalMs": 0.282,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0,
+          "totalMs": 0.253,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0,
+          "totalMs": 0.225,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0,
+          "totalMs": 0.219,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0,
+          "totalMs": 0.205,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0,
+          "totalMs": 0.184,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.131,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.108,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 6083,
+        "receivedHash": "08d1cd02aef3db5d"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "lantern-vale",
+    "paced": false,
+    "round": 0,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/lantern-vale/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "780bf264aa0a3f1f",
+      "netHash": "ef1378672a1f40b3",
+      "entities": 74,
+      "advanceMs": 3322.01,
+      "frames": {
+        "stepMedianMs": 0.63,
+        "stepP95Ms": 1.128,
+        "stepMaxMs": 2.966,
+        "renderMedianMs": 1.89,
+        "renderP95Ms": 7.52,
+        "renderMaxMs": 12.79,
+        "stepped": 595,
+        "rendered": 595
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.136,
+          "totalMs": 81.542,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.092,
+          "totalMs": 55.04,
+          "runs": 600
+        },
+        {
+          "name": "Slimes",
+          "meanMs": 0.07,
+          "totalMs": 41.737,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.062,
+          "totalMs": 37.001,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.058,
+          "totalMs": 34.525,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.045,
+          "totalMs": 26.812,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.024,
+          "totalMs": 14.329,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.018,
+          "totalMs": 10.832,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.012,
+          "totalMs": 7.222,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.011,
+          "totalMs": 6.472,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.01,
+          "totalMs": 6.122,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.009,
+          "totalMs": 5.239,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.008,
+          "totalMs": 4.628,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.008,
+          "totalMs": 4.609,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.005,
+          "totalMs": 2.845,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.002,
+          "totalMs": 1.475,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.002,
+          "totalMs": 1.303,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.001,
+          "totalMs": 0.839,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.001,
+          "totalMs": 0.586,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.001,
+          "totalMs": 0.49,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.389,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.001,
+          "totalMs": 0.344,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.001,
+          "totalMs": 0.313,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0,
+          "totalMs": 0.276,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0,
+          "totalMs": 0.239,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0,
+          "totalMs": 0.231,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0,
+          "totalMs": 0.226,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0,
+          "totalMs": 0.22,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0,
+          "totalMs": 0.214,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0,
+          "totalMs": 0.21,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.153,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0,
+          "totalMs": 0.149,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.122,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 88,
+        "receivedHash": "536de9b1a48997bd"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "hollowbell",
+    "paced": true,
+    "round": 0,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/hollowbell/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "5c33b0733b9a10a3",
+      "netHash": "dc54f8564573e992",
+      "entities": 168,
+      "advanceMs": 10007.46,
+      "frames": {
+        "stepMedianMs": 1.27,
+        "stepP95Ms": 2.413,
+        "stepMaxMs": 4.451,
+        "renderMedianMs": 1.23,
+        "renderP95Ms": 2.092,
+        "renderMaxMs": 4.058,
+        "stepped": 553,
+        "rendered": 554
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.287,
+          "totalMs": 172.065,
+          "runs": 600
+        },
+        {
+          "name": "Control",
+          "meanMs": 0.136,
+          "totalMs": 81.31,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.118,
+          "totalMs": 70.599,
+          "runs": 600
+        },
+        {
+          "name": "Enemies",
+          "meanMs": 0.072,
+          "totalMs": 43.367,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.072,
+          "totalMs": 42.973,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.067,
+          "totalMs": 39.95,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.062,
+          "totalMs": 36.954,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.041,
+          "totalMs": 24.662,
+          "runs": 600
+        },
+        {
+          "name": "Flickers",
+          "meanMs": 0.041,
+          "totalMs": 24.322,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.038,
+          "totalMs": 22.882,
+          "runs": 600
+        },
+        {
+          "name": "Bells",
+          "meanMs": 0.028,
+          "totalMs": 17.025,
+          "runs": 600
+        },
+        {
+          "name": "Moles",
+          "meanMs": 0.028,
+          "totalMs": 16.994,
+          "runs": 600
+        },
+        {
+          "name": "Areas",
+          "meanMs": 0.028,
+          "totalMs": 16.833,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.026,
+          "totalMs": 15.612,
+          "runs": 600
+        },
+        {
+          "name": "Stones",
+          "meanMs": 0.023,
+          "totalMs": 13.621,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.023,
+          "totalMs": 13.6,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.022,
+          "totalMs": 13.5,
+          "runs": 600
+        },
+        {
+          "name": "Backdrop",
+          "meanMs": 0.021,
+          "totalMs": 12.644,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.018,
+          "totalMs": 11.066,
+          "runs": 600
+        },
+        {
+          "name": "Hazards",
+          "meanMs": 0.016,
+          "totalMs": 9.778,
+          "runs": 600
+        },
+        {
+          "name": "Lifts",
+          "meanMs": 0.016,
+          "totalMs": 9.366,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.013,
+          "totalMs": 8.09,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.013,
+          "totalMs": 7.742,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.011,
+          "totalMs": 6.873,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.01,
+          "totalMs": 6.212,
+          "runs": 600
+        },
+        {
+          "name": "Effects",
+          "meanMs": 0.007,
+          "totalMs": 4.245,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.007,
+          "totalMs": 3.915,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.004,
+          "totalMs": 2.646,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.003,
+          "totalMs": 1.831,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.003,
+          "totalMs": 1.536,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.002,
+          "totalMs": 1.438,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.743,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.715,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.001,
+          "totalMs": 0.653,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0.001,
+          "totalMs": 0.587,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.587,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.583,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0.001,
+          "totalMs": 0.538,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0.001,
+          "totalMs": 0.418,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0.001,
+          "totalMs": 0.312,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.278,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.252,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 98,
+        "receivedHash": "956f58281458a982"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "kestrel-stair",
+    "paced": true,
+    "round": 0,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/kestrel-stair/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "13596d3b7a682ef9",
+      "netHash": "204b12262fcd745e",
+      "entities": 93,
+      "advanceMs": 10017.99,
+      "frames": {
+        "stepMedianMs": 1.629,
+        "stepP95Ms": 3.338,
+        "stepMaxMs": 9.424,
+        "renderMedianMs": 1.461,
+        "renderP95Ms": 2.117,
+        "renderMaxMs": 5.079,
+        "stepped": 553,
+        "rendered": 554
+      },
+      "systems": [
+        {
+          "name": "og.physics",
+          "meanMs": 0.555,
+          "totalMs": 333.175,
+          "runs": 600
+        },
+        {
+          "name": "Ui",
+          "meanMs": 0.307,
+          "totalMs": 184.152,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.141,
+          "totalMs": 84.351,
+          "runs": 600
+        },
+        {
+          "name": "Foes",
+          "meanMs": 0.128,
+          "totalMs": 76.992,
+          "runs": 600
+        },
+        {
+          "name": "Fx",
+          "meanMs": 0.07,
+          "totalMs": 41.939,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.06,
+          "totalMs": 36.291,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.058,
+          "totalMs": 34.9,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.057,
+          "totalMs": 33.966,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.049,
+          "totalMs": 29.573,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.049,
+          "totalMs": 29.185,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.043,
+          "totalMs": 25.782,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.041,
+          "totalMs": 24.657,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.031,
+          "totalMs": 18.502,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.026,
+          "totalMs": 15.343,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.021,
+          "totalMs": 12.866,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.017,
+          "totalMs": 9.922,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.011,
+          "totalMs": 6.73,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.011,
+          "totalMs": 6.428,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.009,
+          "totalMs": 5.515,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.004,
+          "totalMs": 2.531,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.002,
+          "totalMs": 1.29,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.002,
+          "totalMs": 0.995,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.773,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.001,
+          "totalMs": 0.744,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.738,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.001,
+          "totalMs": 0.656,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.633,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.516,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0.001,
+          "totalMs": 0.491,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0.001,
+          "totalMs": 0.468,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0.001,
+          "totalMs": 0.417,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0.001,
+          "totalMs": 0.371,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.239,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.209,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 6083,
+        "receivedHash": "08d1cd02aef3db5d"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "lantern-vale",
+    "paced": true,
+    "round": 0,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/lantern-vale/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "780bf264aa0a3f1f",
+      "netHash": "ef1378672a1f40b3",
+      "entities": 74,
+      "advanceMs": 10009.34,
+      "frames": {
+        "stepMedianMs": 1.236,
+        "stepP95Ms": 2.057,
+        "stepMaxMs": 4.094,
+        "renderMedianMs": 1.934,
+        "renderP95Ms": 2.823,
+        "renderMaxMs": 4.431,
+        "stepped": 552,
+        "rendered": 552
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.283,
+          "totalMs": 169.574,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.177,
+          "totalMs": 106.065,
+          "runs": 600
+        },
+        {
+          "name": "Slimes",
+          "meanMs": 0.134,
+          "totalMs": 80.305,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.116,
+          "totalMs": 69.527,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.108,
+          "totalMs": 64.747,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.084,
+          "totalMs": 50.537,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.046,
+          "totalMs": 27.396,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.039,
+          "totalMs": 23.116,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.025,
+          "totalMs": 15.013,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.023,
+          "totalMs": 14.029,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.018,
+          "totalMs": 10.945,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.018,
+          "totalMs": 10.754,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.017,
+          "totalMs": 10.002,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.014,
+          "totalMs": 8.336,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.009,
+          "totalMs": 5.499,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.006,
+          "totalMs": 3.387,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.005,
+          "totalMs": 2.79,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.003,
+          "totalMs": 1.566,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.002,
+          "totalMs": 1.327,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.002,
+          "totalMs": 1.016,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.001,
+          "totalMs": 0.792,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.682,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.001,
+          "totalMs": 0.661,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.001,
+          "totalMs": 0.627,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0.001,
+          "totalMs": 0.582,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.517,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.476,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.473,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0.001,
+          "totalMs": 0.455,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0.001,
+          "totalMs": 0.434,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0.001,
+          "totalMs": 0.314,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.28,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.224,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 88,
+        "receivedHash": "536de9b1a48997bd"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "hollowbell",
+    "paced": false,
+    "round": 1,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/hollowbell/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "5c33b0733b9a10a3",
+      "netHash": "dc54f8564573e992",
+      "entities": 168,
+      "advanceMs": 700.93,
+      "frames": {
+        "stepMedianMs": 0.463,
+        "stepP95Ms": 0.819,
+        "stepMaxMs": 2.242,
+        "renderMedianMs": 0.537,
+        "renderP95Ms": 0.723,
+        "renderMaxMs": 1.284,
+        "stepped": 595,
+        "rendered": 595
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.111,
+          "totalMs": 66.633,
+          "runs": 600
+        },
+        {
+          "name": "Control",
+          "meanMs": 0.053,
+          "totalMs": 31.94,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.04,
+          "totalMs": 23.704,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.033,
+          "totalMs": 19.627,
+          "runs": 600
+        },
+        {
+          "name": "Enemies",
+          "meanMs": 0.027,
+          "totalMs": 16.274,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.027,
+          "totalMs": 16.125,
+          "runs": 600
+        },
+        {
+          "name": "Flickers",
+          "meanMs": 0.018,
+          "totalMs": 10.929,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.018,
+          "totalMs": 10.592,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.016,
+          "totalMs": 9.59,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.015,
+          "totalMs": 9.073,
+          "runs": 600
+        },
+        {
+          "name": "Bells",
+          "meanMs": 0.013,
+          "totalMs": 7.865,
+          "runs": 600
+        },
+        {
+          "name": "Areas",
+          "meanMs": 0.011,
+          "totalMs": 6.863,
+          "runs": 600
+        },
+        {
+          "name": "Moles",
+          "meanMs": 0.011,
+          "totalMs": 6.829,
+          "runs": 600
+        },
+        {
+          "name": "Stones",
+          "meanMs": 0.011,
+          "totalMs": 6.415,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.008,
+          "totalMs": 5.093,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.008,
+          "totalMs": 4.958,
+          "runs": 600
+        },
+        {
+          "name": "Lifts",
+          "meanMs": 0.007,
+          "totalMs": 4.337,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.007,
+          "totalMs": 4.24,
+          "runs": 600
+        },
+        {
+          "name": "Hazards",
+          "meanMs": 0.007,
+          "totalMs": 3.976,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.006,
+          "totalMs": 3.858,
+          "runs": 600
+        },
+        {
+          "name": "Backdrop",
+          "meanMs": 0.006,
+          "totalMs": 3.763,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.005,
+          "totalMs": 3.221,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.005,
+          "totalMs": 2.837,
+          "runs": 600
+        },
+        {
+          "name": "Effects",
+          "meanMs": 0.003,
+          "totalMs": 1.949,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.003,
+          "totalMs": 1.621,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.003,
+          "totalMs": 1.591,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.002,
+          "totalMs": 1.378,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.001,
+          "totalMs": 0.763,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.001,
+          "totalMs": 0.497,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.001,
+          "totalMs": 0.385,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0,
+          "totalMs": 0.245,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0,
+          "totalMs": 0.231,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0,
+          "totalMs": 0.211,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0,
+          "totalMs": 0.205,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0,
+          "totalMs": 0.171,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0,
+          "totalMs": 0.166,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0,
+          "totalMs": 0.152,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0,
+          "totalMs": 0.117,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0,
+          "totalMs": 0.093,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0,
+          "totalMs": 0.092,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.075,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.07,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 98,
+        "receivedHash": "956f58281458a982"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "kestrel-stair",
+    "paced": false,
+    "round": 1,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/kestrel-stair/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "13596d3b7a682ef9",
+      "netHash": "204b12262fcd745e",
+      "entities": 93,
+      "advanceMs": 1376.87,
+      "frames": {
+        "stepMedianMs": 0.809,
+        "stepP95Ms": 1.154,
+        "stepMaxMs": 2.615,
+        "renderMedianMs": 1.205,
+        "renderP95Ms": 1.816,
+        "renderMaxMs": 4.585,
+        "stepped": 595,
+        "rendered": 595
+      },
+      "systems": [
+        {
+          "name": "og.physics",
+          "meanMs": 0.232,
+          "totalMs": 138.97,
+          "runs": 600
+        },
+        {
+          "name": "Ui",
+          "meanMs": 0.14,
+          "totalMs": 84.188,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.071,
+          "totalMs": 42.767,
+          "runs": 600
+        },
+        {
+          "name": "Foes",
+          "meanMs": 0.069,
+          "totalMs": 41.668,
+          "runs": 600
+        },
+        {
+          "name": "Fx",
+          "meanMs": 0.04,
+          "totalMs": 24.045,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.032,
+          "totalMs": 19.21,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.029,
+          "totalMs": 17.661,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.029,
+          "totalMs": 17.43,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.023,
+          "totalMs": 13.935,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.022,
+          "totalMs": 13.47,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.021,
+          "totalMs": 12.47,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.017,
+          "totalMs": 10.498,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.017,
+          "totalMs": 10.108,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.011,
+          "totalMs": 6.708,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.01,
+          "totalMs": 6.145,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.007,
+          "totalMs": 4.468,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.007,
+          "totalMs": 4.169,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.004,
+          "totalMs": 2.301,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.003,
+          "totalMs": 1.551,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.002,
+          "totalMs": 1.317,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.001,
+          "totalMs": 0.554,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.001,
+          "totalMs": 0.437,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.334,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.334,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.328,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.001,
+          "totalMs": 0.304,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0,
+          "totalMs": 0.281,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0,
+          "totalMs": 0.261,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0,
+          "totalMs": 0.24,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0,
+          "totalMs": 0.217,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0,
+          "totalMs": 0.212,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0,
+          "totalMs": 0.159,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.138,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.114,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 6083,
+        "receivedHash": "08d1cd02aef3db5d"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "lantern-vale",
+    "paced": false,
+    "round": 1,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/lantern-vale/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "780bf264aa0a3f1f",
+      "netHash": "ef1378672a1f40b3",
+      "entities": 74,
+      "advanceMs": 2348.65,
+      "frames": {
+        "stepMedianMs": 0.538,
+        "stepP95Ms": 0.936,
+        "stepMaxMs": 2.238,
+        "renderMedianMs": 1.593,
+        "renderP95Ms": 8.03,
+        "renderMaxMs": 16.538,
+        "stepped": 595,
+        "rendered": 595
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.128,
+          "totalMs": 76.929,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.084,
+          "totalMs": 50.152,
+          "runs": 600
+        },
+        {
+          "name": "Slimes",
+          "meanMs": 0.063,
+          "totalMs": 37.855,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.059,
+          "totalMs": 35.686,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.054,
+          "totalMs": 32.293,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.041,
+          "totalMs": 24.728,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.02,
+          "totalMs": 12.142,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.016,
+          "totalMs": 9.633,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.011,
+          "totalMs": 6.311,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.009,
+          "totalMs": 5.482,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.008,
+          "totalMs": 4.921,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.008,
+          "totalMs": 4.707,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.007,
+          "totalMs": 4.411,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.007,
+          "totalMs": 4.31,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.004,
+          "totalMs": 2.438,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.003,
+          "totalMs": 1.586,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.003,
+          "totalMs": 1.58,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.001,
+          "totalMs": 0.759,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.001,
+          "totalMs": 0.496,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.001,
+          "totalMs": 0.448,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.301,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0,
+          "totalMs": 0.282,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0,
+          "totalMs": 0.264,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0,
+          "totalMs": 0.246,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0,
+          "totalMs": 0.217,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0,
+          "totalMs": 0.198,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0,
+          "totalMs": 0.193,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0,
+          "totalMs": 0.176,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0,
+          "totalMs": 0.175,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0,
+          "totalMs": 0.173,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.147,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.146,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0,
+          "totalMs": 0.135,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 88,
+        "receivedHash": "536de9b1a48997bd"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "hollowbell",
+    "paced": true,
+    "round": 1,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/hollowbell/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "5c33b0733b9a10a3",
+      "netHash": "dc54f8564573e992",
+      "entities": 168,
+      "advanceMs": 10018.45,
+      "frames": {
+        "stepMedianMs": 1.331,
+        "stepP95Ms": 2.483,
+        "stepMaxMs": 7.269,
+        "renderMedianMs": 1.277,
+        "renderP95Ms": 2.153,
+        "renderMaxMs": 5.092,
+        "stepped": 555,
+        "rendered": 555
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.3,
+          "totalMs": 180.012,
+          "runs": 600
+        },
+        {
+          "name": "Control",
+          "meanMs": 0.147,
+          "totalMs": 88.125,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.125,
+          "totalMs": 74.787,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.083,
+          "totalMs": 49.798,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.077,
+          "totalMs": 46.047,
+          "runs": 600
+        },
+        {
+          "name": "Enemies",
+          "meanMs": 0.075,
+          "totalMs": 44.77,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.062,
+          "totalMs": 37.479,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.043,
+          "totalMs": 25.842,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.043,
+          "totalMs": 25.814,
+          "runs": 600
+        },
+        {
+          "name": "Flickers",
+          "meanMs": 0.042,
+          "totalMs": 25.198,
+          "runs": 600
+        },
+        {
+          "name": "Bells",
+          "meanMs": 0.032,
+          "totalMs": 19.374,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.032,
+          "totalMs": 19.192,
+          "runs": 600
+        },
+        {
+          "name": "Areas",
+          "meanMs": 0.03,
+          "totalMs": 18.151,
+          "runs": 600
+        },
+        {
+          "name": "Stones",
+          "meanMs": 0.027,
+          "totalMs": 16.357,
+          "runs": 600
+        },
+        {
+          "name": "Moles",
+          "meanMs": 0.026,
+          "totalMs": 15.731,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.024,
+          "totalMs": 14.16,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.023,
+          "totalMs": 13.674,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.02,
+          "totalMs": 11.972,
+          "runs": 600
+        },
+        {
+          "name": "Hazards",
+          "meanMs": 0.02,
+          "totalMs": 11.784,
+          "runs": 600
+        },
+        {
+          "name": "Lifts",
+          "meanMs": 0.016,
+          "totalMs": 9.69,
+          "runs": 600
+        },
+        {
+          "name": "Backdrop",
+          "meanMs": 0.015,
+          "totalMs": 9.058,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.015,
+          "totalMs": 8.74,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.013,
+          "totalMs": 7.948,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.01,
+          "totalMs": 6.203,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.008,
+          "totalMs": 4.954,
+          "runs": 600
+        },
+        {
+          "name": "Effects",
+          "meanMs": 0.007,
+          "totalMs": 4.478,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.006,
+          "totalMs": 3.862,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.005,
+          "totalMs": 3.091,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.003,
+          "totalMs": 1.92,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.003,
+          "totalMs": 1.557,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.002,
+          "totalMs": 1.151,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.834,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.001,
+          "totalMs": 0.781,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.749,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0.001,
+          "totalMs": 0.657,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.622,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.585,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0.001,
+          "totalMs": 0.537,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0.001,
+          "totalMs": 0.434,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0.001,
+          "totalMs": 0.33,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.294,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.264,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 98,
+        "receivedHash": "956f58281458a982"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "kestrel-stair",
+    "paced": true,
+    "round": 1,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/kestrel-stair/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "13596d3b7a682ef9",
+      "netHash": "204b12262fcd745e",
+      "entities": 93,
+      "advanceMs": 10006.67,
+      "frames": {
+        "stepMedianMs": 1.662,
+        "stepP95Ms": 2.8,
+        "stepMaxMs": 11.439,
+        "renderMedianMs": 1.516,
+        "renderP95Ms": 2.225,
+        "renderMaxMs": 3.605,
+        "stepped": 552,
+        "rendered": 552
+      },
+      "systems": [
+        {
+          "name": "og.physics",
+          "meanMs": 0.472,
+          "totalMs": 283.292,
+          "runs": 600
+        },
+        {
+          "name": "Ui",
+          "meanMs": 0.316,
+          "totalMs": 189.393,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.146,
+          "totalMs": 87.666,
+          "runs": 600
+        },
+        {
+          "name": "Foes",
+          "meanMs": 0.131,
+          "totalMs": 78.448,
+          "runs": 600
+        },
+        {
+          "name": "Fx",
+          "meanMs": 0.075,
+          "totalMs": 45.246,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.062,
+          "totalMs": 37.442,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.06,
+          "totalMs": 36.057,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.059,
+          "totalMs": 35.397,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.051,
+          "totalMs": 30.582,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.049,
+          "totalMs": 29.564,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.043,
+          "totalMs": 25.997,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.039,
+          "totalMs": 23.47,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.032,
+          "totalMs": 19.159,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.024,
+          "totalMs": 14.175,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.022,
+          "totalMs": 13.152,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.017,
+          "totalMs": 10.277,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.012,
+          "totalMs": 7.101,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.009,
+          "totalMs": 5.438,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.007,
+          "totalMs": 4.179,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.005,
+          "totalMs": 3.158,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.002,
+          "totalMs": 1.353,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.002,
+          "totalMs": 1.004,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.001,
+          "totalMs": 0.829,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.782,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.742,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.7,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.001,
+          "totalMs": 0.676,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0.001,
+          "totalMs": 0.586,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.532,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0.001,
+          "totalMs": 0.51,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0.001,
+          "totalMs": 0.445,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0.001,
+          "totalMs": 0.377,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.277,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.216,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 6083,
+        "receivedHash": "08d1cd02aef3db5d"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "lantern-vale",
+    "paced": true,
+    "round": 1,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/lantern-vale/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "780bf264aa0a3f1f",
+      "netHash": "ef1378672a1f40b3",
+      "entities": 74,
+      "advanceMs": 10006.99,
+      "frames": {
+        "stepMedianMs": 1.199,
+        "stepP95Ms": 2.121,
+        "stepMaxMs": 4.166,
+        "renderMedianMs": 1.846,
+        "renderP95Ms": 2.849,
+        "renderMaxMs": 4.665,
+        "stepped": 549,
+        "rendered": 551
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.269,
+          "totalMs": 161.239,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.172,
+          "totalMs": 103.417,
+          "runs": 600
+        },
+        {
+          "name": "Slimes",
+          "meanMs": 0.133,
+          "totalMs": 79.518,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.117,
+          "totalMs": 69.93,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.111,
+          "totalMs": 66.606,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.085,
+          "totalMs": 50.813,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.042,
+          "totalMs": 25.28,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.036,
+          "totalMs": 21.444,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.024,
+          "totalMs": 14.114,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.023,
+          "totalMs": 13.568,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.018,
+          "totalMs": 10.743,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.018,
+          "totalMs": 10.548,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.017,
+          "totalMs": 10.071,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.013,
+          "totalMs": 8.059,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.009,
+          "totalMs": 5.533,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.006,
+          "totalMs": 3.705,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.004,
+          "totalMs": 2.453,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.003,
+          "totalMs": 1.539,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.002,
+          "totalMs": 1.256,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.002,
+          "totalMs": 0.935,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.782,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.001,
+          "totalMs": 0.712,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.001,
+          "totalMs": 0.599,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.001,
+          "totalMs": 0.557,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0.001,
+          "totalMs": 0.516,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.468,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.455,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.435,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0.001,
+          "totalMs": 0.409,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0.001,
+          "totalMs": 0.395,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0.001,
+          "totalMs": 0.346,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.263,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.214,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 88,
+        "receivedHash": "536de9b1a48997bd"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "hollowbell",
+    "paced": false,
+    "round": 2,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/hollowbell/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "5c33b0733b9a10a3",
+      "netHash": "dc54f8564573e992",
+      "entities": 168,
+      "advanceMs": 690.84,
+      "frames": {
+        "stepMedianMs": 0.446,
+        "stepP95Ms": 0.869,
+        "stepMaxMs": 2.232,
+        "renderMedianMs": 0.532,
+        "renderP95Ms": 0.71,
+        "renderMaxMs": 1.348,
+        "stepped": 595,
+        "rendered": 595
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.106,
+          "totalMs": 63.446,
+          "runs": 600
+        },
+        {
+          "name": "Control",
+          "meanMs": 0.05,
+          "totalMs": 30.165,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.038,
+          "totalMs": 22.752,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.031,
+          "totalMs": 18.833,
+          "runs": 600
+        },
+        {
+          "name": "Enemies",
+          "meanMs": 0.026,
+          "totalMs": 15.819,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.026,
+          "totalMs": 15.771,
+          "runs": 600
+        },
+        {
+          "name": "Flickers",
+          "meanMs": 0.021,
+          "totalMs": 12.374,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.017,
+          "totalMs": 10.4,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.017,
+          "totalMs": 10.35,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.015,
+          "totalMs": 8.987,
+          "runs": 600
+        },
+        {
+          "name": "Bells",
+          "meanMs": 0.013,
+          "totalMs": 7.717,
+          "runs": 600
+        },
+        {
+          "name": "Moles",
+          "meanMs": 0.011,
+          "totalMs": 6.831,
+          "runs": 600
+        },
+        {
+          "name": "Areas",
+          "meanMs": 0.011,
+          "totalMs": 6.75,
+          "runs": 600
+        },
+        {
+          "name": "Stones",
+          "meanMs": 0.01,
+          "totalMs": 5.916,
+          "runs": 600
+        },
+        {
+          "name": "Lifts",
+          "meanMs": 0.008,
+          "totalMs": 4.864,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.008,
+          "totalMs": 4.846,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.008,
+          "totalMs": 4.697,
+          "runs": 600
+        },
+        {
+          "name": "Backdrop",
+          "meanMs": 0.007,
+          "totalMs": 4.422,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.007,
+          "totalMs": 4.342,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.007,
+          "totalMs": 4.213,
+          "runs": 600
+        },
+        {
+          "name": "Hazards",
+          "meanMs": 0.006,
+          "totalMs": 3.897,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.005,
+          "totalMs": 3.054,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.004,
+          "totalMs": 2.673,
+          "runs": 600
+        },
+        {
+          "name": "Effects",
+          "meanMs": 0.003,
+          "totalMs": 1.906,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.003,
+          "totalMs": 1.503,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.003,
+          "totalMs": 1.501,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.002,
+          "totalMs": 1.364,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.001,
+          "totalMs": 0.701,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.001,
+          "totalMs": 0.513,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.001,
+          "totalMs": 0.34,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0,
+          "totalMs": 0.225,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0,
+          "totalMs": 0.22,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0,
+          "totalMs": 0.209,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0,
+          "totalMs": 0.208,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0,
+          "totalMs": 0.166,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0,
+          "totalMs": 0.145,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0,
+          "totalMs": 0.141,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0,
+          "totalMs": 0.115,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0,
+          "totalMs": 0.095,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0,
+          "totalMs": 0.09,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.071,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.069,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 98,
+        "receivedHash": "956f58281458a982"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "kestrel-stair",
+    "paced": false,
+    "round": 2,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/kestrel-stair/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "13596d3b7a682ef9",
+      "netHash": "204b12262fcd745e",
+      "entities": 93,
+      "advanceMs": 1367.87,
+      "frames": {
+        "stepMedianMs": 0.795,
+        "stepP95Ms": 1.13,
+        "stepMaxMs": 4.879,
+        "renderMedianMs": 1.218,
+        "renderP95Ms": 1.711,
+        "renderMaxMs": 3.651,
+        "stepped": 595,
+        "rendered": 595
+      },
+      "systems": [
+        {
+          "name": "og.physics",
+          "meanMs": 0.224,
+          "totalMs": 134.445,
+          "runs": 600
+        },
+        {
+          "name": "Ui",
+          "meanMs": 0.144,
+          "totalMs": 86.354,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.076,
+          "totalMs": 45.453,
+          "runs": 600
+        },
+        {
+          "name": "Foes",
+          "meanMs": 0.068,
+          "totalMs": 40.889,
+          "runs": 600
+        },
+        {
+          "name": "Fx",
+          "meanMs": 0.039,
+          "totalMs": 23.419,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.032,
+          "totalMs": 19.363,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.032,
+          "totalMs": 19.199,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.03,
+          "totalMs": 17.992,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.026,
+          "totalMs": 15.55,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.023,
+          "totalMs": 13.588,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.022,
+          "totalMs": 13.429,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.018,
+          "totalMs": 10.731,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.017,
+          "totalMs": 10.064,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.01,
+          "totalMs": 6.277,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.01,
+          "totalMs": 5.917,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.008,
+          "totalMs": 4.615,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.007,
+          "totalMs": 4.118,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.004,
+          "totalMs": 2.274,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.002,
+          "totalMs": 1.465,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.002,
+          "totalMs": 1.353,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.001,
+          "totalMs": 0.557,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.001,
+          "totalMs": 0.439,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.349,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.332,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.33,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.001,
+          "totalMs": 0.307,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.001,
+          "totalMs": 0.305,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0,
+          "totalMs": 0.247,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0,
+          "totalMs": 0.218,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0,
+          "totalMs": 0.216,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0,
+          "totalMs": 0.208,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0,
+          "totalMs": 0.165,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.134,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.11,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 6083,
+        "receivedHash": "08d1cd02aef3db5d"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "lantern-vale",
+    "paced": false,
+    "round": 2,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/lantern-vale/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "780bf264aa0a3f1f",
+      "netHash": "ef1378672a1f40b3",
+      "entities": 74,
+      "advanceMs": 2065.62,
+      "frames": {
+        "stepMedianMs": 0.534,
+        "stepP95Ms": 1.021,
+        "stepMaxMs": 1.935,
+        "renderMedianMs": 1.527,
+        "renderP95Ms": 7.894,
+        "renderMaxMs": 12.323,
+        "stepped": 595,
+        "rendered": 595
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.125,
+          "totalMs": 75.183,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.083,
+          "totalMs": 49.707,
+          "runs": 600
+        },
+        {
+          "name": "Slimes",
+          "meanMs": 0.064,
+          "totalMs": 38.679,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.06,
+          "totalMs": 36.123,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.06,
+          "totalMs": 36.079,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.041,
+          "totalMs": 24.739,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.02,
+          "totalMs": 12.246,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.017,
+          "totalMs": 10.014,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.011,
+          "totalMs": 6.519,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.009,
+          "totalMs": 5.459,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.008,
+          "totalMs": 4.941,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.008,
+          "totalMs": 4.802,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.007,
+          "totalMs": 4.413,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.007,
+          "totalMs": 4.387,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.004,
+          "totalMs": 2.415,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.003,
+          "totalMs": 1.501,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.002,
+          "totalMs": 1.227,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.001,
+          "totalMs": 0.791,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.001,
+          "totalMs": 0.536,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.001,
+          "totalMs": 0.49,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0,
+          "totalMs": 0.298,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0,
+          "totalMs": 0.296,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0,
+          "totalMs": 0.287,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0,
+          "totalMs": 0.255,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0,
+          "totalMs": 0.224,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0,
+          "totalMs": 0.215,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0,
+          "totalMs": 0.185,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0,
+          "totalMs": 0.182,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0,
+          "totalMs": 0.178,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0,
+          "totalMs": 0.175,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.142,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0,
+          "totalMs": 0.133,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.11,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 88,
+        "receivedHash": "536de9b1a48997bd"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "hollowbell",
+    "paced": true,
+    "round": 2,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/hollowbell/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "5c33b0733b9a10a3",
+      "netHash": "dc54f8564573e992",
+      "entities": 168,
+      "advanceMs": 10011.63,
+      "frames": {
+        "stepMedianMs": 1.333,
+        "stepP95Ms": 2.773,
+        "stepMaxMs": 25.346,
+        "renderMedianMs": 1.303,
+        "renderP95Ms": 2.258,
+        "renderMaxMs": 3.827,
+        "stepped": 554,
+        "rendered": 555
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.306,
+          "totalMs": 183.77,
+          "runs": 600
+        },
+        {
+          "name": "Control",
+          "meanMs": 0.156,
+          "totalMs": 93.817,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.13,
+          "totalMs": 78.093,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.107,
+          "totalMs": 63.949,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.078,
+          "totalMs": 47.009,
+          "runs": 600
+        },
+        {
+          "name": "Enemies",
+          "meanMs": 0.075,
+          "totalMs": 45.201,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.064,
+          "totalMs": 38.402,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.043,
+          "totalMs": 25.868,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.043,
+          "totalMs": 25.757,
+          "runs": 600
+        },
+        {
+          "name": "Flickers",
+          "meanMs": 0.04,
+          "totalMs": 23.893,
+          "runs": 600
+        },
+        {
+          "name": "Bells",
+          "meanMs": 0.039,
+          "totalMs": 23.189,
+          "runs": 600
+        },
+        {
+          "name": "Areas",
+          "meanMs": 0.032,
+          "totalMs": 19.205,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.028,
+          "totalMs": 16.847,
+          "runs": 600
+        },
+        {
+          "name": "Moles",
+          "meanMs": 0.027,
+          "totalMs": 16.229,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.025,
+          "totalMs": 15.264,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.023,
+          "totalMs": 13.688,
+          "runs": 600
+        },
+        {
+          "name": "Stones",
+          "meanMs": 0.022,
+          "totalMs": 13.382,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.019,
+          "totalMs": 11.651,
+          "runs": 600
+        },
+        {
+          "name": "Hazards",
+          "meanMs": 0.018,
+          "totalMs": 10.726,
+          "runs": 600
+        },
+        {
+          "name": "Lifts",
+          "meanMs": 0.016,
+          "totalMs": 9.734,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.016,
+          "totalMs": 9.543,
+          "runs": 600
+        },
+        {
+          "name": "Backdrop",
+          "meanMs": 0.014,
+          "totalMs": 8.674,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.014,
+          "totalMs": 8.281,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.012,
+          "totalMs": 7.332,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.008,
+          "totalMs": 4.963,
+          "runs": 600
+        },
+        {
+          "name": "Effects",
+          "meanMs": 0.008,
+          "totalMs": 4.582,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.006,
+          "totalMs": 3.869,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.004,
+          "totalMs": 2.683,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.003,
+          "totalMs": 1.889,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.003,
+          "totalMs": 1.515,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.002,
+          "totalMs": 1.221,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.829,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.781,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.001,
+          "totalMs": 0.729,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0.001,
+          "totalMs": 0.669,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.652,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.624,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0.001,
+          "totalMs": 0.574,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0.001,
+          "totalMs": 0.489,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0.001,
+          "totalMs": 0.34,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.295,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.295,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 98,
+        "receivedHash": "956f58281458a982"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "kestrel-stair",
+    "paced": true,
+    "round": 2,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/kestrel-stair/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "13596d3b7a682ef9",
+      "netHash": "204b12262fcd745e",
+      "entities": 93,
+      "advanceMs": 10007.32,
+      "frames": {
+        "stepMedianMs": 1.712,
+        "stepP95Ms": 3.016,
+        "stepMaxMs": 11.485,
+        "renderMedianMs": 1.528,
+        "renderP95Ms": 2.113,
+        "renderMaxMs": 4.575,
+        "stepped": 553,
+        "rendered": 554
+      },
+      "systems": [
+        {
+          "name": "og.physics",
+          "meanMs": 0.492,
+          "totalMs": 295.013,
+          "runs": 600
+        },
+        {
+          "name": "Ui",
+          "meanMs": 0.325,
+          "totalMs": 195.177,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.148,
+          "totalMs": 88.717,
+          "runs": 600
+        },
+        {
+          "name": "Foes",
+          "meanMs": 0.142,
+          "totalMs": 85.356,
+          "runs": 600
+        },
+        {
+          "name": "Fx",
+          "meanMs": 0.074,
+          "totalMs": 44.186,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.065,
+          "totalMs": 39.199,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.064,
+          "totalMs": 38.202,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.063,
+          "totalMs": 37.861,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.056,
+          "totalMs": 33.832,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.05,
+          "totalMs": 30.238,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.044,
+          "totalMs": 26.115,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.04,
+          "totalMs": 23.85,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.037,
+          "totalMs": 22.046,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.024,
+          "totalMs": 14.249,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.023,
+          "totalMs": 13.609,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.018,
+          "totalMs": 10.845,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.013,
+          "totalMs": 7.817,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.009,
+          "totalMs": 5.522,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.005,
+          "totalMs": 3.203,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.004,
+          "totalMs": 2.619,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.002,
+          "totalMs": 1.356,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.002,
+          "totalMs": 1.008,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.875,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.001,
+          "totalMs": 0.822,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.735,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.708,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.001,
+          "totalMs": 0.673,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0.001,
+          "totalMs": 0.559,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.545,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0.001,
+          "totalMs": 0.478,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0.001,
+          "totalMs": 0.418,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0.001,
+          "totalMs": 0.375,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.253,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.221,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 6083,
+        "receivedHash": "08d1cd02aef3db5d"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "lantern-vale",
+    "paced": true,
+    "round": 2,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/lantern-vale/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "780bf264aa0a3f1f",
+      "netHash": "ef1378672a1f40b3",
+      "entities": 74,
+      "advanceMs": 10018.14,
+      "frames": {
+        "stepMedianMs": 1.262,
+        "stepP95Ms": 2.199,
+        "stepMaxMs": 4.505,
+        "renderMedianMs": 1.914,
+        "renderP95Ms": 2.81,
+        "renderMaxMs": 4.45,
+        "stepped": 551,
+        "rendered": 551
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.294,
+          "totalMs": 176.548,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.177,
+          "totalMs": 106.201,
+          "runs": 600
+        },
+        {
+          "name": "Slimes",
+          "meanMs": 0.137,
+          "totalMs": 82.151,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.12,
+          "totalMs": 72.183,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.113,
+          "totalMs": 67.533,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.088,
+          "totalMs": 52.9,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.046,
+          "totalMs": 27.375,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.039,
+          "totalMs": 23.163,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.024,
+          "totalMs": 14.655,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.024,
+          "totalMs": 14.481,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.018,
+          "totalMs": 11.06,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.018,
+          "totalMs": 10.891,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.017,
+          "totalMs": 10.388,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.014,
+          "totalMs": 8.514,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.01,
+          "totalMs": 5.717,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.006,
+          "totalMs": 3.512,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.005,
+          "totalMs": 2.72,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.003,
+          "totalMs": 1.569,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.002,
+          "totalMs": 1.222,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.002,
+          "totalMs": 0.966,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.001,
+          "totalMs": 0.744,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.701,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0.001,
+          "totalMs": 0.632,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.001,
+          "totalMs": 0.602,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.001,
+          "totalMs": 0.601,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.526,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.493,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.473,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0.001,
+          "totalMs": 0.413,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0.001,
+          "totalMs": 0.409,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0.001,
+          "totalMs": 0.313,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.28,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.228,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 88,
+        "receivedHash": "536de9b1a48997bd"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "hollowbell",
+    "paced": false,
+    "round": 3,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/hollowbell/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "5c33b0733b9a10a3",
+      "netHash": "dc54f8564573e992",
+      "entities": 168,
+      "advanceMs": 714.29,
+      "frames": {
+        "stepMedianMs": 0.467,
+        "stepP95Ms": 0.83,
+        "stepMaxMs": 2.127,
+        "renderMedianMs": 0.548,
+        "renderP95Ms": 0.754,
+        "renderMaxMs": 1.296,
+        "stepped": 595,
+        "rendered": 595
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.104,
+          "totalMs": 62.503,
+          "runs": 600
+        },
+        {
+          "name": "Control",
+          "meanMs": 0.054,
+          "totalMs": 32.206,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.04,
+          "totalMs": 24.219,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.035,
+          "totalMs": 21.113,
+          "runs": 600
+        },
+        {
+          "name": "Enemies",
+          "meanMs": 0.028,
+          "totalMs": 17.032,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.027,
+          "totalMs": 16.317,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.018,
+          "totalMs": 10.731,
+          "runs": 600
+        },
+        {
+          "name": "Flickers",
+          "meanMs": 0.018,
+          "totalMs": 10.606,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.017,
+          "totalMs": 10.291,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.015,
+          "totalMs": 9.179,
+          "runs": 600
+        },
+        {
+          "name": "Bells",
+          "meanMs": 0.013,
+          "totalMs": 7.989,
+          "runs": 600
+        },
+        {
+          "name": "Moles",
+          "meanMs": 0.013,
+          "totalMs": 7.745,
+          "runs": 600
+        },
+        {
+          "name": "Areas",
+          "meanMs": 0.013,
+          "totalMs": 7.521,
+          "runs": 600
+        },
+        {
+          "name": "Stones",
+          "meanMs": 0.011,
+          "totalMs": 6.693,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.008,
+          "totalMs": 5.007,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.008,
+          "totalMs": 4.979,
+          "runs": 600
+        },
+        {
+          "name": "Backdrop",
+          "meanMs": 0.008,
+          "totalMs": 4.955,
+          "runs": 600
+        },
+        {
+          "name": "Hazards",
+          "meanMs": 0.008,
+          "totalMs": 4.717,
+          "runs": 600
+        },
+        {
+          "name": "Lifts",
+          "meanMs": 0.007,
+          "totalMs": 4.491,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.007,
+          "totalMs": 4.463,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.007,
+          "totalMs": 3.984,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.005,
+          "totalMs": 3.13,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.005,
+          "totalMs": 2.842,
+          "runs": 600
+        },
+        {
+          "name": "Effects",
+          "meanMs": 0.003,
+          "totalMs": 1.969,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.003,
+          "totalMs": 1.636,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.003,
+          "totalMs": 1.566,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.003,
+          "totalMs": 1.522,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.001,
+          "totalMs": 0.75,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.001,
+          "totalMs": 0.541,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.001,
+          "totalMs": 0.389,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0,
+          "totalMs": 0.259,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0,
+          "totalMs": 0.223,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0,
+          "totalMs": 0.21,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0,
+          "totalMs": 0.205,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0,
+          "totalMs": 0.201,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0,
+          "totalMs": 0.164,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0,
+          "totalMs": 0.156,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0,
+          "totalMs": 0.13,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0,
+          "totalMs": 0.1,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0,
+          "totalMs": 0.093,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.075,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.069,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 98,
+        "receivedHash": "956f58281458a982"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "kestrel-stair",
+    "paced": false,
+    "round": 3,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/kestrel-stair/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "13596d3b7a682ef9",
+      "netHash": "204b12262fcd745e",
+      "entities": 93,
+      "advanceMs": 1378.95,
+      "frames": {
+        "stepMedianMs": 0.827,
+        "stepP95Ms": 1.172,
+        "stepMaxMs": 9.145,
+        "renderMedianMs": 1.208,
+        "renderP95Ms": 1.696,
+        "renderMaxMs": 2.138,
+        "stepped": 595,
+        "rendered": 595
+      },
+      "systems": [
+        {
+          "name": "og.physics",
+          "meanMs": 0.254,
+          "totalMs": 152.464,
+          "runs": 600
+        },
+        {
+          "name": "Ui",
+          "meanMs": 0.149,
+          "totalMs": 89.603,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.074,
+          "totalMs": 44.692,
+          "runs": 600
+        },
+        {
+          "name": "Foes",
+          "meanMs": 0.067,
+          "totalMs": 40.334,
+          "runs": 600
+        },
+        {
+          "name": "Fx",
+          "meanMs": 0.04,
+          "totalMs": 23.984,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.031,
+          "totalMs": 18.79,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.031,
+          "totalMs": 18.556,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.03,
+          "totalMs": 18.02,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.028,
+          "totalMs": 16.806,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.023,
+          "totalMs": 13.829,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.023,
+          "totalMs": 13.526,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.018,
+          "totalMs": 10.912,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.018,
+          "totalMs": 10.501,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.01,
+          "totalMs": 6.264,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.009,
+          "totalMs": 5.238,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.008,
+          "totalMs": 4.587,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.007,
+          "totalMs": 4.263,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.004,
+          "totalMs": 2.377,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.002,
+          "totalMs": 1.408,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.002,
+          "totalMs": 1.334,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.001,
+          "totalMs": 0.571,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.001,
+          "totalMs": 0.464,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.001,
+          "totalMs": 0.334,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.324,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.324,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.32,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.001,
+          "totalMs": 0.312,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0,
+          "totalMs": 0.232,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0,
+          "totalMs": 0.229,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0,
+          "totalMs": 0.223,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0,
+          "totalMs": 0.218,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0,
+          "totalMs": 0.168,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.144,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.107,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 6083,
+        "receivedHash": "08d1cd02aef3db5d"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "lantern-vale",
+    "paced": false,
+    "round": 3,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/lantern-vale/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "780bf264aa0a3f1f",
+      "netHash": "ef1378672a1f40b3",
+      "entities": 74,
+      "advanceMs": 2179.68,
+      "frames": {
+        "stepMedianMs": 0.533,
+        "stepP95Ms": 0.968,
+        "stepMaxMs": 2.072,
+        "renderMedianMs": 1.571,
+        "renderP95Ms": 8.358,
+        "renderMaxMs": 17.033,
+        "stepped": 595,
+        "rendered": 595
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.127,
+          "totalMs": 76.011,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.085,
+          "totalMs": 50.703,
+          "runs": 600
+        },
+        {
+          "name": "Slimes",
+          "meanMs": 0.064,
+          "totalMs": 38.544,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.059,
+          "totalMs": 35.523,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.054,
+          "totalMs": 32.633,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.042,
+          "totalMs": 25.084,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.022,
+          "totalMs": 13.13,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.017,
+          "totalMs": 9.997,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.011,
+          "totalMs": 6.381,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.009,
+          "totalMs": 5.535,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.008,
+          "totalMs": 4.955,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.008,
+          "totalMs": 4.838,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.007,
+          "totalMs": 4.441,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.007,
+          "totalMs": 4.387,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.004,
+          "totalMs": 2.306,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.002,
+          "totalMs": 1.412,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.002,
+          "totalMs": 1.269,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.001,
+          "totalMs": 0.734,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.001,
+          "totalMs": 0.581,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.001,
+          "totalMs": 0.446,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.322,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0,
+          "totalMs": 0.296,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0,
+          "totalMs": 0.278,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0,
+          "totalMs": 0.263,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0,
+          "totalMs": 0.243,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0,
+          "totalMs": 0.215,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0,
+          "totalMs": 0.193,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0,
+          "totalMs": 0.186,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0,
+          "totalMs": 0.184,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0,
+          "totalMs": 0.177,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0,
+          "totalMs": 0.153,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.151,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.122,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 88,
+        "receivedHash": "536de9b1a48997bd"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "hollowbell",
+    "paced": true,
+    "round": 3,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/hollowbell/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "5c33b0733b9a10a3",
+      "netHash": "dc54f8564573e992",
+      "entities": 168,
+      "advanceMs": 10004.82,
+      "frames": {
+        "stepMedianMs": 1.134,
+        "stepP95Ms": 2.476,
+        "stepMaxMs": 4.71,
+        "renderMedianMs": 1.069,
+        "renderP95Ms": 1.989,
+        "renderMaxMs": 3.672,
+        "stepped": 551,
+        "rendered": 553
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.279,
+          "totalMs": 167.132,
+          "runs": 600
+        },
+        {
+          "name": "Control",
+          "meanMs": 0.133,
+          "totalMs": 79.688,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.111,
+          "totalMs": 66.378,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.067,
+          "totalMs": 40.338,
+          "runs": 600
+        },
+        {
+          "name": "Enemies",
+          "meanMs": 0.066,
+          "totalMs": 39.608,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.064,
+          "totalMs": 38.262,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.057,
+          "totalMs": 34.293,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.039,
+          "totalMs": 23.31,
+          "runs": 600
+        },
+        {
+          "name": "Flickers",
+          "meanMs": 0.037,
+          "totalMs": 22.346,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.037,
+          "totalMs": 22.022,
+          "runs": 600
+        },
+        {
+          "name": "Bells",
+          "meanMs": 0.029,
+          "totalMs": 17.294,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.028,
+          "totalMs": 16.868,
+          "runs": 600
+        },
+        {
+          "name": "Areas",
+          "meanMs": 0.028,
+          "totalMs": 16.607,
+          "runs": 600
+        },
+        {
+          "name": "Moles",
+          "meanMs": 0.024,
+          "totalMs": 14.464,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.022,
+          "totalMs": 13.028,
+          "runs": 600
+        },
+        {
+          "name": "Stones",
+          "meanMs": 0.021,
+          "totalMs": 12.414,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.02,
+          "totalMs": 12.285,
+          "runs": 600
+        },
+        {
+          "name": "Hazards",
+          "meanMs": 0.017,
+          "totalMs": 10.498,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.017,
+          "totalMs": 10.156,
+          "runs": 600
+        },
+        {
+          "name": "Lifts",
+          "meanMs": 0.015,
+          "totalMs": 8.783,
+          "runs": 600
+        },
+        {
+          "name": "Backdrop",
+          "meanMs": 0.013,
+          "totalMs": 7.852,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.012,
+          "totalMs": 7.412,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.012,
+          "totalMs": 7.157,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.01,
+          "totalMs": 6.004,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.009,
+          "totalMs": 5.427,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.007,
+          "totalMs": 4.47,
+          "runs": 600
+        },
+        {
+          "name": "Effects",
+          "meanMs": 0.007,
+          "totalMs": 4.03,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.004,
+          "totalMs": 2.419,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.003,
+          "totalMs": 1.734,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.002,
+          "totalMs": 1.374,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.002,
+          "totalMs": 1.122,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.741,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.001,
+          "totalMs": 0.685,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.663,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0.001,
+          "totalMs": 0.578,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.563,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0.001,
+          "totalMs": 0.529,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.502,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0.001,
+          "totalMs": 0.428,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0.001,
+          "totalMs": 0.338,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.285,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.249,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 98,
+        "receivedHash": "956f58281458a982"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "kestrel-stair",
+    "paced": true,
+    "round": 3,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/kestrel-stair/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "13596d3b7a682ef9",
+      "netHash": "204b12262fcd745e",
+      "entities": 93,
+      "advanceMs": 10013.37,
+      "frames": {
+        "stepMedianMs": 1.637,
+        "stepP95Ms": 2.806,
+        "stepMaxMs": 21.084,
+        "renderMedianMs": 1.445,
+        "renderP95Ms": 1.997,
+        "renderMaxMs": 7.895,
+        "stepped": 554,
+        "rendered": 554
+      },
+      "systems": [
+        {
+          "name": "og.physics",
+          "meanMs": 0.584,
+          "totalMs": 350.439,
+          "runs": 600
+        },
+        {
+          "name": "Ui",
+          "meanMs": 0.311,
+          "totalMs": 186.649,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.141,
+          "totalMs": 84.897,
+          "runs": 600
+        },
+        {
+          "name": "Foes",
+          "meanMs": 0.127,
+          "totalMs": 75.951,
+          "runs": 600
+        },
+        {
+          "name": "Fx",
+          "meanMs": 0.071,
+          "totalMs": 42.401,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.061,
+          "totalMs": 36.882,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.058,
+          "totalMs": 34.568,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.056,
+          "totalMs": 33.734,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.048,
+          "totalMs": 28.622,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.047,
+          "totalMs": 27.945,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.042,
+          "totalMs": 24.988,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.038,
+          "totalMs": 22.78,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.032,
+          "totalMs": 19.003,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.021,
+          "totalMs": 12.872,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.021,
+          "totalMs": 12.716,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.016,
+          "totalMs": 9.861,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.012,
+          "totalMs": 6.973,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.008,
+          "totalMs": 5.063,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.005,
+          "totalMs": 3.16,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.004,
+          "totalMs": 2.598,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.002,
+          "totalMs": 1.291,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.002,
+          "totalMs": 1.011,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.799,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.001,
+          "totalMs": 0.753,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.707,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.001,
+          "totalMs": 0.65,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.648,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0.001,
+          "totalMs": 0.553,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.52,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0.001,
+          "totalMs": 0.46,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0.001,
+          "totalMs": 0.38,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0.001,
+          "totalMs": 0.372,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.252,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.188,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 6083,
+        "receivedHash": "08d1cd02aef3db5d"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "lantern-vale",
+    "paced": true,
+    "round": 3,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/lantern-vale/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "780bf264aa0a3f1f",
+      "netHash": "ef1378672a1f40b3",
+      "entities": 74,
+      "advanceMs": 10017.4,
+      "frames": {
+        "stepMedianMs": 1.198,
+        "stepP95Ms": 2.169,
+        "stepMaxMs": 4.24,
+        "renderMedianMs": 1.823,
+        "renderP95Ms": 2.655,
+        "renderMaxMs": 6.161,
+        "stepped": 551,
+        "rendered": 551
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.271,
+          "totalMs": 162.502,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.172,
+          "totalMs": 103.456,
+          "runs": 600
+        },
+        {
+          "name": "Slimes",
+          "meanMs": 0.131,
+          "totalMs": 78.395,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.114,
+          "totalMs": 68.167,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.105,
+          "totalMs": 62.988,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.084,
+          "totalMs": 50.485,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.044,
+          "totalMs": 26.56,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.035,
+          "totalMs": 21.01,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.024,
+          "totalMs": 14.493,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.023,
+          "totalMs": 13.573,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.018,
+          "totalMs": 10.815,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.017,
+          "totalMs": 10.411,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.016,
+          "totalMs": 9.816,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.013,
+          "totalMs": 8.058,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.009,
+          "totalMs": 5.236,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.006,
+          "totalMs": 3.701,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.004,
+          "totalMs": 2.534,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.003,
+          "totalMs": 1.555,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.002,
+          "totalMs": 1.254,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.002,
+          "totalMs": 1.004,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.001,
+          "totalMs": 0.733,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.627,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.001,
+          "totalMs": 0.596,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.001,
+          "totalMs": 0.579,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0.001,
+          "totalMs": 0.537,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.472,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0.001,
+          "totalMs": 0.464,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.458,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.437,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0.001,
+          "totalMs": 0.411,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0.001,
+          "totalMs": 0.311,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.282,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.237,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 88,
+        "receivedHash": "536de9b1a48997bd"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "hollowbell",
+    "paced": false,
+    "round": 4,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/hollowbell/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "5c33b0733b9a10a3",
+      "netHash": "dc54f8564573e992",
+      "entities": 168,
+      "advanceMs": 715.07,
+      "frames": {
+        "stepMedianMs": 0.463,
+        "stepP95Ms": 0.883,
+        "stepMaxMs": 2.038,
+        "renderMedianMs": 0.548,
+        "renderP95Ms": 0.73,
+        "renderMaxMs": 1.411,
+        "stepped": 595,
+        "rendered": 595
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.104,
+          "totalMs": 62.677,
+          "runs": 600
+        },
+        {
+          "name": "Control",
+          "meanMs": 0.051,
+          "totalMs": 30.54,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.04,
+          "totalMs": 24.006,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.032,
+          "totalMs": 19.129,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.027,
+          "totalMs": 16.335,
+          "runs": 600
+        },
+        {
+          "name": "Enemies",
+          "meanMs": 0.027,
+          "totalMs": 16.135,
+          "runs": 600
+        },
+        {
+          "name": "Flickers",
+          "meanMs": 0.022,
+          "totalMs": 12.981,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.019,
+          "totalMs": 11.403,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.016,
+          "totalMs": 9.417,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.015,
+          "totalMs": 9.299,
+          "runs": 600
+        },
+        {
+          "name": "Areas",
+          "meanMs": 0.015,
+          "totalMs": 9.102,
+          "runs": 600
+        },
+        {
+          "name": "Bells",
+          "meanMs": 0.013,
+          "totalMs": 7.948,
+          "runs": 600
+        },
+        {
+          "name": "Moles",
+          "meanMs": 0.013,
+          "totalMs": 7.563,
+          "runs": 600
+        },
+        {
+          "name": "Stones",
+          "meanMs": 0.01,
+          "totalMs": 5.912,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.008,
+          "totalMs": 5.052,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.008,
+          "totalMs": 4.895,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.008,
+          "totalMs": 4.885,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.007,
+          "totalMs": 4.384,
+          "runs": 600
+        },
+        {
+          "name": "Backdrop",
+          "meanMs": 0.007,
+          "totalMs": 4.361,
+          "runs": 600
+        },
+        {
+          "name": "Lifts",
+          "meanMs": 0.007,
+          "totalMs": 4.322,
+          "runs": 600
+        },
+        {
+          "name": "Hazards",
+          "meanMs": 0.007,
+          "totalMs": 4.018,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.005,
+          "totalMs": 3.213,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.005,
+          "totalMs": 2.796,
+          "runs": 600
+        },
+        {
+          "name": "Effects",
+          "meanMs": 0.003,
+          "totalMs": 1.949,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.003,
+          "totalMs": 1.66,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.003,
+          "totalMs": 1.508,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.002,
+          "totalMs": 1.403,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.001,
+          "totalMs": 0.747,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.001,
+          "totalMs": 0.52,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.001,
+          "totalMs": 0.366,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0,
+          "totalMs": 0.26,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0,
+          "totalMs": 0.231,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0,
+          "totalMs": 0.219,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0,
+          "totalMs": 0.207,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0,
+          "totalMs": 0.194,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0,
+          "totalMs": 0.162,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0,
+          "totalMs": 0.153,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0,
+          "totalMs": 0.131,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0,
+          "totalMs": 0.095,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0,
+          "totalMs": 0.088,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.083,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.068,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 98,
+        "receivedHash": "956f58281458a982"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "kestrel-stair",
+    "paced": false,
+    "round": 4,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/kestrel-stair/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "13596d3b7a682ef9",
+      "netHash": "204b12262fcd745e",
+      "entities": 93,
+      "advanceMs": 1425.13,
+      "frames": {
+        "stepMedianMs": 0.827,
+        "stepP95Ms": 1.167,
+        "stepMaxMs": 3.704,
+        "renderMedianMs": 1.247,
+        "renderP95Ms": 1.869,
+        "renderMaxMs": 12.657,
+        "stepped": 595,
+        "rendered": 595
+      },
+      "systems": [
+        {
+          "name": "og.physics",
+          "meanMs": 0.238,
+          "totalMs": 142.687,
+          "runs": 600
+        },
+        {
+          "name": "Ui",
+          "meanMs": 0.149,
+          "totalMs": 89.621,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.075,
+          "totalMs": 45.092,
+          "runs": 600
+        },
+        {
+          "name": "Foes",
+          "meanMs": 0.071,
+          "totalMs": 42.826,
+          "runs": 600
+        },
+        {
+          "name": "Fx",
+          "meanMs": 0.041,
+          "totalMs": 24.833,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.032,
+          "totalMs": 19.312,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.03,
+          "totalMs": 18.078,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.03,
+          "totalMs": 17.75,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.025,
+          "totalMs": 15.282,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.024,
+          "totalMs": 14.298,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.022,
+          "totalMs": 13.205,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.018,
+          "totalMs": 10.699,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.017,
+          "totalMs": 10.416,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.011,
+          "totalMs": 6.397,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.01,
+          "totalMs": 5.932,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.008,
+          "totalMs": 4.658,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.007,
+          "totalMs": 4.185,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.004,
+          "totalMs": 2.375,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.002,
+          "totalMs": 1.472,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.002,
+          "totalMs": 1.35,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.001,
+          "totalMs": 0.61,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.001,
+          "totalMs": 0.48,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.38,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.367,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.364,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.001,
+          "totalMs": 0.358,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.001,
+          "totalMs": 0.324,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0,
+          "totalMs": 0.232,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0,
+          "totalMs": 0.232,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0,
+          "totalMs": 0.231,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0,
+          "totalMs": 0.228,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0,
+          "totalMs": 0.182,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.14,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.108,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 6083,
+        "receivedHash": "08d1cd02aef3db5d"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "lantern-vale",
+    "paced": false,
+    "round": 4,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/lantern-vale/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "780bf264aa0a3f1f",
+      "netHash": "ef1378672a1f40b3",
+      "entities": 74,
+      "advanceMs": 2146.59,
+      "frames": {
+        "stepMedianMs": 0.557,
+        "stepP95Ms": 0.976,
+        "stepMaxMs": 2.093,
+        "renderMedianMs": 1.562,
+        "renderP95Ms": 8.143,
+        "renderMaxMs": 11.69,
+        "stepped": 595,
+        "rendered": 595
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.131,
+          "totalMs": 78.36,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.085,
+          "totalMs": 51.167,
+          "runs": 600
+        },
+        {
+          "name": "Slimes",
+          "meanMs": 0.064,
+          "totalMs": 38.58,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.059,
+          "totalMs": 35.55,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.055,
+          "totalMs": 33.007,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.042,
+          "totalMs": 24.975,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.023,
+          "totalMs": 13.542,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.017,
+          "totalMs": 9.909,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.011,
+          "totalMs": 6.516,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.01,
+          "totalMs": 5.753,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.009,
+          "totalMs": 5.127,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.009,
+          "totalMs": 5.112,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.008,
+          "totalMs": 4.513,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.007,
+          "totalMs": 4.31,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.004,
+          "totalMs": 2.423,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.003,
+          "totalMs": 1.507,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.002,
+          "totalMs": 1.374,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.001,
+          "totalMs": 0.758,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.001,
+          "totalMs": 0.55,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.001,
+          "totalMs": 0.468,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.329,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0,
+          "totalMs": 0.293,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0,
+          "totalMs": 0.28,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0,
+          "totalMs": 0.259,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0,
+          "totalMs": 0.227,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0,
+          "totalMs": 0.225,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0,
+          "totalMs": 0.211,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0,
+          "totalMs": 0.193,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0,
+          "totalMs": 0.19,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0,
+          "totalMs": 0.18,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0,
+          "totalMs": 0.152,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.127,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.126,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 88,
+        "receivedHash": "536de9b1a48997bd"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "hollowbell",
+    "paced": true,
+    "round": 4,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/hollowbell/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "5c33b0733b9a10a3",
+      "netHash": "dc54f8564573e992",
+      "entities": 168,
+      "advanceMs": 10013.87,
+      "frames": {
+        "stepMedianMs": 1.224,
+        "stepP95Ms": 2.297,
+        "stepMaxMs": 5.764,
+        "renderMedianMs": 1.17,
+        "renderP95Ms": 1.974,
+        "renderMaxMs": 4.01,
+        "stepped": 552,
+        "rendered": 553
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.277,
+          "totalMs": 166.33,
+          "runs": 600
+        },
+        {
+          "name": "Control",
+          "meanMs": 0.133,
+          "totalMs": 79.982,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.114,
+          "totalMs": 68.636,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.073,
+          "totalMs": 43.847,
+          "runs": 600
+        },
+        {
+          "name": "Enemies",
+          "meanMs": 0.066,
+          "totalMs": 39.764,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.065,
+          "totalMs": 38.822,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.058,
+          "totalMs": 34.892,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.043,
+          "totalMs": 25.544,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.041,
+          "totalMs": 24.759,
+          "runs": 600
+        },
+        {
+          "name": "Flickers",
+          "meanMs": 0.038,
+          "totalMs": 22.659,
+          "runs": 600
+        },
+        {
+          "name": "Bells",
+          "meanMs": 0.028,
+          "totalMs": 16.879,
+          "runs": 600
+        },
+        {
+          "name": "Areas",
+          "meanMs": 0.027,
+          "totalMs": 16.143,
+          "runs": 600
+        },
+        {
+          "name": "Moles",
+          "meanMs": 0.027,
+          "totalMs": 16.127,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.026,
+          "totalMs": 15.797,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.022,
+          "totalMs": 13.467,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.021,
+          "totalMs": 12.358,
+          "runs": 600
+        },
+        {
+          "name": "Stones",
+          "meanMs": 0.019,
+          "totalMs": 11.628,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.018,
+          "totalMs": 10.876,
+          "runs": 600
+        },
+        {
+          "name": "Hazards",
+          "meanMs": 0.015,
+          "totalMs": 9.197,
+          "runs": 600
+        },
+        {
+          "name": "Lifts",
+          "meanMs": 0.014,
+          "totalMs": 8.68,
+          "runs": 600
+        },
+        {
+          "name": "Backdrop",
+          "meanMs": 0.013,
+          "totalMs": 7.818,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.012,
+          "totalMs": 7.453,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.012,
+          "totalMs": 7.1,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.01,
+          "totalMs": 6.253,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.008,
+          "totalMs": 4.726,
+          "runs": 600
+        },
+        {
+          "name": "Effects",
+          "meanMs": 0.007,
+          "totalMs": 3.972,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.006,
+          "totalMs": 3.691,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.004,
+          "totalMs": 2.537,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.003,
+          "totalMs": 1.886,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.002,
+          "totalMs": 1.424,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.002,
+          "totalMs": 1.034,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.704,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.001,
+          "totalMs": 0.69,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.639,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0.001,
+          "totalMs": 0.557,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.553,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0.001,
+          "totalMs": 0.549,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.538,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0.001,
+          "totalMs": 0.432,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0.001,
+          "totalMs": 0.383,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0.001,
+          "totalMs": 0.306,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.254,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 98,
+        "receivedHash": "956f58281458a982"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "kestrel-stair",
+    "paced": true,
+    "round": 4,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/kestrel-stair/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "13596d3b7a682ef9",
+      "netHash": "204b12262fcd745e",
+      "entities": 93,
+      "advanceMs": 10009.97,
+      "frames": {
+        "stepMedianMs": 1.67,
+        "stepP95Ms": 2.582,
+        "stepMaxMs": 7.061,
+        "renderMedianMs": 1.447,
+        "renderP95Ms": 2.05,
+        "renderMaxMs": 3.393,
+        "stepped": 552,
+        "rendered": 552
+      },
+      "systems": [
+        {
+          "name": "og.physics",
+          "meanMs": 0.486,
+          "totalMs": 291.817,
+          "runs": 600
+        },
+        {
+          "name": "Ui",
+          "meanMs": 0.294,
+          "totalMs": 176.325,
+          "runs": 600
+        },
+        {
+          "name": "Foes",
+          "meanMs": 0.14,
+          "totalMs": 84.131,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.137,
+          "totalMs": 82.334,
+          "runs": 600
+        },
+        {
+          "name": "Fx",
+          "meanMs": 0.076,
+          "totalMs": 45.815,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.062,
+          "totalMs": 37.203,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.058,
+          "totalMs": 34.821,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.056,
+          "totalMs": 33.887,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.048,
+          "totalMs": 28.725,
+          "runs": 600
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.046,
+          "totalMs": 27.752,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.042,
+          "totalMs": 24.977,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.038,
+          "totalMs": 22.958,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.032,
+          "totalMs": 18.986,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.022,
+          "totalMs": 13.288,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.021,
+          "totalMs": 12.771,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.017,
+          "totalMs": 10.175,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.012,
+          "totalMs": 6.952,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.009,
+          "totalMs": 5.197,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.008,
+          "totalMs": 4.54,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.004,
+          "totalMs": 2.421,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.002,
+          "totalMs": 1.298,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.002,
+          "totalMs": 1.009,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.001,
+          "totalMs": 0.837,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.001,
+          "totalMs": 0.741,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.001,
+          "totalMs": 0.674,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.662,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.629,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.524,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0.001,
+          "totalMs": 0.479,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0.001,
+          "totalMs": 0.443,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0.001,
+          "totalMs": 0.39,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0.001,
+          "totalMs": 0.372,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.251,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.2,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 6083,
+        "receivedHash": "08d1cd02aef3db5d"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  },
+  {
+    "game": "lantern-vale",
+    "paced": true,
+    "round": 4,
+    "profile": "release",
+    "result": {
+      "entry": "/Volumes/app/origin-engine-measure/examples/lantern-vale/.og/game.native.js",
+      "ticks": 600,
+      "tick": 600,
+      "hash": "780bf264aa0a3f1f",
+      "netHash": "ef1378672a1f40b3",
+      "entities": 74,
+      "advanceMs": 10007.02,
+      "frames": {
+        "stepMedianMs": 1.196,
+        "stepP95Ms": 2.241,
+        "stepMaxMs": 5.52,
+        "renderMedianMs": 1.846,
+        "renderP95Ms": 2.755,
+        "renderMaxMs": 6.124,
+        "stepped": 551,
+        "rendered": 551
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.272,
+          "totalMs": 163.148,
+          "runs": 600
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.174,
+          "totalMs": 104.659,
+          "runs": 600
+        },
+        {
+          "name": "Slimes",
+          "meanMs": 0.139,
+          "totalMs": 83.585,
+          "runs": 600
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.114,
+          "totalMs": 68.226,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.111,
+          "totalMs": 66.468,
+          "runs": 600
+        },
+        {
+          "name": "Lanterns",
+          "meanMs": 0.084,
+          "totalMs": 50.298,
+          "runs": 600
+        },
+        {
+          "name": "View",
+          "meanMs": 0.044,
+          "totalMs": 26.208,
+          "runs": 600
+        },
+        {
+          "name": "og.physics.queries",
+          "meanMs": 0.035,
+          "totalMs": 20.927,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.begin",
+          "meanMs": 0.024,
+          "totalMs": 14.386,
+          "runs": 600
+        },
+        {
+          "name": "og.orbitCamera",
+          "meanMs": 0.022,
+          "totalMs": 13.482,
+          "runs": 600
+        },
+        {
+          "name": "og.audio",
+          "meanMs": 0.018,
+          "totalMs": 10.791,
+          "runs": 600
+        },
+        {
+          "name": "og.anim",
+          "meanMs": 0.017,
+          "totalMs": 10.396,
+          "runs": 600
+        },
+        {
+          "name": "og.camera",
+          "meanMs": 0.016,
+          "totalMs": 9.818,
+          "runs": 600
+        },
+        {
+          "name": "Voices",
+          "meanMs": 0.014,
+          "totalMs": 8.273,
+          "runs": 600
+        },
+        {
+          "name": "og.net",
+          "meanMs": 0.012,
+          "totalMs": 7.284,
+          "runs": 600
+        },
+        {
+          "name": "og.followCamera",
+          "meanMs": 0.007,
+          "totalMs": 4.079,
+          "runs": 600
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.004,
+          "totalMs": 2.626,
+          "runs": 600
+        },
+        {
+          "name": "og.ai",
+          "meanMs": 0.003,
+          "totalMs": 1.533,
+          "runs": 600
+        },
+        {
+          "name": "og.skeleton2d",
+          "meanMs": 0.002,
+          "totalMs": 1.235,
+          "runs": 600
+        },
+        {
+          "name": "og.music",
+          "meanMs": 0.002,
+          "totalMs": 1.166,
+          "runs": 600
+        },
+        {
+          "name": "og.video",
+          "meanMs": 0.002,
+          "totalMs": 0.99,
+          "runs": 600
+        },
+        {
+          "name": "og.flipbook",
+          "meanMs": 0.001,
+          "totalMs": 0.845,
+          "runs": 600
+        },
+        {
+          "name": "og.timeline",
+          "meanMs": 0.001,
+          "totalMs": 0.678,
+          "runs": 600
+        },
+        {
+          "name": "og.tilemap",
+          "meanMs": 0.001,
+          "totalMs": 0.596,
+          "runs": 600
+        },
+        {
+          "name": "og.nav",
+          "meanMs": 0.001,
+          "totalMs": 0.557,
+          "runs": 600
+        },
+        {
+          "name": "og.terrain",
+          "meanMs": 0.001,
+          "totalMs": 0.525,
+          "runs": 600
+        },
+        {
+          "name": "og.sprite",
+          "meanMs": 0.001,
+          "totalMs": 0.477,
+          "runs": 600
+        },
+        {
+          "name": "og.path",
+          "meanMs": 0.001,
+          "totalMs": 0.445,
+          "runs": 600
+        },
+        {
+          "name": "og.tween",
+          "meanMs": 0.001,
+          "totalMs": 0.432,
+          "runs": 600
+        },
+        {
+          "name": "og.platform",
+          "meanMs": 0.001,
+          "totalMs": 0.423,
+          "runs": 600
+        },
+        {
+          "name": "og.ui.sound",
+          "meanMs": 0.001,
+          "totalMs": 0.391,
+          "runs": 600
+        },
+        {
+          "name": "og.stream",
+          "meanMs": 0,
+          "totalMs": 0.293,
+          "runs": 600
+        },
+        {
+          "name": "og.ragdollTargets",
+          "meanMs": 0,
+          "totalMs": 0.224,
+          "runs": 600
+        }
+      ],
+      "runtime": "bun 1.4.2",
+      "tier": "metal",
+      "gpuTimestamps": true,
+      "quit": false,
+      "unchecked": [],
+      "audio": {
+        "mode": "null",
+        "commands": 88,
+        "receivedHash": "536de9b1a48997bd"
+      },
+      "outputs": [],
+      "warnings": [],
+      "expectations": {
+        "failed": 0,
+        "passed": 0,
+        "results": [],
+        "unchecked": 0
+      }
+    }
+  }
+]

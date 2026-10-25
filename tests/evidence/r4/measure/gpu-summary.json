@@ -1,0 +1,1923 @@
+{
+  "base": "1bb341e51b22bdcdaf69a3eb60aac5265366196f",
+  "captures": [
+    {
+      "game": "game",
+      "host": "native",
+      "ms": {
+        "p50": 25.861458999999968,
+        "p95": 26.369207999999844,
+        "max": 31.535167
+      },
+      "budgetMs": 30,
+      "p95Verdict": "pass",
+      "hardCapVerdict": "fail",
+      "load": {
+        "min": 5.04,
+        "max": 5.54
+      }
+    },
+    {
+      "game": "game",
+      "host": "web",
+      "ms": {
+        "p50": 49.09000015258789,
+        "p95": 65.07999992370605,
+        "max": 65.33000016212463
+      },
+      "budgetMs": 60,
+      "p95Verdict": "fail",
+      "hardCapVerdict": "fail",
+      "load": {
+        "min": 5.04,
+        "max": 5.54
+      }
+    },
+    {
+      "game": "meridian",
+      "host": "native",
+      "ms": {
+        "p50": 97.93412500000022,
+        "p95": 102.63912499999992,
+        "max": 104.43462499999987
+      },
+      "budgetMs": 30,
+      "p95Verdict": "fail",
+      "hardCapVerdict": "fail",
+      "load": {
+        "min": 5.04,
+        "max": 5.54
+      }
+    },
+    {
+      "game": "meridian",
+      "host": "web",
+      "ms": {
+        "p50": 148.3349997997284,
+        "p95": 150.61999988555908,
+        "max": 165.05999994277954
+      },
+      "budgetMs": 60,
+      "p95Verdict": "fail",
+      "hardCapVerdict": "fail",
+      "load": {
+        "min": 5.04,
+        "max": 5.54
+      }
+    }
+  ],
+  "screenshots": [
+    {
+      "game": "game",
+      "method": "33 real og run --commands screenshots at integer seconds 2..34; discard first 3. Time native frame ABI wall clock; includes screenshot plus one simulation tick and normal render, excludes output drain/disk writes. Residual subtracts reported step/render; it estimates internal capture+PNG cost, not an independently timed span.",
+      "wallMs": {
+        "p50": 24.644458999999983,
+        "p95": 25.053207999999927,
+        "max": 25.05379199999993
+      },
+      "captureResidualMs": {
+        "p50": 23.81645800000001,
+        "p95": 24.254750999999715,
+        "max": 24.279832999999826
+      },
+      "samples": [
+        {
+          "wallMs": 24.249750000000006,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 29,
+          "quit": false,
+          "renderMs": 0.5827499999999759,
+          "rendered": true,
+          "stepMs": 0.41399999999998727,
+          "text": null,
+          "tick": 301,
+          "ticks": 1,
+          "captureResidualMs": 23.253000000000043
+        },
+        {
+          "wallMs": 24.34833299999997,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 28,
+          "quit": false,
+          "renderMs": 0.559791999999959,
+          "rendered": true,
+          "stepMs": 0.31145899999995663,
+          "text": null,
+          "tick": 361,
+          "ticks": 1,
+          "captureResidualMs": 23.477082000000053
+        },
+        {
+          "wallMs": 24.474208000000033,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 27,
+          "quit": false,
+          "renderMs": 0.5042499999999563,
+          "rendered": true,
+          "stepMs": 0.34287500000010596,
+          "text": null,
+          "tick": 421,
+          "ticks": 1,
+          "captureResidualMs": 23.62708299999997
+        },
+        {
+          "wallMs": 24.811750000000018,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 26,
+          "quit": false,
+          "renderMs": 0.5476669999999899,
+          "rendered": true,
+          "stepMs": 0.32150100000006887,
+          "text": null,
+          "tick": 481,
+          "ticks": 1,
+          "captureResidualMs": 23.94258199999996
+        },
+        {
+          "wallMs": 24.377207999999996,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 25,
+          "quit": false,
+          "renderMs": 0.47570799999999736,
+          "rendered": true,
+          "stepMs": 0.2719999999999345,
+          "text": null,
+          "tick": 541,
+          "ticks": 1,
+          "captureResidualMs": 23.629500000000064
+        },
+        {
+          "wallMs": 24.67479199999991,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 24,
+          "quit": false,
+          "renderMs": 0.488666999999964,
+          "rendered": true,
+          "stepMs": 0.3079159999999206,
+          "text": null,
+          "tick": 601,
+          "ticks": 1,
+          "captureResidualMs": 23.878209000000027
+        },
+        {
+          "wallMs": 24.357458000000065,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 23,
+          "quit": false,
+          "renderMs": 0.4555000000000291,
+          "rendered": true,
+          "stepMs": 0.28245800000001964,
+          "text": null,
+          "tick": 661,
+          "ticks": 1,
+          "captureResidualMs": 23.619500000000016
+        },
+        {
+          "wallMs": 24.283791000000065,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 22,
+          "quit": false,
+          "renderMs": 0.48708400000009533,
+          "rendered": true,
+          "stepMs": 0.28987500000005184,
+          "text": null,
+          "tick": 721,
+          "ticks": 1,
+          "captureResidualMs": 23.506831999999918
+        },
+        {
+          "wallMs": 24.501540999999975,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 21,
+          "quit": false,
+          "renderMs": 0.3795829999999114,
+          "rendered": true,
+          "stepMs": 0.24866599999995742,
+          "text": null,
+          "tick": 781,
+          "ticks": 1,
+          "captureResidualMs": 23.873292000000106
+        },
+        {
+          "wallMs": 24.458624999999984,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 20,
+          "quit": false,
+          "renderMs": 0.5150000000001,
+          "rendered": true,
+          "stepMs": 0.30199999999990723,
+          "text": null,
+          "tick": 841,
+          "ticks": 1,
+          "captureResidualMs": 23.641624999999976
+        },
+        {
+          "wallMs": 25.053207999999927,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 19,
+          "quit": false,
+          "renderMs": 0.5566659999999501,
+          "rendered": true,
+          "stepMs": 0.35049999999978354,
+          "text": null,
+          "tick": 901,
+          "ticks": 1,
+          "captureResidualMs": 24.146042000000193
+        },
+        {
+          "wallMs": 24.90812500000004,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 18,
+          "quit": false,
+          "renderMs": 0.5424170000000004,
+          "rendered": true,
+          "stepMs": 0.3198340000000144,
+          "text": null,
+          "tick": 961,
+          "ticks": 1,
+          "captureResidualMs": 24.045874000000026
+        },
+        {
+          "wallMs": 24.644458999999983,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 17,
+          "quit": false,
+          "renderMs": 0.4995000000000118,
+          "rendered": true,
+          "stepMs": 0.32891699999993307,
+          "text": null,
+          "tick": 1021,
+          "ticks": 1,
+          "captureResidualMs": 23.81604200000004
+        },
+        {
+          "wallMs": 24.92320899999993,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 16,
+          "quit": false,
+          "renderMs": 0.572458000000097,
+          "rendered": true,
+          "stepMs": 0.3434579999999414,
+          "text": null,
+          "tick": 1081,
+          "ticks": 1,
+          "captureResidualMs": 24.00729299999989
+        },
+        {
+          "wallMs": 24.62295800000004,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 15,
+          "quit": false,
+          "renderMs": 0.594957999999906,
+          "rendered": true,
+          "stepMs": 0.28070900000011534,
+          "text": null,
+          "tick": 1141,
+          "ticks": 1,
+          "captureResidualMs": 23.74729100000002
+        },
+        {
+          "wallMs": 24.652917000000116,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 14,
+          "quit": false,
+          "renderMs": 0.46900000000005093,
+          "rendered": true,
+          "stepMs": 0.26716700000008586,
+          "text": null,
+          "tick": 1201,
+          "ticks": 1,
+          "captureResidualMs": 23.91674999999998
+        },
+        {
+          "wallMs": 24.870832999999948,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 13,
+          "quit": false,
+          "renderMs": 0.5289160000002084,
+          "rendered": true,
+          "stepMs": 0.3100419999998394,
+          "text": null,
+          "tick": 1261,
+          "ticks": 1,
+          "captureResidualMs": 24.0318749999999
+        },
+        {
+          "wallMs": 24.248458000000028,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 12,
+          "quit": false,
+          "renderMs": 0.505458000000317,
+          "rendered": true,
+          "stepMs": 0.3206669999999576,
+          "text": null,
+          "tick": 1321,
+          "ticks": 1,
+          "captureResidualMs": 23.422332999999753
+        },
+        {
+          "wallMs": 25.052582999999913,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 11,
+          "quit": false,
+          "renderMs": 0.5046250000000327,
+          "rendered": true,
+          "stepMs": 0.26812500000005457,
+          "text": null,
+          "tick": 1381,
+          "ticks": 1,
+          "captureResidualMs": 24.279832999999826
+        },
+        {
+          "wallMs": 24.736041999999998,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 10,
+          "quit": false,
+          "renderMs": 0.6008749999998599,
+          "rendered": true,
+          "stepMs": 0.2995410000000902,
+          "text": null,
+          "tick": 1441,
+          "ticks": 1,
+          "captureResidualMs": 23.835626000000047
+        },
+        {
+          "wallMs": 24.374707999999828,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 9,
+          "quit": false,
+          "renderMs": 0.5515409999998155,
+          "rendered": true,
+          "stepMs": 0.300499999999829,
+          "text": null,
+          "tick": 1501,
+          "ticks": 1,
+          "captureResidualMs": 23.522667000000183
+        },
+        {
+          "wallMs": 24.924790999999914,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 8,
+          "quit": false,
+          "renderMs": 0.5533750000001874,
+          "rendered": true,
+          "stepMs": 0.2926669999999376,
+          "text": null,
+          "tick": 1561,
+          "ticks": 1,
+          "captureResidualMs": 24.07874899999979
+        },
+        {
+          "wallMs": 24.908249999999953,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 7,
+          "quit": false,
+          "renderMs": 0.5024579999999332,
+          "rendered": true,
+          "stepMs": 0.2683329999997568,
+          "text": null,
+          "tick": 1621,
+          "ticks": 1,
+          "captureResidualMs": 24.137459000000263
+        },
+        {
+          "wallMs": 24.334583000000066,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 6,
+          "quit": false,
+          "renderMs": 0.351415999999972,
+          "rendered": true,
+          "stepMs": 0.1667090000000826,
+          "text": null,
+          "tick": 1681,
+          "ticks": 1,
+          "captureResidualMs": 23.81645800000001
+        },
+        {
+          "wallMs": 24.34699999999998,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 5,
+          "quit": false,
+          "renderMs": 0.4662500000001728,
+          "rendered": true,
+          "stepMs": 0.2948340000000371,
+          "text": null,
+          "tick": 1741,
+          "ticks": 1,
+          "captureResidualMs": 23.58591599999977
+        },
+        {
+          "wallMs": 24.750041999999894,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 4,
+          "quit": false,
+          "renderMs": 0.6006659999998192,
+          "rendered": true,
+          "stepMs": 0.37458399999991343,
+          "text": null,
+          "tick": 1801,
+          "ticks": 1,
+          "captureResidualMs": 23.77479200000016
+        },
+        {
+          "wallMs": 24.590374999999995,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 3,
+          "quit": false,
+          "renderMs": 0.48900000000003274,
+          "rendered": true,
+          "stepMs": 0.29279200000041783,
+          "text": null,
+          "tick": 1861,
+          "ticks": 1,
+          "captureResidualMs": 23.808582999999544
+        },
+        {
+          "wallMs": 24.9340830000001,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 2,
+          "quit": false,
+          "renderMs": 0.5127080000002024,
+          "rendered": true,
+          "stepMs": 0.28229099999975915,
+          "text": null,
+          "tick": 1921,
+          "ticks": 1,
+          "captureResidualMs": 24.13908400000014
+        },
+        {
+          "wallMs": 23.985750000000053,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 1,
+          "quit": false,
+          "renderMs": 0.46624999999994543,
+          "rendered": true,
+          "stepMs": 0.2827919999999722,
+          "text": null,
+          "tick": 1981,
+          "ticks": 1,
+          "captureResidualMs": 23.236708000000135
+        },
+        {
+          "wallMs": 25.05379199999993,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 0,
+          "quit": false,
+          "renderMs": 0.5084170000000086,
+          "rendered": true,
+          "stepMs": 0.29062400000020716,
+          "text": null,
+          "tick": 2041,
+          "ticks": 1,
+          "captureResidualMs": 24.254750999999715
+        }
+      ],
+      "load": {
+        "min": 5.04,
+        "max": 5.54
+      }
+    },
+    {
+      "game": "meridian",
+      "method": "33 real og run --commands screenshots at integer seconds 2..34; discard first 3. Time native frame ABI wall clock; includes screenshot plus one simulation tick and normal render, excludes output drain/disk writes. Residual subtracts reported step/render; it estimates internal capture+PNG cost, not an independently timed span.",
+      "wallMs": {
+        "p50": 138.50149999999985,
+        "p95": 145.61783399999968,
+        "max": 146.24074999999993
+      },
+      "captureResidualMs": {
+        "p50": 136.9045840000001,
+        "p95": 143.39883399999871,
+        "max": 144.33820800000103
+      },
+      "samples": [
+        {
+          "wallMs": 141.540167,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 29,
+          "quit": false,
+          "renderMs": 0.9736659999998665,
+          "rendered": true,
+          "stepMs": 0.7620419999999513,
+          "text": null,
+          "tick": 301,
+          "ticks": 1,
+          "captureResidualMs": 139.80445900000018
+        },
+        {
+          "wallMs": 128.22458299999994,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 28,
+          "quit": false,
+          "renderMs": 1.02800000000002,
+          "rendered": true,
+          "stepMs": 0.8359169999998812,
+          "text": null,
+          "tick": 361,
+          "ticks": 1,
+          "captureResidualMs": 126.36066600000004
+        },
+        {
+          "wallMs": 140.37691599999994,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 27,
+          "quit": false,
+          "renderMs": 1.046624999999949,
+          "rendered": true,
+          "stepMs": 0.7705419999997503,
+          "text": null,
+          "tick": 421,
+          "ticks": 1,
+          "captureResidualMs": 138.55974900000024
+        },
+        {
+          "wallMs": 138.50149999999985,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 26,
+          "quit": false,
+          "renderMs": 0.9284580000000915,
+          "rendered": true,
+          "stepMs": 0.6684579999996458,
+          "text": null,
+          "tick": 481,
+          "ticks": 1,
+          "captureResidualMs": 136.9045840000001
+        },
+        {
+          "wallMs": 135.50920899999983,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 25,
+          "quit": false,
+          "renderMs": 0.9107499999997799,
+          "rendered": true,
+          "stepMs": 0.7230409999999665,
+          "text": null,
+          "tick": 541,
+          "ticks": 1,
+          "captureResidualMs": 133.87541800000008
+        },
+        {
+          "wallMs": 134.91370799999982,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 24,
+          "quit": false,
+          "renderMs": 1.0013329999999314,
+          "rendered": true,
+          "stepMs": 0.7625410000000556,
+          "text": null,
+          "tick": 601,
+          "ticks": 1,
+          "captureResidualMs": 133.14983399999983
+        },
+        {
+          "wallMs": 142.4124999999999,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 23,
+          "quit": false,
+          "renderMs": 0.9503329999993184,
+          "rendered": true,
+          "stepMs": 0.8592919999994137,
+          "text": null,
+          "tick": 661,
+          "ticks": 1,
+          "captureResidualMs": 140.60287500000118
+        },
+        {
+          "wallMs": 142.053625,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 22,
+          "quit": false,
+          "renderMs": 0.9552920000000995,
+          "rendered": true,
+          "stepMs": 0.7302079999999478,
+          "text": null,
+          "tick": 721,
+          "ticks": 1,
+          "captureResidualMs": 140.36812499999996
+        },
+        {
+          "wallMs": 140.71691599999986,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 21,
+          "quit": false,
+          "renderMs": 0.9589579999997113,
+          "rendered": true,
+          "stepMs": 0.700416000000132,
+          "text": null,
+          "tick": 781,
+          "ticks": 1,
+          "captureResidualMs": 139.057542
+        },
+        {
+          "wallMs": 143.35758299999998,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 20,
+          "quit": false,
+          "renderMs": 0.961667000000034,
+          "rendered": true,
+          "stepMs": 0.7233339999997952,
+          "text": null,
+          "tick": 841,
+          "ticks": 1,
+          "captureResidualMs": 141.67258200000015
+        },
+        {
+          "wallMs": 138.73191600000018,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 19,
+          "quit": false,
+          "renderMs": 0.9574579999998605,
+          "rendered": true,
+          "stepMs": 0.6940420000000813,
+          "text": null,
+          "tick": 901,
+          "ticks": 1,
+          "captureResidualMs": 137.08041600000024
+        },
+        {
+          "wallMs": 141.53262500000028,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 18,
+          "quit": false,
+          "renderMs": 1.1558750000003783,
+          "rendered": true,
+          "stepMs": 0.770832999999584,
+          "text": null,
+          "tick": 961,
+          "ticks": 1,
+          "captureResidualMs": 139.60591700000032
+        },
+        {
+          "wallMs": 131.49312499999996,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 17,
+          "quit": false,
+          "renderMs": 0.9152920000001359,
+          "rendered": true,
+          "stepMs": 0.6919579999998859,
+          "text": null,
+          "tick": 1021,
+          "ticks": 1,
+          "captureResidualMs": 129.88587499999994
+        },
+        {
+          "wallMs": 135.74470799999972,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 16,
+          "quit": false,
+          "renderMs": 0.983625000000302,
+          "rendered": true,
+          "stepMs": 0.7587079999998423,
+          "text": null,
+          "tick": 1081,
+          "ticks": 1,
+          "captureResidualMs": 134.00237499999957
+        },
+        {
+          "wallMs": 135.21941700000025,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 15,
+          "quit": false,
+          "renderMs": 0.9773750000003929,
+          "rendered": true,
+          "stepMs": 0.7169990000002144,
+          "text": null,
+          "tick": 1141,
+          "ticks": 1,
+          "captureResidualMs": 133.52504299999964
+        },
+        {
+          "wallMs": 138.31670900000017,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 14,
+          "quit": false,
+          "renderMs": 1.0199170000005324,
+          "rendered": true,
+          "stepMs": 0.713416999999481,
+          "text": null,
+          "tick": 1201,
+          "ticks": 1,
+          "captureResidualMs": 136.58337500000016
+        },
+        {
+          "wallMs": 139.96279099999947,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 13,
+          "quit": false,
+          "renderMs": 1.0567500000006476,
+          "rendered": true,
+          "stepMs": 0.7704169999997248,
+          "text": null,
+          "tick": 1261,
+          "ticks": 1,
+          "captureResidualMs": 138.1356239999991
+        },
+        {
+          "wallMs": 143.71008299999994,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 12,
+          "quit": false,
+          "renderMs": 0.9702920000008817,
+          "rendered": true,
+          "stepMs": 0.7162080000007336,
+          "text": null,
+          "tick": 1321,
+          "ticks": 1,
+          "captureResidualMs": 142.02358299999833
+        },
+        {
+          "wallMs": 146.24074999999993,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 11,
+          "quit": false,
+          "renderMs": 1.087083999999777,
+          "rendered": true,
+          "stepMs": 0.8154579999991256,
+          "text": null,
+          "tick": 1381,
+          "ticks": 1,
+          "captureResidualMs": 144.33820800000103
+        },
+        {
+          "wallMs": 145.61783399999968,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 10,
+          "quit": false,
+          "renderMs": 1.2623750000011569,
+          "rendered": true,
+          "stepMs": 0.9566249999998035,
+          "text": null,
+          "tick": 1441,
+          "ticks": 1,
+          "captureResidualMs": 143.39883399999871
+        },
+        {
+          "wallMs": 140.08449999999993,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 9,
+          "quit": false,
+          "renderMs": 1.0175410000001648,
+          "rendered": true,
+          "stepMs": 0.7865830000000642,
+          "text": null,
+          "tick": 1501,
+          "ticks": 1,
+          "captureResidualMs": 138.2803759999997
+        },
+        {
+          "wallMs": 139.12662499999988,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 8,
+          "quit": false,
+          "renderMs": 1.0531670000000304,
+          "rendered": true,
+          "stepMs": 0.7654170000014346,
+          "text": null,
+          "tick": 1561,
+          "ticks": 1,
+          "captureResidualMs": 137.3080409999984
+        },
+        {
+          "wallMs": 138.13716599999952,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 7,
+          "quit": false,
+          "renderMs": 1.1346250000005966,
+          "rendered": true,
+          "stepMs": 0.798334000000068,
+          "text": null,
+          "tick": 1621,
+          "ticks": 1,
+          "captureResidualMs": 136.20420699999886
+        },
+        {
+          "wallMs": 129.31770799999958,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 6,
+          "quit": false,
+          "renderMs": 0.9808340000008684,
+          "rendered": true,
+          "stepMs": 0.7324169999992591,
+          "text": null,
+          "tick": 1681,
+          "ticks": 1,
+          "captureResidualMs": 127.60445699999946
+        },
+        {
+          "wallMs": 123.59687499999927,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 5,
+          "quit": false,
+          "renderMs": 1.0092500000000655,
+          "rendered": true,
+          "stepMs": 0.7084580000009737,
+          "text": null,
+          "tick": 1741,
+          "ticks": 1,
+          "captureResidualMs": 121.87916699999823
+        },
+        {
+          "wallMs": 123.60004200000003,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 4,
+          "quit": false,
+          "renderMs": 0.9708330000003116,
+          "rendered": true,
+          "stepMs": 0.7582500000007713,
+          "text": null,
+          "tick": 1801,
+          "ticks": 1,
+          "captureResidualMs": 121.87095899999895
+        },
+        {
+          "wallMs": 111.3516669999999,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 3,
+          "quit": false,
+          "renderMs": 0.9790840000005119,
+          "rendered": true,
+          "stepMs": 0.7291249999998399,
+          "text": null,
+          "tick": 1861,
+          "ticks": 1,
+          "captureResidualMs": 109.64345799999955
+        },
+        {
+          "wallMs": 112.18666600000051,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 2,
+          "quit": false,
+          "renderMs": 0.9610000000002401,
+          "rendered": true,
+          "stepMs": 0.5994579999996859,
+          "text": null,
+          "tick": 1921,
+          "ticks": 1,
+          "captureResidualMs": 110.62620800000059
+        },
+        {
+          "wallMs": 112.67704199999935,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 1,
+          "quit": false,
+          "renderMs": 1.1350000000002183,
+          "rendered": true,
+          "stepMs": 0.7353760000005423,
+          "text": null,
+          "tick": 1981,
+          "ticks": 1,
+          "captureResidualMs": 110.80666599999859
+        },
+        {
+          "wallMs": 112.47816700000021,
+          "behind": 0,
+          "ok": true,
+          "paused": false,
+          "pending": 0,
+          "quit": false,
+          "renderMs": 1.0340420000002268,
+          "rendered": true,
+          "stepMs": 0.7365840000002208,
+          "text": null,
+          "tick": 2041,
+          "ticks": 1,
+          "captureResidualMs": 110.70754099999976
+        }
+      ],
+      "load": {
+        "min": 5.04,
+        "max": 5.54
+      }
+    }
+  ],
+  "threejs": [
+    {
+      "scene": "reference",
+      "mode": "engine WebGPU",
+      "p50": 1.078,
+      "p95": 2.36,
+      "sustainedMs": 1.31,
+      "fps": 763,
+      "rounds": 2,
+      "load": {
+        "min": 4.93,
+        "max": 6.38
+      },
+      "roundSustainedMs": [
+        1.311,
+        1.308
+      ]
+    },
+    {
+      "scene": "reference",
+      "mode": "engine WebGL2",
+      "p50": 2.195,
+      "p95": 3.263,
+      "sustainedMs": 2.205,
+      "fps": 454,
+      "rounds": 2,
+      "load": {
+        "min": 4.75,
+        "max": 5.78
+      },
+      "roundSustainedMs": [
+        2.226,
+        2.184
+      ]
+    },
+    {
+      "scene": "reference",
+      "mode": "three WebGL2, InstancedMesh",
+      "p50": 3.008,
+      "p95": 3.683,
+      "sustainedMs": 2.538,
+      "fps": 394,
+      "rounds": 2,
+      "load": {
+        "min": 4.04,
+        "max": 5.01
+      },
+      "roundSustainedMs": [
+        2.539,
+        2.536
+      ]
+    },
+    {
+      "scene": "reference",
+      "mode": "three WebGL2, one Mesh each",
+      "p50": 2.353,
+      "p95": 4.735,
+      "sustainedMs": 3.051,
+      "fps": 328,
+      "rounds": 2,
+      "load": {
+        "min": 2.97,
+        "max": 3.58
+      },
+      "roundSustainedMs": [
+        3.045,
+        3.057
+      ]
+    },
+    {
+      "scene": "spheres",
+      "mode": "engine WebGPU",
+      "p50": 3.67,
+      "p95": 4.158,
+      "sustainedMs": 3.608,
+      "fps": 277,
+      "rounds": 2,
+      "load": {
+        "min": 3.71,
+        "max": 5.01
+      },
+      "roundSustainedMs": [
+        3.643,
+        3.572
+      ]
+    },
+    {
+      "scene": "spheres",
+      "mode": "engine WebGL2",
+      "p50": 3.4,
+      "p95": 4.928,
+      "sustainedMs": 3.725,
+      "fps": 268,
+      "rounds": 2,
+      "load": {
+        "min": 5.16,
+        "max": 5.65
+      },
+      "roundSustainedMs": [
+        3.726,
+        3.723
+      ]
+    },
+    {
+      "scene": "spheres",
+      "mode": "three WebGL2, InstancedMesh",
+      "p50": 2.62,
+      "p95": 2.92,
+      "sustainedMs": 2.586,
+      "fps": 387,
+      "rounds": 2,
+      "load": {
+        "min": 4.68,
+        "max": 5.78
+      },
+      "roundSustainedMs": [
+        2.62,
+        2.552
+      ]
+    },
+    {
+      "scene": "spheres",
+      "mode": "three WebGL2, one Mesh each",
+      "p50": 10.933,
+      "p95": 11.518,
+      "sustainedMs": 10.879,
+      "fps": 92,
+      "rounds": 2,
+      "load": {
+        "min": 5.11,
+        "max": 5.76
+      },
+      "roundSustainedMs": [
+        10.911,
+        10.847
+      ]
+    },
+    {
+      "scene": "spheres",
+      "mode": "three WebGPU, InstancedMesh",
+      "p50": 1.288,
+      "p95": 1.59,
+      "sustainedMs": 1.316,
+      "fps": 760,
+      "rounds": 2,
+      "load": {
+        "min": 5.33,
+        "max": 6.1
+      },
+      "roundSustainedMs": [
+        1.316,
+        1.316
+      ]
+    }
+  ],
+  "referenceBudgets": [
+    {
+      "mode": "engine WebGPU",
+      "ratio": 1.9374045801526716,
+      "target": 1.5,
+      "verdict": "pass"
+    },
+    {
+      "mode": "engine WebGL2",
+      "ratio": 1.1510204081632651,
+      "target": 1.5,
+      "verdict": "fail"
+    }
+  ],
+  "perf": [
+    {
+      "profile": "release",
+      "game": "hollowbell",
+      "paced": false,
+      "frames": {
+        "stepMedianMs": 0.463,
+        "stepP95Ms": 0.869,
+        "renderMedianMs": 0.537,
+        "renderP95Ms": 0.723
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.106
+        },
+        {
+          "name": "Control",
+          "meanMs": 0.053
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.04
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.032
+        },
+        {
+          "name": "Enemies",
+          "meanMs": 0.027
+        }
+      ],
+      "endTicks": [
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "hashes": [
+        "5c33b0733b9a10a3"
+      ],
+      "load": {
+        "min": 4.46,
+        "max": 6.45
+      },
+      "verdict": "pass"
+    },
+    {
+      "profile": "release",
+      "game": "hollowbell",
+      "paced": true,
+      "frames": {
+        "stepMedianMs": 1.27,
+        "stepP95Ms": 2.476,
+        "renderMedianMs": 1.23,
+        "renderP95Ms": 2.092
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.287
+        },
+        {
+          "name": "Control",
+          "meanMs": 0.136
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.118
+        },
+        {
+          "name": "og.follow2D",
+          "meanMs": 0.073
+        },
+        {
+          "name": "Enemies",
+          "meanMs": 0.072
+        }
+      ],
+      "endTicks": [
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "hashes": [
+        "5c33b0733b9a10a3"
+      ],
+      "load": {
+        "min": 4.46,
+        "max": 6.45
+      },
+      "verdict": "pass"
+    },
+    {
+      "profile": "release",
+      "game": "kestrel-stair",
+      "paced": false,
+      "frames": {
+        "stepMedianMs": 0.809,
+        "stepP95Ms": 1.167,
+        "renderMedianMs": 1.218,
+        "renderP95Ms": 1.816
+      },
+      "systems": [
+        {
+          "name": "og.physics",
+          "meanMs": 0.238
+        },
+        {
+          "name": "Ui",
+          "meanMs": 0.144
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.074
+        },
+        {
+          "name": "Foes",
+          "meanMs": 0.069
+        },
+        {
+          "name": "Fx",
+          "meanMs": 0.04
+        }
+      ],
+      "endTicks": [
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "hashes": [
+        "13596d3b7a682ef9"
+      ],
+      "load": {
+        "min": 4.46,
+        "max": 6.45
+      },
+      "verdict": "pass"
+    },
+    {
+      "profile": "release",
+      "game": "kestrel-stair",
+      "paced": true,
+      "frames": {
+        "stepMedianMs": 1.662,
+        "stepP95Ms": 2.806,
+        "renderMedianMs": 1.461,
+        "renderP95Ms": 2.113
+      },
+      "systems": [
+        {
+          "name": "og.physics",
+          "meanMs": 0.492
+        },
+        {
+          "name": "Ui",
+          "meanMs": 0.311
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.141
+        },
+        {
+          "name": "Foes",
+          "meanMs": 0.131
+        },
+        {
+          "name": "Fx",
+          "meanMs": 0.074
+        }
+      ],
+      "endTicks": [
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "hashes": [
+        "13596d3b7a682ef9"
+      ],
+      "load": {
+        "min": 4.46,
+        "max": 6.45
+      },
+      "verdict": "pass"
+    },
+    {
+      "profile": "release",
+      "game": "lantern-vale",
+      "paced": false,
+      "frames": {
+        "stepMedianMs": 0.538,
+        "stepP95Ms": 0.976,
+        "renderMedianMs": 1.571,
+        "renderP95Ms": 8.03
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.128
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.085
+        },
+        {
+          "name": "Slimes",
+          "meanMs": 0.064
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.059
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.055
+        }
+      ],
+      "endTicks": [
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "hashes": [
+        "780bf264aa0a3f1f"
+      ],
+      "load": {
+        "min": 4.46,
+        "max": 6.45
+      },
+      "verdict": "fail"
+    },
+    {
+      "profile": "release",
+      "game": "lantern-vale",
+      "paced": true,
+      "frames": {
+        "stepMedianMs": 1.199,
+        "stepP95Ms": 2.169,
+        "renderMedianMs": 1.846,
+        "renderP95Ms": 2.81
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.272
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.174
+        },
+        {
+          "name": "Slimes",
+          "meanMs": 0.134
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.116
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.111
+        }
+      ],
+      "endTicks": [
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "hashes": [
+        "780bf264aa0a3f1f"
+      ],
+      "load": {
+        "min": 4.46,
+        "max": 6.45
+      },
+      "verdict": "pass"
+    },
+    {
+      "profile": "dev",
+      "game": "hollowbell",
+      "paced": false,
+      "frames": {
+        "stepMedianMs": 2.022,
+        "stepP95Ms": 3.144,
+        "renderMedianMs": 1.889,
+        "renderP95Ms": 2.238
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.396
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.205
+        },
+        {
+          "name": "Control",
+          "meanMs": 0.182
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.128
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.118
+        }
+      ],
+      "endTicks": [
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "hashes": [
+        "5c33b0733b9a10a3"
+      ],
+      "load": {
+        "min": 3.71,
+        "max": 5.6
+      },
+      "verdict": "pass"
+    },
+    {
+      "profile": "dev",
+      "game": "hollowbell",
+      "paced": true,
+      "frames": {
+        "stepMedianMs": 2.906,
+        "stepP95Ms": 3.776,
+        "renderMedianMs": 2.635,
+        "renderP95Ms": 2.93
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.556
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.26
+        },
+        {
+          "name": "Control",
+          "meanMs": 0.247
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.185
+        },
+        {
+          "name": "Pickups",
+          "meanMs": 0.149
+        }
+      ],
+      "endTicks": [
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "hashes": [
+        "5c33b0733b9a10a3"
+      ],
+      "load": {
+        "min": 3.71,
+        "max": 5.6
+      },
+      "verdict": "pass"
+    },
+    {
+      "profile": "dev",
+      "game": "kestrel-stair",
+      "paced": false,
+      "frames": {
+        "stepMedianMs": 3.084,
+        "stepP95Ms": 3.896,
+        "renderMedianMs": 2.075,
+        "renderP95Ms": 2.469
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.473
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.413
+        },
+        {
+          "name": "Foes",
+          "meanMs": 0.376
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.261
+        },
+        {
+          "name": "Fx",
+          "meanMs": 0.202
+        }
+      ],
+      "endTicks": [
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "hashes": [
+        "13596d3b7a682ef9"
+      ],
+      "load": {
+        "min": 3.71,
+        "max": 5.6
+      },
+      "verdict": "pass"
+    },
+    {
+      "profile": "dev",
+      "game": "kestrel-stair",
+      "paced": true,
+      "frames": {
+        "stepMedianMs": 3.657,
+        "stepP95Ms": 4.6,
+        "renderMedianMs": 2.485,
+        "renderP95Ms": 2.881
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.56
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.501
+        },
+        {
+          "name": "Foes",
+          "meanMs": 0.429
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.301
+        },
+        {
+          "name": "Fx",
+          "meanMs": 0.234
+        }
+      ],
+      "endTicks": [
+        600,
+        600,
+        601,
+        600,
+        600
+      ],
+      "hashes": [
+        "13596d3b7a682ef9",
+        "aa88916a5f3c58ce"
+      ],
+      "load": {
+        "min": 3.71,
+        "max": 5.6
+      },
+      "verdict": "pass"
+    },
+    {
+      "profile": "dev",
+      "game": "lantern-vale",
+      "paced": false,
+      "frames": {
+        "stepMedianMs": 2.317,
+        "stepP95Ms": 3.352,
+        "renderMedianMs": 2.3,
+        "renderP95Ms": 2.691
+      },
+      "systems": [
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.408
+        },
+        {
+          "name": "Ui",
+          "meanMs": 0.407
+        },
+        {
+          "name": "Slimes",
+          "meanMs": 0.322
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.193
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.187
+        }
+      ],
+      "endTicks": [
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "hashes": [
+        "780bf264aa0a3f1f"
+      ],
+      "load": {
+        "min": 3.71,
+        "max": 5.6
+      },
+      "verdict": "pass"
+    },
+    {
+      "profile": "dev",
+      "game": "lantern-vale",
+      "paced": true,
+      "frames": {
+        "stepMedianMs": 2.795,
+        "stepP95Ms": 3.714,
+        "renderMedianMs": 2.752,
+        "renderP95Ms": 3.113
+      },
+      "systems": [
+        {
+          "name": "Ui",
+          "meanMs": 0.495
+        },
+        {
+          "name": "og.ui.end",
+          "meanMs": 0.433
+        },
+        {
+          "name": "Slimes",
+          "meanMs": 0.383
+        },
+        {
+          "name": "Hero",
+          "meanMs": 0.232
+        },
+        {
+          "name": "og.physics",
+          "meanMs": 0.201
+        }
+      ],
+      "endTicks": [
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "hashes": [
+        "780bf264aa0a3f1f"
+      ],
+      "load": {
+        "min": 3.71,
+        "max": 5.6
+      },
+      "verdict": "pass"
+    }
+  ],
+  "polish": [
+    {
+      "profile": "release",
+      "game": "hollowbell",
+      "scores": {
+        "contrast": 94,
+        "textSize": 100,
+        "hud": 100,
+        "transitions": 99,
+        "uiSounds": 100,
+        "latency": 100,
+        "hitFeedback": 100,
+        "idle": 100,
+        "frameTime": 100,
+        "inputSound": 85,
+        "locale": 100,
+        "taste": 99,
+        "feel": 97
+      },
+      "worstFrameP95Ms": 2.24,
+      "stepP95MedianMs": 1.23,
+      "stepP95WorstMs": 1.47,
+      "renderP95WorstMs": 0.83,
+      "load": {
+        "min": 4.46,
+        "max": 6.45
+      }
+    },
+    {
+      "profile": "release",
+      "game": "kestrel-stair",
+      "scores": {
+        "contrast": 98,
+        "textSize": 100,
+        "hud": 100,
+        "transitions": 98,
+        "uiSounds": 100,
+        "latency": 100,
+        "hitFeedback": 100,
+        "idle": 100,
+        "frameTime": 100,
+        "inputSound": 94,
+        "locale": 100,
+        "taste": 99,
+        "feel": 99
+      },
+      "worstFrameP95Ms": 3.01,
+      "stepP95MedianMs": 1.17,
+      "stepP95WorstMs": 1.32,
+      "renderP95WorstMs": 2.15,
+      "load": {
+        "min": 4.46,
+        "max": 6.45
+      }
+    },
+    {
+      "profile": "release",
+      "game": "lantern-vale",
+      "scores": {
+        "contrast": 100,
+        "textSize": 100,
+        "hud": 100,
+        "transitions": 100,
+        "uiSounds": 100,
+        "latency": 100,
+        "hitFeedback": 100,
+        "idle": 100,
+        "frameTime": 100,
+        "inputSound": 96,
+        "locale": 100,
+        "taste": 100,
+        "feel": 99
+      },
+      "worstFrameP95Ms": 2.88,
+      "stepP95MedianMs": 1.47,
+      "stepP95WorstMs": 1.67,
+      "renderP95WorstMs": 1.68,
+      "load": {
+        "min": 4.46,
+        "max": 6.45
+      }
+    },
+    {
+      "profile": "dev",
+      "game": "hollowbell",
+      "scores": {
+        "contrast": 94,
+        "textSize": 100,
+        "hud": 100,
+        "transitions": 99,
+        "uiSounds": 100,
+        "latency": 100,
+        "hitFeedback": 100,
+        "idle": 100,
+        "frameTime": 93,
+        "inputSound": 85,
+        "locale": 100,
+        "taste": 99,
+        "feel": 96
+      },
+      "worstFrameP95Ms": 9.95,
+      "stepP95MedianMs": 6.16,
+      "stepP95WorstMs": 7.52,
+      "renderP95WorstMs": 2.67,
+      "load": {
+        "min": 3.71,
+        "max": 5.6
+      }
+    },
+    {
+      "profile": "dev",
+      "game": "kestrel-stair",
+      "scores": {
+        "contrast": 98,
+        "textSize": 100,
+        "hud": 100,
+        "transitions": 98,
+        "uiSounds": 100,
+        "latency": 100,
+        "hitFeedback": 100,
+        "idle": 100,
+        "frameTime": 100,
+        "inputSound": 94,
+        "locale": 100,
+        "taste": 99,
+        "feel": 99
+      },
+      "worstFrameP95Ms": 7.68,
+      "stepP95MedianMs": 4.42,
+      "stepP95WorstMs": 5.01,
+      "renderP95WorstMs": 2.87,
+      "load": {
+        "min": 3.71,
+        "max": 5.6
+      }
+    },
+    {
+      "profile": "dev",
+      "game": "lantern-vale",
+      "scores": {
+        "contrast": 100,
+        "textSize": 100,
+        "hud": 100,
+        "transitions": 100,
+        "uiSounds": 100,
+        "latency": 100,
+        "hitFeedback": 100,
+        "idle": 100,
+        "frameTime": 82,
+        "inputSound": 96,
+        "locale": 100,
+        "taste": 100,
+        "feel": 96
+      },
+      "worstFrameP95Ms": 12.91,
+      "stepP95MedianMs": 7.77,
+      "stepP95WorstMs": 9.86,
+      "renderP95WorstMs": 3.04,
+      "load": {
+        "min": 3.71,
+        "max": 5.6
+      }
+    }
+  ]
+}

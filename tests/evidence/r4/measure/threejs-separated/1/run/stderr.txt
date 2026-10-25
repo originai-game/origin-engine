@@ -1,0 +1,6 @@
+building reference (og build --publish's web half) into /Volumes/app/origin-engine-measure/target/tmp/threejs-bench/reference
+reference / engine WebGPU / round 1: http://127.0.0.1:56026/bench.html
+reference / engine WebGPU / round 1: p50 1.04 p95 2.4 ms, sustained 1.311 ms (763 fps); load 4.93 9.19 12.30
+reference / engine WebGPU / round 2: http://127.0.0.1:56026/bench.html
+reference / engine WebGPU / round 2: p50 1.115 p95 2.32 ms, sustained 1.308 ms (765 fps); load 5.57 9.25 12.31
+reference / engine WebGPU: threejs-reference-engine-webgpu.png

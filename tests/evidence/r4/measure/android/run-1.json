@@ -1,0 +1,1 @@
+{"project":"game","target":"android:58051FDCR007QL","tier":"webgpu","firstFrameMs":1559,"interval":{"count":428,"mean":12.42,"p50":8.49,"p95":8.53,"p99":16.67,"max":1636.88},"scores":{"firstFrame":81,"frameTime":100},"findings":0,"report":"/Volumes/app/origin-engine-measure/tests/evidence/r4/measure/android/first-frame-1/report.md"}

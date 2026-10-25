@@ -1,0 +1,31 @@
+Sun Oct 25 01:49:05 UTC 2026
+List of devices attached
+58051FDCR007QL         device usb:34738176X product:frankel model:Pixel_10 device:frankel transport_id:2
+
+/Users/fan/Library/Application Support/mkcert
+-rw-r--r--@ 1 fan  staff  1643 Oct 25 14:46 /Users/fan/Library/Application Support/mkcert/rootCA.pem
+== Devices ==
+fan的MacBook Pro (C2631909-D5D3-5338-BE66-8C68871F0BCA)
+
+== Devices Offline ==
+iPhone (27.0.1) (00008150-000A70511144401C)
+
+== Simulators ==
+iPad (A16) Simulator (27.0) (6299334D-B4C6-4285-9E2A-E3B2916050DF)
+iPad Air 11-inch (M4) Simulator (27.0) (1928EC59-024A-41A8-B322-2E4BF8438EEA)
+iPad Air 13-inch (M4) Simulator (27.0) (464E2720-2CD8-406D-A754-3DE1F380EE98)
+iPad Pro 11-inch (M5) Simulator (27.0) (C5C110F3-B614-4F76-A974-50CF99CCF5D0)
+iPad Pro 13-inch (M5) Simulator (27.0) (1DAB2470-854F-49F2-91F7-94D92A1A4F8E)
+iPad mini (A17 Pro) Simulator (27.0) (248B10FC-BFBB-48F0-A245-23D7BDBE39AE)
+iPhone 17 Simulator (27.0) (3CCD3D62-B9DB-4E93-9E3B-6F9C1B41708E)
+iPhone 17e Simulator (27.0) (016D46DF-681E-45CD-BEAC-BB10E48B43FE)
+iPhone 18 Pro Simulator (27.0) (ACAB4D26-276F-4D3E-9DE2-1F31602A486A)
+iPhone 18 Pro Max Simulator (27.0) (B0F8E85D-41DB-442A-B7D8-103FEDB697EB)
+iPhone Air Simulator (27.0) (5624069B-2FB9-4E04-B01A-2E64F40298EF)
+Name                    Hostname   Identifier                                    State         Model                              Reality  
+---------------------   --------   -------------------------------------------   -----------   --------------------------------   ---------
+iPad Pro 11-inch (M5)              C5C110F3-B614-4F76-A974-50CF99CCF5D0 (UDID)   shutdown      iPad Pro 11-inch (M5) (iPad17,2)   simulated
+iPad Pro 13-inch (M5)              1DAB2470-854F-49F2-91F7-94D92A1A4F8E (UDID)   shutdown      iPad Pro 13-inch (M5) (iPad17,4)   simulated
+iPhone                             00008150-000A70511144401C (UDID)              unavailable   iPhone Air (iPhone18,4)            physical 
+iPhone 17                          3CCD3D62-B9DB-4E93-9E3B-6F9C1B41708E (UDID)   connected     iPhone 17 (iPhone18,3)             simulated
+iPhone 18 Pro                      ACAB4D26-276F-4D3E-9DE2-1F31602A486A (UDID)   shutdown      iPhone 18 Pro (iPhone19,2)         simulated

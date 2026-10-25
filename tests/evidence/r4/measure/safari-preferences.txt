@@ -1,0 +1,9 @@
+preferences: com.apple.WebDriver
+Error: Domain 'com.apple.WebDriver' not found.
+Error: Domain '/Library/Preferences/com.apple.WebDriver' not found.
+preferences: com.apple.Safari
+Error: Domain '/Users/fan/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari' not found.
+Error: Domain '/Library/Preferences/com.apple.Safari' not found.
+preferences: com.apple.SafariTechnologyPreview
+Error: Domain 'com.apple.SafariTechnologyPreview' not found.
+Error: Domain '/Library/Preferences/com.apple.SafariTechnologyPreview' not found.
