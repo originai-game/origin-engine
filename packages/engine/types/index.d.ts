@@ -157,12 +157,20 @@ export interface ColumnKinds {
   StripBlend: { readonly array: Uint32Array; readonly stride: 1; readonly value: StripBlend };
   /** A Palette handle field (0 is none). */
   Palette: { readonly array: Uint32Array; readonly stride: 2; readonly value: Palette };
+  /**
+   * A Look handle field (0 is none): a look og.load.look answered, kept for og.render.applyLook.
+   */
+  Look: { readonly array: Uint32Array; readonly stride: 2; readonly value: Look };
   /** A DitherPattern field: the variant's index. */
   DitherPattern: { readonly array: Uint32Array; readonly stride: 1; readonly value: DitherPattern };
   /** A StyliseSpace field: the variant's index. */
   StyliseSpace: { readonly array: Uint32Array; readonly stride: 1; readonly value: StyliseSpace };
   /** A ReflectionProbeMode field: the variant's index. */
   ReflectionProbeMode: { readonly array: Uint32Array; readonly stride: 1; readonly value: ReflectionProbeMode };
+  /**
+   * A Shader handle field (0 is none): a material shader og.load.shader answered, kept for og.render.shaderMaterial.
+   */
+  Shader: { readonly array: Uint32Array; readonly stride: 2; readonly value: Shader };
   /** A LineMode field: the variant's index. */
   LineMode: { readonly array: Uint32Array; readonly stride: 1; readonly value: LineMode };
   /** A RenderTargetFormat field: the variant's index. */
@@ -177,6 +185,14 @@ export interface ColumnKinds {
   Asset: { readonly array: Uint32Array; readonly stride: 2; readonly value: Asset };
   /** A Sound handle field. */
   Sound: { readonly array: Uint32Array; readonly stride: 2; readonly value: Sound };
+  /**
+   * A Font handle field (0 is none): a font og.load.font answered, kept for og.render.text or og.ui.configure.
+   */
+  Font: { readonly array: Uint32Array; readonly stride: 2; readonly value: Font };
+  /**
+   * A Style handle field (0 is none): a UI style og.load.style answered, kept for og.ui.configure.
+   */
+  Style: { readonly array: Uint32Array; readonly stride: 2; readonly value: Style };
   /** A SkeletonAsset handle field. */
   SkeletonAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: SkeletonAsset };
   /** A ClipAsset handle field. */
@@ -191,6 +207,8 @@ export interface ColumnKinds {
   IkSolver: { readonly array: Uint32Array; readonly stride: 1; readonly value: IkSolver };
   /** An IkSpace field: the variant's index. */
   IkSpace: { readonly array: Uint32Array; readonly stride: 1; readonly value: IkSpace };
+  /** A Rig handle field (0 is none): a humanoid map og.load.rig answered. */
+  Rig: { readonly array: Uint32Array; readonly stride: 2; readonly value: Rig };
   /** A FlipbookSheet handle field. */
   FlipbookSheet: { readonly array: Uint32Array; readonly stride: 2; readonly value: FlipbookSheet };
   /** A Rig2D handle field. */
@@ -924,7 +942,7 @@ export declare const color: ColorMath;
 // Reflection: components and resources are declared once with their field layout and metadata, and registered by name.
 // The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field.
 // A field holds one value, or a list of at most a fixed number of one number type or handle: `list(u32(), 8)`, `list(Asset(), 4)` (the list factory below). A list is read as a frozen copy (`push` throws) and written whole (`chain.passes = [...chain.passes, h]`); one over its capacity is refused, never truncated. A few vectors are numbered fields (`p0` to `p7`, as og.CameraRail does); a list of things with fields of their own is an entity each, with its own component, looped over by a query (a ring of skid marks, the laps of a race); a long record (a lap's taped inputs) is text in `str` fields of at most 4,096 bytes each, chunked over entities. Keep none of it in module variables: they are not world state, so a snapshot, a replay and a hot reload lose them.
-// A handle (an og.load answer, a texture, a sound, a geometry, a material, an entity) is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Sound()`, `Geometry()`, `Material()`, `Entity()`, the factories of the API's handle types), in a component or a resource. A `u32` field refuses one (handles pass 2^32: `4294967298 is not a u32`); an `f64` holds the number but loses its type.
+// A handle (an og.load answer, a texture, a sound, a geometry, a material, an entity) is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Sound()`, `Font()`, `Style()`, `Geometry()`, `Material()`, `Entity()`: every handle type of the API has its factory, named as the type), never cast to another kind, in a component or a resource. A `u32` field refuses one (handles pass 2^32: `4294967298 is not a u32`); an `f64` holds the number but loses its type.
 
 /**
  * Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: game code's writes (world.set, a resource field, a column) are stored as given, and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named.
@@ -4762,6 +4780,15 @@ export type Look = number & { readonly [handleType]: "Look" };
 export declare function Palette(value?: Palette, options?: FieldOptions): FieldSpec<"Palette">;
 
 /**
+ * A Look handle field (0 is none): a look og.load.look answered, kept for og.render.applyLook.
+ *
+ * A `Look` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Look(value?: Look, options?: FieldOptions): FieldSpec<"Look">;
+
+/**
  * The threshold pattern Stylise.dither spreads the steps of posterize and palette with.
  * - `"none"`: No dither: every pixel rounds to its nearest step or colour, in flat bands.
  * - `"bayer2"`: Ordered dither by a 2 by 2 Bayer matrix: the coarsest checker, as on early handhelds.
@@ -6538,6 +6565,15 @@ export interface ReflectionProbe {
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
 export type Shader = number & { readonly [handleType]: "Shader" };
+
+/**
+ * A Shader handle field (0 is none): a material shader og.load.shader answered, kept for og.render.shaderMaterial.
+ *
+ * A `Shader` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Shader(value?: Shader, options?: FieldOptions): FieldSpec<"Shader">;
 
 
 
@@ -8433,6 +8469,24 @@ export declare function Asset(value?: Asset, options?: FieldOptions): FieldSpec<
  * @param options Range, unit, label, docs and the tunable flag.
  */
 export declare function Sound(value?: Sound, options?: FieldOptions): FieldSpec<"Sound">;
+
+/**
+ * A Font handle field (0 is none): a font og.load.font answered, kept for og.render.text or og.ui.configure.
+ *
+ * A `Font` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Font(value?: Font, options?: FieldOptions): FieldSpec<"Font">;
+
+/**
+ * A Style handle field (0 is none): a UI style og.load.style answered, kept for og.ui.configure.
+ *
+ * A `Style` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Style(value?: Style, options?: FieldOptions): FieldSpec<"Style">;
 
 /**
  * Where a load is.
@@ -12237,6 +12291,15 @@ export interface GraphDesc {
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
 export type Rig = number & { readonly [handleType]: "Rig" };
+
+/**
+ * A Rig handle field (0 is none): a humanoid map og.load.rig answered.
+ *
+ * A `Rig` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Rig(value?: Rig, options?: FieldOptions): FieldSpec<"Rig">;
 
 /** One standard humanoid bone of a skeleton. */
 export interface HumanBone {

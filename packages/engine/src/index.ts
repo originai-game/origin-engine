@@ -79,6 +79,11 @@ export const StyliseSpace = ((value = "screen" as Api.StyliseSpace, options) => 
 export const TextureArray = ((value = 0 as Api.TextureArray, options) => spec("TextureArray", value, options)) as typeof Api.TextureArray;
 export const Asset = ((value = 0 as Api.Asset, options) => spec("Asset", value, options)) as typeof Api.Asset;
 export const Sound = ((value = 0 as Api.Sound, options) => spec("Sound", value, options)) as typeof Api.Sound;
+export const Font = ((value = 0 as Api.Font, options) => spec("Font", value, options)) as typeof Api.Font;
+export const Style = ((value = 0 as Api.Style, options) => spec("Style", value, options)) as typeof Api.Style;
+export const Look = ((value = 0 as Api.Look, options) => spec("Look", value, options)) as typeof Api.Look;
+export const Shader = ((value = 0 as Api.Shader, options) => spec("Shader", value, options)) as typeof Api.Shader;
+export const Rig = ((value = 0 as Api.Rig, options) => spec("Rig", value, options)) as typeof Api.Rig;
 export const SkeletonAsset = ((value = 0 as Api.SkeletonAsset, options) => spec("SkeletonAsset", value, options)) as typeof Api.SkeletonAsset;
 export const ClipAsset = ((value = 0 as Api.ClipAsset, options) => spec("ClipAsset", value, options)) as typeof Api.ClipAsset;
 export const GraphAsset = ((value = 0 as Api.GraphAsset, options) => spec("GraphAsset", value, options)) as typeof Api.GraphAsset;

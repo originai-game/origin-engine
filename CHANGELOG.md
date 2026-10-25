@@ -9,6 +9,13 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- Field factories for the handle types that had none: `Font()`, `Style()`,
+  `Look()`, `Shader()` and `Rig()` (columns in `crates/og-api/api.ogt`,
+  64-bit like every handle), so a font is kept in a `Font()` field, never
+  an `f64` or an `Asset()` cast (rumpus-isle #2). Every handle type of the
+  API now has its factory; `packages/engine/tests/api-surface.test.ts`
+  holds it.
+
 ## 0.4.0 — 2026-10-24
 
 Player hello time now reaches `og.platform` on attachment through both

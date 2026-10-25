@@ -159,6 +159,12 @@
       "value": "Palette"
     },
     {
+      "name": "Look",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "Look"
+    },
+    {
       "name": "DitherPattern",
       "array": "Uint32Array",
       "stride": 1,
@@ -175,6 +181,12 @@
       "array": "Uint32Array",
       "stride": 1,
       "value": "ReflectionProbeMode"
+    },
+    {
+      "name": "Shader",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "Shader"
     },
     {
       "name": "LineMode",
@@ -219,6 +231,18 @@
       "value": "Sound"
     },
     {
+      "name": "Font",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "Font"
+    },
+    {
+      "name": "Style",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "Style"
+    },
+    {
       "name": "SkeletonAsset",
       "array": "Uint32Array",
       "stride": 2,
@@ -259,6 +283,12 @@
       "array": "Uint32Array",
       "stride": 1,
       "value": "IkSpace"
+    },
+    {
+      "name": "Rig",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "Rig"
     },
     {
       "name": "FlipbookSheet",

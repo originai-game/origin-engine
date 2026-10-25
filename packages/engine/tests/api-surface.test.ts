@@ -41,6 +41,8 @@ const Every = defineComponent(
       ]),
   ) as never,
 );
+// A list of handles of one of the kinds rumpus-isle #2 lacked, and one beside it.
+const Fonts = defineComponent("SurfaceFonts", { fonts: engineExports.list(engineExports.Font(), 2), style: engineExports.Style() });
 const Noop = defineSystem("SurfaceNoop", { reads: [Marker] }, () => {});
 const game = og.game({ systems: [Noop] }) as unknown as GameToken;
 
@@ -274,4 +276,25 @@ test("every column factory and constant the IDL declares is a named export", () 
   const fields = (Every as unknown as { fields: Record<string, { default: unknown }> }).fields;
   for (const [name, spec] of Object.entries(fields)) expect([name, value[name]]).toEqual([name, spec.default]);
   expect(Object.keys(fields).length).toBe(bindings.columns.length);
+});
+
+test("every handle type has a field factory of its own kind, and a handle round-trips through it", () => {
+  // rumpus-isle #2: a font had no Font(), so a game kept it in an f64 or cast it to an Asset.
+  const defs = schema.$defs as Record<string, { "x-og-kind"?: string }>;
+  const handles = Object.keys(defs).filter((n) => defs[n]!["x-og-kind"] === "handle").sort();
+  const columns = new Set((bindings.columns as Array<{ name: string; value: string }>).filter((c) => c.value === c.name).map((c) => c.name));
+  expect(handles.filter((h) => !columns.has(h) || typeof factories[h] !== "function")).toEqual([]);
+  for (const h of ["Font", "Style", "Look", "Shader", "Rig"]) expect(handles).toContain(h);
+  // A value past 2^32 per kind, distinct per field (a lane mix-up shows), written and read back; an entity is a live one.
+  const marked = engine.world.find("marked");
+  if (marked === null) throw new Error("no marked entity");
+  const written: Record<string, number> = {};
+  handles.forEach((h, k) => (written[`f${h}`] = h === "Entity" ? (marked as number) : 2 ** 32 * (k + 1) + 7 * (k + 1)));
+  must(engine.world.set(marked as never, Every as never, written as never));
+  const back = must(engine.world.get(marked as never, Every as never)) as Record<string, unknown>;
+  for (const h of handles) expect([h, back[`f${h}`]]).toEqual([h, written[`f${h}`]]);
+  // And a list of one keeps it too.
+  const e = must(engine.world.spawn({ name: "fonts" }));
+  must(engine.world.insert(e, Fonts as never, { fonts: [2 ** 33 + 1, 5], style: 2 ** 34 + 3 } as never));
+  expect(must(engine.world.get(e, Fonts as never))).toMatchObject({ fonts: [2 ** 33 + 1, 5], style: 2 ** 34 + 3 });
 });

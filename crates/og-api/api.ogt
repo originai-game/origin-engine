@@ -662,7 +662,7 @@ module reflect {
   doc "Reflection: components and resources are declared once with their field layout and metadata, and registered by name."
   doc "The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field."
   doc "A field holds one value, or a list of at most a fixed number of one number type or handle: `list(u32(), 8)`, `list(Asset(), 4)` (the list factory below). A list is read as a frozen copy (`push` throws) and written whole (`chain.passes = [...chain.passes, h]`); one over its capacity is refused, never truncated. A few vectors are numbered fields (`p0` to `p7`, as og.CameraRail does); a list of things with fields of their own is an entity each, with its own component, looped over by a query (a ring of skid marks, the laps of a race); a long record (a lap's taped inputs) is text in `str` fields of at most 4,096 bytes each, chunked over entities. Keep none of it in module variables: they are not world state, so a snapshot, a replay and a hot reload lose them."
-  doc "A handle (an og.load answer, a texture, a sound, a geometry, a material, an entity) is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Sound()`, `Geometry()`, `Material()`, `Entity()`, the factories of the API's handle types), in a component or a resource. A `u32` field refuses one (handles pass 2^32: `4294967298 is not a u32`); an `f64` holds the number but loses its type."
+  doc "A handle (an og.load answer, a texture, a sound, a geometry, a material, an entity) is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Sound()`, `Font()`, `Style()`, `Geometry()`, `Material()`, `Entity()`: every handle type of the API has its factory, named as the type), never cast to another kind, in a component or a resource. A `u32` field refuses one (handles pass 2^32: `4294967298 is not a u32`); an `f64` holds the number but loses its type."
   place top
 
   struct FieldOptions {
@@ -3073,6 +3073,13 @@ module render {
     value Palette
   }
 
+  column Look {
+    doc "A Look handle field (0 is none): a look og.load.look answered, kept for og.render.applyLook."
+    array Uint32Array
+    stride 2
+    value Look
+  }
+
   enum DitherPattern {
     doc "The threshold pattern Stylise.dither spreads the steps of posterize and palette with."
     variant none "No dither: every pixel rounds to its nearest step or colour, in flat bands."
@@ -4077,6 +4084,13 @@ module render {
   }
 
   handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read."
+
+  column Shader {
+    doc "A Shader handle field (0 is none): a material shader og.load.shader answered, kept for og.render.shaderMaterial."
+    array Uint32Array
+    stride 2
+    value Shader
+  }
 
   fn shaderMaterial {
     doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest."
@@ -5414,6 +5428,20 @@ module load {
     array Uint32Array
     stride 2
     value Sound
+  }
+
+  column Font {
+    doc "A Font handle field (0 is none): a font og.load.font answered, kept for og.render.text or og.ui.configure."
+    array Uint32Array
+    stride 2
+    value Font
+  }
+
+  column Style {
+    doc "A Style handle field (0 is none): a UI style og.load.style answered, kept for og.ui.configure."
+    array Uint32Array
+    stride 2
+    value Style
   }
 
   enum LoadStatus {
@@ -8027,6 +8055,13 @@ module anim {
   }
 
   handle Rig "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright."
+
+  column Rig {
+    doc "A Rig handle field (0 is none): a humanoid map og.load.rig answered."
+    array Uint32Array
+    stride 2
+    value Rig
+  }
 
   struct HumanBone {
     doc "One standard humanoid bone of a skeleton."
