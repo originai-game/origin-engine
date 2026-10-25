@@ -1539,8 +1539,10 @@ pub struct Renderer {
     /// when a scene first draws a material with array maps (`material.rs`).
     array_maps: Option<material::ArrayMaps>,
     /// The copy of the opaque scene transmission refracts, with its mip
-    /// chain, at the renderer's size (made when a frame first needs it).
-    transmission: Option<wgpu::Texture>,
+    /// chain, at the renderer's size (made when a frame first needs it),
+    /// its view and the chain's views and bind groups (made with it, not
+    /// every frame).
+    transmission: Option<(wgpu::Texture, wgpu::TextureView, mips::MipChain)>,
     /// The frame bind group (camera, shadow maps, IBL) and the sky pass's
     /// (the sky cube) for the sky they were generated from.
     environment: Option<(
@@ -7096,12 +7098,13 @@ impl Renderer {
             .any(|r| batches[r.0 as usize].transmissive)
             || skinned_visible.iter().any(|b| b.transmissive);
         if transmission {
+            self.mips.prepare(&self.device, HDR_FORMAT);
             let stale = self
                 .transmission
                 .as_ref()
-                .is_none_or(|t| (t.width(), t.height()) != (self.width, self.height));
+                .is_none_or(|(t, ..)| (t.width(), t.height()) != (self.width, self.height));
             if stale {
-                self.transmission = Some(self.device.create_texture(&wgpu::TextureDescriptor {
+                let texture = self.device.create_texture(&wgpu::TextureDescriptor {
                     label: Some("transmission"),
                     size: wgpu::Extent3d {
                         width: self.width,
@@ -7116,15 +7119,17 @@ impl Renderer {
                         | wgpu::TextureUsages::TEXTURE_BINDING
                         | wgpu::TextureUsages::COPY_DST,
                     view_formats: &[],
-                }));
+                });
+                let view = texture.create_view(&Default::default());
+                let chain = self.mips.chain(&self.device, &texture);
+                self.transmission = Some((texture, view, chain));
             }
-            self.mips.prepare(&self.device, HDR_FORMAT);
         }
         let transmission_view = self
             .transmission
             .as_ref()
             .filter(|_| transmission)
-            .map(|t| t.create_view(&Default::default()));
+            .map(|(_, view, chain)| (view, chain));
         self.graph
             .prepare(
                 &self.device,
@@ -7415,7 +7420,7 @@ impl Renderer {
                             wgpu::BindingResource::TextureView(atlas_view),
                             wgpu::BindingResource::Sampler(&self.trilinear_sampler),
                             wgpu::BindingResource::TextureView(
-                                transmission_view.as_ref().unwrap_or(&self.post.white),
+                                transmission_view.map_or(&self.post.white, |(v, _)| v),
                             ),
                         ],
                     )
@@ -9341,13 +9346,13 @@ impl Renderer {
                                 size,
                             );
                         }
-                        if let Some(view) = &transmission_view {
+                        if let Some((view, chain)) = transmission_view {
                             encoder.copy_texture_to_texture(
                                 hdr.texture().as_image_copy(),
                                 view.texture().as_image_copy(),
                                 size,
                             );
-                            self.mips.record(&self.device, &mut encoder, view.texture());
+                            self.mips.record_chain(&mut encoder, chain);
                         }
                         pass = begin(&mut encoder, false);
                         pass.set_bind_group(0, frame_bind_group, &[]);

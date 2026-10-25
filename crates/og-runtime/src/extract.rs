@@ -16,7 +16,7 @@
 //! - the text `og.render.text` queued during the tick, with cooked
 //!   multi-page MSDF fonts mapped to one `MsdfFont` per page.
 
-use super::codec::Layout;
+use super::codec::{Layout, Rec, Row, Slot as FieldSlot};
 use glam::{Mat4, Quat, Vec3};
 use og_ecs::{Entity, QueryDesc, World};
 use og_render::{FontHandle, MaterialHandle, MeshHandle, RenderScene};
@@ -1029,39 +1029,59 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // Models: posed by og-anim when the entity has a Skeleton.
     let posed = super::fx::skeletons(world, rs);
     let mut keys: Vec<(u64, u32)> = Vec::new();
-    let model_rows = layouts
-        .model
-        .as_ref()
-        .map(|m| rows(world, m))
-        .unwrap_or_default();
     // Each model's own tint and flash ride in its instances' records
     // (kestrel-stair #11: a glTF's materials are shared by every instance),
     // with its shadow flags (on unless the model says otherwise). A hidden
-    // model draws nothing (meridian-loop #14).
-    let model_parts: Vec<(u64, u64, Parts, super::fx::ModelLook, f32)> = model_rows
-        .into_iter()
-        .filter(|(_, v)| on(v, "visible", true))
-        .filter_map(|(e, v)| {
-            let bias = f(&v, "lodBias", 1.0).max(0.0);
-            let asset = v["asset"].as_f64().unwrap_or(0.0) as u64;
-            let look = super::fx::ModelLook {
-                fx: og_render::InstanceFx {
-                    flash: f(&v, "flash", 0.0),
-                    flash_color: color(&v["flashColor"], 1.0),
-                    tint: color(&v["tint"], 1.0),
-                },
-                cast: on(&v, "castShadow", true),
-                receive: on(&v, "receiveShadow", true),
-            };
-            // A static model with a bake draws its lightmapped parts.
-            let lightmapped = (baked && on(&v, "static", false))
-                .then(|| rs.baked.overrides.get(&e))
-                .flatten();
-            lightmapped
-                .or_else(|| models.get(&asset))
-                .map(|p| (e, asset, p.clone(), look, bias))
-        })
-        .collect();
+    // model draws nothing (meridian-loop #14). The rows are read in place
+    // by offset, the fields resolved once a frame: decoding each row to
+    // JSON was about a third of Lantern Vale's extraction
+    // (tests/evidence/r4/perf-ui/NOTES.md).
+    let model_parts: Vec<(u64, u64, Parts, super::fx::ModelLook, f32)> = match &layouts.model {
+        Some(layout) => {
+            let slot = |key| FieldSlot::of(layout, key);
+            let (visible, lod_bias, asset) = (slot("visible"), slot("lodBias"), slot("asset"));
+            let (flash, flash_color, tint) = (slot("flash"), slot("flashColor"), slot("tint"));
+            let (cast, receive) = (slot("castShadow"), slot("receiveShadow"));
+            let is_static = slot("static");
+            let rows = world
+                .id_by_name(&layout.schema)
+                .map(|id| super::feel::byte_rows(world, id, layout))
+                .unwrap_or_default();
+            rows.iter()
+                .filter_map(|(e, bytes)| {
+                    let (e, v) = (*e, Row::new(layout, bytes));
+                    let num = |s: &FieldSlot, d: f32| v.num(s).map_or(d, |x| x as f32);
+                    let on = |s: &FieldSlot, d: bool| v.flag(s).unwrap_or(d);
+                    let rgb = |s: &FieldSlot| {
+                        let lane = |l| v.lane(s, l).map_or(1.0, |x| x as f32);
+                        Vec3::new(lane("r"), lane("g"), lane("b"))
+                    };
+                    if !on(&visible, true) {
+                        return None;
+                    }
+                    let bias = num(&lod_bias, 1.0).max(0.0);
+                    let asset = v.num(&asset).unwrap_or(0.0) as u64;
+                    let look = super::fx::ModelLook {
+                        fx: og_render::InstanceFx {
+                            flash: num(&flash, 0.0),
+                            flash_color: rgb(&flash_color),
+                            tint: rgb(&tint),
+                        },
+                        cast: on(&cast, true),
+                        receive: on(&receive, true),
+                    };
+                    // A static model with a bake draws its lightmapped parts.
+                    let lightmapped = (baked && on(&is_static, false))
+                        .then(|| rs.baked.overrides.get(&e))
+                        .flatten();
+                    lightmapped
+                        .or_else(|| models.get(&asset))
+                        .map(|p| (e, asset, p.clone(), look, bias))
+                })
+                .collect()
+        }
+        None => Vec::new(),
+    };
     let mesh_rows = layouts
         .mesh
         .as_ref()

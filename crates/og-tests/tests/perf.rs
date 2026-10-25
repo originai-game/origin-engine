@@ -169,6 +169,17 @@ fn perf_lights_256() {
     perf("lights-256");
 }
 
+/// Five transmissive objects: every frame copies the opaque scene and
+/// fills its mip chain for them to refract. The copy's view and its
+/// chain's views and bind groups are made with the copy, not each frame
+/// (tests/evidence/r4/perf-ui/NOTES.md: a view made each frame of a
+/// texture still in flight waited for the GPU on lavapipe).
+#[test]
+#[ignore]
+fn perf_materials_physical() {
+    perf("materials-physical");
+}
+
 #[test]
 #[ignore]
 fn perf_showcase() {

@@ -114,36 +114,61 @@ impl MipGenerator {
         encoder: &mut crate::Encoder,
         texture: &wgpu::Texture,
     ) {
-        let pipeline = &self.pipelines[&texture.format()];
-        let level = |mip: u32| {
-            texture.create_view(&wgpu::TextureViewDescriptor {
-                label: Some("mip"),
-                base_mip_level: mip,
-                mip_level_count: Some(1),
-                ..Default::default()
+        self.record_chain(encoder, &self.chain(device, texture));
+    }
+
+    /// The views and bind groups that fill `texture`'s levels: made once
+    /// for a texture whose levels are filled every frame
+    /// ([`MipGenerator::record_chain`]). Making them each frame was 20
+    /// views and 10 bind groups a frame for a 1280 x 720 copy, and a view
+    /// of a texture the GPU is still reading waited for it on lavapipe
+    /// (tests/evidence/r4/perf-ui/NOTES.md).
+    pub(crate) fn chain(&self, device: &wgpu::Device, texture: &wgpu::Texture) -> MipChain {
+        let levels: Vec<wgpu::TextureView> = (0..texture.mip_level_count())
+            .map(|mip| {
+                texture.create_view(&wgpu::TextureViewDescriptor {
+                    label: Some("mip"),
+                    base_mip_level: mip,
+                    mip_level_count: Some(1),
+                    ..Default::default()
+                })
             })
-        };
-        for mip in 1..texture.mip_level_count() {
-            let source = level(mip - 1);
-            let target = level(mip);
-            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("mipmap"),
-                layout: &self.layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&source),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&self.sampler),
-                    },
-                ],
-            });
+            .collect();
+        let groups = levels
+            .iter()
+            .take(levels.len().saturating_sub(1))
+            .map(|source| {
+                device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("mipmap"),
+                    layout: &self.layout,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: wgpu::BindingResource::TextureView(source),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: wgpu::BindingResource::Sampler(&self.sampler),
+                        },
+                    ],
+                })
+            })
+            .collect();
+        MipChain {
+            format: texture.format(),
+            levels,
+            groups,
+        }
+    }
+
+    /// Records passes filling levels 1.. of `chain`'s texture from level 0.
+    pub(crate) fn record_chain(&self, encoder: &mut crate::Encoder, chain: &MipChain) {
+        let pipeline = &self.pipelines[&chain.format];
+        for (target, bind_group) in chain.levels.iter().skip(1).zip(&chain.groups) {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("mipmap"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &target,
+                    view: target,
                     depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
@@ -157,10 +182,18 @@ impl MipGenerator {
                 multiview_mask: None,
             });
             pass.set_pipeline(pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
+            pass.set_bind_group(0, bind_group, &[]);
             pass.draw(0..3, 0..1);
         }
     }
+}
+
+/// A texture's levels as views, and the bind group that reads each level
+/// but the last ([`MipGenerator::chain`]).
+pub(crate) struct MipChain {
+    format: wgpu::TextureFormat,
+    levels: Vec<wgpu::TextureView>,
+    groups: Vec<wgpu::BindGroup>,
 }
 
 /// The mip generator's module (`crate::shaders` validates it).
