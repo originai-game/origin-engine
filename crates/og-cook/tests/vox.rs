@@ -221,11 +221,13 @@ fn a_vox_with_and_without_a_scene_graph_cooks_to_the_same_bounds() {
 /// 0.98's animation) cooks to a model with a `#anim` blob: `voxFps` and
 /// `voxClip` give its clips, whose visibility channels show one frame's
 /// mesh node at a time. A folded frame is hidden, not a joint scaled to
-/// 0: every joint rests at scale 1, no clip has a scale channel, and the
-/// frames after 0 are hidden at rest. Compressed (`animation { compress
+/// 0, and a frame that never moves has no joint at all: the file has no
+/// skin, every node rests at scale 1, no clip has a transform channel, and
+/// the frames after 0 are hidden at rest. Compressed (`animation { compress
 /// true }`, the loosest tolerance), the flags are the same. Before the
 /// visibility track, each frame was a STEP scale of 0 or 1 on its joint,
-/// and every folded frame still cost its draw.
+/// and every folded frame still cost its draw; before frames without
+/// motion lost their joints, each was skinned to one (a palette matrix).
 #[test]
 fn an_animated_vox_cooks_its_frames_into_clips() {
     let frames = vec![
@@ -260,23 +262,17 @@ fn an_animated_vox_cooks_its_frames_into_clips() {
         .map(|c| (c.name.as_str(), c.duration))
         .collect();
     assert_eq!(clips, vec![("idle", 0.25), ("grow", 0.75)]);
-    assert_eq!(anim.skeleton.skins.len(), 1);
-    assert_eq!(anim.skeleton.skins[0].joints.len(), 3);
     let sk = &anim.skeleton;
-    let joints = &sk.skins[0].joints;
+    assert!(sk.skins.is_empty(), "no frame moves: no joint");
     assert!(
-        joints
-            .iter()
-            .all(|&j| sk.nodes[j as usize].rest.scale == glam::Vec3::ONE),
-        "no joint is scaled to 0"
+        sk.nodes.iter().all(|n| n.rest.scale == glam::Vec3::ONE),
+        "nothing is scaled to 0"
     );
-    // Frame k's mesh node is the node written before its joint.
-    let mesh_nodes: Vec<u32> = joints.iter().map(|j| j - 1).collect();
-    assert!(
-        mesh_nodes
-            .iter()
-            .all(|&n| sk.nodes[n as usize].mesh != og_anim::NONE)
-    );
+    // Frame k's mesh node.
+    let mesh_nodes: Vec<u32> = (0..sk.nodes.len() as u32)
+        .filter(|&n| sk.nodes[n as usize].mesh != og_anim::NONE)
+        .collect();
+    assert_eq!(mesh_nodes.len(), 3);
     assert_eq!(sk.hidden, mesh_nodes[1..], "frames 1 and 2 hidden at rest");
     assert!(
         anim.clips
@@ -310,12 +306,8 @@ fn an_animated_vox_cooks_its_frames_into_clips() {
             .collect()
     };
     assert_eq!(frames_of(&packed), frames_of(&plain_frames));
-    // Every frame's primitive is skinned whole to its joint.
-    assert_eq!(anim.skin_streams.len(), 3);
-    for (k, s) in anim.skin_streams.iter().enumerate() {
-        assert!(s.joints.iter().all(|j| j[0] as usize == k));
-        assert!(s.weights.iter().all(|w| (w[0] - 1.0).abs() < 1e-4));
-    }
+    // No frame's primitive is skinned: each is drawn as it rests, when shown.
+    assert!(anim.skin_streams.is_empty());
     // Without settings: one clip `frames` of every frame at 10 per second.
     let plain = bundle.load_animation("models/plain.vox").unwrap();
     let clips: Vec<(&str, f32)> = plain
