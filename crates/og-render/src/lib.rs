@@ -142,7 +142,7 @@ mod headless;
 
 pub use area::{CookieLayers, LightCookie, MAX_COOKIE_LAYERS, RECT_SHADOW_FOV, cookie_layers};
 pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
-pub use capture::{CAPTURE_TIMEOUT, CaptureRequest};
+pub use capture::{CAPTURE_TIMEOUT, CaptureRequest, png};
 pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS, UNIFORM_LIGHT_REFS};
 pub use custom::{FULL_SHADER_ENTRIES, example as example_full_shader};
 pub use effects::*;

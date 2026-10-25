@@ -9,6 +9,12 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- Faster capture PNGs: the probe's `capture`, `sweep` and `screenshot`
+  encode with fdeflate (rows filtered `Up`, deflated as they are
+  filtered) instead of zlib level 6, 10 to 35 times faster on a
+  1280×720 frame, natively and in the browser. The pixels decode exactly
+  as before; the files are larger (about 1.5 times on a detailed frame, up
+  to 8 times on a flat one).
 - Mirroring without `og.anim.mirror`: `mirror true` on an `animgraph`
   clip plays it on the other side of the skeleton (made once per
   skeleton and clip and kept, the same clip `og.anim.mirror` makes), and

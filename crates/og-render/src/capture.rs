@@ -16,6 +16,8 @@
 //! presented frame copied into the offscreen target as well, so a capture
 //! started after it reads the frame the loop drew (`og render`'s
 //! every-frame capture on the web, through the probe's `Capture::frame`).
+//!
+//! [`png`] encodes a frame for the probe's `capture` and `screenshot`.
 
 use crate::{Encoder, RenderError, Renderer, RgbaImage};
 use std::future::Future;
@@ -310,4 +312,104 @@ impl Renderer {
             request.finish().await
         }
     }
+}
+
+/// A PNG of an RGBA8 image (the probe's `capture` and `screenshot`): every
+/// row but the first filtered with `Up` and deflated as it is filtered by
+/// fdeflate, whose one fixed code for small residuals and runs of zeros is
+/// made for filtered image rows. A 1280×720 frame encodes two to four times
+/// faster than at zlib's fastest level and 10 to 35 times faster than at
+/// level 6, in a file about 1.5 times level 6's on a detailed frame and up
+/// to 8 times on a flat one (`tests/evidence/r4/perf-capture/NOTES.md`);
+/// the pixels decode exactly.
+pub fn png(image: &RgbaImage) -> Vec<u8> {
+    let stride = image.width as usize * 4;
+    let mut out = Vec::with_capacity(image.pixels.len() / 3 + 64);
+    out.extend_from_slice(b"\x89PNG\r\n\x1a\n");
+    let mut ihdr = [0u8; 13];
+    ihdr[..4].copy_from_slice(&image.width.to_be_bytes());
+    ihdr[4..8].copy_from_slice(&image.height.to_be_bytes());
+    // 8-bit RGBA, deflate, adaptive filtering, not interlaced.
+    ihdr[8..].copy_from_slice(&[8, 6, 0, 0, 0]);
+    png_chunk(&mut out, b"IHDR", &ihdr);
+    // IDAT is written in place: its length is known once the stream ends.
+    let idat = out.len();
+    out.extend_from_slice(&[0, 0, 0, 0]);
+    out.extend_from_slice(b"IDAT");
+    let mut z = fdeflate::Compressor::new(out).expect("a Vec takes every write");
+    let mut row = vec![0u8; stride + 1];
+    let mut prev: &[u8] = &[];
+    for (y, cur) in image.pixels.chunks_exact(stride.max(1)).enumerate() {
+        if y == 0 {
+            row[0] = 0;
+            row[1..].copy_from_slice(cur);
+        } else {
+            row[0] = 2;
+            for ((f, c), p) in row[1..].iter_mut().zip(cur).zip(prev) {
+                *f = c.wrapping_sub(*p);
+            }
+        }
+        z.write_data(&row).expect("a Vec takes every write");
+        prev = cur;
+    }
+    let mut out = z.finish().expect("a Vec takes every write");
+    let len = (out.len() - idat - 8) as u32;
+    out[idat..idat + 4].copy_from_slice(&len.to_be_bytes());
+    let crc = crc32(&out[idat + 4..]);
+    out.extend_from_slice(&crc.to_be_bytes());
+    png_chunk(&mut out, b"IEND", &[]);
+    out
+}
+
+fn png_chunk(out: &mut Vec<u8>, kind: &[u8; 4], data: &[u8]) {
+    out.extend_from_slice(&(data.len() as u32).to_be_bytes());
+    let at = out.len();
+    out.extend_from_slice(kind);
+    out.extend_from_slice(data);
+    let crc = crc32(&out[at..]);
+    out.extend_from_slice(&crc.to_be_bytes());
+}
+
+/// CRC-32 (ISO-HDLC, PNG's) sixteen bytes at a time: a byte-at-a-time
+/// table was a third of the encode once deflate was fast. The tables are
+/// made on first use, not stored in the module.
+fn crc32(data: &[u8]) -> u32 {
+    static TABLES: std::sync::OnceLock<Box<[[u32; 256]; 16]>> = std::sync::OnceLock::new();
+    let t = TABLES.get_or_init(|| {
+        let mut t = Box::new([[0u32; 256]; 16]);
+        for n in 0..256 {
+            let mut c = n as u32;
+            for _ in 0..8 {
+                c = if c & 1 != 0 {
+                    0xedb8_8320 ^ (c >> 1)
+                } else {
+                    c >> 1
+                };
+            }
+            t[0][n] = c;
+        }
+        for k in 1..16 {
+            for n in 0..256 {
+                let p = t[k - 1][n];
+                t[k][n] = (p >> 8) ^ t[0][(p & 0xff) as usize];
+            }
+        }
+        t
+    });
+    let mut c = !0u32;
+    let (blocks, rest) = data.as_chunks::<16>();
+    for b in blocks {
+        let x = c ^ u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+        c = t[15][(x & 0xff) as usize]
+            ^ t[14][((x >> 8) & 0xff) as usize]
+            ^ t[13][((x >> 16) & 0xff) as usize]
+            ^ t[12][(x >> 24) as usize];
+        for (i, &byte) in b.iter().enumerate().skip(4) {
+            c ^= t[15 - i][byte as usize];
+        }
+    }
+    for &b in rest {
+        c = t[0][((c ^ u32::from(b)) & 0xff) as usize] ^ (c >> 8);
+    }
+    !c
 }
