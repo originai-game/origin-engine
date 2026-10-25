@@ -413,6 +413,7 @@ chain; palettes use exact `Mat4` products.
 | `graph.rs` (interruption) | per `interrupt` rule, which of the new state's, the source's and an `any` transition cut a 0.5 s fade at once and which wait for it to complete; a bad rule refused with its line; a guarded fade restored from a snapshot continues to the same hashes and states |
 | `layers.rs` | a masked override layer leaves the nodes outside its branches bit for bit, takes a named node's whole branch and blends a half-weight branch halfway; an additive layer's mask; a bad mask weight refused with its line; a synced upper layer samples its clip at the base's phase (not its own); a transition inside a group continues from the old state's phase |
 | `spring.rs` | a three-joint tail trails a body moving at 2 m/s by over 0.1 m, swings past rest when it stops and settles onto the animated pose, bones keeping their length (without a spring the tip rides rigidly); a model-space spring ignores the entity's motion; gravity droops a 1 Hz tail over 3× a 4 Hz one; a single-joint spring turns only that joint; a bad joint refused with the field; a restore mid-swing continues to the same hashes and pose |
+| `retarget.rs` (hands) | finger names of every scheme on their bones; a curled index (0.5 rad per joint) on a T-posed source bends the A-posed Mixamo target's by the same angles (1e-3), its bones keeping their lengths, with the arm not animated; an Unreal arm's forearm twist bone, halfway, takes half the hand's 1.2 rad roll and the upper arm's twist bone half the upper arm's 0.6 against the spine; a rig lifted 0.2 m with `footHeight 0.1` plants its feet on that ground (2 mm), without it they stay over 0.25 m up; per-side heights and a bad line |
 | `retarget.rs` | the schemes detected from the walker's and a Mixamo rig's names, rig files (forced scheme, a bone named and one removed, mistakes by line); the walk retargeted onto longer legs keeps planted feet on the ground and still, without foot IK it misses by over 1 cm; the hips' travel scaled; an A-posed arm waves parallel to the T-posed one; the clip plays on the tall rig; side tokens swap in every scheme's names; a mirrored walk moves each foot as the other did, reflected, within 1e-5 (on the walker and on the tall Mixamo rig), the hips' sway flips, and mirroring twice gives the walk back |
 
 `crates/og-cook/tests/anim_compress.rs` checks compressed clips against
@@ -431,10 +432,18 @@ The walker rig the tests use is `tests/support/` (procedural) and
 
 ## Retargeting (phase 2)
 
-`HumanoidMap` says which node of a skeleton is each of the 22 standard
+`HumanoidMap` says which node of a skeleton is each of the 52 standard
 humanoid bones (`HUMAN_BONES`, VRM's and Unity's names: `hips`, `spine`,
 `chest`, `upperChest`, `neck`, `head`, then per side `Shoulder`,
-`UpperArm`, `LowerArm`, `Hand`, `UpperLeg`, `LowerLeg`, `Foot`, `Toes`).
+`UpperArm`, `LowerArm`, `Hand`, `UpperLeg`, `LowerLeg`, `Foot`, `Toes`,
+then per hand VRM 1.0's fingers: `ThumbMetacarpal`, `ThumbProximal`,
+`ThumbDistal` and `Proximal`, `Intermediate`, `Distal` of `Index`,
+`Middle`, `Ring` and `Little`; the 22 body bones keep their indices).
+Finger names are read in every scheme: Mixamo's `LeftHandIndex1`..`3`
+(the `4` is the end, not a bone), VRoid's `J_Bip_L_Thumb1`, Rigify's
+`DEF-thumb.01.L` and `DEF-f_pinky.02.R`, Unreal's `index_01_l`, plain
+`index.01.L` or `finger_index1_L` (`pinky` and `little` alike; thumb 1
+is the metacarpal).
 `HumanoidMap::detect` reads it from the node names in each scheme of
 `SCHEMES` and keeps the one that recognises most bones:
 
@@ -457,6 +466,7 @@ version 1
 scheme auto                 # auto (default) | mixamo | vrm | unity | rigify | ue | blender
 hips "Root_Pelvis"          # a standard bone and the node it is
 leftToes none               # this rig has no such bone
+footHeight 0.08             # the ankles above the ground standing: one height, or the left's and the right's
 ```
 
 `retarget(source, source_map, target, target_map, clip, options)` rewrites a
@@ -479,7 +489,30 @@ clip of the source rig for the target, frame by frame:
   scaled the same way, and turned back to its transferred rotation; when a
   leg cannot reach (a straight source leg on other proportions) the hips
   are lowered until it does. A planted source foot stays planted on the
-  target's ground and does not slide.
+  target's ground and does not slide;
+- the ground is y = 0 of each rig's model space, each foot standing
+  `footHeight` above it (the rig file's, else the rest pose's foot
+  height): a foot's goal is the target's height plus the source foot's
+  height above its own, scaled, so a rig whose rest pose floats or
+  crouches still plants its feet on the ground (the leg ratio is the hips'
+  rest height above those foot heights). Without `footHeight` on either
+  rig the result is bit for bit what it was;
+- fingers turn from their hand: a finger's model rotation is the target
+  hand's current one times the transferred change from hand to finger,
+  so a hand pose holds whatever the clip does to the arm (it equals the
+  plain transfer whenever the hand itself is animated); a hand points at
+  its middle finger (else index, ring, little) for its rest correction;
+- the target's twist bones (unmapped nodes whose name says `twist`, as
+  Unreal's `lowerarm_twist_01_l`, or Rigify's deform segments
+  `DEF-….001`) on an upper or lower arm or leg get rotation channels: a
+  twist bone at fraction `t` along the segment from bone A to the next
+  bone C (its rest position projected on A→C) twists about A's axis by
+  `t·τ(C rel A) − (1 − t)·τ(A rel its parent)` (swing-twist angles from
+  rest), so the twist runs linearly from none relative to A's parent at
+  A's head to C's at its end (a forearm does not candy-wrap; an upper
+  arm's twist bone counter-rolls). Every other node keeps its model
+  rotation. `Retargeted::twists` counts them. A rig without twist bones
+  takes the old path, bit for bit.
 
 The cook applies it to a model's `animation { library … }` (og-cook's
 README) and the runtime to `og.anim.retarget`. `tests/retarget.rs` retargets
@@ -512,9 +545,6 @@ symmetric rest pose; mirroring twice gives the clip back (within f32).
 
 ## Owed
 
-- **Retargeting**: hands and fingers (no finger bones in the map), twist
-  bones driven from their parents, per-character foot heights other than
-  the rest pose's.
 - Mirroring at cook time or per graph state (a `mirror true` on a graph
   clip): today a mirrored clip is made at run time with `og.anim.mirror`
   and registered like any other. Cooked clips can be quantised with

@@ -117,7 +117,7 @@ impl AnimSettings {
         }
         for l in &self.libraries {
             s.push_str(&format!(
-                " library {l:?} retarget-v1 footIk {}",
+                " library {l:?} retarget-v2 footIk {}",
                 self.foot_ik
             ));
         }
@@ -638,8 +638,8 @@ pub fn cook(
             )
             .map_err(|e| fail(format!("clip '{}': {}", c.name, e.reason())))?;
             notes.push(format!(
-                "library '{lib}': clip '{}' retargeted ({} -> {} names, {} bones, {} legs solved, travel x{:.3})",
-                c.name, source_map.scheme, target_map.scheme, r.bones, r.legs, r.scale
+                "library '{lib}': clip '{}' retargeted ({} -> {} names, {} bones, {} legs solved, {} twist bones, travel x{:.3})",
+                c.name, source_map.scheme, target_map.scheme, r.bones, r.legs, r.twists, r.scale
             ));
             extra.push(r.clip);
         }

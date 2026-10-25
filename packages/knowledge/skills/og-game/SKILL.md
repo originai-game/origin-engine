@@ -879,6 +879,21 @@ stride), and its legs are solved so planted feet stay on the ground
 (`footIk`, on by default). The fx-showcase `retarget` station is the
 pattern.
 
+Hands retarget too: the fingers are humanoid bones (VRM 1.0's
+`leftThumbMetacarpal` … `leftLittleDistal`, read from Mixamo's
+`LeftHandIndex1`, VRoid's `J_Bip_L_Index1`, Rigify's `DEF-f_index.01.L`,
+Unreal's `index_01_l`, plain `index.01.L`), each turning from its hand as
+the source's does, so a fist or a grip holds on an A-posed arm whatever
+the arm does. The target's twist bones (unmapped nodes named `twist`, such
+as Unreal's `lowerarm_twist_01_l`, or Rigify's `DEF-forearm.L.001`) take a
+share of their segment's roll by where they sit along it: none at the
+segment's head, the next bone's at its end, so a forearm does not
+candy-wrap. A character whose rest pose does not stand on the ground (an
+armature lifted off it, a crouched rest) says how high its ankles stand
+in its `type rig` file, `footHeight 0.08` (or `footHeight <left>
+<right>`); planted feet then land on that ground, not at the rest pose's
+foot height.
+
 **Mirroring.** `og.anim.mirror(world, { clip, skeleton })` answers a new
 clip that plays `clip` on the other side (a left-handed swing, a limp on
 the other leg, a turn the other way): left and right nodes are paired by

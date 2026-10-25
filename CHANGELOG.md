@@ -9,6 +9,16 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- Retargeting of hands and twist bones, and per-character foot heights:
+  the humanoid map gains VRM 1.0's 30 finger bones (read from Mixamo,
+  VRoid, Rigify, Unreal and plain names; `og.anim.humanoid` lists them),
+  fingers turn from their hand; the target's twist bones (`…twist…`,
+  Rigify's `DEF-….001`) take a share of their segment's twist; a `type
+  rig` file's `footHeight` (one, or left and right) sets where a
+  character's feet stand above the ground, so a rig whose rest pose does
+  not stand on it plants its feet there. Rigs without fingers, twist
+  bones or `footHeight` retarget bit for bit as before (the cook's
+  retarget stamp moves to `retarget-v2`).
 - `og.SpringBone` (spring/jiggle bones, three-vrm's VRMSpringBone: a
   joint chain whose tails follow their animated places by a damped spring
   under gravity, in world or model space, held at bone length; `lag`

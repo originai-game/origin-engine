@@ -357,3 +357,291 @@ fn a_mirrored_walk_moves_each_foot_as_the_other_did_reflected() {
     let toe = (tm.node("leftToes").unwrap(), tm.node("rightToes").unwrap());
     assert!(mirror_error(&t, &out.clip, &m, toe.0, toe.1) < 1e-4);
 }
+
+// ---- hands, fingers, twist bones and foot heights ----
+
+use og_core::glam::Quat;
+use support::{NodeDef, rz, skeleton_from_model};
+
+/// A T-posed source arm in Blender (Rigify-style finger) names: the arm
+/// along +x, an index finger and a thumb on the hand.
+fn hand_source() -> SkeletonAsset {
+    let i = Quat::IDENTITY;
+    let defs: Vec<NodeDef> = vec![
+        ("Rig", NONE, Vec3::ZERO, i),
+        ("hips", 0, Vec3::new(0.0, 1.0, 0.0), i),
+        ("spine", 1, Vec3::new(0.0, 1.3, 0.0), i),
+        ("upper_arm.L", 2, Vec3::new(0.2, 1.5, 0.0), i),
+        ("forearm.L", 3, Vec3::new(0.5, 1.5, 0.0), i),
+        ("hand.L", 4, Vec3::new(0.75, 1.5, 0.0), i),
+        ("f_index.01.L", 5, Vec3::new(0.83, 1.5, 0.0), i),
+        ("f_index.02.L", 6, Vec3::new(0.87, 1.5, 0.0), i),
+        ("f_index.03.L", 7, Vec3::new(0.90, 1.5, 0.0), i),
+        ("thumb.01.L", 5, Vec3::new(0.77, 1.5, 0.03), i),
+        ("thumb.02.L", 9, Vec3::new(0.80, 1.5, 0.05), i),
+        ("thumb.03.L", 10, Vec3::new(0.82, 1.5, 0.07), i),
+    ];
+    skeleton_from_model(&defs, 1.0)
+}
+
+/// An A-posed target in Mixamo names and bone frames (+Y along each bone).
+fn hand_target() -> SkeletonAsset {
+    let (c, s) = (
+        std::f32::consts::FRAC_1_SQRT_2,
+        std::f32::consts::FRAC_1_SQRT_2,
+    );
+    let at = |d: f32| Vec3::new(0.2 + d * c, 1.6 - d * s, 0.0);
+    let r = rz(-135.0);
+    let defs: Vec<NodeDef> = vec![
+        ("Armature", NONE, Vec3::ZERO, Quat::IDENTITY),
+        (
+            "mixamorig:Hips",
+            0,
+            Vec3::new(0.0, 1.1, 0.0),
+            Quat::IDENTITY,
+        ),
+        (
+            "mixamorig:Spine",
+            1,
+            Vec3::new(0.0, 1.4, 0.0),
+            Quat::IDENTITY,
+        ),
+        ("mixamorig:LeftArm", 2, at(0.0), r),
+        ("mixamorig:LeftForeArm", 3, at(0.32), r),
+        ("mixamorig:LeftHand", 4, at(0.6), r),
+        ("mixamorig:LeftHandIndex1", 5, at(0.69), r),
+        ("mixamorig:LeftHandIndex2", 6, at(0.74), r),
+        ("mixamorig:LeftHandIndex3", 7, at(0.78), r),
+        ("mixamorig:LeftHandIndex4", 8, at(0.81), r),
+    ];
+    skeleton_from_model(&defs, 1.0)
+}
+
+/// Angle between two directions.
+fn angle(a: Vec3, b: Vec3) -> f32 {
+    a.normalize().dot(b.normalize()).clamp(-1.0, 1.0).acos()
+}
+
+#[test]
+fn fingers_are_humanoid_bones_and_a_curl_carries_over() {
+    // Every scheme's finger names land on the finger bones.
+    let s = hand_source();
+    let sm = HumanoidMap::detect(&s);
+    assert_eq!(sm.scheme, "blender");
+    assert_eq!(sm.node("leftIndexProximal"), s.node("f_index.01.L"));
+    assert_eq!(sm.node("leftIndexDistal"), s.node("f_index.03.L"));
+    assert_eq!(sm.node("leftThumbMetacarpal"), s.node("thumb.01.L"));
+    let t = hand_target();
+    let tm = HumanoidMap::detect(&t);
+    assert_eq!(tm.scheme, "mixamo");
+    assert_eq!(
+        tm.node("leftIndexProximal"),
+        t.node("mixamorig:LeftHandIndex1")
+    );
+    assert_eq!(
+        tm.node("leftIndexIntermediate"),
+        t.node("mixamorig:LeftHandIndex2")
+    );
+    // Mixamo's fourth index joint is the finger's end, not a bone.
+    assert_eq!(tm.count(), 8, "{:?}", tm.bones(&t));
+    for (name, bone) in [
+        ("J_Bip_L_Index1", "leftIndexProximal"),
+        ("J_Bip_R_Thumb3", "rightThumbDistal"),
+        ("J_Bip_L_Little2", "leftLittleIntermediate"),
+        ("DEF-f_pinky.02.R", "rightLittleIntermediate"),
+        ("DEF-thumb.01.L", "leftThumbMetacarpal"),
+        ("index_03_l", "leftIndexDistal"),
+        ("middle_01_r", "rightMiddleProximal"),
+        ("mixamorig:RightHandRing2", "rightRingIntermediate"),
+        ("LeftMiddleDistal", "leftMiddleDistal"),
+    ] {
+        let skel = SkeletonAsset {
+            nodes: vec![SkeletonNode {
+                name: name.into(),
+                parent: NONE,
+                rest: Trs::IDENTITY,
+                mesh: NONE,
+            }],
+            skins: Vec::new(),
+        };
+        assert_eq!(HumanoidMap::detect(&skel).node(bone), Some(0), "{name}");
+    }
+
+    // A curl: each index joint turns 0.5 rad down (about the source's z).
+    let curl = |node: u32, name: &'static str| -> support::ChannelFn<'static> {
+        (
+            node,
+            name,
+            ChannelPath::Rotation,
+            4,
+            Box::new(move |t| {
+                og_core::math::quat_from_axis_angle(Vec3::Z, -0.5 * t)
+                    .to_array()
+                    .to_vec()
+            }),
+        )
+    };
+    let fist = support::clip(
+        "fist",
+        1.0,
+        &[],
+        vec![
+            curl(6, "f_index.01.L"),
+            curl(7, "f_index.02.L"),
+            curl(8, "f_index.03.L"),
+        ],
+    );
+    let out = retarget(&s, &sm, &t, &tm, &fist, &RetargetOptions::default()).unwrap();
+    let last = fist.frames - 1;
+    let (src, dst) = (frame_pose(&s, &fist, last), frame_pose(&t, &out.clip, last));
+    let bent = |m: &[Trs], hand: usize, a: usize, b: usize, c: usize| {
+        (
+            angle(
+                m[a].translation - m[hand].translation,
+                m[b].translation - m[a].translation,
+            ),
+            angle(
+                m[b].translation - m[a].translation,
+                m[c].translation - m[b].translation,
+            ),
+        )
+    };
+    let want = bent(&src, 5, 6, 7, 8);
+    let got = bent(&dst, 5, 6, 7, 8);
+    assert!(
+        (want.0 - 0.5).abs() < 1e-4 && (want.1 - 0.5).abs() < 1e-4,
+        "{want:?}"
+    );
+    assert!(
+        (got.0 - want.0).abs() < 1e-3 && (got.1 - want.1).abs() < 1e-3,
+        "the target's index bends {got:?}, the source's {want:?}"
+    );
+    // The fingers' bones keep the target's lengths.
+    let rest = t.model_space(&t.rest_pose());
+    for (a, b) in [(6, 7), (7, 8)] {
+        let l = (dst[b].translation - dst[a].translation).length();
+        let r = (rest[b].translation - rest[a].translation).length();
+        assert!((l - r).abs() < 1e-5);
+    }
+}
+
+/// The twist of `q` about unit `axis`, in radians.
+fn twist(q: Quat, axis: Vec3) -> f32 {
+    let p = Vec3::new(q.x, q.y, q.z).dot(axis);
+    let (p, w) = if q.w < 0.0 { (-p, -q.w) } else { (p, q.w) };
+    2.0 * p.atan2(w)
+}
+
+#[test]
+fn twist_bones_share_their_segments_twist() {
+    // An Unreal-named arm with a twist bone halfway along each segment.
+    let i = Quat::IDENTITY;
+    let defs: Vec<NodeDef> = vec![
+        ("root", NONE, Vec3::ZERO, i),
+        ("pelvis", 0, Vec3::new(0.0, 1.0, 0.0), i),
+        ("spine_01", 1, Vec3::new(0.0, 1.3, 0.0), i),
+        ("upperarm_l", 2, Vec3::new(0.2, 1.5, 0.0), i),
+        ("upperarm_twist_01_l", 3, Vec3::new(0.35, 1.5, 0.0), i),
+        ("lowerarm_l", 3, Vec3::new(0.5, 1.5, 0.0), i),
+        ("lowerarm_twist_01_l", 5, Vec3::new(0.625, 1.5, 0.0), i),
+        ("hand_l", 5, Vec3::new(0.75, 1.5, 0.0), i),
+    ];
+    let t = skeleton_from_model(&defs, 1.0);
+    let s = hand_source();
+    let (sm, tm) = (HumanoidMap::detect(&s), HumanoidMap::detect(&t));
+    assert_eq!(tm.scheme, "ue");
+    // The upper arm rolls 0.6 rad about its length, the hand 1.2.
+    let roll = |node: u32, name: &'static str, a: f32| -> support::ChannelFn<'static> {
+        (
+            node,
+            name,
+            ChannelPath::Rotation,
+            4,
+            Box::new(move |t| {
+                og_core::math::quat_from_axis_angle(Vec3::X, a * t)
+                    .to_array()
+                    .to_vec()
+            }),
+        )
+    };
+    let c = support::clip(
+        "roll",
+        1.0,
+        &[],
+        vec![roll(3, "upper_arm.L", 0.6), roll(5, "hand.L", 1.2)],
+    );
+    let out = retarget(&s, &sm, &t, &tm, &c, &RetargetOptions::default()).unwrap();
+    assert_eq!(out.twists, 2);
+    let m = frame_pose(&t, &out.clip, c.frames - 1);
+    let rest = t.model_space(&t.rest_pose());
+    // Twist of node `n` relative to node `of`, from rest, about +x.
+    let rel = |n: usize, of: usize| {
+        let now = m[of].rotation.conjugate() * m[n].rotation;
+        let then = rest[of].rotation.conjugate() * rest[n].rotation;
+        twist(now * then.conjugate(), Vec3::X)
+    };
+    // The hand keeps its whole roll, the forearm's twist bone half of it.
+    assert!((rel(7, 5) - 1.2).abs() < 1e-3, "hand {}", rel(7, 5));
+    assert!(
+        (rel(6, 5) - 0.6).abs() < 1e-3,
+        "forearm twist {}",
+        rel(6, 5)
+    );
+    // Halfway up the upper arm, half its roll against the spine.
+    assert!((rel(3, 2) - 0.6).abs() < 1e-3, "upper arm {}", rel(3, 2));
+    assert!(
+        (rel(4, 2) - 0.3).abs() < 1e-3,
+        "upper arm twist {}",
+        rel(4, 2)
+    );
+    // The forearm, a child of the upper arm (not of its twist bone), keeps
+    // its own pose.
+    assert!(rel(5, 3).abs() < 1e-3, "forearm {}", rel(5, 3));
+}
+
+#[test]
+fn a_rigs_foot_height_puts_its_feet_on_the_ground_not_where_its_rest_pose_has_them() {
+    // The walker's rig with its root lifted 0.2 m: its rest pose floats,
+    // its feet (ankles 0.1 m above the soles) at 0.3.
+    let s = support::skeleton();
+    let mut t = support::skeleton();
+    t.nodes[0].rest.translation.y = 0.2;
+    let sm = HumanoidMap::detect(&s);
+    let rig = RigAsset::parse("type rig\nversion 1\n---\nfootHeight 0.1\n").unwrap();
+    assert_eq!(rig.foot_height, Some([0.1, 0.1]));
+    assert_eq!(RigAsset::parse(&rig.to_text()).unwrap(), rig);
+    let tm = rig.map(&t).unwrap();
+    let walk = clip("walk");
+    let lowest = |out: &Retargeted| {
+        let foot = tm.node("leftFoot").unwrap();
+        foot_track(&t, &out.clip, foot)
+            .iter()
+            .map(|p| p.y)
+            .fold(f32::MAX, f32::min)
+    };
+    let src = FootPlants::new(&s, &walk, sm.node("leftFoot").unwrap()).lowest;
+    let on = retarget(&s, &sm, &t, &tm, &walk, &RetargetOptions::default()).unwrap();
+    let want = 0.1 + (src - 0.1) * on.scale;
+    assert!(
+        (lowest(&on) - want).abs() < 2e-3,
+        "the planted foot at {} m, the ground's {want}",
+        lowest(&on)
+    );
+    // From the rest pose, the feet stay 0.2 m up in the air.
+    let off = retarget(
+        &s,
+        &sm,
+        &t,
+        &HumanoidMap::detect(&t),
+        &walk,
+        &RetargetOptions::default(),
+    )
+    .unwrap();
+    assert!(lowest(&off) > 0.25, "{}", lowest(&off));
+    // One height per side, and mistakes by line.
+    let both = RigAsset::parse("type rig\nversion 1\n---\nfootHeight 0.08 0.12\n").unwrap();
+    assert_eq!(both.foot_height, Some([0.08, 0.12]));
+    assert_eq!(RigAsset::parse(&both.to_text()).unwrap(), both);
+    let e = RigAsset::parse("type rig\nversion 1\n---\nfootHeight 1 2 3\n").unwrap_err();
+    assert!(e.reason().contains("line 4"), "{e}");
+}
