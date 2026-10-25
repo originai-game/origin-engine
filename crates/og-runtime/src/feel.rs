@@ -1957,7 +1957,7 @@ pub(crate) struct FeelRender {
 /// Every row of a component as `(entity bits, packed bytes)`, in query
 /// order: read in place with [`Row`] (decoding each to JSON was most of a
 /// 2D frame's extraction: Hollowbell's 200 sprites).
-fn byte_rows(world: &World, id: SchemaId, layout: &Layout) -> Vec<(u64, Vec<u8>)> {
+pub(crate) fn byte_rows(world: &World, id: SchemaId, layout: &Layout) -> Vec<(u64, Vec<u8>)> {
     let q = QueryDesc {
         read: vec![layout.schema.clone()],
         ..QueryDesc::default()
