@@ -221,7 +221,8 @@ fn compressed_clips_stay_within_tolerance_and_shrink() {
             for (ca, cb) in a.channels.iter().zip(&b.channels) {
                 assert_eq!((ca.node, ca.path, ca.lanes), (cb.node, cb.path, cb.lanes));
                 let lanes = ca.lanes as usize;
-                for (x, y) in ca.samples.chunks(lanes).zip(cb.samples.chunks(lanes)) {
+                let (sa, sb) = (ca.decoded(a.frames), cb.decoded(b.frames));
+                for (x, y) in sa.chunks(lanes).zip(sb.chunks(lanes)) {
                     // A rotation and its negation are one rotation.
                     let flip = ca.path == og_anim::ChannelPath::Rotation
                         && x.iter().zip(y).map(|(p, q)| p * q).sum::<f32>() < 0.0;
@@ -298,6 +299,153 @@ fn compressed_clips_stay_within_tolerance_and_shrink() {
     cmp.check(&og_tests::compare::Tolerance::default())
         .unwrap_or_else(|e| panic!("the posed frames differ: {e}"));
     assert!(total_q < total_f32);
+}
+
+/// Frame `j` of every lane of a quantised channel, written out from the
+/// format's description (`og_cook::anim_codec`): the key on a kept frame,
+/// else a hold (STEP), a lerp per lane or a normalised lerp on the shorter
+/// arc between the kept frames around it. Independent of og-anim's
+/// sampler, which reads the keys where they lie.
+fn written_out(ch: &og_anim::Channel, frames: u32) -> Vec<f32> {
+    let og_anim::Samples::Quantized(q) = &ch.samples else {
+        return ch.decoded(frames);
+    };
+    let rotation = ch.path == og_anim::ChannelPath::Rotation;
+    let lanes = ch.lanes as usize;
+    let per = if rotation { 3 } else { lanes };
+    let key = |k: usize| -> Vec<f32> {
+        let w = &q.words[k * per..(k + 1) * per];
+        if rotation {
+            og_anim::unpack_quat([w[0], w[1], w[2]]).to_vec()
+        } else {
+            (0..lanes)
+                .map(|l| og_anim::dequantize(q.range[2 * l], q.range[2 * l + 1], w[l]))
+                .collect()
+        }
+    };
+    let kept: Vec<usize> = if q.frames.is_empty() {
+        (0..frames as usize).collect()
+    } else {
+        q.frames.iter().map(|&f| f as usize).collect()
+    };
+    let mut out = Vec::new();
+    for j in 0..frames as usize {
+        let k = kept.iter().rposition(|&f| f <= j).unwrap();
+        let (fa, a) = (kept[k], key(k));
+        if fa == j || ch.step {
+            out.extend(a);
+            continue;
+        }
+        let (fb, b) = (kept[k + 1], key(k + 1));
+        let u = (j - fa) as f32 / (fb - fa) as f32;
+        if rotation {
+            let a4 = [a[0], a[1], a[2], a[3]];
+            out.extend(og_anim::nlerp4(a4, [b[0], b[1], b[2], b[3]], u));
+        } else {
+            out.extend(a.iter().zip(&b).map(|(&x, &y)| x + (y - x) * u));
+        }
+    }
+    out
+}
+
+/// A world playing every clip of `anim` (one entity each, at speed 1, at
+/// 0.37 for times between frames, and backwards), with `clips` registered.
+fn playing(anim: &CookedAnimation, clips: &[ClipAsset]) -> og_ecs::World {
+    let mut w = og_ecs::World::new(&og_ecs::WorldDesc {
+        tick_rate: 60,
+        seed: 1,
+    })
+    .unwrap();
+    let sys = og_anim::install(&mut w).unwrap();
+    sys.add_skeleton(1, anim.skeleton.clone()).unwrap();
+    for (i, c) in clips.iter().enumerate() {
+        let handle = 100 + i as u64;
+        sys.add_clip(handle, c.clone()).unwrap();
+        for speed in [1.0, 0.37, -1.0] {
+            w.spawn((
+                og_anim::Transform::default(),
+                og_anim::Skeleton {
+                    asset: 1,
+                    ..og_anim::Skeleton::default()
+                },
+                og_anim::AnimationPlayer {
+                    speed,
+                    ..og_anim::AnimationPlayer::new(handle)
+                },
+            ))
+            .unwrap();
+        }
+    }
+    w
+}
+
+#[test]
+fn resident_quantised_clips_cost_their_cooked_bytes_and_pose_as_their_frames() {
+    let root = stage("resident", true);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let mut quantised_channels = 0;
+    for id in MODELS {
+        let anim = bundle.load_animation(id).unwrap();
+        // Resident: the clips' frames take what the blob's sample sections hold.
+        let resident: usize = anim.clips.iter().map(|c| c.sample_bytes()).sum();
+        assert_eq!(
+            resident,
+            sample_bytes(&root, id),
+            "{id}: resident sample bytes"
+        );
+        // The same clips with every frame written out as f32 (what the
+        // loader built before og-anim sampled the keys).
+        let written: Vec<ClipAsset> = anim
+            .clips
+            .iter()
+            .map(|c| ClipAsset {
+                channels: c
+                    .channels
+                    .iter()
+                    .map(|ch| {
+                        if let og_anim::Samples::Quantized(q) = &ch.samples
+                            && !q.frames.is_empty()
+                        {
+                            quantised_channels += 1;
+                        }
+                        og_anim::Channel {
+                            samples: og_anim::Samples::F32(written_out(ch, c.frames)),
+                            ..ch.clone()
+                        }
+                    })
+                    .collect(),
+                ..c.clone()
+            })
+            .collect();
+        let f32_bytes: usize = written.iter().map(|c| c.sample_bytes()).sum();
+        // (stout carries a skeleton and no clips.)
+        assert!(
+            resident < f32_bytes || resident == 0,
+            "{id}: {resident} B resident against {f32_bytes} B as f32"
+        );
+        // Every clip's frames read the same bits, frame by frame.
+        for (a, b) in anim.clips.iter().zip(&written) {
+            for (ca, cb) in a.channels.iter().zip(&b.channels) {
+                let (da, db) = (ca.decoded(a.frames), cb.decoded(b.frames));
+                assert!(
+                    da.iter().zip(&db).all(|(x, y)| x.to_bits() == y.to_bits()),
+                    "{id} '{}': node {} {:?} frames differ",
+                    a.name,
+                    ca.node,
+                    ca.path
+                );
+            }
+        }
+        // And og.anim poses them to the same world, tick by tick.
+        let mut qa = playing(&anim, &anim.clips);
+        let mut fa = playing(&anim, &written);
+        for tick in 0..150 {
+            qa.step().unwrap();
+            fa.step().unwrap();
+            assert_eq!(qa.world_hash(), fa.world_hash(), "{id}: tick {tick}");
+        }
+    }
+    assert!(quantised_channels > 0, "some channels keep reduced keys");
 }
 
 #[test]

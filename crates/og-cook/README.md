@@ -319,10 +319,18 @@ is 0 whatever the setting, so a compressed one keeps exactly the frames
 where the flag changes and the ends, and its unorm over [0, 1] rebuilds 0
 and 1 bit for bit (`anim_codec`'s unit test, `tests/vox.rs`).
 
-The loader rebuilds every frame (the same interpolation, scalar, in a fixed
-order, so every host gets the same floats) and og-anim samples the clip as
-an f32 one; a channel whose 16-bit quantisation alone would miss the
-tolerance stays f32. The tolerance is per lane in the channel's units
+The loader keeps each channel as stored (`anim_codec::samples`, og-anim's
+`Samples`: f32, one constant sample, or the quantised keys with their
+kept frames' indices and ranges), so a resident clip costs what its
+cooked form costs (`ClipAsset::sample_bytes`, the blob's `samples` and
+`packed` sections). og-anim samples the keys where they lie: a dropped
+frame is rebuilt when it is read with the same interpolation the
+reduction measured, scalar and in a fixed order, so every host gets the
+same floats and a pose is bit for bit the one the frames written out as
+f32 give (`tests/anim_compress.rs`: the world hash of every clip played
+forwards, slowed and backwards is the same tick for tick, and was the
+same before this change). A channel whose 16-bit quantisation alone would
+miss the tolerance stays f32. The tolerance is per lane in the channel's units
 (metres, unit-quaternion components, scale, weight); its default, 1e-4, is
 0.1 mm and 0.011°. Retargeting reads the clips uncompressed, then the
 model's `#anim` compresses the result.
@@ -519,7 +527,7 @@ cargo run --release -p og-cook --bin og-cook -- templates/game --report report.m
 | `textures_decode_close_to_their_sources` | transcoded level 0 against the source pixels: ETC1S ≥ 30 dB (glTF base colour ≥ 27 dB), UASTC ≥ 35–38 dB; a row-flipped decode scores worse (orientation) |
 | `sounds_fonts_and_scenes_load_as_authored` | QOA SNR > 20 dB and the WAV's length; the charset, the extra characters, inside/outside of a glyph's distance field; scene entities, nesting, instances, the Transform rows' values |
 | `animation.rs` (separate file) | every cooked clip sample of `walker.glb` (source rates and 60 Hz) and `trickster.glb` equals an independent glTF sampler within 1e-5; skins, inverse binds, joints, weights and morph deltas follow the cooked vertices; markers from extras and import settings, bad ones refused; a cooked walker plays in og-anim; evidence `anim-cook-resample.json` |
-| `anim_compress.rs` (separate file) | every committed animated model cooked f32 and compressed: every frame of every channel within the tolerance, every node within 0.5 mm per metre of the skeleton, smaller samples, the same skins and morphs; the trickster posed mid-clip by each cook within og-tests' default frame tolerance; the settings parse and enter the stamp; evidence `P4/cook/anim-compress.json` and the two frames |
+| `anim_compress.rs` (separate file) | every committed animated model cooked f32 and compressed: every frame of every channel within the tolerance, every node within 0.5 mm per metre of the skeleton, smaller samples, the same skins and morphs; the trickster posed mid-clip by each cook within og-tests' default frame tolerance; the settings parse and enter the stamp; evidence `P4/cook/anim-compress.json` and the two frames. Resident: a compressed model's loaded clips take exactly the bytes of its blob's sample sections (less than the frames as f32), every frame read from the keys has the bits of the frames written out from the format's description, and og.anim playing every clip at speeds 1, 0.37 and −1 gives the same world hash tick for tick from the keys as from those frames |
 | `sound_chunks.rs` (separate file) | a 12.5 s WAV with `sound { stream true chunk 1.5 }` cooks to 8 chunks whose head and chunk blobs laid end to end are the bytes of the same WAV cooked whole, and go into og-audio's bank; nothing re-cooks unchanged, a chunk length edit re-cooks only that sound and removes the old chunks; the 1 MiB threshold and `stream false`; bad settings refused by line; a chunked sound in a stream group packs its head, its chunks stay files of their own, and the group carries the whole sound's shape |
 | `vox.rs` (separate file; and `cook::vox`'s unit tests) | a `.vox` with `model { voxScale 0.25 voxOrigin bottom }` cooks to those bounds (its settings file sorts after it, so the conversion waits for it); an unchanged project cooks nothing, a settings edit re-cooks the model; a bad `voxOrigin` fails it naming the line; every one of the 48 signed axis permutations an `nTRN` frame holds keeps every triangle counter-clockwise about its normal (the 24 mirrors failed with the flip removed); `voxScale` and `voxOrigin bottom` place one and two models; the committed `tests/fixtures/vox/pivot.vox` (the test writer's: a 3 x 2 x 5 model of five isolated voxels placed as is, turned about z and y, mirrored in x, its axes cycled) puts every voxel in MagicaVoxel's cell (a ceiling pivot fails it); the same voxels with and without a scene graph cook to the same bounds, centred and with `voxOrigin bottom` (the unit test: the same glTF bytes, for even, odd and one-voxel sizes; the old reading put a graph-less model's corner at the origin, FINDINGS #27 of `examples/lantern-vale`); an animated file (three graph-less frames, and an `nSHP` keyed by `_f` beside a static part) cooks to a skin of one joint per frame, `voxClip`/`voxFps` clips or the default `frames`, visibility channels showing one frame's mesh node at a time (no scale channel, every joint at rest scale 1, the frames after 0 hidden at rest; compressed at the loosest tolerance, the same flags), every frame's primitive skinned whole to its joint, the bind-pose bounds frame 0's; a keyed transform (a block moved between frames 0 and 2 beside a static base) cooks to one joint with a STEP translation channel at `voxFps` and a visibility channel on its mesh node, its places the keys' in glTF's frame, bound to the block's joint (the unit tests: the keys sorted by `_f`, a turn at frame 1 splitting the bar into two runs, a folded frame holding its nearest shown place, `voxOrigin bottom` over every frame's place, keys that change nothing the same glTF as one key); `voxClip` past the last frame or on a static file, a bad `voxFps` and a repeated clip are refused by line |
 | `flipbook.rs` (separate file) | atlases into sheets, and an `array true` sheet's frames cut into its texture array's layers texel for texel (broken once by cutting every layer from the texture's top rows), frames of two sizes refused; such a sheet and a texture array in a streaming group pack the sheet, the array and every layer (each naming the group, the pack's bytes the files'), the group's memory counting the layers, the sheet's texture staying in the first group |
@@ -544,9 +552,6 @@ without base colour textures), then restored.
   characters outside the charset and msdfgen's error correction landed in
   the phase 4 UI text round; `tests/template.rs` checks the template
   font's pairs and bounds its corner clashes.)
-- **Animation**: compressed clips are rebuilt to f32 at load, so a
-  resident clip is not smaller in memory; sampling quantised keys in
-  og-anim would be.
 - **`.vox` animation, the rest**: the editor's frame rate is not in the
   file (`voxFps` stands in). Each frame model still has a joint of its
   own (one palette matrix, at scale 1), though a frame that never moves

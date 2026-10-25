@@ -294,11 +294,22 @@ fn an_animated_vox_cooks_its_frames_into_clips() {
         let mut want = vec![0.0; 4];
         want[k] = 1.0;
         want[3] = want[2];
-        assert_eq!(ch.samples, want, "frame {k}");
+        assert_eq!(ch.decoded(grow.frames), want, "frame {k}");
     }
     let packed = bundle.load_animation("models/packed.vox").unwrap();
     let plain_frames = bundle.load_animation("models/plain.vox").unwrap();
-    assert_eq!(packed.clips, plain_frames.clips, "compressed, still exact");
+    // Compressed (resident as quantised keys), still exact.
+    let frames_of = |a: &og_cook::runtime::CookedAnimation| -> Vec<_> {
+        a.clips
+            .iter()
+            .flat_map(|c| {
+                c.channels
+                    .iter()
+                    .map(|ch| (c.name.clone(), ch.node, ch.path, ch.decoded(c.frames)))
+            })
+            .collect()
+    };
+    assert_eq!(frames_of(&packed), frames_of(&plain_frames));
     // Every frame's primitive is skinned whole to its joint.
     assert_eq!(anim.skin_streams.len(), 3);
     for (k, s) in anim.skin_streams.iter().enumerate() {
@@ -368,13 +379,13 @@ fn a_keyed_transform_cooks_to_a_moving_joint() {
     );
     assert!(clip.channels.iter().all(|c| c.step), "STEP channels");
     assert_eq!(
-        clip.channels[1].samples,
+        clip.channels[1].decoded(clip.frames),
         vec![1.0; 4],
         "shown on every frame"
     );
     // Frames 0, 1, 2 and the end key: (x, z, -y) of the keys at 0.5 m.
     let places: Vec<[f32; 3]> = clip.channels[0]
-        .samples
+        .decoded(clip.frames)
         .chunks(3)
         .map(|s| [s[0], s[1], s[2]])
         .collect();

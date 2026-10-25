@@ -994,7 +994,7 @@ fn cook_with(
                 interpolation,
                 ch.lanes,
                 clip.frames,
-                &ch.samples,
+                &ch.decoded(clip.frames),
             );
         }
         let event_first = events.len() as u32;

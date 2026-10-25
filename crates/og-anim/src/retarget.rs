@@ -899,7 +899,7 @@ pub fn mirror(skeleton: &SkeletonAsset, clip: &ClipAsset) -> Result<ClipAsset> {
                     path,
                     step: false,
                     lanes,
-                    samples: data.clone(),
+                    samples: data.clone().into(),
                 });
             }
         }
@@ -1477,7 +1477,7 @@ pub fn retarget(
                 path: ChannelPath::Translation,
                 step: false,
                 lanes: 3,
-                samples: std::mem::take(&mut travel),
+                samples: std::mem::take(&mut travel).into(),
             });
         }
         channels.push(Channel {
@@ -1486,7 +1486,7 @@ pub fn retarget(
             path: ChannelPath::Rotation,
             step: false,
             lanes: 4,
-            samples: std::mem::take(&mut rotations[k]),
+            samples: std::mem::take(&mut rotations[k]).into(),
         });
     }
     for (tw, samples) in twists.iter().zip(twist_rotations) {
@@ -1496,7 +1496,7 @@ pub fn retarget(
             path: ChannelPath::Rotation,
             step: false,
             lanes: 4,
-            samples,
+            samples: samples.into(),
         });
     }
     channels.extend(crate::visibility::retargeted(

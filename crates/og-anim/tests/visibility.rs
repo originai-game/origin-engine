@@ -55,7 +55,7 @@ fn vis(node: usize, name: &str, samples: &[f32]) -> Channel {
         path: ChannelPath::Visibility,
         step: true,
         lanes: 1,
-        samples: samples.to_vec(),
+        samples: samples.to_vec().into(),
     }
 }
 
@@ -117,7 +117,7 @@ fn a_visibility_channel_is_held_and_hides_what_is_under_its_node() {
     linear.channels[0].step = false;
     assert!(linear.validate().is_err());
     let mut half = swap();
-    half.channels[0].samples[1] = 0.5;
+    half.channels[0].samples = vec![1.0, 0.5, 0.0, 1.0, 1.0].into();
     assert!(half.validate().is_err());
 }
 
@@ -233,7 +233,7 @@ fn mirroring_moves_a_visibility_channel_to_the_other_side() {
             .channels
             .iter()
             .filter(|ch| ch.path == ChannelPath::Visibility)
-            .map(|ch| (ch.node, ch.samples.clone()))
+            .map(|ch| (ch.node, ch.decoded(c.frames)))
             .collect();
         v.sort_by_key(|x| x.0);
         v
@@ -289,13 +289,16 @@ fn retargeting_carries_visibility_by_bone_and_by_name() {
         .unwrap()
         .clip;
     let t_sword = target.node("sword").unwrap();
-    let got: Vec<(u32, &[f32])> = r
+    let got: Vec<(u32, Vec<f32>)> = r
         .channels
         .iter()
         .filter(|ch| ch.path == ChannelPath::Visibility)
-        .map(|ch| (ch.node, ch.samples.as_slice()))
+        .map(|ch| (ch.node, ch.decoded(r.frames)))
         .collect();
-    assert_eq!(got, vec![(t_arm, &blink[..]), (t_sword, &flash[..])]);
+    assert_eq!(
+        got,
+        vec![(t_arm, blink.to_vec()), (t_sword, flash.to_vec())]
+    );
     // And it plays: the retargeted clip hides the target's arm on odd frames.
     let at = |i: usize| sampled(&target, &r, i as f32 / r.rate)[t_arm as usize];
     assert_eq!((at(0), at(1), at(2)), (false, true, false));
