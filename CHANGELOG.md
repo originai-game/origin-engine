@@ -23,6 +23,13 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
   share of the segment's twist retargeting gives (after IK and look-at).
   Retargeted clips, rigs without twist bones and clips that key them play
   bit for bit as before.
+- Unity's legacy thumb names are read from the metacarpal: on a side
+  whose thumb has an `Intermediate` and no `Metacarpal` (`Left Thumb
+  Proximal`, `Intermediate`, `Distal`; VRM 0.x's `leftThumbIntermediate`),
+  Proximal is `leftThumbMetacarpal` and Intermediate `leftThumbProximal`,
+  so those thumbs retarget one bone further in than they did. A `type rig`
+  file naming them still wins. The cook's retarget stamp moves to
+  `retarget-v3`: models with an `animation { library }` re-cook once.
 - Faster capture PNGs: the probe's `capture`, `sweep` and `screenshot`
   encode with fdeflate (rows filtered `Up`, deflated as they are
   filtered) instead of zlib level 6, 10 to 35 times faster on a

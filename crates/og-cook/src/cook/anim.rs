@@ -126,7 +126,7 @@ impl AnimSettings {
         }
         for l in &self.libraries {
             s.push_str(&format!(
-                " library {l:?} retarget-v2 footIk {}",
+                " library {l:?} retarget-v3 footIk {}",
                 self.foot_ik
             ));
         }

@@ -910,7 +910,8 @@ pattern.
 Hands retarget too: the fingers are humanoid bones (VRM 1.0's
 `leftThumbMetacarpal` … `leftLittleDistal`, read from Mixamo's
 `LeftHandIndex1`, VRoid's `J_Bip_L_Index1`, Rigify's `DEF-f_index.01.L`,
-Unreal's `index_01_l`, plain `index.01.L`), each turning from its hand as
+Unreal's `index_01_l`, plain `index.01.L`; Unity's legacy `Left Thumb
+Proximal` is the metacarpal), each turning from its hand as
 the source's does, so a fist or a grip holds on an A-posed arm whatever
 the arm does. The target's twist bones (unmapped nodes named `twist`, such
 as Unreal's `lowerarm_twist_01_l`, or Rigify's `DEF-forearm.L.001`) take a

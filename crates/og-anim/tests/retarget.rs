@@ -526,6 +526,83 @@ fn fingers_are_humanoid_bones_and_a_curl_carries_over() {
     }
 }
 
+/// A chain of nodes, each the child of the one before.
+fn chain_of(names: &[&str]) -> SkeletonAsset {
+    SkeletonAsset {
+        nodes: names
+            .iter()
+            .enumerate()
+            .map(|(i, n)| SkeletonNode {
+                name: (*n).into(),
+                parent: if i == 0 { NONE } else { i as u32 - 1 },
+                rest: Trs::IDENTITY,
+                mesh: NONE,
+            })
+            .collect(),
+        skins: Vec::new(),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn unitys_legacy_thumb_names_start_at_the_metacarpal() {
+    // Unity's (and VRM 0.x's) thumb: Proximal (the metacarpal),
+    // Intermediate, Distal; with spaces as Unity shows them, or squashed.
+    let legacy = chain_of(&[
+        "Hips",
+        "LeftHand",
+        "Left Thumb Proximal",
+        "Left Thumb Intermediate",
+        "Left Thumb Distal",
+        "rightHand",
+        "rightThumbProximal",
+        "rightThumbIntermediate",
+        "rightThumbDistal",
+    ]);
+    let m = HumanoidMap::detect(&legacy);
+    assert_eq!(m.scheme, "unity");
+    for (bone, node) in [
+        ("leftThumbMetacarpal", 2),
+        ("leftThumbProximal", 3),
+        ("leftThumbDistal", 4),
+        ("rightThumbMetacarpal", 6),
+        ("rightThumbProximal", 7),
+        ("rightThumbDistal", 8),
+    ] {
+        assert_eq!(m.node(bone), Some(node), "{bone}");
+    }
+    // VRM 1.0's names (Metacarpal, Proximal, Distal) stay as they are.
+    let vrm1 = chain_of(&[
+        "hips",
+        "leftHand",
+        "leftThumbMetacarpal",
+        "leftThumbProximal",
+        "leftThumbDistal",
+    ]);
+    let m = HumanoidMap::detect(&vrm1);
+    for (bone, node) in [
+        ("leftThumbMetacarpal", 2),
+        ("leftThumbProximal", 3),
+        ("leftThumbDistal", 4),
+    ] {
+        assert_eq!(m.node(bone), Some(node), "{bone}");
+    }
+    // The rig-file workaround (each thumb bone named outright) gives the
+    // same map, and a rig file still overrides what the scheme reads.
+    let rig = RigAsset::parse(
+        "type rig\nversion 1\n---\nleftThumbMetacarpal \"Left Thumb Proximal\"\nleftThumbProximal \"Left Thumb Intermediate\"\nleftThumbDistal \"Left Thumb Distal\"\n",
+    )
+    .unwrap();
+    assert_eq!(
+        rig.map(&legacy).unwrap().nodes,
+        HumanoidMap::detect(&legacy).nodes
+    );
+    let rig = RigAsset::parse("type rig\nversion 1\n---\nleftThumbMetacarpal none\n").unwrap();
+    let m = rig.map(&legacy).unwrap();
+    assert_eq!(m.node("leftThumbMetacarpal"), None);
+    assert_eq!(m.node("leftThumbProximal"), Some(3));
+}
+
 /// The twist of `q` about unit `axis`, in radians.
 fn twist(q: Quat, axis: Vec3) -> f32 {
     let p = Vec3::new(q.x, q.y, q.z).dot(axis);

@@ -494,6 +494,29 @@ fn invalid(reason: String) -> Error {
     Error::new(ErrorKind::Invalid, reason)
 }
 
+/// Unity's legacy (and VRM 0.x's) thumb is Proximal, Intermediate, Distal,
+/// its Proximal the metacarpal: on a side whose thumb has an `Intermediate`
+/// node and no `Metacarpal`, the names are read so, Proximal as the
+/// metacarpal and Intermediate as the proximal (VRM 1.0's names, which
+/// have no thumb Intermediate, stay as they are).
+fn unity_legacy_thumbs(skeleton: &SkeletonAsset, nodes: &mut [u32; HUMAN_BONE_COUNT]) {
+    for (side, base) in [("left", FINGERS[0]), ("right", FINGERS[1])] {
+        let intermediate = format!("{side}thumbintermediate");
+        let Some(i) = skeleton
+            .nodes
+            .iter()
+            .position(|n| squash(local_name(&n.name)) == intermediate)
+        else {
+            continue;
+        };
+        // The thumb's bones are base (metacarpal), base + 1, base + 2.
+        if nodes[base] == NONE {
+            nodes[base] = nodes[base + 1];
+            nodes[base + 1] = i as u32;
+        }
+    }
+}
+
 impl HumanoidMap {
     /// The map `scheme` reads from the node names (the first node of each
     /// bone, in node order); an unknown scheme is refused.
@@ -511,6 +534,9 @@ impl HumanoidMap {
             {
                 nodes[b] = i as u32;
             }
+        }
+        if scheme == "unity" {
+            unity_legacy_thumbs(skeleton, &mut nodes);
         }
         Ok(HumanoidMap {
             scheme: scheme.to_string(),
