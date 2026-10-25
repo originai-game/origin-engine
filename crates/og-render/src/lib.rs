@@ -6726,14 +6726,19 @@ impl Renderer {
             scene.lighting_2d.map(|l| l.resolution.clamp(0.25, 1.0)),
             fluids,
             particle_frame.soft,
+            // The weight the frame's tonemap gives its glow (post.rs
+            // `write_uniform`): the bloom's intensity when the lit image
+            // blooms too, else the glow's own.
             post_fx
                 .glow
                 .filter(|_| view_glow_runs.iter().any(|r| !r.is_empty()))
-                .map(|g| g.intensity),
+                .map(|g| {
+                    post_fx
+                        .bloom
+                        .filter(|b| b.intensity > 0.0)
+                        .map_or(g.intensity, |b| b.intensity)
+                }),
         );
-        if self.views.slots.iter().flatten().any(|s| s.glow.is_some()) {
-            self.mips.prepare(&self.device, HDR_FORMAT);
-        }
         if scene.lighting_2d.is_some() {
             for (k, p) in view_plans.iter().enumerate() {
                 self.lights_2d
@@ -9181,7 +9186,7 @@ impl Renderer {
                         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                             label: Some("view glow sprites"),
                             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                                view: &g.target,
+                                view: &g.levels[0],
                                 depth_slice: None,
                                 resolve_target: None,
                                 ops: wgpu::Operations {
@@ -9197,9 +9202,7 @@ impl Renderer {
                         pass.set_bind_group(0, &view_groups[i].0, &[]);
                         stats.draw_calls += draw_glow(&mut pass, &view_glow_runs[i]);
                         drop(pass);
-                        self.views
-                            .add_glow(&self.device, &self.mips, &mut encoder, p);
-                        stats.draw_calls += 1;
+                        stats.draw_calls += self.views.add_glow(&mut encoder, p);
                     }
                     if let views::Dest::Texture {
                         color,

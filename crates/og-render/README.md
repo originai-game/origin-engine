@@ -1128,6 +1128,18 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
   `layer_flag::UNLIT`): every tile instance carries the lit flag the
   sprite shader reads (`fx.y`), so the ambient, the lights and the
   occluders' shadows reach a tilemap on every tier, the same pipeline.
+- **The glow in views**: a `View` (views.rs) draws its glowing sprites
+  into a chain of its own at half its size and runs the frame's bloom
+  filters over it (`bloom_chain.wgsl`'s 13-tap `downsample13` and
+  `bloom_tent`, which post.wgsl's `fs_bloom_down` and `fs_bloom_up` call
+  too; as many levels as `post::bloom_levels` at the view's size), then
+  adds level 0 onto its image at the weight the tonemap gives the frame's
+  glow (the bloom's intensity when the lit image blooms, else the glow's).
+  The same sprite glowing in a view and in the frame has the same halo
+  (og-tests targets `a_views_glow_spreads_as_the_frames_bloom`: 188 at
+  140 px in both, where the old box-filtered mips gave the view 171); the
+  view has no lit-image bloom of its own (post effects are the main
+  camera's).
   Before, tiles were never lit (hollowbell FINDINGS #9: a dark cave of
   tiles drew as authored). Tests: `tests/sprites2d.rs`
   `tile_layers_in_the_lit_range_take_the_2d_light` (near, far, behind a

@@ -170,32 +170,13 @@ fn fs_srgb_encode(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(srgb_encode(clamp(finished(in.uv, in.pos.xy), vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);
 }
 
-// One tap of the 13-tap downsample: with untonemapped sprites (extra.y)
+// One tap of the 13-tap downsample (bloom_chain.wgsl): with untonemapped sprites (extra.y)
 // the lit image's colour weighted by its alpha, the tone-mapped fraction,
 // so those sprites neither bloom nor dim the bloom round them.
 fn bloom_tap(uv: vec2<f32>) -> vec3<f32> {
   let s = textureSampleLevel(source, linear_sampler, uv, 0.0);
   if (post.extra.y > 0.5) { return s.rgb * clamp(s.a, 0.0, 1.0); }
   return s.rgb;
-}
-
-// The 13-tap downsample (Jimenez, "Next generation post processing in Call of Duty").
-fn downsample13(uv: vec2<f32>) -> vec3<f32> {
-  let t = 1.0 / vec2<f32>(textureDimensions(source));
-  let s = bloom_tap(uv);
-  let a = bloom_tap(uv + t * vec2<f32>(-2.0, -2.0));
-  let b = bloom_tap(uv + t * vec2<f32>(0.0, -2.0));
-  let c = bloom_tap(uv + t * vec2<f32>(2.0, -2.0));
-  let d = bloom_tap(uv + t * vec2<f32>(-2.0, 0.0));
-  let f = bloom_tap(uv + t * vec2<f32>(2.0, 0.0));
-  let g = bloom_tap(uv + t * vec2<f32>(-2.0, 2.0));
-  let h = bloom_tap(uv + t * vec2<f32>(0.0, 2.0));
-  let i = bloom_tap(uv + t * vec2<f32>(2.0, 2.0));
-  let j = bloom_tap(uv + t * vec2<f32>(-1.0, -1.0));
-  let k = bloom_tap(uv + t * vec2<f32>(1.0, -1.0));
-  let l = bloom_tap(uv + t * vec2<f32>(-1.0, 1.0));
-  let m = bloom_tap(uv + t * vec2<f32>(1.0, 1.0));
-  return s * 0.125 + (a + c + g + i) * 0.03125 + (b + d + f + h) * 0.0625 + (j + k + l + m) * 0.125;
 }
 
 @fragment
@@ -225,18 +206,8 @@ fn fs_bloom_down(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(downsample13(in.uv), 1.0);
 }
 
-// A 3x3 tent over the smaller level, added onto the larger one by blending.
+// The tent upsample (bloom_chain.wgsl), added onto the larger level by blending.
 @fragment
 fn fs_bloom_up(in: VsOut) -> @location(0) vec4<f32> {
-  let t = post.mode.y / vec2<f32>(textureDimensions(source));
-  var c = textureSampleLevel(source, linear_sampler, in.uv, 0.0).rgb * 4.0;
-  c += textureSampleLevel(source, linear_sampler, in.uv + t * vec2<f32>(-1.0, 0.0), 0.0).rgb * 2.0;
-  c += textureSampleLevel(source, linear_sampler, in.uv + t * vec2<f32>(1.0, 0.0), 0.0).rgb * 2.0;
-  c += textureSampleLevel(source, linear_sampler, in.uv + t * vec2<f32>(0.0, -1.0), 0.0).rgb * 2.0;
-  c += textureSampleLevel(source, linear_sampler, in.uv + t * vec2<f32>(0.0, 1.0), 0.0).rgb * 2.0;
-  c += textureSampleLevel(source, linear_sampler, in.uv + t * vec2<f32>(-1.0, -1.0), 0.0).rgb;
-  c += textureSampleLevel(source, linear_sampler, in.uv + t * vec2<f32>(1.0, -1.0), 0.0).rgb;
-  c += textureSampleLevel(source, linear_sampler, in.uv + t * vec2<f32>(-1.0, 1.0), 0.0).rgb;
-  c += textureSampleLevel(source, linear_sampler, in.uv + t * vec2<f32>(1.0, 1.0), 0.0).rgb;
-  return vec4<f32>(c / 16.0, 1.0);
+  return vec4<f32>(bloom_tent(in.uv, post.mode.y), 1.0);
 }
