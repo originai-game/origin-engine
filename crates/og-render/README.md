@@ -1079,7 +1079,9 @@ Everything a game declares on `RenderScene` as data (`src/effects.rs`,
 default records no pass and costs nothing (`effects_off_add_no_passes`).
 
 - **Post stack**: ambient occlusion (`AoMethod::Gtao` / `Ssao`, applied to
-  the ambient term), outlines (depth and normal edges, per-scene or
+  the ambient term; `AoResolution::Half` searches and blurs every second
+  pixel and adds a depth-aware `ao-upsample` pass, the full tier's
+  full-resolution blur reads its 4x4 taps as gathers), outlines (depth and normal edges, per-scene or
   per-material colour and width; below), depth of field (`DofQuality::Low` / `High`), motion
   blur from per-object and camera motion vectors (`fx.rs` carries the
   previous view-projection), god rays, colour grading by `ColorLut`,

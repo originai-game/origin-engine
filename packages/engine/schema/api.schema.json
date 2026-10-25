@@ -2769,6 +2769,8 @@
         "ParticleEmitter",
         "AoMethod",
         "AoMethod",
+        "AoResolution",
+        "AoResolution",
         "DofQuality",
         "DofQuality",
         "SpriteBlend",
@@ -15617,6 +15619,20 @@
         "ssao": "Hemisphere SSAO with 8 samples: the cheaper one."
       }
     },
+    "AoResolution": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "The resolution ambient occlusion is searched at.",
+      "type": "string",
+      "enum": [
+        "full",
+        "half"
+      ],
+      "x-og-variants": {
+        "full": "Every pixel searched, then a 4x4 depth-aware blur.",
+        "half": "Every second pixel in x and y searched (a quarter of the work) and blurred at that resolution, then brought to full resolution by a depth-aware upsample: softer contacts and thin creases, a fraction of the GPU time."
+      }
+    },
     "DofQuality": {
       "x-og-kind": "enum",
       "x-og-module": "render",
@@ -15705,6 +15721,11 @@
           "$ref": "#/$defs/AoMethod",
           "description": "The algorithm.",
           "default": "auto"
+        },
+        "aoResolution": {
+          "$ref": "#/$defs/AoResolution",
+          "description": "Full resolution, or half for a fraction of the GPU time at softer detail.",
+          "default": "full"
         },
         "outline": {
           "type": "boolean",

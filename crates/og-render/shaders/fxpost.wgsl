@@ -11,7 +11,7 @@ struct FxPost {
   view: mat4x4<f32>,          // world -> view (normals)
   screen: vec4<f32>,          // full-resolution w, h, 1/w, 1/h
   cam: vec4<f32>,             // x: far, y: 1 orthographic
-  ao: vec4<f32>,              // x: radius (world), y: intensity
+  ao: vec4<f32>,              // x: radius (world), y: intensity, z: the AO targets' divisor (1, or 2 at half resolution)
   outline_color: vec4<f32>,   // the scene's outline (linear rgb, coverage)
   outline: vec4<f32>,         // x: scene width (0: none), y: depth threshold, z: normal threshold
   dof: vec4<f32>,             // x: focus distance, y: focus range, z: max blur (full-res px), w: falloff
@@ -89,12 +89,31 @@ fn pixels_per_unit(d: f32) -> f32 {
   return select(s / max(d, 1e-4), s, fxp.cam.y > 0.5);
 }
 
+// How many full-resolution pixels an AO target's texel spans in x and y:
+// 1, or 2 at half resolution (crate::AoResolution), where the AO of texel
+// q is searched at full-resolution pixel 2q and its depth is read there.
+fn ao_divisor() -> i32 {
+  return select(1, 2, fxp.ao.z > 1.5);
+}
+
+// The full-resolution pixel the AO texel at `pos` (its fragment position)
+// is searched at, and that pixel's uv (the interpolated one at full
+// resolution, so that path reads exactly what it always has).
+fn ao_pixel(pos: vec2<f32>) -> vec2<i32> {
+  return vec2<i32>(pos) * ao_divisor();
+}
+
+fn ao_uv(px: vec2<i32>, uv: vec2<f32>) -> vec2<f32> {
+  return select(uv, (vec2<f32>(px) + 0.5) * fxp.screen.zw, ao_divisor() > 1);
+}
+
 @fragment
 fn fs_gtao(in: VsOut) -> @location(0) vec4<f32> {
-  let px = vec2<i32>(in.pos.xy);
+  let px = ao_pixel(in.pos.xy);
+  let uv = ao_uv(px, in.uv);
   let d = depth_at(px);
   if (is_sky(d)) { return vec4<f32>(1.0); }
-  let p = view_pos(in.uv, d);
+  let p = view_pos(uv, d);
   let n = normalize((fxp.view * vec4<f32>(world_normal(px), 0.0)).xyz);
   let v = select(normalize(-p), vec3<f32>(0.0, 0.0, 1.0), fxp.cam.y > 0.5);
   let radius = fxp.ao.x;
@@ -127,8 +146,8 @@ fn fs_gtao(in: VsOut) -> @location(0) vec4<f32> {
     for (var k = 1u; k <= steps; k++) {
       let t = (f32(k) - 0.5 + jitter) / f32(steps);
       let offset = omega * (t * t * radius_px) * fxp.screen.zw;
-      let uv0 = in.uv + offset;
-      let uv1 = in.uv - offset;
+      let uv0 = uv + offset;
+      let uv1 = uv - offset;
       let s0 = view_pos(uv0, depth_tap(uv0, dsize, dsize_f)) - p;
       let s1 = view_pos(uv1, depth_tap(uv1, dsize, dsize_f)) - p;
       let l0 = length(s0);
@@ -153,10 +172,10 @@ fn fs_gtao(in: VsOut) -> @location(0) vec4<f32> {
 // Normal-oriented hemisphere SSAO: 8 fixed samples, rotated per pixel.
 @fragment
 fn fs_ssao(in: VsOut) -> @location(0) vec4<f32> {
-  let px = vec2<i32>(in.pos.xy);
+  let px = ao_pixel(in.pos.xy);
   let d = depth_at(px);
   if (is_sky(d)) { return vec4<f32>(1.0); }
-  let p = view_pos(in.uv, d);
+  let p = view_pos(ao_uv(px, in.uv), d);
   let n = normalize((fxp.view * vec4<f32>(world_normal(px), 0.0)).xyz);
   let radius = fxp.ao.x;
   let a = ign(in.pos.xy) * 6.2831853;
@@ -196,11 +215,13 @@ fn ao_blur_sky(d0: f32) -> bool {
   return d0 >= FX_FAR_DEPTH && fxp.cam.x < 1.0e8;
 }
 
-// A 4x4 depth-aware blur of the raw AO (tex_b) over its noise pattern.
+// A 4x4 depth-aware blur of the raw AO (tex_b) over its noise pattern, at
+// the AO's resolution (each texel's depth where it was searched).
 @fragment
 fn fs_ao_blur(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
-  let d0 = depth_at(px);
+  let k = ao_divisor();
+  let d0 = depth_at(px * k);
   if (ao_blur_sky(d0)) { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }
   let size = vec2<i32>(textureDimensions(tex_b));
   let scale = max(d0 * 0.04, 1e-3);
@@ -209,12 +230,49 @@ fn fs_ao_blur(in: VsOut) -> @location(0) vec4<f32> {
   for (var y = -2; y <= 1; y++) {
     for (var x = -2; x <= 1; x++) {
       let q = clamp(px + vec2<i32>(x, y), vec2<i32>(0), size - 1);
-      let w = exp(-abs(depth_at(q) - d0) / scale);
+      let w = exp(-abs(depth_at(q * k) - d0) / scale);
       sum += textureLoad(tex_b, q, 0).r * w;
       weight += w;
     }
   }
   return vec4<f32>(sum / max(weight, 1e-5), 0.0, 0.0, 1.0);
+}
+
+// Half-resolution AO (tex_b, blurred) brought to full resolution: the 2x2
+// half texels around the pixel, each weighed bilinearly and by how near
+// its depth (the depth where it was searched, at twice its coordinate) is
+// to the pixel's, as the blur weighs its taps. Where none is near (an edge
+// or a thin surface the half grid missed), the one nearest in depth.
+@fragment
+fn fs_ao_upsample(in: VsOut) -> @location(0) vec4<f32> {
+  let px = vec2<i32>(in.pos.xy);
+  let d0 = depth_at(px);
+  if (ao_blur_sky(d0)) { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }
+  let size = vec2<i32>(textureDimensions(tex_b));
+  let base = px / 2;
+  // 0 on the texel's own pixel, 0.5 between two texels.
+  let f = vec2<f32>(px - base * 2) * 0.5;
+  let scale = max(d0 * 0.04, 1e-3);
+  var sum = 0.0;
+  var weight = 0.0;
+  var nearest = 1.0;
+  var nearest_dz = 3.4e38;
+  for (var y = 0; y <= 1; y++) {
+    for (var x = 0; x <= 1; x++) {
+      let q = min(base + vec2<i32>(x, y), size - 1);
+      let a = textureLoad(tex_b, q, 0).r;
+      let dz = abs(depth_at(q * 2) - d0);
+      let bilinear = select(1.0 - f.x, f.x, x == 1) * select(1.0 - f.y, f.y, y == 1);
+      let w = bilinear * exp(-dz / scale);
+      sum += a * w;
+      weight += w;
+      if (dz < nearest_dz) {
+        nearest_dz = dz;
+        nearest = a;
+      }
+    }
+  }
+  return vec4<f32>(select(nearest, sum / max(weight, 1e-5), weight > 1e-3), 0.0, 0.0, 1.0);
 }
 
 // Outlines inside silhouettes (a neighbour at the line width farther than

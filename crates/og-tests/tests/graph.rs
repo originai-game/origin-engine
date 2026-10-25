@@ -174,3 +174,44 @@ fn the_showcase_frame_is_recorded_from_its_graph() {
             .any(|n| n.starts_with("bloom"))
     );
 }
+
+/// Half-resolution ambient occlusion (`AoResolution::Half`) searches and
+/// blurs a quarter of the pixels, then an `ao-upsample` pass writes the
+/// full-resolution `ao` the main pass reads; the default keeps today's two
+/// full-resolution passes.
+#[test]
+fn half_resolution_ao_adds_its_upsample_and_halves_its_targets() {
+    let mut built = scenes::build("ao-gtao").expect("scene");
+    let mut renderer = Renderer::new_blocking(&built.desc).expect("renderer");
+    let graph = |renderer: &mut Renderer, scene: &og_render::RenderScene| {
+        renderer
+            .render(scene, &RenderTarget::Offscreen)
+            .expect("render");
+        let plan = renderer.frame_graph().expect("a graph");
+        let names: Vec<String> = plan.ordered_names().iter().map(|n| n.to_string()).collect();
+        let size = |t: &str| {
+            plan.slot(t)
+                .map(|s| (plan.physical()[s].width, plan.physical()[s].height))
+        };
+        (names, size("ao.raw"), size("ao.blur"), size("ao"))
+    };
+    let (w, h) = (built.desc.width, built.desc.height);
+
+    let (names, raw, blur, ao) = graph(&mut renderer, &built.scene);
+    assert!(names.iter().any(|n| n == "ao-blur"), "{names:?}");
+    assert!(!names.iter().any(|n| n == "ao-upsample"), "{names:?}");
+    assert_eq!((raw, blur, ao), (Some((w, h)), None, Some((w, h))));
+
+    built.scene.post.ao.as_mut().expect("ao").resolution = og_render::AoResolution::Half;
+    let (names, raw, blur, ao) = graph(&mut renderer, &built.scene);
+    let at = |n: &str| {
+        names
+            .iter()
+            .position(|m| m == n)
+            .unwrap_or_else(|| panic!("no {n} in {names:?}"))
+    };
+    assert!(at("ao") < at("ao-blur") && at("ao-blur") < at("ao-upsample"));
+    assert!(at("ao-upsample") < at("main"));
+    let half = Some((w.div_ceil(2), h.div_ceil(2)));
+    assert_eq!((raw, blur, ao), (half, half, Some((w, h))));
+}

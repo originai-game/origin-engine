@@ -49,6 +49,7 @@ fn stage() -> RenderScene {
         radius: 0.6,
         intensity: 1.2,
         method: AoMethod::Gtao,
+        ..Default::default()
     });
     scene.camera.position = Vec3::new(0.0, 3.0, 7.0);
     scene.camera.target = Vec3::new(0.0, 0.8, 0.0);

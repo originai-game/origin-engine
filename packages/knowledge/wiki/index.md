@@ -121,7 +121,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1236 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1238 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -145,6 +145,8 @@ Field units the docs and Tune use.
 | [`Antialias`](render.md#type-Antialias) | enum | render | — |
 | [`AoMethod`](render.md#type-AoMethod) | enum | render | — |
 | [`AoMethod()`](render.md#column-AoMethod) | column kind | render | — |
+| [`AoResolution`](render.md#type-AoResolution) | enum | render | — |
+| [`AoResolution()`](render.md#column-AoResolution) | column kind | render | — |
 | [`ArchetypeDump`](probe.md#type-ArchetypeDump) | struct | probe | — |
 | [`ArchetypeView`](world.md#type-ArchetypeView) | interface | world | — |
 | [`ArchetypeView.column`](world.md#member-ArchetypeView-column) | method | world | `og_archetype_view_column` |

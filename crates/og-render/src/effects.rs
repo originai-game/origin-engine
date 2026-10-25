@@ -26,6 +26,19 @@ pub enum AoMethod {
     Ssao,
 }
 
+/// The resolution ambient occlusion is searched at.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum AoResolution {
+    /// Every pixel searched, then a 4x4 depth-aware blur.
+    #[default]
+    Full,
+    /// Every second pixel in x and y searched (a quarter of the work) and
+    /// blurred at that resolution, then brought to full resolution by a
+    /// depth-aware upsample (an `ao-upsample` pass): softer contacts and
+    /// thin creases, a fraction of the GPU time.
+    Half,
+}
+
 /// Screen-space ambient occlusion: darkens the ambient (image-based) light in
 /// creases and contact areas. Needs the depth-normal prepass (turned on with it).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -35,6 +48,7 @@ pub struct AmbientOcclusion {
     /// 0 none, 1 full; above 1 exaggerates.
     pub intensity: f32,
     pub method: AoMethod,
+    pub resolution: AoResolution,
 }
 
 impl Default for AmbientOcclusion {
@@ -43,6 +57,7 @@ impl Default for AmbientOcclusion {
             radius: 0.6,
             intensity: 1.0,
             method: AoMethod::Auto,
+            resolution: AoResolution::Full,
         }
     }
 }

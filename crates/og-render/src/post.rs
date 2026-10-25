@@ -457,6 +457,7 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_gtao", AO_FORMAT),
     ("fs_ssao", AO_FORMAT),
     ("fs_ao_blur", AO_FORMAT),
+    ("fs_ao_upsample", AO_FORMAT),
     ("fs_outline", HDR_FORMAT),
     ("fs_dof_coc", HDR_FORMAT),
     ("fs_dof_blur", HDR_FORMAT),
@@ -1366,6 +1367,10 @@ pub(crate) enum FramePass {
     /// Ambient occlusion (GTAO or SSAO), then its blur.
     Ao,
     AoBlur,
+    /// Half-resolution ambient occlusion's depth-aware upsample
+    /// ([`crate::AoResolution::Half`]): with it, `ao` and its blur run at
+    /// half resolution and this pass writes the full-resolution `ao`.
+    AoUpsample,
     /// The particle simulation (compute).
     Particles,
     /// The 2D light map.
@@ -1457,6 +1462,7 @@ impl FramePass {
             FramePass::Prepass => "prepass".into(),
             FramePass::Ao => "ao".into(),
             FramePass::AoBlur => "ao-blur".into(),
+            FramePass::AoUpsample => "ao-upsample".into(),
             FramePass::Particles => "particles".into(),
             FramePass::Light2d => "lights-2d".into(),
             FramePass::Metaballs => "metaballs".into(),
@@ -1704,7 +1710,14 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             );
         }
     }
-    if has(FramePass::Ao) {
+    if has(FramePass::AoUpsample) {
+        // Searched and blurred at half resolution (each texel the depth's
+        // at twice its coordinate), then upsampled to `ao`.
+        let (hw, hh) = (w.div_ceil(2), h.div_ceil(2));
+        g.transient("ao.raw", desc(hw, hh, AO_FORMAT, 1, attach_bind))
+            .transient("ao.blur", desc(hw, hh, AO_FORMAT, 1, attach_bind))
+            .transient("ao", desc(w, h, AO_FORMAT, 1, attach_bind));
+    } else if has(FramePass::Ao) {
         g.transient("ao.raw", desc(w, h, AO_FORMAT, 1, attach_bind))
             .transient("ao", desc(w, h, AO_FORMAT, 1, attach_bind));
     }
@@ -1854,7 +1867,11 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 &["pre-depth", "gbuffer", "lindepth", "outline-id"],
             ),
             FramePass::Ao => g.pass(name, &["lindepth", "gbuffer"], &["ao.raw"]),
+            FramePass::AoBlur if has(FramePass::AoUpsample) => {
+                g.pass(name, &["ao.raw", "lindepth", "gbuffer"], &["ao.blur"])
+            }
             FramePass::AoBlur => g.pass(name, &["ao.raw", "lindepth", "gbuffer"], &["ao"]),
+            FramePass::AoUpsample => g.pass(name, &["ao.blur", "lindepth"], &["ao"]),
             FramePass::Particles if prepass => {
                 g.pass(name, &["lindepth", "gbuffer"], &["particles"])
             }
@@ -2444,6 +2461,7 @@ impl FrameGraph {
             let groups = match p {
                 FramePass::Ao => pair(&|_| fx_group(black, black)),
                 FramePass::AoBlur => pair(&|_| fx_group(black, self.view("ao.raw"))),
+                FramePass::AoUpsample => pair(&|_| fx_group(black, self.view("ao.blur"))),
                 FramePass::Ssr => pair(&|_| fx_group(self.view("hdr"), black)),
                 FramePass::DepthBands => pair(&|_| fx_group(self.view(names.base), black)),
                 FramePass::Outline => {
@@ -2495,10 +2513,16 @@ impl FrameGraph {
         let clear = wgpu::LoadOp::Clear(wgpu::Color::BLACK);
         let effect = match pass {
             FramePass::Ao => Some((if gtao { "fs_gtao" } else { "fs_ssao" }, "ao.raw")),
+            // Half resolution: the blur's depth is at twice its texel, which
+            // gathers do not read.
+            FramePass::AoBlur if self.views.contains_key("ao.blur") => {
+                Some(("fs_ao_blur", "ao.blur"))
+            }
             FramePass::AoBlur if passes.fx.contains_key(AO_BLUR_GATHER) => {
                 Some((AO_BLUR_GATHER, "ao"))
             }
             FramePass::AoBlur => Some(("fs_ao_blur", "ao")),
+            FramePass::AoUpsample => Some(("fs_ao_upsample", "ao")),
             FramePass::Outline => Some(("fs_outline", "hdr.outline")),
             FramePass::DofCoc => Some(("fs_dof_coc", "dof.coc")),
             FramePass::DofBlur => Some(("fs_dof_blur", "dof.blur")),
@@ -2666,6 +2690,7 @@ impl FrameGraph {
             },
             FramePass::Ao
             | FramePass::AoBlur
+            | FramePass::AoUpsample
             | FramePass::Outline
             | FramePass::DofCoc
             | FramePass::DofBlur
@@ -2706,6 +2731,7 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
         "outline-id",
         "object-space",
         "ao.raw",
+        "ao.blur",
         "ao",
         "lightmap",
         "metaballs",

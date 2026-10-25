@@ -135,6 +135,12 @@
       "value": "AoMethod"
     },
     {
+      "name": "AoResolution",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "AoResolution"
+    },
+    {
       "name": "DofQuality",
       "array": "Uint32Array",
       "stride": 1,
@@ -6566,6 +6572,11 @@
           "name": "aoMethod",
           "column": "AoMethod",
           "default": "auto"
+        },
+        {
+          "name": "aoResolution",
+          "column": "AoResolution",
+          "default": "full"
         },
         {
           "name": "outline",
