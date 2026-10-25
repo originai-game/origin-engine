@@ -237,8 +237,49 @@ pub(crate) fn resync_names(eng: &Engine) {
     }
 }
 
+/// The actions the engine's modules register (engine::register_module_actions):
+/// reserved like the core actions, so a game's command of one of these names
+/// is refused at registration, before or after the modules register theirs,
+/// in every build (a publish build registers fewer of them, never more).
+pub(crate) const MODULE_ACTIONS: &[&str] = &[
+    "bake_probes",
+    "cover",
+    "debug",
+    "dump_ai",
+    "dump_desync",
+    "dump_lanes",
+    "dump_nav",
+    "dump_platform",
+    "dump_pulse",
+    "dump_render",
+    "dump_room",
+    "dump_stream",
+    "lanes",
+    "locale",
+    "terrain_stream",
+    "timeline",
+    "turntable",
+    "view",
+];
+
+/// Why a game may not take `name`: a core action's or a module action's name.
+pub(crate) fn reserved(name: &str) -> Option<String> {
+    if og_probe::command::CORE_ACTIONS
+        .iter()
+        .any(|(core, _, _)| *core == name)
+    {
+        return Some(format!(
+            "'{name}' is a core action; register under another name"
+        ));
+    }
+    MODULE_ACTIONS
+        .contains(&name)
+        .then(|| format!("'{name}' is a registered engine action; register under another name"))
+}
+
 /// Registers one command into the probe; the handler looks its callback up
-/// by name when it runs, so a hot reload's new handler takes over.
+/// by name when it runs, so a hot reload's new handler takes over. Refused
+/// for a reserved name (see [`reserved`]).
 pub(crate) fn register_one(
     probe: &mut Probe,
     id: u32,
@@ -246,6 +287,9 @@ pub(crate) fn register_one(
     usage: &str,
     doc: &str,
 ) -> Result<(), String> {
+    if let Some(why) = reserved(name) {
+        return Err(format!("command '{name}': {why}"));
+    }
     let desc = og_probe::CommandDesc {
         usage: usage.to_string(),
         doc: doc.to_string(),
