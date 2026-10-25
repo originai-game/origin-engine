@@ -55,6 +55,10 @@ struct Frame {
   probe_min: vec4<f32>,       // xyz: the box's min corner, w: 1 with a probe
   probe_max: vec4<f32>,       // xyz: the box's max corner, w: the probe's intensity
   probe_pos: vec4<f32>,       // xyz: the capture point, w: the blend distance
+  // The camera's axes in the world: billboards face the camera of the
+  // group they are drawn with (sprite.wgsl face_axes).
+  view_right: vec4<f32>,      // xyz: right
+  view_up: vec4<f32>,         // xyz: up
 };
 
 @group(0) @binding(0) var<uniform> frame: Frame;

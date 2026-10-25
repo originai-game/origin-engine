@@ -4,11 +4,12 @@
 
 use crate::RenderError;
 use crate::effects::SpriteBlend;
+use crate::scene::SpriteFacing;
 use crate::scene::{
     FontHandle, Glyph, MsdfFont, RenderScene, Sprite, Text, TextureArrayHandle, TextureHandle,
     TileLayer,
 };
-use glam::Vec2;
+use glam::{Vec2, Vec3};
 use std::collections::HashMap;
 
 /// `struct SpriteIn` in sprite.wgsl.
@@ -37,6 +38,94 @@ pub(crate) struct SpriteInstance {
     /// The texture array layer an array sprite draws (sprite_array.wgsl;
     /// the other sprite pipelines do not read it).
     layer: u32,
+    /// How the quad stands (`FACING_*`): the xy plane, a billboard facing
+    /// the camera that draws it, or upright facing the sun (a faced
+    /// sprite's drop shadow).
+    facing: u32,
+}
+
+/// [`SpriteInstance::facing`]: the world's xy plane facing +z.
+const FACING_NONE: u32 = 0;
+/// The camera's view plane ([`crate::SpriteFacing::Camera`]).
+const FACING_CAMERA: u32 = 1;
+/// Upright, turned about y towards the camera ([`crate::SpriteFacing::CameraY`]).
+const FACING_CAMERA_Y: u32 = 2;
+/// Upright, turned about y to face the sun: a faced sprite's drop shadow
+/// ([`sun_card_right`]).
+const FACING_SUN: u32 = 3;
+
+fn facing_code(f: SpriteFacing) -> u32 {
+    match f {
+        SpriteFacing::None => FACING_NONE,
+        SpriteFacing::Camera => FACING_CAMERA,
+        SpriteFacing::CameraY => FACING_CAMERA_Y,
+    }
+}
+
+/// A faced sprite's facing ([`RenderScene::sprite_facing`]; past its end,
+/// none).
+pub(crate) fn facing_of(list: &[SpriteFacing], i: usize) -> SpriteFacing {
+    list.get(i).copied().unwrap_or_default()
+}
+
+/// The world axes a sprite's quad x and y run along when it faces a camera
+/// whose right and up are `right` and `up` (sprite.wgsl `face_axes`, which
+/// the GPU computes the same way): the xy plane, the view plane, or
+/// upright with x the camera's right laid level (+x when the camera's right
+/// points straight up or down).
+pub(crate) fn face_axes(facing: SpriteFacing, right: Vec3, up: Vec3) -> (Vec3, Vec3) {
+    match facing {
+        SpriteFacing::None => (Vec3::X, Vec3::Y),
+        SpriteFacing::Camera => (right, up),
+        SpriteFacing::CameraY => (level(Vec3::new(right.x, 0.0, right.z)), Vec3::Y),
+    }
+}
+
+/// A horizontal direction normalised, +x when it has no length.
+fn level(h: Vec3) -> Vec3 {
+    if h.length_squared() > 1e-8 {
+        h.normalize()
+    } else {
+        Vec3::X
+    }
+}
+
+/// The x axis of the upright quad that casts a faced sprite's drop
+/// shadow: the card turned about y to face the sun towards
+/// `direction_to_light` (the sun as a camera's right), so the shadow is
+/// the sprite's whole shape from every camera; +x with the sun overhead.
+pub fn sun_card_right(direction_to_light: Vec3) -> Vec3 {
+    let l = direction_to_light;
+    level(Vec3::new(l.z, 0.0, -l.x))
+}
+
+/// The eye a frame's sprites are built for: faced sprites sort back to
+/// front from it (by view depth along `forward`, or by distance without
+/// one: a reflection probe's six faces) and are culled to `frustum` when
+/// there is one.
+pub(crate) struct SpriteEye<'a> {
+    pub position: Vec3,
+    pub forward: Option<Vec3>,
+    pub frustum: Option<&'a crate::frame::Frustum>,
+}
+
+impl SpriteEye<'_> {
+    fn depth(&self, p: Vec3) -> f32 {
+        match self.forward {
+            Some(f) => (p - self.position).dot(f),
+            None => (p - self.position).length(),
+        }
+    }
+}
+
+/// A sprite's bounds: the sphere round its anchor through its farthest
+/// corner, whatever way it is turned.
+fn sprite_radius(s: &Sprite) -> f32 {
+    let far = glam::Vec2::new(
+        s.anchor.x.max(1.0 - s.anchor.x),
+        s.anchor.y.max(1.0 - s.anchor.y),
+    );
+    (far * s.size).length()
 }
 
 /// An instance that stands where it is drawn.
@@ -44,20 +133,16 @@ const NO_GROUND: [f32; 4] = [0.0; 4];
 
 pub(crate) const SPRITE_STRIDE: u64 = std::mem::size_of::<SpriteInstance>() as u64;
 
+/// The instance as the sprite pipelines read it: every field, the layer
+/// (location 7) read by the array pipelines alone.
 pub(crate) const SPRITE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: SPRITE_STRIDE,
     step_mode: wgpu::VertexStepMode::Instance,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3, 6 => Float32x4],
+    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3, 6 => Float32x4, 7 => Uint32, 8 => Uint32],
 };
 
-/// [`SPRITE_LAYOUT`] with the instance's layer (location 7), for the array
-/// sprite pipelines.
-pub(crate) const SPRITE_ARRAY_LAYOUT: wgpu::VertexBufferLayout<'static> =
-    wgpu::VertexBufferLayout {
-        array_stride: SPRITE_STRIDE,
-        step_mode: wgpu::VertexStepMode::Instance,
-        attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3, 6 => Float32x4, 7 => Uint32],
-    };
+/// [`SPRITE_LAYOUT`], for the array sprite pipelines.
+pub(crate) const SPRITE_ARRAY_LAYOUT: wgpu::VertexBufferLayout<'static> = SPRITE_LAYOUT;
 
 /// What one run draws with.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -177,6 +262,9 @@ pub(crate) struct SpriteFrame {
     /// Tile quads drawn (after culling) and chunks they came from.
     pub tiles: u32,
     pub tile_chunks: u32,
+    /// Faced sprites left out because their bounds miss the eye's frustum
+    /// ([`RenderScene::sprite_facing`]).
+    pub culled: u32,
 }
 
 /// A sprite's instance with its effects.
@@ -203,6 +291,7 @@ fn sprite_instance(
         fx: [glow, lit as u32 as f32, soft as u32 as f32],
         ground: NO_GROUND,
         layer: 0,
+        facing: FACING_NONE,
     }
 }
 
@@ -362,6 +451,7 @@ fn tile_instances(
                     fx: [0.0, lit as u32 as f32, 0.0],
                     ground: NO_GROUND,
                     layer: 0,
+                    facing: FACING_NONE,
                 });
             }
             for a in &c.animated {
@@ -399,7 +489,10 @@ fn tile_instances(
 /// array's run, and the glow pass by array when it glows. `mask` is the
 /// camera's three.js layer mask: a world sprite or 2D particle whose own
 /// ([`RenderScene::sprite_layers`], [`ExtraSprite::layers`]) shares no bit
-/// with it is left out, with its shadow and glow (`views.rs`).
+/// with it is left out, with its shadow and glow (`views.rs`). A faced
+/// sprite ([`RenderScene::sprite_facing`]) is keyed back to front from
+/// `eye` unless it has a key of its own, and left out (its glow too, not
+/// its drop shadow) when its bounds miss the eye's frustum.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build<'a>(
     scene: &RenderScene,
@@ -411,6 +504,7 @@ pub(crate) fn build<'a>(
     view: Option<ViewRect>,
     strips: &[LayeredStrip],
     mask: u32,
+    eye: &SpriteEye,
 ) -> Result<SpriteFrame, RenderError> {
     // Per-sprite effects by index (the last entry for an index wins).
     let mut fx: HashMap<u32, &crate::SpriteFx> = HashMap::new();
@@ -456,6 +550,7 @@ pub(crate) fn build<'a>(
     }
     let ground = shadow_ground(scene.light.direction_to_light).filter(|_| !shadows.is_empty());
     let mut shadow_count = 0u32;
+    let mut culled = 0u32;
     let outlines: HashMap<u32, &crate::TextOutline> =
         scene.text_outlines.iter().map(|o| (o.text, o)).collect();
     // (layer, key, source, untonemapped, instance), in submission order.
@@ -490,7 +585,15 @@ pub(crate) fn build<'a>(
             None => ([1.0, 1.0, 1.0, 0.0], 0.0, SpriteBlend::Alpha, true),
         };
         let mut inst = sprite_instance(s, flash, glow, lit(s.layer), false);
-        let key = order.get(&(i as u32)).copied().unwrap_or(0.0);
+        let facing = facing_of(&scene.sprite_facing, i);
+        inst.facing = facing_code(facing);
+        let faced = facing != SpriteFacing::None;
+        // A billboard sorts back to front from the eye within its layer.
+        let key = match order.get(&(i as u32)) {
+            Some(&k) => k,
+            None if faced => -eye.depth(s.position),
+            None => 0.0,
+        };
         // Its drop shadow: the same quad and texel alpha in black, projected
         // onto the ground, before every sprite of the layer.
         if let (Some(g), Some(&(opacity, on))) = (ground, shadows.get(&(i as u32)))
@@ -506,6 +609,9 @@ pub(crate) fn build<'a>(
             shadow.ground = [g[0], g[1], g[2], g[3] + height];
             let [rise_x, rise_z] = on.slope();
             shadow.fx = [0.0, rise_x, rise_z];
+            if faced {
+                shadow.facing = FACING_SUN;
+            }
             let source = match arrays.get(&(i as u32)) {
                 Some(&(array, layer)) => {
                     shadow.layer = layer;
@@ -526,6 +632,13 @@ pub(crate) fn build<'a>(
                     shadow_count += 1;
                 }
             }
+        }
+        if faced
+            && let Some(frustum) = eye.frustum
+            && !frustum.intersects_sphere(s.position, sprite_radius(s))
+        {
+            culled += 1;
+            continue;
         }
         if let Some(&(array, layer)) = arrays.get(&(i as u32)) {
             inst.layer = layer;
@@ -646,6 +759,7 @@ pub(crate) fn build<'a>(
                         fx: [outline, 0.0, 0.0],
                         ground: NO_GROUND,
                         layer: 0,
+                        facing: FACING_NONE,
                     },
                 ));
             }
@@ -771,6 +885,7 @@ pub(crate) fn build<'a>(
         missing_glyphs,
         tiles,
         tile_chunks,
+        culled,
     })
 }
 
@@ -780,8 +895,152 @@ mod tests {
     use crate::SpriteShadow;
     use glam::Vec3;
 
+    /// An eye at the origin with no frustum, sorting by distance.
+    const NO_EYE: SpriteEye<'static> = SpriteEye {
+        position: Vec3::ZERO,
+        forward: None,
+        frustum: None,
+    };
+
+    #[test]
+    fn faced_sprites_sort_back_to_front_cull_to_the_frustum_and_cast_sun_facing_shadows() {
+        let mut scene = RenderScene::new();
+        scene.light.direction_to_light = Vec3::new(1.0, 1.0, 0.0);
+        let at = |z: f32, layer: i32| Sprite {
+            position: Vec3::new(0.0, 0.0, z),
+            layer,
+            ..Default::default()
+        };
+        // Submitted near to far, a flat one between, one far out to the side.
+        scene.sprites = vec![
+            at(-2.0, 0),
+            at(-6.0, 0),
+            at(-4.0, 0),
+            at(-9.0, 0),
+            at(-3.0, 0),
+        ];
+        scene.sprites[3].position.x = 500.0;
+        scene.sprite_facing = vec![
+            SpriteFacing::CameraY,
+            SpriteFacing::Camera,
+            SpriteFacing::None,
+            SpriteFacing::Camera,
+            SpriteFacing::Camera,
+        ];
+        // Its own key wins over the depth.
+        scene.sprite_order = vec![crate::SpriteOrder {
+            sprite: 4,
+            key: 5.0,
+        }];
+        scene.sprite_shadows = vec![crate::SpriteShadow {
+            sprite: 0,
+            opacity: 1.0,
+            ..Default::default()
+        }];
+        let camera = crate::frame::camera_frame(&crate::Camera::default(), 16.0 / 9.0, Vec2::ZERO);
+        let frustum = crate::frame::Frustum::from_view_proj(camera.view_proj);
+        let eye = SpriteEye {
+            position: crate::Camera::default().position,
+            forward: Some(camera.forward),
+            frustum: Some(&frustum),
+        };
+        let f = build(
+            &scene,
+            |_| None,
+            0,
+            |_| None,
+            &[],
+            |_| false,
+            None,
+            &[],
+            1,
+            &eye,
+        )
+        .expect("a frame");
+        assert_eq!(
+            (f.sprites, f.culled),
+            (4, 1),
+            "the one off to the side is culled"
+        );
+        // The shadow first, then the billboards far to near, then the
+        // key-0 flat sprite, then the keyed one.
+        let zs: Vec<(f32, u32)> = f
+            .instances
+            .iter()
+            .map(|i| (i.position_rotation[2], i.facing))
+            .collect();
+        assert_eq!(
+            zs,
+            [
+                (-2.0, FACING_SUN),
+                (-6.0, FACING_CAMERA),
+                (-2.0, FACING_CAMERA_Y),
+                (-4.0, FACING_NONE),
+                (-3.0, FACING_CAMERA),
+            ]
+        );
+        // By distance without a forward (a probe's faces), still far first.
+        let f = build(
+            &scene,
+            |_| None,
+            0,
+            |_| None,
+            &[],
+            |_| false,
+            None,
+            &[],
+            1,
+            &NO_EYE,
+        )
+        .expect("a frame");
+        assert_eq!(f.culled, 0, "no frustum, nothing culled");
+        assert_eq!(f.instances[1].position_rotation[0], 500.0);
+        // The sun-facing card: the sun as a camera's right.
+        assert!((sun_card_right(Vec3::new(1.0, 1.0, 0.0)) - Vec3::NEG_Z).length() < 1e-6);
+        assert_eq!(sun_card_right(Vec3::Y), Vec3::X, "overhead: +x");
+        // A camera looking straight down keeps the upright card's x level.
+        let (x, y) = face_axes(SpriteFacing::CameraY, Vec3::new(0.6, 0.8, 0.0), Vec3::Z);
+        assert!((x - Vec3::X).length() < 1e-6 && y == Vec3::Y);
+    }
+
+    #[test]
+    fn a_sprite_anchored_elsewhere_keeps_its_corners() {
+        // A nine-slice piece off the panel's anchor, turned with the panel.
+        let piece = Sprite {
+            position: Vec3::new(2.0, 1.0, -3.0),
+            size: Vec2::new(0.5, 2.0),
+            anchor: Vec2::new(0.0, 1.0),
+            rotation: 0.7,
+            ..Default::default()
+        };
+        let corners = |s: &Sprite| {
+            let (sin, cos) = s.rotation.sin_cos();
+            [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)].map(|(u, v)| {
+                let l = (Vec2::new(u, v) - s.anchor) * s.size;
+                s.position.truncate() + Vec2::new(l.x * cos - l.y * sin, l.x * sin + l.y * cos)
+            })
+        };
+        let moved = piece.anchored_at(Vec3::new(-1.0, 4.0, 9.0));
+        assert_eq!(moved.position, Vec3::new(-1.0, 4.0, -3.0), "its z is kept");
+        for (a, b) in corners(&piece).iter().zip(corners(&moved)) {
+            assert!((*a - b).length() < 1e-5, "{a} moved to {b}");
+        }
+    }
+
     fn frame(scene: &RenderScene) -> SpriteFrame {
-        build(scene, |_| None, 0, |_| None, &[], |_| false, None, &[], 1).expect("a frame")
+        build(
+            scene,
+            |_| None,
+            0,
+            |_| None,
+            &[],
+            |_| false,
+            None,
+            &[],
+            1,
+            &NO_EYE,
+        )
+        .expect("a frame")
     }
 
     #[test]
@@ -816,7 +1075,21 @@ mod tests {
         scene.light.direction_to_light = Vec3::new(0.0, -1.0, 0.0);
         assert_eq!(frame(&scene).instances.len(), 3);
         scene.sprite_shadows[0].sprite = 3;
-        assert!(build(&scene, |_| None, 0, |_| None, &[], |_| false, None, &[], 1).is_err());
+        assert!(
+            build(
+                &scene,
+                |_| None,
+                0,
+                |_| None,
+                &[],
+                |_| false,
+                None,
+                &[],
+                1,
+                &NO_EYE
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -1008,7 +1281,21 @@ mod tests {
         assert_eq!((f.runs[2].first, f.runs[2].count), (2, 1));
         // An index past its vertices is refused.
         scene.sprite_meshes[0].indices[5] = 9;
-        assert!(build(&scene, |_| None, 0, |_| None, &[], |_| false, None, &[], 1).is_err());
+        assert!(
+            build(
+                &scene,
+                |_| None,
+                0,
+                |_| None,
+                &[],
+                |_| false,
+                None,
+                &[],
+                1,
+                &NO_EYE
+            )
+            .is_err()
+        );
     }
 
     #[test]

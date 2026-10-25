@@ -29,6 +29,7 @@ struct SpriteIn {
   @location(5) fx: vec3<f32>,                 // x: glow, y: lit, z: soft dot
   @location(6) ground: vec4<f32>,             // a drop shadow's projection (sprite.wgsl)
   @location(7) layer: u32,
+  @location(8) facing: u32,                   // how the quad stands (sprite.wgsl stand)
 };
 
 struct SpriteOut {
@@ -42,6 +43,25 @@ struct SpriteOut {
   @location(6) corner: vec2<f32>,
   @location(7) shadow: f32,                   // 1 for a drop shadow
 };
+
+// Where the quad's point `q` (its offset from the anchor `a` in the quad's
+// own x and y, rotated) stands in the world by the instance's facing
+// (as sprite.wgsl's; sprites.rs face_axes and sun_card_right): 0 the xy plane facing +z, 1
+// the view plane of the camera this frame group is drawn for, 2 upright
+// turned about y towards it (its right laid level), 3 upright facing the
+// sun (a faced sprite's drop shadow, the same from every camera).
+fn stand(a: vec3<f32>, q: vec2<f32>, facing: u32) -> vec3<f32> {
+  if (facing == 0u) { return vec3<f32>(a.xy + q, a.z); }
+  var right = frame.view_right.xyz;
+  var up = frame.view_up.xyz;
+  if (facing >= 2u) {
+    var h = vec3<f32>(right.x, 0.0, right.z);
+    if (facing == 3u) { h = vec3<f32>(frame.light_dir.z, 0.0, -frame.light_dir.x); }
+    right = select(vec3<f32>(1.0, 0.0, 0.0), normalize(h), dot(h, h) > 1e-8);
+    up = vec3<f32>(0.0, 1.0, 0.0);
+  }
+  return a + right * q.x + up * q.y;
+}
 
 @vertex
 fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
@@ -64,7 +84,7 @@ fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
   let cs = cos(s.position_rotation.w);
   let sn = sin(s.position_rotation.w);
   let rotated = vec2<f32>(local.x * cs - local.y * sn, local.x * sn + local.y * cs);
-  var world = vec3<f32>(s.position_rotation.xy + rotated, s.position_rotation.z);
+  var world = stand(s.position_rotation.xyz, rotated, s.facing);
   if (bent) {
     // Down the sun to the ground's height under this corner.
     let h = world.y - ground_height;

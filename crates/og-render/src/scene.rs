@@ -910,6 +910,48 @@ pub struct Sprite {
     pub clip: Option<u32>,
 }
 
+impl Sprite {
+    /// The same quad with its anchor point moved to `pivot` (x and y; the
+    /// sprite keeps its z): the anchor is shifted by the offset in the
+    /// sprite's own rotated frame, so every corner stays where it was. A
+    /// faced sprite turns about its anchor, so the pieces of one faced
+    /// nine-slice ([`crate::nine_slice`]) are anchored at the panel's anchor to
+    /// turn as one panel. An axis of zero size keeps its anchor.
+    pub fn anchored_at(&self, pivot: Vec3) -> Sprite {
+        let d = pivot.truncate() - self.position.truncate();
+        let (sin, cos) = self.rotation.sin_cos();
+        // The offset in the quad's frame (the rotation undone).
+        let local = glam::Vec2::new(d.x * cos + d.y * sin, -d.x * sin + d.y * cos);
+        let shift = |l: f32, size: f32| if size != 0.0 { l / size } else { 0.0 };
+        Sprite {
+            position: Vec3::new(pivot.x, pivot.y, self.position.z),
+            anchor: self.anchor
+                + glam::Vec2::new(shift(local.x, self.size.x), shift(local.y, self.size.y)),
+            ..*self
+        }
+    }
+}
+
+/// How a world sprite is turned towards the camera that draws it
+/// ([`RenderScene::sprite_facing`]): a billboard. Computed in the sprite
+/// vertex shader from each camera's own axes (the main camera's, a
+/// [`crate::View`]'s, a reflection probe face's), so it never feeds back
+/// into anything the simulation reads. The sprite turns about its anchor;
+/// `rotation` still turns it within its own plane.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum SpriteFacing {
+    /// In the world's xy plane, facing +z (every sprite until billboards).
+    #[default]
+    None,
+    /// In the camera's view plane (three.js `Sprite`, the particle
+    /// billboards): its x along the camera's right, its y along its up.
+    Camera,
+    /// Upright, turned about the world's y axis towards the camera: its y
+    /// stays +y, its x the camera's right laid level. Trees, characters
+    /// and props that must not lean back when the camera looks down.
+    CameraY,
+}
+
 impl Default for Sprite {
     fn default() -> Self {
         Sprite {
@@ -1363,6 +1405,16 @@ pub struct RenderScene {
     /// The same for the world `sprites` (with their drop shadows, glow and
     /// afterimages drawn from them).
     pub sprite_layers: Vec<u32>,
+    /// How each world sprite faces the camera, by index in `sprites`
+    /// (billboards): an index past the end is [`SpriteFacing::None`], the
+    /// xy plane. A faced sprite without a [`RenderScene::sprite_order`] key
+    /// is sorted within its layer back to front from the eye that draws it
+    /// (its key the negated view depth of its anchor, so before the
+    /// layer's key-0 sprites), and culled by its bounds (a sphere round the
+    /// anchor through the farthest corner) against that camera's frustum.
+    /// Its drop shadow is cast by the quad stood upright facing the sun,
+    /// so it shows the sprite's whole shape from every camera.
+    pub sprite_facing: Vec<SpriteFacing>,
     /// The same for `lines` and `points` (scene sets; overlay and screen
     /// sets draw on the main frame whatever their masks).
     pub line_layers: Vec<u32>,
@@ -1452,6 +1504,7 @@ impl RenderScene {
             instance_layers: Vec::new(),
             skinned_layers: Vec::new(),
             sprite_layers: Vec::new(),
+            sprite_facing: Vec::new(),
             line_layers: Vec::new(),
             point_layers: Vec::new(),
             particle_layers: Vec::new(),
@@ -2820,6 +2873,19 @@ impl ShadowGround {
         sprite: &crate::Sprite,
         direction_to_light: Vec3,
     ) -> ShadowGround {
+        ShadowGround::fit_facing(height_at, sprite, SpriteFacing::None, direction_to_light)
+    }
+
+    /// [`ShadowGround::fit`] for a sprite that faces the camera
+    /// ([`RenderScene::sprite_facing`]): its shadow is cast by the quad
+    /// stood upright facing the sun, so a bend's grid points are taken on
+    /// that quad. [`SpriteFacing::None`] is `fit`.
+    pub fn fit_facing(
+        height_at: impl Fn(f32, f32) -> f32,
+        sprite: &crate::Sprite,
+        facing: SpriteFacing,
+        direction_to_light: Vec3,
+    ) -> ShadowGround {
         let at = glam::Vec2::new(sprite.position.x, sprite.position.z);
         let h0 = height_at(at.x, at.y);
         let Some(g) = crate::sprites::shadow_ground(direction_to_light) else {
@@ -2848,17 +2914,26 @@ impl ShadowGround {
             normal: Vec3::new(-gradient.x, 1.0, -gradient.y).normalize(),
             bend: None,
         };
-        plane.bend = plane.bend_over(&height_at, sprite, g);
+        let right = match facing {
+            SpriteFacing::None => Vec3::X,
+            SpriteFacing::Camera | SpriteFacing::CameraY => {
+                crate::sprites::sun_card_right(direction_to_light)
+            }
+        };
+        plane.bend = plane.bend_over(&height_at, sprite, right, g);
         plane
     }
 
     /// The bend of a shadow whose plane is `self` over `height_at`, under
     /// the sun's projection `g` (`sprites::shadow_ground`), or `None` where
     /// the plane lies within the tolerance of the ground at every point.
+    /// `right`: the standing quad's x axis (+x, or the sun-facing card's of
+    /// a faced sprite), its y is +y.
     fn bend_over(
         &self,
         height_at: &impl Fn(f32, f32) -> f32,
         sprite: &crate::Sprite,
+        right: Vec3,
         g: [f32; 4],
     ) -> Option<ShadowBend> {
         let tall = sprite.size.y.abs().max(0.05);
@@ -2877,11 +2952,12 @@ impl ShadowGround {
                     row as f32 / (SHADOW_BEND_ROWS - 1) as f32,
                 );
                 let local = (c - sprite.anchor) * sprite.size;
-                let p = Vec3::new(
-                    anchor.x + local.x * cos - local.y * sin,
-                    anchor.y + local.x * sin + local.y * cos,
-                    anchor.z,
-                );
+                let (x, y) = (local.x * cos - local.y * sin, local.x * sin + local.y * cos);
+                let p = if right == Vec3::X {
+                    Vec3::new(anchor.x + x, anchor.y + y, anchor.z)
+                } else {
+                    anchor + right * x + Vec3::Y * y
+                };
                 // Where it lands on the plane (sprite.wgsl sloped_shadow) ...
                 let above =
                     p.y - self.height - rise_x * (p.x - anchor.x) - rise_z * (p.z - anchor.z);
