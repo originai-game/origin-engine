@@ -16,7 +16,7 @@ use crate::verlet::{ClothState, RopeState, Solids};
 use crate::water::{Floater, LineState, SurfaceState, WaterForce};
 use crate::{ControlOut, StepOut};
 use og_core::glam::{Quat, Vec2, Vec3};
-use og_core::{Error, ErrorKind, Result};
+use og_core::{Error, ErrorKind, IdMap, Result};
 use og_ecs::Entity;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -676,7 +676,7 @@ pub(crate) fn soft(
     // Ropes.
     let live: BTreeSet<u64> = og_core::sort::set(scene.ropes.iter().map(|r| r.0.to_bits()));
     sim.ropes.retain(|e, _| live.contains(e));
-    let mut ropes: BTreeMap<u64, (&Rope, Vec3, Option<Vec3>)> = BTreeMap::new();
+    let mut ropes: IdMap<u64, (&Rope, Vec3, Option<Vec3>)> = IdMap::new();
     for (e, position, rope) in &scene.ropes {
         let start = flat_keep(*position + rope.offset, position.z, flat2);
         let end = if rope.end != 0 {
@@ -711,7 +711,7 @@ pub(crate) fn soft(
     // Cloth.
     let live: BTreeSet<u64> = og_core::sort::set(scene.cloths.iter().map(|c| c.0.to_bits()));
     sim.cloths.retain(|e, _| live.contains(e));
-    let mut cloths: BTreeMap<u64, (&Cloth, Vec3, Quat)> = BTreeMap::new();
+    let mut cloths: IdMap<u64, (&Cloth, Vec3, Quat)> = IdMap::new();
     for (e, position, rotation, cloth) in &scene.cloths {
         let key = e.to_bits();
         let rotation = if flat2 { Quat::IDENTITY } else { *rotation };
@@ -755,7 +755,7 @@ pub(crate) fn soft(
     let live: BTreeSet<u64> = og_core::sort::set(scene.fluids.iter().map(|f| f.0.to_bits()));
     sim.fluids.retain(|e, _| live.contains(e));
     let g = Vec2::new(settings.gravity.x, settings.gravity.y);
-    let mut groups: BTreeMap<u32, Vec<usize>> = BTreeMap::new();
+    let mut groups: IdMap<u32, Vec<usize>> = IdMap::new();
     for (k, (e, position, fluid)) in scene.fluids.iter().enumerate() {
         let key = e.to_bits();
         let centre = Vec2::new(position.x, position.y);
@@ -907,7 +907,7 @@ fn fluids3(scene: &Scene, settings: &Physics, dt: f32, sim: &mut Sim) {
     sim.fluids3.retain(|e, _| live.contains(e));
     // Each fluid's set: its group's first four (entity order), or itself.
     let mut sets: BTreeMap<(u32, u64), Vec<usize>> = BTreeMap::new();
-    let mut groups: BTreeMap<u32, Vec<usize>> = BTreeMap::new();
+    let mut groups: IdMap<u32, Vec<usize>> = IdMap::new();
     for (k, (e, position, fluid)) in scene.fluids3.iter().enumerate() {
         let key = e.to_bits();
         let rebuild = sim

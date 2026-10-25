@@ -24,6 +24,7 @@
 use super::engine::{Engine, engine};
 use super::{ok, parse, refuse};
 use og_anim::{AnimationSystem, ClipAsset, GraphAsset, HumanoidMap, RigAsset, SkeletonAsset};
+use og_core::IdMap;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
@@ -34,13 +35,13 @@ pub(crate) const REGISTERED_BY_ANIM: &[&str] = &["og.AnimationEvent"];
 #[derive(Clone, Default)]
 pub(crate) struct AnimAssets {
     next: u64,
-    skeletons: BTreeMap<u64, SkeletonAsset>,
-    clips: BTreeMap<u64, ClipAsset>,
-    graphs: BTreeMap<u64, GraphAsset>,
+    skeletons: IdMap<u64, SkeletonAsset>,
+    clips: IdMap<u64, ClipAsset>,
+    graphs: IdMap<u64, GraphAsset>,
     /// What og.load.animation answered per model id, so a second load answers the same handles.
     loaded: BTreeMap<String, Value>,
     /// Humanoid maps from og.load.rig, and their handles by asset id.
-    rigs: BTreeMap<u64, RigAsset>,
+    rigs: IdMap<u64, RigAsset>,
     rig_ids: BTreeMap<String, u64>,
     /// What og.anim.retarget answered per (clip, source, target, source rig,
     /// target rig, foot IK), so asking again answers the same clip.

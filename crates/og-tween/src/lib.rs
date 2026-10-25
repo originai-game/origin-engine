@@ -22,11 +22,11 @@ mod spring;
 pub use ease::{EASE_NAMES, EASES, Ease};
 pub use spring::{Spring, SpringState};
 
+use og_core::IdMap;
 use og_core::reflect::FieldType;
 use og_core::{Error, ErrorKind, Reflect, Result, Schema};
 use og_ecs::{Entity, SchemaId, StateBlock, SystemContext, SystemDesc, World};
 use std::any::Any;
-use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 /// The system's and the state block's name.
@@ -416,7 +416,7 @@ pub struct Running {
 #[derive(Default, Clone, Debug, PartialEq)]
 pub(crate) struct State {
     pub next: u64,
-    pub running: BTreeMap<u64, Running>,
+    pub running: IdMap<u64, Running>,
 }
 
 /// Starts, cancels and inspects the tweens of one world.

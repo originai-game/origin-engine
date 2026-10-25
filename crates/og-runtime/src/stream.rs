@@ -48,6 +48,7 @@
 use super::engine::{Engine, engine, hooks};
 use super::{ok, ok_void, refuse};
 use og_cook::runtime::{CookedSound, ManifestStream, StreamTrigger};
+use og_core::IdMap;
 use og_core::{Reflect, Str64};
 use og_ecs::{SystemDesc, World};
 use og_render::{
@@ -243,7 +244,7 @@ struct Retained {
 }
 
 thread_local! {
-    static EVENTS: RefCell<BTreeMap<u32, Vec<StreamEvent>>> = const { RefCell::new(BTreeMap::new()) };
+    static EVENTS: RefCell<IdMap<u32, Vec<StreamEvent>>> = const { RefCell::new(IdMap::new()) };
 }
 
 impl Streams {
@@ -1425,11 +1426,10 @@ fn wanted_chunks(eng: &Engine) -> Vec<Wanted> {
     };
     let bank = link.bank();
     let distances = og_audio::chunk_distances(world, bank);
-    let sets = og_core::sort::map(
-        distances
-            .iter()
-            .map(|(h, chunks)| (*h, og_core::sort::set(chunks.keys().copied()))),
-    );
+    let sets: IdMap<u64, _> = distances
+        .iter()
+        .map(|(h, chunks)| (*h, og_core::sort::set(chunks.keys().copied())))
+        .collect();
     let a = eng.assets.borrow();
     let mut out = Vec::new();
     for (handle, id, n) in bank.keep_chunks(&sets) {

@@ -16,6 +16,7 @@ use super::assets;
 use super::codec::Layout;
 use super::engine::{Engine, engine};
 use super::extract::RenderState;
+use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, SchemaId, SystemContext, SystemDesc, World};
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -36,11 +37,11 @@ struct Clip {
     sound: u64,
 }
 
-type Clips = Arc<Mutex<BTreeMap<u64, Clip>>>;
+type Clips = Arc<Mutex<IdMap<u64, Clip>>>;
 
 thread_local! {
     /// Each engine's loaded videos, by Video handle (kept across a reload).
-    static CLIPS: RefCell<BTreeMap<u32, Clips>> = const { RefCell::new(BTreeMap::new()) };
+    static CLIPS: RefCell<IdMap<u32, Clips>> = const { RefCell::new(IdMap::new()) };
 }
 
 fn clips(engine: u32) -> Clips {
@@ -109,7 +110,7 @@ fn frame_at(time: f32, c: &Clip) -> u32 {
 fn run(
     ctx: &mut SystemContext<'_>,
     engine_id: u32,
-    shared: &Mutex<BTreeMap<u64, Clip>>,
+    shared: &Mutex<IdMap<u64, Clip>>,
     player: &(SchemaId, Layout),
     audio: &(SchemaId, Layout),
 ) -> og_core::Result<()> {

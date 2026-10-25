@@ -14,6 +14,7 @@
 
 use super::engine::Engine;
 use super::extract::{Hierarchy, RenderState};
+use og_core::IdMap;
 use og_core::hash::StableHasher;
 use og_ecs::World;
 use og_render::{MAX_REFLECTION_PROBES, ProbeMode, ReflectionProbe};
@@ -28,7 +29,7 @@ pub(crate) struct ProbeBakes {
     /// The rooms' content hashes, kept across frames.
     pub content: og_render::ProbeContent,
     /// The last frame's baked probes, by entity: their key and room.
-    pub rooms: BTreeMap<u64, (String, og_render::ProbeRoom)>,
+    pub rooms: IdMap<u64, (String, og_render::ProbeRoom)>,
 }
 
 /// The asset id of `p`'s bake, whose room hashes to `room`.

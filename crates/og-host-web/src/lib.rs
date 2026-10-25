@@ -39,6 +39,7 @@ mod host_depth;
 mod host_e6;
 mod host_p2;
 
+use og_core::IdMap;
 use og_runtime::{Dispatch, Fetch, Hooks};
 
 /// The engine's heap, counted for the probe's `memory` (og-core's `alloc`).
@@ -61,19 +62,19 @@ thread_local! {
     /// Transcoded textures the Worker handed over, by asset id.
     static TEXTURES: RefCell<BTreeMap<String, og_render::TextureSource>> = const { RefCell::new(BTreeMap::new()) };
     /// The encodings each engine's attached renderer takes.
-    static FORMATS: RefCell<BTreeMap<u32, og_render::TextureFormats>> = const { RefCell::new(BTreeMap::new()) };
+    static FORMATS: RefCell<IdMap<u32, og_render::TextureFormats>> = const { RefCell::new(IdMap::new()) };
     /// Paths handed to the fetcher and not answered yet, so each is asked for once at a time.
     static REQUESTED: RefCell<std::collections::BTreeSet<String>> = const { RefCell::new(std::collections::BTreeSet::new()) };
     /// Packs let go of while they were fetched, with their group's texture
     /// ids: dropped, textures and all, when they land.
     static ORPHANED: RefCell<BTreeMap<String, Vec<String>>> = const { RefCell::new(BTreeMap::new()) };
     /// Render-target sizes the shell asked for, by engine, applied before the next frame.
-    static RESIZES: RefCell<BTreeMap<u32, (u32, u32)>> = const { RefCell::new(BTreeMap::new()) };
+    static RESIZES: RefCell<IdMap<u32, (u32, u32)>> = const { RefCell::new(IdMap::new()) };
     /// The Worker's `fetch(path)` for files nobody fetched yet.
     static FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     /// The Worker's `inflate(key, bytes)` (DecompressionStream), and what it answered by key.
     static INFLATER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
-    static INFLATED: RefCell<BTreeMap<u64, Result<Vec<u8>, String>>> = const { RefCell::new(BTreeMap::new()) };
+    static INFLATED: RefCell<IdMap<u64, Result<Vec<u8>, String>>> = const { RefCell::new(IdMap::new()) };
     /// `performance` and its `now`, where the global has them (Workers do).
     static PERFORMANCE: Option<(JsValue, js_sys::Function)> = {
         let performance = js_sys::Reflect::get(&js_sys::global(), &JsValue::from_str("performance")).ok();

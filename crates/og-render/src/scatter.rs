@@ -24,7 +24,8 @@ use crate::scene::{MaterialHandle, MeshHandle};
 use crate::terrain::{MAX_TERRAIN_LAYERS, Terrain, TerrainData, TerrainSource, horizontal_scale};
 use crate::terrain_tiles::{TerrainLayout, TerrainTile};
 use glam::{Mat3, Mat4, Vec2, Vec3};
-use std::collections::{BTreeMap, HashMap};
+use og_core::IdMap;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 /// The most instances one [`TerrainScatter`] places in a frame on the CPU.
@@ -155,7 +156,7 @@ impl Ground for TerrainData {
 /// A streamed terrain's resident level-0 tiles as ground.
 pub(crate) struct TileGround<'a> {
     pub layout: TerrainLayout,
-    pub tiles: &'a BTreeMap<u32, Arc<TerrainTile>>,
+    pub tiles: &'a IdMap<u32, Arc<TerrainTile>>,
 }
 
 impl TileGround<'_> {

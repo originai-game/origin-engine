@@ -48,8 +48,9 @@
 use crate::base64;
 use crate::protocol::{Event, LOCKSTEP_CHANNEL, Payload};
 use crate::state::{Snapshot, diff};
+use og_core::IdMap;
 use serde_json::{Value, json};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 /// og.Lockstep's settings, as the game set them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -168,24 +169,24 @@ const MAX_KEPT: usize = 2048;
 pub struct Lockstep {
     me: Option<u32>,
     /// The peers present, this one included, by number.
-    peers: BTreeMap<u32, String>,
+    peers: IdMap<u32, String>,
     run: Option<Run>,
     /// A start handed to this peer, applied at the next boundary.
     handover: Option<(Run, u64, Vec<u8>)>,
     /// Inputs by tick, then seat. Empty bytes are an empty input.
-    inputs: BTreeMap<u64, BTreeMap<u32, Vec<u8>>>,
+    inputs: IdMap<u64, IdMap<u32, Vec<u8>>>,
     /// The last tick each seat's input was received (or made) for.
-    seat_last: BTreeMap<u32, u64>,
+    seat_last: IdMap<u32, u64>,
     /// This peer's own inputs by tick, for a newcomer.
-    own: BTreeMap<u64, Vec<u8>>,
+    own: IdMap<u64, Vec<u8>>,
     /// The input og.net.submit gave last (packed og.PlayerInput).
     local: Vec<u8>,
     /// This peer's hash and snapshot by tick, until every peer compared.
-    mine: BTreeMap<u64, (u64, Vec<u8>)>,
+    mine: IdMap<u64, (u64, Vec<u8>)>,
     /// Other peers' hashes by tick, until compared.
-    theirs: BTreeMap<u32, BTreeMap<u64, u64>>,
+    theirs: IdMap<u32, IdMap<u64, u64>>,
     /// The last tick compared with each peer.
-    compared: BTreeMap<u32, u64>,
+    compared: IdMap<u32, u64>,
     /// The first tick of the next hash batch, and its hashes so far.
     batch_from: u64,
     batch: Vec<Value>,
@@ -777,8 +778,8 @@ fn start_msg(
     run: &Run,
     tick: u64,
     snapshot: &[u8],
-    inputs: &BTreeMap<u64, BTreeMap<u32, Vec<u8>>>,
-    seat_last: &BTreeMap<u32, u64>,
+    inputs: &IdMap<u64, IdMap<u32, Vec<u8>>>,
+    seat_last: &IdMap<u32, u64>,
 ) -> Value {
     let inputs: Vec<Value> = inputs
         .range(tick..)

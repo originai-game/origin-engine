@@ -11,6 +11,7 @@
 //! | [`time`] | [`Time`], the fixed-tick clock |
 //! | [`hash`] | [`hash::StableHasher`], the stable 64-bit hash for world and layout hashes |
 //! | [`sort`] | [`sort::sort_by`] and its siblings: the engine's one stable sort, compiled once |
+//! | [`idmap`] | [`IdMap`], the ordered map from integer ids whose tree is compiled once |
 //!
 //! Invariants: no global mutable state; every fallible call returns
 //! `Result<_, Error>`; nothing here reads the wall clock or the host's
@@ -28,6 +29,7 @@ pub mod alloc;
 pub mod error;
 pub mod handle;
 pub mod hash;
+pub mod idmap;
 pub mod math;
 pub mod ogt;
 pub mod reflect;
@@ -37,6 +39,7 @@ pub mod time;
 
 pub use error::{Error, ErrorKind, Result};
 pub use handle::{Handle, HandleAllocator, Pool, RawHandle};
+pub use idmap::IdMap;
 pub use og_core_derive::Reflect;
 pub use reflect::{
     Bool8, FieldSchema, FieldType, FieldValue, LIST_MAX_CAPACITY, Layout, List, ListElement,

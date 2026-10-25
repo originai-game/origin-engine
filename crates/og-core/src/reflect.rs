@@ -960,6 +960,51 @@ pub struct Schema {
     pub fields: Vec<FieldSchema>,
 }
 
+/// One field of a schema as `#[derive(Reflect)]` declares it: static data
+/// that [`Schema::declared`] turns into a [`FieldSchema`], so the code that
+/// builds a schema is compiled once rather than once per reflected type.
+#[doc(hidden)]
+pub struct FieldDecl {
+    pub name: &'static str,
+    pub ty: FieldType,
+    pub doc: &'static str,
+    pub label: Option<&'static str>,
+    pub unit: Option<&'static str>,
+    pub min: Option<f64>,
+    pub max: Option<f64>,
+    pub tunable: bool,
+    pub default: Option<&'static [f64]>,
+    pub variants: &'static [&'static str],
+}
+
+impl Schema {
+    /// The schema of a derived type from its declared fields.
+    #[doc(hidden)]
+    #[inline(never)]
+    pub fn declared(name: &str, version: u32, doc: &str, fields: &[FieldDecl]) -> Schema {
+        Schema {
+            name: name.to_owned(),
+            version,
+            doc: doc.to_owned(),
+            fields: fields
+                .iter()
+                .map(|f| FieldSchema {
+                    name: f.name.to_owned(),
+                    ty: f.ty,
+                    doc: f.doc.to_owned(),
+                    label: f.label.map(str::to_owned),
+                    unit: f.unit.map(str::to_owned),
+                    min: f.min,
+                    max: f.max,
+                    tunable: f.tunable,
+                    default: f.default.map(<[f64]>::to_vec),
+                    variants: f.variants.iter().map(|v| (*v).to_owned()).collect(),
+                })
+                .collect(),
+        }
+    }
+}
+
 /// `[A-Za-z_][A-Za-z0-9_]*`, optionally dot-separated for type names.
 fn is_identifier(s: &str, dots: bool) -> bool {
     let segment = |seg: &str| {

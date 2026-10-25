@@ -18,6 +18,7 @@
 use crate::protocol::{
     self, Event, LOCKSTEP_CHANNEL, MAX_CAPACITY, MAX_ENGINE_MESSAGE, MAX_MESSAGE,
 };
+use og_core::IdMap;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::io;
@@ -45,7 +46,7 @@ struct PeerConn {
 struct Room {
     capacity: u32,
     next_peer: u32,
-    peers: BTreeMap<u32, PeerConn>,
+    peers: IdMap<u32, PeerConn>,
 }
 
 #[derive(Default)]
@@ -164,7 +165,7 @@ impl Peer {
         let state = rooms.rooms.entry(room.to_string()).or_insert_with(|| Room {
             capacity: make.unwrap_or(JOIN_CAPACITY),
             next_peer: 0,
-            peers: BTreeMap::new(),
+            peers: IdMap::new(),
         });
         if state.peers.len() as u32 >= state.capacity {
             let cap = state.capacity;

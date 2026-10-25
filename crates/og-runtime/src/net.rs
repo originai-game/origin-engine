@@ -18,6 +18,7 @@
 
 use super::engine::{Engine, engine, running};
 use super::{ok_void, parse, refuse};
+use og_core::IdMap;
 use og_ecs::{QueryDesc, SystemDesc, World};
 use og_net::protocol::{self, Event, LOCKSTEP_CHANNEL, MAX_MESSAGE, Payload};
 use og_net::{Config, Gate, Lockstep, Snapshot};
@@ -66,7 +67,7 @@ struct Net {
     stage: Stage,
     room: String,
     peer: u32,
-    peers: BTreeMap<u32, String>,
+    peers: IdMap<u32, String>,
     outbox: Vec<Value>,
     /// The game's events waiting for the next tick: (event, JSON value).
     pending: Vec<(&'static str, Value)>,
@@ -76,7 +77,7 @@ struct Net {
 }
 
 thread_local! {
-    static NETS: RefCell<BTreeMap<u32, Net>> = const { RefCell::new(BTreeMap::new()) };
+    static NETS: RefCell<IdMap<u32, Net>> = const { RefCell::new(IdMap::new()) };
 }
 
 fn with<T>(engine: u32, f: impl FnOnce(&mut Net) -> T) -> T {

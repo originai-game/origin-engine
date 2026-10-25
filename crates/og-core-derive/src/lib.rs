@@ -110,21 +110,24 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
         }
     };
 
+    // The schema is static data, one `FieldDecl` per field, that one
+    // og-core function turns into a `Schema`: the code that builds it is
+    // compiled once, not once per reflected type (tests/evidence/r4/size-3).
     let schema_fields = fields.iter().map(|f| {
         let fname = f.rename.clone().unwrap_or_else(|| f.ident.to_string());
         let ty = &f.ty;
         let doc = &f.doc;
-        let label = opt_string(&f.label);
-        let unit = opt_string(&f.unit);
+        let label = opt_str(&f.label);
+        let unit = opt_str(&f.unit);
         let min = opt_f64(f.min);
         let max = opt_f64(f.max);
         let tunable = f.tunable;
         let default = match &f.default {
             Some(values) => {
                 let values = values.iter().map(|v| f64_tokens(*v));
-                quote! { ::std::option::Option::Some(::std::vec![#(#values),*]) }
+                quote! { ::core::option::Option::Some(&[#(#values),*]) }
             }
-            None => quote! { ::std::option::Option::None },
+            None => quote! { ::core::option::Option::None },
         };
         let (field_type, variants) = match &f.variants {
             Some(names) => (
@@ -133,18 +136,18 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                     let _: ::core::marker::PhantomData<u32> = ::core::marker::PhantomData::<#ty>;
                     ::og_core::reflect::FieldType::Enum
                 }},
-                quote! { ::std::vec![#(::std::string::String::from(#names)),*] },
+                quote! { &[#(#names),*] },
             ),
             None => (
                 quote! { <#ty as ::og_core::reflect::ReflectField>::TYPE },
-                quote! { ::std::vec::Vec::new() },
+                quote! { &[] },
             ),
         };
         quote! {
-            ::og_core::reflect::FieldSchema {
-                name: ::std::string::String::from(#fname),
+            ::og_core::reflect::FieldDecl {
+                name: #fname,
                 ty: #field_type,
-                doc: ::std::string::String::from(::og_core::reflect_doc!(#doc)),
+                doc: ::og_core::reflect_doc!(#doc),
                 label: #label,
                 unit: #unit,
                 min: #min,
@@ -196,12 +199,13 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
             const NAME: &'static str = #name;
 
             fn schema() -> ::og_core::reflect::Schema {
-                ::og_core::reflect::Schema {
-                    name: ::std::string::String::from(#name),
-                    version: #version,
-                    doc: ::std::string::String::from(::og_core::reflect_doc!(#doc)),
-                    fields: ::std::vec![#(#schema_fields),*],
-                }
+                const FIELDS: &[::og_core::reflect::FieldDecl] = &[#(#schema_fields),*];
+                ::og_core::reflect::Schema::declared(
+                    #name,
+                    #version,
+                    ::og_core::reflect_doc!(#doc),
+                    FIELDS,
+                )
             }
 
             fn write_fields(&self, #out_name: &mut dyn ::core::ops::FnMut(usize, &[u8])) {
@@ -363,10 +367,10 @@ fn f64_tokens(v: f64) -> TokenStream2 {
     }
 }
 
-fn opt_string(value: &Option<String>) -> TokenStream2 {
+fn opt_str(value: &Option<String>) -> TokenStream2 {
     match value {
-        Some(s) => quote! { ::std::option::Option::Some(::std::string::String::from(#s)) },
-        None => quote! { ::std::option::Option::None },
+        Some(s) => quote! { ::core::option::Option::Some(#s) },
+        None => quote! { ::core::option::Option::None },
     }
 }
 
@@ -374,8 +378,8 @@ fn opt_f64(value: Option<f64>) -> TokenStream2 {
     match value {
         Some(v) => {
             let v = f64_tokens(v);
-            quote! { ::std::option::Option::Some(#v) }
+            quote! { ::core::option::Option::Some(#v) }
         }
-        None => quote! { ::std::option::Option::None },
+        None => quote! { ::core::option::Option::None },
     }
 }

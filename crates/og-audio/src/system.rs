@@ -9,11 +9,12 @@ use crate::schema::{
     ReverbZone, SoundEnded, SoundStarted, Transform, end_reason, panning_model,
 };
 use crate::sound::SoundBank;
+use og_core::IdMap;
 use og_core::Result;
 use og_core::glam::{Quat, Vec3, Vec4};
 use og_core::hash::StableHasher;
 use og_ecs::{Entity, QueryDesc, SystemContext, SystemDesc, World};
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
 /// The system's name in the schedule.
@@ -172,7 +173,7 @@ impl AudioLink {
     }
 }
 
-static LINKS: Mutex<BTreeMap<u32, AudioLink>> = Mutex::new(BTreeMap::new());
+static LINKS: Mutex<IdMap<u32, AudioLink>> = Mutex::new(IdMap::new());
 
 /// Publishes an engine's link so its host's sink can find it by engine id.
 pub fn publish_link(engine: u32, link: AudioLink) {
@@ -294,12 +295,12 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
 /// `og_core::math::world_pose`). A function of the tick's transforms alone.
 struct Places {
     /// Parents by child bits; empty when nothing is parented.
-    parents: BTreeMap<u64, Entity>,
+    parents: IdMap<u64, Entity>,
 }
 
 impl Places {
     fn read(ctx: &SystemContext<'_>) -> Result<Places> {
-        let mut parents = BTreeMap::new();
+        let mut parents = IdMap::new();
         for a in ctx.query(6)? {
             for &e in a.entities() {
                 let p = ctx.get::<Parent>(e)?;

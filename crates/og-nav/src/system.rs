@@ -21,6 +21,7 @@ use crate::flow::FlowField;
 use crate::grid::{Algorithm, Grid, Scratch};
 use crate::mesh::{NONE as NO_POLY, NavMesh, Obstacle, PolyRef};
 use crate::steer;
+use og_core::IdMap;
 use og_core::glam::{Quat, Vec2, Vec3};
 use og_core::{Error, ErrorKind, Reflect, Result};
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
@@ -354,7 +355,7 @@ impl Nav {
 /// The grids, navmeshes and flow fields of one engine, by handle.
 #[derive(Debug, Default)]
 pub struct Navs {
-    pub entries: BTreeMap<u64, Nav>,
+    pub entries: IdMap<u64, Nav>,
     next: u64,
 }
 
@@ -477,7 +478,7 @@ fn locate(mesh: &NavMesh, poly: u32, pos: Vec3, radius: f32) -> u32 {
 
 #[derive(Debug, Default)]
 struct State {
-    paths: BTreeMap<u64, PathState>,
+    paths: IdMap<u64, PathState>,
 }
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -996,7 +997,7 @@ struct NavBlock(NavSystem);
 /// What a snapshot holds: the paths, and the registry's edits.
 #[derive(Debug)]
 struct Saved {
-    paths: BTreeMap<u64, PathState>,
+    paths: IdMap<u64, PathState>,
     grids: Vec<(u64, Vec<u8>)>,
     obstacles: Vec<(u64, Vec<(u32, Obstacle)>)>,
     flows: Vec<(u64, Vec<(u32, u32)>)>,
@@ -1133,7 +1134,7 @@ impl StateBlock for NavBlock {
 
     fn decode(&self, bytes: &[u8]) -> Result<Box<dyn Any + Send>> {
         let mut r = Reader { b: bytes, at: 0 };
-        let mut paths = BTreeMap::new();
+        let mut paths = IdMap::new();
         for _ in 0..r.u32()? {
             let k = r.u64()?;
             let n = r.u32()? as usize;

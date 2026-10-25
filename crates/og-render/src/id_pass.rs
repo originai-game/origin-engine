@@ -22,6 +22,7 @@
 use crate::frame::camera_frame;
 use crate::scene::{Camera, MeshData, MeshHandle, Projection, RenderScene};
 use glam::{Mat4, Vec2, Vec3, Vec4};
+use og_core::IdMap;
 use std::collections::BTreeMap;
 
 /// The id of each drawable, parallel to the scene's lists; 0 is none (the
@@ -331,7 +332,7 @@ pub fn render_ids_from(
         mesh_depth: Vec::new(),
         stamp: vec![0; n],
         group: 0,
-        drawn: BTreeMap::new(),
+        drawn: IdMap::new(),
     };
     let mut last: Option<(bool, u32)> = None;
     for item in &items {
@@ -353,8 +354,8 @@ pub fn render_ids_from(
 
     // The objects: what shows of each id, with its bounds and depth.
     let forward = -view.row(2).truncate();
-    let mut objects: BTreeMap<u32, IdObject> =
-        og_core::sort::map(frame.drawn.iter().map(|(&id, &(count, b))| {
+    let mut objects: IdMap<u32, IdObject> =
+        IdMap::from_iter(frame.drawn.iter().map(|(&id, &(count, b))| {
             (
                 id,
                 IdObject {
@@ -469,7 +470,7 @@ struct Raster {
     stamp: Vec<u32>,
     group: u32,
     /// Per id: pixels covered drawn alone, and their bounds.
-    drawn: BTreeMap<u32, (u32, [u32; 4])>,
+    drawn: IdMap<u32, (u32, [u32; 4])>,
 }
 
 impl Raster {

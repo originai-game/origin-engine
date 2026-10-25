@@ -14,11 +14,12 @@
 
 use super::engine::{engine, running};
 use super::{ok, ok_void, parse, refuse};
+use og_core::IdMap;
 use og_core::Reflect;
 use og_ecs::{SystemDesc, World};
 use serde_json::{Value, json};
 use std::cell::RefCell;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 /// The system's name in the schedule (before the game's systems).
 pub const PLATFORM_SYSTEM: &str = "og.platform";
@@ -78,7 +79,7 @@ enum Stage {
     /// loadSlot: the parts' store.get calls, in order, and their texts.
     Read {
         parts: Vec<u32>,
-        got: BTreeMap<u32, String>,
+        got: IdMap<u32, String>,
         manifest: Value,
         revision: u64,
     },
@@ -94,7 +95,7 @@ struct Platform {
     next: u32,
     outbox: Vec<u32>,
     inbox: Vec<(u32, Value)>,
-    log: BTreeMap<u32, Record>,
+    log: IdMap<u32, Record>,
     host: Option<String>,
     capabilities: Vec<String>,
     /// PlatformInfo.clock: whose time `now` reads.
@@ -104,12 +105,12 @@ struct Platform {
     /// answer that carries a time, at the tick's start the answer is applied.
     base: Option<(f64, u64)>,
     /// Slot calls in progress by request, and the store calls each made.
-    slots: BTreeMap<u32, SlotCall>,
-    sub: BTreeMap<u32, u32>,
+    slots: IdMap<u32, SlotCall>,
+    sub: IdMap<u32, u32>,
 }
 
 thread_local! {
-    static PLATFORMS: RefCell<BTreeMap<u32, Platform>> = const { RefCell::new(BTreeMap::new()) };
+    static PLATFORMS: RefCell<IdMap<u32, Platform>> = const { RefCell::new(IdMap::new()) };
 }
 
 fn with<T>(engine: u32, f: impl FnOnce(&mut Platform) -> T) -> T {
@@ -598,7 +599,7 @@ fn advance_slot(p: &mut Platform, sub: u32, answer: &Value, tick: u64) -> Option
                     }
                     call.stage = Stage::Read {
                         parts: subs,
-                        got: BTreeMap::new(),
+                        got: IdMap::new(),
                         manifest: value,
                         revision,
                     };
@@ -1004,6 +1005,7 @@ pub(crate) fn dump(engine: u32) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
 
     fn value(answer: &str) -> Value {
         let v: Value = serde_json::from_str(answer).expect("JSON");

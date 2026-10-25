@@ -12,11 +12,11 @@
 //! at the start of the next tick, as a scripted command would.
 
 use og_ai::{AiSystem, Behaviours};
+use og_core::IdMap;
 use og_ecs::{Entity, World};
 use og_nav::{NavSystem, Plane, SharedNavs};
 use og_physics::{PhysicsSystem, QueryFilter, RaycastDesc};
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 #[derive(Default)]
@@ -32,7 +32,7 @@ pub(crate) struct Modules {
 }
 
 thread_local! {
-    static MODULES: RefCell<BTreeMap<u32, Modules>> = const { RefCell::new(BTreeMap::new()) };
+    static MODULES: RefCell<IdMap<u32, Modules>> = const { RefCell::new(IdMap::new()) };
 }
 
 /// Runs `f` with an engine's modules.

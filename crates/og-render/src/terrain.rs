@@ -555,7 +555,7 @@ pub(crate) enum TerrainSource {
     Stream {
         layout: TerrainLayout,
         range: (f32, f32),
-        tiles: std::collections::BTreeMap<u32, Arc<TerrainTile>>,
+        tiles: og_core::IdMap<u32, Arc<TerrainTile>>,
     },
 }
 
@@ -1122,7 +1122,7 @@ impl TerrainRenderer {
         let (sources, revisions) = scene.terrain_sources();
         self.datas.resize_with(sources.len(), || None);
         // Each data's wanted tiles, over every terrain drawing it, best first.
-        let mut wanted: std::collections::BTreeMap<usize, (Vec<u32>, u32)> = Default::default();
+        let mut wanted: og_core::IdMap<usize, (Vec<u32>, u32)> = Default::default();
         for (ti, t) in scene.terrains.iter().enumerate() {
             let i = t.terrain.index();
             let Some(source) = sources.get(i) else {

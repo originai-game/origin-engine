@@ -17,6 +17,7 @@
 //! resident, so streaming cannot change a tick's result.
 
 use og_cook::runtime::CookedTerrain;
+use og_core::IdMap;
 use og_render::{RenderScene, TerrainHandle, TerrainTile, TerrainView};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -195,7 +196,7 @@ impl Streamer {
     /// [`FINISH_MS`] unless waiting).
     fn collect(
         &mut self,
-        cooked: &BTreeMap<usize, CookedTerrain>,
+        cooked: &IdMap<usize, CookedTerrain>,
         hooks: Option<&dyn super::Hooks>,
         wait: bool,
         notes: &mut Vec<String>,
@@ -294,8 +295,8 @@ impl Streamer {
     ) {
         self.frame += 1;
         let t0 = hooks.map_or(0.0, |h| h.now_ms());
-        let cooked: BTreeMap<usize, CookedTerrain> =
-            og_core::sort::map(drawn.iter().map(|d| (d.index, d.cooked.clone())));
+        let cooked: IdMap<usize, CookedTerrain> =
+            IdMap::from_iter(drawn.iter().map(|d| (d.index, d.cooked.clone())));
         self.collect(&cooked, hooks, false, notes);
         let mut handed = 0usize;
         let mut waiting = 0u32;

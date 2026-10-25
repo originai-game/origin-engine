@@ -441,7 +441,7 @@ fn a_chunked_sound_in_a_streaming_group_takes_its_stand_in_handle() {
     );
     assert!(bank.audible(sound) && bank.get(sound).unwrap().streamed());
     assert_eq!(bank.get(sound).unwrap().resident_chunks(), vec![0]);
-    let mut want = std::collections::BTreeMap::new();
+    let mut want = og_core::IdMap::new();
     want.insert(sound, std::collections::BTreeSet::from([1u32, 2]));
     let missing = bank.keep_chunks(&want);
     assert_eq!(

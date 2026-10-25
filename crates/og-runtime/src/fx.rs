@@ -8,6 +8,7 @@
 use super::codec::Layout;
 use super::extract::{Hierarchy, RenderState};
 use glam::{Mat4, Vec2, Vec3};
+use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, World};
 use og_render::{
     AmbientOcclusion, AoMethod, Beam, CameraShake, ChromaticAberration, ColorCurve, ColorGrading,
@@ -123,7 +124,7 @@ pub(crate) struct FxState {
     /// of each emitter that draws from one, by the emitter's load index:
     /// the renderer's emitter follows the array's handle, and a system of
     /// it draws nothing while the array's streaming group is not resident.
-    pub emitter_arrays: BTreeMap<usize, usize>,
+    pub emitter_arrays: IdMap<usize, usize>,
     pub by_path: BTreeMap<String, usize>,
     /// Trail styles made from Trail components, by their fields' bits.
     pub trail_styles: BTreeMap<Vec<u32>, TrailStyleHandle>,
@@ -131,7 +132,7 @@ pub(crate) struct FxState {
     pub ribbons: Vec<og_render::Ribbon>,
     pub sprites: Vec<QueuedSprite>,
     /// Loaded models by asset handle bits, and skin data by model id.
-    pub models: BTreeMap<u64, ModelInfo>,
+    pub models: IdMap<u64, ModelInfo>,
     pub skins: BTreeMap<String, SkinnedModel>,
     /// Looks and palettes (`super::look`).
     pub look: super::look::LookState,

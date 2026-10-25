@@ -5,6 +5,7 @@ use super::codec::{Layout, RecordKind};
 use super::extract::{DrawLayouts, RenderState};
 use super::probe::{self as rprobe, NameOp};
 use super::{ok, parse, refuse};
+use og_core::IdMap;
 use og_core::reflect::Reflect;
 use og_core::{Error, ErrorKind, Rng, Time};
 use og_ecs::{Entity, FieldRef, QueryDesc, SchemaId, SystemContext, SystemDesc, World, WorldDesc};
@@ -420,7 +421,7 @@ pub(crate) struct State {
     pub systems: Vec<SystemEntry>,
     pub commands: BTreeMap<String, CommandDecl>,
     pub names: BTreeMap<String, u64>,
-    pub name_of: BTreeMap<u64, String>,
+    pub name_of: IdMap<u64, String>,
     /// Name changes the probe has not seen yet.
     pub name_ops: Vec<NameOp>,
     pub rate: u32,
@@ -476,9 +477,9 @@ pub(crate) struct State {
     pub physics: Option<og_physics::PhysicsSystem>,
     pub ui: Option<og_ui::SharedUi>,
     /// Every mesh registered with physics, replayed into a reload's physics.
-    pub physics_meshes: BTreeMap<u64, og_physics::MeshDesc>,
+    pub physics_meshes: IdMap<u64, og_physics::MeshDesc>,
     /// Every terrain's height field registered with physics, likewise.
-    pub physics_heightfields: BTreeMap<u64, og_physics::HeightfieldDesc>,
+    pub physics_heightfields: IdMap<u64, og_physics::HeightfieldDesc>,
     /// UI warnings already logged, so a repeated one is logged once.
     pub ui_warned: BTreeSet<String>,
     /// The host mirrors the UI's accessibility tree (create option `a11y`,
@@ -1165,7 +1166,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         systems: a.systems,
         commands: a.commands,
         names: BTreeMap::new(),
-        name_of: BTreeMap::new(),
+        name_of: IdMap::new(),
         name_ops: Vec::new(),
         rate: a.game.tick,
         max_catch_up: a.game.max_catch_up.max(1),
@@ -1198,8 +1199,8 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         profile,
         physics: Some(a.mounted.physics.clone()),
         ui: Some(a.mounted.ui.clone()),
-        physics_meshes: BTreeMap::new(),
-        physics_heightfields: BTreeMap::new(),
+        physics_meshes: IdMap::new(),
+        physics_heightfields: IdMap::new(),
         ui_warned: BTreeSet::new(),
         a11y_mirror: options["a11y"].as_bool().unwrap_or(false),
         a11y_digest: 0,
