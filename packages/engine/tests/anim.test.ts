@@ -6,7 +6,7 @@
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ogBin } from "./support/og-bin.ts";
+import { cookProject } from "./support/og-bin.ts";
 
 // The functional lane may run with a web module older than the native addon
 // (scripts/check.sh bun-functional): the tests that compare the two hosts
@@ -26,11 +26,13 @@ function run(host: string, ...extra: string[]) {
   return JSON.parse(out.trim().split("\n").pop()!) as Record<string, any>;
 }
 
+// Every test that reads the template's cooked/ cooks it first (incremental:
+// free when current, and a type-hash move re-cooks instead of reading a
+// stale blob). In the test, not a hook: a hook's timeout would not cover a
+// cold cook, and the first test skips in the functional lane, so a cook
+// inside it left the ragdoll test on the stale blob (Metal lane, abab174e).
 test.skipIf(STALE_WASM)("og.anim poses the walker the same way on both hosts", () => {
-  // An incremental cook: free when cooked/ is current, and a cooker
-  // version bump re-cooks instead of reading stale output.
-  const c = Bun.spawnSync([ogBin(), "cook", project], { cwd: repo });
-  if (c.exitCode !== 0) throw new Error(new TextDecoder().decode(c.stderr));
+  cookProject(project, repo);
   const node = run("node");
   const web = run("web");
   expect(node.tick).toBe(300);
@@ -61,6 +63,7 @@ test.skipIf(STALE_WASM)("og.anim poses the walker the same way on both hosts", (
 }, 240_000);
 
 test("a ragdoll at weight 0 follows the animation and goes limp from it", () => {
+  cookProject(project, repo);
   const r = Bun.spawnSync(["bun", "tests/support/ragdoll-follow.ts", "--project", project, "--ticks", "40"], { cwd: pkg });
   const out = new TextDecoder().decode(r.stdout);
   if (r.exitCode !== 0) throw new Error(new TextDecoder().decode(r.stderr) + out);
