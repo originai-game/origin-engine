@@ -10,7 +10,10 @@
 //! rays stand a car on another whose layers it does not meet (Meridian
 //! Loop's FINDINGS #3); the defaults barely move a car of a car's mass (#1);
 //! a car tips over at full lock with nothing to stop it (#2); a sliding
-//! tyre is not told (#16).
+//! tyre is not told (#16); a chassis with locked axes sizes its tyres'
+//! impulses with the mass it does not have (a car on rails rolls on
+//! turned wheels); the wheels push nothing back on a dynamic ground (a
+//! car on a raft neither drives it nor weighs on it).
 
 mod support;
 
@@ -326,4 +329,136 @@ fn full_lock_at_speed_tips_a_tall_car_only_with_roll_influence_and_a_high_centre
     assert!(lowest < 0.0, "rollInfluence 0.1 left it upright ({lowest})");
     let (lowest, ..) = trial(0.1, -0.7);
     assert!(lowest > 0.95, "the low centre of mass leaned to {lowest}");
+}
+
+#[test]
+fn a_car_on_rails_with_its_front_wheels_turned_scrubs_them() {
+    // The chassis can move only along z (x and every rotation locked) and
+    // its front wheels are steered a little, s = 0.05 × maxSteer: they
+    // roll at an angle to the only way the car can go, so they slide
+    // sideways at v sin s and their side impulse is all spent along z. A
+    // side impulse sized with the chassis's free inverse mass (1/m, where
+    // only sin²s of it moves the chassis) removes 0.2 sin²s of that slide
+    // a tick, a drag of 2 × 0.2 m sin²s v / dt = 18.2 v N against the
+    // rear wheels' 2 × 2,500 (1 − v/40): 34.9 m/s, no tyre sliding. Sized
+    // with its effective inverse mass (sin²s/m) the impulse wants
+    // 0.2 m v / sin s, past the friction circle's cap of
+    // (m g / 4) dt × 5 grip: both front tyres slide, each dragging
+    // (m g / 4) × 5 grip × sin s, and 5,000 (1 − v/40) = 1,349 N at
+    // 29.2 m/s.
+    let (mut w, _) = world(Physics::default(), 1);
+    road(&mut w);
+    let rails = LOCK_TRANSLATION_X | LOCK_ROTATION_X | LOCK_ROTATION_Y | LOCK_ROTATION_Z;
+    let car = car_at(
+        &mut w,
+        Vec3::new(0.0, 1.2, 0.0),
+        RigidBody {
+            lock: rails,
+            ..RigidBody::dynamic()
+        },
+        Collider::cuboid(Vec3::new(1.8, 0.6, 4.0)),
+        Vehicle::default(),
+    );
+    run(&mut w, 60);
+    set(&mut w, car, |v| {
+        v.throttle = 1.0;
+        v.steer = 0.05;
+    });
+    // Eight seconds is the speed's time constant (1,000 kg / 125 N s/m).
+    run(&mut w, 3000);
+    let d = Vehicle::default();
+    let (m, g, sin_s) = (1000.0f32, 9.81f32, (0.05 * d.max_steer).sin());
+    let drag = 2.0 * (m * g / 4.0) * 5.0 * d.grip * sin_s;
+    let engine = 2.0 * d.engine_force;
+    let expected = (engine - drag) / (engine / d.max_speed);
+    let v = vehicle(&w, car);
+    assert!(
+        (v.speed - expected).abs() < 0.3,
+        "{} m/s, the scrub predicts {expected}",
+        v.speed
+    );
+    assert!(v.slip > 0.5, "the front tyres slide: {v:?}");
+}
+
+#[test]
+fn a_car_on_a_raft_drives_it_backwards_and_weighs_on_it() {
+    // A 4,000 kg raft on a frictionless road and a 1,000 kg car on it:
+    // nothing outside the pair pushes along z, so their momentum there
+    // stays 0 while the car drives (the raft goes back at a quarter of
+    // the car's speed). Before the wheels pushed back on their ground the
+    // raft never moved and the car drove off with all the momentum.
+    let (mut w, _) = world(Physics::default(), 1);
+    let ice = |c: Collider| Collider { friction: 0.0, ..c };
+    spawn_static(
+        &mut w,
+        at(0.0, -0.5, 0.0),
+        ice(Collider::cuboid(Vec3::new(400.0, 1.0, 400.0))),
+    );
+    let raft_body = RigidBody {
+        mass: 4000.0,
+        ..RigidBody::dynamic()
+    };
+    let raft = spawn_body(
+        &mut w,
+        at(0.0, 0.2, 0.0),
+        raft_body,
+        ice(Collider::cuboid(Vec3::new(8.0, 0.4, 40.0))),
+    );
+    let car = car_at(
+        &mut w,
+        Vec3::new(0.0, 1.6, -10.0),
+        RigidBody::dynamic(),
+        Collider::cuboid(Vec3::new(1.8, 0.6, 4.0)),
+        Vehicle::default(),
+    );
+    let momentum = |w: &World| 1000.0 * velocity(w, car).linear + 4000.0 * velocity(w, raft).linear;
+    run(&mut w, 60);
+    set(&mut w, car, |v| v.throttle = 1.0);
+    run(&mut w, 120);
+    assert_eq!(vehicle(&w, car).contacts, 4);
+    let (vc, vr) = (velocity(&w, car).linear, velocity(&w, raft).linear);
+    assert!(vc.z > 8.0, "the car drives forward: {vc}");
+    assert!(
+        (vr.z + vc.z / 4.0).abs() < 0.01 * vc.z,
+        "the raft goes back at a quarter of {vc}: {vr}"
+    );
+    assert!(
+        momentum(&w).z.abs() < 1.0,
+        "momentum along z: {}",
+        momentum(&w)
+    );
+
+    // The same raft afloat (gravityScale 0, nothing under it, held
+    // level): the car's weight is the only outside force on the pair, so
+    // their momentum along y falls at m g however the car bounces on it.
+    // Before the springs pushed back on their ground the raft did not
+    // move and they held the car up from nowhere.
+    let (mut w, _) = world(Physics::default(), 1);
+    let raft = spawn_body(
+        &mut w,
+        at(0.0, 0.2, 0.0),
+        RigidBody {
+            gravity_scale: 0.0,
+            lock: LOCK_ROTATION_X | LOCK_ROTATION_Y | LOCK_ROTATION_Z,
+            ..raft_body
+        },
+        Collider::cuboid(Vec3::new(8.0, 0.4, 40.0)),
+    );
+    let car = car_at(
+        &mut w,
+        Vec3::new(0.0, 1.6, 0.0),
+        RigidBody::dynamic(),
+        Collider::cuboid(Vec3::new(1.8, 0.6, 4.0)),
+        Vehicle::default(),
+    );
+    let momentum = |w: &World| 1000.0 * velocity(w, car).linear + 4000.0 * velocity(w, raft).linear;
+    run(&mut w, 30);
+    let before = momentum(&w).y;
+    run(&mut w, 60);
+    let fell = before - momentum(&w).y;
+    let weight = 1000.0 * 9.81;
+    assert!(
+        (fell - weight).abs() < 0.02 * weight,
+        "a second of the car's weight ({weight}) took {fell} from p_y"
+    );
 }
