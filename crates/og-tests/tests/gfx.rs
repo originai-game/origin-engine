@@ -539,6 +539,36 @@ fn sprites_20k_match_their_reference_in_a_handful_of_draws() {
     assert_eq!(s.draw_calls, s.sprite_draws + 1, "sprites, then post");
 }
 
+/// Billboards (`RenderScene::sprite_facing`): the scene's reference (upright
+/// trees and figures with sun-facing drop shadows, a turned camera-facing
+/// sign, a 2D-lit figure, translucent puffs, and the side view's billboards
+/// turned to its own camera); the one behind the camera culled by its
+/// bounds; and the translucent puffs drawn back to front whatever order
+/// they are submitted in, so swapping them leaves the frame byte for byte.
+#[test]
+fn billboards_face_each_camera_sort_back_to_front_and_cull_by_bounds() {
+    let report = check("sprites-billboard");
+    let s = report.stats;
+    assert_eq!(
+        (s.sprites, s.sprites_culled),
+        (8, 1),
+        "nine sprites, the tree behind the camera culled"
+    );
+    let scene = built("sprites-billboard");
+    let (image, _) = frame(&scene.desc, &scene.scene, 1);
+    let mut swapped = built("sprites-billboard").scene;
+    // The two puffs (sprites 5 and 6, both facing the camera) swapped.
+    swapped.sprites.swap(5, 6);
+    let (other, _) = frame(&scene.desc, &swapped, 1);
+    let differ = image
+        .pixels
+        .chunks(4)
+        .zip(other.pixels.chunks(4))
+        .filter(|(a, b)| a != b)
+        .count();
+    assert_eq!(differ, 0, "{differ} pixels moved with the submission order");
+}
+
 /// Sprites drawn from texture arrays (`RenderScene::sprite_arrays`): the
 /// sixteen flipbook sprites (eight layers, two rows) are one draw, the six
 /// added ones from a second array another, the plain textured strip a
