@@ -521,6 +521,7 @@ impl Probes {
                 u.inv_view_proj = f.view_proj.inverse().to_cols_array_2d();
                 u.view_pos = positions[d].extend(0.0).to_array();
                 u.view_forward = f.forward.extend(base.view_forward[3]).to_array();
+                (u.view_right, u.view_up) = f.axes();
                 u.cluster = [0.0; 4];
                 u.caustics = [[0.0; 4]; 2];
                 u.stylise = [0.0; 4];

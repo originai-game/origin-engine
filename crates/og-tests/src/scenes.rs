@@ -84,6 +84,7 @@ pub const SCENES: &[&str] = &[
     "sprites-array",
     "stylise-ink-depth",
     "sprites-shadow",
+    "sprites-billboard",
     "sprites-array-fx",
     "sprites-shadow-terrain",
     "stylise-surface",
@@ -376,6 +377,15 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // the ground along the sun (one without, one from a texture
         // array), beside a pillar and a crate casting their own.
         "sprites-shadow" => g.scene = sprites_shadow_scene(),
+        // Billboards (RenderScene::sprite_facing) in a 3D set seen from
+        // above and to the side: a flat figure for comparison, upright
+        // (cameraY) trees and figures casting sun-facing drop shadows, a
+        // camera-facing turned sign, a 2D-lit figure, two translucent
+        // camera-facing puffs sorted back to front though submitted near
+        // first, one billboard behind the camera culled, and a
+        // picture-in-picture view from the side that every billboard
+        // faces too.
+        "sprites-billboard" => g.scene = billboard_scene(),
         // Drop shadows off the plane y = 0: figures on a hilly terrain
         // (each shadow on the plane of the slope under its feet), one on a
         // raised deck (its shadow at the deck's height), one beside a wall
@@ -1351,6 +1361,209 @@ pub fn sprites_shadow_scene() -> RenderScene {
         exposure: Exposure::linear(0.9),
         ..Default::default()
     };
+    scene
+}
+
+/// The `sprites-billboard` scene (see [`build`]).
+pub fn billboard_scene() -> RenderScene {
+    use og_render::{
+        Light2d, Lighting2d, SpriteFacing, SpriteShadow, TextureFilter, View, ViewTarget,
+    };
+    let mut scene = RenderScene::new();
+    ground(&mut scene, 40.0, 1.0, 0.9);
+    let stone = scene.add_material(Material {
+        base_color: [0.72, 0.7, 0.66, 1.0],
+        roughness: 0.8,
+        ..Default::default()
+    });
+    let crate_mesh = scene.add_mesh(shapes::cuboid(Vec3::splat(0.9)));
+    scene.add_instance(
+        crate_mesh,
+        stone,
+        Mat4::from_translation(Vec3::new(-1.6, 0.45, 2.2)) * Mat4::from_rotation_y(0.5),
+    );
+    // A pixel tree: a round crown over a trunk, clear round it.
+    let tree = scene.add_texture(texture(32, ColorSpace::Srgb, |u, v| {
+        let crown = Vec2::new(u - 0.5, v - 0.36).length() < 0.34;
+        let trunk = (u - 0.5).abs() < 0.08 && v > 0.6;
+        match (crown, trunk) {
+            (true, _) => {
+                let shade = if u + v < 0.75 { 40 } else { 0 };
+                [50 + shade, 140 + shade, 60, 255]
+            }
+            (false, true) => [110, 70, 40, 255],
+            _ => [0, 0, 0, 0],
+        }
+    }));
+    scene.set_texture_filter(tree, TextureFilter::Nearest);
+    // A sign: a red ring round a white disc with a bar across it, so its
+    // in-plane turn shows.
+    let sign = scene.add_texture(texture(64, ColorSpace::Srgb, |u, v| {
+        let d = Vec2::new(u - 0.5, v - 0.5).length();
+        if d > 0.48 {
+            [0, 0, 0, 0]
+        } else if d > 0.36 {
+            [210, 40, 40, 255]
+        } else if (v - 0.5).abs() < 0.08 {
+            [30, 30, 40, 255]
+        } else {
+            [240, 240, 235, 255]
+        }
+    }));
+    // A soft puff (white; the sprite's colour tints it).
+    let puff = scene.add_texture(texture(64, ColorSpace::Srgb, |u, v| {
+        let d = (Vec2::new(u - 0.5, v - 0.5).length() * 2.0).min(1.0);
+        [255, 255, 255, ((1.0 - d * d) * 255.0) as u8]
+    }));
+    let figure = scene.add_texture(pixel_figure([200, 60, 60]));
+    let figure_blue = scene.add_texture(pixel_figure([60, 120, 210]));
+    let figure_green = scene.add_texture(pixel_figure([80, 170, 90]));
+    for t in [figure, figure_blue, figure_green] {
+        scene.set_texture_filter(t, TextureFilter::Nearest);
+    }
+    let stand = |texture, x: f32, z: f32, size: Vec2| Sprite {
+        texture: Some(texture),
+        position: Vec3::new(x, 0.0, z),
+        size,
+        anchor: Vec2::new(0.5, 0.0),
+        ..Default::default()
+    };
+    let add = |scene: &mut RenderScene, sprite: Sprite, facing: SpriteFacing, shadow: f32| {
+        let i = scene.sprites.len();
+        scene.add_sprite(sprite);
+        scene.sprite_facing.resize(i, SpriteFacing::None);
+        scene.sprite_facing.push(facing);
+        if shadow > 0.0 {
+            scene.sprite_shadows.push(SpriteShadow {
+                sprite: i as u32,
+                opacity: shadow,
+                ..Default::default()
+            });
+        }
+    };
+    // In the xy plane (for comparison): sheared by the camera's angle.
+    add(
+        &mut scene,
+        stand(figure, -3.4, -0.4, Vec2::splat(1.6)),
+        SpriteFacing::None,
+        0.0,
+    );
+    // Upright, turned about y: two trees and a figure, with drop shadows
+    // cast by their sun-facing cards.
+    let tree_size = Vec2::new(2.0, 2.6);
+    add(
+        &mut scene,
+        stand(tree, -1.2, -1.6, tree_size),
+        SpriteFacing::CameraY,
+        0.6,
+    );
+    add(
+        &mut scene,
+        stand(tree, 3.6, -3.0, tree_size),
+        SpriteFacing::CameraY,
+        0.6,
+    );
+    add(
+        &mut scene,
+        stand(figure_blue, 0.6, 0.4, Vec2::splat(1.4)),
+        SpriteFacing::CameraY,
+        0.5,
+    );
+    // In the view plane, turned 0.35 rad within it: the sign floats.
+    add(
+        &mut scene,
+        Sprite {
+            texture: Some(sign),
+            position: Vec3::new(2.6, 1.9, -0.6),
+            size: Vec2::splat(1.1),
+            rotation: 0.35,
+            ..Default::default()
+        },
+        SpriteFacing::Camera,
+        0.0,
+    );
+    // Two translucent puffs facing the camera, submitted near first: the
+    // far red one must draw first, the near blue one over it.
+    add(
+        &mut scene,
+        Sprite {
+            texture: Some(puff),
+            position: Vec3::new(3.7, 2.3, 3.1),
+            size: Vec2::splat(1.2),
+            color: [0.3, 0.55, 1.0, 0.6],
+            ..Default::default()
+        },
+        SpriteFacing::Camera,
+        0.0,
+    );
+    add(
+        &mut scene,
+        Sprite {
+            texture: Some(puff),
+            position: Vec3::new(2.4, 1.3, 1.2),
+            size: Vec2::splat(1.7),
+            color: [1.0, 0.35, 0.25, 0.6],
+            ..Default::default()
+        },
+        SpriteFacing::Camera,
+        0.0,
+    );
+    // Behind the camera: culled by its bounds (FrameStats::sprites_culled).
+    add(
+        &mut scene,
+        stand(tree, 0.0, 30.0, tree_size),
+        SpriteFacing::CameraY,
+        0.0,
+    );
+    // 2D-lit (layer 1 is the lit range): an upright figure by a warm
+    // light, darkened to the ambient away from it.
+    add(
+        &mut scene,
+        Sprite {
+            layer: 1,
+            ..stand(figure_green, -5.0, 0.0, Vec2::splat(1.5))
+        },
+        SpriteFacing::CameraY,
+        0.0,
+    );
+    scene.lighting_2d = Some(Lighting2d {
+        ambient: Vec3::splat(0.25),
+        min_layer: 1,
+        max_layer: 1,
+        resolution: 1.0,
+    });
+    scene.lights_2d.push(Light2d {
+        position: Vec2::new(-5.7, 0.1),
+        color: Vec3::new(1.0, 0.7, 0.3),
+        intensity: 2.0,
+        radius: 1.1,
+        cast_shadows: false,
+        ..Default::default()
+    });
+    scene.light = DirectionalLight {
+        direction_to_light: Vec3::new(0.7, 0.75, 0.35),
+        intensity: 3.0,
+        ..Default::default()
+    };
+    let exposure = Exposure::linear(0.9);
+    scene.camera = Camera {
+        position: Vec3::new(7.5, 5.5, 7.0),
+        target: Vec3::new(0.0, 0.8, -0.8),
+        exposure,
+        ..Default::default()
+    };
+    // From the side: every billboard turns to this camera too (the flat
+    // figure is seen nearly edge on).
+    scene.views.push(View {
+        camera: Camera {
+            position: Vec3::new(-10.0, 2.2, -0.8),
+            target: Vec3::new(0.0, 1.0, -0.8),
+            exposure,
+            ..Default::default()
+        },
+        target: ViewTarget::Viewport([0.68, 0.03, 0.29, 0.29]),
+        ..Default::default()
+    });
     scene
 }
 

@@ -72,6 +72,7 @@ export const LineMode = ((value = "strip" as Api.LineMode, options) => spec("Lin
 export const DofQuality = ((value = "low" as Api.DofQuality, options) => spec("DofQuality", value, options)) as typeof Api.DofQuality;
 export const ReflectionProbeMode = ((value = "baked" as Api.ReflectionProbeMode, options) => spec("ReflectionProbeMode", value, options)) as typeof Api.ReflectionProbeMode;
 export const SpriteBlend = ((value = "alpha" as Api.SpriteBlend, options) => spec("SpriteBlend", value, options)) as typeof Api.SpriteBlend;
+export const SpriteFacing = ((value = "none" as Api.SpriteFacing, options) => spec("SpriteFacing", value, options)) as typeof Api.SpriteFacing;
 export const StripBlend = ((value = "additive" as Api.StripBlend, options) => spec("StripBlend", value, options)) as typeof Api.StripBlend;
 export const Palette = ((value = 0 as Api.Palette, options) => spec("Palette", value, options)) as typeof Api.Palette;
 export const DitherPattern = ((value = "none" as Api.DitherPattern, options) => spec("DitherPattern", value, options)) as typeof Api.DitherPattern;

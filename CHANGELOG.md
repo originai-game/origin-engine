@@ -41,6 +41,19 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
   `.vox` folds its frames with visibility instead of scaling joints to
   0: the same frame shows on every tick, one draw instead of one per
   frame model.
+- Billboards: `og.Sprite.facing` and `SpriteDesc.facing` (enum
+  `SpriteFacing`: `none`, the default and the old xy plane; `camera`, the
+  view plane; `cameraY`, upright and turned about y), with the
+  `SpriteFacing` column factory. A faced world sprite turns to every camera
+  that draws it (the main one, og.CameraView, og.Mirror, reflection probe
+  faces) in the sprite shader on both tiers, sorts back to front within
+  its layer, is culled by its bounds, and casts its drop shadow from a
+  sun-facing card. Render-only: no world state changes. og-render:
+  `RenderScene::sprite_facing`, `SpriteFacing`, `Sprite::anchored_at`,
+  `ShadowGround::fit_facing`, `sun_card_right`,
+  `FrameStats::sprites_culled`; the sprite instance grows 4 bytes (104).
+  New og-tests scene `sprites-billboard` (`vulkan-cpu` reference; `metal`
+  owed).
 - Transition interruption rules in the `animgraph` grammar: `interrupt
   any | none | source | next` on a transition says which transitions may
   cut its cross-fade (default `any`, the old behaviour); the guard of a

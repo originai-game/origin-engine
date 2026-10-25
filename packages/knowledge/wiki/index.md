@@ -121,7 +121,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1231 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1233 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1193,6 +1193,8 @@ Field units the docs and Tune use.
 | [`SpriteBlend`](render.md#type-SpriteBlend) | enum | render | — |
 | [`SpriteBlend()`](render.md#column-SpriteBlend) | column kind | render | — |
 | [`SpriteDesc`](render.md#type-SpriteDesc) | desc struct | render | — |
+| [`SpriteFacing`](render.md#type-SpriteFacing) | enum | render | — |
+| [`SpriteFacing()`](render.md#column-SpriteFacing) | column kind | render | — |
 | [`SquashDesc`](tween.md#type-SquashDesc) | desc struct | tween | — |
 | [`StandardMaterialDesc`](render.md#type-StandardMaterialDesc) | desc struct | render | — |
 | [`StartFn`](game.md#type-StartFn) | callback | game | — |

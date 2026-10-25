@@ -2773,6 +2773,8 @@
         "DofQuality",
         "SpriteBlend",
         "SpriteBlend",
+        "SpriteFacing",
+        "SpriteFacing",
         "StripBlend",
         "StripBlend",
         "PostEffects",
@@ -15640,6 +15642,22 @@
         "additive": "Added (light, fire, magic): order-independent within a layer."
       }
     },
+    "SpriteFacing": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). Decided as a mode of og.Sprite and SpriteDesc rather than a component of its own: a billboard is the same quad, texture, region, flash, glow, blend, layer, drop shadow and texture array layer as any sprite, drawn by the same sprite batch and shader, which only stands its corners differently. The turn is computed on the GPU from each camera's own axes (the main camera, every og.CameraView and og.Mirror, every face of a reflection probe), so it never feeds back into the simulation and a snapshot holds only the mode. The sprite turns about its anchor (a nine-slice turns as one panel), `rotation` still turns it within its own plane, and its drop shadow is cast by the quad stood upright facing the sun, so it shows the whole shape from every camera. Within its layer a faced sprite without sortY draws back to front from the camera's eye (by view depth; a probe's six faces by distance from the probe), after the layer's drop shadows and before its unfaced sprites; and it is culled by its bounds (a sphere round the anchor through the farthest corner) against the camera's view. Sprites draw over the 3D scene after its transparent meshes and particles, depth tested and not depth writing, so a billboard behind a transparent mesh still draws over it.",
+      "type": "string",
+      "enum": [
+        "none",
+        "camera",
+        "cameraY"
+      ],
+      "x-og-variants": {
+        "none": "In the world's xy plane facing +z, as every sprite before billboards.",
+        "camera": "In the camera's view plane: its x along the camera's right, its y along its up, as particle billboards (smoke, glints, impostors seen from any side).",
+        "cameraY": "Upright, turned about the world's y axis towards the camera: its y stays +y, its x the camera's right laid level. Trees, characters and props that must stand while the camera looks down on them."
+      }
+    },
     "StripBlend": {
       "x-og-kind": "enum",
       "x-og-module": "render",
@@ -17269,7 +17287,7 @@
     "SpriteDesc": {
       "x-og-kind": "desc",
       "x-og-module": "render",
-      "description": "A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene.",
+      "description": "A textured or solid quad in the world's xy plane facing +z (or turned to the camera, `facing`), drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene.",
       "type": "object",
       "properties": {
         "texture": {
@@ -17431,6 +17449,11 @@
           "description": "As three.js Material.toneMapped: true draws the sprite into the lit scene, carried by exposure (auto exposure included), bloom and the tone curve like any surface. false keeps its colours as given: still placed in the world, depth tested and sorted with the other sprites, but shown unexposed and uncurved (clamped to 0 to 1), outside bloom and fog; the grade, vignette, grain and screen flash still apply. For world UI that must read the same at noon and at dusk: speech bubbles, name tags, markers. Alpha blending only: an additive sprite adds light and is always tone mapped.",
           "default": true
         },
+        "facing": {
+          "$ref": "#/$defs/SpriteFacing",
+          "description": "A billboard: none keeps the quad in the world's xy plane; camera turns it into the view plane of each camera that draws it; cameraY stands it upright turned about y towards the camera (trees, characters). World sprites only (a screen sprite ignores it); see SpriteFacing for sorting, culling and its drop shadow.",
+          "default": "none"
+        },
         "flipX": {
           "type": "boolean",
           "description": "Mirror the region left to right.",
@@ -17497,7 +17520,7 @@
     "Sprite": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.\nSorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.",
+      "description": "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.\nSorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.",
       "type": "object",
       "properties": {
         "texture": {
@@ -17585,6 +17608,11 @@
           "type": "boolean",
           "description": "Within its layer, lower y draws in front: top-down characters, props and trees overlap by their feet.",
           "default": false
+        },
+        "facing": {
+          "$ref": "#/$defs/SpriteFacing",
+          "description": "A billboard (SpriteDesc.facing): none keeps the quad in the world's xy plane; camera turns it into each camera's view plane; cameraY stands it upright turned about y towards the camera, for trees and characters in a 3D set. Its afterimages face as it does; its blob shadow stays flat.",
+          "default": "none"
         },
         "flipX": {
           "type": "boolean",

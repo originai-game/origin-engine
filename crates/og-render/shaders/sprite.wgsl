@@ -1,7 +1,8 @@
 // Sprites and MSDF text: instanced quads in the world's xy plane, alpha
 // blended (or added) into the HDR target after the 3D scene. One instance
 // per sprite or glyph; the quad's corners come from the vertex index (no
-// vertex buffer). Per instance: a hit flash, 2D lighting from the light map
+// vertex buffer); in the xy plane or, a billboard, facing the camera
+// (stand). Per instance: a hit flash, 2D lighting from the light map
 // (lit layers), a soft round dot for untextured particles, and a glow
 // strength (`fs_glow` adds glowing sprites into the glow buffer).
 // A drop shadow fades where its ground already lies in the sun's cascaded
@@ -30,6 +31,7 @@ struct SpriteIn {
   @location(4) flash: vec4<f32>,              // rgb: flash colour, a: amount
   @location(5) fx: vec3<f32>,                 // x: glow, y: lit, z: soft dot; a drop shadow's yz: its ground's rise per metre along x and z
   @location(6) ground: vec4<f32>,             // a drop shadow: x 1, yz: x and z moved per metre of height, w: the ground's height under the anchor; x 2: a bent shadow's cell (bent_corner)
+  @location(8) facing: u32,                   // how the quad stands (stand)
 };
 
 struct SpriteOut {
@@ -42,6 +44,25 @@ struct SpriteOut {
   @location(5) world: vec3<f32>,
   @location(6) shadow: f32,                   // 1 for a drop shadow
 };
+
+// Where the quad's point `q` (its offset from the anchor `a` in the quad's
+// own x and y, rotated) stands in the world by the instance's facing
+// (sprites.rs face_axes and sun_card_right): 0 the xy plane facing +z, 1
+// the view plane of the camera this frame group is drawn for, 2 upright
+// turned about y towards it (its right laid level), 3 upright facing the
+// sun (a faced sprite's drop shadow, the same from every camera).
+fn stand(a: vec3<f32>, q: vec2<f32>, facing: u32) -> vec3<f32> {
+  if (facing == 0u) { return vec3<f32>(a.xy + q, a.z); }
+  var right = frame.view_right.xyz;
+  var up = frame.view_up.xyz;
+  if (facing >= 2u) {
+    var h = vec3<f32>(right.x, 0.0, right.z);
+    if (facing == 3u) { h = vec3<f32>(frame.light_dir.z, 0.0, -frame.light_dir.x); }
+    right = select(vec3<f32>(1.0, 0.0, 0.0), normalize(h), dot(h, h) > 1e-8);
+    up = vec3<f32>(0.0, 1.0, 0.0);
+  }
+  return a + right * q.x + up * q.y;
+}
 
 // A drop shadow's corner: the standing quad's corner carried along the sun
 // down to the level ground at g.w (sprites.rs shadow_ground); others
@@ -103,7 +124,7 @@ fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
   let cs = cos(s.position_rotation.w);
   let sn = sin(s.position_rotation.w);
   let rotated = vec2<f32>(local.x * cs - local.y * sn, local.x * sn + local.y * cs);
-  let standing = vec3<f32>(s.position_rotation.xy + rotated, s.position_rotation.z);
+  let standing = stand(s.position_rotation.xyz, rotated, s.facing);
   var world = ground_shadow(standing, s.ground);
   if (s.ground.x > 0.5 && (s.fx.y != 0.0 || s.fx.z != 0.0)) {
     world = sloped_shadow(standing, s.ground, s.position_rotation.xyz, s.fx.yz);
@@ -130,7 +151,7 @@ fn bent_vertex(k: vec2<f32>, s: SpriteIn) -> SpriteOut {
   let cs = cos(s.position_rotation.w);
   let sn = sin(s.position_rotation.w);
   let rotated = vec2<f32>(local.x * cs - local.y * sn, local.x * sn + local.y * cs);
-  let standing = vec3<f32>(s.position_rotation.xy + rotated, s.position_rotation.z);
+  let standing = stand(s.position_rotation.xyz, rotated, s.facing);
   let world = ground_shadow(standing, vec4<f32>(1.0, s.ground.yz, b.height));
   var o: SpriteOut;
   o.clip = frame.view_proj * vec4<f32>(world, 1.0);

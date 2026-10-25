@@ -286,10 +286,18 @@ pub fn render_ids_from(
             continue;
         }
         let (sin, cos) = s.rotation.sin_cos();
+        // A billboard faces this camera, as the sprite shader turns it.
+        let facing = crate::sprites::facing_of(&scene.sprite_facing, i);
+        let (x, y) =
+            crate::sprites::face_axes(facing, view.row(0).truncate(), view.row(1).truncate());
         let corner = |u: f32, v: f32| {
             let local = Vec2::new((u - s.anchor.x) * s.size.x, (v - s.anchor.y) * s.size.y);
             let r = Vec2::new(local.x * cos - local.y * sin, local.x * sin + local.y * cos);
-            s.position + r.extend(0.0)
+            if facing == crate::SpriteFacing::None {
+                s.position + r.extend(0.0)
+            } else {
+                s.position + x * r.x + y * r.y
+            }
         };
         items.push(Item {
             id,

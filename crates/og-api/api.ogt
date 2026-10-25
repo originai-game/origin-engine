@@ -2843,6 +2843,20 @@ module render {
     value SpriteBlend
   }
 
+  enum SpriteFacing {
+    doc "How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). Decided as a mode of og.Sprite and SpriteDesc rather than a component of its own: a billboard is the same quad, texture, region, flash, glow, blend, layer, drop shadow and texture array layer as any sprite, drawn by the same sprite batch and shader, which only stands its corners differently. The turn is computed on the GPU from each camera's own axes (the main camera, every og.CameraView and og.Mirror, every face of a reflection probe), so it never feeds back into the simulation and a snapshot holds only the mode. The sprite turns about its anchor (a nine-slice turns as one panel), `rotation` still turns it within its own plane, and its drop shadow is cast by the quad stood upright facing the sun, so it shows the whole shape from every camera. Within its layer a faced sprite without sortY draws back to front from the camera's eye (by view depth; a probe's six faces by distance from the probe), after the layer's drop shadows and before its unfaced sprites; and it is culled by its bounds (a sphere round the anchor through the farthest corner) against the camera's view. Sprites draw over the 3D scene after its transparent meshes and particles, depth tested and not depth writing, so a billboard behind a transparent mesh still draws over it."
+    variant none "In the world's xy plane facing +z, as every sprite before billboards."
+    variant camera "In the camera's view plane: its x along the camera's right, its y along its up, as particle billboards (smoke, glints, impostors seen from any side)."
+    variant cameraY "Upright, turned about the world's y axis towards the camera: its y stays +y, its x the camera's right laid level. Trees, characters and props that must stand while the camera looks down on them."
+  }
+
+  column SpriteFacing {
+    doc "A SpriteFacing field: the variant's index."
+    array Uint32Array
+    stride 1
+    value SpriteFacing
+  }
+
   enum StripBlend {
     doc "How a trail, ribbon or beam is blended."
     variant additive "Added: glowing streaks, lasers, magic."
@@ -3649,7 +3663,7 @@ module render {
   }
 
   struct SpriteDesc {
-    doc "A textured or solid quad in the world's xy plane facing +z, drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene."
+    doc "A textured or solid quad in the world's xy plane facing +z (or turned to the camera, `facing`), drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. Sprites and text are sorted by layer and drawn over the 3D scene."
     desc true
     field texture Option.Texture "The texture from og.load.texture; null draws a solid quad of the colour."
     field array Option.TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`: every sprite of one array is one draw whichever layer each shows, so a flipbook's frames packed as layers batch across frames. World and screen sprites alike, with flash, glow, blend and 2D lighting as a textured sprite. null uses `texture`."
@@ -3705,6 +3719,7 @@ module render {
     field toneMapped bool "As three.js Material.toneMapped: true draws the sprite into the lit scene, carried by exposure (auto exposure included), bloom and the tone curve like any surface. false keeps its colours as given: still placed in the world, depth tested and sorted with the other sprites, but shown unexposed and uncurved (clamped to 0 to 1), outside bloom and fog; the grade, vignette, grain and screen flash still apply. For world UI that must read the same at noon and at dusk: speech bubbles, name tags, markers. Alpha blending only: an additive sprite adds light and is always tone mapped." {
       default true
     }
+    field facing SpriteFacing "A billboard: none keeps the quad in the world's xy plane; camera turns it into the view plane of each camera that draws it; cameraY stands it upright turned about y towards the camera (trees, characters). World sprites only (a screen sprite ignores it); see SpriteFacing for sorting, culling and its drop shadow."
     field flipX bool "Mirror the region left to right."
     field flipY bool "Mirror the region top to bottom."
     field sortY bool "Within its layer, draw by y: lower on the screen draws in front (top-down games)."
@@ -3725,7 +3740,7 @@ module render {
   }
 
   component Sprite {
-    doc "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame."
+    doc "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame."
     doc "Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer."
     field texture Texture "The texture (og.load.texture); 0 draws a solid quad of the colour."
     field array TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`; 0 uses `texture`. Every sprite of one array is one draw whichever layer each shows. While the array's streaming group is not resident the sprite draws nothing."
@@ -3760,6 +3775,7 @@ module render {
     }
     field layer i32 "Draw order among sprites, tiles and text; higher draws on top."
     field sortY bool "Within its layer, lower y draws in front: top-down characters, props and trees overlap by their feet."
+    field facing SpriteFacing "A billboard (SpriteDesc.facing): none keeps the quad in the world's xy plane; camera turns it into each camera's view plane; cameraY stands it upright turned about y towards the camera, for trees and characters in a 3D set. Its afterimages face as it does; its blob shadow stays flat."
     field flipX bool "Mirror left to right (a character facing left)."
     field flipY bool "Mirror top to bottom."
     field flash f32 "A hit flash: the colour mixed towards flashColor by this much (og.tween.flash fades it out)." {

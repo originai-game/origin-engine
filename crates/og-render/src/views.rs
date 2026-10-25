@@ -712,6 +712,7 @@ impl Views {
                 .extend(p.frame.orthographic as u32 as f32)
                 .to_array();
             u.view_forward = p.frame.forward.extend(u.view_forward[3]).to_array();
+            (u.view_right, u.view_up) = p.frame.axes();
             u.cluster = slot.clusters.params;
             queue.write_buffer(&slot.frame_buffer, 0, bytemuck::bytes_of(&u));
             let mut f = *fx;

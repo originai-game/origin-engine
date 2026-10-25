@@ -61,6 +61,11 @@ pub(crate) struct FrameUniform {
     /// probe's intensity), the capture point (w: the blend distance).
     /// Zero in the frame's own group.
     pub probe: [[f32; 4]; 3],
+    /// The camera's right and up in the world (w unused): billboards
+    /// (`RenderScene::sprite_facing`) face the camera of the group they
+    /// are drawn with, a view's or a probe face's included.
+    pub view_right: [f32; 4],
+    pub view_up: [f32; 4],
 }
 
 /// The camera's matrices for one frame.
@@ -112,6 +117,18 @@ pub(crate) fn camera_frame(cam: &Camera, aspect: f32, jitter_ndc: Vec2) -> Camer
         jittered_view_proj,
         forward: (cam.target - cam.position).normalize_or(Vec3::NEG_Z),
         orthographic,
+    }
+}
+
+impl CameraFrame {
+    /// The camera's right and up in the world (`FrameUniform::view_right`,
+    /// `view_up`): the view matrix's first two rows.
+    pub fn axes(&self) -> ([f32; 4], [f32; 4]) {
+        let t = self.view.transpose();
+        (
+            t.x_axis.truncate().extend(0.0).to_array(),
+            t.y_axis.truncate().extend(0.0).to_array(),
+        )
     }
 }
 

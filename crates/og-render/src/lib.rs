@@ -813,6 +813,9 @@ pub struct FrameStats {
     pub sprites: u32,
     pub glyphs: u32,
     pub sprite_draws: u32,
+    /// Faced world sprites (billboards, [`RenderScene::sprite_facing`]) the
+    /// main camera left out because their bounds miss its frustum.
+    pub sprites_culled: u32,
     /// Characters of [`RenderScene::texts`] (and the overlay's) missing from their font.
     pub missing_glyphs: u32,
     /// The overlay's share of `sprites`, `glyphs` and `sprite_draws`
@@ -5637,6 +5640,11 @@ impl Renderer {
             view,
             &layered,
             scene.camera_layers,
+            &sprites::SpriteEye {
+                position: camera.position,
+                forward: Some(cam.forward),
+                frustum: Some(&view_frustum),
+            },
         )?;
         // Each view's world sprites, 2D particles and text on its layers
         // (views.rs), their instances after the main camera's in the
@@ -5678,6 +5686,11 @@ impl Renderer {
                 None,
                 &view_strips,
                 p.layers,
+                &sprites::SpriteEye {
+                    position: p.position,
+                    forward: Some(p.frame.forward),
+                    frustum: Some(&Frustum::from_view_proj(p.frame.view_proj)),
+                },
             )?;
             let in_buffer = |r: &sprites::SpriteRun| {
                 !matches!(
@@ -5711,10 +5724,12 @@ impl Renderer {
         }
         // The due probe faces' world sprites, 2D particles and text (every
         // layer, unlit, without glow: probes.rs), after the views' in the
-        // sprite buffer; built once, as no camera moves them.
-        let face_sprites: Vec<sprites::SpriteRun> = if probe_faces.is_empty() {
-            Vec::new()
-        } else {
+        // sprite buffer; built once per due probe, its billboards sorted
+        // by distance from the capture point (one order for its six
+        // faces, each of which turns them to itself in the shader) and
+        // never culled.
+        let mut face_sprites: Vec<Vec<sprites::SpriteRun>> = Vec::new();
+        for &(_, i) in &probe_frame.due {
             let f = sprites::build(
                 scene,
                 font,
@@ -5725,22 +5740,29 @@ impl Renderer {
                 None,
                 &[],
                 u32::MAX,
+                &sprites::SpriteEye {
+                    position: active_probes[i].position,
+                    forward: None,
+                    frustum: None,
+                },
             )?;
             let base = sprite_frame.instances.len() as u32;
             sprite_frame.instances.extend_from_slice(&f.instances);
-            f.runs
-                .into_iter()
-                .map(|mut r| {
-                    if !matches!(
-                        r.source,
-                        RunSource::Strip(..) | RunSource::Mesh(_) | RunSource::Metaballs(_)
-                    ) {
-                        r.first += base;
-                    }
-                    r
-                })
-                .collect()
-        };
+            face_sprites.push(
+                f.runs
+                    .into_iter()
+                    .map(|mut r| {
+                        if !matches!(
+                            r.source,
+                            RunSource::Strip(..) | RunSource::Mesh(_) | RunSource::Metaballs(_)
+                        ) {
+                            r.first += base;
+                        }
+                        r
+                    })
+                    .collect(),
+            );
+        }
         let sprite_frame = sprite_frame;
         for run in sprite_frame
             .runs
@@ -5748,7 +5770,7 @@ impl Renderer {
             .chain(&sprite_frame.glow_runs)
             .chain(view_sprites.iter().flatten())
             .chain(view_glow_runs.iter().flatten())
-            .chain(&face_sprites)
+            .chain(face_sprites.iter().flatten())
         {
             match run.source {
                 RunSource::Sprite(_, t) => {
@@ -6514,6 +6536,8 @@ impl Renderer {
                 0.0,
             ],
             probe: [[0.0; 4]; 3],
+            view_right: cam.axes().0,
+            view_up: cam.axes().1,
         };
         let mut shadow_slots = vec![bytemuck::Zeroable::zeroed(); SHADOW_SLOTS];
         for (i, c) in cascades.iter().enumerate() {
@@ -6572,6 +6596,7 @@ impl Renderer {
             u.inv_view_proj = f.view_proj.inverse().to_cols_array_2d();
             u.view_pos = mirrored.position.extend(0.0).to_array();
             u.view_forward = f.forward.extend(u.view_forward[3]).to_array();
+            (u.view_right, u.view_up) = f.axes();
             u.caustics = [[0.0; 4]; 2];
             u.cluster = self.reflection_clusters.params;
             self.queue
@@ -7190,6 +7215,7 @@ impl Renderer {
             texture_bytes: self.cache.textures.iter().map(|t| t.bytes).sum::<u64>()
                 + self.asset_bytes(),
             sprites: sprite_frame.sprites,
+            sprites_culled: sprite_frame.culled,
             tiles: sprite_frame.tiles,
             tile_chunks: sprite_frame.tile_chunks,
             glyphs: sprite_frame.glyphs,
@@ -8812,7 +8838,7 @@ impl Renderer {
                                 pass.set_bind_group(0, &face_groups[k], &[]);
                             }
                             stats.draw_calls +=
-                                draw_sprites(&mut pass, &face_sprites, glow_fx_group, &[], true);
+                                draw_sprites(&mut pass, &face_sprites[d], glow_fx_group, &[], true);
                         }
                         self.ibl.record_probe_filter(&mut encoder, &s.filter);
                     }

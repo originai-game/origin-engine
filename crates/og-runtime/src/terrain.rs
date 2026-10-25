@@ -597,7 +597,18 @@ pub(crate) fn ground_drop_shadows(rs: &mut RenderState) {
         if h <= shadow.ground.height {
             continue;
         }
-        let ground = og_render::ShadowGround::fit(|x, z| height_at(x, z).unwrap_or(h), sprite, sun);
+        // A billboard's shadow is cast by its sun-facing card.
+        let facing = scene
+            .sprite_facing
+            .get(shadow.sprite as usize)
+            .copied()
+            .unwrap_or_default();
+        let ground = og_render::ShadowGround::fit_facing(
+            |x, z| height_at(x, z).unwrap_or(h),
+            sprite,
+            facing,
+            sun,
+        );
         scene.sprite_shadows[k].ground = ground;
     }
 }
