@@ -1,0 +1,14 @@
+og check: ok (tsrs, 16 ms)
+  title.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/title.png
+  lobby.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/lobby.png
+  card.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/card.png
+  bump.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/bump.png
+  splash.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/splash.png
+  scores.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/scores.png
+  berry.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/berry.png
+  crumble.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/crumble.png
+  pause.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/pause.png
+  settings-fr.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/settings-fr.png
+  podium.png: 0.000 % outliers, RMSE 0.00000 against /Volumes/app/origin-engine-measure/examples/rumpus-isle/references/metal/podium.png
+PASS frames (30 checks, 5989 ms): the title, lobby, card, a bump, a splash, the scoreboard, berries, cracking tiles, pause, the French settings and the podium match their reference frames
+og test: 1 suite(s) passed

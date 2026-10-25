@@ -1,0 +1,6 @@
+{
+  "scene": "extract-models-20k",
+  "cpu": "apple-m4-pro",
+  "instances": 20000,
+  "frame_ms": 1.999
+}

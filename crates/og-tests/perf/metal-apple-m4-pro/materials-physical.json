@@ -1,0 +1,10 @@
+{
+  "scene": "materials-physical",
+  "tier": "metal",
+  "adapter": "Apple M4 Pro",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [0.828, 1.187, 1.215, 1.253, 1.265, 1.265, 1.307],
+  "frame_ms": 0.828
+}

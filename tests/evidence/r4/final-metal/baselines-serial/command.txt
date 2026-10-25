@@ -1,0 +1,1 @@
+bash -c RUST_TEST_THREADS=1\ OG_PERF_RECORD=1\ cargo\ test\ -p\ og-runtime\ --release\ --\ --ignored\ perf\ --nocapture\ \&\&\ RUST_TEST_THREADS=1\ OG_PERF_RECORD=1\ cargo\ test\ -p\ og-tests\ --release\ --\ --ignored\ perf_materials_physical\ perf_showcase_capture\ --nocapture 
