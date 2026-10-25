@@ -18,6 +18,18 @@ const LUMINANCE_WGSL: &str = wgsl!("luminance.wgsl");
 const EXPOSURE_WGSL: &str = wgsl!("exposure.wgsl");
 // Screen-space reflections (ssr.rs) are one more effect pass of the module.
 const FXPOST_WGSL: &str = concat!(wgsl!("fxpost.wgsl"), wgsl!("ssr.wgsl"));
+/// The full tier's AO blur by gathers (`fs_ao_blur_gather`), appended to
+/// the effect module there: GLSL ES 3.0 has no gather ([`fx_source`]).
+const FX_GATHER_WGSL: &str = wgsl!("fxpost_gather.wgsl");
+
+/// The effect passes' module body on the full tier (`full`) or the GL tier.
+fn fx_source(full: bool) -> String {
+    if full {
+        format!("{FXPOST_WGSL}{FX_GATHER_WGSL}")
+    } else {
+        FXPOST_WGSL.to_string()
+    }
+}
 const FXAA_WGSL: &str = wgsl!("fxaa.wgsl");
 const STYLISE_WGSL: &str = wgsl!("stylise.wgsl");
 
@@ -437,6 +449,9 @@ fn texture_with_data(
         .create_view(&Default::default())
 }
 
+/// The full tier's AO blur (fxpost_gather.wgsl): `fs_ao_blur` to the bit.
+const AO_BLUR_GATHER: &str = "fs_ao_blur_gather";
+
 /// The fullscreen effect passes of fxpost.wgsl: (entry point, target format).
 const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_gtao", AO_FORMAT),
@@ -473,7 +488,7 @@ impl PostPasses {
                 .iter()
                 .map(|p| p as &dyn crate::deferred::Warm),
         );
-        for (entry, _) in FX_PASSES {
+        for entry in FX_PASSES.iter().map(|(e, _)| e).chain([&AO_BLUR_GATHER]) {
             if let Some(p) = self.fx.get(entry) {
                 items.push(p);
             }
@@ -487,6 +502,7 @@ impl PostPasses {
         output_format: wgpu::TextureFormat,
         antialias: Antialias,
         aa: AaOptions,
+        full: bool,
     ) -> PostPasses {
         let sampler_ty = wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering);
         let source_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -524,6 +540,12 @@ impl PostPasses {
                 layout_entry(3, float_texture(false)),
                 layout_entry(4, float_texture(false)),
                 layout_entry(5, float_texture(true)),
+                // Nearest, for the full tier's gathers of the unfilterable
+                // view depth (fxpost_gather.wgsl).
+                layout_entry(
+                    6,
+                    wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                ),
             ],
         });
         let taa_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -797,9 +819,9 @@ impl PostPasses {
                 mapped_at_creation: false,
             })
         };
-        let fx_shader = module("fx post", FXPOST_WGSL);
+        let fx_shader = module("fx post", &fx_source(full));
         let fx_pl = pipeline_layout("fx post", &fx_layout);
-        let fx = FX_PASSES
+        let mut fx: HashMap<&'static str, Deferred<wgpu::RenderPipeline>> = FX_PASSES
             .iter()
             .map(|&(entry, format)| {
                 (
@@ -808,6 +830,20 @@ impl PostPasses {
                 )
             })
             .collect();
+        if full {
+            fx.insert(
+                AO_BLUR_GATHER,
+                deferred_fullscreen(
+                    device,
+                    AO_BLUR_GATHER,
+                    &fx_shader,
+                    AO_BLUR_GATHER,
+                    &fx_pl,
+                    AO_FORMAT,
+                    None,
+                ),
+            );
+        }
         let identity_lut = lut_texture(device, queue, &crate::ColorLut::identity());
         let far_depth = one_texel(
             device,
@@ -2397,6 +2433,7 @@ impl FrameGraph {
                     tex(depth),
                     tex(gbuffer),
                     tex(b),
+                    wgpu::BindingResource::Sampler(&passes.nearest_sampler),
                 ],
             )
         };
@@ -2458,6 +2495,9 @@ impl FrameGraph {
         let clear = wgpu::LoadOp::Clear(wgpu::Color::BLACK);
         let effect = match pass {
             FramePass::Ao => Some((if gtao { "fs_gtao" } else { "fs_ssao" }, "ao.raw")),
+            FramePass::AoBlur if passes.fx.contains_key(AO_BLUR_GATHER) => {
+                Some((AO_BLUR_GATHER, "ao"))
+            }
             FramePass::AoBlur => Some(("fs_ao_blur", "ao")),
             FramePass::Outline => Some(("fs_outline", "hdr.outline")),
             FramePass::DofCoc => Some(("fs_dof_coc", "dof.coc")),
@@ -2720,8 +2760,10 @@ pub(crate) fn fullscreen_source(body: &str) -> String {
     format!("{FULLSCREEN_WGSL}{body}")
 }
 
-/// The post passes' modules by label, as [`PostPasses::new`] compiles them.
-pub(crate) fn post_sources() -> Vec<(&'static str, String)> {
+/// The post passes' modules by label, as [`PostPasses::new`] compiles them
+/// on the full tier (`full`) or the GL tier.
+pub(crate) fn post_sources(full: bool) -> Vec<(&'static str, String)> {
+    let fx = fx_source(full);
     [
         ("post", POST_WGSL),
         ("luminance", LUMINANCE_WGSL),
@@ -2729,7 +2771,7 @@ pub(crate) fn post_sources() -> Vec<(&'static str, String)> {
         ("taa", TAA_WGSL),
         ("fxaa", FXAA_WGSL),
         ("stylise", STYLISE_WGSL),
-        ("fx post", FXPOST_WGSL),
+        ("fx post", fx.as_str()),
     ]
     .into_iter()
     .map(|(label, body)| (label, fullscreen_source(body)))

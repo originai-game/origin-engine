@@ -2927,6 +2927,7 @@ impl Renderer {
                 taa_history: desc.taa_history,
                 taa_sharpen: desc.taa_sharpen.clamp(0.0, 1.0),
             },
+            tier == Tier::Full,
         );
         let mips = mips::MipGenerator::new(&device);
         let default_white = solid_texture(&device, &queue, [255; 4]);
