@@ -130,6 +130,13 @@ the engine's version.
 
 ## 3. Versions and the release procedure
 
+**0.5.0 released (2026-10-25 UTC).** All five npm packages are published;
+`v0.5.0` is pushed at `ebe7f08b`. Metal functional and Rumpus passed,
+the exact tarballs passed Mac/Linux/Windows consumer checks, and registry
+verification passed on Mac and Linux. Shipping 3D lanes wasm is
+3,223,281 B Brotli q11 (76.85% of 4 MiB). Hashes, commands, timings and
+remaining device/sandbox checks: [release receipt](../tests/evidence/release/0.5.0.md).
+
 **Version.** `0.1.0` is the first published version. Before `1.0.0` a
 minor bump carries API additions or changes (recorded in `CHANGELOG.md`,
 one line per IDL member added, changed or removed, written at the merge
