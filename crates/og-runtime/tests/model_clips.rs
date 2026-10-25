@@ -2,17 +2,19 @@
 //! clip names of the model's `#anim` blob (FINDINGS #3 of
 //! `examples/lantern-vale`: it was always empty), and an animated `.vox`
 //! (MagicaVoxel frames cooked into mesh-swap clips) plays on an
-//! og.AnimationPlayer: its palette shows one frame's joint at a time and
-//! every frame's primitive is drawn skinned.
+//! og.AnimationPlayer: one frame's primitive is drawn at a time, skinned,
+//! the frames folded away hidden by the clip's visibility channels and not
+//! drawn at all (before the visibility track every frame was drawn, the
+//! folded ones through a joint scaled to 0: three draws a tick, now one).
 //!
 //! A project with a three-frame `.vox` (`voxFps 4`, two `voxClip`s), a
 //! static `.vox` and the template walker is cooked once; a renderer that
 //! draws nothing records each frame's palettes and skinned instances.
 //!
 //! Ways this could fail: gltfInfo answers no names (or the static model's
-//! load is refused for its missing `#anim`); the frames' joints are not
-//! STEP-scaled (two frames drawn at once, or none); the frames' primitives
-//! are drawn unskinned (every frame at once).
+//! load is refused for its missing `#anim`); a hidden frame still drawn
+//! (two frames or more a tick), or the wrong one shown; the frames'
+//! primitives drawn unskinned.
 
 use og_render::RenderScene;
 use og_runtime::{
@@ -106,11 +108,11 @@ impl Hooks for Disk {
 }
 
 /// What the last frame's scene drew: per palette, each joint's x scale;
-/// and how many skinned instances.
+/// and the height of each skinned instance's mesh.
 #[derive(Default)]
 struct Seen {
     palettes: Vec<Vec<f32>>,
-    skinned: usize,
+    skinned: Vec<f32>,
 }
 
 struct Recorder(Rc<RefCell<Seen>>);
@@ -129,7 +131,20 @@ impl RenderBackend for Recorder {
             .iter()
             .map(|p| p.matrices.iter().map(|m| m.x_axis.length()).collect())
             .collect();
-        s.skinned = scene.skinned_instances.len();
+        s.skinned = scene
+            .skinned_instances
+            .iter()
+            .map(|i| {
+                let ys = scene
+                    .mesh(i.mesh)
+                    .unwrap()
+                    .vertices
+                    .iter()
+                    .map(|v| v.position[1]);
+                let (lo, hi) = ys.fold((f32::MAX, f32::MIN), |(a, b), y| (a.min(y), b.max(y)));
+                hi - lo
+            })
+            .collect();
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
@@ -221,24 +236,19 @@ fn an_animated_vox_plays_one_frame_at_a_time() {
             tick += 1;
         }
         let s = seen.borrow();
-        assert_eq!(s.skinned, 3, "every frame's primitive drawn skinned");
         assert_eq!(s.palettes.len(), 1);
-        shown.push(
+        assert!(
+            s.palettes[0].iter().all(|x| (x - 1.0).abs() < 1e-5),
+            "no joint is scaled away: {:?}",
             s.palettes[0]
-                .iter()
-                .map(|x| (x * 100.0).round() / 100.0)
-                .collect::<Vec<_>>(),
         );
+        shown.push(s.skinned.clone());
     }
+    // Frame k is 2 + k voxels (metres) tall.
     assert_eq!(
         shown,
-        vec![
-            vec![1.0, 0.0, 0.0],
-            vec![0.0, 1.0, 0.0],
-            vec![0.0, 0.0, 1.0],
-            vec![1.0, 0.0, 0.0]
-        ],
-        "frame 0, 1, 2, then frame 0 again (looped)"
+        vec![vec![2.0], vec![3.0], vec![4.0], vec![2.0]],
+        "one skinned draw a tick: frame 0, 1, 2, then frame 0 again (looped)"
     );
 }
 
