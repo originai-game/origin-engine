@@ -453,6 +453,22 @@ else ignores it. The stamp is world state, so a replay reproduces it.
   ```ts
   world.insert(hero, og.Sprite, { texture: tex, width: 1, height: 1.5, anchor: { x: 0.5, y: 0 }, dropShadow: 0.5, shadow: 0.3 });
   ```
+- **Billboards** (three.js `Sprite`): `og.Sprite.facing` (or
+  `SpriteDesc.facing`) turns a world sprite to the camera that draws it.
+  `"cameraY"` stands it upright and turns it about y (trees, characters,
+  props a looking-down camera must not tip back); `"camera"` lays it in
+  the view plane (smoke, glints, signs); `"none"`, the default, keeps the
+  xy plane. Every camera turns it to itself (og.CameraView, og.Mirror, reflection
+  probes), the turn is render-only (never read by systems or snapshots),
+  faced sprites in one layer draw back to front from the camera and are
+  culled off screen, and a faced sprite's `dropShadow` is its whole shape
+  from any angle. It is still a sprite: flash, glow, blend, 2D lighting,
+  arrays, flipbooks and `toneMapped` all apply. A billboard behind a
+  transparent mesh still draws over it (sprites draw after the 3D scene).
+
+  ```ts
+  world.insert(tree, og.Sprite, { texture: treeTex, width: 2, height: 2.6, anchor: { x: 0.5, y: 0 }, facing: "cameraY", dropShadow: 0.6 });
+  ```
 - **World UI that must not change with the light** (speech bubbles, name
   tags, markers) takes `og.Sprite.toneMapped: false` (or
   `SpriteDesc.toneMapped`), three.js's `Material.toneMapped`: still placed

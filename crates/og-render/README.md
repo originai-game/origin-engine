@@ -31,7 +31,8 @@ the world → scene extraction belongs to the layer above.
 | `Light`, `LightKind` | Point and spot lights (`Point`; `Spot { direction, angle_degrees, penumbra }`) with `position`, `color`, `intensity` (radiance at 1 m), `range`, `cast_shadows`. Clustered (see [Forward+](#forward-phase-2)): lights whose range misses the view are culled (`FrameStats::lights_culled`), up to `MAX_LIGHTS` = 256 in view are drawn (past it the brightest at the camera are kept, the rest counted in `lights_dropped`); of those in view with `cast_shadows`, `RenderInfo::shadowed_lights` (`MAX_SHADOWED_LIGHTS` = 8 on the full tier, `NO_COMPUTE_SHADOWED_LIGHTS` = 4 on WebGL2) get shadows, the most radiant at the camera first (the rest counted in `shadowed_lights_dropped`). |
 | `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default), `Agx` (Blender 4's and three.js's AgX fit, base look) or `None` (clamp: authored 2D colours come out exact). |
 | `EnvironmentMapData`, `EnvironmentMap`, `bake` | A prefiltered environment map (level 0's face `size`, `ENVIRONMENT_MAP_LEVELS` = 5 levels of RGB9E5 `texels`, level m at roughness m/4, `irradiance` as nine harmonics) and how a frame uses one (`map`, `rotation` about +y in radians, `background_intensity`); `rgb9e5`, `rgb9e5_decode`, `sh9`, `face_direction`; feature `bake`: `bake::bake(&Equirect, &BakeDesc)` and `bake::bake_cube`, the cook's prefilter, and `bake::from_prefiltered(&PrefilteredCube, &BakeDesc)`, a cube's own prefiltered mip chain taken as it is. See [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation). |
-| `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down; a flipped region swaps u0/u1 or v0/v1), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, sort key, texture); within those, submission order. |
+| `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down; a flipped region swaps u0/u1 or v0/v1), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, sort key, texture); within those, submission order. `anchored_at(pivot)`: the same quad anchored elsewhere (a faced nine-slice's pieces turn about the panel's anchor). |
+| `SpriteFacing`, `sun_card_right` | `sprite_facing` (by sprite index, like `sprite_layers`): billboards, `None` (the xy plane), `Camera` (the view plane), `CameraY` (upright, turned about y). Turned in the sprite vertex shader for each camera, sorted back to front from its eye, culled by bounds (`FrameStats::sprites_culled`); a faced sprite's drop shadow is cast by its sun-facing card (`sun_card_right`, `ShadowGround::fit_facing`). See [Billboards](#billboards). |
 | `SpriteArray`, `TextureArrayData`, `TextureArrayInfo` | `sprite_arrays` (and `Overlay::sprite_arrays` for screen sprites): a sprite drawn from layer `layer` of a texture array (`add_texture_array`: same-sized layers uploaded as one `D2Array`; `set_texture_array_filter` for pixel art) instead of its texture, with glow, flash, 2D lighting and blend; `ParticleEmitter::array` draws a 2D emitter's particles from one. See [The 2D batch](#the-2d-batch-e4). |
 | `SpriteShadow`, `ShadowGround`, `ShadowBend`, `SPRITE_SHADOW_LIFT`, `SHADOW_BEND_ROWS`, `SHADOW_BEND_COLUMNS`, `SHADOW_BEND_TOLERANCE` | `sprite_shadows`: a world sprite's drop shadow along the sun onto its `ground` (a plane through `height` under the anchor with a `normal`; the plane y = 0 by default; `ShadowGround::fit` fits one to a terrain under the shadow, and bends it, `bend`, over a hollow or ridge the plane misses), faded where the cascades already shadow that ground, drawn before the sprites of its layer (see [The 2D batch](#the-2d-batch-e4)). |
 | `SpriteOrder`, `TextOutline`, `TextureFilter` | Per-frame side lists by index, so `Sprite` and `Text` keep their fields: `sprite_order` gives a sprite a sort key within its layer (top-down y sorting: `-y` of the feet; default 0), `text_outlines` an outline (width as a fraction of half the font's distance range, linear colour) to a world text; `set_texture_filter(texture, Nearest)` samples a texture by its nearest texel wherever sprites, tiles and particles draw it (pixel art). |
@@ -899,7 +900,7 @@ most five times the sprite's height (`shadow_ground`). Pixel sprites in a
 3D set (a perspective camera over the xz ground) cast shadows that agree
 with the meshes' cascades; a 2D camera looking down -z sees the plane edge
 on. Shadows are not counted in `FrameStats::sprites`. The instance grew
-by those 16 bytes (100 a sprite or glyph). Tests: `sprites.rs`'s
+by those 16 bytes (100 a sprite or glyph; 104 since billboards). Tests: `sprites.rs`'s
 `a_drop_shadow_draws_first_in_its_layer_projected_along_the_sun` and
 `a_low_sun_casts_at_most_five_heights` (CPU), og-tests `sprites-shadow`.
 
@@ -973,6 +974,65 @@ against linear sampling; nine-slice borders at their texel size; an
 outline only when asked, the fill kept; a trail hidden under a layer-0
 sprite without a layer and shown over it on layer 1), each broken once
 (`tests/evidence/E4/break-and-restore.md`).
+
+### Billboards
+
+`RenderScene::sprite_facing` (`SpriteFacing`, by sprite index; past the
+end, `None`; the IDL's `og.Sprite.facing` and `SpriteDesc.facing`, enum
+`SpriteFacing` `none | camera | cameraY`): a world sprite turned towards
+the camera that draws it, three.js `Sprite`. *Chosen: a mode of the
+sprite, not a component or a draw path of its own.* The quad, texture or
+array layer, region, flash, glow, 2D lighting, blend, fog, untonemapped
+pipelines, drop shadow and runs are the sprite's; only where its corners
+stand changes. The instance carries the mode (`facing`, location 8, 4
+bytes: 104 a sprite or glyph) and the sprite and array vertex shaders
+place each corner with `stand` (sprite.wgsl, sprite_array.wgsl): 0 the
+old expression, `(xy + rotated, z)`, behind an early return; 1 along the
+camera's right and up; 2 along the camera's right laid level (+x when it
+points straight up) and +y; 3, internal, along the sun-facing card's
+right (`sun_card_right`: the sun as a camera's right) and +y. The
+camera's axes are two new members at the end of the frame uniform
+(`view_right`, `view_up`, frame.wgsl), written from each `CameraFrame`'s
+view (`CameraFrame::axes`) wherever a frame group is: the main camera,
+the planar reflection's mirrored eye, every `View` (views.rs) and every
+reflection probe face (probes.rs). So every pass that draws sprites
+turns them to its own eye on the GPU, as `views::camera_gpu` turns the
+particle billboards; nothing on the CPU (the simulation, the probe's
+snapshots) reads the turn. `rotation` still turns the quad within its own
+plane; the quad turns about its anchor.
+
+*Sorting.* A faced sprite without a `sprite_order` key is keyed
+`-depth` of its anchor within its layer (`SpriteEye`: the view depth
+along the eye's forward; a reflection probe's due capture builds its
+own sprite list sorted by distance from the probe, one order for its
+six faces), so billboards draw back to front among themselves, after
+the layer's drop shadows and before its key-0 unfaced sprites, as the
+transparent meshes are sorted (`sort_transparent`). Like every sprite
+they draw after the transparent meshes and particles, depth tested
+without writing depth: a billboard behind a transparent mesh still draws
+over it (*limit*, shared with particles and every sprite). *Culling.* Its
+bounds are the sphere round the anchor through the farthest corner
+(`sprite_radius`, whatever its turn); the main camera and each view drop
+a faced sprite (and its glow; not its drop shadow, which may show) whose
+sphere misses their frustum (`FrameStats::sprites_culled`, the main
+camera's); probe faces cull none. Unfaced sprites are not culled, as
+before. *Drop shadows.* A faced sprite's shadow is cast by the quad
+stood upright facing the sun (`FACING_SUN`), so a billboard's shadow is
+its whole shape from every camera and the same in every view;
+`ShadowGround::fit_facing` takes a bend's grid points on that card, and
+og-runtime's terrain shadows call it with the sprite's facing. The id
+pass (`id_pass.rs`) turns faced sprites to its camera (`face_axes`, the
+CPU twin of `stand`). og-runtime anchors a faced nine-slice's pieces at
+the panel's anchor (`Sprite::anchored_at`), so the panel turns as one;
+an og.Sprite's afterimages face as it does, its blob shadow stays flat.
+World text does not face (yet). Tests: `sprites.rs`'s
+`faced_sprites_sort_back_to_front_cull_to_the_frustum_and_cast_sun_facing_shadows`
+and `a_sprite_anchored_elsewhere_keeps_its_corners`, og-runtime
+`tests/billboards.rs`, og-tests `sprites-billboard`
+(`billboards_face_each_camera_sort_back_to_front_and_cull_by_bounds`: the
+reference, one culled, and the frame unchanged byte for byte when two
+translucent puffs are submitted the other way round), `vulkan-cpu`
+reference (the `metal` one is owed).
 
 ### Untonemapped sprites
 
@@ -1971,8 +2031,11 @@ with their mips, chosen per tier and reported in
   `webgpu` and `webgl2` in `make web-reference` (56 scenes per tier in the
   P4 UI shell round's run), judged against `metal` unless the tier keeps a
   reference by design, beside `templates/fx-showcase`.
-- 2D: billboards (camera-facing world sprites; particles have them).
-  (Fog landed in E5, in the lit, sky, particle, strip and sprite shaders
+- *Delivered (round four, r4/render-billboards):* 2D billboards,
+  camera-facing world sprites (`SpriteFacing`: the view plane, or upright
+  about y), through the sprite batch on both tiers and in every view
+  ([Billboards](#billboards)).
+- (Fog landed in E5, in the lit, sky, particle, strip and sprite shaders
   rather than as a post pass (§E5: atmosphere); per-texture filtering is
   `set_texture_filter`, nearest for pixel art. Kerning,
   shaped placements and glyph tables that grow at run time landed in the
