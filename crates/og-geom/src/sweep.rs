@@ -101,7 +101,7 @@ pub fn sweep(s: &Sweep, path: &ExtrudePath) -> Result<Mesh, String> {
             return Err(format!("{what} holds a key that is not finite"));
         }
         let mut k = keys.to_vec();
-        k.sort_by(|a, b| a.t.total_cmp(&b.t));
+        og_core::sort::sort_by(&mut k, |a, b| a.t.total_cmp(&b.t));
         Ok(k)
     };
     let scale = sorted(&s.scale, "scale")?;

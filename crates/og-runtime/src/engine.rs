@@ -1912,7 +1912,7 @@ pub fn command(id: u32, action: &str, args: &str) -> String {
             None => {
                 let mut known: Vec<String> = eng.state.borrow().commands.keys().cloned().collect();
                 known.extend(eng.probe.borrow().registered());
-                known.sort();
+                og_core::sort::sort(&mut known);
                 refuse(format!(
                     "no command action '{action}'; the game and its modules register {known:?}"
                 ))

@@ -140,7 +140,9 @@ impl Probe {
             });
             entities.push((s.depth, id, value));
         }
-        entities.sort_by(|a, b| a.0.total_cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+        og_core::sort::sort_by(&mut entities, |a, b| {
+            a.0.total_cmp(&b.0).then_with(|| a.1.cmp(&b.1))
+        });
         entities
             .into_iter()
             .enumerate()

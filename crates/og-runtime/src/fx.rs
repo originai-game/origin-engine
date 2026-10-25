@@ -216,7 +216,7 @@ pub(crate) fn rows(world: &World, layout: Option<&Layout>) -> Vec<(u64, Value)> 
         return Vec::new();
     };
     let mut entities: Vec<Entity> = all.flat_map(|a| a.entities().to_vec()).collect();
-    entities.sort_by_key(|e| e.index());
+    og_core::sort::sort_by_key(&mut entities, |e| e.index());
     entities
         .into_iter()
         .filter_map(|e| Some((e.to_bits(), layout.decode(&world.get_bytes(e, id).ok()?))))

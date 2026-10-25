@@ -4586,7 +4586,7 @@ impl Renderer {
                 }
             }
         }
-        keyed.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)));
+        og_core::sort::sort_by(&mut keyed, |a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)));
         let mut list = DrawList::default();
         for (_, _, k, b) in keyed {
             let at = transforms.len() as u32;
@@ -4977,7 +4977,7 @@ impl Renderer {
             .collect();
         // A (mesh, material)'s casters first, its non-casters a batch of
         // their own (left out of the shadow passes), then by probe.
-        order.sort_by_key(|&i| {
+        og_core::sort::sort_by_key(&mut order, |&i| {
             let s = &scene.skinned_instances[i];
             (
                 s.mesh,

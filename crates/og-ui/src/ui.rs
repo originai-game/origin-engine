@@ -2259,7 +2259,7 @@ impl Ui {
             .copied()
             .filter(|&f| !self.nodes[f].hidden)
             .collect();
-        floating.sort_by_key(|&f| self.nodes[f].float.rank());
+        og_core::sort::sort_by_key(&mut floating, |&f| self.nodes[f].float.rank());
         self.floating = floating;
 
         let vp = self.viewport;

@@ -284,7 +284,7 @@ impl World {
             self.registry.check(*id)?;
             self.registry.check_value(*id, bytes)?;
         }
-        components.sort_by_key(|(id, _)| *id);
+        og_core::sort::sort_by_key(&mut components, |(id, _)| *id);
         if let Some(w) = components.windows(2).find(|w| w[0].0 == w[1].0) {
             return Err(Error::new(
                 ErrorKind::Invalid,

@@ -653,7 +653,7 @@ pub(crate) fn build<'a>(
     }
     let glyphs = keyed.len() as u32 - after_sprites;
     // Stable: within a (layer, key, source, tone) run, submission order is kept.
-    keyed.sort_by(|a, b| {
+    og_core::sort::sort_by(&mut keyed, |a, b| {
         a.0.cmp(&b.0)
             .then(a.1.total_cmp(&b.1))
             .then(a.2.cmp(&b.2))
@@ -674,7 +674,7 @@ pub(crate) fn build<'a>(
     for (i, s) in strips.iter().enumerate() {
         under.push((s.layer, 1, i));
     }
-    under.sort_by_key(|u| (u.0, u.1));
+    og_core::sort::sort_by_key(&mut under, |u| (u.0, u.1));
     let mut runs: Vec<SpriteRun> = Vec::new();
     let mut instances: Vec<SpriteInstance> = Vec::with_capacity(keyed.len());
     let push = |runs: &mut Vec<SpriteRun>,
@@ -745,7 +745,7 @@ pub(crate) fn build<'a>(
     place_under(i32::MAX, &mut instances, &mut runs, &mut next_under);
     // The glow pass: by texture or array (additive, so order does not
     // matter; a stable sort keeps the plain textures' order as before).
-    glowing.sort_by_key(|(source, _)| *source);
+    og_core::sort::sort_by_key(&mut glowing, |(source, _)| *source);
     let mut glow_runs: Vec<SpriteRun> = Vec::new();
     for (source, inst) in glowing {
         let index = instances.len() as u32;

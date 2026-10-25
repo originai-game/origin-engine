@@ -289,7 +289,7 @@ impl GraphAsset {
                     if children.is_empty() {
                         return Err(err(e, "a blend1d needs at least one child"));
                     }
-                    children.sort_by(|a, b| a.0.total_cmp(&b.0));
+                    og_core::sort::sort_by(&mut children, |a, b| a.0.total_cmp(&b.0));
                     Motion::Blend1D { param: p, children }
                 }
                 _ => {

@@ -856,7 +856,7 @@ fn fill_up(w: &mut [f32], idx: &[usize], max: &[f32], extra: f32) {
         .copied()
         .filter(|v| v.is_finite())
         .collect();
-    points.sort_by(f32::total_cmp);
+    og_core::sort::sort_by(&mut points, f32::total_cmp);
     points.dedup();
     let mut lo = base.iter().copied().fold(f32::INFINITY, f32::min);
     let mut level = f32::INFINITY;

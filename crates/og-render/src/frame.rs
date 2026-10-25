@@ -404,7 +404,9 @@ pub(crate) fn local_lights(
     if shadowed.len() > budget.max_shadowed {
         let score = |k: usize| crate::clusters::importance(&lights[kept[k]], eye);
         let mut by_score = shadowed.clone();
-        by_score.sort_by(|&a, &b| score(b).total_cmp(&score(a)).then(a.cmp(&b)));
+        og_core::sort::sort_by(&mut by_score, |&a, &b| {
+            score(b).total_cmp(&score(a)).then(a.cmp(&b))
+        });
         for &k in &by_score[..budget.max_shadowed] {
             chosen[k] = true;
         }

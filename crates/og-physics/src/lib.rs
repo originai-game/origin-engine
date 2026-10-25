@@ -1278,7 +1278,7 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
 
     // Started/Ended from the pairs the previous step carried over.
     let mut previous = ctx.events::<Contact>()?;
-    previous.sort();
+    og_core::sort::sort(&mut previous);
     previous.dedup();
     let current: Vec<Contact> = out.touching.iter().map(|t| t.0).collect();
     let key = |c: &Contact| (c.a, c.b, c.sensor != 0);

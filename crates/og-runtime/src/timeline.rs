@@ -441,7 +441,7 @@ pub fn og_timeline_info(world: u32, asset: f64) -> String {
                 markers.extend(ks.iter().map(|k| (k.time, k.name.clone())));
             }
         }
-        markers.sort_by(|a, b| a.0.total_cmp(&b.0));
+        og_core::sort::sort_by(&mut markers, |a, b| a.0.total_cmp(&b.0));
         Ok(json!({
             "asset": asset,
             "name": tl.name,

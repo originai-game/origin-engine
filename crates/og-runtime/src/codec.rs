@@ -450,7 +450,9 @@ impl Layout {
                     slot
                 })
                 .collect();
-            index.sort_by(|a, b| self.fields[a.0].name.cmp(&self.fields[b.0].name));
+            og_core::sort::sort_by(&mut index, |a, b| {
+                self.fields[a.0].name.cmp(&self.fields[b.0].name)
+            });
             index
         });
         let k = index

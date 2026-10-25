@@ -335,7 +335,7 @@ impl Message {
         }
         let mut out = Vec::new();
         walk(&self.parts, &mut out);
-        out.sort();
+        og_core::sort::sort(&mut out);
         out.dedup();
         out
     }

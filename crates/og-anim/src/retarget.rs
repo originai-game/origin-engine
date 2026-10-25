@@ -764,7 +764,7 @@ pub fn retarget(
     // Per frame: the target pose, recorded into the emitted channels.
     let emitted: Vec<usize> = {
         let mut v: Vec<usize> = (0..HUMAN_BONE_COUNT).filter(|&b| emit[b]).collect();
-        v.sort_by_key(|&b| target_map.nodes[b]);
+        og_core::sort::sort_by_key(&mut v, |&b| target_map.nodes[b]);
         v
     };
     let mut rotations: Vec<Vec<f32>> = vec![Vec::new(); emitted.len()];

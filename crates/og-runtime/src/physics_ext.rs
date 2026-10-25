@@ -428,7 +428,7 @@ pub(crate) fn rig_from_skeleton(s: &og_anim::SkeletonAsset) -> Result<Value, Str
         d
     };
     let mut order: Vec<usize> = (0..skin.joints.len()).collect();
-    order.sort_by_key(|&j| (depth(j), j));
+    og_core::sort::sort_by_key(&mut order, |&j| (depth(j), j));
     let bone_of = |j: usize| order.iter().position(|&o| o == j);
     let mut bones: Vec<Value> = Vec::with_capacity(order.len());
     let mut lengths: Vec<f32> = Vec::with_capacity(order.len());

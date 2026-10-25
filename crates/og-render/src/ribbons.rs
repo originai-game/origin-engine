@@ -365,7 +365,7 @@ impl Trails {
         }
         // Group by (texture, blend) for one draw each.
         // (Layered strips after the 3D ones, by layer: each is its own run.)
-        strips.sort_by_key(|s| (s.layer, s.texture, s.blend as u8));
+        og_core::sort::sort_by_key(&mut strips, |s| (s.layer, s.texture, s.blend as u8));
         self.strips = strips;
         Ok(self.emit(eye, forward, orthographic))
     }

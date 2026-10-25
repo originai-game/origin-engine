@@ -306,7 +306,7 @@ pub fn render_ids_from(
     }
     // Meshes first, grouped by id (an id's coverage drawn alone is counted
     // once per pixel); then sprites in their draw order.
-    items.sort_by_key(|item| {
+    og_core::sort::sort_by_key(&mut items, |item| {
         (
             item.sprite,
             if item.sprite { 0 } else { item.id },

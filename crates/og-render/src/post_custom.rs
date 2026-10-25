@@ -330,7 +330,7 @@ impl CustomPosts {
                 _ => None,
             })
             .collect();
-        out.sort_by_key(|(h, _)| *h);
+        og_core::sort::sort_by_key(&mut out, |(h, _)| *h);
         out
     }
 

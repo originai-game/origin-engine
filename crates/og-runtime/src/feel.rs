@@ -1209,7 +1209,7 @@ fn load_flipbook(eng: &Engine, path: &str) -> Result<Value, String> {
         .enumerate()
         .map(|(i, c)| {
             let mut events: Vec<(u32, String)> = c.events.clone();
-            events.sort();
+            og_core::sort::sort(&mut events);
             json!({
                 "clip": i,
                 "name": c.name,

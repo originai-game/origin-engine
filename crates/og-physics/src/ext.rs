@@ -776,7 +776,7 @@ pub(crate) fn soft(
     let mut sets: Vec<Vec<usize>> = Vec::new();
     let mut grouped: BTreeSet<u64> = BTreeSet::new();
     for members in groups.values_mut() {
-        members.sort_by_key(|&k| scene.fluids[k].0.to_bits());
+        og_core::sort::sort_by_key(members, |&k| scene.fluids[k].0.to_bits());
         members.truncate(crate::fluid::GROUP_SIZE);
         if members.len() < 2 {
             continue;
@@ -928,7 +928,7 @@ fn fluids3(scene: &Scene, settings: &Physics, dt: f32, sim: &mut Sim) {
         }
     }
     for (group, mut members) in groups {
-        members.sort_by_key(|&k| scene.fluids3[k].0.to_bits());
+        og_core::sort::sort_by_key(&mut members, |&k| scene.fluids3[k].0.to_bits());
         for (rank, &k) in members.iter().enumerate() {
             if rank >= crate::fluid::GROUP_SIZE {
                 sets.insert((0, scene.fluids3[k].0.to_bits()), vec![k]);

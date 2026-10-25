@@ -102,14 +102,14 @@ impl FontMetrics {
             .iter()
             .map(|g| (g.codepoint, g.advance))
             .collect();
-        advances.sort_by_key(|(c, _)| *c);
+        og_core::sort::sort_by_key(&mut advances, |(c, _)| *c);
         advances.dedup_by_key(|(c, _)| *c);
         let mut kerning: Vec<(u64, f32)> = font
             .kerning
             .iter()
             .map(|k| (kern_key(k.left, k.right), k.adjust))
             .collect();
-        kerning.sort_by_key(|(k, _)| *k);
+        og_core::sort::sort_by_key(&mut kerning, |(k, _)| *k);
         kerning.dedup_by_key(|(k, _)| *k);
         let (mut top, mut bottom) = (0.0f32, 0.0f32);
         for g in font

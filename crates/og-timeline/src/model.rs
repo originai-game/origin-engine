@@ -688,7 +688,7 @@ fn path_desc(block: &Block) -> Result<PathDesc, String> {
 
 /// Sorts keys by time, keeping the file's order among equal times.
 fn sorted<K>(mut keys: Vec<K>, time: impl Fn(&K) -> f32) -> Vec<K> {
-    keys.sort_by(|a, b| time(a).total_cmp(&time(b)));
+    og_core::sort::sort_by(&mut keys, |a, b| time(a).total_cmp(&time(b)));
     keys
 }
 

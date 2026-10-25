@@ -1108,7 +1108,7 @@ impl QueryWorld {
                 .map(|(_, c)| entity_of(c))
                 .collect::<Vec<_>>()
         });
-        hits.sort_by_key(|e| e.to_bits());
+        og_core::sort::sort_by_key(&mut hits, |e| e.to_bits());
         hits.dedup();
         Ok(hits)
     }

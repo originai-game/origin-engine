@@ -144,7 +144,7 @@ pub(crate) fn plan(
     due: impl Fn(usize) -> bool,
 ) -> Vec<ViewPlan> {
     let mut order: Vec<usize> = (0..scene.views.len()).collect();
-    order.sort_by_key(|&i| scene.views[i].order);
+    og_core::sort::sort_by_key(&mut order, |&i| scene.views[i].order);
     let mut plans = Vec::new();
     for i in order {
         let v = &scene.views[i];

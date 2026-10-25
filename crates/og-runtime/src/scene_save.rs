@@ -235,7 +235,7 @@ impl SceneWriter for RuntimeWriter {
                 .map(|b| Entity::from_bits(*b))
                 .filter(|e| world.is_alive(*e))
                 .collect();
-            more.sort_by_key(|e| e.index());
+            og_core::sort::sort_by_key(&mut more, |e| e.index());
             picked.extend(more);
             Some(self.spawned_tree(world, &eng, &picked, &by_schema))
         } else {

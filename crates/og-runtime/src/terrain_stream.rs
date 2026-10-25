@@ -382,7 +382,7 @@ impl Streamer {
                 .filter(|(k, _)| !keep.contains(k))
                 .map(|(k, c)| (c.used, *k))
                 .collect();
-            old.sort();
+            og_core::sort::sort(&mut old);
             for (_, k) in old.into_iter().take(self.cache.len() - limit) {
                 self.cache.remove(&k);
             }
