@@ -96,5 +96,8 @@ test(
     expect(new Set(resident.hashes).size).toBe(TICKS);
     expect(streamed.hashes).toEqual(resident.hashes);
   },
-  slow(240_000),
+  // A hang guard, not a measurement: CI's two vCPU of Lavapipe took 704 s
+  // for the two runs beside the other bun tests (2026-10-25, a 720 s limit
+  // there) and passed 720 s on the next run.
+  slow(360_000),
 );
