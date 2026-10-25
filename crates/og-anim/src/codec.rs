@@ -78,6 +78,10 @@ impl<'a> Reader<'a> {
         }
         Ok(n)
     }
+    /// Every byte was read.
+    pub fn done(&self) -> bool {
+        self.at == self.bytes.len()
+    }
     pub fn finish(&self) -> Result<()> {
         if self.at != self.bytes.len() {
             return Err(Error::new(

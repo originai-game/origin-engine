@@ -5855,6 +5855,7 @@
         "IkChain",
         "LookAt",
         "JointLimit",
+        "FootLock",
         "AnimationEvent",
         "ClipInfo",
         "Animation",
@@ -24498,7 +24499,7 @@
     "JointLimit": {
       "x-og-kind": "component",
       "x-og-module": "anim",
-      "description": "How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped.",
+      "description": "How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped.",
       "type": "object",
       "properties": {
         "skeleton": {
@@ -24549,6 +24550,65 @@
           "maximum": 3.1416,
           "x-og-unit": "rad",
           "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "FootLock": {
+      "x-og-kind": "component",
+      "x-og-module": "anim",
+      "description": "Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip, the notion retargeting uses, weighed across blends and cross-fades: planted when the planting clips hold at least half the pose), the foot stays where it touched the ground, through clip blends and root motion, its leg bent by two-bone IK and the foot keeping its animated orientation; when the clips lift it, the foot rejoins its animation over `release`. Put it on its own entity, one per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. The lock is world state (the `og.anim` state block).",
+      "type": "object",
+      "properties": {
+        "skeleton": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity with the og.Skeleton whose foot this holds.",
+          "default": 0
+        },
+        "foot": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The foot joint (an index into the skin's joints); the two bones above it are the leg that bends.",
+          "default": 0,
+          "minimum": 0
+        },
+        "weight": {
+          "type": "number",
+          "description": "How much of the lock is applied (0 = the animated foot, 1 = held).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "release": {
+          "type": "number",
+          "description": "Seconds the foot takes to rejoin its animation once lifted (0: at once).",
+          "default": 0.15,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "maxDistance": {
+          "type": "number",
+          "description": "Farther than this from where the animation puts the foot, the lock lets go (a leg cannot stretch).",
+          "default": 0.5,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "planted": {
+          "type": "boolean",
+          "description": "Written: the playing clips plant the foot this tick.",
+          "default": false,
+          "readOnly": true
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Written: the foot is held at its lock this tick.",
+          "default": false,
+          "readOnly": true
         }
       },
       "additionalProperties": false

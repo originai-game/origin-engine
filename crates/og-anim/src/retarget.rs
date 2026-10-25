@@ -579,6 +579,58 @@ impl RigAsset {
     }
 }
 
+/// How far above its lowest a foot may be and still be planted, in the
+/// skeleton's model units: 5 mm.
+pub const PLANT_HEIGHT: f32 = 0.005;
+
+/// Where a foot meets the ground over a clip: the one notion of "planted"
+/// the engine has (retargeting's contact checks, `og.FootLock`). The foot
+/// node's model-space height (the clip sampled over the rest pose, root
+/// motion not removed) at each of the clip's frames; a frame is planted when
+/// the foot is within [`PLANT_HEIGHT`] of its lowest over the clip.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FootPlants {
+    /// The foot's model-space height at each frame.
+    pub heights: Vec<f32>,
+    /// The lowest of them (the clip's ground for this foot).
+    pub lowest: f32,
+}
+
+impl FootPlants {
+    /// The plants of node `foot` of `skeleton` over `clip` (made for it).
+    pub fn new(skeleton: &SkeletonAsset, clip: &ClipAsset, foot: u32) -> FootPlants {
+        let binding = bind(skeleton, clip);
+        let heights: Vec<f32> = (0..clip.frames)
+            .map(|i| {
+                let t = (i as f32 / clip.rate).min(clip.duration);
+                let mut pose = Pose::rest(skeleton);
+                sample(skeleton, clip, &binding, t, NONE, &mut pose);
+                model(skeleton, &pose.nodes)[foot as usize].translation.y
+            })
+            .collect();
+        let lowest = heights.iter().copied().fold(f32::MAX, f32::min);
+        FootPlants { heights, lowest }
+    }
+
+    /// Whether the foot is planted at frame `frame`.
+    pub fn planted(&self, frame: usize) -> bool {
+        self.heights
+            .get(frame)
+            .is_some_and(|&h| h <= self.lowest + PLANT_HEIGHT)
+    }
+
+    /// Whether the foot is planted at clip time `t` of `clip` (the clip the
+    /// plants were made from): its height interpolated between the frames
+    /// around `t`, as the frames are.
+    pub fn planted_at(&self, clip: &ClipAsset, t: f32) -> bool {
+        let p = clip.frame_pos(t);
+        let (Some(&a), Some(&b)) = (self.heights.get(p.i0), self.heights.get(p.i1)) else {
+            return false;
+        };
+        a + (b - a) * p.frac <= self.lowest + PLANT_HEIGHT
+    }
+}
+
 /// How [`retarget`] treats the legs.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RetargetOptions {

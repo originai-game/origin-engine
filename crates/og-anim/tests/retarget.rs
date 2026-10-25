@@ -90,7 +90,7 @@ fn foot_track(s: &SkeletonAsset, c: &ClipAsset, foot: u32) -> Vec<Vec3> {
 }
 
 /// The largest height error of the target's foot over the frames where the
-/// source's foot is planted (within 5 mm of its lowest): its height above
+/// source's foot is planted ([`FootPlants`]: within 5 mm of its lowest): its height above
 /// the target's ground (the source's ground scaled onto the target) against
 /// the source foot's height above its own, scaled; and the largest slide
 /// (xz travel between planted frames against the source's, scaled).
@@ -100,14 +100,15 @@ fn contact_error(walk: &ClipAsset, out: &Retargeted, t: &SkeletonAsset) -> (f32,
     let (mut height, mut slide, mut planted) = (0f32, 0f32, 0usize);
     for foot in ["leftFoot", "rightFoot"] {
         let src = foot_track(&s, walk, sm.node(foot).unwrap());
+        let plants = FootPlants::new(&s, walk, sm.node(foot).unwrap());
         let dst = foot_track(t, &out.clip, tm.node(foot).unwrap());
         let s_rest = s.model_space(&s.rest_pose())[sm.node(foot).unwrap() as usize].translation;
         let t_rest = t.model_space(&t.rest_pose())[tm.node(foot).unwrap() as usize].translation;
-        let ground_s = src.iter().map(|p| p.y).fold(f32::MAX, f32::min);
+        let ground_s = plants.lowest;
         let ground_t = t_rest.y + (ground_s - s_rest.y) * out.scale;
         let mut last: Option<usize> = None;
         for i in 0..src.len() {
-            if src[i].y > ground_s + 0.005 {
+            if !plants.planted(i) {
                 last = None;
                 continue;
             }

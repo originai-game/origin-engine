@@ -44,7 +44,8 @@ module anim {
 | [`og.Blendshapes`](#record-Blendshapes) | component | Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets. With `source` clips the playing clips' weight channels write them; with `component` game code does. |
 | [`og.IkChain`](#record-IkChain) | component | An inverse-kinematics constraint on a skeleton, applied after its clips and graph: the chain of `bones` bones ending at joint `tip` turns so the tip reaches `target`. Put it on its own entity (a skeleton can have many chains); chains apply in query order. |
 | [`og.LookAt`](#record-LookAt) | component | An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the target, +Y up). The direction is held within maxYaw and maxPitch of the animated forward; with `bones` above 1 the joint's parents share the turn. Put it on its own entity (a head, the eyes, a turret's barrel); constraints apply in query order, and og.JointLimit clamps the joints it turns. |
-| [`og.JointLimit`](#record-JointLimit) | component | How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped. |
+| [`og.JointLimit`](#record-JointLimit) | component | How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped. |
+| [`og.FootLock`](#record-FootLock) | component | Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip, the notion retargeting uses, weighed across blends and cross-fades: planted when the planting clips hold at least half the pose), the foot stays where it touched the ground, through clip blends and root motion, its leg bent by two-bone IK and the foot keeping its animated orientation; when the clips lift it, the foot rejoins its animation over `release`. Put it on its own entity, one per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. The lock is world state (the `og.anim` state block). |
 | [`og.AnimationEvent`](#record-AnimationEvent) | event | A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers. |
 | [`ClipInfo`](#type-ClipInfo) | struct | One clip of a loaded animation. |
 | [`Animation`](#type-Animation) | struct | What og.load.animation registered from a model's `#anim` blob. |
@@ -109,7 +110,7 @@ fn graph {
 }
 ```
 
-<sub>`api.ogt` line 8141</sub>
+<sub>`api.ogt` line 8174</sub>
 
 <a id="fn-humanoid"></a>
 
@@ -139,7 +140,7 @@ fn humanoid {
 }
 ```
 
-<sub>`api.ogt` line 8176</sub>
+<sub>`api.ogt` line 8209</sub>
 
 <a id="fn-retarget"></a>
 
@@ -169,7 +170,7 @@ fn retarget {
 }
 ```
 
-<sub>`api.ogt` line 8196</sub>
+<sub>`api.ogt` line 8229</sub>
 
 <a id="fn-clip"></a>
 
@@ -200,7 +201,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 8281</sub>
+<sub>`api.ogt` line 8314</sub>
 
 <a id="fn-clip-2"></a>
 
@@ -231,7 +232,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 8289</sub>
+<sub>`api.ogt` line 8322</sub>
 
 <a id="fn-clip-3"></a>
 
@@ -262,7 +263,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 8297</sub>
+<sub>`api.ogt` line 8330</sub>
 
 <a id="fn-rig2dInfo"></a>
 
@@ -292,7 +293,7 @@ fn rig2dInfo {
 }
 ```
 
-<sub>`api.ogt` line 8407</sub>
+<sub>`api.ogt` line 8440</sub>
 
 <a id="fn-skeleton2dBoxes"></a>
 
@@ -322,7 +323,7 @@ fn skeleton2dBoxes {
 }
 ```
 
-<sub>`api.ogt` line 8421</sub>
+<sub>`api.ogt` line 8454</sub>
 
 ## Components, resources and events
 
@@ -723,7 +724,7 @@ component LookAt {
 
 ### `og.JointLimit` (component)
 
-How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped.
+How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped.
 
 Token `og.JointLimit`, registered under the schema name `og.JointLimit`; its value type is `JointLimit`.
 
@@ -738,7 +739,7 @@ Token `og.JointLimit`, registered under the schema name `og.JointLimit`; its val
 
 ```ogt
 component JointLimit {
-  doc "How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped."
+  doc "How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped."
   field skeleton Entity "The entity with the og.Skeleton whose joint this limits."
   field joint u32 "The limited joint (an index into the skin's joints)." {
     min 0
@@ -772,6 +773,61 @@ component JointLimit {
 
 <sub>`api.ogt` line 8072</sub>
 
+<a id="record-FootLock"></a>
+
+### `og.FootLock` (component)
+
+Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip, the notion retargeting uses, weighed across blends and cross-fades: planted when the planting clips hold at least half the pose), the foot stays where it touched the ground, through clip blends and root motion, its leg bent by two-bone IK and the foot keeping its animated orientation; when the clips lift it, the foot rejoins its animation over `release`. Put it on its own entity, one per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. The lock is world state (the `og.anim` state block).
+
+Token `og.FootLock`, registered under the schema name `og.FootLock`; its value type is `FootLock`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `skeleton` | `Entity` | `0` | — | — | — | The entity with the og.Skeleton whose foot this holds. |
+| `foot` | `number` | `0` | ≥ 0 | — | — | The foot joint (an index into the skin's joints); the two bones above it are the leg that bends. |
+| `weight` | `number` | `1` | 0 … 1 | — | tunable | How much of the lock is applied (0 = the animated foot, 1 = held). |
+| `release` | `number` | `0.15` | 0 … 2 | `s` | tunable | Seconds the foot takes to rejoin its animation once lifted (0: at once). |
+| `maxDistance` | `number` | `0.5` | ≥ 0 | `m` | tunable | Farther than this from where the animation puts the foot, the lock lets go (a leg cannot stretch). |
+| `planted` | `boolean` | `false` | — | — | read only | Written: the playing clips plant the foot this tick. |
+| `locked` | `boolean` | `false` | — | — | read only | Written: the foot is held at its lock this tick. |
+
+```ogt
+component FootLock {
+  doc "Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip, the notion retargeting uses, weighed across blends and cross-fades: planted when the planting clips hold at least half the pose), the foot stays where it touched the ground, through clip blends and root motion, its leg bent by two-bone IK and the foot keeping its animated orientation; when the clips lift it, the foot rejoins its animation over `release`. Put it on its own entity, one per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. The lock is world state (the `og.anim` state block)."
+  field skeleton Entity "The entity with the og.Skeleton whose foot this holds."
+  field foot u32 "The foot joint (an index into the skin's joints); the two bones above it are the leg that bends." {
+    min 0
+  }
+  field weight f32 "How much of the lock is applied (0 = the animated foot, 1 = held)." {
+    default 1
+    min 0
+    max 1
+    tunable true
+  }
+  field release f32 "Seconds the foot takes to rejoin its animation once lifted (0: at once)." {
+    default 0.15
+    min 0
+    max 2
+    unit s
+    tunable true
+  }
+  field maxDistance f32 "Farther than this from where the animation puts the foot, the lock lets go (a leg cannot stretch)." {
+    default 0.5
+    min 0
+    unit m
+    tunable true
+  }
+  field planted bool "Written: the playing clips plant the foot this tick." {
+    readonly true
+  }
+  field locked bool "Written: the foot is held at its lock this tick." {
+    readonly true
+  }
+}
+```
+
+<sub>`api.ogt` line 8104</sub>
+
 <a id="record-AnimationEvent"></a>
 
 ### `og.AnimationEvent` (event)
@@ -801,7 +857,7 @@ event AnimationEvent {
 }
 ```
 
-<sub>`api.ogt` line 8104</sub>
+<sub>`api.ogt` line 8137</sub>
 
 <a id="record-Flipbook"></a>
 
@@ -857,7 +913,7 @@ component Flipbook {
 }
 ```
 
-<sub>`api.ogt` line 8219</sub>
+<sub>`api.ogt` line 8252</sub>
 
 <a id="record-FlipbookEvent"></a>
 
@@ -884,7 +940,7 @@ event FlipbookEvent {
 }
 ```
 
-<sub>`api.ogt` line 8250</sub>
+<sub>`api.ogt` line 8283</sub>
 
 <a id="record-Skeleton2D"></a>
 
@@ -940,7 +996,7 @@ component Skeleton2D {
 }
 ```
 
-<sub>`api.ogt` line 8314</sub>
+<sub>`api.ogt` line 8347</sub>
 
 <a id="record-Skeleton2DEvent"></a>
 
@@ -971,7 +1027,7 @@ event Skeleton2DEvent {
 }
 ```
 
-<sub>`api.ogt` line 8344</sub>
+<sub>`api.ogt` line 8377</sub>
 
 <a id="record-IkTarget2D"></a>
 
@@ -1022,7 +1078,7 @@ component IkTarget2D {
 }
 ```
 
-<sub>`api.ogt` line 8355</sub>
+<sub>`api.ogt` line 8388</sub>
 
 ## Types
 
@@ -1187,7 +1243,7 @@ struct ClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 8115</sub>
+<sub>`api.ogt` line 8148</sub>
 
 <a id="type-Animation"></a>
 
@@ -1214,7 +1270,7 @@ struct Animation {
 }
 ```
 
-<sub>`api.ogt` line 8125</sub>
+<sub>`api.ogt` line 8158</sub>
 
 <a id="type-GraphDesc"></a>
 
@@ -1238,7 +1294,7 @@ struct GraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 8134</sub>
+<sub>`api.ogt` line 8167</sub>
 
 <a id="type-Rig"></a>
 
@@ -1252,7 +1308,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow and the standard bones it names outright."
 ```
 
-<sub>`api.ogt` line 8148</sub>
+<sub>`api.ogt` line 8181</sub>
 
 <a id="type-HumanBone"></a>
 
@@ -1273,7 +1329,7 @@ struct HumanBone {
 }
 ```
 
-<sub>`api.ogt` line 8157</sub>
+<sub>`api.ogt` line 8190</sub>
 
 <a id="type-Humanoid"></a>
 
@@ -1294,7 +1350,7 @@ struct Humanoid {
 }
 ```
 
-<sub>`api.ogt` line 8163</sub>
+<sub>`api.ogt` line 8196</sub>
 
 <a id="type-HumanoidDesc"></a>
 
@@ -1318,7 +1374,7 @@ struct HumanoidDesc {
 }
 ```
 
-<sub>`api.ogt` line 8169</sub>
+<sub>`api.ogt` line 8202</sub>
 
 <a id="type-RetargetDesc"></a>
 
@@ -1352,7 +1408,7 @@ struct RetargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 8183</sub>
+<sub>`api.ogt` line 8216</sub>
 
 <a id="type-FlipbookSheet"></a>
 
@@ -1366,7 +1422,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
 ```
 
-<sub>`api.ogt` line 8203</sub>
+<sub>`api.ogt` line 8236</sub>
 
 <a id="type-FlipMode"></a>
 
@@ -1391,7 +1447,7 @@ enum FlipMode {
 }
 ```
 
-<sub>`api.ogt` line 8212</sub>
+<sub>`api.ogt` line 8245</sub>
 
 <a id="type-FlipbookClipInfo"></a>
 
@@ -1422,7 +1478,7 @@ struct FlipbookClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 8258</sub>
+<sub>`api.ogt` line 8291</sub>
 
 <a id="type-FlipbookInfo"></a>
 
@@ -1453,7 +1509,7 @@ struct FlipbookInfo {
 }
 ```
 
-<sub>`api.ogt` line 8270</sub>
+<sub>`api.ogt` line 8303</sub>
 
 <a id="type-Rig2D"></a>
 
@@ -1467,7 +1523,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig2D "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d."
 ```
 
-<sub>`api.ogt` line 8305</sub>
+<sub>`api.ogt` line 8338</sub>
 
 <a id="type-Rig2DClipInfo"></a>
 
@@ -1496,7 +1552,7 @@ struct Rig2DClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 8384</sub>
+<sub>`api.ogt` line 8417</sub>
 
 <a id="type-Rig2DInfo"></a>
 
@@ -1529,7 +1585,7 @@ struct Rig2DInfo {
 }
 ```
 
-<sub>`api.ogt` line 8395</sub>
+<sub>`api.ogt` line 8428</sub>
 
 <a id="type-Skeleton2DBox"></a>
 
@@ -1552,7 +1608,7 @@ struct Skeleton2DBox {
 }
 ```
 
-<sub>`api.ogt` line 8414</sub>
+<sub>`api.ogt` line 8447</sub>
 
 ## Column kinds
 
@@ -1657,7 +1713,7 @@ column Rig {
 }
 ```
 
-<sub>`api.ogt` line 8150</sub>
+<sub>`api.ogt` line 8183</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -1668,7 +1724,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>`api.ogt` line 8205</sub>
+<sub>`api.ogt` line 8238</sub>
 
 ```ogt
 column Rig2D {
@@ -1679,4 +1735,4 @@ column Rig2D {
 }
 ```
 
-<sub>`api.ogt` line 8307</sub>
+<sub>`api.ogt` line 8340</sub>

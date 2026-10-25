@@ -781,6 +781,16 @@ must(world.insert(knee, og.JointLimit, { skeleton: body, joint: SHIN_L, axis: { 
 // each tick, from a system that writes og.LookAt: world.set(look, og.LookAt, { target: playerPosition })
 ```
 
+**Foot locking.** `og.FootLock { skeleton, foot }` on its own entity, one
+per foot, keeps a foot the clips plant (within 5 mm of its lowest in the
+clip, the same test retargeting uses) where it touched the ground while
+root motion carries the body on and clips cross-fade, bending the leg
+(two-bone IK, `og.JointLimit`s respected); when the clips lift it the
+foot rejoins its animation over `release` (0.15 s). `planted` and
+`locked` read back each tick; `maxDistance` (0.5 m) lets go before a leg
+would stretch. It needs clips whose feet actually rest: a foot that only
+grazes its lowest for a frame is held for that frame only.
+
 `templates/archetypes/third-person` (`src/anim.ts`: a 1D blend by speed,
 a hero retargeted at cook time and sentinels at run time) is the pattern,
 and for a 3D action game as a whole: a CharacterController over a level,

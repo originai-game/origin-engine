@@ -3,7 +3,7 @@
 //! additive wave), half by players switching clips with cross-fades; all
 //! with planar root motion, blendshapes, two-bone feet and a FABRIK arm,
 //! hinged knees and a cone on the shoulder (joint limits) and a head
-//! looking at a target that circles it.
+//! looking at a target that circles it, and both feet locked while planted.
 //! A driver system (before `og.anim`) derives every input from the tick and
 //! the walker's index, so the world is a function of its seed and tick.
 #![allow(dead_code)]
@@ -22,7 +22,7 @@ pub const WALKERS: u32 = 20;
 pub struct Walker {
     pub index: u32,
     /// 0 skeleton, 1 left foot, 2 right foot, 3 left hand, 4 the head's
-    /// look-at, 5 a joint limit.
+    /// look-at, 5 a joint limit, 6 a foot lock.
     pub role: u32,
 }
 
@@ -99,7 +99,7 @@ pub fn build(seed: u32) -> (World, AnimationSystem) {
                         let local = Vec3::new(2.0 * math::sin(a), 1.4, 2.0 * math::cos(a));
                         l.target = sk.position + sk.quaternion * (sk.scale * local);
                         ctx.set(e, l)?;
-                    } else if w.role != 5 {
+                    } else if w.role < 5 {
                         let mut c: IkChain = ctx.get(e)?;
                         let sk: Transform = ctx.get(Entity::from_bits(c.skeleton))?;
                         let local = match w.role {
@@ -190,6 +190,18 @@ pub fn build(seed: u32) -> (World, AnimationSystem) {
                 Walker { index: i, role: 4 },
             ))
             .unwrap();
+        for foot in [J_FOOT_L, J_FOOT_R] {
+            world
+                .spawn((
+                    FootLock {
+                        skeleton: e.to_bits(),
+                        foot,
+                        ..FootLock::default()
+                    },
+                    Walker { index: i, role: 6 },
+                ))
+                .unwrap();
+        }
         // Knees hinge forwards only (with a little play); the shoulder swings
         // within a cone.
         for limit in [

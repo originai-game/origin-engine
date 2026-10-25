@@ -446,7 +446,7 @@ impl Default for LookAt {
 }
 
 /// How far a joint may turn from its rest rotation when og.anim's solvers
-/// (og.IkChain, og.LookAt) turn it: a swing of the `axis`
+/// (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of the `axis`
 /// within a cone and a twist about it within a range. A hinge (a knee, an
 /// elbow) is `axis` along the hinge, `swing` 0 and the bend range as
 /// `twistMin`…`twistMax`. Put it on its own entity, one per joint; the
@@ -482,6 +482,49 @@ impl Default for JointLimit {
             swing: 3.1416,
             twist_min: -3.1416,
             twist_max: 3.1416,
+        }
+    }
+}
+
+/// Foot locking: while the playing clips plant `foot` (it is within 5 mm of
+/// its lowest in each clip, weighed across blends and cross-fades), the foot
+/// stays where it touched the ground, through clip blends and root motion,
+/// its leg bent by two-bone IK; when the clips lift it the foot rejoins its
+/// animation over `release`. Put it on its own entity, one per foot; locks
+/// apply after root motion and before og.IkChain, in query order.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.FootLock")]
+pub struct FootLock {
+    /// The entity with the og.Skeleton whose foot this holds.
+    pub skeleton: u64,
+    /// The foot joint (an index into the skin's joints); the two bones above it are the leg that bends.
+    #[reflect(min = 0)]
+    pub foot: u32,
+    /// How much of the lock is applied (0 = the animated foot, 1 = held).
+    #[reflect(min = 0, max = 1, default = 1, tunable)]
+    pub weight: f32,
+    /// Seconds the foot takes to rejoin its animation once lifted (0: at once).
+    #[reflect(unit = "s", min = 0, max = 2, default = 0.15, tunable)]
+    pub release: f32,
+    /// Farther than this from where the animation puts the foot, the lock lets go (a leg cannot stretch).
+    #[reflect(name = "maxDistance", unit = "m", min = 0, default = 0.5, tunable)]
+    pub max_distance: f32,
+    /// Written: the playing clips plant the foot this tick.
+    pub planted: bool,
+    /// Written: the foot is held at its lock this tick.
+    pub locked: bool,
+}
+
+impl Default for FootLock {
+    fn default() -> Self {
+        FootLock {
+            skeleton: 0,
+            foot: 0,
+            weight: 1.0,
+            release: 0.15,
+            max_distance: 0.5,
+            planted: false,
+            locked: false,
         }
     }
 }

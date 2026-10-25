@@ -121,7 +121,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1220 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1221 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -546,6 +546,7 @@ Field units the docs and Tune use.
 | [`og.Fog`](atmosphere.md#record-Fog) | resource | atmosphere | — |
 | [`og.Follow2D`](camera.md#record-Follow2D) | component | camera | — |
 | [`og.FollowCamera`](camera.md#record-FollowCamera) | component | camera | — |
+| [`og.FootLock`](anim.md#record-FootLock) | component | anim | — |
 | [`og.game`](game.md#fn-game) | function | game | `og_game_game` |
 | [`og.Gamepad`](input.md#record-Gamepad) | resource | input | — |
 | [`og.i18n.has`](i18n.md#fn-has) | function | i18n | `og_i18n_has` |

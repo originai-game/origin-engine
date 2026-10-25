@@ -7,6 +7,7 @@ use crate::codec::{Reader, Writer};
 use crate::graph::{GraphAsset, LayerMode, Motion};
 use crate::ik;
 use crate::pose::{Blend, Fired, Leaf, Pose, RootMotion, stepped};
+use crate::retarget::FootPlants;
 use crate::schema::*;
 use crate::xform::{Trs, unit};
 use og_core::glam::{Mat4, Quat, Vec3};
@@ -122,6 +123,41 @@ struct EntityState {
 /// Channel-to-node bindings by (skeleton, clip), derived from the assets.
 type Bindings = BTreeMap<(u64, u64), Arc<Vec<u32>>>;
 
+/// Foot plants by (skeleton, clip, foot node), derived from the assets.
+type Plants = BTreeMap<(u64, u64, u32), Arc<FootPlants>>;
+
+/// What a clip that poses the legs played this tick: (clip, the time it
+/// was sampled at, its share of the pose). The base layer's and the
+/// player's clips, for foot locks.
+type Stance = Vec<(u64, f32, f32)>;
+
+/// A foot lock between ticks (`og.FootLock`); positions are in the frame
+/// the skeleton entity's Transform is written in (model space without one).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+enum Lock {
+    #[default]
+    Free,
+    /// Held at this point.
+    Held(Vec3),
+    /// Rejoining the animation from this point, this many seconds in.
+    Releasing(Vec3, f32),
+}
+
+/// One `og.FootLock` entity's state, keyed by that entity.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct LockState {
+    /// The skeleton entity it held (a lock moved to another restarts).
+    skeleton: u64,
+    lock: Lock,
+}
+
+/// What the state block holds.
+#[derive(Clone, Debug, Default, PartialEq)]
+struct Saved {
+    states: BTreeMap<u64, EntityState>,
+    locks: BTreeMap<u64, LockState>,
+}
+
 /// The registered assets and the world state.
 #[derive(Default)]
 pub(crate) struct Shared {
@@ -130,7 +166,10 @@ pub(crate) struct Shared {
     graphs: BTreeMap<u64, Arc<GraphAsset>>,
     /// A cache filled by the lanes as they meet (skeleton, clip) pairs.
     bindings: Mutex<Bindings>,
+    /// A cache filled as foot locks meet (skeleton, clip, foot) triples.
+    plants: Mutex<Plants>,
     states: BTreeMap<u64, EntityState>,
+    locks: BTreeMap<u64, LockState>,
     outputs: BTreeMap<u64, AnimOutput>,
 }
 
@@ -140,6 +179,10 @@ fn lock(shared: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
 
 fn lock_bindings(b: &Mutex<Bindings>) -> MutexGuard<'_, Bindings> {
     b.lock().unwrap_or_else(|p| p.into_inner())
+}
+
+fn lock_plants(p: &Mutex<Plants>) -> MutexGuard<'_, Plants> {
+    p.lock().unwrap_or_else(|p| p.into_inner())
 }
 
 impl Shared {
@@ -156,6 +199,25 @@ impl Shared {
                 .or_insert(b)
                 .clone(),
         )
+    }
+
+    fn plants(&self, skeleton: u64, clip: u64, foot: u32) -> Option<Arc<FootPlants>> {
+        let key = (skeleton, clip, foot);
+        if let Some(p) = lock_plants(&self.plants).get(&key) {
+            return Some(p.clone());
+        }
+        let p = Arc::new(FootPlants::new(
+            self.skeletons.get(&skeleton)?,
+            self.clips.get(&clip)?,
+            foot,
+        ));
+        Some(lock_plants(&self.plants).entry(key).or_insert(p).clone())
+    }
+
+    /// Forgets what was derived from skeleton `skeleton` or clip `clip`.
+    fn forget(&self, skeleton: Option<u64>, clip: Option<u64>) {
+        lock_bindings(&self.bindings).retain(|k, _| Some(k.0) != skeleton && Some(k.1) != clip);
+        lock_plants(&self.plants).retain(|k, _| Some(k.0) != skeleton && Some(k.1) != clip);
     }
 
     fn recompute_outputs(&mut self) {
@@ -210,6 +272,7 @@ pub fn install(world: &mut World) -> Result<AnimationSystem> {
     world.register::<IkChain>()?;
     world.register::<LookAt>()?;
     world.register::<JointLimit>()?;
+    world.register::<FootLock>()?;
     world.register::<AnimationEvent>()?;
     let shared = Arc::new(Mutex::new(Shared::default()));
     let desc = SystemDesc::new(SYSTEM_NAME)
@@ -220,6 +283,7 @@ pub fn install(world: &mut World) -> Result<AnimationSystem> {
         .write::<IkChain>()
         .write::<LookAt>()
         .read::<JointLimit>()
+        .write::<FootLock>()
         .write::<Transform>()
         .write::<AnimationEvent>()
         .query(QueryDesc::new().read::<Skeleton>())
@@ -233,7 +297,8 @@ pub fn install(world: &mut World) -> Result<AnimationSystem> {
         .query(QueryDesc::new().read::<Skeleton>().read::<Transform>())
         .query(QueryDesc::new().read::<IkChain>())
         .query(QueryDesc::new().read::<LookAt>())
-        .query(QueryDesc::new().read::<JointLimit>());
+        .query(QueryDesc::new().read::<JointLimit>())
+        .query(QueryDesc::new().read::<FootLock>());
     let s = shared.clone();
     world.add_system(desc, move |ctx| run(ctx, &s))?;
     world.add_state_block(SYSTEM_NAME, Box::new(AnimState(shared.clone())))?;
@@ -249,7 +314,7 @@ impl AnimationSystem {
         asset.validate()?;
         let mut sh = lock(&self.shared);
         sh.skeletons.insert(handle, Arc::new(asset));
-        lock_bindings(&sh.bindings).retain(|k, _| k.0 != handle);
+        sh.forget(Some(handle), None);
         Ok(())
     }
 
@@ -261,7 +326,7 @@ impl AnimationSystem {
         asset.validate()?;
         let mut sh = lock(&self.shared);
         sh.clips.insert(handle, Arc::new(asset));
-        lock_bindings(&sh.bindings).retain(|k, _| k.1 != handle);
+        sh.forget(None, Some(handle));
         Ok(())
     }
 
@@ -288,13 +353,13 @@ impl AnimationSystem {
     pub fn remove_skeleton(&self, handle: u64) {
         let mut sh = lock(&self.shared);
         sh.skeletons.remove(&handle);
-        lock_bindings(&sh.bindings).retain(|k, _| k.0 != handle);
+        sh.forget(Some(handle), None);
     }
 
     pub fn remove_clip(&self, handle: u64) {
         let mut sh = lock(&self.shared);
         sh.clips.remove(&handle);
-        lock_bindings(&sh.bindings).retain(|k, _| k.1 != handle);
+        sh.forget(None, Some(handle));
     }
 
     pub fn remove_graph(&self, handle: u64) {
@@ -357,7 +422,26 @@ fn read_phase(r: &mut Reader) -> Result<Phase> {
     })
 }
 
-fn encode(states: &BTreeMap<u64, EntityState>, out: &mut Vec<u8>) {
+fn write_vec3(w: &mut Writer, v: Vec3) {
+    for x in v.to_array() {
+        w.f32(x);
+    }
+}
+
+fn read_vec3(r: &mut Reader) -> Result<Vec3> {
+    Ok(Vec3::new(r.f32()?, r.f32()?, r.f32()?))
+}
+
+/// Sections after the entities, each a tag and its contents, written only
+/// when they hold something (so a world without them saves, and hashes, as
+/// before they existed).
+const SECTION_LOCKS: u32 = 1;
+
+fn encode(
+    states: &BTreeMap<u64, EntityState>,
+    locks: &BTreeMap<u64, LockState>,
+    out: &mut Vec<u8>,
+) {
     let mut w = Writer::new(out);
     w.u32(1); // format
     w.u32(states.len() as u32);
@@ -405,13 +489,29 @@ fn encode(states: &BTreeMap<u64, EntityState>, out: &mut Vec<u8>) {
             w.f32(l.fade_duration);
         }
     }
+    if !locks.is_empty() {
+        w.u32(SECTION_LOCKS);
+        w.u32(locks.len() as u32);
+        for (&e, l) in locks {
+            w.u64(e);
+            w.u64(l.skeleton);
+            let (mode, at, t) = match l.lock {
+                Lock::Free => (0, Vec3::ZERO, 0.0),
+                Lock::Held(at) => (1, at, 0.0),
+                Lock::Releasing(from, t) => (2, from, t),
+            };
+            w.u8(mode);
+            write_vec3(&mut w, at);
+            w.f32(t);
+        }
+    }
 }
 
-fn decode(bytes: &[u8]) -> Result<BTreeMap<u64, EntityState>> {
+fn decode(bytes: &[u8]) -> Result<Saved> {
     let mut r = Reader::new(bytes);
-    let mut states = BTreeMap::new();
+    let mut saved = Saved::default();
     if bytes.is_empty() {
-        return Ok(states);
+        return Ok(saved);
     }
     let format = r.u32()?;
     if format != 1 {
@@ -478,7 +578,7 @@ fn decode(bytes: &[u8]) -> Result<BTreeMap<u64, EntityState>> {
                 fade_duration: r.f32()?,
             });
         }
-        states.insert(
+        saved.states.insert(
             e,
             EntityState {
                 skeleton,
@@ -491,13 +591,55 @@ fn decode(bytes: &[u8]) -> Result<BTreeMap<u64, EntityState>> {
             },
         );
     }
+    let mut last_tag = 0;
+    while !r.done() {
+        let tag = r.u32()?;
+        if tag <= last_tag {
+            return Err(Error::new(
+                ErrorKind::Parse,
+                format!("og.anim state section {tag} after {last_tag}"),
+            ));
+        }
+        last_tag = tag;
+        match tag {
+            SECTION_LOCKS => {
+                let n = r.count(33)?;
+                for _ in 0..n {
+                    let e = r.u64()?;
+                    let skeleton = r.u64()?;
+                    let mode = r.u8()?;
+                    let at = read_vec3(&mut r)?;
+                    let t = r.f32()?;
+                    let lock = match mode {
+                        0 => Lock::Free,
+                        1 => Lock::Held(at),
+                        2 => Lock::Releasing(at, t),
+                        m => {
+                            return Err(Error::new(
+                                ErrorKind::Parse,
+                                format!("og.anim foot lock mode {m}"),
+                            ));
+                        }
+                    };
+                    saved.locks.insert(e, LockState { skeleton, lock });
+                }
+            }
+            t => {
+                return Err(Error::new(
+                    ErrorKind::Parse,
+                    format!("og.anim state section {t}; this engine reads up to {SECTION_LOCKS}"),
+                ));
+            }
+        }
+    }
     r.finish()?;
-    Ok(states)
+    Ok(saved)
 }
 
 impl StateBlock for AnimState {
     fn save(&self, out: &mut Vec<u8>) {
-        encode(&lock(&self.0).states, out);
+        let sh = lock(&self.0);
+        encode(&sh.states, &sh.locks, out);
     }
 
     fn decode(&self, bytes: &[u8]) -> Result<Box<dyn Any + Send>> {
@@ -506,12 +648,11 @@ impl StateBlock for AnimState {
 
     fn apply(&mut self, decoded: Option<Box<dyn Any + Send>>) {
         let mut sh = lock(&self.0);
-        sh.states = decoded
-            .map(|d| {
-                *d.downcast::<BTreeMap<u64, EntityState>>()
-                    .expect("decoded by AnimState::decode")
-            })
+        let saved = decoded
+            .map(|d| *d.downcast::<Saved>().expect("decoded by AnimState::decode"))
             .unwrap_or_default();
+        sh.states = saved.states;
+        sh.locks = saved.locks;
         sh.recompute_outputs();
     }
 }
@@ -537,6 +678,8 @@ struct Work {
     transform: Option<Transform>,
     state: EntityState,
     pose: Pose,
+    /// The clips posing the legs this tick, for foot locks.
+    stance: Stance,
 }
 
 /// One skeleton entity on its way through the tick: what was read (serially,
@@ -635,6 +778,7 @@ fn gather(
             transform,
             state,
             pose,
+            stance: Vec::new(),
         },
         graph_asset,
         root,
@@ -664,7 +808,11 @@ fn evaluate(sh: &Shared, ev: &mut Eval, dt: f32) -> Result<(Trs, Vec<Fired>)> {
                 ev.mesh,
                 dt,
                 &mut events,
+                &mut w.stance,
             )?;
+            for s in &mut w.stance {
+                s.2 *= g.weight.clamp(0.0, 1.0);
+            }
             w.pose.lerp_to(&gp, g.weight.clamp(0.0, 1.0));
             delta = Trs::IDENTITY.lerp(&gd, g.weight.clamp(0.0, 1.0));
         }
@@ -683,6 +831,7 @@ fn evaluate(sh: &Shared, ev: &mut Eval, dt: f32) -> Result<(Trs, Vec<Fired>)> {
                 ev.mesh,
                 dt,
                 &mut events,
+                &mut w.stance,
             )? {
                 let wt = p.weight.clamp(0.0, 1.0);
                 w.pose.lerp_to(&pp, wt);
@@ -711,6 +860,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     let chains = entities(ctx, 5)?;
     let looks = entities(ctx, 6)?;
     let joint_limits = entities(ctx, 7)?;
+    let foot_locks = entities(ctx, 8)?;
 
     let mut sh = lock(shared);
     // Read every skeleton entity in entity order, up to the first one that
@@ -771,6 +921,35 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
             let node = joint(w, limit.joint, "og.JointLimit.joint")?;
             limits.insert((limit.skeleton, node), limit);
         }
+    }
+
+    // Foot locks, after root motion moved the Transforms and before the IK
+    // chains, in query order. Only locks holding or releasing a foot are
+    // kept.
+    let mut locks: BTreeMap<u64, LockState> = BTreeMap::new();
+    let mut held: Vec<(Entity, FootLock)> = Vec::with_capacity(foot_locks.len());
+    for &f in &foot_locks {
+        let mut fl: FootLock = ctx.get(f)?;
+        fl.planted = false;
+        fl.locked = false;
+        if let Some(w) = work.iter_mut().find(|w| w.entity.to_bits() == fl.skeleton) {
+            let prev = sh
+                .locks
+                .get(&f.to_bits())
+                .filter(|l| l.skeleton == fl.skeleton)
+                .map_or(Lock::Free, |l| l.lock);
+            let lock = foot_lock(&sh, w, &mut fl, prev, dt, &limits)?;
+            if lock != Lock::Free {
+                locks.insert(
+                    f.to_bits(),
+                    LockState {
+                        skeleton: fl.skeleton,
+                        lock,
+                    },
+                );
+            }
+        }
+        held.push((f, fl));
     }
 
     // IK, after every skeleton's clips and graph, in chain query order.
@@ -845,6 +1024,9 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     for (l, look) in aimed {
         ctx.set(l, look)?;
     }
+    for (f, fl) in held {
+        ctx.set(f, fl)?;
+    }
     for (e, f) in fired {
         ctx.send(AnimationEvent {
             entity: e.to_bits(),
@@ -855,8 +1037,97 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
         })?;
     }
     sh.states = states;
+    sh.locks = locks;
     sh.outputs = outputs;
     Ok(())
+}
+
+/// One foot lock this tick: whether the clips plant the foot, the lock's
+/// next state from `prev`, and the leg bent to hold the foot there.
+fn foot_lock(
+    sh: &Shared,
+    w: &mut Work,
+    fl: &mut FootLock,
+    prev: Lock,
+    dt: f32,
+    limits: &Limits,
+) -> Result<Lock> {
+    let foot = joint(w, fl.foot, "og.FootLock.foot")?;
+    let Some(leg) = ik::chain(&w.asset, foot, 2) else {
+        return Err(invalid(format!(
+            "og.FootLock: joint {} has fewer than 2 bones above it",
+            fl.foot
+        )));
+    };
+    // Planted when the clips planting it hold at least half the stance.
+    let (mut on, mut total) = (0.0f32, 0.0f32);
+    for &(clip, t, weight) in &w.stance {
+        if weight <= 0.0 {
+            continue;
+        }
+        let (Some(c), Some(p)) = (sh.clips.get(&clip), sh.plants(w.skeleton.asset, clip, foot))
+        else {
+            continue;
+        };
+        total += weight;
+        if p.planted_at(c, t) {
+            on += weight;
+        }
+    }
+    let planted = total > 0.0 && on >= 0.5 * total;
+    let frame = w.transform.map_or(Trs::IDENTITY, |t| {
+        Trs::new(t.position, t.quaternion, t.scale)
+    });
+    let model = w.asset.model_space(&w.pose.nodes);
+    let animated = frame.transform_point(model[foot as usize].translation);
+    let release = fl.release.max(0.0);
+    let lifted = |at: Vec3| {
+        if release > 0.0 {
+            Lock::Releasing(at, 0.0)
+        } else {
+            Lock::Free
+        }
+    };
+    let lock = match prev {
+        Lock::Free if planted => Lock::Held(animated),
+        Lock::Free => Lock::Free,
+        Lock::Held(at) if !planted || (at - animated).length() > fl.max_distance => lifted(at),
+        Lock::Held(at) => Lock::Held(at),
+        Lock::Releasing(from, t) => {
+            let t = t + dt;
+            if t >= release {
+                Lock::Free
+            } else {
+                Lock::Releasing(from, t)
+            }
+        }
+    };
+    let target = match lock {
+        Lock::Free => None,
+        Lock::Held(at) => Some(at),
+        Lock::Releasing(from, t) => Some(from + (animated - from) * (t / release)),
+    };
+    if let Some(target) = target {
+        let to = frame.inverse().transform_point(target);
+        let turned = model[foot as usize].rotation;
+        let lim = chain_limits(w, &leg, limits);
+        ik::two_bone(
+            &w.asset,
+            &mut w.pose.nodes,
+            &leg,
+            to,
+            None,
+            fl.weight.clamp(0.0, 1.0),
+            &lim,
+        );
+        // The foot keeps its animated orientation.
+        let parent = w.asset.nodes[foot as usize].parent as usize;
+        let m = w.asset.model_space(&w.pose.nodes);
+        w.pose.nodes[foot as usize].rotation = unit(m[parent].rotation.conjugate() * turned);
+    }
+    fl.planted = planted;
+    fl.locked = matches!(lock, Lock::Held(_));
+    Ok(lock)
 }
 
 /// Joint limits by (skeleton entity, node).
@@ -1012,6 +1283,7 @@ fn eval_graph(
     mesh: u32,
     dt: f32,
     events: &mut Vec<Fired>,
+    stance: &mut Stance,
 ) -> Result<(Pose, Trs)> {
     if gs.asset != comp.asset || gs.layers.len() != graph.layers.len() {
         gs.asset = comp.asset;
@@ -1118,6 +1390,7 @@ fn eval_graph(
                 );
                 leaf.events(events);
                 let d = if base {
+                    stance.push((clip, leaf.t1, lw * w * layer_weight));
                     leaf.delta(skel, leaf_root)
                 } else {
                     Trs::IDENTITY
@@ -1190,6 +1463,7 @@ fn eval_player(
     mesh: u32,
     dt: f32,
     events: &mut Vec<Fired>,
+    stance: &mut Stance,
 ) -> Result<Option<(Pose, Trs)>> {
     let seek = comp.time != ps.written;
     if comp.clip != ps.clip {
@@ -1229,6 +1503,11 @@ fn eval_player(
     } else {
         1.0
     };
+    // The player decides `weight` of the pose over what the graph left.
+    let wt = comp.weight.clamp(0.0, 1.0);
+    for s in stance.iter_mut() {
+        s.2 *= 1.0 - wt;
+    }
     let mut blend = Blend::new();
     if ps.prev_clip != 0 && alpha < 1.0 {
         let pc = sh
@@ -1255,6 +1534,7 @@ fn eval_player(
         };
         leaf.events(events);
         let held = stepped(t1, comp.step_fps, pc.duration, ps.prev_looping);
+        stance.push((ps.prev_clip, held, (1.0 - alpha) * wt));
         blend.push(
             leaf.pose_at(skel, root, mesh, held),
             leaf.delta(skel, root),
@@ -1280,6 +1560,7 @@ fn eval_player(
     };
     leaf.events(events);
     let held = stepped(t1, comp.step_fps, clip.duration, comp.looping);
+    stance.push((ps.clip, held, alpha * wt));
     blend.push(
         leaf.pose_at(skel, root, mesh, held),
         leaf.delta(skel, root),

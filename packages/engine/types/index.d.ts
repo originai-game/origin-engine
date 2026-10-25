@@ -12313,7 +12313,7 @@ export interface LookAt {
 }
 
 /**
- * How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped.
+ * How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped.
  *
  * The value of the `JointLimit` component (token `og.JointLimit`).
  */
@@ -12359,6 +12359,60 @@ export interface JointLimit {
    * @tunable
    */
   twistMax: number;
+}
+
+/**
+ * Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip, the notion retargeting uses, weighed across blends and cross-fades: planted when the planting clips hold at least half the pose), the foot stays where it touched the ground, through clip blends and root motion, its leg bent by two-bone IK and the foot keeping its animated orientation; when the clips lift it, the foot rejoins its animation over `release`. Put it on its own entity, one per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. The lock is world state (the `og.anim` state block).
+ *
+ * The value of the `FootLock` component (token `og.FootLock`).
+ */
+export interface FootLock {
+  /** The entity with the og.Skeleton whose foot this holds. */
+  skeleton: Entity;
+  /**
+   * The foot joint (an index into the skin's joints); the two bones above it are the leg that bends.
+   *
+   * @range 0..
+   */
+  foot: number;
+  /**
+   * How much of the lock is applied (0 = the animated foot, 1 = held).
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  weight: number;
+  /**
+   * Seconds the foot takes to rejoin its animation once lifted (0: at once).
+   *
+   * @default 0.15
+   * @range 0..2
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  release: number;
+  /**
+   * Farther than this from where the animation puts the foot, the lock lets go (a leg cannot stretch).
+   *
+   * @default 0.5
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  maxDistance: number;
+  /**
+   * Written: the playing clips plant the foot this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly planted: boolean;
+  /**
+   * Written: the foot is held at its lock this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly locked: boolean;
 }
 
 /**
@@ -23461,9 +23515,13 @@ export declare namespace og {
    */
   const LookAt: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly bones: FieldSpec<"u32">; readonly target: FieldSpec<"Vector3">; readonly space: FieldSpec<"IkSpace">; readonly axis: FieldSpec<"Vector3">; readonly upAxis: FieldSpec<"Vector3">; readonly up: FieldSpec<"Vector3">; readonly maxYaw: FieldSpec<"f32">; readonly maxPitch: FieldSpec<"f32">; readonly weight: FieldSpec<"f32">; readonly clamped: FieldSpec<"bool"> }, LookAt>;
   /**
-   * How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped.
+   * How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped.
    */
   const JointLimit: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly axis: FieldSpec<"Vector3">; readonly swing: FieldSpec<"f32">; readonly twistMin: FieldSpec<"f32">; readonly twistMax: FieldSpec<"f32"> }, JointLimit>;
+  /**
+   * Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip, the notion retargeting uses, weighed across blends and cross-fades: planted when the planting clips hold at least half the pose), the foot stays where it touched the ground, through clip blends and root motion, its leg bent by two-bone IK and the foot keeping its animated orientation; when the clips lift it, the foot rejoins its animation over `release`. Put it on its own entity, one per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. The lock is world state (the `og.anim` state block).
+   */
+  const FootLock: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly foot: FieldSpec<"u32">; readonly weight: FieldSpec<"f32">; readonly release: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly planted: FieldSpec<"bool">; readonly locked: FieldSpec<"bool"> }, FootLock>;
   /**
    * A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). Cross-fades and blends fire every contributing clip's markers.
    */

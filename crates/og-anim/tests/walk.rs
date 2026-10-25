@@ -1,6 +1,7 @@
 //! The determinism contract of `og.anim` (docs/design.md §2.4): 20 walkers
 //! with state machines, an additive layer, cross-fading players, planar root
-//! motion, blendshapes, 60 IK chains, 60 joint limits and 20 look-ats for
+//! motion, blendshapes, 60 IK chains, 60 joint limits, 20 look-ats and 40
+//! foot locks for
 //! 3600 ticks give the same
 //! `world_hash` twice, and a snapshot taken at tick 1800 and restored into a
 //! fresh world continues to the same hash and the same palettes.
@@ -29,6 +30,8 @@ struct Run {
     /// Look-at evaluations held at their angles, and free.
     looks_clamped: usize,
     looks_free: usize,
+    /// Foot-lock evaluations holding a foot.
+    feet_locked: usize,
 }
 
 fn skeletons(world: &World) -> Vec<Entity> {
@@ -49,7 +52,13 @@ fn run(world: &mut World, from: u64, to: u64) -> Run {
         footsteps: 0,
         looks_clamped: 0,
         looks_free: 0,
+        feet_locked: 0,
     };
+    let feet: Vec<Entity> = world
+        .entities()
+        .into_iter()
+        .filter(|&e| world.has::<FootLock>(e).unwrap_or(false))
+        .collect();
     let looks: Vec<Entity> = world
         .entities()
         .into_iter()
@@ -68,6 +77,9 @@ fn run(world: &mut World, from: u64, to: u64) -> Run {
             if let Ok(g) = world.get::<AnimationGraph>(e) {
                 r.states_seen.insert(g.state);
             }
+        }
+        for &f in &feet {
+            r.feet_locked += world.get::<FootLock>(f).unwrap().locked as usize;
         }
         for &l in &looks {
             if world.get::<LookAt>(l).unwrap().clamped {
@@ -164,6 +176,7 @@ fn a_3600_tick_walk_gives_the_same_hash_twice_and_after_a_restore_at_1800() {
         ra.looks_clamped,
         ra.looks_free
     );
+    assert!(ra.feet_locked > 1000, "feet held {} times", ra.feet_locked);
 
     // Evidence: the hashes and what the walk did.
     let dir = std::env::var_os("OG_EVIDENCE_DIR")

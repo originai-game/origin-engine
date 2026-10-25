@@ -9,6 +9,11 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- `og.FootLock` (a planted foot held where it touched the ground across
+  clip blends and root motion until the clips lift it, then released over
+  `release`; `planted` and `locked` written). "Planted" is retargeting's
+  test, now `og_anim::FootPlants`. The locks are saved in the `og.anim`
+  state block (a tagged section written only when a lock is held).
 - `og.LookAt` (an aim constraint after the clips and IK: a joint's `axis`
   turned onto `target`, its `upAxis` towards the `up` hint, held within
   `maxYaw`/`maxPitch`, shared over `bones` joints, `clamped` written) and
