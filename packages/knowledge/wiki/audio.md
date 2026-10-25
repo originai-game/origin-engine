@@ -31,9 +31,12 @@ module audio {
 | [`SOUND_REMOVED`](#const-SOUND_REMOVED) | constant | SoundEnded.reason: the AudioSource was removed from a living entity. |
 | [`SOUND_REPLACED`](#const-SOUND_REPLACED) | constant | SoundEnded.reason: `sound` changed while it played. |
 | [`SOUND_CULLED`](#const-SOUND_CULLED) | constant | SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age). |
+| [`SOUND_RETRIGGERED`](#const-SOUND_RETRIGGERED) | constant | SoundEnded.reason: AudioSource.retrigger started the sound again from the top; a new voice plays it. |
 | [`AudioBus`](#type-AudioBus) | enum | The bus a source plays on; every bus passes through master. |
 | [`AudioBus()`](#column-AudioBus) | column kind | An AudioBus field: the variant's index. |
 | [`PanningModel`](#type-PanningModel) | enum | How an AudioListener places spatial sources between the ears, as Web Audio's PannerNode.panningModel. |
+| [`AudioResampler`](#type-AudioResampler) | enum | How the mixer resamples a voice whose pitch or sound rate differs from the output's. |
+| [`AudioResampler()`](#column-AudioResampler) | column kind | An AudioResampler field: the variant's index. |
 | [`PanningModel()`](#column-PanningModel) | column kind | A PanningModel field: the variant's index. |
 | [`og.AudioSource`](#record-AudioSource) | component | A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded. |
 | [`og.AudioListener`](#record-AudioListener) | component | Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right. The first listener in query order is used. |
@@ -77,7 +80,7 @@ fn outputLatency {
 }
 ```
 
-<sub>`api.ogt` line 9122</sub>
+<sub>`api.ogt` line 9141</sub>
 
 ## Components, resources and events
 
@@ -117,6 +120,8 @@ Token `og.AudioSource`, registered under the schema name `og.AudioSource`; its v
 | `coneInnerAngle` | `number` | `360` | 0 … 360 | `deg` | tunable | Directivity, as three.js PositionalAudio.setDirectionalCone and Web Audio's PannerNode: a spatial source plays at full volume while the listener is within this full angle about the source's +Z (its world transform's, three.js's PositionalAudio orientation); 360 with coneOuterAngle 360 is omnidirectional. |
 | `coneOuterAngle` | `number` | `360` | 0 … 360 | `deg` | tunable | Past this full angle about the source's +Z it plays at coneOuterGain; between coneInnerAngle and this the gain falls linearly with the angle. |
 | `coneOuterGain` | `number` | `0` | 0 … 1 | — | tunable | The gain outside coneOuterAngle. |
+| `virtualize` | `boolean` | `false` | — | — | — | Past Audio.maxVoices it goes virtual instead of being culled: silent, its playhead running on (a one-shot still ends on its tick), and heard again from where it would be, fading in, once it stands within the cap. Without it the source is culled (SOUND_CULLED, playing false). |
+| `retrigger` | `boolean` | `false` | — | — | — | Set true to start the sound again from the top (its startOffset, its startAt) this tick, playing or not, without a level change on `playing`: the voice playing ends (SOUND_RETRIGGERED) and a new one starts in the same tick. The engine sets it back to false and `playing` true. |
 
 ```ogt
 component AudioSource {
@@ -230,10 +235,12 @@ component AudioSource {
     max 1
     tunable true
   }
+  field virtualize bool "Past Audio.maxVoices it goes virtual instead of being culled: silent, its playhead running on (a one-shot still ends on its tick), and heard again from where it would be, fading in, once it stands within the cap. Without it the source is culled (SOUND_CULLED, playing false)."
+  field retrigger bool "Set true to start the sound again from the top (its startOffset, its startAt) this tick, playing or not, without a level change on `playing`: the voice playing ends (SOUND_RETRIGGERED) and a new one starts in the same tick. The engine sets it back to false and `playing` true."
 }
 ```
 
-<sub>`api.ogt` line 8728</sub>
+<sub>`api.ogt` line 8742</sub>
 
 <a id="record-AudioListener"></a>
 
@@ -270,7 +277,7 @@ component AudioListener {
 }
 ```
 
-<sub>`api.ogt` line 8841</sub>
+<sub>`api.ogt` line 8857</sub>
 
 <a id="record-Audio"></a>
 
@@ -293,6 +300,7 @@ Token `og.Audio`, registered under the schema name `og.Audio`; its value type is
 | `reverbDamping` | `number` | `0.4` | 0 … 1 | — | tunable | The shared reverb's damping of high frequencies. |
 | `outputLatency` | `number` | `0` | ≥ 0 | `s` | read only | Seconds from a sample's world time to the speaker, as the host reports it (og.audio.outputLatency). |
 | `speedOfSound` | `number` | `343.3` | 1 … 10000 | `mps` | tunable | The speed of sound Doppler shifts are computed against (AudioSource.dopplerFactor). |
+| `resampler` | `AudioResampler` | `"sinc"` | — | — | — | How voices are resampled: sinc (the default) or linear, the mix before round 4, for a game that relies on its exact output. A sound at the output's rate played at pitch 1 is its own samples either way. |
 
 ```ogt
 resource Audio {
@@ -363,10 +371,13 @@ resource Audio {
     unit mps
     tunable true
   }
+  field resampler AudioResampler "How voices are resampled: sinc (the default) or linear, the mix before round 4, for a game that relies on its exact output. A sound at the output's rate played at pitch 1 is its own samples either way." {
+    default sinc
+  }
 }
 ```
 
-<sub>`api.ogt` line 8860</sub>
+<sub>`api.ogt` line 8876</sub>
 
 <a id="record-AudioBusFx"></a>
 
@@ -487,7 +498,7 @@ component AudioBusFx {
 }
 ```
 
-<sub>`api.ogt` line 8930</sub>
+<sub>`api.ogt` line 8949</sub>
 
 <a id="record-ReverbZone"></a>
 
@@ -558,7 +569,7 @@ component ReverbZone {
 }
 ```
 
-<sub>`api.ogt` line 9019</sub>
+<sub>`api.ogt` line 9038</sub>
 
 <a id="record-Music"></a>
 
@@ -614,7 +625,7 @@ component Music {
 }
 ```
 
-<sub>`api.ogt` line 9065</sub>
+<sub>`api.ogt` line 9084</sub>
 
 <a id="record-MusicBeat"></a>
 
@@ -641,7 +652,7 @@ event MusicBeat {
 }
 ```
 
-<sub>`api.ogt` line 9099</sub>
+<sub>`api.ogt` line 9118</sub>
 
 <a id="record-SoundStarted"></a>
 
@@ -666,7 +677,7 @@ event SoundStarted {
 }
 ```
 
-<sub>`api.ogt` line 9107</sub>
+<sub>`api.ogt` line 9126</sub>
 
 <a id="record-SoundEnded"></a>
 
@@ -681,7 +692,7 @@ Token `og.SoundEnded`, registered under the schema name `og.SoundEnded`; its val
 | `entity` | `Entity` | `0` | — | — | — | The entity whose AudioSource ended. |
 | `sound` | `Sound` | `0` | — | — | — | The sound. |
 | `voice` | `number` | `0` | — | — | — | The voice id in the command stream. |
-| `reason` | `number` | `0` | — | — | — | Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3) or SOUND_CULLED (4). |
+| `reason` | `number` | `0` | — | — | — | Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3), SOUND_CULLED (4) or SOUND_RETRIGGERED (5). |
 
 ```ogt
 event SoundEnded {
@@ -689,11 +700,11 @@ event SoundEnded {
   field entity Entity "The entity whose AudioSource ended."
   field sound Sound "The sound."
   field voice u32 "The voice id in the command stream."
-  field reason u32 "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3) or SOUND_CULLED (4)."
+  field reason u32 "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3), SOUND_CULLED (4) or SOUND_RETRIGGERED (5)."
 }
 ```
 
-<sub>`api.ogt` line 9114</sub>
+<sub>`api.ogt` line 9133</sub>
 
 ## Types
 
@@ -722,7 +733,7 @@ enum AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 8700</sub>
+<sub>`api.ogt` line 8701</sub>
 
 <a id="type-PanningModel"></a>
 
@@ -745,7 +756,30 @@ enum PanningModel {
 }
 ```
 
-<sub>`api.ogt` line 8715</sub>
+<sub>`api.ogt` line 8716</sub>
+
+<a id="type-AudioResampler"></a>
+
+### `AudioResampler` (enum)
+
+How the mixer resamples a voice whose pitch or sound rate differs from the output's.
+
+A string: one of the variants below. The zero value is `"linear"`.
+
+| Variant | Doc |
+|---|---|
+| `"linear"` | Linear interpolation: the engine's mix before round 4, cheaper, with duller highs (-3.4 dB at 15 kHz from 44.1 kHz) and images (-11.5 dB there). |
+| `"sinc"` | A Kaiser-windowed sinc (beta 7, 16 taps, 2048 phases; widened up to 64 taps for a voice pitched up to 4x): flat to the highs, images below -70 dB. |
+
+```ogt
+enum AudioResampler {
+  doc "How the mixer resamples a voice whose pitch or sound rate differs from the output's."
+  variant linear "Linear interpolation: the engine's mix before round 4, cheaper, with duller highs (-3.4 dB at 15 kHz from 44.1 kHz) and images (-11.5 dB there)."
+  variant sinc "A Kaiser-windowed sinc (beta 7, 16 taps, 2048 phases; widened up to 64 taps for a voice pitched up to 4x): flat to the highs, images below -70 dB."
+}
+```
+
+<sub>`api.ogt` line 8722</sub>
 
 ## Column kinds
 
@@ -754,6 +788,7 @@ Each is a factory, `AudioBus(value?, options?)`, that makes one field of a compo
 | Column | Value | Typed array | Stride | Doc |
 |---|---|---|---|---|
 | <a id="column-AudioBus"></a>`AudioBus` | `AudioBus` | `Uint32Array` | 1 | An AudioBus field: the variant's index. |
+| <a id="column-AudioResampler"></a>`AudioResampler` | `AudioResampler` | `Uint32Array` | 1 | An AudioResampler field: the variant's index. |
 | <a id="column-PanningModel"></a>`PanningModel` | `PanningModel` | `Uint32Array` | 1 | A PanningModel field: the variant's index. |
 
 ```ogt
@@ -765,7 +800,18 @@ column AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 8708</sub>
+<sub>`api.ogt` line 8709</sub>
+
+```ogt
+column AudioResampler {
+  doc "An AudioResampler field: the variant's index."
+  array Uint32Array
+  stride 1
+  value AudioResampler
+}
+```
+
+<sub>`api.ogt` line 8728</sub>
 
 ```ogt
 column PanningModel {
@@ -776,7 +822,7 @@ column PanningModel {
 }
 ```
 
-<sub>`api.ogt` line 8721</sub>
+<sub>`api.ogt` line 8735</sub>
 
 ## Constants
 
@@ -787,6 +833,7 @@ column PanningModel {
 | <a id="const-SOUND_REMOVED"></a>`SOUND_REMOVED` | `number` | `2` | SoundEnded.reason: the AudioSource was removed from a living entity. |
 | <a id="const-SOUND_REPLACED"></a>`SOUND_REPLACED` | `number` | `3` | SoundEnded.reason: `sound` changed while it played. |
 | <a id="const-SOUND_CULLED"></a>`SOUND_CULLED` | `number` | `4` | SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age). |
+| <a id="const-SOUND_RETRIGGERED"></a>`SOUND_RETRIGGERED` | `number` | `5` | SoundEnded.reason: AudioSource.retrigger started the sound again from the top; a new voice plays it. |
 
 ```ogt
 const SOUND_FINISHED u32 0 "SoundEnded.reason: a one-shot played to its end."
@@ -817,3 +864,9 @@ const SOUND_CULLED u32 4 "SoundEnded.reason: more sources played than Audio.maxV
 ```
 
 <sub>`api.ogt` line 8698</sub>
+
+```ogt
+const SOUND_RETRIGGERED u32 5 "SoundEnded.reason: AudioSource.retrigger started the sound again from the top; a new voice plays it."
+```
+
+<sub>`api.ogt` line 8699</sub>

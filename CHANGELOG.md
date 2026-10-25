@@ -24,6 +24,17 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
   `equalpower` default, `hrtf`), a spherical-head model (Brown and Duda:
   interaural delay and head shadow) in the mixer, steered by a new `hrtf`
   command (op 8) in the stream; with `equalpower` the mix is unchanged.
+- Windowed-sinc resampling: `og.Audio.resampler` (`AudioResampler`:
+  `sinc` default, `linear`), a Kaiser-windowed sinc (β 7, 16 taps, 2048
+  phases, widened to 64 taps pitched up to 4×). Pitched voices and sounds
+  not at the output's rate now render other samples: set `linear` to keep
+  the mix as it was; unpitched sounds at the output's rate are unchanged.
+- Virtual voices: `og.AudioSource.virtualize` keeps a source past
+  `og.Audio.maxVoices` silent with its playhead running and heard again
+  from where it would be (`og.AudioPlayback.virtual`), instead of culled.
+- Retrigger: `og.AudioSource.retrigger` restarts a sound from the top in
+  one tick, playing or not; the engine clears it. `SoundEnded.reason`
+  `SOUND_RETRIGGERED` (5).
 - `og.CollisionStarted` gains `impulse` (N·s, the normal impulse the
   solver gave the pair in the step that made the contact, summed over
   substeps and contact points: `b` takes it along `normal`, `a` against

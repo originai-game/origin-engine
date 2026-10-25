@@ -119,6 +119,10 @@ pub struct AudioSource {
     /// The gain outside coneOuterAngle.
     #[reflect(name = "coneOuterGain", min = 0, max = 1, tunable)]
     pub cone_outer_gain: f32,
+    /// Past og.Audio.maxVoices it goes virtual instead of being culled: silent, its playhead running on, and heard again from where it would be once it stands within the cap (a one-shot that ends while virtual ends on its tick).
+    pub virtualize: bool,
+    /// Set true to start the sound again from the top (its startOffset, its startAt) this tick, playing or not, without touching `playing`; the engine sets it back to false (and `playing` true). The voice it replaces ends with SoundEnded reason SOUND_RETRIGGERED.
+    pub retrigger: bool,
 }
 
 impl Default for AudioSource {
@@ -148,6 +152,8 @@ impl Default for AudioSource {
             cone_inner_angle: 360.0,
             cone_outer_angle: 360.0,
             cone_outer_gain: 0.0,
+            virtualize: false,
+            retrigger: false,
         }
     }
 }
@@ -249,6 +255,17 @@ pub struct Audio {
         tunable
     )]
     pub speed_of_sound: f32,
+    /// How a voice is resampled when its pitch or its sound's rate differs from the output's: sinc (a 16-tap Kaiser-windowed sinc) or linear (interpolation, the engine's mix before round 4: cheaper, duller highs and audible images). Unpitched sounds at the output's rate play the same samples with either.
+    #[reflect(variants = ["linear", "sinc"], default = 1)]
+    pub resampler: u32,
+}
+
+/// `og.Audio.resampler` values.
+pub mod resampler {
+    /// Linear interpolation (the mix before round 4).
+    pub const LINEAR: u32 = 0;
+    /// The windowed sinc (the default).
+    pub const SINC: u32 = 1;
 }
 
 impl Default for Audio {
@@ -265,6 +282,7 @@ impl Default for Audio {
             reverb_damping: 0.4,
             output_latency: 0.0,
             speed_of_sound: 343.3,
+            resampler: resampler::SINC,
         }
     }
 }
@@ -299,6 +317,8 @@ pub mod end_reason {
     pub const REPLACED: u32 = 3;
     /// More sources played than og.Audio.maxVoices, and this one had the lowest priority.
     pub const CULLED: u32 = 4;
+    /// `retrigger` started the sound again; a new voice plays it.
+    pub const RETRIGGERED: u32 = 5;
 }
 
 /// Emitted in the tick a sound ends (readers see it the tick after).
@@ -311,7 +331,7 @@ pub struct SoundEnded {
     pub sound: u64,
     /// The voice id in the command stream.
     pub voice: u32,
-    /// 0 finished, 1 stopped, 2 removed, 3 replaced, 4 culled.
+    /// 0 finished, 1 stopped, 2 removed, 3 replaced, 4 culled, 5 retriggered.
     pub reason: u32,
 }
 
@@ -348,6 +368,9 @@ pub struct AudioPlayback {
     pub position: Vec3,
     /// The direction last sent to the HRTF panner, in the listener's frame (zero: the stereo panner).
     pub direction: Vec3,
+    /// Virtual: past the voice cap with og.AudioSource.virtualize, silent in the mixer while its playhead runs on.
+    #[reflect(name = "virtual")]
+    pub is_virtual: bool,
 }
 
 /// Engine-owned: the command stream's running hash and counters. Being a

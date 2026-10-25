@@ -30,6 +30,7 @@ ordinary dependency).
 | `schema` | `AudioSource`, `AudioListener`, `Audio`, `ReverbZone` (`weight_at`), `SoundStarted`, `SoundEnded`, `end_reason`, `panning_model`, engine-owned `AudioPlayback`, `AudioStream`, the `og.Transform` mirror, `Bus` |
 | `command` | `Command`, `Op`, `encode`/`decode` (56-byte records), `TickPacket` |
 | `sound` | `SoundBank` (`insert_qoa`, `insert_pcm`, `insert_chunked`, `put_chunk`, `keep_chunks`, `set_chunk_loader`, `resident_bytes`, `get`, `info`, `remove`; `with_resident_seconds`), `SoundData` (`chunking`, `resident_chunks`, `resident_bytes`), `chunks_wanted` (§Chunked sounds) |
+| `resample` | the windowed sinc's constants (`SINC_ZEROS`, `SINC_TAPS`, `SINC_BETA`, `SINC_PHASES`, `SINC_MAX_SPREAD`, `WIDE_PHASES`) |
 | `mixer` | `Mixer::new(MixerDesc, SoundBank)` / `Mixer::for_link`, `push`, `pump`, `render`, `render_until_tick`, `frames_until_tick`, `skip`, `stats`; `Clock::{Driven, Free}` |
 | `sink` | `HeadlessSink` (`Null` / `Capture`), `wav(pcm, channels, rate)` |
 
@@ -90,7 +91,7 @@ with none, the origin looking down −Z.
 | 0 | `entity` | Entity (u64) | the source's entity |
 | 1 | `sound` | Sound (u64) | the sound |
 | 2 | `voice` | u32 | the voice id in the command stream |
-| 3 | `reason` (`SoundEnded` only) | u32 | 0 finished, 1 stopped (`playing` = 0), 2 removed (the AudioSource left a living entity), 3 replaced (`sound` changed while playing) |
+| 3 | `reason` (`SoundEnded` only) | u32 | 0 finished, 1 stopped (`playing` = 0), 2 removed (the AudioSource left a living entity), 3 replaced (`sound` changed while playing), 4 culled (§E6), 5 retriggered (§Resampling, virtual voices, retrigger) |
 
 Sent during the tick it happens; systems read them the tick after (og-ecs
 event semantics). A despawned entity's voice is silenced without an event.
@@ -180,9 +181,11 @@ playhead. Only the regular commands are hashed.
   (5120 samples, self-contained) it reaches into two slots, so a frame
   boundary or a loop seam never decodes twice. A sound cooked in chunks
   keeps only some of its QOA bytes in memory (§Chunked sounds).
-- **Voices**: linear-interpolation resampling at `pitch × source rate /
-  output rate`; at a loop seam the interpolation reads `loopStart` as the
-  frame after `loopEnd − 1`, so a sample-continuous loop region is seamless.
+- **Voices**: resampling at `pitch × source rate / output rate`, by a
+  windowed sinc (`og.Audio.resampler` sinc, the default) or linear
+  interpolation (`linear`, the mix before round 4; §Resampling, virtual
+  voices, retrigger); at a loop seam both read `loopStart` as the frame
+  after `loopEnd − 1`, so a sample-continuous loop region is seamless.
   Gain, pan and bus changes ramp over 256 frames; stops fade over 256; a
   resynced voice fades in; a fresh one starts at full gain (attacks kept).
   Mono sources pan with Web Audio's equal-power law, stereo ones with its
@@ -333,6 +336,60 @@ identical in both ears, no `hrtf` command and hard right on `equalpower`,
 and the panner back after switching mid-run; a walk with every feature on
 the same twice, samples and stream, and across a restore at tick 117) and
 `tests/parented.rs` (a carried source's pitch bits equal a placed one's).
+
+## Resampling, virtual voices, retrigger
+
+Records: `og.Audio.resampler` (`AudioResampler`: `linear`, `sinc`;
+default `sinc`), `og.AudioSource.virtualize` and `retrigger` (bool, false),
+engine-owned `og.AudioPlayback.virtual` (bool), `SOUND_RETRIGGERED` (5).
+
+- **Windowed sinc** (`resample.rs`): a Kaiser window, β = 7 (about 70 dB
+  of stopband), 8 zero crossings each side: 16 taps at pitch ≤ 1 from a
+  table of 2048 phases (nearest phase: at most 1/4096 frame of time
+  error), each phase normalised to sum to 1. A voice stepping faster than
+  one source frame per output frame widens the kernel by the step rounded
+  up to an eighth (cutoff at the output's Nyquist), up to 4× (64 taps),
+  from a 512-phase table built on first use; past 4× it aliases, as
+  linear always did. A voice keeps a 128-frame history around its
+  playhead, filled one source frame at a time and across the loop seam
+  as the linear path reads it, so a frame costs one decoded frame and its
+  taps. On a source frame exactly (an unpitched sound at the output's
+  rate) it returns the frame: such a voice is the linear path's samples,
+  bit for bit. Tables are built from `+ − × ÷` and `sqrt` (series for sin
+  and I0), the same on every host. The choice reaches the mixer as an fx
+  command (`fx::RESAMPLER` 22, on master) with the others, so it is in
+  the stream, the hash and every resync. `linear` keeps the old output
+  exactly (a scratch scene of seven pitched voices at three rates hashed
+  the same as on the base); measured on a 15 kHz tone from 44.1 kHz:
+  linear −3.4 dB on the tone and its image at −11.5 dB, sinc 0.0 dB and
+  −74 dB; pitched 2.5× from 6 kHz, the folded image −28 dB linear,
+  −90 dB sinc.
+- **Virtual voices**: past `maxVoices` a source with `virtualize` is not
+  culled: its voice is stopped in the mixer and `AudioPlayback.virtual`
+  set; its playhead (the tick side's `cursor`) runs on, a one-shot ends on
+  the tick it would have (`SoundEnded` finished), nothing is sent for it.
+  Each tick the cap ranks heard and virtual voices together; a virtual
+  one back within it is played at its cursor (a resumed play, fading in
+  over 256 frames, with its `hrtf` direction), so it is heard where it
+  would have been, reading the clock, not restarting. One that is heard
+  and falls outside goes virtual; one without `virtualize` is culled as
+  before. Fresh sources past the cap start virtual.
+- **Retrigger**: `retrigger` true starts the sound again from the top in
+  that tick (its `startOffset`, `startAt` and `fade` as a fresh start):
+  a playing voice is stopped (`SOUND_RETRIGGERED`) and a new voice id
+  plays it; a source not playing (ended, stopped, culled) plays; either
+  way the engine clears `retrigger` and sets `playing` true. No level
+  change on `playing` is needed (a `Voices` system no longer has to stop
+  a voice one tick and start it the next).
+
+Tests: `tests/voices.rs` (the sinc against linear on the 15 kHz tone and
+2.5× pitch-up, and identical on its own frames; a virtual voice at
+priority 100 under a cap of 2 runs its playhead 800 frames a tick, is
+never sent, is played once at tick 30 from frame 24 000 when it outranks
+another and is heard at the swell's level there, a virtual one-shot
+ending on tick 29; a retrigger stopping the old voice and playing a new
+one from 0 in one tick, flag cleared, and an ended one-shot played again;
+a run with every feature the same twice and across a restore at tick 87).
 
 ## Chunked sounds
 
@@ -523,11 +580,11 @@ chunked sounds (`tests/evidence/P4/cook/sound-chunks.md`).
 
 Effects, ducking, ray-cast occlusion, distance low-pass, music clock and
 crossfades, scheduled starts, priority and the voice cap, `listen`, `og run
---audio`, chunked streaming of long sounds and propagation (Doppler, cones,
-the HRTF) have landed (§E6, §Chunked sounds, §Propagation). Still owed:
+--audio`, chunked streaming of long sounds, propagation (Doppler, cones,
+the HRTF), the windowed sinc, virtual voices and retrigger have landed
+(§E6, §Chunked sounds, §Propagation, §Resampling, virtual voices,
+retrigger). Still owed:
 
-- Better resampling (windowed sinc), voice virtualisation (a culled voice
-  resuming where it would be), retrigger without a level change.
 - Decoding off the engine Worker (the mixer decodes QOA frames as voices
   reach them). (A chunk's fetch is prioritised by how soon its playhead
   needs it since the cook round three: §Chunked sounds.)

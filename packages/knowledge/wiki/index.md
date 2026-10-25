@@ -121,7 +121,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1220 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1223 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -157,6 +157,8 @@ Field units the docs and Tune use.
 | [`Asset()`](load.md#column-Asset) | column kind | load | — |
 | [`AudioBus`](audio.md#type-AudioBus) | enum | audio | — |
 | [`AudioBus()`](audio.md#column-AudioBus) | column kind | audio | — |
+| [`AudioResampler`](audio.md#type-AudioResampler) | enum | audio | — |
+| [`AudioResampler()`](audio.md#column-AudioResampler) | column kind | audio | — |
 | [`BakedScene`](render.md#type-BakedScene) | struct | render | — |
 | [`Behaviour`](ai.md#type-Behaviour) | handle | ai | — |
 | [`Behaviour()`](ai.md#column-Behaviour) | column kind | ai | — |
@@ -1164,6 +1166,7 @@ Field units the docs and Tune use.
 | [`SOUND_FINISHED`](audio.md#const-SOUND_FINISHED) | constant | audio | — |
 | [`SOUND_REMOVED`](audio.md#const-SOUND_REMOVED) | constant | audio | — |
 | [`SOUND_REPLACED`](audio.md#const-SOUND_REPLACED) | constant | audio | — |
+| [`SOUND_RETRIGGERED`](audio.md#const-SOUND_RETRIGGERED) | constant | audio | — |
 | [`SOUND_STOPPED`](audio.md#const-SOUND_STOPPED) | constant | audio | — |
 | [`SoundInfo`](load.md#type-SoundInfo) | struct | load | — |
 | [`SpawnDesc`](world.md#type-SpawnDesc) | desc struct | world | — |

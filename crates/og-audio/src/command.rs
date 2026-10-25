@@ -76,6 +76,9 @@ pub mod fx {
     pub const ROOM: u32 = 20;
     /// The reverb's damping, 0..1.
     pub const DAMPING: u32 = 21;
+    /// The voices' resampler (any bus): 1 the windowed sinc, 0 linear
+    /// interpolation (`og.Audio.resampler`).
+    pub const RESAMPLER: u32 = 22;
 }
 
 impl Op {

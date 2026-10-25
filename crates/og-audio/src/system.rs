@@ -627,7 +627,7 @@ pub(crate) fn fx_state(
     chosen: &[Option<AudioBusFx>; BUS_COUNT],
     audio: &Audio,
 ) -> Vec<(u8, u32, f32)> {
-    let mut out = Vec::with_capacity(BUS_COUNT * 13 + 2);
+    let mut out = Vec::with_capacity(BUS_COUNT * 13 + 3);
     for (b, f) in chosen.iter().enumerate() {
         let f = f.unwrap_or_default();
         let b = b as u8;
@@ -654,6 +654,7 @@ pub(crate) fn fx_state(
     }
     out.push((0, fx::ROOM, audio.reverb_room.clamp(0.0, 1.0)));
     out.push((0, fx::DAMPING, audio.reverb_damping.clamp(0.0, 1.0)));
+    out.push((0, fx::RESAMPLER, (audio.resampler != 0) as u32 as f32));
     out
 }
 
@@ -676,6 +677,21 @@ fn fx_commands(state: &[(u8, u32, f32)], tick: u64) -> impl Iterator<Item = Comm
     })
 }
 
+/// A voice that plays on this tick, for the voice cap.
+struct Sounding {
+    e: Entity,
+    voice: u32,
+    priority: u32,
+    gain: f32,
+    /// Virtual now (past the cap with `virtualize`): silent in the mixer.
+    is_virtual: bool,
+    /// Its source's `virtualize`.
+    virtualize: bool,
+    /// The play that makes it heard again at its playhead (the tick's start).
+    play: Command,
+    direction: Vec3,
+}
+
 /// A source waiting to start this tick.
 struct Fresh {
     e: Entity,
@@ -685,6 +701,8 @@ struct Fresh {
     frames: u64,
     /// Seconds into the tick it starts at.
     delay: f64,
+    /// Past the cap with `virtualize`: it starts virtual (its playhead runs, unheard).
+    is_virtual: bool,
 }
 
 /// A voice's standing under the voice cap: higher priority, then louder,
@@ -829,8 +847,8 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
     // Playing sources.
     let playing: Vec<Entity> = ctx.query(0)?.flat_map(|a| a.entities().to_vec()).collect();
     let mut to_start: Vec<Entity> = Vec::new();
-    // (entity, voice, priority, gain) of the voices that play on.
-    let mut sounding: Vec<(Entity, u32, u32, f32)> = Vec::new();
+    // The voices that play on, heard or virtual.
+    let mut sounding: Vec<Sounding> = Vec::new();
     for e in playing {
         let s = ctx.get::<AudioSource>(e)?;
         let mut p = ctx.get::<AudioPlayback>(e)?;
@@ -840,6 +858,24 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
             c.position = f64::from(fade.max(0.0));
             commands.push(c);
         };
+        if s.retrigger {
+            // From the top in this tick: this voice ends, a new one starts.
+            if !p.is_virtual {
+                stop(&mut commands, p.voice, s.fade);
+            }
+            ended(ctx, e, &p, end_reason::RETRIGGERED)?;
+            ctx.remove::<AudioPlayback>(e)?;
+            ctx.set(
+                e,
+                AudioSource {
+                    playing: true,
+                    retrigger: false,
+                    ..s
+                },
+            )?;
+            to_start.push(e);
+            continue;
+        }
         if !s.playing {
             stop(&mut commands, p.voice, s.fade);
             ended(ctx, e, &p, end_reason::STOPPED)?;
@@ -876,7 +912,10 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
             || w.loop_start != p.loop_start
             || w.loop_end != p.loop_end
             || w.lowpass != p.lowpass;
-        if changed {
+        // A virtual voice is not in the mixer: it is told nothing until it
+        // is heard again (then a play at its playhead, below).
+        let heard = !p.is_virtual;
+        if changed && heard {
             commands.push(voice_command(
                 Op::Params,
                 tick,
@@ -886,10 +925,11 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
                 f64::from(s.fade.max(0.0)),
             ));
         }
-        if w.direction != p.direction {
+        if w.direction != p.direction && heard {
             commands.push(hrtf_command(tick, p.voice, w.direction));
         }
-        if resync {
+        let play = voice_command(Op::Play, tick, p.voice, p.sound, &w, p.cursor);
+        if resync && heard {
             snapshot.push(voice_command(
                 Op::Play,
                 tick,
@@ -915,8 +955,19 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
             ctx.remove::<AudioPlayback>(e)?;
             continue;
         }
-        live.push(p.voice);
-        sounding.push((e, p.voice, s.priority, w.gain));
+        if heard {
+            live.push(p.voice);
+        }
+        sounding.push(Sounding {
+            e,
+            voice: p.voice,
+            priority: s.priority,
+            gain: w.gain,
+            is_virtual: p.is_virtual,
+            virtualize: s.virtualize,
+            play,
+            direction: w.direction,
+        });
         p.cursor = cursor;
         p.gain = w.gain;
         p.pan = w.pan;
@@ -938,7 +989,14 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
     fresh_entities.extend(to_start);
     let mut fresh: Vec<Fresh> = Vec::new();
     for e in fresh_entities {
-        let s = ctx.get::<AudioSource>(e)?;
+        let mut s = ctx.get::<AudioSource>(e)?;
+        if s.retrigger {
+            // Not playing (stopped, ended, culled or never started): it
+            // plays from the top, `playing` set back to true.
+            s.retrigger = false;
+            s.playing = true;
+            ctx.set(e, s)?;
+        }
         if !s.playing || s.start_at >= t1 {
             continue;
         }
@@ -965,16 +1023,23 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
             rate,
             frames,
             delay,
+            is_virtual: false,
         });
     }
 
-    // The voice cap: the lowest standing is culled, playing or not yet started.
+    // The voice cap: the lowest standing is culled (or goes virtual, with
+    // `virtualize`), playing or not yet started; a virtual voice back
+    // within the cap is heard again from its playhead.
     let cap = audio.max_voices.max(1) as usize;
-    if sounding.len() + fresh.len() > cap {
+    if sounding.len() + fresh.len() > cap || sounding.iter().any(|v| v.is_virtual) {
         // (standing, index into sounding, index into fresh)
         let mut all: Vec<(Standing, Option<usize>, Option<usize>)> = Vec::new();
-        for (i, &(_, voice, prio, gain)) in sounding.iter().enumerate() {
-            all.push((standing(prio, gain, u64::from(voice)), Some(i), None));
+        for (i, v) in sounding.iter().enumerate() {
+            all.push((
+                standing(v.priority, v.gain, u64::from(v.voice)),
+                Some(i),
+                None,
+            ));
         }
         for (i, f) in fresh.iter().enumerate() {
             all.push((
@@ -985,28 +1050,60 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         }
         all.sort_by_key(|a| std::cmp::Reverse(a.0));
         let mut cull_fresh = vec![false; fresh.len()];
-        for (_, playing, starting) in all.into_iter().skip(cap) {
+        for (rank, (_, playing, starting)) in all.into_iter().enumerate() {
+            let within = rank < cap;
             if let Some(i) = playing {
-                let (e, voice, _, _) = sounding[i];
-                let mut c = Command::new(Op::Stop, tick);
-                c.voice = voice;
-                commands.push(c);
-                let p = ctx.get::<AudioPlayback>(e)?;
-                ended(ctx, e, &p, end_reason::CULLED)?;
-                let s = ctx.get::<AudioSource>(e)?;
-                ctx.set(
-                    e,
-                    AudioSource {
-                        playing: false,
-                        ..s
-                    },
-                )?;
-                ctx.remove::<AudioPlayback>(e)?;
-                live.retain(|v| *v != voice);
-                snapshot.retain(|c| c.voice != voice);
+                let v = &sounding[i];
+                let set_virtual = |ctx: &SystemContext<'_>, is_virtual: bool| -> Result<()> {
+                    let p = ctx.get::<AudioPlayback>(v.e)?;
+                    ctx.set(v.e, AudioPlayback { is_virtual, ..p })
+                };
+                if within && v.is_virtual {
+                    // Heard again where it would have been (a resumed play fades in).
+                    commands.push(v.play);
+                    if resync {
+                        snapshot.push(v.play);
+                    }
+                    if v.direction != Vec3::ZERO {
+                        let h = hrtf_command(tick, v.voice, v.direction);
+                        commands.push(h);
+                        if resync {
+                            snapshot.push(h);
+                        }
+                    }
+                    live.push(v.voice);
+                    set_virtual(ctx, false)?;
+                } else if !within && !v.is_virtual {
+                    let mut c = Command::new(Op::Stop, tick);
+                    c.voice = v.voice;
+                    commands.push(c);
+                    live.retain(|x| *x != v.voice);
+                    snapshot.retain(|c| c.voice != v.voice);
+                    if v.virtualize {
+                        set_virtual(ctx, true)?;
+                    } else {
+                        let p = ctx.get::<AudioPlayback>(v.e)?;
+                        ended(ctx, v.e, &p, end_reason::CULLED)?;
+                        let s = ctx.get::<AudioSource>(v.e)?;
+                        ctx.set(
+                            v.e,
+                            AudioSource {
+                                playing: false,
+                                ..s
+                            },
+                        )?;
+                        ctx.remove::<AudioPlayback>(v.e)?;
+                    }
+                }
             }
-            if let Some(i) = starting {
-                cull_fresh[i] = true;
+            if let Some(i) = starting
+                && !within
+            {
+                if fresh[i].s.virtualize {
+                    fresh[i].is_virtual = true;
+                } else {
+                    cull_fresh[i] = true;
+                }
             }
         }
         let mut k = 0;
@@ -1039,6 +1136,7 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         rate,
         frames,
         delay,
+        is_virtual,
     } in fresh
     {
         let voice = stream.next_voice;
@@ -1080,9 +1178,11 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         if w.direction != Vec3::ZERO {
             started.push(hrtf_command(tick, voice, w.direction));
         }
-        commands.extend_from_slice(&started);
-        if resync {
-            snapshot.extend_from_slice(&started);
+        if !is_virtual {
+            commands.extend_from_slice(&started);
+            if resync {
+                snapshot.extend_from_slice(&started);
+            }
         }
         ctx.send(SoundStarted {
             entity: e.to_bits(),
@@ -1110,7 +1210,9 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
             )?;
             continue;
         }
-        live.push(voice);
+        if !is_virtual {
+            live.push(voice);
+        }
         ctx.insert(
             e,
             AudioPlayback {
@@ -1127,6 +1229,7 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
                 lowpass: w.lowpass,
                 position: w.position,
                 direction: w.direction,
+                is_virtual,
             },
         )?;
     }

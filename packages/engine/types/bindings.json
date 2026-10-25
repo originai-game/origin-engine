@@ -321,6 +321,12 @@
       "value": "AudioBus"
     },
     {
+      "name": "AudioResampler",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "AudioResampler"
+    },
+    {
       "name": "PanningModel",
       "array": "Uint32Array",
       "stride": 1,
@@ -4352,6 +4358,16 @@
           "column": "f32",
           "default": 0,
           "tunable": true
+        },
+        {
+          "name": "virtualize",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "retrigger",
+          "column": "bool",
+          "default": false
         }
       ]
     },
@@ -7334,6 +7350,11 @@
           "column": "f32",
           "default": 343.3,
           "tunable": true
+        },
+        {
+          "name": "resampler",
+          "column": "AudioResampler",
+          "default": "sinc"
         }
       ]
     },

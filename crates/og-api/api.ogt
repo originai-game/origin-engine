@@ -8696,6 +8696,7 @@ module audio {
   const SOUND_REMOVED u32 2 "SoundEnded.reason: the AudioSource was removed from a living entity."
   const SOUND_REPLACED u32 3 "SoundEnded.reason: `sound` changed while it played."
   const SOUND_CULLED u32 4 "SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age)."
+  const SOUND_RETRIGGERED u32 5 "SoundEnded.reason: AudioSource.retrigger started the sound again from the top; a new voice plays it."
 
   enum AudioBus {
     doc "The bus a source plays on; every bus passes through master."
@@ -8716,6 +8717,19 @@ module audio {
     doc "How an AudioListener places spatial sources between the ears, as Web Audio's PannerNode.panningModel."
     variant equalpower "The stereo panner (Web Audio's equal-power law): for speakers."
     variant hrtf "For headphones: a spherical-head model (Brown and Duda, 1998) that delays the far ear by the interaural time difference (up to 0.66 ms) and shadows its highs (up to -20 dB), so a source moves between the ears; front and back, up and down are not told apart (no pinna)."
+  }
+
+  enum AudioResampler {
+    doc "How the mixer resamples a voice whose pitch or sound rate differs from the output's."
+    variant linear "Linear interpolation: the engine's mix before round 4, cheaper, with duller highs (-3.4 dB at 15 kHz from 44.1 kHz) and images (-11.5 dB there)."
+    variant sinc "A Kaiser-windowed sinc (beta 7, 16 taps, 2048 phases; widened up to 64 taps for a voice pitched up to 4x): flat to the highs, images below -70 dB."
+  }
+
+  column AudioResampler {
+    doc "An AudioResampler field: the variant's index."
+    array Uint32Array
+    stride 1
+    value AudioResampler
   }
 
   column PanningModel {
@@ -8836,6 +8850,8 @@ module audio {
       max 1
       tunable true
     }
+    field virtualize bool "Past Audio.maxVoices it goes virtual instead of being culled: silent, its playhead running on (a one-shot still ends on its tick), and heard again from where it would be, fading in, once it stands within the cap. Without it the source is culled (SOUND_CULLED, playing false)."
+    field retrigger bool "Set true to start the sound again from the top (its startOffset, its startAt) this tick, playing or not, without a level change on `playing`: the voice playing ends (SOUND_RETRIGGERED) and a new one starts in the same tick. The engine sets it back to false and `playing` true."
   }
 
   component AudioListener {
@@ -8924,6 +8940,9 @@ module audio {
       max 10000
       unit mps
       tunable true
+    }
+    field resampler AudioResampler "How voices are resampled: sinc (the default) or linear, the mix before round 4, for a game that relies on its exact output. A sound at the output's rate played at pitch 1 is its own samples either way." {
+      default sinc
     }
   }
 
@@ -9116,7 +9135,7 @@ module audio {
     field entity Entity "The entity whose AudioSource ended."
     field sound Sound "The sound."
     field voice u32 "The voice id in the command stream."
-    field reason u32 "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3) or SOUND_CULLED (4)."
+    field reason u32 "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3), SOUND_CULLED (4) or SOUND_RETRIGGERED (5)."
   }
 
   fn outputLatency {

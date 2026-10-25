@@ -34,9 +34,11 @@ given and taken, pickups, a door, a death, a win and a loss, every UI press.
 
 - One voice entity per sound, spawned in `start` with `playing: false`, and
   a `Voices` system that plays each requested one: systems set bits of a
-  game resource (`Sounds.sfx |= Sound.Jump`), Voices sets `playing` on the
-  matching voice (a voice already playing is stopped this tick and
-  restarted the next). Every archetype in `templates/archetypes` does
+  game resource (`Sounds.sfx |= Sound.Jump`), Voices sets `retrigger: true`
+  on the matching voice (it starts again from the top in that tick,
+  playing or not, and the engine clears it; archetypes written before
+  `retrigger` set `playing`, stopping a playing voice one tick and
+  starting it the next). Every archetype in `templates/archetypes` does
   this; copy a `Voices`.
 - Vary repeated sounds: `pitch` 0.92–1.08 from the world's `og.Rng` for
   footsteps, hits and coins, so a stream of them does not machine-gun.
@@ -194,7 +196,13 @@ at 1.0 is a mix bug, not loudness.
 - `og.Audio.maxVoices` (32) caps voices; past it the lowest `priority`,
   then the quietest, then the oldest is culled (`SOUND_CULLED`). Give the
   player's own sounds and the music a high priority (200+), ambient props a
-  low one.
+  low one. Ambient loops and music stems that should keep their place
+  when culled get `virtualize: true`: past the cap they go silent with
+  their playhead running and come back where they would be, not from the
+  top (`og.AudioPlayback.virtual` says which).
+- `og.Audio.resampler` is `sinc` (clean highs at any pitch); `linear` is
+  the older, cheaper mix, kept for a game that compares its exact output
+  (a WAV hash in a test). Unpitched 48 kHz sounds play the same either way.
 
 ## 7. Prove it
 

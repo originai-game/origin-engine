@@ -6398,6 +6398,8 @@
         "AudioBus",
         "AudioBus",
         "PanningModel",
+        "AudioResampler",
+        "AudioResampler",
         "PanningModel",
         "AudioSource",
         "AudioListener",
@@ -6439,6 +6441,12 @@
           "type": "u32",
           "value": 4,
           "doc": "SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age)."
+        },
+        {
+          "name": "SOUND_RETRIGGERED",
+          "type": "u32",
+          "value": 5,
+          "doc": "SoundEnded.reason: AudioSource.retrigger started the sound again from the top; a new voice plays it."
         }
       ],
       "functions": [
@@ -25827,6 +25835,20 @@
         "hrtf": "For headphones: a spherical-head model (Brown and Duda, 1998) that delays the far ear by the interaural time difference (up to 0.66 ms) and shadows its highs (up to -20 dB), so a source moves between the ears; front and back, up and down are not told apart (no pinna)."
       }
     },
+    "AudioResampler": {
+      "x-og-kind": "enum",
+      "x-og-module": "audio",
+      "description": "How the mixer resamples a voice whose pitch or sound rate differs from the output's.",
+      "type": "string",
+      "enum": [
+        "linear",
+        "sinc"
+      ],
+      "x-og-variants": {
+        "linear": "Linear interpolation: the engine's mix before round 4, cheaper, with duller highs (-3.4 dB at 15 kHz from 44.1 kHz) and images (-11.5 dB there).",
+        "sinc": "A Kaiser-windowed sinc (beta 7, 16 taps, 2048 phases; widened up to 64 taps for a voice pitched up to 4x): flat to the highs, images below -70 dB."
+      }
+    },
     "AudioSource": {
       "x-og-kind": "component",
       "x-og-module": "audio",
@@ -26007,6 +26029,16 @@
           "minimum": 0,
           "maximum": 1,
           "x-og-tunable": true
+        },
+        "virtualize": {
+          "type": "boolean",
+          "description": "Past Audio.maxVoices it goes virtual instead of being culled: silent, its playhead running on (a one-shot still ends on its tick), and heard again from where it would be, fading in, once it stands within the cap. Without it the source is culled (SOUND_CULLED, playing false).",
+          "default": false
+        },
+        "retrigger": {
+          "type": "boolean",
+          "description": "Set true to start the sound again from the top (its startOffset, its startAt) this tick, playing or not, without a level change on `playing`: the voice playing ends (SOUND_RETRIGGERED) and a new one starts in the same tick. The engine sets it back to false and `playing` true.",
+          "default": false
         }
       },
       "additionalProperties": false
@@ -26137,6 +26169,11 @@
           "maximum": 10000,
           "x-og-unit": "mps",
           "x-og-tunable": true
+        },
+        "resampler": {
+          "$ref": "#/$defs/AudioResampler",
+          "description": "How voices are resampled: sinc (the default) or linear, the mix before round 4, for a game that relies on its exact output. A sound at the output's rate played at pitch 1 is its own samples either way.",
+          "default": "sinc"
         }
       },
       "additionalProperties": false
@@ -26494,7 +26531,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3) or SOUND_CULLED (4)."
+          "description": "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3), SOUND_CULLED (4) or SOUND_RETRIGGERED (5)."
         }
       },
       "required": [

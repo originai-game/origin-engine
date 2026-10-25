@@ -2,8 +2,9 @@
 //! scene: 16 spatial loops circling a listener (moving, so every tick
 //! sends their gain and pan) and 8 non-spatial loops, 24 voices, at 48 kHz
 //! in 128-frame quanta. Each variant turns one feature on over the base
-//! (every feature off); milliseconds of mixing per second of audio, the
-//! fastest of five seconds.
+//! (every feature off, the linear resampler); milliseconds of mixing per
+//! second of audio, the fastest of five seconds, and the world step's
+//! microseconds per tick.
 //!
 //!     cargo run -p og-audio --example feature_costs
 //!
@@ -29,6 +30,10 @@ enum Variant {
     Doppler,
     Cones,
     Hrtf,
+    /// The windowed sinc, with Doppler so the spatial voices resample.
+    Sinc,
+    /// maxVoices 12, every source virtualize: 12 heard, 12 virtual.
+    Virtual,
     All,
 }
 
@@ -62,6 +67,17 @@ fn measure(v: Variant) -> (f64, f64) {
     )
     .unwrap();
     let all = v == Variant::All;
+    {
+        let a = world.resource_mut::<og_audio::Audio>().unwrap();
+        a.resampler = if v == Variant::Sinc || all {
+            og_audio::schema::resampler::SINC
+        } else {
+            og_audio::schema::resampler::LINEAR
+        };
+        if v == Variant::Virtual {
+            a.max_voices = 12;
+        }
+    }
     world
         .spawn((
             Transform::default(),
@@ -86,7 +102,8 @@ fn measure(v: Variant) -> (f64, f64) {
                         spatial: true,
                         volume: 0.1,
                         ref_distance: 2.0,
-                        doppler_factor: if v == Variant::Doppler || all {
+                        virtualize: v == Variant::Virtual,
+                        doppler_factor: if matches!(v, Variant::Doppler | Variant::Sinc) || all {
                             1.0
                         } else {
                             0.0
@@ -106,6 +123,7 @@ fn measure(v: Variant) -> (f64, f64) {
                 looping: true,
                 volume: 0.05,
                 pan: k as f32 / 4.0 - 1.0,
+                virtualize: v == Variant::Virtual,
                 ..AudioSource::new(tones[k % 4])
             },))
             .unwrap();
@@ -154,6 +172,8 @@ fn main() {
         ("doppler", Variant::Doppler),
         ("cones", Variant::Cones),
         ("hrtf", Variant::Hrtf),
+        ("sinc", Variant::Sinc),
+        ("virtual", Variant::Virtual),
         ("all", Variant::All),
     ];
     for (i, (name, v)) in variants.iter().enumerate() {

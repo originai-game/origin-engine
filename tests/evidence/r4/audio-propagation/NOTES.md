@@ -65,3 +65,66 @@ The tick-side cost of Doppler and cones did not show above the noise of
 the whole world step (288–305 µs a tick in every variant). Off costs
 nothing: `one_second_of_a_busy_mix_renders_in_bounded_time` (32 voices)
 took 288 and 295 ms after the change against 292 ms on the base.
+
+## 2. Windowed sinc, virtual voices, retrigger
+
+What changed:
+
+- `og.Audio.resampler` (new enum `AudioResampler`: `linear`, `sinc`;
+  default `sinc`) reaches the mixer as an fx command (`fx::RESAMPLER`,
+  22) with the other fx state, so it is in the stream, the world hash and
+  every resync. `resample.rs`: a Kaiser-windowed sinc, β 7, 8 zero
+  crossings (16 taps) at pitch ≤ 1 from 2048 normalised phases; widened
+  by the step (rounded up to an eighth, ≤ 4×, ≤ 64 taps, 512-phase tables
+  built on first use) when pitched up; a per-voice 128-frame history
+  (mirrored, so the taps read one slice) filled across the loop seam as
+  the linear path reads it; on an exact source frame the frame itself.
+  `linear` is the old code path, untouched.
+- `og.AudioSource.virtualize`: past the cap the voice is stopped in the
+  mixer but keeps its `og.AudioPlayback` (new `virtual` flag) and its
+  cursor runs on; back within the cap it is played at its cursor (a
+  resumed play, fading in). A virtual one-shot ends on its own tick.
+- `og.AudioSource.retrigger`: one-tick restart from the top, playing or
+  not; the old voice ends with the new `SOUND_RETRIGGERED` (5); the
+  engine clears the flag and sets `playing`.
+
+Tests (`tests/voices.rs`; all fail to compile on the base; each also run
+with its feature's line reverted):
+
+| test | reverted | failure |
+|---|---|---|
+| `the_windowed_sinc_resamples_without_images_and_linear_is_kept` | mixer never uses the sinc | `sinc keeps the tone: -3.44 dB` |
+| same | `resampler` not sent in the stream (so `linear` is not honoured) | `linear is kept as it was: tone 0.00 dB, image -74.0 dB` |
+| `a_virtual_voice_resumes_where_it_would_have_been` | the resumed play starts at 0 | `B is played once, at tick 30, from where it would be` |
+| same | `virtualize` ignored (culled) | `B is never culled: SoundEnded { …, reason: 4 }` |
+| `retrigger_restarts_a_sound_without_a_level_change` | `retrigger` ignored | the old voice's `SoundEnded`/`SOUND_RETRIGGERED` assertion |
+| `a_run_with_sinc_virtual_voices_and_retriggers_is_the_same_twice_and_across_a_restore` | the virtual flag kept in a thread-local, not `og.AudioPlayback` | `the same samples and stream twice` |
+
+Measured in the test: 15 kHz from 44.1 kHz, linear −3.44 dB on the tone
+and its image at −11.5 dB, sinc 0.00 dB and −74.0 dB; 6 kHz pitched
+2.5×, the folded image −28.1 dB linear and −89.7 dB sinc; the resumed
+voice's level 0.17343 against the swell's 0.17348 at its cursor.
+
+`linear` keeps the old output bit for bit: a scratch scene (seven looping
+voices, pitches 0.7–2.08, sounds at 48 kHz, stereo and 22.05 kHz, some
+spatial, startAt inside ticks, a loop start) hashed `c92e89684e332016` on
+the base and with `resampler: linear` on this commit; `f7f349331a1b7a61`
+with the sinc. The scratch file was deleted.
+
+Cost (`feature_costs`, same scene as §1, dev profile, mixer ms per second):
+
+| variant | mixer ms/s | over base |
+|---|---:|---:|
+| base (linear, everything off) | 76.8 | 1.00 |
+| sinc (16 voices pitched by Doppler, 8 on their own frames) | 229.2 | 2.98 |
+| virtual (cap 12, every source `virtualize`: 12 heard) | 40.5 | 0.53 (the 12 virtual voices cost the mixer nothing) |
+| everything on (Doppler, cones, HRTF, sinc) | 285.3 | 3.72 |
+
+Tick side: 311–352 µs a world step in every variant (the virtual run's
+ranking every tick is the top of that range). The 32-voice busy mix
+(`one_second_of_a_busy_mix_renders_in_bounded_time`, every voice pitched,
+so every one resamples) is 650–675 ms in debug with the sinc default
+against 292 ms linear (bound 1000 ms; the release bound of 50 ms against
+17.5 ms measured on an M4 Pro at linear is for the wave's end to
+re-measure). Retrigger and `virtualize` off cost nothing in the mixer;
+with `linear` the mixer runs the old loop plus one branch per frame.
