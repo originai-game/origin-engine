@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 const SLOW = process.env.OG_GATE === "1" && !process.env.OG_GATE_ALL;
 
 declare const Bun: {
-  spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe" }): { stdout: ReadableStream<Uint8Array>; exited: Promise<number>; kill(signal?: string): void };
+  spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe" }): { pid: number; stdout: ReadableStream<Uint8Array>; exited: Promise<number>; kill(signal?: string): void };
 };
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -84,7 +84,10 @@ test.skipIf(SLOW)("a handed-off world restores in a new process with a changed l
   }
   // Some ticks run first, so a restore that started over shows.
   await new Promise((r) => setTimeout(r, 500));
-  first.kill("SIGUSR2");
+  // process.kill, not first.kill("SIGUSR2"): Bun 1.4.2's Subprocess.kill
+  // sends a signal name by Linux's number, and 12 is SIGSYS on macOS
+  // (oven-sh/bun#35296, fixed in Bun 1.4.3).
+  (process as unknown as { kill(pid: number, signal: string): void }).kill(first.pid, "SIGUSR2");
   for (;;) {
     const { value, done } = await reader.read();
     if (done) break;
