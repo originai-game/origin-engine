@@ -283,3 +283,48 @@ Before reading a ratio, check that `threejs-complex-three-webgpu-instancedmesh-p
 is not black and shows the sun's shadows, and that `threejs-comparison.json`
 for three WebGPU has no console errors. Its `info.sampledTexturesPerStage`
 reports the device's limit.
+
+## Mac-2 numbers
+
+Measured at `303763267e88c8363f4c6945d626efc8a9a0f9da` on the Mac's M4 Pro,
+Chrome for Testing 150.0.7871.115, with the current revision's wasm rebuilt
+before the package build. Command: the round-2 command above. The canvas
+was 1280 × 720 at DPR 1, with 60 warm frames and 600 timed frames per mode,
+two rounds interleaved by mode. `OG_PERF_RECORD` was unset.
+
+| Mode | Round 1 sustained ms | Round 2 sustained ms | Mean ms | FPS |
+|---|---:|---:|---:|---:|
+| Engine WebGPU | 5.687 | 5.709 | 5.698 | 176 |
+| Engine WebGL2 | 7.862 | 7.860 | 7.861 | 127 |
+| Three WebGPU, per tile | 31.161 | 30.939 | 31.050 | 32 |
+| Three WebGL2, per tile | 9.740 | 9.892 | 9.816 | 102 |
+| Three WebGL2, per part | 24.914 | 24.946 | 24.930 | 40 |
+
+The two-round mean is also the median of these two observations. Ratios
+use sustained time, not rounded FPS:
+
+- **WebGPU primary: 31.050 / 5.698 = 5.449×, PASS** against §7's ≥ 1.5×.
+- WebGL2 per tile: 9.816 / 7.861 = **1.249×**, reported beside the judge.
+- WebGL2 per part: 24.930 / 7.861 = **3.171×**.
+
+The visual prerequisites were checked before interpreting the ratios:
+
+- Three WebGPU is not black. The capture shows the village and the sun's
+  cast shadows. Pine tips remain green and roofs retain their red/brown
+  detail, with no visible red-tip or washed-roof TRAA ghosting.
+- Three WebGL2 per tile now shows directional house and tree shadows,
+  with the same level and camera framing as the engine. The engine's
+  cyan emissives still bloom more strongly.
+- `info.sampledTexturesPerStage` is **16** in both three WebGPU rounds.
+- All ten timed runs completed. The JSON has no error results, and the
+  captured stderr has no console errors or exceptions. The harness does
+  not serialize a console-errors field into its JSON; stderr is the
+  console-error receipt.
+
+Load caveat: the benchmark followed a 60-second pause after the build.
+The one-minute load at each timed run's start was 6.75–7.88, below 8,
+but the five- and fifteen-minute averages remained elevated from the
+preceding build. These are two rounds, not a broader variance study.
+
+Receipts are in `mac-2/`: `threejs-comparison.json`, `stdout.txt`,
+`stderr.txt`, and the five PNGs. No baseline or reference was re-recorded.
