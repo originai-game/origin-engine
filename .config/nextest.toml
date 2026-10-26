@@ -29,15 +29,16 @@ threads-required = 'num-cpus'
 # it; last, they drain the run once instead of three times.
 priority = -50
 
-# Determinism runs that step two worlds (or two renderers) on two threads
-# take two slots. The 500-body pile reports, never asserts, its seconds, so
-# it needs no more than that.
+# Determinism runs that step two worlds on two threads take two slots. The
+# 500-body pile reports, never asserts, its seconds, so it needs no more
+# than that. The particle determinism runs (og-tests' effects) step their
+# two renderers one after the other on one thread, and take one: two
+# renderers made on two threads of one process crash the Vulkan loader of
+# CI's lavapipe (1.4.309; tests/evidence/debt3/particle-sigsegv/NOTES.md).
 [[profile.default.overrides]]
 filter = '''
 test(the_pile_is_deterministic_and_a_restore_at_tick_1800_ends_in_the_same_world)
 | test(a_3600_tick_walk_gives_the_same_hash_twice_and_after_a_restore_at_1800)
-| test(a_600_tick_gpu_particle_run_is_deterministic)
-| test(a_600_tick_cpu_particle_run_is_deterministic)
 '''
 threads-required = 2
 
