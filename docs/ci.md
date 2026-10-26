@@ -694,7 +694,7 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
 
 ## Browser reference tiers
 
-og-tests' gfx references cover `metal` (and `webgl2` for four scenes,
+og-tests' gfx references cover `metal` (and `webgl2` for five scenes,
 §og-tests' gfx scenes in the browser; the `vulkan-cpu` copies went with
 the CPU sandbox requirement on 2026-10-22, §The wave-end run); og-ui's 83
 reference frames are `metal`'s (the browser tiers run 76 of them) and the
@@ -903,12 +903,19 @@ builds in `target/wasm-gfx` so the gate's og-render artifacts stay put.
 On 2026-10-19 (Chrome for Testing 150, ANGLE Metal on the Apple M4 Pro,
 `tests/evidence/P2/tooling/web-gfx-*.json`) all 47 applicable scenes pass on
 each tier. WebGPU matches `metal` throughout and has no references of its
-own. WebGL2 has its own for four scenes that differ from `metal` by
+own. WebGL2 has its own for five scenes that differ from `metal` by
 design: `msaa` (no other tier renders it), `showcase` and `overlay` (GPU
 particles take the CPU path without compute; RMSE 0.0107 and 0.0103 against
-`metal`) and `water-3d` (no screen-space reflection march, the sky cubemap
-reflects instead; RMSE 0.0258). A WebGL2 reference is recorded only for a
-difference the tier makes by design, never to absorb a defect.
+`metal`), `water-3d` (no screen-space reflection march, the sky cubemap
+reflects instead; RMSE 0.0258) and `water-ripples` (RMSE 0.0125, no
+outliers, mean 1.5/255, at most 21/255: the difference follows the texels
+of the magnified normal map, the one read the water path makes that
+WebGL2 does not reproduce exactly; `water-mesh`, `water-fresnel` and
+`water-glint`, the same path without a normal map, are within RMSE 1e-5 of
+`metal`, and the Mac lane's diagnostic of 2026-10-26 ruled out the
+sampler's anisotropy, the mip selection and the SSR march). A WebGL2
+reference is recorded only for a difference the tier makes by design,
+never to absorb a defect.
 `shadows-crypt` (wave 13, web findings #4) has none: its shadowed point
 light is two paraboloid hemispheres on WebGL2 and six cube faces on
 `metal`, which store the same faces since the paraboloids' winding was
