@@ -160,3 +160,126 @@ sustained ms over `engine WebGPU`'s (the faster three variant on the same
 tier); WebGL2's is `three WebGL2, InstancedMesh per tile` over
 `engine WebGL2`. The first run makes and cooks the assets (about a second
 and three; `og cook` from the gate's or the package's `og`).
+
+## r4/bench-complex-2: two defects of the three.js side
+
+Branch `r4/bench-complex-2` from `58f5609e` (the merge of `r4/bench-complex`).
+
+The Mac lane's first run (`threejs-compare.ts --only complex --rounds 2`,
+Chrome 150, M4 Pro), sustained ms:
+
+| mode | ms |
+|---|---|
+| engine WebGPU | 5.658 |
+| engine WebGL2 | 7.587 |
+| three WebGL2, InstancedMesh per tile | 10.349 |
+| three WebGL2, InstancedMesh per part | 24.451 |
+| three WebGPU, InstancedMesh per tile | 30.45, of a black canvas: void |
+
+The verdict was inconclusive for two reasons, both on three's side.
+
+**1. three's WebGPU canvas was black (Mac and orb).** Chrome logs, for every
+lit material: "The number of sampled textures (17) in the Fragment stage
+exceeds the maximum per-stage limit (16)". three 0.180's `ShadowNode`
+samples a colour map (the tint of transparent casters) beside each shadowed
+light's depth map. With the sun's three cascades and four local lights, that
+is 7 depth maps + 7 colour maps + base colour + normal map + environment:
+17 textures and 17 samplers in one stage. Every pipeline was refused, so
+nothing drew; the 30 ms were three's CPU work over invalid pipelines.
+Chrome raises `maxSampledTexturesPerShaderStage` to 48 on request (Chrome
+146), but `maxSamplersPerShaderStage` stays 16, so `requiredLimits` cannot
+fix it. The fix: `three-complex.js` replaces `ShadowNode.prototype.setupShadow`
+with three's own PCF path minus the colour sample. It is built from the
+node's own `setupRenderTarget`, `setupShadowCoord` and `setupShadowFilter`,
+so the bias and the filter are three's. The output is `mix(1, shadow,
+intensity)`, which is what opaque casters gave before (they write (0, 0, 0,
+1) into the colour map). The depth test alone is what WebGLRenderer and the
+engine do; three does less work than before, not more. The villager
+body's fragment shader (dumped in the orb with `off=props,post`) went from
+12 textures and 12 samplers to 8 and 8. `__bench_info__.sampledTexturesPerStage` reports the
+device's limit.
+
+In the orb, three's WebGPU canvas also needs `--use-angle=gl-egl`; without it
+Chrome cannot create the swap chain's shared image and the device is lost
+("Device was destroyed"). The harness passes it through `BENCH_CHROME_FLAGS`.
+That is why the first round's orb shot of three WebGPU was blank. The Mac's
+Metal adapter does not need it.
+
+**2. three's WebGL2 frames were washed out, without the sun's shadows.** CSM
+worked: three 2048 cascades, `castShadow` on 926 of 933 meshes, receive on 931.
+Turning casting off changed about 89k pixels. The shadows were there but
+drowned: three's `Sky` (and `SkyMesh` on WebGPU) is a much brighter
+atmosphere than the engine's, and it lit the scene through PMREM at
+intensity 1. The fix: three gets the engine's own analytic sky. That is
+`fs_sky` of `crates/og-render/shaders/ibl.wgsl`: zenith, horizon, ground,
+the sun's glow (pow 24 × 0.6) and disc (smoothstep 0.9993–0.9997 × 40),
+× 1.1. It is drawn once on the CPU into a 512 × 256 half-float equirect and
+prefiltered by `PMREMGenerator.fromEquirectangular`. It lights the scene at
+the engine's `RenderSettings.environmentIntensity` (0.55), and the same
+texture is the background. Tone mapping was already ACES at exposure 1 on
+both sides and is unchanged.
+
+Diagnostic switches (never for timing): `three-page.html?scene=complex&off=`
+takes a comma list of `props`, `chars`, `csm`, `post`, `traa`, `aobloom` and
+`normalmaps`. `globalThis.__three__` exposes the scene, camera, renderer and
+CSM after the first frame.
+
+### The orb's receipts, round 2
+
+In `orb-2/` (`threejs-comparison.json`, `stdout.txt`, `stderr.txt`, the shots as JPEG):
+
+`BENCH_CHROME_FLAGS="--use-angle=gl-egl" bun tools/bench/threejs-compare.ts --only complex --frames 3 --warm 1 --rounds 1 --shot-frames 2 --shot-wait 1500 --out <dir>`
+
+| mode | p50 ms | p95 ms | sustained ms |
+|---|---|---|---|
+| engine WebGPU | 30.04 | 599.5 | 218.1 |
+| engine WebGL2 | 2,758.4 | 5,831.4 | 3,776.7 |
+| three WebGL2, InstancedMesh per tile | 2,648.7 | 2,739.7 | 2,647.9 |
+| three WebGL2, InstancedMesh per part | 20.5 | 21.6 | 20.8 |
+| three WebGPU, InstancedMesh per tile | 215,907 | 491,186 | 244,783 |
+
+These are a CPU rasteriser's numbers, so no ratio is read from them. The one
+that does say something: three WebGPU now takes about 216 s per frame on
+SwiftShader, where the black canvas took 58 s in round 1. Its pipelines now
+run; before, they were refused. Chrome's log for the round-2 page has no
+WebGPU validation error.
+
+The patch was also checked against stock three on a minimal WebGPU scene: a
+ground plane, nine boxes, the sun through `CSMShadowNode` with the same
+settings. The frames with and without the patch differ in 0.45 % of pixels
+(filter noise), and the cast shadows are identical.
+
+The shots, the same camera on all sides:
+
+- `threejs-complex-engine-webgpu.jpg`, `…-engine-webgl2.jpg`,
+  `…-three-webgl2-instancedmesh-per-tile.jpg`, `…-per-part.jpg`: the same
+  village, the sun's shadows cast by the houses, stalls and trees on all
+  four, and saturation and exposure close to each other. The engine's lamp
+  glass blooms more.
+- `three-webgpu-two-frames-no-keepalive.jpg`: three WebGPU two frames after
+  load (`?scene=complex&webgpu=1`). The same framing and content, with the
+  sun's shadows. It is a little darker and more contrasted than three
+  WebGL2. The white strips on the roofs (the gables' wall boxes between the
+  roof slabs) show less, which is a depth-resolution difference, not
+  lighting.
+- `threejs-complex-three-webgpu-instancedmesh-per-tile.jpg`: the harness's
+  shot of three WebGPU. The harness keeps stepping every 30 ms while it waits
+  for the screenshot, and on SwiftShader that wait lasted about 25 minutes,
+  so the orbit has moved on (a wider view). TRAA, fed frames whose real
+  delta is minutes, ghosts: the pine tips are red and the roofs are washed
+  out. On the Mac the same harness plays 120 frames at full rate; its shot
+  should be checked for the same ghosting, which the orb cannot settle.
+
+### What the Mac runs (round 2)
+
+From a checkout of `r4/bench-complex-2`, as before (`packages/engine/dist`
+built, `bun install --cwd tools/bench --frozen-lockfile`):
+
+```sh
+bun tools/bench/threejs-compare.ts --only complex --rounds 2 --out tests/evidence/r4/bench-complex/mac-2
+```
+
+Before reading a ratio, check that `threejs-complex-three-webgpu-instancedmesh-per-tile.png`
+is not black and shows the sun's shadows, and that `threejs-comparison.json`
+for three WebGPU has no console errors. Its `info.sampledTexturesPerStage`
+reports the device's limit.

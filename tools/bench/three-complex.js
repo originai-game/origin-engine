@@ -22,7 +22,8 @@
 // - textures: the engine's own cooked KTX2 files (cooked/*.ogb), through
 //   KTX2Loader, so both sides sample the same block-compressed texels
 //   (`?ktx2=0`: GLTFLoader's PNGs);
-// - the sky (Sky, prefiltered by PMREM) as background and IBL;
+// - the engine's analytic sky (ibl.wgsl), prefiltered by PMREM, as the
+//   background and the IBL at the engine's environmentIntensity 0.55;
 // - post: GTAO, UnrealBloom, ACES (OutputPass) and SMAA on WebGL2; on
 //   `?webgpu=1` (WebGPURenderer and its node post chain) GTAO, bloom, ACES
 //   and TRAA, three's own temporal antialiasing, as the engine's full tier
@@ -30,7 +31,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
-import { Sky } from "three/addons/objects/Sky.js";
 import * as L from "./complex/src/layout.js";
 import { bench, fail } from "./three-bench.js";
 
@@ -44,13 +44,41 @@ try {
   const webgpu = params.get("webgpu") === "1";
   const tiles = params.get("tiles") !== "0";
   const ktx2 = params.get("ktx2") !== "0";
+  // Diagnostics, never for timing: `off=` a comma list of props, chars, csm, post, traa, aobloom, normalmaps.
+  const OFF = new Set((params.get("off") ?? "").split(","));
   const canvas = document.getElementById("c");
 
-  let renderer, csm = null, WG = null;
+  let renderer, csm = null, WG = null, sampledTextures = null;
   if (webgpu) {
     WG = await import("three/webgpu");
-    renderer = new WG.WebGPURenderer({ canvas, antialias: false });
+    const T = await import("three/tsl");
+    // three 0.180's ShadowNode samples a colour texture (the tint of transparent casters) beside
+    // each shadowed light's depth map, so a lit, normal-mapped material binds 7 depth maps, 7
+    // colour maps, its base colour, its normal map and the environment: 17 textures and 17
+    // samplers in one fragment stage, past WebGPU's 16 (Chrome raises the texture limit to 48 on
+    // request, never the sampler limit), and the device refuses the pipeline: the black canvas
+    // of the first Mac run. Opaque casters write (0, 0, 0, 1) into that colour map, so the
+    // shadow term is the filtered depth test alone, as on WebGLRenderer and in the engine
+    // (depth-only shadow maps): the colour sample is dropped and the output is the same
+    // mix(1, shadow, intensity). It removes work from three, never adds it.
+    // ShadowNode.setupShadow without that sample (its PCF path, the one this page uses):
+    WG.ShadowNode.prototype.setupShadow = function (builder) {
+      const { light, shadow } = this;
+      const { depthTexture, shadowMap } = this.setupRenderTarget(shadow, builder);
+      shadow.camera.updateProjectionMatrix();
+      const intensity = T.reference("intensity", "float", shadow).setGroup(T.renderGroup);
+      const normalBias = T.reference("normalBias", "float", shadow).setGroup(T.renderGroup);
+      const position = T.lightShadowMatrix(light).mul(T.shadowPositionWorld.add(T.normalWorld.mul(normalBias)));
+      const shadowCoord = this.setupShadowCoord(builder, position);
+      const filterFn = shadow.filterNode || this.getShadowFilterFn(builder.renderer.shadowMap.type);
+      const filtered = this.setupShadowFilter(builder, { filterFn, shadowTexture: shadowMap.texture, depthTexture, shadowCoord, shadow, depthLayer: this.depthLayer });
+      this.shadowMap = shadowMap;
+      this.shadow.map = shadowMap;
+      return T.vec3(T.mix(T.float(1), T.float(filtered), intensity)).toVar();
+    };
+    renderer = new WG.WebGPURenderer({ canvas, antialias: false, powerPreference: "high-performance" });
     await renderer.init();
+    sampledTextures = renderer.backend.device.limits.maxSampledTexturesPerShaderStage;
   } else {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -69,40 +97,45 @@ try {
   };
   aim(0);
 
-  // Sky and IBL: Sky rendered once into a PMREM cube, as three-reference.js.
+  // Sky and IBL: the engine's own analytic sky (crates/og-render/shaders/ibl.wgsl fs_sky: horizon
+  // haze, zenith blue, dark ground, the sun's glow and disc, times 1.1), drawn into an HDR
+  // equirectangular texture on the CPU and prefiltered by PMREM; the background is the same
+  // texture, and it lights the scene at the engine's RenderSettings.environmentIntensity (0.55).
+  // three's Sky (and SkyMesh) is another, much brighter atmosphere, under which the sun's
+  // shadows vanished into the ambient light.
   const sunDir = new THREE.Vector3(L.SUN.x, L.SUN.y, L.SUN.z).normalize();
   {
-    const sky = new Sky();
-    sky.scale.setScalar(1000);
-    const u = sky.material.uniforms;
-    if (u) {
-      u.turbidity.value = 4;
-      u.rayleigh.value = 1.5;
-      u.sunPosition.value.copy(sunDir).negate();
+    const SW = 512, SH = 256, toward = sunDir.clone().negate();
+    const px = new Uint16Array(SW * SH * 4);
+    const mix = (a, b, t) => a + (b - a) * t;
+    const smoothstep = (e0, e1, x) => {
+      const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+      return t * t * (3 - 2 * t);
+    };
+    const zenith = [0.18, 0.36, 0.78], horizon = [0.78, 0.84, 0.92], ground = [0.16, 0.14, 0.12];
+    for (let y = 0; y < SH; y++) {
+      // Row 0 is v = 0, the bottom (dir.y = -1): three's equirectangular v = asin(dir.y) / pi + 0.5.
+      const up = Math.sin((((y + 0.5) / SH) - 0.5) * Math.PI), across = Math.sqrt(1 - up * up);
+      for (let x = 0; x < SW; x++) {
+        // u = atan2(dir.z, dir.x) / 2pi + 0.5.
+        const phi = ((x + 0.5) / SW - 0.5) * 2 * Math.PI;
+        const d = [Math.cos(phi) * across, up, Math.sin(phi) * across];
+        const k = Math.pow(Math.max(up, 0), 0.55), g = smoothstep(-0.08, 0.02, up);
+        const cos = d[0] * toward.x + d[1] * toward.y + d[2] * toward.z;
+        const sun = Math.pow(Math.max(cos, 0), 24) * 0.6 + smoothstep(0.9993, 0.9997, cos) * 40;
+        for (let c = 0; c < 3; c++) px[(y * SW + x) * 4 + c] = THREE.DataUtils.toHalfFloat(mix(ground[c], mix(horizon[c], zenith[c], k), g) * 1.1 + sun);
+        px[(y * SW + x) * 4 + 3] = THREE.DataUtils.toHalfFloat(1);
+      }
     }
-    const skyScene = new THREE.Scene();
-    skyScene.add(sky);
-    if (webgpu) {
-      // WebGPURenderer's PMREM: Sky's ShaderMaterial does not run there, so the sky is the
-      // node version three ships for it (SkyMesh), prefiltered the same way.
-      const { SkyMesh } = await import("three/addons/objects/SkyMesh.js");
-      const node = new SkyMesh();
-      node.scale.setScalar(1000);
-      node.turbidity.value = 4;
-      node.rayleigh.value = 1.5;
-      node.sunPosition.value.copy(sunDir).negate();
-      skyScene.clear();
-      skyScene.add(node);
-      const pmrem = new WG.PMREMGenerator(renderer);
-      const env = pmrem.fromScene(skyScene, 0, 0.1, 2000).texture;
-      scene.environment = env;
-      scene.background = env;
-    } else {
-      const pmrem = new THREE.PMREMGenerator(renderer);
-      const env = pmrem.fromScene(skyScene, 0, 0.1, 2000).texture;
-      scene.environment = env;
-      scene.background = env;
-    }
+    const sky = new THREE.DataTexture(px, SW, SH, THREE.RGBAFormat, THREE.HalfFloatType);
+    sky.mapping = THREE.EquirectangularReflectionMapping;
+    sky.colorSpace = THREE.LinearSRGBColorSpace;
+    sky.magFilter = sky.minFilter = THREE.LinearFilter;
+    sky.needsUpdate = true;
+    const pmrem = webgpu ? new WG.PMREMGenerator(renderer) : new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromEquirectangular(sky).texture;
+    scene.environmentIntensity = 0.55;
+    scene.background = sky;
   }
 
   // The sun: three cascades of 2048 over the first 120 m.
@@ -116,7 +149,7 @@ try {
     sun.shadow.camera.near = 1;
     sun.shadow.camera.far = 400;
     sun.shadow.bias = -0.0003;
-    sun.shadow.shadowNode = new CSMShadowNode(sun, { cascades: 3, maxFar: L.SHADOW_DISTANCE, mode: "practical", lightMargin: 60 });
+    if (!OFF.has("csm")) sun.shadow.shadowNode = new CSMShadowNode(sun, { cascades: 3, maxFar: L.SHADOW_DISTANCE, mode: "practical", lightMargin: 60 });
     scene.add(sun, sun.target);
   } else {
     const { CSM } = await import("three/addons/csm/CSM.js");
@@ -200,6 +233,7 @@ try {
   const load = async (file) => {
     const gltf = await loader.loadAsync(ASSETS + "models/" + file);
     if (ktx2) await useCooked(file, gltf);
+    if (OFF.has("normalmaps")) gltf.scene.traverse((o) => o.isMesh && (o.material.normalMap = null));
     return gltf;
   };
 
@@ -233,7 +267,7 @@ try {
   const poseMatrix = (p, out) => out.compose(pv.set(p.x, p.y, p.z), q.setFromAxisAngle(up, p.yaw), sv.setScalar(p.scale));
   let drawsBuilt = 0;
   const ghosts = [];
-  for (const m of L.MODELS) {
+  for (const m of L.MODELS.filter(() => !OFF.has("props"))) {
     const g = await load(m.file);
     g.scene.updateMatrixWorld(true);
     const parts = [];
@@ -285,7 +319,7 @@ try {
   // The characters.
   const mixers = [];
   const rigs = {};
-  for (const c of L.characters()) {
+  for (const c of L.characters().filter(() => !OFF.has("chars"))) {
     rigs[c.model] ??= await load(c.model);
     const gltf = rigs[c.model];
     const w = SkeletonUtils.clone(gltf.scene);
@@ -439,8 +473,9 @@ try {
     const aoPass = ao(depth, normal, camera);
     const lit = T.vec4(color.rgb.mul(aoPass.getTextureNode().r), color.a);
     const withBloom = lit.add(bloom(lit, 0.25, 0.4, 0.9));
-    post.outputNode = traa(withBloom, depth, velocity, camera);
-    render = () => post.render();
+    post.outputNode = OFF.has("traa") ? withBloom : traa(withBloom, depth, velocity, camera);
+    if (OFF.has("aobloom")) post.outputNode = OFF.has("traa") ? color : traa(color, depth, velocity, camera);
+    render = OFF.has("post") ? () => renderer.render(scene, camera) : () => post.render();
   } else {
     const { EffectComposer } = await import("three/addons/postprocessing/EffectComposer.js");
     const { RenderPass } = await import("three/addons/postprocessing/RenderPass.js");
@@ -470,10 +505,12 @@ try {
     render();
   };
   step();
+  globalThis.__three__ = { THREE, scene, camera, renderer, csm };
   const live = () => particles.reduce((a, p) => a + p.geo.instanceCount, 0);
   globalThis.__bench_info__ = {
     renderer: webgpu ? "three WebGPURenderer + PostProcessing (GTAO, bloom, TRAA)" : "three WebGLRenderer + EffectComposer (GTAO, UnrealBloom, SMAA)",
     draws: `${drawsBuilt} InstancedMesh (${tiles ? `${TILE} m tiles` : "one per part"}), 48 SkinnedMesh, 2 particle draws`,
+    sampledTexturesPerStage: sampledTextures,
     textures: ktx2 ? "the engine's cooked KTX2 (KTX2Loader)" : "glTF PNGs (RGBA8)",
     props: L.MODELS.reduce((a, m) => a + m.count, 0),
     materials: materials.size,

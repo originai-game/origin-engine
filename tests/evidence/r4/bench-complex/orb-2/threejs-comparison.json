@@ -1,0 +1,194 @@
+{
+ "chrome": "/home/user/.agent-browser/browsers/chrome-156.0.8078.47/chrome",
+ "frames": 3,
+ "warm": 1,
+ "rounds": 1,
+ "size": "1280x720",
+ "summary": [
+  {
+   "scene": "complex",
+   "mode": "engine WebGPU",
+   "p50": 30.035,
+   "p95": 599.505,
+   "sustainedMs": 218.062,
+   "fps": 5,
+   "rounds": 1
+  },
+  {
+   "scene": "complex",
+   "mode": "engine WebGL2",
+   "p50": 2758.37,
+   "p95": 5831.41,
+   "sustainedMs": 3776.655,
+   "fps": 0,
+   "rounds": 1
+  },
+  {
+   "scene": "complex",
+   "mode": "three WebGL2, InstancedMesh per tile",
+   "p50": 2648.685,
+   "p95": 2739.705,
+   "sustainedMs": 2647.877,
+   "fps": 0,
+   "rounds": 1
+  },
+  {
+   "scene": "complex",
+   "mode": "three WebGL2, InstancedMesh per part",
+   "p50": 20.545,
+   "p95": 21.585,
+   "sustainedMs": 20.765,
+   "fps": 48,
+   "rounds": 1
+  },
+  {
+   "scene": "complex",
+   "mode": "three WebGPU, InstancedMesh per tile",
+   "p50": 215907.215,
+   "p95": 491186.33,
+   "sustainedMs": 244783.318,
+   "fps": 0,
+   "rounds": 1
+  }
+ ],
+ "runs": [
+  {
+   "scene": "complex",
+   "mode": "engine WebGPU",
+   "round": 1,
+   "load": "0.11, 0.55, 0.81",
+   "info": {
+    "tier": "webgpu",
+    "lanes": {
+     "on": true,
+     "threads": 8,
+     "why": ""
+    },
+    "isolated": true,
+    "scene": "complex"
+   },
+   "frames": 3,
+   "ms": {
+    "p50": 30.035,
+    "p95": 599.505,
+    "p99": 599.505,
+    "max": 599.505,
+    "mean": 218.062
+   },
+   "sustainedMs": 218.062,
+   "fps": 5,
+   "shot": "threejs-complex-engine-webgpu.png"
+  },
+  {
+   "scene": "complex",
+   "mode": "engine WebGL2",
+   "round": 1,
+   "load": "0.26, 0.57, 0.82",
+   "info": {
+    "tier": "webgl2",
+    "lanes": {
+     "on": true,
+     "threads": 8,
+     "why": ""
+    },
+    "isolated": true,
+    "scene": "complex"
+   },
+   "frames": 3,
+   "ms": {
+    "p50": 2758.37,
+    "p95": 5831.41,
+    "p99": 5831.41,
+    "max": 5831.41,
+    "mean": 3776.655
+   },
+   "sustainedMs": 3776.655,
+   "fps": 0,
+   "shot": "threejs-complex-engine-webgl2.png"
+  },
+  {
+   "scene": "complex",
+   "mode": "three WebGL2, InstancedMesh per tile",
+   "round": 1,
+   "load": "2.09, 0.95, 0.93",
+   "info": {
+    "renderer": "three WebGLRenderer + EffectComposer (GTAO, UnrealBloom, SMAA)",
+    "draws": "878 InstancedMesh (40 m tiles), 48 SkinnedMesh, 2 particle draws",
+    "sampledTexturesPerStage": null,
+    "textures": "the engine's cooked KTX2 (KTX2Loader)",
+    "props": 5261,
+    "materials": 67,
+    "particles": 36,
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 3,
+   "ms": {
+    "p50": 2648.685,
+    "p95": 2739.705,
+    "p99": 2739.705,
+    "max": 2739.705,
+    "mean": 2647.877
+   },
+   "sustainedMs": 2647.877,
+   "fps": 0,
+   "shot": "threejs-complex-three-webgl2-instancedmesh-per-tile.png"
+  },
+  {
+   "scene": "complex",
+   "mode": "three WebGL2, InstancedMesh per part",
+   "round": 1,
+   "load": "1.71, 0.97, 0.94",
+   "info": {
+    "renderer": "three WebGLRenderer + EffectComposer (GTAO, UnrealBloom, SMAA)",
+    "draws": "80 InstancedMesh (one per part), 48 SkinnedMesh, 2 particle draws",
+    "sampledTexturesPerStage": null,
+    "textures": "the engine's cooked KTX2 (KTX2Loader)",
+    "props": 5261,
+    "materials": 67,
+    "particles": 36,
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 3,
+   "ms": {
+    "p50": 20.545,
+    "p95": 21.585,
+    "p99": 21.585,
+    "max": 21.585,
+    "mean": 20.765
+   },
+   "sustainedMs": 20.765,
+   "fps": 48,
+   "shot": "threejs-complex-three-webgl2-instancedmesh-per-part.png"
+  },
+  {
+   "scene": "complex",
+   "mode": "three WebGPU, InstancedMesh per tile",
+   "round": 1,
+   "load": "1.43, 0.97, 0.94",
+   "info": {
+    "renderer": "three WebGPURenderer + PostProcessing (GTAO, bloom, TRAA)",
+    "draws": "878 InstancedMesh (40 m tiles), 48 SkinnedMesh, 2 particle draws",
+    "sampledTexturesPerStage": 16,
+    "textures": "the engine's cooked KTX2 (KTX2Loader)",
+    "props": 5261,
+    "materials": 67,
+    "particles": 36,
+    "version": "180",
+    "isolated": true
+   },
+   "frames": 3,
+   "ms": {
+    "p50": 215907.215,
+    "p95": 491186.33,
+    "p99": 491186.33,
+    "max": 491186.33,
+    "mean": 244783.318
+   },
+   "sustainedMs": 244783.318,
+   "fps": 0,
+   "shot": "threejs-complex-three-webgpu-instancedmesh-per-tile.png"
+  }
+ ]
+}
