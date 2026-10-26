@@ -879,8 +879,10 @@ frame is compared with `crates/og-tests/references/<webgpu|webgl2>/` when
 that frame is committed, else with `metal`, under the scene's own tolerance
 (`crates/og-tests/src/compare.rs`), and every frame's figures against
 `metal` are kept in the report. A scene that does not apply to the tier
-(`scenes::Applies`: `taa` and `shadows-local-8`, whose eight shadowed
-lights are four on WebGL2, are full tier only, `msaa` the no-compute
+(`scenes::Applies`: `taa`, `shadows-local-8`, whose eight shadowed
+lights are four on WebGL2, and `hooks-planar`, whose material shader
+reads the planar reflection that WebGL2's lit pipelines have no texture
+unit for, are full tier only, `msaa` the no-compute
 tier's 4x path) is listed, not rendered; `taa-sharp` asks for
 `Antialias::Taa` and is the WebGL2 tier's moving-camera TAA frame. `--scene a,b --time n`
 times any scene it names, the shadows-aa cost scenes too (`COSTS`:

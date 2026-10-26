@@ -706,10 +706,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         }
         "hooks-eye-front" => g.scene = crate::fork_scenes::hooks_eye_front_scene(),
         // Material shaders read the planar reflection, and a second surface
-        // gets one, only with the second slot (RenderOptions.planarReflections 2).
+        // gets one, only with the second slot (RenderOptions.planarReflections 2),
+        // and only on the full tier: on WebGL2 the joint palette is a texture
+        // and the lit pipelines have no unit left for the mirror
+        // (og_render::planar_slot), so `planar_reflection` reads 0 there.
         "hooks-planar" => {
             g.scene = crate::fork_scenes::hooks_planar_scene(true);
             g.desc.planar_reflections = 2;
+            g.applies = Applies::FullTier;
         }
         "hooks-screen-ao" => g.scene = crate::fork_scenes::hooks_screen_ao_scene(),
         "water-planar-two" => {

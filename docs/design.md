@@ -647,7 +647,9 @@ are Water.js's drifting and Water2's flowing normal-map ripples.
 Materials: `alphaToCoverage` (with MSAA) turns alpha-tested foliage into
 sample coverage, scatter included; material shaders get `Hook.eye`,
 `Hook.front`, `planar_reflection(p, shift)` (the frame's planar
-reflection, for a game's own water or floor) and `screen_ao(p)`.
+reflection, for a game's own water or floor, with
+`RenderOptions.planarReflections 2` on the full tier; 0 on WebGL2) and
+`screen_ao(p)`.
 `Terrain.visible false` keeps a terrain as ground for its scatter only,
 and `TerrainScatter.castShadows` turns the copies' shadows off. og-ui's
 style `ramp` takes a fifth number. The cook's `color_textures uastc`

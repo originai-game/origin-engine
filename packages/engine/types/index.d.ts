@@ -3436,7 +3436,7 @@ export interface RenderOptions {
    */
   readonly taaSharpen?: number;
   /**
-   * How many planar reflection surfaces draw at once: water surfaces (og.Water.planarReflection) that mirror the scene in a pass of their own in the same frame. 1: the first surface that asks (a grid surface before one over a mesh); a second surface reflects as if it did not ask (screen-space and sky reflections), never in the first's mirror, and the log says so once. 2: a second surface in view mirrors the scene too, and material shaders can read the first's mirror (`planar_reflection`), at the cost of one more texture in every lit pipeline and a second reflection pass while both are in view. RenderCapabilities.planarReflections reports the count the renderer was made with.
+   * How many planar reflection surfaces draw at once: water surfaces (og.Water.planarReflection) that mirror the scene in a pass of their own in the same frame. 1: the first surface that asks (a grid surface before one over a mesh); a second surface reflects as if it did not ask (screen-space and sky reflections), never in the first's mirror, and the log says so once. 2: a second surface in view mirrors the scene too, and material shaders can read the first's mirror (`planar_reflection`), at the cost of one more texture in every lit pipeline and a second reflection pass while both are in view. On WebGL2 the second surface still mirrors, but the lit pipelines have no texture unit left (the joint palette takes one there), so `planar_reflection` reads 0. RenderCapabilities.planarReflections reports the count the renderer was made with.
    *
    * @default 1
    * @range 1..2
