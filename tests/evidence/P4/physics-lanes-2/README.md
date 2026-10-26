@@ -237,3 +237,60 @@ call succeeded. These are pixel hashes, not whole-world hashes; publish
 strips the world dump. The direct web `og.physics.stats` acceptance and
 whole-world Chrome parity remain unverified, so owed row 52 stays partly
 open.
+
+## Chrome whole-world parity and direct physics stats (2026-10-26)
+
+**PASS:** on `db10aaf9`, all three Chrome modes produced the same complete
+world snapshot and pixels per pile. This closes the two acceptance checks
+left open above. `chrome-2026-10-26.json` contains the six runs, all frame
+samples, direct physics stats (including every phase), wasm SHA-256s, load
+samples and the temporary preload's source and command. No source, grain,
+baseline or reference changed.
+
+The machine was macrunner (12-core M4 Pro, macOS 27.2), Chrome for Testing
+150.0.7871.115, WebGPU, 1280×720. The gate's publish wasm from `3e9d7f21`
+was reused: the intervening changes through `db10aaf9` affect tests and
+documentation, not runtime code. Each mode had a 60-second pause before
+starting its page, 60 warm frames and 600 measured frames. One-minute load
+samples immediately before/after each run ranged from 4.30 to 6.12; these
+are endpoint samples, not continuous proof of idle load. This is one run
+per mode for parity and stats acceptance, not a new performance baseline.
+
+After the timed frames and capture, CDP read `og_physics_stats(0)` and
+`og_world_snapshot(0)` directly from the engine Worker's cached wasm
+module. The snapshot hash is SHA-256 of the **entire inflated OGWS world
+snapshot**, excluding only the 24-byte OGSV save wrapper. It covers local
+as well as shared state. It is not the canonical state-stream FNV returned
+by `Engine.hash()` (publish strips that probe), the shared-only
+`og_net_hash`, or a pixel hash. Identical complete snapshot bytes establish
+whole-world parity without enabling a non-publish runtime. The receipt
+also records the save's FNV checksum and snapshot byte count.
+
+| Bodies | Mode | Frame p50 ms | Step p50 ms | Direct physics ms | Threads | Physics pool | Split phases |
+|---|---|---:|---:|---:|---:|---|---|
+| 1,000 | Not isolated | 5.100 | 4.800 | 4.600 | 1 | false | none |
+| 1,000 | Isolated, lanes off | 5.135 | 4.790 | 4.455 | 1 | false | none |
+| 1,000 | Isolated, eight lanes | 5.185 | 4.830 | 4.285 | 8 | false | none |
+| 2,000 | Not isolated | 10.900 | 10.400 | 9.300 | 1 | false | none |
+| 2,000 | Isolated, lanes off | 10.870 | 10.330 | 10.165 | 1 | false | none |
+| 2,000 | Isolated, eight lanes | 6.340 | 5.830 | 5.000 | 8 | true | rapier, readout |
+
+Direct physics times are single observations of the last completed step
+(tick 659), not medians. Capture and snapshot are at the resulting boundary,
+tick 660. The eight-lane 2,000-box run reports 1,921 parallel calls; every
+other run reports zero. At 1,000 bodies, eight threads are available but
+physics remains serial, as the 1,500-body threshold requires.
+
+| Bodies | Whole-world snapshot SHA-256 (all three modes) | Bytes |
+|---|---|---:|
+| 1,000 | `3aa525ccb227f0d73899aa3da9ec343a767625e691626445d1d978723c36bb24` | 3,683,034 |
+| 2,000 | `f40f709bfac749903d850d16f072362298130e0aa6469605b38659f8fc690505` | 7,695,342 |
+
+RGBA SHA-256s also match all three modes and the October 24 captures:
+`200390c7afbf30c1028a27038d855ab5eda150ed647b1d36813fa87f457ffa22`
+(1,000) and
+`5a65e93417f80efc45344a8a82463f0aebf481b06455c912243af8a5c1b58784`
+(2,000). The 2,000-box eight-lane PNG was inspected: a pile of orange boxes
+on the gray floor, not a blank/error frame. Local PNGs and raw intermediate
+receipts remain in `.amp/in/lanes-52/`; the committed JSON retains their
+digests and the complete measurement data.
