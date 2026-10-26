@@ -60,7 +60,8 @@ Two runs of 120 ticks hash the same (`og run tools/bench/complex
 | local lights | 2 spot, 2 point, all shadowed, clustered (forward+) | 2 `SpotLight`, 2 `PointLight`, all shadowed (512, cube) | the same lights and shadow maps; three shades every light in every fragment where the engine culls them per cluster, which is the engine's design and is counted as its advantage, as on the reference scene |
 | particles | `og.ParticleSystem` of `fx/fire.ogt` and `fx/smoke.ogt` (GPU on WebGPU, CPU on WebGL2) | the same emitters from the same table (`layout.js` `FX`), simulated on the CPU, one instanced billboard draw per blend mode | the same emitters, rates, lifetimes and blend modes; three has no particle system, so its simulation is the simplest one (no noise, no soft particles, which the emitters do not ask for) |
 | transparency | blended materials sorted back to front | `transparent` materials sorted back to front | the same materials |
-| sky and IBL | `RenderSettings.sky` | `Sky` (WebGL2) or `SkyMesh` (WebGPU) prefiltered by `PMREMGenerator` | as `three-reference.js` |
+| sky and IBL | `RenderSettings.sky` (the built-in analytic sky), `environmentIntensity` 0.55 | the same analytic sky (`fs_sky` of `crates/og-render/shaders/ibl.wgsl`: zenith, horizon, ground, the sun's glow and disc, × 1.1) drawn once into a 512×256 half-float equirect, prefiltered by `PMREMGenerator`, `scene.environmentIntensity` 0.55, the same texture as background | the same sky at the same strength; three's `Sky` (the first run) is a much brighter atmosphere, under which the sun's shadows washed out |
+| shadow sampling | depth-only shadow maps | WebGL2: depth maps; WebGPU: three 0.180's `ShadowNode` also samples a colour map per shadowed light (the tint of transparent casters), which is dropped (below) | one filtered depth test per shadow map on all three |
 | AO | GTAO on WebGPU, SSAO on WebGL2 (the tier's) | `GTAOPass` (WebGL2), `GTAONode` (WebGPU) | three runs GTAO on both tiers, the costlier choice on WebGL2 |
 | bloom | the engine's | `UnrealBloomPass` (WebGL2), `BloomNode` (WebGPU), strength 0.25 | one pass each |
 | tone mapping | ACES | ACES (`OutputPass` or the renderer's) | the same curve |
@@ -73,3 +74,21 @@ MSAA on WebGL2, the per-tile `InstancedMesh` that three's culling needs
 and a particle simulation with less work than the engine's. Clustered lights
 are the engine's design, not a setting it could turn off; with four local
 lights their effect is small.
+
+On WebGPU, three 0.180 binds two textures and two samplers per shadowed
+light (the depth map and the colour map of transparent casters), so a
+normal-mapped material of this scene needs 17 of each in one fragment
+stage. Chrome lets a device ask for 48 sampled textures but never more than
+16 samplers, so the pipeline was refused and the canvas stayed black (the
+first Mac run, 2026-10-25). `three-complex.js` replaces
+`ShadowNode.prototype.setupShadow` with three's own PCF path minus the
+colour sample (built from the node's own `setupRenderTarget`,
+`setupShadowCoord` and `setupShadowFilter`, so the depth test, its bias and
+its filter are three's): opaque casters
+write (0, 0, 0, 1) into that map, so the shadow term is the same
+`mix(1, shadow, intensity)` from the filtered depth test alone, as on
+WebGLRenderer and in the engine, and three does less work, not more. three
+still renders the colour attachment of its shadow pass, which is its stock
+WebGPU path. In a sandbox without a GPU, three's WebGPU canvas presents only
+with `--use-angle=gl-egl` (without it the swap chain's shared image fails and
+the device is lost); `BENCH_CHROME_FLAGS` passes it.
