@@ -1,4 +1,4 @@
-//! `og dev [project] [--port P] [--exit-after N] [--json]`: the edit loop.
+//! `og dev [project] [--port P] [--exit-after N] [--json] [--engine]`: the edit loop.
 //!
 //! Cooks and bundles, then runs the game paced by the wall clock with the
 //! probe on `--port` (default 47800) and the bundle watched. A change under
@@ -28,6 +28,20 @@
 //! started stop with og; whatever is left after 3 s is killed, and og then
 //! ends by the signal it got. A game that stops on its own ends og with
 //! exit 1, and `--exit-after` stops the group the same way.
+//!
+//! `--engine` (an origin-engine checkout, for engine developers; a game
+//! author never needs it) also watches the engine's crates: each crate's
+//! `src/`, `shaders/`, `data/`, `Cargo.toml` and `build.rs`, and the
+//! workspace's `Cargo.toml` and `Cargo.lock`. A change rebuilds the dev addon
+//! (`cargo build -p og-host-node -p og-cli`) while the game keeps running; a failed
+//! build leaves it running, and a change that did not reach the addon
+//! restarts nothing. Otherwise the game hands its world over (SIGUSR2 to
+//! run.ts's `--handoff`: the world's save written between two frames) and a
+//! new process on the new addon restores it, migrating by name what the
+//! schema changed, and goes on from that tick: a hot restart, not a patch of
+//! the running code. Each prints its latency (build, handoff, start); with
+//! `--exit-after` restarts count with reloads. og itself is not restarted:
+//! an og-cli change takes the next `og dev`.
 
 use crate::check::{Checker, Report};
 use crate::project::{self, Project};
@@ -41,7 +55,9 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant, SystemTime};
 
 pub const BUDGET_MS: f64 = 300.0;
-const USAGE: &str = "usage: og dev [project] [--port P] [--exit-after N] [--json]";
+const USAGE: &str = "usage: og dev [project] [--port P] [--exit-after N] [--json] [--engine]";
+/// How often `--engine` looks at the engine's sources.
+const ENGINE_POLL: Duration = Duration::from_millis(250);
 
 /// Every file's modification time under `dir` (dot files skipped).
 pub(crate) fn snapshot(dir: &Path, out: &mut BTreeMap<PathBuf, SystemTime>) {
@@ -183,6 +199,215 @@ fn kill(pid: u32) {
     let _ = pid;
 }
 
+/// The game's stdout, line by line, into `tx` from a thread of its own.
+fn pipe(child: &mut std::process::Child, tx: mpsc::Sender<String>) {
+    let stdout = child.stdout.take().expect("piped");
+    std::thread::spawn(move || {
+        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+            if tx.send(line).is_err() {
+                break;
+            }
+        }
+    });
+}
+
+fn ms(since: Instant) -> f64 {
+    (since.elapsed().as_secs_f64() * 10_000.0).round() / 10.0
+}
+
+/// `--engine`'s state: the checkout it builds, the sources it watches, the
+/// copy of the addon the game runs (a new name per build, so the running
+/// process's file is never overwritten) and the restart in flight.
+struct EngineLoop {
+    repo: PathBuf,
+    dir: PathBuf,
+    save: PathBuf,
+    addon: PathBuf,
+    builds: usize,
+    seen: BTreeMap<PathBuf, SystemTime>,
+    polled: Instant,
+    pending: Option<Restart>,
+}
+
+impl EngineLoop {
+    /// The checkout above the project or the engine package, its addon built once.
+    fn open(project: &Project, package: &Path) -> Result<Self, String> {
+        if !cfg!(unix) {
+            return Err(
+                "the hot restart needs a Unix signal (SIGUSR2); not on this platform".into(),
+            );
+        }
+        let repo = crate::find_root(&project.root)
+            .or_else(|| crate::find_root(package))
+            .ok_or_else(|| {
+                format!(
+                    "rebuilds the engine of an origin-engine checkout, and there is none above {} or {}",
+                    project.root.display(),
+                    package.display()
+                )
+            })?;
+        let dir = project.work_dir().join("engine");
+        std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        eprintln!(
+            "og dev: building the engine in {} (cargo build -p og-host-node -p og-cli)",
+            repo.display()
+        );
+        let (built, _) = build_addon(&repo)?;
+        let mut e = EngineLoop {
+            save: dir.join("world.save"),
+            addon: PathBuf::new(),
+            builds: 0,
+            seen: BTreeMap::new(),
+            polled: Instant::now(),
+            pending: None,
+            repo,
+            dir,
+        };
+        e.seen = e.take();
+        e.addon = e.install(&built)?;
+        Ok(e)
+    }
+
+    /// Every watched file's modification time: what reaches the addon.
+    fn take(&self) -> BTreeMap<PathBuf, SystemTime> {
+        let mut m = BTreeMap::new();
+        let mut file = |f: PathBuf| {
+            if let Ok(t) = std::fs::metadata(&f).and_then(|m| m.modified()) {
+                m.insert(f, t);
+            }
+        };
+        file(self.repo.join("Cargo.toml"));
+        file(self.repo.join("Cargo.lock"));
+        let mut crates: Vec<PathBuf> = std::fs::read_dir(self.repo.join("crates"))
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|e| e.path())
+            .collect();
+        crates.sort();
+        for c in &crates {
+            file(c.join("Cargo.toml"));
+            file(c.join("build.rs"));
+        }
+        for c in &crates {
+            for d in ["src", "shaders", "data"] {
+                snapshot(&c.join(d), &mut m);
+            }
+        }
+        m
+    }
+
+    /// A copy of the built addon under a new name (bun loads a `.node`).
+    fn install(&mut self, built: &Path) -> Result<PathBuf, String> {
+        self.builds += 1;
+        let to = self.dir.join(format!("addon-{}.node", self.builds));
+        std::fs::copy(built, &to).map_err(|e| format!("cannot copy {} ({e})", built.display()))?;
+        Ok(to)
+    }
+}
+
+/// `cargo build -p og-host-node -p og-cli` in the checkout, its diagnostics on
+/// stderr: the addon's path and whether cargo built it anew.
+fn build_addon(repo: &Path) -> Result<(PathBuf, bool), String> {
+    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+    let out = std::process::Command::new(cargo)
+        .current_dir(repo)
+        // og with it: the pair packages/engine/scripts/build.sh builds, which
+        // resolves the features the test build does (docs/ci.md §Test
+        // binaries); og-host-node alone is a third graph, every crate twice.
+        .args([
+            "build",
+            "-p",
+            "og-host-node",
+            "-p",
+            "og-cli",
+            "--message-format=json-render-diagnostics",
+        ])
+        .stderr(Stdio::inherit())
+        .output()
+        .map_err(|e| format!("cannot run cargo ({e})"))?;
+    if !out.status.success() {
+        return Err("the engine build failed (above)".into());
+    }
+    for line in String::from_utf8_lossy(&out.stdout).lines() {
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(line) else {
+            continue;
+        };
+        if v["reason"] == "compiler-artifact"
+            && v["target"]["name"] == "og_host_node"
+            && let Some(f) = v["filenames"][0].as_str()
+        {
+            return Ok((PathBuf::from(f), !v["fresh"].as_bool().unwrap_or(false)));
+        }
+    }
+    Err("cargo named no og-host-node artifact".into())
+}
+
+/// A hot restart in flight: the save seen, the build's and the handoff's milliseconds.
+struct Restart {
+    saved: Instant,
+    build_ms: f64,
+    handoff_ms: f64,
+}
+
+impl Restart {
+    /// One line per restart; `restored` is run.ts's restored event.
+    fn report(&self, n: usize, restored: &serde_json::Value, json: bool) {
+        let total = ms(self.saved);
+        let start = ((total - self.build_ms - self.handoff_ms) * 10.0).round() / 10.0;
+        let ok = restored["ok"].as_bool().unwrap_or(true);
+        if json {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "event": "restart", "n": n, "ok": ok, "tick": restored["tick"],
+                    "reason": restored["reason"], "buildMs": self.build_ms,
+                    "handoffMs": self.handoff_ms, "startMs": start, "totalMs": total,
+                })
+            );
+        } else if ok {
+            println!(
+                "engine restart {n}: the world kept at tick {} in {total:.0} ms (build {:.0} ms + handoff {:.0} ms + start {start:.0} ms)",
+                restored["tick"], self.build_ms, self.handoff_ms
+            );
+        } else {
+            println!(
+                "engine restart {n}: the new engine started fresh ({}) in {total:.0} ms",
+                restored["reason"]
+                    .as_str()
+                    .unwrap_or("the world was refused")
+            );
+        }
+    }
+}
+
+/// Asks the game to hand its world over (run.ts `--handoff`).
+fn ask_handoff(pid: u32) {
+    #[cfg(unix)]
+    // SAFETY: kill has no memory effects; the pid is the game og started.
+    unsafe {
+        libc::kill(pid as i32, libc::SIGUSR2);
+    }
+    #[cfg(not(unix))]
+    let _ = pid;
+}
+
+/// The child's exit within `limit`, else it is killed and None.
+fn wait_exit(child: &mut std::process::Child, limit: Duration) -> Option<std::process::ExitStatus> {
+    let t0 = Instant::now();
+    loop {
+        if let Ok(Some(s)) = child.try_wait() {
+            return Some(s);
+        }
+        if t0.elapsed() > limit {
+            let _ = child.kill();
+            let _ = child.wait();
+            return None;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
 /// What is left of the game's process group once its leader ended.
 fn stop_group(group: Target) {
     #[cfg(unix)]
@@ -199,6 +424,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     let mut port = crate::probe::DEFAULT_PORT.to_string();
     let mut exit_after: Option<usize> = None;
     let mut json = false;
+    let mut engine_mode = false;
     let mut i = 0;
     while i < args.len() {
         match args[i] {
@@ -219,6 +445,7 @@ pub fn run(args: &[&str]) -> ExitCode {
                 i += 1;
             }
             "--json" => json = true,
+            "--engine" => engine_mode = true,
             a if a.starts_with('-') => {
                 eprintln!("og dev: unknown option `{a}`. {USAGE}");
                 return ExitCode::from(2);
@@ -284,42 +511,57 @@ pub fn run(args: &[&str]) -> ExitCode {
     if let Some(c) = &mut checks {
         c.start(source);
     }
-    let mut cmd = project::bun(&package, "src/node/run.ts");
-    // Its own process group: a signal to og reaches everything the game started.
-    #[cfg(unix)]
-    std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
-    let mut child = match cmd
-        .arg("--entry")
-        .arg(&bundle)
-        .arg("--root")
-        .arg(&p.root)
-        .arg("--watch")
-        .arg(&bundle)
-        .arg("--port")
-        .arg(&port)
-        .arg("--realtime")
-        .arg("--out")
-        .arg(p.root.join("og-out"))
-        .stdout(Stdio::piped())
-        .spawn()
-    {
+    let mut engine = if engine_mode {
+        match EngineLoop::open(&p, &package) {
+            Ok(e) => Some(e),
+            Err(e) => {
+                eprintln!("og dev --engine: {e}");
+                return ExitCode::FAILURE;
+            }
+        }
+    } else {
+        None
+    };
+    let handoff = engine.as_ref().map(|e| e.save.clone());
+    let spawn = |addon: Option<&Path>, restore: Option<&Path>| {
+        let mut cmd = project::bun(&package, "src/node/run.ts");
+        // Its own process group: a signal to og reaches everything the game started.
+        #[cfg(unix)]
+        std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
+        cmd.arg("--entry")
+            .arg(&bundle)
+            .arg("--root")
+            .arg(&p.root)
+            .arg("--watch")
+            .arg(&bundle)
+            .arg("--port")
+            .arg(&port)
+            .arg("--realtime")
+            .arg("--out")
+            .arg(p.root.join("og-out"))
+            .stdout(Stdio::piped());
+        if let Some(a) = addon {
+            cmd.env("OG_NATIVE_ADDON", a);
+        }
+        if let Some(h) = &handoff {
+            cmd.arg("--handoff").arg(h);
+        }
+        if let Some(r) = restore {
+            cmd.arg("--restore").arg(r);
+        }
+        cmd.spawn()
+    };
+    let mut child = match spawn(engine.as_ref().map(|e| e.addon.as_path()), None) {
         Ok(c) => c,
         Err(e) => {
             eprintln!("og dev: {} ({e})", project::NO_BUN);
             return ExitCode::FAILURE;
         }
     };
-    let group = Target::Group(child.id());
+    let mut group = Target::Group(child.id());
     relay::start(group);
     let (tx, rx) = mpsc::channel::<String>();
-    let stdout = child.stdout.take().expect("piped");
-    std::thread::spawn(move || {
-        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
-            if tx.send(line).is_err() {
-                break;
-            }
-        }
-    });
+    pipe(&mut child, tx.clone());
     let watched = [p.root.join("src"), p.root.join("assets")];
     let take = || {
         let mut m = BTreeMap::new();
@@ -330,6 +572,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     };
     let mut seen = take();
     let mut reloads = 0usize;
+    let mut restarts = 0usize;
     let mut worst = 0f64;
     // The rebuild time (save seen to bundle written) of each reload in
     // flight, and the source change its bundle holds.
@@ -374,6 +617,23 @@ pub fn run(args: &[&str]) -> ExitCode {
         }
         while let Ok(line) = rx.try_recv() {
             let parsed: Option<serde_json::Value> = serde_json::from_str(&line).ok();
+            // --engine's handoff and restore lines: the restart is reported once restored.
+            if let Some(v) = parsed
+                .as_ref()
+                .filter(|v| v["event"] == "handoff" || v["event"] == "restored")
+            {
+                if v["event"] == "restored"
+                    && let Some(r) = engine.as_mut().and_then(|e| e.pending.take())
+                {
+                    restarts += 1;
+                    r.report(restarts, v, json);
+                    if exit_after.is_some_and(|n| reloads + restarts >= n) {
+                        stopping = Some(Instant::now());
+                        break;
+                    }
+                }
+                continue;
+            }
             match parsed.filter(|v| v["event"] == "reload") {
                 Some(v) => {
                     reloads += 1;
@@ -423,7 +683,7 @@ pub fn run(args: &[&str]) -> ExitCode {
                             if within { "" } else { ", OVER" }
                         );
                     }
-                    if exit_after.is_some_and(|n| reloads >= n) {
+                    if exit_after.is_some_and(|n| reloads + restarts >= n) {
                         stopping = Some(Instant::now());
                         break;
                     }
@@ -434,6 +694,75 @@ pub fn run(args: &[&str]) -> ExitCode {
         std::thread::sleep(Duration::from_millis(20));
         if stopping.is_some() {
             continue;
+        }
+        if let Some(e) = &mut engine
+            && e.polled.elapsed() >= ENGINE_POLL
+        {
+            e.polled = Instant::now();
+            let now = e.take();
+            if !changed(&e.seen, &now).is_empty() {
+                e.seen = now;
+                let saved = Instant::now();
+                eprintln!(
+                    "og dev: the engine changed; building the addon (the game keeps running)"
+                );
+                match build_addon(&e.repo) {
+                    Err(err) => eprintln!("og dev: {err}; the game keeps running the last engine"),
+                    Ok((_, false)) => {
+                        eprintln!("og dev: the change does not reach the addon; nothing to restart")
+                    }
+                    Ok((built, true)) => {
+                        let build_ms = ms(saved);
+                        let addon = match e.install(&built) {
+                            Ok(a) => a,
+                            Err(err) => {
+                                eprintln!("og dev: {err}; the game keeps running the last engine");
+                                continue;
+                            }
+                        };
+                        let handed = Instant::now();
+                        let _ = std::fs::remove_file(&e.save);
+                        ask_handoff(child.id());
+                        let status = wait_exit(&mut child, Duration::from_secs(10));
+                        stop_group(group);
+                        let handoff_ms = ms(handed);
+                        let kept = status.is_some_and(|s| s.success()) && e.save.is_file();
+                        if !kept {
+                            eprintln!(
+                                "og dev: the game handed no world over ({}); the new engine starts fresh",
+                                status.map_or("it did not stop in 10 s".into(), |s| s.to_string())
+                            );
+                        }
+                        let restore = kept.then_some(e.save.as_path());
+                        match spawn(Some(&addon), restore) {
+                            Ok(mut c) => {
+                                pipe(&mut c, tx.clone());
+                                group = Target::Group(c.id());
+                                relay::retarget(group);
+                                child = c;
+                                let _ = std::fs::remove_file(&e.addon);
+                                e.addon = addon;
+                                let r = Restart {
+                                    saved,
+                                    build_ms,
+                                    handoff_ms,
+                                };
+                                if kept {
+                                    e.pending = Some(r);
+                                } else {
+                                    restarts += 1;
+                                    r.report(restarts, &serde_json::json!({ "ok": false, "reason": "no world handed over" }), json);
+                                }
+                            }
+                            Err(err) => {
+                                relay::stop();
+                                eprintln!("og dev: {} ({err})", project::NO_BUN);
+                                return ExitCode::FAILURE;
+                            }
+                        }
+                    }
+                }
+            }
         }
         let now = take();
         let changes = changed(&seen, &now);

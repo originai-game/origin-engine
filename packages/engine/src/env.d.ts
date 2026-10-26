@@ -26,6 +26,7 @@ declare module "node:fs" {
   export function rmSync(path: string, options?: { recursive?: boolean; force?: boolean }): void;
   export function mkdirSync(path: string, options?: { recursive?: boolean }): void;
   export function copyFileSync(from: string, to: string): void;
+  export function renameSync(from: string, to: string): void;
   export function statSync(path: string): { mtimeMs: number; size: number; isDirectory(): boolean };
   export function watch(path: string, listener: (event: string, file: string | null) => void): { close(): void };
 }
