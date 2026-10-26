@@ -224,3 +224,31 @@ On this branch's head, serially, with an idle minute between runs:
 - No phase-1 row named these branches. Rows 100 and 101 in
   `docs/phase-1.md` are new and may collide with another stream's numbers
   at the merge.
+
+## Coordinator, 2026-10-26: the shadow is reverted, the timer stays
+
+Decided after the Mac lane's numbers on the merge (9498bc0a):
+
+- `scripts/check.sh web-reference` passed (526 s), `gl-calls.ts` with it:
+  1,345 calls a frame leave wasm, 5/5. `gpu-timing.ts` passed on Metal's
+  Chrome with the real extension (`gpuTimestamps` true, `TIME_ELAPSED_EXT`
+  64 bits, `TIMESTAMP_EXT` 0), all 21 reference passes timed on both tiers
+  over 600 GPU frames. The WebGL2 pass sum there (36.5 ms a frame) is the
+  ANGLE-Metal reading described in
+  `tests/evidence/debt/webgl2-gpu-timing/NOTES.md` §Caveat.
+- `threejs-compare --only complex` (`tests/evidence/r4/bench-complex/mac-3/`):
+  engine WebGL2 7.592 ms (rounds 7.773 / 7.410) against 7.861 ms on mac-2
+  without the shadow, −3.4 %, less than the 0.363 ms spread between rounds.
+  WebGPU 5.228 ms. So the shadow shows no gain on the complex scene either,
+  as it showed none on the reference and spheres scenes on 2026-10-25.
+
+Item 1 of the list above therefore resolves to drop: `git revert e71328da`
+(1a1260ba) and `git revert 2d806ed7` (535dac11) on top of the merge, both
+clean. The vendored copy keeps patch 1 alone; ORIGIN.md, release.md F5 and
+phase-1 rows 100 and 101 say so. The GL call count returns to 3,793 a
+frame, with no test holding it: row 101 is closed by decision, not by a
+change. Wasm size with the timer alone: +1,677 B brotli on the 3D publish
+module (both patches were +4,758 B).
+
+Item 2: rows 100 and 101 kept their numbers; no other stream took them.
+Item 3: noted, nothing to do in the orb since gl-calls.ts is gone.

@@ -10,13 +10,19 @@ patching wgpu-hal alone is enough: `Cargo.lock` differs from the crates.io
 build only in wgpu-hal's `source` and `checksum` lines.
 
 The first commit that adds this copy is upstream unchanged (git normalised
-one CRLF file, `src/vulkan/descriptor.rs`, to LF). Each patch below is one
-commit after it, in the order listed, and touches only `src/gles/`, so the
-Metal, Vulkan and DX12 backends are byte for byte 30.0.1. Either patch can
-be reverted alone (`git log -- third_party/wgpu-hal`). Evidence for both:
-`tests/evidence/debt3/wgpu-hal-vendor/NOTES.md`.
+one CRLF file, `src/vulkan/descriptor.rs`, to LF). The one patch below is
+one commit after it and touches only `src/gles/`, so the Metal, Vulkan and
+DX12 backends are byte for byte 30.0.1. It reverts alone (`git log --
+third_party/wgpu-hal`). Evidence: `tests/evidence/debt3/wgpu-hal-vendor/NOTES.md`.
 
-## Patches, in the order applied
+A second patch, a GLES queue that skipped GL calls setting what was already
+set (e71328da), was carried on the same branch and reverted at the merge
+(1a1260ba, 2026-10-26): the Mac measured no gain from it on the complex
+scene (WebGL2 7.861 → 7.592 ms, less than the run spread), the same reading
+as the 2026-10-25 decision in `tests/evidence/r4/perf-webgl2-2/NOTES.md`.
+Its test, `tests/web/gl-calls.ts`, went with it.
+
+## Patches
 
 ### 1. Timestamp queries on WebGL2 through `EXT_disjoint_timer_query_webgl2`
 
@@ -52,22 +58,15 @@ v30.0.1 in `tests/evidence/debt/webgl2-gpu-timing/`):
 It costs about 1 kB brotli on a 3D module with the GL backend, publish
 included, since the choice is made at run time.
 
-### 2. The GLES queue skips GL calls that set what is already set
-
-Applied third (after patch 1). Cuts the GL calls a WebGL2 frame sends out
-of wasm.
-
 ## Moving wgpu to another version
 
 Take that version's crates.io wgpu-hal into this directory as one commit,
-unchanged, then carry each patch over as its own commit in the order above,
-or drop it:
+unchanged, then carry the patch over as its own commit, or drop it:
 
-- Drop a patch when the new upstream carries an equivalent (patch 1: the
-  GLES adapter offers `TIMESTAMP_QUERY` on WebGL2 and reads it with
-  `TIME_ELAPSED`; patch 2: the GLES queue stops restating unchanged state).
-- Carry a patch over when it does not: reapply its commit, resolve by hand
-  where both meet in `queue.rs`, and rerun the tests that hold it
-  (`packages/engine/tests/web/gpu-timing.ts` for patch 1,
-  `packages/engine/tests/web/gl-calls.ts` for patch 2).
+- Drop the patch when the new upstream carries an equivalent (the GLES
+  adapter offers `TIMESTAMP_QUERY` on WebGL2 and reads it with
+  `TIME_ELAPSED`).
+- Carry it over when it does not: reapply its commit, resolve by hand
+  where it meets upstream's `queue.rs`, and rerun the test that holds it
+  (`packages/engine/tests/web/gpu-timing.ts`).
 - Drop this copy and the `[patch.crates-io]` line when no patch is left.
