@@ -70,6 +70,9 @@ const SCENES: &[(&str, u32)] = &[
     ("gltf-reference", 4),
     ("point-spot-lights", 4),
     ("water-planar", 4),
+    // The second planar reflection slot culls on the CPU beside the GPU's
+    // first (RenderOptions.planarReflections 2).
+    ("water-planar-two", 4),
     ("msaa", 4),
     ("shader-hooks", 4),
     ("showcase", 4),
