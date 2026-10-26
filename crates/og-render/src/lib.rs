@@ -1301,6 +1301,8 @@ struct Batch {
 struct FxGroups {
     key: (u64, u64, Option<TextureHandle>, bool, bool, bool),
     fx: wgpu::BindGroup,
+    /// `fx` for the lightmapped pipelines (`Renderer::fx_lean_group`).
+    fx_lean: Option<wgpu::BindGroup>,
     sprite: wgpu::BindGroup,
     glow: wgpu::BindGroup,
 }
@@ -1591,6 +1593,10 @@ pub struct Renderer {
     msdf_pipeline: Sampled<wgpu::RenderPipeline>,
     ribbon_pipelines: [Sampled<wgpu::RenderPipeline>; 2],
     fx_layout: wgpu::BindGroupLayout,
+    /// `fx_layout` without the planar reflection, where it has it: the
+    /// lightmapped pipelines' group 2, whose lightmap pages would otherwise
+    /// be a seventeenth texture (`Renderer::fx_lean_group`).
+    fx_lean_layout: Option<wgpu::BindGroupLayout>,
     fx_buffer: wgpu::Buffer,
     sprite_fx_layout: wgpu::BindGroupLayout,
     sprite_fx_buffer: wgpu::Buffer,
@@ -2583,6 +2589,17 @@ impl Renderer {
                 tex2d(4),
             ][..if planar_slot(palette_mode) { 5 } else { 4 }],
         });
+        let fx_lean_layout = planar_slot(palette_mode).then(|| {
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("fx (lightmapped)"),
+                entries: &[
+                    uniform_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT),
+                    tex2d(1),
+                    tex2d(2),
+                    sampler_entry(3, wgpu::SamplerBindingType::Filtering),
+                ],
+            })
+        });
         let sprite_fx_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("sprite fx"),
             entries: &[
@@ -3165,6 +3182,7 @@ impl Renderer {
             msdf_pipeline,
             ribbon_pipelines,
             fx_layout,
+            fx_lean_layout,
             fx_buffer,
             sprite_fx_layout,
             sprite_fx_buffer,
@@ -4669,6 +4687,28 @@ impl Renderer {
         (list, culled)
     }
 
+    /// An effect group without the planar reflection, for the lightmapped
+    /// pipelines (`fx_lean_layout`); `None` where the effect group has no
+    /// planar reflection and serves them itself.
+    fn fx_lean_group(
+        &self,
+        buffer: &wgpu::Buffer,
+        ao: &wgpu::TextureView,
+        atlas: &wgpu::TextureView,
+    ) -> Option<wgpu::BindGroup> {
+        Some(bind_group(
+            &self.device,
+            "fx (lightmapped)",
+            self.fx_lean_layout.as_ref()?,
+            &[
+                buffer.as_entire_binding(),
+                wgpu::BindingResource::TextureView(ao),
+                wgpu::BindingResource::TextureView(atlas),
+                wgpu::BindingResource::Sampler(&self.trilinear_sampler),
+            ],
+        ))
+    }
+
     /// The transparent instances in view, sorted back to front by the view
     /// depth of their bounds' centre (ties keep submission order), as runs of
     /// one (mesh, material) appended to `transforms`. `billboards`: the
@@ -5566,17 +5606,19 @@ impl Renderer {
                     continue;
                 };
                 use lightmap::Family;
+                // Without the planar reflection, where it takes a slot.
+                let lightmap_fx = self.fx_lean_layout.as_ref().unwrap_or(&self.fx_layout);
                 let (groups, module) = match family {
                     Family::Standard | Family::Compact => {
-                        ([&self.material_layout, &self.fx_layout], &self.pbr_shader)
+                        ([&self.material_layout, lightmap_fx], &self.pbr_shader)
                     }
                     Family::Shader(sh) => (
-                        [&self.material_layout, &self.fx_layout],
+                        [&self.material_layout, lightmap_fx],
                         &self.cache.shaders[sh],
                     ),
                     Family::Array => {
                         let a = self.array_maps.as_ref().expect("an array batch");
-                        ([&a.layout, &self.fx_layout], &a.module)
+                        ([&a.layout, lightmap_fx], &a.module)
                     }
                     Family::Physical | Family::PhysicalShader(_) => {
                         let p = self.physical.as_ref().expect("a physical batch");
@@ -7692,6 +7734,7 @@ impl Renderer {
                         4
                     }],
                 ),
+                fx_lean: self.fx_lean_group(&self.fx_buffer, ao_view, atlas_view),
                 sprite: sprite_group(lightmap_view, "sprite fx"),
                 // The glow pass draws into a target that may alias the light
                 // map: its sprites read a placeholder instead.
@@ -7857,6 +7900,8 @@ impl Renderer {
                         t.size,
                         t.copy.as_ref().expect("made with the water"),
                         &t.prepass.lindepth,
+                        &self.post.white,
+                        &|h| self.cache.textures.get(h.index()).map(|t| &t.view),
                     )
                 })
                 .collect()
@@ -7945,6 +7990,32 @@ impl Renderer {
             })
             .collect();
         let view_groups = self.view_groups(scene, &view_plans);
+        // Each pass's effect group without the planar reflection, for its
+        // lightmapped draws (`fx_lean_group`), by the pass's own group.
+        let reflection_fx_lean: Vec<Option<wgpu::BindGroup>> = (0..reflections.len())
+            .map(|k| {
+                let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
+                    &self.cache.textures[t.index()].view
+                });
+                self.fx_lean_group(&self.reflection_fx_buffer[k], &self.post.white, atlas_view)
+            })
+            .collect();
+        let fx_leans: Vec<(&wgpu::BindGroup, &wgpu::BindGroup)> =
+            std::iter::once((fx_group, groups.fx_lean.as_ref()))
+                .chain(
+                    reflection_fx_group
+                        .iter()
+                        .zip(reflection_fx_lean.iter().map(Option::as_ref)),
+                )
+                .chain(view_groups.iter().map(|g| (&g.1, g.2.as_ref())))
+                .filter_map(|(fx, lean)| Some((fx, lean?)))
+                .collect();
+        let fx_lean_of = |fx: &wgpu::BindGroup| {
+            fx_leans
+                .iter()
+                .find(|(f, _)| std::ptr::eq(*f, fx))
+                .map(|(_, l)| *l)
+        };
         // Each view's metaball field groups (its own fields' textures).
         let view_fields: Vec<Vec<wgpu::BindGroup>> = view_plans
             .iter()
@@ -8105,9 +8176,14 @@ impl Renderer {
                          lit: bool,
                          current: &mut Option<LitDrawKey>,
                          physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
-                         probes: Option<probe_select::ProbeGroups>| {
+                         probes: Option<probe_select::ProbeGroups>,
+                         fx: Option<&wgpu::BindGroup>| {
             let mut shadow_key: Option<(ShadowKey, Option<usize>, bool, bool)> = None;
             let mut physical_bound = false;
+            // The pass's effect group without the planar reflection, bound
+            // for its standard lightmapped batches (`fx_lean_group`).
+            let lean = fx.and_then(fx_lean_of);
+            let mut lean_bound = false;
             // The batch's reflection probe's frame group (probe_select.rs).
             let mut binder = probe_select::Binder::new(probes);
             // The lightmap pages bound at group 3 (lightmap.rs: one
@@ -8136,7 +8212,10 @@ impl Renderer {
                             self.lightmaps
                                 .pipeline(f, (batch.side, batch.blend, batch.effects))
                         })
-                        .zip(self.lightmaps.group(batch.mesh));
+                        .zip(self.lightmaps.group(batch.mesh))
+                        // Where the planar reflection takes a slot, a pass
+                        // without the lean group draws it unbaked.
+                        .filter(|_| physical || self.fx_lean_layout.is_none() || lean.is_some());
                     lightmapped = lightmap.is_some();
                     if let Some((p, (pages, group))) = lightmap {
                         // Lightmapped (lightmap.rs): its pipeline, its
@@ -8151,11 +8230,24 @@ impl Renderer {
                         pass.set_pipeline(self.lit_pipeline_of(batch, false, physical));
                         *current = Some(key);
                     }
+                    match (lightmapped && !physical, lean, fx) {
+                        (true, Some(l), _) if !lean_bound => {
+                            pass.set_bind_group(2, l, &[]);
+                            lean_bound = true;
+                            physical_bound = false;
+                        }
+                        (false, _, Some(f)) if lean_bound => {
+                            pass.set_bind_group(2, f, &[]);
+                            lean_bound = false;
+                        }
+                        _ => {}
+                    }
                     if let Some((fx, pfx)) = physical_fx
                         && physical != physical_bound
                     {
                         pass.set_bind_group(2, if physical { pfx } else { fx }, &[]);
                         physical_bound = physical;
+                        lean_bound = false;
                     }
                     let m = &self.cache.materials[batch.material];
                     pass.set_bind_group(
@@ -8221,6 +8313,9 @@ impl Renderer {
                 && physical_bound
             {
                 pass.set_bind_group(2, fx, &[]);
+            }
+            if let (true, Some(f)) = (lean_bound, fx) {
+                pass.set_bind_group(2, f, &[]);
             }
             binder.reset(pass);
         };
@@ -8534,7 +8629,7 @@ impl Renderer {
              view: bool|
              -> u32 {
                 if boards.is_empty() && shadows.is_empty() {
-                    draw_list(pass, list, true, &mut None, physical_fx, probes);
+                    draw_list(pass, list, true, &mut None, physical_fx, probes, Some(fx));
                     return list.ranges.len() as u32;
                 }
                 let billboards = |pass: &mut wgpu::RenderPass, runs: &[sprites::SpriteRun]| {
@@ -8547,7 +8642,7 @@ impl Renderer {
                         ranges: list.ranges[range.clone()].to_vec(),
                         ..DrawList::default()
                     };
-                    draw_list(pass, &part, true, &mut None, physical_fx, probes);
+                    draw_list(pass, &part, true, &mut None, physical_fx, probes, Some(fx));
                     range.len() as u32
                 };
                 let mut draws = billboards(pass, shadows);
@@ -8709,7 +8804,7 @@ impl Renderer {
                 &self.shadow_bind_group,
                 &[(slot as u64 * SHADOW_SLOT_STRIDE) as u32],
             );
-            draw_list(&mut pass, list, false, &mut None, None, None);
+            draw_list(&mut pass, list, false, &mut None, None, None, None);
             stats.draw_calls += list.ranges.len() as u32;
             stats.shadow_casters += list.instances;
             stats.shadow_passes += 1;
@@ -9205,6 +9300,7 @@ impl Renderer {
                                 )),
                                 None,
                                 None,
+                                Some(fx_group),
                             );
                             stats.draw_calls += list.ranges.len() as u32;
                             // Skinned meshes in their pose, terrain and
@@ -9419,6 +9515,7 @@ impl Renderer {
                         )),
                         None,
                         None,
+                        Some(&reflection_fx_group[k]),
                     );
                     stats.draw_calls += list.ranges.len() as u32;
                     stats.reflection_draws += list.ranges.len() as u32;
@@ -9463,7 +9560,15 @@ impl Renderer {
                     pass.set_bind_group(0, &reflection_frame_group[k], &[]);
                     pass.set_bind_group(2, &reflection_fx_group[k], &[]);
                     let list = &reflection_blended[k];
-                    draw_list(&mut pass, list, true, &mut None, None, None);
+                    draw_list(
+                        &mut pass,
+                        list,
+                        true,
+                        &mut None,
+                        None,
+                        None,
+                        Some(&reflection_fx_group[k]),
+                    );
                     stats.draw_calls += list.ranges.len() as u32;
                     stats.reflection_draws += list.ranges.len() as u32;
                 }
@@ -9515,7 +9620,15 @@ impl Renderer {
                         let mut pass = self.views.begin(&mut encoder, p, clear);
                         pass.set_bind_group(0, &view_groups[i].0, &[]);
                         pass.set_bind_group(2, &view_groups[i].1, &[]);
-                        draw_list(&mut pass, &view_lists[i], true, &mut None, None, None);
+                        draw_list(
+                            &mut pass,
+                            &view_lists[i],
+                            true,
+                            &mut None,
+                            None,
+                            None,
+                            Some(&view_groups[i].1),
+                        );
                         stats.draw_calls += view_lists[i].ranges.len() as u32;
                         let pipelines: Vec<&wgpu::RenderPipeline> = view_skinned[i]
                             .iter()
@@ -9787,6 +9900,7 @@ impl Renderer {
                         )),
                         physical_fx,
                         probe_binding,
+                        Some(fx_group),
                     );
                     stats.draw_calls += main_list.ranges.len() as u32;
                     stats.draw_calls += draw_skinned(

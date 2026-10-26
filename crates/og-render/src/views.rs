@@ -1221,7 +1221,7 @@ impl crate::Renderer {
         &self,
         scene: &crate::RenderScene,
         plans: &[ViewPlan],
-    ) -> Vec<(wgpu::BindGroup, wgpu::BindGroup)> {
+    ) -> Vec<(wgpu::BindGroup, wgpu::BindGroup, Option<wgpu::BindGroup>)> {
         let ibl = self.ibl.views();
         let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
             &self.cache.textures[t.index()].view
@@ -1258,9 +1258,16 @@ impl crate::Renderer {
                         wgpu::BindingResource::TextureView(&self.post.white),
                         wgpu::BindingResource::TextureView(atlas_view),
                         wgpu::BindingResource::Sampler(&self.trilinear_sampler),
-                    ],
+                        // No planar reflection in a view (the main camera's).
+                        wgpu::BindingResource::TextureView(&self.post.white),
+                    ][..if crate::planar_slot(self.palette.mode()) {
+                        5
+                    } else {
+                        4
+                    }],
                 );
-                (frame, fx)
+                let lean = self.fx_lean_group(&slot.fx_buffer, &self.post.white, atlas_view);
+                (frame, fx, lean)
             })
             .collect()
     }

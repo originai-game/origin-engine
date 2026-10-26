@@ -640,13 +640,16 @@ impl WaterRenderer {
     /// the face's depth prepass, so the face refracts what lies below,
     /// foams at the edges and (full tier) reflects the face in screen
     /// space as the frame does; without the planar reflection.
-    pub(crate) fn face_draws(
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn face_draws<'a>(
         &self,
         device: &wgpu::Device,
         waters: &[Water],
         size: u32,
         below: &wgpu::TextureView,
         scene_depth: &wgpu::TextureView,
+        white: &wgpu::TextureView,
+        textures: &dyn Fn(crate::scene::TextureHandle) -> Option<&'a wgpu::TextureView>,
     ) -> Vec<WaterDraw> {
         use wgpu::util::DeviceExt;
         let n = size as f32;
@@ -666,6 +669,8 @@ impl WaterRenderer {
                     usage: wgpu::BufferUsages::UNIFORM,
                 });
                 let tex = wgpu::BindingResource::TextureView;
+                // No planar reflection nor screen AO in a face: its own
+                // copy and white in their slots.
                 let entries = [
                     uniform.as_entire_binding(),
                     tex(heights),
@@ -673,6 +678,9 @@ impl WaterRenderer {
                     tex(scene_depth),
                     wgpu::BindingResource::Sampler(&self.sampler),
                     tex(below),
+                    tex(water.normal_map.and_then(textures).unwrap_or(white)),
+                    wgpu::BindingResource::Sampler(&self.ripple_sampler),
+                    tex(white),
                 ];
                 let entries: Vec<wgpu::BindGroupEntry> = entries
                     .into_iter()
