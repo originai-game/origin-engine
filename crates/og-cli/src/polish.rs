@@ -66,7 +66,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
     let mut warnings: Vec<String> = Vec::new();
     if p.has_assets() {
-        match crate::cook::cook(&p.root, 0) {
+        match crate::cook::cook(&p.root, 0, false) {
             Ok(r) => warnings = r.warnings,
             Err(e) => {
                 eprintln!("og polish: {e}");

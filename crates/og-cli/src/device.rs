@@ -76,7 +76,7 @@ pub fn run(project: &str, out: Option<&str>, port: Option<&str>, a: &DeviceArgs)
         }
     }
     if p.has_assets()
-        && let Err(e) = crate::cook::cook(&p.root, 0)
+        && let Err(e) = crate::cook::cook(&p.root, 0, true)
     {
         eprintln!("{e}");
         return ExitCode::FAILURE;

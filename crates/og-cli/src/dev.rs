@@ -773,7 +773,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         let saved = Instant::now();
         let assets = changes.iter().any(|c| c.starts_with(p.root.join("assets")));
         if assets {
-            match crate::cook::cook(&p.root, 0) {
+            match crate::cook::cook(&p.root, 0, false) {
                 Ok(r) => {
                     eprintln!("{}", crate::cook::summary(&r));
                     for line in crate::cook::cooked_lines(&r) {

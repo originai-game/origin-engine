@@ -403,6 +403,7 @@ publish {
   made_with true          # the "Made with Origin Engine" badge
   icon "assets/icon.png"  # square PNG ≥ 192 px; absent: the brand tile
   short_name "Runner"     # the installed app's name
+  color_textures etc1s    # etc1s | uastc: this export's colour textures (default: cook's)
 }
 ```
 
@@ -412,6 +413,10 @@ the values it takes. Every key is optional; the defaults are the values
 shown, with no aspect, icon or short name. `probe` is read and checked but
 does not choose anything today: a `--publish` build always serves the
 player members and a dev build every member, whatever it says.
+`color_textures` is the export's cook: `og build` (and `og run --device`)
+cook colour textures as it says, over project.ogt's `cook {
+color_textures uastc }` (whose default is etc1s), so a game that wants
+UASTC natively can still ship ETC1S, a quarter of the bytes, on the web.
 
 A build replaces its output directory (`out`, or `--out`) whole, so it
 refuses one that is the project or an ancestor of it, holds a

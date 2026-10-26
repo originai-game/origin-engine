@@ -20,8 +20,16 @@
 //! whenever a file under assets/ changes, printing each cooked asset's time
 //! and the cook's against the 300 ms reload budget (`--exit-after N` stops
 //! after N of them; `--json` prints one JSON line per cook).
+//!
+//! Colour textures cook as project.ogt's `cook { color_textures etc1s|uastc
+//! }` says (etc1s without it); the web export's cook (`og build`, `og run
+//! --device`) takes `publish { color_textures ... }` over it, so a game can
+//! ship UASTC natively and a quarter of the bytes on the web
+//! ([`texture_options`]). Switching between the two re-encodes only the
+//! colour textures, and the shared texture cache keeps both encodings.
 
 use crate::project::Project;
+use og_cook::cook::TextureOptions;
 use og_cook::{CookOptions, Report, cook_project};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -157,11 +165,62 @@ fn default_lanes(f: &og_api::host::FieldDecl, lanes: usize) -> Option<Vec<f64>> 
     (out.len() == lanes).then_some(out)
 }
 
-/// Cooks a project; `Err` names the failing assets.
-pub fn cook(root: &Path, threads: usize) -> Result<Report, String> {
+/// The texture options of the project at `root`: project.ogt's `cook {
+/// color_textures uastc|etc1s }` (etc1s without it), which `publish {
+/// color_textures ... }` overrides for the web export (`web`: `og build`,
+/// `og run --device`). The defaults without a manifest.
+pub fn texture_options(root: &Path, web: bool) -> Result<TextureOptions, String> {
+    let mut o = TextureOptions::default();
+    let Ok(text) = std::fs::read_to_string(root.join("project.ogt")) else {
+        return Ok(o);
+    };
+    let doc = og_core::ogt::Document::parse(&text).map_err(|e| format!("project.ogt: {e}"))?;
+    let blocks: &[&str] = if web { &["cook", "publish"] } else { &["cook"] };
+    for name in blocks {
+        let Some(block) = doc.body.get(name).and_then(|e| e.block.as_ref()) else {
+            continue;
+        };
+        for e in &block.entries {
+            match e.key.as_str() {
+                "color_textures" => {
+                    let v = e
+                        .values
+                        .first()
+                        .and_then(|v| v.as_word().or_else(|| v.as_str()));
+                    o.color_uastc = match v {
+                        Some("uastc") => true,
+                        Some("etc1s") => false,
+                        _ => {
+                            return Err(format!(
+                                "project.ogt:{}: {name}.color_textures is `{}`; use etc1s (the default, a quarter of the bytes) or uastc (no 4x4 block colour loss)",
+                                e.line,
+                                v.unwrap_or("")
+                            ));
+                        }
+                    };
+                }
+                // The publish block's other settings are the export's
+                // (`publish.rs`).
+                _ if *name == "publish" => {}
+                other => {
+                    return Err(format!(
+                        "project.ogt:{}: cook has no `{other}`; it takes color_textures",
+                        e.line
+                    ));
+                }
+            }
+        }
+    }
+    Ok(o)
+}
+
+/// Cooks a project for a native run, or for the web export (`web`, which
+/// takes project.ogt's `publish` overrides); `Err` names the failing assets.
+pub fn cook(root: &Path, threads: usize, web: bool) -> Result<Report, String> {
     let options = CookOptions {
         threads,
         schemas: engine_schemas(),
+        texture: texture_options(root, web)?,
         ..CookOptions::default()
     };
     let report = cook_project(root, &options).map_err(|e| format!("og cook: {e}"))?;
@@ -275,10 +334,17 @@ fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> 
             .filter_map(|c| c.strip_prefix(&assets).ok())
             .map(|c| c.to_string_lossy().replace('\\', "/"))
             .collect();
-        let options = CookOptions {
-            threads,
-            schemas: engine_schemas(),
-            ..CookOptions::default()
+        let options = match texture_options(root, false) {
+            Ok(texture) => CookOptions {
+                threads,
+                schemas: engine_schemas(),
+                texture,
+                ..CookOptions::default()
+            },
+            Err(e) => {
+                eprintln!("og cook: {e}");
+                continue;
+            }
         };
         match cook_project(root, &options) {
             Ok(r) if json => {
@@ -389,7 +455,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         eprintln!("og cook: {} has no assets/ to cook", p.root.display());
         return ExitCode::FAILURE;
     }
-    match cook(&p.root, threads) {
+    match cook(&p.root, threads, false) {
         Ok(r) => {
             if let Some(path) = report
                 && let Err(e) = std::fs::write(&path, r.to_markdown())
@@ -440,6 +506,47 @@ pub fn run(args: &[&str]) -> ExitCode {
         Err(e) => {
             eprintln!("{e}");
             ExitCode::FAILURE
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::texture_options;
+
+    fn project(text: &str) -> std::path::PathBuf {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static N: AtomicU32 = AtomicU32::new(0);
+        let dir = std::env::temp_dir().join(format!(
+            "og-cook-options-{}-{}",
+            std::process::id(),
+            N.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("project.ogt"), text).unwrap();
+        dir
+    }
+
+    #[test]
+    fn color_textures_reach_texture_options_with_the_publish_override() {
+        let head = "type project\nversion 1\n---\nname \"t\"\n";
+        let both = project(&format!(
+            "{head}cook {{\n  color_textures uastc\n}}\npublish {{\n  probe player\n  color_textures etc1s\n}}\n"
+        ));
+        assert!(texture_options(&both, false).unwrap().color_uastc);
+        assert!(!texture_options(&both, true).unwrap().color_uastc);
+        // Without an override the web export takes the cook block's.
+        let cook_only = project(&format!("{head}cook {{\n  color_textures uastc\n}}\n"));
+        assert!(texture_options(&cook_only, true).unwrap().color_uastc);
+        // The default is ETC1S, and a publish override alone moves only the export.
+        let publish_only = project(&format!("{head}publish {{\n  color_textures uastc\n}}\n"));
+        assert!(!texture_options(&publish_only, false).unwrap().color_uastc);
+        assert!(texture_options(&publish_only, true).unwrap().color_uastc);
+        let bad = project(&format!("{head}cook {{\n  color_textures astc\n}}\n"));
+        let e = texture_options(&bad, false).unwrap_err();
+        assert!(e.contains("project.ogt:6") && e.contains("etc1s"), "{e}");
+        for d in [both, cook_only, publish_only, bad] {
+            let _ = std::fs::remove_dir_all(d);
         }
     }
 }
