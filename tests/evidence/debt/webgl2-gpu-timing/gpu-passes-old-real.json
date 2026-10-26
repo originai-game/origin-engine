@@ -1,0 +1,21 @@
+{
+  "tier": "webgl2",
+  "mode": "webgl2",
+  "chrome": "/home/user/.agent-browser/browsers/chrome-156.0.8078.47/chrome",
+  "timerShim": false,
+  "timer": {
+    "extension": true,
+    "timestampBits": 0,
+    "elapsedBits": 64
+  },
+  "frames": 60,
+  "warm": 20,
+  "gpuFrames": 0,
+  "total": {
+    "mean": 0,
+    "p50": 0,
+    "p95": 0
+  },
+  "passes": [],
+  "lastProbeGpuPasses": []
+}

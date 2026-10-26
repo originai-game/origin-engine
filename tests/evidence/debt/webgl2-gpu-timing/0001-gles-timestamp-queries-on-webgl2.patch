@@ -1,0 +1,369 @@
+From f9b19fb4f4c954708bd7a6e4c6f90c877a10361f Mon Sep 17 00:00:00 2001
+From: Origin Engine <engine@origingame.ai>
+Date: Sun, 25 Oct 2026 18:41:28 +0000
+Subject: [PATCH] [gles] Timestamp queries on WebGL2 through
+ EXT_disjoint_timer_query_webgl2
+
+WebGL2 offers GPU timing through EXT_disjoint_timer_query_webgl2, but the
+GLES adapter set TIMESTAMP_QUERY only for GL_ARB_timer_query, so on the
+web the feature was never offered. The extension's TIMESTAMP_EXT counter
+has 0 bits in Chrome (ANGLE's Metal and D3D11 backends, and WebGL's own
+clamp), so queryCounterEXT cannot be used; TIME_ELAPSED_EXT works
+everywhere the extension exists. Each timestamp write now ends the
+TIME_ELAPSED query begun by the previous write in the submission and
+begins its own; resolving a query adds the intervals back to the first
+write of its submission (CPU clock). Results that are not yet available,
+overwritten, or taken across a GPU_DISJOINT_EXT report resolve to 0, the
+value of an unwritten query. glow's web backend never reaches
+get_query_parameter_u64_with_offset (which panics) because WebGL has no
+QUERY_BUFFERS and no QUERY_64BIT.
+
+Amp-Thread-ID: https://ampcode.com/threads/T-01a1743a-1fde-7456-b0bf-95294b1f65a1
+Co-authored-by: FAN <xiaomao2026@gmail.com>
+---
+ wgpu-hal/src/gles/adapter.rs |  12 ++-
+ wgpu-hal/src/gles/command.rs |   1 +
+ wgpu-hal/src/gles/device.rs  |   3 +
+ wgpu-hal/src/gles/mod.rs     |   9 ++
+ wgpu-hal/src/gles/queue.rs   | 194 ++++++++++++++++++++++++++++++++++-
+ 5 files changed, 214 insertions(+), 5 deletions(-)
+
+diff --git a/wgpu-hal/src/gles/adapter.rs b/wgpu-hal/src/gles/adapter.rs
+index 47b8115..6cafd2a 100644
+--- a/wgpu-hal/src/gles/adapter.rs
++++ b/wgpu-hal/src/gles/adapter.rs
+@@ -527,7 +527,12 @@ impl super::Adapter {
+             wgt::Features::SHADER_EARLY_DEPTH_TEST,
+             supported((3, 1), (4, 2)) || extensions.contains("GL_ARB_shader_image_load_store"),
+         );
+-        if extensions.contains("GL_ARB_timer_query") {
++        // WebGL2 times the GPU through `EXT_disjoint_timer_query_webgl2`,
++        // whose `TIMESTAMP_EXT` counter has no bits on ANGLE's Metal and
++        // D3D11 backends: timestamps are built from `TIME_ELAPSED_EXT`
++        // queries there (`PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED`).
++        let timestamp_from_time_elapsed = extensions.contains("EXT_disjoint_timer_query_webgl2");
++        if extensions.contains("GL_ARB_timer_query") || timestamp_from_time_elapsed {
+             features.set(wgt::Features::TIMESTAMP_QUERY, true);
+             features.set(wgt::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS, true);
+             features.set(wgt::Features::TIMESTAMP_QUERY_INSIDE_PASSES, true);
+@@ -680,6 +685,10 @@ impl super::Adapter {
+         );
+         private_caps.set(super::PrivateCapabilities::QUERY_BUFFERS, query_buffers);
+         private_caps.set(super::PrivateCapabilities::QUERY_64BIT, full_ver.is_some());
++        private_caps.set(
++            super::PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED,
++            timestamp_from_time_elapsed && !extensions.contains("GL_ARB_timer_query"),
++        );
+         private_caps.set(
+             super::PrivateCapabilities::TEXTURE_STORAGE,
+             supported((3, 0), (4, 2)),
+@@ -956,6 +965,7 @@ impl super::Adapter {
+                     shading_language_version,
+                     next_shader_id: Default::default(),
+                     program_cache: Default::default(),
++                    elapsed_timestamps: Default::default(),
+                     es: es_ver.is_some(),
+                     max_msaa_samples: max_samples,
+                 }),
+diff --git a/wgpu-hal/src/gles/command.rs b/wgpu-hal/src/gles/command.rs
+index 427551c..5f23f3d 100644
+--- a/wgpu-hal/src/gles/command.rs
++++ b/wgpu-hal/src/gles/command.rs
+@@ -487,6 +487,7 @@ impl crate::CommandEncoder for super::CommandEncoder {
+         let query_range = start as u32..self.cmd_buffer.queries.len() as u32;
+         self.cmd_buffer.commands.push(C::CopyQueryResults {
+             query_range,
++            query_target: set.target,
+             dst: buffer.clone(),
+             dst_target: buffer.target,
+             dst_offset: offset,
+diff --git a/wgpu-hal/src/gles/device.rs b/wgpu-hal/src/gles/device.rs
+index 1c61cf3..5222418 100644
+--- a/wgpu-hal/src/gles/device.rs
++++ b/wgpu-hal/src/gles/device.rs
+@@ -1715,6 +1715,9 @@ impl crate::Device for super::Device {
+ 
+     unsafe fn destroy_query_set(&self, set: super::QuerySet) {
+         let gl = &self.shared.context.lock();
++        if set.target == glow::TIMESTAMP {
++            self.shared.elapsed_timestamps.lock().forget(&set.queries);
++        }
+         for &query in set.queries.iter() {
+             unsafe { gl.delete_query(query) };
+         }
+diff --git a/wgpu-hal/src/gles/mod.rs b/wgpu-hal/src/gles/mod.rs
+index 24e26c6..a84aa02 100644
+--- a/wgpu-hal/src/gles/mod.rs
++++ b/wgpu-hal/src/gles/mod.rs
+@@ -249,6 +249,11 @@ bitflags::bitflags! {
+         /// `GL_ARB_shader_image_load_store`; GLES needs `GL_NV_image_formats`
+         /// (which itself depends on `GL_EXT_texture_norm16`).
+         const TEXTURE_FORMAT_NORM16_STORAGE = 1 << 20;
++        /// Timestamp queries are built from chained `TIME_ELAPSED` queries
++        /// ([`queue::ElapsedTimestamps`]): WebGL2's
++        /// `EXT_disjoint_timer_query_webgl2`, whose `TIMESTAMP_EXT` counter
++        /// has no bits on ANGLE's Metal and D3D11 backends.
++        const TIMESTAMP_FROM_TIME_ELAPSED = 1 << 21;
+     }
+ }
+ 
+@@ -295,6 +300,8 @@ struct AdapterShared {
+     shading_language_version: naga::back::glsl::Version,
+     next_shader_id: AtomicU32,
+     program_cache: Mutex<ProgramCache>,
++    /// The timestamp writes of [`PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED`].
++    elapsed_timestamps: Mutex<queue::ElapsedTimestamps>,
+     es: bool,
+ 
+     /// Result of `gl.get_parameter_i32(glow::MAX_SAMPLES)`.
+@@ -315,6 +322,7 @@ impl fmt::Debug for AdapterShared {
+             shading_language_version,
+             next_shader_id,
+             program_cache: _,
++            elapsed_timestamps: _,
+             es,
+             max_msaa_samples,
+         } = self;
+@@ -988,6 +996,7 @@ enum Command {
+     TimestampQuery(glow::Query),
+     CopyQueryResults {
+         query_range: Range<u32>,
++        query_target: BindTarget,
+         dst: Buffer,
+         dst_target: BindTarget,
+         dst_offset: wgt::BufferAddress,
+diff --git a/wgpu-hal/src/gles/queue.rs b/wgpu-hal/src/gles/queue.rs
+index 9984cd5..1a28ff6 100644
+--- a/wgpu-hal/src/gles/queue.rs
++++ b/wgpu-hal/src/gles/queue.rs
+@@ -1,5 +1,5 @@
+ use alloc::sync::Arc;
+-use alloc::vec;
++use alloc::{vec, vec::Vec};
+ use core::sync::atomic::Ordering;
+ 
+ use arrayvec::ArrayVec;
+@@ -1005,10 +1005,19 @@ impl super::Queue {
+                 unsafe { gl.end_query(target) };
+             }
+             C::TimestampQuery(query) => {
+-                unsafe { gl.query_counter(query, glow::TIMESTAMP) };
++                if self
++                    .shared
++                    .private_caps
++                    .contains(PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED)
++                {
++                    unsafe { self.shared.elapsed_timestamps.lock().write(gl, query) };
++                } else {
++                    unsafe { gl.query_counter(query, glow::TIMESTAMP) };
++                }
+             }
+             C::CopyQueryResults {
+                 ref query_range,
++                query_target,
+                 ref dst,
+                 dst_target,
+                 dst_offset,
+@@ -1060,9 +1069,17 @@ impl super::Queue {
+                 } else {
+                     let mut temp_query_results = self.temp_query_results.lock();
+                     temp_query_results.clear();
+-                    for &query in
+-                        queries[query_range.start as usize..query_range.end as usize].iter()
++                    let range = &queries[query_range.start as usize..query_range.end as usize];
++                    if query_target == glow::TIMESTAMP
++                        && self
++                            .shared
++                            .private_caps
++                            .contains(PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED)
+                     {
++                        let timestamps = self.shared.elapsed_timestamps.lock();
++                        unsafe { timestamps.resolve(gl, range, &mut temp_query_results) };
++                    }
++                    for &query in range.iter().skip(temp_query_results.len()) {
+                         let mut result: u64 = 0;
+                         unsafe {
+                             if self
+@@ -1944,6 +1961,14 @@ impl crate::Queue for super::Queue {
+             }
+         }
+ 
++        if self
++            .shared
++            .private_caps
++            .contains(PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED)
++        {
++            unsafe { self.shared.elapsed_timestamps.lock().end_submission(gl) };
++        }
++
+         signal_fence.maintain(gl);
+         signal_fence.signal(gl, signal_value)?;
+ 
+@@ -1978,3 +2003,164 @@ impl crate::Queue for super::Queue {
+ unsafe impl Sync for super::Queue {}
+ #[cfg(send_sync)]
+ unsafe impl Send for super::Queue {}
++
++/// `GPU_DISJOINT_EXT` (`EXT_disjoint_timer_query`): whether the GPU's timer
++/// was disturbed (a power change, a context switch) since it was last asked,
++/// which invalidates every timer query in flight.
++const GPU_DISJOINT: u32 = 0x8FBB;
++
++/// Timestamp queries on a context that times intervals only
++/// ([`PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED`]): WebGL2's
++/// `EXT_disjoint_timer_query_webgl2` has `queryCounterEXT`, but its
++/// `TIMESTAMP_EXT` counter has no bits on ANGLE's Metal and D3D11 backends
++/// (Chrome on macOS and Windows), where only `TIME_ELAPSED_EXT` measures.
++///
++/// Each timestamp write ends the `TIME_ELAPSED` query the write before it
++/// in the submission began and begins its own, so the queries cover the
++/// submission's commands from its first write on, back to back, and the
++/// timestamp of a write is the first write's plus the intervals between.
++/// The first write of a submission takes the CPU's clock in nanoseconds:
++/// timestamps of one submission differ by the GPU's time exactly, those of
++/// different submissions only as closely as the CPU's clock follows the GPU.
++///
++/// A timestamp resolves to 0 (WebGPU's unwritten query) when it, or a write
++/// it is reckoned from, is unwritten, rewritten since, or not yet
++/// available, and every one does when the context reports a disjoint
++/// operation since the last resolve: WebGL makes a query's result available
++/// only after the task that ended it, never in it.
++#[derive(Debug, Default)]
++pub(super) struct ElapsedTimestamps {
++    /// The `TIME_ELAPSED` query begun by the last write of the submission
++    /// being executed.
++    active: Option<glow::Query>,
++    writes: naga::FastHashMap<glow::Query, ElapsedWrite>,
++}
++
++#[derive(Clone, Copy, Debug)]
++struct ElapsedWrite {
++    /// Counts the query's writes, so that a write reckoned from an earlier
++    /// one sees when that one was overwritten.
++    generation: u32,
++    since: ElapsedSince,
++}
++
++#[derive(Clone, Copy, Debug)]
++enum ElapsedSince {
++    /// The first write of its submission, at this CPU time.
++    Start(u64),
++    /// The write after this query's write of this generation, whose
++    /// `TIME_ELAPSED` interval it ended.
++    After(glow::Query, u32),
++}
++
++impl ElapsedTimestamps {
++    pub(super) unsafe fn write(&mut self, gl: &glow::Context, query: glow::Query) {
++        let since = match self.active.take() {
++            Some(previous) => {
++                unsafe { gl.end_query(glow::TIME_ELAPSED) };
++                ElapsedSince::After(previous, self.writes[&previous].generation)
++            }
++            None => ElapsedSince::Start(cpu_time_ns()),
++        };
++        let generation = self
++            .writes
++            .get(&query)
++            .map_or(0, |w| w.generation.wrapping_add(1));
++        self.writes
++            .insert(query, ElapsedWrite { generation, since });
++        unsafe { gl.begin_query(glow::TIME_ELAPSED, query) };
++        self.active = Some(query);
++    }
++
++    /// Ends the last interval at the end of the submission.
++    pub(super) unsafe fn end_submission(&mut self, gl: &glow::Context) {
++        if self.active.take().is_some() {
++            unsafe { gl.end_query(glow::TIME_ELAPSED) };
++        }
++    }
++
++    /// Drops the writes of a destroyed query set.
++    pub(super) fn forget(&mut self, queries: &[glow::Query]) {
++        for query in queries {
++            self.writes.remove(query);
++        }
++    }
++
++    /// Pushes the timestamp of each of `queries` onto `out`.
++    pub(super) unsafe fn resolve(
++        &self,
++        gl: &glow::Context,
++        queries: &[glow::Query],
++        out: &mut Vec<u64>,
++    ) {
++        if unsafe { gl.get_parameter_bool(GPU_DISJOINT) } {
++            out.extend(queries.iter().map(|_| 0));
++            return;
++        }
++        // Timestamps already reckoned in this resolve, `None` where unknown.
++        let mut known = naga::FastHashMap::<glow::Query, Option<u64>>::default();
++        for &query in queries {
++            let timestamp = unsafe { self.timestamp(gl, query, &mut known) };
++            out.push(timestamp.unwrap_or(0));
++        }
++    }
++
++    unsafe fn timestamp(
++        &self,
++        gl: &glow::Context,
++        query: glow::Query,
++        known: &mut naga::FastHashMap<glow::Query, Option<u64>>,
++    ) -> Option<u64> {
++        // Back through the writes to one already reckoned or the
++        // submission's first, then forward adding each interval.
++        let mut path = Vec::new();
++        let mut at = query;
++        let mut timestamp = loop {
++            if let Some(&known) = known.get(&at) {
++                break known;
++            }
++            let Some(write) = self.writes.get(&at) else {
++                break None;
++            };
++            match write.since {
++                ElapsedSince::Start(cpu) => {
++                    known.insert(at, Some(cpu));
++                    break Some(cpu);
++                }
++                ElapsedSince::After(previous, generation) => {
++                    path.push(at);
++                    match self.writes.get(&previous) {
++                        Some(w) if w.generation == generation => at = previous,
++                        _ => break None,
++                    }
++                }
++            }
++        };
++        for &next in path.iter().rev() {
++            let ElapsedSince::After(previous, _) = self.writes[&next].since else {
++                unreachable!("only a write after another is on the path");
++            };
++            timestamp = timestamp.and_then(|t| {
++                let available =
++                    unsafe { gl.get_query_parameter_u32(previous, glow::QUERY_RESULT_AVAILABLE) };
++                (available != 0).then(|| {
++                    t + unsafe { gl.get_query_parameter_u64(previous, glow::QUERY_RESULT) }
++                })
++            });
++            known.insert(next, timestamp);
++        }
++        timestamp
++    }
++}
++
++/// The CPU's clock in nanoseconds: the first timestamp of a submission
++/// ([`ElapsedTimestamps`]). Only WebGL builds timestamps from intervals
++/// (`EXT_disjoint_timer_query_webgl2` is WebGL's): elsewhere any nonzero
++/// value would do and none is ever taken.
++fn cpu_time_ns() -> u64 {
++    #[cfg(webgl)]
++    let ns = (js_sys::Date::now() * 1e6) as u64;
++    #[cfg(not(webgl))]
++    let ns = 1;
++    ns
++}
+-- 
+2.55.0
+

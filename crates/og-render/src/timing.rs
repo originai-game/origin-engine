@@ -21,6 +21,14 @@
 //! opened (`ProbeTimings.gpuPasses`): the GPU's time in queue order,
 //! which sums to the frame.
 //!
+//! WebGL2 has the same pairs where the context has
+//! `EXT_disjoint_timer_query_webgl2` (Chrome; not Firefox or Safari): its
+//! `TIMESTAMP_EXT` counter has no bits there, so the carried wgpu-hal
+//! (`third_party/wgpu-hal`, patch 1 of its ORIGIN.md) builds each timestamp from
+//! `TIME_ELAPSED_EXT` queries chained from the frame's first write, and
+//! resolves every query of a frame the GPU's timer was disturbed in
+//! (`GPU_DISJOINT_EXT`) to 0: no frame is reported for it ([`frame_of`]).
+//!
 //! The timestamps of a frame are resolved into a buffer, copied to a
 //! readback and mapped after the submit; a later frame (or
 //! [`crate::Renderer::gpu_timings`]) reads them, so the GPU's numbers
@@ -465,7 +473,7 @@ impl GpuTimer {
                     let (words, _) = view.as_chunks::<8>();
                     words.iter().map(|b| u64::from_le_bytes(*b)).collect()
                 };
-                self.done.push(frame_of(p, &ticks, self.period_ns));
+                self.done.extend(frame_of(p, &ticks, self.period_ns));
             }
             s.read.unmap();
         }
@@ -543,8 +551,11 @@ impl GpuTimer {
 /// end among them. Each graph pass runs from the end of the one before it
 /// (the frame's first beginning for the first) to its own end, in queue
 /// order (the module's documentation). A query the GPU left at 0 is not
-/// read; a pass with none ends where the one before it did, 0 ms long.
-fn frame_of(p: Pending, ticks: &[u64], period_ns: f64) -> GpuFrame {
+/// read; a pass with none ends where the one before it did, 0 ms long. A
+/// frame with no query read is no frame (`None`): WebGL2 resolves every
+/// query of a frame its timer was disturbed in to 0 (wgpu-hal's
+/// `ElapsedTimestamps`, the `GPU_DISJOINT_EXT` flag).
+fn frame_of(p: Pending, ticks: &[u64], period_ns: f64) -> Option<GpuFrame> {
     let span = |r: &Range<u32>| -> Option<(u64, u64)> {
         let mut span: Option<(u64, u64)> = None;
         for q in (r.start..r.end).step_by(2) {
@@ -559,7 +570,7 @@ fn frame_of(p: Pending, ticks: &[u64], period_ns: f64) -> GpuFrame {
         span
     };
     let spans: Vec<Option<(u64, u64)>> = p.passes.iter().map(|(_, r)| span(r)).collect();
-    let first = spans.iter().flatten().map(|s| s.0).min().unwrap_or(0);
+    let first = spans.iter().flatten().map(|s| s.0).min()?;
     let ms = |ticks: u64| ticks.saturating_sub(first) as f64 * period_ns / 1e6;
     let mut prev_end = 0.0;
     let passes = p
@@ -577,11 +588,11 @@ fn frame_of(p: Pending, ticks: &[u64], period_ns: f64) -> GpuFrame {
             pass
         })
         .collect();
-    GpuFrame {
+    Some(GpuFrame {
         frame: p.frame,
         submitted: p.submitted,
         passes,
-    }
+    })
 }
 
 #[cfg(all(test, not(feature = "publish")))]
@@ -590,7 +601,7 @@ mod tests {
 
     #[test]
     fn passes_run_back_to_back_to_the_ends_of_the_passes_they_opened() {
-        let p = Pending {
+        let p = || Pending {
             frame: 7,
             passes: vec![
                 ("Cascade0".into(), 0..2),
@@ -608,12 +619,13 @@ mod tests {
         // where Main ended. Tonemap's end was left at 0 by the GPU: its
         // one pair is not read, so it sits there too.
         let f = frame_of(
-            p,
+            p(),
             &[
                 5_000, 105_000, 95_000, 305_000, 255_000, 405_000, 405_000, 0,
             ],
             10.0,
-        );
+        )
+        .expect("a frame with queries read");
         assert_eq!(f.frame, 7);
         let got: Vec<(&str, f64, f64)> = f
             .passes
@@ -631,6 +643,9 @@ mod tests {
         );
         assert_eq!(f.passes[1].ms(), 3.0);
         assert_eq!(f.ms(), 4.0);
+        // Every query left at 0 (WebGL2's disjoint timer): no frame, not
+        // one of 0 ms passes.
+        assert_eq!(frame_of(p(), &[0; 8], 10.0), None);
     }
 }
 
