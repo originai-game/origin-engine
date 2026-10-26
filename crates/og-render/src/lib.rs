@@ -6202,7 +6202,9 @@ impl Renderer {
                     &mut origins,
                     &mut cull_inside,
                     &frustum,
-                    true,
+                    // Under GPU culling the sorted instances are the
+                    // culling's: append, never draw a batch whole.
+                    !gpu_cull,
                     |b| !b.transparent && b.layers & mask != 0,
                 )
                 .0
