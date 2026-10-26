@@ -124,10 +124,18 @@ every step and every test, and so does any run with `CI` set in the
 environment: CI's lanes stay complete. A failed step clears its record.
 bun-test and the non-GPU tests always run; determinism runs when
 `tools/wasm-determinism` or a crate it links (og-core, og-ecs, og-physics,
-og-anim, og-lanes and what they build on) changed. bun-test's slow
+og-anim, og-lanes and what they build on) changed; that closure is read
+with `cargo tree --locked` (`og_crate_dirs`, `scripts/lib.sh`), so a
+rule never rewrites the tool's lockfile under the `--locked` build that
+follows (a stale lock reads as "crates", the superset). bun-test's slow
 integration tests (packages/engine's `reload`, `reload-asset` and
 `web-export`: og processes for minutes) run only under `--all` and in CI
-(`OG_GATE_ALL`); a plain `bun run test` in the package runs them too.
+(`OG_GATE_ALL`); a plain `bun run test` in the package runs them too. A
+bun test that signals a child by name uses `process.kill(pid, name)`,
+never `Subprocess.kill(name)`: Bun 1.4.2 maps the name with Linux's
+numbers, and 12 is SIGUSR2 there but SIGSYS on macOS (oven-sh/bun#35296,
+fixed in 1.4.3; the handoff test of `reload.test.ts` died with status
+140 on the Mac, 2026-10-26).
 
 The wasm profile depends on the lane: `--all` and CI build the shipping
 `wasm` profile (`Cargo.toml`), so the size they record is the module that
