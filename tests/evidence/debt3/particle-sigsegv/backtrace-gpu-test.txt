@@ -1,0 +1,61 @@
+# a_600_tick_gpu_particle_run_is_deterministic, the old two-thread shape (base 30376326),
+# under gdb in a Debian trixie chroot: libvulkan1 1.4.309.0-1 (+ libvulkan1-dbgsym),
+# mesa-vulkan-drivers 25.0.7-2+deb13u1, libllvm19 1:19.1.7-3+b1 (CI's container).
+# The two threads of the test that touch the loader; the rest (llvmpipe and wgpu
+# workers, idle in pthread_cond_wait) left out. Frames past the test's own cut.
+
+Thread 3 "a_600_tick_gpu_" received signal SIGSEGV, Segmentation fault.
+[Switching to Thread 0x7ffff780a6c0 (LWP 128097)]
+loader_get_dispatch (obj=0x2) at ./loader/loader.h:52
+warning: 52	./loader/loader.h: No such file or directory
+Thread 3 (Thread 0x7ffff780a6c0 (LWP 128097) "a_600_tick_gpu_"):
+#0  loader_get_dispatch (obj=0x2) at ./loader/loader.h:52
+#1  loader_get_icd_and_device (device=device@entry=0x7fffe80d13e0, found_dev=found_dev@entry=0x7ffff77c45c8) at ./loader/loader.c:1331
+#2  0x00007ffff7371408 in terminator_SetDebugUtilsObjectNameEXT (device=0x7fffe80d13e0, pNameInfo=0x7ffff77c4620) at ./loader/generated/vk_loader_extensions.c:5990
+#3  0x00007ffff735cea7 in SetDebugUtilsObjectNameEXT (device=<optimized out>, pNameInfo=<optimized out>) at ./loader/generated/vk_loader_extensions.c:5980
+#4  0x000055555736a782 in <wgpu_hal::vulkan::Device as wgpu_hal::Device>::create_sampler ()
+#5  0x000055555730cdd1 in <wgpu_hal::vulkan::Device as wgpu_hal::dynamic::device::DynDevice>::create_sampler ()
+#6  0x00005555571ff989 in <wgpu_core::device::resource::Device>::create_sampler ()
+#7  0x00005555572bcf21 in <wgpu_core::global::Global>::device_create_sampler ()
+#8  0x000055555716ffab in <wgpu::backend::wgpu_core::CoreDevice as wgpu::dispatch::DeviceInterface>::create_sampler ()
+#9  0x0000555556a71b63 in {async_fn#0} () at crates/og-render/src/lib.rs:2562
+#10 0x0000555556a79fb4 in {async_fn#0} () at crates/og-render/src/lib.rs:2250
+#11 0x0000555556ba9e85 in {closure#0}<og_render::{impl#8}::new::{async_fn_env#0}> ()
+#12 0x0000555556b060e9 in try_with<core::task::wake::Waker, pollster::block_on::{closure_env#0}<og_render::{impl#8}::new::{async_fn_env#0}>, core::result::Result<og_render::Renderer, og_render::RenderError>> ()
+#13 0x0000555556b05f47 in <std::thread::local::LocalKey<core::task::wake::Waker>>::with::<pollster::block_on<<og_render::Renderer>::new::{closure#0}>::{closure#0}, core::result::Result<og_render::Renderer, og_render::RenderError>> ()
+#14 0x0000555556ba6134 in pollster::block_on::<<og_render::Renderer>::new::{closure#0}> ()
+#15 0x0000555556bd357a in <og_render::Renderer>::new_blocking () at crates/og-render/src/headless.rs:17
+#16 0x0000555555fe9d36 in effects::run::<effects::particles_are_deterministic::{closure#0}> () at crates/og-tests/tests/effects.rs:43
+#17 0x0000555555febc8f in effects::particles_are_deterministic::{closure#1} () at crates/og-tests/tests/effects.rs:145
+
+Thread 2 (Thread 0x7ffff7a0b6c0 (LWP 128096) "a_600_tick_gpu_"):
+#0  0x00007ffff7fc9f88 in ?? () from /lib64/ld-linux-x86-64.so.2
+#1  0x00007ffff7fca3e6 in ?? () from /lib64/ld-linux-x86-64.so.2
+#2  0x00007ffff7fc9399 in _dl_catch_exception () from /lib64/ld-linux-x86-64.so.2
+#3  0x00007ffff7fc94bf in ?? () from /lib64/ld-linux-x86-64.so.2
+#4  0x00007ffff7a9aa87 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#5  0x00007ffff7a9a7b6 in dlclose () from /lib/x86_64-linux-gnu/libc.so.6
+#6  0x00007ffff737dbd7 in loader_platform_close_library (library=<optimized out>) at ./loader/vk_loader_platform.h:424
+#7  loader_unload_scanned_icd (inst=<optimized out>, scanned_icd=0x7ffff0001c58) at ./loader/loader.c:1474
+#8  unload_drivers_without_physical_devices (inst=inst@entry=0x7ffff001bb50) at ./loader/loader.c:6674
+#9  0x00007ffff738371c in vkEnumeratePhysicalDevices (instance=<optimized out>, pPhysicalDeviceCount=0x7ffff79d025c, pPhysicalDevices=0x7ffff003ccf0) at ./loader/trampoline.c:865
+#10 0x000055555738eff6 in ash::prelude::read_into_uninitialized_vector::<u32, ash::vk::definitions::PhysicalDevice, <ash::instance::Instance>::enumerate_physical_devices::{closure#0}> ()
+#11 0x0000555557375337 in <wgpu_hal::vulkan::Instance as wgpu_hal::Instance>::enumerate_adapters ()
+#12 0x0000555557314339 in <wgpu_hal::vulkan::Instance as wgpu_hal::dynamic::instance::DynInstance>::enumerate_adapters ()
+#13 0x000055555733fdb4 in <wgpu_core::instance::Instance>::request_adapter ()
+#14 0x00005555572c2d5f in <wgpu_core::global::Global>::request_adapter ()
+#15 0x000055555716b7c0 in <wgpu::backend::wgpu_core::ContextWgpuCore as wgpu::dispatch::InstanceInterface>::request_adapter ()
+#16 0x00005555571a8934 in <wgpu::api::instance::Instance>::request_adapter ()
+#17 0x0000555556a79b97 in {async_fn#0} () at crates/og-render/src/lib.rs:2241
+#18 0x0000555556ba9e85 in {closure#0}<og_render::{impl#8}::new::{async_fn_env#0}> ()
+#19 0x0000555556b060e9 in try_with<core::task::wake::Waker, pollster::block_on::{closure_env#0}<og_render::{impl#8}::new::{async_fn_env#0}>, core::result::Result<og_render::Renderer, og_render::RenderError>> ()
+#20 0x0000555556b05f47 in <std::thread::local::LocalKey<core::task::wake::Waker>>::with::<pollster::block_on<<og_render::Renderer>::new::{closure#0}>::{closure#0}, core::result::Result<og_render::Renderer, og_render::RenderError>> ()
+#21 0x0000555556ba6134 in pollster::block_on::<<og_render::Renderer>::new::{closure#0}> ()
+#22 0x0000555556bd357a in <og_render::Renderer>::new_blocking () at crates/og-render/src/headless.rs:17
+#23 0x0000555555fe9d36 in effects::run::<effects::particles_are_deterministic::{closure#0}> () at crates/og-tests/tests/effects.rs:43
+#24 0x0000555555fffbf9 in particles_are_deterministic () at crates/og-tests/tests/effects.rs:146
+
+rip            0x7ffff7371066      0x7ffff7371066 <loader_get_icd_and_device+182>
+=> 0x7ffff7371066 <loader_get_icd_and_device+182>:	mov    (%rdx),%rdx
+   0x7ffff7371069 <loader_get_icd_and_device+185>:	test   %rdx,%rdx
+   0x7ffff737106c <loader_get_icd_and_device+188>:	je     0x7ffff7371030 <loader_get_icd_and_device+128>

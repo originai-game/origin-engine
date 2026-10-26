@@ -269,7 +269,17 @@ merge must pass, and metal is the frame authority. CI is the shared
 runner's record of main and of every PR, and the nightly's measurement.
 Two intermittent failures were known when the workflow last ran (og-cook's
 `cooking_twice_gives_identical_bytes`, row 80; the particle test's SIGSEGV,
-row 81); a red run is read before it is re-run.
+row 81); a red run is read before it is re-run. Both are closed. The
+SIGSEGV was the Vulkan loader of the container, not lavapipe or the
+engine: libvulkan1 1.4.309 (Debian trixie; the race is in every loader
+from 1.3.290 to 1.4.344, fixed upstream in 1.4.345) frees an instance's
+unused drivers in its first `vkEnumeratePhysicalDevices` while another
+instance's thread walks that list to name an object, so two renderers
+made on two threads of one process can crash it. No test makes two
+renderers at once any more; nextest runs each test in its own process,
+but `cargo test` (the gate's fallback without nextest) runs a binary's
+tests on threads of one and is still exposed there
+(`tests/evidence/debt3/particle-sigsegv/NOTES.md`).
 
 ### The vulkan-cpu tier's known divergences
 

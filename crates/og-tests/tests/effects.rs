@@ -140,11 +140,16 @@ fn particles_are_deterministic(path: ParticleSimulation) {
         ..small()
     };
     let stepped = |scene: &mut RenderScene, f: u32| fx::tick_all(scene, f as u64);
-    // The second run has its own renderer (and device) on its own thread:
-    // the same frames either way, in about half the wall time.
-    let second = std::thread::spawn(move || run(&desc, &mut fx::particles_scene(), 601, stepped).0);
+    // The two runs one after the other on this thread, never at once on
+    // two: the Vulkan loader from 1.3.290 to 1.4.344 (Debian trixie's
+    // 1.4.309, CI's lavapipe) frees an instance's unused drivers in its
+    // first vkEnumeratePhysicalDevices under one lock while another
+    // thread's device walks that list under another (debug names, device
+    // function lookups), and the walk segfaults on the freed entry
+    // (tests/evidence/debt3/particle-sigsegv/NOTES.md; fixed upstream in
+    // 1.4.345). Each renderer is dropped before the next is made.
     let (a, sa, _) = run(&desc, &mut fx::particles_scene(), 601, stepped);
-    let b = second.join().unwrap();
+    let (b, _, _) = run(&desc, &mut fx::particles_scene(), 601, stepped);
     let (c, _, _) = run(&desc, &mut fx::particles_scene(), 1, |s, _| {
         fx::tick_all(s, 600)
     });
