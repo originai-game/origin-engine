@@ -588,14 +588,14 @@ pub fn planar_hook_shader() -> MaterialShader {
     )
 }
 
-/// The planar hook scene's red emissive block, hanging above the water
-/// out of the camera's view.
-pub const PLANAR_BLOCK: Vec3 = Vec3::new(0.0, 5.0, -6.0);
+/// The planar hook scene's red emissive block, standing on the water's
+/// far side (its centre).
+pub const PLANAR_BLOCK: Vec3 = Vec3::new(0.0, 2.0, -12.0);
 
-/// Still water at y 0 drawn with a planar reflection under a red emissive
-/// block hanging above it (out of view), and lying on the water a card whose
-/// unlit material shows [`planar_hook_shader`]: what the water's mirror sees
-/// there.
+/// Still water at y 1 drawn with a planar reflection, a red emissive block
+/// standing in it 16 m ahead, and lying on the water before it a 6 m card
+/// whose unlit material shows [`planar_hook_shader`]: what the water's
+/// mirror sees there (the block's mirror image on its far half).
 pub fn hooks_planar_scene(planar: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     sky(&mut scene, Vec3::new(0.3, 0.8, 0.4), 2.0);
@@ -609,13 +609,13 @@ pub fn hooks_planar_scene(planar: bool) -> RenderScene {
         planar_reflection: if planar { 0.5 } else { 0.0 },
         ..Default::default()
     });
-    let block = scene.add_mesh(shapes::cuboid(Vec3::new(3.0, 1.0, 3.0)));
+    let block = scene.add_mesh(shapes::cuboid(Vec3::new(4.0, 2.0, 1.0)));
     let red = scene.add_standard_material(StandardMaterial {
         color: Vec3::ZERO,
         emissive: Vec3::new(4.0, 0.0, 0.0),
         ..Default::default()
     });
-    scene.add_instance(block, red, Mat4::from_translation(PLANAR_BLOCK + Vec3::Y));
+    scene.add_instance(block, red, Mat4::from_translation(PLANAR_BLOCK));
     let shader = scene.add_shader(planar_hook_shader());
     let m = scene.add_standard_material(StandardMaterial {
         unlit: 1,
@@ -623,10 +623,10 @@ pub fn hooks_planar_scene(planar: bool) -> RenderScene {
     });
     scene.set_material_shader(m, Some(shader));
     let card = scene.add_mesh(shapes::plane(6.0, 1.0));
-    scene.add_instance(card, m, Mat4::from_translation(Vec3::new(0.0, 1.02, -4.0)));
+    scene.add_instance(card, m, Mat4::from_translation(Vec3::new(0.0, 1.02, -8.0)));
     scene.camera = Camera {
         position: Vec3::new(0.0, 4.0, 4.0),
-        target: Vec3::new(0.0, 1.0, -4.0),
+        target: Vec3::new(0.0, 1.0, -6.0),
         exposure: Exposure::linear(0.9),
         ..Default::default()
     };
@@ -688,16 +688,15 @@ pub fn hooks_screen_ao_scene() -> RenderScene {
 // ---------------------------------------------------------------------------
 
 /// The two pools' centres (their water's height in y), and the emissive
-/// slabs hanging out of view above each.
-pub const POOL_A: Vec3 = Vec3::new(-3.5, 0.0, -2.0);
+/// slabs standing behind each.
+pub const POOL_A: Vec3 = Vec3::new(-3.5, 0.3, -2.0);
 pub const POOL_B: Vec3 = Vec3::new(3.5, 1.5, -2.0);
-pub const SLAB_A: Vec3 = Vec3::new(-3.5, 6.0, -5.0);
-pub const SLAB_B: Vec3 = Vec3::new(3.5, 6.0, -5.0);
+pub const SLAB_A: Vec3 = Vec3::new(-3.5, 1.5, -7.5);
+pub const SLAB_B: Vec3 = Vec3::new(3.5, 3.0, -7.5);
 
-/// Two still pools side by side at different heights (0 and 1.5 m), each
-/// with a planar reflection, under a red slab (above pool A) and a blue
-/// one (above B) hanging out of the camera's view: each pool mirrors its
-/// own slab in its own plane.
+/// Two still pools side by side at different heights (0.3 and 1.5 m), each
+/// with a planar reflection, a red slab standing behind pool A and a blue
+/// one behind B: each pool mirrors its own slab in its own plane.
 pub fn water_planar_two_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     sky(&mut scene, Vec3::new(0.3, 0.8, 0.4), 2.0);
@@ -727,7 +726,7 @@ pub fn water_planar_two_scene() -> RenderScene {
         stone,
         Mat4::from_translation(Vec3::new(POOL_B.x, 0.5, POOL_B.z)),
     );
-    let slab = scene.add_mesh(shapes::cuboid(Vec3::new(4.0, 0.5, 4.0)));
+    let slab = scene.add_mesh(shapes::cuboid(Vec3::new(4.0, 2.0, 0.5)));
     for (at, rgb) in [
         (SLAB_A, Vec3::new(4.0, 0.0, 0.0)),
         (SLAB_B, Vec3::new(0.0, 0.0, 4.0)),

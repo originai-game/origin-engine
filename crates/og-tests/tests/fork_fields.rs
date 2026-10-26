@@ -6,7 +6,7 @@
 
 use glam::{Vec2, Vec3};
 use og_render::{
-    FrameStats, Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage,
+    Antialias, FrameStats, Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage,
 };
 use og_tests::fork_scenes as fs;
 use og_tests::{gfx, scenes};
@@ -810,4 +810,189 @@ fn unreal_bloom_switches_path_and_its_radius_widens_the_halo() {
         halo(&c2, far) > 3.0 * halo(&unreal, far),
         "contrast 2 lifts the bloom"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Materials and hooks.
+// ---------------------------------------------------------------------------
+
+/// Pixels whose green is strictly between `lo` and `hi` (partly covered).
+fn partial(img: &RgbaImage, lo: f32, hi: f32) -> usize {
+    pixels(img, (0, 0, W, H))
+        .iter()
+        .filter(|p| p[1] > lo && p[1] < hi)
+        .count()
+}
+
+/// `StandardMaterial::alphaToCoverage` with MSAA 4: a green card whose
+/// alpha falls from 1 at its centre to 0 at its edge, cut at 0.5. With alpha
+/// to coverage the circle where alpha crosses 0.5 is an antialiased edge
+/// (pixels of intermediate green); with the hard cut it is green or black
+/// (MSAA alone does not smooth a discard inside a triangle). Without MSAA,
+/// alpha to coverage is a hard cut within a pixel of alphaTest's (not
+/// byte for byte: see the test). Fails if the material
+/// flag never reaches the pipeline or the shader's coverage output.
+#[test]
+fn alpha_to_coverage_antialiases_an_alpha_tested_edge() {
+    let (desc, scene) = built("alpha-to-coverage");
+    assert_eq!(desc.antialias, Antialias::Msaa4);
+    let (a2c, _) = render(&desc, &scene);
+    let (cut, _) = render(&desc, &fs::alpha_to_coverage_scene(false));
+    save("alpha-to-coverage", &a2c);
+    save("alpha-to-coverage-cut", &cut);
+    let (pa, pc) = (partial(&a2c, 20.0, 235.0), partial(&cut, 20.0, 235.0));
+    println!("partly covered pixels: alpha to coverage {pa}, cut {pc}");
+    assert!(pa > 300, "the circle's edge is antialiased");
+    assert!(pc < pa / 5, "the hard cut is not");
+    let single = RenderDesc {
+        antialias: Antialias::Off,
+        ..desc
+    };
+    let (a, _) = render(&single, &scene);
+    let (b, _) = render(&single, &fs::alpha_to_coverage_scene(false));
+    // Not byte for byte: the shader discards where the coverage reaches 0,
+    // half a pixel's change of alpha below alphaTest, so the edge sits about
+    // half a pixel further out (a ring of at most one pixel).
+    let green = |img: &RgbaImage| {
+        pixels(img, (0, 0, W, H))
+            .iter()
+            .filter(|p| p[1] > 128.0)
+            .count()
+    };
+    let (ga, gb) = (green(&a), green(&b));
+    println!(
+        "no MSAA: green {ga} against the cut's {gb}, partly covered {}",
+        partial(&a, 20.0, 235.0)
+    );
+    assert_eq!(partial(&a, 20.0, 235.0), 0, "without MSAA it is a hard cut");
+    // The circle's circumference at the 0.5 alpha ring (radius 1 m: about 78 px here).
+    assert!(
+        ga >= gb && ga - gb < 500,
+        "within a pixel of the alphaTest cut"
+    );
+}
+
+/// `Hook.eye` and `Hook.front`: the shader paints red where `h.eye` equals
+/// the camera's position (passed as a parameter), green on front faces and
+/// blue on back faces. The left card, facing the camera, is yellow (red and
+/// green); the right one, turned away, is magenta (red and blue). Fails if
+/// `h.eye` is not the camera (no red) or `h.front` does not follow the face.
+#[test]
+fn hooks_see_the_eye_and_the_facing() {
+    let (desc, scene) = built("hooks-eye-front");
+    let (img, _) = render(&desc, &scene);
+    save("hooks-eye-front", &img);
+    let front = mean(&img, around(project(&scene, Vec3::new(-1.0, 1.0, 0.0)), 3));
+    let back = mean(&img, around(project(&scene, Vec3::new(1.0, 1.0, 0.0)), 3));
+    println!("front card {}, back card {}", fmt(front), fmt(back));
+    assert!(
+        front[0] > 240.0 && front[1] > 240.0 && front[2] < 15.0,
+        "front: eye and front"
+    );
+    assert!(
+        back[0] > 240.0 && back[1] < 15.0 && back[2] > 240.0,
+        "back: eye and back"
+    );
+}
+
+/// `planar_reflection(p, shift)` in a material shader: a card lying on the
+/// water shows what the water's planar reflection sees there: at the red
+/// block's mirror image, red; without the planar reflection the function
+/// answers alpha 0 and the card is the shader's magenta. Fails if the
+/// function is a stub where the slot exists, or reads the wrong texture.
+#[test]
+fn a_hook_reads_the_planar_reflection() {
+    let (desc, scene) = built("hooks-planar");
+    let (img, stats) = render(&desc, &scene);
+    let (none, _) = render(&desc, &fs::hooks_planar_scene(false));
+    save("hooks-planar", &img);
+    save("hooks-planar-none", &none);
+    let mirror = fs::PLANAR_BLOCK * Vec3::new(1.0, -1.0, 1.0) + Vec3::Y * 2.0;
+    let under = around(project(&scene, mirror), 2);
+    let (a, b) = (mean(&img, under), mean(&none, under));
+    println!(
+        "card at the block's mirror image: planar {}, none {}",
+        fmt(a),
+        fmt(b)
+    );
+    assert!(stats.reflection_draws > 0, "{stats:?}");
+    assert!(
+        a[0] > 120.0 && a[1] < 0.5 * a[0] && a[2] < 0.5 * a[0],
+        "the mirrored block is red"
+    );
+    assert!(
+        b[0] > 200.0 && b[2] > 200.0 && b[1] < 40.0,
+        "no reflection: magenta"
+    );
+}
+
+/// `screen_ao(p)` in a material shader: the ground's unlit shader paints
+/// the frame's screen-space AO at its fragment in red (4 × the occlusion);
+/// the ground at the block's foot is red, open ground black; with AO off
+/// the function answers 1 everywhere (all black). Fails if the function is
+/// a stub or reads the AO at the wrong place.
+#[test]
+fn a_hook_reads_the_screen_ao() {
+    let (desc, scene) = built("hooks-screen-ao");
+    let (img, _) = render(&desc, &scene);
+    let mut off = fs::hooks_screen_ao_scene();
+    off.post.ao = None;
+    let (none, _) = render(&desc, &off);
+    save("hooks-screen-ao", &img);
+    let foot = around(project(&scene, Vec3::new(0.0, 0.0, 0.56)), 2);
+    let open = around(project(&scene, Vec3::new(2.5, 0.0, 1.5)), 2);
+    let (f, o, n) = (mean(&img, foot), mean(&img, open), mean(&none, foot));
+    println!(
+        "foot {}, open {}, foot with AO off {}",
+        fmt(f),
+        fmt(o),
+        fmt(n)
+    );
+    assert!(f[0] > 80.0, "the block's foot is occluded");
+    assert!(o[0] < f[0] / 3.0, "open ground much less");
+    assert!(n[0] < 5.0, "AO off: 1 everywhere");
+}
+
+/// The second planar reflection slot: two pools at different heights (0.3
+/// and 1.5 m) each get their own planar reflection, so each mirrors its own
+/// slab, at that slab's mirror image in its plane: pool A red, pool B blue.
+/// With only A asking for one, B falls back to its screen-space and sky
+/// reflections (the slab's image is paler). Fails if the second surface reuses the first's
+/// reflection (B would mirror in A's plane) or gets none.
+#[test]
+fn two_water_surfaces_reflect_in_their_own_planes() {
+    let (desc, scene) = built("water-planar-two");
+    let (img, stats) = render(&desc, &scene);
+    let mut one = fs::water_planar_two_scene();
+    one.water[1].planar_reflection = 0.0;
+    let (single, single_stats) = render(&desc, &one);
+    save("water-planar-two", &img);
+    save("water-planar-one", &single);
+    // Each slab's mirror image in its own pool's plane.
+    let image = |slab: Vec3, level: f32| {
+        around(
+            project(&scene, Vec3::new(slab.x, 2.0 * level - slab.y, slab.z)),
+            2,
+        )
+    };
+    let (ra, rb) = (
+        image(fs::SLAB_A, fs::POOL_A.y),
+        image(fs::SLAB_B, fs::POOL_B.y),
+    );
+    let (a, b, b1) = (mean(&img, ra), mean(&img, rb), mean(&single, rb));
+    println!(
+        "pool A {}, pool B {}, pool B without its own {}; reflection draws {} vs {}",
+        fmt(a),
+        fmt(b),
+        fmt(b1),
+        stats.reflection_draws,
+        single_stats.reflection_draws
+    );
+    assert!(a[0] > a[2] + 30.0, "pool A mirrors the red slab");
+    assert!(b[2] > b[0] + 30.0, "pool B mirrors the blue slab");
+    assert!(
+        b[2] - b[0] > b1[2] - b1[0] + 30.0,
+        "without its own reflection pool B's image of the slab is paler (screen-space)"
+    );
+    assert!(stats.reflection_draws > single_stats.reflection_draws);
 }
