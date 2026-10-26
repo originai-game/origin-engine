@@ -176,7 +176,42 @@ impl Frustum {
             .iter()
             .all(|p| p.truncate().dot(center) + p.w >= -radius)
     }
+
+    /// The CPU cull's tests: every marked `inside[k]` becomes whether
+    /// `spheres[k]` touches the volume; an unmarked one stays false and
+    /// its sphere is not read. Each flag is its own sphere's, so the
+    /// result is the same on any number of threads. On the lanes
+    /// (og-lanes' `cull` site, [`CULL_GRAIN`] bounds a task) from
+    /// [`CULL_LANES_FROM`] bounds, serially below.
+    pub fn test_spheres(&self, inside: &mut [bool], spheres: &[(Vec3, f32)]) {
+        let grain = if inside.len() >= CULL_LANES_FROM {
+            CULL_GRAIN
+        } else {
+            // One grain of everything: og-lanes runs it on this thread.
+            inside.len()
+        };
+        og_lanes::for_each_indexed(og_lanes::Site::Cull, inside, grain, |k, v| {
+            if *v {
+                let (c, r) = spheres[k];
+                *v = self.intersects_sphere(c, r);
+            }
+        });
+    }
 }
+
+/// Bounds a lane task tests in [`Frustum::test_spheres`]: a test is about
+/// 5 ns, and with the split this small a pool thread that wakes late
+/// still finds work (coarser tasks measured slower at every count,
+/// tests/evidence/debt3/cull-lane-grain/NOTES.md).
+pub(crate) const CULL_GRAIN: usize = 1024;
+
+/// Bounds from which [`Frustum::test_spheres`] splits across the lanes.
+/// Waking the pool and joining it costs 50 to 600 µs a call on an idle
+/// machine, milliseconds under load, against 5 ns a bound serially: the
+/// split lost at every count to 65,536 bounds idle and at every count
+/// loaded, and first won at every thread count to eight from 131,072
+/// bounds idle (tests/evidence/debt3/cull-lane-grain/NOTES.md).
+pub(crate) const CULL_LANES_FROM: usize = 131_072;
 
 /// One cascade of the directional light.
 pub(crate) struct Cascade {
@@ -584,4 +619,89 @@ pub(crate) fn local_lights(
         });
     }
     (gpu, shadows, dropped)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `n` bounds on a grid that the frustum of [`view`] cuts through (about
+    /// half inside), every seventh one unmarked (it must stay false wherever
+    /// its sphere is).
+    fn bounds(n: usize) -> (Vec<(Vec3, f32)>, Vec<bool>) {
+        let side = (n as f32).sqrt().ceil() as usize;
+        let s = 400.0 / side as f32;
+        let spheres = (0..n)
+            .map(|i| {
+                let (x, z) = ((i % side) as f32, (i / side) as f32);
+                (
+                    Vec3::new((x - side as f32 / 2.0) * s, 2.0, z * s - 100.0),
+                    0.5 + (i % 5) as f32 * 0.4,
+                )
+            })
+            .collect();
+        (spheres, (0..n).map(|i| i % 7 != 3).collect())
+    }
+
+    fn view() -> Frustum {
+        let view = glam::camera::rh::view::look_at_mat4(
+            Vec3::new(0.0, 30.0, -10.0),
+            Vec3::new(20.0, 0.0, 80.0),
+            Vec3::Y,
+        );
+        let proj = glam::camera::rh::proj::directx::perspective(1.0, 16.0 / 9.0, 0.1, 400.0);
+        Frustum::from_view_proj(proj * view)
+    }
+
+    /// The culled set is each marked bound's own test, the same with lanes
+    /// on and off and on any number of threads (run with `OG_LANES=<n>`),
+    /// and the call goes to the pool only from `CULL_LANES_FROM` bounds:
+    /// from 2,048 to 131,071 a split lost to the serial loop everywhere it
+    /// was measured (tests/evidence/debt3/cull-lane-grain/NOTES.md).
+    #[test]
+    fn the_cull_splits_only_from_its_threshold_and_keeps_the_same_bounds() {
+        let frustum = view();
+        let from = CULL_LANES_FROM;
+        for n in [
+            0,
+            1,
+            2_048,
+            8_192,
+            100_000,
+            from - 1,
+            from,
+            from + CULL_GRAIN + 17,
+            2 * from + 7,
+        ] {
+            let (spheres, marks) = bounds(n);
+            let expected: Vec<bool> = (0..n)
+                .map(|k| marks[k] && frustum.intersects_sphere(spheres[k].0, spheres[k].1))
+                .collect();
+            if n >= 2_048 {
+                let kept = expected.iter().filter(|v| **v).count();
+                assert!(
+                    kept > n / 5 && kept < n * 4 / 5,
+                    "{n} bounds: {kept} kept, not a partial view"
+                );
+            }
+            for on in [true, false] {
+                og_lanes::set_enabled(on);
+                let mut inside = marks.clone();
+                let calls = og_lanes::calls_here();
+                frustum.test_spheres(&mut inside, &spheres);
+                let split = og_lanes::calls_here() - calls;
+                let pool = on && og_lanes::threads() > 1;
+                assert_eq!(
+                    split,
+                    u64::from(pool && n >= from),
+                    "{n} bounds, lanes {on}: parallel calls"
+                );
+                assert!(
+                    inside == expected,
+                    "{n} bounds, lanes {on}: another culled set"
+                );
+            }
+            og_lanes::set_enabled(true);
+        }
+    }
 }

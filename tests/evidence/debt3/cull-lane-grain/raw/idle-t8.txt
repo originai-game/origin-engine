@@ -1,0 +1,6 @@
+threads=8 iters=300 gap_us=300
+n=1024 visible=520 | serial p50=5.5 p90=5.9 mean=6.1 | g1024 p50=5.1 p90=5.4 mean=5.4 | g4096 p50=5.1 p90=5.4 mean=5.5 | g16384 p50=5.1 p90=5.3 mean=5.3 | perthread p50=361.6 p90=479.3 mean=377.8
+n=2048 visible=1020 | serial p50=10.6 p90=14.5 mean=11.6 | g1024 p50=119.6 p90=146.3 mean=126.2 | g4096 p50=10.3 p90=16.1 mean=11.6 | g16384 p50=10.2 p90=13.9 mean=11.3 | perthread p50=382.9 p90=474.9 mean=373.2
+n=8192 visible=4222 | serial p50=41.5 p90=45.9 mean=43.6 | g1024 p50=392.2 p90=485.2 mean=376.9 | g4096 p50=165.4 p90=256.1 mean=195.0 | g16384 p50=41.0 p90=44.9 mean=43.0 | perthread p50=400.7 p90=498.2 mean=383.0
+n=32768 visible=16965 | serial p50=162.8 p90=198.0 mean=173.9 | g1024 p50=259.0 p90=502.3 mean=316.7 | g4096 p50=441.2 p90=536.3 mean=439.6 | g16384 p50=351.4 p90=395.5 mean=358.3 | perthread p50=438.5 p90=533.7 mean=435.9
+n=100000 visible=52139 | serial p50=512.0 p90=707.9 mean=539.9 | g1024 p50=310.4 p90=408.7 mean=354.9 | g4096 p50=473.6 p90=623.1 mean=498.3 | g16384 p50=489.7 p90=591.4 mean=507.6 | perthread p50=510.4 p90=605.5 mean=527.6

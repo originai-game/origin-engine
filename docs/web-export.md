@@ -155,7 +155,8 @@ extraction's per-row decoding natively (og-runtime, 512 rows a task, for
 the components it decodes as rows: og.Mesh and og.Transform are read from
 their columns; in the wasm a row's decode is allocations behind one
 allocator lock, so the wasm decodes serially) and frustum
-culling per view (og-render, 1024 bounds a task; scheduling only: the
+culling per view (og-render, 1024 bounds a task from 131,072 bounds,
+serial below, where a split never paid natively; scheduling only: the
 recording stays on the engine thread, on the web the engine Worker), and
 physics (og-physics, natively and in the lanes wasm): the whole step
 through `og_lanes::install_from`, where rapier's `parallel` build (bit for
@@ -253,7 +254,7 @@ location, tick, site) and rings it; the engine thread then panics with
 that line, traps, and the Worker reports the crash with the lane's report
 (§Errors), within a frame or two of the panic rather than never
 (`packages/engine/tests/web/lane-panic.ts`: on the page within 5 s, with
-`lane: "cull"`; og-lanes' unit tests for the latch). Anything else
+`lane: "anim"`; og-lanes' unit tests for the latch). Anything else
 that stops a playing Worker's frames is caught by the shell's frame
 deadline (§Errors, `hang`). The API is the same either way. The mode is reported: the ready message's `lanes`
 (`{ on, threads, why }`, `why` saying why it is off), a log line

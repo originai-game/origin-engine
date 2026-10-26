@@ -6,7 +6,10 @@
 // extraction and the frustum cull reach the pixels, the physics step the
 // world hash). A replay from the tick-60 snapshot with lanes switched at run
 // time (lanes:<on|off>) reaches tick 180's hash and frame again. The on run
-// split animation and the cull (dump_lanes counts each site), and never the
+// split animation (dump_lanes counts each site), and never the cull: its
+// 2,500 or so bounds are far below the 131,072 from which the frustum
+// cull splits (tests/evidence/debt3/cull-lane-grain/NOTES.md; og-render's
+// unit test checks the split cull keeps the same bounds); nor the
 // extraction site: the crowd's og.Mesh rows are read from their columns
 // (owed row 50, tests/evidence/P4/perf/), so nothing in the scene is decoded
 // row by row in two grains' worth; nor the physics site: the crowd's 48
@@ -65,10 +68,9 @@ test("lanes on and off give the same world hashes, the same pixels and the same 
   expect([on.lanes.threads, on.lanes.pool]).toEqual([4, "native"]);
   expect(on.lanes.parallelCalls).toBeGreaterThan(0);
   expect(off.lanes.parallelCalls).toBe(0);
-  // Each lane site of the enlarged scene split at least once, not only one of them.
-  for (const site of ["anim", "cull"] as const) {
-    expect([site, on.lanes.sites[site].calls > 0]).toEqual([site, true]);
-  }
+  // Animation split; the cull, under its threshold of bounds, did not.
+  expect(on.lanes.sites.anim.calls).toBeGreaterThan(0);
+  expect(on.lanes.sites.cull.calls).toBe(0);
   // 2,000 more og.Mesh entities and no row of them decoded on the lanes.
   expect(on.lanes.sites.extract.calls).toBe(0);
   // 48 crates step below the physics grain: the step never went to the pool.

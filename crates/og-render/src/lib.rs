@@ -1868,10 +1868,6 @@ fn supports_msaa(adapter: &wgpu::Adapter) -> bool {
         && depth.sample_count_supported(MSAA_SAMPLES)
 }
 
-/// Instances per lane task in the frustum tests: a test is a few
-/// nanoseconds, so only thousands of instances are worth a second thread.
-const CULL_GRAIN: usize = 1024;
-
 /// The clear colour of a pass for the scene's background (black under a sky).
 fn background_clear(background: &Background) -> wgpu::Color {
     match background {
@@ -4556,19 +4552,14 @@ impl Renderer {
         let inside = &mut scratch.inside;
         scratch.whole.resize(batches.len(), false);
         // Only the included batches' spheres are tested: they are marked
-        // first, and a lane leaves an unmarked one alone (no read of it
-        // follows). The tests are lanes (og-lanes) once there are thousands.
+        // first, and the test leaves an unmarked one alone (no read of it
+        // follows). On the lanes only from a six-figure count of bounds.
         inside.clear();
         inside.resize(spheres.len(), false);
         for b in batches.iter().filter(|b| include(b)) {
             inside[b.first as usize..(b.first + b.count) as usize].fill(true);
         }
-        og_lanes::for_each_indexed(og_lanes::Site::Cull, inside, CULL_GRAIN, |k, v| {
-            if *v {
-                let (c, r) = spheres[k];
-                *v = frustum.intersects_sphere(c, r);
-            }
-        });
+        frustum.test_spheres(inside, spheres);
         for (b_index, b) in batches.iter().enumerate() {
             if !include(b) {
                 continue;

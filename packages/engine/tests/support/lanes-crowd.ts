@@ -1,8 +1,8 @@
 // What the lanes test and `bench/lanes.ts --crowd` add to the reference
-// scene (crates/og-tests/reference-scene) so every lane has more than two
-// grains of work: 2000 small boxes on a wide grid, most of them outside the
-// view (the frustum cull splits from 2048 items; extraction reads them from
-// the columns),
+// scene (crates/og-tests/reference-scene) so the lanes have work: 2000
+// small boxes on a wide grid, most of them outside the view (more og.Mesh
+// rows, which extraction reads from the columns, and more bounds for the
+// frustum cull, which still stays serial: it splits from 131,072),
 // 160 more walkers (og-anim splits from 128 skeletons) and 48 boxes dropped
 // on a floor collider (the rapier step).
 
