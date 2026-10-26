@@ -69,6 +69,7 @@ export const EnvironmentMap = ((value = 0 as Api.EnvironmentMap, options) => spe
 export const ParticleEmitter = ((value = 0 as Api.ParticleEmitter, options) => spec("ParticleEmitter", value, options)) as typeof Api.ParticleEmitter;
 export const AoMethod = ((value = "auto" as Api.AoMethod, options) => spec("AoMethod", value, options)) as typeof Api.AoMethod;
 export const AoResolution = ((value = "full" as Api.AoResolution, options) => spec("AoResolution", value, options)) as typeof Api.AoResolution;
+export const AoResolutionSetting = ((value = "postEffects" as Api.AoResolutionSetting, options) => spec("AoResolutionSetting", value, options)) as typeof Api.AoResolutionSetting;
 export const LineMode = ((value = "strip" as Api.LineMode, options) => spec("LineMode", value, options)) as typeof Api.LineMode;
 export const DofQuality = ((value = "low" as Api.DofQuality, options) => spec("DofQuality", value, options)) as typeof Api.DofQuality;
 export const ReflectionProbeMode = ((value = "baked" as Api.ReflectionProbeMode, options) => spec("ReflectionProbeMode", value, options)) as typeof Api.ReflectionProbeMode;
