@@ -34,6 +34,10 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
   - terrain: `Terrain.visible` (false: ground for its scatter only),
     `TerrainScatter.castShadows`; scatter runs its material's hooks and
     takes the screen AO with `aoDirect` above 0.
+  - Water and the screen AO: with `aoDirect` above 0 the AO sees the
+    water's surface (as three.js' Water meshes wrote depth) and darkens
+    its reflection and body; at the default 0 the water stays outside
+    the AO, as before.
   - og-ui: a style's `ramp` line takes a fifth number.
 - Debug views for the lit image: `DebugView` gains `cascades`, `ao`,
   `albedo`, `iblDiffuse`, `iblSpecular`, `direct`, `aoDepth` and

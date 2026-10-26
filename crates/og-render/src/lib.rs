@@ -7570,6 +7570,7 @@ impl Renderer {
                     ),
                     gtao,
                     water: !scene_water.is_empty() || fluids_3d,
+                    water_ao: !scene_water.is_empty() && ao.is_some_and(|a| a.direct > 0.0),
                     transmission,
                     fluid_fields: fluids as u32,
                     reflection: [
@@ -7904,6 +7905,7 @@ impl Renderer {
                 } else {
                     &self.post.white
                 },
+                ao.map_or(0.0, |a| a.direct),
                 &self.post.white,
                 &|h| {
                     self.cache

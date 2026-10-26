@@ -2053,7 +2053,7 @@ Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its v
 | `aoIntensity` | `number` | `1` | ≥ 0 | — | tunable | 0 none, 1 full; above 1 exaggerates. |
 | `aoMethod` | `AoMethod` | `"auto"` | — | — | — | The algorithm. |
 | `aoResolution` | `AoResolution` | `"full"` | — | — | — | Full resolution, or half for a fraction of the GPU time at softer detail. |
-| `aoDirect` | `number` | `0` | 0 … 1 | — | tunable | How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it). |
+| `aoDirect` | `number` | `0` | 0 … 1 | — | tunable | How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it). Above 0 the AO sees and darkens water surfaces too; at 0 water is outside it. |
 | `aoRadiusScale` | `number` | `0` | ≥ 0 | — | tunable | Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance): a fixed share of the screen up close, as three.js SSAO passes size theirs, instead of a fixed world size; 0 keeps aoRadius everywhere. The benefit holds with ssao, whose open flat ground stays unshaded at any radius; gtao's slices darken open ground a little as the radius shrinks. |
 | `outline` | `boolean` | `false` | — | — | — | Outlines every opaque surface from depth and normal edges, creases between the faces of one object included (materials with outlineWidth get their own hull outline instead). |
 | `outlineColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The line colour, linear. |
@@ -2123,7 +2123,7 @@ resource PostEffects {
   }
   field aoMethod AoMethod "The algorithm."
   field aoResolution AoResolution "Full resolution, or half for a fraction of the GPU time at softer detail."
-  field aoDirect f32 "How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it)." {
+  field aoDirect f32 "How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it). Above 0 the AO sees and darkens water surfaces too; at 0 water is outside it." {
     default 0
     min 0
     max 1

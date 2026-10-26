@@ -24,6 +24,7 @@ struct WaterUniform {
   extra: vec4<f32>,       // x: shadows, y: 1 with the planar reflection, z: F0, w: reflection bias
   under: vec4<f32>,       // rgb: the underwater colour, w: three.js Water's glint (0: the half-vector highlight)
   normals: vec4<f32>,     // x: the normal map's repeats, yz: its flow (0: the lake's layers), w: 1 with a normal map
+  ao: vec4<f32>,          // x: PostEffects.aoDirect, how much the screen AO darkens the reflection and the body (0: not at all)
 };
 
 @group(1) @binding(0) var<uniform> water: WaterUniform;
@@ -219,10 +220,10 @@ fn ssr(origin: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
       let hit = screen_uv(origin + r * hi);
       let edge = min(min(hit.x, 1.0 - hit.x), min(hit.y, 1.0 - hit.y));
       let fade = clamp(edge * 8.0, 0.0, 1.0) * (1.0 - f32(i) / f32(steps));
-      // The scene colour there was already darkened by its own screen AO (the whole colour × mix(0.35, 1, ao) with
-      // aoDirect 1): taken back out, so that `fs` darkens the reflection once, by the AO at the water (as a mirror
-      // drawn without AO and darkened as a whole by three.js-era post AO). White without AO: no change.
-      let k_hit = mix(0.35, 1.0, textureSampleLevel(ao_tex, water_sampler, hit.xy, 0.0).r);
+      // The scene colour there was already darkened by its own screen AO (the whole colour × mix(0.35, 1, ao) by
+      // aoDirect, pbr_fs.wgsl): taken back out, so that `fs` darkens the reflection once, by the AO at the water (as
+      // a mirror drawn without AO and darkened as a whole by three.js-era post AO). aoDirect 0 or no AO: no change.
+      let k_hit = mix(1.0, mix(0.35, 1.0, textureSampleLevel(ao_tex, water_sampler, hit.xy, 0.0).r), water.ao.x);
       return vec4<f32>(textureSampleLevel(scene_color, water_sampler, hit.xy, 0.0).rgb / k_hit, fade);
     }
     last = t;
@@ -335,11 +336,12 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   }
   // Screen-space AO: the scene behind (`below`) was darkened by it as it was lit; the reflection and the body are the
   // water's own, darkened here the same way (the whole colour × mix(0.35, 1, ao), as pbr_fs with aoDirect 1 and as
-  // three.js-era post AO, which darkened the water's pixel whole).
+  // three.js-era post AO, which darkened the water's pixel whole), by PostEffects.aoDirect (water.ao.x): at the
+  // default 0 the water, like every opaque surface's direct light, is not darkened by the screen AO.
   let ao_raw = textureSampleLevel(ao_tex, water_sampler, uv, 0.0).r;
   // Debug (DebugView::AmbientOcclusion): the ambient occlusion here, as pbr_fs.wgsl and scatter.wgsl.
   if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) { return vec4<f32>(vec3<f32>(ao_raw), 1.0); }
-  let ao_k = mix(0.35, 1.0, ao_raw);
+  let ao_k = mix(1.0, mix(0.35, 1.0, ao_raw), water.ao.x);
   reflected *= ao_k;
   if (water_js) { color *= ao_k; }
   color = mix(color, reflected, clamp(fresnel, 0.0, 1.0));

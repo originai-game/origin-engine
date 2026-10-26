@@ -204,13 +204,18 @@ struct WaterGpu {
     waves: [f32; 4],
     look: [f32; 4],
     screen: [f32; 4],
-    /// x: shadows, y: 1 drawn with the planar reflection, zw: unused.
+    /// x: shadows, y: 1 drawn with the planar reflection, z: F0, w: the
+    /// reflection bias.
     extra: [f32; 4],
     /// rgb: the underwater colour, w: the glint (0: off).
     under: [f32; 4],
     /// The normal map: x repeats, yz the flow (zero: the lake's layers),
     /// w 1 when there is one.
     normals: [f32; 4],
+    /// x: PostEffects.aoDirect, how much the frame's screen AO darkens the
+    /// reflection and the body (0: not at all, as the opaque surfaces'
+    /// direct light); yzw: unused.
+    ao: [f32; 4],
 }
 
 /// The most grid cells per side (256² cells, 131,072 triangles per
@@ -473,6 +478,7 @@ impl WaterRenderer {
         scene_depth: &wgpu::TextureView,
         planar: &[(usize, &wgpu::TextureView)],
         ao: &wgpu::TextureView,
+        ao_direct: f32,
         fallback: &wgpu::TextureView,
         mesh_buffers: &dyn Fn(
             crate::scene::MeshHandle,
@@ -564,6 +570,7 @@ impl WaterRenderer {
                     water.flow.y,
                     f32::from(normal_view.is_some()),
                 ],
+                ao: [ao_direct.clamp(0.0, 1.0), 0.0, 0.0, 0.0],
             };
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
             // A probe face has no planar reflection of its own (that would be

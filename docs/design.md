@@ -637,8 +637,10 @@ shadow camera such games fit around the player, with three.js' `bias`
 and `normalBias` (`shadowBias`, `shadowNormalBias`). Post:
 `PostEffects.aoMethod screen` is the depth-only screen-space AO of
 three.js-era post passes, `aoRadiusScale` grows the AO radius with
-distance, `aoDirect` lets the AO darken direct and emitted light too,
-`sharpen` is a CAS pass after the output, and
+distance, `aoDirect` lets the AO darken direct and emitted light too
+(and, above 0, see and darken water surfaces, as three.js' post AO did;
+at 0 water stays outside the AO), `sharpen` is a CAS pass after the
+output, and
 `RenderSettings.bloomRadius/bloomContrast` switch the bloom to
 UnrealBloomPass. Water: `Water.geometry` draws over any mesh (a stream
 or a pool) instead of the grid, `f0`, `reflectionBias` and `glint` are

@@ -1559,6 +1559,11 @@ pub(crate) struct GraphConfig {
     /// The main pass draws water or a 3D fluid: it copies the scene drawn
     /// so far.
     pub water: bool,
+    /// The screen AO sees the water's surfaces (`ao-depth`; water.rs
+    /// `draw_ao_depth`): water drawn with `PostEffects::ao.direct` above 0,
+    /// the three.js-era AO that darkened the water's pixel whole. At 0 the
+    /// water, drawn after the AO is applied, is outside it.
+    pub water_ao: bool,
     /// The main pass copies the opaque scene for transmissive materials
     /// (into the renderer's own mip-chained target, not a graph target).
     pub transmission: bool,
@@ -1905,9 +1910,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         metered.clone()
     };
     let prepass = has(FramePass::Prepass);
-    // With water and AO: the prepass depth with the water's surfaces in it, which the AO reads (lib.rs, water.rs
-    // `draw_ao_depth`); the prepass pass writes it after its own targets.
-    let ao_depth = prepass && cfg.water && has(FramePass::Ao);
+    // With water the AO darkens (`GraphConfig::water_ao`): the prepass depth with the water's surfaces in it, which
+    // the AO reads (lib.rs, water.rs `draw_ao_depth`); the prepass pass writes it after its own targets.
+    let ao_depth = prepass && cfg.water_ao && has(FramePass::Ao);
     if ao_depth {
         g.transient(
             "ao-depth",
