@@ -119,8 +119,12 @@ impl Hooks for WebHooks {
 
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
         // A pack is read once per load: taken, not copied, and fetched
-        // again (a failure too) the next time its group loads.
-        let known = if is_stream_pack(path) || is_sound_chunk(path) {
+        // again (a failure too) the next time its group loads. So is a
+        // model: the runtime decodes it once into the renderer's meshes
+        // (assets::load_gltf keeps the asset by path) and a refresh fetches
+        // it again; kept, a large scene's models would sit in the wasm heap
+        // twice, encoded beside decoded.
+        let known = if is_stream_pack(path) || is_sound_chunk(path) || is_model(path) {
             FILES.with(|f| f.borrow_mut().remove(path))
         } else {
             FILES.with(|f| f.borrow().get(path).cloned())
@@ -261,6 +265,11 @@ fn is_sound_chunk(path: &str) -> bool {
     path.strip_suffix(".ogb")
         .and_then(|p| p.rsplit_once(".chunk"))
         .is_some_and(|(_, n)| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// A cooked glTF model's own blob (`<asset>.gltf.ogb`, `<asset>.glb.ogb`).
+fn is_model(path: &str) -> bool {
+    path.ends_with(".gltf.ogb") || path.ends_with(".glb.ogb")
 }
 
 fn drop_textures(ids: &[String]) {
