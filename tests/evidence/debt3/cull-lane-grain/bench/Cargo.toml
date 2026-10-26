@@ -1,0 +1,15 @@
+[package]
+name = "cullbench"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+og-lanes = { path = "../../../../../crates/og-lanes" }
+glam = { version = "0.34.1", features = ["bytemuck", "scalar-math"] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+
+[workspace]

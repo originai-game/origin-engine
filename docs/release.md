@@ -342,7 +342,7 @@ Owed rows 14 and 44 (the publish wasm under 65 %, the budget's meaning
 the owner's), 51 and 52 (the three.js comparison and the lanes physics in
 Chrome; row 51 is judged on the complex scene, `tools/bench/complex`, since
 2026-10-25: ≥ 1.5× three.js on WebGPU, WebGL2 and the reference scene
-reported, `tests/evidence/r4/bench-complex/NOTES.md`), 56 (quantised clips resident), 57 (the cull's lane grain), 88
+reported, `tests/evidence/r4/bench-complex/NOTES.md`), 56 (quantised clips resident), 88
 (the web first-frame settle cost; the native late-arrival test passed on
 2026-10-24 at `195cd595`), 89 and 90 (perf-games'
 idle-machine tables and follow-ups; branch `perf-2`). Each is taken up as
