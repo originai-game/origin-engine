@@ -876,6 +876,8 @@ pub struct PostEffects {
     /// The 2D glow buffer (sprites with [`SpriteFx::glow`]).
     pub glow: Option<Glow>,
     pub color_grading: Option<ColorGrading>,
+    /// Colour adjustments after the grading (baked with its table).
+    pub color_adjust: Option<crate::ColorAdjust>,
     pub vignette: Option<Vignette>,
     pub chromatic_aberration: Option<ChromaticAberration>,
     pub film_grain: Option<FilmGrain>,
@@ -895,6 +897,14 @@ pub struct PostEffects {
     /// With [`PostEffects::bloom_unreal`]: the per-channel contrast
     /// `0.18 · (c / 0.18)^k` the high pass sees (1 or 0 = none).
     pub bloom_contrast: f32,
+}
+
+impl PostEffects {
+    /// The colour adjustments that change something: the tonemap then
+    /// samples their baked table instead of the grading's.
+    pub(crate) fn adjust(&self) -> Option<crate::ColorAdjust> {
+        self.color_adjust.filter(|a| !a.is_identity())
+    }
 }
 
 /// A diagnostic view in place of the lit image.

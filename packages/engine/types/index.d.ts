@@ -4599,7 +4599,7 @@ export declare function StripBlend(value?: StripBlend, options?: FieldOptions): 
 
 /**
  * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.
- * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.
+ * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, the colour adjustments (temperature to threshold), vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.
  *
  * The `PostEffects` resource (token `og.PostEffects`).
  */
@@ -4804,6 +4804,101 @@ export interface PostEffects {
    * @tunable
    */
   lutIntensity: number;
+  /**
+   * White balance: towards warm orange (positive) or cool blue (negative), Unity's Temperature divided by 100 (a von Kries scaling in LMS from a white point moved along the daylight locus); 0 is off. The colour adjustments, temperature to threshold, apply in this order to the display colour after the tone curve and the LUT, each clamping it to 0..1 (the white balance in linear light, the rest on the sRGB-encoded colour). They cost no pass: the renderer bakes them with the LUT into one 32³ table whenever one changes, so adjustments held still cost nothing per frame, and a frame that changes one pays that bake on the CPU (about half a millisecond with one adjustment on, a few with all of them).
+   *
+   * @range -1..1
+   * @tunable
+   */
+  temperature: number;
+  /**
+   * White balance: towards magenta (positive) or green (negative), as Lightroom's and Unity's Tint divided by 100; 0 is off.
+   *
+   * @range -1..1
+   * @tunable
+   */
+  tint: number;
+  /**
+   * Added to every channel of the display colour; 0 is off.
+   *
+   * @range -1..1
+   * @tunable
+   */
+  brightness: number;
+  /**
+   * Contrast around mid grey: positive spreads the tones by 1 / (1 - contrast), negative pulls them in by 1 + contrast (-1 is flat grey); 0 is off.
+   *
+   * @range -1..1
+   * @tunable
+   */
+  contrast: number;
+  /**
+   * The colour balance of the shadows (luminance below 0.5, fading out towards it): x shifts from cyan to red, y from magenta to green, z from yellow to blue, each -1 to 1 added to its channel; zero is off.
+   *
+   * @tunable
+   */
+  balanceShadows: Vector3;
+  /**
+   * The colour balance of the mid-tones (what the shadows and highlights leave), as balanceShadows.
+   *
+   * @tunable
+   */
+  balanceMidtones: Vector3;
+  /**
+   * The colour balance of the highlights (luminance above 0.5, fading in from it), as balanceShadows.
+   *
+   * @tunable
+   */
+  balanceHighlights: Vector3;
+  /**
+   * The colour balance keeps each pixel's luminance, so it moves only the hue (Photoshop's Preserve Luminosity).
+   *
+   * @default true
+   */
+  preserveLuminosity: boolean;
+  /**
+   * Turns every hue about the grey axis (red towards green at 120); 0 is off.
+   *
+   * @range -180..180
+   * @unit deg (degrees)
+   * @tunable
+   */
+  hue: number;
+  /**
+   * -1 grey, 0 unchanged, 1 twice the colour (the chroma around the luminance scaled by 1 + saturation).
+   *
+   * @range -1..2
+   * @tunable
+   */
+  saturation: number;
+  /**
+   * Saturation that spares colours already saturated and skin tones: positive livens dull colours, negative mutes them; 0 is off.
+   *
+   * @range -1..1
+   * @tunable
+   */
+  vibrance: number;
+  /**
+   * How far each colour goes towards its luminance (grey); 0 is off.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  grayscale: number;
+  /**
+   * How far each colour goes towards its complement; 0 is off.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  invert: number;
+  /**
+   * Above 0, each pixel white where its luminance reaches this level and black below it (the table's 32 steps soften the edge over about 1/31 of the range); 0 is off.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  threshold: number;
   /** Darkened (or tinted) edges of the frame. */
   vignette: boolean;
   /**
@@ -23086,9 +23181,9 @@ export declare namespace og {
   const Environment: ResourceType<{ readonly map: FieldSpec<"EnvironmentMap">; readonly intensity: FieldSpec<"f32">; readonly rotation: FieldSpec<"f32">; readonly background: FieldSpec<"bool">; readonly backgroundIntensity: FieldSpec<"f32">; readonly hemiSky: FieldSpec<"Color">; readonly hemiGround: FieldSpec<"Color">; readonly hemiIntensity: FieldSpec<"f32"> }, Environment>;
   /**
    * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.
-   * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.
+   * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, the colour adjustments (temperature to threshold), vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.
    */
-  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly aoResolution: FieldSpec<"AoResolution">; readonly aoDirect: FieldSpec<"f32">; readonly aoRadiusScale: FieldSpec<"f32">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly sharpen: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly ssr: FieldSpec<"bool">; readonly ssrMaxDistance: FieldSpec<"f32">; readonly ssrThickness: FieldSpec<"f32">; readonly ssrSteps: FieldSpec<"u32">; readonly ssrFade: FieldSpec<"f32">; readonly ssrIntensity: FieldSpec<"f32">; readonly custom: ListSpec<"Post"> }, PostEffects>;
+  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly aoResolution: FieldSpec<"AoResolution">; readonly aoDirect: FieldSpec<"f32">; readonly aoRadiusScale: FieldSpec<"f32">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly temperature: FieldSpec<"f32">; readonly tint: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32">; readonly contrast: FieldSpec<"f32">; readonly balanceShadows: FieldSpec<"Vector3">; readonly balanceMidtones: FieldSpec<"Vector3">; readonly balanceHighlights: FieldSpec<"Vector3">; readonly preserveLuminosity: FieldSpec<"bool">; readonly hue: FieldSpec<"f32">; readonly saturation: FieldSpec<"f32">; readonly vibrance: FieldSpec<"f32">; readonly grayscale: FieldSpec<"f32">; readonly invert: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly sharpen: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly ssr: FieldSpec<"bool">; readonly ssrMaxDistance: FieldSpec<"f32">; readonly ssrThickness: FieldSpec<"f32">; readonly ssrSteps: FieldSpec<"u32">; readonly ssrFade: FieldSpec<"f32">; readonly ssrIntensity: FieldSpec<"f32">; readonly custom: ListSpec<"Post"> }, PostEffects>;
   /**
    * Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.
    * Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised.

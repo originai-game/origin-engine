@@ -9,6 +9,13 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- render, `PostEffects`: colour adjustments after the LUT (RedGPU's
+  adjustments, ported): `temperature` and `tint` (white balance),
+  `brightness`, `contrast`, `balanceShadows`, `balanceMidtones`,
+  `balanceHighlights` with `preserveLuminosity` (colour balance), `hue`,
+  `saturation`, `vibrance`, `grayscale`, `invert`, `threshold`. Every
+  one is off at 0; they are baked with the LUT into one 32³ table on the
+  CPU when one changes and add no pass (og-render `ColorAdjust`).
 - release: the pack is a GitHub Actions matrix (`.github/workflows/release.yml`):
   the wasm, the linux-x64 addon, the engine and create-game packages on one
   Linux job, the darwin-arm64 and win32-x64 addons on their runners

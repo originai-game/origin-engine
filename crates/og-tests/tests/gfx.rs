@@ -1378,6 +1378,12 @@ fn post_grade_matches_its_reference() {
     check("post-grade");
 }
 
+/// Colour adjustments baked with a grading LUT at 0.6 into one table.
+#[test]
+fn post_adjust_matches_its_reference() {
+    check("post-adjust");
+}
+
 /// AgX: the bloom scene's emissive spheres keep their hue in the glow but
 /// their over-exposed cores go towards white, where ACES skews them.
 #[test]

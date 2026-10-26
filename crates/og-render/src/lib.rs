@@ -7514,9 +7514,29 @@ impl Renderer {
         let lightmap_scale = scene
             .lighting_2d
             .map_or(0.5, |l| l.resolution.clamp(0.25, 1.0));
-        let lut_view = match lut_index {
-            Some(i) => &self.cache.luts[i].as_ref().expect("checked above").0,
-            None => &self.post.identity_lut,
+        // Colour adjustments: the grading table and the adjustments baked
+        // into one (when either changed), bound under scene id 0, which no
+        // scene has, so the bindings are made again when it comes or goes.
+        let adjust = post_fx.adjust();
+        if let Some(a) = &adjust {
+            let grade = post_fx.color_grading.map(|g| {
+                let i = g.lut.index();
+                (
+                    &scene.luts()[i],
+                    (scene.id(), i, scene.lut_revisions()[i]),
+                    g.intensity,
+                )
+            });
+            self.post
+                .bake_adjusted_lut(&self.device, &self.queue, a, grade);
+        }
+        let (lut_key, lut_view) = match (adjust.and(self.post.adjusted_lut()), lut_index) {
+            (Some(view), _) => (Some((0, 0)), view),
+            (None, Some(i)) => (
+                Some((scene.id(), i)),
+                &self.cache.luts[i].as_ref().expect("checked above").0,
+            ),
+            (None, None) => (None, &self.post.identity_lut),
         };
         // Transmissive draws refract a copy of the opaque scene with its
         // mip chain: the main pass splits for it, as for water.
@@ -7584,7 +7604,7 @@ impl Renderer {
                 },
                 &self.post,
                 &self.persistent,
-                (lut_index.map(|i| (scene.id(), i)), lut_view),
+                (lut_key, lut_view),
                 (palette_view, canvas_view, stylise_key),
             )
             .map_err(|e| RenderError::Graph(e.to_string()))?;

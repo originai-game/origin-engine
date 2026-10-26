@@ -586,7 +586,7 @@ module `render`), on both hosts, off by default:
 
 | og-render | TypeScript |
 |---|---|
-| AO, outlines, depth of field, motion blur, god rays, glow, LUT grading, vignette, aberration, grain, flash, shake | resource `og.PostEffects` (zero = off; `lut` is a handle from `og.load.lut`) |
+| AO, outlines, depth of field, motion blur, god rays, glow, LUT grading, colour adjustments, vignette, aberration, grain, flash, shake | resource `og.PostEffects` (zero = off; `lut` is a handle from `og.load.lut`) |
 | `Lighting2d`, `Light2d`, `Occluder2d` | resource `og.Lighting2D`; components `og.Light2D`, `og.Occluder2D`; `SpriteDesc.castShadow` |
 | `Decal` | component `og.Decal` with the atlas in `og.RenderSettings.decalAtlas` |
 | `ParticleSystem` | component `og.ParticleSystem` naming an emitter from `og.load.emitter` (`.ogt` of type `particles`, cooked by og-cook) |
@@ -684,6 +684,7 @@ the full tier) asserts the tier's antialiasing choice instead.
 | `bloom` | Emissive spheres with bloom. | all |
 | `exposure` | A dim dusk scene metered to middle grey. | all |
 | `post-agx` | The `bloom` scene through AgX: lower contrast, the orange and magenta halos paler than under ACES, the cores rolling to white. | all |
+| `post-adjust` | The spike's scene through the teal-orange LUT at 0.6, then colour adjustments baked into the same table (`ColorAdjust`: temperature 0.06, contrast 0.15, vibrance 0.25, shadows towards teal): deeper blue-violet robots, the far floor and the haze a warm sand, richer yellow crates. | all |
 | `environment-map` | Chrome and white spheres from mirror to rough lit only by a cooked 64×32 HDR studio (baked here as the cook bakes it), turned 0.6 rad, drawn as the background. | all |
 | `sprites-20k` | 20,000 sprites (3 textures, one a 2×2 atlas, 2 layers), orthographic: 3 sprite draws. | all |
 | `sprites-array` | Sixteen sprites of an eight-layer pixel-art flipbook array (nearest; the second row flipped and turned), six of a three-layer smooth array added over a plain textured strip: one draw per array and blend, three in all. | all |
@@ -1180,6 +1181,11 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
   per-material colour and width; below), depth of field (`DofQuality::Low` / `High`), motion
   blur from per-object and camera motion vectors (`fx.rs` carries the
   previous view-projection), god rays, colour grading by `ColorLut`,
+  colour adjustments after it (`ColorAdjust`: white balance, brightness
+  and contrast, colour balance, hue, saturation, vibrance, greyscale,
+  invert and threshold, RedGPU's adjustments; baked with the grading
+  table into one 32³ table on the CPU when either changes, so they add
+  no pass and cost nothing while they hold still),
   vignette, chromatic aberration, film grain seeded by the tick, screen
   flash and camera shake (a deterministic offset of the camera, not a
   post pass).

@@ -11,11 +11,11 @@ use glam::{Mat4, Vec2, Vec3};
 use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, World};
 use og_render::{
-    AmbientOcclusion, AoMethod, AoResolution, Beam, CameraShake, ChromaticAberration, ColorCurve,
-    ColorGrading, Curve, Decal, DepthOfField, DofQuality, FilmGrain, Glow, GodRays, JointPalette,
-    Light2d, Lighting2d, MeshHandle, MorphTargets, MotionBlur, Occluder2d, Outline, ParticleBlend,
-    ParticleSystem, RibbonUv, ScreenFlash, SkinData, SkinnedInstance, Trail, TrailStyle,
-    TrailStyleHandle, Vignette,
+    AmbientOcclusion, AoMethod, AoResolution, Beam, CameraShake, ChromaticAberration, ColorAdjust,
+    ColorCurve, ColorGrading, Curve, Decal, DepthOfField, DofQuality, FilmGrain, Glow, GodRays,
+    JointPalette, Light2d, Lighting2d, MeshHandle, MorphTargets, MotionBlur, Occluder2d, Outline,
+    ParticleBlend, ParticleSystem, RibbonUv, ScreenFlash, SkinData, SkinnedInstance, Trail,
+    TrailStyle, TrailStyleHandle, Vignette,
 };
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -255,6 +255,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     post.ssr = None;
     post.glow = None;
     post.color_grading = None;
+    post.color_adjust = None;
     post.vignette = None;
     post.chromatic_aberration = None;
     post.film_grain = None;
@@ -341,6 +342,23 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
                 intensity: f(&p, "lutIntensity", 1.0),
             });
         }
+        let adjust = ColorAdjust {
+            temperature: f(&p, "temperature", 0.0),
+            tint: f(&p, "tint", 0.0),
+            brightness: f(&p, "brightness", 0.0),
+            contrast: f(&p, "contrast", 0.0),
+            shadows: vec3(&p["balanceShadows"]),
+            midtones: vec3(&p["balanceMidtones"]),
+            highlights: vec3(&p["balanceHighlights"]),
+            preserve_luminosity: on(&p, "preserveLuminosity", true),
+            hue: f(&p, "hue", 0.0),
+            saturation: f(&p, "saturation", 0.0),
+            vibrance: f(&p, "vibrance", 0.0),
+            grayscale: f(&p, "grayscale", 0.0),
+            invert: f(&p, "invert", 0.0),
+            threshold: f(&p, "threshold", 0.0),
+        };
+        post.color_adjust = (!adjust.is_identity()).then_some(adjust);
         if on(&p, "vignette", false) {
             post.vignette = Some(Vignette {
                 intensity: f(&p, "vignetteIntensity", 0.35),

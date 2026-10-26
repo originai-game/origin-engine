@@ -134,6 +134,7 @@ pub const SCENES: &[&str] = &[
     "water-planar-two",
     "terrain-hidden",
     "terrain-scatter-unshadowed",
+    "post-adjust",
 ];
 
 /// Scenes rendered natively only, beside [`SCENES`] (`og-gfx --all` takes
@@ -723,6 +724,13 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "terrain-hidden" => g.scene = crate::fork_scenes::terrain_flags_scene(false, true),
         "terrain-scatter-unshadowed" => {
             g.scene = crate::fork_scenes::terrain_flags_scene(true, false)
+        }
+        // The spike's scene through the teal-orange LUT at 0.6, then the
+        // colour adjustments baked with it: warmer, more contrast and
+        // vibrance, teal shadows and warm highlights.
+        "post-adjust" => {
+            g.scene = spike_gltf_scene()?;
+            fx::adjust(&mut g.scene);
         }
         other => {
             return Err(format!(

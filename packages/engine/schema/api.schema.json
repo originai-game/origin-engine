@@ -15840,7 +15840,7 @@
     "PostEffects": {
       "x-og-kind": "resource",
       "x-og-module": "render",
-      "description": "The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.\nScreen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.",
+      "description": "The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.\nScreen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, the colour adjustments (temperature to threshold), vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.",
       "type": "object",
       "properties": {
         "ao": {
@@ -16059,6 +16059,122 @@
           "type": "number",
           "description": "0 leaves the image as tone mapped, 1 applies the table fully.",
           "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "temperature": {
+          "type": "number",
+          "description": "White balance: towards warm orange (positive) or cool blue (negative), Unity's Temperature divided by 100 (a von Kries scaling in LMS from a white point moved along the daylight locus); 0 is off. The colour adjustments, temperature to threshold, apply in this order to the display colour after the tone curve and the LUT, each clamping it to 0..1 (the white balance in linear light, the rest on the sRGB-encoded colour). They cost no pass: the renderer bakes them with the LUT into one 32³ table whenever one changes, so adjustments held still cost nothing per frame, and a frame that changes one pays that bake on the CPU (about half a millisecond with one adjustment on, a few with all of them).",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "tint": {
+          "type": "number",
+          "description": "White balance: towards magenta (positive) or green (negative), as Lightroom's and Unity's Tint divided by 100; 0 is off.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "brightness": {
+          "type": "number",
+          "description": "Added to every channel of the display colour; 0 is off.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "contrast": {
+          "type": "number",
+          "description": "Contrast around mid grey: positive spreads the tones by 1 / (1 - contrast), negative pulls them in by 1 + contrast (-1 is flat grey); 0 is off.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "balanceShadows": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The colour balance of the shadows (luminance below 0.5, fading out towards it): x shifts from cyan to red, y from magenta to green, z from yellow to blue, each -1 to 1 added to its channel; zero is off.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-tunable": true
+        },
+        "balanceMidtones": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The colour balance of the mid-tones (what the shadows and highlights leave), as balanceShadows.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-tunable": true
+        },
+        "balanceHighlights": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The colour balance of the highlights (luminance above 0.5, fading in from it), as balanceShadows.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-tunable": true
+        },
+        "preserveLuminosity": {
+          "type": "boolean",
+          "description": "The colour balance keeps each pixel's luminance, so it moves only the hue (Photoshop's Preserve Luminosity).",
+          "default": true
+        },
+        "hue": {
+          "type": "number",
+          "description": "Turns every hue about the grey axis (red towards green at 120); 0 is off.",
+          "default": 0,
+          "minimum": -180,
+          "maximum": 180,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "saturation": {
+          "type": "number",
+          "description": "-1 grey, 0 unchanged, 1 twice the colour (the chroma around the luminance scaled by 1 + saturation).",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "vibrance": {
+          "type": "number",
+          "description": "Saturation that spares colours already saturated and skin tones: positive livens dull colours, negative mutes them; 0 is off.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "grayscale": {
+          "type": "number",
+          "description": "How far each colour goes towards its luminance (grey); 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "invert": {
+          "type": "number",
+          "description": "How far each colour goes towards its complement; 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "threshold": {
+          "type": "number",
+          "description": "Above 0, each pixel white where its luminance reaches this level and black below it (the table's 32 steps soften the edge over about 1/31 of the range); 0 is off.",
+          "default": 0,
           "minimum": 0,
           "maximum": 1,
           "x-og-tunable": true

@@ -9,14 +9,14 @@ use crate::scenes::{ground, load, texture};
 use glam::{Mat4, Vec2, Vec3};
 use og_render::{
     AmbientOcclusion, AoMethod, Background, Beam, Bloom, Burst, Camera, ChromaticAberration,
-    ColorCurve, ColorGrading, ColorLut, ColorSpace, Curve, Decal, DepthOfField, DirectionalLight,
-    DofQuality, EmitterHandle, EmitterShape, Environment, Exposure, FilmGrain, Glow, GodRays,
-    Instance, InstanceFx, JointPalette, Light, Light2d, LightKind, Lighting2d, Material, MeshData,
-    Mips, MotionBlur, Occluder2d, Outline, ParticleAlign, ParticleBlend, ParticleCollision,
-    ParticleEmitter, ParticleNoise, ParticleRender, ParticleSystem, ProceduralSky, RenderScene,
-    Ribbon, RibbonPoint, RibbonUv, SheetMode, SimulationSpace, SkinData, SkinnedInstance, Sprite,
-    SpriteFx, SpriteSheet, StandardMaterial, Text, TextureData, TextureHandle, Tonemap, Trail,
-    TrailStyle, Vertex, Vignette, shapes,
+    ColorAdjust, ColorCurve, ColorGrading, ColorLut, ColorSpace, Curve, Decal, DepthOfField,
+    DirectionalLight, DofQuality, EmitterHandle, EmitterShape, Environment, Exposure, FilmGrain,
+    Glow, GodRays, Instance, InstanceFx, JointPalette, Light, Light2d, LightKind, Lighting2d,
+    Material, MeshData, Mips, MotionBlur, Occluder2d, Outline, ParticleAlign, ParticleBlend,
+    ParticleCollision, ParticleEmitter, ParticleNoise, ParticleRender, ParticleSystem,
+    ProceduralSky, RenderScene, Ribbon, RibbonPoint, RibbonUv, SheetMode, SimulationSpace,
+    SkinData, SkinnedInstance, Sprite, SpriteFx, SpriteSheet, StandardMaterial, Text, TextureData,
+    TextureHandle, Tonemap, Trail, TrailStyle, Vertex, Vignette, shapes,
 };
 
 /// Advances every clock of the scene to `tick`: the scene's, each particle
@@ -1079,6 +1079,22 @@ pub fn grade(scene: &mut RenderScene) {
     scene.post.vignette = Some(Vignette::default());
     scene.post.chromatic_aberration = Some(ChromaticAberration { intensity: 2.5 });
     scene.post.film_grain = Some(FilmGrain::default());
+}
+
+/// The teal-orange LUT at 0.6, then colour adjustments baked with it.
+pub fn adjust(scene: &mut RenderScene) {
+    let lut = scene.add_lut(teal_orange());
+    scene.post.color_grading = Some(ColorGrading {
+        lut,
+        intensity: 0.6,
+    });
+    scene.post.color_adjust = Some(ColorAdjust {
+        temperature: 0.06,
+        contrast: 0.15,
+        vibrance: 0.25,
+        shadows: Vec3::new(-0.04, 0.0, 0.05),
+        ..Default::default()
+    });
 }
 
 // ---------------------------------------------------------------------------

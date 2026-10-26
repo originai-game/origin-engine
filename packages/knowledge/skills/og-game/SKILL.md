@@ -1367,8 +1367,15 @@ Every effect is off until the game turns it on, as data:
 
 - **Post** — the `og.PostEffects` resource: `ao`, `outline`,
   `depthOfField`, `motionBlur`, `godRays`, `glow`, `lut` (a handle from
-  `og.load.lut(world, "luts/look.cube")`), `vignette`,
-  `chromaticAberration`, `filmGrain`, `flash`, and a fixed shake of the
+  `og.load.lut(world, "luts/look.cube")`), the colour adjustments after it
+  (`temperature`, `tint`, `brightness`, `contrast`, `balanceShadows`,
+  `balanceMidtones`, `balanceHighlights`, `hue`, `saturation`,
+  `vibrance`, `grayscale`, `invert`, `threshold`: a photo editor's sliders,
+  0 is off; baked with the LUT into one table, so they cost no pass;
+  each frame that changes one re-bakes it on the CPU, about half a
+  millisecond to a few, so a fade such as `post.saturation = -t` is
+  fine and a slider moved on every frame of play is not),
+  `vignette`, `chromaticAberration`, `filmGrain`, `flash`, and a fixed shake of the
   frame through `shakeTrauma` (an earthquake that lasts; a hit's shake is
   `og.camera.shake`, which decays by itself: og-feel §4). A game with fast
   motion wants `render: { antialias: "taa" }` in `og.game`.

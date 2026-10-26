@@ -9,12 +9,13 @@
 use glam::{Mat4, Vec2, Vec3};
 use og_render::{
     AmbientOcclusion, AoMethod, Background, Beam, Burst, Camera, CameraShake, ChromaticAberration,
-    ColorCurve, ColorGrading, ColorLut, Curve, Decal, DepthOfField, DofQuality, EmitterShape,
-    Exposure, FilmGrain, FrameStats, Glow, GodRays, JointPalette, Light2d, Lighting2d, MAX_DECALS,
-    Material, MorphTargets, MotionBlur, Occluder2d, Outline, ParticleCollision, ParticleEmitter,
-    ParticleRender, ParticleSimulation, ParticleSystem, Projection, RenderDesc, RenderScene,
-    RenderTarget, Renderer, RgbaImage, ScreenFlash, SkinnedInstance, Sprite, SpriteFx,
-    StandardMaterial, Tier, Tonemap, Trail, TrailStyle, Vignette, shapes,
+    ColorAdjust, ColorCurve, ColorGrading, ColorLut, Curve, Decal, DepthOfField, DofQuality,
+    EmitterShape, Exposure, FilmGrain, FrameStats, Glow, GodRays, JointPalette, Light2d,
+    Lighting2d, MAX_DECALS, Material, MorphTargets, MotionBlur, Occluder2d, Outline,
+    ParticleCollision, ParticleEmitter, ParticleRender, ParticleSimulation, ParticleSystem,
+    Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, ScreenFlash,
+    SkinnedInstance, Sprite, SpriteFx, StandardMaterial, Tier, Tonemap, Trail, TrailStyle,
+    Vignette, shapes,
 };
 use og_tests::fx_scenes as fx;
 use og_tests::{gfx, scenes};
@@ -808,6 +809,84 @@ fn colour_grading_reads_the_lut() {
     assert_eq!(
         ColorLut::from_cube(&cube).expect("cube"),
         ColorLut::identity()
+    );
+}
+
+/// Colour adjustments: saturation -1 greys the red bar at its luma, the
+/// hue turns red to green, and after a red/blue swap LUT the same turn
+/// brings the swapped (blue) bar back to red, so the LUT is applied first
+/// and both are in the one table. A renderer that changes the adjustments
+/// between frames draws what a fresh one draws (the table is baked again
+/// in place). Warm white balance raises red over blue, cool the reverse,
+/// and positive tint lowers green.
+#[test]
+fn colour_adjustments_bake_after_the_lut() {
+    let cam = colour_scene().camera;
+    let (x, y) = project(&cam, 320, 180, Vec3::new(-3.0, 0.0, 0.0));
+    let adjusted = |a: ColorAdjust, swap: bool| {
+        let mut s = colour_scene();
+        if swap {
+            let lut = s.add_lut(ColorLut::from_fn(|c| Vec3::new(c.z, c.y, c.x)));
+            s.post.color_grading = Some(ColorGrading {
+                lut,
+                intensity: 1.0,
+            });
+        }
+        s.post.color_adjust = Some(a);
+        s
+    };
+    let (plain, _) = frame(&small(), &colour_scene());
+    let grey = ColorAdjust {
+        saturation: -1.0,
+        ..Default::default()
+    };
+    let (greyed, _) = frame(&small(), &adjusted(grey, false));
+    let (before, after) = (px(&plain, x, y), px(&greyed, x, y));
+    println!("saturation -1: red bar {before:?} -> {after:?}");
+    assert!(after.iter().max().unwrap() - after.iter().min().unwrap() <= 3);
+    assert!((luma(after) - luma(before)).abs() < 3.0);
+    let turn = ColorAdjust {
+        hue: 120.0,
+        ..Default::default()
+    };
+    let (turned, _) = frame(&small(), &adjusted(turn, false));
+    let (swapped, _) = frame(&small(), &adjusted(turn, true));
+    let (t, s) = (px(&turned, x, y), px(&swapped, x, y));
+    println!("hue 120: red bar {t:?}; after the swap LUT {s:?}");
+    assert!(t[1] > t[0] + 100 && t[1] > t[2] + 100, "hue alone: {t:?}");
+    assert!(
+        s[0] > s[1] + 100 && s[0] > s[2] + 100,
+        "swap then hue: {s:?}"
+    );
+    // The same renderer and scene, the adjustments changed: the table is
+    // baked again.
+    let mut renderer = Renderer::new_blocking(&small()).expect("renderer");
+    let mut scene = adjusted(grey, true);
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("render");
+    scene.post.color_adjust = Some(turn);
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("render");
+    let again = renderer.read_offscreen().expect("capture");
+    assert_eq!(again.pixels, swapped.pixels, "a stale table after a change");
+    // White balance on a mid grey.
+    let wb = |temperature: f32, tint: f32| {
+        ColorAdjust {
+            temperature,
+            tint,
+            ..Default::default()
+        }
+        .apply(Vec3::splat(0.5))
+    };
+    let (warm, cool, magenta) = (wb(0.5, 0.0), wb(-0.5, 0.0), wb(0.0, 0.5));
+    println!("grey 0.5: warm {warm}, cool {cool}, tint +0.5 {magenta}");
+    assert!(warm.x > warm.z + 0.05 && cool.z > cool.x + 0.05);
+    assert!(magenta.y + 0.03 < magenta.x.min(magenta.z));
+    assert_eq!(
+        ColorAdjust::default().apply(Vec3::splat(0.5)),
+        Vec3::splat(0.5)
     );
 }
 

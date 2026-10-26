@@ -371,6 +371,10 @@ pub(crate) struct PostPasses {
     black: wgpu::TextureView,
     /// The identity 32³ grading LUT (bound when no grading is set).
     pub identity_lut: wgpu::TextureView,
+    /// The table the tonemap samples while [`crate::ColorAdjust`] is on:
+    /// the grading table and the adjustments baked together, with what it
+    /// was baked from ([`PostPasses::bake_adjusted_lut`]); made on first use.
+    adjusted_lut: Option<(AdjustedKey, wgpu::Texture, wgpu::TextureView)>,
     /// 1x1 placeholders: view depth at [`FAR_DEPTH`], white AO.
     pub far_depth: wgpu::TextureView,
     /// The object pass's "no instance" texel, bound where a frame has none.
@@ -389,29 +393,47 @@ pub(crate) fn lut_texture(
     queue: &wgpu::Queue,
     lut: &crate::ColorLut,
 ) -> wgpu::TextureView {
-    use wgpu::util::DeviceExt;
-    device
-        .create_texture_with_data(
-            queue,
-            &wgpu::TextureDescriptor {
-                label: Some("grading lut"),
-                size: wgpu::Extent3d {
-                    width: lut.size,
-                    height: lut.size,
-                    depth_or_array_layers: lut.size,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D3,
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                view_formats: &[],
-            },
-            wgpu::util::TextureDataOrder::LayerMajor,
-            &lut.rgba,
-        )
-        .create_view(&Default::default())
+    let texture = new_lut_texture(device, "grading lut", lut.size);
+    write_lut(queue, &texture, lut);
+    texture.create_view(&Default::default())
 }
+
+/// An empty `size`³ RGBA8 LUT texture.
+fn new_lut_texture(device: &wgpu::Device, label: &str, size: u32) -> wgpu::Texture {
+    device.create_texture(&wgpu::TextureDescriptor {
+        label: Some(label),
+        size: wgpu::Extent3d {
+            width: size,
+            height: size,
+            depth_or_array_layers: size,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D3,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    })
+}
+
+/// Writes a table into a LUT texture of its size ([`lut_texture`]).
+fn write_lut(queue: &wgpu::Queue, texture: &wgpu::Texture, lut: &crate::ColorLut) {
+    queue.write_texture(
+        texture.as_image_copy(),
+        &lut.rgba,
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(lut.size * 4),
+            rows_per_image: Some(lut.size),
+        },
+        texture.size(),
+    );
+}
+
+/// What the adjusted table ([`PostPasses::bake_adjusted_lut`]) was baked
+/// from: the adjustments and, with grading, the table's scene, slot and
+/// revision and the intensity.
+type AdjustedKey = (crate::ColorAdjust, Option<(u64, usize, u64, f32)>);
 
 fn one_texel(
     device: &wgpu::Device,
@@ -874,6 +896,7 @@ impl PostPasses {
         PostPasses {
             blue_noise,
             identity_lut,
+            adjusted_lut: None,
             far_depth,
             white,
             no_object,
@@ -1000,6 +1023,42 @@ impl PostPasses {
         queue.write_buffer(&self.stylise_buffer, 0, bytemuck::bytes_of(uniform));
     }
 
+    /// Bakes the table the tonemap samples for `adjust` after `grade` (the
+    /// grading table with its scene, slot and revision, and its intensity)
+    /// into [`PostPasses::adjusted_lut`], unless the last bake was of the
+    /// same: the texture is made once and written in place, so its view
+    /// (and the bindings made with it) stays.
+    pub fn bake_adjusted_lut(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        adjust: &crate::ColorAdjust,
+        grade: Option<(&crate::ColorLut, (u64, usize, u64), f32)>,
+    ) {
+        let key: AdjustedKey = (*adjust, grade.map(|(_, (s, i, r), k)| (s, i, r, k)));
+        if self.adjusted_lut.as_ref().is_some_and(|(k, ..)| *k == key) {
+            return;
+        }
+        let lut = crate::ColorLut::adjusted(adjust, grade.map(|(lut, _, k)| (lut, k)));
+        match &mut self.adjusted_lut {
+            Some((k, texture, _)) => {
+                write_lut(queue, texture, &lut);
+                *k = key;
+            }
+            None => {
+                let texture = new_lut_texture(device, "adjusted grading lut", lut.size);
+                write_lut(queue, &texture, &lut);
+                let view = texture.create_view(&Default::default());
+                self.adjusted_lut = Some((key, texture, view));
+            }
+        }
+    }
+
+    /// The table [`PostPasses::bake_adjusted_lut`] last baked.
+    pub fn adjusted_lut(&self) -> Option<&wgpu::TextureView> {
+        self.adjusted_lut.as_ref().map(|(_, _, view)| view)
+    }
+
     /// Writes the post uniform. `glow`: the glow buffer feeds the bloom
     /// chain; `god_rays`: their texture is added; `untonemapped`: the lit
     /// image's alpha is the fraction of each pixel to tone map (sprites
@@ -1088,8 +1147,13 @@ impl PostPasses {
                 glow as u32 as f32,
             ],
             grade: [
-                post.color_grading
-                    .map_or(0.0, |g| g.intensity.clamp(0.0, 1.0)),
+                // The adjusted table carries the grading at its intensity.
+                if post.adjust().is_some() {
+                    1.0
+                } else {
+                    post.color_grading
+                        .map_or(0.0, |g| g.intensity.clamp(0.0, 1.0))
+                },
                 v.intensity.clamp(0.0, 1.0),
                 v.radius,
                 v.smoothness,

@@ -6874,6 +6874,101 @@
           "tunable": true
         },
         {
+          "name": "temperature",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "tint",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "brightness",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "contrast",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "balanceShadows",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "tunable": true
+        },
+        {
+          "name": "balanceMidtones",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "tunable": true
+        },
+        {
+          "name": "balanceHighlights",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "tunable": true
+        },
+        {
+          "name": "preserveLuminosity",
+          "column": "bool",
+          "default": true
+        },
+        {
+          "name": "hue",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "saturation",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "vibrance",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "grayscale",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "invert",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "threshold",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "vignette",
           "column": "bool",
           "default": false
