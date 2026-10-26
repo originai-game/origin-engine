@@ -10,6 +10,7 @@ mod culling;
 mod effects;
 mod exposure;
 mod fluids3d;
+mod fork_fields;
 mod geometry;
 mod gfx;
 mod graph;
