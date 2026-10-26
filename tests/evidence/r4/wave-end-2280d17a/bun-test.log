@@ -1,0 +1,643 @@
+packages/create/: bun run test
+$ bun scripts/pack-template.ts && bun test ${OG_BUN_TEST_TIMEOUT:+--timeout=$OG_BUN_TEST_TIMEOUT} tests/
+pack-template: /Volumes/app/origin-engine-measure/templates/game -> /Volumes/app/origin-engine-measure/packages/create/template
+pack-template: /Volumes/app/origin-engine-measure/templates/game-2d -> /Volumes/app/origin-engine-measure/packages/create/template-2d
+pack-template: /Volumes/app/origin-engine-measure/templates/archetypes -> /Volumes/app/origin-engine-measure/packages/create/archetypes
+pack-template: /Volumes/app/origin-engine-measure/packages/knowledge/looks/catalogue.json -> /Volumes/app/origin-engine-measure/packages/create/looks/catalogue.json
+bun test v1.4.2 (744846f84)
+
+tests/create.test.ts:
+(pass) scaffolds every template file with the game's name and id [73.83ms]
+(pass) the id defaults from the name, the name from the id [86.33ms]
+(pass) a directory that is not empty is refused unless --force [92.37ms]
+(pass) build output in the template is never copied [11.16ms]
+(pass) --archetype scaffolds an archetype game instead of the template [51.77ms]
+(pass) a scaffolded project routes media through Git LFS; the engine repository does not [1124.86ms]
+(pass) --profile 2d scaffolds the 2D starter with its look renamed; the output names the profile [146.65ms]
+(pass) a premise that says 2D picks the 2D starter unless it also says 3D [52.44ms]
+(pass) the template's look becomes the game's: renamed to its id, named by GameDesc.look, explained in the README [28.96ms]
+(pass) --look extends the catalogue preset it names; an unknown slug is refused with the slugs [44.59ms]
+(pass) --premise picks the catalogue style whose premise fits [59.04ms]
+(pass) pickStyle weighs genre over mood over the rest, prefers full support on a tie, and never picks a style without a preset [1.96ms]
+(pass) the premise's style is one drawn for the project's profile; --look still wins (rumpus-isle #1) [62.86ms]
+(pass) an archetype without a look gets one: GameDesc.look inserted into og.game({...}), its frames untouched until a preset is chosen [49.61ms]
+(pass) the idle archetype's look carries over: its UI style and render settings stay, a preset goes under them [68.82ms]
+(pass) what a scaffold ships never calls a UI style a skin [33.76ms]
+
+ 16 pass
+ 0 fail
+ 276 expect() calls
+Ran 16 tests across 1 file. [2.13s]
+packages/engine/: bun run test
+$ sh scripts/build.sh && bun run typecheck && bun test --parallel ${OG_BUN_TEST_TIMEOUT:+--timeout=$OG_BUN_TEST_TIMEOUT} tests/
+$ bun scripts/typecheck.ts
+og check: ok (tsrs, 32 ms)
+og check: ok (tsrs, 68 ms)
+og check: ok (tsrs, 24 ms)
+bun test v1.4.2 (744846f84) 12x PARALLEL
+
+tests/platform-page.test.ts:
+(pass) a hand-off code leaves the address at once, travels only in the hello's body, and an account stays in memory [6.11ms]
+(pass) without a code a stored account is never resumed, a stored guest is, and none mints exactly one guest [0.49ms]
+(pass) a rejected credential is replaced by the guest the play origin mints, and a conflict keeps its revision [0.25ms]
+
+tests/audio-decoder.test.ts:
+(pass) decodeQoa gives the engine's samples, whole and frame by frame [15.14ms]
+
+tests/platform-page.test.ts:
+(pass) offline, a score is kept in the Player's outbox and answered queued, then delivered in order; a timeout is retryable [5.94ms]
+(pass) nothing is reported before start; then start, what was held and the rest, with UUID v7 ids, one session and the device [7.01ms]
+(pass) og.platform's keyed store, telemetry and scores through the page transport, as the HTTP hello lists them [1.73ms]
+(pass) reports stay within 20 messages and 64 KiB; one answered 400 or 413 is dropped and the rest still arrive, the end included [7.96ms]
+(pass) after a crash the session is over: a late ready is not reported [1.34ms]
+
+tests/platform-player.test.ts:
+(pass) a Player's keyed store: revision N, create and the last write wins map onto protocol 2's revisions [1.48ms]
+(pass) leaderboards, Origin Point and AI marks go to the Player's own methods [1.38ms]
+(pass) an older Player keeps the store in the save at its revision; with neither, the browser's storage answers [2.67ms]
+(pass) a Player's rooms (platform-asks #16): ops map to room.*, a refusal is an error event, pushed events pass through [1.64ms]
+
+tests/audio-decoder.test.ts:
+(pass) the decoder Worker's source decodes the same after the export's minifying build [31.14ms]
+
+tests/web-export.test.ts:
+(pass) the lanes pool's Worker starts the glue with one object, so a lanes page logs no deprecated-parameters warning (WEB-FINDINGS #8) [0.74ms]
+
+tests/audio-decoder.test.ts:
+(pass) AudioDecoder feeds the bank's jobs to a Worker and answers the bank [13.00ms]
+
+tests/platform-stage.test.ts:
+(pass) the Stage overlay in the page's own document is its Player: one hello, play started, never the shell's own echo [615.04ms]
+(pass) og.platform's store is the overlay's, its time passes on, and the browser's storage is never written [16.91ms]
+(pass) an overlay with the save alone: the store in the save, each answer with the time of the call that settled it [16.71ms]
+
+tests/terrain.test.ts:
+(pass) og.terrain.load answers the terrain, and sample its surface [31.30ms]
+(pass) a turned and scaled terrain: sample, bounds, edit and physics follow its entity's transform [5.65ms]
+
+tests/modules.test.ts:
+(pass) a dynamic box falls, rests on a static collider, and its collision reaches a system [58.12ms]
+
+tests/e5.test.ts:
+(pass) every physics component of the round is adopted and steps in 3D [67.26ms]
+
+tests/ui-levels.test.ts:
+(pass) og.ui.levelSelect: its Back button closes it, answering closed [84.46ms]
+(pass) og.ui.levelSelect: a tap on the scrim around it closes it, answering closed [24.39ms]
+
+tests/modules.test.ts:
+(pass) a restored snapshot continues the simulation exactly [70.60ms]
+
+tests/ui-levels.test.ts:
+(pass) og.ui.levelSelect: a card is named by its level and its stars in the desc's words, a locked one by its level [27.28ms]
+
+tests/ai.test.ts:
+(pass) og.nav: a grid agent routes round a wall, arrives, and a restored snapshot replays the walk [141.15ms]
+
+tests/modules.test.ts:
+(pass) a UI tree built by a system is clicked through the command channel and dumped [15.59ms]
+
+tests/i18n.test.ts:
+(pass) og.i18n: the host's locale picks the table, and t formats each language's plurals [46.10ms]
+
+tests/e5.test.ts:
+(pass) a platformer jumps on a held button and its fluid and water line are read back (2D) [85.88ms]
+
+tests/modules.test.ts:
+(pass) the UI's interaction state is world state: a restore replays a held press [8.79ms]
+
+tests/ai.test.ts:
+(pass) og.nav: drive false plans and reports but leaves the motion to the game [16.67ms]
+
+tests/i18n.test.ts:
+(pass) og.i18n: refusals name the fix [10.54ms]
+
+tests/terrain.test.ts:
+(pass) a ball rests on the terrain and a character walks up the hill [122.94ms]
+
+tests/modules.test.ts:
+(pass) og.systems.cameras: an orbit camera sits at its distance and turns with autoRotate [21.50ms]
+
+tests/e5.test.ts:
+(pass) the day-night clock is the start plus the simulated time times the speed [26.28ms]
+
+tests/modules.test.ts:
+(pass) og.systems.cameras: a follow camera eases to its offset and a 2D follower keeps its dead zone [14.12ms]
+
+tests/ui-levels.test.ts:
+(pass) og.ui.settingsScreen: its tab row, quality presets and language list are named in the game's words [55.79ms]
+
+tests/e5.test.ts:
+(pass) get answers the sun og.DayNight drives as it is drawn, and og.Time whole [14.97ms]
+
+tests/modules.test.ts:
+(pass) spawn, insert, get and resource writes run inside systems through the system context [8.09ms]
+
+tests/ai.test.ts:
+(pass) og.nav: an agent moved off its path (a teleport, a knock-back) plans again from where it is [60.03ms]
+(pass) og.nav: a navmesh built from a floor and a box routes round it, and an obstacle rebuilds tiles [16.40ms]
+
+tests/ui-levels.test.ts:
+(pass) og.ui.settingsScreen: picking a graphics preset applies it to the world's RenderSettings [45.36ms]
+
+tests/ui-platformer.test.ts:
+(pass) og.ui.platformerHud: no lives and no score draw no hearts and no score (Brasswick's HUD) [5.84ms]
+(pass) og.ui.platformerHud: neither coins nor score given, neither drawn; the pause button stays [4.90ms]
+(pass) og.ui.platformerHud: a game that sets lives, coins and score draws them as before [10.32ms]
+
+tests/ai.test.ts:
+(pass) og.ai: a guard on a behaviour tree patrols, sees, chases at a resource's speed and bites through a command [53.07ms]
+(pass) og.ai.restart: a machine goes back to its initial state at its next think [8.30ms]
+
+tests/ui-race.test.ts:
+(pass) og.ui.racingHud: a time trial's words are the desc's, with its delta and splits and no place or boost [17.69ms]
+(pass) og.ui.racingHud: its place keeps out of the shell's Back (Viewport.covered) [7.54ms]
+
+tests/platform-stage.test.ts:
+(pass) an overlay whose listener comes up after the shell still hears a hello [509.51ms]
+
+tests/ui-race.test.ts:
+(pass) the command channel's cover lays a native run out as the published page (Viewport.covered without a host) [333.01ms]
+
+tests/terrain.test.ts:
+(pass) an edit raises the ground for sample, physics and the renderer [524.11ms]
+
+tests/ui-race.test.ts:
+(pass) og.ui.resultsScreen: a time trial's result is its headline, a time under its label, the lower time the best [90.72ms]
+(pass) og.ui.racingHud: the best lap reads as the results read it, never a millisecond short by a float's last bit [7.81ms]
+
+tests/terrain.test.ts:
+(pass) terrain edits are world state: a snapshot keeps them and a restore brings the ground back [44.07ms]
+
+tests/platform-stage.test.ts:
+(pass) a hello or result from another origin or another window is not the Player's [301.25ms]
+
+tests/terrain.test.ts:
+(pass) og.Terrain draws the terrain, and a layer reads back and retunes [112.83ms]
+
+tests/anim.test.ts:
+(pass) og.anim poses the walker the same way on both hosts [890.70ms]
+(pass) a ragdoll at weight 0 follows the animation and goes limp from it [149.69ms]
+
+tests/api-surface.test.ts:
+(pass) every function, method and property the IDL declares exists on the runtime [1.10ms]
+(pass) og.load.textureArray and probe.listen reach the host [0.14ms]
+(pass) every member a game can reach is declared in the IDL, or listed in UNDECLARED with why [2.52ms]
+(pass) every column factory and constant the IDL declares is a named export [0.58ms]
+(pass) every handle type has a field factory of its own kind, and a handle round-trips through it [1.25ms]
+
+tests/platform-stage.test.ts:
+(pass) precedence: framed speaks to the parent; __OG_GAME, another Stage origin or none leave no postMessage Player [907.26ms]
+
+tests/platform.test.ts:
+(pass) og.platform: a game's calls are answered by the local platform at the next tick's start [11.90ms]
+(pass) og.platform: malformed calls are refused naming the fix, and without a host every call is unavailable [5.62ms]
+(pass) a Player hello sets the clock before the game's first platform call [8.26ms]
+(pass) og.platform: settings saved to the store file are there for the next run [10.78ms]
+
+tests/terrain.test.ts:
+(pass) og.TerrainScatter grows copies of a mesh over the terrain near the camera [918.17ms]
+(pass) og.terrain refusals name the fix [6.44ms]
+
+tests/text-fonts.test.ts:
+(pass) the text frames' fonts cook for the browser harness as the scenes name them [513.27ms]
+
+tests/trace.test.ts:
+(pass) a trace laid end to end fails the check, one with recorded starts passes [0.38ms]
+
+tests/e5.test.ts:
+(pass) a world with every feature hashes the same twice and after a restore [2168.30ms]
+
+tests/feel.test.ts:
+(pass) og.Sprite draws at its entity, y-sorted, with a blob shadow under it [221.10ms]
+(pass) tweens animate a field, report once, and squash recovers to rest [15.33ms]
+(pass) a hit stop holds physics and scaled tweens while systems keep ticking, and a restore resumes it [16.33ms]
+
+tests/asset-stream.test.ts:
+(pass) three groups load and unload along the path by trigger and priority, within the budget [1024.84ms]
+(pass) dump_stream lists the budget, the peak, every group and the events; og.stream refuses an unknown group [36.22ms]
+
+tests/feel.test.ts:
+(pass) camera trauma, punch and kick change the frame, decay, and leave the world's camera alone [190.59ms]
+(pass) og.tween.flash whitens an og.Sprite and fades back [77.85ms]
+(pass) a squash and a flash started with a hit stop show their impact through the stop, then recover [11.58ms]
+
+tests/geom.test.ts:
+(pass) lines and closePath flatten to their corners, the first repeated [0.18ms]
+(pass) Bézier curves are divided by `divisions`, ellipses twice as finely [0.37ms]
+(pass) an arc after a curve is joined to it by a line; arc and ellipse are relative [0.17ms]
+(pass) splineThru passes through its points [0.22ms]
+(pass) a shape's holes come out with its points [0.12ms]
+(pass) shapeGeometry triangulates a shape with a hole as three.js does [0.74ms]
+(pass) extrudeGeometry has three.js's counts with and without a bevel [0.51ms]
+(pass) extrudeGeometry follows an extrudePath [3.41ms]
+(pass) latheGeometry and the polyhedra have three.js's counts [14.68ms]
+(pass) sweepGeometry tapers a section along a path and caps it [1.21ms]
+(pass) csgGeometry cuts, joins and intersects placed boxes [7.49ms]
+(pass) mergeGeometries places, mirrors and repeats parts [1.00ms]
+(pass) a made geometry is dynamic only when asked [2.08ms]
+(pass) extrude's bevelSize is bevelThickness - 0.1 when not given [15.52ms]
+
+tests/asset-stream.test.ts:
+(pass) what is resident never changes the simulation: the same flight hashes the same with no budget at all [285.56ms]
+
+tests/gl-state.test.ts:
+(pass) the reference scene's WebGL2 frame reaches the context in under a quarter of its calls, acting on the same state [48.92ms]
+
+tests/audio.test.ts:
+(pass) og run --audio renders the same WAV twice, and listen writes the last second with the hit in it [3896.89ms]
+
+tests/trace.test.ts:
+(pass) og run --trace lays every span where it ran: systems, passes, GPU passes and lane jobs [971.30ms]
+
+tests/ui-hud-corner.test.ts:
+(pass) og.ui.platformerHud keeps out of the shell's Back on a desktop and on a phone [22.17ms]
+(pass) og.ui.shooterHud keeps out of the shell's Back on a desktop and on a phone [19.48ms]
+
+tests/basis.test.ts:
+(pass) an ETC1S colour texture transcodes to RGBA8 close to its source [51.34ms]
+
+tests/ui-hud-corner.test.ts:
+(pass) og.ui.puzzleHud keeps out of the shell's Back on a desktop and on a phone [16.68ms]
+(pass) og.ui.idleHud keeps out of the shell's Back on a desktop and on a phone [21.43ms]
+
+tests/basis.test.ts:
+(pass) a UASTC normal map transcodes linear and close to its source [39.10ms]
+
+tests/ui-hud-corner.test.ts:
+(pass) og.ui.racingHud keeps out of the shell's Back on a desktop and on a phone [29.27ms]
+
+tests/ui-huds.test.ts:
+(pass) og.ui.platformerHud: Pause and Jump are the desc's [12.51ms]
+(pass) og.ui.shooterHud: kills, Fire and Pause are the desc's [13.87ms]
+(pass) og.ui.puzzleHud: moves left and Target {target} are the desc's [10.58ms]
+(pass) og.ui.idleHud: Lv {level}, +{rate}/s, Tap and Pause are the desc's [11.64ms]
+
+tests/basis.test.ts:
+(pass) a normal map's BC5 holds its x and y (the cook puts y in alpha, where the transcoder reads it) [79.05ms]
+(pass) block formats have exactly one 16-byte block per 4x4 pixels per level [52.99ms]
+(pass) a file that is not Basis KTX2 is refused with the reason [0.29ms]
+(pass) the format follows the device's compressions; WebGPU names follow the format [0.15ms]
+
+tests/core.test.ts:
+(pass) og.Rng in reads forks a deterministic stream without moving the main one, alike on both hosts [156.08ms]
+
+tests/rooms.test.ts:
+(pass) two runs through the relay hash the same at tick 600 [4430.05ms]
+
+tests/scene-write-back.test.ts:
+(pass) save_scene writes every scene, the resources and the entities spawned at run time, and the reload is exact [223.61ms]
+
+tests/settle.test.ts:
+(pass) behind the gate, the first tick's reads are applied before the first frame: the saved language and the slot's Continue [21.80ms]
+(pass) a fresh player's settling takes one tick and ends; the same answers give the same world [35.50ms]
+(pass) an answer that has not come by the deadline is applied by a later settling tick; play stops the settling [57.61ms]
+
+tests/core.test.ts:
+(pass) an undeclared access throws with the system and the record in dev and release builds, failing the tick [408.90ms]
+(pass) a publish build refuses an undeclared access and logs it once per system, and the game keeps running [159.32ms]
+(pass) og.platform.now and the answers' time follow the host's clock, as host input, alike on both hosts [178.17ms]
+
+tests/gl-state.test.ts:
+(pass) random call streams act on the same state filtered and unfiltered [1539.49ms]
+(pass) a call the filter does not model, or an extension's, forgets what it knew [0.21ms]
+
+tests/ui-sound.test.ts:
+(pass) a UI sound's first sample lies in the tick of its input [4013.37ms]
+
+tests/web-a11y-range.test.ts:
+(pass) a slider's and a spinbutton's native range carry the UI's bounds and value [8.05ms]
+(pass) a reader's adjust on the mirrored range asks the UI to step, and the range goes back to the UI's value [5.03ms]
+
+tests/web-text-entry.test.ts:
+(pass) a focused text field: the focus is on a named, exposed text box, the field's own, inside its dialog (the tree first) [9.71ms]
+(pass) a focused text field: the focus is on a named, exposed text box, the field's own, inside its dialog (the focus first) [9.02ms]
+(pass) a field focused before the mirror has it is named by its id until the tree arrives [4.57ms]
+
+tests/web-trace.test.ts:
+(pass) the web host records the run's trace in the Worker and the shell reads it, as og run --trace writes it [93.27ms]
+
+tests/look.test.ts:
+(pass) GameDesc.look is flattened over its base and applied before start runs [11.81ms]
+(pass) the look's antialias is the renderer's when GameDesc.render leaves it out [130.45ms]
+(pass) applyLook replaces the resources it names whole and leaves the rest [21.08ms]
+(pass) palettes load once per path, and refusals name the fix [10.64ms]
+
+tests/math.test.ts:
+(pass) vec3 > add [0.04ms]
+(pass) vec3 > sub (a - b, not b - a) [0.01ms]
+(pass) vec3 > scale
+(pass) vec3 > cross x * y = z (right-handed) [0.01ms]
+(pass) vec3 > cross is a x b
+(pass) vec3 > normalize
+(pass) vec3 > normalize keeps the zero vector
+(pass) vec3 > lerp [0.01ms]
+(pass) vec3 > lerp extrapolates (t not clamped)
+(pass) vec3 > applyQuaternion: 90 degrees about z turns +x to +y [0.02ms]
+(pass) vec3 > applyQuaternion: 90 degrees about x turns +y to +z
+(pass) vec3 > dot, length and distance [0.03ms]
+(pass) vec3 > arguments are never changed [0.02ms]
+(pass) vec2 > add [0.01ms]
+(pass) vec2 > sub
+(pass) vec2 > scale
+(pass) vec2 > normalize [0.01ms]
+(pass) vec2 > lerp
+(pass) vec2 > rotateAround: a quarter turn is counter-clockwise [0.02ms]
+(pass) vec2 > rotateAround a pivot
+(pass) vec2 > rotateAround by -30 degrees
+(pass) vec2 > dot, cross (b counter-clockwise of a is positive), length, distance [0.03ms]
+(pass) quat > multiply(a, b) turns by b first, then a [0.05ms]
+(pass) quat > slerp: half way from identity to 90 degrees about z is 45 [0.09ms]
+(pass) quat > slerp: a quarter of the way
+(pass) quat > slerp: the shorter arc when b is negated [0.01ms]
+(pass) quat > slerp: between two turns about y
+(pass) quat > slerp: t 0 and 1 are the ends
+(pass) quat > fromEuler matches the intrinsic product of its order, as three.js [0.20ms]
+(pass) quat > invert undoes the rotation; rotate is applyQuaternion [0.03ms]
+(pass) mat4 > compose is column-major with the translation in elements 12 to 14 [0.02ms]
+(pass) mat4 > transformPoint: scale, turn, then move [0.02ms]
+(pass) mat4 > transformDirection: turned, normalised, not moved [0.01ms]
+(pass) mat4 > the inverse takes the point back
+(pass) mat4 > multiply(a, b) applies b first [0.01ms]
+(pass) mat4 > transformPoint divides by w (three.js applyMatrix4)
+(pass) mat4 > invert(m) * m is the identity; a singular matrix inverts to zeros [0.06ms]
+(pass) box3 > fromPoints, center and size [0.04ms]
+(pass) box3 > the empty box [0.04ms]
+(pass) box3 > a point on the face is inside [0.01ms]
+(pass) box3 > just outside one axis
+(pass) box3 > touching boxes intersect [0.01ms]
+(pass) box3 > apart on z only
+(pass) box3 > containsBox [0.02ms]
+(pass) box3 > containsBox, sticking out
+(pass) box3 > a sphere touching a face [0.03ms]
+(pass) box3 > a sphere off a corner
+(pass) box3 > a sphere reaching a corner
+(pass) box3 > applyMatrix4 boxes the turned corners [0.04ms]
+(pass) sphere > fromPoints centres on the points' box [0.04ms]
+(pass) sphere > containsPoint on the surface [0.01ms]
+(pass) sphere > containsPoint outside
+(pass) sphere > touching spheres [0.01ms]
+(pass) sphere > apart
+(pass) sphere > a box
+(pass) sphere > distanceToPoint, getBoundingBox and applyMatrix4 [0.05ms]
+(pass) plane > fromNormalAndCoplanarPoint normalises and sets the constant
+(pass) plane > fromCoplanarPoints faces you when they are counter-clockwise [0.03ms]
+(pass) plane > distanceToPoint above [0.01ms]
+(pass) plane > distanceToPoint below
+(pass) plane > normalize scales the constant too
+(pass) plane > projectPoint, intersectsBox and intersectsSphere [0.07ms]
+(pass) frustum > containsPoint: the origin, straight ahead [0.02ms]
+(pass) frustum > containsPoint: behind the camera
+(pass) frustum > containsPoint: closer than near
+(pass) frustum > containsPoint: past far
+(pass) frustum > containsPoint: inside the top edge
+(pass) frustum > containsPoint: above the top edge
+(pass) frustum > containsPoint: inside the right edge (aspect 2)
+(pass) frustum > containsPoint: right of it
+(pass) frustum > planes in three.js's order with normals inwards: near (5) faces away from the camera [0.03ms]
+(pass) frustum > intersectsBox and intersectsSphere [0.05ms]
+(pass) frustum > an orthographic camera sees height by height times aspect, divided by zoom [0.03ms]
+(pass) frustum > a turned camera: a quarter turn about y looks down -x [0.03ms]
+(pass) ray > at [0.01ms]
+(pass) ray > intersectBox enters the near face [0.05ms]
+(pass) ray > intersectBox from inside answers where it leaves
+(pass) ray > intersectBox along a diagonal
+(pass) ray > intersectSphere hits the near side [0.02ms]
+(pass) ray > intersectSphere from inside answers where it leaves
+(pass) ray > intersectPlane [0.02ms]
+(pass) ray > intersectTriangle, front or back without culling [0.04ms]
+(pass) ray > intersectTriangle facing the ray, culled [0.01ms]
+(pass) ray > misses a box beside the ray: null [0.01ms]
+(pass) ray > misses a box behind: null
+(pass) ray > misses a sphere it misses: null
+(pass) ray > misses a sphere behind: null
+(pass) ray > misses a parallel plane: null
+(pass) ray > misses a plane behind: null
+(pass) ray > misses a triangle facing away, culled: null
+(pass) ray > misses a triangle beside the ray: null
+(pass) ray > a ray in its plane meets it at the origin; distanceToPoint [0.04ms]
+(pass) color > fromHex: pure red [0.04ms]
+(pass) color > fromHex: sRGB 0x80 is linear 0.2158605
+(pass) color > fromHex: the brand ink #14161b (og.Camera.background's default)
+(pass) color > fromHex: a dark channel on the linear segment
+(pass) color > toHex rounds back what fromHex made, and clamps HDR [0.17ms]
+(pass) color > fromHsl: red [0.04ms]
+(pass) color > fromHsl: green at a third
+(pass) color > fromHsl: dark blue: sRGB 0.5 is linear 0.2140411
+(pass) color > fromHsl: the hue wraps: 1.5 is cyan
+(pass) color > fromHsl: no saturation is grey
+(pass) color > fromHsl: lightness clamps to white
+(pass) color > lerp in linear RGB [0.01ms]
+
+tests/reload-asset.test.ts:
+(pass) og dev shows a glTF edit after the reload [5907.47ms]
+
+tests/rooms.test.ts:
+(pass) Math.random() in a system is a desync: og.Desync names tick 101 and dump_desync the field [1760.36ms]
+
+tests/core.test.ts:
+(pass) og test keeps the local store across a playtest's processes with store: keep, and each its own clock [1078.53ms]
+(pass) input events carry their time within the tick, from the host's stamp and from the command channel, alike on both hosts [225.72ms]
+(pass) og.audio.outputLatency is 0 headless and the web host's report of its AudioContext reaches it between ticks [302.53ms]
+
+tests/describe-ui.test.ts:
+(pass) a HUD panel over an entity counts in its occlusion: templates/game at tick 1, 800×450 [453.43ms]
+
+tests/hosts.test.ts:
+(pass) the native and the web host agree on the world hash after 600 ticks [2172.00ms]
+
+tests/og-run.test.ts:
+(pass) og run --headless prints the hello world's hash after 600 ticks [1665.36ms]
+
+tests/hosts.test.ts:
+(pass) a probe argument of the wrong type is refused alike on both hosts, and the engine keeps running [216.70ms]
+
+tests/og-run.test.ts:
+(pass) a throw in GameDesc.start fails og run, named with its stack, with and without a command script [641.38ms]
+(pass) og run takes tick and seed from project.ogt for a GameDesc that leaves them unset [125.40ms]
+(pass) a restore that moves og.Time past the script's last scheduled tick still runs the steps after it, and quit ends the run [338.41ms]
+
+tests/hosts.test.ts:
+(pass) a 3d physics scene gives the same world hash on both hosts after 600 ticks [1103.17ms]
+
+tests/lanes.test.ts:
+(pass) lanes on and off give the same world hashes, the same pixels and the same replays [8608.86ms]
+
+tests/hosts.test.ts:
+(pass) a 2d physics scene gives the same world hash on both hosts after 600 ticks [1124.72ms]
+
+tests/reload.test.ts:
+(pass) a watched bundle reloads and migrates a changed layout (render=false) [4098.45ms]
+
+tests/rooms.test.ts:
+(pass) a room playtest's quit and its then step land on one tick for every place [3991.23ms]
+
+tests/runtime.test.ts:
+(pass) a system writes engine memory through its views, every tick [33.28ms]
+(pass) a stale view throws with the tick and the system it belonged to [7.86ms]
+(pass) the dispatcher refuses a system id it has no system for [8.59ms]
+(pass) with deferStart, GameDesc.start waits for the first tick boundary; asking the probe who is speaking is not one [5.95ms]
+(pass) a throw in GameDesc.start fails the run: the error with its stack, and no tick on the half-built world [11.02ms]
+(pass) project.ogt fills the GameDesc fields a game leaves unset, and one set in both differently refuses [18.28ms]
+(pass) after/before order systems regardless of declaration order [6.82ms]
+(pass) an undeclared column throws inside the system and fails the tick with its name [5.84ms]
+(pass) refusals are Results that name the reason [5.91ms]
+(pass) GameDesc.commandHelp gives a game's actions their usage in help, and get reads a resource [17.09ms]
+(pass) a resource handle is live: two handles agree, and a handle taken earlier reads what a system wrote since [8.12ms]
+resource handle field read: 2.92 µs after an engine call, 0.097 µs in a loop
+(pass) a handle read in a per-tick system costs one engine call, reads in a loop none more [67.66ms]
+(pass) a system's declared components are borrowed only when it takes a view, so world.get/world.set reach a matched entity before [14.84ms]
+
+tests/og-video.test.ts:
+(pass) a cooked video plays on a sprite: tick 90 shows the source's frame 3 s in, and its sound follows a seek [1545.26ms]
+
+tests/save.test.ts:
+save: 13362 characters for a world of 3 entities
+(pass) a save restored between ticks hashes as the saved world, and the world goes on as if it never left [64.89ms]
+(pass) inside a system a snapshot is taken at once and a restore waits for the tick's end, refusing a bad save at the call [34.26ms]
+(pass) a restore keeps the session: the player's volumes, and the scheduled steps keep their delays though og.Time jumps [43.45ms]
+(pass) a save is text behind og-save:1:, and anything else is refused with nothing changed [15.27ms]
+
+tests/hosts.test.ts:
+(pass) tweens, presets, hit stop, slow motion and camera feel give the same hashes on both hosts and replay from a snapshot [674.22ms]
+
+tests/save.test.ts:
+(pass) one world saves to the same text on both hosts, publish included, and each host's save restores on the other to the saved hash [797.62ms]
+
+tests/strings.test.ts:
+(pass) a str field moves as a JS string, refuses text over its capacity and hashes the same in two runs [129.42ms]
+(pass) a str field gives the same answers and the same world hash on the native and the web host [260.95ms]
+
+tests/og-video.test.ts:
+(pass) two players of one video at different times show different frames [1352.66ms]
+
+tests/web-shell-crash.test.ts:
+(pass) a throw in GameDesc.start reaches the shell's crash path after ready (the play page: primed behind the gate) [75.44ms]
+(pass) a throw in GameDesc.start reaches the shell's crash path after ready (autoplay) [84.09ms]
+
+tests/lists.test.ts:
+(pass) a list field reads as a frozen copy, is written whole, refuses more than its capacity and hashes the same in two runs [172.51ms]
+(pass) a list field gives the same answers and the same world hash on the native and the web host [363.30ms]
+
+tests/template.test.ts:
+(pass) a scaffolded game cooks, passes its playtest and leaves the frame and dumps [8431.58ms]
+
+tests/og-video.test.ts:
+(pass) a video frame shows as an og.Mesh material map and on an og.ui image [1283.16ms]
+
+tests/render.test.ts:
+(pass) GPU waits follow renderer replacement and engine destruction [324.80ms]
+(pass) a sprite submitted on some ticks is drawn after those ticks only [358.08ms]
+(pass) screen-space sprites are drawn over the finished frame in CSS pixels, untonemapped and clipped [120.21ms]
+(pass) PostEffects reach the frame: a screen flash and a vignette [265.86ms]
+
+tests/reload.test.ts:
+(pass) a watched bundle reloads and migrates a changed layout (render=true) [4161.63ms]
+
+tests/render.test.ts:
+(pass) a Decal component projects onto the wall [188.81ms]
+(pass) 2D lighting: Lighting2D darkens lit layers and a Light2D lights around it [183.04ms]
+
+tests/reload.test.ts:
+88 |   for (;;) {
+89 |     const { value, done } = await reader.read();
+90 |     if (done) break;
+91 |     out += new TextDecoder().decode(value);
+92 |   }
+93 |   expect(await first.exited).toBe(0);
+                                  ^
+error: expect(received).toBe(expected)
+
+Expected: 0
+Received: 140
+
+      at <anonymous> (/Volumes/app/origin-engine-measure/packages/engine/tests/reload.test.ts:93:30)
+(fail) a handed-off world restores in a new process with a changed layout [591.73ms]
+
+tests/stream.test.ts:
+(pass) the Worker's inflater answers each zlib stream inflated under its key [10.04ms]
+(pass) without DecompressionStream the engine inflates on its own [0.04ms]
+
+tests/template.test.ts:
+(pass) a scaffolded game type-checks clean, and a type error stops og before it bundles [2022.27ms]
+
+tests/render.test.ts:
+(pass) trails, beams and ribbons draw strips [753.84ms]
+
+tests/og-render.test.ts:
+(pass) two og render runs of one script give the same frames and audio, and --jobs gives the frames of one job [3236.42ms]
+
+tests/lanes.test.ts:
+(pass) the physics step goes to the lanes from og-physics's threshold for the thread count, with the same world [6254.94ms]
+
+tests/render.test.ts:
+(pass) material and sprite effects: a hit flash, toon bands, dissolve [619.92ms]
+
+tests/og-render.test.ts:
+(pass) og render refuses an fps that does not divide the tick rate, naming the nearest that do [262.44ms]
+
+tests/render.test.ts:
+(pass) camera shake moves the view deterministically by the tick [370.11ms]
+
+tests/resource-writes.test.ts:
+(pass) 200 field writes a tick through the byte layout give the world the JSON path gave, and replay from a save [9888.90ms]
+(pass) the byte layout gives the same world on the native and the web host [349.53ms]
+
+tests/og-render.test.ts:
+(pass) the intro's audio and music tracks sound in the rendered wav, silence before the first cue [1907.89ms]
+
+tests/polish.test.ts:
+(pass) og polish scores the topdown playtests and maps each finding to its skill [15769.84ms]
+(pass) a damage moment without hit stop is a finding, mapped to og-feel §3 [310.00ms]
+(pass) an impact with three of the four signals owes no fourth; one with fewer is asked for each it lacks (rumpus-isle #13) [457.80ms]
+(pass) og polish reads a dialog as a screen, leaves out what its scrim dims, and does not count touch controls as HUD [878.34ms]
+
+tests/hosts.test.ts:
+(pass) the 3d lanes module steps a 3d physics scene to the native world, on one thread and on four Workers, and refuses the other profile [9442.25ms]
+
+tests/web-rooms.test.ts:
+(pass) two Worker-hosted pages joined by a Play link play one duel in lockstep through a relay [5083.81ms]
+
+tests/polish.test.ts:
+(pass) og polish reads a toast over a dialog at rest and leaves out one sliding out [732.03ms]
+(pass) og polish refuses a project without playtests [7.93ms]
+
+tests/no-renderer.test.ts:
+(pass) og test without a renderer passes, counts its unchecked frames and runs the same game [19855.31ms]
+
+tests/polish.test.ts:
+(pass) og polish reports the string tables' missing keys as a finding for og-i18n [218.35ms]
+(pass) og polish reads a phone's UI at its device pixels and measures text, not disabled controls [614.63ms]
+
+tests/hosts.test.ts:
+(pass) the 2d lanes module steps a 2d physics scene to the native world, on one thread and on four Workers, and refuses the other profile [4171.07ms]
+(pass) the probe's memory answers the same shape on both hosts, each with what its host can read [468.21ms]
+
+tests/terrain-stream.test.ts:
+(pass) terrain tiles arriving after the first frame leave all 600 simulation hashes unchanged [10475.38ms]
+
+tests/web-export.test.ts:
+(pass) the same inputs give the same bytes, wherever they are written [49436.95ms]
+(pass) og-build.json names every file beside it, with bytes and sha256, and the Player's facts [26.53ms]
+
+tests/asset-stream.test.ts:
+(pass) og build --publish ships each group as its pack beside the first group, and precaches only the first group [52788.21ms]
+
+tests/sound-chunks.test.ts:
+(pass) music cooked in chunks plays sample-identical to the whole file through og run [73505.90ms]
+
+tests/web-export.test.ts:
+(pass) a publish build ships the engine variant of the game's profile (docs/web-export.md §Variants) [72857.79ms]
+(pass) publish settings: isolation, the badge and the service worker's version [186.23ms]
+(pass) a project icon must be a square PNG of at least 192 px [133.50ms]
+(pass) og build never replaces the project, an ancestor of it or a directory it did not write [0.88ms]
+(pass) og build prints what each page downloads, not the directory's total [0.17ms]
+
+1 tests failed:
+(fail) a handed-off world restores in a new process with a changed layout [591.73ms]
+
+ 331 pass
+ 1 fail
+ 7129 expect() calls
+Ran 332 tests across 58 files. [122.77s]
+error: script "test" exited with code 1
