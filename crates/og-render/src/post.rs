@@ -2515,44 +2515,33 @@ impl FrameGraph {
         // The effect passes: (a, depth, gbuffer, b) per slot.
         let depth = self.try_view("lindepth").unwrap_or(&passes.far_depth);
         let gbuffer = self.try_view("gbuffer").unwrap_or(&passes.black);
-        let fx_group = |a: &wgpu::TextureView, b: &wgpu::TextureView| {
-            group(
-                "fx post",
-                &passes.fx_layout,
-                &[
-                    passes.fx_buffer.as_entire_binding(),
-                    sampler.clone(),
-                    tex(a),
-                    tex(depth),
-                    tex(gbuffer),
-                    tex(b),
-                    wgpu::BindingResource::Sampler(&passes.nearest_sampler),
-                ],
-            )
-        };
+        let fx_group_depth =
+            |a: &wgpu::TextureView, d: &wgpu::TextureView, b: &wgpu::TextureView| {
+                group(
+                    "fx post",
+                    &passes.fx_layout,
+                    &[
+                        passes.fx_buffer.as_entire_binding(),
+                        sampler.clone(),
+                        tex(a),
+                        tex(d),
+                        tex(gbuffer),
+                        tex(b),
+                        wgpu::BindingResource::Sampler(&passes.nearest_sampler),
+                    ],
+                )
+            };
+        let fx_group = |a: &wgpu::TextureView, b: &wgpu::TextureView| fx_group_depth(a, depth, b);
         let black = &passes.black;
         let mut fx = HashMap::new();
         for &p in frame {
             let pair = |f: &dyn Fn(usize) -> wgpu::BindGroup| [f(0), f(1)];
             let groups = match p {
                 // The AO reads the depth with the water's surfaces in it when there is one.
-                FramePass::Ao => match self.try_view("ao-depth") {
-                    Some(d) => pair(&|_| {
-                        group(
-                            "fx post",
-                            &passes.fx_layout,
-                            &[
-                                passes.fx_buffer.as_entire_binding(),
-                                sampler.clone(),
-                                tex(black),
-                                tex(d),
-                                tex(gbuffer),
-                                tex(black),
-                            ],
-                        )
-                    }),
-                    None => pair(&|_| fx_group(black, black)),
-                },
+                FramePass::Ao => {
+                    let d = self.try_view("ao-depth").unwrap_or(depth);
+                    pair(&|_| fx_group_depth(black, d, black))
+                }
                 FramePass::AoBlur => pair(&|_| fx_group(black, self.view("ao.raw"))),
                 FramePass::AoUpsample => pair(&|_| fx_group(black, self.view("ao.blur"))),
                 FramePass::Ssr => pair(&|_| fx_group(self.view("hdr"), black)),
