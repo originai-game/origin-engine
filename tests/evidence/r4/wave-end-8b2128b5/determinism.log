@@ -1,0 +1,16 @@
+aarch64-apple-darwin debug math_digest 6117185439544271997 bouncing_boxes_hash 15551159556835976588 physics3d_hash 10053948282410406339 physics2d_hash 3002410719564870113 anim_hash 12806465523503570878
+aarch64-apple-darwin release, lanes off math_digest 6117185439544271997 bouncing_boxes_hash 15551159556835976588 physics3d_hash 10053948282410406339 physics2d_hash 3002410719564870113 anim_hash 12806465523503570878
+aarch64-apple-darwin release, lanes on (4 threads, 1059 parallel calls) math_digest 6117185439544271997 bouncing_boxes_hash 15551159556835976588 physics3d_hash 10053948282410406339 physics2d_hash 3002410719564870113 anim_hash 12806465523503570878
+wasm32 scalar (node v26.3.0) math_digest 6117185439544271997 bouncing_boxes_hash 15551159556835976588 physics3d_hash 10053948282410406339 physics2d_hash 3002410719564870113 anim_hash 12806465523503570878
+wasm32 simd128 (node v26.3.0) math_digest 6117185439544271997 bouncing_boxes_hash 15551159556835976588 physics3d_hash 10053948282410406339 physics2d_hash 3002410719564870113 anim_hash 12806465523503570878
+warning: unstable feature specified for `-Ctarget-feature`: `atomics`
+  |
+  = note: this feature is not stably supported; its behavior can change in the future
+
+wasm32 lanes 3d (atomics, one lane; node v26.3.0) math_digest 6117185439544271997 bouncing_boxes_hash 15551159556835976588 physics3d_hash 10053948282410406339 physics2d_hash - anim_hash 12806465523503570878
+warning: unstable feature specified for `-Ctarget-feature`: `atomics`
+  |
+  = note: this feature is not stably supported; its behavior can change in the future
+
+wasm32 lanes 2d (atomics, one lane; node v26.3.0) math_digest 6117185439544271997 bouncing_boxes_hash 15551159556835976588 physics3d_hash - physics2d_hash 3002410719564870113 anim_hash 12806465523503570878
+ok: every build agrees (math_digest 6117185439544271997, bouncing_boxes_hash 15551159556835976588, physics3d_hash 10053948282410406339, physics2d_hash 3002410719564870113, anim_hash 12806465523503570878)
