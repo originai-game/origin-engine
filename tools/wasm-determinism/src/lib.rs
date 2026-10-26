@@ -55,6 +55,31 @@ fn put(h: &mut StableHasher, values: &[f32]) {
     }
 }
 
+/// A channel's frames as held ([`og_anim::Samples`]): a tag for the form,
+/// then every number in it, so a clip that changed form hashes differently.
+fn put_samples(h: &mut StableHasher, samples: &og_anim::Samples) {
+    match samples {
+        og_anim::Samples::F32(v) => {
+            h.write_u32(0);
+            put(h, v);
+        }
+        og_anim::Samples::Constant(v) => {
+            h.write_u32(1);
+            put(h, v);
+        }
+        og_anim::Samples::Quantized(q) => {
+            h.write_u32(2);
+            for f in &q.frames {
+                h.write_u32(u32::from(*f));
+            }
+            for w in &q.words {
+                h.write_u32(u32::from(*w));
+            }
+            put(h, &q.range);
+        }
+    }
+}
+
 /// See the crate documentation.
 pub fn math_digest() -> u64 {
     let mut rng = Rng::new(0x0d15_ea5e);
@@ -184,7 +209,7 @@ pub fn anim_hash() -> u64 {
     .expect("the walk retargets");
     for c in &out.clip.channels {
         h.write_u32(c.node);
-        put(&mut h, &c.samples);
+        put_samples(&mut h, &c.samples);
     }
     h.finish()
 }
