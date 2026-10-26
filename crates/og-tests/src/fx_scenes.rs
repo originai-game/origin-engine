@@ -1168,6 +1168,8 @@ pub fn ao_scene(method: AoMethod) -> RenderScene {
         radius: 0.7,
         intensity: 1.2,
         method,
+        direct: 0.0,
+        radius_scale: 0.0,
     });
     scene.camera = Camera {
         position: Vec3::new(1.0, 2.6, 5.0),

@@ -56,6 +56,72 @@ fn toktx_version() -> Result<String, CookError> {
     }
 }
 
+/// Fills the colour of every fully transparent texel from its visible
+/// neighbourhood (push-pull: a pyramid of the visible texels' mean colour,
+/// read back from the finest level that has any). Unseen at full size, that
+/// colour is what the mips average into the visible texels: left black (a
+/// canvas export premultiplies, so alpha 0 comes out black), leaf and petal
+/// cards darkened with distance. Visible texels are untouched.
+fn dilate_transparent(img: &Image) -> Option<Image> {
+    let (w0, h0) = (img.width as usize, img.height as usize);
+    if !img.rgba.as_chunks::<4>().0.iter().any(|p| p[3] == 0) || img.rgba.as_chunks::<4>().0.iter().all(|p| p[3] == 0) {
+        return None;
+    }
+    // level 0: colour and whether it is known
+    let mut levels: Vec<(usize, usize, Vec<[f32; 3]>, Vec<bool>)> = Vec::new();
+    let c0 = img.rgba.as_chunks::<4>().0.iter().map(|p| [p[0] as f32, p[1] as f32, p[2] as f32]).collect();
+    let k0 = img.rgba.as_chunks::<4>().0.iter().map(|p| p[3] > 0).collect();
+    levels.push((w0, h0, c0, k0));
+    while {
+        let (w, h, _, _) = &levels[levels.len() - 1];
+        *w > 1 || *h > 1
+    } {
+        let (w, h, c, k) = &levels[levels.len() - 1];
+        let (nw, nh) = ((w + 1) / 2, (h + 1) / 2);
+        let mut nc = vec![[0.0f32; 3]; nw * nh];
+        let mut nk = vec![false; nw * nh];
+        for y in 0..nh {
+            for x in 0..nw {
+                let (mut sum, mut n) = ([0.0f32; 3], 0.0f32);
+                for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+                    let (sx, sy) = ((2 * x + dx).min(w - 1), (2 * y + dy).min(h - 1));
+                    let i = sy * w + sx;
+                    if k[i] {
+                        for j in 0..3 { sum[j] += c[i][j]; }
+                        n += 1.0;
+                    }
+                }
+                if n > 0.0 {
+                    nc[y * nw + x] = [sum[0] / n, sum[1] / n, sum[2] / n];
+                    nk[y * nw + x] = true;
+                }
+            }
+        }
+        levels.push((nw, nh, nc, nk));
+    }
+    // pull: unknown texels take their parent's colour, coarsest first
+    for l in (0..levels.len() - 1).rev() {
+        let (pw, _, pc, _) = { let p = &levels[l + 1]; (p.0, p.1, p.2.clone(), p.3.clone()) };
+        let (w, h, c, k) = &mut levels[l];
+        for y in 0..*h {
+            for x in 0..*w {
+                let i = y * *w + x;
+                if !k[i] { c[i] = pc[(y / 2) * pw + x / 2]; k[i] = true; }
+            }
+        }
+    }
+    let c = &levels[0].2;
+    let mut rgba = img.rgba.clone();
+    for (i, p) in rgba.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+        if p[3] == 0 {
+            p[0] = c[i][0].round() as u8;
+            p[1] = c[i][1].round() as u8;
+            p[2] = c[i][2].round() as u8;
+        }
+    }
+    Some(Image { width: img.width, height: img.height, rgba })
+}
+
 fn has_alpha(img: &Image) -> bool {
     img.rgba.as_chunks::<4>().0.iter().any(|p| p[3] != 255)
 }
@@ -65,7 +131,7 @@ fn encode_basisu(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, 
     use basis_universal::{BasisTextureFormat, ColorSpace, Compressor, CompressorParams};
     let mut params = CompressorParams::new();
     params.set_print_status_to_stdout(false);
-    let uastc = k != kind::COLOR;
+    let uastc = k != kind::COLOR || opts.color_uastc;
     params.set_basis_format(if uastc {
         BasisTextureFormat::UASTC4x4
     } else {
@@ -125,7 +191,7 @@ fn encode_toktx(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, S
     .map_err(|e| e.to_string())?;
     let mut cmd = std::process::Command::new("toktx");
     cmd.arg("--t2");
-    if k == kind::COLOR {
+    if k == kind::COLOR && !opts.color_uastc {
         cmd.args([
             "--encode",
             "etc1s",
@@ -150,7 +216,7 @@ fn encode_toktx(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, S
         }
         // Not --normal_mode, which would keep only x (in RGB) and y (in
         // alpha): `cook` has already copied y into alpha and kept xyz.
-        cmd.args(["--assign_oetf", "linear"]);
+        cmd.args(["--assign_oetf", if k == kind::COLOR { "srgb" } else { "linear" }]);
     }
     if opts.mipmaps {
         cmd.arg("--genmipmap");
@@ -233,6 +299,15 @@ pub fn cook(img: &Image, k: u32, opts: &TextureOptions, stamp: u64) -> Result<Ve
     } else {
         (img, alpha)
     };
+    let dilated;
+    let img = if k == kind::COLOR && alpha && opts.mipmaps {
+        match dilate_transparent(img) {
+            Some(d) => { dilated = d; &dilated }
+            None => img,
+        }
+    } else {
+        img
+    };
     #[cfg(feature = "basis")]
     let ktx = if opts.force_toktx {
         toktx(img, k, opts)
@@ -251,7 +326,7 @@ pub fn cook(img: &Image, k: u32, opts: &TextureOptions, stamp: u64) -> Result<Ve
         height: img.height,
         levels: info.levels.len() as u32,
         kind: k,
-        codec: if k == kind::COLOR {
+        codec: if k == kind::COLOR && !opts.color_uastc {
             codec::ETC1S
         } else {
             codec::UASTC

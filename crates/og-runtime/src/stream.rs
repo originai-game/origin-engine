@@ -731,7 +731,7 @@ fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                     rs.scene.set_mesh(*h, m);
                 }
                 for (i, (h, _)) in materials.iter().enumerate().take(model.materials.len()) {
-                    if model.materials[i].physical.present == 0 {
+                    if !model.needs_standard(i) {
                         rs.scene.set_material(*h, model.material(i, textures));
                     } else {
                         rs.scene

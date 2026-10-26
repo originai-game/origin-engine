@@ -24,6 +24,9 @@ pub enum AoMethod {
     Gtao,
     /// Hemisphere SSAO with 8 samples: the cheaper one.
     Ssao,
+    /// Depth-only disc AO in screen units (three.js-era post SSAO: 14 taps, no normals), fading out from 120 to
+    /// 300 m and squared. The radius fields do not apply; `intensity` scales the occlusion.
+    Screen,
 }
 
 /// Screen-space ambient occlusion: darkens the ambient (image-based) light in
@@ -35,6 +38,13 @@ pub struct AmbientOcclusion {
     /// 0 none, 1 full; above 1 exaggerates.
     pub intensity: f32,
     pub method: AoMethod,
+    /// How much of the occlusion also darkens direct and local light, 0..1: at 1 a fully occluded pixel keeps 35 %
+    /// of it (the look of a deferred SSAO applied to the whole lit colour, as three.js post passes do).
+    pub direct: f32,
+    /// Above 0, the radius grows with the distance: `min(radius, scale × distance)` metres, a fixed fraction of the
+    /// screen up close (three.js-style SSAO, whose radius is set in screen units) instead of a fixed world size that
+    /// fills corners near the camera with occlusion.
+    pub radius_scale: f32,
 }
 
 impl Default for AmbientOcclusion {
@@ -43,6 +53,8 @@ impl Default for AmbientOcclusion {
             radius: 0.6,
             intensity: 1.0,
             method: AoMethod::Auto,
+            direct: 0.0,
+            radius_scale: 0.0,
         }
     }
 }

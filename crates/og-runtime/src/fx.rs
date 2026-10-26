@@ -88,12 +88,13 @@ pub(crate) struct LoadedLut {
     pub handle: Option<og_render::LutHandle>,
 }
 
-/// One loaded model's primitives, for skinning: the scene mesh of its first
-/// primitive (they are consecutive) and the glTF mesh of each primitive.
+/// One loaded model's primitives, for skinning: the scene mesh of each
+/// primitive (shared with other models when identical) and the glTF mesh of
+/// each primitive.
 #[derive(Clone, Debug)]
 pub(crate) struct ModelInfo {
     pub id: String,
-    pub base: usize,
+    pub meshes: Vec<og_render::MeshHandle>,
     pub prim_mesh: Vec<u32>,
 }
 
@@ -245,6 +246,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     post.vignette = None;
     post.chromatic_aberration = None;
     post.film_grain = None;
+    post.sharpen = None;
     post.flash = None;
     scene.shake = CameraShake::default();
     scene.lighting_2d = None;
@@ -253,8 +255,10 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
             post.ao = Some(AmbientOcclusion {
                 radius: f(&p, "aoRadius", 0.6),
                 intensity: f(&p, "aoIntensity", 1.0),
-                method: [AoMethod::Auto, AoMethod::Gtao, AoMethod::Ssao]
-                    [variant(&p["aoMethod"], &["auto", "gtao", "ssao"]).min(2)],
+                method: [AoMethod::Auto, AoMethod::Gtao, AoMethod::Ssao, AoMethod::Screen]
+                    [variant(&p["aoMethod"], &["auto", "gtao", "ssao", "screen"]).min(3)],
+                direct: f(&p, "aoDirect", 0.0).clamp(0.0, 1.0),
+                radius_scale: f(&p, "aoRadiusScale", 0.0).max(0.0),
             });
         }
         if on(&p, "outline", false) {
@@ -330,6 +334,10 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
                 intensity: grain,
                 size: f(&p, "filmGrainSize", 1.5),
             });
+        }
+        let sharpen = f(&p, "sharpen", -1.0);
+        if sharpen >= 0.0 {
+            post.sharpen = Some(sharpen);
         }
         let flash = f(&p, "flash", 0.0);
         if flash > 0.0 {
@@ -828,9 +836,10 @@ fn skinned_meshes(
         if stream.is_none() && morph.is_none() {
             continue;
         }
-        let Some(mesh) = scene
-            .mesh_handle(info.base + p)
-            .and_then(|h| scene.mesh(h))
+        let Some(mesh) = info
+            .meshes
+            .get(p)
+            .and_then(|h| scene.mesh(*h))
             .cloned()
         else {
             continue;
@@ -919,7 +928,7 @@ pub(crate) fn posed_model(
         matrices: out.palette.clone(),
     });
     for (k, &(mesh, material, local)) in parts.iter().enumerate() {
-        let p = mesh.index().wrapping_sub(info.base);
+        let p = info.meshes.iter().position(|h| *h == mesh).unwrap_or(usize::MAX);
         match meshes.get(p).copied().flatten() {
             Some(skinned) => {
                 let mut inst = SkinnedInstance::new(skinned, material, world_matrix, palette);

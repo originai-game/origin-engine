@@ -1768,6 +1768,7 @@ module render {
     }
     field side Side "Which faces are drawn."
     field flatShading bool "Shade with face normals."
+    field alphaToCoverage bool "With MSAA (antialias msaa4), an alpha-tested material turns its alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage: minified foliage cards cover part of a pixel and the scene shows between them instead of drawing as solid sheets. Without MSAA it is the hard cut."
     field envMapIntensity f32 "A multiplier on image-based lighting." {
       default 1
       min 0
@@ -1954,6 +1955,29 @@ module render {
       max 0.2
       tunable true
     }
+    field shadowBox f32 "One shadow map over a fixed box instead of the three cascades: its half size across the light. 0 keeps the cascades. Everything outside the box is lit; the casters are drawn once, not once per cascade (three.js games that fit the light's orthographic shadow camera around the player draw this way)." {
+      min 0
+      unit m
+      tunable true
+    }
+    field shadowFocus f32 "With shadowBox: how far ahead of the camera (along its level forward) the box is centred." {
+      unit m
+      tunable true
+    }
+    field shadowFocusDrop f32 "With shadowBox: how far below the camera the box's centre sits (the ground under a first-person eye)." {
+      unit m
+      tunable true
+    }
+    field shadowBias f32 "With shadowBox: the depth bias toward the light (three.js shadow.bias times its camera's depth range). 0 is one texel. Leaf cards need a few centimetres or they shadow each other dark." {
+      min 0
+      unit m
+      tunable true
+    }
+    field shadowNormalBias f32 "With shadowBox: how far a receiver is pushed along its normal before it reads the map (three.js shadow.normalBias). 0 is one texel." {
+      min 0
+      unit m
+      tunable true
+    }
     field cascadeBlend f32 "The fraction of each shadow cascade's depth over which it fades into the next, hiding the seam where the shadow's resolution changes. 0 is none; 0.1 to 0.2 is typical (those pixels read two cascades)." {
       min 0
       max 0.5
@@ -2050,6 +2074,16 @@ module render {
       min 0
       tunable true
     }
+    field bloomRadius f32 "Below 0 (the default) keeps Origin's bloom. 0 to 1 switches to three.js UnrealBloomPass with this radius: a luminance high pass (smoothstep from bloomThreshold to bloomThreshold + bloomKnee, the colour kept whole above it) at half resolution, five Gaussian mips (kernels 3, 5, 7, 9, 11), mixed with weights mix(f, 1.2 - f, radius) for f = 1, 0.8, 0.6, 0.4, 0.2; bloomIntensity is its strength, and the mix is added as EffectComposer's additive copy does, weighted again by its alpha (strength times the weights' sum)." {
+      default -1
+      min -1
+      max 1
+    }
+    field bloomContrast f32 "With bloomRadius 0 or more: the high pass (and the blur) sees each channel as 0.18 x (colour / 0.18) to this power before exposure, as a contrast grade run ahead of UnrealBloomPass (the way a three.js grade pass before the bloom does) would leave it. 1, the default, leaves the colour as lit." {
+      default 1
+      min 0.5
+      max 2
+    }
     field autoExposure bool "Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye, starting at the metered exposure of the first frame drawn after the first tick (a frame drawn before it, such as the web shell's first frame behind the play gate, meters at once and is never adapted from), so every host draws the same exposures for the same ticks."
     field adaptSpeedUp f32 "How fast auto exposure rises when the view gets darker, in EV per second of game time: each drawn frame moves it by at most the speed times the ticks since the last drawn frame (never the wall clock, so a replay and every host adapt the same, however many frames each drew); 0 is instant. Snapshots and probe sweeps carry the adapted exposure." {
       min 0
@@ -2121,6 +2155,17 @@ module render {
       min 0
       tunable true
     }
+    field hemiSky Color "A hemisphere light's sky colour (linear), as three.js HemisphereLight.color: diffuse-only ambient light mix(hemiGround, hemiSky, 0.5 n.y + 0.5) * hemiIntensity, darkened by ambient occlusion like the map's light. Unlike light baked into the map it adds no reflection." {
+      default 1 1 1
+    }
+    field hemiGround Color "The hemisphere light's ground colour (linear), as three.js HemisphereLight.groundColor." {
+      default 0 0 0
+    }
+    field hemiIntensity f32 "The hemisphere light's intensity, as three.js HemisphereLight.intensity; 0 (the default) is off." {
+      default 0
+      min 0
+      tunable true
+    }
   }
 
   column ParticleEmitter {
@@ -2135,6 +2180,7 @@ module render {
     variant auto "GTAO on the full tier, SSAO on WebGL2."
     variant gtao "Ground-truth ambient occlusion (3 slices): the better looking one."
     variant ssao "Hemisphere SSAO with 8 samples: the cheaper one."
+    variant screen "Depth-only disc AO in screen units (14 taps, radius clamp(1.6 / depth, 0.004, 0.06) of the screen width, fading out from 120 to 300 m, squared): the post-process SSAO of three.js-era games. It ignores normals, so ground seen at a low angle darkens a little too, as those games look. aoRadius and aoRadiusScale do not apply; aoIntensity scales the occlusion."
   }
 
   column AoMethod {
@@ -2199,6 +2245,16 @@ module render {
       tunable true
     }
     field aoMethod AoMethod "The algorithm."
+    field aoDirect f32 "How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it)." {
+      default 0
+      min 0
+      max 1
+      tunable true
+    }
+    field aoRadiusScale f32 "Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance): a fixed share of the screen up close, as three.js SSAO passes size theirs, instead of a fixed world size; 0 keeps aoRadius everywhere." {
+      min 0
+      tunable true
+    }
     field outline bool "Outlines every opaque surface from depth and normal edges, creases between the faces of one object included (materials with outlineWidth get their own hull outline instead)."
     field outlineColor Color "The line colour, linear." {
       default 0.02 0.02 0.03
@@ -2327,6 +2383,12 @@ module render {
     field filmGrainSize f32 "The grain size in pixels." {
       default 1.5
       min 0.5
+    }
+    field sharpen f32 "Contrast-adaptive sharpening (CAS) of the final image, as a three.js CAS pass after the output pass: each pixel pushed away from its four neighbours by a weight that falls where the neighbourhood is already near black or white. 0 is the mildest, 1 the strongest; below 0 is off." {
+      default -1
+      min -1
+      max 1
+      tunable true
     }
     field flash f32 "A full-screen flash: the display colour mixed towards flashColor by this much (animate it per tick); 0 is off." {
       min 0
@@ -5469,6 +5531,7 @@ module atmosphere {
       unit m
       tunable true
     }
+    field geometry Geometry "Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline, with the same colour by depth, refraction, foam and reflections. 0: the grid. A mesh surface has no wave heights."
     field segments u32 "Grid cells per side (the height field's detail)." {
       default 64
       min 1
@@ -5540,6 +5603,19 @@ module atmosphere {
       unit ratio
       tunable true
     }
+    field f0 f32 "The reflectance looking straight down (Schlick's F0): 0.02 for clean water; three.js Water.js reflects at least 0.3." {
+      default 0.02
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field reflectionBias f32 "A floor under the reflected colour: bias + (1 - bias) times the reflection (three.js Water.js: 0.1)." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
     field underwaterColor Color "With the camera below the surface: the water's fog colour." {
       default 0.03 0.16 0.2
     }
@@ -5558,6 +5634,20 @@ module atmosphere {
       default 0.6
       min 0.01
       max 10
+      tunable true
+    }
+    field normalMap Texture "Ripples from a tangent-space normal map (linear; red along +x, green along +z, blue up, as three.js' water normals) instead of the travelling waves: with flow 0, four layers drifting at three.js Water's rates over the world's xz times normalScale (its getNoise); with a flow, two layers sliding along it over the mesh's uv (or the grid's metres), cross-faded each 0.15 of a cycle (three.js Water2: then refraction 1 shifts the scene behind by N.xz · 0.05 of the screen, the reflection is tinted by shallow too, and there is no sun highlight). waveStrength scales the slopes (1: as the map), waveSpeed the lake's clock. 0: the travelling waves."
+    field normalScale f32 "The normal map's repeats per metre (the lake) or per uv unit (a flow)." {
+      default 1
+      min 0
+      tunable true
+    }
+    field glint f32 "three.js Water's sun glint: pow(eye . reflect(-sun, normal), 100) times the sun's light times this, on the reflected image, through the Fresnel term (three.js: spec × sunColor over the light's intensity). With glint the surface is three.js Water.js throughout: deep is its waterColor, the body (sunColor · max(L·N, 0) · sunColor · 0.15 + waterColor · max(N·V, 0)) shaded by the ripples and the shadows, sunColor = the light × glint / 2. 0: the default half-vector highlight and depth colour." {
+      min 0
+      tunable true
+    }
+    field flow Vector2 "Water2's flow: its direction in the mesh's uv (or the grid's x, z) and, as its length, the uv it slides per second. 0 0: the lake's four drifting layers." {
+      default 0 0
       tunable true
     }
   }
@@ -10971,6 +11061,9 @@ module terrain {
   component Terrain {
     doc "Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to."
     field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
+    field visible bool "Draw it; false keeps it only as the ground its og.TerrainScatter copies stand on (nothing else sees it)." {
+      default true
+    }
     field castShadows bool "Cast the directional and local lights' shadows (it always receives them)." {
       default true
     }
@@ -11032,6 +11125,9 @@ module terrain {
     }
     field seed u32 "Another seed places the copies elsewhere." {
       default 1
+    }
+    field castShadows bool "Whether the copies cast shadows (grass usually does not: three.js meshes cast only with castShadow set)." {
+      default true
     }
   }
 

@@ -230,11 +230,11 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = vec3<f32>(1.0) - f_ibl;
-  let irradiance = textureSample(irradiance_map, ibl_sampler, n).rgb;
+  let irradiance = textureSample(irradiance_map, ibl_sampler, n).rgb + hemi_irradiance(n);
   let r = reflect(-v, n);
   let prefiltered = textureSampleLevel(prefiltered_map, ibl_sampler, r, s.roughness * frame.params.y).rgb;
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  color += (kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * frame.params.x;
+  color += (kd_ibl * irradiance * s.albedo + prefiltered * (s.f0 * lut.x + lut.y)) * frame.params.x;
 
   if (frame.light_color.w > 0.5 && frame.light_color.w < 1.5) {
     let c = cascade_index(p);

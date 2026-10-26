@@ -337,15 +337,29 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
         None => id.clone(),
     };
     let formats = texture_formats(eng);
-    let (model, textures) = {
+    let (model, textures, keys) = {
         let assets = eng.assets.borrow();
         let (bytes, bundle) = assets.blob(&source)?;
         let model = bundle
             .model(&source, bytes.bytes())
             .map_err(|e| e.to_string())?;
         let mut textures = Vec::with_capacity(model.textures.len());
+        let mut keys = Vec::with_capacity(model.textures.len());
         for t in &model.textures {
             let (tb, bundle) = assets.blob(&t.id)?;
+            // The cook writes a copy of an image for every glTF using it: one
+            // already loaded (the same bytes) is shared, not decoded again.
+            let key = {
+                use std::hash::{Hash, Hasher};
+                let mut h = std::collections::hash_map::DefaultHasher::new();
+                tb.bytes().hash(&mut h);
+                h.finish()
+            };
+            keys.push(key);
+            if group.is_none() && eng.render.borrow().shared.has_texture(key) {
+                textures.push(og_render::TextureSource::Rgba(super::stream::placeholder()));
+                continue;
+            }
             let tex = bundle
                 .texture(&t.id, tb.bytes())
                 .map_err(|e| e.to_string())?;
@@ -359,7 +373,7 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
             };
             textures.push(data);
         }
-        (model, textures)
+        (model, textures, keys)
     };
     let mut rs = eng.render.borrow_mut();
     // The model's primitives become consecutive scene meshes from here.
@@ -373,7 +387,13 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
         }
     }
     let material_base = rs.scene.material_count();
-    let parts = model.add_to_with(&mut rs.scene, &textures);
+    // Unstreamed models share identical textures, materials and meshes with
+    // those loaded before (a streamed one swaps its own stand-ins in place).
+    let (parts, prim_meshes) = {
+        let rs = &mut *rs;
+        let shared = group.is_none().then_some(&mut rs.shared);
+        model.add_to_shared(&mut rs.scene, &textures, &keys, shared)
+    };
     let stand_in = group.as_ref().map(|_| {
         let meshes: Vec<_> = (0..model.primitives.len())
             .filter_map(|p| {
@@ -431,7 +451,7 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
         handle(index),
         super::fx::ModelInfo {
             id: id.clone(),
-            base,
+            meshes: prim_meshes,
             prim_mesh,
         },
     );

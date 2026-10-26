@@ -79,6 +79,12 @@ pub struct Water {
     /// How much the directional light's shadows darken the surface's
     /// highlight, foam and colour (0: none, 1: fully).
     pub shadows: f32,
+    /// The reflectance seen straight down (Schlick's F0): 0.02 for clean
+    /// water; three.js Water.js uses 0.3.
+    pub f0: f32,
+    /// A floor under the reflected colour, `bias + (1 - bias) · reflected`
+    /// (three.js Water.js: 0.1).
+    pub reflection_bias: f32,
     /// With the camera below the surface: the water's fog colour and its
     /// density per metre (0: no underwater view).
     pub underwater_color: Vec3,
@@ -87,6 +93,28 @@ pub struct Water {
     /// (cells per metre). One surface a frame: the first that has them.
     pub caustics: f32,
     pub caustics_scale: f32,
+    /// Draw the water over this mesh instead of the `size` grid: its
+    /// vertices in the surface's frame (`transform`, scale included), its
+    /// normals the surface's. Streams, channels and pools of any outline get
+    /// the same depth colour, refraction, foam and reflections. No height
+    /// field; the planar reflection still mirrors in the frame's xz plane.
+    pub mesh: Option<crate::scene::MeshHandle>,
+    /// Ripples from a tangent-space normal map (three.js' water normals:
+    /// red +x, green +z, blue up) instead of the travelling waves.
+    pub normal_map: Option<crate::TextureHandle>,
+    /// The map's repeats per metre (lake) or per uv unit (flow).
+    pub normal_scale: f32,
+    /// Zero: three.js Water's four drifting layers over world xz. Else
+    /// three.js Water2's two layers sliding along it in uv (length: uv per
+    /// second), cross-faded, with Water2's look: refraction shifts by
+    /// N.xz × 0.05 × `refraction` of the screen, the reflection is tinted by
+    /// `shallow` as well, and there is no sun highlight.
+    pub flow: Vec2,
+    /// three.js Water's sun glint on the mirrored image (spec × sunColor
+    /// over the light's intensity); 0: the half-vector highlight. With it
+    /// the body is Water.js's too: `deep` is its waterColor, scattered by
+    /// N·V, plus its sun diffuse (sunColor = light × glint / 2), shadowed.
+    pub glint: f32,
 }
 
 impl Default for Water {
@@ -109,10 +137,17 @@ impl Default for Water {
             heights: None,
             planar_reflection: 0.0,
             shadows: 0.0,
+            f0: 0.02,
+            reflection_bias: 0.0,
             underwater_color: Vec3::new(0.03, 0.16, 0.2),
             underwater_density: 0.09,
             caustics: 0.0,
             caustics_scale: 0.6,
+            mesh: None,
+            normal_map: None,
+            normal_scale: 1.0,
+            flow: Vec2::ZERO,
+            glint: 0.0,
         }
     }
 }
@@ -171,8 +206,11 @@ struct WaterGpu {
     screen: [f32; 4],
     /// x: shadows, y: 1 drawn with the planar reflection, zw: unused.
     extra: [f32; 4],
-    /// rgb: the underwater colour, w: unused.
+    /// rgb: the underwater colour, w: the glint (0: off).
     under: [f32; 4],
+    /// The normal map: x repeats, yz the flow (zero: the lake's layers),
+    /// w 1 when there is one.
+    normals: [f32; 4],
 }
 
 /// The most grid cells per side (256² cells, 131,072 triangles per
@@ -215,6 +253,12 @@ struct Slot {
 pub(crate) struct WaterRenderer {
     layout: wgpu::BindGroupLayout,
     pub(crate) pipeline: crate::deferred::Deferred<wgpu::RenderPipeline>,
+    /// For surfaces drawn over a mesh ([`Water::mesh`]).
+    pub(crate) mesh_pipeline: crate::deferred::Deferred<wgpu::RenderPipeline>,
+    /// The surfaces' view depth for the screen AO (`fs_ao_depth`; grid, mesh): into an R32 copy of the prepass
+    /// depth, tested against the prepass, writing no depth.
+    ao_depth_pipelines: crate::deferred::Deferred<[wgpu::RenderPipeline; 2]>,
+    ripple_sampler: wgpu::Sampler,
     sampler: wgpu::Sampler,
     flat: wgpu::TextureView,
     slots: Vec<Slot>,
@@ -224,12 +268,14 @@ pub(crate) struct WaterRenderer {
 pub(crate) struct WaterDraw {
     group: wgpu::BindGroup,
     vertices: u32,
+    /// Its mesh's vertex and index buffers and index count.
+    mesh: Option<(wgpu::Buffer, wgpu::Buffer, u32)>,
 }
 
 impl WaterRenderer {
     /// Makes its pipeline if no frame used it yet (Renderer::warm).
     pub(crate) fn warm(&self) -> bool {
-        crate::deferred::warm_one(&[&self.pipeline])
+        crate::deferred::warm_one(&[&self.pipeline, &self.mesh_pipeline])
     }
 
     pub(crate) fn new(
@@ -272,6 +318,16 @@ impl WaterRenderer {
                     count: None,
                 },
                 tex(5, true),
+                tex(6, true),
+                wgpu::BindGroupLayoutEntry {
+                    binding: 7,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+                // The frame's screen-space AO (white without): the reflection is darkened by it as
+                // the scene behind already is (water.wgsl).
+                tex(8, true),
             ],
         });
         let module =
@@ -281,8 +337,67 @@ impl WaterRenderer {
             bind_group_layouts: &[Some(frame_layout), Some(&layout)],
             immediate_size: 0,
         });
+        let mesh_pipeline = crate::deferred_hdr(device, &pl, module.clone(), move |layout, module| {
+            crate::HdrPipeline {
+                alpha_to_coverage: false,
+                label: "water mesh",
+                layout,
+                module,
+                vs: "vs_mesh",
+                fs: "fs",
+                buffers: &[Some(crate::POSITION_NORMAL_UV_LAYOUT)],
+                cull: None,
+                depth_write: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                blend: None,
+                samples,
+            }
+        });
+        let ao_depth_pipelines = {
+            let (device, pl, module) = (device.clone(), pl.clone(), module.clone());
+            crate::deferred::Deferred::new(move || {
+                use crate::deferred::AsModule;
+                let m = module.module();
+                [("water ao depth", "vs", &[][..]), ("water mesh ao depth", "vs_mesh", &[Some(crate::POSITION_NORMAL_UV_LAYOUT)][..])].map(
+                    |(label, vs, buffers)| {
+                        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                            label: Some(label),
+                            layout: Some(&pl),
+                            vertex: wgpu::VertexState {
+                                module: m,
+                                entry_point: Some(vs),
+                                compilation_options: Default::default(),
+                                buffers,
+                            },
+                            primitive: wgpu::PrimitiveState::default(),
+                            depth_stencil: Some(wgpu::DepthStencilState {
+                                format: crate::DEPTH_FORMAT,
+                                depth_write_enabled: Some(false),
+                                depth_compare: Some(wgpu::CompareFunction::Less),
+                                stencil: Default::default(),
+                                bias: Default::default(),
+                            }),
+                            multisample: wgpu::MultisampleState::default(),
+                            fragment: Some(wgpu::FragmentState {
+                                module: m,
+                                entry_point: Some("fs_ao_depth"),
+                                compilation_options: Default::default(),
+                                targets: &[Some(wgpu::ColorTargetState {
+                                    format: crate::post::LINDEPTH_FORMAT,
+                                    blend: None,
+                                    write_mask: wgpu::ColorWrites::ALL,
+                                })],
+                            }),
+                            multiview_mask: None,
+                            cache: crate::pipeline_cache::of(&device).as_ref(),
+                        })
+                    },
+                )
+            })
+        };
         let pipeline = crate::deferred_hdr(device, &pl, module, move |layout, module| {
             crate::HdrPipeline {
+                alpha_to_coverage: false,
                 label: "water",
                 layout,
                 module,
@@ -302,10 +417,25 @@ impl WaterRenderer {
             min_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
+        // The ripples' normal map: tiled, trilinear and 16x anisotropic (three.js water normals are RepeatWrapping
+        // with mips): the clamped, mip-less water sampler blocked them up at grazing angles and seamed every tile.
+        let ripple_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("water ripples"),
+            address_mode_u: wgpu::AddressMode::Repeat,
+            address_mode_v: wgpu::AddressMode::Repeat,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
+            anisotropy_clamp: 16,
+            ..Default::default()
+        });
         let flat = height_texture(device, 1).1;
         WaterRenderer {
+            ripple_sampler,
             layout,
             pipeline,
+            mesh_pipeline,
+            ao_depth_pipelines,
             sampler,
             flat,
             slots: Vec::new(),
@@ -314,10 +444,10 @@ impl WaterRenderer {
 
     /// Writes this frame's uniforms and height fields and makes the bind
     /// groups (the scene copy and the depth prepass are this frame's;
-    /// `planar`: the surface drawn with this frame's planar reflection and
-    /// its texture, `fallback` bound where there is none).
+    /// `planar`: the surfaces drawn with this frame's planar reflections and
+    /// their textures, `fallback` bound where there is none).
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn prepare(
+    pub(crate) fn prepare<'t>(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -326,8 +456,11 @@ impl WaterRenderer {
         ssr: bool,
         scene_color: &wgpu::TextureView,
         scene_depth: &wgpu::TextureView,
-        planar: Option<(usize, &wgpu::TextureView)>,
+        planar: &[(usize, &wgpu::TextureView)],
+        ao: &wgpu::TextureView,
         fallback: &wgpu::TextureView,
+        mesh_buffers: &dyn Fn(crate::scene::MeshHandle) -> Option<(wgpu::Buffer, wgpu::Buffer, u32)>,
+        textures: &dyn Fn(crate::TextureHandle) -> Option<&'t wgpu::TextureView>,
     ) -> Vec<WaterDraw> {
         while self.slots.len() < waters.len() {
             self.slots.push(Slot {
@@ -343,9 +476,10 @@ impl WaterRenderer {
         let (w, h) = (screen.0 as f32, screen.1 as f32);
         let mut draws = Vec::with_capacity(waters.len());
         for (index, (water, slot)) in waters.iter().zip(&mut self.slots).enumerate() {
-            let reflection = planar.filter(|(i, _)| *i == index).map(|(_, v)| v);
+            let reflection = planar.iter().find(|(i, _)| *i == index).map(|(_, v)| *v);
             let segments = grid_segments(water);
-            let field = height_field(water);
+            let mesh = water.mesh.and_then(mesh_buffers);
+            let field = height_field(water).filter(|_| mesh.is_none());
             if let Some(f) = field {
                 if slot
                     .heights
@@ -371,6 +505,7 @@ impl WaterRenderer {
                     },
                 );
             }
+            let normal_view = water.normal_map.and_then(textures);
             let gpu = WaterGpu {
                 model: water.transform.to_cols_array_2d(),
                 size: [
@@ -398,10 +533,16 @@ impl WaterRenderer {
                 extra: [
                     water.shadows.clamp(0.0, 1.0),
                     f32::from(reflection.is_some()),
-                    0.0,
-                    0.0,
+                    water.f0.clamp(0.0, 1.0),
+                    water.reflection_bias.clamp(0.0, 1.0),
                 ],
-                under: water.underwater_color.extend(0.0).to_array(),
+                under: water.underwater_color.extend(water.glint.max(0.0)).to_array(),
+                normals: [
+                    water.normal_scale.max(0.0),
+                    water.flow.x,
+                    water.flow.y,
+                    f32::from(normal_view.is_some()),
+                ],
             };
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
             let heights = match (&slot.heights, field) {
@@ -438,22 +579,66 @@ impl WaterRenderer {
                             reflection.unwrap_or(fallback),
                         ),
                     },
+                    wgpu::BindGroupEntry {
+                        binding: 6,
+                        resource: wgpu::BindingResource::TextureView(normal_view.unwrap_or(fallback)),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 7,
+                        resource: wgpu::BindingResource::Sampler(&self.ripple_sampler),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 8,
+                        resource: wgpu::BindingResource::TextureView(ao),
+                    },
                 ],
             });
             draws.push(WaterDraw {
                 group,
                 vertices: segments * segments * 6,
+                mesh,
             });
         }
         draws
     }
 
-    /// Draws the surfaces (group 0: the frame). Returns the draw calls.
-    pub(crate) fn draw(&self, pass: &mut wgpu::RenderPass, draws: &[WaterDraw]) -> u32 {
-        pass.set_pipeline(&self.pipeline);
+    /// Draws the surfaces' view depth for the screen AO (`fs_ao_depth`; group 0: the frame). Returns the draw calls.
+    pub(crate) fn draw_ao_depth(&self, pass: &mut wgpu::RenderPass, draws: &[WaterDraw]) -> u32 {
+        let [grid, mesh] = self.ao_depth_pipelines.get();
         for d in draws {
             pass.set_bind_group(1, &d.group, &[]);
-            pass.draw(0..d.vertices, 0..1);
+            match &d.mesh {
+                Some((vertices, indices, count)) => {
+                    pass.set_pipeline(mesh);
+                    pass.set_vertex_buffer(0, vertices.slice(..));
+                    pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..*count, 0, 0..1);
+                }
+                None => {
+                    pass.set_pipeline(grid);
+                    pass.draw(0..d.vertices, 0..1);
+                }
+            }
+        }
+        draws.len() as u32
+    }
+
+    /// Draws the surfaces (group 0: the frame). Returns the draw calls.
+    pub(crate) fn draw(&self, pass: &mut wgpu::RenderPass, draws: &[WaterDraw]) -> u32 {
+        for d in draws {
+            pass.set_bind_group(1, &d.group, &[]);
+            match &d.mesh {
+                Some((vertices, indices, count)) => {
+                    pass.set_pipeline(&self.mesh_pipeline);
+                    pass.set_vertex_buffer(0, vertices.slice(..));
+                    pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..*count, 0, 0..1);
+                }
+                None => {
+                    pass.set_pipeline(&self.pipeline);
+                    pass.draw(0..d.vertices, 0..1);
+                }
+            }
         }
         draws.len() as u32
     }
@@ -467,6 +652,38 @@ pub(crate) fn plane(water: &Water) -> (Vec3, Vec3) {
         .transform_vector3(Vec3::Y)
         .normalize_or(Vec3::Y);
     (up, water.transform.transform_point3(Vec3::ZERO))
+}
+
+/// The surface as the screen AO and the planar reflection see it: its plane (normal, a point) and its world xz extent.
+/// A surface over a mesh ([`Water::mesh`], `mesh` its data) lies at the mean height of the vertices it draws (its
+/// indices; the entity's own origin can be anywhere, e.g. a mesh in world coordinates under an entity at 0) and spans
+/// their extent; a grid spans its size around the entity.
+pub(crate) fn surface(water: &Water, mesh: Option<&crate::scene::MeshData>) -> (Vec3, Vec3, Vec2, Vec2) {
+    let (up, origin) = plane(water);
+    if let Some(m) = mesh.filter(|m| !m.indices.is_empty()) {
+        let (mut sum, mut lo, mut hi) = (Vec3::ZERO, Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
+        let mut n = 0.0;
+        for &i in &m.indices {
+            let Some(v) = m.vertices.get(i as usize) else { continue };
+            let p = Vec3::from(v.position);
+            sum += p;
+            n += 1.0;
+            let w = water.transform.transform_point3(p);
+            lo = lo.min(Vec2::new(w.x, w.z));
+            hi = hi.max(Vec2::new(w.x, w.z));
+        }
+        if n > 0.0 {
+            return (up, water.transform.transform_point3(sum / n), lo, hi);
+        }
+    }
+    let h = water.size * 0.5;
+    let (mut lo, mut hi) = (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
+    for c in [Vec3::new(-h.x, 0.0, -h.y), Vec3::new(h.x, 0.0, -h.y), Vec3::new(-h.x, 0.0, h.y), Vec3::new(h.x, 0.0, h.y)] {
+        let w = water.transform.transform_point3(c);
+        lo = lo.min(Vec2::new(w.x, w.z));
+        hi = hi.max(Vec2::new(w.x, w.z));
+    }
+    (up, origin, lo, hi)
 }
 
 /// The surface's height field when it is one the renderer uses: 2 to

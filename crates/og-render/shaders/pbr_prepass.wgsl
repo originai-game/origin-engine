@@ -11,7 +11,8 @@ struct PrepassTargets {
 };
 
 @fragment
-fn fs_prepass(in: PrepassOut) -> PrepassTargets {
+fn fs_prepass(in: PrepassOut, @builtin(front_facing) front_facing: bool) -> PrepassTargets {
+  hook_front = select(-1.0, 1.0, front_facing);
   return prepass_targets(in);
 }
 
@@ -27,6 +28,8 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   hook.uv = in.uv;
   hook.color = in.color;
   hook.time = frame.time.x;
+  hook.eye = frame.view_pos.xyz;
+  hook.front = hook_front;
   let base = surface_color(hook, shader_params(), material.base_color * base_sample * in.color);
   let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5;
   if (DISCARD && ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved)) {

@@ -433,6 +433,8 @@ pub fn skinned_hooks_scene() -> RenderScene {
         radius: 0.6,
         intensity: 1.0,
         method: og_render::AoMethod::Gtao,
+        direct: 0.0,
+        radius_scale: 0.0,
     });
     scene.tick = 30;
     scene

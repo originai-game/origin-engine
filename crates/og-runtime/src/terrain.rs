@@ -988,6 +988,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 budget: if budget > 0 { budget } else { t.lod.budget },
             },
             fade_in: !settle,
+            visible: on(&v, "visible", true),
         });
         if !t.edited {
             streamed.push((i, rs.scene.terrains.len() - 1));
@@ -1037,6 +1038,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 align: f(&v, "align", 0.0),
                 seed: u(&v, "seed", 1),
             },
+            cast_shadows: on(&v, "castShadows", true),
         });
     }
     // The unedited terrains' tiles, as the camera needs them.

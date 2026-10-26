@@ -108,6 +108,9 @@ pub struct TextureOptions {
     pub mipmaps: bool,
     /// Encode with `toktx` even when the basis-universal crate is built in.
     pub force_toktx: bool,
+    /// Encode colour textures as UASTC too (about 4x the size of ETC1S, without its 4x4 block colour loss on foliage,
+    /// bark and stone detail). Off by default; `OG_COOK_COLOR_UASTC=1` turns it on for a cook.
+    pub color_uastc: bool,
 }
 
 impl Default for TextureOptions {
@@ -119,6 +122,7 @@ impl Default for TextureOptions {
             zstd: true,
             mipmaps: true,
             force_toktx: false,
+            color_uastc: std::env::var("OG_COOK_COLOR_UASTC").is_ok_and(|v| v == "1"),
         }
     }
 }
@@ -126,12 +130,13 @@ impl Default for TextureOptions {
 impl TextureOptions {
     fn describe(&self) -> String {
         format!(
-            "etc1s {} uastc {} rdo {} zstd {} mips {} normal y in alpha",
+            "etc1s {} uastc {} rdo {} zstd {} mips {} normal y in alpha{}",
             self.etc1s_quality,
             self.uastc_level,
             self.uastc_rdo.map_or("off".to_string(), |r| r.to_string()),
             self.zstd,
-            self.mipmaps
+            self.mipmaps,
+            if self.color_uastc { " colour uastc" } else { "" }
         )
     }
 }
@@ -1001,6 +1006,12 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
 
     // Plan every output with its stamp.
     let mut plan: Vec<Planned> = Vec::new();
+    // glTF textures are cooked once per image and kind, whichever models use
+    // them: a scene exported in many glTFs (cells, tiles) repeats its images
+    // in every file, and a copy per model multiplied the cooked bytes, the
+    // load's transcoding and the GPU's memory, and kept the copies' materials
+    // from batching together.
+    let mut planned_textures = std::collections::HashSet::new();
     for (si, s) in sources.iter().enumerate() {
         if s.error.is_some() {
             continue;
@@ -1011,9 +1022,13 @@ pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookEr
             Kind::Model => {
                 let g = s.gltf.as_ref().expect("loaded");
                 let mut ids = Vec::new();
-                for (i, u) in g.textures.iter().enumerate() {
-                    let id = format!("{}#tex{i}", s.rel);
+                for u in g.textures.iter() {
                     let image_hash = hash_bytes(&g.images[u.image]).to_le_bytes();
+                    let id = format!("_gltf/{:016x}-{}#tex", u64::from_le_bytes(image_hash), u.kind);
+                    if !planned_textures.insert(id.clone()) {
+                        ids.push(id);
+                        continue;
+                    }
                     let st = stamp(&[
                         b"texture",
                         tex_desc.as_bytes(),

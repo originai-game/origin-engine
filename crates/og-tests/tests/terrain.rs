@@ -1301,6 +1301,7 @@ fn scattered_copies_are_drawn_from_chunks_and_fade_by_dither() {
         mesh: cube,
         material: red,
         scatter: s,
+        cast_shadows: true,
     });
     scene.fog = None;
     scene.post.tonemap = Tonemap::None;

@@ -82,9 +82,16 @@ pub(crate) fn resolve(eng: &Engine) {
 /// camera's background, which a map's background replaces.
 pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     rs.scene.environment_map = None;
+    rs.scene.hemisphere = ([0.0; 3], [0.0; 3], 0.0);
     let Some(v) = super::extract::resource(world, rs.draw.environment.as_ref()) else {
         return;
     };
+    let hi = v["hemiIntensity"].as_f64().map_or(0.0, |x| x as f32).max(0.0);
+    if hi > 0.0 {
+        let s = super::fx::color(&v["hemiSky"], glam::Vec3::ONE);
+        let g = super::fx::color(&v["hemiGround"], glam::Vec3::ZERO);
+        rs.scene.hemisphere = (s.to_array(), g.to_array(), hi);
+    }
     let map = super::fx::handle_index(&v["map"])
         .and_then(|i| rs.env.maps.get(i))
         .and_then(|(_, h)| *h);

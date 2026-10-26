@@ -265,6 +265,7 @@ impl MetaballRenderer {
         let composite_pipeline =
             crate::deferred_hdr(device, &composite_layout, module, move |layout, module| {
                 crate::HdrPipeline {
+                    alpha_to_coverage: false,
                     label: "metaball composite",
                     layout,
                     module,

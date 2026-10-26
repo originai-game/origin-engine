@@ -286,7 +286,8 @@ fn scene_behind(uv: vec2<f32>, lod: f32) -> vec3<f32> {
 }
 
 @fragment
-fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
+fn fs(in: PhysicalOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
+  hook_front = select(-1.0, 1.0, front_facing);
   let uv = stylised_uv(in.uv, in.affine);
   let base_sample = textureSample(base_color_tex, material_sampler, uv);
   var hook: Hook;
@@ -296,15 +297,20 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
   hook.uv = uv;
   hook.color = in.color;
   hook.time = frame.time.x;
+  hook.eye = frame.view_pos.xyz;
+  hook.front = hook_front;
   let params = shader_params();
   let base = surface_color(hook, params, look_tint(material.base_color * base_sample * in.color, in.look));
   var dissolve = vec4<f32>(0.0);
   if (EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
-  if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolve.w > 0.5) {
+  let mode = u32(material.flags.w);
+  // Alpha to coverage (mode 16): as pbr_fs.wgsl.
+  let a2c = (mode & 16u) != 0u && material.emissive.w >= 0.0;
+  let coverage = clamp((base.a - material.emissive.w) / max(fwidth(base.a), 1e-4) + 0.5, 0.0, 1.0);
+  if ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dissolve.w > 0.5) {
     discard;
   }
-  let mode = u32(material.flags.w);
-  let alpha = select(1.0, base.a, (mode & 4u) != 0u);
+  let alpha = select(select(1.0, coverage, a2c), base.a, (mode & 4u) != 0u);
   // The packed maps (physical.rs): white where a material has none.
   let maps = pack_sample(physical.layers.x, uv);      // metalness, roughness, ao, dissolve
   let coat_maps = pack_sample(physical.layers.y, uv); // clearcoat, its roughness, transmission, thickness
@@ -425,7 +431,7 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
   // its bent normal (as three.js).
   let f_ibl = f_schlick_roughness(n_dot_v, f0_ibl, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  let irradiance = textureSample(irradiance_map, ibl_sampler, n).rgb;
+  let irradiance = textureSample(irradiance_map, ibl_sampler, n).rgb + hemi_irradiance(n);
   var bent = n;
   if (physical.anisotropy.x > 0.0) {
     let across = normalize(cross(cross(k.aniso_b, v), k.aniso_b));
@@ -435,15 +441,19 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
   let r = reflect(-v, bent);
   let prefiltered = textureSampleLevel(prefiltered_map, ibl_sampler, r, s.roughness * frame.params.y).rgb;
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  let env_brdf = f_ibl * lut.x + lut.y;
+  let env_brdf = f0_ibl * lut.x + lut.y;  // Karis split sum (pbr_fs.wgsl)
   let ao_sample = maps.b;
   var ibl_scale = frame.params.x * material.flags.z;
   if (material.flags.y >= 0.0) {
     ibl_scale *= mix(1.0, ao_sample, material.flags.y);
   }
+  var ao_direct = 1.0;  // also scales the emitted light (pbr_fs.wgsl ao_all)
   if (EFFECTS && fx.ao.x > 0.5) {
     let ssao_sample = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
-    ibl_scale *= mix(1.0, ssao_sample, fx.ao.y);
+    ibl_scale *= mix(mix(1.0, ssao_sample, fx.ao.y), mix(0.35, 1.0, ssao_sample), fx.ao.z);
+    ao_direct = mix(1.0, mix(0.35, 1.0, ssao_sample), fx.ao.z);
+    diffuse *= ao_direct;
+    specular *= ao_direct;
   }
   // The coat's reflection of the environment, and what it takes from
   // everything under it (the lights' share is taken per light).
@@ -493,7 +503,7 @@ fn fs(in: PhysicalOut) -> @location(0) vec4<f32> {
   }
   var color = diffuse + specular;
 
-  color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, uv).rgb);
+  color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, uv).rgb) * ao_direct;
   if (EFFECTS && fx.decal_info.x > 0.5) { color += decal_emissive; }
   if (EFFECTS && material.rim.w > 0.0) { color += dissolve.rgb; }
   if (EFFECTS && material.toon.y > 0.0) {

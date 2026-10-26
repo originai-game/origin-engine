@@ -108,6 +108,8 @@ fn shadow_hook(o: VsOut) -> Hook {
   h.uv = o.uv;
   h.color = o.color;
   h.time = shadow_pass.time.x;
+  h.eye = vec3<f32>(0.0);
+  h.front = 1.0;
   return h;
 }
 
@@ -209,12 +211,15 @@ fn fs_lean(in: LeanVsOut) -> @location(0) vec4<f32> {
   return shadow_depth(in.world, in.clip, dx, dy);
 }
 
-// Dissolving casters: the dissolved pixels cast no shadow.
+// Dissolving and alpha-tested casters: the dissolved pixels, and those under
+// the material's alpha cutoff (leaf and grass cards), cast no shadow.
 @fragment
 fn fs_dissolve(in: VsOut) -> @location(0) vec4<f32> {
   let dx = dpdx(in.world);
   let dy = dpdy(in.world);
+  let alpha = material.base_color.a * textureSample(base_color_tex, material_sampler, in.uv).a * in.color.a;
   if (dissolve_at(in.uv, in.local_pos).w > 0.5) { discard; }
+  if (material.emissive.w >= 0.0 && alpha < material.emissive.w) { discard; }
   return shadow_value(in, dx, dy);
 }
 

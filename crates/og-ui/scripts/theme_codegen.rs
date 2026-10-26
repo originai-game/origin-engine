@@ -288,7 +288,7 @@ pub fn generate(source: &str) -> Result<String, String> {
     );
     let _ = writeln!(
         out,
-        "#[derive(Clone, Copy, Debug, PartialEq)]\npub struct TypeStep {{\n    pub size: f32,\n    pub line_height: f32,\n    pub tracking_em: f32,\n    pub cjk_line_height: f32,\n}}\n"
+        "#[derive(Clone, Copy, Debug, PartialEq)]\npub struct TypeStep {{\n    pub size: f32,\n    pub line_height: f32,\n    pub tracking_em: f32,\n    pub cjk_line_height: f32,\n    /// Tracking of text with CJK characters, in em (CSS `letter-spacing`, which spaces Han too); 0 in the tokens.\n    pub cjk_tracking_em: f32,\n}}\n"
     );
     let _ = writeln!(out, "/// The type ramp (`font.scale`).");
     let _ = writeln!(
@@ -320,7 +320,7 @@ pub fn generate(source: &str) -> Result<String, String> {
         };
         let _ = writeln!(
             out,
-            "    {}: TypeStep {{ size: {}, line_height: {}, tracking_em: {}, cjk_line_height: {} }},",
+            "    {}: TypeStep {{ size: {}, line_height: {}, tracking_em: {}, cjk_line_height: {}, cjk_tracking_em: 0.0 }},",
             ident(k),
             lit(size),
             lit(lh),

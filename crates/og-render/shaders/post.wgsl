@@ -15,7 +15,8 @@ struct Post {
   vignette: vec4<f32>,  // rgb: vignette colour, w: chromatic aberration at the corners (uv units, 0 off)
   grain: vec4<f32>,     // x: intensity (0 off), y: size in pixels, z: seed (0..1)
   flash: vec4<f32>,     // rgb: flash colour, w: amount (0 off)
-  extra: vec4<f32>,     // x: 1 with god rays, y: 1 when the lit image's alpha is the tone-mapped fraction (untonemapped sprites)
+  extra: vec4<f32>,     // x: 1 with god rays, y: 1 when the lit image's alpha is the tone-mapped fraction (untonemapped sprites), z: 1 with sharpening, w: its strength
+  unreal: vec4<f32>,    // x: 1 for three.js UnrealBloomPass bloom, y: its radius, z: the first bloom level's width, w: the contrast its high pass sees
 };
 @group(0) @binding(0) var source: texture_2d<f32>;
 @group(0) @binding(1) var linear_sampler: sampler;
@@ -133,8 +134,8 @@ fn grain_hash(p: vec2<u32>, seed: u32) -> f32 {
   return f32(h >> 8u) / 16777216.0;
 }
 
-// The display colour (linear 0..1): grading, vignette, grain, flash.
-fn finished(uv: vec2<f32>, pos: vec2<f32>) -> vec3<f32> {
+// The graded display colour (linear 0..1): tone curve, LUT, vignette.
+fn graded(uv: vec2<f32>) -> vec3<f32> {
   var c = tonemapped(uv);
   if (post.grade.x > 0.0) {
     let n = f32(textureDimensions(grade_lut).x);
@@ -147,6 +148,30 @@ fn finished(uv: vec2<f32>, pos: vec2<f32>) -> vec3<f32> {
     let v = smoothstep(post.grade.z, post.grade.z + max(post.grade.w, 1e-3), d);
     c = mix(c, post.vignette.rgb, v * post.grade.y);
   }
+  return c;
+}
+
+// Contrast-adaptive sharpening (PostEffects.sharpen, post.extra.w its strength) as three.js CAS passes run it after the
+// output pass: over the sRGB-encoded display colour, the centre pushed from its four neighbours by
+// -sqrt(min(mn, 2 - mx) / mx) / mix(8, 5, sharp), normalised.
+fn sharpened(uv: vec2<f32>) -> vec3<f32> {
+  let t = 1.0 / vec2<f32>(textureDimensions(source));
+  let a = srgb_encode(clamp(graded(uv + vec2<f32>(0.0, -t.y)), vec3<f32>(0.0), vec3<f32>(1.0)));
+  let b = srgb_encode(clamp(graded(uv + vec2<f32>(-t.x, 0.0)), vec3<f32>(0.0), vec3<f32>(1.0)));
+  let c = srgb_encode(clamp(graded(uv), vec3<f32>(0.0), vec3<f32>(1.0)));
+  let d = srgb_encode(clamp(graded(uv + vec2<f32>(t.x, 0.0)), vec3<f32>(0.0), vec3<f32>(1.0)));
+  let e = srgb_encode(clamp(graded(uv + vec2<f32>(0.0, t.y)), vec3<f32>(0.0), vec3<f32>(1.0)));
+  let mn = min(min(min(a, b), min(d, e)), c);
+  let mx = max(max(max(a, b), max(d, e)), c);
+  let amp = sqrt(clamp(min(mn, 2.0 - mx) / max(mx, vec3<f32>(1e-4)), vec3<f32>(0.0), vec3<f32>(1.0)));
+  let w = amp * (-1.0 / mix(8.0, 5.0, post.extra.w));
+  return srgb_decode(clamp((c + (a + b + d + e) * w) / (1.0 + 4.0 * w), vec3<f32>(0.0), vec3<f32>(1.0)));
+}
+
+// The display colour (linear 0..1): grading, vignette, sharpening, grain, flash.
+fn finished(uv: vec2<f32>, pos: vec2<f32>) -> vec3<f32> {
+  var c: vec3<f32>;
+  if (post.extra.z > 0.5) { c = sharpened(uv); } else { c = graded(uv); }
   if (post.grain.x > 0.0) {
     let cell = vec2<u32>(pos / max(post.grain.y, 1.0));
     let g = grain_hash(cell, u32(post.grain.z * 16777216.0)) - 0.5;
@@ -198,10 +223,65 @@ fn downsample13(uv: vec2<f32>) -> vec3<f32> {
   return s * 0.125 + (a + c + g + i) * 0.03125 + (b + d + f + h) * 0.0625 + (j + k + l + m) * 0.125;
 }
 
+// three.js UnrealBloomPass (post.unreal.x). Mip i (0..4) is a Gaussian of
+// kernel radius 3 + 2i (sigma the same, taps 0..radius-1 each way) in its own
+// texels, run on mip i-1 (mip 0: the high pass at half resolution). The
+// separable pair is one 2D pass here: the vertical half reads the horizontal
+// one at its own texel centres, so the product is the same sum. Level i
+// stores mip i times its mix weight, mix(f, 1.2 - f, radius), f = 1 - 0.2 i;
+// the upsamples then add the levels (bilinear, as the composite reads them).
+fn unreal_weight(level: i32) -> f32 {
+  let f = 1.0 - 0.2 * f32(level);
+  return mix(f, 1.2 - f, post.unreal.y);
+}
+
+fn unreal_tap(i: i32, k: i32) -> f32 {
+  let x = f32(i);
+  let r = f32(k);
+  return 0.39894 * exp(-0.5 * x * x / (r * r)) / r;
+}
+
+// LuminosityHighPassShader: the colour where its luminance passes
+// smoothstep(threshold, threshold + smoothWidth), else black. `lit` is the
+// lit colour before exposure: graded first (0.18 (c / 0.18)^contrast per
+// channel), then exposed, so the threshold stays an exposed brightness.
+fn unreal_high_pass(lit: vec3<f32>) -> vec3<f32> {
+  let c = 0.18 * pow(max(lit, vec3<f32>(0.0)) / 0.18, vec3<f32>(post.unreal.w)) * exposure();
+  let v = dot(c, vec3<f32>(0.2126, 0.7152, 0.0722));
+  return c * smoothstep(post.bloom.x, post.bloom.x + post.bloom.y, v);
+}
+
+// The Gaussian of mip `level` at `uv`, its taps `texel` apart; from the lit
+// image through the high pass (level 0) or from the weighted level above.
+fn unreal_blur(uv: vec2<f32>, texel: vec2<f32>, level: i32) -> vec3<f32> {
+  let k = 3 + 2 * level;
+  var sum = vec3<f32>(0.0);
+  var norm = 0.0;
+  for (var j = 1 - k; j < k; j++) {
+    let wj = unreal_tap(abs(j), k);
+    for (var i = 1 - k; i < k; i++) {
+      let w = wj * unreal_tap(abs(i), k);
+      let p = uv + texel * vec2<f32>(f32(i), f32(j));
+      var c: vec3<f32>;
+      if (level == 0) {
+        c = unreal_high_pass(bloom_tap(p));
+      } else {
+        c = textureSampleLevel(source, linear_sampler, p, 0.0).rgb;
+      }
+      sum += c * w;
+      norm += w;
+    }
+  }
+  return sum / norm;
+}
+
 @fragment
 fn fs_bloom_prefilter(in: VsOut) -> @location(0) vec4<f32> {
   var out = vec3<f32>(0.0);
-  if (post.mode.z > 0.5) {
+  if (post.mode.z > 0.5 && post.unreal.x > 0.5) {
+    let half_size = max(textureDimensions(source) / 2u, vec2<u32>(1u));
+    out = unreal_blur(in.uv, 1.0 / vec2<f32>(half_size), 0) * unreal_weight(0);
+  } else if (post.mode.z > 0.5) {
     let c = downsample13(in.uv) * exposure();
     // (With untonemapped sprites the taps are weighted by the lit image's
     // alpha, `bloom_tap`, so they never bloom.)
@@ -222,12 +302,23 @@ fn fs_bloom_prefilter(in: VsOut) -> @location(0) vec4<f32> {
 
 @fragment
 fn fs_bloom_down(in: VsOut) -> @location(0) vec4<f32> {
+  if (post.unreal.x > 0.5) {
+    let size = textureDimensions(source);
+    let lv = i32(round(log2(post.unreal.z / f32(size.x))));
+    if (lv >= 4) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
+    let texel = 1.0 / vec2<f32>(max(size / 2u, vec2<u32>(1u)));
+    let c = unreal_blur(in.uv, texel, lv + 1) / unreal_weight(lv) * unreal_weight(lv + 1);
+    return vec4<f32>(c, 1.0);
+  }
   return vec4<f32>(downsample13(in.uv), 1.0);
 }
 
 // A 3x3 tent over the smaller level, added onto the larger one by blending.
 @fragment
 fn fs_bloom_up(in: VsOut) -> @location(0) vec4<f32> {
+  if (post.unreal.x > 0.5) {
+    return vec4<f32>(textureSampleLevel(source, linear_sampler, in.uv, 0.0).rgb, 1.0);
+  }
   let t = post.mode.y / vec2<f32>(textureDimensions(source));
   var c = textureSampleLevel(source, linear_sampler, in.uv, 0.0).rgb * 4.0;
   c += textureSampleLevel(source, linear_sampler, in.uv + t * vec2<f32>(-1.0, 0.0), 0.0).rgb * 2.0;

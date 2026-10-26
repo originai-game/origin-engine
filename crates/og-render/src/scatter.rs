@@ -102,6 +102,8 @@ pub struct ScatterDraw {
     /// Its StandardMaterial (opaque or cut out).
     pub material: MaterialHandle,
     pub scatter: TerrainScatter,
+    /// Whether the copies are drawn into the shadow passes.
+    pub cast_shadows: bool,
 }
 
 fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
@@ -425,6 +427,10 @@ struct Chunk {
 pub(crate) struct ScatterBatch {
     pub mesh: usize,
     pub material: usize,
+    /// Its material's shader (the scene's index): the lit and prepass
+    /// pipelines run its hooks.
+    pub shader: Option<usize>,
+    pub cast_shadows: bool,
     pub side: Side,
     offset: u32,
     chunks: Vec<ChunkKey>,
@@ -443,7 +449,10 @@ pub(crate) struct ScatterPipelines<'a> {
     pub frame_layout: &'a wgpu::BindGroupLayout,
     pub material_layout: &'a wgpu::BindGroupLayout,
     pub shadow_layout: &'a wgpu::BindGroupLayout,
-    pub lit_wgsl: String,
+    /// The lit passes' effect group (the screen-space AO), group 3 of the lit pipelines.
+    pub fx_layout: &'a wgpu::BindGroupLayout,
+    /// The lit module's source with a material shader's hooks.
+    pub lit_wgsl: Box<dyn Fn(&str) -> String + Send + Sync>,
     pub shadow_wgsl: String,
     pub samples: u32,
 }
@@ -451,11 +460,17 @@ pub(crate) struct ScatterPipelines<'a> {
 /// Draws [`ScatterDraw`]s from cached chunks.
 pub(crate) struct ScatterRenderer {
     lit_layout: wgpu::PipelineLayout,
+    /// The lit pass's: `lit_layout` plus the effect group (SSAO).
+    lit_fx_layout: wgpu::PipelineLayout,
     shadow_layout: wgpu::PipelineLayout,
     lit_module: wgpu::ShaderModule,
     shadow_module: wgpu::ShaderModule,
+    /// The lit module with each material shader's hooks (the scene's
+    /// shader index), made when a scatter's material first uses it.
+    hooked: HashMap<usize, wgpu::ShaderModule>,
+    lit_wgsl: Box<dyn Fn(&str) -> String + Send + Sync>,
     samples: u32,
-    pipelines: HashMap<(Side, u8), wgpu::RenderPipeline>,
+    pipelines: HashMap<(Option<usize>, Side, u8), wgpu::RenderPipeline>,
     uniform_layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
     slots: u64,
@@ -495,13 +510,17 @@ impl ScatterRenderer {
             "scatter",
             &[p.frame_layout, p.material_layout, &uniform_layout],
         );
+        let lit_fx_layout = pl(
+            "scatter lit",
+            &[p.frame_layout, p.material_layout, &uniform_layout, p.fx_layout],
+        );
         let shadow_layout = pl(
             "scatter shadow",
             &[p.shadow_layout, p.material_layout, &uniform_layout],
         );
         let lit_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("scatter"),
-            source: wgpu::ShaderSource::Wgsl(p.lit_wgsl.into()),
+            source: wgpu::ShaderSource::Wgsl((p.lit_wgsl)(&crate::hooks::default_hooks()).into()),
         });
         let shadow_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("scatter shadow"),
@@ -510,9 +529,12 @@ impl ScatterRenderer {
         let (uniform, group) = Self::slots(device, &uniform_layout, 4);
         ScatterRenderer {
             lit_layout,
+            lit_fx_layout,
             shadow_layout,
             lit_module,
             shadow_module,
+            hooked: HashMap::new(),
+            lit_wgsl: p.lit_wgsl,
             samples: p.samples,
             pipelines: HashMap::new(),
             uniform_layout,
@@ -551,11 +573,17 @@ impl ScatterRenderer {
         (buffer, group)
     }
 
-    fn pipeline(&mut self, device: &wgpu::Device, side: Side, pass: ScatterPass) {
+    fn pipeline(&mut self, device: &wgpu::Device, shader: Option<usize>, side: Side, pass: ScatterPass) {
         let kind = pass as u8;
-        if self.pipelines.contains_key(&(side, kind)) {
+        // The shadow pass reads no material shader (copies cast as cut by the material's alpha).
+        let shader = shader.filter(|_| pass != ScatterPass::Shadow);
+        if self.pipelines.contains_key(&(shader, side, kind)) {
             return;
         }
+        let lit_module = match shader {
+            Some(sh) => &self.hooked[&sh],
+            None => &self.lit_module,
+        };
         let buffers = [Some(crate::VERTEX_LAYOUT), Some(crate::INSTANCE_LAYOUT)];
         let depth = |write| {
             Some(wgpu::DepthStencilState {
@@ -577,9 +605,11 @@ impl ScatterRenderer {
             ScatterPass::Lit => crate::hdr_pipeline(
                 device,
                 crate::HdrPipeline {
+                    // opaque copies write alpha 1 (every sample); alpha-to-coverage materials their coverage
+                    alpha_to_coverage: true,
                     label: "scatter",
-                    layout: &self.lit_layout,
-                    module: &self.lit_module,
+                    layout: &self.lit_fx_layout,
+                    module: lit_module,
                     vs: "vs",
                     fs: "fs",
                     buffers: &buffers,
@@ -595,7 +625,7 @@ impl ScatterRenderer {
                     label: Some("scatter prepass"),
                     layout: Some(&self.lit_layout),
                     vertex: wgpu::VertexState {
-                        module: &self.lit_module,
+                        module: lit_module,
                         entry_point: Some("vs"),
                         compilation_options: Default::default(),
                         buffers: &buffers,
@@ -607,7 +637,7 @@ impl ScatterRenderer {
                     depth_stencil: depth(true),
                     multisample: Default::default(),
                     fragment: Some(wgpu::FragmentState {
-                        module: &self.lit_module,
+                        module: lit_module,
                         entry_point: Some("fs_prepass"),
                         compilation_options: Default::default(),
                         targets: &[
@@ -654,7 +684,7 @@ impl ScatterRenderer {
                 cache: crate::pipeline_cache::of(device).as_ref(),
             }),
         };
-        self.pipelines.insert((side, kind), p);
+        self.pipelines.insert((shader, side, kind), p);
     }
 
     /// Builds the chunks this frame needs and answers what to draw.
@@ -671,6 +701,8 @@ impl ScatterRenderer {
         prev_view_proj: Mat4,
         side_of: impl Fn(usize) -> Option<Side>,
         mesh_radius: impl Fn(usize) -> Option<f32>,
+        shader_of: impl Fn(usize) -> Option<usize>,
+        hooks_of: impl Fn(usize) -> String,
     ) -> Vec<ScatterBatch> {
         use wgpu::util::DeviceExt;
         self.frame += 1;
@@ -874,12 +906,24 @@ impl ScatterRenderer {
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
             };
             queue.write_buffer(&self.uniform, si as u64 * SLOT, bytemuck::bytes_of(&gpu));
+            let shader = shader_of(d.material.index());
+            if let Some(sh) = shader
+                && !self.hooked.contains_key(&sh)
+            {
+                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("scatter (material shader)"),
+                    source: wgpu::ShaderSource::Wgsl((self.lit_wgsl)(&hooks_of(sh)).into()),
+                });
+                self.hooked.insert(sh, module);
+            }
             for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
-                self.pipeline(device, side, pass);
+                self.pipeline(device, shader, side, pass);
             }
             batches.push(ScatterBatch {
                 mesh: d.mesh.index(),
                 material: d.material.index(),
+                shader,
+                cast_shadows: d.cast_shadows,
                 side,
                 offset: (si as u64 * SLOT) as u32,
                 chunks: keys,
@@ -900,13 +944,18 @@ impl ScatterRenderer {
         material_group: impl Fn(usize) -> Option<&'a wgpu::BindGroup>,
         mesh: impl Fn(usize) -> Option<(&'a wgpu::Buffer, &'a wgpu::Buffer, u32)>,
         visible: impl Fn(Vec3, f32) -> bool,
+        fx_group: Option<&wgpu::BindGroup>,
     ) -> (u32, u32) {
         let (mut draws, mut copies) = (0, 0);
         for b in batches {
+            if kind == ScatterPass::Shadow && !b.cast_shadows {
+                continue;
+            }
+            let shader = b.shader.filter(|_| kind != ScatterPass::Shadow);
             let (Some(group), Some((vertices, indices, count)), Some(p)) = (
                 material_group(b.material),
                 mesh(b.mesh),
-                self.pipelines.get(&(b.side, kind as u8)),
+                self.pipelines.get(&(shader, b.side, kind as u8)),
             ) else {
                 continue;
             };
@@ -923,6 +972,11 @@ impl ScatterRenderer {
                     pass.set_pipeline(p);
                     pass.set_bind_group(1, group, &[]);
                     pass.set_bind_group(2, &self.group, &[b.offset]);
+                    if kind == ScatterPass::Lit
+                        && let Some(fx) = fx_group
+                    {
+                        pass.set_bind_group(3, fx, &[]);
+                    }
                     pass.set_vertex_buffer(0, vertices.slice(..));
                     pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
                     bound = true;

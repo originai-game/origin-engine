@@ -23,7 +23,7 @@ pub(crate) struct FxUniform {
     pub screen: [f32; 4],
     pub ao: [f32; 4],
     pub decal_info: [f32; 4],
-    pub reserved: [f32; 4],
+    pub planar: [f32; 4],
     pub decals: [DecalGpu; MAX_DECALS],
 }
 
@@ -55,7 +55,7 @@ pub(crate) fn fx_uniform(view_proj: Mat4, prev: Mat4, size: (u32, u32)) -> FxUni
         screen: [w, h, 1.0 / w, 1.0 / h],
         ao: [0.0; 4],
         decal_info: [0.0, 0.0, DECAL_FADE, 0.0],
-        reserved: [0.0; 4],
+        planar: [0.0; 4],
         decals: [DecalGpu::default(); MAX_DECALS],
     }
 }

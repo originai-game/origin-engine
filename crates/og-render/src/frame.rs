@@ -56,6 +56,11 @@ pub(crate) struct FrameUniform {
     /// `MaterialStyle`: x: the distance at which outlines are their width
     /// (0: constant), yzw: unused.
     pub outline_style: [f32; 4],
+    /// The hemisphere light (`RenderScene::hemisphere`): rgb sky colour,
+    /// w intensity over pi over the IBL intensity (the shaders add it to
+    /// the irradiance the IBL scale multiplies); rgb ground colour.
+    pub hemi_sky: [f32; 4],
+    pub hemi_ground: [f32; 4],
 }
 
 /// The camera's matrices for one frame.
@@ -224,6 +229,36 @@ fn slice_sphere(cam: &Camera, aspect: f32, forward: Vec3, n: f32, f: f32) -> (Ve
 /// after the first also covers that much of the slice before it, where the
 /// lit shaders fade from that cascade into this one.
 #[allow(clippy::too_many_arguments)]
+/// One shadow map over a fixed box (DirectionalLight::shadow_box): `half`
+/// metres either side across the light, centred at `focus`, its depth from
+/// the scene's bounds on the light's side to the box's far side; snapped to
+/// whole texels so it does not shimmer as the camera moves. Its slice reaches
+/// every view depth: what lies outside the box reads as lit.
+pub(crate) fn fit_box(to_light: Vec3, bounds: (Vec3, f32), focus: Vec3, half: f32, map_size: u32, bias: f32, normal_bias: f32) -> Vec<Cascade> {
+    let up = if to_light.y.abs() > 0.99 { Vec3::Z } else { Vec3::Y };
+    let rotation = glam::camera::rh::view::look_at_mat4(Vec3::ZERO, -to_light, up);
+    let bounds_ls = rotation.transform_point3(bounds.0);
+    let radius = half.max(0.5);
+    let texel = 2.0 * radius / map_size as f32;
+    let mut c_ls = rotation.transform_point3(focus);
+    c_ls.x = (c_ls.x / texel).floor() * texel;
+    c_ls.y = (c_ls.y / texel).floor() * texel;
+    let top = (bounds_ls.z + bounds.1).max(c_ls.z + radius) + texel;
+    let bottom = (bounds_ls.z - bounds.1).min(c_ls.z - radius);
+    let depth_range = top - bottom;
+    let view = Mat4::from_translation(Vec3::new(-c_ls.x, -c_ls.y, -top)) * rotation;
+    let proj = glam::camera::rh::proj::directx::orthographic(-radius, radius, -radius, radius, 0.0, depth_range);
+    let view_proj = proj * view;
+    vec![Cascade {
+        view_proj,
+        frustum: Frustum(frustum_planes(view_proj).to_vec()),
+        normal_offset: texel.max(normal_bias),
+        depth_bias: texel.max(bias) / depth_range,
+        split_far: 1.0e7,
+        blend_start: 1.0e7,
+    }]
+}
+
 pub(crate) fn fit_cascades(
     cam: &Camera,
     frame: &CameraFrame,

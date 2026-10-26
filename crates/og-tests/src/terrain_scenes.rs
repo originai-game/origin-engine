@@ -499,6 +499,7 @@ pub fn grass_scene() -> RenderScene {
         mesh: tuft,
         material: grass,
         scatter: grass_scatter(),
+        cast_shadows: true,
     });
     scene
 }

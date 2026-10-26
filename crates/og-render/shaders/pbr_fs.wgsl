@@ -14,7 +14,8 @@
 override DISCARD: bool = true;
 
 @fragment
-fn fs(in: VertexOut) -> @location(0) vec4<f32> {
+fn fs(in: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
+  hook_front = select(-1.0, 1.0, front_facing);
   return lit_fragment(in);
 }
 
@@ -30,25 +31,36 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   hook.uv = uv;
   hook.color = in.color;
   hook.time = frame.time.x;
+  hook.eye = frame.view_pos.xyz;
+  hook.front = hook_front;
   let params = shader_params();
   let base = surface_color(hook, params, look_tint(material.base_color * base_sample * in.color, in.look));
   var dissolve = vec4<f32>(0.0);
   if (EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
   // One discard for the alpha cut-off and the dissolve (see dissolve_at);
   // none in most lean pipelines (DISCARD).
-  if (DISCARD && ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolve.w > 0.5)) {
+  let mode = u32(material.flags.w);
+  // Alpha to coverage (mode 16, an alpha-tested material): alpha past the cut-off over one pixel's change of it is the
+  // share of samples covered (three.js's ALPHA_TO_COVERAGE alpha test); it is cut only where nothing is covered.
+  let a2c = (mode & 16u) != 0u && material.emissive.w >= 0.0;
+  let coverage = clamp((base.a - material.emissive.w) / max(fwidth(base.a), 1e-4) + 0.5, 0.0, 1.0);
+  if (DISCARD && ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dissolve.w > 0.5)) {
     discard;
   }
   let dissolve_edge = dissolve.rgb;
-  let mode = u32(material.flags.w);
-  // Blended materials keep their alpha; opaque ones write 1.
-  let alpha = select(1.0, base.a, (mode & 4u) != 0u);
+  // Blended materials keep their alpha; opaque ones write 1 (alpha-to-coverage ones their coverage).
+  let alpha = select(select(1.0, coverage, a2c), base.a, (mode & 4u) != 0u);
   if ((mode & 2u) != 0u) {
     // Unlit (MeshBasicMaterial): the colour plus the emissive term.
     let e = surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, uv).rgb);
     var unlit = base.rgb + e + dissolve_edge;
     if (EFFECTS && material.toon.w > 0.0) { unlit = mix(unlit, material.flash.rgb, material.toon.w); }
     unlit = look_flash(unlit, in.look);
+    if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) {
+      // Debug (OG_DEBUG_VIEW=2): the ambient occlusion here, as on lit surfaces.
+      let ssao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
+      return vec4<f32>(vec3<f32>(select(1.0, ssao, fx.ao.x > 0.5)), 1.0);
+    }
     return vec4<f32>(apply_fog(unlit, in.world_pos), alpha);
   }
   let metalness_sample = textureSample(metalness_tex, material_sampler, uv);
@@ -135,23 +147,30 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  let irradiance = textureSample(irradiance_map, ibl_sampler, n).rgb;
+  let irradiance = textureSample(irradiance_map, ibl_sampler, n).rgb + hemi_irradiance(n);
   let diffuse_ibl = irradiance * s.albedo;
   let r = reflect(-v, n);
   let mip = s.roughness * frame.params.y;
   let prefiltered = textureSampleLevel(prefiltered_map, ibl_sampler, r, mip).rgb;
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y);
+  // Split sum as Karis (and three.js): F0 scales the LUT, whose bias term already holds the Fresnel rise at grazing
+  // angles; f_ibl * lut.x counted it twice (rough leaves seen edge-on reflected 3-4x the sky).
+  let specular_ibl = prefiltered * (s.f0 * lut.x + lut.y);
   let ao_sample = textureSample(ao_tex, material_sampler, uv).r;
   var ibl_scale = frame.params.x * material.flags.z;
   if (material.flags.y >= 0.0) {
     // Ambient occlusion darkens only the image-based light.
     ibl_scale *= mix(1.0, ao_sample, material.flags.y);
   }
+  // What `ao.z` keeps of the whole colour (three.js-era post AO multiplies everything, the emitted light too).
+  var ao_all = 1.0;
   if (EFFECTS && fx.ao.x > 0.5) {
-    // Screen-space ambient occlusion, likewise.
+    // Screen-space ambient occlusion, likewise; `ao.z` lets it reach the direct and local light too, and moves the
+    // image-based light to the same floor (0.35, as three.js-era post AO: the whole colour × mix(0.35, 1, ao)).
     let ssao_sample = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
-    ibl_scale *= mix(1.0, ssao_sample, fx.ao.y);
+    ibl_scale *= mix(mix(1.0, ssao_sample, fx.ao.y), mix(0.35, 1.0, ssao_sample), fx.ao.z);
+    ao_all = mix(1.0, mix(0.35, 1.0, ssao_sample), fx.ao.z);
+    color *= ao_all;
   }
   var ibl = kd_ibl * diffuse_ibl + specular_ibl;
   // Branch on the material itself, not on `s`: Tint's uniformity analysis
@@ -166,9 +185,10 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     let coat_lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness), 0.0).rg;
     ibl = ibl * (1.0 - fc) + coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat;
   }
+  let dbg_direct = color;
   color += ibl * ibl_scale;
 
-  color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, uv).rgb);
+  color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, uv).rgb) * ao_all;
   if (EFFECTS && fx.decal_info.x > 0.5) { color += decal_emissive; }
   if (EFFECTS && material.rim.w > 0.0) { color += dissolve_edge; }
   if (EFFECTS && material.toon.y > 0.0) {
@@ -180,6 +200,14 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   }
   color = look_flash(color, in.look);
 
+  if (frame.light_color.w > 2.5) {
+    // Debug (OG_DEBUG_VIEW): 3 albedo, 4 diffuse image-based light, 5 specular image-based light, 6 direct light.
+    let m = u32(frame.light_color.w + 0.5);
+    if (m == 3u) { return vec4<f32>(s.albedo, 1.0); }
+    if (m == 4u) { return vec4<f32>(kd_ibl * diffuse_ibl * ibl_scale, 1.0); }
+    if (m == 5u) { return vec4<f32>(specular_ibl * ibl_scale, 1.0); }
+    return vec4<f32>(dbg_direct, 1.0);
+  }
   if (frame.light_color.w > 1.5) {
     // Debug: the ambient occlusion term.
     let ssao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;

@@ -49,7 +49,15 @@ struct Frame {
   stylise: vec4<f32>,         // xy: the vertex snap grid in cells (0: none), z: affine texturing, w: depth bits (0: full)
   shadow_tint: vec4<f32>,     // rgb: the tint shadowed light moves towards, w: amount (0: off)
   outline_style: vec4<f32>,   // x: the distance at which outlines are their width (0: constant)
+  hemi_sky: vec4<f32>,        // rgb: the hemisphere light's sky colour, w: intensity / (pi * ibl intensity) (0: off)
+  hemi_ground: vec4<f32>,     // rgb: its ground colour
 };
+
+// The hemisphere light (three.js HemisphereLight) as irradiance in the IBL's units: added to the irradiance map's
+// sample, so it reaches only the diffuse term (no reflection) and is scaled, like it, by AO.
+fn hemi_irradiance(n: vec3<f32>) -> vec3<f32> {
+  return mix(frame.hemi_ground.rgb, frame.hemi_sky.rgb, 0.5 * n.y + 0.5) * frame.hemi_sky.w;
+}
 
 @group(0) @binding(0) var<uniform> frame: Frame;
 // Shadow depths stored in R32Float colour targets and read with textureLoad:

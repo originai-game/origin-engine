@@ -347,6 +347,7 @@ impl Fluid3dRenderer {
         let composite =
             crate::deferred_hdr(device, &composite_pl, module, move |layout, module| {
                 crate::HdrPipeline {
+                    alpha_to_coverage: false,
                     label: "fluid 3d composite",
                     layout,
                     module,
