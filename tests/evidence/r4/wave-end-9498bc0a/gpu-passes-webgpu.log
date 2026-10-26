@@ -1,0 +1,22 @@
+webgpu: 601 GPU frames of 600; frame 3.9283 ms mean, 3.934 p50, 5.167 p95; extension true (TIMESTAMP_EXT 0 bits, TIME_ELAPSED_EXT 64)
+  cascade.0          0.1308 ms mean  0.1260 p50  0.2300 p95  3.33%
+  cascade.1          0.1256 ms mean  0.1140 p50  0.2100 p95  3.2%
+  cascade.2          0.2079 ms mean  0.1540 p50  0.3000 p95  5.29%
+  local-shadow.0     0.1395 ms mean  0.0000 p50  1.4370 p95  3.55%
+  prepass            0.1252 ms mean  0.1540 p50  0.2080 p95  3.19%
+  ao                 1.6374 ms mean  1.8260 p50  2.3300 p95  41.68%
+  ao-blur            0.1500 ms mean  0.1360 p50  0.2920 p95  3.82%
+  main               0.8279 ms mean  0.8240 p50  1.1680 p95  21.08%
+  taa                0.2046 ms mean  0.1910 p50  0.3530 p95  5.21%
+  bloom-prefilter    0.0900 ms mean  0.0870 p50  0.1410 p95  2.29%
+  bloom-down.0       0.0314 ms mean  0.0290 p50  0.0540 p95  0.8%
+  bloom-down.1       0.0195 ms mean  0.0180 p50  0.0320 p95  0.5%
+  bloom-down.2       0.0208 ms mean  0.0180 p50  0.0300 p95  0.53%
+  bloom-down.3       0.0143 ms mean  0.0120 p50  0.0210 p95  0.36%
+  bloom-down.4       0.0092 ms mean  0.0080 p50  0.0140 p95  0.23%
+  bloom-up.4         0.0098 ms mean  0.0090 p50  0.0160 p95  0.25%
+  bloom-up.3         0.0118 ms mean  0.0110 p50  0.0200 p95  0.3%
+  bloom-up.2         0.0125 ms mean  0.0110 p50  0.0200 p95  0.32%
+  bloom-up.1         0.0168 ms mean  0.0160 p50  0.0280 p95  0.43%
+  bloom-up.0         0.0417 ms mean  0.0400 p50  0.0720 p95  1.06%
+  tonemap            0.1018 ms mean  0.0950 p50  0.1730 p95  2.59%

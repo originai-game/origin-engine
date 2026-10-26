@@ -328,3 +328,49 @@ preceding build. These are two rounds, not a broader variance study.
 
 Receipts are in `mac-2/`: `threejs-comparison.json`, `stdout.txt`,
 `stderr.txt`, and the five PNGs. No baseline or reference was re-recorded.
+
+## Mac-3 numbers (vendored GLES patches)
+
+Measured at `9498bc0a48846ae38a54256e7bfbeaf8b5d1d0a5`, M4 Pro,
+Chrome for Testing 150.0.7871.115. Release addon and wasm were rebuilt;
+the gate wasm was also refreshed with `OG_WASM_PROFILE=wasm` before the
+browser lane copied its artifacts. The benchmark uses publish wasm with
+GPU timers disabled. Command:
+
+```sh
+bun tools/bench/threejs-compare.ts --only complex --rounds 2 --out tests/evidence/r4/bench-complex/mac-3
+```
+
+Same 1280×720, 60 warm frames, 600 measured frames and two interleaved
+rounds. `OG_PERF_RECORD` was unset; a 60-second pause preceded the benchmark.
+Run-start one-minute load samples were 3.71–5.62 (five-minute 4.82–5.18,
+fifteen-minute 6.13–6.17). No continuous idle-load claim is made.
+
+| Mode | Round 1 sustained ms | Round 2 sustained ms | Mean ms | FPS |
+|---|---:|---:|---:|---:|
+| Engine WebGPU | 5.347 | 5.108 | 5.228 | 191 |
+| Engine WebGL2 | 7.773 | 7.410 | 7.592 | 132 |
+| Three WebGPU, per tile | 30.296 | 30.744 | 30.520 | 33 |
+| Three WebGL2, per tile | 9.805 | 10.162 | 9.984 | 100 |
+| Three WebGL2, per part | 24.404 | 24.075 | 24.240 | 41 |
+
+The mean is also the median of two runs. WebGPU per-tile / engine is
+**5.838×, PASS** against §7's ≥1.5×; WebGL2 per-tile is **1.315×** and
+per-part **3.193×**, reported. WebGL2 engine time is 7.592 ms versus
+Mac-2's 7.861 ms (0.269 ms, 3.42% lower). That difference is smaller than
+the current two-run range of 0.363 ms: these receipts do not isolate a
+causal speedup from the state-cache patch or distinguish it from build,
+load and run variance. The separate `gl-calls.ts` check does establish
+1,345 calls/frame, below its 1,500 bound.
+
+The screenshots were inspected before interpreting ratios. Three WebGPU
+renders the village, green pine tips and detailed roofs, without red-tip
+TRAA ghosting; its PNG is byte-identical to the accepted Mac-2 capture
+(SHA-256 `68e579ae6ff855f2193c7901d3c9ca5035f29697f13aa662b675c31da9d350c8`).
+Its shadow contrast remains weaker than WebGL2, unchanged from Mac-2.
+Three WebGL2 shows the sun's cast house/tree shadows; its level and camera
+match the engine, whose cyan emissives bloom more strongly. Both three
+WebGPU rounds report `info.sampledTexturesPerStage=16`. All ten timed
+runs completed, no result contains an error, and stderr contains no
+console-error or exception report. JSON, stdout/stderr and five PNGs are
+retained in `mac-3/`. No source, baseline or reference was changed.
