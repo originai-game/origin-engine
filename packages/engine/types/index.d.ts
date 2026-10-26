@@ -3563,7 +3563,7 @@ export interface StandardMaterialDesc {
    */
   readonly flatShading?: boolean;
   /**
-   * With MSAA (antialias msaa4), an alpha-tested material turns its alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage: minified foliage cards cover part of a pixel and the scene shows between them instead of drawing as solid sheets. Without MSAA it is the hard cut.
+   * With MSAA (antialias msaa4), an alpha-tested material turns its alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage: minified foliage cards cover part of a pixel and the scene shows between them instead of drawing as solid sheets. Without MSAA it is a hard cut too, half a pixel's change of alpha below alphaTest (where the coverage reaches 0), so an edge keeps a few more pixels than alphaTest's own cut.
    *
    * @default false
    */
@@ -4636,7 +4636,7 @@ export interface PostEffects {
    */
   aoDirect: number;
   /**
-   * Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance): a fixed share of the screen up close, as three.js SSAO passes size theirs, instead of a fixed world size; 0 keeps aoRadius everywhere.
+   * Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance): a fixed share of the screen up close, as three.js SSAO passes size theirs, instead of a fixed world size; 0 keeps aoRadius everywhere. The benefit holds with ssao, whose open flat ground stays unshaded at any radius; gtao's slices darken open ground a little as the radius shrinks.
    *
    * @range 0..
    * @tunable

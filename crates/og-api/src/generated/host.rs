@@ -5641,7 +5641,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: doc!("Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance): a fixed share of the screen up close, as three.js SSAO passes size theirs, instead of a fixed world size; 0 keeps aoRadius everywhere."),
+                doc: doc!("Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance): a fixed share of the screen up close, as three.js SSAO passes size theirs, instead of a fixed world size; 0 keeps aoRadius everywhere. The benefit holds with ssao, whose open flat ground stays unshaded at any radius; gtao's slices darken open ground a little as the radius shrinks."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

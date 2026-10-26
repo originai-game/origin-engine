@@ -2054,7 +2054,7 @@ Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its v
 | `aoMethod` | `AoMethod` | `"auto"` | — | — | — | The algorithm. |
 | `aoResolution` | `AoResolution` | `"full"` | — | — | — | Full resolution, or half for a fraction of the GPU time at softer detail. |
 | `aoDirect` | `number` | `0` | 0 … 1 | — | tunable | How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it). |
-| `aoRadiusScale` | `number` | `0` | ≥ 0 | — | tunable | Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance): a fixed share of the screen up close, as three.js SSAO passes size theirs, instead of a fixed world size; 0 keeps aoRadius everywhere. |
+| `aoRadiusScale` | `number` | `0` | ≥ 0 | — | tunable | Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance): a fixed share of the screen up close, as three.js SSAO passes size theirs, instead of a fixed world size; 0 keeps aoRadius everywhere. The benefit holds with ssao, whose open flat ground stays unshaded at any radius; gtao's slices darken open ground a little as the radius shrinks. |
 | `outline` | `boolean` | `false` | — | — | — | Outlines every opaque surface from depth and normal edges, creases between the faces of one object included (materials with outlineWidth get their own hull outline instead). |
 | `outlineColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The line colour, linear. |
 | `outlineWidth` | `number` | `2` | 0 … 31 | — | tunable | Line width in pixels, drawn inside the silhouette. |
@@ -2129,7 +2129,7 @@ resource PostEffects {
     max 1
     tunable true
   }
-  field aoRadiusScale f32 "Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance): a fixed share of the screen up close, as three.js SSAO passes size theirs, instead of a fixed world size; 0 keeps aoRadius everywhere." {
+  field aoRadiusScale f32 "Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance): a fixed share of the screen up close, as three.js SSAO passes size theirs, instead of a fixed world size; 0 keeps aoRadius everywhere. The benefit holds with ssao, whose open flat ground stays unshaded at any radius; gtao's slices darken open ground a little as the radius shrinks." {
     min 0
     tunable true
   }
@@ -3902,7 +3902,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `alphaTest` | `number` | `0` | 0 … 1 | — | — | Discard pixels whose alpha is below this. |
 | `side` | `Side` | `"front"` | — | — | — | Which faces are drawn. |
 | `flatShading` | `boolean` | `false` | — | — | — | Shade with face normals. |
-| `alphaToCoverage` | `boolean` | `false` | — | — | — | With MSAA (antialias msaa4), an alpha-tested material turns its alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage: minified foliage cards cover part of a pixel and the scene shows between them instead of drawing as solid sheets. Without MSAA it is the hard cut. |
+| `alphaToCoverage` | `boolean` | `false` | — | — | — | With MSAA (antialias msaa4), an alpha-tested material turns its alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage: minified foliage cards cover part of a pixel and the scene shows between them instead of drawing as solid sheets. Without MSAA it is a hard cut too, half a pixel's change of alpha below alphaTest (where the coverage reaches 0), so an edge keeps a few more pixels than alphaTest's own cut. |
 | `envMapIntensity` | `number` | `1` | ≥ 0 | — | — | A multiplier on image-based lighting. |
 | `normalScale` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How strongly the normal map bends the normal, per tangent axis. |
 | `aoMapIntensity` | `number` | `1` | ≥ 0 | — | — | How strongly aoMap darkens the ambient light. |
@@ -3998,7 +3998,7 @@ struct StandardMaterialDesc {
   }
   field side Side "Which faces are drawn."
   field flatShading bool "Shade with face normals."
-  field alphaToCoverage bool "With MSAA (antialias msaa4), an alpha-tested material turns its alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage: minified foliage cards cover part of a pixel and the scene shows between them instead of drawing as solid sheets. Without MSAA it is the hard cut."
+  field alphaToCoverage bool "With MSAA (antialias msaa4), an alpha-tested material turns its alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage: minified foliage cards cover part of a pixel and the scene shows between them instead of drawing as solid sheets. Without MSAA it is a hard cut too, half a pixel's change of alpha below alphaTest (where the coverage reaches 0), so an edge keeps a few more pixels than alphaTest's own cut."
   field envMapIntensity f32 "A multiplier on image-based lighting." {
     default 1
     min 0
