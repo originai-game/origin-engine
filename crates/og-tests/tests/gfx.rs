@@ -467,6 +467,57 @@ fn antialiasing_smooths_edges() {
     }
 }
 
+/// `RenderInfo::msaa_samples` is the MSAA the device gives, the cap of
+/// `RenderQuality::msaa_samples` (`RenderCapabilities.maxMsaaSamples`):
+/// 4 where `Msaa4` resolved to MSAA (it stays 4 while a quality of 1 draws
+/// FXAA, which `antialias` says), 1 where the renderer resolved TAA, FXAA
+/// or none, which a quality asking 4 does not change. Before the debt
+/// round nothing said so: a preset's 4 was drawn at 1 unseen.
+#[test]
+fn the_device_msaa_caps_the_qualitys() {
+    use og_render::RenderQuality;
+    let scene = RenderScene::new();
+    let mut msaa = Renderer::new_blocking(&RenderDesc {
+        antialias: Antialias::Msaa4,
+        ..scenes::base_desc()
+    })
+    .expect("renderer");
+    let resolved = msaa.info().antialias;
+    println!(
+        "{}: Msaa4 resolved to {resolved:?}, msaa_samples {}",
+        msaa.info().backend_tier(),
+        msaa.info().msaa_samples
+    );
+    if resolved == Antialias::Msaa4 {
+        assert_eq!(msaa.info().msaa_samples, og_render::MSAA_SAMPLES);
+        let mut one = RenderScene::new();
+        one.quality = RenderQuality {
+            msaa_samples: 1,
+            ..RenderQuality::default()
+        };
+        msaa.render(&one, &RenderTarget::Offscreen).expect("render");
+        assert_eq!(msaa.info().antialias, Antialias::Fxaa);
+        assert_eq!(msaa.info().msaa_samples, og_render::MSAA_SAMPLES);
+    } else {
+        assert_eq!(resolved, Antialias::Fxaa);
+        assert_eq!(msaa.info().msaa_samples, 1);
+    }
+    for antialias in [Antialias::Taa, Antialias::Fxaa, Antialias::Off] {
+        let mut r = Renderer::new_blocking(&RenderDesc {
+            antialias,
+            ..scenes::base_desc()
+        })
+        .expect("renderer");
+        assert_eq!(r.info().msaa_samples, 1, "{antialias:?}");
+        r.render(&scene, &RenderTarget::Offscreen).expect("render");
+        assert_eq!(
+            r.info().antialias,
+            antialias,
+            "a quality of 4 draws one sample"
+        );
+    }
+}
+
 #[test]
 fn bloom_matches_its_reference() {
     check("bloom");

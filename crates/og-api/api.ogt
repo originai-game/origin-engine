@@ -2641,8 +2641,22 @@ module render {
   enum GraphicsQuality {
     doc "A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). The settings screen (og.ui.settingsScreen) offers the three."
     variant medium "The full frame: every quality field at its default."
-    variant low "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections or ambient occlusion, FXAA for MSAA."
-    variant high "The full frame with the shadow maps at twice their side."
+    variant low "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections or ambient occlusion, FXAA for MSAA; and, for a game that turns one of those back on, ambient occlusion at half resolution and half the reflection and fog steps."
+    variant high "The full frame refined, at the GPU time of the effects the scene draws: the shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps). A scene without those effects differs from medium only by its shadow maps."
+  }
+
+  enum AoResolutionSetting {
+    doc "The resolution RenderSettings.aoResolution draws ambient occlusion at."
+    variant postEffects "PostEffects.aoResolution's: the game's choice."
+    variant full "Full resolution whatever PostEffects.aoResolution says (the high preset)."
+    variant half "Half resolution whatever PostEffects.aoResolution says (the low preset)."
+  }
+
+  column AoResolutionSetting {
+    doc "An AoResolutionSetting field: the variant's index."
+    array Uint32Array
+    stride 1
+    value AoResolutionSetting
   }
 
   enum QualityPreset {
@@ -2742,7 +2756,18 @@ module render {
     field ambientOcclusion bool "PostEffects.ao darkens creases; false draws none. PostEffects keeps its settings either way." {
       default true
     }
-    field msaaSamples u32 "Samples per pixel where the antialiasing multisamples (msaa, the WebGL2 tier's choice; RenderCapabilities.antialias): 4, or 1, which draws FXAA instead. TAA, FXAA and no antialiasing take one sample whatever it says. Changing it makes the multisampled targets and pipelines again at the next frame." {
+    field aoResolution AoResolutionSetting "The resolution ambient occlusion is searched at: postEffects (the default) draws PostEffects.aoResolution; full or half is drawn in its place, and PostEffects keeps its own for when this is postEffects again. The renderer reads this first, so the probe's RenderSettings and PostEffects together say what is drawn."
+    field ssrStepScale f32 "PostEffects.ssrSteps times this (within the 4 to 128 steps the pass takes): 2 is 64 steps for the default 32, finer contact with thin and distant reflected surfaces at twice the pass's GPU time. PostEffects keeps its steps." {
+      default 1
+      min 0
+      max 32
+    }
+    field volumetricStepScale f32 "An og.VolumetricFog's samples along each view ray times this: the froxel grid's 64 slices deep (full tier; 8 to 256), each thinner, so a shaft's edge in depth and the fog just in front of a surface resolve more finely, or WebGL2's raymarch of 24 steps per pixel (4 to 96). The froxel grid's GPU time and memory grow with its slices; changing it makes the grid again at the next frame." {
+      default 1
+      min 0
+      max 4
+    }
+    field msaaSamples u32 "Samples per pixel where the antialiasing multisamples (msaa, the WebGL2 tier's choice): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it, as maxShadowedLights caps shadowedLights: where the device resolved no MSAA (TAA, FXAA, off, or FXAA for want of a multisampled HDR format) it is 1, and one sample is drawn whatever this says; RenderCapabilities.antialias is what is drawn now. Changing it makes the multisampled targets and pipelines again at the next frame." {
       default 4
       min 1
       max 4
@@ -4037,6 +4062,7 @@ module render {
     field antialias Antialias "The antialiasing the device resolved RenderOptions.antialias to."
     field maxLights u32 "How many point and spot lights one frame draws (MAX_LIGHTS on every tier)."
     field maxShadowedLights u32 "How many point and spot lights cast shadows in one frame (8 on the full tier, 4 on WebGL2); past it, the shadowed lights brightest at the camera keep theirs."
+    field maxMsaaSamples u32 "The samples per pixel this device multisamples the scene at, which caps RenderSettings.msaaSamples: 4 where antialias resolved to msaa4 when the renderer was made, 1 where it resolved to taa, fxaa or off (or to fxaa because the HDR format cannot be multisampled), 0 without a renderer. It stays 4 while RenderSettings.msaaSamples 1 draws FXAA (antialias then says fxaa)."
     field pointShadows PointShadows "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
     field width u32 "The render target width in device pixels."
     field height u32 "The render target height in device pixels."
@@ -4168,8 +4194,11 @@ module render {
     doc "| softParticles | false | true | true |"
     doc "| screenSpaceReflections | false | true | true |"
     doc "| ambientOcclusion | false | true | true |"
+    doc "| aoResolution | half | postEffects | full |"
+    doc "| ssrStepScale | 0.5 | 1 | 2 |"
+    doc "| volumetricStepScale | 0.5 | 1 | 2 |"
     doc "| msaaSamples | 1 | 4 | 4 |"
-    doc "Medium is every field's default, the frame drawn before any preset."
+    doc "Medium is every field's default, the frame drawn before any preset. The device caps two of the rows, as RenderCapabilities says: shadowedLights by maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value."
     param world World "The world whose RenderSettings change."
     param preset GraphicsQuality "The preset."
     returns Result.Void "Refused for a world that is not alive, or inside a system that did not declare RenderSettings among its writes."

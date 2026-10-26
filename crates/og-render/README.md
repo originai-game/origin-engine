@@ -461,6 +461,54 @@ sculpted-clay looks frames (RMSE 0.006 to 0.019 against WebGPU with
 FXAA) differ for this reason, and natively forcing the no-compute tier
 on metal reproduces exactly those three.
 
+## What a frame may cost: `RenderQuality`
+
+`RenderScene::quality` (`src/quality.rs`) is read every frame on top of
+what the scene asks for; the API's RenderSettings carries its fields one
+to one and `og.render.applyQuality` writes a `QualityPreset`'s row of
+them, so the probe reads what is drawn. The default is the full frame
+and is medium's row: every scale is the identity there, so a frame at
+the default is byte for byte the frame without the field.
+
+| Field | low | medium | high | Changing it |
+|---|---|---|---|---|
+| `rect_shadows` | false | true | true | free |
+| `shadowed_lights` | 2 | 8 | 8 | free; `RenderInfo::shadowed_lights` caps it |
+| `shadow_map_scale` | 0.5 | 1 | 2 | remakes the shadow maps |
+| `volumetric_fog` | false | true | true | free |
+| `soft_particles` | false | true | true | free |
+| `ssr` | false | true | true | free |
+| `ambient_occlusion` | false | true | true | free |
+| `ao_resolution` | `Some(Half)` | `None` | `Some(Full)` | free (the graph adds or drops `ao-upsample`) |
+| `ssr_step_scale` | 0.5 | 1 | 2 | free (a uniform) |
+| `volumetric_step_scale` | 0.5 | 1 | 2 | remakes the froxel volumes (the raymarch's steps are a uniform) |
+| `msaa_samples` | 1 | 4 | 4 | remakes the multisampled targets; `RenderInfo::msaa_samples` caps it |
+
+`ao_resolution` replaces `AmbientOcclusion::resolution` where it is
+`Some`; `None` draws the scene's. `ssr_step_scale` multiplies
+`ScreenSpaceReflections::steps` (within 4 to 128) and
+`volumetric_step_scale` the froxel grid's 64 slices (8 to 256) or the
+raymarch's 24 steps (4 to 96). Low's halves and half-resolution AO
+only show where a game turns SSR, AO or volumetric fog back on after
+the preset.
+
+The device caps two fields, and the fields keep what was asked: at most
+`RenderInfo::shadowed_lights` lights cast shadows, and
+`RenderInfo::msaa_samples` (4 where `Antialias` resolved to `Msaa4` when
+the renderer was made, else 1) caps `msaa_samples`, so on the full
+tier's TAA, FXAA or none a quality of 4 draws one sample;
+`RenderInfo::antialias` says what is drawn now.
+
+What high costs on lavapipe (per-pass GPU timestamps, mean of 10 frames
+at 1280×720, `tests/evidence/debt3/quality-presets/NOTES.md`): the AO
+pair at full against a scene's half 12.7 → 23.6 ms, `ssr` 13.3 → 28.4
+ms, the froxel `volumetric` pass 40.2 → 82.1 ms, each cascade two to
+four times medium's. Not run-time knobs yet, so not in a preset:
+the PCSS taps and the PCF kernel (WGSL constants), GTAO's slices and
+steps (constants), the bloom chain's depth (set by the target's size;
+deeper widens the glow, a look rather than a quality) and the cascade
+count (made with the renderer: `RenderDesc::shadow_cascades`).
+
 ## The overlay
 
 The screen-space layer for HUDs and og-ui. It is drawn after every post

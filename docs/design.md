@@ -199,11 +199,17 @@ lighting falls back to a forward tile table built on the CPU).
 - What a frame may cost is data the renderer reads every frame:
   RenderSettings' quality fields (rect-light shadows, the number of
   shadowed lights, the shadow maps' scale, volumetric fog, soft particles,
-  SSR, AO, MSAA samples), og-render's `RenderQuality`. A graphics preset
+  SSR, AO and its resolution, the SSR and volumetric fog step scales,
+  MSAA samples), og-render's `RenderQuality`. A graphics preset
   (`GraphicsQuality`: low, medium, high) is a row of them that
   `og.render.applyQuality` writes and `RenderSettings.quality` records;
   no preset state lies behind the fields, so the probe reads what is
-  drawn. Medium is the defaults, the full frame.
+  drawn. Medium is the defaults, the full frame. High refines it: shadow
+  maps at twice their side, AO at full resolution whatever PostEffects
+  asks, twice the SSR steps and the volumetric fog's slices. The device
+  caps two fields and says so in RenderCapabilities: `maxShadowedLights`
+  and `maxMsaaSamples` (1 where the renderer resolved TAA, FXAA or none);
+  the fields keep the row's value.
 - Stylisation, as data a look composes (`og.Stylise`, `og.MaterialStyle`,
   a `type look` asset): a logical pixel grid scaled up by whole numbers
   with the camera and sprites snapped to it, posterise and palette

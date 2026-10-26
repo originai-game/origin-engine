@@ -344,6 +344,18 @@ fn on(v: &Value, key: &str, default: bool) -> bool {
     }
 }
 
+/// The IDL `AoResolutionSetting`'s variants, in order: RenderSettings.aoResolution.
+const AO_RESOLUTION_SETTINGS: &[&str] = &["postEffects", "full", "half"];
+
+/// RenderSettings.aoResolution's variant for a quality's AO resolution.
+pub(crate) fn ao_resolution_setting(r: Option<og_render::AoResolution>) -> &'static str {
+    AO_RESOLUTION_SETTINGS[match r {
+        None => 0,
+        Some(og_render::AoResolution::Full) => 1,
+        Some(og_render::AoResolution::Half) => 2,
+    }]
+}
+
 /// The value of a resource the world holds, decoded with its layout (kept
 /// while its bytes are unchanged: [`Layout::decode_kept`]).
 pub(crate) fn resource(world: &World, layout: Option<&Layout>) -> Option<std::sync::Arc<Value>> {
@@ -1133,6 +1145,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             soft_particles: on(s, "softParticles", full.soft_particles),
             ssr: on(s, "screenSpaceReflections", full.ssr),
             ambient_occlusion: on(s, "ambientOcclusion", full.ambient_occlusion),
+            ao_resolution: [
+                None,
+                Some(og_render::AoResolution::Full),
+                Some(og_render::AoResolution::Half),
+            ][crate::fx::variant(&s["aoResolution"], AO_RESOLUTION_SETTINGS).min(2)],
+            ssr_step_scale: f(s, "ssrStepScale", full.ssr_step_scale),
+            volumetric_step_scale: f(s, "volumetricStepScale", full.volumetric_step_scale),
             msaa_samples: f(s, "msaaSamples", full.msaa_samples as f32).max(1.0) as u32,
         };
     } else {

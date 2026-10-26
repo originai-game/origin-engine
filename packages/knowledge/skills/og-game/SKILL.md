@@ -2122,7 +2122,10 @@ og.render.look(world)?.name;                                              // the
 - **Graphics quality** is RenderSettings' quality fields, read every
   frame: `rectShadows`, `shadowedLights`, `shadowMapScale`,
   `volumetricFog`, `softParticles`, `screenSpaceReflections`,
-  `ambientOcclusion`, `msaaSamples` (4, or 1 for FXAA where the
+  `ambientOcclusion`, `aoResolution` (`postEffects`, or `full`/`half`
+  in place of `PostEffects.aoResolution`), `ssrStepScale` and
+  `volumetricStepScale` (multiples of the SSR steps and the volumetric
+  fog's slices), `msaaSamples` (4, or 1 for FXAA where the
   antialiasing multisamples). `og.render.applyQuality(world, preset)`
   writes a preset's row of them and records it in
   `RenderSettings.quality` (`none` before any):
@@ -2133,13 +2136,19 @@ og.render.look(world)?.name;                                              // the
   | shadowedLights | 2 | 8 | 8 |
   | shadowMapScale | 0.5 | 1 | 2 |
   | volumetricFog, softParticles, screenSpaceReflections, ambientOcclusion | false | true | true |
+  | aoResolution | half | postEffects | full |
+  | ssrStepScale, volumetricStepScale | 0.5 | 1 | 2 |
   | msaaSamples | 1 | 4 | 4 |
 
   Medium is the defaults, the frame drawn before any preset. The renderer
   reads the fields and nothing else, so `og run --commands
   "0.5:get:og.RenderSettings"` shows what is drawn, and a field set after
-  the preset wins. The switches only take away: the scene's PostEffects
-  and lights keep their settings. The settings screen applies the
+  the preset wins. The switches only take away and the scales only
+  scale: the scene's PostEffects and lights keep their settings. High
+  costs GPU time where the scene draws AO, SSR or volumetric fog (about
+  twice each). The device caps two fields, which keep the row's value:
+  `RenderCapabilities.maxShadowedLights` and `maxMsaaSamples` (1 where
+  the antialiasing resolved to TAA, FXAA or off, so 4 draws one sample). The settings screen applies the
   player's pick when given the world (`og.ui.settingsScreen(id, { world,
   settings, ... })`); apply a saved preset yourself at start:
 

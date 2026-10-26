@@ -72,9 +72,11 @@ pub enum VolumetricMethod {
     Raymarch,
 }
 
-/// The froxel grid: across, down, deep.
+/// The froxel grid: across, down, deep (the depth at
+/// [`crate::RenderQuality::volumetric_step_scale`] 1).
 pub const FROXELS: [u32; 3] = [160, 90, 64];
-/// The raymarch's steps per pixel.
+/// The raymarch's steps per pixel (at
+/// [`crate::RenderQuality::volumetric_step_scale`] 1).
 pub const RAYMARCH_STEPS: u32 = 24;
 /// The most point, spot and rect lights of a step's cluster that light the
 /// raymarch's fog (the first of the cluster's, which keeps the brightest
@@ -109,7 +111,29 @@ struct Froxels {
     integrate: wgpu::ComputePipeline,
     scatter: wgpu::TextureView,
     sum: wgpu::TextureView,
+    /// The volumes' slices deep ([`crate::RenderQuality::froxel_slices`]).
+    slices: u32,
     sampler: wgpu::Sampler,
+}
+
+/// A froxel volume `slices` deep.
+fn froxel_volume(device: &wgpu::Device, label: &str, slices: u32) -> wgpu::TextureView {
+    device
+        .create_texture(&wgpu::TextureDescriptor {
+            label: Some(label),
+            size: wgpu::Extent3d {
+                width: FROXELS[0],
+                height: FROXELS[1],
+                depth_or_array_layers: slices,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D3,
+            format: FROXEL_FORMAT,
+            usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        })
+        .create_view(&Default::default())
 }
 
 /// The renderer's volumetric fog: made on the first frame that has it.
@@ -365,33 +389,15 @@ impl Volumetric {
         };
         let inject = pipeline("volumetric inject", &inject_layout, "inject");
         let integrate = pipeline("volumetric integrate", &integrate_layout, "integrate");
-        let volume = |label| {
-            device
-                .create_texture(&wgpu::TextureDescriptor {
-                    label: Some(label),
-                    size: wgpu::Extent3d {
-                        width: FROXELS[0],
-                        height: FROXELS[1],
-                        depth_or_array_layers: FROXELS[2],
-                    },
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D3,
-                    format: FROXEL_FORMAT,
-                    usage: wgpu::TextureUsages::STORAGE_BINDING
-                        | wgpu::TextureUsages::TEXTURE_BINDING,
-                    view_formats: &[],
-                })
-                .create_view(&Default::default())
-        };
         self.froxels = Some(Froxels {
             frame_layout: frame_layout_c,
             inject_layout,
             integrate_layout,
             inject,
             integrate,
-            scatter: volume("froxel scatter"),
-            sum: volume("froxel sum"),
+            scatter: froxel_volume(device, "froxel scatter", FROXELS[2]),
+            sum: froxel_volume(device, "froxel sum", FROXELS[2]),
+            slices: FROXELS[2],
             sampler: device.create_sampler(&wgpu::SamplerDescriptor {
                 label: Some("froxels"),
                 mag_filter: wgpu::FilterMode::Linear,
@@ -401,7 +407,9 @@ impl Volumetric {
         });
     }
 
-    /// Writes the frame's medium; `size`: the HDR target's.
+    /// Writes the frame's medium; `size`: the HDR target's. Another
+    /// depth of the froxel grid at `quality` makes its volumes again.
+    #[allow(clippy::too_many_arguments)]
     pub fn prepare(
         &mut self,
         device: &wgpu::Device,
@@ -410,8 +418,17 @@ impl Volumetric {
         fog: &VolumetricFog,
         size: (u32, u32),
         tick: u64,
+        quality: &crate::RenderQuality,
     ) {
         self.ensure(device, frame_layout);
+        let slices = quality.froxel_slices();
+        if let Some(f) = &mut self.froxels
+            && f.slices != slices
+        {
+            f.scatter = froxel_volume(device, "froxel scatter", slices);
+            f.sum = froxel_volume(device, "froxel sum", slices);
+            f.slices = slices;
+        }
         let u = VolUniform {
             scatter: (fog.color.max(Vec3::ZERO) * fog.scattering.max(0.0))
                 .extend(fog.anisotropy.clamp(-0.95, 0.95))
@@ -424,14 +441,14 @@ impl Volumetric {
             ],
             extent: [
                 fog.distance.max(1.0),
-                RAYMARCH_STEPS as f32,
+                quality.raymarch_steps() as f32,
                 size.0 as f32,
                 size.1 as f32,
             ],
             grid: [
                 FROXELS[0] as f32,
                 FROXELS[1] as f32,
-                FROXELS[2] as f32,
+                slices as f32,
                 (tick % 64) as f32,
             ],
         };
@@ -492,7 +509,7 @@ impl Volumetric {
         pass.set_bind_group(0, &frame_group, &[]);
         pass.set_pipeline(&f.inject);
         pass.set_bind_group(1, &inject, &[]);
-        pass.dispatch_workgroups(FROXELS[0].div_ceil(8), FROXELS[1].div_ceil(8), FROXELS[2]);
+        pass.dispatch_workgroups(FROXELS[0].div_ceil(8), FROXELS[1].div_ceil(8), f.slices);
         pass.set_pipeline(&f.integrate);
         pass.set_bind_group(1, &integrate, &[]);
         pass.dispatch_workgroups(FROXELS[0].div_ceil(8), FROXELS[1].div_ceil(8), 1);

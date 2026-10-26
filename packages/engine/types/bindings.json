@@ -99,6 +99,12 @@
       "value": "ToneMapping"
     },
     {
+      "name": "AoResolutionSetting",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "AoResolutionSetting"
+    },
+    {
       "name": "QualityPreset",
       "array": "Uint32Array",
       "stride": 1,
@@ -6501,6 +6507,21 @@
           "name": "ambientOcclusion",
           "column": "bool",
           "default": true
+        },
+        {
+          "name": "aoResolution",
+          "column": "AoResolutionSetting",
+          "default": "postEffects"
+        },
+        {
+          "name": "ssrStepScale",
+          "column": "f32",
+          "default": 1
+        },
+        {
+          "name": "volumetricStepScale",
+          "column": "f32",
+          "default": 1
         },
         {
           "name": "msaaSamples",
