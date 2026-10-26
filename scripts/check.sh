@@ -175,10 +175,22 @@ run_tests() {
     cargo nextest run "${args[@]}"; rc=$?
     if [ "$rc" -eq 0 ] && [ "$doc" = 1 ]; then cargo test --workspace --doc; rc=$?; fi
   else
-    local args=(--workspace)
-    for pk in ${exclude[@]+"${exclude[@]}"}; do args+=(--exclude "$pk"); done
-    [ "$gpu" = 1 ] || args+=(--exclude og-tests --exclude og-ui --exclude og-render)
+    # cargo test runs a binary's tests on threads of one process, and two
+    # renderers made on two threads trip the Vulkan loader's driver-unload
+    # race (docs/ci.md §CI, phase-1 row 81), so the GPU crates run their
+    # tests one at a time, after the rest.
+    local args=(--workspace) gpu_args=()
+    for pk in og-tests og-ui og-render; do
+      args+=(--exclude "$pk")
+      case " ${exclude[*]+${exclude[*]}} " in *" $pk "*) ;; *) gpu_args+=(-p "$pk") ;; esac
+    done
+    for pk in ${exclude[@]+"${exclude[@]}"}; do
+      case " og-tests og-ui og-render " in *" $pk "*) ;; *) args+=(--exclude "$pk") ;; esac
+    done
     cargo test "${args[@]}"; rc=$?
+    if [ "$rc" -eq 0 ] && [ "$gpu" = 1 ] && [ "${#gpu_args[@]}" -gt 0 ]; then
+      cargo test "${gpu_args[@]}" -- --test-threads=1; rc=$?
+    fi
   fi
   if [ -s "$known" ]; then
     echo "known vulkan-cpu frame divergences ($known):"

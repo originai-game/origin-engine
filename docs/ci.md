@@ -204,8 +204,8 @@ had grown `target/` to 143 GB.
 |---|---|---|---|---|---|---|
 | `fmt` | `cargo fmt --all --check` | every | yes | yes | yes | |
 | `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | every | yes | yes | yes | |
-| `test-quick` | `cargo nextest run --workspace --exclude og-tests` (`cargo test` without nextest); og-ui's and og-render's GPU tests left out when their inputs did not change (§Lanes) | quick | yes, on lavapipe | | | |
-| `test` | `cargo nextest run --workspace && cargo test --workspace --doc` (`cargo test --workspace` without nextest); gfx tests in `og-tests`, left out with og-ui's and og-render's when their inputs did not change (§Lanes). Runs after `wasm-build`, whose og-render artifact `og-tests::wasm` takes when it is newer than og-render's sources (else that test runs `cargo check --target wasm32-unknown-unknown -p og-render` itself) | full, functional | | yes, on lavapipe | yes, on lavapipe | |
+| `test-quick` | `cargo nextest run --workspace --exclude og-tests` (`cargo test` without nextest, og-ui and og-render after the rest with `--test-threads=1`); og-ui's and og-render's GPU tests left out when their inputs did not change (§Lanes) | quick | yes, on lavapipe | | | |
+| `test` | `cargo nextest run --workspace && cargo test --workspace --doc` (`cargo test --workspace` without nextest, og-tests, og-ui and og-render after the rest with `--test-threads=1`); gfx tests in `og-tests`, left out with og-ui's and og-render's when their inputs did not change (§Lanes). Runs after `wasm-build`, whose og-render artifact `og-tests::wasm` takes when it is newer than og-render's sources (else that test runs `cargo check --target wasm32-unknown-unknown -p og-render` itself) | full, functional | | yes, on lavapipe | yes, on lavapipe | |
 | `wasm-build` | `cargo build --profile wasm --target wasm32-unknown-unknown -p <crate> --lib` (`Cargo.toml`'s `[profile.wasm]`: release at opt-level s, the per-tick and per-frame crates at 3 and the load-time crates at z; `tests/evidence/r4/size-2/NOTES.md`) for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish` in `target/wasm-<variant>/` (cargo 1.99 keeps one fingerprint per unit whatever its features, so two feature sets in one target dir recompiled og-probe, og-runtime and og-host-web on every run: 16.7 s and 12.2 s with nothing changed, 0.4 and 0.5 s apart; `tests/evidence/P2/tooling/wasm-build-relink.md`) and the lanes variants of crates marked `publish lanes` (one per `lanes` line: og-host-web's `lanes2d` then `lanes`, the 2D and the 3D publish features with wasm atomics, `scripts/wasm-lanes.sh` in `target/wasm-mt/`, which the two share; §The lanes wasm); copies to `target/og-wasm/raw/` | full | | | yes | |
 | `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (`origin-engine-lanes` for a lanes variant, `-lanes*`; when the module uses it) then `scripts/wasm-opt.sh`, the one wasm-opt invocation (`-Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused`; rustc links wasm32 stack-first, so the low 1 KiB is only the bottom of an overflowing stack), which `packages/engine/scripts/build.sh` also ships with (`--threads` adds `--enable-threads` for the lanes variant); `opt.txt` lists the shipping (publish and lanes, one of each per game profile) variants, `opt-all.txt` every one | full | | | yes | |
 | `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` of each file in `opt.txt` ≤ `wasm_core_brotli_bytes` (a page downloads one variant; the table also prints the sum and the largest) | full | | | yes | |
@@ -277,8 +277,9 @@ unused drivers in its first `vkEnumeratePhysicalDevices` while another
 instance's thread walks that list to name an object, so two renderers
 made on two threads of one process can crash it. No test makes two
 renderers at once any more; nextest runs each test in its own process,
-but `cargo test` (the gate's fallback without nextest) runs a binary's
-tests on threads of one and is still exposed there
+and `cargo test` (the gate's fallback without nextest), which runs a
+binary's tests on threads of one process, runs og-tests, og-ui and
+og-render after the other crates with `--test-threads=1`
 (`tests/evidence/debt3/particle-sigsegv/NOTES.md`).
 
 ### The vulkan-cpu tier's known divergences
