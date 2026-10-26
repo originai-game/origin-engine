@@ -86,7 +86,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         eprintln!("og build: {n}");
     }
     if p.has_assets() {
-        match crate::cook::cook(&p.root, 0) {
+        match crate::cook::cook(&p.root, 0, true) {
             Ok(r) => {
                 if !json {
                     println!("{}", crate::cook::summary(&r));

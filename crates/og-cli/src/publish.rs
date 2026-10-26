@@ -15,6 +15,7 @@
 //!   made_with true          # the "Made with Origin Engine" badge
 //!   icon "assets/icon.png"  # a square PNG ≥ 192 px; absent: the brand tile
 //!   short_name "Runner"     # the installed app's name
+//!   color_textures etc1s    # etc1s | uastc: over `cook { color_textures }` for this export's cook
 //! }
 //! ```
 //!
@@ -70,6 +71,11 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
     for e in &p.entries {
         let v = match e.key.as_str() {
             "out" => continue,
+            // The export's cook reads it (`cook::texture_options`).
+            "color_textures" => {
+                word(e, &file, &["etc1s", "uastc"])?;
+                continue;
+            }
             "probe" => json!(word(e, &file, &["player", "all"])?),
             "isolation" => json!(word(e, &file, &["required", "preferred", "off"])?),
             "fit" => json!(word(e, &file, &["fill", "letterbox"])?),
@@ -107,7 +113,7 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
             "short_name" => json!(text(e, &file)?),
             other => {
                 return Err(format!(
-                    "{file}:{}: publish has no `{other}`; it takes probe, out, isolation, fit, aspect, orientation, dpr_cap, fullscreen, gate, made_with, icon and short_name",
+                    "{file}:{}: publish has no `{other}`; it takes probe, out, isolation, fit, aspect, orientation, dpr_cap, fullscreen, gate, made_with, icon, short_name and color_textures",
                     e.line
                 ));
             }

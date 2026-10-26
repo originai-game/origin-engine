@@ -20,7 +20,7 @@ struct Frame {
   inv_view_proj: mat4x4<f32>,
   view_pos: vec4<f32>,        // xyz: camera position, w: 1 orthographic, 0 perspective
   light_dir: vec4<f32>,       // xyz: towards the light, w: cascades in use (0: no shadows)
-  light_color: vec4<f32>,     // rgb: radiance, w: debug view (1: cascades)
+  light_color: vec4<f32>,     // rgb: radiance, w: debug view (DebugView::lit_code: 1 cascades, 2 AO, 3 albedo, 4 IBL diffuse, 5 IBL specular, 6 direct)
   params: vec4<f32>,          // x: ibl intensity, y: prefiltered mips - 1, z: local lights drawn, w: 1 / cascade map size
   view_forward: vec4<f32>,    // xyz: camera forward, w: 1 / local shadow map size
   cascade_view_proj: array<mat4x4<f32>, 3>,

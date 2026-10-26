@@ -3379,14 +3379,22 @@ export type PointShadows = "auto" | "cube" | "paraboloid";
 export type TaaHistory = "bilinear" | "catmullRom";
 
 /**
- * What the debug overlay shows besides og.debug's draws (og.debug.setView, RenderOptions.debugView, `debug:<view>`), drawn over the finished frame. Streams add views as they add what to show.
+ * What the debug overlay shows besides og.debug's draws (og.debug.setView, RenderOptions.debugView, `debug:<view>`), drawn over the finished frame; the lit image's views (cascades, ao, albedo, iblDiffuse, iblSpecular, direct, aoDepth, aoRaw) draw in place of the lit image instead, for looking at one term of the lighting. Streams add views as they add what to show.
  * - `"none"`: Only og.debug's draws.
  * - `"physics"`: The colliders' shapes, joints and contacts as the last physics step left them.
  * - `"nav"`: The navigation grids (blocked cells) and navmeshes (polygon edges), and every og.NavAgent's path.
  * - `"bounds"`: Every drawn mesh's bounds (its geometry's box at its transform).
  * - `"lod"`: Every og.Model tinted by the level of detail it draws (green the full mesh, yellow level 1, orange level 2, red level 3 and beyond), so the levels' distances read in one frame.
+ * - `"cascades"`: In place of the lit image: each lit pixel coloured by the directional light's shadow cascade that covers it (red, green, blue for cascades 0, 1, 2; black beyond the last).
+ * - `"ao"`: In place of the lit image: the screen-space ambient occlusion term (white unoccluded), with PostEffects.ao set.
+ * - `"albedo"`: In place of the lit image: the lit materials' base colour after their maps and hooks, unlit.
+ * - `"iblDiffuse"`: In place of the lit image: the diffuse image-based light (Environment's map or sky) each lit material receives.
+ * - `"iblSpecular"`: In place of the lit image: the specular image-based light each lit material reflects.
+ * - `"direct"`: In place of the lit image: the direct light (directional, point and spot lights, shadows applied) each lit material receives.
+ * - `"aoDepth"`: The ao view with the depth the ambient occlusion pass reads in place of its term, as its fraction of a metre (one ramp per metre), to check the depth the AO sees.
+ * - `"aoRaw"`: The ao view before the term's depth-aware blur, to tell the search's noise from the blur's.
  */
-export type DebugView = "none" | "physics" | "nav" | "bounds" | "lod";
+export type DebugView = "none" | "physics" | "nav" | "bounds" | "lod" | "cascades" | "ao" | "albedo" | "iblDiffuse" | "iblSpecular" | "direct" | "aoDepth" | "aoRaw";
 
 /**
  * How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer.
@@ -22326,7 +22334,7 @@ export interface VideoPlayer {
 }
 
 // ── debug ───────────────────────────────────────────────────────
-// Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI) so they read in every capture and never hide behind geometry; and the debug views (physics, navigation, bounds) the command channel's `debug:` actions switch.
+// Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI) so they read in every capture and never hide behind geometry; and the debug views (physics, navigation, bounds, levels of detail, and the lit image's terms: shadow cascades, ambient occlusion, albedo, image-based and direct light) the command channel's `debug:` actions switch.
 // Development only: not in publish builds, where every member does nothing and answers its default, so a game may leave its debug draws in. Debug draw is rendering: it never feeds back into the simulation, and its draws are not world state (a snapshot or a replay does not carry them).
 
 /**
@@ -25705,7 +25713,7 @@ export declare namespace og {
    */
   const VideoPlayer: ComponentType<{ readonly video: FieldSpec<"Video">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly frame: FieldSpec<"u32">; readonly finished: FieldSpec<"bool">; readonly texture: FieldSpec<"Texture"> }, VideoPlayer>;
   /**
-   * Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI) so they read in every capture and never hide behind geometry; and the debug views (physics, navigation, bounds) the command channel's `debug:` actions switch.
+   * Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI) so they read in every capture and never hide behind geometry; and the debug views (physics, navigation, bounds, levels of detail, and the lit image's terms: shadow cascades, ambient occlusion, albedo, image-based and direct light) the command channel's `debug:` actions switch.
    * Development only: not in publish builds, where every member does nothing and answers its default, so a game may leave its debug draws in. Debug draw is rendering: it never feeds back into the simulation, and its draws are not world state (a snapshot or a replay does not carry them).
    */
   namespace debug {

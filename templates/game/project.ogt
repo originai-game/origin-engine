@@ -22,4 +22,8 @@ publish {
   # (hello, tick, state, pick, entity, input, capture).
   probe player
   out "dist"
+  # Colour textures cook as etc1s (the default, a quarter of the bytes);
+  # `cook { color_textures uastc }` above publish packs them without
+  # ETC1S's block loss, and `color_textures etc1s` here keeps the web
+  # export (`og build`) at etc1s.
 }

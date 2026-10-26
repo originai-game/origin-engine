@@ -128,7 +128,7 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
     ssao_scale = mix(mix(1.0, ssao, scatter_fx.ao.y), mix(0.35, 1.0, ssao), scatter_fx.ao.z);
     ao_all = mix(1.0, mix(0.35, 1.0, ssao), scatter_fx.ao.z);
     color *= ao_all;
-    // Debug (OG_DEBUG_VIEW=2): the ambient occlusion term, as pbr_fs.wgsl.
+    // Debug (DebugView::AmbientOcclusion): the ambient occlusion term, as pbr_fs.wgsl.
     if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) { return vec4<f32>(vec3<f32>(ssao), 1.0); }
   }
   let n_dot_v = max(dot(n, v), 1e-4);

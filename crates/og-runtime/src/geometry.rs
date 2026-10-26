@@ -26,7 +26,38 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 /// The debug views (`render.DebugView`), by variant index.
-const VIEWS: [&str; 5] = ["none", "physics", "nav", "bounds", "lod"];
+const VIEWS: [&str; 13] = [
+    "none",
+    "physics",
+    "nav",
+    "bounds",
+    "lod",
+    "cascades",
+    "ao",
+    "albedo",
+    "iblDiffuse",
+    "iblSpecular",
+    "direct",
+    "aoDepth",
+    "aoRaw",
+];
+
+/// The renderer's own view for a debug view drawn in place of the lit
+/// image (`RenderScene::debug`); the overlay views draw over it.
+fn render_view(view: &str) -> og_render::DebugView {
+    use og_render::DebugView as V;
+    match view {
+        "cascades" => V::Cascades,
+        "ao" => V::AmbientOcclusion,
+        "albedo" => V::Albedo,
+        "iblDiffuse" => V::IblDiffuse,
+        "iblSpecular" => V::IblSpecular,
+        "direct" => V::DirectLight,
+        "aoDepth" => V::AoDepth,
+        "aoRaw" => V::AoRaw,
+        _ => V::None,
+    }
+}
 
 /// A debug label (`og.debug.text`).
 struct DebugText {
@@ -1469,8 +1500,8 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
     let _ = probe.register_command(
         "debug",
         og_probe::CommandDesc {
-            usage: "debug:on|off|none|physics|nav|bounds|lod".into(),
-            doc: "show or hide the debug overlay (og.debug's draws), or pick its view: physics (colliders, joints, contacts), nav (grids, navmeshes, agents' paths), bounds (every drawn mesh's box), lod (every model tinted by its level of detail), none".into(),
+            usage: "debug:on|off|none|physics|nav|bounds|lod|cascades|ao|albedo|iblDiffuse|iblSpecular|direct|aoDepth|aoRaw".into(),
+            doc: "show or hide the debug overlay (og.debug's draws), or pick its view: physics (colliders, joints, contacts), nav (grids, navmeshes, agents' paths), bounds (every drawn mesh's box), lod (every model tinted by its level of detail), cascades (the shadow cascade per pixel), ao (the ambient occlusion term), albedo, iblDiffuse, iblSpecular, direct (the lit materials' lighting terms), aoDepth (the AO pass's depth), aoRaw (the AO before its blur), none".into(),
         },
         move |_world, args| {
             let arg = args.first().map(String::as_str).unwrap_or("on");
@@ -1586,6 +1617,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
     // Debug draw.
     rs.geo.draws.retain(|(until, _)| *until >= now);
     rs.geo.texts.retain(|t| t.until >= now);
+    // The lit image's views; a publish build draws none of them.
+    rs.scene.debug = if cfg!(feature = "publish") {
+        og_render::DebugView::None
+    } else {
+        render_view(current_view(rs))
+    };
     if rs.geo.disabled {
         return;
     }

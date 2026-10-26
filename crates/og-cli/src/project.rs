@@ -3,9 +3,11 @@
 //!
 //! `project.ogt` (type `project`) carries `name`, `id`, `engine` (the pinned
 //! engine version), `entry`, `profile` (`2d`/`3d`), `tick`, `seed`, a
-//! `scenes { name "path" }` block, `scene`, and `publish { probe player; out
-//! "dist" }`; `og` reads `entry` and `publish.out` here, `publish` in
-//! `publish.rs`, and hands the whole text to the engine (CreateOptions.project:
+//! `scenes { name "path" }` block, `scene`, `cook { color_textures uastc }`
+//! (etc1s or uastc colour textures, `cook.rs`), `budgets { }` (og-cook's
+//! `stats::Budgets`) and `publish { probe player; out "dist"; color_textures
+//! etc1s }`; `og` reads `entry` and `publish.out` here, `publish` in
+//! `publish.rs`, `cook` and `publish.color_textures` in `cook.rs`, and hands the whole text to the engine (CreateOptions.project:
 //! `packages/engine/src/node/run.ts`, `polish.ts`, the play page's config),
 //! which takes `tick`, `seed`, `scenes` and `scene` for the GameDesc fields a
 //! game leaves unset and refuses one set in both to different values

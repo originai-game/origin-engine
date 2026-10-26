@@ -10,7 +10,7 @@ struct FxPost {
   inv_proj: mat4x4<f32>,
   view: mat4x4<f32>,          // world -> view (normals)
   screen: vec4<f32>,          // full-resolution w, h, 1/w, 1/h
-  cam: vec4<f32>,             // x: far, y: 1 orthographic, z: near, w: OG_AO_DEPTH (1: fract(depth), 2: depth / 30, 3: fract(16 depth), 4: AO unblurred)
+  cam: vec4<f32>,             // x: far, y: 1 orthographic, z: near, w: the AO debug views (1: fract(depth), DebugView::AoDepth; 2: AO unblurred, DebugView::AoRaw)
   ao: vec4<f32>,              // x: radius (world), y: intensity, z: the AO targets' divisor (1, or 2 at half resolution)
   ao2: vec4<f32>,             // x: radius per metre of depth (0: fixed), y: 1 screen method
   outline_color: vec4<f32>,   // the scene's outline (linear rgb, coverage)
@@ -213,9 +213,7 @@ fn ao_screen(in: VsOut, cz: f32) -> f32 {
 fn fs_ssao(in: VsOut) -> @location(0) vec4<f32> {
   let px = ao_pixel(in.pos.xy);
   let d = depth_at(px);
-  if (fxp.cam.w > 0.5 && fxp.cam.w < 3.5) {
-    return vec4<f32>(select(select(fract(d * 16.0), d / 30.0, fxp.cam.w < 2.5), fract(d), fxp.cam.w < 1.5), 0.0, 0.0, 1.0);
-  }
+  if (fxp.cam.w > 0.5 && fxp.cam.w < 1.5) { return vec4<f32>(fract(d), 0.0, 0.0, 1.0); }
   if (is_sky(d)) { return vec4<f32>(1.0); }
   if (fxp.ao2.y > 0.5) { return vec4<f32>(ao_screen(in, d), 0.0, 0.0, 1.0); }
   let p = view_pos(ao_uv(px, in.uv), d);
@@ -263,7 +261,7 @@ fn ao_blur_sky(d0: f32) -> bool {
 @fragment
 fn fs_ao_blur(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
-  // The screen method is not blurred (the original's post AO is used as it comes); nor is OG_AO_DEPTH's output.
+  // The screen method is not blurred (the original's post AO is used as it comes); nor are the AO debug views' (DebugView::AoDepth, AoRaw).
   if (fxp.cam.w > 0.5 || fxp.ao2.y > 0.5) { return textureLoad(tex_b, px, 0); }
   let k = ao_divisor();
   let d0 = depth_at(px * k);

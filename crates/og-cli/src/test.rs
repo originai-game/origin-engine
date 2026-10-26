@@ -111,7 +111,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     let checked = if check {
         if p.has_assets() {
             // Cook first, as og run does, so the check sees what the run would.
-            if let Err(e) = crate::cook::cook(&p.root, 0) {
+            if let Err(e) = crate::cook::cook(&p.root, 0, false) {
                 eprintln!("og test: {e}");
                 return ExitCode::FAILURE;
             }

@@ -191,7 +191,8 @@ pub struct TextureOptions {
     /// Encode with `toktx` even when the basis-universal crate is built in.
     pub force_toktx: bool,
     /// Encode colour textures as UASTC too (about 4x the size of ETC1S, without its 4x4 block colour loss on foliage,
-    /// bark and stone detail). Off by default; `OG_COOK_COLOR_UASTC=1` turns it on for a cook.
+    /// bark and stone detail). Off by default; project.ogt's `cook { color_textures uastc }` turns it on and
+    /// `publish { color_textures etc1s }` off again for the web export (og-cli's `cook::texture_options`).
     pub color_uastc: bool,
 }
 
@@ -204,7 +205,7 @@ impl Default for TextureOptions {
             zstd: true,
             mipmaps: true,
             force_toktx: false,
-            color_uastc: std::env::var("OG_COOK_COLOR_UASTC").is_ok_and(|v| v == "1"),
+            color_uastc: false,
         }
     }
 }

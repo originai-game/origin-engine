@@ -7,6 +7,48 @@ One version across `@origingame/engine` (the knowledge inside it as
 bump carries API additions or changes, one line each, written at the merge
 that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
+## Unreleased
+
+- three.js parity for ports, from the Grand View Garden engine fork
+  (§1–§51 on 0.1.1, merged in PR #2). Every field is off at its default
+  and draws every existing frame unchanged.
+  - render, `Water`: `geometry` (water over any mesh instead of the
+    grid), `f0` and `reflectionBias` (Water.js's Fresnel floor),
+    `normalMap`, `normalScale` and `flow` (Water.js's drifting and
+    Water2's flowing normal-map ripples), `glint` (Water.js's sun glint
+    and shading).
+  - render, `DirectionalLight`: `shadowBox` (one fixed shadow box
+    instead of the cascades), `shadowFocus`, `shadowFocusDrop`,
+    `shadowBias`, `shadowNormalBias` (three.js' bias and normalBias).
+  - render, `Environment`: `hemiSky`, `hemiGround`, `hemiIntensity`
+    (HemisphereLight).
+  - render, `PostEffects`: `aoDirect` (AO darkens direct and emitted
+    light too), `aoRadiusScale` (a radius that grows with distance),
+    `sharpen` (CAS); `AoMethod.screen` (three.js-era depth-only screen
+    AO).
+  - render, `RenderSettings`: `bloomRadius` and `bloomContrast`
+    (UnrealBloomPass).
+  - render, materials: `alphaToCoverage` (with MSAA; scatter too).
+  - Material shaders: `Hook.eye`, `Hook.front`, and the functions
+    `planar_reflection(p, shift)` and `screen_ao(p)`.
+  - terrain: `Terrain.visible` (false: ground for its scatter only),
+    `TerrainScatter.castShadows`; scatter runs its material's hooks and
+    takes the screen AO with `aoDirect` above 0.
+  - og-ui: a style's `ramp` line takes a fifth number.
+- Debug views for the lit image: `DebugView` gains `cascades`, `ao`,
+  `albedo`, `iblDiffuse`, `iblSpecular`, `direct`, `aoDepth` and
+  `aoRaw` (RenderOptions.debugView, og.debug.setView, `debug:<view>`),
+  drawn in place of the lit image; publish builds draw none. They
+  replace the fork's `OG_DEBUG_VIEW` and `OG_AO_DEPTH` environment
+  variables. The fork's `OG_RENDER_STATS` is gone: the probe's
+  `timings` (passes, GPU passes, triangles) and `og run --trace` carry
+  the frame.
+- Colour textures as UASTC per project: project.ogt's `cook {
+  color_textures uastc }` (etc1s by default), which `publish {
+  color_textures etc1s }` overrides for the web export's cook (`og
+  build`, `og run --device`). It replaces the fork's
+  `OG_COOK_COLOR_UASTC=1`.
+
 ## 0.5.0 — 2026-10-25
 
 - Audio decoding no longer runs on the engine thread: a sound entering

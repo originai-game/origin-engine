@@ -207,7 +207,7 @@ pub fn prepare_traced(
     let origin = crate::trace::epoch_ms();
     let mut cook_spans = Vec::new();
     if p.has_assets() {
-        let report = crate::cook::cook(&p.root, 0)?;
+        let report = crate::cook::cook(&p.root, 0, false)?;
         cook_spans = crate::trace::cook_events(&report, origin, origin);
         let cooked = report
             .assets
