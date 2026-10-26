@@ -6913,14 +6913,9 @@ impl Renderer {
             view_up: cam.axes().1,
             hemi_sky: {
                 let (s, _, i) = scene.hemisphere;
-                // The IBL term is scaled by the environment's intensity (and the material's AO and
-                // envMapIntensity): divided out here so the hemisphere keeps its own strength.
-                let k = if scene.environment.intensity > 1e-4 {
-                    i.max(0.0) / (std::f32::consts::PI * scene.environment.intensity)
-                } else {
-                    0.0
-                };
-                [s[0], s[1], s[2], k]
+                // Irradiance in the IBL's units (the lit shaders add it beside the environment's
+                // irradiance, at its own strength: an environment at intensity 0 leaves it).
+                [s[0], s[1], s[2], i.max(0.0) / std::f32::consts::PI]
             },
             hemi_ground: {
                 let g = scene.hemisphere.1;

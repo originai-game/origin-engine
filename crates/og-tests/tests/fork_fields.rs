@@ -506,8 +506,10 @@ fn the_shadow_box_bias_keeps_close_leaf_cards_from_shadowing_each_other() {
 /// (facing down) gains blue and no red, against the same frame with the
 /// light off; a mirror-metal tile on the floor (no diffuse term) does not
 /// change, and intensity 0 is byte for byte the frame without the light.
-/// Fails if the normal's y does not pick the colour, if the light reaches
-/// the reflections, or if 0 is not off.
+/// With the environment at intensity 0 the light still reaches the floor:
+/// it has its own strength. Fails if the normal's y does not pick the
+/// colour, if the light reaches the reflections, if 0 is not off, or if
+/// the light is scaled by the environment's intensity.
 #[test]
 fn the_hemisphere_light_lights_by_facing_and_only_diffusely() {
     let (desc, scene) = built("hemisphere-light");
@@ -553,6 +555,22 @@ fn the_hemisphere_light_lights_by_facing_and_only_diffusely() {
         "the metal reflects, it is not lit diffusely"
     );
     assert_eq!(zero.pixels, dark.pixels, "intensity 0 is off");
+    // The light has its own strength, not the environment's: with the
+    // environment at intensity 0 the floor is black without it and red with it.
+    let mut unlit = fs::hemisphere_scene();
+    unlit.environment.intensity = 0.0;
+    let (alone, _) = render(&desc, &unlit);
+    unlit.hemisphere = ([0.0; 3], [0.0; 3], 0.0);
+    let (black, _) = render(&desc, &unlit);
+    println!(
+        "environment at 0: floor {} with the light, {} without",
+        fmt(mean(&alone, floor)),
+        fmt(mean(&black, floor))
+    );
+    assert!(
+        mean(&alone, floor)[0] - mean(&black, floor)[0] > 30.0,
+        "the hemisphere light does not need the environment's intensity"
+    );
 }
 
 // ---------------------------------------------------------------------------

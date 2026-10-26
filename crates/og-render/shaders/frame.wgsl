@@ -59,12 +59,13 @@ struct Frame {
   // group they are drawn with (sprite.wgsl face_axes).
   view_right: vec4<f32>,      // xyz: right
   view_up: vec4<f32>,         // xyz: up
-  hemi_sky: vec4<f32>,        // rgb: the hemisphere light's sky colour, w: intensity / (pi * ibl intensity) (0: off)
+  hemi_sky: vec4<f32>,        // rgb: the hemisphere light's sky colour, w: intensity / pi (0: off)
   hemi_ground: vec4<f32>,     // rgb: its ground colour
 };
 
-// The hemisphere light (three.js HemisphereLight) as irradiance in the IBL's units: added to the irradiance map's
-// sample, so it reaches only the diffuse term (no reflection) and is scaled, like it, by AO.
+// The hemisphere light (three.js HemisphereLight) as irradiance in the IBL's units: added beside the environment's
+// irradiance at its own strength (not the environment's intensity), so it reaches only the diffuse term (no
+// reflection) and is scaled, like it, by AO and the material's envMapIntensity.
 fn hemi_irradiance(n: vec3<f32>) -> vec3<f32> {
   return mix(frame.hemi_ground.rgb, frame.hemi_sky.rgb, 0.5 * n.y + 0.5) * frame.hemi_sky.w;
 }

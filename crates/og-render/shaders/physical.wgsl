@@ -452,7 +452,8 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   // its bent normal (as three.js).
   let f_ibl = f_schlick_roughness(n_dot_v, f0_ibl, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  let irradiance = ambient_irradiance(ambient_light(n, in.world_pos) + hemi_irradiance(n), in.world_pos, n);
+  // The environment's irradiance at its intensity, plus the hemisphere light at its own (pbr_fs.wgsl).
+  let irradiance = ambient_irradiance(ambient_light(n, in.world_pos), in.world_pos, n) * frame.params.x + hemi_irradiance(n);
   var bent = n;
   if (physical.anisotropy.x > 0.0) {
     let across = normalize(cross(cross(k.aniso_b, v), k.aniso_b));
@@ -460,11 +461,11 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     bent = normalize(mix(across, n, w * w * w * w));
   }
   let r = reflect(-v, bent);
-  let prefiltered = reflected_light(r, in.world_pos, s.roughness * frame.params.y);
+  let prefiltered = reflected_light(r, in.world_pos, s.roughness * frame.params.y) * frame.params.x;
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let env_brdf = f_ibl * lut.x + lut.y;
   let ao_sample = maps.b;
-  var ibl_scale = frame.params.x * material.flags.z;
+  var ibl_scale = material.flags.z;
   if (material.flags.y >= 0.0) {
     ibl_scale *= mix(1.0, ao_sample, material.flags.y);
   }
@@ -487,7 +488,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     let coat_env = reflected_light(rc, in.world_pos, s.coat_roughness * frame.params.y);
     let coat_lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness), 0.0).rg;
     coat_keep = 1.0 - fc;
-    coat_ibl = coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat;
+    coat_ibl = coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat * frame.params.x;
   }
   var ibl_diffuse = kd_ibl * irradiance * s.albedo;
   var ibl_specular = prefiltered * env_brdf;

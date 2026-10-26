@@ -135,12 +135,12 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
   // The environment, or the probe holding the chunk blended with it (probes.rs),
-  // plus the hemisphere light.
-  let irradiance = ambient_light(n, in.world) + hemi_irradiance(n);
+  // at its intensity, plus the hemisphere light at its own.
+  let irradiance = ambient_light(n, in.world) * frame.params.x + hemi_irradiance(n);
   let r = reflect(-v, n);
-  let prefiltered = reflected_light(r, in.world, s.roughness * frame.params.y);
+  let prefiltered = reflected_light(r, in.world, s.roughness * frame.params.y) * frame.params.x;
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  var ibl_scale = frame.params.x * material.flags.z * ssao_scale;
+  var ibl_scale = material.flags.z * ssao_scale;
   if (material.flags.y >= 0.0) {
     ibl_scale *= mix(1.0, textureSample(ao_tex, material_sampler, in.uv).r, material.flags.y);
   }

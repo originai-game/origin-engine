@@ -152,17 +152,19 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  // The baked lightmap or light volumes where there are (lightmap.rs);
-  // the hemisphere light adds to the sky's irradiance.
-  let irradiance = ambient_irradiance(ambient_light(n, in.world_pos) + hemi_irradiance(n), in.world_pos, n);
-  let diffuse_ibl = irradiance * s.albedo;
+  // The baked lightmap or light volumes where there are (lightmap.rs), at
+  // the environment's intensity; the hemisphere light adds at its own.
+  let irradiance = ambient_irradiance(ambient_light(n, in.world_pos), in.world_pos, n);
+  let diffuse_ibl = (irradiance * frame.params.x + hemi_irradiance(n)) * s.albedo;
   let r = reflect(-v, n);
   let mip = s.roughness * frame.params.y;
   let prefiltered = reflected_light(r, in.world_pos, mip);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y);
+  let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y) * frame.params.x;
   let ao_sample = textureSample(ao_tex, material_sampler, uv).r;
-  var ibl_scale = frame.params.x * material.flags.z;
+  // What the material's AO and envMapIntensity keep of the image-based light (the environment's intensity is in
+  // diffuse_ibl and specular_ibl already).
+  var ibl_scale = material.flags.z;
   if (material.flags.y >= 0.0) {
     // Ambient occlusion darkens only the image-based light.
     ibl_scale *= mix(1.0, ao_sample, material.flags.y);
@@ -188,7 +190,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     let rc = reflect(-v, s.coat_normal);
     let coat_env = reflected_light(rc, in.world_pos, s.coat_roughness * frame.params.y);
     let coat_lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness), 0.0).rg;
-    ibl = ibl * (1.0 - fc) + coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat;
+    ibl = ibl * (1.0 - fc) + coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat * frame.params.x;
   }
   let dbg_direct = color;
   color += ibl * ibl_scale;
