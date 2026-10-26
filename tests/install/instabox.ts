@@ -8,7 +8,7 @@
 //
 // It creates a machine from the template (agent-browser, the one the free
 // plan creates from; 4 vCPU, 8 GiB, a 20 GiB /data: the account's one
-// spec), installs bun 1.4.2 beside the machine's node and
+// spec), installs bun 1.4.4 beside the machine's node and
 // git as tests/install/Dockerfile does and nothing of the engine, uploads
 // run.ts (and, from the tarballs, the four packages in 8 MiB parts: a file
 // write is 10 MiB at most), runs `run.ts --host-only` there in the
@@ -39,7 +39,7 @@ const MANIFEST = opt("--manifest") ? resolve(opt("--manifest")!) : undefined;
 const TEMPLATE = opt("--template") ?? "agent-browser"; // the one template the free plan creates from; a paid plan may name universal
 const MACHINE = opt("--machine");
 const KEEP = flag("--keep");
-const BUN_VERSION = "1.4.2"; // tests/install/Dockerfile's, docs/ci.md §Toolchain
+const BUN_VERSION = "1.4.4"; // tests/install/Dockerfile's, docs/ci.md §Toolchain
 const HERE = dirname(new URL(import.meta.url).pathname);
 const PART = 8 << 20;
 const RUN_TIMEOUT_MS = 30 * 60_000;
@@ -108,7 +108,7 @@ async function main(): Promise<void> {
   log(`machine ${sbx.sandboxId} (${info.name}, ${info.templateId}, ${info.state})`);
   let passed = false;
   try {
-    // The machine as the Dockerfile has it: node, git, bun 1.4.2, nothing of the engine.
+    // The machine as the Dockerfile has it: node, git, bun 1.4.4, nothing of the engine.
     const facts = await sh(sbx, "uname -sm; nproc; free -m | awk '/Mem:/ {print $2 \" MiB\"}'; node --version; git --version; (bun --version 2>/dev/null || echo 'bun: missing'); (ffmpeg -version 2>/dev/null | head -1 || echo 'ffmpeg: missing'); (vulkaninfo --summary 2>/dev/null | grep -m1 deviceName || echo 'renderer: none')");
     log(`machine: ${facts.trim().split("\n").join(" | ")}`);
     if (!facts.includes(`${BUN_VERSION}`)) {

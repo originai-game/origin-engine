@@ -209,7 +209,7 @@ lane) and a wave ends with a candidate ready.
 **In an InstaBox machine** (`tests/install/instabox.ts`; `verify
 --instabox`): the same `run.ts`, uploaded into a machine the script
 creates from the `agent-browser` template (node 22, git; the script
-installs bun 1.4.2 as the container's Dockerfile does, and nothing of the
+installs bun 1.4.4 as the container's Dockerfile does, and nothing of the
 engine), run there `--host-only` in the background (a foreground command
 is capped at ten minutes and not streamed) with its log followed from
 here, from the registry or from the tarballs (uploaded in 8 MiB parts,

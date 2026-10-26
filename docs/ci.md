@@ -22,7 +22,7 @@ node, which CI takes from `actions/setup-node`.
 | wgpu / naga | 30.0.1 | `Cargo.toml` `[workspace.dependencies]` |
 | wasm-bindgen (crate and CLI), js-sys, web-sys, wasm-bindgen-futures | 0.2.129, 0.3.106, 0.3.106, 0.4.79 | `crates/og-host-web/Cargo.toml` (exact), the CLI from `Cargo.lock` |
 | binaryen (`wasm-opt`) | 133 | `BINARYEN_VERSION` in `scripts/install-tools.sh` (release archive on Linux and macOS) |
-| bun | 1.4.2 | `BUN_VERSION` in `scripts/install-tools.sh` |
+| bun | 1.4.4 | `BUN_VERSION` in `scripts/install-tools.sh`; `tests/install/Dockerfile` and `tests/install/instabox.ts` install the same for the install test |
 | TypeScript, tsgo (`check-conformance`'s comparison and `og check`'s fallback where tsrs has no package; no project or package depends on it) | 7.0.2 | `TSGO_VERSION` in `crates/og-cli/src/check.rs` (`scripts/tsrs-diff.sh` and `.agents/setup` read it) |
 | tsrs (the type checker: `og check`, the check before `og run`/`test`/`build`/`dev`, `packages/engine`'s `typecheck`, og-idl's declaration test) | 0.18.0-ts7.1.0-dev.20260929 (TypeScript 7.1.0-dev.20260930.4) | `TSRS_VERSION` and the five SRIs in `scripts/install-tools.sh`; `packages/engine/package.json` `optionalDependencies` copy it (`check-conformance` holds them equal). It moves only at a wave's end, with a tsrs release, all of these in one commit, after `scripts/tsrs-diff.sh` passes on the new binary |
 | cargo-nextest | 0.9.148 here | not pinned |
@@ -132,10 +132,10 @@ integration tests (packages/engine's `reload`, `reload-asset` and
 `web-export`: og processes for minutes) run only under `--all` and in CI
 (`OG_GATE_ALL`); a plain `bun run test` in the package runs them too. A
 bun test that signals a child by name uses `process.kill(pid, name)`,
-never `Subprocess.kill(name)`: Bun 1.4.2 maps the name with Linux's
+never `Subprocess.kill(name)`: Bun 1.4.2 mapped the name with Linux's
 numbers, and 12 is SIGUSR2 there but SIGSYS on macOS (oven-sh/bun#35296,
 fixed in 1.4.3; the handoff test of `reload.test.ts` died with status
-140 on the Mac, 2026-10-26).
+140 on the Mac, 2026-10-26, the day bun moved to 1.4.4).
 
 The wasm profile depends on the lane: `--all` and CI build the shipping
 `wasm` profile (`Cargo.toml`), so the size they record is the module that
