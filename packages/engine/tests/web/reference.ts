@@ -61,7 +61,7 @@
 // refuse. Needs Chrome (cdp.ts: a missing one is an error).
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { settingsOf, webBuild } from "../../src/node/web-build.ts";
 import { bundleGame } from "../../src/node/build.ts";
@@ -101,7 +101,7 @@ const TICK_RATE = 60;
 const fromPlaytest = opt("--playtest")
   ? await (async () => {
       const file = resolve(project, opt("--playtest")!);
-      const bundled = join(pkg, "dist", "test-reference", `.${project.split("/").pop()}.playtest.js`);
+      const bundled = join(pkg, "dist", "test-reference", `.${basename(project)}.playtest.js`);
       mkdirSync(dirname(bundled), { recursive: true });
       const b = await bundleGame(file, bundled, "native");
       if (!b.ok) throw new Error(`${file} does not bundle: ${b.reason}`);
@@ -186,7 +186,7 @@ function blit(sheet: Image, cell: Image, i: number, cols: number, into: boolean)
 }
 
 cookProject(project, repo);
-const dist = join(work, project.split("/").pop()!);
+const dist = join(work, basename(project));
 const built = await webBuild(project, join(project, "src", "main.ts"), dist, false, settingsOf(project));
 if (!built.ok) throw new Error(built.reason);
 
