@@ -241,6 +241,7 @@ const TUBE_PARAMS: &[&str] = &["tubularSegments", "radius", "radialSegments", "c
 /// packages/engine/schema/api.schema.json.
 const STANDARD_FIELDS: &[&str] = &[
     "alphaTest",
+    "alphaToCoverage",
     "anisotropy",
     "anisotropyMap",
     "anisotropyRotation",
