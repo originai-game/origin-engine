@@ -7,7 +7,7 @@ One version across `@origingame/engine` (the knowledge inside it as
 bump carries API additions or changes, one line each, written at the merge
 that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
-## Unreleased
+## 0.6.0 — 2026-10-26
 
 - three.js parity for ports, from the Grand View Garden engine fork
   (§1–§51 on 0.1.1, merged in PR #2). Every field is off at its default
@@ -48,6 +48,22 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
   color_textures etc1s }` overrides for the web export's cook (`og
   build`, `og run --device`). It replaces the fork's
   `OG_COOK_COLOR_UASTC=1`.
+- render, `RenderOptions.planarReflections` (1 or 2, default 1): how
+  many water surfaces mirror the scene in a pass of their own at once;
+  with 2 a second surface in view mirrors too and material shaders can
+  read the first's mirror (`planar_reflection`; the full tier only,
+  WebGL2 reads 0). `RenderCapabilities.planarReflections` reports it.
+  At 1 a second surface that asks reflects as if it did not, and the log
+  says so once.
+- Fixes: a hemisphere light keeps its own strength when the environment's
+  intensity is 0; ambient occlusion with a 3D water surface no longer
+  panics in the fx post bind group; og-ui's text measurement cache keys
+  on a style's CJK tracking, so a style that changes only its CJK
+  tracking measures again.
+- Frames: 17 gfx scenes for the fork's fields (`crates/og-tests/src/fork_scenes.rs`,
+  metal references), two of them with a WebGL2 difference on record
+  (`hooks-planar` full tier only, `water-ripples` its own WebGL2
+  reference; `docs/ci.md` §Browser reference tiers).
 
 ## 0.5.0 — 2026-10-25
 

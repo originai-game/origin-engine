@@ -5,7 +5,7 @@ version 1
 # apply (tests/og-run.test.ts).
 name "Project defaults"
 id "project-defaults"
-engine "0.5.0"
+engine "0.6.0"
 entry "src/main.ts"
 profile "2d"
 tick 30
