@@ -56,7 +56,9 @@ impl AnimAssets {
         self.next | (1u64 << 32)
     }
 
+    // Called by the reloader, which a publish build has not.
     /// Registers every asset with `system` (a reloaded world's).
+    #[cfg_attr(feature = "publish", allow(dead_code))]
     pub(crate) fn replay(&self, system: &AnimationSystem) {
         for (h, s) in &self.skeletons {
             let _ = system.add_skeleton(*h, s.clone());

@@ -234,6 +234,8 @@ impl FeelAssets {
         self.next | (1u64 << 32)
     }
 
+    // Called by the reloader, which a publish build has not.
+    #[cfg_attr(feature = "publish", allow(dead_code))]
     pub(crate) fn replay(&self, feel: &Feel) {
         for (h, (s, t)) in &self.sheets {
             let _ = feel.flipbooks.add_sheet(*h, s.clone());
