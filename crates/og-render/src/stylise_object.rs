@@ -42,7 +42,7 @@ const BIAS: wgpu::DepthBiasState = wgpu::DepthBiasState {
 pub(crate) fn object_source(palette: skin::PaletteMode, tables: clusters::LightTables) -> String {
     format!(
         "{}{STYLISE_OBJECT_WGSL}",
-        crate::lit_source_with(&crate::hooks::default_hooks(), palette, tables)
+        crate::lit_source_with(&crate::hooks::default_hooks(), palette, tables, false)
     )
 }
 

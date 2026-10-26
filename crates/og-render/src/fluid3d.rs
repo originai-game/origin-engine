@@ -421,6 +421,7 @@ impl Fluid3dRenderer {
             module,
             samples,
             move |layout, module| crate::HdrPipeline {
+                alpha_to_coverage: false,
                 label: "fluid 3d composite",
                 layout,
                 module,

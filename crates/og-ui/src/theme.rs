@@ -262,6 +262,8 @@ pub struct TypeStep {
     pub line_height: f32,
     pub tracking_em: f32,
     pub cjk_line_height: f32,
+    /// Tracking of text with CJK characters, in em (CSS `letter-spacing`, which spaces Han too); 0 in the tokens.
+    pub cjk_tracking_em: f32,
 }
 
 /// The type ramp.
@@ -297,6 +299,7 @@ const fn step(size: f32, line_height: f32, cjk_line_height: f32) -> TypeStep {
         line_height,
         tracking_em: 0.0,
         cjk_line_height,
+        cjk_tracking_em: 0.0,
     }
 }
 

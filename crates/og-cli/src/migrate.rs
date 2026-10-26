@@ -241,6 +241,7 @@ const TUBE_PARAMS: &[&str] = &["tubularSegments", "radius", "radialSegments", "c
 /// packages/engine/schema/api.schema.json.
 const STANDARD_FIELDS: &[&str] = &[
     "alphaTest",
+    "alphaToCoverage",
     "anisotropy",
     "anisotropyMap",
     "anisotropyRotation",
@@ -2058,12 +2059,14 @@ animate();
     #[test]
     fn named_imports_and_dropped_parameters() {
         let m = run(
-            "import { Mesh, BoxGeometry, MeshBasicMaterial, PointLight, MathUtils } from 'three';\nconst box = new Mesh(new BoxGeometry(2, 3, 4, 8), new MeshBasicMaterial({ color: 0xff0000, shininess: 30 }));\nconst lamp = new PointLight(0xffffff, 5, 12, 2);\nconst a = MathUtils.degToRad(45);\n",
+            "import { Mesh, BoxGeometry, MeshBasicMaterial, MeshStandardMaterial, PointLight, MathUtils } from 'three';\nconst box = new Mesh(new BoxGeometry(2, 3, 4, 8), new MeshBasicMaterial({ color: 0xff0000, shininess: 30 }));\nconst lamp = new PointLight(0xffffff, 5, 12, 2);\nconst a = MathUtils.degToRad(45);\nconst leaf = new MeshStandardMaterial({ alphaTest: 0.5, alphaToCoverage: true });\n",
         );
         let o = &m.output;
         assert!(o.contains("world.insert(box, og.Mesh, { geometry: must(og.render.boxGeometry(world, { width: 2, height: 3, depth: 4 })), material: must(og.render.standardMaterial(world, { unlit: true, color: color.fromHex(0xff0000) })) });"), "{o}");
         assert!(o.contains("world.insert(lamp, og.PointLight, { color: color.fromHex(0xffffff), intensity: 5, distance: 12 });"), "{o}");
         assert!(o.contains("const a = ((45) * Math.PI / 180);"), "{o}");
+        // three.js alphaToCoverage passes through to the standard material.
+        assert!(o.contains("const leaf = must(og.render.standardMaterial(world, { alphaTest: 0.5, alphaToCoverage: true }));"), "{o}");
         let notes: Vec<&str> = m
             .items
             .iter()

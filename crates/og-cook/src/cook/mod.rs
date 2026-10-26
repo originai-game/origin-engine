@@ -190,6 +190,10 @@ pub struct TextureOptions {
     pub mipmaps: bool,
     /// Encode with `toktx` even when the basis-universal crate is built in.
     pub force_toktx: bool,
+    /// Encode colour textures as UASTC too (about 4x the size of ETC1S, without its 4x4 block colour loss on foliage,
+    /// bark and stone detail). Off by default; project.ogt's `cook { color_textures uastc }` turns it on and
+    /// `publish { color_textures etc1s }` off again for the web export (og-cli's `cook::texture_options`).
+    pub color_uastc: bool,
 }
 
 impl Default for TextureOptions {
@@ -201,6 +205,7 @@ impl Default for TextureOptions {
             zstd: true,
             mipmaps: true,
             force_toktx: false,
+            color_uastc: false,
         }
     }
 }
@@ -208,12 +213,17 @@ impl Default for TextureOptions {
 impl TextureOptions {
     fn describe(&self) -> String {
         format!(
-            "etc1s {} uastc {} rdo {} zstd {} mips {} normal y in alpha",
+            "etc1s {} uastc {} rdo {} zstd {} mips {} normal y in alpha{}",
             self.etc1s_quality,
             self.uastc_level,
             self.uastc_rdo.map_or("off".to_string(), |r| r.to_string()),
             self.zstd,
-            self.mipmaps
+            self.mipmaps,
+            if self.color_uastc {
+                " colour uastc"
+            } else {
+                ""
+            }
         )
     }
 }

@@ -28,13 +28,15 @@ struct Fx {
   screen: vec4<f32>,      // w, h, 1/w, 1/h
   ao: vec4<f32>,          // x: 1 when the AO texture is valid, y: intensity
   decal_info: vec4<f32>,  // x: decals, y: 1 with an atlas, z: cos fade width
-  reserved: vec4<f32>,
+  planar: vec4<f32>,      // the planar reflection's plane (n, n·at); n 0: none, then w -1 while drawing it
   decals: array<DecalGpu, 32>,
 };
 @group(2) @binding(0) var<uniform> fx: Fx;
 @group(2) @binding(1) var ssao_tex: texture_2d<f32>;
 @group(2) @binding(2) var decal_atlas: texture_2d<f32>;
 @group(2) @binding(3) var fx_sampler: sampler;
+// planar_reflection (the planar reflection for material shaders): planar.wgsl,
+// or its stub where the lit pipelines have no texture slot left (lib.rs).
 
 struct VertexIn {
   @location(0) position: vec3<f32>,
@@ -224,6 +226,8 @@ fn lit_place(model: mat4x4<f32>, position: vec3<f32>, normal: vec3<f32>, uv: vec
   h.uv = uv;
   h.color = color;
   h.time = frame.time.x;
+  h.eye = frame.view_pos.xyz;
+  h.front = 1.0;
   world = vec4<f32>(world.xyz + vertex_offset(h, shader_params()), world.w);
   var p: LitPlace;
   p.clip = retro_clip(moved_clip(frame.view_proj, world));

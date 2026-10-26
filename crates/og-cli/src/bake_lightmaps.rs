@@ -311,7 +311,7 @@ fn bake(o: &Options) -> Result<(), String> {
     let project =
         crate::project::Project::open(Path::new(&o.project)).map_err(|e| e.to_string())?;
     let root = project.root.clone();
-    crate::cook::cook(&root, o.threads)?;
+    crate::cook::cook(&root, o.threads, false)?;
     let bundle = Bundle::open(&root.join("cooked")).map_err(|e| e.to_string())?;
     let scenes: Vec<_> = bakeable_scenes(&bundle)
         .into_iter()
@@ -328,7 +328,7 @@ fn bake(o: &Options) -> Result<(), String> {
     for (id, s) in &scenes {
         bake_scene(o, &root, &bundle, id, s)?;
     }
-    crate::cook::cook(&root, o.threads)?;
+    crate::cook::cook(&root, o.threads, false)?;
     println!(
         "og bake lightmaps: {} scene(s) in {:.1} s",
         scenes.len(),

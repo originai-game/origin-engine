@@ -65,7 +65,7 @@ fn encode_basisu(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, 
     use basis_universal::{BasisTextureFormat, ColorSpace, Compressor, CompressorParams};
     let mut params = CompressorParams::new();
     params.set_print_status_to_stdout(false);
-    let uastc = k != kind::COLOR;
+    let uastc = k != kind::COLOR || opts.color_uastc;
     params.set_basis_format(if uastc {
         BasisTextureFormat::UASTC4x4
     } else {
@@ -125,7 +125,7 @@ fn encode_toktx(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, S
     .map_err(|e| e.to_string())?;
     let mut cmd = std::process::Command::new("toktx");
     cmd.arg("--t2");
-    if k == kind::COLOR {
+    if k == kind::COLOR && !opts.color_uastc {
         cmd.args([
             "--encode",
             "etc1s",
@@ -150,7 +150,10 @@ fn encode_toktx(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, S
         }
         // Not --normal_mode, which would keep only x (in RGB) and y (in
         // alpha): `cook` has already copied y into alpha and kept xyz.
-        cmd.args(["--assign_oetf", "linear"]);
+        cmd.args([
+            "--assign_oetf",
+            if k == kind::COLOR { "srgb" } else { "linear" },
+        ]);
     }
     if opts.mipmaps {
         cmd.arg("--genmipmap");
@@ -251,7 +254,7 @@ pub fn cook(img: &Image, k: u32, opts: &TextureOptions, stamp: u64) -> Result<Ve
         height: img.height,
         levels: info.levels.len() as u32,
         kind: k,
-        codec: if k == kind::COLOR {
+        codec: if k == kind::COLOR && !opts.color_uastc {
             codec::ETC1S
         } else {
             codec::UASTC

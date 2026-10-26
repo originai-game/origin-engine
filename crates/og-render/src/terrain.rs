@@ -378,6 +378,9 @@ pub struct Terrain {
     /// Streamed tiles fade in over their parents as they arrive; `false`
     /// shows what has arrived at once (a capture after the tiles settled).
     pub fade_in: bool,
+    /// Drawn (colour, prepass, shadows); `false` keeps it only as the
+    /// ground its og.TerrainScatter copies stand on.
+    pub visible: bool,
 }
 
 impl Terrain {
@@ -391,6 +394,7 @@ impl Terrain {
             cast_shadows: true,
             lod: TerrainLod::default(),
             fade_in: true,
+            visible: true,
         }
     }
 }
@@ -1360,6 +1364,9 @@ impl TerrainRenderer {
         }
         let mut draws = Vec::with_capacity(scene.terrains.len());
         for (ti, t) in scene.terrains.iter().enumerate() {
+            if !t.visible {
+                continue;
+            }
             if t.layer_arrays.any() && self.arrays.is_none() {
                 let variant = self.array_variant(device, queue);
                 self.arrays = Some(variant);
@@ -1779,6 +1786,7 @@ fn terrain_passes(
         lit_module.clone(),
         samples,
         move |layout, module| crate::HdrPipeline {
+            alpha_to_coverage: false,
             label: "terrain",
             layout,
             module,

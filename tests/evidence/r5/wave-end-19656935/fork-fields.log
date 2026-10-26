@@ -1,0 +1,58 @@
+   Compiling og-tests v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tests)
+    Finished `test` profile [unoptimized] target(s) in 2.76s
+     Running tests/main.rs (target/debug/deps/tests-76a2de2626c8e66d)
+
+running 19 tests
+test fork_fields::a_hidden_terrain_keeps_its_scatter_standing ... of 38400 middle pixels: magenta hidden 26250 shown 0; red hidden 7810 shown 4465, in both 4227; terrain draws 0 vs 2, scatter copies 367 vs 367
+ok
+test fork_fields::a_hook_reads_the_planar_reflection ... card at the block's mirror image: planar (251, 10, 14), none (229, 0, 229)
+ok
+test fork_fields::a_hook_reads_the_screen_ao ... foot (229, 0, 0), open (32, 0, 0), foot with AO off (0, 0, 0)
+ok
+test fork_fields::a_water_normal_map_ripples_scales_and_flows ... neighbour contrast: ripple map 50.52, flat map 0.36
+neighbour contrast: 0.25 repeats/m 50.52, 1 repeat/m 242.63
+pixels moved over 15 ticks: flow 63010, the lake without wave speed 0
+ok
+test fork_fields::alpha_to_coverage_antialiases_an_alpha_tested_edge ... partly covered pixels: alpha to coverage 466, cut 0
+no MSAA: green 19036 against the cut's 18764, partly covered 0
+ok
+test fork_fields::ao_direct_darkens_occluded_direct_light_only_above_zero ... corner: no AO 58.5, direct 0 58.5, direct 1 43.8; open: 50.6 50.6 50.0
+ok
+test fork_fields::ao_radius_scale_shrinks_the_radius_up_close ... 0.8 m from the wall: no AO 128.1, scale 0 116.3, scale 0.02 128.1; open: 141.7 141.7 141.7
+ok
+test fork_fields::hooks_see_the_eye_and_the_facing ... front card (255, 255, 0), back card (255, 0, 255)
+ok
+test fork_fields::sharpen_raises_edge_contrast ... edge contrast: off 183.4, 0 281.5, 1 478.2; far checker: off 89.0, 1 556.0
+ok
+test fork_fields::the_hemisphere_light_lights_by_facing_and_only_diffusely ... gained: floor (47, 0, 0) (of (175, 195, 219)), ceiling (0, 0, 99) (of (121, 115, 111)), metal tile (0, 0, 0) (of (187, 201, 218))
+environment at 0: floor (199, 0, 0) with the light, (0, 0, 0) without
+ok
+test fork_fields::the_screen_ao_sees_the_water_surface ... kept by the AO: water: block's foot 0.835, open 0.883; no water: foot 0.715, open 0.911
+ok
+test fork_fields::the_shadow_box_bias_keeps_close_leaf_cards_from_shadowing_each_other ... the cards' mean luma (spread): no bias 169.1 (40.0), 4 cm bias 216.2 (9.7), 12 cm normal bias 216.2 (9.7)
+ok
+test fork_fields::the_shadow_box_shadows_inside_it_and_lights_outside_it ... passes: box 1, cascades 3
+box: near post's shadow 0.60 of open ground, far post's 1.00
+cascades: near post's shadow 0.60 of open ground, far post's 0.60
+focus 42: near post's shadow 1.00 of open ground, far post's 0.60
+drop 22: near post's shadow 1.00 of open ground, far post's 0.60
+ok
+test fork_fields::two_water_surfaces_reflect_in_their_own_planes ... pool A (179, 110, 127), pool B (40, 96, 205), pool B without its own (78, 127, 191); reflection draws 10 vs 5
+ok
+test fork_fields::unreal_bloom_switches_path_and_its_radius_widens_the_halo ... r0: halo near 177.0, far 10.1
+r0.5: halo near 166.8, far 19.0
+r1: halo near 153.0, far 27.1
+c2: halo near 239.8, far 207.0
+ok
+test fork_fields::unshadowed_scatter_copies_cast_no_shadow ... ground luma, darkest tenth / median: posts casting 186.2 / 221.2, not casting 220.4 / 221.2; terrain shadow draws 6 / 6
+ok
+test fork_fields::water_f0_and_reflection_bias_raise_the_reflection ... straight down: f0 0.3 152.4, f0 0.02 45.8
+no sky, straight down: bias 0.4 114.5, bias 0 21.5
+ok
+test fork_fields::water_glint_mirrors_the_sun_on_the_reflected_image ... spot over its side: glint 2 43.6, 1 22.9, 0.01 -5.4; glint 2 with no sky 1.9, default highlight with no sky 212.6
+ok
+test fork_fields::water_over_a_mesh_draws_on_the_mesh_and_not_where_the_grid_would ... over the stream: mesh (129, 140, 121) bare (184, 161, 122); beside it: mesh (184, 160, 122) bare (184, 160, 122) grid (131, 140, 111)
+ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 274 filtered out; finished in 13.16s
+

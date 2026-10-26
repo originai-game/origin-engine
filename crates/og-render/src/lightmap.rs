@@ -614,6 +614,7 @@ impl Lightmaps {
             device,
             &constants,
             crate::HdrPipeline {
+                alpha_to_coverage: false,
                 label: "lit lightmapped",
                 layout,
                 module,

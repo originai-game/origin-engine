@@ -52,10 +52,21 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
             PaletteMode::Storage => "storage palette",
             PaletteMode::Texture => "texture palette",
         };
-        add(
-            &format!("pbr ({p})"),
-            crate::lit_source_with(&hooks, palette, tables),
-        );
+        // With two planar reflections (RenderDesc::planar_reflections) the
+        // lit module reads the effect group's planar reflection where the
+        // palette leaves it a texture slot.
+        for (planars, planar) in planar_variants(palette) {
+            add(
+                &format!("pbr ({p}{planars})"),
+                crate::lit_source_with(&hooks, palette, tables, planar),
+            );
+            add(
+                &format!("pbr array maps ({p}{planars})"),
+                crate::material::array_lit_source(&crate::lit_source_with(
+                    &hooks, palette, tables, planar,
+                )),
+            );
+        }
         add(
             &format!("physical ({p})"),
             crate::physical_source_with(&hooks, palette, tables),
@@ -63,10 +74,6 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
         add(
             &format!("shadow ({p})"),
             crate::shadow_source(&hooks, palette),
-        );
-        add(
-            &format!("pbr array maps ({p})"),
-            crate::material::array_lit_source(&crate::lit_source_with(&hooks, palette, tables)),
         );
         add(
             &format!("shadow array maps ({p})"),
@@ -115,7 +122,10 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
         "ribbon",
         format!("{}{}", crate::FRAME_WGSL, crate::RIBBON_WGSL),
     );
-    add("scatter", crate::scatter_lit_source(tables));
+    add(
+        "scatter",
+        crate::scatter_lit_source(tables, &crate::hooks::default_hooks()),
+    );
     add("scatter shadow", crate::scatter_shadow_source());
     add(
         "terrain",
@@ -190,12 +200,25 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
             PaletteMode::Storage => "storage palette",
             PaletteMode::Texture => "texture palette",
         };
-        out.push(ShaderSource {
-            label: format!("pbr lean ({p})"),
-            gl: !full,
-            wgsl: crate::lit_source_with(&hooks, palette, tables),
-            constants: vec![("DISCARD".to_string(), 0.0)],
-        });
+        for (planars, planar) in planar_variants(palette) {
+            out.push(ShaderSource {
+                label: format!("pbr lean ({p}{planars})"),
+                gl: !full,
+                wgsl: crate::lit_source_with(&hooks, palette, tables, planar),
+                constants: vec![("DISCARD".to_string(), 0.0)],
+            });
+        }
     }
     out
+}
+
+/// The lit module's planar reflection variants for a joint palette mode: a
+/// label suffix and whether the effect group carries the reflection, for
+/// each count of [`crate::RenderDesc::planar_reflections`] that differs.
+fn planar_variants(palette: PaletteMode) -> Vec<(&'static str, bool)> {
+    let mut v = vec![("", crate::planar_slot(palette, 1))];
+    if crate::planar_slot(palette, crate::MAX_PLANAR_REFLECTIONS) {
+        v.push((", two planar reflections", true));
+    }
+    v
 }

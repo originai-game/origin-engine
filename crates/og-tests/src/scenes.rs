@@ -117,6 +117,23 @@ pub const SCENES: &[&str] = &[
     "light-cookies",
     "volumetric-fog",
     "geometry-shapes",
+    "water-mesh",
+    "water-ripples",
+    "water-fresnel",
+    "water-glint",
+    "shadow-box",
+    "hemisphere-light",
+    "ao-direct",
+    "ao-screen-water",
+    "post-sharpen",
+    "bloom-unreal",
+    "alpha-to-coverage",
+    "hooks-eye-front",
+    "hooks-planar",
+    "hooks-screen-ao",
+    "water-planar-two",
+    "terrain-hidden",
+    "terrain-scatter-unshadowed",
 ];
 
 /// Scenes rendered natively only, beside [`SCENES`] (`og-gfx --all` takes
@@ -671,6 +688,42 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // rivers, biomes), its water at the cooked sea level.
         #[cfg(not(target_arch = "wasm32"))]
         "terrain-generated" => g.scene = crate::terrain_scenes::generated_scene()?,
+        // The rendering fields of the Grand View Garden fork merge
+        // (fork_scenes.rs, tests/fork_fields.rs).
+        "water-mesh" => g.scene = crate::fork_scenes::water_mesh_scene(true),
+        "water-ripples" => g.scene = crate::fork_scenes::water_ripples_scene(),
+        "water-fresnel" => g.scene = crate::fork_scenes::water_fresnel_scene(),
+        "water-glint" => g.scene = crate::fork_scenes::water_glint_scene(),
+        "shadow-box" => g.scene = crate::fork_scenes::shadow_box_scene(),
+        "hemisphere-light" => g.scene = crate::fork_scenes::hemisphere_scene(),
+        "ao-direct" => g.scene = crate::fork_scenes::ao_direct_scene(),
+        "ao-screen-water" => g.scene = crate::fork_scenes::ao_screen_water_scene(true),
+        "post-sharpen" => g.scene = crate::fork_scenes::sharpen_scene(),
+        "bloom-unreal" => g.scene = crate::fork_scenes::bloom_unreal(build("bloom")?.scene),
+        "alpha-to-coverage" => {
+            g.scene = crate::fork_scenes::alpha_to_coverage_scene(true);
+            g.desc.antialias = Antialias::Msaa4;
+        }
+        "hooks-eye-front" => g.scene = crate::fork_scenes::hooks_eye_front_scene(),
+        // Material shaders read the planar reflection, and a second surface
+        // gets one, only with the second slot (RenderOptions.planarReflections 2),
+        // and only on the full tier: on WebGL2 the joint palette is a texture
+        // and the lit pipelines have no unit left for the mirror
+        // (og_render::planar_slot), so `planar_reflection` reads 0 there.
+        "hooks-planar" => {
+            g.scene = crate::fork_scenes::hooks_planar_scene(true);
+            g.desc.planar_reflections = 2;
+            g.applies = Applies::FullTier;
+        }
+        "hooks-screen-ao" => g.scene = crate::fork_scenes::hooks_screen_ao_scene(),
+        "water-planar-two" => {
+            g.scene = crate::fork_scenes::water_planar_two_scene();
+            g.desc.planar_reflections = 2;
+        }
+        "terrain-hidden" => g.scene = crate::fork_scenes::terrain_flags_scene(false, true),
+        "terrain-scatter-unshadowed" => {
+            g.scene = crate::fork_scenes::terrain_flags_scene(true, false)
+        }
         other => {
             return Err(format!(
                 "unknown gfx scene '{other}' (known: {})",

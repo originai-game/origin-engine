@@ -392,6 +392,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         draw,
         atmo,
         materials,
+        geometries,
+        textures,
         ..
     } = rs;
     let layouts = &draw.atmo;
@@ -401,7 +403,14 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         let entity = Entity::from_bits(e);
         let field = physics.and_then(|p| p.water_heights(entity));
         let m = h.world_of(e);
-        let transform = if field.is_some() {
+        // og.Water.geometry: drawn over that mesh, in the entity's frame (scale included).
+        let raw = v["geometry"].as_f64().unwrap_or(0.0) as u64;
+        let mesh = (raw != 0)
+            .then(|| geometries.get((raw & 0xffff_ffff) as usize).copied())
+            .flatten();
+        let transform = if mesh.is_some() {
+            m
+        } else if field.is_some() {
             // The wave field is centred on the entity and unrotated.
             Mat4::from_translation(m.transform_point3(Vec3::ZERO))
         } else {
@@ -430,10 +439,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             }),
             planar_reflection: f(&v, "planarReflection", 0.0),
             shadows: f(&v, "shadows", 0.0),
+            f0: f(&v, "f0", 0.02),
+            reflection_bias: f(&v, "reflectionBias", 0.0),
             underwater_color: color(&v["underwaterColor"], Vec3::new(0.03, 0.16, 0.2)),
             underwater_density: f(&v, "underwaterDensity", 0.09),
             caustics: f(&v, "caustics", 0.0),
             caustics_scale: f(&v, "causticsScale", 0.6),
+            mesh,
+            normal_map: super::fx::handle_index(&v["normalMap"])
+                .and_then(|i| textures.get(i).copied()),
+            normal_scale: f(&v, "normalScale", 1.0).max(0.0),
+            flow: vec2(&v["flow"], Vec2::ZERO),
+            glint: f(&v, "glint", 0.0).max(0.0),
         });
     }
     // 2D water over its spring line.

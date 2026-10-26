@@ -74,6 +74,7 @@ fn lightmapped_fragment(in: LightmappedOut) -> vec4<f32> {
 }
 
 @fragment
-fn fs_lightmap(in: LightmappedOut) -> @location(0) vec4<f32> {
+fn fs_lightmap(in: LightmappedOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
+  hook_front = select(-1.0, 1.0, front_facing);
   return lightmapped_fragment(in);
 }

@@ -273,6 +273,7 @@ impl MetaballRenderer {
             module,
             samples,
             move |layout, module| crate::HdrPipeline {
+                alpha_to_coverage: false,
                 label: "metaball composite",
                 layout,
                 module,

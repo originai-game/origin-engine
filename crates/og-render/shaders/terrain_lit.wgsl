@@ -224,12 +224,13 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = vec3<f32>(1.0) - f_ibl;
-  // The environment, or the probe holding the tile blended with it (probes.rs).
-  let irradiance = ambient_light(n, p);
+  // The environment, or the probe holding the tile blended with it (probes.rs),
+  // at its intensity, plus the hemisphere light at its own.
+  let irradiance = ambient_light(n, p) * frame.params.x + hemi_irradiance(n);
   let r = reflect(-v, n);
-  let prefiltered = reflected_light(r, p, s.roughness * frame.params.y);
+  let prefiltered = reflected_light(r, p, s.roughness * frame.params.y) * frame.params.x;
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  color += (kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * frame.params.x;
+  color += kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y);
 
   if (frame.light_color.w > 0.5 && frame.light_color.w < 1.5) {
     let c = cascade_index(p);

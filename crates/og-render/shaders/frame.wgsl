@@ -20,7 +20,7 @@ struct Frame {
   inv_view_proj: mat4x4<f32>,
   view_pos: vec4<f32>,        // xyz: camera position, w: 1 orthographic, 0 perspective
   light_dir: vec4<f32>,       // xyz: towards the light, w: cascades in use (0: no shadows)
-  light_color: vec4<f32>,     // rgb: radiance, w: debug view (1: cascades)
+  light_color: vec4<f32>,     // rgb: radiance, w: debug view (DebugView::lit_code: 1 cascades, 2 AO, 3 albedo, 4 IBL diffuse, 5 IBL specular, 6 direct)
   params: vec4<f32>,          // x: ibl intensity, y: prefiltered mips - 1, z: local lights drawn, w: 1 / cascade map size
   view_forward: vec4<f32>,    // xyz: camera forward, w: 1 / local shadow map size
   cascade_view_proj: array<mat4x4<f32>, 3>,
@@ -59,7 +59,16 @@ struct Frame {
   // group they are drawn with (sprite.wgsl face_axes).
   view_right: vec4<f32>,      // xyz: right
   view_up: vec4<f32>,         // xyz: up
+  hemi_sky: vec4<f32>,        // rgb: the hemisphere light's sky colour, w: intensity / pi (0: off)
+  hemi_ground: vec4<f32>,     // rgb: its ground colour
 };
+
+// The hemisphere light (three.js HemisphereLight) as irradiance in the IBL's units: added beside the environment's
+// irradiance at its own strength (not the environment's intensity), so it reaches only the diffuse term (no
+// reflection) and is scaled, like it, by AO and the material's envMapIntensity.
+fn hemi_irradiance(n: vec3<f32>) -> vec3<f32> {
+  return mix(frame.hemi_ground.rgb, frame.hemi_sky.rgb, 0.5 * n.y + 0.5) * frame.hemi_sky.w;
+}
 
 @group(0) @binding(0) var<uniform> frame: Frame;
 // Shadow depths stored in R32Float colour targets and read with textureLoad:

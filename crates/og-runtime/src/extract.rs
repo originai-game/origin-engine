@@ -1109,6 +1109,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             knee: f(s, "bloomKnee", 0.5),
             intensity: f(s, "bloomIntensity", 0.6),
         });
+        let radius = f(s, "bloomRadius", -1.0);
+        scene.post.bloom_unreal = (radius >= 0.0).then(|| radius.min(1.0));
+        scene.post.bloom_contrast = f(s, "bloomContrast", 1.0).clamp(0.5, 2.0);
         scene.post.tonemap = if on(s, "toneMapped", true) {
             match s["toneMapping"].as_u64().or_else(|| {
                 s["toneMapping"]
@@ -1353,6 +1356,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         light.intensity = f(&v, "intensity", 3.0);
         light.cast_shadows = on(&v, "castShadow", true);
         light.max_shadow_distance = f(&v, "shadowDistance", 200.0);
+        light.shadow_box = f(&v, "shadowBox", 0.0);
+        light.shadow_focus = f(&v, "shadowFocus", 0.0);
+        light.shadow_focus_drop = f(&v, "shadowFocusDrop", 0.0);
+        light.shadow_bias = f(&v, "shadowBias", 0.0);
+        light.shadow_normal_bias = f(&v, "shadowNormalBias", 0.0);
         light.shadow_softness = f(&v, "shadowSoftness", 0.0);
         light.cascade_blend = f(&v, "cascadeBlend", 0.0);
         scene.environment.sky.sun_direction = light.direction_to_light.normalize_or_zero();

@@ -1385,7 +1385,8 @@ pub fn render_options(id: u32) -> Value {
 }
 
 /// `base` with the game's RenderOptions applied (GameDesc.render):
-/// antialias, shadowMapSize, pointShadows, taaHistory and taaSharpen. Both
+/// antialias, shadowMapSize, pointShadows, taaHistory, taaSharpen and
+/// planarReflections. Both
 /// hosts create their renderer from it, so the options mean the same on
 /// each.
 pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDesc {
@@ -1413,6 +1414,9 @@ pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDes
     desc.taa_sharpen = options["taaSharpen"]
         .as_f64()
         .map_or(0.0, |v| v.clamp(0.0, 1.0) as f32);
+    desc.planar_reflections = options["planarReflections"].as_u64().map_or(1, |n| {
+        n.clamp(1, u64::from(og_render::MAX_PLANAR_REFLECTIONS)) as u32
+    });
     desc
 }
 

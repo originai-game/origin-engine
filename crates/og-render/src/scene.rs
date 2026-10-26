@@ -657,6 +657,20 @@ pub struct DirectionalLight {
     /// the default: none; 0.1 to 0.2 typical). The next cascade then also
     /// covers that band, and its pixels read two cascades.
     pub cascade_blend: f32,
+    /// One shadow map over a fixed box instead of the cascades (0, the
+    /// default: the cascades): its half size in metres across the light,
+    /// centred `shadow_focus` metres ahead of the camera along its level
+    /// forward, at the camera's height less `shadow_focus_drop`. Everything
+    /// outside the box is lit. three.js games that fit a directional light's
+    /// orthographic shadow camera to a walker draw this way; it also draws
+    /// the casters once instead of once per cascade.
+    pub shadow_box: f32,
+    pub shadow_focus: f32,
+    pub shadow_focus_drop: f32,
+    /// With `shadow_box`: the depth bias and the normal offset in metres
+    /// (0: one texel each).
+    pub shadow_bias: f32,
+    pub shadow_normal_bias: f32,
 }
 
 impl Default for DirectionalLight {
@@ -670,6 +684,11 @@ impl Default for DirectionalLight {
             max_shadow_distance: 200.0,
             shadow_softness: 0.0,
             cascade_blend: 0.0,
+            shadow_box: 0.0,
+            shadow_focus: 0.0,
+            shadow_focus_drop: 0.0,
+            shadow_bias: 0.0,
+            shadow_normal_bias: 0.0,
         }
     }
 }
@@ -860,11 +879,22 @@ pub struct PostEffects {
     pub vignette: Option<Vignette>,
     pub chromatic_aberration: Option<ChromaticAberration>,
     pub film_grain: Option<FilmGrain>,
+    /// Contrast-adaptive sharpening of the display image (three.js-style CAS
+    /// over the graded, sRGB-encoded colour), its strength 0 to 1.
+    pub sharpen: Option<f32>,
     /// A full-screen hit flash.
     pub flash: Option<ScreenFlash>,
     /// Screen-space reflections (the full tier; `None`: off, and WebGL2
     /// draws none).
     pub ssr: Option<crate::ScreenSpaceReflections>,
+    /// `Some(radius)`: [`PostEffects::bloom`] as three.js UnrealBloomPass
+    /// (luminance high pass, five Gaussian mips mixed by `radius`, the knee
+    /// as its smoothWidth and the intensity as its strength); `None`: the
+    /// soft-knee, 13-tap chain.
+    pub bloom_unreal: Option<f32>,
+    /// With [`PostEffects::bloom_unreal`]: the per-channel contrast
+    /// `0.18 · (c / 0.18)^k` the high pass sees (1 or 0 = none).
+    pub bloom_contrast: f32,
 }
 
 /// A diagnostic view in place of the lit image.
@@ -878,6 +908,50 @@ pub enum DebugView {
     /// The screen-space ambient occlusion term (white: unoccluded), with
     /// [`PostEffects::ao`] set.
     AmbientOcclusion,
+    /// The lit materials' base colour (their albedo after maps and hooks),
+    /// unlit.
+    Albedo,
+    /// The diffuse image-based light each lit material receives.
+    IblDiffuse,
+    /// The specular image-based light each lit material reflects.
+    IblSpecular,
+    /// The direct light (directional, point and spot) each lit material
+    /// receives, shadows applied.
+    DirectLight,
+    /// The depth the ambient occlusion pass reads, as its fraction of a
+    /// metre (one ramp per metre), in the AO view; with [`PostEffects::ao`]
+    /// set.
+    AoDepth,
+    /// The ambient occlusion term before its depth-aware blur; with
+    /// [`PostEffects::ao`] set.
+    AoRaw,
+}
+
+impl DebugView {
+    /// `FrameUniform.light_color.w`: which view the lit shaders draw
+    /// (0 none, 1 cascades, 2 ambient occlusion, 3 albedo, 4 diffuse IBL,
+    /// 5 specular IBL, 6 direct light).
+    pub(crate) fn lit_code(self) -> f32 {
+        match self {
+            DebugView::None => 0.0,
+            DebugView::Cascades => 1.0,
+            DebugView::AmbientOcclusion | DebugView::AoDepth | DebugView::AoRaw => 2.0,
+            DebugView::Albedo => 3.0,
+            DebugView::IblDiffuse => 4.0,
+            DebugView::IblSpecular => 5.0,
+            DebugView::DirectLight => 6.0,
+        }
+    }
+
+    /// `FxPostUniform.cam.w`: what the AO pass writes in place of its term
+    /// (0 the term, 1 the depth's fraction, 2 the term unblurred).
+    pub(crate) fn ao_code(self) -> f32 {
+        match self {
+            DebugView::AoDepth => 1.0,
+            DebugView::AoRaw => 2.0,
+            _ => 0.0,
+        }
+    }
 }
 
 /// A textured quad in the world's xy plane, facing +z (towards the 2D
@@ -1282,6 +1356,11 @@ pub struct RenderScene {
     /// [`Environment::sky`] (three.js `scene.environment`), drawn as the
     /// background by [`Background::Sky`]; `None`: the sky lights it.
     pub environment_map: Option<crate::EnvironmentMap>,
+    /// A hemisphere light, as three.js `HemisphereLight`: diffuse-only
+    /// ambient irradiance `mix(ground, sky, 0.5 n.y + 0.5) * intensity`
+    /// (sky, ground linear RGB; intensity 0: off). Unlike light baked into
+    /// the environment map it adds no reflection.
+    pub hemisphere: ([f32; 3], [f32; 3], f32),
     pub post: PostEffects,
     /// Stylisation after (and, for depth bands, with) the post stack: off
     /// by default ([`crate::Stylise`]).
@@ -1482,6 +1561,7 @@ impl RenderScene {
             font_revisions: Vec::new(),
             instances: Vec::new(),
             camera: Camera::default(),
+            hemisphere: ([0.0; 3], [0.0; 3], 0.0),
             light: DirectionalLight::default(),
             lights: Vec::new(),
             environment: Environment::default(),

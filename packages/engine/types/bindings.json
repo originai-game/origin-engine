@@ -928,6 +928,36 @@
           "tunable": true
         },
         {
+          "name": "shadowBox",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "shadowFocus",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "shadowFocusDrop",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "shadowBias",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "shadowNormalBias",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "cascadeBlend",
           "column": "f32",
           "default": 0,
@@ -3554,6 +3584,11 @@
           "tunable": true
         },
         {
+          "name": "geometry",
+          "column": "Geometry",
+          "default": 0
+        },
+        {
           "name": "segments",
           "column": "u32",
           "default": 64
@@ -3646,6 +3681,18 @@
           "tunable": true
         },
         {
+          "name": "f0",
+          "column": "f32",
+          "default": 0.02,
+          "tunable": true
+        },
+        {
+          "name": "reflectionBias",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "underwaterColor",
           "column": "Color",
           "default": {
@@ -3670,6 +3717,32 @@
           "name": "causticsScale",
           "column": "f32",
           "default": 0.6,
+          "tunable": true
+        },
+        {
+          "name": "normalMap",
+          "column": "Texture",
+          "default": 0
+        },
+        {
+          "name": "normalScale",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "glint",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "flow",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
           "tunable": true
         }
       ]
@@ -5378,6 +5451,11 @@
           "default": 0
         },
         {
+          "name": "visible",
+          "column": "bool",
+          "default": true
+        },
+        {
           "name": "castShadows",
           "column": "bool",
           "default": true
@@ -5461,6 +5539,11 @@
           "name": "seed",
           "column": "u32",
           "default": 1
+        },
+        {
+          "name": "castShadows",
+          "column": "bool",
+          "default": true
         }
       ]
     },
@@ -6420,6 +6503,16 @@
           "tunable": true
         },
         {
+          "name": "bloomRadius",
+          "column": "f32",
+          "default": -1
+        },
+        {
+          "name": "bloomContrast",
+          "column": "f32",
+          "default": 1
+        },
+        {
           "name": "autoExposure",
           "column": "bool",
           "default": false
@@ -6563,6 +6656,30 @@
           "column": "f32",
           "default": 1,
           "tunable": true
+        },
+        {
+          "name": "hemiSky",
+          "column": "Color",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        {
+          "name": "hemiGround",
+          "column": "Color",
+          "default": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
+        },
+        {
+          "name": "hemiIntensity",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
         }
       ]
     },
@@ -6598,6 +6715,18 @@
           "name": "aoResolution",
           "column": "AoResolution",
           "default": "full"
+        },
+        {
+          "name": "aoDirect",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "aoRadiusScale",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
         },
         {
           "name": "outline",
@@ -6790,6 +6919,12 @@
           "name": "filmGrainSize",
           "column": "f32",
           "default": 1.5
+        },
+        {
+          "name": "sharpen",
+          "column": "f32",
+          "default": -1,
+          "tunable": true
         },
         {
           "name": "flash",

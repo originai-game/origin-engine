@@ -10,8 +10,9 @@ struct FxPost {
   inv_proj: mat4x4<f32>,
   view: mat4x4<f32>,          // world -> view (normals)
   screen: vec4<f32>,          // full-resolution w, h, 1/w, 1/h
-  cam: vec4<f32>,             // x: far, y: 1 orthographic
+  cam: vec4<f32>,             // x: far, y: 1 orthographic, z: near, w: the AO debug views (1: fract(depth), DebugView::AoDepth; 2: AO unblurred, DebugView::AoRaw)
   ao: vec4<f32>,              // x: radius (world), y: intensity, z: the AO targets' divisor (1, or 2 at half resolution)
+  ao2: vec4<f32>,             // x: radius per metre of depth (0: fixed), y: 1 screen method
   outline_color: vec4<f32>,   // the scene's outline (linear rgb, coverage)
   outline: vec4<f32>,         // x: scene width (0: none), y: depth threshold, z: normal threshold
   dof: vec4<f32>,             // x: focus distance, y: focus range, z: max blur (full-res px), w: falloff
@@ -116,7 +117,7 @@ fn fs_gtao(in: VsOut) -> @location(0) vec4<f32> {
   let p = view_pos(uv, d);
   let n = normalize((fxp.view * vec4<f32>(world_normal(px), 0.0)).xyz);
   let v = select(normalize(-p), vec3<f32>(0.0, 0.0, 1.0), fxp.cam.y > 0.5);
-  let radius = fxp.ao.x;
+  let radius = select(fxp.ao.x, min(fxp.ao.x, fxp.ao2.x * length(p)), fxp.ao2.x > 0.0);
   let radius_px = radius * pixels_per_unit(d);
   if (radius_px < 1.0) { return vec4<f32>(1.0); }
   let noise = ign(in.pos.xy);
@@ -169,15 +170,55 @@ fn fs_gtao(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(pow(vis, max(fxp.ao.y, 0.0)), 0.0, 0.0, 1.0);
 }
 
+// AoMethod::Screen: three.js-era post SSAO. A disc of 14 taps (a Vogel spiral, rotated per pixel) whose radius is a
+// share of the screen width, clamp(1.6 / depth, 0.004, 0.06); a tap occludes by how much nearer the depth buffer is
+// there than this pixel, against a range of 0.25 + 0.06 depth (beyond 3 ranges: a separate object in front, none).
+// No normals: ground seen at a low angle occludes itself a little, as those games look. Faded out from 120 to 300 m,
+// squared; ao.y scales the occlusion. Not blurred (fs_ao_blur passes it through), as the original: its per-pixel noise
+// then goes through tone mapping and CAS as there, which lifts the mean of the noisy dark pixels.
+fn ao_tap(uv: vec2<f32>, o: vec2<f32>, cz: f32, range: f32) -> f32 {
+  let diff = cz - depth_uv(uv + o);
+  return smoothstep(0.02, 0.35, diff / range) * (1.0 - smoothstep(range, range * 3.0, diff));
+}
+fn ao_screen(in: VsOut, cz: f32) -> f32 {
+  if (cz >= 300.0) { return 1.0; }
+  let rad = clamp(1.6 / cz, 0.004, 0.06);
+  // The original's pixel (gl_FragCoord, rows from the bottom) and its uv offsets (y up): the same per-pixel pattern.
+  let px = floor(in.pos.xy);
+  let rot = ign(vec2<f32>(px.x, fxp.screen.y - 1.0 - px.y)) * 6.2832;
+  let c0 = cos(rot);
+  let s0 = sin(rot);
+  let asp = fxp.screen.x / fxp.screen.y;
+  let range = 0.25 + cz * 0.06;
+  var taps = array<vec3<f32>, 14>(
+    vec3<f32>(1.000000000, 0.000000000, 0.188982237), vec3<f32>(-0.737368723, 0.675490464, 0.327326835),
+    vec3<f32>(0.087425267, -0.996171081, 0.422577127), vec3<f32>(0.608439408, 0.793600332, 0.500000000),
+    vec3<f32>(-0.984713645, -0.174181046, 0.566946710), vec3<f32>(0.843754678, -0.536729022, 0.626783171),
+    vec3<f32>(-0.259602974, 0.965715432, 0.681385144), vec3<f32>(-0.460908452, -0.887447688, 0.731925055),
+    vec3<f32>(0.939321927, 0.343036905, 0.779193722), vec3<f32>(-0.924344767, 0.381558320, 0.823754471),
+    vec3<f32>(0.423843914, -0.905735246, 0.866025404), vec3<f32>(0.299286276, 0.954163364, 0.906326967),
+    vec3<f32>(-0.865212592, -0.501405196, 0.944911183), vec3<f32>(0.976675132, -0.214722346, 0.981980506));
+  var occ = 0.0;
+  for (var i = 0u; i < 14u; i++) {
+    let t = taps[i];
+    let o = vec2<f32>(c0 * t.x - s0 * t.y, -(s0 * t.x + c0 * t.y) * asp) * (rad * t.z);
+    occ += ao_tap(in.uv, o, cz, range);
+  }
+  let ao = clamp(1.0 - occ / 14.0 * 0.8 * fxp.ao.y, 0.0, 1.0);
+  return mix(1.0, ao * ao, 1.0 - smoothstep(120.0, 300.0, cz));
+}
+
 // Normal-oriented hemisphere SSAO: 8 fixed samples, rotated per pixel.
 @fragment
 fn fs_ssao(in: VsOut) -> @location(0) vec4<f32> {
   let px = ao_pixel(in.pos.xy);
   let d = depth_at(px);
+  if (fxp.cam.w > 0.5 && fxp.cam.w < 1.5) { return vec4<f32>(fract(d), 0.0, 0.0, 1.0); }
   if (is_sky(d)) { return vec4<f32>(1.0); }
+  if (fxp.ao2.y > 0.5) { return vec4<f32>(ao_screen(in, d), 0.0, 0.0, 1.0); }
   let p = view_pos(ao_uv(px, in.uv), d);
   let n = normalize((fxp.view * vec4<f32>(world_normal(px), 0.0)).xyz);
-  let radius = fxp.ao.x;
+  let radius = select(fxp.ao.x, min(fxp.ao.x, fxp.ao2.x * length(p)), fxp.ao2.x > 0.0);
   let a = ign(in.pos.xy) * 6.2831853;
   var helper = vec3<f32>(cos(a), sin(a), 0.0);
   if (abs(dot(helper, n)) > 0.95) { helper = vec3<f32>(0.0, 0.0, 1.0); }
@@ -220,6 +261,8 @@ fn ao_blur_sky(d0: f32) -> bool {
 @fragment
 fn fs_ao_blur(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
+  // The screen method is not blurred (the original's post AO is used as it comes); nor are the AO debug views' (DebugView::AoDepth, AoRaw).
+  if (fxp.cam.w > 0.5 || fxp.ao2.y > 0.5) { return textureLoad(tex_b, px, 0); }
   let k = ao_divisor();
   let d0 = depth_at(px * k);
   if (ao_blur_sky(d0)) { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }

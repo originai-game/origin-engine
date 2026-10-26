@@ -167,7 +167,11 @@ and the fallback where tsrs has no package.
   (meshoptimizer simplification and vertex cache ordering, LOD generation,
   tangents), texture compression, audio transcode, MSDF generation, scene
   compilation. Source assets live in `assets/`, cooked output in `cooked/`;
-  the runtime reads only `cooked/`.
+  the runtime reads only `cooked/`. Colour textures are ETC1S unless
+  project.ogt's `cook { color_textures uastc }` says otherwise (four times
+  the bytes, no 4×4 block colour loss); `publish { color_textures etc1s }`
+  overrides it for the web export's cook (`og build`, `og run --device`),
+  so a game can ship UASTC natively and ETC1S on the web.
 - Reusable production assets come through the platform's asset MCP as today;
   the cook consumes what the agent put in `assets/`.
 
@@ -306,12 +310,21 @@ once per mesh revision. The pass draws in two places:
   here, so they read the same in every capture.
 
 The debug views are a `RenderOptions.debugView` enum (none, physics, nav,
-bounds) that later streams add variants to; the command channel's `debug:`
-action switches them. The physics view is rapier's debug render of the
-last step: collider shapes, joints and contacts. The nav view draws the
-grids, navmesh polygons and agents' paths, and the bounds view draws mesh
-bounds. Debug draw is rendering: it is not world state, it never feeds the
-tick, and the `debug` module is left out of publish builds.
+bounds, lod, and the lit image's views below) that later streams add
+variants to; `og.debug.setView` and the command channel's `debug:` action
+switch them. The physics view is rapier's debug render of the last step:
+collider shapes, joints and contacts. The nav view draws the grids,
+navmesh polygons and agents' paths, and the bounds view draws mesh
+bounds. The lit image's views replace the lit colour with one term of
+it, written by the lit shaders themselves (`RenderScene::debug`, the
+frame uniform's `light_color.w`): `cascades` (the directional light's
+cascade per pixel), `ao` (the ambient occlusion term), `albedo`,
+`iblDiffuse`, `iblSpecular` and `direct`; `aoDepth` and `aoRaw` show the
+ao view with the AO pass's input depth or its term before the blur
+(`FxPost.cam.w`). They are how a port from three.js compares its lighting
+term by term. Debug draw is rendering: it is not world state, it never
+feeds the tick, and the `debug` module is left out of publish builds,
+whose frames draw none of the lit image's views.
 
 Levels of detail, reflection probes and screen-space reflections (depth
 S6).
@@ -611,6 +624,37 @@ Baked lighting, volumetrics and area lights (depth S7).
   Cookies past them, in their lights' entity order, are not drawn; the
   frame warns once in the log, naming the lights that shine without
   theirs (`og_render::cookie_layers`).
+
+**three.js parity for ports** (the Grand View Garden fork merge).
+A game moved from three.js needs its look kept, not reinterpreted, so a
+set of opt-in fields reproduces what three.js and its common passes draw;
+each is off at its default and leaves every existing frame unchanged.
+Lighting: `Environment.hemiSky/hemiGround/hemiIntensity` is
+HemisphereLight (diffuse-only, darkened by AO); `DirectionalLight.shadowBox`
+replaces the three cascades with one fixed box around a focus ahead of
+and below the camera (`shadowFocus`, `shadowFocusDrop`), the orthographic
+shadow camera such games fit around the player, with three.js' `bias`
+and `normalBias` (`shadowBias`, `shadowNormalBias`). Post:
+`PostEffects.aoMethod screen` is the depth-only screen-space AO of
+three.js-era post passes, `aoRadiusScale` grows the AO radius with
+distance, `aoDirect` lets the AO darken direct and emitted light too,
+`sharpen` is a CAS pass after the output, and
+`RenderSettings.bloomRadius/bloomContrast` switch the bloom to
+UnrealBloomPass. Water: `Water.geometry` draws over any mesh (a stream
+or a pool) instead of the grid, `f0`, `reflectionBias` and `glint` are
+Water.js's Fresnel floor and sun glint, and `normalMap/normalScale/flow`
+are Water.js's drifting and Water2's flowing normal-map ripples.
+Materials: `alphaToCoverage` (with MSAA) turns alpha-tested foliage into
+sample coverage, scatter included; material shaders get `Hook.eye`,
+`Hook.front`, `planar_reflection(p, shift)` (the frame's planar
+reflection, for a game's own water or floor, with
+`RenderOptions.planarReflections 2` on the full tier; 0 on WebGL2) and
+`screen_ao(p)`.
+`Terrain.visible false` keeps a terrain as ground for its scatter only,
+and `TerrainScatter.castShadows` turns the copies' shadows off. og-ui's
+style `ramp` takes a fifth number. The cook's `color_textures uastc`
+(project.ogt, §2.5) packs colour textures as UASTC where ETC1S's 4×4
+block loss shows on foliage and bark, overridable for the web export.
 
 ### 2.7 Animation, physics, navigation, audio, UI **(D)**
 

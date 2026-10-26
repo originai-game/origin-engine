@@ -115,7 +115,10 @@ fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
   let offset = p + n * bias.x * (0.25 + sin_l);
   let sp = frame.cascade_view_proj[c] * vec4<f32>(offset, 1.0);
   let uv = vec2<f32>(sp.x * 0.5 + 0.5, 0.5 - sp.y * 0.5);
-  if (sp.z > 1.0) { return -1.0; }
+  // Outside the map (a fixed shadow box, fit_box) reads as lit, as three.js's
+  // inFrustum does; the PCF taps clamp to the edge texel and would otherwise
+  // extend whatever caster sits on the border across everything beyond it.
+  if (sp.z > 1.0 || any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) { return -1.0; }
   if (frame.shadow.x > 0.0) {
     return pcss(uv, c, sp.z - bias.y, bias, sin_l / max(n_dot_l, 0.05));
   }

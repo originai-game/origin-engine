@@ -82,6 +82,7 @@ struct PostUniform {
     grain: [f32; 4],
     flash: [f32; 4],
     extra: [f32; 4],
+    unreal: [f32; 4],
 }
 
 /// `struct Adapt` in exposure.wgsl.
@@ -125,6 +126,8 @@ pub(crate) struct FxPostUniform {
     pub screen: [f32; 4],
     pub cam: [f32; 4],
     pub ao: [f32; 4],
+    /// x: the AO radius per metre of depth (0: fixed), y: 1 for the screen method.
+    pub ao2: [f32; 4],
     pub outline_color: [f32; 4],
     pub outline: [f32; 4],
     pub dof: [f32; 4],
@@ -1011,6 +1014,7 @@ impl PostPasses {
         god_rays: bool,
         untonemapped: bool,
         tick: u64,
+        width: u32,
     ) {
         let adapted = exposure.adaptation().is_some();
         let (exposure, compensation) = match exposure {
@@ -1032,7 +1036,26 @@ impl PostPasses {
         };
         let lit_bloom = post.bloom.filter(|b| b.intensity > 0.0);
         let bloom = match (lit_bloom, post.glow.filter(|_| glow)) {
-            (Some(b), _) => [b.threshold, b.knee, b.intensity, compensation],
+            // UnrealBloomPass: the mips are stored weighted, so the top
+            // level is their mix; the additive copy multiplies it by the
+            // strength again (its alpha, strength times the weights' sum).
+            (Some(b), _) => match post.bloom_unreal {
+                Some(r) => {
+                    let sum: f32 = (0..5)
+                        .map(|i| {
+                            let f = 1.0 - 0.2 * i as f32;
+                            f + (1.2 - 2.0 * f) * r
+                        })
+                        .sum();
+                    [
+                        b.threshold,
+                        b.knee,
+                        b.intensity * b.intensity * sum,
+                        compensation,
+                    ]
+                }
+                None => [b.threshold, b.knee, b.intensity, compensation],
+            },
             (None, Some(g)) => [1.0, 0.5, g.intensity.max(0.0), compensation],
             (None, None) => [1.0, 0.5, 0.0, compensation],
         };
@@ -1074,7 +1097,25 @@ impl PostPasses {
             vignette: v.color.extend(ca).to_array(),
             grain,
             flash,
-            extra: [god_rays as u32 as f32, untonemapped as u32 as f32, 0.0, 0.0],
+            extra: [
+                god_rays as u32 as f32,
+                untonemapped as u32 as f32,
+                post.sharpen.is_some() as u32 as f32,
+                post.sharpen.unwrap_or(0.0).clamp(0.0, 1.0),
+            ],
+            unreal: match (lit_bloom, post.bloom_unreal) {
+                (Some(_), Some(r)) => [
+                    1.0,
+                    r,
+                    (width / 2).max(1) as f32,
+                    if post.bloom_contrast > 0.0 {
+                        post.bloom_contrast
+                    } else {
+                        1.0
+                    },
+                ],
+                _ => [0.0; 4],
+            },
         };
         queue.write_buffer(&self.post_buffer, 0, bytemuck::bytes_of(&uniform));
     }
@@ -1383,8 +1424,9 @@ pub(crate) enum FramePass {
     Fluid3d,
     /// The reflection probes' captures due this frame (`probes.rs`).
     Probes,
-    /// The scene mirrored in a water surface (its planar reflection).
-    Reflection,
+    /// The scene mirrored in a water surface (its planar reflection): slot 0 the one material shaders read, slot 1 a
+    /// second surface's (targets `reflection*`, `reflection.1*`).
+    Reflection(u8),
     /// Secondary camera `i` of the frame's views (`views.rs`): its lit
     /// pass and its resolve into a render target (a viewport view resolves
     /// after the post chain).
@@ -1470,7 +1512,7 @@ impl FramePass {
             FramePass::Metaballs => "metaballs".into(),
             FramePass::Fluid3d => "fluid-3d".into(),
             FramePass::Probes => "reflection-probes".into(),
-            FramePass::Reflection => "reflection".into(),
+            FramePass::Reflection(k) => reflection_target(k, "").into(),
             FramePass::View(i) => format!("view-{i}"),
             FramePass::Volumetric => "volumetric".into(),
             FramePass::Main => "main".into(),
@@ -1523,8 +1565,8 @@ pub(crate) struct GraphConfig {
     /// Metaball field targets the frame's fluids need (1 to
     /// `metaballs::FIELDS` when it draws any).
     pub fluid_fields: u32,
-    /// The planar reflection's size (`Some` with [`FramePass::Reflection`]).
-    pub reflection: Option<(u32, u32)>,
+    /// The planar reflections' sizes (`Some` with [`FramePass::Reflection`] of that slot).
+    pub reflection: [Option<(u32, u32)>; 2],
     /// Stylise lays a pattern in object space: the prepass also writes
     /// `object-space` (stylise_object.rs), which the paint and lines
     /// passes read.
@@ -1703,7 +1745,16 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             ),
         )
         .transient("gbuffer", desc(w, h, GBUFFER_FORMAT, 1, attach_bind))
-        .transient("lindepth", desc(w, h, LINDEPTH_FORMAT, 1, attach_bind))
+        .transient(
+            "lindepth",
+            desc(
+                w,
+                h,
+                LINDEPTH_FORMAT,
+                1,
+                attach_bind | wgpu::TextureUsages::COPY_SRC,
+            ),
+        )
         .transient("outline-id", desc(w, h, OUTLINE_FORMAT, 1, attach_bind));
         if cfg.object_space {
             g.transient(
@@ -1749,21 +1800,28 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             .transient("fluid.blur", desc(w, h, LINDEPTH_FORMAT, 1, attach_bind))
             .transient("fluid.smooth", desc(w, h, LINDEPTH_FORMAT, 1, attach_bind));
     }
-    if let (true, Some((rw, rh))) = (has(FramePass::Reflection), cfg.reflection) {
-        g.transient("reflection", desc(rw, rh, HDR_FORMAT, 1, attach_bind))
-            .transient(
-                "reflection-depth",
-                desc(
-                    rw,
-                    rh,
-                    DEPTH_FORMAT,
-                    cfg.samples,
-                    wgpu::TextureUsages::RENDER_ATTACHMENT,
-                ),
-            );
+    for k in 0..2u8 {
+        let Some((rw, rh)) = cfg.reflection[k as usize].filter(|_| has(FramePass::Reflection(k)))
+        else {
+            continue;
+        };
+        g.transient(
+            reflection_target(k, ""),
+            desc(rw, rh, HDR_FORMAT, 1, attach_bind),
+        )
+        .transient(
+            reflection_target(k, "-depth"),
+            desc(
+                rw,
+                rh,
+                DEPTH_FORMAT,
+                cfg.samples,
+                wgpu::TextureUsages::RENDER_ATTACHMENT,
+            ),
+        );
         if msaa {
             g.transient(
-                "reflection-msaa",
+                reflection_target(k, "-msaa"),
                 desc(
                     rw,
                     rh,
@@ -1847,28 +1905,42 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         metered.clone()
     };
     let prepass = has(FramePass::Prepass);
+    // With water and AO: the prepass depth with the water's surfaces in it, which the AO reads (lib.rs, water.rs
+    // `draw_ao_depth`); the prepass pass writes it after its own targets.
+    let ao_depth = prepass && cfg.water && has(FramePass::Ao);
+    if ao_depth {
+        g.transient(
+            "ao-depth",
+            desc(
+                w,
+                h,
+                LINDEPTH_FORMAT,
+                1,
+                attach_bind | wgpu::TextureUsages::COPY_DST,
+            ),
+        );
+    }
+    let ao_reads: &[&str] = if ao_depth {
+        &["ao-depth", "gbuffer"]
+    } else {
+        &["lindepth", "gbuffer"]
+    };
     for &p in passes {
         let name = p.name();
         match p {
             FramePass::Cascade(_) => g.pass(name, &[], &["cascades"]),
             FramePass::LocalFace(_) => g.pass(name, &[], &["local-shadows"]),
-            FramePass::Prepass if cfg.object_space => g.pass(
-                name,
-                &[],
-                &[
-                    "pre-depth",
-                    "gbuffer",
-                    "lindepth",
-                    "outline-id",
-                    "object-space",
-                ],
-            ),
-            FramePass::Prepass => g.pass(
-                name,
-                &[],
-                &["pre-depth", "gbuffer", "lindepth", "outline-id"],
-            ),
-            FramePass::Ao => g.pass(name, &["lindepth", "gbuffer"], &["ao.raw"]),
+            FramePass::Prepass => {
+                let mut writes = vec!["pre-depth", "gbuffer", "lindepth", "outline-id"];
+                if cfg.object_space {
+                    writes.push("object-space");
+                }
+                if ao_depth {
+                    writes.push("ao-depth");
+                }
+                g.pass(name, &[], &writes)
+            }
+            FramePass::Ao => g.pass(name, ao_reads, &["ao.raw"]),
             FramePass::AoBlur if has(FramePass::AoUpsample) => {
                 g.pass(name, &["ao.raw", "lindepth", "gbuffer"], &["ao.blur"])
             }
@@ -1893,10 +1965,10 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             ),
             // Into the probes' own cubes, not graph targets.
             FramePass::Probes => g.pass(name, &["cascades", "local-shadows"], &[]),
-            FramePass::Reflection => {
-                let mut writes = vec!["reflection", "reflection-depth"];
+            FramePass::Reflection(k) => {
+                let mut writes = vec![reflection_target(k, ""), reflection_target(k, "-depth")];
                 if msaa {
-                    writes.push("reflection-msaa");
+                    writes.push(reflection_target(k, "-msaa"));
                 }
                 g.pass(name, &["cascades", "local-shadows"], &writes)
             }
@@ -1928,8 +2000,10 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 if has(FramePass::Metaballs) {
                     reads.extend_from_slice(fields);
                 }
-                if has(FramePass::Reflection) {
-                    reads.push("reflection");
+                for k in 0..2u8 {
+                    if has(FramePass::Reflection(k)) {
+                        reads.push(reflection_target(k, ""));
+                    }
                 }
                 if has(FramePass::Fluid3d) {
                     reads.extend(["fluid.smooth", "fluid.thick"]);
@@ -2441,27 +2515,33 @@ impl FrameGraph {
         // The effect passes: (a, depth, gbuffer, b) per slot.
         let depth = self.try_view("lindepth").unwrap_or(&passes.far_depth);
         let gbuffer = self.try_view("gbuffer").unwrap_or(&passes.black);
-        let fx_group = |a: &wgpu::TextureView, b: &wgpu::TextureView| {
-            group(
-                "fx post",
-                &passes.fx_layout,
-                &[
-                    passes.fx_buffer.as_entire_binding(),
-                    sampler.clone(),
-                    tex(a),
-                    tex(depth),
-                    tex(gbuffer),
-                    tex(b),
-                    wgpu::BindingResource::Sampler(&passes.nearest_sampler),
-                ],
-            )
-        };
+        let fx_group_depth =
+            |a: &wgpu::TextureView, d: &wgpu::TextureView, b: &wgpu::TextureView| {
+                group(
+                    "fx post",
+                    &passes.fx_layout,
+                    &[
+                        passes.fx_buffer.as_entire_binding(),
+                        sampler.clone(),
+                        tex(a),
+                        tex(d),
+                        tex(gbuffer),
+                        tex(b),
+                        wgpu::BindingResource::Sampler(&passes.nearest_sampler),
+                    ],
+                )
+            };
+        let fx_group = |a: &wgpu::TextureView, b: &wgpu::TextureView| fx_group_depth(a, depth, b);
         let black = &passes.black;
         let mut fx = HashMap::new();
         for &p in frame {
             let pair = |f: &dyn Fn(usize) -> wgpu::BindGroup| [f(0), f(1)];
             let groups = match p {
-                FramePass::Ao => pair(&|_| fx_group(black, black)),
+                // The AO reads the depth with the water's surfaces in it when there is one.
+                FramePass::Ao => {
+                    let d = self.try_view("ao-depth").unwrap_or(depth);
+                    pair(&|_| fx_group_depth(black, d, black))
+                }
                 FramePass::AoBlur => pair(&|_| fx_group(black, self.view("ao.raw"))),
                 FramePass::AoUpsample => pair(&|_| fx_group(black, self.view("ao.blur"))),
                 FramePass::Ssr => pair(&|_| fx_group(self.view("hdr"), black)),
@@ -2709,7 +2789,7 @@ impl FrameGraph {
             | FramePass::Metaballs
             | FramePass::Fluid3d
             | FramePass::Probes
-            | FramePass::Reflection
+            | FramePass::Reflection(_)
             | FramePass::View(_)
             | FramePass::Volumetric
             | FramePass::Main
@@ -2717,6 +2797,18 @@ impl FrameGraph {
             | FramePass::Ssr
             | FramePass::Glow => 0,
         }
+    }
+}
+
+/// The graph target of planar reflection slot `k` (0: `reflection`, 1: `reflection.1`) with `suffix`.
+pub(crate) fn reflection_target(k: u8, suffix: &str) -> &'static str {
+    match (k, suffix) {
+        (0, "") => "reflection",
+        (0, "-depth") => "reflection-depth",
+        (0, "-msaa") => "reflection-msaa",
+        (_, "") => "reflection.1",
+        (_, "-depth") => "reflection.1-depth",
+        _ => "reflection.1-msaa",
     }
 }
 
@@ -2730,6 +2822,7 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
         "pre-depth",
         "gbuffer",
         "lindepth",
+        "ao-depth",
         "outline-id",
         "object-space",
         "ao.raw",
@@ -2748,6 +2841,9 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
         "reflection",
         "reflection-depth",
         "reflection-msaa",
+        "reflection.1",
+        "reflection.1-depth",
+        "reflection.1-msaa",
         "glow",
         "ldr.0",
         "ldr.1",

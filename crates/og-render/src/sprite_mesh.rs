@@ -161,6 +161,7 @@ impl SpriteMeshRenderer {
             crate::hdr_pipeline(
                 device,
                 crate::HdrPipeline {
+                    alpha_to_coverage: false,
                     label,
                     layout: &pl,
                     module: &module,

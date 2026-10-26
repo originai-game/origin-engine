@@ -529,8 +529,8 @@ pub(crate) struct TextContent {
 }
 
 impl TextContent {
-    /// The type step's tracking, in em: Latin tracking, so none for text
-    /// with CJK characters or a shaped script (whose joins it would break).
+    /// The type step's tracking, in em: the CJK tracking for text with CJK
+    /// characters (0 unless a skin sets it), none for a shaped script.
     pub fn tracking(&self) -> f32 {
         step_tracking(&self.step, &self.text)
     }
@@ -580,10 +580,13 @@ fn truncate_lines(lines: &mut Vec<Line>, t: &TextContent, m: &FontMetrics, width
     }
 }
 
-/// A step's tracking for `text`: none with CJK or a shaped script.
+/// A step's tracking for `text`: none with a shaped script (its joins would break), the
+/// step's CJK tracking with CJK characters (0 unless a skin's ramp sets it).
 pub(crate) fn step_tracking(step: &TypeStep, text: &str) -> f32 {
-    if text.chars().any(|c| is_cjk(c) || og_i18n::needs_shaping(c)) {
+    if text.chars().any(og_i18n::needs_shaping) {
         0.0
+    } else if text.chars().any(is_cjk) {
+        step.cjk_tracking_em
     } else {
         step.tracking_em
     }
@@ -837,6 +840,7 @@ struct TextKey {
     font: FontRole,
     size: u32,
     tracking: u32,
+    cjk_tracking: u32,
     wrap: bool,
     ellipsis: bool,
     max_lines: u32,
@@ -850,6 +854,7 @@ impl TextKey {
             font: t.font,
             size: t.step.size.to_bits(),
             tracking: t.step.tracking_em.to_bits(),
+            cjk_tracking: t.step.cjk_tracking_em.to_bits(),
             wrap: t.wrap,
             ellipsis: t.ellipsis,
             max_lines: t.max_lines,

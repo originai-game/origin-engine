@@ -87,6 +87,7 @@ fn meadow() -> RenderScene {
         terrain: 0,
         mesh: tuft,
         material: grass,
+        cast_shadows: true,
         scatter: og_render::TerrainScatter {
             distance: 15.0,
             ..grass_scatter()
