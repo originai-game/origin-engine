@@ -9,6 +9,12 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- render, `PostEffects`: `lensDistortion` (barrel above 0, pincushion
+  below; RedGPU's lensDistortion with the radius in pixels whatever the
+  aspect and a barrel fitted to its farthest corner, so no black edge)
+  and `lensDistortionCenter`. One pass while on, after the Stylise passes
+  that read the depth and before the palette quantisation; the UI is not
+  bent (og-render `LensDistortion`).
 - render, `RenderSettings.toneMapping`: `neutral`, Khronos PBR Neutral
   (three.js `NeutralToneMapping`, RedGPU's `khronosPbrNeutral`): colours
   up to 0.76 come out as authored less a dielectric's 0.04, only

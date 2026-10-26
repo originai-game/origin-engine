@@ -1391,6 +1391,12 @@ fn post_neutral_matches_its_reference() {
     check("post-neutral");
 }
 
+/// A centred barrel lens over the spike's scene, fitted to its corners.
+#[test]
+fn post_lens_matches_its_reference() {
+    check("post-lens");
+}
+
 /// AgX: the bloom scene's emissive spheres keep their hue in the glow but
 /// their over-exposed cores go towards white, where ACES skews them.
 #[test]

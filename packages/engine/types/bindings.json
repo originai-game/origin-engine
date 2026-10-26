@@ -7005,6 +7005,21 @@
           "tunable": true
         },
         {
+          "name": "lensDistortion",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "lensDistortionCenter",
+          "column": "Vector2",
+          "default": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "tunable": true
+        },
+        {
           "name": "filmGrain",
           "column": "f32",
           "default": 0,

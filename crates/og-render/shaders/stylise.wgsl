@@ -13,6 +13,8 @@
 //             surfaces), ink lines on luminance edges and, with
 //             `inkDepth`, on the depth-normal prepass's silhouettes and
 //             creases;
+//   lens      barrel or pincushion distortion of the frame (after the
+//             passes that read the depth, so their lines bend with it);
 //   quantize  posterised channels and/or the nearest palette colour, mixed
 //             by an ordered (Bayer), blue-noise or interleaved-gradient
 //             dither;
@@ -40,6 +42,7 @@ struct Stylise {
   eye: vec4<f32>,             // xyz: the camera from the surface origin (a 1024 m grid point)
   surface: vec4<f32>,         // where the canvas (x), hatching (z) and halftone (w) lie: 0 screen, 1 world, 2 object space; y: canvas texels per metre
   canvas_origin: vec4<f32>,   // the canvas uv at the surface origin: x along x, y along y, z along z as u, w along z as v
+  lens: vec4<f32>,            // x: lens distortion (above 0 barrel), y: the scale keeping a barrel's farthest corner on the image, zw: the centre (uv)
 };
 @group(0) @binding(0) var source: texture_2d<f32>;
 @group(0) @binding(1) var clamp_sampler: sampler;
@@ -730,6 +733,36 @@ fn quantize(in: VsOut) -> vec3<f32> {
     c = best;
   }
   return c;
+}
+
+// Lens distortion (effects.rs `LensDistortion`): each pixel shows the image
+// at the centre plus its offset scaled by 1 + amount r², r being 1 at the
+// corners of a centred lens whatever the aspect, times the scale that
+// keeps a barrel's farthest corner on the image; black beyond the image
+// (a centre off the frame), nearest under a pixel grid.
+fn lens(in: VsOut) -> vec3<f32> {
+  let size = st.screen.xy;
+  let c = st.lens.zw;
+  let d = (in.uv - c) * size;
+  let r2 = dot(d, d) / dot(size * 0.5, size * 0.5);
+  let uv = c + (in.uv - c) * (1.0 + st.lens.x * r2) * st.lens.y;
+  if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) {
+    return vec3<f32>(0.0);
+  }
+  if (st.output.z > 1.5) {
+    return load(vec2<i32>(floor(uv * size)));
+  }
+  return textureSampleLevel(source, clamp_sampler, uv, 0.0).rgb;
+}
+
+@fragment
+fn fs_lens(in: VsOut) -> @location(0) vec4<f32> {
+  return vec4<f32>(lens(in), 1.0);
+}
+
+@fragment
+fn fs_lens_srgb(in: VsOut) -> @location(0) vec4<f32> {
+  return vec4<f32>(srgb_encode(clamp(lens(in), vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);
 }
 
 @fragment

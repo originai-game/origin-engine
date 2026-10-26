@@ -10,8 +10,8 @@ use glam::{Mat4, Vec2, Vec3};
 use og_render::{
     AmbientOcclusion, AoMethod, Background, Beam, Burst, Camera, CameraShake, ChromaticAberration,
     ColorAdjust, ColorCurve, ColorGrading, ColorLut, Curve, Decal, DepthOfField, DofQuality,
-    EmitterShape, Exposure, FilmGrain, FrameStats, Glow, GodRays, JointPalette, Light2d,
-    Lighting2d, MAX_DECALS, Material, MorphTargets, MotionBlur, Occluder2d, Outline,
+    EmitterShape, Exposure, FilmGrain, FrameStats, Glow, GodRays, JointPalette, LensDistortion,
+    Light2d, Lighting2d, MAX_DECALS, Material, MorphTargets, MotionBlur, Occluder2d, Outline,
     ParticleCollision, ParticleEmitter, ParticleRender, ParticleSimulation, ParticleSystem,
     Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, ScreenFlash,
     SkinnedInstance, Sprite, SpriteFx, StandardMaterial, Tier, Tonemap, Trail, TrailStyle, View,
@@ -955,6 +955,109 @@ fn neutral_tone_curve_follows_khronos() {
                     .all(|(g, w)| (*g as i32 - w).abs() <= 2),
                 "neutral (view {through_view}) of {c}: {got:?} against {want:?}"
             );
+        }
+    }
+}
+
+/// Lens distortion moves a marker on each axis of a 16:9 frame to where
+/// its formula, solved here, puts it: out from the centre under a fitted
+/// barrel and under a pincushion, by amounts that differ between the axes
+/// because the radius is measured in pixels. With the centre moved, a
+/// marker there stays put, the other moves by the fit to the farthest
+/// corner, and no corner of the frame is black. The lens is one pass,
+/// none at amount 0.
+#[test]
+fn lens_distortion_bends_by_its_formula() {
+    let (w, h) = (320.0f32, 180.0f32);
+    let scene = |lens: Option<LensDistortion>| {
+        let mut s = RenderScene::new();
+        for (x, y) in [(-4.0, 0.0), (0.0, 2.5)] {
+            s.add_sprite(Sprite {
+                position: Vec3::new(x, y, 0.0),
+                size: Vec2::splat(0.25),
+                color: [1.0; 4],
+                ..Default::default()
+            });
+        }
+        s.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
+        // Dark grey, so a black corner (beyond the image) shows.
+        s.environment.background = Background::Color(Vec3::splat(0.05));
+        s.post.tonemap = Tonemap::None;
+        s.post.lens_distortion = lens;
+        s
+    };
+    // The centroid of the white marker's pixels within 30 px of `near`, in
+    // pixels (a pixel's centre at +0.5), weighted by how far each is above
+    // the background (63 in sRGB).
+    let centroid = |img: &RgbaImage, near: Vec2| {
+        let (mut sum, mut n) = (Vec2::ZERO, 0.0);
+        for y in (near.y as i32 - 30).max(0)..(near.y as i32 + 30).min(h as i32) {
+            for x in (near.x as i32 - 30).max(0)..(near.x as i32 + 30).min(w as i32) {
+                let k = (luma(px(img, x as u32, y as u32)) - 63.0).max(0.0) / 192.0;
+                if k > 0.05 {
+                    sum += Vec2::new(x as f32 + 0.5, y as f32 + 0.5) * k;
+                    n += k;
+                }
+            }
+        }
+        assert!(n > 0.0, "nothing bright near {near}");
+        sum / n
+    };
+    // Where image point `p` (pixels) shows: the t along the ray from the
+    // centre with t (1 + amount t² r²) / (1 + max(amount, 0) R²) = 1, r²
+    // being p's squared distance over the half-diagonal's and R² the
+    // farthest corner's, by bisection.
+    let shown_at = |l: LensDistortion, p: Vec2| {
+        let c = l.center * Vec2::new(w, h);
+        let half = 0.25 * (w * w + h * h);
+        let r2 = (p - c).length_squared() / half;
+        let far = [(0.0, 0.0), (w, 0.0), (0.0, h), (w, h)]
+            .map(|(x, y)| (Vec2::new(x, y) - c).length_squared() / half)
+            .into_iter()
+            .fold(0.0, f32::max);
+        let (mut lo, mut hi) = (0.0f32, 2.0f32);
+        for _ in 0..40 {
+            let t = 0.5 * (lo + hi);
+            if t * (1.0 + l.amount * t * t * r2) / (1.0 + l.amount.max(0.0) * far) < 1.0 {
+                lo = t;
+            } else {
+                hi = t;
+            }
+        }
+        c + (p - c) * (0.5 * (lo + hi))
+    };
+    let (plain, off) = frame(&small(), &scene(None));
+    let marks = [
+        centroid(&plain, Vec2::new(80.0, 90.0)),
+        centroid(&plain, Vec2::new(160.0, 45.0)),
+    ];
+    let (_, zero) = frame(
+        &small(),
+        &scene(Some(LensDistortion {
+            amount: 0.0,
+            ..Default::default()
+        })),
+    );
+    assert_eq!(zero.graph_passes, off.graph_passes, "a lens of amount 0");
+    let cases = [
+        ("barrel", 0.5, Vec2::splat(0.5)),
+        ("pincushion", -0.5, Vec2::splat(0.5)),
+        ("barrel at the upper mark", 0.5, marks[1] / Vec2::new(w, h)),
+    ];
+    for (name, amount, center) in cases {
+        let lens = LensDistortion { amount, center };
+        let (bent, stats) = frame(&small(), &scene(Some(lens)));
+        assert_eq!(stats.graph_passes, off.graph_passes + 1, "{name}: one pass");
+        let corners = [(0, 0), (319, 0), (0, 179), (319, 179)].map(|(x, y)| px(&bent, x, y));
+        assert!(
+            corners.iter().all(|&p| p == px(&plain, 0, 0)),
+            "{name}: a corner is not the background: {corners:?}"
+        );
+        for &m in &marks {
+            let want = shown_at(lens, m);
+            let got = centroid(&bent, want);
+            println!("{name}: the mark at {m} shows at {got}, the formula {want}");
+            assert!(got.distance(want) < 1.0, "{name}: {m} at {got}, not {want}");
         }
     }
 }

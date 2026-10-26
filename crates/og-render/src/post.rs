@@ -185,6 +185,10 @@ pub(crate) struct StyliseUniform {
     /// same wherever the origin lies: x along world x (u), y along y (v),
     /// z along z as u, w along z as v.
     pub canvas_origin: [f32; 4],
+    /// Lens distortion ([`crate::LensDistortion`]): x the amount, y the
+    /// scale that keeps a barrel's farthest corner on the image, zw the
+    /// centre.
+    pub lens: [f32; 4],
 }
 
 /// The grid the surface patterns are measured from (metres): a whole
@@ -968,6 +972,7 @@ impl PostPasses {
                 FramePass::Fxaa => "fs",
                 FramePass::Paint => "fs_paint",
                 FramePass::Lines => "fs_lines",
+                FramePass::Lens => "fs_lens",
                 FramePass::Quantize => "fs_quantize",
                 FramePass::Upscale => "fs_upscale",
                 _ => unreachable!("not a pass after the tonemap"),
@@ -1534,10 +1539,13 @@ pub(crate) enum FramePass {
     Tonemap,
     /// The passes after the tonemap ([`chain_passes`]), each from one LDR
     /// target into the next, the last into the output: painterly
-    /// smoothing, hatching/halftone/ink lines, posterise and palette
-    /// quantisation, FXAA, and the pixel grid scaled up to the output.
+    /// smoothing, hatching/halftone/ink lines, lens distortion (after the
+    /// passes that read the depth, so their lines bend with the image),
+    /// posterise and palette quantisation, FXAA, and the pixel grid scaled
+    /// up to the output.
     Paint,
     Lines,
+    Lens,
     Quantize,
     /// FXAA over the tonemapped image (the GL tier's MSAA alternative).
     Fxaa,
@@ -1549,6 +1557,7 @@ pub(crate) fn chain_passes(passes: &[FramePass]) -> Vec<FramePass> {
     [
         FramePass::Paint,
         FramePass::Lines,
+        FramePass::Lens,
         FramePass::Quantize,
         FramePass::Fxaa,
         FramePass::Upscale,
@@ -1603,6 +1612,7 @@ impl FramePass {
             FramePass::DepthBands => "depth-bands".into(),
             FramePass::Paint => "paint".into(),
             FramePass::Lines => "lines".into(),
+            FramePass::Lens => "lens".into(),
             FramePass::Quantize => "quantize".into(),
             FramePass::Fxaa => "fxaa".into(),
             FramePass::Upscale => "upscale".into(),
@@ -2160,6 +2170,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             }
             FramePass::Paint
             | FramePass::Lines
+            | FramePass::Lens
             | FramePass::Quantize
             | FramePass::Fxaa
             | FramePass::Upscale => {
@@ -2807,6 +2818,7 @@ impl FrameGraph {
             }
             FramePass::Paint
             | FramePass::Lines
+            | FramePass::Lens
             | FramePass::Quantize
             | FramePass::Fxaa
             | FramePass::Upscale => {

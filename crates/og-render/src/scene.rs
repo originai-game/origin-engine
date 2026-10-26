@@ -887,6 +887,9 @@ pub struct PostEffects {
     pub color_adjust: Option<crate::ColorAdjust>,
     pub vignette: Option<Vignette>,
     pub chromatic_aberration: Option<ChromaticAberration>,
+    /// Barrel or pincushion distortion (a pass after the stylisation
+    /// passes that read the depth).
+    pub lens_distortion: Option<crate::LensDistortion>,
     pub film_grain: Option<FilmGrain>,
     /// Contrast-adaptive sharpening of the display image (three.js-style CAS
     /// over the graded, sRGB-encoded colour), its strength 0 to 1.

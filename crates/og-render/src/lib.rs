@@ -7331,6 +7331,10 @@ impl Renderer {
         if st.hatching.is_some() || st.halftone.is_some() || st.ink.is_some() {
             passes.push(FramePass::Lines);
         }
+        let lens = post_fx.lens_distortion.filter(|l| l.amount != 0.0);
+        if lens.is_some() {
+            passes.push(FramePass::Lens);
+        }
         if st.quantize.is_some() {
             passes.push(FramePass::Quantize);
         }
@@ -7508,6 +7512,20 @@ impl Renderer {
                     ht.map_or(0.0, |h| h.space.code()),
                 ],
                 canvas_origin,
+                lens: lens.map_or([0.0, 1.0, 0.5, 0.5], |l| {
+                    // The farthest corner's squared radius (1 for a centred
+                    // lens), which a barrel's scale keeps on the image.
+                    let size = glam::Vec2::new(w, h);
+                    let far = [0.0, 1.0]
+                        .into_iter()
+                        .flat_map(|x| [0.0, 1.0].map(|y| glam::Vec2::new(x, y)))
+                        .map(|corner| ((corner - l.center) * size).length_squared())
+                        .fold(0.0, f32::max)
+                        / (size * 0.5).length_squared();
+                    let amount = l.amount.clamp(-1.0, 1.0);
+                    let fit = 1.0 / (1.0 + amount.max(0.0) * far);
+                    [amount, fit, l.center.x, l.center.y]
+                }),
             };
             self.post.write_stylise(&self.queue, &u);
         }

@@ -1375,7 +1375,9 @@ Every effect is off until the game turns it on, as data:
   each frame that changes one re-bakes it on the CPU, about half a
   millisecond to a few, so a fade such as `post.saturation = -t` is
   fine and a slider moved on every frame of play is not),
-  `vignette`, `chromaticAberration`, `filmGrain`, `flash`, and a fixed shake of the
+  `vignette`, `chromaticAberration`, `lensDistortion` (barrel above 0,
+  pincushion below, `lensDistortionCenter`; fitted so no black edge
+  shows, the UI not bent), `filmGrain`, `flash`, and a fixed shake of the
   frame through `shakeTrauma` (an earthquake that lasts; a hit's shake is
   `og.camera.shake`, which decays by itself: og-feel §4). A game with fast
   motion wants `render: { antialias: "taa" }` in `og.game`.

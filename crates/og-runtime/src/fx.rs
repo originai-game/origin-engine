@@ -13,9 +13,9 @@ use og_ecs::{Entity, QueryDesc, World};
 use og_render::{
     AmbientOcclusion, AoMethod, AoResolution, Beam, CameraShake, ChromaticAberration, ColorAdjust,
     ColorCurve, ColorGrading, Curve, Decal, DepthOfField, DofQuality, FilmGrain, Glow, GodRays,
-    JointPalette, Light2d, Lighting2d, MeshHandle, MorphTargets, MotionBlur, Occluder2d, Outline,
-    ParticleBlend, ParticleSystem, RibbonUv, ScreenFlash, SkinData, SkinnedInstance, Trail,
-    TrailStyle, TrailStyleHandle, Vignette,
+    JointPalette, LensDistortion, Light2d, Lighting2d, MeshHandle, MorphTargets, MotionBlur,
+    Occluder2d, Outline, ParticleBlend, ParticleSystem, RibbonUv, ScreenFlash, SkinData,
+    SkinnedInstance, Trail, TrailStyle, TrailStyleHandle, Vignette,
 };
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -258,6 +258,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     post.color_adjust = None;
     post.vignette = None;
     post.chromatic_aberration = None;
+    post.lens_distortion = None;
     post.film_grain = None;
     post.sharpen = None;
     post.flash = None;
@@ -371,6 +372,13 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
         if aberration > 0.0 {
             post.chromatic_aberration = Some(ChromaticAberration {
                 intensity: aberration,
+            });
+        }
+        let lens = f(&p, "lensDistortion", 0.0);
+        if lens != 0.0 {
+            post.lens_distortion = Some(LensDistortion {
+                amount: lens,
+                center: vec2(&p["lensDistortionCenter"], Vec2::splat(0.5)),
             });
         }
         let grain = f(&p, "filmGrain", 0.0);

@@ -136,6 +136,7 @@ pub const SCENES: &[&str] = &[
     "terrain-scatter-unshadowed",
     "post-adjust",
     "post-neutral",
+    "post-lens",
 ];
 
 /// Scenes rendered natively only, beside [`SCENES`] (`og-gfx --all` takes
@@ -744,6 +745,16 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
                 intensity: 0.8,
             });
             g.scene.post.tonemap = Tonemap::Neutral;
+        }
+        // The spike's scene through a centred barrel lens (0.35): the
+        // checker floor's lines bow outwards, the frame fitted to its
+        // corners.
+        "post-lens" => {
+            g.scene = spike_gltf_scene()?;
+            g.scene.post.lens_distortion = Some(og_render::LensDistortion {
+                amount: 0.35,
+                ..Default::default()
+            });
         }
         other => {
             return Err(format!(

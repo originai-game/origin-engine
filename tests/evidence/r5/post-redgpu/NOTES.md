@@ -120,3 +120,59 @@ metal references are owed to the Mac lane (`OG_GFX_CAPTURE=<scene>`).
   the blue and red spheres and the gold row are deeper; under the night
   lights the floor's pools are more saturated with smaller white
   centres. The HUD is the same in both.
+
+## 3. Lens distortion (`PostEffects.lensDistortion`, `lensDistortionCenter`)
+
+- **What landed.** og-render `LensDistortion { amount, center }`
+  (`PostEffects::lens_distortion`) and a `lens` pass in the chain after
+  the tonemap (`FramePass::Lens`, `stylise.wgsl`'s `fs_lens`, its
+  parameters in the chain's uniform): each pixel samples the image at
+  `center + offset × (1 + amount r²) × fit`, bilinear (nearest under a
+  pixel grid), black beyond the image. The IDL's PostEffects gains the
+  two fields; og-runtime builds the struct when the amount is not 0.
+- **Decisions.** The plan's "one pass in fxpost.wgsl" (before the
+  tonemap) became a chain pass after `paint` and `lines`, the two passes
+  that read the depth-normal prepass at each pixel, so ink, hatching and
+  halftone bend with the image (before them, in fxpost or the tonemap,
+  they would be drawn from the unbent depth over a bent image), and
+  before `quantize`, so a palette stays exact after the bilinear
+  resampling; the overlay draws after the chain and is not bent.
+  RedGPU measures the radius in uv units, an ellipse on a 16:9 frame;
+  here it is in pixels, 1 at a centred lens's corners. RedGPU leaves
+  black corners under a barrel; here the scale `1 / (1 + amount R²)`, R
+  the farthest corner's radius, keeps that corner on the image, so a
+  barrel shows no black edge wherever its centre is (a pincushion only
+  pulls the image in). RedGPU's centre is an offset in CSS pixels times
+  the device pixel ratio; here it is a fraction of the frame.
+- **Tests.** og-tests `effects::lens_distortion_bends_by_its_formula`:
+  two white markers on a dark 320×180 frame, one on each axis, land
+  where the formula, solved in the test by bisection along the ray from
+  the centre, puts them, within 0.15 px: barrel 0.5 moves the left one
+  from x 88 to 64.7 and the upper one from y 45 to 26.3, pincushion -0.5
+  to 80.5 and 43.5; with the centre on the upper marker it stays put and
+  the other goes to (61.2, 106.8) by the fit to the farthest corner, and
+  no corner is black. The lens is one graph pass, none at amount 0.
+  Measured against wrong implementations: the radius in uv units
+  (RedGPU's) puts the left marker at 61.4 (fails), the fit to a centred
+  lens only leaves two corners black with the centre moved (fails).
+  New gfx scene `post-lens`.
+- `crates/og-tests/references/vulkan-cpu/post-lens.png` —
+  `OG_GFX_CAPTURE=post-lens cargo test -p og-tests --test tests
+  gfx::post_lens` (sha256 690be64227ffe9e8). Read beside metal's
+  `gltf-reference`: the robots and drones magnified at the centre, the
+  floor's far edge and the horizon bowed upwards into arcs, the floor's
+  side edges curved, the corners still showing floor and sky (fitted,
+  no black).
+- `lens-run.png` — `og run templates/fx-showcase --size 1280x720
+  --commands "0.5:station:materials;2.0:screenshot:plain.png;
+  2.05:set:og.PostEffects.lensDistortion=0.4;2.2:screenshot:barrel.png;
+  2.25:set:og.PostEffects.lensDistortion=-0.4;2.4:screenshot:pincushion.png;
+  2.45:set:og.PostEffects.lensDistortion=0.4;2.45:set:og.PostEffects.lensDistortionCenter=0.3,0.6;
+  2.6:screenshot:barrel-off-centre.png;2.65:quit"`, the four frames at
+  half size (rev e75d9d4c+dirty, 2026-10-26, sha256 204296f94f27088f).
+  Read: top left the board as it is; top right barrel 0.4, the board
+  magnified with its rows bulging and the backdrop reaching the corners;
+  bottom left pincushion -0.4, the end spheres stretched outwards and the
+  rows bowed in at their ends; bottom right barrel 0.4 centred at (0.3,
+  0.6), the lower left spheres swollen and the right side squeezed, no
+  black edge. The HUD and the og.ui badge are not bent in any.

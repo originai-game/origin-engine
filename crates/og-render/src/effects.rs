@@ -568,6 +568,39 @@ impl Default for ChromaticAberration {
     }
 }
 
+/// Barrel or pincushion distortion of the frame, as a camera lens bends it
+/// (RedGPU's lensDistortion, with the radius measured in pixels on any
+/// aspect and the frame fitted to its corners): each pixel shows the image
+/// at `center + offset × (1 + amount r²) / (1 + max(amount, 0) R²)`, `r`
+/// being 1 at the corners of a centred lens and `R` the farthest corner's,
+/// so a barrel keeps that corner on the image and shows no black edge
+/// wherever its centre is (a pincushion only pulls the image in); beyond
+/// the image, with the centre off the frame, is black.
+///
+/// One pass after the stylisation passes that read the depth (paint, ink
+/// and hatching), so their lines bend with the image, and before the
+/// quantisation, so a palette stays exact; nearest under a pixel grid.
+/// The overlay is not bent. Visual only: what is picked under the
+/// pointer is the undistorted frame's.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LensDistortion {
+    /// Above 0 barrel (the centre bulges, straight lines bow outwards: a
+    /// wide-angle or fisheye lens), below 0 pincushion (lines bow inwards:
+    /// a telephoto), -1..1.
+    pub amount: f32,
+    /// The lens's centre in fractions of the frame from the top left.
+    pub center: Vec2,
+}
+
+impl Default for LensDistortion {
+    fn default() -> Self {
+        LensDistortion {
+            amount: 0.15,
+            center: Vec2::splat(0.5),
+        }
+    }
+}
+
 /// Film grain: luminance-weighted noise, a new pattern every
 /// [`crate::RenderScene::tick`] (so a given tick always has the same grain).
 #[derive(Clone, Copy, Debug, PartialEq)]

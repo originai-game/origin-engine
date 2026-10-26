@@ -197,7 +197,7 @@ lighting falls back to a forward tile table built on the CPU).
   exposure; height fog, lit as a medium when volumetric; baked lightmaps
   and light volumes (below).
 - Post: bloom, tonemap (ACES, AgX or Khronos PBR Neutral), colour grading LUT (a photo
-  editor's colour adjustments baked into it on the CPU), SSAO (GTAO on
+  editor's colour adjustments baked into it on the CPU), lens distortion, SSAO (GTAO on
   WebGPU), antialiasing by tier: TAA on the full tier (optional
   Catmull-Rom history and sharpening), 4× MSAA on WebGL2, FXAA on any tier
   and where the HDR target cannot be multisampled.
