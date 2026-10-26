@@ -7,6 +7,15 @@ One version across `@origingame/engine` (the knowledge inside it as
 bump carries API additions or changes, one line each, written at the merge
 that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
+## Unreleased
+
+- release: the pack is a GitHub Actions matrix (`.github/workflows/release.yml`):
+  the wasm, the linux-x64 addon, the engine and create-game packages on one
+  Linux job, the darwin-arm64 and win32-x64 addons on their runners
+  (`build.sh --native`, `pack.sh --native`), one manifest over the five
+  tarballs; `scripts/release.sh fetch <run-id>` brings them to the machine
+  that runs `verify` and `publish` (docs/release.md §3). No API change.
+
 ## 0.6.0 — 2026-10-26
 
 - three.js parity for ports, from the Grand View Garden engine fork

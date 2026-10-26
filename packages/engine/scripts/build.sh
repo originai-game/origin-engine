@@ -15,7 +15,15 @@
 #   OG_RELEASE=1 sh scripts/build.sh --linux-x64
 #                                           also the Linux x86_64 addon and og for
 #                                           executors (cargo zigbuild against glibc
-#                                           2.31, from macOS or Linux); always release
+#                                           2.31, from macOS or Linux; on a Linux
+#                                           x86_64 host that is the only native
+#                                           build); always release
+#   OG_RELEASE=1 sh scripts/build.sh --native [--linux-x64]
+#                                           the native addon and og only, no wasm:
+#                                           what a platform's job of the release
+#                                           workflow builds (.github/workflows/
+#                                           release.yml; the wasm is the same bytes
+#                                           on every platform and is built once)
 #
 # Three modes (AGENTS.md §Build and gate discipline, docs/ci.md):
 # - OG_GATE=1 (scripts/check.sh's bun-test): the addon and og are the dev
@@ -41,29 +49,46 @@ cd "$root"
 gate_wasm="${OG_WASM_OUT:-$target/og-wasm}"
 exe=""
 case "$(uname -s)" in MINGW*|MSYS*) exe=.exe ;; esac
+native_only=0; linux_x64=0
+for a in "$@"; do
+  case "$a" in
+    --native) native_only=1 ;;
+    --linux-x64) linux_x64=1 ;;
+    *) echo "build.sh: unknown argument '$a' (takes --native and --linux-x64)" >&2; exit 2 ;;
+  esac
+done
+if [ "$native_only" = 1 ] && [ "${OG_RELEASE:-}" != 1 ]; then
+  echo "build.sh: --native is a release build: OG_RELEASE=1 sh scripts/build.sh --native" >&2
+  exit 2
+fi
 # A release ships only the wasm-opt output the size gate measures: without
-# wasm-opt it stops here, before compiling anything.
-if [ "${OG_RELEASE:-}" = 1 ] && ! command -v wasm-opt >/dev/null 2>&1; then
+# wasm-opt it stops here, before compiling anything (--native builds no wasm).
+if [ "${OG_RELEASE:-}" = 1 ] && [ "$native_only" != 1 ] && ! command -v wasm-opt >/dev/null 2>&1; then
   echo "build.sh: OG_RELEASE=1 needs wasm-opt on PATH: a release must not ship un-optimised wasm (dist/web-publish, single and lanes) that the size gate never measured; scripts/install-tools.sh installs it" >&2
   exit 1
 fi
-if [ "${OG_GATE:-}" != 1 ] && [ "${OG_RELEASE:-}" != 1 ] && [ "${1:-}" != --linux-x64 ] \
+if [ "${OG_GATE:-}" != 1 ] && [ "${OG_RELEASE:-}" != 1 ] && [ "$linux_x64" != 1 ] \
     && [ -s "$gate_wasm/opt-all.txt" ] && [ -f "$target/debug/og$exe" ] \
     && { [ -f "$target/debug/libog_host_node.dylib" ] || [ -f "$target/debug/libog_host_node.so" ] || [ -f "$target/debug/og_host_node.dll" ]; }; then
   echo "build.sh: the gate has built here, so this is the OG_GATE=1 build (dev addon and og, the gate's wasm); OG_RELEASE=1 sh scripts/build.sh builds release" >&2
   OG_GATE=1
 fi
+platform="$(node -p 'process.platform + "-" + process.arch' 2>/dev/null || bun -e 'console.log(process.platform + "-" + process.arch)')"
+# --linux-x64 on a Linux x86_64 host: the zigbuild below (glibc 2.31) is the
+# one native build; the host's own would be the same addon against the
+# host's newer glibc, overwritten a moment later.
+host_build=1
+[ "$linux_x64" = 1 ] && [ "$platform" = linux-x64 ] && [ "${OG_GATE:-}" != 1 ] && host_build=0
 if [ "${OG_GATE:-}" = 1 ]; then
   cargo build -q -p og-host-node -p og-cli
   bindir="$target/debug"
   profile=dev
 else
   og_lock_acquire "$target" "packages/engine/scripts/build.sh (release)"
-  cargo build --release -q -p og-host-node -p og-cli
+  [ "$host_build" = 0 ] || cargo build --release -q -p og-host-node -p og-cli
   bindir="$target/release"
   profile=release
 fi
-platform="$(node -p 'process.platform + "-" + process.arch' 2>/dev/null || bun -e 'console.log(process.platform + "-" + process.arch)')"
 mkdir -p "$here/native" "$here/dist/web" "$here/dist/web-publish"
 echo "$profile" > "$here/native/build-profile"
 addon="$here/native/origin-engine.$platform.node"
@@ -71,7 +96,9 @@ addon="$here/native/origin-engine.$platform.node"
 # inode, and an executable rewritten in place by cp is then killed on start
 # (SIGKILL, exit 137, nothing printed) once its new bytes no longer match.
 rm -f "$addon" "$here/native/og.$platform"
-if [ -f "$bindir/libog_host_node.dylib" ]; then
+if [ "$host_build" = 0 ]; then
+  :
+elif [ -f "$bindir/libog_host_node.dylib" ]; then
   cp "$bindir/libog_host_node.dylib" "$addon"
   # ld-27037 can leave the string table off 8-byte alignment, which dyld refuses.
   codesign --remove-signature "$addon"
@@ -85,13 +112,16 @@ else
   echo "build.sh: no native addon in $bindir" >&2
   exit 1
 fi
-cp "$bindir/og$exe" "$here/native/og.$platform"
-if [ "${1:-}" = --linux-x64 ]; then
+[ "$host_build" = 0 ] || cp "$bindir/og$exe" "$here/native/og.$platform"
+if [ "$linux_x64" = 1 ]; then
   triple=x86_64-unknown-linux-gnu
   cargo zigbuild --release -q -p og-host-node -p og-cli --target "$triple.2.31"
   cp "$target/$triple/release/libog_host_node.so" "$here/native/origin-engine.linux-x64.node"
   cp "$target/$triple/release/og" "$here/native/og.linux-x64"
 fi
+# --native: the addon and og are built; the wasm is another job's (the
+# release workflow) or an earlier build's.
+[ "$native_only" != 1 ] || exit 0
 # The web host twice: every member (dist/web), then a publish build that keeps
 # only the player-facing probe members (dist/web-publish, `og build --publish`).
 # Both builds write the same og_host_web.wasm, so each is bound before the next.

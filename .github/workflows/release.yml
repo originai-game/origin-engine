@@ -1,0 +1,145 @@
+# The release pack as a matrix (docs/release.md §3): the wasm is the same
+# bytes on every platform, so one Linux job builds it (with the linux-x64
+# addon and og by cargo zigbuild, the engine package with its knowledge/,
+# create-game), and the macOS and Windows jobs build only their native addon
+# and og (`build.sh --native`, `pack.sh --native`). The assemble job puts the
+# five tarballs together under one manifest. Nothing here publishes: the
+# tarballs come back to a machine with `scripts/release.sh fetch <run-id>`,
+# and `verify` then `publish` run there as before, by hand (docs/release.md
+# §3). Run it from the Actions tab or `gh workflow run release.yml --ref
+# main`; its logic stays in the scripts so a local pack is the same.
+name: release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  # .cargo/config.toml's sccache is for the shared local machine.
+  RUSTC_WRAPPER: ""
+  # One build per runner: no machine-wide queue to wait in (scripts/lock.sh).
+  OG_GATE_MACHINE_LOCK: "0"
+
+jobs:
+  # The native addon and og of the platforms the Linux job cannot cross-build.
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            platform: darwin-arm64
+          - os: windows-latest
+            platform: win32-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: false
+          rustflags: ""
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-${{ matrix.platform }}
+          cache-on-failure: true
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Build the ${{ matrix.platform }} addon and og (release)
+        run: OG_RELEASE=1 sh packages/engine/scripts/build.sh --native
+      - name: Pack @origingame/engine-${{ matrix.platform }}
+        run: sh packages/engine/scripts/pack.sh --native
+      - uses: actions/upload-artifact@v4
+        with:
+          name: engine-${{ matrix.platform }}
+          path: packages/engine/dist/pack/*.tgz
+          if-no-files-found: error
+          retention-days: 14
+
+  # The wasm (every variant, wasm-opt), the linux-x64 addon and og, the
+  # engine package and create-game, in the gate's container (the same Debian
+  # as ci.yml, provisioned the same way) plus zig for the cross-build.
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    container:
+      image: debian:trixie
+      options: --init
+      volumes:
+        - /usr/share/dotnet:/host/dotnet
+        - /usr/local/lib/android:/host/android
+        - /opt/ghc:/host/ghc
+        - /opt/hostedtoolcache/CodeQL:/host/codeql
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Git for the checkout
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends git ca-certificates >/dev/null
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/provision
+        with:
+          cache-key: release-trixie
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.0
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-zigbuild@0.23.4
+      - name: Pack the wasm, linux-x64, the engine and create-game
+        run: scripts/release.sh pack
+      - name: Version
+        id: version
+        run: echo "version=$(bun scripts/release-bump.ts --print)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: dist/release/${{ steps.version.outputs.version }}/*.tgz
+          if-no-files-found: error
+          retention-days: 14
+      - name: Disk
+        if: always()
+        run: df -h "$GITHUB_WORKSPACE" | tail -1; du -sh target 2>/dev/null || true
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+  # The five tarballs under one manifest (scripts/release.sh manifest), and
+  # the install test's host half on this runner as a smoke of the Linux
+  # tarballs (no renderer here: frames unchecked; the machine that publishes
+  # runs `verify`, host and container, on what it fetched).
+  assemble:
+    needs: [native, web]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist/release/${{ needs.web.outputs.version }}
+          merge-multiple: true
+      - name: Manifest
+        run: scripts/release.sh manifest "dist/release/${{ needs.web.outputs.version }}"
+      - name: Install test (host, from the tarballs)
+        run: bun tests/install/run.ts --from "dist/release/${{ needs.web.outputs.version }}" --version "${{ needs.web.outputs.version }}" --host-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ needs.web.outputs.version }}
+          path: |
+            dist/release/${{ needs.web.outputs.version }}/*.tgz
+            dist/release/${{ needs.web.outputs.version }}/manifest.json
+          if-no-files-found: error
+          retention-days: 30

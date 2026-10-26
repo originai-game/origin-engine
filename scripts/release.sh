@@ -5,8 +5,15 @@
 #   scripts/release.sh check                    every occurrence of the version equals packages/engine's
 #   scripts/release.sh bump <version>           write the version everywhere (scripts/release-bump.ts), Cargo.lock through cargo update
 #   scripts/release.sh pack                     OG_RELEASE=1 packages/engine/scripts/pack.sh --linux-x64 (the engine with its knowledge/,
-#                                               the two platform packages), then @origingame/create-game: dist/release/<version>/*.tgz and
-#                                               manifest.json (sizes, sha256, the commit built from)
+#                                               this machine's platform package and linux-x64's), then @origingame/create-game:
+#                                               dist/release/<version>/*.tgz and manifest.json (sizes, sha256, the commit built from).
+#                                               Since 0.6.0 this is the release workflow's job (.github/workflows/release.yml: the wasm
+#                                               and the linux-x64 addon on one Linux runner, the darwin-arm64 and win32-x64 addons on
+#                                               their runners, `pack.sh --native`), not a machine's; by hand it still packs here
+#   scripts/release.sh manifest <dir>           write <dir>/manifest.json over the tarballs in <dir> (what pack ends with; the workflow's
+#                                               assemble job runs it over every job's tarballs)
+#   scripts/release.sh fetch <run-id>           download the release workflow run's `release-<version>` artifact (gh run download) into
+#                                               dist/release/<version>/, where verify and publish read it
 #   scripts/release.sh verify [--registry] [--host-only] [--container-only] [--instabox]
 #                                               the install test (tests/install/run.ts) from the tarballs (or, --registry, from npm) on this
 #                                               machine and in the linux-x64 container; --instabox runs it once more inside an InstaBox
@@ -64,9 +71,26 @@ cmd_pack() {
   (cd packages/engine && sh scripts/pack.sh --linux-x64) || { og_err "release: packages/engine/scripts/pack.sh failed"; return 1; }
   cp packages/engine/dist/pack/*.tgz "$out/" || return 1
   (cd packages/create && bun scripts/pack-template.ts >/dev/null && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null) || { og_err "release: packing @origingame/create-game failed"; return 1; }
-  local n tgz
-  n=0; for tgz in "$out"/*.tgz; do [ -e "$tgz" ] && n=$((n + 1)); done
-  [ "$n" -eq 4 ] || { og_err "release: expected 4 tarballs in $out, found $n"; ls "$out"; return 1; }
+  cmd_manifest "$out" || return 1
+  og_say "release: packed $v (${out#"$OG_ROOT"/}/manifest.json)"
+}
+
+# The manifest over a directory of tarballs: the engine, create-game and at
+# least one platform package (pack on a machine gives its own and linux-x64's;
+# the workflow's web job gives linux-x64's and its assemble job every one).
+cmd_manifest() {
+  local out="${1:?scripts/release.sh manifest <dir>}" v
+  out="$(cd "$out" 2>/dev/null && pwd)" || { og_err "release: no directory $1"; return 1; }
+  v="$(version)"
+  local n tgz platforms
+  n=0; platforms=0
+  for tgz in "$out"/*.tgz; do
+    [ -e "$tgz" ] || continue
+    n=$((n + 1))
+    case "$(basename "$tgz")" in origingame-engine-*-"$v".tgz) platforms=$((platforms + 1)) ;; esac
+  done
+  [ -f "$out/origingame-engine-$v.tgz" ] && [ -f "$out/origingame-create-game-$v.tgz" ] && [ "$platforms" -ge 1 ] \
+    || { og_err "release: $out needs origingame-engine-$v.tgz, origingame-create-game-$v.tgz and a platform package; it has $n tarballs:"; ls "$out" >&2; return 1; }
   # shellcheck disable=SC2016 # the bun script takes its arguments from argv
   bun -e '
     const { readdirSync, readFileSync, statSync, writeFileSync } = require("node:fs");
@@ -82,7 +106,22 @@ cmd_pack() {
     for (const f of files) console.log(`${f.name}  ${f.bytes} bytes  sha256 ${f.sha256}`);
     if (dirty) console.error("release: note: the working tree was dirty when these were packed; publish will refuse them until a clean tree is packed");
   ' "$out" "$v" || return 1
-  og_say "release: packed $v (${out#"$OG_ROOT"/}/manifest.json)"
+}
+
+# The workflow run's artifact, into the directory pack would have filled, so
+# verify and publish go on as before. The run's manifest names the commit the
+# runners checked out; publish holds HEAD to it as to a local pack's.
+cmd_fetch() {
+  local run="${1:?scripts/release.sh fetch <run-id>}" v out
+  v="$(version)"; out="$(out_dir "$v")"
+  og_need gh || return 1
+  rm -rf "$out"; mkdir -p "$out"
+  gh run download "$run" -n "release-$v" -D "$out" || { og_err "release: gh run download $run -n release-$v failed (is the run a release.yml run of $v that finished?)"; return 1; }
+  [ -f "$out/manifest.json" ] || { og_err "release: the artifact has no manifest.json"; ls "$out" >&2; return 1; }
+  # Verification is this machine's to do: the artifact's manifest carries none.
+  # shellcheck disable=SC2016 # the bun script takes its argument from argv
+  bun -e 'const f=process.argv[1],fs=require("node:fs");const m=JSON.parse(fs.readFileSync(f,"utf8"));m.verified={};fs.writeFileSync(f,JSON.stringify(m,null,2)+"\n");for(const x of m.files)console.log(`${x.name}  ${x.bytes} bytes  sha256 ${x.sha256}`);console.log(`commit ${m.commit}${m.dirty?" (dirty)":""}`)' "$out/manifest.json" || return 1
+  og_say "release: fetched run $run into ${out#"$OG_ROOT"/}/; now scripts/release.sh verify"
 }
 
 cmd_verify() {
@@ -192,6 +231,8 @@ case "$verb" in
   check) cmd_check ;;
   bump) cmd_bump "$@" ;;
   pack) cmd_pack ;;
+  manifest) cmd_manifest "$@" ;;
+  fetch) cmd_fetch "$@" ;;
   verify) cmd_verify "$@" ;;
   publish) cmd_publish "$@" ;;
   -h|--help|help|"") usage; [ -n "$verb" ] || exit 2 ;;

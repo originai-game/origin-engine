@@ -324,6 +324,20 @@ by hand, `scripts/perf.sh --measure`: a measurement, not a baseline check,
 uploads are `continue-on-error`, so the account's artifact quota never
 fails a lane.
 
+A second workflow, `.github/workflows/release.yml` (`workflow_dispatch`
+only, no secrets, nothing published), is the release pack since 0.6.0
+(docs/release.md §3): a `native` matrix (`macos-14` for darwin-arm64,
+`windows-latest` for win32-x64) runs `OG_RELEASE=1 build.sh --native` and
+`pack.sh --native`, the addon and `og` only; a `web` job in the same
+trixie container as the gate, provisioned the same way plus zig 0.17.0 and
+cargo-zigbuild 0.23.4, runs `scripts/release.sh pack` (the five wasm
+variants, the linux-x64 addon by zigbuild, the engine package with its
+knowledge/, create-game); `assemble` writes the manifest over all five
+tarballs (`scripts/release.sh manifest`), runs the install test's host
+half from them on the runner (no renderer: frames unchecked) and uploads
+`release-<version>`. `scripts/release.sh fetch <run-id>` brings that
+artifact to the machine that runs `verify` and `publish`.
+
 The process does not change: the functional lane for every merge, `--all`
 and web-reference (or `scripts/wave-end.sh`) at a wave's end, by the one
 session that merges (AGENTS.md §Build and gate discipline), is what a

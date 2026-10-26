@@ -4,6 +4,11 @@
 #
 #   sh scripts/pack.sh               this machine's packages
 #   sh scripts/pack.sh --linux-x64   also @origingame/engine-linux-x64
+#   sh scripts/pack.sh --native [--linux-x64]
+#                                    only the platform packages, from a
+#                                    build.sh --native (no wasm, no
+#                                    @origingame/engine): a platform's job of
+#                                    the release workflow
 #
 # What ships is release: this runs OG_RELEASE=1 scripts/build.sh (with the
 # same arguments) first, and refuses a native/ that build.sh did not record
@@ -21,6 +26,8 @@ here="$(cd "$(dirname "$0")/.." && pwd)"
 root="$(cd "$here/../.." && pwd)"
 out="$here/dist/pack"
 version="$(bun -e 'console.log(require(process.argv[1]).version)' "$here/package.json")"
+native_only=0
+for a in "$@"; do [ "$a" != --native ] || native_only=1; done
 OG_RELEASE=1 sh "$here/scripts/build.sh" "$@"
 if [ "$(cat "$here/native/build-profile" 2>/dev/null)" != release ]; then
   echo "pack: native/ is not a release build (native/build-profile says '$(cat "$here/native/build-profile" 2>/dev/null)'); run OG_RELEASE=1 sh scripts/build.sh" >&2
@@ -28,7 +35,7 @@ if [ "$(cat "$here/native/build-profile" 2>/dev/null)" != release ]; then
 fi
 rm -rf "$out"
 mkdir -p "$out/stage"
-for f in dist/web/origin-engine_bg.wasm dist/web-publish/origin-engine_bg.wasm dist/web-publish-2d/origin-engine_bg.wasm dist/web-publish-2d/origin-engine.js \
+[ "$native_only" = 1 ] || for f in dist/web/origin-engine_bg.wasm dist/web-publish/origin-engine_bg.wasm dist/web-publish-2d/origin-engine_bg.wasm dist/web-publish-2d/origin-engine.js \
     dist/web-publish/origin-engine-lanes_bg.wasm dist/web-publish/origin-engine-lanes.js dist/web-publish/snippets \
     dist/web-publish-2d/origin-engine-lanes_bg.wasm dist/web-publish-2d/origin-engine-lanes.js dist/web-publish-2d/snippets; do
   [ -e "$here/$f" ] || { echo "pack: $here/$f is missing; run OG_RELEASE=1 sh scripts/build.sh first" >&2; exit 1; }
@@ -73,6 +80,14 @@ JSON
   (cd "$stage" && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null)
   packed="$packed $name"
 done
+if [ "$native_only" = 1 ]; then
+  rm -rf "$out/stage"
+  [ -n "$packed" ] || { echo "pack: --native packed nothing: no addon in native/" >&2; exit 1; }
+  for t in "$out"/*.tgz; do
+    printf '%s  %s bytes  sha256 %s\n' "$(basename "$t")" "$(wc -c < "$t" | tr -d ' ')" "$(sum "$t")"
+  done
+  exit 0
+fi
 # The knowledge (packages/knowledge's publishable files, the template's text
 # into its scaffold/template first) ships inside the main package as
 # knowledge/ (docs/release.md §2); the copy is ignored by Git.
