@@ -11,7 +11,7 @@ use og_cook::cook::stats::{Budgets, cook_report_json};
 use og_cook::cook::{CookOptions, cook_project};
 use std::path::PathBuf;
 
-mod support;
+use crate::support;
 
 fn asset<'a>(report: &'a serde_json::Value, source: &str) -> &'a serde_json::Value {
     report["assets"]

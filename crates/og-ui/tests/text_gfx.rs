@@ -14,7 +14,7 @@
 //! base), a missing glyph (asserted 0), or the kerned and unkerned rows
 //! coming out the same width (asserted different).
 
-mod support;
+use crate::support;
 
 use og_cook::runtime::{Bundle, CookedFont};
 use og_cook::{CookOptions, cook_project};

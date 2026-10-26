@@ -14,7 +14,7 @@
 //! not limit the fall or wall jumps do not push away; corner correction
 //! never nudges (or nudges when disabled); events are missing.
 
-mod support;
+use crate::support;
 
 use og_core::glam::{Quat, Vec2, Vec3};
 use og_ecs::{Entity, World};

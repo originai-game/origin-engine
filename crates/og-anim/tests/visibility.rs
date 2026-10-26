@@ -10,7 +10,7 @@
 //! parent, a mirrored or retargeted clip that drops the channel, or flags
 //! the state block does not keep (a restored world draws every node).
 
-mod support;
+use crate::support;
 
 use og_anim::*;
 use og_core::glam::{Quat, Vec3};

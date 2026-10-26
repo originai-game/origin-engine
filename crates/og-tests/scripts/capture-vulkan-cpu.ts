@@ -4,11 +4,11 @@
 //
 //   bun install --cwd tools/bench        # once: the pinned e2b SDK
 //   CARGO_TARGET_DIR=target/agent-render cargo zigbuild --release \
-//     --target x86_64-unknown-linux-gnu.2.31 -p og-tests --bin og-gfx --test gfx --test effects
+//     --target x86_64-unknown-linux-gnu.2.31 -p og-tests --bin og-gfx --test tests
 //   bun crates/og-tests/scripts/capture-vulkan-cpu.ts
 //
 // In the sandbox: `og-gfx --all --capture` renders every scene on lavapipe;
-// the gfx test binary then runs against those frames (determinism and the
+// og-tests' test binary then runs its gfx module against those frames (determinism and the
 // behaviour tests on the CI tier), the effects test binary runs the E1
 // behaviour tests (the 600-tick particle determinism on lavapipe among
 // them); a short timing run follows. The frames go
@@ -32,10 +32,10 @@ const newest = (name: string) =>
     .filter((f) => new RegExp(`^${name}-[0-9a-f]+$`).test(f))
     .map((f) => `${deps}/${f}`)
     .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0];
-const testBin = newest("gfx");
-if (!testBin) throw new Error(`no gfx test binary in ${deps}: build with --test gfx`);
-const effectsBin = newest("effects");
-if (!effectsBin) throw new Error(`no effects test binary in ${deps}: build with --test effects`);
+// og-tests' integration tests are one binary (tests/main.rs); its gfx and
+// effects modules run as two steps through libtest's name filter.
+const testBin = newest("tests");
+if (!testBin) throw new Error(`no og-tests test binary in ${deps}: build with --test tests`);
 const assets = `${root}/crates/og-tests/assets`;
 const files = ["trickster.glb", "dropship.glb", ...readdirSync(`${assets}/fonts`).map((f) => `fonts/${f}`)];
 
@@ -48,7 +48,6 @@ try {
   await sb.files.write([
     { path: "/tmp/og/og-gfx", data: await Bun.file(`${linux}/og-gfx`).arrayBuffer() },
     { path: "/tmp/og/gfx-test", data: await Bun.file(testBin).arrayBuffer() },
-    { path: "/tmp/og/effects-test", data: await Bun.file(effectsBin).arrayBuffer() },
     ...(await Promise.all(files.map(async (f) => ({ path: `/tmp/og/assets/${f}`, data: await Bun.file(`${assets}/${f}`).arrayBuffer() })))),
   ]);
   const probe = await sb.commands.run("ls /usr/share/vulkan/icd.d/lvp_icd*.json 2>/dev/null | head -1; nproc; (vulkaninfo --summary 2>/dev/null | grep -E 'deviceName|driverInfo' | head -2) || true");
@@ -66,8 +65,8 @@ try {
     return r;
   };
   await step("capture", "chmod +x /tmp/og/og-gfx /tmp/og/gfx-test && cd /tmp/og && ./og-gfx --all --capture /tmp/og/refs");
-  await step("tests", "cd /tmp/og && ./gfx-test --test-threads=2 --nocapture 2>&1 | grep -E '^(gfx |test |pixels|shadowed|partially|auto:|manual:|bgra|[0-9.]+% of|[0-9]+ pixels)|panicked|test result' ", { OG_TEST_REFERENCES: "/tmp/og/refs" });
-  await step("effects", "chmod +x /tmp/og/effects-test && cd /tmp/og && ./effects-test --test-threads=2 --nocapture 2>&1 | grep -vE '^\\s*$' | tail -120");
+  await step("tests", "cd /tmp/og && ./gfx-test gfx:: --test-threads=2 --nocapture 2>&1 | grep -E '^(gfx |test |pixels|shadowed|partially|auto:|manual:|bgra|[0-9.]+% of|[0-9]+ pixels)|panicked|test result' ", { OG_TEST_REFERENCES: "/tmp/og/refs" });
+  await step("effects", "cd /tmp/og && ./gfx-test effects:: --test-threads=2 --nocapture 2>&1 | grep -vE '^\\s*$' | tail -120");
   await step("timing", "cd /tmp/og && ./og-gfx gltf-reference sprites-20k particles --frames 10");
   const listing = await sb.commands.run("ls /tmp/og/refs/vulkan-cpu");
   const out = `${root}/crates/og-tests/references/vulkan-cpu`;

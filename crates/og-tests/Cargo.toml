@@ -6,6 +6,7 @@ license.workspace = true
 rust-version.workspace = true
 description = "Origin Engine tests: the gfx reference harness (scenes rendered headless, compared with committed frames)."
 publish = false
+autotests = false
 
 [dependencies]
 og-render = { path = "../og-render", features = ["gltf", "bake"] }
@@ -27,3 +28,11 @@ og-bake = { path = "../og-bake" }
 [[bin]]
 name = "og-gfx"
 path = "src/bin/og-gfx.rs"
+
+[[test]]
+name = "tests"
+path = "tests/main.rs"
+
+[[test]]
+name = "render"
+path = "tests/render.rs"

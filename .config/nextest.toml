@@ -47,8 +47,8 @@ threads-required = 2
 # walk are the longest single tests. Started last, they set the wall time.
 [[profile.default.overrides]]
 filter = '''
-package(og-tests) | binary_id(og-cook::animation) | binary_id(og-cook::template)
-| binary_id(og-physics::pile) | binary_id(og-anim::walk)
+package(og-tests) | (package(og-cook) & test(/^(animation|template)::/))
+| binary_id(og-physics::pile) | (package(og-anim) & test(/^walk::/))
 '''
 priority = 50
 

@@ -19,7 +19,7 @@ use og_cook::cook::{CookOptions, cook_project};
 use og_cook::runtime::{Bundle, CookedAnimation};
 use std::path::PathBuf;
 
-mod support;
+use crate::support;
 
 fn project(name: &str, settings: Option<&str>) -> PathBuf {
     let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))

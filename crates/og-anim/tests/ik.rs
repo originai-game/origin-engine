@@ -8,7 +8,7 @@
 //! misses), the world target not taken into the skeleton's frame, an
 //! unreachable target producing NaNs or a stretched bone, `reached` lying.
 
-mod support;
+use crate::support;
 
 use og_anim::*;
 use og_core::glam::{Quat, Vec3};

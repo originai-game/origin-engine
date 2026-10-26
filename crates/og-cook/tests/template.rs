@@ -35,7 +35,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-mod support;
+use crate::support;
 
 use support::{copy_dir, template_assets};
 

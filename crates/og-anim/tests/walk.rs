@@ -15,7 +15,7 @@
 //! heads follow their targets and are held at their angles when the target
 //! goes behind.
 
-mod support;
+use crate::support;
 
 use og_anim::*;
 use og_ecs::{Entity, World};

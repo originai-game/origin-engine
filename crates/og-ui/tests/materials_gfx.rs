@@ -13,7 +13,7 @@
 //! square wrong), the picture
 //! out of proportion, the pinch or the two-finger scroll not applied.
 
-mod support;
+use crate::support;
 
 use og_cook::runtime::{Bundle, CookedFont};
 use og_cook::{CookOptions, cook_project};

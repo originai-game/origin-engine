@@ -14,7 +14,7 @@
 //! square shows), or the lift reorders screen layers above the UI (the gold
 //! square covers the blue one).
 
-mod support;
+use crate::support;
 
 use og_core::glam::{Vec2, Vec3};
 use og_render::{

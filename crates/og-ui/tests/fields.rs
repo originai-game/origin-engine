@@ -45,7 +45,7 @@
 //!   it, or forgetting which of its two places the caret took →
 //!   `arrows_move_visually_across_a_bidi_edge`
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec2;
 use og_ui::*;

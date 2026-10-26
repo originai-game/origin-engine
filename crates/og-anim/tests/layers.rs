@@ -7,7 +7,7 @@
 //! phase (its clip drifts from the leader's), the leader taken from the
 //! wrong layer, a transition inside a group restarting at phase 0.
 
-mod support;
+use crate::support;
 
 use og_anim::*;
 use og_core::glam::Quat;

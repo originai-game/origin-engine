@@ -9,7 +9,7 @@
 //! Ended is sent every tick, or never; a sensor blocks what enters it, or
 //! reports the wrong entity; layers are ignored.
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec3;
 use og_ecs::Entity;

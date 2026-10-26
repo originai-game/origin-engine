@@ -11,7 +11,7 @@
 //! keeps holding; a world anchor (`other` 0) is not a fixed point; the 2D
 //! profile builds 3D frames (its hinge drifts out of the plane or fails).
 
-mod support;
+use crate::support;
 
 use og_core::glam::{Quat, Vec3};
 use og_ecs::Entity;

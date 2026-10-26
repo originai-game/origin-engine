@@ -17,7 +17,7 @@
 //! Evidence: `$OG_EVIDENCE_DIR/M6/chunks.json` (resident bytes, chunk
 //! loads and drops, the PCM hash of both paths).
 
-mod support;
+use crate::support;
 
 use og_audio::{
     AudioSource, Bus, HeadlessMode, HeadlessSink, Music, MusicBeat, SoundBank, chunk_distances,

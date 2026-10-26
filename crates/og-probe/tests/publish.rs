@@ -1,8 +1,8 @@
 //! A `publish` build keeps only the player-facing members
-//! (`cargo test -p og-probe --features publish --test publish`).
+//! (`cargo test -p og-probe --features publish --test tests publish::`).
 #![cfg(feature = "publish")]
 
-mod support;
+use crate::support;
 
 use og_probe::{BUILD, MEMBERS, PUBLISH_MEMBERS};
 use serde_json::json;

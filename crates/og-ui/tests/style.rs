@@ -23,7 +23,7 @@
 //!   the first half second of taps), or take presses while the panel
 //!   itself is still popping in.
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec2;
 use og_render::{ColorSpace, Mips, RenderScene, TextureData, TextureHandle};

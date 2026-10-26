@@ -16,7 +16,7 @@
 //! amount at 1; the state lives outside the og.physics state block (a
 //! restore diverges); the 2D profile simulates it.
 
-mod support;
+use crate::support;
 
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::{Entity, World};

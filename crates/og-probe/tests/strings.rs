@@ -4,7 +4,7 @@
 //! and `dump_world`'s hash moves with it.
 #![cfg(not(feature = "publish"))]
 
-mod support;
+use crate::support;
 
 use og_core::{Reflect, Str};
 use og_probe::Payload;

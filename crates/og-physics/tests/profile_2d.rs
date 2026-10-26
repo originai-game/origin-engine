@@ -6,7 +6,7 @@
 //! quaternion round trip (the circle slides instead of rolling, or its
 //! quaternion leaves the z axis); a 3D-only shape is silently accepted.
 
-mod support;
+use crate::support;
 
 use og_core::glam::{Quat, Vec3};
 use og_core::math::quat_from_axis_angle;

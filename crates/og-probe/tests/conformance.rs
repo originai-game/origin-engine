@@ -7,7 +7,7 @@
 //! `$CARGO_TARGET_TMPDIR/conformance-transcript.json`.
 #![cfg(not(feature = "publish"))]
 
-mod support;
+use crate::support;
 
 use og_ecs::SystemDesc;
 use og_probe::{MEMBERS, Rebuilt, Reloader};

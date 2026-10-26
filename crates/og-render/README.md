@@ -714,10 +714,10 @@ eight are counted. Each was checked by breaking the code it covers.
 ```sh
 export CARGO_TARGET_DIR=$PWD/target/agent-render   # any target dir works
 cargo test --release -p og-tests                   # gfx + the wasm32 compile check
-OG_GFX_CAPTURE=1 cargo test --release -p og-tests --test gfx              # re-record this tier
-OG_GFX_CAPTURE=spheres-20k cargo test --release -p og-tests --test gfx    # one scene
-cargo test --release -p og-tests --test perf -- --ignored perf            # perf vs crates/og-tests/perf/
-OG_PERF_RECORD=1 cargo test --release -p og-tests --test perf -- --ignored perf --test-threads=1
+OG_GFX_CAPTURE=1 cargo test --release -p og-tests --test tests gfx::      # re-record this tier
+OG_GFX_CAPTURE=spheres-20k cargo test --release -p og-tests --test tests gfx::  # one scene
+cargo test --release -p og-tests --test tests -- --ignored perf::          # perf vs crates/og-tests/perf/
+OG_PERF_RECORD=1 cargo test --release -p og-tests --test tests -- --ignored perf:: --test-threads=1
 cargo run --release -p og-tests --bin og-gfx -- --all --frames 120        # stats, timings, RMSE
 cargo run --release -p og-tests --bin og-gfx -- --costs                   # the feature-cost table
 OG_GFX_DEBUG_CASCADES=1 cargo run --release -p og-tests --bin og-gfx -- cascades-200m --out c.png
@@ -726,7 +726,7 @@ OG_GFX_DEBUG_CASCADES=1 cargo run --release -p og-tests --bin og-gfx -- cascades
 **The `vulkan-cpu` tier** (Mesa lavapipe, what CI runs on) is recorded in the
 platform's E2B probe sandbox: cross-build `og-gfx` and the gfx test binary
 with `cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31 -p
-og-tests --bin og-gfx --test gfx`, then `bun
+og-tests --bin og-gfx --test tests`, then `bun
 crates/og-tests/scripts/capture-vulkan-cpu.ts` (after `bun install --cwd
 tools/bench` once). One sandbox run (about a minute) captures every scene,
 runs the gfx tests against the captured frames (all pass, RMSE 0: lavapipe

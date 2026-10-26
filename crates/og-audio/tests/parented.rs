@@ -18,7 +18,7 @@
 //! the Doppler shift a carried source gets (its pitch bits, and the shift
 //! itself, which the code before Doppler never sent).
 
-mod support;
+use crate::support;
 
 use og_audio::{
     AudioListener, AudioSource, AudioStream, Op, Parent, ReverbZone, SoundBank, Transform,

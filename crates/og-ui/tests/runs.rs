@@ -27,7 +27,7 @@
 //!   or its runs drawn from the wrong face when they move →
 //!   `a_moving_span_that_mixes_faces_moves`
 
-mod support;
+use crate::support;
 
 use og_i18n::Direction;
 use og_render::RenderScene;

@@ -10,7 +10,7 @@
 //! it; a dynamic body falls through; a missing field or a bad one is
 //! accepted silently; the 2D profile takes it.
 
-mod support;
+use crate::support;
 
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::World;

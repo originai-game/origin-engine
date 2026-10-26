@@ -13,7 +13,7 @@
 //! - Latin text or a CJK line with no rule to apply breaks differently
 //!   than before → `text_without_a_rule_breaks_as_before`
 
-mod support;
+use crate::support;
 
 use og_ui::*;
 use support::*;

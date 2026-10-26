@@ -24,7 +24,7 @@
 //! - the edit state does not survive a save and restore →
 //!   `the_edit_state_is_saved_and_restored`
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec2;
 use og_ui::*;

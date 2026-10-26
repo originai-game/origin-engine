@@ -12,7 +12,7 @@
 //! sends no og.Splash; buoyancy does not hold up a light body or holds up a
 //! heavy one; the 2D line ignores characters.
 
-mod support;
+use crate::support;
 
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::World;

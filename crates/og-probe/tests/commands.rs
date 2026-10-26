@@ -4,7 +4,7 @@
 //! `$CARGO_TARGET_TMPDIR/scripted-run-dump-world.json`.
 #![cfg(not(feature = "publish"))]
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec3;
 use og_probe::command::{CORE_ACTIONS, parse};

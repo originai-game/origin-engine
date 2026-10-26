@@ -40,7 +40,7 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 use std::time::Instant;
 
-mod support;
+use crate::support;
 
 fn evidence_dir() -> PathBuf {
     let base = std::env::var_os("OG_EVIDENCE_DIR")

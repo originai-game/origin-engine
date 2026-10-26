@@ -13,7 +13,7 @@
 //! kinematic body is taken as moving wrongly; a restored snapshot gives
 //! other values.
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec3;
 use og_ecs::{Entity, World};

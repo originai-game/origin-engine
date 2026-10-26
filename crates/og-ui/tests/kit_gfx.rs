@@ -6,7 +6,7 @@
 //! focus rings with their gap; the d-pad, stick and action buttons; a dialog
 //! over a scrim with an open select menu over it; a toast.
 
-mod support;
+use crate::support;
 
 use og_render::{RenderTarget, Renderer};
 use og_ui::*;

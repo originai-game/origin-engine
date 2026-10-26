@@ -9,7 +9,7 @@
 //! shape, or one re-registered unchanged disturbs the simulation; a restore
 //! into a world that has run on keeps the newer rapier state.
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec3;
 use og_ecs::{Entity, World};

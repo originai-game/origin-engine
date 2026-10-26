@@ -14,7 +14,7 @@
 //! - the new state is outside the world, so a second run or a restore
 //!   mid-run differs → `a_run_with_sinc_virtual_voices_and_retriggers_is_the_same_twice_and_across_a_restore`
 
-mod support;
+use crate::support;
 
 use og_audio::command::Op;
 use og_audio::schema::resampler;

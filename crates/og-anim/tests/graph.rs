@@ -3,7 +3,7 @@
 //! follow the parameter, the additive layer adds its difference, and bad
 //! text is refused with its line.
 
-mod support;
+use crate::support;
 
 use og_anim::*;
 use og_ecs::{Entity, World, WorldDesc};

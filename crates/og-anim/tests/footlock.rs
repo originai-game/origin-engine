@@ -13,7 +13,7 @@
 //! foot drags behind the walker), the lock state outside the state block (a
 //! restore mid-plant moves the foot).
 
-mod support;
+use crate::support;
 
 use og_anim::*;
 use og_core::glam::Vec3;

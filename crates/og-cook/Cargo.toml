@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 description = "Origin Engine cook: assets/ to cooked/ .ogb blobs (meshopt meshes, KTX2 Basis textures, QOA audio, MSDF fonts, scene tables), and the runtime loaders that read them."
+autotests = false
 
 [features]
 default = ["cook", "basis", "transcode"]
@@ -72,3 +73,7 @@ image = { workspace = true }
 name = "og-cook"
 path = "src/bin/og-cook.rs"
 required-features = ["cook"]
+
+[[test]]
+name = "tests"
+path = "tests/main.rs"
