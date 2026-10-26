@@ -121,7 +121,9 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   color += surface_local_lights(in.clip.xy, s, in.world, n, v);
   var ssao_scale = 1.0;
   var ao_all = 1.0;  // also scales the emitted light (pbr_fs.wgsl)
-  if (scatter_fx.ao.x > 0.5) {
+  // Only with PostEffects.aoDirect above 0: without it the copies keep their
+  // look of before the AO reached them.
+  if (scatter_fx.ao.x > 0.5 && scatter_fx.ao.z > 0.0) {
     let ssao = textureSampleLevel(scatter_ssao, scatter_fx_sampler, in.clip.xy * scatter_fx.screen.zw, 0.0).r;
     ssao_scale = mix(mix(1.0, ssao, scatter_fx.ao.y), mix(0.35, 1.0, ssao), scatter_fx.ao.z);
     ao_all = mix(1.0, mix(0.35, 1.0, ssao), scatter_fx.ao.z);
@@ -142,7 +144,7 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   if (material.flags.y >= 0.0) {
     ibl_scale *= mix(1.0, textureSample(ao_tex, material_sampler, in.uv).r, material.flags.y);
   }
-  color += (kd_ibl * irradiance * s.albedo + prefiltered * (s.f0 * lut.x + lut.y)) * ibl_scale;
+  color += (kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * ibl_scale;
   color += emissive * ao_all;
   return vec4<f32>(apply_fog(color, in.world), out_a);
 }

@@ -2625,9 +2625,6 @@ impl Renderer {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::MipmapFilterMode::Linear,
-            // 16x anisotropic filtering (three.js parity: ANISO = max supported). Grazing-angle ground, roofs and
-            // bark otherwise blur to the mip a trilinear filter picks for the steepest axis.
-            anisotropy_clamp: 16,
             ..Default::default()
         });
         // Sprites and the UI's images filter anisotropically where the
@@ -3826,9 +3823,7 @@ impl Renderer {
                 transparent: material.is_transparent() || transmissive,
                 blend: material.is_transparent(),
                 transmissive,
-                // Also alpha-tested materials: they cast through the shadow
-                // pass that reads the material (fs_dissolve), cut by alpha.
-                dissolve: material.dissolves() || material.alphaTest > 0.0,
+                dissolve: material.dissolves(),
                 effects: material.toon != 0
                     || material.rimIntensity > 0.0
                     || material.flash > 0.0

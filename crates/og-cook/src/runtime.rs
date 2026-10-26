@@ -1357,25 +1357,14 @@ impl CookedModel {
             normal_scale: m.normal_scale,
             emissive: m.emissive,
             emissive_texture: tex(m.emissive_texture),
-            alpha_mode: match m.alpha_mode {
-                alpha::MASK => AlphaMode::Mask {
+            alpha_mode: if m.alpha_mode == alpha::MASK {
+                AlphaMode::Mask {
                     cutoff: m.alpha_cutoff,
-                },
-                alpha::BLEND => AlphaMode::Blend,
-                _ => AlphaMode::Opaque,
+                }
+            } else {
+                AlphaMode::Opaque
             },
         }
-    }
-
-    /// Whether material `index` needs the standard material to draw as cooked:
-    /// physical extensions, BLEND, doubleSided or an occlusion map, which the
-    /// glTF-shaped [`Material`] has no place for.
-    pub fn needs_standard(&self, index: usize) -> bool {
-        let c = &self.materials[index];
-        c.physical.present != 0
-            || c.alpha_mode == alpha::BLEND
-            || c.double_sided
-            || c.occlusion_texture.is_some()
     }
 
     /// Material `index` with its physical extensions, as a standard
@@ -1383,15 +1372,6 @@ impl CookedModel {
     /// any (and the same as [`CookedModel::material`] for one without).
     pub fn standard_material(&self, index: usize, textures: &[TextureHandle]) -> StandardMaterial {
         let mut m = StandardMaterial::from(&self.material(index, textures));
-        let c = &self.materials[index];
-        // glTF doubleSided and the occlusion map: the glTF-shaped Material has no place for them.
-        if c.double_sided {
-            m.side = 2;
-        }
-        if let Some(t) = c.occlusion_texture.and_then(|i| textures.get(i).copied()) {
-            m.aoMap = t.slot();
-            m.aoMapIntensity = c.occlusion_strength;
-        }
         self.materials[index]
             .physical
             .map(|i| textures.get(i).copied())
@@ -1426,96 +1406,22 @@ impl CookedModel {
     /// [`CookedModel::add_to`] with textures of either kind (transcoded to
     /// the device's format: [`CookedTexture::to_texture_source`]).
     pub fn add_to_with(&self, scene: &mut RenderScene, textures: &[TextureSource]) -> ModelParts {
-        self.add_to_shared(scene, textures, &[], None).0
-    }
-
-    /// [`CookedModel::add_to_with`], sharing with the models added before
-    /// through `shared`: a texture of the same key (`texture_keys`, in
-    /// texture order: its cooked bytes' hash; the cook writes a copy of an
-    /// image for every glTF that uses it), a material of the
-    /// same name and value, and a mesh of the same vertices and indices
-    /// reuse that model's handle, so copies of one tree in many models draw
-    /// in one instanced batch and upload once. Also answers each
-    /// primitive's mesh.
-    pub fn add_to_shared(
-        &self,
-        scene: &mut RenderScene,
-        textures: &[TextureSource],
-        texture_keys: &[u64],
-        mut shared: Option<&mut SharedParts>,
-    ) -> (ModelParts, Vec<MeshHandle>) {
         let handles: Vec<_> = textures
             .iter()
-            .enumerate()
-            .map(|(i, t)| {
-                let id = texture_keys.get(i).copied();
-                match (shared.as_deref_mut(), id) {
-                    (Some(s), Some(id)) => *s
-                        .textures
-                        .entry(id)
-                        .or_insert_with(|| scene.add_texture_source(t.clone())),
-                    _ => scene.add_texture_source(t.clone()),
-                }
-            })
+            .map(|t| scene.add_texture_source(t.clone()))
             .collect();
-        // A material the glTF-shaped Material cannot hold (physical
-        // extensions, BLEND, doubleSided, an occlusion map) is added as the
-        // standard material it draws as, the others in their glTF shape.
+        // A material with physical extensions is added as the standard
+        // material it draws as, the others in their glTF shape.
         let materials: Vec<MaterialHandle> = (0..self.materials.len())
-            .map(|i| {
-                let value = match self.needs_standard(i) {
-                    false => SharedMaterial::Gltf(self.material(i, &handles)),
-                    true => SharedMaterial::Standard(self.standard_material(i, &handles)),
-                };
-                let name = &self.materials[i].name;
-                if let Some(s) = shared.as_deref_mut()
-                    && let Some((_, h)) = s
-                        .materials
-                        .get(name)
-                        .and_then(|l| l.iter().find(|(v, _)| *v == value))
-                {
-                    return *h;
-                }
-                let h = match &value {
-                    SharedMaterial::Gltf(m) => scene.add_material(m.clone()),
-                    SharedMaterial::Standard(m) => scene.add_standard_material(*m),
-                };
-                if let Some(s) = shared.as_deref_mut() {
-                    s.materials
-                        .entry(name.clone())
-                        .or_default()
-                        .push((value, h));
-                }
-                h
+            .map(|i| match self.materials[i].physical.present {
+                0 => scene.add_material(self.material(i, &handles)),
+                _ => scene.add_standard_material(self.standard_material(i, &handles)),
             })
             .collect();
         let meshes: Vec<MeshHandle> = self
             .primitives
             .iter()
-            .map(|p| {
-                let mesh = p.mesh(0);
-                let Some(s) = shared
-                    .as_deref_mut()
-                    .filter(|_| mesh.vertices.len() <= SHARED_MESH_VERTICES)
-                else {
-                    return scene.add_mesh(mesh);
-                };
-                use std::hash::{Hash, Hasher};
-                let mut hasher = std::collections::hash_map::DefaultHasher::new();
-                bytemuck::cast_slice::<_, u8>(&mesh.vertices).hash(&mut hasher);
-                mesh.indices.hash(&mut hasher);
-                let key = hasher.finish();
-                let same = s.meshes.get(&key).and_then(|hs| {
-                    hs.iter()
-                        .copied()
-                        .find(|h| scene.mesh(*h).is_some_and(|m| *m == mesh))
-                });
-                same.unwrap_or_else(|| {
-                    let h = scene.add_mesh(mesh);
-                    s.meshes.entry(key).or_default().push(h);
-                    h
-                })
-            })
+            .map(|p| scene.add_mesh(p.mesh(0)))
             .collect();
         let world = self.node_world();
         let node_shown = self.node_shown();
@@ -1533,42 +1439,12 @@ impl CookedModel {
                 }
             }
         }
-        (
-            ModelParts {
-                parts,
-                nodes,
-                shown,
-            },
-            meshes,
-        )
+        ModelParts {
+            parts,
+            nodes,
+            shown,
+        }
     }
-}
-
-/// Meshes bigger than this are not compared ([`SharedParts`]): one of a kind.
-const SHARED_MESH_VERTICES: usize = 65_536;
-
-/// What models added with [`CookedModel::add_to_shared`] share.
-#[derive(Default)]
-pub struct SharedParts {
-    textures: std::collections::HashMap<u64, TextureHandle>,
-    materials: std::collections::HashMap<String, Vec<(SharedMaterial, MaterialHandle)>>,
-    meshes: std::collections::HashMap<u64, Vec<MeshHandle>>,
-}
-
-impl SharedParts {
-    /// Whether a texture of this key is already in the scene (its source
-    /// then need not be decoded again).
-    pub fn has_texture(&self, key: u64) -> bool {
-        self.textures.contains_key(&key)
-    }
-}
-
-/// A material as models compare it: short-lived, built once per material.
-#[allow(clippy::large_enum_variant)]
-#[derive(PartialEq)]
-enum SharedMaterial {
-    Gltf(Material),
-    Standard(StandardMaterial),
 }
 
 fn oct_decode(x: f32, y: f32) -> Vec3 {

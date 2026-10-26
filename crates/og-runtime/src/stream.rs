@@ -736,7 +736,7 @@ fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                     super::geometry::adopt_cooked_bvh(&mut rs, *h, prim)?;
                 }
                 for (i, (h, _)) in materials.iter().enumerate().take(model.materials.len()) {
-                    if !model.needs_standard(i) {
+                    if model.materials[i].physical.present == 0 {
                         rs.scene.set_material(*h, model.material(i, textures));
                     } else {
                         rs.scene

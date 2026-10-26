@@ -230,7 +230,7 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let r = reflect(-v, n);
   let prefiltered = reflected_light(r, p, s.roughness * frame.params.y);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  color += (kd_ibl * irradiance * s.albedo + prefiltered * (s.f0 * lut.x + lut.y)) * frame.params.x;
+  color += (kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * frame.params.x;
 
   if (frame.light_color.w > 0.5 && frame.light_color.w < 1.5) {
     let c = cascade_index(p);
