@@ -1,0 +1,196 @@
+required: og-render og-host-web
+   Compiling og-core-derive v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-core-derive)
+   Compiling og-core v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-core)
+   Compiling og-ecs v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ecs)
+   Compiling og-render v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-render)
+   Compiling og-tilemap v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tilemap)
+   Compiling og-i18n v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-i18n)
+   Compiling og-net v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-net)
+   Compiling og-geom v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-geom)
+   Compiling og-tween v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tween)
+   Compiling og-nav v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-nav)
+   Compiling og-input v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-input)
+   Compiling og-anim v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-anim)
+   Compiling og-audio v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-audio)
+   Compiling og-physics v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-physics)
+   Compiling og-timeline v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-timeline)
+   Compiling og-probe v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-probe)
+   Compiling og-ai v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ai)
+   Compiling og-cook v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-cook)
+   Compiling og-ui v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ui)
+   Compiling og-runtime v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-runtime)
+   Compiling og-host-web v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-host-web)
+    Finished `wasm` profile [optimized] target(s) in 1m 09s
+publish variant publish: og-host-web (--no-default-features --features publish,physics3d,shaping)
+   Compiling og-core v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-core)
+   Compiling og-ecs v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ecs)
+   Compiling og-render v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-render)
+   Compiling og-tilemap v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tilemap)
+   Compiling og-i18n v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-i18n)
+   Compiling og-net v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-net)
+   Compiling og-geom v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-geom)
+   Compiling og-tween v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tween)
+   Compiling og-input v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-input)
+   Compiling og-nav v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-nav)
+   Compiling og-anim v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-anim)
+   Compiling og-audio v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-audio)
+   Compiling og-physics v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-physics)
+   Compiling og-timeline v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-timeline)
+   Compiling og-probe v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-probe)
+   Compiling og-ai v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ai)
+   Compiling og-ui v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ui)
+   Compiling og-cook v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-cook)
+   Compiling og-runtime v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-runtime)
+   Compiling og-host-web v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-host-web)
+    Finished `wasm` profile [optimized] target(s) in 53.80s
+publish variant publish2d: og-host-web (--no-default-features --features publish,physics2d,profile2d,shaping)
+   Compiling og-core v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-core)
+   Compiling og-ecs v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ecs)
+   Compiling og-render v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-render)
+   Compiling og-i18n v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-i18n)
+   Compiling og-tilemap v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tilemap)
+   Compiling og-geom v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-geom)
+   Compiling og-net v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-net)
+   Compiling og-tween v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tween)
+   Compiling og-nav v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-nav)
+   Compiling og-input v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-input)
+   Compiling og-anim v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-anim)
+   Compiling og-audio v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-audio)
+   Compiling og-physics v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-physics)
+   Compiling og-timeline v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-timeline)
+   Compiling og-probe v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-probe)
+   Compiling og-ai v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ai)
+   Compiling og-ui v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ui)
+   Compiling og-cook v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-cook)
+   Compiling og-runtime v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-runtime)
+warning: field `physics_heightfields` is never read
+   --> crates/og-runtime/src/engine.rs:482:9
+    |
+416 | pub(crate) struct State {
+    |                   ----- field in this struct
+...
+482 |     pub physics_heightfields: IdMap<u64, og_physics::HeightfieldDesc>,
+    |         ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `og-runtime` (lib) generated 1 warning
+   Compiling og-host-web v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-host-web)
+    Finished `wasm` profile [optimized] target(s) in 42.58s
+lanes variant lanes2d: og-host-web (--no-default-features --features publish,physics2d,profile2d,shaping, wasm atomics: scripts/wasm-lanes.sh)
+   Compiling og-core-derive v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-core-derive)
+warning: unstable feature specified for `-Ctarget-feature`: `atomics`
+  |
+  = note: this feature is not stably supported; its behavior can change in the future
+
+warning: `wgpu-hal` (lib) generated 1 warning
+warning: `og-lanes` (lib) generated 1 warning (1 duplicate)
+warning: `og-blob` (lib) generated 1 warning (1 duplicate)
+warning: `og-api` (lib) generated 1 warning (1 duplicate)
+   Compiling og-core v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-core)
+   Compiling og-ecs v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ecs)
+   Compiling og-render v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-render)
+   Compiling og-i18n v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-i18n)
+   Compiling og-tilemap v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tilemap)
+   Compiling og-geom v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-geom)
+   Compiling og-net v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-net)
+warning: `og-core` (lib) generated 1 warning (1 duplicate)
+warning: `og-i18n` (lib) generated 1 warning (1 duplicate)
+warning: `og-tilemap` (lib) generated 1 warning (1 duplicate)
+warning: `og-net` (lib) generated 1 warning (1 duplicate)
+warning: `og-geom` (lib) generated 1 warning (1 duplicate)
+   Compiling og-tween v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tween)
+   Compiling og-nav v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-nav)
+   Compiling og-input v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-input)
+   Compiling og-audio v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-audio)
+   Compiling og-anim v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-anim)
+   Compiling og-physics v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-physics)
+warning: `og-ecs` (lib) generated 1 warning (1 duplicate)
+   Compiling og-timeline v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-timeline)
+warning: `og-tween` (lib) generated 1 warning (1 duplicate)
+   Compiling og-probe v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-probe)
+warning: `og-input` (lib) generated 1 warning (1 duplicate)
+warning: `og-timeline` (lib) generated 1 warning (1 duplicate)
+warning: `og-audio` (lib) generated 1 warning (1 duplicate)
+   Compiling og-ai v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ai)
+warning: `og-nav` (lib) generated 1 warning (1 duplicate)
+warning: `og-probe` (lib) generated 1 warning (1 duplicate)
+warning: `og-ai` (lib) generated 1 warning (1 duplicate)
+warning: `og-anim` (lib) generated 1 warning (1 duplicate)
+   Compiling og-ui v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ui)
+   Compiling og-cook v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-cook)
+warning: `og-render` (lib) generated 1 warning (1 duplicate)
+warning: `og-cook` (lib) generated 1 warning (1 duplicate)
+warning: `og-ui` (lib) generated 1 warning (1 duplicate)
+   Compiling og-runtime v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-runtime)
+warning: `og-physics` (lib) generated 1 warning (1 duplicate)
+warning: field `physics_heightfields` is never read
+   --> crates/og-runtime/src/engine.rs:482:9
+    |
+416 | pub(crate) struct State {
+    |                   ----- field in this struct
+...
+482 |     pub physics_heightfields: IdMap<u64, og_physics::HeightfieldDesc>,
+    |         ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `og-runtime` (lib) generated 2 warnings (1 duplicate)
+   Compiling og-host-web v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-host-web)
+warning: `og-host-web` (lib) generated 1 warning (1 duplicate)
+    Finished `wasm` profile [optimized] target(s) in 52.75s
+lanes variant lanes: og-host-web (--no-default-features --features publish,physics3d,shaping, wasm atomics: scripts/wasm-lanes.sh)
+   Compiling og-core v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-core)
+warning: unstable feature specified for `-Ctarget-feature`: `atomics`
+  |
+  = note: this feature is not stably supported; its behavior can change in the future
+
+warning: `wgpu-hal` (lib) generated 1 warning
+warning: `og-lanes` (lib) generated 1 warning (1 duplicate)
+warning: `og-blob` (lib) generated 1 warning (1 duplicate)
+warning: `og-api` (lib) generated 1 warning (1 duplicate)
+   Compiling og-ecs v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ecs)
+   Compiling og-render v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-render)
+   Compiling og-i18n v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-i18n)
+   Compiling og-tilemap v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tilemap)
+   Compiling og-geom v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-geom)
+   Compiling og-net v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-net)
+warning: `og-core` (lib) generated 1 warning (1 duplicate)
+warning: `og-i18n` (lib) generated 1 warning (1 duplicate)
+warning: `og-tilemap` (lib) generated 1 warning (1 duplicate)
+warning: `og-net` (lib) generated 1 warning (1 duplicate)
+warning: `og-geom` (lib) generated 1 warning (1 duplicate)
+   Compiling og-tween v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tween)
+   Compiling og-nav v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-nav)
+   Compiling og-input v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-input)
+   Compiling og-audio v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-audio)
+   Compiling og-anim v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-anim)
+   Compiling og-physics v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-physics)
+warning: `og-ecs` (lib) generated 1 warning (1 duplicate)
+   Compiling og-timeline v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-timeline)
+warning: `og-tween` (lib) generated 1 warning (1 duplicate)
+   Compiling og-probe v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-probe)
+warning: `og-input` (lib) generated 1 warning (1 duplicate)
+warning: `og-timeline` (lib) generated 1 warning (1 duplicate)
+warning: `og-audio` (lib) generated 1 warning (1 duplicate)
+   Compiling og-ai v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ai)
+warning: `og-nav` (lib) generated 1 warning (1 duplicate)
+warning: `og-probe` (lib) generated 1 warning (1 duplicate)
+warning: `og-ai` (lib) generated 1 warning (1 duplicate)
+warning: `og-anim` (lib) generated 1 warning (1 duplicate)
+   Compiling og-ui v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ui)
+   Compiling og-cook v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-cook)
+warning: `og-render` (lib) generated 1 warning (1 duplicate)
+warning: `og-cook` (lib) generated 1 warning (1 duplicate)
+warning: `og-ui` (lib) generated 1 warning (1 duplicate)
+   Compiling og-runtime v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-runtime)
+warning: `og-physics` (lib) generated 1 warning (1 duplicate)
+warning: `og-runtime` (lib) generated 1 warning (1 duplicate)
+   Compiling og-host-web v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-host-web)
+warning: `og-host-web` (lib) generated 1 warning (1 duplicate)
+    Finished `wasm` profile [optimized] target(s) in 56.67s
+artifact: /Volumes/app/origin-engine-measure/target/og-wasm/raw/og_host_web-lanes.wasm
+artifact: /Volumes/app/origin-engine-measure/target/og-wasm/raw/og_host_web-lanes2d.wasm
+artifact: /Volumes/app/origin-engine-measure/target/og-wasm/raw/og_host_web-publish.wasm
+artifact: /Volumes/app/origin-engine-measure/target/og-wasm/raw/og_host_web-publish2d.wasm
+artifact: /Volumes/app/origin-engine-measure/target/og-wasm/raw/og_host_web.wasm

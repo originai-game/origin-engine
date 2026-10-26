@@ -154,10 +154,12 @@ og_unchanged() {
 
 # og_crate_dirs CARGO-TREE-ARGS...: the repository-relative directories of
 # the workspace crates in a dependency closure (`cargo tree`); "crates" when
-# cargo cannot say, so a rule never misses a crate.
+# cargo cannot say, so a rule never misses a crate. `--locked`: a rule reads
+# the tree, it never rewrites a lockfile (a stale one made the determinism
+# tool's `--locked` build run on a lock this query had regenerated).
 og_crate_dirs() {
   local out
-  out="$(cargo tree "$@" --prefix none 2>/dev/null | awk -v root="$OG_ROOT/" '
+  out="$(cargo tree --locked "$@" --prefix none 2>/dev/null | awk -v root="$OG_ROOT/" '
     { i = index($0, "(" root); if (i) { s = substr($0, i + 1); print substr(s, 1, index(s, ")") - 1) } }
   ' | sort -u | sed "s|^$OG_ROOT/||")"
   if [ -n "$out" ]; then printf '%s\n' "$out"; else echo crates; fi
