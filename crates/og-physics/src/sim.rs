@@ -21,6 +21,7 @@ use og_core::{Error, ErrorKind, IdMap, Result};
 use og_ecs::Entity;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
 fn invalid(what: &str, value: f32) -> Error {
     Error::new(
@@ -86,15 +87,29 @@ fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp::SharedSha
         cached.insert(key, built.clone());
         return Ok(built);
     }
-    let mesh = shared.meshes.get(&c.mesh).cloned().ok_or_else(|| {
-        Error::new(
-            ErrorKind::NotFound,
-            format!(
-                "og.Collider.mesh {} was not registered with PhysicsSystem::set_mesh",
-                c.mesh
-            ),
-        )
-    })?;
+    // A mesh nobody registered is asked of the host's mesh source (its
+    // geometry, built on first use and kept like a registered one).
+    let mesh = match shared.meshes.get(&c.mesh).cloned() {
+        Some(m) => m,
+        None => {
+            let found = shared
+                .mesh_source
+                .clone()
+                .and_then(|f| f(c.mesh))
+                .map(Arc::new);
+            let m = found.ok_or_else(|| {
+                Error::new(
+                    ErrorKind::NotFound,
+                    format!(
+                        "og.Collider.mesh {} was not registered with PhysicsSystem::set_mesh",
+                        c.mesh
+                    ),
+                )
+            })?;
+            shared.meshes.insert(c.mesh, m.clone());
+            m
+        }
+    };
     let built = from_mesh(c.shape, &mesh, s).map_err(|e| e.context(format!("mesh {}", c.mesh)))?;
     let cached = cache(shared);
     if cached.len() >= SHAPE_CACHE_LIMIT {
