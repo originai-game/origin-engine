@@ -277,7 +277,15 @@ fn every_ogt_file_in_the_repository_round_trips() {
     files.sort();
     let mut round_tripped = 0;
     for path in &files {
-        let text = std::fs::read_to_string(path).unwrap();
+        // The walk includes gitignored copies another gate step rewrites
+        // while this test runs (`packages/create`'s packed `template/`,
+        // a project's `cooked/`); one that vanished between the listing
+        // and the read is not a file of the repository.
+        let text = match std::fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(e) => panic!("{}: {e}", path.display()),
+        };
         let expect_line = text
             .lines()
             .find_map(|l| l.strip_prefix("# expect: "))
