@@ -130,6 +130,14 @@ the engine's version.
 
 ## 3. Versions and the release procedure
 
+**0.6.0 released (2026-10-26 UTC).** All five npm packages are published;
+`v0.6.0` is pushed at `34b492d0`. Metal functional and corrected Rumpus
+frames passed; the exact tarballs passed Mac/Linux/Windows consumer checks,
+and registry verification passed on all three. Shipping 3D lanes wasm
+is 3,252,580 B Brotli q11 (77.55% of 4 MiB). The rejected water-AO candidate,
+accepted pre-existing frame differences, hashes and checks are recorded in
+the [release receipt](../tests/evidence/release/0.6.0.md).
+
 **0.5.0 released (2026-10-25 UTC).** All five npm packages are published;
 `v0.5.0` is pushed at `ebe7f08b`. Metal functional and Rumpus passed,
 the exact tarballs passed Mac/Linux/Windows consumer checks, and registry
