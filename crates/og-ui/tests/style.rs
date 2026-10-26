@@ -1192,3 +1192,90 @@ fn an_instant_panel_is_settled_and_answering_on_its_first_tick_and_enters_when_i
     menu_step(&mut plain, InputFrame::default());
     assert_ne!(rect_of(&plain, "Last"), last_end, "a plain panel enters");
 }
+
+/// A style with its `xl` step's ramp line given a fifth number, the CJK
+/// tracking in em (`None`: four numbers).
+fn cjk_tracked(cjk: Option<f32>) -> Theme {
+    let ramp = match cjk {
+        Some(k) => format!("ramp {{\n  xl 30 36 40 0 {k}\n}}\n"),
+        None => "ramp {\n  xl 30 36 40 0\n}\n".to_string(),
+    };
+    parse_style(&format!("{STYLE}{ramp}"))
+        .expect("the style parses")
+        .theme
+}
+
+/// A Ui with the test font, drawable (its glyphs emit draw commands).
+fn drawing_ui() -> Ui {
+    ui_with_font(add_test_font(&mut RenderScene::new()))
+}
+
+/// A label of `text` in the theme's `xl` step: its width and the tracking
+/// its draw command carries.
+fn xl_label(ui: &mut Ui, theme: Theme, text: &str) -> (f32, f32) {
+    ui.set_theme(theme);
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    ui.label(
+        "L",
+        text,
+        LabelDesc {
+            step: Some(theme.type_ramp.xl),
+            nowrap: true,
+            ..LabelDesc::default()
+        },
+    );
+    ui.end();
+    let drawn = ui
+        .frame()
+        .items
+        .iter()
+        .find_map(|i| match &i.cmd {
+            DrawCmd::Text { tracking, .. } => Some(*tracking),
+            _ => None,
+        })
+        .unwrap_or(f32::NAN);
+    (ui.frame().element("L").expect("label").width, drawn)
+}
+
+/// A style's `ramp` line takes a fifth number, the CJK tracking in em
+/// (`cjk_tracking_em`, CSS letter-spacing over Han too): text with CJK
+/// characters in that step is wider by that much per character than with
+/// the same style without it, and its draw command carries the tracking;
+/// Latin text (spaced by the fourth number, here 0) measures the same in
+/// both. Ways it could fail: the fifth number is not parsed, the layout
+/// spaces CJK by the Latin tracking (0), or the measurement is tracked but
+/// the drawing is not (the text overruns its box).
+#[test]
+fn a_ramp_lines_fifth_number_tracks_cjk_text_and_not_latin() {
+    assert_eq!(cjk_tracked(Some(0.2)).type_ramp.xl.cjk_tracking_em, 0.2);
+    assert_eq!(cjk_tracked(None).type_ramp.xl.cjk_tracking_em, 0.0);
+    let fresh = |theme: Theme, text: &str| xl_label(&mut drawing_ui(), theme, text);
+    let (tracked, plain) = (cjk_tracked(Some(0.2)), cjk_tracked(None));
+    let ((wide, drawn), (narrow, _)) = (fresh(tracked, "原点引擎"), fresh(plain, "原点引擎"));
+    println!("CJK: {narrow} without, {wide} with 0.2 em");
+    assert!(
+        (wide - narrow - 4.0 * 0.2 * 30.0).abs() < 0.75,
+        "four characters, each 0.2 em (6 px) further: {narrow} then {wide}"
+    );
+    assert_eq!(drawn, 0.2, "the draw command carries the CJK tracking");
+    let ((latin, latin_drawn), (latin_plain, _)) =
+        (fresh(tracked, "Origin"), fresh(plain, "Origin"));
+    assert_eq!(latin, latin_plain, "Latin is unchanged");
+    assert_eq!(latin_drawn, 0.0);
+}
+
+/// The same with the style changed between two frames of one Ui: the CJK
+/// text's measurement follows its CJK tracking. It does not yet: the text
+/// measurement cache's key (layout.rs `TextKey::of`) holds the step's Latin
+/// `tracking_em` and not `cjk_tracking_em`, so the width measured before
+/// the change is kept (120 px where a fresh Ui measures 144).
+#[test]
+#[ignore = "og-ui's TextKey leaves cjk_tracking_em out of the measurement cache's key"]
+fn a_changed_cjk_tracking_remeasures_the_text() {
+    let fresh = xl_label(&mut drawing_ui(), cjk_tracked(Some(0.2)), "原点引擎").0;
+    let mut ui = drawing_ui();
+    let before = xl_label(&mut ui, cjk_tracked(None), "原点引擎").0;
+    let after = xl_label(&mut ui, cjk_tracked(Some(0.2)), "原点引擎").0;
+    println!("one Ui: {before} then {after}; a fresh Ui {fresh}");
+    assert_eq!(after, fresh, "the measurement follows the CJK tracking");
+}
