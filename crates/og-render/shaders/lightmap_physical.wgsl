@@ -37,7 +37,8 @@ fn vs_physical_lightmap(v: VertexIn, i: InstanceIn, k: InstanceFxIn, m: Lightmap
 }
 
 @fragment
-fn fs_physical_lightmap(in: PhysicalLightmappedOut) -> @location(0) vec4<f32> {
+fn fs_physical_lightmap(in: PhysicalLightmappedOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
+  hook_front = select(-1.0, 1.0, front_facing);
   baked_lightmap = lightmap_texel(in.lightmap);
   var p: PhysicalOut;
   p.clip = in.clip;

@@ -3548,6 +3548,12 @@ export interface StandardMaterialDesc {
    */
   readonly flatShading?: boolean;
   /**
+   * With MSAA (antialias msaa4), an alpha-tested material turns its alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage: minified foliage cards cover part of a pixel and the scene shows between them instead of drawing as solid sheets. Without MSAA it is the hard cut.
+   *
+   * @default false
+   */
+  readonly alphaToCoverage?: boolean;
+  /**
    * A multiplier on image-based lighting.
    *
    * @default 1
@@ -3975,6 +3981,44 @@ export interface DirectionalLight {
    */
   shadowSoftness: number;
   /**
+   * One shadow map over a fixed box instead of the three cascades: its half size across the light. 0 keeps the cascades. Everything outside the box is lit; the casters are drawn once, not once per cascade (three.js games that fit the light's orthographic shadow camera around the player draw this way).
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  shadowBox: number;
+  /**
+   * With shadowBox: how far ahead of the camera (along its level forward) the box is centred.
+   *
+   * @unit m (metres)
+   * @tunable
+   */
+  shadowFocus: number;
+  /**
+   * With shadowBox: how far below the camera the box's centre sits (the ground under a first-person eye).
+   *
+   * @unit m (metres)
+   * @tunable
+   */
+  shadowFocusDrop: number;
+  /**
+   * With shadowBox: the depth bias toward the light (three.js shadow.bias times its camera's depth range). 0 is one texel. Leaf cards need a few centimetres or they shadow each other dark.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  shadowBias: number;
+  /**
+   * With shadowBox: how far a receiver is pushed along its normal before it reads the map (three.js shadow.normalBias). 0 is one texel.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  shadowNormalBias: number;
+  /**
    * The fraction of each shadow cascade's depth over which it fades into the next, hiding the seam where the shadow's resolution changes. 0 is none; 0.1 to 0.2 is typical (those pixels read two cascades).
    *
    * @range 0..0.5
@@ -4180,6 +4224,20 @@ export interface RenderSettings {
    * @tunable
    */
   bloomIntensity: number;
+  /**
+   * Below 0 (the default) keeps Origin's bloom. 0 to 1 switches to three.js UnrealBloomPass with this radius: a luminance high pass (smoothstep from bloomThreshold to bloomThreshold + bloomKnee, the colour kept whole above it) at half resolution, five Gaussian mips (kernels 3, 5, 7, 9, 11), mixed with weights mix(f, 1.2 - f, radius) for f = 1, 0.8, 0.6, 0.4, 0.2; bloomIntensity is its strength, and the mix is added as EffectComposer's additive copy does, weighted again by its alpha (strength times the weights' sum).
+   *
+   * @default -1
+   * @range -1..1
+   */
+  bloomRadius: number;
+  /**
+   * With bloomRadius 0 or more: the high pass (and the blur) sees each channel as 0.18 x (colour / 0.18) to this power before exposure, as a contrast grade run ahead of UnrealBloomPass (the way a three.js grade pass before the bloom does) would leave it. 1, the default, leaves the colour as lit.
+   *
+   * @default 1
+   * @range 0.5..2
+   */
+  bloomContrast: number;
   /**
    * Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye, starting at the metered exposure of the first frame drawn after the first tick (a frame drawn before it, such as the web shell's first frame behind the play gate, meters at once and is never adapted from), so every host draws the same exposures for the same ticks.
    */
@@ -4394,6 +4452,26 @@ export interface Environment {
    * @tunable
    */
   backgroundIntensity: number;
+  /**
+   * A hemisphere light's sky colour (linear), as three.js HemisphereLight.color: diffuse-only ambient light mix(hemiGround, hemiSky, 0.5 n.y + 0.5) * hemiIntensity, darkened by ambient occlusion like the map's light. Unlike light baked into the map it adds no reflection.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  hemiSky: Color;
+  /**
+   * The hemisphere light's ground colour (linear), as three.js HemisphereLight.groundColor.
+   *
+   * @default { r: 0, g: 0, b: 0 }
+   */
+  hemiGround: Color;
+  /**
+   * The hemisphere light's intensity, as three.js HemisphereLight.intensity; 0 (the default) is off.
+   *
+   * @default 0
+   * @range 0..
+   * @tunable
+   */
+  hemiIntensity: number;
 }
 
 /**
@@ -4410,8 +4488,9 @@ export declare function ParticleEmitter(value?: ParticleEmitter, options?: Field
  * - `"auto"`: GTAO on the full tier, SSAO on WebGL2.
  * - `"gtao"`: Ground-truth ambient occlusion (3 slices): the better looking one.
  * - `"ssao"`: Hemisphere SSAO with 8 samples: the cheaper one.
+ * - `"screen"`: Depth-only disc AO in screen units (14 taps, radius clamp(1.6 / depth, 0.004, 0.06) of the screen width, fading out from 120 to 300 m, squared): the post-process SSAO of three.js-era games. It ignores normals, so ground seen at a low angle darkens a little too, as those games look. aoRadius and aoRadiusScale do not apply; aoIntensity scales the occlusion.
  */
-export type AoMethod = "auto" | "gtao" | "ssao";
+export type AoMethod = "auto" | "gtao" | "ssao" | "screen";
 
 /**
  * An AoMethod field: the variant's index.
@@ -4533,6 +4612,21 @@ export interface PostEffects {
   aoMethod: AoMethod;
   /** Full resolution, or half for a fraction of the GPU time at softer detail. */
   aoResolution: AoResolution;
+  /**
+   * How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it).
+   *
+   * @default 0
+   * @range 0..1
+   * @tunable
+   */
+  aoDirect: number;
+  /**
+   * Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance): a fixed share of the screen up close, as three.js SSAO passes size theirs, instead of a fixed world size; 0 keeps aoRadius everywhere.
+   *
+   * @range 0..
+   * @tunable
+   */
+  aoRadiusScale: number;
   /**
    * Outlines every opaque surface from depth and normal edges, creases between the faces of one object included (materials with outlineWidth get their own hull outline instead).
    */
@@ -4742,6 +4836,14 @@ export interface PostEffects {
    * @range 0.5..
    */
   filmGrainSize: number;
+  /**
+   * Contrast-adaptive sharpening (CAS) of the final image, as a three.js CAS pass after the output pass: each pixel pushed away from its four neighbours by a weight that falls where the neighbourhood is already near black or white. 0 is the mildest, 1 the strongest; below 0 is off.
+   *
+   * @default -1
+   * @range -1..1
+   * @tunable
+   */
+  sharpen: number;
   /**
    * A full-screen flash: the display colour mixed towards flashColor by this much (animate it per tick); 0 is off.
    *
@@ -11699,6 +11801,10 @@ export interface Water {
    */
   size: Vector2;
   /**
+   * Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline, with the same colour by depth, refraction, foam and reflections. 0: the grid. A mesh surface has no wave heights.
+   */
+  geometry: Geometry;
+  /**
    * Grid cells per side (the height field's detail).
    *
    * @default 64
@@ -11806,6 +11912,23 @@ export interface Water {
    */
   shadows: number;
   /**
+   * The reflectance looking straight down (Schlick's F0): 0.02 for clean water; three.js Water.js reflects at least 0.3.
+   *
+   * @default 0.02
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  f0: number;
+  /**
+   * A floor under the reflected colour: bias + (1 - bias) times the reflection (three.js Water.js: 0.1).
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  reflectionBias: number;
+  /**
    * With the camera below the surface: the water's fog colour.
    *
    * @default { r: 0.03, g: 0.16, b: 0.2 }
@@ -11834,6 +11957,32 @@ export interface Water {
    * @tunable
    */
   causticsScale: number;
+  /**
+   * Ripples from a tangent-space normal map (linear; red along +x, green along +z, blue up, as three.js' water normals) instead of the travelling waves: with flow 0, four layers drifting at three.js Water's rates over the world's xz times normalScale (its getNoise); with a flow, two layers sliding along it over the mesh's uv (or the grid's metres), cross-faded each 0.15 of a cycle (three.js Water2: then refraction 1 shifts the scene behind by N.xz · 0.05 of the screen, the reflection is tinted by shallow too, and there is no sun highlight). waveStrength scales the slopes (1: as the map), waveSpeed the lake's clock. 0: the travelling waves.
+   */
+  normalMap: Texture;
+  /**
+   * The normal map's repeats per metre (the lake) or per uv unit (a flow).
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  normalScale: number;
+  /**
+   * three.js Water's sun glint: pow(eye . reflect(-sun, normal), 100) times the sun's light times this, on the reflected image, through the Fresnel term (three.js: spec × sunColor over the light's intensity). With glint the surface is three.js Water.js throughout: deep is its waterColor, the body (sunColor · max(L·N, 0) · sunColor · 0.15 + waterColor · max(N·V, 0)) shaded by the ripples and the shadows, sunColor = the light × glint / 2. 0: the default half-vector highlight and depth colour.
+   *
+   * @range 0..
+   * @tunable
+   */
+  glint: number;
+  /**
+   * Water2's flow: its direction in the mesh's uv (or the grid's x, z) and, as its length, the uv it slides per second. 0 0: the lake's four drifting layers.
+   *
+   * @default { x: 0, y: 0 }
+   * @tunable
+   */
+  flow: Vector2;
 }
 
 /**
@@ -21528,6 +21677,12 @@ export interface Terrain {
   /** The terrain (og.terrain.load's TerrainInfo.data). */
   data: TerrainData;
   /**
+   * Draw it; false keeps it only as the ground its og.TerrainScatter copies stand on (nothing else sees it).
+   *
+   * @default true
+   */
+  visible: boolean;
+  /**
    * Cast the directional and local lights' shadows (it always receives them).
    *
    * @default true
@@ -21623,6 +21778,12 @@ export interface TerrainScatter {
    * @default 1
    */
   seed: number;
+  /**
+   * Whether the copies cast shadows (grass usually does not: three.js meshes cast only with castShadow set).
+   *
+   * @default true
+   */
+  castShadows: boolean;
 }
 
 /** A loaded terrain. */
@@ -22888,7 +23049,7 @@ export declare namespace og {
    * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with three shadow cascades.
    * Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
    */
-  const DirectionalLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly shadowDistance: FieldSpec<"f32">; readonly shadowSoftness: FieldSpec<"f32">; readonly cascadeBlend: FieldSpec<"f32"> }, DirectionalLight>;
+  const DirectionalLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly shadowDistance: FieldSpec<"f32">; readonly shadowSoftness: FieldSpec<"f32">; readonly shadowBox: FieldSpec<"f32">; readonly shadowFocus: FieldSpec<"f32">; readonly shadowFocusDrop: FieldSpec<"f32">; readonly shadowBias: FieldSpec<"f32">; readonly shadowNormalBias: FieldSpec<"f32">; readonly cascadeBlend: FieldSpec<"f32"> }, DirectionalLight>;
   /**
    * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
    * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (8 on the full tier, 4 on WebGL2) get shadows, the brightest at the camera first.
@@ -22899,16 +23060,16 @@ export declare namespace og {
   /**
    * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to msaaSamples) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    */
-  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32"> }, RenderSettings>;
+  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32"> }, RenderSettings>;
   /**
    * Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.
    */
-  const Environment: ResourceType<{ readonly map: FieldSpec<"EnvironmentMap">; readonly intensity: FieldSpec<"f32">; readonly rotation: FieldSpec<"f32">; readonly background: FieldSpec<"bool">; readonly backgroundIntensity: FieldSpec<"f32"> }, Environment>;
+  const Environment: ResourceType<{ readonly map: FieldSpec<"EnvironmentMap">; readonly intensity: FieldSpec<"f32">; readonly rotation: FieldSpec<"f32">; readonly background: FieldSpec<"bool">; readonly backgroundIntensity: FieldSpec<"f32">; readonly hemiSky: FieldSpec<"Color">; readonly hemiGround: FieldSpec<"Color">; readonly hemiIntensity: FieldSpec<"f32"> }, Environment>;
   /**
    * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.
    * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, vignette, aberration, grain and the flash apply to the display colour after tone mapping; the UI and screen-space sprites (the overlay) come after all of it.
    */
-  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly aoResolution: FieldSpec<"AoResolution">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly ssr: FieldSpec<"bool">; readonly ssrMaxDistance: FieldSpec<"f32">; readonly ssrThickness: FieldSpec<"f32">; readonly ssrSteps: FieldSpec<"u32">; readonly ssrFade: FieldSpec<"f32">; readonly ssrIntensity: FieldSpec<"f32">; readonly custom: ListSpec<"Post"> }, PostEffects>;
+  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly aoResolution: FieldSpec<"AoResolution">; readonly aoDirect: FieldSpec<"f32">; readonly aoRadiusScale: FieldSpec<"f32">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly sharpen: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly ssr: FieldSpec<"bool">; readonly ssrMaxDistance: FieldSpec<"f32">; readonly ssrThickness: FieldSpec<"f32">; readonly ssrSteps: FieldSpec<"u32">; readonly ssrFade: FieldSpec<"f32">; readonly ssrIntensity: FieldSpec<"f32">; readonly custom: ListSpec<"Post"> }, PostEffects>;
   /**
    * Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.
    * Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised.
@@ -23887,7 +24048,7 @@ export declare namespace og {
   /**
    * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
    */
-  const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly planarReflection: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly underwaterColor: FieldSpec<"Color">; readonly underwaterDensity: FieldSpec<"f32">; readonly caustics: FieldSpec<"f32">; readonly causticsScale: FieldSpec<"f32"> }, Water>;
+  const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly geometry: FieldSpec<"Geometry">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly planarReflection: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly f0: FieldSpec<"f32">; readonly reflectionBias: FieldSpec<"f32">; readonly underwaterColor: FieldSpec<"Color">; readonly underwaterDensity: FieldSpec<"f32">; readonly caustics: FieldSpec<"f32">; readonly causticsScale: FieldSpec<"f32">; readonly normalMap: FieldSpec<"Texture">; readonly normalScale: FieldSpec<"f32">; readonly glint: FieldSpec<"f32">; readonly flow: FieldSpec<"Vector2"> }, Water>;
   /**
    * Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface.
    */
@@ -25422,11 +25583,11 @@ export declare namespace og {
   /**
    * Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
    */
-  const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly castShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32"> }, Terrain>;
+  const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly visible: FieldSpec<"bool">; readonly castShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32"> }, Terrain>;
   /**
    * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
    */
-  const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32"> }, TerrainScatter>;
+  const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly castShadows: FieldSpec<"bool"> }, TerrainScatter>;
   /**
    * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
    * Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Terrain is 3D: the 2D profile's publish and lanes modules leave it out (RenderCapabilities.world3d is false), where every call here answers a refusal naming that field. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike).

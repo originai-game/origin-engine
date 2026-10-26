@@ -269,6 +269,36 @@ const LIGHTMAP_WGSL: &str = wgsl!("lightmap.wgsl");
 /// The physical lightmapped entry points, after the physical lit shader.
 const LIGHTMAP_PHYSICAL_WGSL: &str = wgsl!("lightmap_physical.wgsl");
 
+/// `planar_reflection` for material shaders: the frame's planar reflection
+/// (planar.wgsl, the effect group's binding 4) where the lit pipelines have
+/// a texture slot for it, else [`PLANAR_STUB`].
+const PLANAR_WGSL: &str = wgsl!("planar.wgsl");
+/// `planar_reflection` reading nothing: the shadow passes, the scattered
+/// copies, the physical shader, and every lit shader on devices whose
+/// skinned lit pipeline has no texture slot left (`planar_slot`).
+const PLANAR_STUB: &str = "fn planar_reflection(p: vec3<f32>, shift: vec2<f32>) -> vec4<f32> { return vec4<f32>(0.0); }\n";
+/// `screen_ao(p)` for material shaders in the lit and physical shaders: this
+/// frame's screen-space AO (the effect group's `ssao_tex`) where world point
+/// `p` lands on the screen, 1 without AO. An unlit material is not darkened
+/// by the AO on its own; three.js's post AO (FogShader) darkened every pixel,
+/// unlit water included, and a shader can now do the same.
+const SCREEN_AO_WGSL: &str = "fn screen_ao(p: vec3<f32>) -> f32 {
+  if (fx.ao.x < 0.5) { return 1.0; }
+  let c = fx.view_proj_unjittered * vec4<f32>(p, 1.0);
+  let ndc = c.xy / max(c.w, 1e-4);
+  return textureSampleLevel(ssao_tex, fx_sampler, vec2<f32>(0.5 + 0.5 * ndc.x, 0.5 - 0.5 * ndc.y), 0.0).r;
+}
+";
+/// `screen_ao` where there is no AO texture (shadow passes, scattered copies).
+const SCREEN_AO_STUB: &str = "fn screen_ao(p: vec3<f32>) -> f32 { return 1.0; }\n";
+
+/// Whether the effect group carries the planar reflection (binding 4): with
+/// the joint palette in a storage buffer. The lit pipelines have sixteen
+/// texture slots (downlevel limits); a palette texture takes the last.
+pub(crate) fn planar_slot(palette: skin::PaletteMode) -> bool {
+    palette == skin::PaletteMode::Storage
+}
+
 /// The lit shader's source with `hooks` (`hooks.rs`), the joint palette
 /// read as `palette` and the light tables as `tables`.
 fn lit_source_with(
@@ -277,11 +307,16 @@ fn lit_source_with(
     tables: clusters::LightTables,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{}{SCREEN_AO_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3),
-        lightmap::probe_wgsl(tables)
+        lightmap::probe_wgsl(tables),
+        if planar_slot(palette) {
+            PLANAR_WGSL
+        } else {
+            PLANAR_STUB
+        }
     )
 }
 
@@ -293,7 +328,7 @@ fn physical_source_with(
     tables: clusters::LightTables,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PLANAR_STUB}{SCREEN_AO_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3),
@@ -343,15 +378,17 @@ pub(crate) const SHADOW_PASS_WGSL: &str = wgsl!("shadow_pass.wgsl");
 /// built-in identities) and the joint palette read as `palette`.
 pub(crate) fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
     format!(
-        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{SHADOW_WGSL}",
+        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{PLANAR_STUB}{SCREEN_AO_STUB}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{SHADOW_WGSL}",
         particles_gpu::NOISE_WGSL,
         palette.wgsl(2)
     )
 }
-/// The scattered copies' lit module with the light tables `tables`.
-fn scatter_lit_source(tables: clusters::LightTables) -> String {
+/// The scattered copies' lit module with the light tables `tables` and a
+/// material shader's `hooks` (vertex_offset, surface_color, surface_normal
+/// and surface_emissive run on the copies as on meshes).
+fn scatter_lit_source(tables: clusters::LightTables, hooks: &str) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{LIGHTING_WGSL}{AREA_WGSL}{INSTANCE_WGSL}{}{}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{hooks}{PLANAR_STUB}{SCREEN_AO_STUB}{LIGHTING_WGSL}{AREA_WGSL}{INSTANCE_WGSL}{}{}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         wgsl3d!("scatter_common.wgsl"),
@@ -999,11 +1036,28 @@ const LEAN_VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBuffer
 };
 
 /// As the lean prepass reads it (`vs_prepass_lean`): position and normal.
-const POSITION_NORMAL_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
-    array_stride: std::mem::size_of::<Vertex>() as u64,
-    step_mode: wgpu::VertexStepMode::Vertex,
-    attributes: &[POSITION_ATTRIBUTE, NORMAL_ATTRIBUTE],
-};
+pub(crate) const POSITION_NORMAL_LAYOUT: wgpu::VertexBufferLayout<'static> =
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<Vertex>() as u64,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &[POSITION_ATTRIBUTE, NORMAL_ATTRIBUTE],
+    };
+
+/// The water's mesh surfaces (`water.wgsl` `vs_mesh`): position, normal, uv.
+pub(crate) const POSITION_NORMAL_UV_LAYOUT: wgpu::VertexBufferLayout<'static> =
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<Vertex>() as u64,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &[
+            POSITION_ATTRIBUTE,
+            NORMAL_ATTRIBUTE,
+            vertex_attribute(
+                wgpu::VertexFormat::Float32x2,
+                std::mem::offset_of!(Vertex, uv),
+                2,
+            ),
+        ],
+    };
 
 /// As the lean shadow caster reads it (`shadow.wgsl` `vs_lean`): position.
 const POSITION_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
@@ -1245,7 +1299,7 @@ struct Batch {
 
 /// The effect bind groups and what they were made from.
 struct FxGroups {
-    key: (u64, u64, Option<TextureHandle>, bool, bool),
+    key: (u64, u64, Option<TextureHandle>, bool, bool, bool),
     fx: wgpu::BindGroup,
     sprite: wgpu::BindGroup,
     glow: wgpu::BindGroup,
@@ -1483,13 +1537,14 @@ pub struct Renderer {
     /// Volumetric fog (made on first use).
     volumetric: volumetric::Volumetric,
     clusters: clusters::ClusterBuilder,
-    /// The frame uniform of the planar reflection's mirrored camera.
-    reflection_buffer: wgpu::Buffer,
+    /// Per planar reflection slot (0: the one material shaders read, 1: a second surface's): the frame uniform of
+    /// its mirrored camera.
+    reflection_buffer: [wgpu::Buffer; 2],
     /// Its effect uniform (decals; no screen-space AO).
-    reflection_fx_buffer: wgpu::Buffer,
+    reflection_fx_buffer: [wgpu::Buffer; 2],
     /// Its cluster table and references, over the main view's light records.
-    reflection_light_buffers: [wgpu::Buffer; 3],
-    reflection_clusters: clusters::ClusterBuilder,
+    reflection_light_buffers: [[wgpu::Buffer; 3]; 2],
+    reflection_clusters: [clusters::ClusterBuilder; 2],
     shadow_buffer: wgpu::Buffer,
     shadow_bind_group: wgpu::BindGroup,
     pbr_layout: wgpu::PipelineLayout,
@@ -1573,7 +1628,7 @@ pub struct Renderer {
         EnvironmentKey,
         wgpu::BindGroup,
         wgpu::BindGroup,
-        wgpu::BindGroup,
+        [wgpu::BindGroup; 2],
     )>,
     default_white: wgpu::TextureView,
     default_normal: wgpu::TextureView,
@@ -1743,6 +1798,8 @@ pub(crate) struct HdrPipeline<'a> {
     pub depth_compare: wgpu::CompareFunction,
     pub blend: Option<wgpu::BlendState>,
     pub samples: u32,
+    /// Alpha to coverage (with samples above 1): the fragment's alpha masks its samples.
+    pub alpha_to_coverage: bool,
 }
 
 /// An untonemapped sprite's blend (`SpriteFx::tone_mapped` false): its
@@ -1842,6 +1899,7 @@ fn hdr_pipeline_with(
         }),
         multisample: wgpu::MultisampleState {
             count: p.samples,
+            alpha_to_coverage_enabled: p.alpha_to_coverage && p.samples > 1,
             ..Default::default()
         },
         fragment: Some(wgpu::FragmentState {
@@ -1921,6 +1979,8 @@ fn lit_pipeline(
         device,
         &constants,
         HdrPipeline {
+            // Opaque lit pixels write alpha 1 (every sample); alpha-to-coverage materials write their coverage.
+            alpha_to_coverage: !transparent,
             label: match (physical, transparent) {
                 (false, false) => "pbr",
                 (false, true) => "pbr blended",
@@ -1964,6 +2024,7 @@ fn lean_pipeline(
         device,
         &constants[..if derivatives { 1 } else { 2 }],
         HdrPipeline {
+            alpha_to_coverage: false,
             label: if compact {
                 "pbr lean compact"
             } else {
@@ -2518,7 +2579,9 @@ impl Renderer {
                 tex2d(1),
                 tex2d(2),
                 sampler_entry(3, wgpu::SamplerBindingType::Filtering),
-            ],
+                // The planar reflection material shaders read (planar.wgsl).
+                tex2d(4),
+            ][..if planar_slot(palette_mode) { 5 } else { 4 }],
         });
         let sprite_fx_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("sprite fx"),
@@ -2562,6 +2625,9 @@ impl Renderer {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::MipmapFilterMode::Linear,
+            // 16x anisotropic filtering (three.js parity: ANISO = max supported). Grazing-angle ground, roofs and
+            // bark otherwise blur to the mip a trilinear filter picks for the steepest axis.
+            anisotropy_clamp: 16,
             ..Default::default()
         });
         // Sprites and the UI's images filter anisotropically where the
@@ -2629,18 +2695,23 @@ impl Renderer {
             light_tables == clusters::LightTables::Storage
                 && desc.volumetric != Some(VolumetricMethod::Raymarch),
         );
-        let reflection_light_buffers = light_tables.buffers(&device);
-        let reflection_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("frame (planar reflection)"),
-            size: std::mem::size_of::<frame::FrameUniform>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
+        let reflection_light_buffers =
+            [light_tables.buffers(&device), light_tables.buffers(&device)];
+        let reflection_buffer = [0, 1].map(|_| {
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("frame (planar reflection)"),
+                size: std::mem::size_of::<frame::FrameUniform>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            })
         });
-        let reflection_fx_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("fx (planar reflection)"),
-            size: std::mem::size_of::<fx::FxUniform>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
+        let reflection_fx_buffer = [0, 1].map(|_| {
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("fx (planar reflection)"),
+                size: std::mem::size_of::<fx::FxUniform>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            })
         });
         let shadow_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("shadow passes"),
@@ -2735,6 +2806,7 @@ impl Renderer {
                 sky_shader.clone(),
                 samples,
                 move |layout, module| HdrPipeline {
+                    alpha_to_coverage: false,
                     label: "sky",
                     layout,
                     module,
@@ -2781,6 +2853,7 @@ impl Renderer {
                 sprite_shader.clone(),
                 samples,
                 move |layout, module| HdrPipeline {
+                    alpha_to_coverage: false,
                     label,
                     layout,
                     module,
@@ -2812,6 +2885,7 @@ impl Renderer {
             sprite_shader.clone(),
             samples,
             move |layout, module| HdrPipeline {
+                alpha_to_coverage: false,
                 label: "sprite cover",
                 layout,
                 module,
@@ -2879,6 +2953,7 @@ impl Renderer {
                 ribbon_shader.clone(),
                 samples,
                 move |layout, module| HdrPipeline {
+                    alpha_to_coverage: false,
                     label: "ribbon",
                     layout,
                     module,
@@ -2959,7 +3034,8 @@ impl Renderer {
                 frame_layout: &frame_layout,
                 material_layout: &material_layout,
                 shadow_layout: &shadow_bind_layout,
-                lit_wgsl: scatter_lit_source(light_tables),
+                fx_layout: &fx_layout,
+                lit_wgsl: Box::new(move |hooks: &str| scatter_lit_source(light_tables, hooks)),
                 shadow_wgsl: scatter_shadow_source(),
                 samples,
             },
@@ -3058,7 +3134,10 @@ impl Renderer {
             reflection_buffer,
             reflection_fx_buffer,
             reflection_light_buffers,
-            reflection_clusters: clusters::ClusterBuilder::default(),
+            reflection_clusters: [
+                clusters::ClusterBuilder::default(),
+                clusters::ClusterBuilder::default(),
+            ],
             shadow_buffer,
             shadow_bind_group,
             pbr_layout,
@@ -3261,6 +3340,7 @@ impl Renderer {
             p.set_samples(samples);
         }
         self.water.pipeline.set_samples(samples);
+        self.water.mesh_pipeline.set_samples(samples);
         self.metaballs.set_samples(samples);
         self.fluid3d.set_samples(samples);
         self.lines.set_samples(samples);
@@ -3746,7 +3826,9 @@ impl Renderer {
                 transparent: material.is_transparent() || transmissive,
                 blend: material.is_transparent(),
                 transmissive,
-                dissolve: material.dissolves(),
+                // Also alpha-tested materials: they cast through the shadow
+                // pass that reads the material (fs_dissolve), cut by alpha.
+                dissolve: material.dissolves() || material.alphaTest > 0.0,
                 effects: material.toon != 0
                     || material.rimIntensity > 0.0
                     || material.flash > 0.0
@@ -4440,16 +4522,18 @@ impl Renderer {
             self.ltc.as_entire_binding(),
         ];
         let group = bind_group(&self.device, "frame", &self.frame_layout, &entries);
-        let mut reflected = entries.clone();
-        reflected[0] = self.reflection_buffer.as_entire_binding();
-        reflected[8] = self.reflection_light_buffers[1].as_entire_binding();
-        reflected[9] = self.reflection_light_buffers[2].as_entire_binding();
-        let reflection_group = bind_group(
-            &self.device,
-            "frame (planar reflection)",
-            &self.frame_layout,
-            &reflected,
-        );
+        let reflection_group = [0, 1].map(|k| {
+            let mut reflected = entries.clone();
+            reflected[0] = self.reflection_buffer[k].as_entire_binding();
+            reflected[8] = self.reflection_light_buffers[k][1].as_entire_binding();
+            reflected[9] = self.reflection_light_buffers[k][2].as_entire_binding();
+            bind_group(
+                &self.device,
+                "frame (planar reflection)",
+                &self.frame_layout,
+                &reflected,
+            )
+        });
         let sky_group = bind_group(
             &self.device,
             "sky",
@@ -5167,8 +5251,30 @@ impl Renderer {
         }
     }
 
-    /// Draws one frame of `scene` into `target`.
+    /// Draws one frame of `scene` into `target`. With `OG_RENDER_STATS=n`
+    /// set, every n-th frame's [`FrameStats`] go to stderr (diagnostics).
     pub fn render(
+        &mut self,
+        scene: &RenderScene,
+        target: &RenderTarget,
+    ) -> Result<FrameStats, RenderError> {
+        let stats = self.render_frame(scene, target);
+        if let (Ok(s), Some(n)) = (
+            &stats,
+            std::env::var("OG_RENDER_STATS")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok()),
+        ) {
+            static FRAME: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+            let f = FRAME.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            if n > 0 && f.is_multiple_of(n) {
+                eprintln!("og-render stats frame {f}: {s:?}");
+            }
+        }
+        stats
+    }
+
+    fn render_frame(
         &mut self,
         scene: &RenderScene,
         target: &RenderTarget,
@@ -5232,6 +5338,10 @@ impl Renderer {
         for mesh in full {
             self.ensure_full(scene, mesh);
         }
+        // Water drawn over a mesh reads its f32 vertices.
+        for m in scene.water.iter().filter_map(|w| w.mesh) {
+            self.ensure_full(scene, m.index());
+        }
         let mut skinned = self.build_skinned(scene, &probe_boxes)?;
         // The planar water this frame draws: none where the 3D world is
         // not built in (WORLD_3D).
@@ -5266,27 +5376,47 @@ impl Renderer {
             None if volumetric_fog.is_some() => None,
             None => scene.fog,
         };
-        let planar = match (under, cam.orthographic) {
-            (None, false) => scene_water.iter().position(|w| {
-                let (n, at) = water::plane(w);
-                w.planar_reflection > 0.0 && (camera.position - at).dot(n) > 0.0
-            }),
-            _ => None,
+        // Up to two surfaces mirror the scene, each in its own pass: slot 0 is the one material shaders read
+        // (`planar_reflection`; a grid surface first, such as a lake, else the first), slot 1 a second surface, only
+        // while it is in view (only it reads its mirror).
+        let planar: Vec<usize> = match (under, cam.orthographic) {
+            (None, false) => {
+                let asks: Vec<(usize, bool, bool)> = scene_water
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, w)| {
+                        let (n, at, lo, hi) = water::surface(w, w.mesh.and_then(|m| scene.mesh(m)));
+                        let c = Vec3::new((lo.x + hi.x) * 0.5, at.y, (lo.y + hi.y) * 0.5);
+                        let seen =
+                            view_frustum.intersects_sphere(c, (hi - lo).length() * 0.5 + 0.5);
+                        (w.planar_reflection > 0.0 && (camera.position - at).dot(n) > 0.0)
+                            .then_some((i, w.mesh.is_none(), seen))
+                    })
+                    .collect();
+                let first = asks.iter().find(|a| a.1).or(asks.first()).map(|a| a.0);
+                let second = asks.iter().find(|a| Some(a.0) != first && a.2).map(|a| a.0);
+                first.into_iter().chain(second).collect()
+            }
+            _ => Vec::new(),
         };
-        let reflection = planar.map(|i| {
-            let w = &scene_water[i];
-            let (n, at) = water::plane(w);
-            let mirrored = water::mirrored_camera(&camera, n, at);
-            let f = frame::camera_frame(&mirrored, aspect, Vec2::ZERO);
-            let proj = f.view_proj * f.view.inverse();
-            let view_proj = water::oblique(proj, f.view, n, at, 0.02) * f.view;
-            let scale = w.planar_reflection.clamp(0.1, 1.0);
-            let size = (
-                ((self.width as f32 * scale) as u32).max(1),
-                ((self.height as f32 * scale) as u32).max(1),
-            );
-            (i, mirrored, f, view_proj, size)
-        });
+        let reflections: Vec<_> = planar
+            .iter()
+            .map(|&i| {
+                let w = &scene_water[i];
+                let (n, at, ..) = water::surface(w, w.mesh.and_then(|m| scene.mesh(m)));
+                let mirrored = water::mirrored_camera(&camera, n, at);
+                let f = frame::camera_frame(&mirrored, aspect, Vec2::ZERO);
+                let proj = f.view_proj * f.view.inverse();
+                let view_proj = water::oblique(proj, f.view, n, at, 0.02) * f.view;
+                let scale = w.planar_reflection.clamp(0.1, 1.0);
+                let size = (
+                    ((self.width as f32 * scale) as u32).max(1),
+                    ((self.height as f32 * scale) as u32).max(1),
+                );
+                (i, mirrored, f, view_proj, size)
+            })
+            .collect();
+        let reflection = reflections.first();
         // Secondary cameras (views.rs): the views due this frame, each
         // with its skinned instances in view on its layers.
         let view_plans = views::plan(scene, &camera, (self.out_width, self.out_height), |i| {
@@ -6018,9 +6148,11 @@ impl Renderer {
             &sprites::depths(&sprite_frame.billboards),
         );
         culled += blended_culled + skinned_culled;
-        let reflection_list = reflection.as_ref().map(|r| {
+        // (The GPU culling has one reflection pass: the second slot is culled here.)
+        let mut reflection_list = Vec::new();
+        for (k, r) in reflections.iter().enumerate() {
             let frustum = Frustum::from_view_proj(r.3);
-            if gpu_cull {
+            reflection_list.push(if gpu_cull && k == 0 {
                 let g = gpu_pass(cull_gpu::PassKind::Reflection, &frustum);
                 indirect_list(&batches, sorted, g, |b| {
                     !b.transparent && b.layers & mask != 0
@@ -6037,8 +6169,29 @@ impl Renderer {
                     |b| !b.transparent && b.layers & mask != 0,
                 )
                 .0
-            }
-        });
+            });
+        }
+        // The transparent meshes in each mirror (three.js's Reflector renders the whole scene: the sky dome's clouds,
+        // the falls' curtains), back to front from the mirrored eye.
+        let mut reflection_blended = Vec::new();
+        for r in &reflections {
+            let frustum = Frustum::from_view_proj(r.3);
+            reflection_blended.push(
+                self.sort_transparent(
+                    &batches,
+                    &spheres,
+                    &submission,
+                    &mut transforms,
+                    &mut origins,
+                    &frustum,
+                    r.1.position,
+                    r.2.forward,
+                    mask,
+                    &[],
+                )
+                .0,
+            );
+        }
         // Reflection probes: each due capture's faces culled, their
         // transparent meshes sorted back to front from the probe (probes.rs).
         let mut probe_lists: Vec<DrawList> = Vec::new();
@@ -6166,6 +6319,8 @@ impl Renderer {
                         .filter(|g| g.index_count > 0)
                         .map(|g| g.bounds.map_or(1.0, |(c, e)| c.length() + e.length()))
                 },
+                |m| materials.get(m).and_then(|g| g.shader),
+                |sh| scene.shaders()[sh].hooks_wgsl(),
             )
         };
         let scatter_material = |m: usize| self.cache.materials.get(m).map(|g| &g.bind_group);
@@ -6204,17 +6359,32 @@ impl Renderer {
                     ))
                 }
             };
-            frame::fit_cascades(
-                &camera,
-                &cam,
-                aspect,
-                to_light,
-                bounds,
-                light.max_shadow_distance,
-                shadow_size,
-                self.info.shadow_cascades as usize,
-                light.cascade_blend,
-            )
+            if light.shadow_box > 0.0 {
+                let level = Vec3::new(cam.forward.x, 0.0, cam.forward.z).normalize_or(Vec3::NEG_Z);
+                let focus = camera.position + level * light.shadow_focus
+                    - Vec3::Y * light.shadow_focus_drop;
+                frame::fit_box(
+                    to_light,
+                    bounds,
+                    focus,
+                    light.shadow_box,
+                    shadow_size,
+                    light.shadow_bias,
+                    light.shadow_normal_bias,
+                )
+            } else {
+                frame::fit_cascades(
+                    &camera,
+                    &cam,
+                    aspect,
+                    to_light,
+                    bounds,
+                    light.max_shadow_distance,
+                    shadow_size,
+                    self.info.shadow_cascades as usize,
+                    light.cascade_blend,
+                )
+            }
         } else {
             Vec::new()
         };
@@ -6313,8 +6483,8 @@ impl Renderer {
         }
         // The planar reflection's clusters: the same light records seen by
         // the mirrored camera (its oblique projection moves only depth).
-        if let Some((_, mirrored, f, _, (rw, rh))) = &reflection {
-            self.reflection_clusters.build_kept(
+        for (k, (_, mirrored, f, _, (rw, rh))) in reflections.iter().enumerate() {
+            self.reflection_clusters[k].build_kept(
                 &scene.lights,
                 &self.clusters.kept,
                 &clusters::ClusterView {
@@ -6330,14 +6500,14 @@ impl Renderer {
             );
             if !lights_gpu.is_empty() {
                 self.queue.write_buffer(
-                    &self.reflection_light_buffers[1],
+                    &self.reflection_light_buffers[k][1],
                     0,
-                    bytemuck::cast_slice(&self.reflection_clusters.table),
+                    bytemuck::cast_slice(&self.reflection_clusters[k].table),
                 );
                 self.queue.write_buffer(
-                    &self.reflection_light_buffers[2],
+                    &self.reflection_light_buffers[k][2],
                     0,
-                    bytemuck::cast_slice(&self.reflection_clusters.ref_words()),
+                    bytemuck::cast_slice(&self.reflection_clusters[k].ref_words()),
                 );
             }
         }
@@ -6399,8 +6569,16 @@ impl Renderer {
                 copy_counts,
             );
             gpu_counts = Some((lagged, occluder_draws));
-            for r in &mut blended_list.ranges {
-                r.1 -= sorted;
+            // The CPU-culled lists sit after the sorted instances, in this buffer.
+            for list in reflection_list
+                .iter_mut()
+                .filter(|l| l.indirect.is_none())
+                .chain(&mut reflection_blended)
+                .chain(std::iter::once(&mut blended_list))
+            {
+                for r in &mut list.ranges {
+                    r.1 -= sorted;
+                }
             }
             for r in probe_lists
                 .iter_mut()
@@ -6567,7 +6745,11 @@ impl Renderer {
             light_dir: to_light.extend(cascades.len() as f32).to_array(),
             light_color: (light.color * light.intensity)
                 .extend(match scene.debug {
-                    DebugView::None => 0.0,
+                    // OG_DEBUG_VIEW=3..6: pbr_fs's lighting terms (diagnostics)
+                    DebugView::None => std::env::var("OG_DEBUG_VIEW")
+                        .ok()
+                        .and_then(|v| v.parse::<f32>().ok())
+                        .unwrap_or(0.0),
                     DebugView::Cascades => 1.0,
                     DebugView::AmbientOcclusion => 2.0,
                 })
@@ -6649,6 +6831,21 @@ impl Renderer {
             probe: [[0.0; 4]; 3],
             view_right: cam.axes().0,
             view_up: cam.axes().1,
+            hemi_sky: {
+                let (s, _, i) = scene.hemisphere;
+                // The IBL term is scaled by the environment's intensity (and the material's AO and
+                // envMapIntensity): divided out here so the hemisphere keeps its own strength.
+                let k = if scene.environment.intensity > 1e-4 {
+                    i.max(0.0) / (std::f32::consts::PI * scene.environment.intensity)
+                } else {
+                    0.0
+                };
+                [s[0], s[1], s[2], k]
+            },
+            hemi_ground: {
+                let g = scene.hemisphere.1;
+                [g[0], g[1], g[2], 0.0]
+            },
         };
         let mut shadow_slots = vec![bytemuck::Zeroable::zeroed(); SHADOW_SLOTS];
         for (i, c) in cascades.iter().enumerate() {
@@ -6699,7 +6896,7 @@ impl Renderer {
             &probe_faces,
             &probe_positions,
         );
-        if let Some((_, mirrored, f, view_proj, _)) = &reflection {
+        for (k, (_, mirrored, f, view_proj, _)) in reflections.iter().enumerate() {
             let mut u = uniform;
             u.view_proj = view_proj.to_cols_array_2d();
             // The sky's view rays: the mirrored camera's own projection
@@ -6709,9 +6906,9 @@ impl Renderer {
             u.view_forward = f.forward.extend(u.view_forward[3]).to_array();
             (u.view_right, u.view_up) = f.axes();
             u.caustics = [[0.0; 4]; 2];
-            u.cluster = self.reflection_clusters.params;
+            u.cluster = self.reflection_clusters[k].params;
             self.queue
-                .write_buffer(&self.reflection_buffer, 0, bytemuck::bytes_of(&u));
+                .write_buffer(&self.reflection_buffer[k], 0, bytemuck::bytes_of(&u));
         }
         self.queue
             .write_buffer(&self.shadow_buffer, 0, bytemuck::cast_slice(&shadow_slots));
@@ -6730,6 +6927,7 @@ impl Renderer {
             god_rays.is_some(),
             sprite_frame.untonemapped,
             scene.tick,
+            self.width,
         );
         if camera.exposure.adaptation().is_some() {
             self.post.advance_exposure(
@@ -6747,19 +6945,30 @@ impl Renderer {
         let decals = fx::pack_decals(&scene.decals, &mut fx_uniform.decals);
         fx_uniform.decal_info[0] = decals as f32;
         fx_uniform.decal_info[1] = scene.decal_atlas.is_some() as u32 as f32;
-        if ao.is_some() {
-            fx_uniform.ao = [1.0, 1.0, 0.0, 0.0];
+        if let Some(a) = &ao {
+            fx_uniform.ao = [1.0, 1.0, a.direct, 0.0];
+        }
+        // The planar reflection's plane (n, n·at) for the material shaders
+        // that read it (pbr.wgsl `planar_reflection`); 0 without one.
+        if let Some((i, ..)) = &reflection {
+            let w = &scene.water[*i];
+            let (n, at, ..) = water::surface(w, w.mesh.and_then(|m| scene.mesh(m)));
+            fx_uniform.planar = n.extend(n.dot(at)).to_array();
         }
         self.queue
             .write_buffer(&self.fx_buffer, 0, bytemuck::bytes_of(&fx_uniform));
-        if let Some((_, _, _, view_proj, (rw, rh))) = &reflection {
+        for (k, (_, _, _, view_proj, (rw, rh))) in reflections.iter().enumerate() {
             let mut u = fx_uniform;
             u.ao = [0.0; 4];
+            // Drawing the reflection itself: no plane, w -1 (a surface that
+            // reads it may leave itself out, as three.js's readers of the
+            // mirror do).
+            u.planar = [0.0, 0.0, 0.0, -1.0];
             u.view_proj_unjittered = view_proj.to_cols_array_2d();
             u.prev_view_proj = view_proj.to_cols_array_2d();
             u.screen = [*rw as f32, *rh as f32, 1.0 / *rw as f32, 1.0 / *rh as f32];
             self.queue
-                .write_buffer(&self.reflection_fx_buffer, 0, bytemuck::bytes_of(&u));
+                .write_buffer(&self.reflection_fx_buffer[k], 0, bytemuck::bytes_of(&u));
         }
         let viewport_format = self.viewport_format(target);
         self.views.write(
@@ -6807,7 +7016,16 @@ impl Renderer {
                 1.0 / self.width as f32,
                 1.0 / self.height as f32,
             ],
-            cam: [camera.far, cam.orthographic as u32 as f32, camera.near, 0.0],
+            // w: OG_AO_DEPTH (diagnostics): the AO target holds the view depth (1: its fraction, 2: depth / 30)
+            cam: [
+                camera.far,
+                cam.orthographic as u32 as f32,
+                camera.near,
+                std::env::var("OG_AO_DEPTH")
+                    .ok()
+                    .and_then(|v| v.parse::<f32>().ok())
+                    .unwrap_or(0.0),
+            ],
             // z: the AO targets' divisor of the screen (2 at half resolution).
             ao: ao.map_or([0.0; 4], |a| {
                 let divisor = match a.resolution {
@@ -6815,6 +7033,19 @@ impl Renderer {
                     AoResolution::Half => 2.0,
                 };
                 [a.radius, a.intensity, divisor, 0.0]
+            }),
+            // x: radius per metre of depth (0: fixed), y: 1 for the screen method.
+            ao2: ao.map_or([0.0; 4], |a| {
+                [
+                    a.radius_scale,
+                    if a.method == AoMethod::Screen {
+                        1.0
+                    } else {
+                        0.0
+                    },
+                    0.0,
+                    0.0,
+                ]
             }),
             outline_color: global_outline.map_or([0.0; 4], |o| o.color),
             outline: match global_outline {
@@ -6927,7 +7158,7 @@ impl Renderer {
         let bloom = post_fx.bloom.is_some_and(|b| b.intensity > 0.0) || glow;
         let gtao = match ao.map(|a| a.method) {
             Some(AoMethod::Gtao) => true,
-            Some(AoMethod::Ssao) => false,
+            Some(AoMethod::Ssao | AoMethod::Screen) => false,
             _ => self.info.tier == Tier::Full,
         };
         let mut passes: Vec<FramePass> =
@@ -6961,8 +7192,8 @@ impl Renderer {
         if !probe_frame.due.is_empty() {
             passes.push(FramePass::Probes);
         }
-        if reflection.is_some() {
-            passes.push(FramePass::Reflection);
+        for k in 0..reflections.len() {
+            passes.push(FramePass::Reflection(k as u8));
         }
         passes.extend((0..view_plans.len() as u32).map(FramePass::View));
         if volumetric_fog.is_some() && self.volumetric.method == VolumetricMethod::Froxel {
@@ -7268,7 +7499,10 @@ impl Renderer {
                     water: !scene_water.is_empty() || fluids_3d,
                     transmission,
                     fluid_fields: fluids as u32,
-                    reflection: reflection.as_ref().map(|r| r.4),
+                    reflection: [
+                        reflections.first().map(|r| r.4),
+                        reflections.get(1).map(|r| r.4),
+                    ],
                     object_space,
                 },
                 &self.post,
@@ -7409,6 +7643,7 @@ impl Renderer {
             scene.decal_atlas,
             ao.is_some(),
             scene.lighting_2d.is_some(),
+            reflection.is_some(),
         );
         if self.fx_groups.as_ref().map(|g| g.key) != Some(fx_key) {
             let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
@@ -7416,6 +7651,14 @@ impl Renderer {
             });
             let ao_view = if ao.is_some() {
                 self.graph.view("ao")
+            } else {
+                &self.post.white
+            };
+            // This frame's planar reflection, for the material shaders that
+            // read it (pbr.wgsl `planar_reflection`; fx `reserved` says
+            // whether it is there).
+            let planar_view = if reflection.is_some() {
+                self.graph.view("reflection")
             } else {
                 &self.post.white
             };
@@ -7447,7 +7690,12 @@ impl Renderer {
                         wgpu::BindingResource::TextureView(ao_view),
                         wgpu::BindingResource::TextureView(atlas_view),
                         wgpu::BindingResource::Sampler(&self.trilinear_sampler),
-                    ],
+                        wgpu::BindingResource::TextureView(planar_view),
+                    ][..if planar_slot(self.palette.mode()) {
+                        5
+                    } else {
+                        4
+                    }],
                 ),
                 sprite: sprite_group(lightmap_view, "sprite fx"),
                 // The glow pass draws into a target that may alias the light
@@ -7561,7 +7809,16 @@ impl Renderer {
             .map_while(|name| self.graph.try_view(name))
             .map(|v| self.metaballs.group(&self.device, v))
             .collect();
-        let reflection_view = self.graph.try_view("reflection");
+        let reflection_views: Vec<(usize, &wgpu::TextureView)> = reflections
+            .iter()
+            .enumerate()
+            .filter_map(|(k, r)| {
+                Some((
+                    r.0,
+                    self.graph.try_view(post::reflection_target(k as u8, ""))?,
+                ))
+            })
+            .collect();
         let water_draws = match self.graph.try_view("scene-copy") {
             Some(copy) if !scene_water.is_empty() => self.water.prepare(
                 &self.device,
@@ -7571,8 +7828,21 @@ impl Renderer {
                 self.info.tier == Tier::Full,
                 copy,
                 scene_depth,
-                planar.zip(reflection_view),
+                &reflection_views,
+                if ao.is_some() {
+                    self.graph.view("ao")
+                } else {
+                    &self.post.white
+                },
                 &self.post.white,
+                &|h| {
+                    self.cache
+                        .meshes
+                        .get(h.index())
+                        .filter(|m| m.full)
+                        .map(|m| (m.vertices.clone(), m.indices.clone(), m.index_count))
+                },
+                &|h| self.cache.textures.get(h.index()).map(|t| &t.view),
             ),
             _ => Vec::new(),
         };
@@ -7655,22 +7925,30 @@ impl Renderer {
             _ => Vec::new(),
         };
         // The planar reflection's effect group: its decals, no AO.
-        let reflection_fx_group = reflection.as_ref().map(|_| {
-            let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
-                &self.cache.textures[t.index()].view
-            });
-            bind_group(
-                &self.device,
-                "fx (planar reflection)",
-                &self.fx_layout,
-                &[
-                    self.reflection_fx_buffer.as_entire_binding(),
-                    wgpu::BindingResource::TextureView(&self.post.white),
-                    wgpu::BindingResource::TextureView(atlas_view),
-                    wgpu::BindingResource::Sampler(&self.trilinear_sampler),
-                ],
-            )
-        });
+        let reflection_fx_group: Vec<wgpu::BindGroup> = (0..reflections.len())
+            .map(|k| {
+                let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
+                    &self.cache.textures[t.index()].view
+                });
+                bind_group(
+                    &self.device,
+                    "fx (planar reflection)",
+                    &self.fx_layout,
+                    &[
+                        self.reflection_fx_buffer[k].as_entire_binding(),
+                        wgpu::BindingResource::TextureView(&self.post.white),
+                        wgpu::BindingResource::TextureView(atlas_view),
+                        wgpu::BindingResource::Sampler(&self.trilinear_sampler),
+                        // Not the reflection itself: this pass draws it.
+                        wgpu::BindingResource::TextureView(&self.post.white),
+                    ][..if planar_slot(self.palette.mode()) {
+                        5
+                    } else {
+                        4
+                    }],
+                )
+            })
+            .collect();
         let view_groups = self.view_groups(scene, &view_plans);
         // Each view's metaball field groups (its own fields' textures).
         let view_fields: Vec<Vec<wgpu::BindGroup>> = view_plans
@@ -8392,6 +8670,7 @@ impl Renderer {
                         scatter_mesh,
                         keep,
                         None,
+                        None,
                     )
                     .0;
             }
@@ -8480,6 +8759,7 @@ impl Renderer {
                 scatter_mesh,
                 |c, r| frustum.intersects_sphere(c, r),
                 None,
+                None,
             );
             stats.draw_calls += n;
         };
@@ -8517,6 +8797,11 @@ impl Renderer {
                     &mut stats,
                 ),
                 FramePass::Prepass => {
+                    // The water's surfaces for the AO (water.rs `draw_ao_depth`), drawn after the prepass against it.
+                    let ao_depth = self
+                        .graph
+                        .try_view("ao-depth")
+                        .filter(|_| !water_draws.is_empty());
                     let attachment = |view, clear: f64| {
                         Some(wgpu::RenderPassColorAttachment {
                             view,
@@ -8545,7 +8830,7 @@ impl Renderer {
                             depth_ops: Some(wgpu::Operations {
                                 load: wgpu::LoadOp::Clear(1.0),
                                 // Stylise's object pass tests against it.
-                                store: if object_space {
+                                store: if object_space || ao_depth.is_some() {
                                     wgpu::StoreOp::Store
                                 } else {
                                     wgpu::StoreOp::Discard
@@ -8643,6 +8928,7 @@ impl Renderer {
                         scatter_mesh,
                         |c, r| view_frustum.intersects_sphere(c, r),
                         None,
+                        None,
                     );
                     stats.prepass_draws += n;
                     stats.draw_calls += stats.prepass_draws;
@@ -8709,6 +8995,48 @@ impl Renderer {
                             None,
                             None,
                         );
+                    }
+                    if let Some(target) = self.graph.try_view("ao-depth") {
+                        // The AO's depth: the prepass's, then each water surface's own in front of what it covers.
+                        let size = wgpu::Extent3d {
+                            width: self.width,
+                            height: self.height,
+                            depth_or_array_layers: 1,
+                        };
+                        encoder.copy_texture_to_texture(
+                            self.graph.view("lindepth").texture().as_image_copy(),
+                            self.graph.view("ao-depth").texture().as_image_copy(),
+                            size,
+                        );
+                        if ao_depth.is_some() {
+                            let mut p = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                                label: Some("water ao depth"),
+                                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                    view: target,
+                                    depth_slice: None,
+                                    resolve_target: None,
+                                    ops: wgpu::Operations {
+                                        load: wgpu::LoadOp::Load,
+                                        store: wgpu::StoreOp::Store,
+                                    },
+                                })],
+                                depth_stencil_attachment: Some(
+                                    wgpu::RenderPassDepthStencilAttachment {
+                                        view: self.graph.view("pre-depth"),
+                                        depth_ops: Some(wgpu::Operations {
+                                            load: wgpu::LoadOp::Load,
+                                            store: wgpu::StoreOp::Discard,
+                                        }),
+                                        stencil_ops: None,
+                                    },
+                                ),
+                                timestamp_writes: None,
+                                occlusion_query_set: None,
+                                multiview_mask: None,
+                            });
+                            p.set_bind_group(0, frame_bind_group, &[]);
+                            stats.draw_calls += self.water.draw_ao_depth(&mut p, &water_draws);
+                        }
                     }
                 }
                 FramePass::Particles => {
@@ -8919,6 +9247,7 @@ impl Renderer {
                                 scatter_mesh,
                                 scattered,
                                 None,
+                                Some(fx_group),
                             );
                             if n > 0 {
                                 pass.set_bind_group(2, fx_group, &[]);
@@ -9027,7 +9356,8 @@ impl Renderer {
                         self.ibl.record_probe_filter(&mut encoder, &s.filter);
                     }
                 }
-                FramePass::Reflection => {
+                FramePass::Reflection(k) => {
+                    let k = k as usize;
                     let clear = match scene.environment.background {
                         Background::Color(c) => wgpu::Color {
                             r: c.x as f64,
@@ -9037,9 +9367,12 @@ impl Renderer {
                         },
                         Background::Sky | Background::Procedural { .. } => wgpu::Color::BLACK,
                     };
-                    let target = self.graph.view("reflection");
+                    let target = self.graph.view(post::reflection_target(k as u8, ""));
                     let (view, resolve_target) = if self.samples > 1 {
-                        (self.graph.view("reflection-msaa"), Some(target))
+                        (
+                            self.graph.view(post::reflection_target(k as u8, "-msaa")),
+                            Some(target),
+                        )
                     } else {
                         (target, None)
                     };
@@ -9059,7 +9392,7 @@ impl Renderer {
                             },
                         })],
                         depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                            view: self.graph.view("reflection-depth"),
+                            view: self.graph.view(post::reflection_target(k as u8, "-depth")),
                             depth_ops: Some(wgpu::Operations {
                                 load: wgpu::LoadOp::Clear(1.0),
                                 store: wgpu::StoreOp::Discard,
@@ -9071,17 +9404,9 @@ impl Renderer {
                         multiview_mask: None,
                     });
                     pass.set_pipeline(&self.pbr_pipelines[&(Side::Front, false, false, false)]);
-                    pass.set_bind_group(0, reflection_frame_group, &[]);
-                    pass.set_bind_group(
-                        2,
-                        reflection_fx_group
-                            .as_ref()
-                            .expect("made with the reflection"),
-                        &[],
-                    );
-                    let list = reflection_list
-                        .as_ref()
-                        .expect("culled with the reflection");
+                    pass.set_bind_group(0, &reflection_frame_group[k], &[]);
+                    pass.set_bind_group(2, &reflection_fx_group[k], &[]);
+                    let list = &reflection_list[k];
                     draw_list(
                         &mut pass,
                         list,
@@ -9114,7 +9439,7 @@ impl Renderer {
                     );
                     stats.draw_calls += n;
                     stats.reflection_draws += n;
-                    if let (Some(indices), Some(r)) = (terrain_indices, &reflection) {
+                    if let (Some(indices), Some(r)) = (terrain_indices, reflections.get(k)) {
                         let frustum = Frustum::from_view_proj(r.3);
                         let (n, _) = terrain::draw_levels(
                             &mut pass,
@@ -9139,6 +9464,13 @@ impl Renderer {
                         stats.draw_calls += 1;
                         stats.reflection_draws += 1;
                     }
+                    // Transparent meshes over the mirrored scene and sky, back to front.
+                    pass.set_bind_group(0, &reflection_frame_group[k], &[]);
+                    pass.set_bind_group(2, &reflection_fx_group[k], &[]);
+                    let list = &reflection_blended[k];
+                    draw_list(&mut pass, list, true, &mut None, None, None);
+                    stats.draw_calls += list.ranges.len() as u32;
+                    stats.reflection_draws += list.ranges.len() as u32;
                 }
                 FramePass::View(i) => {
                     // A secondary camera (views.rs): the main pass's draws
@@ -9494,6 +9826,7 @@ impl Renderer {
                         scatter_mesh,
                         |c, r| view_frustum.intersects_sphere(c, r),
                         Some(&mut probe_select::Binder::new(probe_binding)),
+                        Some(fx_group),
                     );
                     if n > 0 {
                         // The copies' group 2 is theirs: the effects' back for what follows.

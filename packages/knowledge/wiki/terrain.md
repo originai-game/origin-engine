@@ -18,7 +18,7 @@ module terrain {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 13929</sub>
+<sub>`api.ogt` line 14019</sub>
 
 ## Contents
 
@@ -73,7 +73,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 14184</sub>
+<sub>`api.ogt` line 14280</sub>
 
 <a id="fn-sample"></a>
 
@@ -103,7 +103,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 14191</sub>
+<sub>`api.ogt` line 14287</sub>
 
 <a id="fn-bounds"></a>
 
@@ -145,7 +145,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 14198</sub>
+<sub>`api.ogt` line 14294</sub>
 
 <a id="fn-edit"></a>
 
@@ -177,7 +177,7 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 14214</sub>
+<sub>`api.ogt` line 14310</sub>
 
 <a id="fn-layer"></a>
 
@@ -209,7 +209,7 @@ fn layer {
 }
 ```
 
-<sub>`api.ogt` line 14222</sub>
+<sub>`api.ogt` line 14318</sub>
 
 <a id="fn-setLayer"></a>
 
@@ -243,7 +243,7 @@ fn setLayer {
 }
 ```
 
-<sub>`api.ogt` line 14230</sub>
+<sub>`api.ogt` line 14326</sub>
 
 ## Components, resources and events
 
@@ -258,6 +258,7 @@ Token `og.Terrain`, registered under the schema name `og.Terrain`; its value typ
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `data` | `TerrainData` | `0` | — | — | — | The terrain (og.terrain.load's TerrainInfo.data). |
+| `visible` | `boolean` | `true` | — | — | — | Draw it; false keeps it only as the ground its og.TerrainScatter copies stand on (nothing else sees it). |
 | `castShadows` | `boolean` | `true` | — | — | — | Cast the directional and local lights' shadows (it always receives them). |
 | `lodSpacing` | `number` | `0` | 0 … 64 | `m` | tunable | The finest clipmap level's spacing (0: the terrain file's, or the samples' spacing). |
 | `lodRing` | `number` | `0` | 0 … 256 | — | — | Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4). |
@@ -266,6 +267,9 @@ Token `og.Terrain`, registered under the schema name `og.Terrain`; its value typ
 component Terrain {
   doc "Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to."
   field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
+  field visible bool "Draw it; false keeps it only as the ground its og.TerrainScatter copies stand on (nothing else sees it)." {
+    default true
+  }
   field castShadows bool "Cast the directional and local lights' shadows (it always receives them)." {
     default true
   }
@@ -282,7 +286,7 @@ component Terrain {
 }
 ```
 
-<sub>`api.ogt` line 13953</sub>
+<sub>`api.ogt` line 14043</sub>
 
 <a id="record-TerrainScatter"></a>
 
@@ -305,6 +309,7 @@ Token `og.TerrainScatter`, registered under the schema name `og.TerrainScatter`;
 | `maxScale` | `number` | `1.2` | ≥ 0 | — | tunable | The largest copy's uniform scale. |
 | `align` | `number` | `0` | 0 … 1 | `ratio` | tunable | How far copies lean with the ground: 0 upright, 1 along its normal. |
 | `seed` | `number` | `1` | — | — | — | Another seed places the copies elsewhere. |
+| `castShadows` | `boolean` | `true` | — | — | — | Whether the copies cast shadows (grass usually does not: three.js meshes cast only with castShadow set). |
 
 ```ogt
 component TerrainScatter {
@@ -354,10 +359,13 @@ component TerrainScatter {
   field seed u32 "Another seed places the copies elsewhere." {
     default 1
   }
+  field castShadows bool "Whether the copies cast shadows (grass usually does not: three.js meshes cast only with castShadow set)." {
+    default true
+  }
 }
 ```
 
-<sub>`api.ogt` line 13971</sub>
+<sub>`api.ogt` line 14064</sub>
 
 ## Types
 
@@ -373,7 +381,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TerrainData "A loaded terrain: its heights, control map and layers."
 ```
 
-<sub>`api.ogt` line 13935</sub>
+<sub>`api.ogt` line 14025</sub>
 
 <a id="type-TerrainBrushMode"></a>
 
@@ -402,7 +410,7 @@ enum TerrainBrushMode {
 }
 ```
 
-<sub>`api.ogt` line 13944</sub>
+<sub>`api.ogt` line 14034</sub>
 
 <a id="type-TerrainInfo"></a>
 
@@ -449,7 +457,7 @@ struct TerrainInfo {
 }
 ```
 
-<sub>`api.ogt` line 14020</sub>
+<sub>`api.ogt` line 14116</sub>
 
 <a id="type-TerrainSampleDesc"></a>
 
@@ -489,7 +497,7 @@ struct TerrainSampleDesc {
 }
 ```
 
-<sub>`api.ogt` line 14043</sub>
+<sub>`api.ogt` line 14139</sub>
 
 <a id="type-TerrainSample"></a>
 
@@ -518,7 +526,7 @@ struct TerrainSample {
 }
 ```
 
-<sub>`api.ogt` line 14062</sub>
+<sub>`api.ogt` line 14158</sub>
 
 <a id="type-TerrainBounds"></a>
 
@@ -543,7 +551,7 @@ struct TerrainBounds {
 }
 ```
 
-<sub>`api.ogt` line 14074</sub>
+<sub>`api.ogt` line 14170</sub>
 
 <a id="type-TerrainBrush"></a>
 
@@ -601,7 +609,7 @@ struct TerrainBrush {
 }
 ```
 
-<sub>`api.ogt` line 14084</sub>
+<sub>`api.ogt` line 14180</sub>
 
 <a id="type-TerrainEdit"></a>
 
@@ -628,7 +636,7 @@ struct TerrainEdit {
 }
 ```
 
-<sub>`api.ogt` line 14118</sub>
+<sub>`api.ogt` line 14214</sub>
 
 <a id="type-TerrainLayerDesc"></a>
 
@@ -709,7 +717,7 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 14129</sub>
+<sub>`api.ogt` line 14225</sub>
 
 ## Column kinds
 
@@ -728,4 +736,4 @@ column TerrainData {
 }
 ```
 
-<sub>`api.ogt` line 13937</sub>
+<sub>`api.ogt` line 14027</sub>

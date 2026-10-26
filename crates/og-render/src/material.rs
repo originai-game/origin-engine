@@ -98,6 +98,12 @@ pub struct StandardMaterial {
     /// 1: shaded with the face normal (facets) instead of the vertex normals.
     #[reflect(min = 0.0, max = 1.0, default = 0.0)]
     pub flatShading: u32,
+    /// 1: with MSAA, an alpha-tested material turns its alpha into sample coverage (alpha to coverage, three.js
+    /// `alphaToCoverage`) instead of cutting at alphaTest: foliage cards, minified until their alpha averages
+    /// below 1, cover that share of the pixel and the scene shows between them; a hard cut drew them as solid
+    /// sheets. Without MSAA it is the cut as before.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0)]
+    pub alphaToCoverage: u32,
     /// A multiplier on the image-based (environment) light.
     #[reflect(min = 0.0, default = 1.0, tunable)]
     pub envMapIntensity: f32,
@@ -288,6 +294,7 @@ impl Default for StandardMaterial {
             alphaTest: 0.0,
             side: 0,
             flatShading: 0,
+            alphaToCoverage: 0,
             envMapIntensity: 1.0,
             unlit: 0,
             toon: 0,
@@ -783,7 +790,8 @@ pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> Materia
     let mode = (m.flatShading != 0) as u32
         | ((m.unlit != 0) as u32) << 1
         | (m.is_transparent() as u32) << 2
-        | ((m.styled == 0) as u32) << 3;
+        | ((m.styled == 0) as u32) << 3
+        | ((m.alphaToCoverage != 0 && m.alphaTest > 0.0) as u32) << 4;
     let scale = if has_normal { m.normalScale } else { Vec2::ONE };
     MaterialUniform {
         base_color: [m.color.x, m.color.y, m.color.z, m.opacity],
@@ -925,14 +933,17 @@ pub(crate) fn array_lit_source(standard: &str) -> String {
             "@vertex",
             "vs(v: VertexIn, i: InstanceIn, k: InstanceFxIn) -> VertexOut {",
         ),
-        ("@fragment", "fs(in: VertexOut) -> @location(0) vec4<f32> {"),
+        (
+            "@fragment",
+            "fs(in: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {",
+        ),
         (
             "@vertex",
             "vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn) -> PrepassOut {",
         ),
         (
             "@fragment",
-            "fs_prepass(in: PrepassOut) -> PrepassTargets {",
+            "fs_prepass(in: PrepassOut, @builtin(front_facing) front_facing: bool) -> PrepassTargets {",
         ),
     ] {
         let (name, rest) = signature.split_once('(').expect("a signature");

@@ -36,7 +36,8 @@ fn vs(v: VertexIn, i: InstanceIn, a: InstanceFxIn) -> VertexOut {
 }
 
 @fragment
-fn fs(in: VertexOut) -> @location(0) vec4<f32> {
+fn fs(in: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
+  hook_front = select(-1.0, 1.0, front_facing);
   array_layers(in.layer);
   return lit_fragment(in);
 }
@@ -49,7 +50,8 @@ fn vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn, a: InstanceFxIn) -> Prep
 }
 
 @fragment
-fn fs_prepass(in: PrepassOut) -> PrepassTargets {
+fn fs_prepass(in: PrepassOut, @builtin(front_facing) front_facing: bool) -> PrepassTargets {
+  hook_front = select(-1.0, 1.0, front_facing);
   array_layers(in.layer);
   return prepass_targets(in);
 }
@@ -57,7 +59,8 @@ fn fs_prepass(in: PrepassOut) -> PrepassTargets {
 // A lightmapped static mesh with an array-map material (lightmap.wgsl's
 // `vs_lightmap` carries the instance's look, so its layer, to here).
 @fragment
-fn fs_lightmap_array(in: LightmappedOut) -> @location(0) vec4<f32> {
+fn fs_lightmap_array(in: LightmappedOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
+  hook_front = select(-1.0, 1.0, front_facing);
   array_layers(u32(max(look_layer(in.look), 0.0) + 0.5));
   return lightmapped_fragment(in);
 }

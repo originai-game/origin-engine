@@ -14682,6 +14682,11 @@
           "description": "Shade with face normals.",
           "default": false
         },
+        "alphaToCoverage": {
+          "type": "boolean",
+          "description": "With MSAA (antialias msaa4), an alpha-tested material turns its alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage: minified foliage cards cover part of a pixel and the scene shows between them instead of drawing as solid sheets. Without MSAA it is the hard cut.",
+          "default": false
+        },
         "envMapIntensity": {
           "type": "number",
           "description": "A multiplier on image-based lighting.",
@@ -15219,6 +15224,44 @@
           "maximum": 0.2,
           "x-og-tunable": true
         },
+        "shadowBox": {
+          "type": "number",
+          "description": "One shadow map over a fixed box instead of the three cascades: its half size across the light. 0 keeps the cascades. Everything outside the box is lit; the casters are drawn once, not once per cascade (three.js games that fit the light's orthographic shadow camera around the player draw this way).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "shadowFocus": {
+          "type": "number",
+          "description": "With shadowBox: how far ahead of the camera (along its level forward) the box is centred.",
+          "default": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "shadowFocusDrop": {
+          "type": "number",
+          "description": "With shadowBox: how far below the camera the box's centre sits (the ground under a first-person eye).",
+          "default": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "shadowBias": {
+          "type": "number",
+          "description": "With shadowBox: the depth bias toward the light (three.js shadow.bias times its camera's depth range). 0 is one texel. Leaf cards need a few centimetres or they shadow each other dark.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "shadowNormalBias": {
+          "type": "number",
+          "description": "With shadowBox: how far a receiver is pushed along its normal before it reads the map (three.js shadow.normalBias). 0 is one texel.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
         "cascadeBlend": {
           "type": "number",
           "description": "The fraction of each shadow cascade's depth over which it fades into the next, hiding the seam where the shadow's resolution changes. 0 is none; 0.1 to 0.2 is typical (those pixels read two cascades).",
@@ -15443,6 +15486,20 @@
           "minimum": 0,
           "x-og-tunable": true
         },
+        "bloomRadius": {
+          "type": "number",
+          "description": "Below 0 (the default) keeps Origin's bloom. 0 to 1 switches to three.js UnrealBloomPass with this radius: a luminance high pass (smoothstep from bloomThreshold to bloomThreshold + bloomKnee, the colour kept whole above it) at half resolution, five Gaussian mips (kernels 3, 5, 7, 9, 11), mixed with weights mix(f, 1.2 - f, radius) for f = 1, 0.8, 0.6, 0.4, 0.2; bloomIntensity is its strength, and the mix is added as EffectComposer's additive copy does, weighted again by its alpha (strength times the weights' sum).",
+          "default": -1,
+          "minimum": -1,
+          "maximum": 1
+        },
+        "bloomContrast": {
+          "type": "number",
+          "description": "With bloomRadius 0 or more: the high pass (and the blur) sees each channel as 0.18 x (colour / 0.18) to this power before exposure, as a contrast grade run ahead of UnrealBloomPass (the way a three.js grade pass before the bloom does) would leave it. 1, the default, leaves the colour as lit.",
+          "default": 1,
+          "minimum": 0.5,
+          "maximum": 2
+        },
         "autoExposure": {
           "type": "boolean",
           "description": "Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye, starting at the metered exposure of the first frame drawn after the first tick (a frame drawn before it, such as the web shell's first frame behind the play gate, meters at once and is never adapted from), so every host draws the same exposures for the same ticks.",
@@ -15636,6 +15693,31 @@
           "default": 1,
           "minimum": 0,
           "x-og-tunable": true
+        },
+        "hemiSky": {
+          "$ref": "#/$defs/Color",
+          "description": "A hemisphere light's sky colour (linear), as three.js HemisphereLight.color: diffuse-only ambient light mix(hemiGround, hemiSky, 0.5 n.y + 0.5) * hemiIntensity, darkened by ambient occlusion like the map's light. Unlike light baked into the map it adds no reflection.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "hemiGround": {
+          "$ref": "#/$defs/Color",
+          "description": "The hemisphere light's ground colour (linear), as three.js HemisphereLight.groundColor.",
+          "default": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
+        },
+        "hemiIntensity": {
+          "type": "number",
+          "description": "The hemisphere light's intensity, as three.js HemisphereLight.intensity; 0 (the default) is off.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
         }
       },
       "additionalProperties": false
@@ -15648,12 +15730,14 @@
       "enum": [
         "auto",
         "gtao",
-        "ssao"
+        "ssao",
+        "screen"
       ],
       "x-og-variants": {
         "auto": "GTAO on the full tier, SSAO on WebGL2.",
         "gtao": "Ground-truth ambient occlusion (3 slices): the better looking one.",
-        "ssao": "Hemisphere SSAO with 8 samples: the cheaper one."
+        "ssao": "Hemisphere SSAO with 8 samples: the cheaper one.",
+        "screen": "Depth-only disc AO in screen units (14 taps, radius clamp(1.6 / depth, 0.004, 0.06) of the screen width, fading out from 120 to 300 m, squared): the post-process SSAO of three.js-era games. It ignores normals, so ground seen at a low angle darkens a little too, as those games look. aoRadius and aoRadiusScale do not apply; aoIntensity scales the occlusion."
       }
     },
     "AoResolution": {
@@ -15763,6 +15847,21 @@
           "$ref": "#/$defs/AoResolution",
           "description": "Full resolution, or half for a fraction of the GPU time at softer detail.",
           "default": "full"
+        },
+        "aoDirect": {
+          "type": "number",
+          "description": "How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "aoRadiusScale": {
+          "type": "number",
+          "description": "Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance): a fixed share of the screen up close, as three.js SSAO passes size theirs, instead of a fixed world size; 0 keeps aoRadius everywhere.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
         },
         "outline": {
           "type": "boolean",
@@ -15996,6 +16095,14 @@
           "description": "The grain size in pixels.",
           "default": 1.5,
           "minimum": 0.5
+        },
+        "sharpen": {
+          "type": "number",
+          "description": "Contrast-adaptive sharpening (CAS) of the final image, as a three.js CAS pass after the output pass: each pixel pushed away from its four neighbours by a weight that falls where the neighbourhood is already near black or white. 0 is the mildest, 1 the strongest; below 0 is off.",
+          "default": -1,
+          "minimum": -1,
+          "maximum": 1,
+          "x-og-tunable": true
         },
         "flash": {
           "type": "number",
@@ -23850,6 +23957,11 @@
           "x-og-unit": "m",
           "x-og-tunable": true
         },
+        "geometry": {
+          "$ref": "#/$defs/Geometry",
+          "description": "Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline, with the same colour by depth, refraction, foam and reflections. 0: the grid. A mesh surface has no wave heights.",
+          "default": 0
+        },
         "segments": {
           "type": "integer",
           "minimum": 0,
@@ -23965,6 +24077,24 @@
           "x-og-unit": "ratio",
           "x-og-tunable": true
         },
+        "f0": {
+          "type": "number",
+          "description": "The reflectance looking straight down (Schlick's F0): 0.02 for clean water; three.js Water.js reflects at least 0.3.",
+          "default": 0.02,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "reflectionBias": {
+          "type": "number",
+          "description": "A floor under the reflected colour: bias + (1 - bias) times the reflection (three.js Water.js: 0.1).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
         "underwaterColor": {
           "$ref": "#/$defs/Color",
           "description": "With the camera below the surface: the water's fog colour.",
@@ -23996,6 +24126,34 @@
           "default": 0.6,
           "minimum": 0.01,
           "maximum": 10,
+          "x-og-tunable": true
+        },
+        "normalMap": {
+          "$ref": "#/$defs/Texture",
+          "description": "Ripples from a tangent-space normal map (linear; red along +x, green along +z, blue up, as three.js' water normals) instead of the travelling waves: with flow 0, four layers drifting at three.js Water's rates over the world's xz times normalScale (its getNoise); with a flow, two layers sliding along it over the mesh's uv (or the grid's metres), cross-faded each 0.15 of a cycle (three.js Water2: then refraction 1 shifts the scene behind by N.xz · 0.05 of the screen, the reflection is tinted by shallow too, and there is no sun highlight). waveStrength scales the slopes (1: as the map), waveSpeed the lake's clock. 0: the travelling waves.",
+          "default": 0
+        },
+        "normalScale": {
+          "type": "number",
+          "description": "The normal map's repeats per metre (the lake) or per uv unit (a flow).",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "glint": {
+          "type": "number",
+          "description": "three.js Water's sun glint: pow(eye . reflect(-sun, normal), 100) times the sun's light times this, on the reflected image, through the Fresnel term (three.js: spec × sunColor over the light's intensity). With glint the surface is three.js Water.js throughout: deep is its waterColor, the body (sunColor · max(L·N, 0) · sunColor · 0.15 + waterColor · max(N·V, 0)) shaded by the ripples and the shadows, sunColor = the light × glint / 2. 0: the default half-vector highlight and depth colour.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "flow": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Water2's flow: its direction in the mesh's uv (or the grid's x, z) and, as its length, the uv it slides per second. 0 0: the lake's four drifting layers.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
           "x-og-tunable": true
         }
       },
@@ -37438,6 +37596,11 @@
           "description": "The terrain (og.terrain.load's TerrainInfo.data).",
           "default": 0
         },
+        "visible": {
+          "type": "boolean",
+          "description": "Draw it; false keeps it only as the ground its og.TerrainScatter copies stand on (nothing else sees it).",
+          "default": true
+        },
         "castShadows": {
           "type": "boolean",
           "description": "Cast the directional and local lights' shadows (it always receives them).",
@@ -37548,6 +37711,11 @@
           "maximum": 4294967295,
           "description": "Another seed places the copies elsewhere.",
           "default": 1
+        },
+        "castShadows": {
+          "type": "boolean",
+          "description": "Whether the copies cast shadows (grass usually does not: three.js meshes cast only with castShadow set).",
+          "default": true
         }
       },
       "additionalProperties": false

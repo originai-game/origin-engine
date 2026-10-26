@@ -676,7 +676,7 @@ fn role_index(p: &P, w: &str) -> Result<usize, String> {
 ///   panel 6
 /// }
 /// ramp {
-///   displayLg 44 48                          # TypeStepName: size, line height [, CJK line height, tracking em]
+///   displayLg 44 48                          # TypeStepName: size, line height [, CJK line height, tracking em, CJK tracking em]
 /// }
 /// durations {
 ///   base 260
@@ -834,6 +834,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                     s.line_height = q.num(1)?;
                     s.cjk_line_height = q.num_or(2, s.line_height.max(s.cjk_line_height))?;
                     s.tracking_em = q.num_or(3, s.tracking_em)?;
+                    s.cjk_tracking_em = q.num_or(4, s.cjk_tracking_em)?;
                 }
             }
             "durations" => {

@@ -115,7 +115,10 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
         "ribbon",
         format!("{}{}", crate::FRAME_WGSL, crate::RIBBON_WGSL),
     );
-    add("scatter", crate::scatter_lit_source(tables));
+    add(
+        "scatter",
+        crate::scatter_lit_source(tables, &crate::hooks::default_hooks()),
+    );
     add("scatter shadow", crate::scatter_shadow_source());
     add(
         "terrain",

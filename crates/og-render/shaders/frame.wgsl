@@ -59,7 +59,15 @@ struct Frame {
   // group they are drawn with (sprite.wgsl face_axes).
   view_right: vec4<f32>,      // xyz: right
   view_up: vec4<f32>,         // xyz: up
+  hemi_sky: vec4<f32>,        // rgb: the hemisphere light's sky colour, w: intensity / (pi * ibl intensity) (0: off)
+  hemi_ground: vec4<f32>,     // rgb: its ground colour
 };
+
+// The hemisphere light (three.js HemisphereLight) as irradiance in the IBL's units: added to the irradiance map's
+// sample, so it reaches only the diffuse term (no reflection) and is scaled, like it, by AO.
+fn hemi_irradiance(n: vec3<f32>) -> vec3<f32> {
+  return mix(frame.hemi_ground.rgb, frame.hemi_sky.rgb, 0.5 * n.y + 0.5) * frame.hemi_sky.w;
+}
 
 @group(0) @binding(0) var<uniform> frame: Frame;
 // Shadow depths stored in R32Float colour targets and read with textureLoad:

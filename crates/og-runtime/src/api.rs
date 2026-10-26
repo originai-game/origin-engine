@@ -1459,6 +1459,7 @@ pub(crate) fn material(
     );
     set!(flatShading, flag("flatShading"));
     set!(wireframe, flag("wireframe"));
+    set!(alphaToCoverage, flag("alphaToCoverage"));
     set!(envMapIntensity, num("envMapIntensity"));
     let vec2 = |k: &str, fallback: glam::Vec2| {
         let v = &desc[k];
