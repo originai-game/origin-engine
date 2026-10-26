@@ -134,8 +134,12 @@ IDL changes are the CHANGELOG's `## Unreleased` depth wave 1 entry.
   geometry scene's height field occludes the lower part of the
   cylinder, cone and capsule (the stream's framing, kept); the
   `wireframe` scene's solid sphere is the test's control; the
-  `debug-overlay` text label is not visible in either tier (owed: a
-  look at `og.debug.text` in that scene); the game template's menu
+  `debug-overlay` text label is not visible in either tier (closed: the
+  scene drew no text; `93c52aaf` draws two labels the way `og.debug.text`
+  does and `b80aa70c` re-recorded the Metal frame; on 30376326 both labels
+  read on lavapipe and on Metal, and `og.debug.text` reads on the native
+  host in fx-showcase's geometry station:
+  `tests/evidence/debt3/debug-overlay-text/NOTES.md`); the game template's menu
   panel stays over the intro's frames, since the playtest never presses
   Start (the template's choice, visible in both tiers); the video frame
   reads `00:00:03.000` and `90` over the test pattern, magnified with
