@@ -203,8 +203,8 @@ pub fn refuse_3d_world(root: &Path, settings: &Value) -> Result<(), String> {
         let file = path
             .strip_prefix(root)
             .unwrap_or(&path)
-            .display()
-            .to_string();
+            .to_string_lossy()
+            .replace('\\', "/");
         for e in doc.body.get_all("entity") {
             if let Some(b) = &e.block {
                 walk(b, &file, &mut hits);
