@@ -179,13 +179,14 @@ run_tests() {
     # renderers made on two threads trip the Vulkan loader's driver-unload
     # race (docs/ci.md §CI, phase-1 row 81), so the GPU crates run their
     # tests one at a time, after the rest.
+    local gpu_crates=(og-tests og-ui og-render)
     local args=(--workspace) gpu_args=()
-    for pk in og-tests og-ui og-render; do
+    for pk in "${gpu_crates[@]}"; do
       args+=(--exclude "$pk")
       case " ${exclude[*]+${exclude[*]}} " in *" $pk "*) ;; *) gpu_args+=(-p "$pk") ;; esac
     done
     for pk in ${exclude[@]+"${exclude[@]}"}; do
-      case " og-tests og-ui og-render " in *" $pk "*) ;; *) args+=(--exclude "$pk") ;; esac
+      case " ${gpu_crates[*]} " in *" $pk "*) ;; *) args+=(--exclude "$pk") ;; esac
     done
     cargo test "${args[@]}"; rc=$?
     if [ "$rc" -eq 0 ] && [ "$gpu" = 1 ] && [ "${#gpu_args[@]}" -gt 0 ]; then
