@@ -7549,7 +7549,7 @@ module physics {
 
 module atmosphere {
   skill og-game
-  doc "Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before."
+  doc "Fog, a procedural sky, the day-night cycle, weather, the wind that sways vegetation and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before."
   doc "The day-night clock is a function of the tick (DayNight.start plus the simulated time times speed), so it is the same on every run and after a restore; rendering reads the world and never writes it."
 
   const WEATHER_NONE u32 0 "Weather.kind: clear."
@@ -7808,6 +7808,33 @@ module atmosphere {
     }
     field layer i32 "With an orthographic camera (2D), the sprite layer the particles draw in." {
       default 50
+    }
+  }
+
+  resource Wind {
+    doc "The wind the renderer sways vegetation with: og.TerrainScatter copies lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind)."
+    field strength f32 "The mean lean: how far a copy's tip moves downwind per metre of its height (0.2: a 1 m stem's tip leans 20 cm); 0 is still." {
+      min 0
+      max 2
+      tunable true
+    }
+    field direction Vector3 "Where the wind blows: its horizontal part, normalised." {
+      default 1 0 0
+      tunable true
+    }
+    field speed f32 "How fast the gusts travel downwind, over a 10 m wave." {
+      default 3
+      min 0
+      max 50
+      unit mps
+      tunable true
+    }
+    field gust f32 "How much the lean varies in the gusts: 0 a steady lean, 1 from upright to twice the mean." {
+      default 0.6
+      min 0
+      max 1
+      unit ratio
+      tunable true
     }
   }
 
@@ -14197,6 +14224,12 @@ module terrain {
     }
     field castShadows bool "Whether the copies cast shadows (grass usually does not: three.js meshes cast only with castShadow set)." {
       default true
+    }
+    field sway f32 "How much og.Wind sways the copies: 1 as it blows, 0 still (stones), between for stiffer stems. Each vertex above the mesh's origin moves by its height, so model the copy with its root at the origin." {
+      default 1
+      min 0
+      max 2
+      tunable true
     }
   }
 

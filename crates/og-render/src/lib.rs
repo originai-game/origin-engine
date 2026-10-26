@@ -180,7 +180,7 @@ pub use points::Points;
 pub use post_custom::{MAX_CUSTOM_POSTS, PostHandle, PostShader, example_crt, post_module_source};
 pub use quality::{QualityPreset, RenderQuality};
 pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailStyleHandle};
-pub use scatter::ScatterDraw;
+pub use scatter::{ScatterDraw, WIND_WAVELENGTH, Wind};
 pub use scene::*;
 pub use shadows::PointShadows;
 pub use skin::{
@@ -6405,10 +6405,10 @@ impl Renderer {
                 prev_view_proj,
                 |m| materials.get(m).map(|g| g.side),
                 |m| {
-                    meshes
-                        .get(m)
-                        .filter(|g| g.index_count > 0)
-                        .map(|g| g.bounds.map_or(1.0, |(c, e)| c.length() + e.length()))
+                    meshes.get(m).filter(|g| g.index_count > 0).map(|g| {
+                        g.bounds
+                            .map_or((1.0, 1.0), |(c, e)| (c.length() + e.length(), c.y + e.y))
+                    })
                 },
                 |m| materials.get(m).and_then(|g| g.shader),
                 |sh| scene.shaders()[sh].hooks_wgsl(),

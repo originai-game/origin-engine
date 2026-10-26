@@ -9,6 +9,14 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- atmosphere: resource `og.Wind` (`strength`, `direction`, `speed`,
+  `gust`; off at strength 0) sways every `og.TerrainScatter`'s copies:
+  a lean downwind that grows with the vertex's height, varied by gusts
+  that sweep across the field (RedGPU's wind sway, with the wave
+  travelling downwind). Drawn from the tick in the lit, depth and shadow
+  passes alike, its motion vectors included; nothing in the simulation
+  reads it. terrain, `TerrainScatter`: `sway` (1 as the wind blows, 0
+  still, for stones). og-render `Wind`, `RenderScene::wind`.
 - render, `PostEffects`: `lensDistortion` (barrel above 0, pincushion
   below; RedGPU's lensDistortion with the radius in pixels whatever the
   aspect and a barrel fitted to its farthest corner, so no black edge)

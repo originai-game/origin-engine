@@ -5544,6 +5544,12 @@
           "name": "castShadows",
           "column": "bool",
           "default": true
+        },
+        {
+          "name": "sway",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
         }
       ]
     },
@@ -7899,6 +7905,42 @@
     },
     {
       "id": 17,
+      "name": "Wind",
+      "schema": "og.Wind",
+      "module": "atmosphere",
+      "fields": [
+        {
+          "name": "strength",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "direction",
+          "column": "Vector3",
+          "default": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "tunable": true
+        },
+        {
+          "name": "speed",
+          "column": "f32",
+          "default": 3,
+          "tunable": true
+        },
+        {
+          "name": "gust",
+          "column": "f32",
+          "default": 0.6,
+          "tunable": true
+        }
+      ]
+    },
+    {
+      "id": 18,
       "name": "Audio",
       "schema": "og.Audio",
       "module": "audio",
@@ -7976,7 +8018,7 @@
       ]
     },
     {
-      "id": 18,
+      "id": 19,
       "name": "Lockstep",
       "schema": "og.Lockstep",
       "module": "net",

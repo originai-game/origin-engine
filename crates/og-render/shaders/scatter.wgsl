@@ -42,7 +42,9 @@ fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
   let model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
   var o: ScatterOut;
   o.fade = scatter_fade(i.m3);
-  var world = model * vec4<f32>(v.position, 1.0);
+  let scale = length(i.m1);
+  let sway = scatter_sway(v.position, i.m3, scale, scatter.wind_phase.xy);
+  var world = model * vec4<f32>(v.position, 1.0) + vec4<f32>(sway, 0.0);
   o.normal = normalize((model * vec4<f32>(v.normal, 0.0)).xyz);
   var h: Hook;
   h.world = world.xyz;
@@ -59,9 +61,11 @@ fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
   o.local = v.position;
   o.uv = v.uv;
   o.color = v.color;
-  // The copies stand still: only the camera moves them on screen.
+  // The camera and the wind move the copies on screen: where the vertex
+  // was swayed to the previous frame.
   o.cur_clip = mul_point(scatter.view_proj, world);
-  o.prev_clip = mul_point(scatter.prev_view_proj, world);
+  let prev_sway = scatter_sway(v.position, i.m3, scale, scatter.wind_phase.zw);
+  o.prev_clip = mul_point(scatter.prev_view_proj, vec4<f32>(world.xyz - sway + prev_sway, world.w));
   return o;
 }
 

@@ -1787,7 +1787,13 @@ terrain's entity: `{ data, geometry, material, layer, density, distance }`
 grows copies of the mesh where that layer shows, within `distance` of the
 camera (thinning out over its outer `fade`, never shrinking), each fixed to its spot
 as the camera moves. Keep `density × distance²` modest: 4 a square metre
-within 60 m is about 36,000 copies. A navmesh .ogt's `terrain "terrain/island.ogt" { step 4 }` bakes
+within 60 m is about 36,000 copies. The resource `og.Wind` sways them:
+`strength` (0 still; 0.2 leans a 1 m stem's tip 20 cm downwind),
+`direction`, `speed` (how fast gusts cross the field) and `gust` (0 a
+steady lean, 1 from upright to twice it); set `sway: 0` on a stone
+scatter, and model a copy with its root at the mesh's origin, since each
+vertex moves by its height above it. It is drawn from the tick, so it
+needs no system and costs nothing in the simulation. A navmesh .ogt's `terrain "terrain/island.ogt" { step 4 }` bakes
 the walkable slopes for og-ai. Lower `lodRing` on og.Terrain to trade
 detail for frame time.
 Its tiles stream: only the tiles the camera needs are on the GPU (16 MiB a

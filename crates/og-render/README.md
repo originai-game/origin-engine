@@ -701,6 +701,7 @@ the full tier) asserts the tier's antialiasing choice instead.
 | `materials-physical` | Every `MeshPhysicalMaterial` lobe: clearcoat with its three maps, sheen plain and mapped, iridescence on black and on metal, anisotropy plain and swirled by its map, then clear, frosted and amber glass, a transmission-mapped cube and a high-`ior` ball in front of a plinth of coloured bars. | all |
 | `skinned-hooks` | Skinned cylinders drawn with a material shader that ripples, bands and lifts them; their shadows and AO follow. | all |
 | `terrain-near`, `terrain-mid`, `terrain-far` | Phase 2: the 2 km island (clipmap, four layers, shadows, fog) from 2 m, 150 m and 700 m. | all |
+| `terrain-grass-wind` | The grass meadow (`terrain-grass`) in a gusting `Wind` at tick 90 (strength 0.4 towards +x and a little +z, gust 0.7): the tufts lean downwind, further where a gust passes, their tips lower; the boulders, plain instances, stand still. | all |
 | `water-planar`, `water-shadows`, `water-underwater` | Phase 2: the lake's planar reflection, shadows on the water, the view from under it with caustics. | all |
 
 Behaviour tests in `tests/gfx.rs` read frames rather than code: the cascade
@@ -1629,6 +1630,27 @@ unchanged.
   answers the same copies within `distance` on the CPU (tests, tools):
   nearest rows first, at most 65,536. `FrameStats::scatter_draws`,
   `scatter_copies`, `scatter_built`.
+- **Wind.** `RenderScene::wind` (`Wind { strength, direction, speed, gust
+  }`, og.Wind; `None` or strength 0 still) sways the copies of every
+  scatter whose `TerrainScatter::sway` is above 0, in the vertex stage of
+  the lit, prepass and shadow passes (`scatter_sway` in
+  `scatter_common.wgsl`), before a material shader's hooks: a vertex `h`
+  above the copy's origin moves downwind by `lean × h × min(h / top, 1)`
+  (`top` the mesh's top above its origin, so the root stays put and the
+  tip moves furthest) and drops to keep its distance from the root. The
+  lean is `strength × sway × (1 + gust × w)`, `w` a wave of two octaves
+  (the second at 2.3 times the wavenumber) that travels downwind at
+  `speed` over `WIND_WAVELENGTH` (10 m), its phase offset per copy by a
+  hash of its position, so gusts sweep across the field and neighbours do
+  not move in lockstep. RedGPU's wave travels upwind and its copies sway
+  about an upright stem; here the mean is a lean. The phases are reduced
+  in f64 on the CPU from the tick, so an hour-long session sways as
+  smoothly as its first minute, and the previous frame's are kept for the
+  motion vectors (TAA, motion blur). A chunk's bounds grow by the
+  furthest tip. Test `wind_sways_scattered_copies_downwind` (plates on
+  stems seen from above move by the formula in a steady wind, between 0
+  and twice it in gusts; strength 0 and sway 0 draw what no wind draws);
+  scene `terrain-grass-wind`.
 
 Cost: `tests/evidence/P2/terrain-water/feature-costs.md`.
 

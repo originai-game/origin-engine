@@ -520,6 +520,7 @@ pub fn grass_scatter() -> TerrainScatter {
         scale: [0.8, 1.4],
         align: 0.3,
         seed: 3,
+        sway: 1.0,
     }
 }
 
@@ -533,6 +534,7 @@ pub fn stone_scatter() -> TerrainScatter {
         scale: [0.6, 2.2],
         align: 1.0,
         seed: 9,
+        sway: 0.0,
     }
 }
 

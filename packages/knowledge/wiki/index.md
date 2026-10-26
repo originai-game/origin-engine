@@ -33,7 +33,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`shapes`](shapes.md) | types and tokens | kept | Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js's Shape and Path, built by the same calls (moveTo, lineTo, quadraticCurveTo, bezierCurveTo, splineThru, arc, absarc, ellipse, absellipse, closePath) and flattened to points by getPoints, so a three.js outline is a paste. og.render.shapeGeometry, extrudeGeometry and sweepGeometry take them; only their points cross to the engine. |
 | [`load`](load.md) | `og.load.*` | kept | Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/. |
 | [`physics`](physics.md) | `og.physics.*` | kept | Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back. |
-| [`atmosphere`](atmosphere.md) | `og.atmosphere.*` | kept | Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before. |
+| [`atmosphere`](atmosphere.md) | `og.atmosphere.*` | kept | Fog, a procedural sky, the day-night cycle, weather, the wind that sways vegetation and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before. |
 | [`anim`](anim.md) | `og.anim.*` | kept | Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics. |
 | [`tilemap`](tilemap.md) | `og.tilemap.*` | kept | Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component. |
 | [`terrain`](terrain.md) | `og.terrain.*` | kept | Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry. |
@@ -121,7 +121,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1240 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1241 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -925,6 +925,7 @@ Field units the docs and Tune use.
 | [`og.WaterSurface`](physics.md#record-WaterSurface) | component | physics | — |
 | [`og.Weather`](atmosphere.md#record-Weather) | resource | atmosphere | — |
 | [`og.Wheel`](input.md#record-Wheel) | event | input | — |
+| [`og.Wind`](atmosphere.md#record-Wind) | resource | atmosphere | — |
 | [`og.WorldRestored`](world.md#record-WorldRestored) | event | world | — |
 | [`OverlapDesc`](physics.md#type-OverlapDesc) | desc struct | physics | — |
 | [`Paint`](ui.md#type-Paint) | desc struct | ui | — |

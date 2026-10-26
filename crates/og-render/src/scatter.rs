@@ -18,6 +18,18 @@
 //! the fragment shader thins them out over the fade with a dither, at full
 //! size (`shaders/scatter*.wgsl`). A streamed terrain's chunks are built
 //! once the level-0 tiles under them have arrived.
+//!
+//! **Wind.** [`crate::RenderScene::wind`] sways the copies in the vertex
+//! stage of every pass (lit, prepass and shadow): each vertex above the
+//! copy's origin moves downwind by the copy's lean at the tick times its
+//! height times its height over the mesh's (so the root stays put and the
+//! tip moves furthest), lowered to keep its distance from the root. The
+//! lean is `strength × (1 + gust × w)`, `w` a wave of two octaves that
+//! travels downwind at `speed` over [`WIND_WAVELENGTH`] (a little offset
+//! per copy, from its position), so gusts sweep across the field. Its
+//! phases are reduced on the CPU in f64 from the tick, so a long session
+//! sways as smoothly as its first minute, and the previous frame's are
+//! kept for the motion vectors. A chunk's bounds grow by the furthest lean.
 
 use crate::material::Side;
 use crate::scene::{MaterialHandle, MeshHandle};
@@ -56,6 +68,9 @@ pub struct TerrainScatter {
     /// How far they lean with the ground: 0 upright, 1 along its normal.
     pub align: f32,
     pub seed: u32,
+    /// How much the [`crate::RenderScene::wind`] sways them: 1 as it
+    /// blows, 0 still (stones). Not part of the placement.
+    pub sway: f32,
 }
 
 impl Default for TerrainScatter {
@@ -68,8 +83,54 @@ impl Default for TerrainScatter {
             scale: [0.8, 1.2],
             align: 0.0,
             seed: 1,
+            sway: 1.0,
         }
     }
+}
+
+/// The wind the renderer sways vegetation with ([`crate::RenderScene::wind`]):
+/// [`ScatterDraw`] copies lean downwind and sway in gusts that sweep
+/// across the field (the module's documentation has the shape). Visual
+/// only, a function of the tick.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Wind {
+    /// The mean lean: how far a copy's tip moves downwind per metre of its
+    /// height (0.2: a 1 m stem's tip leans 20 cm); 0 is still.
+    pub strength: f32,
+    /// Where it blows: its horizontal part, normalised.
+    pub direction: Vec3,
+    /// How fast the gusts travel downwind (m/s).
+    pub speed: f32,
+    /// How much the lean varies in the gusts, 0..1: 0 a steady lean, 1
+    /// from upright to twice the mean.
+    pub gust: f32,
+}
+
+impl Default for Wind {
+    fn default() -> Self {
+        Wind {
+            strength: 0.2,
+            direction: Vec3::X,
+            speed: 3.0,
+            gust: 0.6,
+        }
+    }
+}
+
+/// The length of the wind's gust wave (metres).
+pub const WIND_WAVELENGTH: f32 = 10.0;
+
+/// The wind's second octave: its wavenumber and time phase over the
+/// first's (scatter_common.wgsl `scatter_sway`).
+const WIND_OCTAVE: f64 = 2.3;
+
+/// The wind's two time phases at `tick` (radians, reduced in f64): the
+/// first octave's `k speed t` and the second's.
+fn wind_phases(wind: &Wind, tick: u64, tick_rate: f32) -> [f32; 2] {
+    let t = tick as f64 / f64::from(tick_rate.max(1e-3));
+    let k = std::f64::consts::TAU / f64::from(WIND_WAVELENGTH);
+    let first = k * f64::from(wind.speed) * t;
+    [first, first * WIND_OCTAVE].map(|p| p.rem_euclid(std::f64::consts::TAU) as f32)
 }
 
 impl TerrainScatter {
@@ -398,6 +459,15 @@ struct ScatterGpu {
     fade: [f32; 4],
     view_proj: [[f32; 4]; 4],
     prev_view_proj: [[f32; 4]; 4],
+    /// xy: the wind's horizontal direction (x, z), z: its strength times
+    /// the scatter's sway (0: still), w: its gust.
+    wind: [f32; 4],
+    /// The wind's time phases (`wind_phases`): xy this frame's, zw the
+    /// previous frame's.
+    wind_phase: [f32; 4],
+    /// x: the gust wave's wavenumber (rad/m), y: the mesh's top above its
+    /// origin (m).
+    wind_shape: [f32; 4],
 }
 
 const SLOT: u64 = 256;
@@ -435,6 +505,8 @@ pub(crate) struct ScatterBatch {
     pub side: Side,
     offset: u32,
     chunks: Vec<ChunkKey>,
+    /// How far the wind moves a copy at most: the chunks' bounds grow by it.
+    sway: f32,
 }
 
 /// Which pass a scatter draws into.
@@ -480,6 +552,9 @@ pub(crate) struct ScatterRenderer {
     frame: u64,
     /// Chunks built for the last frame.
     pub built: u32,
+    /// The wind's phases the last frame drew with (the motion vectors'
+    /// previous positions).
+    wind_phase: Option<[f32; 2]>,
 }
 
 impl ScatterRenderer {
@@ -559,6 +634,7 @@ impl ScatterRenderer {
             chunks: HashMap::new(),
             frame: 0,
             built: 0,
+            wind_phase: None,
         }
     }
 
@@ -710,7 +786,8 @@ impl ScatterRenderer {
 
     /// Builds the chunks this frame needs and answers what to draw.
     /// `side_of` answers a material's side (`None`: not of this scene);
-    /// `mesh_ok` whether a mesh has geometry.
+    /// `mesh_bounds` a mesh's radius about its origin and its top above it
+    /// (`None`: no geometry).
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn prepare(
         &mut self,
@@ -721,7 +798,7 @@ impl ScatterRenderer {
         view_proj: Mat4,
         prev_view_proj: Mat4,
         side_of: impl Fn(usize) -> Option<Side>,
-        mesh_radius: impl Fn(usize) -> Option<f32>,
+        mesh_bounds: impl Fn(usize) -> Option<(f32, f32)>,
         shader_of: impl Fn(usize) -> Option<usize>,
         hooks_of: impl Fn(usize) -> String,
     ) -> Vec<ScatterBatch> {
@@ -729,6 +806,10 @@ impl ScatterRenderer {
         self.frame += 1;
         self.built = 0;
         let mut batches = Vec::new();
+        let wind = scene.wind.filter(|w| w.strength > 0.0);
+        let phase = wind.map(|w| wind_phases(&w, scene.tick, scene.tick_rate));
+        let prev_phase = self.wind_phase.or(phase).unwrap_or_default();
+        self.wind_phase = phase;
         if scene.scatters.is_empty() {
             self.chunks.retain(|_, c| self.frame - c.used < KEEP_FRAMES);
             return batches;
@@ -746,10 +827,10 @@ impl ScatterRenderer {
                 continue;
             };
             let di = t.terrain.index();
-            let (Some(source), Some(side), Some(mesh_r)) = (
+            let (Some(source), Some(side), Some((mesh_r, mesh_top))) = (
                 sources.get(di),
                 side_of(d.material.index()),
-                mesh_radius(d.mesh.index()),
+                mesh_bounds(d.mesh.index()),
             ) else {
                 continue;
             };
@@ -922,11 +1003,27 @@ impl ScatterRenderer {
                 );
                 keys.push(key);
             }
+            // The wind: its lean on this scatter, and the furthest a copy
+            // moves (the tip of the tallest at the top of a gust).
+            let (wind_row, sway) = match wind {
+                Some(w) if s.sway > 0.0 && mesh_top > 0.0 => {
+                    let dir = Vec2::new(w.direction.x, w.direction.z).normalize_or(Vec2::X);
+                    let lean = w.strength * s.sway;
+                    let gust = w.gust.clamp(0.0, 1.0);
+                    let tip = lean * (1.0 + gust) * mesh_top * s.scale[1].max(s.scale[0]);
+                    ([dir.x, dir.y, lean, gust], tip)
+                }
+                _ => ([0.0; 4], 0.0),
+            };
+            let now = phase.unwrap_or_default();
             let gpu = ScatterGpu {
                 camera: camera.extend(s.distance).to_array(),
                 fade: [s.fade_from(), 0.0, 0.0, 0.0],
                 view_proj: view_proj.to_cols_array_2d(),
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
+                wind: wind_row,
+                wind_phase: [now[0], now[1], prev_phase[0], prev_phase[1]],
+                wind_shape: [std::f32::consts::TAU / WIND_WAVELENGTH, mesh_top, 0.0, 0.0],
             };
             queue.write_buffer(&self.uniform, si as u64 * SLOT, bytemuck::bytes_of(&gpu));
             let shader = shader_of(d.material.index());
@@ -950,6 +1047,7 @@ impl ScatterRenderer {
                 side,
                 offset: (si as u64 * SLOT) as u32,
                 chunks: keys,
+                sway,
             });
         }
         self.chunks.retain(|_, c| self.frame - c.used < KEEP_FRAMES);
@@ -990,7 +1088,7 @@ impl ScatterRenderer {
                     continue;
                 };
                 let Some(buffer) = &c.buffer else { continue };
-                if !visible(c.center, c.radius) {
+                if !visible(c.center, c.radius + b.sway) {
                     continue;
                 }
                 if !bound {

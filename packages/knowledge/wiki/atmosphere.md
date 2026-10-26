@@ -2,7 +2,7 @@
 
 # The `atmosphere` module
 
-Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before.
+Fog, a procedural sky, the day-night cycle, weather, the wind that sways vegetation and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before.
 
 The day-night clock is a function of the tick (DayNight.start plus the simulated time times speed), so it is the same on every run and after a restore; rendering reads the world and never writes it.
 
@@ -31,6 +31,7 @@ module atmosphere {
 | [`og.Sky`](#record-Sky) | resource | A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it (the image-based light follows it). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself. |
 | [`og.DayNight`](#record-DayNight) | resource | A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`. |
 | [`og.Weather`](#record-Weather) | resource | A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation. |
+| [`og.Wind`](#record-Wind) | resource | The wind the renderer sways vegetation with: og.TerrainScatter copies lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind). |
 | [`og.Water`](#record-Water) | component | A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated). |
 | [`og.Water2D`](#record-Water2D) | component | Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface. |
 | [`og.atmosphere.timeOfDay`](#fn-timeOfDay) | function | The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads. |
@@ -63,7 +64,7 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 7974</sub>
+<sub>`api.ogt` line 8001</sub>
 
 ## Components, resources and events
 
@@ -430,6 +431,52 @@ resource Weather {
 
 <sub>`api.ogt` line 7774</sub>
 
+<a id="record-Wind"></a>
+
+### `og.Wind` (resource)
+
+The wind the renderer sways vegetation with: og.TerrainScatter copies lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).
+
+Token `og.Wind`, registered under the schema name `og.Wind`; its value type is `Wind`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `strength` | `number` | `0` | 0 … 2 | — | tunable | The mean lean: how far a copy's tip moves downwind per metre of its height (0.2: a 1 m stem's tip leans 20 cm); 0 is still. |
+| `direction` | `Vector3` | `{ x: 1, y: 0, z: 0 }` | — | — | tunable | Where the wind blows: its horizontal part, normalised. |
+| `speed` | `number` | `3` | 0 … 50 | `mps` | tunable | How fast the gusts travel downwind, over a 10 m wave. |
+| `gust` | `number` | `0.6` | 0 … 1 | `ratio` | tunable | How much the lean varies in the gusts: 0 a steady lean, 1 from upright to twice the mean. |
+
+```ogt
+resource Wind {
+  doc "The wind the renderer sways vegetation with: og.TerrainScatter copies lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind)."
+  field strength f32 "The mean lean: how far a copy's tip moves downwind per metre of its height (0.2: a 1 m stem's tip leans 20 cm); 0 is still." {
+    min 0
+    max 2
+    tunable true
+  }
+  field direction Vector3 "Where the wind blows: its horizontal part, normalised." {
+    default 1 0 0
+    tunable true
+  }
+  field speed f32 "How fast the gusts travel downwind, over a 10 m wave." {
+    default 3
+    min 0
+    max 50
+    unit mps
+    tunable true
+  }
+  field gust f32 "How much the lean varies in the gusts: 0 a steady lean, 1 from upright to twice the mean." {
+    default 0.6
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+}
+```
+
+<sub>`api.ogt` line 7814</sub>
+
 <a id="record-Water"></a>
 
 ### `og.Water` (component)
@@ -597,7 +644,7 @@ component Water {
 }
 ```
 
-<sub>`api.ogt` line 7814</sub>
+<sub>`api.ogt` line 7841</sub>
 
 <a id="record-Water2D"></a>
 
@@ -651,7 +698,7 @@ component Water2D {
 }
 ```
 
-<sub>`api.ogt` line 7942</sub>
+<sub>`api.ogt` line 7969</sub>
 
 ## Constants
 

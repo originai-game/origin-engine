@@ -1461,6 +1461,9 @@ pub struct RenderScene {
     /// Copies scattered over this frame's terrains, placed and drawn by
     /// the renderer from cached chunks.
     pub scatters: Vec<crate::ScatterDraw>,
+    /// The wind that sways the scattered copies (`None` or strength 0:
+    /// still).
+    pub wind: Option<crate::Wind>,
     /// Side-on 2D water bodies, drawn in the sprite order.
     pub water_2d: Vec<crate::Water2d>,
     /// 2D fluids drawn as metaballs in the sprite order (the first
@@ -1650,6 +1653,7 @@ impl RenderScene {
             water: Vec::new(),
             terrains: Vec::new(),
             scatters: Vec::new(),
+            wind: None,
             water_2d: Vec::new(),
             metaballs: Vec::new(),
             fluids_3d: Vec::new(),

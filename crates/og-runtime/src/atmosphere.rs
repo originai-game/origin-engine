@@ -33,6 +33,7 @@ pub(crate) struct AtmoLayouts {
     sky: Option<Layout>,
     day_night: Option<Layout>,
     weather: Option<Layout>,
+    wind: Option<Layout>,
     water: Option<Layout>,
     water_2d: Option<Layout>,
     water_line: Option<Layout>,
@@ -54,6 +55,7 @@ impl AtmoLayouts {
             sky: get("og.Sky"),
             day_night: get("og.DayNight"),
             weather: get("og.Weather"),
+            wind: get("og.Wind"),
             water: get("og.Water"),
             water_2d: get("og.Water2D"),
             water_line: get("og.WaterLine"),
@@ -191,7 +193,7 @@ pub(crate) fn derive(
     }
 }
 
-/// og.Fog, og.Sky, og.DayNight, og.Weather, og.Water, og.Water2D,
+/// og.Fog, og.Sky, og.DayNight, og.Weather, og.Wind, og.Water, og.Water2D,
 /// og.Fluid2D, og.Fluid3D, og.Rope and og.Cloth into `rs.scene`. Returns the keys of
 /// the instances it added (cloth), for per-object motion.
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Vec<(u64, u32)> {
@@ -202,6 +204,15 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     let layouts = &draw.atmo;
     scene.fog = None;
     scene.volumetric_fog = None;
+    scene.wind = resource(world, layouts.wind.as_ref()).and_then(|w| {
+        let strength = f(&w, "strength", 0.0);
+        (strength > 0.0).then(|| og_render::Wind {
+            strength,
+            direction: super::fx::vec3(&w["direction"]),
+            speed: f(&w, "speed", 3.0),
+            gust: f(&w, "gust", 0.6),
+        })
+    });
     scene.water.clear();
     scene.water_2d.clear();
     scene.metaballs.clear();

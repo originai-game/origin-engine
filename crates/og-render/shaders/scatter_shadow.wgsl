@@ -15,7 +15,8 @@ struct ScatterShadowOut {
 @vertex
 fn vs_shadow(v: ScatterVertex, i: ScatterInstance) -> ScatterShadowOut {
   let model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
-  let world = model * vec4<f32>(v.position, 1.0);
+  let sway = scatter_sway(v.position, i.m3, length(i.m1), scatter.wind_phase.xy);
+  let world = model * vec4<f32>(v.position, 1.0) + vec4<f32>(sway, 0.0);
   var o: ScatterShadowOut;
   o.fade = scatter_fade(i.m3);
   o.clip = select(SCATTER_GONE, shadow_project(world, mul_point(shadow_pass.view_proj, world)), o.fade > 0.0);

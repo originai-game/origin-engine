@@ -5772,7 +5772,7 @@
     },
     {
       "name": "atmosphere",
-      "doc": "Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before.\nThe day-night clock is a function of the tick (DayNight.start plus the simulated time times speed), so it is the same on every run and after a restore; rendering reads the world and never writes it.",
+      "doc": "Fog, a procedural sky, the day-night cycle, weather, the wind that sways vegetation and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before.\nThe day-night clock is a function of the tick (DayNight.start plus the simulated time times speed), so it is the same on every run and after a restore; rendering reads the world and never writes it.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -5780,6 +5780,7 @@
         "Sky",
         "DayNight",
         "Weather",
+        "Wind",
         "Water",
         "Water2D"
       ],
@@ -24108,6 +24109,51 @@
       },
       "additionalProperties": false
     },
+    "Wind": {
+      "x-og-kind": "resource",
+      "x-og-module": "atmosphere",
+      "description": "The wind the renderer sways vegetation with: og.TerrainScatter copies lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).",
+      "type": "object",
+      "properties": {
+        "strength": {
+          "type": "number",
+          "description": "The mean lean: how far a copy's tip moves downwind per metre of its height (0.2: a 1 m stem's tip leans 20 cm); 0 is still.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "direction": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the wind blows: its horizontal part, normalised.",
+          "default": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-tunable": true
+        },
+        "speed": {
+          "type": "number",
+          "description": "How fast the gusts travel downwind, over a 10 m wave.",
+          "default": 3,
+          "minimum": 0,
+          "maximum": 50,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "gust": {
+          "type": "number",
+          "description": "How much the lean varies in the gusts: 0 a steady lean, 1 from upright to twice the mean.",
+          "default": 0.6,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
     "Water": {
       "x-og-kind": "component",
       "x-og-module": "atmosphere",
@@ -37883,6 +37929,14 @@
           "type": "boolean",
           "description": "Whether the copies cast shadows (grass usually does not: three.js meshes cast only with castShadow set).",
           "default": true
+        },
+        "sway": {
+          "type": "number",
+          "description": "How much og.Wind sways the copies: 1 as it blows, 0 still (stones), between for stiffer stems. Each vertex above the mesh's origin moves by its height, so model the copy with its root at the origin.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-tunable": true
         }
       },
       "additionalProperties": false

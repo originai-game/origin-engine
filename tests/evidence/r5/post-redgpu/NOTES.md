@@ -176,3 +176,63 @@ metal references are owed to the Mac lane (`OG_GFX_CAPTURE=<scene>`).
   rows bowed in at their ends; bottom right barrel 0.4 centred at (0.3,
   0.6), the lower left spheres swollen and the right side squeezed, no
   black edge. The HUD and the og.ui badge are not bent in any.
+
+## 4. Wind sway (`og.Wind`, `TerrainScatter.sway`)
+
+- **What landed.** og-render `Wind { strength, direction, speed, gust }`
+  (`RenderScene::wind`) and `TerrainScatter::sway`; `scatter_sway` in
+  `scatter_common.wgsl` moves each vertex of a scattered copy in the
+  vertex stage of the lit, prepass and shadow passes, before a material
+  shader's hooks. The IDL gains the atmosphere resource `Wind` (off at
+  strength 0; direction 1 0 0, speed 3 m/s, gust 0.6) and
+  `TerrainScatter.sway` (1; 0 for stones); og-runtime reads both.
+- **Decisions.** RedGPU sways a copy about its upright stem with a wave
+  that travels upwind; here the mean is a lean downwind (`strength` m of
+  tip per metre of height) varied by `1 + gust × w`, `w` two octaves
+  (wavenumber 2π/10 m and 2.3 times it) travelling downwind at `speed`,
+  offset per copy by a hash of its position, so gusts sweep across the
+  field and neighbours differ. A vertex moves by `lean × h × min(h / top,
+  1)` (the root still, the tip furthest) and drops to keep its distance
+  from the root. The phases are reduced in f64 on the CPU from the tick
+  (no f32 time drift in a long session) and the previous frame's are kept
+  for the motion vectors; a chunk's culling bounds grow by the furthest
+  tip. Nothing in the simulation reads it (og.Rope, og.Cloth and
+  og.Weather keep their own wind).
+- **Tests.** og-tests `terrain::wind_sways_scattered_copies_downwind`:
+  30 plates held 2 m up on stems, seen from above. In a steady wind
+  (strength 0.5, direction 3 5 4) each moves (0.6, 0.8) m within 0.026 m
+  at ticks 0 and 37 (the horizontal direction normalised, the lean times
+  the height); strength 0 and sway 0 draw pixel-identical frames to no
+  wind; in gusts (gust 1) every plate moves downwind by 0 to 2 m, 24 of
+  30 move on by tick 20 and they spread over 1.86 m. With motion blur and
+  a still camera a frame drawn after tick 0 smears the plates (3051
+  pixels differ from a renderer's first frame of tick 30); with the
+  previous position drawn from this frame's phases it is 0 and fails. A
+  first cut of that check passed nothing: plates at emissive 8 with no
+  tone curve stay at 255 red however blurred, and the blur's 20 px
+  dilation taps step over a 7 px plate; it now dims them to 0.8 and
+  blurs over 16 px. The earlier scatter tests (`terrain::scatter*`, the
+  fork-field scatter tests, `light::terrain_and_scatter`) pass, and
+  `terrain-grass` still matches its reference.
+- `crates/og-tests/references/vulkan-cpu/terrain-grass-wind.png` —
+  `OG_GFX_CAPTURE=terrain-grass-wind cargo test -p og-tests --test tests
+  terrain::the_grass_scene_in_the_wind` (sha256 382cc260dcc38283). Read
+  beside metal's `terrain-grass`: the same meadow and boulders, every
+  tuft bent towards the right and a little towards the camera, their
+  tips lower and the blades longer on screen, with bands where a gust
+  leans them further; the boulders (plain instances) and the mountains
+  unchanged.
+- `wind-run.png` — no template scatters over a terrain, so the run is on
+  a scratch copy of fx-showcase (not committed) whose P2 terrain station
+  grows tufts of three crossed blades (`og.TerrainScatter` density 6
+  within 40 m on the grass layer) with the camera 2.6 m over the meadow:
+  `og run /tmp/fxs-wind --size 1280x720 --commands
+  "0.5:station:terrain;3.0:screenshot:calm.png;3.05:set:og.Wind.strength=0.45;
+  3.05:set:og.Wind.gust=0.8;3.05:set:og.Wind.direction=1,0,-0.3;
+  3.5:screenshot:wind-a.png;3.75:screenshot:wind-b.png;4.0:screenshot:wind-c.png;4.05:quit"`,
+  the four frames at half size (rev 950fd568+dirty, 2026-10-26, sha256
+  f025f4e62c96d14c). Read: top left calm, the blades upright; the other
+  three in the wind, the blades leaning away and to the right, the
+  near ones lying lower, by different amounts across the field and from
+  frame to frame as the gusts pass. The HUD and the og.ui badge are
+  unchanged.

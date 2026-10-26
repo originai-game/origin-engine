@@ -137,6 +137,7 @@ pub const SCENES: &[&str] = &[
     "post-adjust",
     "post-neutral",
     "post-lens",
+    "terrain-grass-wind",
 ];
 
 /// Scenes rendered natively only, beside [`SCENES`] (`og-gfx --all` takes
@@ -755,6 +756,19 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
                 amount: 0.35,
                 ..Default::default()
             });
+        }
+        // The grass scene in a gusting wind at tick 90 (strength 0.4 across
+        // the meadow, gust 0.7): the tufts lean downwind, further where a
+        // gust passes.
+        "terrain-grass-wind" => {
+            g.scene = crate::terrain_scenes::grass_scene();
+            g.scene.wind = Some(og_render::Wind {
+                strength: 0.4,
+                direction: Vec3::new(1.0, 0.0, 0.4),
+                speed: 3.0,
+                gust: 0.7,
+            });
+            g.scene.tick = 90;
         }
         other => {
             return Err(format!(

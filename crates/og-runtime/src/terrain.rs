@@ -1050,6 +1050,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 scale: [f(&v, "minScale", 0.8), f(&v, "maxScale", 1.2)],
                 align: f(&v, "align", 0.0),
                 seed: u(&v, "seed", 1),
+                sway: f(&v, "sway", 1.0),
             },
             cast_shadows: on(&v, "castShadows", true),
         });

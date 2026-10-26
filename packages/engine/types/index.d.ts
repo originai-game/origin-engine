@@ -11508,7 +11508,7 @@ export interface PhysicsStats {
 
 
 // ── atmosphere ──────────────────────────────────────────────────
-// Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before.
+// Fog, a procedural sky, the day-night cycle, weather, the wind that sways vegetation and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before.
 // The day-night clock is a function of the tick (DayNight.start plus the simulated time times speed), so it is the same on every run and after a restore; rendering reads the world and never writes it.
 
 /** Weather.kind: clear. */
@@ -11913,6 +11913,46 @@ export interface Weather {
    * @default 50
    */
   layer: number;
+}
+
+/**
+ * The wind the renderer sways vegetation with: og.TerrainScatter copies lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).
+ *
+ * The `Wind` resource (token `og.Wind`).
+ */
+export interface Wind {
+  /**
+   * The mean lean: how far a copy's tip moves downwind per metre of its height (0.2: a 1 m stem's tip leans 20 cm); 0 is still.
+   *
+   * @range 0..2
+   * @tunable
+   */
+  strength: number;
+  /**
+   * Where the wind blows: its horizontal part, normalised.
+   *
+   * @default { x: 1, y: 0, z: 0 }
+   * @tunable
+   */
+  direction: Vector3;
+  /**
+   * How fast the gusts travel downwind, over a 10 m wave.
+   *
+   * @default 3
+   * @range 0..50
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  speed: number;
+  /**
+   * How much the lean varies in the gusts: 0 a steady lean, 1 from upright to twice the mean.
+   *
+   * @default 0.6
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  gust: number;
 }
 
 /**
@@ -21913,6 +21953,14 @@ export interface TerrainScatter {
    * @default true
    */
   castShadows: boolean;
+  /**
+   * How much og.Wind sways the copies: 1 as it blows, 0 still (stones), between for stiffer stems. Each vertex above the mesh's origin moves by its height, so model the copy with its root at the origin.
+   *
+   * @default 1
+   * @range 0..2
+   * @tunable
+   */
+  sway: number;
 }
 
 /** A loaded terrain. */
@@ -24175,6 +24223,10 @@ export declare namespace og {
    */
   const Weather: ResourceType<{ readonly kind: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly dim: FieldSpec<"f32">; readonly layer: FieldSpec<"i32"> }, Weather>;
   /**
+   * The wind the renderer sways vegetation with: og.TerrainScatter copies lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).
+   */
+  const Wind: ResourceType<{ readonly strength: FieldSpec<"f32">; readonly direction: FieldSpec<"Vector3">; readonly speed: FieldSpec<"f32">; readonly gust: FieldSpec<"f32"> }, Wind>;
+  /**
    * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space where the tier allows, the sky's cubemap on WebGL2, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
    */
   const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly geometry: FieldSpec<"Geometry">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly planarReflection: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly f0: FieldSpec<"f32">; readonly reflectionBias: FieldSpec<"f32">; readonly underwaterColor: FieldSpec<"Color">; readonly underwaterDensity: FieldSpec<"f32">; readonly caustics: FieldSpec<"f32">; readonly causticsScale: FieldSpec<"f32">; readonly normalMap: FieldSpec<"Texture">; readonly normalScale: FieldSpec<"f32">; readonly glint: FieldSpec<"f32">; readonly flow: FieldSpec<"Vector2"> }, Water>;
@@ -24183,7 +24235,7 @@ export declare namespace og {
    */
   const Water2D: ComponentType<{ readonly top: FieldSpec<"Color">; readonly topOpacity: FieldSpec<"f32">; readonly bottom: FieldSpec<"Color">; readonly bottomOpacity: FieldSpec<"f32">; readonly lip: FieldSpec<"Color">; readonly lipWidth: FieldSpec<"f32">; readonly layer: FieldSpec<"i32"> }, Water2D>;
   /**
-   * Fog, a procedural sky, the day-night cycle, weather and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before.
+   * Fog, a procedural sky, the day-night cycle, weather, the wind that sways vegetation and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before.
    * The day-night clock is a function of the tick (DayNight.start plus the simulated time times speed), so it is the same on every run and after a restore; rendering reads the world and never writes it.
    */
   namespace atmosphere {
@@ -25716,7 +25768,7 @@ export declare namespace og {
   /**
    * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
    */
-  const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly castShadows: FieldSpec<"bool"> }, TerrainScatter>;
+  const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly castShadows: FieldSpec<"bool">; readonly sway: FieldSpec<"f32"> }, TerrainScatter>;
   /**
    * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
    * Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Terrain is 3D: the 2D profile's publish and lanes modules leave it out (RenderCapabilities.world3d is false), where every call here answers a refusal naming that field. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike).

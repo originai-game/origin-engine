@@ -236,8 +236,10 @@ lighting falls back to a forward tile table built on the CPU).
   shore, rivers along the routed flow, biome rules writing the control
   map), with IEEE-exact arithmetic and the generator's own PCG32 so every
   host makes the same field; both routes write the same tile pyramid, and
-  `TerrainInfo.seaLevel` places the water. Decals: deferred-style
-  projection in the forward pass.
+  `TerrainInfo.seaLevel` places the water. Detail meshes scattered over
+  it sway in `og.Wind` (a lean downwind with gusts that sweep across the
+  field, drawn from the tick and never read by the simulation). Decals:
+  deferred-style projection in the forward pass.
 - Text: MSDF for UI and world text, kerned from the font's GPOS pairs;
   CJK coverage through the platform's subset fonts, and characters outside
   a cooked charset rendered at run time from the font's outlines (`font {

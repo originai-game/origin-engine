@@ -18,7 +18,7 @@ module terrain {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 14106</sub>
+<sub>`api.ogt` line 14133</sub>
 
 ## Contents
 
@@ -73,7 +73,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 14367</sub>
+<sub>`api.ogt` line 14400</sub>
 
 <a id="fn-sample"></a>
 
@@ -103,7 +103,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 14374</sub>
+<sub>`api.ogt` line 14407</sub>
 
 <a id="fn-bounds"></a>
 
@@ -145,7 +145,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 14381</sub>
+<sub>`api.ogt` line 14414</sub>
 
 <a id="fn-edit"></a>
 
@@ -177,7 +177,7 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 14397</sub>
+<sub>`api.ogt` line 14430</sub>
 
 <a id="fn-layer"></a>
 
@@ -209,7 +209,7 @@ fn layer {
 }
 ```
 
-<sub>`api.ogt` line 14405</sub>
+<sub>`api.ogt` line 14438</sub>
 
 <a id="fn-setLayer"></a>
 
@@ -243,7 +243,7 @@ fn setLayer {
 }
 ```
 
-<sub>`api.ogt` line 14413</sub>
+<sub>`api.ogt` line 14446</sub>
 
 ## Components, resources and events
 
@@ -286,7 +286,7 @@ component Terrain {
 }
 ```
 
-<sub>`api.ogt` line 14130</sub>
+<sub>`api.ogt` line 14157</sub>
 
 <a id="record-TerrainScatter"></a>
 
@@ -310,6 +310,7 @@ Token `og.TerrainScatter`, registered under the schema name `og.TerrainScatter`;
 | `align` | `number` | `0` | 0 … 1 | `ratio` | tunable | How far copies lean with the ground: 0 upright, 1 along its normal. |
 | `seed` | `number` | `1` | — | — | — | Another seed places the copies elsewhere. |
 | `castShadows` | `boolean` | `true` | — | — | — | Whether the copies cast shadows (grass usually does not: three.js meshes cast only with castShadow set). |
+| `sway` | `number` | `1` | 0 … 2 | — | tunable | How much og.Wind sways the copies: 1 as it blows, 0 still (stones), between for stiffer stems. Each vertex above the mesh's origin moves by its height, so model the copy with its root at the origin. |
 
 ```ogt
 component TerrainScatter {
@@ -362,10 +363,16 @@ component TerrainScatter {
   field castShadows bool "Whether the copies cast shadows (grass usually does not: three.js meshes cast only with castShadow set)." {
     default true
   }
+  field sway f32 "How much og.Wind sways the copies: 1 as it blows, 0 still (stones), between for stiffer stems. Each vertex above the mesh's origin moves by its height, so model the copy with its root at the origin." {
+    default 1
+    min 0
+    max 2
+    tunable true
+  }
 }
 ```
 
-<sub>`api.ogt` line 14151</sub>
+<sub>`api.ogt` line 14178</sub>
 
 ## Types
 
@@ -381,7 +388,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TerrainData "A loaded terrain: its heights, control map and layers."
 ```
 
-<sub>`api.ogt` line 14112</sub>
+<sub>`api.ogt` line 14139</sub>
 
 <a id="type-TerrainBrushMode"></a>
 
@@ -410,7 +417,7 @@ enum TerrainBrushMode {
 }
 ```
 
-<sub>`api.ogt` line 14121</sub>
+<sub>`api.ogt` line 14148</sub>
 
 <a id="type-TerrainInfo"></a>
 
@@ -457,7 +464,7 @@ struct TerrainInfo {
 }
 ```
 
-<sub>`api.ogt` line 14203</sub>
+<sub>`api.ogt` line 14236</sub>
 
 <a id="type-TerrainSampleDesc"></a>
 
@@ -497,7 +504,7 @@ struct TerrainSampleDesc {
 }
 ```
 
-<sub>`api.ogt` line 14226</sub>
+<sub>`api.ogt` line 14259</sub>
 
 <a id="type-TerrainSample"></a>
 
@@ -526,7 +533,7 @@ struct TerrainSample {
 }
 ```
 
-<sub>`api.ogt` line 14245</sub>
+<sub>`api.ogt` line 14278</sub>
 
 <a id="type-TerrainBounds"></a>
 
@@ -551,7 +558,7 @@ struct TerrainBounds {
 }
 ```
 
-<sub>`api.ogt` line 14257</sub>
+<sub>`api.ogt` line 14290</sub>
 
 <a id="type-TerrainBrush"></a>
 
@@ -609,7 +616,7 @@ struct TerrainBrush {
 }
 ```
 
-<sub>`api.ogt` line 14267</sub>
+<sub>`api.ogt` line 14300</sub>
 
 <a id="type-TerrainEdit"></a>
 
@@ -636,7 +643,7 @@ struct TerrainEdit {
 }
 ```
 
-<sub>`api.ogt` line 14301</sub>
+<sub>`api.ogt` line 14334</sub>
 
 <a id="type-TerrainLayerDesc"></a>
 
@@ -717,7 +724,7 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 14312</sub>
+<sub>`api.ogt` line 14345</sub>
 
 ## Column kinds
 
@@ -736,4 +743,4 @@ column TerrainData {
 }
 ```
 
-<sub>`api.ogt` line 14114</sub>
+<sub>`api.ogt` line 14141</sub>
