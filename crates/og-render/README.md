@@ -14,7 +14,7 @@ the world → scene extraction belongs to the layer above.
 
 | Type | What it is |
 |---|---|
-| `RenderDesc` | How to create a renderer: `width`, `height`, `backend` (`Auto`, `WebGpu`, `WebGl2`, `Metal`, `Vulkan`), `output_format` (`None` = `Rgba8UnormSrgb` offscreen, the surface's choice on a surface), `antialias`, `shadow_map_size`, `shadow_cascades`, `texture_compression`, `particles`, `culling`, `point_shadows` (`PointShadows::{Auto, Cube, Paraboloid}`), `taa_history` (`TaaHistory::{Bilinear, CatmullRom}`), `taa_sharpen` (0 to 1). Default 1280×720, `Auto`, `Antialias::Off`, point shadows `Auto`, a bilinear TAA history, no sharpening. |
+| `RenderDesc` | How to create a renderer: `width`, `height`, `backend` (`Auto`, `WebGpu`, `WebGl2`, `Metal`, `Vulkan`), `output_format` (`None` = `Rgba8UnormSrgb` offscreen, the surface's choice on a surface), `antialias`, `shadow_map_size`, `shadow_cascades`, `texture_compression`, `particles`, `culling`, `point_shadows` (`PointShadows::{Auto, Cube, Paraboloid}`), `taa_history` (`TaaHistory::{Bilinear, CatmullRom}`), `taa_sharpen` (0 to 1), `planar_reflections` (1 or 2, `MAX_PLANAR_REFLECTIONS`). Default 1280×720, `Auto`, `Antialias::Off`, point shadows `Auto`, a bilinear TAA history, no sharpening, one planar reflection. |
 | `Antialias` | `Off`, `Tier` (TAA on the full tier, 4× MSAA on the no-compute tier), and the explicit `Msaa4`, `Taa` and `Fxaa` (any tier). `RenderInfo::antialias` reports what was resolved; `Tier` and `Msaa4` fall back to `Fxaa` where the HDR format cannot be multisampled ([Shadows and antialiasing by tier](#shadows-and-antialiasing-by-tier)). |
 | `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`, `reset_history` (TAA, on a camera cut), `save_state() -> RendererState` and `restore_state(state)` (the adapted exposure and its tick, kept on the GPU for a world snapshot; `RendererState::id`/`from_id` carry it as a u64), `capture().await -> RgbaImage` and `poll()` on every host. Native only: `new_blocking`, `wait_idle`, `read_offscreen()` (= `capture` blocking). |
 | `renderer_disabled()`, `RENDERER_SWITCH` | Native: `OG_RENDERER=none` in the environment makes `Renderer::new` and `with_surface` answer `NoAdapter` naming the switch, as on a machine without a usable adapter (the platform's engine and probe sandboxes), so hosts' no-renderer path is testable beside a GPU (docs/ci.md §Switches in the environment). |
@@ -1626,8 +1626,14 @@ Cost: `tests/evidence/P2/terrain-water/feature-costs.md`.
 Each off by default on `Water` (every earlier water frame is unchanged):
 
 - **Planar reflection** (`planar_reflection`, the fraction of the output's
-  resolution; one surface a frame, the first that asks, with the camera
-  above it and perspective). The camera mirrored in the surface
+  resolution; one surface a frame, the first that asks (a grid surface
+  first), with the camera above it and perspective; with
+  `RenderDesc::planar_reflections` 2, a second surface in view draws its
+  own into `reflection.1`, and the effect group's binding 4 lets material
+  shaders read the first (`planar_reflection`, planar.wgsl; the
+  lightmapped pipelines then take a group without it, `fx_lean_layout`).
+  With 1, a second surface reflects as without one and the effect group
+  keeps its four bindings). The camera mirrored in the surface
   (`look_at` of the mirrored eye, target and up: a proper rotation, so
   the image is flipped left to right and winding is unchanged) draws the
   opaque meshes, skinned meshes, terrain and sky into the graph's
