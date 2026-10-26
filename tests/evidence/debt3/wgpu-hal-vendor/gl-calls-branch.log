@@ -1,0 +1,7 @@
+og build: warning: /home/user/workspace/repo/packages/engine/dist/web-publish/origin-engine-lanes.js is missing, so this build ships single-threaded (no 3D lanes variant); `bun run build` in packages/engine builds it (scripts/build.sh, docs/web-export.md §Lanes)
+ok   the page runs the WebGL2 tier
+ok   the engine draws through the JS state filter
+ok   the counter sees the scene's draws (41 a frame)
+ok   1335 calls a frame leave wasm, fewer than 1500 (upstream wgpu-hal: 3,797)
+ok   732 of them reach WebGL behind the JS filter
+5 of 5 checks passed (/home/user/workspace/repo/packages/engine/dist/test-gl-calls/out/gl-calls.json)
