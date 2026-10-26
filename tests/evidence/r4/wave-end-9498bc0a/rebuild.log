@@ -1,0 +1,30 @@
+warning: field `physics_heightfields` is never read
+   --> crates/og-runtime/src/engine.rs:482:9
+    |
+416 | pub(crate) struct State {
+    |                   ----- field in this struct
+...
+482 |     pub physics_heightfields: IdMap<u64, og_physics::HeightfieldDesc>,
+    |         ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: unstable feature specified for `-Ctarget-feature`: `atomics`
+  |
+  = note: this feature is not stably supported; its behavior can change in the future
+
+warning: field `physics_heightfields` is never read
+   --> crates/og-runtime/src/engine.rs:482:9
+    |
+416 | pub(crate) struct State {
+    |                   ----- field in this struct
+...
+482 |     pub physics_heightfields: IdMap<u64, og_physics::HeightfieldDesc>,
+    |         ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: unstable feature specified for `-Ctarget-feature`: `atomics`
+  |
+  = note: this feature is not stably supported; its behavior can change in the future
+

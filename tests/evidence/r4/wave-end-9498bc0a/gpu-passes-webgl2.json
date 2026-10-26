@@ -1,0 +1,254 @@
+{
+  "tier": "webgl2",
+  "mode": "webgl2",
+  "chrome": "/Users/fan/.agent-browser/browsers/chrome-150.0.7871.115/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "timerShim": false,
+  "timer": {
+    "extension": true,
+    "timestampBits": 0,
+    "elapsedBits": 64
+  },
+  "frames": 600,
+  "warm": 60,
+  "gpuFrames": 600,
+  "total": {
+    "mean": 36.4824,
+    "p50": 36.03,
+    "p95": 54.852
+  },
+  "passes": [
+    {
+      "name": "cascade.0",
+      "mean": 0.2605,
+      "p50": 0.206,
+      "p95": 0.527,
+      "share": 0.71
+    },
+    {
+      "name": "cascade.1",
+      "mean": 0.1665,
+      "p50": 0.149,
+      "p95": 0.268,
+      "share": 0.46
+    },
+    {
+      "name": "cascade.2",
+      "mean": 0.3484,
+      "p50": 0.325,
+      "p95": 0.574,
+      "share": 0.95
+    },
+    {
+      "name": "local-shadow.0",
+      "mean": 0.1766,
+      "p50": 0.148,
+      "p95": 0.329,
+      "share": 0.48
+    },
+    {
+      "name": "prepass",
+      "mean": 0.8621,
+      "p50": 0.798,
+      "p95": 1.553,
+      "share": 2.36
+    },
+    {
+      "name": "ao",
+      "mean": 0.6698,
+      "p50": 0.623,
+      "p95": 1.124,
+      "share": 1.84
+    },
+    {
+      "name": "ao-blur",
+      "mean": 1.0434,
+      "p50": 0.977,
+      "p95": 1.762,
+      "share": 2.86
+    },
+    {
+      "name": "main",
+      "mean": 2.768,
+      "p50": 2.569,
+      "p95": 4.185,
+      "share": 7.59
+    },
+    {
+      "name": "taa",
+      "mean": 2.3419,
+      "p50": 2.203,
+      "p95": 3.502,
+      "share": 6.42
+    },
+    {
+      "name": "bloom-prefilter",
+      "mean": 2.4205,
+      "p50": 2.281,
+      "p95": 3.603,
+      "share": 6.63
+    },
+    {
+      "name": "bloom-down.0",
+      "mean": 2.4415,
+      "p50": 2.303,
+      "p95": 3.671,
+      "share": 6.69
+    },
+    {
+      "name": "bloom-down.1",
+      "mean": 2.451,
+      "p50": 2.314,
+      "p95": 3.743,
+      "share": 6.72
+    },
+    {
+      "name": "bloom-down.2",
+      "mean": 2.4605,
+      "p50": 2.323,
+      "p95": 3.752,
+      "share": 6.74
+    },
+    {
+      "name": "bloom-down.3",
+      "mean": 2.4452,
+      "p50": 2.326,
+      "p95": 3.673,
+      "share": 6.7
+    },
+    {
+      "name": "bloom-down.4",
+      "mean": 2.4232,
+      "p50": 2.325,
+      "p95": 3.667,
+      "share": 6.64
+    },
+    {
+      "name": "bloom-up.4",
+      "mean": 2.2711,
+      "p50": 2.325,
+      "p95": 3.646,
+      "share": 6.23
+    },
+    {
+      "name": "bloom-up.3",
+      "mean": 2.2116,
+      "p50": 2.328,
+      "p95": 3.595,
+      "share": 6.06
+    },
+    {
+      "name": "bloom-up.2",
+      "mean": 2.1802,
+      "p50": 2.332,
+      "p95": 3.599,
+      "share": 5.98
+    },
+    {
+      "name": "bloom-up.1",
+      "mean": 2.1565,
+      "p50": 2.34,
+      "p95": 3.592,
+      "share": 5.91
+    },
+    {
+      "name": "bloom-up.0",
+      "mean": 2.1641,
+      "p50": 2.374,
+      "p95": 3.62,
+      "share": 5.93
+    },
+    {
+      "name": "tonemap",
+      "mean": 2.2199,
+      "p50": 2.452,
+      "p95": 3.696,
+      "share": 6.08
+    }
+  ],
+  "lastProbeGpuPasses": [
+    {
+      "ms": 0.295541,
+      "name": "cascade.0"
+    },
+    {
+      "ms": 0.14874900000000002,
+      "name": "cascade.1"
+    },
+    {
+      "ms": 0.327749,
+      "name": "cascade.2"
+    },
+    {
+      "ms": 0.22624899999999992,
+      "name": "local-shadow.0"
+    },
+    {
+      "ms": 0.8357500000000001,
+      "name": "prepass"
+    },
+    {
+      "ms": 0.621041,
+      "name": "ao"
+    },
+    {
+      "ms": 0.9711660000000002,
+      "name": "ao-blur"
+    },
+    {
+      "ms": 2.6857079999999995,
+      "name": "main"
+    },
+    {
+      "ms": 2.1949579999999997,
+      "name": "taa"
+    },
+    {
+      "ms": 2.272374000000001,
+      "name": "bloom-prefilter"
+    },
+    {
+      "ms": 2.294832999999999,
+      "name": "bloom-down.0"
+    },
+    {
+      "ms": 2.2972490000000008,
+      "name": "bloom-down.1"
+    },
+    {
+      "ms": 2.308540999999998,
+      "name": "bloom-down.2"
+    },
+    {
+      "ms": 2.3128740000000008,
+      "name": "bloom-down.3"
+    },
+    {
+      "ms": 2.3141239999999996,
+      "name": "bloom-down.4"
+    },
+    {
+      "ms": 2.315124000000001,
+      "name": "bloom-up.4"
+    },
+    {
+      "ms": 2.319874000000002,
+      "name": "bloom-up.3"
+    },
+    {
+      "ms": 2.324458,
+      "name": "bloom-up.2"
+    },
+    {
+      "ms": 2.333623999999997,
+      "name": "bloom-up.1"
+    },
+    {
+      "ms": 2.3675830000000033,
+      "name": "bloom-up.0"
+    },
+    {
+      "ms": 2.446458,
+      "name": "tonemap"
+    }
+  ]
+}
