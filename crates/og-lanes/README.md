@@ -68,7 +68,7 @@ host's `og_web_lanes`) counts the parallel calls and their items per site:
 |---|---|---|
 | `anim` | og-anim's graph evaluation and joint palettes | 64 skeletons |
 | `extract` | og-runtime's row decoding | 512 rows |
-| `cull` | og-render's CPU frustum cull | 1024 bounds |
+| `cull` | og-render's CPU frustum cull (`Frustum::test_spheres`) | 1024 bounds a task, and only from 131,072 bounds (below, a split lost to the serial loop idle and loaded: `tests/evidence/debt3/cull-lane-grain/`) |
 | `physics` | og-physics's whole step through `install_from` (rapier's parallel broad phase, narrow phase and solver), the gather's row decode, the contact graph's edges through `map` and the touching pairs through `sort` (on the pool), ropes, cloths and fluid sets stepped side by side and the fluids' per-particle passes through `for_each_mut` and `map`, its queries through `serial` | the step from `og_physics::pool_bodies` (500 bodies on two to four threads, 1,000 on five or six, 1,500 from seven); 2,048 edges and 1,024 rows a task; the soft bodies' grains in `og_physics::Grains` (five and six threads measured apart); the body and ragdoll plans never (measured not to pay) |
 
 The physics site splits natively and in the lanes wasm alike: the reference

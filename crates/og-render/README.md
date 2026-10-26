@@ -100,7 +100,14 @@ not recorded.
    instance's sphere and GPU transform only when its transform changed
    (bit for bit), so a still field costs one pass over the submission and
    no sort. Every pass gets a draw
-   list per batch: the instances whose sphere touches the pass's volume. A
+   list per batch: the instances whose sphere touches the pass's volume
+   (`Frustum::test_spheres`, each flag its own sphere's, so the lists are
+   the same on any number of threads). The tests run on the calling thread
+   below 131,072 bounds and on the lanes from there (og-lanes' `cull`
+   site, 1,024 bounds a task): a test is about 5 ns and a split pays a
+   pool wake and join of 50 µs to milliseconds, so it lost at every count
+   to 65,536 on an idle machine and at every count on a loaded one
+   (`tests/evidence/debt3/cull-lane-grain/NOTES.md`). A
    batch that loses less than a tenth of its instances is drawn whole (no
    copy); otherwise its visible transforms are appended to the instance
    buffer. Draws bind a buffer slice, never `first_instance` (WebGL2).

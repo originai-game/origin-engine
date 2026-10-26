@@ -1,1 +1,1 @@
-# The lane-panic fixture builds its scene in code; og cook needs an assets/ directory to write an (empty) bundle.
+# The lane-panic fixture's walker (`models/walker.glb`) is the reference scene's (crates/og-tests/reference-scene/assets/models), skinned and with the walk, run, idle and wave clips its crowd plays.
