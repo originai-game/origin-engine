@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 const SLOW = process.env.OG_GATE === "1" && !process.env.OG_GATE_ALL;
 
 declare const Bun: {
-  spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe" }): { stdout: ReadableStream<Uint8Array>; exited: Promise<number>; kill(): void };
+  spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe" }): { stdout: ReadableStream<Uint8Array>; exited: Promise<number>; kill(signal?: string): void };
 };
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -62,3 +62,43 @@ for (const render of [false, true]) {
     }
   }, 60_000);
 }
+
+// `og dev --engine`'s hot restart: a run with --handoff writes its world on
+// SIGUSR2 and exits 0, and a new process (another engine build, here another
+// layout of RlTag) restores it with --restore and goes on from that tick,
+// the changed layout migrated by name. A restore that started over, or one
+// refused for the new field, would report another tick or ok false.
+test.skipIf(SLOW)("a handed-off world restores in a new process with a changed layout", async () => {
+  const dir = join(pkg, "tests", `.handoff-${process.pid}`);
+  mkdirSync(dir, { recursive: true });
+  const entry = join(dir, "game.ts");
+  const save = join(dir, "world.save");
+  writeFileSync(entry, game("a: f32(1)"));
+  const first = Bun.spawn(["bun", "src/node/run.ts", "--entry", entry, "--no-render", "--realtime", "--port", "0", "--handoff", save], { cwd: pkg, stdout: "pipe", stderr: "pipe" });
+  const reader = first.stdout.getReader();
+  let out = "";
+  while (!out.includes("probe: ws://")) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    out += new TextDecoder().decode(value);
+  }
+  // Some ticks run first, so a restore that started over shows.
+  await new Promise((r) => setTimeout(r, 500));
+  first.kill("SIGUSR2");
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    out += new TextDecoder().decode(value);
+  }
+  expect(await first.exited).toBe(0);
+  const handoff = out.split("\n").filter((l) => l.startsWith('{"event":"handoff"')).map((l) => JSON.parse(l))[0];
+  expect(handoff.tick).toBeGreaterThan(0);
+
+  writeFileSync(entry, game("a: f32(1), b: f32(2)"));
+  const second = Bun.spawn(["bun", "src/node/run.ts", "--entry", entry, "--no-render", "--restore", save, "--commands", "0.1:quit"], { cwd: pkg, stdout: "pipe", stderr: "pipe" });
+  const text = await new Response(second.stdout).text();
+  expect(await second.exited).toBe(0);
+  rmSync(dir, { recursive: true, force: true });
+  const restored = text.split("\n").filter((l) => l.startsWith('{"event":"restored"')).map((l) => JSON.parse(l))[0];
+  expect(restored).toEqual({ event: "restored", ok: true, tick: handoff.tick });
+}, 60_000);

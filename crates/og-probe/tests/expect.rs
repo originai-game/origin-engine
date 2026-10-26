@@ -3,7 +3,7 @@
 //! its tick and observed value, and the frame as data.
 #![cfg(not(feature = "publish"))]
 
-mod support;
+use crate::support;
 
 use og_core::Reflect;
 use og_ecs::World;

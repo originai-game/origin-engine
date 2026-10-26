@@ -15,7 +15,7 @@
 //! - in a right-to-left UI the spans run left to right, or punctuation
 //!   between two spans sits on the wrong side of its space.
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec2;
 use og_render::{ColorSpace, Mips, RenderScene, TextureData};

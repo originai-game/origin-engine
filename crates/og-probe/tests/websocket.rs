@@ -2,7 +2,7 @@
 //! world's thread between ticks, malformed frames answered by the transport.
 #![cfg(all(feature = "ws", not(feature = "publish")))]
 
-mod support;
+use crate::support;
 
 use og_probe::server::{DEFAULT_PORT, ProbeServer};
 use serde_json::{Value, json};

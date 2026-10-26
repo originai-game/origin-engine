@@ -48,7 +48,7 @@
 //! pixel's and scifi's primarySoft thinned and cartoon's and fantasy's
 //! highlight darkened).
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec2;
 use og_render::{ColorSpace, Mips, RenderScene, TextureData, TextureHandle};

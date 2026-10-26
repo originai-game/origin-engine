@@ -20,7 +20,7 @@
 //!   reaches one the tree does not list; an open dialog's tree lets focus
 //!   order leave it.
 
-mod support;
+use crate::support;
 
 use og_ui::*;
 use support::*;

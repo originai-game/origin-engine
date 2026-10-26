@@ -12,7 +12,7 @@
 //! each fluid, or leaves the weights unchanged (no blend); a fluid in no
 //! group carries a mix; the result depends on more than the inputs.
 
-mod support;
+use crate::support;
 
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::{Entity, World};

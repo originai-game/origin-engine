@@ -6,7 +6,7 @@
 //! The text-fields-2 scene (`support::text_fields_shot`) is judged the same
 //! way, with the scroll clipping, glow and glass checks below.
 
-mod support;
+use crate::support;
 
 use og_core::glam::{Vec2, Vec3};
 use og_render::{Background, RenderDesc, RenderScene, RenderTarget, Renderer, Tonemap};
@@ -625,8 +625,8 @@ fn a_glass_panel_blurs_the_overlay_layers_below_it() {
 /// no glass, four dialog-sized glass panels over the scene only, the four
 /// over overlay content (a HUD bar under them: the pyramid is built after
 /// it, once), and two layers of two panels with content under each (two
-/// pyramids) (`cargo test -p og-ui --release --test gfx -- --ignored
-/// glass_cost --nocapture`; tests/evidence/P2/ui/glass-cost.md,
+/// pyramids) (`cargo test -p og-ui --release --test tests -- --ignored
+/// gfx::glass_cost --nocapture`; tests/evidence/P2/ui/glass-cost.md,
 /// tests/evidence/P4/ui-shell/glass-cost.md).
 #[test]
 #[ignore]
@@ -718,8 +718,8 @@ fn glass_cost() {
 }
 
 /// The glow's cost on this machine's GPU: 24 display-size labels rendered
-/// 300 times with and without it (`cargo test -p og-ui --release --test gfx
-/// -- --ignored text_glow_cost --nocapture`; tests/evidence/P2/ui/text-glow-cost.md).
+/// 300 times with and without it (`cargo test -p og-ui --release --test tests
+/// -- --ignored gfx::text_glow_cost --nocapture`; tests/evidence/P2/ui/text-glow-cost.md).
 #[test]
 #[ignore]
 fn text_glow_cost() {

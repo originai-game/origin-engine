@@ -837,8 +837,8 @@ Maker which to pick and how to theme it.
 
 ```sh
 cargo test -p og-ui                                   # everything below
-OG_UI_GOLDEN=1  cargo test -p og-ui --test layout     # re-record the layout golden
-OG_UI_CAPTURE=1 cargo test -p og-ui --test gfx --test kit_gfx  # re-record this tier's reference frames
+OG_UI_GOLDEN=1  cargo test -p og-ui --test tests layout::  # re-record the layout golden
+OG_UI_CAPTURE=1 cargo test -p og-ui --test tests gfx::  # re-record this tier's reference frames
 OG_UI_CAPTURE=1 og test templates/ui-kit              # re-record this tier's kit frames and sheets
 cargo check --target wasm32-unknown-unknown -p og-ui
 ```

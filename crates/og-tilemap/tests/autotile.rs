@@ -2,7 +2,7 @@
 //! blob47 (eight neighbours, corners only between filled edges) and
 //! bitmask16 (four edges); edits re-resolve the 3×3 neighbourhood.
 
-mod support;
+use crate::support;
 use og_tilemap::mask::*;
 use og_tilemap::{MapState, Tileset, reduce_blob};
 use support::*;

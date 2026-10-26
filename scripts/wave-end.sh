@@ -19,7 +19,7 @@
 #              test from them on this machine and in the linux-x64 container
 #              (docs/release.md §3); what passes here is what publish ships
 #   cross      cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31:
-#              og-tests' og-gfx, og-ui's GPU test binaries and og-host-node,
+#              og-tests' og-gfx, og-ui's test binary and og-host-node,
 #              the addon copied to packages/engine/native/origin-engine.linux-x64.node
 #   prepare    each template cooked (`og cook`, the gate's dev og) and bundled
 #              for the native host (<template>/.og/game.native.js), on this machine
@@ -61,6 +61,7 @@ cd "$OG_ROOT" || exit 1
 IMAGE="${OG_LAVAPIPE_IMAGE:-og-lavapipe-bun:local}"
 TRIPLE=x86_64-unknown-linux-gnu
 ALL_STAGES="gate web conformance release cross prepare gfx ui playtests table"
+# og-ui's GPU test modules, all in its one test binary (tests/main.rs).
 UI_TESTS="gfx kit_gfx materials_gfx text_gfx"
 stages="gate web conformance release"
 templates="ui-kit"
@@ -141,11 +142,9 @@ stage_conformance() { run scripts/tsrs-diff.sh; }
 stage_release() { run scripts/release.sh pack && run scripts/release.sh verify; }
 
 stage_cross() {
-  local t tests=()
   run cargo zigbuild --release --target "$TRIPLE.2.31" -p og-tests --bin og-gfx || return 1
-  # og-ui's GPU test binaries; cargo's JSON names each executable.
-  for t in $UI_TESTS; do tests+=(--test "$t"); done
-  local ui=(cargo zigbuild --release --target "$TRIPLE.2.31" -p og-ui "${tests[@]}" --message-format=json-render-diagnostics)
+  # og-ui's test binary, which holds its GPU tests; cargo's JSON names the executable.
+  local ui=(cargo zigbuild --release --target "$TRIPLE.2.31" -p og-ui --test tests --message-format=json-render-diagnostics)
   say "+ $(printf '%q ' "${ui[@]}")> $OUT/og-ui-tests.json"
   if [ "$dry" != 1 ]; then
     "${ui[@]}" > "$OUT/og-ui-tests.json" || return 1
@@ -192,7 +191,8 @@ stage_gfx() {
 # og-ui's GPU tests on lavapipe, every binary in one container; with
 # --record og-ui, OG_UI_CAPTURE=1 records each frame on vulkan-cpu.
 stage_ui() {
-  local b script="$OUT/og-ui.sh" capture=""
+  local b m filters="" script="$OUT/og-ui.sh" capture=""
+  for m in $UI_TESTS; do filters="$filters $m::"; done
   case " $record " in *" og-ui "*) capture="OG_UI_CAPTURE=1 " ;; esac
   {
     echo "#!/bin/sh"
@@ -200,12 +200,12 @@ stage_ui() {
     echo "rc=0"
     if [ "$dry" = 1 ]; then
       echo "# one line per executable the cross stage lists in $OUT/og-ui-tests.txt, as:"
-      echo "${capture}<og-ui test executable> --test-threads=2 || rc=1"
+      echo "${capture}<og-ui test executable>$filters --test-threads=2 || rc=1"
     else
       [ -s "$OUT/og-ui-tests.txt" ] || { og_err "no og-ui test binaries in $OUT/og-ui-tests.txt: run the cross stage"; return 1; }
       while IFS= read -r b; do
         [ -x "$b" ] || { og_err "$b is not there: run the cross stage"; return 1; }
-        printf 'echo "== %s"\n%s%s --test-threads=2 || rc=1\n' "$(basename "$b")" "$capture" "$b"
+        printf 'echo "== %s"\n%s%s%s --test-threads=2 || rc=1\n' "$(basename "$b")" "$capture" "$b" "$filters"
       done < "$OUT/og-ui-tests.txt"
     fi
     # shellcheck disable=SC2016 # expands in the generated script

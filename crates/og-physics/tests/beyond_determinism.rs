@@ -14,7 +14,7 @@
 //! of tools/wasm-determinism would); a feature that does nothing: the
 //! checks on what moved fail.
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec3;
 use og_physics::*;

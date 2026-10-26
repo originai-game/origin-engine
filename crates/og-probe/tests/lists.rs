@@ -4,7 +4,7 @@
 //! `[]` and `[0]` apart; `patch` refuses it, as a list is never tunable.
 #![cfg(not(feature = "publish"))]
 
-mod support;
+use crate::support;
 
 use og_core::{List, Reflect};
 use og_probe::Payload;

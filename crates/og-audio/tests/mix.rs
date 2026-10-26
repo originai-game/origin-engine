@@ -31,7 +31,7 @@
 //!   behind it, or eases differently on a second run or after a restore →
 //!   `a_reverb_zone_eases_the_shared_reverb_by_where_the_listener_is`
 
-mod support;
+use crate::support;
 
 use og_audio::command::fx;
 use og_audio::{

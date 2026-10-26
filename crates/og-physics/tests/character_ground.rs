@@ -17,7 +17,7 @@
 //! than stepHeight is; it walks up a slope steeper than maxSlope; it
 //! leaves the ground running down a slope or stairs within snapDistance.
 
-mod support;
+use crate::support;
 
 use og_core::glam::{Quat, Vec2, Vec3};
 use og_ecs::{Entity, World};

@@ -5,7 +5,7 @@
 //! does not depend on a font. The rectangles the reasoning below predicts
 //! are asserted too, so the golden is checked, not just recorded.
 
-mod support;
+use crate::support;
 
 use og_ui::*;
 use serde_json::{Value, json};

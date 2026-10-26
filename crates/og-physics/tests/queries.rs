@@ -6,7 +6,7 @@
 //! distances or normals are in the wrong space; the query sees stale
 //! positions instead of the written-back ones; a zero direction panics.
 
-mod support;
+use crate::support;
 
 use og_core::glam::{Quat, Vec3};
 use og_physics::*;

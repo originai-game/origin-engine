@@ -9,7 +9,7 @@
 //! a marker lost or doubled at the loop seam, reverse playback ignored, a
 //! fade that pops, a seek replaying markers, `time` drifting from the clip.
 
-mod support;
+use crate::support;
 
 use og_anim::*;
 use og_core::glam::Vec3;

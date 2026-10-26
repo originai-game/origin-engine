@@ -1,7 +1,7 @@
 //! Draw chunks: quads at their cells with flipped regions, animated tiles
 //! with every frame's region, and culling to a rectangle.
 
-mod support;
+use crate::support;
 use glam::Vec2;
 use og_tilemap::{CHUNK, FLIP_X, FLIP_Y, Tileset, animated_frame, chunk_quads, chunks_in};
 use support::*;

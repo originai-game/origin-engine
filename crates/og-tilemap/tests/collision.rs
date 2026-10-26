@@ -1,7 +1,7 @@
 //! Full-tile solids merge into few rectangles; partial shapes stay per
 //! tile (full-width neighbours on a row merge); the order is deterministic.
 
-mod support;
+use crate::support;
 use glam::Vec2;
 use og_tilemap::{Rect, collision_rects, collision_rects_all};
 use support::*;

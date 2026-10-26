@@ -198,6 +198,60 @@ a release build of `og`, the addon and two wasm variants was most. Four
 agents building the same crates into private `target/agent-*` directories
 had grown `target/` to 143 GB.
 
+### Test binaries
+
+Each crate's integration tests are one binary, `tests` (`tests/main.rs`
+declares every file under `tests/` as a module; `autotests = false` and one
+`[[test]]` in its `Cargo.toml`). An edit used to relink one ~80 MB
+executable per test file, 199 of them after an og-core edit, and those
+links were 78–85 % of the CPU of every incremental test build. Measured
+2026-10-26 in an orb (16 cores, Linux, rust-lld, warm), `cargo test
+--workspace --no-run` after appending a function to a crate's `lib.rs`:
+
+| Edit | Before (231 executables) | After (58) |
+|---|---|---|
+| og-core | 23.0 s | 7.9 s |
+| og-render | 20.1 s | 7.5 s |
+| og-runtime | 12.5 s | 5.4–5.9 s |
+
+nextest still runs every test in a process of its own, so the merge changes
+no test's isolation; `cargo nextest list` gives the same 1068 integration
+tests before and after. A test is now named `<module>::<test>` in the
+`tests` binary: `cargo test -p og-ui --test tests gfx::` runs what `--test
+gfx` ran, and nextest filters use `package(..) & test(/^module::/)`. A new
+test file is a `mod` line in its crate's `tests/main.rs`.
+
+A file stays its own binary when its tests change process-wide state that
+another module's tests would see under plain `cargo test` (threads of one
+process), or when they assert a wall-clock bound: og-physics' `lanes` and
+`pile` (the lanes switch, grains and an injected fault), og-runtime's
+`extract_cost`, og-audio's `audio` and og-tests' `render`. Such a file is a
+`[[test]]` of its own in the crate's `Cargo.toml`, named in the header of
+its `tests/main.rs`. Crates with one test file keep cargo's default.
+
+The test build (`--workspace`) and the gate's dev `og` and addon
+(`cargo build -p og-host-node -p og-cli`, `packages/engine/scripts/build.sh`)
+share every library build. Cargo resolves features per command, so a
+feature that turns on only in one graph gives that crate and every crate
+above it a second build. Two had done that, and an og-core edit compiled
+22 crates again for `og` after the test build had compiled them:
+
+- syn 3: og-host-web's wasm-bindgen macros turn on `visit` and
+  `visit-mut` in the test graph only, which rebuilt serde_derive and with
+  it everything from og-core up. og-core-derive asks for the same
+  features (`syn3`, unused in its code).
+- og-physics: as a workspace member, the test build selects its
+  `default`, which adds nothing but changes its hash and og-runtime's.
+  og-host-node asks for og-physics' `default`.
+
+Measured as above: after an edit's test build, `og` and the addon
+recompiled 22 crates in 8.1–8.3 s after an og-core edit and 6.1 s after an
+og-runtime one; now they relink og-host-node alone in 2.6–3.1 s. To check
+after a dependency change, compare the two builds' artifact file names
+(`--message-format=json`, `compiler-artifact` records with
+`profile.test` false): a library both graphs build under two hashes is a
+split, and the lowest such crate is its cause.
+
 ## What runs where
 
 | Step | Command | Lane | CI `quick` (PR) | CI `functional` (PR) | CI `gate` (push to main, PR) | CI `perf-nightly` (03:17 UTC, manual) |
@@ -466,7 +520,7 @@ describes the script as it is, for when the requirement returns.
 | `gate` | `scripts/check.sh --all` |
 | `web` | `scripts/check.sh web-reference` |
 | `release` | `scripts/release.sh pack` then `verify`: the five packages as release tarballs in `dist/release/<version>/` with `manifest.json`, and the install test (`tests/install/run.ts`) from them on this machine and in the linux-x64 container (docs/release.md §3); publish never runs here |
-| `cross` | `cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31` of `-p og-tests --bin og-gfx`, of og-ui's GPU test binaries (`--test gfx --test kit_gfx --test materials_gfx --test text_gfx`) and of `-p og-host-node`, the addon copied to `packages/engine/native/origin-engine.linux-x64.node` |
+| `cross` | `cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31` of `-p og-tests --bin og-gfx`, of og-ui's test binary (`--test tests`, run with the filters `gfx:: kit_gfx:: materials_gfx:: text_gfx::`) and of `-p og-host-node`, the addon copied to `packages/engine/native/origin-engine.linux-x64.node` |
 | `prepare` | each template cooked (`og cook`, the gate's dev `og`) and bundled for the native host into `<template>/.og/game.native.js`, as `og test` does, on the Mac |
 | `gfx` | `og-gfx --all --capture target/lava-gfx` in `og-lavapipe-bun:local` (`docker run --rm -v <checkout>:<checkout> -w <checkout>`, `OG_TEST_ASSETS=<checkout>/crates/og-tests/assets`, the og-gfx binary as `--entrypoint`; no `--platform`: the amd64 image runs under emulation, and the checkout sits at its own path because the bundles hold absolute paths) |
 | `ui` | og-ui's GPU test binaries in the image, against `crates/og-ui/references/vulkan-cpu/` (else `metal`) |

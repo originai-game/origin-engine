@@ -1,7 +1,7 @@
 //! The two `.ogt` grammars: tilesets round-trip through their canonical
 //! text; hand-written maps read legends, numeric rows and objects.
 
-mod support;
+use crate::support;
 use glam::Vec2;
 use og_tilemap::{Collision, Filter, MapState, TilemapAsset, Tileset, cell_center, world_to_cell};
 use support::*;

@@ -7,6 +7,7 @@
 //       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render]
 //       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>]
 //       [--trace <out.json> [--trace-append]] [--room ws://127.0.0.1:P/<room>] [--json]
+//       [--restore <world.save>] [--handoff <world.save>]
 //
 // - Without --commands, --port or --watch: advance --ticks N at once and print
 //   the world hash (M2's hello world).
@@ -35,8 +36,15 @@
 //   time, each load, og-lanes' jobs on their pool threads, every span where
 //   it ran; --trace-append adds them to the file og wrote first (its
 //   metadata, its origin and the cook's spans).
+// - With --handoff: SIGUSR2 makes the run write the world's snapshot (the
+//   save text of og.world.snapshot) to that file between two frames, print
+//   `{"event":"handoff","tick":T}` and exit 0. With --restore the run starts
+//   from such a file, migrating by name what the schema changed, once
+//   GameDesc.start and --setup have run. Together they are `og dev --engine`'s
+//   hot restart: the engine rebuilt, a new process carries the world on. A
+//   refused restore warns and the run goes on from the start.
 
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
@@ -66,6 +74,8 @@ let clock: number | undefined;
 let tracePath: string | undefined;
 let traceAppend = false;
 let room: string | undefined;
+let restoreFile: string | undefined;
+let handoffFile: string | undefined;
 const setup: string[] = [];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i]!;
@@ -97,6 +107,8 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--trace") tracePath = resolve(next());
   else if (a === "--trace-append") traceAppend = true;
   else if (a === "--room") room = next();
+  else if (a === "--restore") restoreFile = resolve(next());
+  else if (a === "--handoff") handoffFile = resolve(next());
   else if (a === "--headless") {
     // Native runs are always headless; accepted for `og run --headless`.
   } else fail(`unknown argument '${a}'`);
@@ -165,7 +177,7 @@ const BEFORE_ENGINE = 0xffffffff;
 if (tracePath) extras.og_node_trace(BEFORE_ENGINE, true);
 const project = projectText(root);
 const profile = projectProfile(project);
-const probing = commands !== undefined || port !== undefined || watchFile !== undefined || room !== undefined;
+const probing = commands !== undefined || port !== undefined || watchFile !== undefined || room !== undefined || handoffFile !== undefined;
 // With a renderer, GameDesc.start runs once it is attached (as the web Worker
 // does), so og.render.capabilities reports the play surface's size there.
 const deferStart = probing && render;
@@ -243,6 +255,22 @@ for (const step of setup) {
   const r = engine.command(action!, args);
   if (!r.ok) fail(`--setup ${step}: ${r.reason}`);
 }
+
+/** The world's tick, from its dump. */
+const worldTick = (): number => (engine.probe.dump({ what: "world" }) as unknown as { tick: number }).tick;
+
+if (restoreFile) {
+  const restored = engine.world.restore(readFileSync(restoreFile, "utf8"), { migrate: true });
+  if (restored.ok) process.stdout.write(JSON.stringify({ event: "restored", ok: true, tick: worldTick() }) + "\n");
+  else {
+    process.stderr.write(`WARN --restore ${restoreFile}: ${restored.reason}; the run starts fresh\n`);
+    process.stdout.write(JSON.stringify({ event: "restored", ok: false, tick: worldTick(), reason: restored.reason }) + "\n");
+  }
+  drain();
+}
+
+let handoffAsked = false;
+if (handoffFile) (process as unknown as { on(event: "SIGUSR2", listener: () => void): void }).on("SIGUSR2", () => (handoffAsked = true));
 
 let listening: number | undefined;
 if (port !== undefined) {
@@ -328,6 +356,17 @@ if (!probing) {
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   let last = performance.now();
   for (;;) {
+    if (handoffAsked) {
+      const save = engine.world.snapshot();
+      if (!save.ok) fail(`--handoff: the engine refused a snapshot (${save.reason})`);
+      // Written whole or not at all: the next process reads it once this one is gone.
+      writeFileSync(`${handoffFile}.part`, save.value);
+      renameSync(`${handoffFile}.part`, handoffFile!);
+      const tick = worldTick();
+      process.stdout.write(JSON.stringify({ event: "handoff", tick }) + "\n");
+      sink.close();
+      process.exit(0);
+    }
     if (pendingReload && importing === 0) {
       const { mtimeMs, importMs } = pendingReload as { mtimeMs: number; importMs: number };
       pendingReload = null;

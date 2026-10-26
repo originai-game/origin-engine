@@ -10,7 +10,7 @@
 //! instead of being refused with the fix; a convex hull on a dynamic body
 //! or a height field is left out of either.
 
-mod support;
+use crate::support;
 
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::World;

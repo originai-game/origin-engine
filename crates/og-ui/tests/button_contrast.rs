@@ -10,7 +10,7 @@
 //! translucent fill that reads on one ground only; a hovered or pressed
 //! state darker or lighter than its rest state by enough to fall under.
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec2;
 use og_ui::*;

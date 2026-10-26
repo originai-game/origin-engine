@@ -11,7 +11,7 @@
 //! restored world diverges); the 2D profile ignores them; a centre of mass
 //! moved below a box does not right it.
 
-mod support;
+use crate::support;
 
 use og_core::glam::{Quat, Vec3};
 use og_ecs::{Entity, World};

@@ -70,6 +70,10 @@ mod imp {
         }
     }
 
+    pub fn retarget(target: Target) {
+        CHILD.store(pid_of(target), Ordering::SeqCst);
+    }
+
     pub fn stop() {
         for (sig, prev) in SIGNALS.iter().zip(&PREVIOUS) {
             // SAFETY: puts back the handler `start` replaced.
@@ -111,6 +115,7 @@ mod imp {
 mod imp {
     use super::Target;
     pub fn start(_target: Target) {}
+    pub fn retarget(_target: Target) {}
     pub fn stop() {}
     pub fn received() -> Option<i32> {
         None
@@ -130,6 +135,12 @@ mod imp {
 /// action applies.
 pub fn start(target: Target) {
     imp::start(target);
+}
+
+/// The signals go to `target` from now on, the handlers [`start`]
+/// installed kept (`og dev --engine`: the game restarted in a new group).
+pub fn retarget(target: Target) {
+    imp::retarget(target);
 }
 
 /// The handlers before [`start`] again.

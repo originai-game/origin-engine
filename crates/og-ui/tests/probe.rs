@@ -2,7 +2,7 @@
 //! the UI system reads `og.Input` in the tick, the probe resolves
 //! `touch_move_to` / `move_to_text` / `dump_ui` against the live tree.
 
-mod support;
+use crate::support;
 
 use og_ecs::{World, WorldDesc};
 use og_probe::{Probe, UiElement};

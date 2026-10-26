@@ -28,7 +28,7 @@
 //! - a game accent leaves the style palette's derived tones stale;
 //! - the gamepad stick repeats at the wrong ticks.
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec2;
 use og_ui::*;

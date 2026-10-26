@@ -12,7 +12,7 @@
 //! as two points of the sheet that are not near neighbours coming closer
 //! than the thickness allows, at any tick of the fall.
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec3;
 use og_ecs::{Entity, World};

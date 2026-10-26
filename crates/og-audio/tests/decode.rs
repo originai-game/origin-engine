@@ -18,7 +18,7 @@
 //! - a helper's answer for another frame, or a late one, is taken →
 //!   `answers_of_another_length_or_key_are_refused`
 
-mod support;
+use crate::support;
 
 use og_audio::qoa;
 use og_audio::{

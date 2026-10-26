@@ -14,7 +14,7 @@
 //! of the animation lost (bones drawn in the wrong layer), a 3D rotation
 //! leaking in, or the hinges without limits (a knee folding backwards).
 
-mod support;
+use crate::support;
 
 use og_core::glam::{Quat, Vec3};
 use og_ecs::{Entity, World};

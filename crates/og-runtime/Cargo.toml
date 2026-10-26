@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 description = "Origin Engine runtime: the host-neutral implementation of the API that og-host-web and og-host-node wrap."
+autotests = false
 
 [dependencies]
 og-api = { path = "../og-api" }
@@ -57,3 +58,11 @@ physics3d = ["og-physics/physics3d"]
 [dev-dependencies]
 # tests/stream_release.rs cooks a small project with streaming groups.
 og-cook = { path = "../og-cook" }
+
+[[test]]
+name = "tests"
+path = "tests/main.rs"
+
+[[test]]
+name = "extract_cost"
+path = "tests/extract_cost.rs"

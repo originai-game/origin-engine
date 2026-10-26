@@ -1148,6 +1148,21 @@ milliseconds), re-registers components by name and restores. A component
 whose layout changed is migrated field by field through the schema; a
 removed one is dropped with a warning in the reload report.
 
+The engine's own Rust takes the same path one level down, for engine
+developers in a checkout (`og dev --engine`; a game author never runs it):
+a change to a crate rebuilds the dev addon while the game keeps running,
+then the game hands its world over (`run.ts --handoff`: the save written
+between two frames on SIGUSR2) and a new process on the new addon restores
+it (`--restore`, migrating by name) and goes on from that tick. It is a
+restart, not a patch of running code: determinism and the whole-world
+snapshot make the restart lose nothing, where swapping code inside the
+process would need an unloadable addon and wgpu's global state torn down.
+A failed build keeps the old game; a change the addon does not link (a
+test, another crate) restarts nothing. Measured 2026-10-26 in an orb on
+`templates/game`, an og-runtime edit: 6.8–7.1 s from save to the restored
+tick, of which the build 6.5–6.7 s, the handoff 51–61 ms and the new
+process 254–322 ms.
+
 ## 4. The play surface without iframes **(D)**
 
 The platform already serves a top-level Player on the play origin for phones

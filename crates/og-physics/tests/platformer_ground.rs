@@ -9,7 +9,7 @@
 //! the floor's height sinks into it and sticks; it drifts off the floor
 //! (the gap grows or shrinks run after run).
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec3;
 use og_ecs::{Entity, World};

@@ -15,7 +15,7 @@
 //! turned wheels); the wheels push nothing back on a dynamic ground (a
 //! car on a raft neither drives it nor weighs on it).
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec3;
 use og_ecs::{Entity, World};

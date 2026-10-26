@@ -20,7 +20,7 @@
 //!   names): the clip is played by og.anim on the tall rig and its pose
 //!   compared with the retargeted samples.
 
-mod support;
+use crate::support;
 
 use og_anim::*;
 use og_core::glam::Vec3;

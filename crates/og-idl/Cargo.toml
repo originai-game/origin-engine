@@ -5,9 +5,14 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 description = "Origin Engine IDL: crates/og-api/api.ogt, its model, validator and generators (TypeScript, binding table, schema, wiki, host traits and glue), behind `og api gen` and `og api check`."
+autotests = false
 
 [dependencies]
 og-core = { path = "../og-core" }
 
 [dev-dependencies]
 serde_json = { version = "1", features = ["float_roundtrip"] }
+
+[[test]]
+name = "tests"
+path = "tests/main.rs"

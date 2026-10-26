@@ -1,6 +1,6 @@
 //! Edits are deterministic and a snapshot holds only what changed.
 
-mod support;
+use crate::support;
 use og_tilemap::{Layer, MapState, TilemapAsset, TilesetRef};
 use support::*;
 

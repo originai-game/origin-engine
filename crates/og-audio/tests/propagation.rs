@@ -16,7 +16,7 @@
 //!   restore mid-walk differs →
 //!   `a_walk_with_doppler_cones_and_the_hrtf_is_the_same_twice_and_across_a_restore`
 
-mod support;
+use crate::support;
 
 use og_audio::command::Op;
 use og_audio::schema::panning_model;

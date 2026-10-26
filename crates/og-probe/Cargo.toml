@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 description = "Origin Engine probe: the command channel, RuntimeProbe protocol 5 and the engine's wire members over JSON-RPC 2.0 (loopback WebSocket on native, in-page calls on the web)."
+autotests = false
 
 [features]
 default = ["ws"]
@@ -26,3 +27,7 @@ tungstenite = { version = "=0.30.0", default-features = false, features = ["hand
 
 [dev-dependencies]
 tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }
+
+[[test]]
+name = "tests"
+path = "tests/main.rs"

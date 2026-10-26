@@ -3,7 +3,7 @@
 //! weights that write through from the component or come from the clips,
 //! both handed to a [`PaletteSink`]; and the refusals for missing assets.
 
-mod support;
+use crate::support;
 
 use og_anim::*;
 use og_core::glam::{Mat4, Vec3};

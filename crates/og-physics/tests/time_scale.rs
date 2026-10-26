@@ -7,7 +7,7 @@
 //! tick early or late; a snapshot taken during a hit stop restores a world
 //! that resumes differently.
 
-mod support;
+use crate::support;
 
 use og_core::glam::Vec3;
 use og_physics::*;
